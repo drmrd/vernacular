@@ -16,7 +16,8 @@ planner.
 | Phase | Focus                                                   | Status      |
 | ----- | ------------------------------------------------------- | ----------- |
 | 0a    | Build foundation (TS, Vite, React, Vitest, ESLint, CI)  | done        |
-| 0b    | Documentation surface (this set)                        | in progress |
+| 0b    | Documentation surface                                   | done        |
+| 0b.1  | 15-day dependency cooldown (pnpm minimum-release-age)   | in progress |
 | 0c    | CLAUDE.md, Claude agents, knowledge graph               | next        |
 | 0d    | Lint rule expansion, Husky, commitlint, release-please  | pending     |
 | 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)   | pending     |
