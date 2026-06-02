@@ -13,7 +13,9 @@ export function formatAssetReference(reference: AssetReference): string {
 }
 
 export function parseAssetReference(serialized: string): AssetReference {
-  const separatorIndex = serialized.indexOf(SCOPE_SEPARATOR)
+  // Split on the last separator: the content hash is the trailing segment and never
+  // contains the separator, so this tolerates a separator appearing within the scope.
+  const separatorIndex = serialized.lastIndexOf(SCOPE_SEPARATOR)
   if (separatorIndex === -1) {
     throw new Error(`Malformed asset reference: "${serialized}"`)
   }
