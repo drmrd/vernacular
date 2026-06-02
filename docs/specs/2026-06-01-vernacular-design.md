@@ -1,4 +1,4 @@
-# Home Layout Legend — Design Specification
+# Vernacular: Design Specification
 
 **Date:** 2026-06-01
 **Status:** Approved for implementation planning
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-**Home Layout Legend (HLL)** is an open-source floor-planning and visualization tool aimed at power users — owners and enthusiasts of homes whose architecture is not well served by mainstream tools like Floorplanner and RoomSketcher. Old houses are a primary lean: Victorian, Edwardian, Craftsman, Mid-Century, and earlier eras have architectural vocabulary (pocket doors, transoms, picture windows, plaster wall thickness, period trim) that commercial floor planners largely ignore. HLL treats this vocabulary as first-class.
+**Vernacular** is an open-source floor-planning and visualization tool aimed at power users: owners and enthusiasts of homes whose architecture is not well served by mainstream tools like Floorplanner and RoomSketcher. The name evokes _vernacular architecture_, the period-native, regional building styles (Victorian, Edwardian, Craftsman, Mid-Century, and earlier) whose vocabulary (pocket doors, transoms, picture windows, plaster wall thickness, period trim) commercial floor planners largely ignore. Vernacular treats this vocabulary as first-class.
 
 **Audience.** Power users / hobbyists. Technical enough to import custom 3D models, willing to invest setup time for output the commercial tools won't produce. Old-house owners, historic-preservation enthusiasts, and renovators planning around real (not idealized) architecture are the heaviest initial audience.
 
@@ -108,7 +108,7 @@ Project
 
 **`AssetReference` is content-addressed.** Format: `(scope, contentHash)`. Scope is `pack:<id>@<version>`, `user`, or `project`.
 
-**Building shell is *typed* at the element level, not subclassed.** A door, transom, pocket door are all `Opening` records with a `type` field pointing to `ElementTypeRegistry`. Rendering rules and parameters live in the registry, not the data. Adding a new opening type is a registry addition, not a schema change.
+**Building shell is _typed_ at the element level, not subclassed.** A door, transom, pocket door are all `Opening` records with a `type` field pointing to `ElementTypeRegistry`. Rendering rules and parameters live in the registry, not the data. Adding a new opening type is a registry addition, not a schema change.
 
 **Trim is path-based.** A crown molding instance is a path along walls/ceilings with a reference to a `TrimProfile` (cross-section shape, also in a registry).
 
@@ -173,7 +173,7 @@ Explicitly **not captured**: OS, browser, user identity, machine UUID. A user-to
 
 ```ts
 interface AssetSource {
-  id: string                                    // 'pack:hll-starter@2.0' | 'user' | 'project' | 'bundled'
+  id: string // 'pack:vernacular-starter@2.0' | 'user' | 'project' | 'bundled'
   manifest(): Promise<SourceManifest>
   fetch(ref: AssetReference): Promise<Blob>
   getThumbnail(ref: AssetReference): Promise<Blob | null>
@@ -186,7 +186,7 @@ interface AssetSource {
 MVP implementations:
 
 - **`BundledSource`** — tiny set shipped with the app build (registries, fonts, placeholder model, missing-asset glyph).
-- **`PackSource`** — versioned asset packs from a CDN. The curated starter library is `pack:hll-starter@1.x.y`.
+- **`PackSource`** — versioned asset packs from a CDN. The curated starter library is `pack:vernacular-starter@1.x.y`.
 - **`UserFilesystemSource`** — user-imported assets in OPFS + IndexedDB metadata index; FileSystemAccess handles where the user opts in.
 - **`ProjectEmbeddedSource`** — assets in the current project's `assets/`.
 
@@ -325,16 +325,16 @@ Adding a future `CloudSyncProjectStore` is purely additive.
 
 ### 5.2 Storage primitives by job
 
-| Need | Primitive | Why |
-|------|-----------|-----|
-| Project folder (user-chosen location) | File System Access API | Real on-disk folder; git-friendly; hand-editable |
-| Project folder (fallback) | OPFS | Sandboxed virtual filesystem; no permission prompt; fast for binary |
-| Asset cache | OPFS | Better than IndexedDB for binary; origin-isolated |
-| User library | OPFS (binary) + IndexedDB (metadata index) | Binary in OPFS; queryable index in IndexedDB |
-| User settings, recent list | IndexedDB | Small, queryable |
-| App shell + bundled registries | Service worker cache | Offline app shell |
-| Multi-tab coordination | Web Locks API | Standard mutual exclusion |
-| Quota observability | navigator.storage.estimate | Approaching-limits surfacing |
+| Need                                  | Primitive                                  | Why                                                                 |
+| ------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| Project folder (user-chosen location) | File System Access API                     | Real on-disk folder; git-friendly; hand-editable                    |
+| Project folder (fallback)             | OPFS                                       | Sandboxed virtual filesystem; no permission prompt; fast for binary |
+| Asset cache                           | OPFS                                       | Better than IndexedDB for binary; origin-isolated                   |
+| User library                          | OPFS (binary) + IndexedDB (metadata index) | Binary in OPFS; queryable index in IndexedDB                        |
+| User settings, recent list            | IndexedDB                                  | Small, queryable                                                    |
+| App shell + bundled registries        | Service worker cache                       | Offline app shell                                                   |
+| Multi-tab coordination                | Web Locks API                              | Standard mutual exclusion                                           |
+| Quota observability                   | navigator.storage.estimate                 | Approaching-limits surfacing                                        |
 
 ### 5.3 ProjectStore implementations
 
@@ -691,7 +691,7 @@ docs/knowledge/
 
 ```yaml
 ---
-title: "..."
+title: '...'
 slug: components/.../...
 tags: [...]
 related: [...]
@@ -806,18 +806,18 @@ Layered from broad-and-fast to narrow-and-expensive. No upper bounds on test cou
 
 ### 9.2 Tooling stack
 
-| Layer | Primary tool | Why |
-|-------|--------------|-----|
-| Unit | Vitest | ESM-native, Vite-integrated; same runtime as the app |
-| Property-based | fast-check (+ Vitest) | Catches edge cases; great for geometry, color, parsers, migrations |
-| Component | React Testing Library + Storybook play functions | User-perspective component contracts |
-| Integration | Vitest | Multi-module flows, no DOM |
-| 3D scene snapshot | Custom Three.js harness (offscreen-canvas) + perceptual diff | Three.js output is GPU-sensitive; perceptual diff is reliable |
-| E2E | Playwright | Multi-browser, parallel, trace built-in |
-| Visual regression | Playwright `toHaveScreenshot` + per-browser baselines | First-class; no extra service |
-| Accessibility | @axe-core/playwright + manual checklists | Automated for major rules; manual for nuance |
-| Performance | Three.js bench harness + Lighthouse CI + bundle-size budget | Regression tracking over time |
-| Mutation | Stryker (Vitest runner), weekly | Measures test *quality*, not just coverage |
+| Layer             | Primary tool                                                 | Why                                                                |
+| ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Unit              | Vitest                                                       | ESM-native, Vite-integrated; same runtime as the app               |
+| Property-based    | fast-check (+ Vitest)                                        | Catches edge cases; great for geometry, color, parsers, migrations |
+| Component         | React Testing Library + Storybook play functions             | User-perspective component contracts                               |
+| Integration       | Vitest                                                       | Multi-module flows, no DOM                                         |
+| 3D scene snapshot | Custom Three.js harness (offscreen-canvas) + perceptual diff | Three.js output is GPU-sensitive; perceptual diff is reliable      |
+| E2E               | Playwright                                                   | Multi-browser, parallel, trace built-in                            |
+| Visual regression | Playwright `toHaveScreenshot` + per-browser baselines        | First-class; no extra service                                      |
+| Accessibility     | @axe-core/playwright + manual checklists                     | Automated for major rules; manual for nuance                       |
+| Performance       | Three.js bench harness + Lighthouse CI + bundle-size budget  | Regression tracking over time                                      |
+| Mutation          | Stryker (Vitest runner), weekly                              | Measures test _quality_, not just coverage                         |
 
 ### 9.3 Test layer details
 
@@ -886,7 +886,7 @@ Three layers, increasingly strict:
 
 1. **Agent-level access control** — subagent definitions declare file-access rules; custom tool wrappers in `.claude/tools/` filter reads by path and produce structured test-runner output for `implementer`.
 2. **Commit-history CI check** — verifies test commits precede impl commits, test files unchanged in impl commits (with legitimate test-refactor exceptions), each impl commit makes a previously-failing test pass.
-3. **`pr-reviewer` agent** — read-only repo audit; surfaces violations the CI didn't catch; flags tests that look written *after* implementation.
+3. **`pr-reviewer` agent** — read-only repo audit; surfaces violations the CI didn't catch; flags tests that look written _after_ implementation.
 
 ### 9.6 Clean Code review during blue phase
 
@@ -894,7 +894,7 @@ Three layers, increasingly strict:
 
 - **Naming** (reveal intent, no abbreviations beyond accepted, pronounceable)
 - **Functions** (small, one thing, one level of abstraction, ≤3 params ideally, no flags)
-- **Comments** (only for *why*; code is the *what*; no commented-out code)
+- **Comments** (only for _why_; code is the _what_; no commented-out code)
 - **Formatting** (consistent; vertical proximity; newspaper-style)
 - **Objects & data** (classes hide implementation; pure data is explicit)
 - **Error handling** (exceptions over codes; no null pass/return; one level per try)
@@ -953,19 +953,19 @@ Stryker runs weekly on main against `core/`. New code cannot lower the mutation 
 
 ### 9.11 CI gates summary
 
-| Gate | When | Layers |
-|------|------|--------|
-| **Fast** | every commit + PR | Lint, typecheck, format, unit, property-based |
-| **PR** | every PR | + Integration, component, accessibility, knowledge audit, ping-pong compliance, `clean-code-pr` |
-| **PR + main** | PR + main | + E2E (Chromium), visual regression, bundle size, 3D scene snapshots |
-| **Main + tags** | main + tagged | + E2E (Firefox + WebKit), performance, Lighthouse CI |
-| **Weekly** | overnight | + Mutation testing, software-rasterizer 3D snapshots, docs link check |
+| Gate            | When              | Layers                                                                                          |
+| --------------- | ----------------- | ----------------------------------------------------------------------------------------------- |
+| **Fast**        | every commit + PR | Lint, typecheck, format, unit, property-based                                                   |
+| **PR**          | every PR          | + Integration, component, accessibility, knowledge audit, ping-pong compliance, `clean-code-pr` |
+| **PR + main**   | PR + main         | + E2E (Chromium), visual regression, bundle size, 3D scene snapshots                            |
+| **Main + tags** | main + tagged     | + E2E (Firefox + WebKit), performance, Lighthouse CI                                            |
+| **Weekly**      | overnight         | + Mutation testing, software-rasterizer 3D snapshots, docs link check                           |
 
 ### 9.12 Anti-patterns (codified in `.claude/rules.md`)
 
 - Tests that mock the system under test instead of exercising it
 - Tests modified to make them pass instead of fixing implementation
-- Test names like "test wall move" — names describe *behaviors*, not method names
+- Test names like "test wall move" — names describe _behaviors_, not method names
 - Commenting out failing tests (CI rejects `// skip` / `xtest` without ADR linking to a tracked issue)
 - E2E tests that depend on timing (`sleep(500)` forbidden; use explicit wait-for-condition)
 - Snapshot baselines committed without diff review
@@ -985,7 +985,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Repo layout matching the 6-layer architecture
 - License: Apache-2.0; all documentation files populated with substantive content
-- Build tooling: Vite (app), `hll-pack` CLI scaffold
+- Build tooling: Vite (app), `vernacular-pack` CLI scaffold
 - TypeScript strict mode; CI (typecheck, lint, test, build, preview deploy)
 - Vitest + integration scaffolds; Playwright scaffold; visual regression scaffold; Lighthouse CI scaffold; axe-core integration
 - Static deploy to canonical URL
@@ -1087,8 +1087,8 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 **Deliverables:**
 
 - Asset pack system (manifest format, sha256 integrity, lazy fetch)
-- `hll-pack` CLI (build, validate, publish; license + dimension sanity checks)
-- `pack:hll-starter@1.0` — curated ~30–50 essential furniture pieces, license-audited
+- `vernacular-pack` CLI (build, validate, publish; license + dimension sanity checks)
+- `pack:vernacular-starter@1.0` — curated ~30–50 essential furniture pieces, license-audited
 - Library browser (categories, era filter, dimension filter, source pack filter, fuzzy search)
 - Furniture placement tool (drag-from-library, snap-to-floor, align-to-wall, rotation gizmo)
 - Custom asset import (glTF/GLB/OBJ/STL with sidecar textures)
@@ -1177,7 +1177,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Paint application (surface-by-surface) via dedicated paint tool
 - Complete `PaintMaterial` shader (base color + finish + color-temperature responsive)
-- `pack:hll-historic-palettes@1.0` — bundled CC0 historic palette, ~50–100 colors, thoroughly provenance-audited, era-tagged
+- `pack:vernacular-historic-palettes@1.0` — bundled CC0 historic palette, ~50–100 colors, thoroughly provenance-audited, era-tagged
 - User palette UI (create/name/describe/name colors, import/export as JSON)
 - Color picker (OKLab-aware, palette browser, recent, fuzzy name search)
 - Finish picker (visually distinguishable in preview)
@@ -1260,4 +1260,4 @@ These are intentionally deferred to the writing-plans skill, not unresolved:
 
 ---
 
-*Document approved 2026-06-01. Updates after implementation begins are tracked via ADRs in `docs/knowledge/decisions/`.*
+_Document approved 2026-06-01. Updates after implementation begins are tracked via ADRs in `docs/knowledge/decisions/`._
