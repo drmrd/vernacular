@@ -16,6 +16,7 @@ const layerElements = [
 ]
 
 const layerRules = [
+  // core sits at the bottom of the layer stack: it may import nothing above it.
   { from: { type: 'core' }, disallow: { to: { type: '*' } } },
   { from: { type: 'storage' }, allow: { to: { type: 'core' } } },
   { from: { type: 'engine' }, allow: { to: { type: ['core', 'storage'] } } },
