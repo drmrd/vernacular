@@ -92,9 +92,15 @@ These will tighten in later phases as the tooling lands. Current state:
   Phase 0d.
 - **Code style** is enforced by ESLint and Prettier. Run
   `pnpm lint` and `pnpm format:check` before pushing; `pnpm format`
-  fixes most issues automatically. Stricter Clean Code rules
-  (complexity caps, function length caps, layer-boundary rules) land
-  in Phase 0d.
+  fixes most issues automatically. The Clean Code rule set (function
+  length, parameter count, cyclomatic complexity, nesting depth,
+  layer boundaries, naming convention, unused imports) lands as
+  warnings or errors per `eslint.config.js`. Test files relax
+  `no-magic-numbers` and lift the function-length cap so literal
+  expectations remain natural.
+- **Duplicate detection.** Run `pnpm dup` for a jscpd duplicate
+  report. The configured threshold is informational (no CI fail);
+  use the report to spot refactor opportunities.
 - **Tests** follow a behavior-first style: assert what the user
   experiences, not implementation details. The Vitest test in
   `src/App.test.tsx` is the current model. Red-green-blue TDD becomes

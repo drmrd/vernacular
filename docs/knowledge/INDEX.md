@@ -2,7 +2,7 @@
 
 # Knowledge Graph Index
 
-Total entries: 12.
+Total entries: 14.
 
 Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. This index is auto-generated; the entries themselves are the source of truth.
 
@@ -27,6 +27,7 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `boundaries`
 
 - [ADR-0001: Six-layer codebase architecture](decisions/ADR-0001-six-layer-architecture.md) (status: current, updated: 2026-06-02)
+- [ADR-0012: ESLint guardrails and layer boundary enforcement](decisions/ADR-0012-eslint-guardrails.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `claude-code`
 
@@ -35,6 +36,11 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `clean-code`
 
 - [ADR-0009: Test pyramid with red-green-blue TDD and independent agents](decisions/ADR-0009-test-pyramid-rgb-tdd.md) (status: current, updated: 2026-06-02)
+- [ADR-0012: ESLint guardrails and layer boundary enforcement](decisions/ADR-0012-eslint-guardrails.md) (status: current, updated: 2026-06-02)
+
+## Tag: `code-quality`
+
+- [ADR-0012: ESLint guardrails and layer boundary enforcement](decisions/ADR-0012-eslint-guardrails.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `color`
 
@@ -55,10 +61,19 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `dependencies`
 
 - [ADR-0010: 15-day minimum release age for dependencies](decisions/ADR-0010-dependency-cooldown.md) (status: current, updated: 2026-06-02)
+- [ADR-0013: Cooldown exclusions for coordinated-release monorepos and native binaries](decisions/ADR-0013-cooldown-exclusions.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `engine`
 
 - [ADR-0004: Three.js plus React Three Fiber on WebGPU](decisions/ADR-0004-three-js-r3f-webgpu.md) (status: current, updated: 2026-06-02)
+
+## Tag: `eslint`
+
+- [ADR-0012: ESLint guardrails and layer boundary enforcement](decisions/ADR-0012-eslint-guardrails.md) (status: current, updated: 2026-06-02)
+
+## Tag: `exclusions`
+
+- [ADR-0013: Cooldown exclusions for coordinated-release monorepos and native binaries](decisions/ADR-0013-cooldown-exclusions.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `extensibility`
 
@@ -79,6 +94,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `license`
 
 - [ADR-0002: Apache-2.0 license throughout the repository](decisions/ADR-0002-license-apache-2.md) (status: current, updated: 2026-06-02)
+
+## Tag: `linting`
+
+- [ADR-0012: ESLint guardrails and layer boundary enforcement](decisions/ADR-0012-eslint-guardrails.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `mutation-discipline`
 
@@ -103,6 +122,7 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `pnpm`
 
 - [ADR-0010: 15-day minimum release age for dependencies](decisions/ADR-0010-dependency-cooldown.md) (status: current, updated: 2026-06-02)
+- [ADR-0013: Cooldown exclusions for coordinated-release monorepos and native binaries](decisions/ADR-0013-cooldown-exclusions.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `quality`
 
@@ -127,6 +147,7 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `security`
 
 - [ADR-0010: 15-day minimum release age for dependencies](decisions/ADR-0010-dependency-cooldown.md) (status: current, updated: 2026-06-02)
+- [ADR-0013: Cooldown exclusions for coordinated-release monorepos and native binaries](decisions/ADR-0013-cooldown-exclusions.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `slash-commands`
 
@@ -140,6 +161,7 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 
 - [ADR-0007: Content-addressed asset references](decisions/ADR-0007-content-addressed-assets.md) (status: current, updated: 2026-06-02)
 - [ADR-0010: 15-day minimum release age for dependencies](decisions/ADR-0010-dependency-cooldown.md) (status: current, updated: 2026-06-02)
+- [ADR-0013: Cooldown exclusions for coordinated-release monorepos and native binaries](decisions/ADR-0013-cooldown-exclusions.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `tdd`
 

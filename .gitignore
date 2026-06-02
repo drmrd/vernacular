@@ -22,3 +22,6 @@ vitest.config.d.ts
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# jscpd duplicate reports
+reports/

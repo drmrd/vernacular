@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/kucherenko/jscpd/master/jscpd.schema.json",
+  "threshold": 0,
+  "minTokens": 50,
+  "minLines": 5,
+  "reporters": ["console", "json"],
+  "output": "./reports/jscpd",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.superpowers/**",
+    "**/pnpm-lock.yaml",
+    "**/CHANGELOG.md",
+    "**/LICENSE",
+    "**/CODE_OF_CONDUCT.md",
+    "**/docs/specs/**",
+    "**/docs/plans/**",
+    "**/docs/knowledge/INDEX.md",
+    "**/docs/knowledge/index.json"
+  ],
+  "absolute": false,
+  "noSymlinks": true,
+  "gitignore": true
+}
