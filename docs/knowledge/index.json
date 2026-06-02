@@ -266,6 +266,33 @@
       "updated": "2026-06-02"
     },
     {
+      "slug": "decisions/ADR-0014-hooks-release-tooling",
+      "title": "ADR-0014: Husky, commitlint, lint-staged, release-please",
+      "type": "decision",
+      "tags": [
+        "tooling",
+        "hooks",
+        "conventional-commits",
+        "release-engineering"
+      ],
+      "related": [
+        "decisions/ADR-0009-test-pyramid-rgb-tdd",
+        "decisions/ADR-0012-eslint-guardrails"
+      ],
+      "sourceFiles": [
+        ".husky/pre-commit",
+        ".husky/commit-msg",
+        ".husky/pre-push",
+        "commitlint.config.js",
+        "package.json",
+        "release-please-config.json",
+        ".release-please-manifest.json",
+        ".github/workflows/release-please.yml"
+      ],
+      "status": "current",
+      "updated": "2026-06-02"
+    },
+    {
       "slug": "glossary",
       "title": "Glossary",
       "type": "glossary",

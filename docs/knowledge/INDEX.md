@@ -2,7 +2,7 @@
 
 # Knowledge Graph Index
 
-Total entries: 14.
+Total entries: 15.
 
 Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. This index is auto-generated; the entries themselves are the source of truth.
 
@@ -54,6 +54,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 
 - [ADR-0005: Command pattern with framework-captured inverse](decisions/ADR-0005-command-pattern-undo.md) (status: current, updated: 2026-06-02)
 
+## Tag: `conventional-commits`
+
+- [ADR-0014: Husky, commitlint, lint-staged, release-please](decisions/ADR-0014-hooks-release-tooling.md) (status: current, updated: 2026-06-02)
+
 ## Tag: `data-driven`
 
 - [ADR-0006: Versioned data-driven registries for typed taxonomy](decisions/ADR-0006-registry-pattern.md) (status: current, updated: 2026-06-02)
@@ -82,6 +86,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `governance`
 
 - [ADR-0002: Apache-2.0 license throughout the repository](decisions/ADR-0002-license-apache-2.md) (status: current, updated: 2026-06-02)
+
+## Tag: `hooks`
+
+- [ADR-0014: Husky, commitlint, lint-staged, release-please](decisions/ADR-0014-hooks-release-tooling.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `integrity`
 
@@ -140,6 +148,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 
 - [ADR-0006: Versioned data-driven registries for typed taxonomy](decisions/ADR-0006-registry-pattern.md) (status: current, updated: 2026-06-02)
 
+## Tag: `release-engineering`
+
+- [ADR-0014: Husky, commitlint, lint-staged, release-please](decisions/ADR-0014-hooks-release-tooling.md) (status: current, updated: 2026-06-02)
+
 ## Tag: `rendering`
 
 - [ADR-0004: Three.js plus React Three Fiber on WebGPU](decisions/ADR-0004-three-js-r3f-webgpu.md) (status: current, updated: 2026-06-02)
@@ -175,6 +187,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `three.js`
 
 - [ADR-0004: Three.js plus React Three Fiber on WebGPU](decisions/ADR-0004-three-js-r3f-webgpu.md) (status: current, updated: 2026-06-02)
+
+## Tag: `tooling`
+
+- [ADR-0014: Husky, commitlint, lint-staged, release-please](decisions/ADR-0014-hooks-release-tooling.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `undo-redo`
 

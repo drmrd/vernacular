@@ -19,10 +19,10 @@ planner.
 | 0b    | Documentation surface                                       | done        |
 | 0b.1  | 15-day dependency cooldown (pnpm minimum-release-age)       | done        |
 | 0c.1  | Knowledge graph foundation (docs/knowledge/, ADRs, indexer) | done        |
-| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands)    | in progress |
-| 0d.1  | ESLint guardrails + boundaries plugin + jscpd               | in progress |
-| 0d.2  | Husky + commitlint + release-please + PR/issue templates    | pending     |
-| 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)       | pending     |
+| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands)    | done        |
+| 0d.1  | ESLint guardrails + boundaries plugin + jscpd               | done        |
+| 0d.2  | Husky + commitlint + release-please + PR/issue templates    | in progress |
+| 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)       | next        |
 | 0f    | Six-layer source skeleton                                   | pending     |
 | 0g    | Wall-drawing proof of life (first user flow)                | pending     |
 | 0h    | Storage scaffolds (OPFS, IndexedDB, File System API)        | pending     |

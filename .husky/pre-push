@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Full project check chain on push. Slow checks (Playwright, Lighthouse)
+# stay in CI; this is the fast local guard.
+pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build

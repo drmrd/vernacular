@@ -144,6 +144,18 @@ Asset packs (3D models, textures, color palettes) and registry packs
 that will be documented in Phase 0d alongside the publishing CLI. Until
 then, propose contributions of this kind as issues with samples.
 
+## Hooks and release engineering
+
+Husky installs three git hooks at `pnpm install` time via the `prepare` script:
+
+- `pre-commit`: runs `lint-staged` on staged files (ESLint plus Prettier). If you touched a knowledge graph entry, the hook regenerates `INDEX.md` and `index.json` and stages them automatically.
+- `commit-msg`: runs `commitlint` over your commit message. Conventional Commits are enforced; non-conforming messages are rejected.
+- `pre-push`: runs the full local check chain (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`).
+
+If you need to bypass a hook in a clean-up situation, use `git commit --no-verify`. This is allowed but discouraged; CI will catch most issues that the hook would have.
+
+`release-please` watches `main` and opens release PRs as Conventional Commits accumulate. Merging a release PR cuts a tag and refreshes `CHANGELOG.md`. The current pre-release version is tracked in `.release-please-manifest.json`; the package.json `version` stays at `0.0.0` until the first 1.0.
+
 ## Working with Claude Code
 
 This repository ships project-local subagents (`.claude/agents/`) and slash commands (`.claude/commands/`) that automate the red-green-blue TDD workflow. If you are contributing through Claude Code, the typical cycle is:

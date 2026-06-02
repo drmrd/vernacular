@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+
+# Run lint-staged on staged files (lint + format + typecheck where applicable).
+pnpm exec lint-staged
+
+# If knowledge entries changed, regenerate the index and stage the result.
+# This keeps INDEX.md and index.json in sync without an extra contributor step.
+if git diff --cached --name-only | grep -qE '^docs/knowledge/(decisions|patterns|anti-patterns|components|runbooks|incidents)/'; then
+  pnpm knowledge:index
+  git add docs/knowledge/INDEX.md docs/knowledge/index.json
+fi

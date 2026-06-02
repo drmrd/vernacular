@@ -35,6 +35,42 @@ const ALLOWED_TYPES = new Set([
 ])
 const ALLOWED_STATUS = new Set(['current', 'superseded', 'deprecated'])
 
+function collapseInlineArrays(block, file) {
+  const lines = block.split('\n')
+  const out = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    // Detect `key:` followed by a `[` continuation; combine until matching `]`.
+    const keyOnly = /^([A-Za-z][A-Za-z0-9_-]*):\s*$/.exec(line)
+    if (keyOnly && i + 1 < lines.length && lines[i + 1].trim().startsWith('[')) {
+      const buf = [keyOnly[1] + ': ']
+      i += 1
+      while (i < lines.length) {
+        const piece = lines[i].trim()
+        buf.push(piece)
+        if (piece.endsWith(']') || piece.endsWith('],')) break
+        i += 1
+      }
+      if (i === lines.length) {
+        throw new Error(`${file}: unterminated multi-line inline array for key ${keyOnly[1]}`)
+      }
+      out.push(
+        buf
+          .join(' ')
+          .replace(/\s*,\s*/g, ', ')
+          .replace(/\[\s+/g, '[')
+          .replace(/\s+\]/g, ']'),
+      )
+      i += 1
+      continue
+    }
+    out.push(line)
+    i += 1
+  }
+  return out.join('\n')
+}
+
 function listMarkdownFiles(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name)
@@ -52,12 +88,18 @@ function parseFrontmatter(text, file) {
   const end = text.indexOf('\n---\n', 4)
   if (end < 0) throw new Error(`${file}: unterminated frontmatter`)
   const block = text.slice(4, end)
+
+  // Collapse multi-line inline arrays (Prettier's preferred wrap form for long
+  // [a, b, c] frontmatter values) back to one line before parsing.
+  const collapsed = collapseInlineArrays(block, file)
+
   const out = {}
   let currentKey = null
-  for (const rawLine of block.split('\n')) {
+  for (const rawLine of collapsed.split('\n')) {
     if (rawLine.trim() === '') continue
     if (rawLine.startsWith('  - ')) {
       if (!currentKey) throw new Error(`${file}: list item without key`)
+      if (typeof out[currentKey] === 'string') out[currentKey] = []
       out[currentKey].push(stripQuotes(rawLine.slice(4).trim()))
       continue
     }
@@ -74,7 +116,13 @@ function parseFrontmatter(text, file) {
     }
     if (rest.startsWith('[') && rest.endsWith(']')) {
       const inner = rest.slice(1, -1).trim()
-      out[key] = inner === '' ? [] : inner.split(',').map((s) => stripQuotes(s.trim()))
+      out[key] =
+        inner === ''
+          ? []
+          : inner
+              .split(',')
+              .map((s) => stripQuotes(s.trim()))
+              .filter((s) => s !== '')
       continue
     }
     out[key] = stripQuotes(rest)
