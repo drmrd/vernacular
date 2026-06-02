@@ -14,7 +14,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "knowledge:index": "node scripts/knowledge-index.mjs"
   },
   "engines": {
     "node": ">=20.0.0",

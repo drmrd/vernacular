@@ -13,25 +13,26 @@ planner.
 
 ## MVP path (phases 0 through 6)
 
-| Phase | Focus                                                   | Status      |
-| ----- | ------------------------------------------------------- | ----------- |
-| 0a    | Build foundation (TS, Vite, React, Vitest, ESLint, CI)  | done        |
-| 0b    | Documentation surface                                   | done        |
-| 0b.1  | 15-day dependency cooldown (pnpm minimum-release-age)   | in progress |
-| 0c    | CLAUDE.md, Claude agents, knowledge graph               | next        |
-| 0d    | Lint rule expansion, Husky, commitlint, release-please  | pending     |
-| 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)   | pending     |
-| 0f    | Six-layer source skeleton                               | pending     |
-| 0g    | Wall-drawing proof of life (first user flow)            | pending     |
-| 0h    | Storage scaffolds (OPFS, IndexedDB, File System API)    | pending     |
-| 0i    | Service worker, vernacular-pack CLI                     | pending     |
-| 0j    | Phase 0 acceptance                                      | pending     |
-| 1     | Two-dimensional plan editor                             | pending     |
-| 2     | Three-dimensional preview with color-temperature slider | pending     |
-| 3     | Furniture import and curated starter library (alpha)    | pending     |
-| 4     | Old-house architectural vocabulary                      | pending     |
-| 5     | Multi-floor and stairs (beta)                           | pending     |
-| 6     | Paint, export, site metadata (1.0)                      | pending     |
+| Phase | Focus                                                       | Status      |
+| ----- | ----------------------------------------------------------- | ----------- |
+| 0a    | Build foundation (TS, Vite, React, Vitest, ESLint, CI)      | done        |
+| 0b    | Documentation surface                                       | done        |
+| 0b.1  | 15-day dependency cooldown (pnpm minimum-release-age)       | done        |
+| 0c.1  | Knowledge graph foundation (docs/knowledge/, ADRs, indexer) | in progress |
+| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands)    | next        |
+| 0d    | Lint rule expansion, Husky, commitlint, release-please      | pending     |
+| 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)       | pending     |
+| 0f    | Six-layer source skeleton                                   | pending     |
+| 0g    | Wall-drawing proof of life (first user flow)                | pending     |
+| 0h    | Storage scaffolds (OPFS, IndexedDB, File System API)        | pending     |
+| 0i    | Service worker, vernacular-pack CLI                         | pending     |
+| 0j    | Phase 0 acceptance                                          | pending     |
+| 1     | Two-dimensional plan editor                                 | pending     |
+| 2     | Three-dimensional preview with color-temperature slider     | pending     |
+| 3     | Furniture import and curated starter library (alpha)        | pending     |
+| 4     | Old-house architectural vocabulary                          | pending     |
+| 5     | Multi-floor and stairs (beta)                               | pending     |
+| 6     | Paint, export, site metadata (1.0)                          | pending     |
 
 ## Beyond 1.0
 

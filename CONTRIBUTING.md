@@ -99,9 +99,12 @@ These will tighten in later phases as the tooling lands. Current state:
   experiences, not implementation details. The Vitest test in
   `src/App.test.tsx` is the current model. Red-green-blue TDD becomes
   a project-wide discipline in Phase 0c.
-- **Documentation** changes that affect the architecture should also
-  update an entry in `docs/knowledge/` once that directory exists
-  (Phase 0c onward).
+- **Knowledge graph.** Significant architectural or workflow changes
+  should land alongside an entry under `docs/knowledge/` (a new ADR
+  for a new decision, an updated entry for an evolved one, etc.).
+  Run `pnpm knowledge:index` after you add or modify entries so the
+  generated `INDEX.md` and `index.json` reflect the change. CI fails
+  if these are out of date.
 
 ## Pull request checklist
 
