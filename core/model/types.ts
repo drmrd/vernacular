@@ -1,6 +1,6 @@
 export type UnitSystem = 'imperial' | 'metric'
 
-/** References an entry in the EraRegistry. */
+/** References an entry in the EraRegistry. Validated at the registry boundary, not by this alias. */
 export type EraId = string
 
 /** Monotonically increasing project-schema version; drives the migration chain. */
@@ -12,6 +12,11 @@ export interface ProjectMeta {
   era: EraId
   schemaVersion: SchemaVersion
   appVersion: string
+  /**
+   * Per-registry version the project was last saved against, keyed by registry
+   * name (for example "elementTypes" or "finishes"). Drives registry-aware
+   * migration. See the design specification, section 3.4.
+   */
   registryVersions: Record<string, number>
 }
 

@@ -2,7 +2,7 @@ import type { EraId, Floor, Project, UnitSystem } from './types'
 
 export const CURRENT_SCHEMA_VERSION = 1
 
-/** MVP default ceiling height: eight feet, expressed in millimeters. */
+/** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
 
 export interface NewProjectOptions {
