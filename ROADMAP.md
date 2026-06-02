@@ -17,8 +17,8 @@ Foundation work in progress (build foundation, documentation, engineering norms,
 | Claude Code infrastructure (CLAUDE.md, agents, commands)            | done        |
 | ESLint guardrails, layer boundaries, jscpd                          | done        |
 | Husky, commitlint, release-please, PR and issue templates           | done        |
-| Storybook, Playwright, axe-core, visual regression baselines        | in progress |
-| Lighthouse CI, Stryker, performance harness, fixtures and factories | next        |
+| Storybook, Playwright, axe-core, visual regression baselines        | done        |
+| Lighthouse CI, Stryker, performance harness, fixtures and factories | in progress |
 | Six-layer source skeleton                                           | pending     |
 | Wall-drawing proof of life (first user flow)                        | pending     |
 | Storage scaffolds (OPFS, IndexedDB, File System API)                | pending     |
