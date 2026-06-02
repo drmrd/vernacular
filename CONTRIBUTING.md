@@ -138,6 +138,20 @@ Asset packs (3D models, textures, color palettes) and registry packs
 that will be documented in Phase 0d alongside the publishing CLI. Until
 then, propose contributions of this kind as issues with samples.
 
+## Working with Claude Code
+
+This repository ships project-local subagents (`.claude/agents/`) and slash commands (`.claude/commands/`) that automate the red-green-blue TDD workflow. If you are contributing through Claude Code, the typical cycle is:
+
+1. Stage and read the relevant ADRs and any open spec for context.
+2. `/test-first "<behavior in plain English>"` writes a single failing test.
+3. `/implement` writes the minimal implementation to make the test pass.
+4. `/clean-code-review` audits the diff.
+5. `/refactor` applies the audit findings (or creates an empty BLUE marker commit when nothing actionable came out).
+6. Repeat for each behavior in the feature.
+7. `/review` performs the pre-merge audit on the entire branch.
+
+If you are contributing without Claude Code, the same discipline applies: write the failing test first, commit it; write the minimal implementation, commit it; apply Clean Code improvements while keeping tests green, commit them. See `CLAUDE.md` and `.claude/rules.md` for the rubric.
+
 ## License
 
 Vernacular is licensed under Apache-2.0. By contributing to this

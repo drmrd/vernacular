@@ -55,6 +55,18 @@ Hard invariants:
 | License and required attributions      | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE)        |
 | Architecture decision records (future) | `docs/knowledge/decisions/` (added in Phase 0c) |
 
+## Subagents and slash commands
+
+The repository ships with project-local subagents under `.claude/agents/` and slash commands under `.claude/commands/`. Together they drive the project's red-green-blue TDD workflow:
+
+- `/test-first <behavior>` writes a failing test (RED).
+- `/implement` makes it pass minimally (GREEN).
+- `/clean-code-review` audits the diff.
+- `/refactor` applies the audit findings or marks the BLUE phase clean.
+- `/review` performs the pre-merge audit on the full branch.
+
+See `CLAUDE.md` for the full command list and `.claude/rules.md` for the rubric the agents use. ADR-0011 documents the architecture.
+
 ## Status
 
 Phase 0 is in progress. The current state of the codebase is the
