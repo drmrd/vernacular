@@ -14,15 +14,15 @@
 
 ## File Structure
 
-| File              | Purpose                                                                       |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `CHANGELOG.md`    | Keep-a-Changelog scaffold; release-please will manage from Phase 0e onward    |
+| File                 | Purpose                                                                     |
+| -------------------- | --------------------------------------------------------------------------- |
+| `CHANGELOG.md`       | Keep-a-Changelog scaffold; release-please will manage from Phase 0e onward  |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1, downloaded canonical text with contact patched in |
-| `SECURITY.md`     | How to report a vulnerability; project-specific, brief                        |
-| `ARCHITECTURE.md` | One-page overview pointing to the design specification                        |
-| `ROADMAP.md`      | Phase summary distilled from the design specification                         |
-| `CONTRIBUTING.md` | Contributor guide; dev setup, PR flow, commit conventions, doc map            |
-| `README.md`       | Modified to link the new documents                                            |
+| `SECURITY.md`        | How to report a vulnerability; project-specific, brief                      |
+| `ARCHITECTURE.md`    | One-page overview pointing to the design specification                      |
+| `ROADMAP.md`         | Phase summary distilled from the design specification                       |
+| `CONTRIBUTING.md`    | Contributor guide; dev setup, PR flow, commit conventions, doc map          |
+| `README.md`          | Modified to link the new documents                                          |
 
 All files are added; only `README.md` is modified.
 
@@ -35,6 +35,7 @@ All files are added; only `README.md` is modified.
 - [ ] **Step 1: Confirm working directory and branch**
 
 Run:
+
 ```
 pwd
 git branch --show-current
@@ -42,6 +43,7 @@ git status --short
 ```
 
 Expected:
+
 - `pwd` shows `/Users/dan/workspace/vernacular`
 - `git branch --show-current` shows `feat/phase-0b-documentation`
 - `git status --short` shows nothing (clean tree)
@@ -53,6 +55,7 @@ If any of these is wrong, STOP and report BLOCKED.
 ### Task 2: Create `CHANGELOG.md`
 
 **Files:**
+
 - Create: `CHANGELOG.md`
 
 - [ ] **Step 1: Create `CHANGELOG.md`**
@@ -93,11 +96,13 @@ Expected first line: `# Changelog`
 ### Task 3: Download canonical Contributor Covenant 2.1 and place at `CODE_OF_CONDUCT.md`
 
 **Files:**
+
 - Create: `CODE_OF_CONDUCT.md` (downloaded, then patched in Task 4)
 
 - [ ] **Step 1: Download the canonical Markdown source**
 
 Run:
+
 ```
 curl -sSfL https://raw.githubusercontent.com/EthicalSource/contributor_covenant/master/content/version/2/1/code_of_conduct.md -o CODE_OF_CONDUCT.md
 ```
@@ -107,6 +112,7 @@ Expected: the file is created. (Do NOT open it or paste its contents into your r
 - [ ] **Step 2: Verify the file exists and is non-empty**
 
 Run:
+
 ```
 test -s CODE_OF_CONDUCT.md && wc -l CODE_OF_CONDUCT.md
 ```
@@ -149,6 +155,7 @@ If the script raises with the "placeholder not found" message, STOP and report B
 - [ ] **Step 2: Verify the placeholder is gone**
 
 Run:
+
 ```
 grep -c "\[INSERT CONTACT METHOD\]" CODE_OF_CONDUCT.md || echo 0
 ```
@@ -158,6 +165,7 @@ Expected output: `0`.
 - [ ] **Step 3: Verify the contact replacement landed**
 
 Run:
+
 ```
 grep -c "drmrd/vernacular/security/advisories" CODE_OF_CONDUCT.md
 ```
@@ -169,6 +177,7 @@ Expected output: `1` or higher.
 ### Task 5: Create `SECURITY.md`
 
 **Files:**
+
 - Create: `SECURITY.md`
 
 - [ ] **Step 1: Create `SECURITY.md`**
@@ -227,6 +236,7 @@ Expected first line: `# Security Policy`
 ### Task 6: Create `ARCHITECTURE.md`
 
 **Files:**
+
 - Create: `ARCHITECTURE.md`
 
 This file is intentionally short. It exists so a new contributor can find their way to the authoritative design specification quickly. The detailed content lives in the spec.
@@ -249,24 +259,25 @@ the codebase, not the spec itself.
 The codebase is divided into six layers. Each layer depends only on the
 layers below it. Layer-crossing imports are enforced by ESLint
 (boundary rules land in Phase 0d).
-
 ```
+
 +------------------------------------------------------------+
-|  app/         Top-level routes, providers, app state       |
+| app/ Top-level routes, providers, app state |
 +------------------------------------------------------------+
-|  editor/      React UI: shell, tools, panels, gizmos       |
+| editor/ React UI: shell, tools, panels, gizmos |
 +------------------------------------------------------------+
-|  bridge/      R3F glue, the command-dispatch boundary      |
+| bridge/ R3F glue, the command-dispatch boundary |
 +------------------------------------------------------------+
-|  engine/      Three.js scene management, renderers, loaders|
+| engine/ Three.js scene management, renderers, loaders|
 +------------------------------------------------------------+
-|  storage/     Project store, library store, asset cache    |
+| storage/ Project store, library store, asset cache |
 +------------------------------------------------------------+
-|  core/        Pure-TS domain. No React. No Three.js.       |
-|               Types, project model, registries, commands,  |
-|               units, color, geometry, import/export        |
-|               interfaces.                                  |
+| core/ Pure-TS domain. No React. No Three.js. |
+| Types, project model, registries, commands, |
+| units, color, geometry, import/export |
+| interfaces. |
 +------------------------------------------------------------+
+
 ```
 
 Hard invariants:
@@ -310,6 +321,7 @@ Expected first line: `# Architecture`
 ### Task 7: Create `ROADMAP.md`
 
 **Files:**
+
 - Create: `ROADMAP.md`
 
 - [ ] **Step 1: Create `ROADMAP.md`**
@@ -330,33 +342,33 @@ planner.
 
 ## MVP path (phases 0 through 6)
 
-| Phase | Focus                                                  | Status         |
-| ----- | ------------------------------------------------------ | -------------- |
-| 0a    | Build foundation (TS, Vite, React, Vitest, ESLint, CI) | done           |
-| 0b    | Documentation surface (this set)                       | in progress    |
-| 0c    | CLAUDE.md, Claude agents, knowledge graph              | next           |
-| 0d    | Lint rule expansion, Husky, commitlint, release-please | pending        |
-| 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)  | pending        |
-| 0f    | Six-layer source skeleton                              | pending        |
-| 0g    | Wall-drawing proof of life (first user flow)           | pending        |
-| 0h    | Storage scaffolds (OPFS, IndexedDB, File System API)   | pending        |
-| 0i    | Service worker, vernacular-pack CLI                    | pending        |
-| 0j    | Phase 0 acceptance                                     | pending        |
-| 1     | Two-dimensional plan editor                            | pending        |
-| 2     | Three-dimensional preview with color-temperature slider| pending        |
-| 3     | Furniture import and curated starter library (alpha)   | pending        |
-| 4     | Old-house architectural vocabulary                     | pending        |
-| 5     | Multi-floor and stairs (beta)                          | pending        |
-| 6     | Paint, export, site metadata (1.0)                     | pending        |
+| Phase | Focus                                                   | Status      |
+| ----- | ------------------------------------------------------- | ----------- |
+| 0a    | Build foundation (TS, Vite, React, Vitest, ESLint, CI)  | done        |
+| 0b    | Documentation surface (this set)                        | in progress |
+| 0c    | CLAUDE.md, Claude agents, knowledge graph               | next        |
+| 0d    | Lint rule expansion, Husky, commitlint, release-please  | pending     |
+| 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)   | pending     |
+| 0f    | Six-layer source skeleton                               | pending     |
+| 0g    | Wall-drawing proof of life (first user flow)            | pending     |
+| 0h    | Storage scaffolds (OPFS, IndexedDB, File System API)    | pending     |
+| 0i    | Service worker, vernacular-pack CLI                     | pending     |
+| 0j    | Phase 0 acceptance                                      | pending     |
+| 1     | Two-dimensional plan editor                             | pending     |
+| 2     | Three-dimensional preview with color-temperature slider | pending     |
+| 3     | Furniture import and curated starter library (alpha)    | pending     |
+| 4     | Old-house architectural vocabulary                      | pending     |
+| 5     | Multi-floor and stairs (beta)                           | pending     |
+| 6     | Paint, export, site metadata (1.0)                      | pending     |
 
 ## Beyond 1.0
 
-| Phase | Focus                                                | Notes                |
-| ----- | ---------------------------------------------------- | -------------------- |
-| 7     | DXF import; competitor migration via underlay path   | quick follow-on      |
-| 8     | Lighting fidelity (solar position, baked GI, BRDFs)  | high priority post-1 |
-| 9     | Pathing critic with room-purpose-specific rules      | research-flavored    |
-| 10    | Code-plugin runtime, image-to-3D, cloud sync         | longer-tail          |
+| Phase | Focus                                               | Notes                |
+| ----- | --------------------------------------------------- | -------------------- |
+| 7     | DXF import; competitor migration via underlay path  | quick follow-on      |
+| 8     | Lighting fidelity (solar position, baked GI, BRDFs) | high priority post-1 |
+| 9     | Pathing critic with room-purpose-specific rules     | research-flavored    |
+| 10    | Code-plugin runtime, image-to-3D, cloud sync        | longer-tail          |
 
 ## Contributing
 
@@ -375,13 +387,14 @@ Expected first line: `# Roadmap`
 ### Task 8: Create `CONTRIBUTING.md`
 
 **Files:**
+
 - Create: `CONTRIBUTING.md`
 
 This is the largest new file. It explains how to get the project running locally, the contribution flow, and the conventions contributors are expected to follow.
 
 - [ ] **Step 1: Create `CONTRIBUTING.md`**
 
-```markdown
+````markdown
 # Contributing to Vernacular
 
 Thanks for your interest in contributing. Vernacular is an open-source
@@ -426,6 +439,7 @@ pnpm format:check
 pnpm test
 pnpm build
 ```
+````
 
 Run the dev server with `pnpm dev`. The smoke test in
 `src/App.test.tsx` is the only test in the repository today.
@@ -515,7 +529,8 @@ Vernacular is licensed under Apache-2.0. By contributing to this
 project, you agree that your contributions will be licensed under
 the same terms. Asset packs may declare their own SPDX licenses;
 see the project specification for details.
-```
+
+````
 
 - [ ] **Step 2: Verify**
 
@@ -579,13 +594,14 @@ pnpm test       # run unit tests
 pnpm typecheck  # TypeScript type check
 pnpm lint       # ESLint
 pnpm build      # production build to dist/
-```
+````
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full contribution flow.
 
 ## License
 
 Apache-2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
 ```
 
 - [ ] **Step 3: Verify**
@@ -606,7 +622,9 @@ The previous tasks created and modified Markdown files; Prettier's check stage i
 
 Run:
 ```
+
 pnpm format
+
 ```
 
 Expected: completes without error. Some files may be reformatted; that is acceptable.
@@ -615,7 +633,9 @@ Expected: completes without error. Some files may be reformatted; that is accept
 
 Run:
 ```
+
 pnpm format:check
+
 ```
 
 Expected: `All matched files use Prettier code style!`
@@ -628,7 +648,9 @@ Expected: `All matched files use Prettier code style!`
 
 Run:
 ```
+
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
+
 ```
 
 Expected: exits 0 at the end. No file in this plan changes any TypeScript or React code, so the test set is still the single `src/App.test.tsx` smoke test passing. If any step fails, STOP and report.
@@ -641,14 +663,16 @@ Expected: exits 0 at the end. No file in this plan changes any TypeScript or Rea
 
 Run:
 ```
+
 git add \
-  CHANGELOG.md \
-  CODE_OF_CONDUCT.md \
-  SECURITY.md \
-  ARCHITECTURE.md \
-  ROADMAP.md \
-  CONTRIBUTING.md \
-  README.md
+ CHANGELOG.md \
+ CODE_OF_CONDUCT.md \
+ SECURITY.md \
+ ARCHITECTURE.md \
+ ROADMAP.md \
+ CONTRIBUTING.md \
+ README.md
+
 ```
 
 - [ ] **Step 2: Verify staged set**
@@ -661,7 +685,9 @@ Expected: every entry is `A` (new file) except `README.md` which is `M` (modifie
 
 Run:
 ```
+
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
+
 ```
 
 Expected: exits 0.
@@ -671,22 +697,23 @@ Expected: exits 0.
 Use the following heredoc, which omits any Co-Authored-By trailer because the project setting `includeCoAuthoredBy: false` is in effect:
 
 ```
+
 git commit -m "$(cat <<'EOF'
 docs: add documentation surface (Phase 0b)
 
 Phase 0b of the Vernacular implementation. Adds the project's standard
 documentation surface on top of the Phase 0a build foundation:
 
-* CHANGELOG.md (Keep-a-Changelog scaffold; release-please takes over
+- CHANGELOG.md (Keep-a-Changelog scaffold; release-please takes over
   maintenance in Phase 0e)
-* CODE_OF_CONDUCT.md (Contributor Covenant 2.1, canonical text, with
+- CODE_OF_CONDUCT.md (Contributor Covenant 2.1, canonical text, with
   the contact placeholder patched to the project's private security
   advisory link)
-* SECURITY.md (vulnerability disclosure intake and current expectations)
-* ARCHITECTURE.md (one-page pointer plus the six-layer overview, with
+- SECURITY.md (vulnerability disclosure intake and current expectations)
+- ARCHITECTURE.md (one-page pointer plus the six-layer overview, with
   authoritative detail in docs/specs/)
-* ROADMAP.md (status table summarized from spec section 10)
-* CONTRIBUTING.md (dev setup, PR flow, current conventions, pointers
+- ROADMAP.md (status table summarized from spec section 10)
+- CONTRIBUTING.md (dev setup, PR flow, current conventions, pointers
   to other docs)
 
 README.md updated to link the new files. No code changes; no
@@ -697,6 +724,7 @@ This is hand-off-ready for Phase 0c (CLAUDE.md, Claude agents,
 knowledge graph) per the spec's Phase 0 deliverable list.
 EOF
 )"
+
 ```
 
 - [ ] **Step 5: Verify the commit landed**
@@ -727,21 +755,25 @@ Expected: a new remote branch is created and tracking is set up.
 
 Run:
 ```
+
 gh pr create --base main --head feat/phase-0b-documentation --title "Phase 0b: Documentation surface" --body "$(cat <<'EOF'
+
 ## Summary
 
 Phase 0b of the Vernacular implementation, per `docs/plans/2026-06-02-vernacular-phase-0b-documentation.md`. Adds the project's documentation surface on top of the Phase 0a foundation. No code changes.
 
 Files added:
-* CHANGELOG.md
-* CODE_OF_CONDUCT.md (Contributor Covenant 2.1, canonical text)
-* SECURITY.md
-* ARCHITECTURE.md
-* ROADMAP.md
-* CONTRIBUTING.md
+
+- CHANGELOG.md
+- CODE_OF_CONDUCT.md (Contributor Covenant 2.1, canonical text)
+- SECURITY.md
+- ARCHITECTURE.md
+- ROADMAP.md
+- CONTRIBUTING.md
 
 Files modified:
-* README.md (added a documentation map linking the new files)
+
+- README.md (added a documentation map linking the new files)
 
 ## Test plan
 
@@ -756,6 +788,7 @@ Files modified:
 Phase 0c (CLAUDE.md, Claude agents, knowledge graph, Clean Code review agent), 0d (lint rule expansion, Husky, commitlint, release-please), 0e (testing scaffolds), 0f/0g (six-layer source skeleton, command dispatcher, Hello-wall proof of life), 0h (storage scaffolds), 0i (service worker, vernacular-pack CLI), 0j (Phase 0 acceptance).
 EOF
 )"
+
 ```
 
 Expected: a URL of the form `https://github.com/drmrd/vernacular/pull/<N>` is returned.
@@ -795,3 +828,4 @@ Placeholder scan: the only intentional placeholder anywhere in this plan is the 
 Type consistency: `vernacular-pack` is used consistently as the CLI name. `feat/phase-0b-documentation` is the branch name across Task 1, Task 13, and the PR base/head. The branch base is `main`.
 
 Format consistency: every `head -N` verification step uses three lines of expected output where possible. Every `pnpm` command uses the exact script name from `package.json` (`typecheck`, `lint`, `format:check`, `test`, `build`).
+```
