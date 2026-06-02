@@ -104,7 +104,7 @@ Expected first line: `# Changelog`
 Run:
 
 ```
-curl -sSfL https://raw.githubusercontent.com/EthicalSource/contributor_covenant/master/content/version/2/1/code_of_conduct.md -o CODE_OF_CONDUCT.md
+curl -sSfL https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md -o CODE_OF_CONDUCT.md
 ```
 
 Expected: the file is created. (Do NOT open it or paste its contents into your reply.)
@@ -117,7 +117,7 @@ Run:
 test -s CODE_OF_CONDUCT.md && wc -l CODE_OF_CONDUCT.md
 ```
 
-Expected: a line count well above 100 lines. (The canonical document is roughly 140 lines.)
+Expected: roughly 85 lines (the published `contributor-covenant.org` Markdown file with no front matter). Anything well under 50 lines suggests a partial download.
 
 ---
 

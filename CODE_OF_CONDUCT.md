@@ -1,9 +1,3 @@
-+++
-version = "2.1"
-aliases = ["/version/2/1"]
-reportingPlaceholder = "a private GitHub security advisory at https://github.com/drmrd/vernacular/security/advisories/new"
-+++
-
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge
