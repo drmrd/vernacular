@@ -7,11 +7,14 @@ describe('asset references', () => {
     expect(parseAssetReference(formatAssetReference(reference))).toEqual(reference)
   })
 
-  it('round-trips user and project scopes', () => {
-    for (const scope of ['user', 'project'] as const) {
-      const reference: AssetReference = { scope, contentHash: 'deadbeef' }
-      expect(parseAssetReference(formatAssetReference(reference))).toEqual(reference)
-    }
+  it('round-trips a user-scoped reference', () => {
+    const reference: AssetReference = { scope: 'user', contentHash: 'deadbeef' }
+    expect(parseAssetReference(formatAssetReference(reference))).toEqual(reference)
+  })
+
+  it('round-trips a project-scoped reference', () => {
+    const reference: AssetReference = { scope: 'project', contentHash: 'deadbeef' }
+    expect(parseAssetReference(formatAssetReference(reference))).toEqual(reference)
   })
 
   it('throws on a malformed serialized reference', () => {
