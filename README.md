@@ -29,7 +29,8 @@ Edwardian, Craftsman, Mid-Century, and earlier.
 Prerequisites:
 
 - Node.js 20+ (see `.nvmrc`)
-- pnpm 9+
+- pnpm 10+ (the version is pinned via `packageManager` in `package.json`;
+  using corepack means you do not need to install pnpm yourself)
 
 ```sh
 pnpm install

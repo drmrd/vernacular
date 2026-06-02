@@ -26,8 +26,10 @@ and code contributions are all welcome.
 Prerequisites:
 
 - Node.js 20 or newer (see [`.nvmrc`](.nvmrc)).
-- pnpm 9 or newer (see the `packageManager` field in
-  [`package.json`](package.json)).
+- pnpm 10.33 or newer (see the `packageManager` field in
+  [`package.json`](package.json)). If you have corepack enabled (it
+  ships with Node 16+), running any `pnpm` command in this repository
+  will activate the correct version automatically.
 
 Clone the repository, install dependencies, and verify the local check
 chain:
@@ -75,6 +77,14 @@ multiple PRs.
 
 These will tighten in later phases as the tooling lands. Current state:
 
+- **Dependency cooldown.** This repository enforces a 15-day minimum
+  release age on every direct and transitive dependency (configured in
+  [`.npmrc`](.npmrc) as `minimum-release-age=21600`). If you add or
+  bump a dependency to a version that was published within the last 15
+  days, `pnpm install` will refuse the install. Pin to an older
+  patch/minor or wait the cooldown out. This is a supply-chain safety
+  measure: malicious package releases are usually caught and yanked
+  within days, so the cooldown filters out the highest-risk window.
 - **Commit messages** follow
   [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
   Common types we use: `feat`, `fix`, `refactor`, `docs`, `chore`,

@@ -731,6 +731,15 @@ Fast checks (must stay fast):
 
 Heavy checks (full E2E, visual regression, perf benchmarks) run in CI only.
 
+### 8.5b Dependency cooldown
+
+To reduce supply-chain risk from compromised package releases and typosquatting, the repository enforces a **15-day minimum release age** on every direct and transitive dependency. pnpm refuses to install any package version younger than this threshold; the older version satisfying the requested range is selected instead.
+
+- Configured in `.npmrc` as `minimum-release-age=21600` (minutes; equals 15 days).
+- Requires pnpm 10 or newer, pinned via the `packageManager` field in `package.json`.
+- Applies in local installs, CI installs, and on the install side of any future automated dependency update (e.g., Dependabot or Renovate); those tools may need their bump cadence aligned to the cooldown.
+- A short list of exclusions can be added via `minimum-release-age-exclude` if a specific trusted package needs to bypass the cooldown. We do not maintain any exclusions today.
+
 ### 8.6 Branching and release strategy
 
 - `main` is always releasable.
