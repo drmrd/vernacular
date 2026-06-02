@@ -1,0 +1,56 @@
+name: Mutation testing
+
+on:
+  schedule:
+    # Sundays at 03:30 UTC (off-peak for both US and EU contributors).
+    - cron: '30 3 * * 0'
+  workflow_dispatch: {}
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stryker:
+    name: Stryker
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Skip if core/ is empty
+        id: guard
+        run: |
+          if [ -d core ] && find core -name '*.ts' -not -name '*.test.ts' -not -name '*.spec.ts' | grep -q .; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "core/ is empty or absent; mutation scaffold present, skipping run."
+          fi
+
+      - name: Run Stryker
+        if: steps.guard.outputs.should_run == 'true'
+        run: pnpm mutate
+
+      - name: Upload Stryker HTML report
+        if: always() && steps.guard.outputs.should_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: reports/stryker/
+          retention-days: 14

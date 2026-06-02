@@ -36,6 +36,9 @@ export default tseslint.config(
       'playwright-report',
       'test-results',
       'e2e/.cache',
+      '.lighthouseci',
+      'reports',
+      '.stryker-tmp',
     ],
   },
   {

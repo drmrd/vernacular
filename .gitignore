@@ -37,3 +37,10 @@ playwright-report/
 test-results/
 e2e/.cache/
 blob-report/
+
+# Lighthouse CI
+.lighthouseci/
+
+# Stryker
+reports/stryker/
+.stryker-tmp/

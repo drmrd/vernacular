@@ -118,6 +118,7 @@ Before requesting review, make sure:
       `i18n.t()` (this becomes relevant once the editor surface lands).
 - [ ] You have read and accept the project's license terms (Apache-2.0;
       see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)).
+- [ ] If your change touches `core/`, run `pnpm mutate:check` locally to confirm the Stryker scaffold still configures cleanly (a full `pnpm mutate` run is not required; the weekly CI workflow owns that).
 
 ## Reviewing pull requests
 
@@ -179,6 +180,31 @@ pnpm e2e --update-snapshots=missing --project=chromium
 ```
 
 Review the regenerated PNG before committing.
+
+## Performance budgets
+
+[Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci) measures Vernacular's production bundle against category-level budgets:
+
+- Accessibility is a hard gate (minimum score 0.9). Lighthouse and `@axe-core/playwright` should agree; if they disagree, treat both reports as data and fix the source.
+- Performance, best-practices, and SEO are warn-only at this stage. Tighten them as real user surfaces arrive.
+
+Local commands:
+
+- `pnpm build` (Lighthouse measures the production preview, so a build is a prerequisite).
+- `pnpm lhci` runs three Lighthouse passes against the preview, prints assertions, and exits non-zero on any error-level violation.
+
+CI runs Lighthouse on pushes to `main` and on tag pushes; the per-PR loop intentionally skips it to keep iteration fast.
+
+## Mutation testing
+
+[Stryker](https://stryker-mutator.io/) runs weekly against `core/` and measures test quality. A mutation that survives means the tests do not catch the breakage Stryker introduced; treat surviving mutants as a backlog of missing tests rather than as a complaint about Stryker.
+
+Local commands:
+
+- `pnpm mutate:check` verifies the Stryker config without running mutants.
+- `pnpm mutate` runs the full mutation suite. This is slow; expect it to take many minutes once `core/` has real code.
+
+CI runs Stryker on a weekly schedule (`.github/workflows/mutation.yml`) and on manual dispatch. The workflow skips cleanly when `core/` is empty.
 
 ## Working with Claude Code
 
