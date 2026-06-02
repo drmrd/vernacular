@@ -8,3 +8,5 @@ export {
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
+export type { Registry, RegistryEntry } from './registries/registry'
+export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
