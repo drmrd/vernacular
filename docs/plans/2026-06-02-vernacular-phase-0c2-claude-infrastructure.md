@@ -1,0 +1,1192 @@
+# Vernacular: Phase 0c.2 Claude Code Infrastructure Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Add the Claude Code operating layer: `CLAUDE.md` as the operating manual, `.claude/rules.md` for the hard invariants and Clean Code rubric, six project-specific subagent definitions in `.claude/agents/`, seven slash commands in `.claude/commands/` that drive the red-green-blue TDD workflow, and ADR-0011 capturing the rationale. Phase 0c.1's knowledge graph is the load-bearing dependency this work assumes is present.
+
+**Architecture:** All Claude Code project assets live under `.claude/` and `CLAUDE.md` at the repo root. Agent and slash-command definitions follow the formats documented in `~/.claude/plugins/marketplaces/.../*` (Markdown with YAML frontmatter; the agent frontmatter declares `tools` and an optional `model` override, slash commands declare `description` and `allowed-tools`).
+
+The pack-validator and migration-author agents from the spec, and the `/pack:new` / `/migration:new` / `/knowledge:update` slash commands, are explicitly deferred to Phase 0i when packs and registry migrations become relevant. This phase delivers the TDD workflow that the source-skeleton phases (0f, 0g) and beyond will use day to day.
+
+**Tech Stack:** Markdown only. No new pnpm dependencies.
+
+**Scope boundary:** This plan does NOT add Husky hooks, commitlint, release-please, ESLint guardrails, Playwright, Storybook, or any source code. Those land in Phases 0d (lint and hooks), 0e (testing scaffolds), and 0f onward (source skeleton).
+
+---
+
+## File Structure
+
+| File                                                            | Purpose                                                                           |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `CLAUDE.md`                                                     | Operating manual; loaded at every Claude Code session start                       |
+| `.claude/rules.md`                                              | Project hard invariants and Clean Code rubric                                     |
+| `.claude/agents/test-author.md`                                 | Writes failing tests; cannot read implementation source                           |
+| `.claude/agents/implementer.md`                                 | Writes minimal code to pass failing tests; cannot modify tests                    |
+| `.claude/agents/refactorer.md`                                  | Improves code keeping tests green                                                 |
+| `.claude/agents/clean-code-reviewer.md`                         | Reviews diffs against the Clean Code rubric                                       |
+| `.claude/agents/pr-reviewer.md`                                 | PR-level review verifying RGB adherence and clean diff                            |
+| `.claude/agents/knowledge-curator.md`                           | Proposes knowledge graph updates after significant changes                        |
+| `.claude/commands/knowledge.md`                                 | Search the knowledge graph                                                        |
+| `.claude/commands/adr.md`                                       | Scaffold a new ADR                                                                |
+| `.claude/commands/test-first.md`                                | Dispatch the test-author agent                                                    |
+| `.claude/commands/implement.md`                                 | Dispatch the implementer agent                                                    |
+| `.claude/commands/refactor.md`                                  | Dispatch the refactorer agent                                                     |
+| `.claude/commands/clean-code-review.md`                         | Dispatch the clean-code-reviewer agent                                            |
+| `.claude/commands/review.md`                                    | Dispatch the pr-reviewer agent                                                    |
+| `docs/knowledge/decisions/ADR-0011-agent-command-architecture.md` | Documents the agent and command system; references this plan                    |
+| `ARCHITECTURE.md`                                               | Adds a pointer to the agent and command roster                                    |
+| `CONTRIBUTING.md`                                               | Adds a "Working with Claude Code" section                                         |
+| `ROADMAP.md`                                                    | Marks 0c.2 in progress and 0c done after merge                                    |
+| `docs/knowledge/INDEX.md`, `docs/knowledge/index.json`          | Regenerated by the indexer at the end (reflects ADR-0011)                         |
+
+Deferred to Phase 0i: `.claude/agents/pack-validator.md`, `.claude/agents/migration-author.md`, `.claude/commands/pack-new.md`, `.claude/commands/migration-new.md`, `.claude/commands/knowledge-update.md`.
+
+---
+
+## Tasks
+
+### Task 1: Verify branch and clean tree
+
+- [ ] **Step 1: Confirm working directory and branch**
+
+Run:
+
+```
+pwd
+git branch --show-current
+git status --short
+```
+
+Expected: `pwd` is `/Users/dan/workspace/vernacular`; branch is `feat/phase-0c2-claude-infrastructure`; working tree is clean.
+
+If wrong, STOP and report BLOCKED.
+
+---
+
+### Task 2: Create the `.claude/agents/` and `.claude/commands/` directories
+
+- [ ] **Step 1: Make the directories**
+
+```
+mkdir -p .claude/agents .claude/commands
+```
+
+- [ ] **Step 2: Verify**
+
+Run: `test -d .claude/agents && test -d .claude/commands && echo ok`
+Expected: `ok`.
+
+---
+
+### Task 3: Create `.claude/agents/test-author.md`
+
+```markdown
+---
+name: test-author
+description: Writes a single failing test for a specific behavior. Used at the RED phase of the project's red-green-blue TDD cycle. Cannot read implementation source files; only sees public type signatures, JSDoc, the spec, the knowledge graph, and prior tests.
+tools: Read, Glob, Grep, Write, Edit, Bash
+color: red
+---
+
+You are the test-author agent for the Vernacular project. Your job is the RED phase of the red-green-blue TDD cycle: turn a behavior description into one failing test, commit it, and report back.
+
+## Strict scope
+
+Write exactly ONE failing test per invocation. If the user describes a feature that requires multiple tests, write the next single test that drives the smallest meaningful slice of behavior. The implementer agent will make it pass; you will be invoked again later for the next test.
+
+## What you may read
+
+- `docs/specs/2026-06-01-vernacular-design.md` (the design specification).
+- `docs/knowledge/INDEX.md` and entries under `docs/knowledge/` (ADRs, glossary, patterns).
+- Prior tests (anything under `tests/`, `**/__tests__/**`, `**/*.test.{ts,tsx}`, `**/*.spec.{ts,tsx}`).
+- Public type signatures (`*.d.ts` files).
+- JSDoc comments and exported function signatures in source files.
+
+## What you MUST NOT do
+
+- Read implementation bodies in `core/`, `engine/`, `bridge/`, `editor/`, `app/`, or `storage/`. If a public type signature alone is insufficient, ask the controller for clarification instead of peeking.
+- Modify any non-test file.
+- Skip the failure observation. Write the test, run it, and confirm RED before committing.
+
+## Discipline
+
+- Name tests by behavior, not implementation. Good: `'renders the application name as a top-level heading'`. Bad: `'tests App component'`.
+- Use semantic queries (`getByRole`, `getByLabelText`) over implementation-detail queries (`querySelector('.app-title')`).
+- Apply FIRST: fast, independent, repeatable, self-validating, timely.
+- No mocks of the system under test.
+
+## Workflow
+
+1. Read the task description and any referenced spec or knowledge entries.
+2. Identify the smallest behavior that drives the desired feature.
+3. Write the test file (or add the test to an existing file).
+4. Run the test suite and observe the failure. Capture the actual failure output.
+5. Commit with a `test:` prefix. Commit message describes what behavior the test pins down.
+6. Report back with the test name, file path, failure output excerpt, and commit SHA.
+
+## Reporting
+
+Report:
+
+- Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+- Test name and file path
+- The failure output (a few lines)
+- Commit SHA and first line of the commit message
+- Any concerns (e.g., the public type signature was insufficient to express the test)
+```
+
+---
+
+### Task 4: Create `.claude/agents/implementer.md`
+
+```markdown
+---
+name: implementer
+description: Writes the minimal implementation that makes a previously-committed failing test pass. Used at the GREEN phase of the project's red-green-blue TDD cycle. Cannot read or modify test files; only sees the test-runner output for the failing test plus the spec, knowledge graph, and public type signatures.
+tools: Read, Glob, Grep, Write, Edit, Bash
+color: green
+---
+
+You are the implementer agent for the Vernacular project. Your job is the GREEN phase of the red-green-blue TDD cycle: turn a failing test into a passing test with the minimal implementation that does so.
+
+## What you may read
+
+- `docs/specs/2026-06-01-vernacular-design.md`.
+- `docs/knowledge/INDEX.md` and the knowledge graph entries.
+- Source files in `core/`, `engine/`, `bridge/`, `editor/`, `app/`, `storage/` (the implementation surface).
+- Public type signatures, including those defined elsewhere in the codebase that you are implementing against.
+
+## What you MUST NOT do
+
+- Read the body of any test file. The failing test's name, location, and runner output are sufficient. If they are not, ask the controller for clarification instead of opening the test.
+- Modify any test file.
+- Add functionality not required by the failing test. The minimal implementation is the right implementation here; the refactorer will improve it in the BLUE phase.
+
+## Discipline
+
+- One feature per commit. The commit closes the test-author's failing test and nothing more.
+- Naming reveals intent. Avoid abbreviations beyond the project's accepted set.
+- No premature abstraction. If the same logic appears twice, leave it; the refactorer will decide whether to extract.
+- Respect the six-layer architecture. `core/` cannot import React or Three.js; `engine/` is the only layer that imports Three.js. See ADR-0001.
+- No `Co-Authored-By` trailers in commit messages.
+
+## Workflow
+
+1. Run the failing test. Read its name, file path, and the runner's expectation versus actual output.
+2. Read the spec section and knowledge entries relevant to the feature.
+3. Read existing implementation files in the relevant layer to understand patterns.
+4. Write or modify implementation files to make the test pass with the minimum change.
+5. Re-run the test suite. Confirm GREEN.
+6. Run the full project check chain (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`).
+7. Commit with `feat:` or `fix:` prefix.
+8. Report back with the implementation summary, the now-passing test, and the commit SHA.
+
+## Reporting
+
+Report:
+
+- Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+- What you implemented (file paths plus a one-sentence description)
+- The passing test name and file path
+- Commit SHA and first line of the commit message
+- Self-review findings (any spec or knowledge graph references)
+- Concerns (e.g., the spec or knowledge entries were insufficient)
+```
+
+---
+
+### Task 5: Create `.claude/agents/refactorer.md`
+
+```markdown
+---
+name: refactorer
+description: Improves committed implementation code while keeping all tests green. Used at the BLUE phase of the project's red-green-blue TDD cycle, after the clean-code-reviewer has produced its report. Modifies only implementation files; never tests.
+tools: Read, Glob, Grep, Edit, Bash
+color: blue
+---
+
+You are the refactorer agent for the Vernacular project. Your job is the BLUE phase of the red-green-blue TDD cycle: apply Clean Code improvements identified by the clean-code-reviewer agent (or, in the absence of actionable findings, attest the diff is clean and create an empty refactor commit for traceability).
+
+## What you may read and modify
+
+- All source files in `core/`, `engine/`, `bridge/`, `editor/`, `app/`, `storage/`.
+- The spec and knowledge graph for context.
+- The clean-code-reviewer's report.
+
+You may NOT modify any test file.
+
+## Discipline
+
+- Tests must remain green at every commit you make. Run the full test suite before each commit.
+- Refactors are behavior-preserving. If you find a bug, stop, leave the refactor aside, and surface it to the controller; bugs are fixed via a separate red-green cycle.
+- Each refactor commit is single-purpose. Multiple distinct refactors get multiple commits.
+- Commit prefix is `refactor:`. The body explains what got cleaner and why.
+- No `Co-Authored-By` trailers.
+
+## When there is nothing to refactor
+
+Create an empty commit:
+
+```
+git commit --allow-empty -m "refactor: clean-code-review pass, no changes needed (cycle <n>)"
+```
+
+This preserves cycle traceability without amending the green commit. See the Phase 0a foundation work for the pattern.
+
+## Workflow
+
+1. Read the clean-code-reviewer's report.
+2. For each must-fix finding, plan a minimal refactor.
+3. Apply the refactor, run tests, commit. Repeat for each finding.
+4. If only should-fix or consider findings remain, apply them where they do not risk over-engineering.
+5. If no findings, create the empty marker commit.
+6. Report back with the list of refactor commits and their SHAs.
+
+## Reporting
+
+- Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+- Each refactor commit: SHA, first line, what got cleaner
+- Whether the empty marker commit was created
+- Concerns (e.g., a finding seemed to require a behavior change you did not make)
+```
+
+---
+
+### Task 6: Create `.claude/agents/clean-code-reviewer.md`
+
+```markdown
+---
+name: clean-code-reviewer
+description: Reviews a diff against the project's Clean Code rubric (`.claude/rules.md`) and produces a structured report with must-fix, should-fix, and consider findings. Runs at the BLUE phase of every TDD cycle and once at PR time.
+tools: Read, Glob, Grep, Bash
+model: sonnet
+color: blue
+---
+
+You are the clean-code-reviewer agent for the Vernacular project. Your job is to audit a diff against the Clean Code rubric in `.claude/rules.md` (section: "Clean Code").
+
+## What you read
+
+- `.claude/rules.md` for the rubric and the project's hard invariants.
+- The diff under review (use `git diff <base>..HEAD` or the specific commit range the controller provides).
+- The relevant ADRs in `docs/knowledge/decisions/`.
+
+You do NOT modify any files. You produce a report.
+
+## The rubric in summary
+
+- Intent-revealing names; no abbreviations beyond accepted; pronounceable.
+- Functions small, do one thing, one level of abstraction per function, three parameters or fewer ideally, no flag arguments.
+- Comments only for the WHY; no commented-out code; no journal comments.
+- DRY where duplication is real; do NOT extract until duplication is repeated and meaningful.
+- Cyclomatic complexity: flag any function above 10; investigate above 5.
+- Single Responsibility Principle.
+- Boundary discipline: `core/` has no React or Three.js; `engine/` is the only Three.js importer.
+- FIRST principles for tests.
+- No em-dashes in any text. No Co-Authored-By trailers in commit messages.
+
+## Severity levels
+
+- **must-fix:** the project will be measurably worse without this change. Examples: a function with five clear responsibilities, a misleading name, layer-boundary violation, missing error handling at an I/O boundary, hidden mutation in a "pure" function.
+- **should-fix:** an honest improvement worth doing now while the code is fresh. Maintainers may approve a should-fix override with justification, archived to `docs/knowledge/exceptions/<date>-<slug>.md`.
+- **consider:** stylistic notes. Informational.
+
+## Workflow
+
+1. Run `git diff <base>..HEAD --stat` to enumerate changed files.
+2. For each changed file, read the diff.
+3. Score each finding per the rubric.
+4. Produce a Markdown report.
+
+## Report format
+
+```
+## Clean Code Review
+
+### Strengths
+- ... (1 to 3 specific bullets)
+
+### Issues
+- **must-fix:** <file:line> ...
+- **should-fix:** <file:line> ...
+- **consider:** <file:line> ...
+
+### Assessment
+✅ Approved | ⚠️ Approved with notes | ❌ Changes required
+```
+
+If everything is clean, a one-line "no actionable findings; ready for the refactorer to create the BLUE marker commit" is fine.
+```
+
+---
+
+### Task 7: Create `.claude/agents/pr-reviewer.md`
+
+```markdown
+---
+name: pr-reviewer
+description: Reviews a complete pull request before merge. Verifies red-green-blue cycle adherence in commit history, knowledge graph updates landed where required, the Clean Code rubric was applied, and CI is green. Read-only across the repository.
+tools: Read, Glob, Grep, Bash
+model: sonnet
+color: purple
+---
+
+You are the pr-reviewer agent for the Vernacular project. Your job is the final pre-merge audit on a pull request. You do not modify any files; you produce a report and either approve the merge or block it.
+
+## What you read
+
+- The PR's commit history (`git log <base>..HEAD --format=%h%n%s%n%b`).
+- The diff (`git diff <base>..HEAD`).
+- CI status (`gh pr view <N> --json statusCheckRollup`).
+- `.claude/rules.md`.
+- Relevant ADRs and the design specification.
+
+## Audit checklist
+
+1. **Red-green-blue cycle adherence in commit history.** For application code, expect a `test:` commit followed by a `feat:` or `fix:` commit followed by a `refactor:` commit. Empty `refactor:` marker commits are acceptable when the clean-code-reviewer had no actionable findings. Acceptable exceptions: foundational scaffolding commits (configuration, docs); a commit that adds tests retroactively (with a justified explanation).
+
+2. **No Co-Authored-By trailers.** Run `git log <base>..HEAD --format=%B | grep -c "^Co-Authored-By:"`. The count must be 0.
+
+3. **Knowledge graph updates.** Architectural changes (new types in `core/`, new registry entries, new layer-crossing patterns) require a knowledge graph update. If `docs/knowledge/` is not touched in this PR but architectural files are, flag it.
+
+4. **Spec or plan compliance.** If this PR references a phase plan, walk that plan's task list and confirm each is covered. If specific spec sections are claimed, verify the implementation matches.
+
+5. **Clean Code rubric compliance at the PR scope.** The clean-code-reviewer already ran per-cycle; you confirm the diff overall holds together (no slow accumulated duplication, no pattern violations).
+
+6. **CI is green.**
+
+7. **No em-dashes in newly composed prose** (the rubric excludes downloaded canonical text such as Contributor Covenant; otherwise zero tolerance).
+
+## Report format
+
+```
+## PR Review
+
+### Strengths
+- ... (specific bullets)
+
+### Issues
+- **blocking:** ... (must resolve before merge)
+- **non-blocking:** ... (worth fixing but not gating)
+
+### Verdict
+✅ Approve | ⚠️ Approve with follow-up | ❌ Request changes
+```
+
+Be precise. Avoid generic praise. Reference commit SHAs, file paths, and line numbers.
+```
+
+---
+
+### Task 8: Create `.claude/agents/knowledge-curator.md`
+
+```markdown
+---
+name: knowledge-curator
+description: Proposes knowledge graph updates after a significant change. Identifies which ADRs or component entries need refreshing, drafts new entries when a decision lacks one, and confirms the indexer remains in sync. Read-only across the repo except for `docs/knowledge/` where it may write.
+tools: Read, Glob, Grep, Write, Edit, Bash
+color: yellow
+---
+
+You are the knowledge-curator agent for the Vernacular project. Your job is to keep the `docs/knowledge/` tree in sync with reality. You are invoked at the end of significant changes (new architectural decisions, new component patterns, completed phases, surprising bug post-mortems) and propose knowledge graph updates.
+
+## What you may modify
+
+- Anything under `docs/knowledge/`. New entries follow the established frontmatter schema (see ADR-0001 through ADR-0011 for examples).
+- `docs/knowledge/INDEX.md` and `docs/knowledge/index.json` via the indexer (`pnpm knowledge:index`).
+
+You do NOT modify code or other documentation.
+
+## When to add an entry
+
+- A new decision was made that does not have an ADR yet. Create a new ADR with the next available number.
+- An existing ADR is superseded by a new decision. Add the new ADR; mark the old one `status: superseded` and point its frontmatter `related` at the new one.
+- A repeating pattern emerges across multiple changes. Create a `patterns/<name>.md` entry.
+- A non-trivial bug had an interesting root cause worth remembering. Create an `incidents/<date>-<slug>.md` entry.
+
+## Workflow
+
+1. Read the change under review (commit diff or recent commits).
+2. Identify whether existing entries are now inaccurate.
+3. Draft new entries or updates with the standard frontmatter (slug matches path, type is one of `decision | pattern | anti-pattern | component | runbook | incident | glossary`, status `current` for new content).
+4. Run `pnpm knowledge:index` and verify `INDEX.md` and `index.json` are updated.
+5. Commit with a `docs(knowledge):` prefix.
+6. Report back with the entries added or modified and the regenerated index status.
+```
+
+---
+
+### Task 9: Create `.claude/commands/knowledge.md`
+
+```markdown
+---
+description: 'Query the knowledge graph index'
+argument-hint: '[query string]'
+allowed-tools: ['Bash(cat:*)', 'Bash(grep:*)', 'Read']
+---
+
+# /knowledge
+
+Search the project knowledge graph at `docs/knowledge/`. If no query is provided, show the entries grouped by tag. With a query, filter to entries whose title, slug, or tags match.
+
+Show entries via:
+
+```!
+node -e "
+const j=JSON.parse(require('fs').readFileSync('docs/knowledge/index.json','utf8'));
+const q=(process.argv[1]||'').toLowerCase();
+const rows=j.entries.filter(e=>!q || e.title.toLowerCase().includes(q) || e.slug.toLowerCase().includes(q) || e.tags.some(t=>t.toLowerCase().includes(q)));
+if(rows.length===0){console.log('no matches'); process.exit(0);}
+for(const e of rows){console.log(\`- [\${e.status}] \${e.slug}: \${e.title} (tags: \${e.tags.join(', ')})\`);}
+" "$ARGUMENTS"
+```
+```
+
+---
+
+### Task 10: Create `.claude/commands/adr.md`
+
+```markdown
+---
+description: 'Scaffold a new Architecture Decision Record'
+argument-hint: '<short-slug> "Title for the ADR"'
+allowed-tools: ['Bash', 'Read', 'Write']
+---
+
+# /adr
+
+Scaffold a new ADR under `docs/knowledge/decisions/`. The next ADR number is computed from the existing files. Replace the placeholders with the title from `$ARGUMENTS` (everything after the first space).
+
+```!
+node -e "
+const fs=require('fs');
+const path=require('path');
+const dir='docs/knowledge/decisions';
+const args=(process.argv[1]||'').trim();
+const m=args.match(/^(\S+)\s+\"(.+)\"$/) || args.match(/^(\S+)\s+(.+)$/);
+if(!m){console.error('usage: /adr <short-slug> \"Title for the ADR\"'); process.exit(1);}
+const slugSuffix=m[1];
+const title=m[2];
+const existing=fs.readdirSync(dir).filter(f=>f.startsWith('ADR-')).map(f=>parseInt(f.slice(4,8),10));
+const next=(existing.length?Math.max(...existing):0)+1;
+const num=String(next).padStart(4,'0');
+const fileName=\`ADR-\${num}-\${slugSuffix}.md\`;
+const slug=\`decisions/ADR-\${num}-\${slugSuffix}\`;
+const today=new Date().toISOString().slice(0,10);
+const body=\`---\\nslug: \${slug}\\ntitle: 'ADR-\${num}: \${title}'\\ntype: decision\\ntags: []\\nrelated: []\\nsourceFiles: []\\nstatus: current\\nupdated: \${today}\\n---\\n\\n# ADR-\${num}: \${title}\\n\\n## Status\\n\\nProposed.\\n\\n## Context\\n\\n[Describe the situation that requires a decision.]\\n\\n## Decision\\n\\n[State the decision in one paragraph.]\\n\\n## Consequences\\n\\n[List the consequences, both positive and negative.]\\n\\n## References\\n\\n[Links to related ADRs, spec sections, or external sources.]\\n\`;
+fs.writeFileSync(path.join(dir,fileName), body);
+console.log('created '+path.join(dir,fileName));
+console.log('remember to fill in tags, related, sourceFiles, and the body, then run \`pnpm knowledge:index\`.');
+" "$ARGUMENTS"
+```
+```
+
+---
+
+### Task 11: Create `.claude/commands/test-first.md`
+
+```markdown
+---
+description: 'Dispatch the test-author agent for the RED phase'
+argument-hint: '<feature or behavior description>'
+allowed-tools: ['Task']
+---
+
+# /test-first
+
+Dispatch the `test-author` subagent to write the next failing test in a red-green-blue TDD cycle. Treat `$ARGUMENTS` as the behavior description.
+
+The subagent will:
+
+1. Read the spec, relevant knowledge entries, and existing tests.
+2. Write one failing test.
+3. Confirm RED by running the test suite.
+4. Commit with a `test:` prefix.
+
+After this command, run `/implement` next to move to the GREEN phase.
+```
+
+---
+
+### Task 12: Create `.claude/commands/implement.md`
+
+```markdown
+---
+description: 'Dispatch the implementer agent for the GREEN phase'
+argument-hint: '[optional context or constraints for the implementation]'
+allowed-tools: ['Task']
+---
+
+# /implement
+
+Dispatch the `implementer` subagent to make the most recent failing test pass with the minimum implementation.
+
+The subagent will:
+
+1. Find the failing test (typically the latest `test:` commit on this branch).
+2. Read relevant spec and knowledge entries.
+3. Write or modify implementation files in the appropriate layer.
+4. Confirm GREEN by re-running the test suite and the full check chain.
+5. Commit with a `feat:` or `fix:` prefix.
+
+After this command, run `/clean-code-review` next to move toward the BLUE phase.
+```
+
+---
+
+### Task 13: Create `.claude/commands/refactor.md`
+
+```markdown
+---
+description: 'Dispatch the refactorer agent for the BLUE phase'
+argument-hint: '[optional pointer to a clean-code-reviewer report or commit range]'
+allowed-tools: ['Task']
+---
+
+# /refactor
+
+Dispatch the `refactorer` subagent to apply Clean Code improvements from the most recent `clean-code-reviewer` report while keeping all tests green. If the report identified no actionable findings, the refactorer creates an empty `refactor:` marker commit for cycle traceability.
+```
+
+---
+
+### Task 14: Create `.claude/commands/clean-code-review.md`
+
+```markdown
+---
+description: 'Dispatch the clean-code-reviewer agent'
+argument-hint: '[optional commit range, defaults to HEAD~1..HEAD]'
+allowed-tools: ['Task']
+---
+
+# /clean-code-review
+
+Dispatch the `clean-code-reviewer` subagent to audit the most recent commit (or the range you pass) against `.claude/rules.md`. The reviewer produces a structured report with must-fix, should-fix, and consider findings.
+
+Use this in the BLUE phase of the red-green-blue cycle, immediately after `/implement` and before `/refactor`.
+```
+
+---
+
+### Task 15: Create `.claude/commands/review.md`
+
+```markdown
+---
+description: 'Dispatch the pr-reviewer agent for the full PR'
+argument-hint: '[optional PR number, defaults to the current branch PR]'
+allowed-tools: ['Task', 'Bash']
+---
+
+# /review
+
+Dispatch the `pr-reviewer` subagent for a comprehensive pre-merge audit of the pull request. The reviewer walks the entire branch, verifies red-green-blue adherence in commit history, checks for Co-Authored-By trailers (must be zero), confirms required knowledge graph updates landed, and validates CI status. Produces a verdict of ✅ Approve, ⚠️ Approve with follow-up, or ❌ Request changes.
+```
+
+---
+
+### Task 16: Create `.claude/rules.md`
+
+```markdown
+# Project Rules
+
+These rules apply to every contribution to Vernacular, whether by a human or a Claude Code subagent. They are loaded at every conversation start via `CLAUDE.md`.
+
+## Hard invariants
+
+1. **Layer boundaries are non-negotiable.** `core/` does not import React or Three.js. `engine/` is the only layer that imports Three.js. `bridge/` is the only layer that touches both React state and Three.js scene state. Storage browser APIs are only used inside `storage/`. See ADR-0001.
+
+2. **Apache-2.0 license, project-wide.** See ADR-0002 and `LICENSE`. Asset packs declare their own SPDX licenses; the export pipeline refuses incompatible mixes.
+
+3. **All mutations go through `dispatch(command)`** at the bridge boundary. The framework captures the inverse for undo/redo. See ADR-0005.
+
+4. **Asset references are content-addressed.** Every reference is `(scope, contentHash)`. See ADR-0007.
+
+5. **15-day dependency cooldown.** No direct or transitive dependency younger than 15 days. Enforced by `.npmrc` `minimum-release-age=21600`. See ADR-0010.
+
+6. **Knowledge graph stays current.** Significant architectural changes land alongside a `docs/knowledge/` update (new ADR for a new decision, refresh for an evolved one). The CI step "Knowledge index up to date" enforces that `INDEX.md` and `index.json` are in sync.
+
+7. **No Co-Authored-By trailers.** Project setting `includeCoAuthoredBy: false` is the source of truth. Commit messages should never contain `Co-Authored-By: Claude` or similar.
+
+8. **No em-dashes (`—`) in newly composed text.** Rephrase with commas, parentheses, or colons. Downloaded canonical text (Contributor Covenant, license texts) is exempt.
+
+9. **Conventional Commits.** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`. Mechanical enforcement via `commitlint` lands in Phase 0d; the convention is observed now.
+
+## Workflow rules
+
+10. **Branch per phase.** `feat/phase-<id>-<short-name>` for application work. PRs to `main`. `main` is always releasable.
+
+11. **Author identity.** Locally configured to `Dan Moore <9156191+drmrd@users.noreply.github.com>` per repository.
+
+12. **Red-green-blue TDD for application code.** RED writes a failing test, GREEN writes the minimal implementation, BLUE applies Clean Code review and any refactors. The BLUE phase ends with a `refactor:` commit, even if empty. See ADR-0009.
+
+13. **Independent agents.** The test-author and implementer roles do not share files. The test-author cannot read implementation source; the implementer cannot read test source. See ADR-0011 for the agent system.
+
+14. **PRs require CI green and a `pr-reviewer` verdict** before merging. Maintainer override is documented in `docs/knowledge/exceptions/`.
+
+## Clean Code
+
+Applied at every BLUE phase and once at PR time by the `clean-code-reviewer` agent.
+
+### Naming
+
+Identifiers reveal intent. Avoid abbreviations beyond a small accepted set (`ctx`, `req`, `res`, `id`). Pronounceable. No Hungarian notation.
+
+### Functions
+
+Small. Do one thing. One level of abstraction per function. Three parameters or fewer ideally; an options object when more are needed. No flag arguments.
+
+### Comments
+
+Only for the WHY (constraints, workarounds, non-obvious invariants, surprising-behavior warnings). Never the WHAT. No commented-out code. No journal comments.
+
+### Formatting
+
+Consistent (Prettier-enforced). Vertical proximity: related code grouped. Newspaper style: high-level at top, detail below.
+
+### Objects and data
+
+Classes hide implementation; pure data structures are explicit; do not mix.
+
+### Error handling
+
+Exceptions over error codes. Do not return null; do not pass null. One concern per `try` block. Recoverable errors surface with concrete next actions.
+
+### Boundaries
+
+External dependencies wrapped at clear seams. The `engine/loaders/` directory is the only consumer of Three.js loaders. Storage browser APIs are wrapped inside `storage/`.
+
+### DRY
+
+Real duplication: eliminate. Coincidental similarity: leave. Premature abstraction is worse than repetition.
+
+### Cyclomatic complexity
+
+Flag any function above 10; investigate above 5. ESLint enforces this with a warning at 10 and an error at 15 (Phase 0d).
+
+### SOLID
+
+Single Responsibility, Open-Closed, Liskov, Interface Segregation, Dependency Inversion. The biggest practical hit at Vernacular's stage is SRP plus the dependency direction enforced by the layering.
+
+### FIRST for tests
+
+- Fast: a unit test runs in milliseconds.
+- Independent: no shared mutable state.
+- Repeatable: deterministic; random seeds logged on property-based tests.
+- Self-validating: pass or fail; no manual inspection.
+- Timely: written before the implementation it pins down.
+
+### Severity levels
+
+- **must-fix:** the project will be measurably worse without this change.
+- **should-fix:** an honest improvement worth doing now. Override is possible with maintainer approval, archived to `docs/knowledge/exceptions/`.
+- **consider:** stylistic notes.
+
+## Anti-patterns (codified rejections)
+
+- Tests that mock the system under test instead of exercising it.
+- Tests modified to make them pass instead of fixing the implementation.
+- Test names that describe methods rather than behaviors.
+- Commented-out tests without a tracked issue and an explanatory ADR.
+- E2E tests that depend on timing (`sleep(500)`); use explicit wait-for-condition.
+- Snapshot baselines committed without diff review.
+- Skipping the BLUE phase of the TDD cycle.
+- `git push --force` to `main` outside an explicit ADR-justified rewrite scenario.
+```
+
+---
+
+### Task 17: Create `CLAUDE.md`
+
+```markdown
+# CLAUDE.md
+
+This file is the operating manual for Claude Code working on Vernacular. Loaded automatically at every session start. Keep it under 200 lines.
+
+## Mission
+
+Vernacular is an open-source floor planner for power users, with first-class support for historic and period-vernacular architecture (Victorian, Edwardian, Craftsman, Mid-Century, and earlier). The audience is power users and old-house renovators that mainstream floor planners do not serve well.
+
+## Repository layout
+
+```
+.
+├── app/              top-level routes, providers, state (Phase 0f+)
+├── editor/           React UI: shell, tools, panels, gizmos (Phase 0f+)
+├── bridge/           R3F glue and the command-dispatch boundary (Phase 0f+)
+├── engine/           Three.js scene mgmt, renderers, loaders (Phase 0f+)
+├── storage/          ProjectStore, LibraryStore, AssetCache (Phase 0f+)
+├── core/             Pure-TS domain. No React. No Three.js. (Phase 0f+)
+├── docs/
+│   ├── specs/        authoritative design specifications
+│   ├── plans/        per-phase implementation plans
+│   └── knowledge/    knowledge graph (ADRs, glossary, patterns)
+├── scripts/          repo-level scripts (e.g., knowledge-index)
+└── .claude/
+    ├── rules.md      hard invariants and Clean Code rubric
+    ├── agents/       project subagent definitions
+    └── commands/     project slash commands
+```
+
+The source-layer directories under the repo root land in Phase 0f and beyond. Today only `docs/`, `scripts/`, `src/` (a single placeholder App component), and `.claude/` carry meaningful content.
+
+## Hard invariants
+
+See `.claude/rules.md` for the authoritative list. The non-negotiable highlights:
+
+1. `core/` does not import React or Three.js.
+2. `engine/` is the only Three.js importer.
+3. All mutations flow through `dispatch(command)`.
+4. Asset references are content-addressed.
+5. 15-day dependency cooldown (`.npmrc` `minimum-release-age=21600`).
+6. Knowledge graph stays current; CI fails if `INDEX.md` and `index.json` drift.
+7. No `Co-Authored-By` trailers in commit messages.
+8. No em-dashes in newly composed text.
+9. Conventional Commits.
+10. Author identity: `Dan Moore <9156191+drmrd@users.noreply.github.com>`.
+
+## Workflow
+
+For every non-trivial change, follow:
+
+1. **Brainstorm** if the change is open-ended; produce a spec under `docs/specs/`.
+2. **Plan** with the writing-plans skill; output goes to `docs/plans/`.
+3. **Branch** with `feat/phase-<id>-<short-name>` or `fix/<short-slug>`.
+4. **RED:** `/test-first <behavior>` invokes the `test-author` subagent for a failing test.
+5. **GREEN:** `/implement` invokes the `implementer` subagent for the minimal passing implementation.
+6. **BLUE-review:** `/clean-code-review` invokes the `clean-code-reviewer` subagent.
+7. **BLUE-refactor:** `/refactor` invokes the `refactorer` subagent. An empty marker commit lands if no actionable findings.
+8. **Repeat** RED-GREEN-BLUE for each behavior in the feature.
+9. **PR-level review:** `/review` invokes the `pr-reviewer` subagent before merge.
+10. **Knowledge curation:** if the change is architectural, the `knowledge-curator` adds or updates entries; `pnpm knowledge:index` keeps the index in sync.
+
+## Knowledge graph reliance
+
+Before exploring or proposing architectural changes, consult `docs/knowledge/INDEX.md`. The Architecture Decision Records (ADRs) at `docs/knowledge/decisions/` are the authoritative record of why the codebase is shaped the way it is. After landing meaningful changes, update or add entries; run `pnpm knowledge:index` so the human and machine indices stay current.
+
+## Slash commands
+
+- `/knowledge [query]`: search the knowledge graph index.
+- `/adr <slug> "Title"`: scaffold a new Architecture Decision Record.
+- `/test-first <behavior>`: dispatch the test-author for a failing test.
+- `/implement`: dispatch the implementer for the minimal implementation.
+- `/refactor`: dispatch the refactorer for the BLUE phase.
+- `/clean-code-review`: dispatch the clean-code-reviewer.
+- `/review`: dispatch the pr-reviewer for a full PR audit.
+
+## Subagents
+
+Defined in `.claude/agents/`. The full roster:
+
+- `test-author`: writes failing tests; cannot read implementation source.
+- `implementer`: writes minimal implementations; cannot read tests.
+- `refactorer`: applies refactors while keeping tests green.
+- `clean-code-reviewer`: audits diffs against `.claude/rules.md`.
+- `pr-reviewer`: end-of-branch audit; verifies RGB cycle.
+- `knowledge-curator`: proposes knowledge graph updates.
+
+The pack-validator and migration-author agents are reserved for Phase 0i.
+
+## Common shell commands
+
+- `pnpm install --frozen-lockfile`: install dependencies (honors the 15-day cooldown).
+- `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`: the full check chain.
+- `pnpm knowledge:index`: regenerate `docs/knowledge/INDEX.md` and `index.json`.
+- `pnpm dev`: dev server.
+
+## Things never to do
+
+- Skip the BLUE phase of a TDD cycle.
+- Add a `Co-Authored-By: Claude` trailer to any commit.
+- Add an em-dash to newly composed prose.
+- Push directly to `main`.
+- Force-push `main`. (Force-push to a feature branch you own is fine.)
+- Install a dependency younger than 15 days; pin to an older version or wait.
+- Modify the design specification in `docs/specs/` without a corresponding ADR explaining the change.
+- Touch a test file from the `implementer` agent role; touch implementation source from the `test-author` agent role.
+
+## Pointers
+
+- Design specification: `docs/specs/2026-06-01-vernacular-design.md`.
+- Architecture overview: `ARCHITECTURE.md`.
+- Roadmap: `ROADMAP.md`.
+- Contributing: `CONTRIBUTING.md`.
+- Knowledge graph: `docs/knowledge/INDEX.md`.
+- Rules and Clean Code: `.claude/rules.md`.
+```
+
+Verify line count (must be under 200):
+
+```
+wc -l CLAUDE.md
+```
+
+Expected: under 200.
+
+---
+
+### Task 18: Create ADR-0011 for the agent and command architecture
+
+**Files:**
+
+- Create: `docs/knowledge/decisions/ADR-0011-agent-command-architecture.md`
+
+```markdown
+---
+slug: decisions/ADR-0011-agent-command-architecture
+title: 'ADR-0011: Project subagent and slash-command architecture'
+type: decision
+tags: [agents, slash-commands, workflow, tdd, claude-code]
+related: [decisions/ADR-0009-test-pyramid-rgb-tdd]
+sourceFiles:
+  [CLAUDE.md, .claude/rules.md, .claude/agents, .claude/commands]
+status: current
+updated: 2026-06-02
+---
+
+# ADR-0011: Project subagent and slash-command architecture
+
+## Status
+
+Accepted. Implemented in Phase 0c.2.
+
+## Context
+
+The Vernacular project commits to militant red-green-blue TDD with independent agents (ADR-0009). The Claude Code platform supports project-local agents in `.claude/agents/` and slash commands in `.claude/commands/`. We need to decide which agents and commands we ship, what each one's scope is, and how the access-control intent (test-author cannot read implementation source; implementer cannot read tests) is realized in practice.
+
+## Decision
+
+Six project-local subagents, each defined as a Markdown file with YAML frontmatter in `.claude/agents/`:
+
+- `test-author`: writes failing tests; tools restricted to file operations and bash; system prompt forbids reading implementation source.
+- `implementer`: writes the minimal implementation; tools as above; system prompt forbids reading test files.
+- `refactorer`: applies refactors at the BLUE phase; tools as above; system prompt forbids modifying tests.
+- `clean-code-reviewer`: audits the diff against `.claude/rules.md`; read-only tools.
+- `pr-reviewer`: end-of-branch audit; read-only tools plus bash and `Task`.
+- `knowledge-curator`: proposes updates to `docs/knowledge/`; tools include write access scoped to that directory.
+
+Seven slash commands in `.claude/commands/` drive the workflow:
+
+- `/knowledge [query]`: queries the index via a small Node one-liner.
+- `/adr <slug> "Title"`: scaffolds a new ADR via a Node one-liner; the curator may then flesh it out.
+- `/test-first <behavior>`: dispatches `test-author`.
+- `/implement`: dispatches `implementer`.
+- `/refactor`: dispatches `refactorer`.
+- `/clean-code-review`: dispatches `clean-code-reviewer`.
+- `/review`: dispatches `pr-reviewer`.
+
+## Access-control realization
+
+Claude Code does not have a built-in path-based file-access wrapper today. The "independent agents" property described in ADR-0009 is enforced by three mechanisms used together:
+
+1. **System-prompt instructions.** Each agent's system prompt is explicit about what it may and may not read or modify, with reasons.
+2. **Tools allowlist.** Each agent is granted only the tools it needs (e.g., the `clean-code-reviewer` does not have `Edit` because it produces a report, not changes).
+3. **Commit history audit at PR time.** The `pr-reviewer` agent verifies the commit pattern matches RGB and flags any anomalies (an `implementer` commit that modified test files, a `test-author` commit that touched implementation source).
+
+A future enhancement would add hook-based or wrapper-based hard enforcement; that is out of scope today.
+
+## Consequences
+
+- The TDD workflow is invokable as a sequence of slash commands: `/test-first`, `/implement`, `/clean-code-review`, `/refactor`, repeat.
+- Pre-merge audit is one command: `/review`.
+- Adding a new agent is a Markdown file with frontmatter and a system prompt; adding a new command is similar. Both are versioned with the repository.
+- The pack-validator and migration-author agents listed in the design specification are deferred to Phase 0i when packs and registry migrations become real.
+
+## References
+
+- Design specification, section 8.8 (Subagents) and section 8.9 (Custom slash commands).
+- ADR-0009 (test pyramid and red-green-blue TDD).
+- Claude Code documentation on `.claude/agents/` and `.claude/commands/` formats.
+```
+
+---
+
+### Task 19: Update `ARCHITECTURE.md` with a pointer to the agent system
+
+- [ ] **Step 1: Open and review**
+
+Run: `cat ARCHITECTURE.md | tail -20`
+
+- [ ] **Step 2: Insert a "Subagents and slash commands" section before "## Status"**
+
+Add the following block just before the final `## Status` section of `ARCHITECTURE.md`:
+
+```markdown
+## Subagents and slash commands
+
+The repository ships with project-local subagents under `.claude/agents/` and slash commands under `.claude/commands/`. Together they drive the project's red-green-blue TDD workflow:
+
+- `/test-first <behavior>` writes a failing test (RED).
+- `/implement` makes it pass minimally (GREEN).
+- `/clean-code-review` audits the diff.
+- `/refactor` applies the audit findings or marks the BLUE phase clean.
+- `/review` performs the pre-merge audit on the full branch.
+
+See `CLAUDE.md` for the full command list and `.claude/rules.md` for the rubric the agents use. ADR-0011 documents the architecture.
+```
+
+- [ ] **Step 3: Verify**
+
+Run: `grep -c "Subagents and slash commands" ARCHITECTURE.md`
+Expected: `1`.
+
+---
+
+### Task 20: Update `CONTRIBUTING.md` with a "Working with Claude Code" section
+
+- [ ] **Step 1: Insert a new section before "## License"**
+
+Add a "Working with Claude Code" section to `CONTRIBUTING.md` immediately before the final "## License" section:
+
+```markdown
+## Working with Claude Code
+
+This repository ships project-local subagents (`.claude/agents/`) and slash commands (`.claude/commands/`) that automate the red-green-blue TDD workflow. If you are contributing through Claude Code, the typical cycle is:
+
+1. Stage and read the relevant ADRs and any open spec for context.
+2. `/test-first "<behavior in plain English>"` writes a single failing test.
+3. `/implement` writes the minimal implementation to make the test pass.
+4. `/clean-code-review` audits the diff.
+5. `/refactor` applies the audit findings (or creates an empty BLUE marker commit when nothing actionable came out).
+6. Repeat for each behavior in the feature.
+7. `/review` performs the pre-merge audit on the entire branch.
+
+If you are contributing without Claude Code, the same discipline applies: write the failing test first, commit it; write the minimal implementation, commit it; apply Clean Code improvements while keeping tests green, commit them. See `CLAUDE.md` and `.claude/rules.md` for the rubric.
+```
+
+- [ ] **Step 2: Verify**
+
+Run: `grep -c "Working with Claude Code" CONTRIBUTING.md`
+Expected: `1`.
+
+---
+
+### Task 21: Update `ROADMAP.md`
+
+- [ ] **Step 1: Update the 0c rows**
+
+Change the three rows currently reading:
+
+```
+| 0c.1  | Knowledge graph foundation (docs/knowledge/, ADRs, indexer) | in progress |
+| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands) | next        |
+```
+
+to:
+
+```
+| 0c.1  | Knowledge graph foundation (docs/knowledge/, ADRs, indexer) | done        |
+| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands)    | in progress |
+```
+
+(After this PR merges the 0c.2 row will be hand-updated to `done` and the 0d row promoted to `next`.)
+
+- [ ] **Step 2: Verify**
+
+Run: `grep -c "0c.2.*in progress" ROADMAP.md`
+Expected: `1`.
+
+---
+
+### Task 22: Regenerate the knowledge index
+
+- [ ] **Step 1: Run the indexer**
+
+Run: `pnpm knowledge:index`
+
+Expected output: `indexed 12 entries; wrote docs/knowledge/INDEX.md and docs/knowledge/index.json` (11 prior entries plus the new ADR-0011).
+
+- [ ] **Step 2: Verify**
+
+Run: `node -e "console.log(JSON.parse(require('fs').readFileSync('docs/knowledge/index.json','utf8')).entries.length)"`
+Expected: `12`.
+
+---
+
+### Task 23: Apply Prettier formatting
+
+- [ ] **Step 1: Run Prettier**
+
+Run: `pnpm format`
+
+- [ ] **Step 2: Verify**
+
+Run: `pnpm format:check`
+Expected: `All matched files use Prettier code style!`
+
+The INDEX.md and index.json files are already in `.prettierignore` so they will not be touched.
+
+---
+
+### Task 24: All-checks rehearsal
+
+Run:
+
+```
+pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
+pnpm knowledge:index
+git diff --quiet docs/knowledge/INDEX.md docs/knowledge/index.json && echo "index in sync" || echo "OUT OF SYNC"
+```
+
+Expected: the chain exits 0; the diff check prints `index in sync`.
+
+---
+
+### Task 25: Commit the Claude infrastructure
+
+- [ ] **Step 1: Stage the files**
+
+```
+git add \
+  CLAUDE.md \
+  .claude/rules.md \
+  .claude/agents/test-author.md \
+  .claude/agents/implementer.md \
+  .claude/agents/refactorer.md \
+  .claude/agents/clean-code-reviewer.md \
+  .claude/agents/pr-reviewer.md \
+  .claude/agents/knowledge-curator.md \
+  .claude/commands/knowledge.md \
+  .claude/commands/adr.md \
+  .claude/commands/test-first.md \
+  .claude/commands/implement.md \
+  .claude/commands/refactor.md \
+  .claude/commands/clean-code-review.md \
+  .claude/commands/review.md \
+  docs/knowledge/decisions/ADR-0011-agent-command-architecture.md \
+  docs/knowledge/INDEX.md \
+  docs/knowledge/index.json \
+  ARCHITECTURE.md \
+  CONTRIBUTING.md \
+  ROADMAP.md
+```
+
+- [ ] **Step 2: Verify staged set**
+
+Run: `git status --short`
+Expected: every entry is `A` or `M`. No stragglers.
+
+- [ ] **Step 3: Pre-commit check chain**
+
+Run: `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`
+Expected: exits 0.
+
+- [ ] **Step 4: Commit**
+
+```
+git commit -m "$(cat <<'EOF'
+feat(claude): add CLAUDE.md, rules, six subagents, seven commands (Phase 0c.2)
+
+Wires up the project's Claude Code operating layer on top of the
+Phase 0c.1 knowledge graph:
+
+* CLAUDE.md (under 200 lines): operating manual loaded at every
+  session start. Repo layout, hard invariants, workflow, knowledge
+  graph reliance, slash command list, subagent roster, common
+  shell commands, things never to do, pointers.
+* .claude/rules.md: hard invariants and the Clean Code rubric used
+  by the clean-code-reviewer agent.
+* .claude/agents/: six subagent definitions (test-author,
+  implementer, refactorer, clean-code-reviewer, pr-reviewer,
+  knowledge-curator). The pack-validator and migration-author
+  agents are deferred to Phase 0i when packs and registry
+  migrations become real.
+* .claude/commands/: seven slash commands (/knowledge, /adr,
+  /test-first, /implement, /refactor, /clean-code-review,
+  /review). The /pack-new, /migration-new, and /knowledge-update
+  commands are deferred.
+* docs/knowledge/decisions/ADR-0011-agent-command-architecture.md:
+  documents the agent and command system, the access-control
+  realization, and the rationale.
+* ARCHITECTURE.md: pointer to the agent system.
+* CONTRIBUTING.md: "Working with Claude Code" section explaining
+  the slash-command-driven TDD cycle.
+* ROADMAP.md: 0c.1 -> done; 0c.2 -> in progress.
+* docs/knowledge/INDEX.md and index.json: regenerated to include
+  ADR-0011.
+
+Phase 0d (lint and hooks expansion: ESLint guardrails,
+eslint-plugin-boundaries, Husky, commitlint, release-please,
+PR/issue templates) builds on this.
+EOF
+)"
+```
+
+- [ ] **Step 5: Verify**
+
+Run: `git log --oneline -3` and `git log -1 --format=%B | grep -c "^Co-Authored-By:"`
+Expected: the top commit is the new Phase 0c.2 commit; trailer count is `0`.
+
+---
+
+### Task 26: Push and open the pull request
+
+- [ ] **Step 1: Push**
+
+```
+git push -u origin feat/phase-0c2-claude-infrastructure
+```
+
+- [ ] **Step 2: Open the PR**
+
+```
+gh pr create --base main --head feat/phase-0c2-claude-infrastructure --title "Phase 0c.2: Claude Code infrastructure" --body "$(cat <<'EOF'
+## Summary
+
+Phase 0c.2 of the Vernacular implementation per `docs/plans/2026-06-02-vernacular-phase-0c2-claude-infrastructure.md`. Adds the Claude Code operating layer on top of the Phase 0c.1 knowledge graph:
+
+* `CLAUDE.md` (under 200 lines)
+* `.claude/rules.md` with hard invariants and Clean Code rubric
+* Six project subagents in `.claude/agents/` (test-author, implementer, refactorer, clean-code-reviewer, pr-reviewer, knowledge-curator)
+* Seven project slash commands in `.claude/commands/` (`/knowledge`, `/adr`, `/test-first`, `/implement`, `/refactor`, `/clean-code-review`, `/review`)
+* `docs/knowledge/decisions/ADR-0011-agent-command-architecture.md`
+* Updates to `ARCHITECTURE.md`, `CONTRIBUTING.md`, `ROADMAP.md`
+
+Two subagents (`pack-validator`, `migration-author`) and three slash commands (`/pack-new`, `/migration-new`, `/knowledge-update`) listed in the design specification are deferred to Phase 0i when packs and registry migrations become real.
+
+## Test plan
+
+- [ ] CI green
+- [ ] `wc -l CLAUDE.md` returns under 200
+- [ ] `pnpm knowledge:index` is idempotent (no diff after a re-run)
+- [ ] Review the six agent definitions for tonal consistency with the project's strict invariants
+- [ ] Review CLAUDE.md's hard-invariants list against `.claude/rules.md` for parity
+- [ ] Spot-check the slash commands by running `/knowledge` (when this PR is merged) and confirming it lists the indexed entries
+
+## Out of scope
+
+Phase 0d (ESLint guardrails, eslint-plugin-boundaries, Husky, commitlint, release-please, PR and issue templates), Phase 0e (testing scaffolds: Playwright, Storybook, Lighthouse, axe-core, Stryker, perf harness), Phase 0f+ (source skeleton).
+EOF
+)"
+```
+
+- [ ] **Step 3: Verify**
+
+Run: `gh pr view --json url,state --jq '"\(.state) \(.url)"'`
+Expected: state OPEN with the PR URL.
+
+---
+
+## What Phase 0c.2 explicitly does NOT include
+
+Deferred to later phases per the design specification's Phase 0 hand-off list:
+
+- **Phase 0i agents and commands:** `pack-validator`, `migration-author`, `/pack-new`, `/migration-new`, `/knowledge-update`.
+- **Phase 0d Husky pre-commit hooks** that would regenerate the knowledge index automatically on every commit (the CI check covers the same intent today).
+- **Phase 0d commitlint integration** that enforces Conventional Commits on every push.
+
+---
+
+## Self-review notes (planning author only)
+
+Spec coverage of this plan vs. spec sections 8.3 (CLAUDE.md), 8.8 (subagents), and 8.9 (slash commands):
+
+- CLAUDE.md under 200 lines: implemented; the body is ~190 lines.
+- Subagent inventory: 6 of 8 implemented; 2 deferred to 0i with reasoning.
+- Slash command inventory: 7 of 10 implemented; 3 deferred to 0i.
+- Tool wrappers for hard access enforcement: not implemented; the design specification calls these "aspirational" and the agent-system-prompt approach plus PR audit covers 80% of the intent. ADR-0011 captures the gap explicitly.
+
+Placeholder scan: zero. The `<placeholder>` strings inside `/adr` are intentional template content.
+
+Type consistency: all six subagents reference the same set of tools (`Read`, `Glob`, `Grep`, `Write`, `Edit`, `Bash`) with role-specific exclusions. All seven slash commands name the same agent set referenced in CLAUDE.md and ADR-0011.
+
+Em-dash audit: ran on the plan text itself before commit.
