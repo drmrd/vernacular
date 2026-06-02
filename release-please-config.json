@@ -10,7 +10,9 @@
       "package-name": "vernacular",
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
-      "extra-files": []
+      "extra-files": [],
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true
     }
   },
   "changelog-sections": [
