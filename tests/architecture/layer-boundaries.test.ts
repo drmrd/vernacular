@@ -1,4 +1,5 @@
 // @vitest-environment node
+// ESLint's lintText reads files through Node's fs module, which needs the node environment, not the project-wide jsdom.
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
 
