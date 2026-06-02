@@ -5,9 +5,17 @@
       "slug": "decisions/ADR-0001-six-layer-architecture",
       "title": "ADR-0001: Six-layer codebase architecture",
       "type": "decision",
-      "tags": ["architecture", "layering", "boundaries"],
-      "related": ["decisions/ADR-0004-three-js-r3f-webgpu"],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "tags": [
+        "architecture",
+        "layering",
+        "boundaries"
+      ],
+      "related": [
+        "decisions/ADR-0004-three-js-r3f-webgpu"
+      ],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -15,9 +23,18 @@
       "slug": "decisions/ADR-0002-license-apache-2",
       "title": "ADR-0002: Apache-2.0 license throughout the repository",
       "type": "decision",
-      "tags": ["license", "governance"],
-      "related": ["decisions/ADR-0007-content-addressed-assets"],
-      "sourceFiles": ["LICENSE", "NOTICE", "package.json"],
+      "tags": [
+        "license",
+        "governance"
+      ],
+      "related": [
+        "decisions/ADR-0007-content-addressed-assets"
+      ],
+      "sourceFiles": [
+        "LICENSE",
+        "NOTICE",
+        "package.json"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -25,12 +42,19 @@
       "slug": "decisions/ADR-0003-storage-provider-pattern",
       "title": "ADR-0003: Provider pattern for storage with cloud-sync seam",
       "type": "decision",
-      "tags": ["architecture", "storage", "persistence", "opfs"],
+      "tags": [
+        "architecture",
+        "storage",
+        "persistence",
+        "opfs"
+      ],
       "related": [
         "decisions/ADR-0007-content-addressed-assets",
         "decisions/ADR-0001-six-layer-architecture"
       ],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -38,12 +62,20 @@
       "slug": "decisions/ADR-0004-three-js-r3f-webgpu",
       "title": "ADR-0004: Three.js plus React Three Fiber on WebGPU",
       "type": "decision",
-      "tags": ["architecture", "rendering", "engine", "webgpu", "three.js"],
+      "tags": [
+        "architecture",
+        "rendering",
+        "engine",
+        "webgpu",
+        "three.js"
+      ],
       "related": [
         "decisions/ADR-0001-six-layer-architecture",
         "decisions/ADR-0008-oklab-internal-color"
       ],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -51,9 +83,18 @@
       "slug": "decisions/ADR-0005-command-pattern-undo",
       "title": "ADR-0005: Command pattern with framework-captured inverse",
       "type": "decision",
-      "tags": ["architecture", "commands", "undo-redo", "mutation-discipline"],
-      "related": ["decisions/ADR-0001-six-layer-architecture"],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "tags": [
+        "architecture",
+        "commands",
+        "undo-redo",
+        "mutation-discipline"
+      ],
+      "related": [
+        "decisions/ADR-0001-six-layer-architecture"
+      ],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -61,9 +102,18 @@
       "slug": "decisions/ADR-0006-registry-pattern",
       "title": "ADR-0006: Versioned data-driven registries for typed taxonomy",
       "type": "decision",
-      "tags": ["architecture", "registries", "extensibility", "data-driven"],
-      "related": ["decisions/ADR-0007-content-addressed-assets"],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "tags": [
+        "architecture",
+        "registries",
+        "extensibility",
+        "data-driven"
+      ],
+      "related": [
+        "decisions/ADR-0007-content-addressed-assets"
+      ],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -71,12 +121,20 @@
       "slug": "decisions/ADR-0007-content-addressed-assets",
       "title": "ADR-0007: Content-addressed asset references",
       "type": "decision",
-      "tags": ["architecture", "assets", "references", "integrity", "supply-chain"],
+      "tags": [
+        "architecture",
+        "assets",
+        "references",
+        "integrity",
+        "supply-chain"
+      ],
       "related": [
         "decisions/ADR-0003-storage-provider-pattern",
         "decisions/ADR-0006-registry-pattern"
       ],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -84,9 +142,18 @@
       "slug": "decisions/ADR-0008-oklab-internal-color",
       "title": "ADR-0008: OKLab as the internal color representation",
       "type": "decision",
-      "tags": ["color", "color-science", "paint", "oklab"],
-      "related": ["decisions/ADR-0004-three-js-r3f-webgpu"],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "tags": [
+        "color",
+        "color-science",
+        "paint",
+        "oklab"
+      ],
+      "related": [
+        "decisions/ADR-0004-three-js-r3f-webgpu"
+      ],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -94,9 +161,19 @@
       "slug": "decisions/ADR-0009-test-pyramid-rgb-tdd",
       "title": "ADR-0009: Test pyramid with red-green-blue TDD and independent agents",
       "type": "decision",
-      "tags": ["testing", "tdd", "quality", "clean-code", "agents"],
-      "related": ["decisions/ADR-0001-six-layer-architecture"],
-      "sourceFiles": ["docs/specs/2026-06-01-vernacular-design.md"],
+      "tags": [
+        "testing",
+        "tdd",
+        "quality",
+        "clean-code",
+        "agents"
+      ],
+      "related": [
+        "decisions/ADR-0001-six-layer-architecture"
+      ],
+      "sourceFiles": [
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -104,9 +181,20 @@
       "slug": "decisions/ADR-0010-dependency-cooldown",
       "title": "ADR-0010: 15-day minimum release age for dependencies",
       "type": "decision",
-      "tags": ["supply-chain", "dependencies", "pnpm", "security"],
-      "related": ["decisions/ADR-0002-license-apache-2"],
-      "sourceFiles": [".npmrc", "package.json", "docs/specs/2026-06-01-vernacular-design.md"],
+      "tags": [
+        "supply-chain",
+        "dependencies",
+        "pnpm",
+        "security"
+      ],
+      "related": [
+        "decisions/ADR-0002-license-apache-2"
+      ],
+      "sourceFiles": [
+        ".npmrc",
+        "package.json",
+        "docs/specs/2026-06-01-vernacular-design.md"
+      ],
       "status": "current",
       "updated": "2026-06-02"
     },
@@ -114,7 +202,9 @@
       "slug": "glossary",
       "title": "Glossary",
       "type": "glossary",
-      "tags": ["reference"],
+      "tags": [
+        "reference"
+      ],
       "related": [],
       "sourceFiles": [],
       "status": "current",
