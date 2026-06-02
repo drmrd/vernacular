@@ -222,6 +222,50 @@
       "updated": "2026-06-02"
     },
     {
+      "slug": "decisions/ADR-0012-eslint-guardrails",
+      "title": "ADR-0012: ESLint guardrails and layer boundary enforcement",
+      "type": "decision",
+      "tags": [
+        "linting",
+        "eslint",
+        "clean-code",
+        "boundaries",
+        "code-quality"
+      ],
+      "related": [
+        "decisions/ADR-0001-six-layer-architecture",
+        "decisions/ADR-0009-test-pyramid-rgb-tdd"
+      ],
+      "sourceFiles": [
+        "eslint.config.js",
+        ".claude/rules.md",
+        ".jscpd.json"
+      ],
+      "status": "current",
+      "updated": "2026-06-02"
+    },
+    {
+      "slug": "decisions/ADR-0013-cooldown-exclusions",
+      "title": "ADR-0013: Cooldown exclusions for coordinated-release monorepos and native binaries",
+      "type": "decision",
+      "tags": [
+        "supply-chain",
+        "dependencies",
+        "pnpm",
+        "security",
+        "exclusions"
+      ],
+      "related": [
+        "decisions/ADR-0010-dependency-cooldown"
+      ],
+      "sourceFiles": [
+        ".npmrc",
+        "package.json"
+      ],
+      "status": "current",
+      "updated": "2026-06-02"
+    },
+    {
       "slug": "glossary",
       "title": "Glossary",
       "type": "glossary",
