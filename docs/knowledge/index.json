@@ -199,6 +199,29 @@
       "updated": "2026-06-02"
     },
     {
+      "slug": "decisions/ADR-0011-agent-command-architecture",
+      "title": "ADR-0011: Project subagent and slash-command architecture",
+      "type": "decision",
+      "tags": [
+        "agents",
+        "slash-commands",
+        "workflow",
+        "tdd",
+        "claude-code"
+      ],
+      "related": [
+        "decisions/ADR-0009-test-pyramid-rgb-tdd"
+      ],
+      "sourceFiles": [
+        "CLAUDE.md",
+        ".claude/rules.md",
+        ".claude/agents",
+        ".claude/commands"
+      ],
+      "status": "current",
+      "updated": "2026-06-02"
+    },
+    {
       "slug": "glossary",
       "title": "Glossary",
       "type": "glossary",

@@ -18,8 +18,8 @@ planner.
 | 0a    | Build foundation (TS, Vite, React, Vitest, ESLint, CI)      | done        |
 | 0b    | Documentation surface                                       | done        |
 | 0b.1  | 15-day dependency cooldown (pnpm minimum-release-age)       | done        |
-| 0c.1  | Knowledge graph foundation (docs/knowledge/, ADRs, indexer) | in progress |
-| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands)    | next        |
+| 0c.1  | Knowledge graph foundation (docs/knowledge/, ADRs, indexer) | done        |
+| 0c.2  | Claude Code infrastructure (CLAUDE.md, agents, commands)    | in progress |
 | 0d    | Lint rule expansion, Husky, commitlint, release-please      | pending     |
 | 0e    | Testing scaffolds (Playwright, Storybook, Lighthouse)       | pending     |
 | 0f    | Six-layer source skeleton                                   | pending     |

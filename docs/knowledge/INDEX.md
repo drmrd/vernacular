@@ -2,13 +2,14 @@
 
 # Knowledge Graph Index
 
-Total entries: 11.
+Total entries: 12.
 
 Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. This index is auto-generated; the entries themselves are the source of truth.
 
 ## Tag: `agents`
 
 - [ADR-0009: Test pyramid with red-green-blue TDD and independent agents](decisions/ADR-0009-test-pyramid-rgb-tdd.md) (status: current, updated: 2026-06-02)
+- [ADR-0011: Project subagent and slash-command architecture](decisions/ADR-0011-agent-command-architecture.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `architecture`
 
@@ -26,6 +27,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `boundaries`
 
 - [ADR-0001: Six-layer codebase architecture](decisions/ADR-0001-six-layer-architecture.md) (status: current, updated: 2026-06-02)
+
+## Tag: `claude-code`
+
+- [ADR-0011: Project subagent and slash-command architecture](decisions/ADR-0011-agent-command-architecture.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `clean-code`
 
@@ -123,6 +128,10 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 
 - [ADR-0010: 15-day minimum release age for dependencies](decisions/ADR-0010-dependency-cooldown.md) (status: current, updated: 2026-06-02)
 
+## Tag: `slash-commands`
+
+- [ADR-0011: Project subagent and slash-command architecture](decisions/ADR-0011-agent-command-architecture.md) (status: current, updated: 2026-06-02)
+
 ## Tag: `storage`
 
 - [ADR-0003: Provider pattern for storage with cloud-sync seam](decisions/ADR-0003-storage-provider-pattern.md) (status: current, updated: 2026-06-02)
@@ -135,6 +144,7 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `tdd`
 
 - [ADR-0009: Test pyramid with red-green-blue TDD and independent agents](decisions/ADR-0009-test-pyramid-rgb-tdd.md) (status: current, updated: 2026-06-02)
+- [ADR-0011: Project subagent and slash-command architecture](decisions/ADR-0011-agent-command-architecture.md) (status: current, updated: 2026-06-02)
 
 ## Tag: `testing`
 
@@ -151,3 +161,7 @@ Each entry is a Markdown file with YAML frontmatter under `docs/knowledge/`. Thi
 ## Tag: `webgpu`
 
 - [ADR-0004: Three.js plus React Three Fiber on WebGPU](decisions/ADR-0004-three-js-r3f-webgpu.md) (status: current, updated: 2026-06-02)
+
+## Tag: `workflow`
+
+- [ADR-0011: Project subagent and slash-command architecture](decisions/ADR-0011-agent-command-architecture.md) (status: current, updated: 2026-06-02)
