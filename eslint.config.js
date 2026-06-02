@@ -7,21 +7,24 @@ import unusedImports from 'eslint-plugin-unused-imports'
 import globals from 'globals'
 
 const layerElements = [
-  { type: 'core', pattern: 'core/*' },
-  { type: 'storage', pattern: 'storage/*' },
-  { type: 'engine', pattern: 'engine/*' },
-  { type: 'bridge', pattern: 'bridge/*' },
-  { type: 'editor', pattern: 'editor/*' },
-  { type: 'app', pattern: 'app/*' },
+  { type: 'core', pattern: 'core/**' },
+  { type: 'storage', pattern: 'storage/**' },
+  { type: 'engine', pattern: 'engine/**' },
+  { type: 'bridge', pattern: 'bridge/**' },
+  { type: 'editor', pattern: 'editor/**' },
+  { type: 'app', pattern: 'app/**' },
 ]
 
 const layerRules = [
-  { from: ['core'], allow: [] },
-  { from: ['storage'], allow: ['core'] },
-  { from: ['engine'], allow: ['core', 'storage'] },
-  { from: ['bridge'], allow: ['core', 'storage', 'engine'] },
-  { from: ['editor'], allow: ['core', 'storage', 'engine', 'bridge'] },
-  { from: ['app'], allow: ['core', 'storage', 'engine', 'bridge', 'editor'] },
+  { from: { type: 'core' }, disallow: { to: { type: '*' } } },
+  { from: { type: 'storage' }, allow: { to: { type: 'core' } } },
+  { from: { type: 'engine' }, allow: { to: { type: ['core', 'storage'] } } },
+  { from: { type: 'bridge' }, allow: { to: { type: ['core', 'storage', 'engine'] } } },
+  { from: { type: 'editor' }, allow: { to: { type: ['core', 'storage', 'engine', 'bridge'] } } },
+  {
+    from: { type: 'app' },
+    allow: { to: { type: ['core', 'storage', 'engine', 'bridge', 'editor'] } },
+  },
 ]
 
 export default tseslint.config(
@@ -56,6 +59,7 @@ export default tseslint.config(
     },
     settings: {
       'boundaries/elements': layerElements,
+      'import/resolver': { node: { extensions: ['.ts', '.tsx', '.js', '.jsx'] } },
       'boundaries/include': [
         'core/**',
         'storage/**',
@@ -105,7 +109,7 @@ export default tseslint.config(
       ],
 
       // Layer boundaries
-      'boundaries/element-types': ['error', { default: 'disallow', rules: layerRules }],
+      'boundaries/dependencies': ['error', { default: 'disallow', rules: layerRules }],
     },
   },
   {
