@@ -1,9 +1,12 @@
-# Home Layout Legend
+# Vernacular
 
-Open-source floor planner for power users with a heavy lean toward old houses.
+Open-source floor planner for power users, with first-class support for
+historic and period-vernacular architecture. Built for owners and enthusiasts
+of houses that mainstream floor planners don't represent well: Victorian,
+Edwardian, Craftsman, Mid-Century, and earlier.
 
 > Status: early development (Phase 0). Not yet usable. See
-> [`docs/specs/2026-06-01-home-layout-legend-design.md`](docs/specs/2026-06-01-home-layout-legend-design.md)
+> [`docs/specs/2026-06-01-vernacular-design.md`](docs/specs/2026-06-01-vernacular-design.md)
 > for the design specification and
 > [`docs/plans/`](docs/plans/) for in-progress implementation plans.
 

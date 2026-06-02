@@ -1,4 +1,4 @@
-# Home Layout Legend — Design Specification
+# Vernacular: Design Specification
 
 **Date:** 2026-06-01
 **Status:** Approved for implementation planning
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-**Home Layout Legend (HLL)** is an open-source floor-planning and visualization tool aimed at power users — owners and enthusiasts of homes whose architecture is not well served by mainstream tools like Floorplanner and RoomSketcher. Old houses are a primary lean: Victorian, Edwardian, Craftsman, Mid-Century, and earlier eras have architectural vocabulary (pocket doors, transoms, picture windows, plaster wall thickness, period trim) that commercial floor planners largely ignore. HLL treats this vocabulary as first-class.
+**Vernacular** is an open-source floor-planning and visualization tool aimed at power users: owners and enthusiasts of homes whose architecture is not well served by mainstream tools like Floorplanner and RoomSketcher. The name evokes _vernacular architecture_, the period-native, regional building styles (Victorian, Edwardian, Craftsman, Mid-Century, and earlier) whose vocabulary (pocket doors, transoms, picture windows, plaster wall thickness, period trim) commercial floor planners largely ignore. Vernacular treats this vocabulary as first-class.
 
 **Audience.** Power users / hobbyists. Technical enough to import custom 3D models, willing to invest setup time for output the commercial tools won't produce. Old-house owners, historic-preservation enthusiasts, and renovators planning around real (not idealized) architecture are the heaviest initial audience.
 
@@ -173,7 +173,7 @@ Explicitly **not captured**: OS, browser, user identity, machine UUID. A user-to
 
 ```ts
 interface AssetSource {
-  id: string // 'pack:hll-starter@2.0' | 'user' | 'project' | 'bundled'
+  id: string // 'pack:vernacular-starter@2.0' | 'user' | 'project' | 'bundled'
   manifest(): Promise<SourceManifest>
   fetch(ref: AssetReference): Promise<Blob>
   getThumbnail(ref: AssetReference): Promise<Blob | null>
@@ -186,7 +186,7 @@ interface AssetSource {
 MVP implementations:
 
 - **`BundledSource`** — tiny set shipped with the app build (registries, fonts, placeholder model, missing-asset glyph).
-- **`PackSource`** — versioned asset packs from a CDN. The curated starter library is `pack:hll-starter@1.x.y`.
+- **`PackSource`** — versioned asset packs from a CDN. The curated starter library is `pack:vernacular-starter@1.x.y`.
 - **`UserFilesystemSource`** — user-imported assets in OPFS + IndexedDB metadata index; FileSystemAccess handles where the user opts in.
 - **`ProjectEmbeddedSource`** — assets in the current project's `assets/`.
 
@@ -985,7 +985,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Repo layout matching the 6-layer architecture
 - License: Apache-2.0; all documentation files populated with substantive content
-- Build tooling: Vite (app), `hll-pack` CLI scaffold
+- Build tooling: Vite (app), `vernacular-pack` CLI scaffold
 - TypeScript strict mode; CI (typecheck, lint, test, build, preview deploy)
 - Vitest + integration scaffolds; Playwright scaffold; visual regression scaffold; Lighthouse CI scaffold; axe-core integration
 - Static deploy to canonical URL
@@ -1087,8 +1087,8 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 **Deliverables:**
 
 - Asset pack system (manifest format, sha256 integrity, lazy fetch)
-- `hll-pack` CLI (build, validate, publish; license + dimension sanity checks)
-- `pack:hll-starter@1.0` — curated ~30–50 essential furniture pieces, license-audited
+- `vernacular-pack` CLI (build, validate, publish; license + dimension sanity checks)
+- `pack:vernacular-starter@1.0` — curated ~30–50 essential furniture pieces, license-audited
 - Library browser (categories, era filter, dimension filter, source pack filter, fuzzy search)
 - Furniture placement tool (drag-from-library, snap-to-floor, align-to-wall, rotation gizmo)
 - Custom asset import (glTF/GLB/OBJ/STL with sidecar textures)
@@ -1177,7 +1177,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Paint application (surface-by-surface) via dedicated paint tool
 - Complete `PaintMaterial` shader (base color + finish + color-temperature responsive)
-- `pack:hll-historic-palettes@1.0` — bundled CC0 historic palette, ~50–100 colors, thoroughly provenance-audited, era-tagged
+- `pack:vernacular-historic-palettes@1.0` — bundled CC0 historic palette, ~50–100 colors, thoroughly provenance-audited, era-tagged
 - User palette UI (create/name/describe/name colors, import/export as JSON)
 - Color picker (OKLab-aware, palette browser, recent, fuzzy name search)
 - Finish picker (visually distinguishable in preview)

@@ -1,14 +1,14 @@
-# Home Layout Legend — Phase 0a: Build Foundation Implementation Plan
+# Vernacular: Phase 0a Build Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Establish a minimal, building, tested, CI-green TypeScript + React + Vite skeleton for Home Layout Legend with Apache-2.0 license. Lays the foundation that subsequent Phase 0 plans build on.
+**Goal:** Establish a minimal, building, tested, CI-green TypeScript + React + Vite skeleton for Vernacular with Apache-2.0 license. Lays the foundation that subsequent Phase 0 plans build on.
 
 **Architecture:** Single-package web project. TypeScript strict mode. Vite for dev/build. React 18 for UI. Vitest + Testing Library for unit/component tests (with full TDD discipline on application code). Minimal ESLint + Prettier setup (full Clean Code lint rules land in Phase 0d). One GitHub Actions workflow runs typecheck, lint, test, and build on every push and PR.
 
 **Tech Stack:** pnpm 9, Node 20, TypeScript 5.x, Vite 5.x, React 18.x, Vitest 1.x, @testing-library/react 14.x, ESLint 9.x flat config, Prettier 3.x, GitHub Actions.
 
-**Scope boundary:** This plan does NOT include Three.js, R3F, the 6-layer architecture skeleton, the command dispatcher, registries, Three.js renderer, OPFS/IndexedDB scaffolds, ESLint boundary rules, Husky, knowledge graph, Claude agents, the `hll-pack` CLI, Playwright, Storybook, Lighthouse, or any docs beyond a minimal README. Those land in subsequent Phase 0 plans (0b through 0g).
+**Scope boundary:** This plan does NOT include Three.js, R3F, the 6-layer architecture skeleton, the command dispatcher, registries, Three.js renderer, OPFS/IndexedDB scaffolds, ESLint boundary rules, Husky, knowledge graph, Claude agents, the `vernacular-pack` CLI, Playwright, Storybook, Lighthouse, or any docs beyond a minimal README. Those land in subsequent Phase 0 plans (0b through 0g).
 
 ---
 
@@ -54,7 +54,7 @@ Create the file with the exact content below.
 
 ```json
 {
-  "name": "home-layout-legend",
+  "name": "vernacular",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -82,7 +82,7 @@ Create the file with the exact content below.
 - [ ] **Step 2: Verify file exists and parses as valid JSON**
 
 Run: `node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).name)"`
-Expected output: `home-layout-legend`
+Expected output: `vernacular`
 
 ---
 
@@ -346,11 +346,11 @@ Expected: approximately 202 lines.
 - [ ] **Step 1: Create `NOTICE`**
 
 ```
-Home Layout Legend
-Copyright 2026 The Home Layout Legend Contributors
+Vernacular
+Copyright 2026 The Vernacular Contributors
 
-This product includes software developed by The Home Layout Legend
-Contributors (https://github.com/<TBD-org>/home-layout-legend).
+This product includes software developed by The Vernacular Contributors
+(https://github.com/<TBD-org>/vernacular).
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this product except in compliance with the License.
@@ -370,8 +370,8 @@ Run: `head -2 NOTICE`
 Expected:
 
 ```
-Home Layout Legend
-Copyright 2026 The Home Layout Legend Contributors
+Vernacular
+Copyright 2026 The Vernacular Contributors
 ```
 
 ---
@@ -385,12 +385,15 @@ Copyright 2026 The Home Layout Legend Contributors
 - [ ] **Step 1: Create `README.md`**
 
 ````markdown
-# Home Layout Legend
+# Vernacular
 
-Open-source floor planner for power users with a heavy lean toward old houses.
+Open-source floor planner for power users, with first-class support for
+historic and period-vernacular architecture. Built for owners and enthusiasts
+of houses that mainstream floor planners don't represent well: Victorian,
+Edwardian, Craftsman, Mid-Century, and earlier.
 
 > Status: early development (Phase 0). Not yet usable. See
-> [`docs/specs/2026-06-01-home-layout-legend-design.md`](docs/specs/2026-06-01-home-layout-legend-design.md)
+> [`docs/specs/2026-06-01-vernacular-design.md`](docs/specs/2026-06-01-vernacular-design.md)
 > for the design specification and
 > [`docs/plans/`](docs/plans/) for in-progress implementation plans.
 
@@ -423,7 +426,7 @@ Run: `head -3 README.md`
 Expected:
 ```
 
-# Home Layout Legend
+# Vernacular
 
 Open-source floor planner for power users with a heavy lean toward old houses.
 
@@ -540,7 +543,7 @@ If you see `Cannot find module 'eslint-plugin-react-hooks'` or similar, re-run `
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Home Layout Legend</title>
+    <title>Vernacular</title>
   </head>
   <body>
     <div id="root"></div>
@@ -603,7 +606,7 @@ import { App } from './App'
 describe('App', () => {
   it('renders the application name as a top-level heading', () => {
     render(<App />)
-    const heading = screen.getByRole('heading', { level: 1, name: /home layout legend/i })
+    const heading = screen.getByRole('heading', { level: 1, name: /vernacular/i })
     expect(heading).toBeInTheDocument()
   })
 })
@@ -631,7 +634,7 @@ Create `src/App.tsx`:
 
 ```tsx
 export function App() {
-  return <h1>Home Layout Legend</h1>
+  return <h1>Vernacular</h1>
 }
 ```
 
@@ -945,7 +948,7 @@ EOF
 - [ ] **Step 5: Verify the commit landed**
 
 Run: `git log --oneline -5`
-Expected: the most recent commit is `feat: bootstrap build foundation (Phase 0a)` followed by the existing `docs: initial design specification for Home Layout Legend`.
+Expected: the most recent commit is `feat: bootstrap build foundation (Phase 0a)` followed by the existing `docs: initial design specification for Vernacular`.
 
 - [ ] **Step 6: Verify the working tree is clean**
 
@@ -1006,7 +1009,7 @@ These remain in the spec's Phase 0 scope but are intentionally out of THIS plan.
 - **Phase 0f — Testing scaffolds:** Storybook setup, Playwright setup (Chromium + Firefox + WebKit), `@axe-core/playwright`, visual regression baselines, Lighthouse CI config, performance benchmark harness scaffold, `tests/fixtures/` and `tests/factories/` skeletons, Stryker config (weekly job).
 - **Phase 0g — 6-layer source skeleton + first proof of life:** `core/`, `engine/`, `storage/`, `bridge/`, `editor/`, `app/`, `i18n/`, `packs/` directories with `index.ts` shells, command dispatcher skeleton with one full TDD cycle (write a no-op command, dispatch it, undo it), scene graph skeleton, Three.js + R3F + WebGPU renderer skeleton rendering an empty scene, minimal initial registries (one ElementType, one Finish), Wall entity definition and the "Hello, wall" wall-drawing tool with full red-green-blue cycles, IndexedDB autosave (the simplest persistence), App shell with toolbar/panels placeholders, i18n with one en-US key.
 - **Phase 0h — Storage scaffolds:** `FileSystemFolderProjectStore`, `OPFSProjectStore`, `ZipBundleProjectStore`, `UserLibraryStore`, `AssetCache` skeletons (interfaces + minimal implementations + integration tests), `navigator.storage.persist`/`estimate` wrapping, multi-tab Web Locks coordination.
-- **Phase 0i — Service worker + `hll-pack` CLI:** Service worker for app shell offline caching; `hll-pack` CLI scaffold (build, validate, publish) with manifest schema + sha256 integrity.
+- **Phase 0i — Service worker + `vernacular-pack` CLI:** Service worker for app shell offline caching; `vernacular-pack` CLI scaffold (build, validate, publish) with manifest schema + sha256 integrity.
 - **Phase 0j — Bootstrap PR acceptance:** The complete acceptance per spec §10 Phase 0 — verifies the full Phase 0 deliverable list including the "Hello, wall" end-to-end PR demonstrating red → green → blue with at least one actionable Clean Code finding.
 
 Subsequent plans should reference this file by path and assume the foundation it establishes (TypeScript strict, Vite, React, Vitest, ESLint baseline, Prettier, CI workflow).

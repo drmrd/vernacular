@@ -1,10 +1,10 @@
 {
-  "name": "home-layout-legend",
+  "name": "vernacular",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
-  "description": "Open-source floor planner for power users with a heavy lean toward old houses.",
+  "description": "Open-source floor planner for power users, with first-class support for historic and period-vernacular architecture.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
