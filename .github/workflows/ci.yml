@@ -43,5 +43,14 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Knowledge index up to date
+        run: |
+          pnpm knowledge:index
+          if ! git diff --quiet docs/knowledge/INDEX.md docs/knowledge/index.json; then
+            echo '::error::docs/knowledge/INDEX.md or index.json is out of sync. Run `pnpm knowledge:index` locally and commit the result.'
+            git --no-pager diff docs/knowledge/INDEX.md docs/knowledge/index.json
+            exit 1
+          fi
+
       - name: Build
         run: pnpm build

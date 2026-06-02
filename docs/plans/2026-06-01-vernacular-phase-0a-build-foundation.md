@@ -939,8 +939,6 @@ documentation/norms, CLAUDE.md and agents, the knowledge graph,
 Husky hooks and commit-lint, broader testing scaffolds, the
 6-layer source skeleton, registries, storage scaffolds, and the
 'Hello, wall' end-to-end proof of life.
-
-Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 EOF
 )"
 ```
