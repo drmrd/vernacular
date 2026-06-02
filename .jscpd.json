@@ -17,7 +17,8 @@
     "**/docs/specs/**",
     "**/docs/plans/**",
     "**/docs/knowledge/INDEX.md",
-    "**/docs/knowledge/index.json"
+    "**/docs/knowledge/index.json",
+    "**/.github/workflows/**"
   ],
   "absolute": false,
   "noSymlinks": true,
