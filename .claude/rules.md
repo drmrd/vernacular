@@ -14,25 +14,29 @@ These rules apply to every contribution to Vernacular, whether by a human or a C
 
 5. **15-day dependency cooldown.** No direct or transitive dependency younger than 15 days. Enforced by `.npmrc` `minimum-release-age=21600`. See ADR-0010.
 
-6. **Knowledge graph stays current.** Significant architectural changes land alongside a `docs/knowledge/` update (new ADR for a new decision, refresh for an evolved one). The CI step "Knowledge index up to date" enforces that `INDEX.md` and `index.json` are in sync.
+6. **Local knowledge graph.** Significant architectural changes are summarized as ADRs under the local `docs/knowledge/` tree (gitignored) so Claude has fast context recovery in future sessions. ADRs are a Claude-side cache, not a committed artifact; the authoritative source is the design specification.
 
 7. **No Co-Authored-By trailers.** Project setting `includeCoAuthoredBy: false` is the source of truth. Commit messages should never contain `Co-Authored-By: Claude` or similar.
 
 8. **No em-dashes (`—`) in newly composed text.** Rephrase with commas, parentheses, or colons. Downloaded canonical text (Contributor Covenant, license texts) is exempt.
 
-9. **Conventional Commits.** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`. Mechanical enforcement via `commitlint` lands in Phase 0d; the convention is observed now.
+9. **Conventional Commits.** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`. Mechanical enforcement via `commitlint`.
+
+10. **No cryptic internal identifiers in branch names, commit messages, file names, or persisted document text.** Use descriptive English names. Stable cross-industry conventions like `ADR-NNNN` are fine.
+
+11. **No mentions of other floor-planner products or other commercial tools by name.** Use neutral phrasing such as "mainstream floor planners" when contrast is needed. Avoid any suggestion that Vernacular is a clone of, or inspired by, a specific third-party product.
 
 ## Workflow rules
 
-10. **Branch per phase.** `feat/phase-<id>-<short-name>` for application work. PRs to `main`. `main` is always releasable.
+12. **Descriptive branch names.** `feat/<short-name>` for application work, `fix/<short-name>` for fixes, `docs/<short-name>` for documentation. PRs to `main`. `main` is always releasable.
 
-11. **Author identity.** Locally configured to `Dan Moore <9156191+drmrd@users.noreply.github.com>` per repository.
+13. **Author identity.** Locally configured to `Dan Moore <9156191+drmrd@users.noreply.github.com>` per repository.
 
-12. **Red-green-blue TDD for application code.** RED writes a failing test, GREEN writes the minimal implementation, BLUE applies Clean Code review and any refactors. The BLUE phase ends with a `refactor:` commit, even if empty. See ADR-0009.
+14. **Red-green-blue TDD for application code.** RED writes a failing test, GREEN writes the minimal implementation, BLUE applies Clean Code review and any refactors. The BLUE phase ends with a `refactor:` commit, even if empty. See ADR-0009.
 
-13. **Independent agents.** The test-author and implementer roles do not share files. The test-author cannot read implementation source; the implementer cannot read test source. See ADR-0011 for the agent system.
+15. **Independent agents.** The test-author and implementer roles do not share files. The test-author cannot read implementation source; the implementer cannot read test source. See ADR-0011 for the agent system.
 
-14. **PRs require CI green and a `pr-reviewer` verdict** before merging. Maintainer override is documented in `docs/knowledge/exceptions/`.
+16. **PRs require CI green and a `pr-reviewer` verdict** before merging.
 
 ## Clean Code
 
@@ -72,7 +76,7 @@ Real duplication: eliminate. Coincidental similarity: leave. Premature abstracti
 
 ### Cyclomatic complexity
 
-Flag any function above 10; investigate above 5. ESLint enforces this with a warning at 10 and an error at 15 (Phase 0d).
+Flag any function above 10; investigate above 5. ESLint enforces this with a warning at 10 and an error at 15.
 
 ### SOLID
 
@@ -89,7 +93,7 @@ Single Responsibility, Open-Closed, Liskov, Interface Segregation, Dependency In
 ### Severity levels
 
 - **must-fix:** the project will be measurably worse without this change.
-- **should-fix:** an honest improvement worth doing now. Override is possible with maintainer approval, archived to `docs/knowledge/exceptions/`.
+- **should-fix:** an honest improvement worth doing now. Override is possible with maintainer approval.
 - **consider:** stylistic notes.
 
 ## Anti-patterns (codified rejections)

@@ -25,3 +25,15 @@ vitest.config.d.ts
 
 # jscpd duplicate reports
 reports/
+
+# local knowledge graph (Claude-side workspace; not committed)
+docs/knowledge/
+
+# Storybook
+storybook-static/
+
+# Playwright
+playwright-report/
+test-results/
+e2e/.cache/
+blob-report/

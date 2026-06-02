@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-**Vernacular** is an open-source floor-planning and visualization tool aimed at power users: owners and enthusiasts of homes whose architecture is not well served by mainstream tools like mainstream floor planners. The name evokes _vernacular architecture_, the period-native, regional building styles (Victorian, Edwardian, Craftsman, Mid-Century, and earlier) whose vocabulary (pocket doors, transoms, picture windows, plaster wall thickness, period trim) commercial floor planners largely ignore. Vernacular treats this vocabulary as first-class.
+**Vernacular** is an open-source floor-planning and visualization tool aimed at power users: owners and enthusiasts of homes whose architecture is not well served by mainstream floor planners. The name evokes _vernacular architecture_, the period-native, regional building styles (Victorian, Edwardian, Craftsman, Mid-Century, and earlier) whose vocabulary (pocket doors, transoms, picture windows, plaster wall thickness, period trim) mainstream planners largely ignore. Vernacular treats this vocabulary as first-class.
 
 **Audience.** Power users / hobbyists. Technical enough to import custom 3D models, willing to invest setup time for output the commercial tools won't produce. Old-house owners, historic-preservation enthusiasts, and renovators planning around real (not idealized) architecture are the heaviest initial audience.
 

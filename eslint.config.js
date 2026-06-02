@@ -26,7 +26,17 @@ const layerRules = [
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules', '.superpowers', 'pnpm-lock.yaml'],
+    ignores: [
+      'dist',
+      'coverage',
+      'node_modules',
+      '.superpowers',
+      'pnpm-lock.yaml',
+      'storybook-static',
+      'playwright-report',
+      'test-results',
+      'e2e/.cache',
+    ],
   },
   {
     files: ['**/*.{ts,tsx}'],
@@ -65,6 +75,7 @@ export default tseslint.config(
         { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
         { selector: 'typeLike', format: ['PascalCase'] },
         { selector: 'enumMember', format: ['UPPER_CASE', 'PascalCase'] },
+        { selector: 'import', format: ['camelCase', 'PascalCase'] },
       ],
 
       // Size and shape limits

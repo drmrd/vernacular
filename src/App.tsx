@@ -1,3 +1,7 @@
 export function App() {
-  return <h1>Vernacular</h1>
+  return (
+    <main>
+      <h1>Vernacular</h1>
+    </main>
+  )
 }

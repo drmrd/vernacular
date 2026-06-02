@@ -88,8 +88,7 @@ These will tighten in later phases as the tooling lands. Current state:
 - **Commit messages** follow
   [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
   Common types we use: `feat`, `fix`, `refactor`, `docs`, `chore`,
-  `test`, `style`. Mechanical enforcement via `commitlint` lands in
-  Phase 0d.
+  `test`, `style`. Mechanical enforcement via `commitlint`.
 - **Code style** is enforced by ESLint and Prettier. Run
   `pnpm lint` and `pnpm format:check` before pushing; `pnpm format`
   fixes most issues automatically. The Clean Code rule set (function
@@ -103,14 +102,8 @@ These will tighten in later phases as the tooling lands. Current state:
   use the report to spot refactor opportunities.
 - **Tests** follow a behavior-first style: assert what the user
   experiences, not implementation details. The Vitest test in
-  `src/App.test.tsx` is the current model. Red-green-blue TDD becomes
-  a project-wide discipline in Phase 0c.
-- **Knowledge graph.** Significant architectural or workflow changes
-  should land alongside an entry under `docs/knowledge/` (a new ADR
-  for a new decision, an updated entry for an evolved one, etc.).
-  Run `pnpm knowledge:index` after you add or modify entries so the
-  generated `INDEX.md` and `index.json` reflect the change. CI fails
-  if these are out of date.
+  `src/App.test.tsx` is the current model. Red-green-blue TDD is the
+  project-wide discipline for application code.
 
 ## Pull request checklist
 
@@ -118,10 +111,11 @@ Before requesting review, make sure:
 
 - [ ] `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`
       passes locally.
+- [ ] `pnpm e2e --project=chromium` passes locally (or note that baselines need a CI refresh in your PR description).
 - [ ] The PR description explains what changes and why, and includes a
       test plan.
 - [ ] New user-visible strings (when we have them) go through
-      `i18n.t()` (this becomes relevant from Phase 0g onward).
+      `i18n.t()` (this becomes relevant once the editor surface lands).
 - [ ] You have read and accept the project's license terms (Apache-2.0;
       see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)).
 
@@ -141,20 +135,50 @@ review:
 
 Asset packs (3D models, textures, color palettes) and registry packs
 (element types, eras, trim profiles) ship through a separate workflow
-that will be documented in Phase 0d alongside the publishing CLI. Until
-then, propose contributions of this kind as issues with samples.
+that will be documented alongside the publishing CLI. Until then,
+propose contributions of this kind as issues with samples.
 
 ## Hooks and release engineering
 
 Husky installs three git hooks at `pnpm install` time via the `prepare` script:
 
-- `pre-commit`: runs `lint-staged` on staged files (ESLint plus Prettier). If you touched a knowledge graph entry, the hook regenerates `INDEX.md` and `index.json` and stages them automatically.
+- `pre-commit`: runs `lint-staged` on staged files (ESLint plus Prettier).
 - `commit-msg`: runs `commitlint` over your commit message. Conventional Commits are enforced; non-conforming messages are rejected.
 - `pre-push`: runs the full local check chain (`pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`).
 
 If you need to bypass a hook in a clean-up situation, use `git commit --no-verify`. This is allowed but discouraged; CI will catch most issues that the hook would have.
 
 `release-please` watches `main` and opens release PRs as Conventional Commits accumulate. Merging a release PR cuts a tag and refreshes `CHANGELOG.md`. The current pre-release version is tracked in `.release-please-manifest.json`; the package.json `version` stays at `0.0.0` until the first 1.0.
+
+## Storybook
+
+The component visual documentation surface runs on [Storybook](https://storybook.js.org/) with the `@storybook/react-vite` framework. Start the dev server with `pnpm storybook` (default port `6006`) and build a static deployable copy with `pnpm build-storybook` (output in `storybook-static/`, gitignored).
+
+Each new presentational component should ship with at least one story (`*.stories.tsx` next to the component) covering the default state. Stories double as visual baselines for later phases of the visual-regression suite.
+
+## End-to-end testing
+
+Cross-browser E2E tests use [Playwright](https://playwright.dev/) configured for Chromium, Firefox, and WebKit. Tests live under `e2e/tests/`.
+
+Common commands:
+
+- `pnpm e2e` runs every Playwright test against every configured browser project.
+- `pnpm e2e --project=chromium` scopes a run to Chromium (the CI default for PRs).
+- `pnpm e2e:ui` opens Playwright's interactive UI runner for local debugging.
+
+Accessibility coverage uses `@axe-core/playwright`: each navigation in an E2E test should pair with an axe scan (see `e2e/tests/accessibility.spec.ts` for the pattern). Treat any new violation as a build break: fix the underlying source, do not weaken the assertion.
+
+### Visual regression baselines
+
+`toHaveScreenshot` baselines are committed under `e2e/tests/visual-regression.spec.ts-snapshots/`. Playwright defaults to per-platform baselines (`*-darwin.png`, `*-linux.png`, `*-win32.png`) so each contributor's OS gets its own committed baseline. The macOS baseline is checked in; CI generates and commits the Linux baseline on its first run via a manually-dispatched workflow (or a follow-up PR).
+
+To regenerate a baseline locally after an intentional UI change:
+
+```sh
+pnpm e2e --update-snapshots=missing --project=chromium
+```
+
+Review the regenerated PNG before committing.
 
 ## Working with Claude Code
 

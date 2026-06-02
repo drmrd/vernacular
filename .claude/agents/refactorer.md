@@ -31,7 +31,7 @@ Create an empty commit:
 git commit --allow-empty -m "refactor: clean-code-review pass, no changes needed (cycle <n>)"
 ```
 
-This preserves cycle traceability without amending the green commit. See the Phase 0a foundation work for the pattern.
+This preserves cycle traceability without amending the green commit.
 
 ## Workflow
 
