@@ -42,3 +42,5 @@ export {
 } from './commands/handlers/project-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
+export type { SceneGraph, SceneNode } from './scene/scene-graph'
+export { deriveFloorNode, deriveSceneGraph } from './scene/scene-graph'
