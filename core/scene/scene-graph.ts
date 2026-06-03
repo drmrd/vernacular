@@ -1,5 +1,6 @@
 import type { Floor, Point, Project, Wall } from '../model/types'
 
+// Kind-prefixed ids keep floor and wall node ids globally unique within the scene graph.
 const FLOOR_NODE_PREFIX = 'floor:'
 const WALL_NODE_PREFIX = 'wall:'
 
