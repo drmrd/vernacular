@@ -192,7 +192,7 @@ git commit -m "build(deps): adopt React 19 and add Three.js and React Three Fibe
 
 ---
 
-### Task 3: Engine — build a Three.js scene from the scene graph
+### Task 3: Engine - build a Three.js scene from the scene graph
 
 **Files:** Create `engine/scene/build-scene.ts`, `engine/scene/build-scene.test.ts`.
 
@@ -211,7 +211,7 @@ export type SceneRoot = THREE.Group
 export function buildScene(graph: SceneGraph): SceneRoot
 ```
 
-- [ ] **Step 1: RED — dispatch the `test-author` subagent**
+- [ ] **Step 1: RED - dispatch the `test-author` subagent**
 
 Provide the public surface above, the `SceneGraph`/`SceneNode` shape from `core` (`SceneNode { id: string; kind: 'floor'; name: string; elevation: number }`, `SceneGraph { nodes: SceneNode[] }`), design spec 6.1 and 6.9 (meshes carry their scene-graph entity id in `userData`), and this exact test to author at `engine/scene/build-scene.test.ts`:
 
@@ -245,7 +245,7 @@ describe('buildScene', () => {
 Run: `pnpm exec vitest run engine/scene/build-scene.test.ts`
 Expected: FAIL (`buildScene` not found). Commit: `test: cover building a scene from the scene graph`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer` subagent**
+- [ ] **Step 2: GREEN - dispatch the `implementer` subagent**
 
 Provide the public surface and the failing-test output (not the test). Target implementation at `engine/scene/build-scene.ts`:
 
@@ -276,15 +276,15 @@ export function buildScene(graph: SceneGraph): SceneRoot {
 Run: `pnpm exec vitest run engine/scene/build-scene.test.ts`
 Expected: PASS. Commit: `feat: build a Three.js scene from the scene graph`.
 
-- [ ] **Step 3: BLUE — review and refactor**
+- [ ] **Step 3: BLUE - review and refactor**
 
 Dispatch the `clean-code-reviewer` on the diff, then the `refactorer` to apply any findings while keeping the test green. Close with `git commit --allow-empty -m "refactor: build-scene clean-code pass"` (or a real refactor commit if there were findings).
 
-- [ ] **Step 4: Barrel** — defer; the engine barrel is written once in Task 6.
+- [ ] **Step 4: Barrel** - defer; the engine barrel is written once in Task 6.
 
 ---
 
-### Task 4: Engine — the basic lighting provider
+### Task 4: Engine - the basic lighting provider
 
 **Files:** Create `engine/lighting/lighting-provider.ts`, `engine/lighting/basic-lighting-provider.ts`, `engine/lighting/basic-lighting-provider.test.ts`.
 
@@ -308,7 +308,7 @@ export class BasicLightingProvider implements LightingProvider {
 }
 ```
 
-- [ ] **Step 1: RED — dispatch the `test-author`**
+- [ ] **Step 1: RED - dispatch the `test-author`**
 
 Provide the surface above plus design spec 6.7 (MVP lighting is one directional sun + one hemisphere fill). Test at `engine/lighting/basic-lighting-provider.test.ts`:
 
@@ -334,7 +334,7 @@ describe('BasicLightingProvider', () => {
 Run: `pnpm exec vitest run engine/lighting/basic-lighting-provider.test.ts`
 Expected: FAIL. Commit: `test: cover the basic lighting provider`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer`**
+- [ ] **Step 2: GREEN - dispatch the `implementer`**
 
 First the controller creates `engine/lighting/lighting-provider.ts` with the `LightingProvider` interface above (infrastructure, staged with the implementer's commit). Then the implementer writes `engine/lighting/basic-lighting-provider.ts`:
 
@@ -362,11 +362,11 @@ export class BasicLightingProvider implements LightingProvider {
 Run: `pnpm exec vitest run engine/lighting/basic-lighting-provider.test.ts`
 Expected: PASS. Commit: `feat: add the basic lighting provider`.
 
-- [ ] **Step 3: BLUE** — `clean-code-reviewer` then `refactorer`; close with a `refactor: basic-lighting-provider clean-code pass` marker (empty if no findings).
+- [ ] **Step 3: BLUE** - `clean-code-reviewer` then `refactorer`; close with a `refactor: basic-lighting-provider clean-code pass` marker (empty if no findings).
 
 ---
 
-### Task 5: Engine — render backend detection
+### Task 5: Engine - render backend detection
 
 **Files:** Create `engine/renderer/detect-backend.ts`, `engine/renderer/detect-backend.test.ts`.
 
@@ -380,7 +380,7 @@ export type RenderBackend = 'webgpu' | 'unsupported'
 export function detectRenderBackend(): RenderBackend
 ```
 
-- [ ] **Step 1: RED — dispatch the `test-author`**
+- [ ] **Step 1: RED - dispatch the `test-author`**
 
 Provide the surface and design spec 6.3 (the renderer detects the backend at startup; WebGL2 fallback is a fast-follow). Test at `engine/renderer/detect-backend.test.ts`:
 
@@ -408,7 +408,7 @@ describe('detectRenderBackend', () => {
 Run: `pnpm exec vitest run engine/renderer/detect-backend.test.ts`
 Expected: FAIL. Commit: `test: cover render backend detection`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer`**
+- [ ] **Step 2: GREEN - dispatch the `implementer`**
 
 Target `engine/renderer/detect-backend.ts`:
 
@@ -424,11 +424,11 @@ export function detectRenderBackend(): RenderBackend {
 Run: `pnpm exec vitest run engine/renderer/detect-backend.test.ts`
 Expected: PASS. Commit: `feat: detect the render backend at startup`.
 
-- [ ] **Step 3: BLUE** — `clean-code-reviewer` then `refactorer`; close with `refactor: detect-backend clean-code pass`.
+- [ ] **Step 3: BLUE** - `clean-code-reviewer` then `refactorer`; close with `refactor: detect-backend clean-code pass`.
 
 ---
 
-### Task 6: Engine — the WebGPU renderer factory and barrel (infrastructure)
+### Task 6: Engine - the WebGPU renderer factory and barrel (infrastructure)
 
 **Files:** Create `engine/renderer/create-renderer.ts`, `engine/index.ts`, `engine/README.md`.
 
@@ -499,7 +499,7 @@ git commit -m "feat: add the WebGPU renderer factory and engine barrel"
 
 ---
 
-### Task 7: Bridge — the editor session dispatch boundary
+### Task 7: Bridge - the editor session dispatch boundary
 
 **Files:** Create `bridge/session/editor-session.ts`, `bridge/session/editor-session.test.ts`.
 
@@ -522,7 +522,7 @@ export interface EditorSession {
 export function createEditorSession(project: Project): EditorSession
 ```
 
-- [ ] **Step 1: RED — dispatch the `test-author`**
+- [ ] **Step 1: RED - dispatch the `test-author`**
 
 Provide the surface, design spec 7.1 and 6.1, and the `core` factory/command signatures the test needs: `createEmptyProject({ name, units, era, appVersion })`, `addFloor(name): Command`. Test at `bridge/session/editor-session.test.ts`:
 
@@ -564,7 +564,7 @@ describe('createEditorSession', () => {
 Run: `pnpm exec vitest run bridge/session/editor-session.test.ts`
 Expected: FAIL. Commit: `test: cover the editor session dispatch boundary`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer`**
+- [ ] **Step 2: GREEN - dispatch the `implementer`**
 
 Provide the surface and the `core` barrel exports it needs (`CommandRegistry`, `Dispatcher`, `registerProjectCommands`, `createSceneGraphDeriver`). Target `bridge/session/editor-session.ts`:
 
@@ -606,11 +606,11 @@ export function createEditorSession(project: Project): EditorSession {
 Run: `pnpm exec vitest run bridge/session/editor-session.test.ts`
 Expected: PASS. Commit: `feat: add the editor session dispatch boundary`.
 
-- [ ] **Step 3: BLUE** — `clean-code-reviewer` then `refactorer`; close with `refactor: editor-session clean-code pass`.
+- [ ] **Step 3: BLUE** - `clean-code-reviewer` then `refactorer`; close with `refactor: editor-session clean-code pass`.
 
 ---
 
-### Task 8: Bridge — the editor session React context
+### Task 8: Bridge - the editor session React context
 
 **Files:** Create `bridge/react/editor-session-context.ts`, `bridge/react/editor-session-provider.tsx`, `bridge/react/editor-session-context.test.tsx`.
 
@@ -634,7 +634,7 @@ export interface EditorSessionProviderProps {
 export function EditorSessionProvider(props: EditorSessionProviderProps): JSX.Element
 ```
 
-- [ ] **Step 1: RED — dispatch the `test-author`**
+- [ ] **Step 1: RED - dispatch the `test-author`**
 
 Provide the surface above and `createEditorSession`/`createEmptyProject` signatures. Test at `bridge/react/editor-session-context.test.tsx`:
 
@@ -675,7 +675,7 @@ describe('useEditorSession', () => {
 Run: `pnpm exec vitest run bridge/react/editor-session-context.test.tsx`
 Expected: FAIL. Commit: `test: cover the editor session context`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer`**
+- [ ] **Step 2: GREEN - dispatch the `implementer`**
 
 Target `bridge/react/editor-session-context.ts`:
 
@@ -714,11 +714,11 @@ export function EditorSessionProvider({ session, children }: EditorSessionProvid
 Run: `pnpm exec vitest run bridge/react/editor-session-context.test.tsx`
 Expected: PASS. Commit: `feat: add the editor session React context`.
 
-- [ ] **Step 3: BLUE** — `clean-code-reviewer` then `refactorer`; close with `refactor: editor-session-context clean-code pass`.
+- [ ] **Step 3: BLUE** - `clean-code-reviewer` then `refactorer`; close with `refactor: editor-session-context clean-code pass`.
 
 ---
 
-### Task 9: Bridge — the WebGPU-gated scene canvas
+### Task 9: Bridge - the WebGPU-gated scene canvas
 
 **Files:** Create `bridge/react/webgpu-scene-view.tsx` (controller glue), `bridge/react/scene-canvas.tsx`, `bridge/react/scene-canvas.test.tsx`, `bridge/index.ts`, `bridge/README.md`.
 
@@ -752,7 +752,7 @@ export function WebGPUSceneView() {
 
 If R3F 9's `gl` factory parameter or return type does not line up exactly (the `gl` prop accepts a function returning a renderer or a promise of one), adjust this file's `gl` callback to R3F 9's actual `GLProps` signature; keep the async `createSceneRenderer` delegation so renderer construction stays in `engine/`. This file is verified by `pnpm typecheck`, not by a unit test.
 
-- [ ] **Step 2: RED — dispatch the `test-author` for the fallback behavior**
+- [ ] **Step 2: RED - dispatch the `test-author` for the fallback behavior**
 
 Provide design spec 6.3/6.13 and this surface: `export function SceneCanvas(): JSX.Element` renders an accessible fallback (`role="status"`) when WebGPU is unavailable and the WebGPU canvas otherwise. Test at `bridge/react/scene-canvas.test.tsx` (jsdom has no `navigator.gpu`, so the fallback path is exercised without stubbing):
 
@@ -773,7 +773,7 @@ describe('SceneCanvas', () => {
 Run: `pnpm exec vitest run bridge/react/scene-canvas.test.tsx`
 Expected: FAIL. Commit: `test: cover the scene canvas WebGPU fallback`.
 
-- [ ] **Step 3: GREEN — dispatch the `implementer`**
+- [ ] **Step 3: GREEN - dispatch the `implementer`**
 
 The implementer may read `webgpu-scene-view.tsx` and `engine` (both are implementation source). Target `bridge/react/scene-canvas.tsx`:
 
@@ -798,7 +798,7 @@ export function SceneCanvas() {
 Run: `pnpm exec vitest run bridge/react/scene-canvas.test.tsx`
 Expected: PASS. Commit: `feat: add the WebGPU-gated scene canvas`.
 
-- [ ] **Step 4: BLUE** — `clean-code-reviewer` then `refactorer`; close with `refactor: scene-canvas clean-code pass`.
+- [ ] **Step 4: BLUE** - `clean-code-reviewer` then `refactorer`; close with `refactor: scene-canvas clean-code pass`.
 
 - [ ] **Step 5: Write the bridge barrel and README (infrastructure)**
 
@@ -836,13 +836,13 @@ git commit -m "feat: add the bridge public barrel"
 
 ---
 
-### Task 10: Editor — the shell with placeholder panels
+### Task 10: Editor - the shell with placeholder panels
 
 **Files:** Create `editor/shell/editor-shell.tsx`, `editor/shell/editor-shell.test.tsx`, `editor/index.ts`, `editor/README.md`.
 
 Public surface: `export function EditorShell(): JSX.Element`. It renders four landmarks: a banner toolbar with the `Vernacular` heading, a `Tools` navigation, a `Viewport` main region hosting `SceneCanvas`, and an `Inspector` complementary region. In jsdom `SceneCanvas` renders its fallback, so the shell needs no session provider to render.
 
-- [ ] **Step 1: RED — dispatch the `test-author`**
+- [ ] **Step 1: RED - dispatch the `test-author`**
 
 Provide the surface, design spec 6.13 (semantic UI and ARIA from day one) and 6.5 (split-pane shell). Test at `editor/shell/editor-shell.test.tsx`:
 
@@ -866,7 +866,7 @@ describe('EditorShell', () => {
 Run: `pnpm exec vitest run editor/shell/editor-shell.test.tsx`
 Expected: FAIL. Commit: `test: cover the editor shell regions`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer`**
+- [ ] **Step 2: GREEN - dispatch the `implementer`**
 
 Target `editor/shell/editor-shell.tsx`:
 
@@ -896,7 +896,7 @@ export function EditorShell() {
 Run: `pnpm exec vitest run editor/shell/editor-shell.test.tsx`
 Expected: PASS. Commit: `feat: add the editor shell with placeholder panels`.
 
-- [ ] **Step 3: BLUE** — `clean-code-reviewer` then `refactorer`; close with `refactor: editor-shell clean-code pass`.
+- [ ] **Step 3: BLUE** - `clean-code-reviewer` then `refactorer`; close with `refactor: editor-shell clean-code pass`.
 
 - [ ] **Step 4: Write the editor barrel and README (infrastructure)**
 
@@ -927,13 +927,13 @@ git commit -m "feat: add the editor public barrel"
 
 ---
 
-### Task 11: App — the composition root
+### Task 11: App - the composition root
 
 **Files:** Create `app/app.tsx`, `app/app.test.tsx`, `app/app.stories.tsx`, `app/index.ts`, `app/README.md`. Modify `src/main.tsx`. Delete `src/App.tsx`, `src/App.test.tsx`, `src/App.stories.tsx`.
 
 Public surface: `export function App(): JSX.Element`. It memoizes a session over an empty project and renders the shell inside the provider.
 
-- [ ] **Step 1: RED — dispatch the `test-author`**
+- [ ] **Step 1: RED - dispatch the `test-author`**
 
 Provide the surface and the shell's landmarks. Test at `app/app.test.tsx`:
 
@@ -955,7 +955,7 @@ describe('App', () => {
 Run: `pnpm exec vitest run app/app.test.tsx`
 Expected: FAIL. Commit: `test: cover the app composition root`.
 
-- [ ] **Step 2: GREEN — dispatch the `implementer`**
+- [ ] **Step 2: GREEN - dispatch the `implementer`**
 
 Provide `createEditorSession`/`EditorSessionProvider` (from `bridge`), `EditorShell` (from `editor`), and `createEmptyProject` (from `core`). Target `app/app.tsx`:
 
@@ -992,7 +992,7 @@ export function App() {
 Run: `pnpm exec vitest run app/app.test.tsx`
 Expected: PASS. Commit: `feat: add the app composition root`.
 
-- [ ] **Step 3: BLUE** — `clean-code-reviewer` then `refactorer`; close with `refactor: app clean-code pass`.
+- [ ] **Step 3: BLUE** - `clean-code-reviewer` then `refactorer`; close with `refactor: app clean-code pass`.
 
 - [ ] **Step 4: Re-point the entry, relocate the story, remove the old shell (infrastructure)**
 
