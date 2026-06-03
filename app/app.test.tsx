@@ -20,4 +20,14 @@ describe('App', () => {
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
     expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
   })
+
+  it('shows a recoverable error when the project fails to load', async () => {
+    vi.stubGlobal('navigator', {})
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'load').mockRejectedValue(new Error('disk fault'))
+
+    render(<App store={store} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not open the project/i)
+  })
 })
