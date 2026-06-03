@@ -1,6 +1,7 @@
 import { SceneCanvas, useSceneGraph, useSelectionIds, type AutosaveStatus } from '../../bridge'
 import { PlanView } from '../plan/plan-view'
 import { ToolsPanel } from '../tools/tools-panel'
+import './editor-shell.css'
 
 const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   idle: 'Ready',
