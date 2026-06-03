@@ -103,11 +103,11 @@ export class Dispatcher<S extends object> {
   }
 }
 
-function combineInverses(first: CapturedInverse, second: CapturedInverse): CapturedInverse {
+function combineInverses(newer: CapturedInverse, older: CapturedInverse): CapturedInverse {
   return {
     revert() {
-      first.revert()
-      second.revert()
+      newer.revert()
+      older.revert()
     },
   }
 }
