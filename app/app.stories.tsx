@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { App } from './App'
+import { App } from './app'
 
 const meta: Meta<typeof App> = {
   title: 'App/Shell',
