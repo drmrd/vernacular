@@ -20,6 +20,20 @@ export interface ProjectMeta {
   registryVersions: Record<string, number>
 }
 
+/** A point in floor-plan space, in millimeters. x increases rightward, y increases upward. */
+export interface Point {
+  x: number
+  y: number
+}
+
+export interface Wall {
+  id: string
+  start: Point
+  end: Point
+  /** Wall thickness in millimeters. */
+  thickness: number
+}
+
 export interface Floor {
   id: string
   name: string
@@ -27,6 +41,7 @@ export interface Floor {
   elevation: number
   /** Default ceiling height for rooms on this floor, in millimeters. */
   defaultCeilingHeight: number
+  walls: Wall[]
 }
 
 export interface Project {
