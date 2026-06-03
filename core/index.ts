@@ -21,5 +21,7 @@ export type {
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
 export type { Command, CommandHandler } from './commands/command'
 export { CommandRegistry } from './commands/command-registry'
+export type { DispatcherOptions } from './commands/dispatcher'
+export { DEFAULT_MAX_HISTORY, Dispatcher } from './commands/dispatcher'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
