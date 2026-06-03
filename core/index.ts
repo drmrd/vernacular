@@ -19,5 +19,7 @@ export type {
   Scene3DReference,
 } from './registries/element-types'
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
+export type { Command, CommandHandler } from './commands/command'
+export { CommandRegistry } from './commands/command-registry'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
