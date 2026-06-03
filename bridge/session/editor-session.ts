@@ -18,6 +18,11 @@ export interface EditorSession {
   dispatch(command: Command): void
   undo(): boolean
   redo(): boolean
+  /**
+   * Returns the current project as a read-only view. The reference is live: it
+   * reflects later mutations rather than being a point-in-time snapshot. Callers
+   * must not mutate it; all changes flow through dispatch.
+   */
   getProject(): Readonly<Project>
   /**
    * Returns the derived scene graph, memoized by an internal version so the
@@ -37,9 +42,11 @@ export function createEditorSession(project: Project): EditorSession {
   const derive = createSceneGraphDeriver()
   const listeners = new Set<() => void>()
 
+  // Memoize the derived scene graph by a version counter so getSceneGraph returns
+  // a referentially stable snapshot between mutations (required by useSyncExternalStore).
   let version = 0
-  let snapshotVersion = -1
-  let snapshot: SceneGraph | undefined
+  let snapshot = derive(project)
+  let snapshotVersion = version
 
   const notify = (): void => {
     version += 1
@@ -69,7 +76,7 @@ export function createEditorSession(project: Project): EditorSession {
     },
     getProject: () => project,
     getSceneGraph() {
-      if (snapshot === undefined || snapshotVersion !== version) {
+      if (snapshotVersion !== version) {
         snapshot = derive(project)
         snapshotVersion = version
       }
