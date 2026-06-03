@@ -66,6 +66,18 @@ export class Dispatcher<S extends object> {
   }
 
   private record(entry: HistoryEntry): void {
+    // A coalescing gesture replaces the top entry with the merged command and a
+    // combined inverse that reverts the newer effect before the older one, so a
+    // single undo unwinds the whole gesture.
+    const previous = this.undoStack.at(-1)
+    const merged = previous ? entry.command.coalesceWith?.(previous.command) : undefined
+    if (previous && merged) {
+      this.undoStack[this.undoStack.length - 1] = {
+        command: merged,
+        inverse: combineInverses(entry.inverse, previous.inverse),
+      }
+      return
+    }
     this.undoStack.push(entry)
     if (this.undoStack.length > this.maxHistory) {
       this.undoStack.shift()
@@ -88,5 +100,14 @@ export class Dispatcher<S extends object> {
       })
     }
     return inverse
+  }
+}
+
+function combineInverses(first: CapturedInverse, second: CapturedInverse): CapturedInverse {
+  return {
+    revert() {
+      first.revert()
+      second.revert()
+    },
   }
 }
