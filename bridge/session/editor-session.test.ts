@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createEditorSession } from './editor-session'
-import { addFloor, createEmptyProject, type Project } from '../../core'
+import { addFloor, addWall, createEmptyProject, createFloor, type Project } from '../../core'
 
 function emptyProject(): Project {
   return createEmptyProject({ name: 'Test', units: 'metric', era: 'modern', appVersion: '0.0.0' })
@@ -28,5 +28,56 @@ describe('createEditorSession', () => {
     expect(session.getSceneGraph().nodes).toHaveLength(1)
     expect(session.undo()).toBe(true)
     expect(session.undo()).toBe(false)
+  })
+})
+
+describe('createEditorSession subscription', () => {
+  it('returns a stable scene graph reference until the next mutation', () => {
+    const session = createEditorSession(emptyProject())
+
+    const before = session.getSceneGraph()
+    expect(session.getSceneGraph()).toBe(before)
+
+    session.dispatch(addFloor('Ground'))
+    expect(session.getSceneGraph()).not.toBe(before)
+  })
+
+  it('notifies subscribers on dispatch, undo, and redo, and stops after unsubscribe', () => {
+    const session = createEditorSession(emptyProject())
+    let notifications = 0
+    const unsubscribe = session.subscribe(() => {
+      notifications += 1
+    })
+
+    session.dispatch(addFloor('Ground'))
+    session.undo()
+    session.redo()
+    expect(notifications).toBe(3)
+
+    unsubscribe()
+    session.dispatch(addFloor('Upper'))
+    expect(notifications).toBe(3)
+  })
+
+  it('does not notify when undo or redo is a no-op', () => {
+    const session = createEditorSession(emptyProject())
+    let notifications = 0
+    session.subscribe(() => {
+      notifications += 1
+    })
+
+    expect(session.undo()).toBe(false)
+    expect(session.redo()).toBe(false)
+    expect(notifications).toBe(0)
+  })
+
+  it('dispatches wall commands through the boundary', () => {
+    const project = emptyProject()
+    project.floors = [createFloor('Ground', { id: 'g' })]
+    const session = createEditorSession(project)
+
+    session.dispatch(addWall('g', { x: 0, y: 0 }, { x: 500, y: 0 }))
+
+    expect(session.getSceneGraph().walls).toHaveLength(1)
   })
 })
