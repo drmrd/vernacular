@@ -19,3 +19,29 @@ export type {
   Scene3DReference,
 } from './registries/element-types'
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
+export type { Command, CommandHandler } from './commands/command'
+export { CommandRegistry } from './commands/command-registry'
+export type { DispatcherOptions } from './commands/dispatcher'
+export { DEFAULT_MAX_HISTORY, Dispatcher } from './commands/dispatcher'
+export type {
+  AddFloorParams,
+  RemoveFloorParams,
+  RenameProjectParams,
+  SetFloorCeilingHeightParams,
+} from './commands/handlers/project-commands'
+export {
+  ADD_FLOOR,
+  REMOVE_FLOOR,
+  RENAME_PROJECT,
+  SET_FLOOR_CEILING_HEIGHT,
+  addFloor,
+  registerProjectCommands,
+  removeFloor,
+  renameProject,
+  setFloorCeilingHeight,
+} from './commands/handlers/project-commands'
+export type { CapturedInverse } from './commands/inverse-capture'
+export { captureInverse } from './commands/inverse-capture'
+export type { SceneGraph, SceneNode } from './scene/scene-graph'
+export { deriveFloorNode, deriveSceneGraph } from './scene/scene-graph'
+export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
