@@ -6,13 +6,16 @@ export interface SelectionStore {
   subscribe(listener: () => void): () => void
 }
 
-const EMPTY_SELECTION: ReadonlySet<string> = new Set()
+const EMPTY_SELECTION: ReadonlySet<string> = Object.freeze(new Set<string>())
 
 export function createSelectionStore(): SelectionStore {
   let selected: ReadonlySet<string> = EMPTY_SELECTION
   const listeners = new Set<() => void>()
 
   const setSelected = (next: ReadonlySet<string>): void => {
+    if (next === selected) {
+      return
+    }
     selected = next
     for (const listener of listeners) {
       listener()
