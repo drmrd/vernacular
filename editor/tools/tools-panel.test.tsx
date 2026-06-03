@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ActiveToolProvider } from './active-tool-provider'
+import { useActiveTool } from './active-tool-context'
 import { ToolsPanel } from './tools-panel'
 
 afterEach(cleanup)
@@ -23,5 +24,15 @@ describe('ToolsPanel', () => {
 
     expect(drawButton).toHaveAttribute('aria-pressed', 'false')
     expect(selectButton).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+describe('useActiveTool', () => {
+  it('throws when used outside an ActiveToolProvider', () => {
+    function Orphan() {
+      useActiveTool()
+      return null
+    }
+    expect(() => render(<Orphan />)).toThrow(/ActiveToolProvider/)
   })
 })
