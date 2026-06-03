@@ -20,7 +20,7 @@ export function App() {
 
   return (
     <EditorSessionProvider session={session}>
-      <EditorShell />
+      <EditorShell saveStatus="idle" />
     </EditorSessionProvider>
   )
 }
