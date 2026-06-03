@@ -1,5 +1,6 @@
-import type { SceneGraph, SceneNode } from '../../core'
 import * as THREE from 'three'
+
+import type { SceneGraph, SceneNode } from '../../core'
 
 /** Root group that owns one child group per scene-graph node. */
 export type SceneRoot = THREE.Group
@@ -17,6 +18,7 @@ function buildNodeGroup(node: SceneNode): THREE.Group {
   const group = new THREE.Group()
   group.name = node.id
   group.userData.entityId = node.id
+  // Elevation is in millimetres; world units are millimetres throughout (no scale factor).
   group.position.y = node.elevation
   return group
 }
