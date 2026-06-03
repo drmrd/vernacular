@@ -8,22 +8,22 @@ Foundation work in progress (build foundation, documentation, engineering norms,
 
 ## Foundation work
 
-| Focus                                                                                                                    | Status      |
-| ------------------------------------------------------------------------------------------------------------------------ | ----------- |
-| Build foundation (TS, Vite, React, Vitest, ESLint, CI)                                                                   | done        |
-| Documentation surface                                                                                                    | done        |
-| 15-day dependency cooldown (pnpm minimum-release-age)                                                                    | done        |
-| Knowledge graph foundation (local-only, for Claude context)                                                              | done        |
-| Claude Code infrastructure (CLAUDE.md, agents, commands)                                                                 | done        |
-| ESLint guardrails, layer boundaries, jscpd                                                                               | done        |
-| Husky, commitlint, release-please, PR and issue templates                                                                | done        |
-| Storybook, Playwright, axe-core, visual regression baselines                                                             | done        |
-| Lighthouse CI, Stryker, performance harness, fixtures and factories                                                      | done        |
-| Six-layer source skeleton (core, storage, command dispatch, and scene graph landed; engine, bridge, editor, app pending) | in progress |
-| Wall-drawing proof of life (first user flow)                                                                             | pending     |
-| Storage scaffolds (OPFS, IndexedDB, File System API)                                                                     | pending     |
-| Service worker and pack CLI                                                                                              | pending     |
-| Foundation acceptance                                                                                                    | pending     |
+| Focus                                                                             | Status  |
+| --------------------------------------------------------------------------------- | ------- |
+| Build foundation (TS, Vite, React, Vitest, ESLint, CI)                            | done    |
+| Documentation surface                                                             | done    |
+| 15-day dependency cooldown (pnpm minimum-release-age)                             | done    |
+| Knowledge graph foundation (local-only, for Claude context)                       | done    |
+| Claude Code infrastructure (CLAUDE.md, agents, commands)                          | done    |
+| ESLint guardrails, layer boundaries, jscpd                                        | done    |
+| Husky, commitlint, release-please, PR and issue templates                         | done    |
+| Storybook, Playwright, axe-core, visual regression baselines                      | done    |
+| Lighthouse CI, Stryker, performance harness, fixtures and factories               | done    |
+| Six-layer source skeleton (core, storage, engine, bridge, editor, app all landed) | done    |
+| Wall-drawing proof of life (first user flow)                                      | pending |
+| Storage scaffolds (OPFS, IndexedDB, File System API)                              | pending |
+| Service worker and pack CLI                                                       | pending |
+| Foundation acceptance                                                             | pending |
 
 ## MVP path
 
