@@ -51,4 +51,16 @@ describe('createSelectionStore', () => {
     store.select('wall:b')
     expect(count).toBe(2)
   })
+
+  it('returns the same empty reference across repeated clears', () => {
+    const store = createSelectionStore()
+    store.select('wall:a')
+
+    store.clear()
+    const firstEmpty = store.getSelectedIds()
+    store.clear()
+
+    expect(store.getSelectedIds()).toBe(firstEmpty)
+    expect(firstEmpty.size).toBe(0)
+  })
 })
