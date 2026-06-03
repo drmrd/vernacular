@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, act } from '@testing-library/react'
 import { EditorShell } from './editor-shell'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
 import {
@@ -63,5 +63,16 @@ describe('EditorShell', () => {
 
     expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
     expect(screen.getByText(/no selection/i)).toBeInTheDocument()
+  })
+
+  it('shows the selected state in the inspector', () => {
+    vi.stubGlobal('navigator', {})
+
+    const { selection } = renderShell()
+    act(() => {
+      selection.select('wall:a')
+    })
+
+    expect(screen.getByText(/wall selected/i)).toBeInTheDocument()
   })
 })
