@@ -8,8 +8,12 @@ function emptyProject(): Project {
   return createEmptyProject({ name: 'Test', units: 'metric', era: 'modern', appVersion: '0.0.0' })
 }
 
-beforeEach(() => vi.useFakeTimers())
-afterEach(() => vi.useRealTimers())
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('createAutosave', () => {
   it('saves the project after the debounce window and reports status', async () => {
