@@ -3,7 +3,12 @@ export { createEditorSession } from './session/editor-session'
 export { loadOrCreateProject } from './session/load-or-create-project'
 export type { SelectionStore } from './selection/selection-store'
 export { createSelectionStore } from './selection/selection-store'
-export type { AutosaveStatus, AutosaveOptions, Autosave } from './autosave/create-autosave'
+export type {
+  AutosaveStatus,
+  AutosaveOptions,
+  AutosaveConfig,
+  Autosave,
+} from './autosave/create-autosave'
 export { createAutosave, DEFAULT_AUTOSAVE_DELAY_MS } from './autosave/create-autosave'
 export { useEditorSession } from './react/editor-session-context'
 export type { EditorSessionProviderProps } from './react/editor-session-provider'

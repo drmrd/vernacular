@@ -12,18 +12,20 @@ export interface AutosaveOptions {
   onStatusChange?: (status: AutosaveStatus) => void
 }
 
+export interface AutosaveConfig extends AutosaveOptions {
+  session: EditorSession
+  store: ProjectStore
+  projectId: string
+}
+
 export interface Autosave {
   dispose(): void
 }
 
-export function createAutosave(
-  session: EditorSession,
-  store: ProjectStore,
-  projectId: string,
-  options: AutosaveOptions = {},
-): Autosave {
-  const delayMs = options.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
-  const report = options.onStatusChange ?? noop
+export function createAutosave(config: AutosaveConfig): Autosave {
+  const { session, store, projectId } = config
+  const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
+  const report = config.onStatusChange ?? noop
   let timer: ReturnType<typeof setTimeout> | undefined
 
   const persist = (): void => {

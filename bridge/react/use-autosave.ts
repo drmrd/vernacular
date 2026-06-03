@@ -11,7 +11,7 @@ export function useAutosave(
 ): AutosaveStatus {
   const [status, setStatus] = useState<AutosaveStatus>('idle')
   useEffect(() => {
-    const autosave = createAutosave(session, store, projectId, { onStatusChange: setStatus })
+    const autosave = createAutosave({ session, store, projectId, onStatusChange: setStatus })
     return () => autosave.dispose()
   }, [session, store, projectId])
   return status

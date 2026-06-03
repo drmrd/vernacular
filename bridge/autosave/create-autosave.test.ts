@@ -20,7 +20,10 @@ describe('createAutosave', () => {
     const session = createEditorSession(emptyProject())
     const store = new InMemoryProjectStore()
     const statuses: string[] = []
-    const autosave = createAutosave(session, store, 'current', {
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
       delayMs: 500,
       onStatusChange: (status) => statuses.push(status),
     })
@@ -39,7 +42,7 @@ describe('createAutosave', () => {
     const session = createEditorSession(emptyProject())
     const store = new InMemoryProjectStore()
     const saveSpy = vi.spyOn(store, 'save')
-    const autosave = createAutosave(session, store, 'current', { delayMs: 500 })
+    const autosave = createAutosave({ session, store, projectId: 'current', delayMs: 500 })
 
     session.dispatch(addFloor('Ground'))
     await vi.advanceTimersByTimeAsync(200)
@@ -56,7 +59,7 @@ describe('createAutosave', () => {
     const session = createEditorSession(emptyProject())
     const store = new InMemoryProjectStore()
     const saveSpy = vi.spyOn(store, 'save')
-    const autosave = createAutosave(session, store, 'current', { delayMs: 500 })
+    const autosave = createAutosave({ session, store, projectId: 'current', delayMs: 500 })
 
     autosave.dispose()
     session.dispatch(addFloor('Ground'))
@@ -69,7 +72,10 @@ describe('createAutosave', () => {
     const session = createEditorSession(emptyProject())
     const store = new InMemoryProjectStore()
     const statuses: string[] = []
-    const autosave = createAutosave(session, store, 'current', {
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
       delayMs: 500,
       onStatusChange: (status) => statuses.push(status),
     })
