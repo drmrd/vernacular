@@ -1,10 +1,21 @@
-export type { EraId, Floor, Project, ProjectMeta, SchemaVersion, UnitSystem } from './model/types'
-export type { NewFloorOptions, NewProjectOptions } from './model/factories'
+export type {
+  EraId,
+  Floor,
+  Point,
+  Project,
+  ProjectMeta,
+  SchemaVersion,
+  UnitSystem,
+  Wall,
+} from './model/types'
+export type { NewFloorOptions, NewProjectOptions, NewWallOptions } from './model/factories'
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_WALL_THICKNESS_MM,
   createEmptyProject,
   createFloor,
+  createWall,
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
@@ -40,8 +51,10 @@ export {
   renameProject,
   setFloorCeilingHeight,
 } from './commands/handlers/project-commands'
+export type { AddWallParams } from './commands/handlers/wall-commands'
+export { ADD_WALL, addWall, registerWallCommands } from './commands/handlers/wall-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
-export type { SceneGraph, SceneNode } from './scene/scene-graph'
-export { deriveFloorNode, deriveSceneGraph } from './scene/scene-graph'
+export type { SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
+export { deriveFloorNode, deriveSceneGraph, deriveWallNode } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyProject } from '../core'
 import { InMemoryProjectStore } from './in-memory-project-store'
+import { ProjectNotFoundError } from './project-store'
 
 function sampleProject() {
   return createEmptyProject({
@@ -27,6 +28,7 @@ describe('InMemoryProjectStore', () => {
   it('throws when loading an unknown id', async () => {
     const store = new InMemoryProjectStore()
     await expect(store.load('missing')).rejects.toThrow('No project stored')
+    await expect(store.load('missing')).rejects.toBeInstanceOf(ProjectNotFoundError)
   })
 
   it('deletes a project', async () => {
