@@ -26,6 +26,7 @@ export function hitTestWalls(
   let bestDistance = tolerance
   for (const wall of walls) {
     const distance = distanceToSegment(point, wall.start, wall.end)
+    // <= so that on equal distance the later (more recently drawn) wall wins.
     if (distance <= bestDistance) {
       bestDistance = distance
       bestId = wall.id
