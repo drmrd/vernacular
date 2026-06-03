@@ -130,4 +130,12 @@ export default tseslint.config(
       'no-magic-numbers': 'off',
     },
   },
+  {
+    files: ['**/registries/**/*.ts'],
+    rules: {
+      // Registries are declarative data tables; numeric material parameters are
+      // inherent data, not unexplained constants.
+      'no-magic-numbers': 'off',
+    },
+  },
 )
