@@ -35,9 +35,14 @@ describe('deriveSceneGraph', () => {
 
 describe('deriveSceneGraph walls', () => {
   it('derives a namespaced wall node per wall, carrying its floor id and geometry', () => {
-    const project = projectWithFloors()
     const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })
-    project.floors[0]!.walls = [wall]
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      era: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]
 
     const graph = deriveSceneGraph(project)
 
