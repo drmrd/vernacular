@@ -92,9 +92,19 @@
 .plan-view {
   outline: 1px solid #cbd5e1;
   background-color: #ffffff;
-  /* 200 mm grid at the default 0.08 px/mm plan scale = 16 px graph paper. */
+  /*
+   * Graph paper at the default 0.08 px/mm plan scale: a 200 mm minor grid (16 px)
+   * under a heavier 1 m major grid (80 px) every five cells for quick scale reading.
+   * Major lines are listed first so they paint over the minor lines where they meet.
+   */
   background-image:
+    linear-gradient(#d7dee8 1px, transparent 1px),
+    linear-gradient(90deg, #d7dee8 1px, transparent 1px),
     linear-gradient(#eef2f7 1px, transparent 1px),
     linear-gradient(90deg, #eef2f7 1px, transparent 1px);
-  background-size: 16px 16px;
+  background-size:
+    80px 80px,
+    80px 80px,
+    16px 16px,
+    16px 16px;
 }
