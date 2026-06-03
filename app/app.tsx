@@ -15,6 +15,7 @@ import { version as appVersion } from '../package.json'
 
 const DEFAULT_PROJECT_ID = 'current'
 
+// createEmptyProject starts with no floors; the app seeds a ground floor so the wall tool has a target.
 function createInitialProject(): Project {
   const project = createEmptyProject({
     name: 'Untitled project',
@@ -30,21 +31,36 @@ export interface AppProps {
   projectId?: string
 }
 
-export function App({ store: providedStore, projectId = DEFAULT_PROJECT_ID }: AppProps = {}) {
+export function App({ store: providedStore, projectId = DEFAULT_PROJECT_ID }: AppProps) {
   const store = useMemo(() => providedStore ?? createDefaultProjectStore(), [providedStore])
   const [session, setSession] = useState<EditorSession | null>(null)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    void loadOrCreateProject(store, projectId, createInitialProject).then((project) => {
-      if (!cancelled) {
-        setSession(createEditorSession(project))
-      }
-    })
+    void loadOrCreateProject(store, projectId, createInitialProject)
+      .then((project) => {
+        if (!cancelled) {
+          setSession(createEditorSession(project))
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause : new Error('Failed to load the project'))
+        }
+      })
     return () => {
       cancelled = true
     }
   }, [store, projectId])
+
+  if (error !== null) {
+    return (
+      <main aria-label="Error">
+        <p role="alert">Could not open the project. Reload the page to try again.</p>
+      </main>
+    )
+  }
 
   if (session === null) {
     return (
