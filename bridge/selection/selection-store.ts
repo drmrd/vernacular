@@ -1,0 +1,34 @@
+export interface SelectionStore {
+  getSelectedIds(): ReadonlySet<string>
+  isSelected(id: string): boolean
+  select(id: string): void
+  clear(): void
+  subscribe(listener: () => void): () => void
+}
+
+const EMPTY_SELECTION: ReadonlySet<string> = new Set()
+
+export function createSelectionStore(): SelectionStore {
+  let selected: ReadonlySet<string> = EMPTY_SELECTION
+  const listeners = new Set<() => void>()
+
+  const setSelected = (next: ReadonlySet<string>): void => {
+    selected = next
+    for (const listener of listeners) {
+      listener()
+    }
+  }
+
+  return {
+    getSelectedIds: () => selected,
+    isSelected: (id) => selected.has(id),
+    select: (id) => setSelected(new Set([id])),
+    clear: () => setSelected(EMPTY_SELECTION),
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+}
