@@ -38,15 +38,15 @@ describe('addWall', () => {
     const project = projectWithFloor()
     const dispatcher = dispatcherFor(project)
     dispatcher.dispatch(addWall('g', { x: 0, y: 0 }, { x: 1000, y: 0 }))
-    const drawnId = project.floors[0]?.walls[0]?.id
+    const drawnId = project.floors[0]!.walls[0]!.id
 
     dispatcher.undo()
     dispatcher.redo()
 
-    expect(project.floors[0]?.walls[0]?.id).toBe(drawnId)
+    expect(project.floors[0]!.walls[0]!.id).toBe(drawnId)
   })
 
-  it('leaves other floors untouched and carries a stable command type', () => {
+  it('leaves other floors untouched', () => {
     const project = projectWithFloor()
     project.floors = [...project.floors, createFloor('Upper', { id: 'u' })]
     const dispatcher = dispatcherFor(project)
@@ -54,6 +54,9 @@ describe('addWall', () => {
     dispatcher.dispatch(addWall('g', { x: 0, y: 0 }, { x: 1, y: 1 }))
 
     expect(project.floors[1]?.walls).toHaveLength(0)
+  })
+
+  it('carries a stable command type', () => {
     expect(addWall('g', { x: 0, y: 0 }, { x: 1, y: 1 }).type).toBe(ADD_WALL)
   })
 })
