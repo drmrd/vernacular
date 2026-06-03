@@ -4,6 +4,7 @@ import type { ProjectStore, ProjectSummary } from './project-store'
 /**
  * Map-backed ProjectStore for tests and the not-yet-wired app shell. Durable
  * implementations (filesystem, OPFS, zip) land with the storage-scaffolds work.
+ * Projects are cloned on save and load so callers cannot mutate stored state.
  */
 export class InMemoryProjectStore implements ProjectStore {
   private readonly projects = new Map<string, Project>()
@@ -17,11 +18,11 @@ export class InMemoryProjectStore implements ProjectStore {
     if (project === undefined) {
       throw new Error(`No project stored under id "${id}"`)
     }
-    return project
+    return structuredClone(project)
   }
 
   async save(id: string, project: Project): Promise<void> {
-    this.projects.set(id, project)
+    this.projects.set(id, structuredClone(project))
   }
 
   async delete(id: string): Promise<void> {
