@@ -34,5 +34,22 @@ describe('InMemoryProjectStore', () => {
     await store.save('p1', sampleProject())
     await store.delete('p1')
     expect(await store.list()).toEqual([])
+    await expect(store.load('p1')).rejects.toThrow('No project stored')
+  })
+
+  it('isolates stored state from later mutation of the saved input', async () => {
+    const store = new InMemoryProjectStore()
+    const project = sampleProject()
+    await store.save('p1', project)
+    project.meta.name = 'Mutated'
+    expect((await store.load('p1')).meta.name).toBe('Sample')
+  })
+
+  it('isolates stored state from mutation of a loaded project', async () => {
+    const store = new InMemoryProjectStore()
+    await store.save('p1', sampleProject())
+    const loaded = await store.load('p1')
+    loaded.meta.name = 'Mutated'
+    expect((await store.load('p1')).meta.name).toBe('Sample')
   })
 })
