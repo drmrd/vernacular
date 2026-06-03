@@ -1,5 +1,5 @@
 import type { Project } from '../core'
-import type { ProjectStore, ProjectSummary } from './project-store'
+import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from './project-store'
 
 /**
  * Map-backed ProjectStore for tests and the not-yet-wired app shell. Durable
@@ -16,7 +16,7 @@ export class InMemoryProjectStore implements ProjectStore {
   async load(id: string): Promise<Project> {
     const project = this.projects.get(id)
     if (project === undefined) {
-      throw new Error(`No project stored under id "${id}"`)
+      throw new ProjectNotFoundError(id)
     }
     return structuredClone(project)
   }

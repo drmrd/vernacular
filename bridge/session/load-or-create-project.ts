@@ -1,10 +1,10 @@
-import type { ProjectStore } from '../../storage'
+import { ProjectNotFoundError, type ProjectStore } from '../../storage'
 import type { Project } from '../../core'
 
 /**
- * Loads the saved project, falling back to a freshly created one when the store
- * has nothing under the id. The store rejects an absent id, so a failed load is
- * treated as "no saved project yet" rather than a hard error.
+ * Loads the saved project, falling back to a freshly created one only when the
+ * store reports no project under the id. Any other failure (corrupt data, I/O
+ * fault) propagates rather than silently discarding a recoverable project.
  */
 export async function loadOrCreateProject(
   store: ProjectStore,
@@ -13,7 +13,10 @@ export async function loadOrCreateProject(
 ): Promise<Project> {
   try {
     return await store.load(projectId)
-  } catch {
-    return createFallback()
+  } catch (error) {
+    if (error instanceof ProjectNotFoundError) {
+      return createFallback()
+    }
+    throw error
   }
 }
