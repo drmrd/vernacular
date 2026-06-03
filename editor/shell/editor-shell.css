@@ -83,9 +83,10 @@
   cursor: pointer;
 }
 
+/* Darker than the wall-selection accent so white label text clears WCAG AA (4.5:1). */
 .tools-panel button[aria-pressed='true'] {
-  border-color: #1a7fd4;
-  background: #1a7fd4;
+  border-color: #1670c9;
+  background: #1670c9;
   color: #ffffff;
 }
 
