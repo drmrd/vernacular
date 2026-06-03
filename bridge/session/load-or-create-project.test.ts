@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { loadOrCreateProject } from './load-or-create-project'
 import { InMemoryProjectStore } from '../../storage'
 import { createEmptyProject, type Project } from '../../core'
@@ -34,5 +34,12 @@ describe('loadOrCreateProject', () => {
     const project = await loadOrCreateProject(store, 'current', fallback)
 
     expect(project.meta.name).toBe('Saved')
+  })
+
+  it('propagates a load failure that is not a missing project', async () => {
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'load').mockRejectedValue(new Error('disk fault'))
+
+    await expect(loadOrCreateProject(store, 'current', fallback)).rejects.toThrow('disk fault')
   })
 })
