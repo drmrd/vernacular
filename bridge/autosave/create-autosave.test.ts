@@ -8,14 +8,14 @@ function emptyProject(): Project {
   return createEmptyProject({ name: 'Test', units: 'metric', era: 'modern', appVersion: '0.0.0' })
 }
 
-beforeEach(() => {
-  vi.useFakeTimers()
-})
-afterEach(() => {
-  vi.useRealTimers()
-})
-
 describe('createAutosave', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('saves the project after the debounce window and reports status', async () => {
     const session = createEditorSession(emptyProject())
     const store = new InMemoryProjectStore()
@@ -63,5 +63,21 @@ describe('createAutosave', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(saveSpy).not.toHaveBeenCalled()
+  })
+
+  it('reports no status after dispose', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const statuses: string[] = []
+    const autosave = createAutosave(session, store, 'current', {
+      delayMs: 500,
+      onStatusChange: (status) => statuses.push(status),
+    })
+
+    autosave.dispose()
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(statuses).toEqual([])
   })
 })
