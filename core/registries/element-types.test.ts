@@ -9,9 +9,13 @@ describe('builtin element types', () => {
     expect(builtinElementTypes.version).toBe(ELEMENT_TYPE_REGISTRY_VERSION)
   })
 
-  it('carries both a 2D symbol and a 3D builder for each entry', () => {
+  it('wires each entry to its 2D symbol and 3D builder', () => {
     const wall = getEntry(builtinElementTypes, 'straight-wall')
-    expect(wall?.plan2D.symbol).toBeTruthy()
-    expect(wall?.scene3D.builder).toBeTruthy()
+    expect(wall?.plan2D.symbol).toBe('wall-line')
+    expect(wall?.scene3D.builder).toBe('extruded-wall')
+
+    const door = getEntry(builtinElementTypes, 'single-swing-door')
+    expect(door?.plan2D.symbol).toBe('door-swing')
+    expect(door?.scene3D.builder).toBe('door-frame')
   })
 })
