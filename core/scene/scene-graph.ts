@@ -1,18 +1,27 @@
-import type { Floor, Project } from '../model/types'
+import type { Floor, Point, Project, Wall } from '../model/types'
 
-/** Namespaces scene-node ids by source-entity kind so ids stay globally unique. */
 const FLOOR_NODE_PREFIX = 'floor:'
+const WALL_NODE_PREFIX = 'wall:'
 
 export interface SceneNode {
-  /** Stable, kind-namespaced id derived from the source entity id. */
   id: string
   kind: 'floor'
   name: string
   elevation: number
 }
 
+export interface WallSceneNode {
+  id: string
+  kind: 'wall'
+  floorId: string
+  start: Point
+  end: Point
+  thickness: number
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
+  walls: WallSceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -24,9 +33,23 @@ export function deriveFloorNode(floor: Floor): SceneNode {
   }
 }
 
+export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
+  return {
+    id: `${WALL_NODE_PREFIX}${wall.id}`,
+    kind: 'wall',
+    floorId: floor.id,
+    start: wall.start,
+    end: wall.end,
+    thickness: wall.thickness,
+  }
+}
+
 /** Pure projection of the project model into a normalized scene graph. */
 export function deriveSceneGraph(project: Project): SceneGraph {
   return {
     nodes: project.floors.map(deriveFloorNode),
+    walls: project.floors.flatMap((floor) =>
+      floor.walls.map((wall) => deriveWallNode(floor, wall)),
+    ),
   }
 }
