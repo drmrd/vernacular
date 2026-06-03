@@ -26,7 +26,6 @@ const MIN_WALL_PIXELS = 1
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
-  ctx.lineCap = 'round'
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
   }
@@ -35,6 +34,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
   const from = worldToScreen(wall.start, options.viewport)
   const to = worldToScreen(wall.end, options.viewport)
+  ctx.lineCap = 'round'
   ctx.lineWidth = Math.max(MIN_WALL_PIXELS, wall.thickness * options.viewport.scale)
   ctx.strokeStyle = options.selectedIds.has(wall.id) ? SELECTED_WALL_COLOR : WALL_COLOR
   ctx.beginPath()
