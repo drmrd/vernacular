@@ -38,6 +38,11 @@ function clickCanvasAt(canvas: HTMLElement, x: number, y: number) {
   fireEvent.pointerDown(canvas, { clientX: rect.left + x, clientY: rect.top + y })
 }
 
+function moveCanvasTo(canvas: HTMLElement, x: number, y: number) {
+  const rect = canvas.getBoundingClientRect()
+  fireEvent.pointerMove(canvas, { clientX: rect.left + x, clientY: rect.top + y })
+}
+
 export const DrawWallSlowMotion: Story = {
   name: 'Draw wall (slow motion)',
   render: () => <DemoApp />,
@@ -48,6 +53,11 @@ export const DrawWallSlowMotion: Story = {
     await step('Draw a wall with two clicks', async () => {
       await wait(SLOW_MO_MS)
       clickCanvasAt(canvas, WALL_START_X, WALL_Y)
+      // Sweep the cursor between the clicks so the rubber-band preview is visible.
+      await wait(SLOW_MO_MS)
+      moveCanvasTo(canvas, WALL_MID_X, WALL_Y)
+      await wait(SLOW_MO_MS)
+      moveCanvasTo(canvas, WALL_END_X, WALL_Y)
       await wait(SLOW_MO_MS)
       clickCanvasAt(canvas, WALL_END_X, WALL_Y)
     })
