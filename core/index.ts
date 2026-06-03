@@ -12,3 +12,10 @@ export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
 export { FINISH_REGISTRY_VERSION, builtinFinishes } from './registries/finishes'
+export type {
+  ElementCategory,
+  ElementType,
+  Plan2DSymbol,
+  Scene3DReference,
+} from './registries/element-types'
+export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
