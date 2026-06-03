@@ -39,52 +39,85 @@ export function createEditorSession(project: Project): EditorSession {
   registerProjectCommands(registry)
   registerWallCommands(registry)
   const dispatcher = new Dispatcher<Project>(project, registry)
-  const derive = createSceneGraphDeriver()
-  const listeners = new Set<() => void>()
+  const notifier = createChangeNotifier()
+  const sceneGraph = createMemoizedSceneGraph(project)
 
-  // Memoize the derived scene graph by a version counter so getSceneGraph returns
-  // a referentially stable snapshot between mutations (required by useSyncExternalStore).
-  let version = 0
-  let snapshot = derive(project)
-  let snapshotVersion = version
-
-  const notify = (): void => {
-    version += 1
-    for (const listener of listeners) {
-      listener()
-    }
+  const onChange = (): void => {
+    sceneGraph.invalidate()
+    notifier.notify()
   }
 
   return {
     dispatch(command) {
       dispatcher.dispatch(command)
-      notify()
+      onChange()
     },
     undo() {
       const changed = dispatcher.undo()
       if (changed) {
-        notify()
+        onChange()
       }
       return changed
     },
     redo() {
       const changed = dispatcher.redo()
       if (changed) {
-        notify()
+        onChange()
       }
       return changed
     },
     getProject: () => project,
-    getSceneGraph() {
+    getSceneGraph: sceneGraph.get,
+    subscribe: notifier.subscribe,
+  }
+}
+
+interface ChangeNotifier {
+  subscribe(listener: () => void): () => void
+  notify(): void
+}
+
+function createChangeNotifier(): ChangeNotifier {
+  const listeners = new Set<() => void>()
+  return {
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    notify() {
+      for (const listener of listeners) {
+        listener()
+      }
+    },
+  }
+}
+
+interface MemoizedSceneGraph {
+  get(): SceneGraph
+  invalidate(): void
+}
+
+/**
+ * Memoizes the derived scene graph by a version counter so `get` returns a
+ * referentially stable snapshot between mutations (required by
+ * useSyncExternalStore). `invalidate` is called on each change event.
+ */
+function createMemoizedSceneGraph(project: Project): MemoizedSceneGraph {
+  const derive = createSceneGraphDeriver()
+  let version = 0
+  let snapshot = derive(project)
+  let snapshotVersion = version
+
+  return {
+    get() {
       if (snapshotVersion !== version) {
         snapshot = derive(project)
         snapshotVersion = version
       }
       return snapshot
     },
-    subscribe(listener) {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
+    invalidate() {
+      version += 1
     },
   }
 }
