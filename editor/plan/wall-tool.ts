@@ -9,6 +9,8 @@ export interface WallToolResult {
   command?: Command
 }
 
+// Exact equality is intentional: a zero-length wall only arises from clicking the
+// same pixel twice, which maps to identical world coordinates. Snap tolerance is Phase 1.
 function samePoint(a: Point, b: Point): boolean {
   return a.x === b.x && a.y === b.y
 }
