@@ -15,13 +15,18 @@ export interface PlanDrawingContext {
   fill(): void
 }
 
+export interface PreviewSegment {
+  start: Point
+  end: Point
+}
+
 export interface DrawPlanOptions {
   walls: WallSceneNode[]
   viewport: Viewport
   width: number
   height: number
   selectedIds: ReadonlySet<string>
-  preview?: { start: Point; end: Point }
+  preview?: PreviewSegment
 }
 
 const WALL_COLOR = '#222222'
@@ -31,6 +36,7 @@ const MIN_WALL_PIXELS = 1
 const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2
+const LINE_CAP = 'round' as const
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
@@ -45,7 +51,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
   const from = worldToScreen(wall.start, options.viewport)
   const to = worldToScreen(wall.end, options.viewport)
-  ctx.lineCap = 'round'
+  ctx.lineCap = LINE_CAP
   ctx.lineWidth = Math.max(MIN_WALL_PIXELS, wall.thickness * options.viewport.scale)
   ctx.strokeStyle = options.selectedIds.has(wall.id) ? SELECTED_WALL_COLOR : WALL_COLOR
   ctx.beginPath()
@@ -54,22 +60,26 @@ function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPla
   ctx.stroke()
 }
 
-function drawPreview(
-  ctx: PlanDrawingContext,
-  preview: { start: Point; end: Point },
-  viewport: Viewport,
-): void {
+function drawPreview(ctx: PlanDrawingContext, preview: PreviewSegment, viewport: Viewport): void {
   const start = worldToScreen(preview.start, viewport)
   const end = worldToScreen(preview.end, viewport)
-  ctx.lineCap = 'round'
+  drawPreviewLine(ctx, start, end)
+  drawStartMarker(ctx, start)
+}
+
+function drawPreviewLine(ctx: PlanDrawingContext, start: Point, end: Point): void {
+  ctx.lineCap = LINE_CAP
   ctx.lineWidth = PREVIEW_LINE_WIDTH
   ctx.strokeStyle = PREVIEW_COLOR
   ctx.beginPath()
   ctx.moveTo(start.x, start.y)
   ctx.lineTo(end.x, end.y)
   ctx.stroke()
+}
+
+function drawStartMarker(ctx: PlanDrawingContext, center: Point): void {
   ctx.fillStyle = PREVIEW_COLOR
   ctx.beginPath()
-  ctx.arc(start.x, start.y, START_MARKER_RADIUS, 0, FULL_CIRCLE)
+  ctx.arc(center.x, center.y, START_MARKER_RADIUS, 0, FULL_CIRCLE)
   ctx.fill()
 }
