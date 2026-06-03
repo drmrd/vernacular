@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createEditorSession } from './editor-session'
-import { addFloor, addWall, createEmptyProject, createFloor, type Project } from '../../core'
+import { addFloor, addWall, createEmptyProject, type Project } from '../../core'
 
 function emptyProject(): Project {
   return createEmptyProject({ name: 'Test', units: 'metric', era: 'modern', appVersion: '0.0.0' })
@@ -72,11 +72,11 @@ describe('createEditorSession subscription', () => {
   })
 
   it('dispatches wall commands through the boundary', () => {
-    const project = emptyProject()
-    project.floors = [createFloor('Ground', { id: 'g' })]
-    const session = createEditorSession(project)
+    const session = createEditorSession(emptyProject())
+    session.dispatch(addFloor('Ground'))
+    const floorId = session.getProject().floors[0]!.id
 
-    session.dispatch(addWall('g', { x: 0, y: 0 }, { x: 500, y: 0 }))
+    session.dispatch(addWall(floorId, { x: 0, y: 0 }, { x: 500, y: 0 }))
 
     expect(session.getSceneGraph().walls).toHaveLength(1)
   })
