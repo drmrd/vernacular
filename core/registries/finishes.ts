@@ -2,7 +2,6 @@ import { createRegistry, type Registry, type RegistryEntry } from './registry'
 
 /** A surface finish mapped to material-parameter presets. See design spec 6.8. */
 export interface Finish extends RegistryEntry {
-  id: string
   roughness: number
   sheen: number
   specular: number
