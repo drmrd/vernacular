@@ -20,8 +20,8 @@
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
     "esModuleInterop": true,
-    "types": ["vitest/globals", "@testing-library/jest-dom"]
+    "types": ["vitest/globals", "@testing-library/jest-dom", "@webgpu/types"]
   },
-  "include": ["src", "tests", "core", "storage"],
+  "include": ["src", "tests", "core", "storage", "engine", "bridge", "editor", "app"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -1,0 +1,8 @@
+export type { SceneRoot } from './scene/build-scene'
+export { buildScene } from './scene/build-scene'
+export type { LightingProvider } from './lighting/lighting-provider'
+export { BasicLightingProvider } from './lighting/basic-lighting-provider'
+export type { RenderBackend } from './renderer/detect-backend'
+export { detectRenderBackend } from './renderer/detect-backend'
+export type { SceneRendererOptions } from './renderer/create-renderer'
+export { createSceneRenderer } from './renderer/create-renderer'
