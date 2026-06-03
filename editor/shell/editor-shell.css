@@ -1,0 +1,111 @@
+/*
+ * Minimal proof-of-life styling for the editor shell. The plan canvas keeps its
+ * intrinsic 800x600 size (no width/height override) so screen-to-world mapping
+ * stays correct; only an outline and a graph-paper background make it visible.
+ * Richer theming and a responsive, pannable canvas arrive with the 2D core.
+ */
+
+.editor-shell {
+  display: grid;
+  grid-template-columns: 11rem 1fr 15rem;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'toolbar toolbar toolbar'
+    'tools viewport inspector';
+  gap: 0.75rem;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 0.75rem;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: #1e293b;
+}
+
+.editor-shell__toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.editor-shell__toolbar h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.editor-shell__toolbar p {
+  margin: 0;
+  color: #475569;
+}
+
+.editor-shell__tools {
+  grid-area: tools;
+}
+
+.editor-shell__viewport {
+  grid-area: viewport;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.editor-shell__inspector {
+  grid-area: inspector;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 0.75rem;
+}
+
+.editor-shell__preview {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.tools-panel {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tools-panel button {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.3rem;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+/* Darker than the wall-selection accent so white label text clears WCAG AA (4.5:1). */
+.tools-panel button[aria-pressed='true'] {
+  border-color: #1670c9;
+  background: #1670c9;
+  color: #ffffff;
+}
+
+.plan-view {
+  outline: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  /*
+   * Graph paper at the default 0.08 px/mm plan scale: a 200 mm minor grid (16 px)
+   * under a heavier 1 m major grid (80 px) every five cells for quick scale reading.
+   * Major lines are listed first so they paint over the minor lines where they meet.
+   */
+  background-image:
+    linear-gradient(#d7dee8 1px, transparent 1px),
+    linear-gradient(90deg, #d7dee8 1px, transparent 1px),
+    linear-gradient(#eef2f7 1px, transparent 1px),
+    linear-gradient(90deg, #eef2f7 1px, transparent 1px);
+  background-size:
+    80px 80px,
+    80px 80px,
+    16px 16px,
+    16px 16px;
+}

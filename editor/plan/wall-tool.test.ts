@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { advanceWallTool, IDLE_WALL_TOOL } from './wall-tool'
+import { advanceWallTool, wallPreviewSegment, IDLE_WALL_TOOL } from './wall-tool'
 import { ADD_WALL, type AddWallParams, type Command } from '../../core'
 
 describe('advanceWallTool', () => {
@@ -28,5 +28,17 @@ describe('advanceWallTool', () => {
 
     expect(result.state).toEqual(IDLE_WALL_TOOL)
     expect(result.command).toBeUndefined()
+  })
+})
+
+describe('wallPreviewSegment', () => {
+  it('previews from the anchored start to the cursor while drawing and nothing while idle', () => {
+    const drawing = advanceWallTool(IDLE_WALL_TOOL, { x: 100, y: 100 }, 'g').state
+
+    expect(wallPreviewSegment(drawing, { x: 500, y: 240 })).toEqual({
+      start: { x: 100, y: 100 },
+      end: { x: 500, y: 240 },
+    })
+    expect(wallPreviewSegment(IDLE_WALL_TOOL, { x: 500, y: 240 })).toBeUndefined()
   })
 })

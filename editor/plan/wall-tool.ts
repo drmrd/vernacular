@@ -28,3 +28,13 @@ export function advanceWallTool(
   }
   return { state: IDLE_WALL_TOOL, command: addWall(floorId, state.start, point) }
 }
+
+export function wallPreviewSegment(
+  state: WallToolState,
+  point: Point,
+): { start: Point; end: Point } | undefined {
+  if (state.phase === 'drawing') {
+    return { start: state.start, end: point }
+  }
+  return undefined
+}
