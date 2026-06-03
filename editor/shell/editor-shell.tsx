@@ -20,7 +20,7 @@ export function EditorShell({ saveStatus }: EditorShellProps) {
     <div className="editor-shell">
       <header className="editor-shell__toolbar" role="banner">
         <h1>Vernacular</h1>
-        <p>Walls: {graph.walls.length}</p>
+        <p aria-live="polite">Walls: {graph.walls.length}</p>
         <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
       </header>
       <nav className="editor-shell__tools" aria-label="Tools">
