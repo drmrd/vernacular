@@ -4,7 +4,7 @@ export interface RegistryEntry {
 
 export interface Registry<T extends RegistryEntry> {
   version: number
-  entries: Record<string, T>
+  entries: Readonly<Record<string, T>>
 }
 
 export function createRegistry<T extends RegistryEntry>(
