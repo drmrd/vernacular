@@ -21,7 +21,7 @@ Foundation work in progress (build foundation, documentation, engineering norms,
 | Lighthouse CI, Stryker, performance harness, fixtures and factories               | done    |
 | Six-layer source skeleton (core, storage, engine, bridge, editor, app all landed) | done    |
 | Wall-drawing proof of life (first user flow)                                      | done    |
-| Storage scaffolds (OPFS, IndexedDB, File System API)                              | pending |
+| Storage scaffolds (OPFS, IndexedDB, File System API)                              | done    |
 | Service worker and pack CLI                                                       | pending |
 | Foundation acceptance                                                             | pending |
 
