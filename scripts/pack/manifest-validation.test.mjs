@@ -52,8 +52,17 @@ function validAsset() {
 
 describe('validatePackManifest assets', () => {
   it('exposes the asset kinds from the specification', () => {
-    expect(ASSET_KINDS).toContain('furniture')
-    expect(ASSET_KINDS).toContain('preview-only')
+    expect(ASSET_KINDS).toEqual([
+      'furniture',
+      'architectural-element',
+      'trim-profile',
+      'stair-component',
+      'material',
+      'texture',
+      'underlay-image',
+      'palette',
+      'preview-only',
+    ])
   })
 
   it('rejects an assets field that is not an array', () => {
