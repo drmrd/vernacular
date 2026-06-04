@@ -13,3 +13,9 @@ export {
   summarizeStorageCapabilities,
 } from './storage-capabilities'
 export type { StorageCapabilities, StorageProbeHost } from './storage-capabilities'
+export { registerServiceWorker } from './service-worker/register-service-worker'
+export type {
+  ServiceWorkerContainerLike,
+  ServiceWorkerRegistrationOutcome,
+  RegisterServiceWorkerOptions,
+} from './service-worker/register-service-worker'
