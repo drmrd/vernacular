@@ -78,3 +78,30 @@ describe('validatePackManifest assets', () => {
     expect(result).toEqual({ valid: true, errors: [] })
   })
 })
+
+describe('validatePackManifest dimensions', () => {
+  it('requires a dimensions object on each asset', () => {
+    const asset = { ...validAsset() }
+    delete asset.dimensions
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+    expect(result.errors.some((message) => message.includes('dimensions'))).toBe(true)
+  })
+
+  it('rejects non-positive, non-finite, and absurdly large dimensions', () => {
+    const cases = [
+      { width: 0, depth: 10, height: 10 },
+      { width: 10, depth: -5, height: 10 },
+      { width: 10, depth: 10, height: Number.POSITIVE_INFINITY },
+      { width: 10, depth: 10, height: 1_000_000 },
+    ]
+
+    for (const dimensions of cases) {
+      const result = validatePackManifest({
+        ...validManifest(),
+        assets: [{ ...validAsset(), dimensions }],
+      })
+      expect(result.valid).toBe(false)
+    }
+  })
+})
