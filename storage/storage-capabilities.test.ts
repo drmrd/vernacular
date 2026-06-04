@@ -39,4 +39,24 @@ describe('probeStorageCapabilities', () => {
       estimatedQuotaBytes: null,
     })
   })
+
+  it('falls back to safe defaults when persisted() and estimate() reject', async () => {
+    const host: StorageProbeHost = {
+      navigator: {
+        storage: {
+          getDirectory: () => Promise.resolve({}),
+          persisted: () => Promise.reject(new Error('blocked')),
+          estimate: () => Promise.reject(new Error('blocked')),
+        },
+      },
+      indexedDB: {},
+    }
+
+    const capabilities = await probeStorageCapabilities(host)
+
+    expect(capabilities.opfs).toBe(true)
+    expect(capabilities.indexedDb).toBe(true)
+    expect(capabilities.persisted).toBe(false)
+    expect(capabilities.estimatedQuotaBytes).toBeNull()
+  })
 })
