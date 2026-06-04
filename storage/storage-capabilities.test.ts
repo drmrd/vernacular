@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isStorageDegraded,
   probeStorageCapabilities,
+  summarizeStorageCapabilities,
   type StorageCapabilities,
   type StorageProbeHost,
 } from './storage-capabilities'
@@ -88,5 +89,25 @@ describe('isStorageDegraded', () => {
 
   it('is false when IndexedDB is available', () => {
     expect(isStorageDegraded(capabilities({ indexedDb: true }))).toBe(false)
+  })
+})
+
+describe('summarizeStorageCapabilities', () => {
+  it('renders each capability and the quota on one line', () => {
+    const summary = summarizeStorageCapabilities(
+      capabilities({ opfs: true, indexedDb: true, estimatedQuotaBytes: 5_000_000 }),
+    )
+
+    expect(summary).toBe(
+      'Storage capabilities: OPFS yes, IndexedDB yes, File System Access no, ' +
+        'persisted no, quota 5000000 bytes',
+    )
+  })
+
+  it('renders an unknown quota when the estimate is null', () => {
+    const summary = summarizeStorageCapabilities(capabilities())
+
+    expect(summary).toContain('quota unknown')
+    expect(summary).toContain('IndexedDB no')
   })
 })
