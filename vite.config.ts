@@ -1,9 +1,27 @@
 /// <reference types="vitest" />
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const rootDir = fileURLToPath(new URL('.', import.meta.url))
+
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(rootDir, 'index.html'),
+        serviceWorker: resolve(rootDir, 'src/service-worker.ts'),
+      },
+      output: {
+        // Emit the worker at a stable root path (/service-worker.js) so its scope
+        // covers the whole app; hash every other entry as usual.
+        entryFileNames: (chunk) =>
+          chunk.name === 'serviceWorker' ? 'service-worker.js' : 'assets/[name]-[hash].js',
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
@@ -25,6 +43,7 @@ export default defineConfig({
         '**/*.test.{ts,tsx}',
         '**/*.stories.tsx',
         'src/main.tsx',
+        'src/service-worker.ts',
         'src/setupTests.ts',
         'engine/renderer/create-renderer.ts',
         'bridge/react/webgpu-scene-view.tsx',

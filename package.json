@@ -16,6 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "knowledge:index": "node scripts/knowledge-index.mjs",
+    "pack:build": "node scripts/pack/vernacular-pack.mjs build",
+    "pack:validate": "node scripts/pack/vernacular-pack.mjs validate",
     "dup": "jscpd --silent .",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build",

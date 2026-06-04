@@ -1,0 +1,20 @@
+{
+  "packId": "vernacular-starter",
+  "version": "1.0.0",
+  "license": "CC0-1.0",
+  "attribution": "Vernacular project",
+  "eras": ["mid-century"],
+  "categories": ["seating"],
+  "assets": [
+    {
+      "contentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "name": "Example chair",
+      "kind": "furniture",
+      "license": "CC0-1.0",
+      "attribution": "Vernacular project",
+      "eras": ["mid-century"],
+      "categories": ["seating"],
+      "dimensions": { "width": 500, "depth": 520, "height": 800 }
+    }
+  ]
+}
