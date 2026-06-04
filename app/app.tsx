@@ -9,7 +9,13 @@ import {
   type EditorSession,
 } from '../bridge'
 import { ActiveToolProvider, EditorShell } from '../editor'
-import { createDefaultProjectStore, type ProjectStore } from '../storage'
+import {
+  createDefaultProjectStore,
+  isStorageDegraded,
+  probeStorageCapabilities,
+  summarizeStorageCapabilities,
+  type ProjectStore,
+} from '../storage'
 import { createEmptyProject, createFloor, type Project } from '../core'
 import { version as appVersion } from '../package.json'
 
@@ -24,6 +30,13 @@ function createInitialProject(): Project {
     appVersion,
   })
   return { ...project, floors: [createFloor('Ground')] }
+}
+
+async function warnIfStorageDegraded(): Promise<void> {
+  const capabilities = await probeStorageCapabilities()
+  if (isStorageDegraded(capabilities)) {
+    console.warn(summarizeStorageCapabilities(capabilities))
+  }
 }
 
 export interface AppProps {
@@ -53,6 +66,12 @@ export function App({ store: providedStore, projectId = DEFAULT_PROJECT_ID }: Ap
       cancelled = true
     }
   }, [store, projectId])
+
+  // Storage capabilities are a fixed property of the host environment, so probe
+  // once at mount rather than on any prop change.
+  useEffect(() => {
+    void warnIfStorageDegraded()
+  }, [])
 
   if (error !== null) {
     return (

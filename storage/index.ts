@@ -7,3 +7,9 @@ export {
   IndexedDbProjectStore,
   createDefaultProjectStore,
 } from './indexeddb/indexeddb-project-store'
+export {
+  probeStorageCapabilities,
+  isStorageDegraded,
+  summarizeStorageCapabilities,
+} from './storage-capabilities'
+export type { StorageCapabilities, StorageProbeHost } from './storage-capabilities'
