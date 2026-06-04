@@ -76,3 +76,8 @@ export async function probeStorageCapabilities(
     estimatedQuotaBytes: await readEstimatedQuotaBytes(storage),
   }
 }
+
+/** Report whether the host lacks any durable backend (neither OPFS nor IndexedDB). */
+export function isStorageDegraded(capabilities: StorageCapabilities): boolean {
+  return !capabilities.opfs && !capabilities.indexedDb
+}
