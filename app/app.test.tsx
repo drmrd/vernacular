@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, cleanup, waitFor, act } from '@testing-library/react'
 import { App } from './app'
 import { InMemoryProjectStore } from '../storage'
 
@@ -48,6 +48,7 @@ describe('App', () => {
     await waitFor(() =>
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('Storage capabilities')),
     )
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 
   it('stays silent when storage is healthy', async () => {
@@ -57,6 +58,9 @@ describe('App', () => {
     render(<App store={new InMemoryProjectStore()} />)
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    // Flush the storage-probe microtask chain so the negative assertion is deterministic.
+    await act(async () => {})
+
     expect(warn).not.toHaveBeenCalled()
   })
 })

@@ -67,6 +67,8 @@ export function App({ store: providedStore, projectId = DEFAULT_PROJECT_ID }: Ap
     }
   }, [store, projectId])
 
+  // Storage capabilities are a fixed property of the host environment, so probe
+  // once at mount rather than on any prop change.
   useEffect(() => {
     void warnIfStorageDegraded()
   }, [])
