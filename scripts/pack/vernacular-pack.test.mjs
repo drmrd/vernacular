@@ -31,3 +31,35 @@ describe('runPackCli success', () => {
     expect(cliDeps.error).not.toHaveBeenCalled()
   })
 })
+
+describe('runPackCli failures', () => {
+  it('returns exit code 1 and reports each error for an invalid manifest', async () => {
+    const cliDeps = deps({ assets: [] })
+
+    const code = await runPackCli(['build', 'packs/broken'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Invalid pack manifest'))
+  })
+
+  it('returns exit code 1 when the manifest cannot be read', async () => {
+    const cliDeps = {
+      readManifest: vi.fn(() => Promise.reject(new Error('ENOENT'))),
+      log: vi.fn(),
+      error: vi.fn(),
+    }
+
+    const code = await runPackCli(['validate', 'packs/missing'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Could not read manifest'))
+  })
+
+  it('prints usage and returns exit code 2 for an unknown or incomplete command', async () => {
+    const cliDeps = deps(validManifest())
+
+    expect(await runPackCli(['publish', 'packs/example'], cliDeps)).toBe(2)
+    expect(await runPackCli(['validate'], cliDeps)).toBe(2)
+    expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Usage'))
+  })
+})
