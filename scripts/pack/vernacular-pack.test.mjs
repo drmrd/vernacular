@@ -55,10 +55,16 @@ describe('runPackCli failures', () => {
     expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Could not read manifest'))
   })
 
-  it('prints usage and returns exit code 2 for an unknown or incomplete command', async () => {
+  it('prints usage and returns exit code 2 for an unknown command', async () => {
     const cliDeps = deps(validManifest())
 
     expect(await runPackCli(['publish', 'packs/example'], cliDeps)).toBe(2)
+    expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Usage'))
+  })
+
+  it('prints usage and returns exit code 2 when the pack directory is missing', async () => {
+    const cliDeps = deps(validManifest())
+
     expect(await runPackCli(['validate'], cliDeps)).toBe(2)
     expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Usage'))
   })

@@ -14,6 +14,7 @@ import { validatePackManifest } from './manifest-validation.mjs'
 const EXIT_OK = 0
 const EXIT_INVALID = 1
 const EXIT_USAGE = 2
+const EXIT_INTERNAL = 3
 const USAGE = 'Usage: vernacular-pack <validate|build> <packDir>'
 
 /**
@@ -75,7 +76,9 @@ if (isDirectInvocation) {
       process.exitCode = code
     })
     .catch((cause) => {
+      // Defensive: runPackCli returns codes and does not reject, so this signals an
+      // unexpected internal fault, not a usage error.
       console.error(cause)
-      process.exitCode = EXIT_USAGE
+      process.exitCode = EXIT_INTERNAL
     })
 }
