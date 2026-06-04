@@ -10,7 +10,6 @@ import {
 describe('shellCacheName', () => {
   it('derives a versioned cache name under the shell prefix', () => {
     const name = shellCacheName(3)
-    expect(name.startsWith(SHELL_CACHE_PREFIX)).toBe(true)
     expect(name).toBe(`${SHELL_CACHE_PREFIX}v3`)
   })
 })
@@ -27,7 +26,7 @@ describe('staleShellCacheNames', () => {
 describe('purgeStaleShellCaches', () => {
   it('deletes every stale shell cache and returns their names', async () => {
     const deleted: string[] = []
-    const current = shellCacheName()
+    const current = shellCacheName(1)
     const host: CacheStorageLike = {
       keys: () => Promise.resolve([shellCacheName(0), current, 'unrelated-cache']),
       delete: (name) => {
