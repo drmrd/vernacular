@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { probeStorageCapabilities, type StorageProbeHost } from './storage-capabilities'
+import {
+  isStorageDegraded,
+  probeStorageCapabilities,
+  type StorageCapabilities,
+  type StorageProbeHost,
+} from './storage-capabilities'
 
 function capableHost(): StorageProbeHost {
   return {
@@ -12,6 +17,17 @@ function capableHost(): StorageProbeHost {
     },
     indexedDB: {},
     showDirectoryPicker: () => Promise.resolve({}),
+  }
+}
+
+function capabilities(overrides: Partial<StorageCapabilities> = {}): StorageCapabilities {
+  return {
+    opfs: false,
+    indexedDb: false,
+    fileSystemAccess: false,
+    persisted: false,
+    estimatedQuotaBytes: null,
+    ...overrides,
   }
 }
 
@@ -58,5 +74,19 @@ describe('probeStorageCapabilities', () => {
     expect(capabilities.indexedDb).toBe(true)
     expect(capabilities.persisted).toBe(false)
     expect(capabilities.estimatedQuotaBytes).toBeNull()
+  })
+})
+
+describe('isStorageDegraded', () => {
+  it('is true when neither OPFS nor IndexedDB is available', () => {
+    expect(isStorageDegraded(capabilities())).toBe(true)
+  })
+
+  it('is false when OPFS is available', () => {
+    expect(isStorageDegraded(capabilities({ opfs: true }))).toBe(false)
+  })
+
+  it('is false when IndexedDB is available', () => {
+    expect(isStorageDegraded(capabilities({ indexedDb: true }))).toBe(false)
   })
 })
