@@ -52,3 +52,30 @@ export async function runPackCli(argv, deps) {
   deps.log(`${command}: ${packDir} manifest is valid`)
   return EXIT_OK
 }
+
+/** Read <packDir>/manifest.json from disk. */
+async function readManifestFromDisk(packDir) {
+  const raw = await readFile(join(packDir, 'manifest.json'), 'utf8')
+  return JSON.parse(raw)
+}
+
+// Run only when invoked directly (node scripts/pack/vernacular-pack.mjs ...),
+// never when imported by a test.
+const invokedPath = process.argv[1]
+const isDirectInvocation =
+  invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
+
+if (isDirectInvocation) {
+  runPackCli(process.argv.slice(2), {
+    readManifest: readManifestFromDisk,
+    log: (message) => console.log(message),
+    error: (message) => console.error(message),
+  })
+    .then((code) => {
+      process.exitCode = code
+    })
+    .catch((cause) => {
+      console.error(cause)
+      process.exitCode = EXIT_USAGE
+    })
+}
