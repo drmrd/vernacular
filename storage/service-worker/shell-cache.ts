@@ -23,3 +23,16 @@ export function staleShellCacheNames(
 ): string[] {
   return existingNames.filter((name) => name.startsWith(SHELL_CACHE_PREFIX) && name !== current)
 }
+
+/** The narrow slice of the CacheStorage API the cleanup needs. */
+export interface CacheStorageLike {
+  keys(): Promise<string[]>
+  delete(cacheName: string): Promise<boolean>
+}
+
+/** Delete every stale shell cache. Returns the names that were purged. */
+export async function purgeStaleShellCaches(caches: CacheStorageLike): Promise<string[]> {
+  const stale = staleShellCacheNames(await caches.keys())
+  await Promise.all(stale.map((name) => caches.delete(name)))
+  return stale
+}
