@@ -36,7 +36,11 @@ async function readPersisted(storage: StorageManagerLike | undefined): Promise<b
   if (typeof storage?.persisted !== 'function') {
     return false
   }
-  return storage.persisted()
+  try {
+    return await storage.persisted()
+  } catch {
+    return false
+  }
 }
 
 /** Resolve the estimated quota in bytes, or null when it is unavailable. */
@@ -46,13 +50,17 @@ async function readEstimatedQuotaBytes(
   if (typeof storage?.estimate !== 'function') {
     return null
   }
-  const estimate = await storage.estimate()
-  return estimate.quota ?? null
+  try {
+    const estimate = await storage.estimate()
+    return estimate.quota ?? null
+  } catch {
+    return null
+  }
 }
 
 /**
  * Perform dependency-injected feature detection over `host` and resolve to a plain
- * `StorageCapabilities` record. Reads are direct; rejection resilience lands later.
+ * `StorageCapabilities` record. The async reads default to safe values on rejection.
  */
 export async function probeStorageCapabilities(
   // `globalThis` is structurally a superset of `StorageProbeHost`; the cast lets
