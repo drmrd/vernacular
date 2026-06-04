@@ -22,7 +22,7 @@ Foundation work in progress (build foundation, documentation, engineering norms,
 | Six-layer source skeleton (core, storage, engine, bridge, editor, app all landed) | done    |
 | Wall-drawing proof of life (first user flow)                                      | done    |
 | Storage scaffolds (OPFS, IndexedDB, File System API)                              | done    |
-| Service worker and pack CLI                                                       | pending |
+| Service worker and pack CLI                                                       | done    |
 | Foundation acceptance                                                             | pending |
 
 ## MVP path
