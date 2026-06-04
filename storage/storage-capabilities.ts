@@ -81,3 +81,24 @@ export async function probeStorageCapabilities(
 export function isStorageDegraded(capabilities: StorageCapabilities): boolean {
   return !capabilities.opfs && !capabilities.indexedDb
 }
+
+/** Render a boolean capability flag as `yes` or `no`. */
+function yesNo(value: boolean): string {
+  return value ? 'yes' : 'no'
+}
+
+/** Render a one-line ASCII summary of the storage capabilities. */
+export function summarizeStorageCapabilities(capabilities: StorageCapabilities): string {
+  const quota =
+    capabilities.estimatedQuotaBytes === null
+      ? 'unknown'
+      : `${capabilities.estimatedQuotaBytes} bytes`
+  const parts = [
+    `OPFS ${yesNo(capabilities.opfs)}`,
+    `IndexedDB ${yesNo(capabilities.indexedDb)}`,
+    `File System Access ${yesNo(capabilities.fileSystemAccess)}`,
+    `persisted ${yesNo(capabilities.persisted)}`,
+    `quota ${quota}`,
+  ]
+  return `Storage capabilities: ${parts.join(', ')}`
+}
