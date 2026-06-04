@@ -4,7 +4,6 @@
  */
 interface StorageManagerLike {
   getDirectory?: unknown
-  persist?: unknown
   persisted?: () => Promise<boolean>
   estimate?: () => Promise<{ quota?: number }>
 }
@@ -15,6 +14,8 @@ interface StorageManagerLike {
  */
 export interface StorageProbeHost {
   navigator?: { storage?: StorageManagerLike }
+  // Mirrors the browser global name (`indexedDB`) intentionally; the output field
+  // `StorageCapabilities.indexedDb` uses TypeScript camelCase.
   indexedDB?: unknown
   showDirectoryPicker?: unknown
 }

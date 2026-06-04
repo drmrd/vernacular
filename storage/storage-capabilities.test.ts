@@ -6,7 +6,6 @@ function capableHost(): StorageProbeHost {
     navigator: {
       storage: {
         getDirectory: () => Promise.resolve({}),
-        persist: () => Promise.resolve(true),
         persisted: () => Promise.resolve(true),
         estimate: () => Promise.resolve({ quota: 5_000_000 }),
       },
