@@ -27,6 +27,11 @@ export const ASSET_KINDS = Object.freeze([
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 
+// A generous 100 m ceiling (in millimeters) that still catches unit mistakes such
+// as meters entered as millimeters.
+const MAX_DIMENSION_MM = 100_000
+const DIMENSION_AXES = ['width', 'depth', 'height']
+
 /**
  * @param {Record<string, unknown>} source
  * @param {string} key
@@ -41,6 +46,32 @@ function validateRequiredString(source, key, errors, label = key) {
     return false
   }
   return true
+}
+
+/**
+ * @param {unknown} dimensions
+ * @param {string} label
+ * @param {string[]} errors
+ */
+function validateDimensions(dimensions, label, errors) {
+  if (typeof dimensions !== 'object' || dimensions === null) {
+    errors.push(`${label}.dimensions are required`)
+    return
+  }
+  const source = /** @type {Record<string, unknown>} */ (dimensions)
+  for (const axis of DIMENSION_AXES) {
+    const value = source[axis]
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value) ||
+      value <= 0 ||
+      value > MAX_DIMENSION_MM
+    ) {
+      errors.push(
+        `${label}.dimensions.${axis} must be a positive number of millimeters up to ${MAX_DIMENSION_MM}`,
+      )
+    }
+  }
 }
 
 /**
@@ -66,6 +97,7 @@ function validateAsset(asset, index, errors) {
   if (!ASSET_KINDS.includes(source.kind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
+  validateDimensions(source.dimensions, label, errors)
 }
 
 /**
