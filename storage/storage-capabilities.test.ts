@@ -34,9 +34,9 @@ function capabilities(overrides: Partial<StorageCapabilities> = {}): StorageCapa
 
 describe('probeStorageCapabilities', () => {
   it('reports every primitive present on a fully capable host', async () => {
-    const capabilities = await probeStorageCapabilities(capableHost())
+    const result = await probeStorageCapabilities(capableHost())
 
-    expect(capabilities).toEqual({
+    expect(result).toEqual({
       opfs: true,
       indexedDb: true,
       fileSystemAccess: true,
@@ -46,9 +46,9 @@ describe('probeStorageCapabilities', () => {
   })
 
   it('reports every primitive absent on an empty host', async () => {
-    const capabilities = await probeStorageCapabilities({})
+    const result = await probeStorageCapabilities({})
 
-    expect(capabilities).toEqual({
+    expect(result).toEqual({
       opfs: false,
       indexedDb: false,
       fileSystemAccess: false,
@@ -69,12 +69,12 @@ describe('probeStorageCapabilities', () => {
       indexedDB: {},
     }
 
-    const capabilities = await probeStorageCapabilities(host)
+    const result = await probeStorageCapabilities(host)
 
-    expect(capabilities.opfs).toBe(true)
-    expect(capabilities.indexedDb).toBe(true)
-    expect(capabilities.persisted).toBe(false)
-    expect(capabilities.estimatedQuotaBytes).toBeNull()
+    expect(result.opfs).toBe(true)
+    expect(result.indexedDb).toBe(true)
+    expect(result.persisted).toBe(false)
+    expect(result.estimatedQuotaBytes).toBeNull()
   })
 })
 
@@ -107,7 +107,9 @@ describe('summarizeStorageCapabilities', () => {
   it('renders an unknown quota when the estimate is null', () => {
     const summary = summarizeStorageCapabilities(capabilities())
 
-    expect(summary).toContain('quota unknown')
-    expect(summary).toContain('IndexedDB no')
+    expect(summary).toBe(
+      'Storage capabilities: OPFS no, IndexedDB no, File System Access no, ' +
+        'persisted no, quota unknown',
+    )
   })
 })
