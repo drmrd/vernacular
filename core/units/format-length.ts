@@ -1,4 +1,4 @@
-import type { MetricForm, Millimeters } from './length-units'
+import type { ImperialForm, MetricForm, Millimeters } from './length-units'
 import {
   millimetersToCentimeters,
   millimetersToFeet,
@@ -7,14 +7,15 @@ import {
 } from './length-units'
 import { roundToDecimalPlaces } from './precision'
 
-// Shared between the metric and imperial-decimal arms: both honour only decimal-places
-// precision. A later task adds a feet-and-inches arm that accepts fraction precision.
+// Decimal forms only; the dispatch stays exhaustive over what is implemented. Both the
+// metric and imperial-decimal arms honour only decimal-places precision. A later task adds
+// the imperial feet-and-inches arm with its own fraction-capable precision.
 type DecimalPrecision = { kind: 'decimal-places'; places: number }
 
-// Decimal forms only; the dispatch stays exhaustive over what is implemented. A later
-// task adds the imperial feet-and-inches arm with its fraction-capable precision.
+type ImperialDecimalForm = Exclude<ImperialForm, 'feet-and-inches'>
+
 export type FormatLengthOptions =
-  | { system: 'imperial'; form: 'decimal-feet' | 'decimal-inches'; precision: DecimalPrecision }
+  | { system: 'imperial'; form: ImperialDecimalForm; precision: DecimalPrecision }
   | { system: 'metric'; form: MetricForm; precision: DecimalPrecision }
 
 // en-US unit symbols with a leading space so the value and symbol read as "2.03 m".
@@ -45,10 +46,11 @@ function formatDecimal(value: number, places: number, suffix: string): string {
 
 export function formatLength(mm: Millimeters, options: FormatLengthOptions): string {
   const { places } = options.precision
-  if (options.system === 'imperial') {
-    return options.form === 'decimal-feet'
-      ? formatDecimal(millimetersToFeet(mm), places, FOOT_SYMBOL)
-      : formatDecimal(millimetersToInches(mm), places, INCH_SYMBOL)
+  if (options.system === 'metric') {
+    return formatDecimal(METRIC_CONVERSION[options.form](mm), places, METRIC_SYMBOL[options.form])
   }
-  return formatDecimal(METRIC_CONVERSION[options.form](mm), places, METRIC_SYMBOL[options.form])
+  if (options.form === 'decimal-feet') {
+    return formatDecimal(millimetersToFeet(mm), places, FOOT_SYMBOL)
+  }
+  return formatDecimal(millimetersToInches(mm), places, INCH_SYMBOL)
 }
