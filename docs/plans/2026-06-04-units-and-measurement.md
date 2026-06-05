@@ -345,16 +345,16 @@ Note: `-2438.4 mm = -96 in = -8 ft 0 in`, so it formats as `-8'` (zero inch drop
 `fraction` precision, valid only for `feet-and-inches`. Reduce fractions, carry a full
 `12"` to the next foot, drop zero parts.
 
-| mm        | options                                      | result                                          |
-| --------- | -------------------------------------------- | ----------------------------------------------- |
-| `2044.7`  | `{ imperial, feet-and-inches, fraction 2 }`  | `6'8 1/2"`                                      |
-| `215.9`   | `{ imperial, feet-and-inches, fraction 2 }`  | `8 1/2"`                                        |
-| `2032`    | `{ imperial, feet-and-inches, fraction 16 }` | `6'8"` (zero fraction dropped)                  |
-| `304.038` | `{ imperial, feet-and-inches, fraction 16 }` | `1'0"` (11.97" carries to 1'0")                 |
-| `2051.05` | `{ imperial, feet-and-inches, fraction 8 }`  | `6'8 3/4"` (8.75" → 8 3/4")                     |
-| `0`       | `{ imperial, feet-and-inches, fraction 16 }` | `0"`                                            |
-| `2032`    | `{ imperial, feet-and-inches, fraction 0 }`  | throws (denominator must be a positive integer) |
-| `2032`    | `{ imperial, feet-and-inches, fraction -8 }` | throws (denominator must be a positive integer) |
+| mm        | options                                      | result                                                  |
+| --------- | -------------------------------------------- | ------------------------------------------------------- |
+| `2044.7`  | `{ imperial, feet-and-inches, fraction 2 }`  | `6'8 1/2"`                                              |
+| `215.9`   | `{ imperial, feet-and-inches, fraction 2 }`  | `8 1/2"`                                                |
+| `2032`    | `{ imperial, feet-and-inches, fraction 16 }` | `6'8"` (zero fraction dropped)                          |
+| `304.038` | `{ imperial, feet-and-inches, fraction 16 }` | `1'` (11.97" carries to a full foot, zero inch dropped) |
+| `2051.05` | `{ imperial, feet-and-inches, fraction 8 }`  | `6'8 3/4"` (8.75" → 8 3/4")                             |
+| `0`       | `{ imperial, feet-and-inches, fraction 16 }` | `0"`                                                    |
+| `2032`    | `{ imperial, feet-and-inches, fraction 0 }`  | throws (denominator must be a positive integer)         |
+| `2032`    | `{ imperial, feet-and-inches, fraction -8 }` | throws (denominator must be a positive integer)         |
 
 Fraction precision on any non-feet-and-inches form is a compile error (the granular
 `FormatLengthOptions` union forbids it), so no runtime test is needed for that case;
