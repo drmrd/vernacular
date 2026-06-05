@@ -348,8 +348,15 @@ Note: `-2438.4 mm = -96 in = -8 ft 0 in`, so it formats as `-8'` (zero inch drop
 | `2051.05` | `{ imperial, feet-and-inches, fraction 8 }`  | `6'8 3/4"` (8.75" → 8 3/4")                      |
 | `0`       | `{ imperial, feet-and-inches, fraction 16 }` | `0"`                                             |
 | `2032`    | `{ imperial, decimal-feet, fraction 16 }`    | throws (fraction only valid for feet-and-inches) |
+| `2032`    | `{ imperial, feet-and-inches, fraction 0 }`  | throws (denominator must be a positive integer)  |
+| `2032`    | `{ imperial, feet-and-inches, fraction -8 }` | throws (denominator must be a positive integer)  |
 
-- [ ] RED: `/test-first formatLength renders fractional inches in feet-and-inches, reducing and carrying, and rejects fraction precision for other forms`
+`formatLength` validates the fraction denominator at this boundary (a positive integer)
+before handing it to `roundToNearestFraction`, since the denominator originates in
+user-controlled `UnitPreferences` (Task 7). This is the deferred should-fix from the
+Task 2 review: the guard lives at the consumer boundary, not in the low-level helper.
+
+- [ ] RED: `/test-first formatLength renders fractional inches in feet-and-inches, reducing and carrying, and rejects fraction precision for other forms or an invalid denominator`
 - [ ] Verify fails.
 - [ ] GREEN: `/implement`
 - [ ] Verify passes.
