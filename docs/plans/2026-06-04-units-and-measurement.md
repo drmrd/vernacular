@@ -164,9 +164,15 @@ DEFAULT_METRIC_PREFERENCES = { ...DEFAULT_IMPERIAL_PREFERENCES, system: 'metric'
 ### `core/units/format-length.ts`
 
 ```ts
+type DecimalPrecision = { kind: 'decimal-places'; places: number }
+
+// Only feet-and-inches accepts fractional precision; every other form is decimal-only.
+// Encoding that in the union makes an invalid fraction/form pairing a compile error
+// instead of a runtime guard, so no narrowing cast is needed in the decimal branches.
 export type FormatLengthOptions =
-  | { system: 'imperial'; form: ImperialForm; precision: DisplayPrecision }
-  | { system: 'metric'; form: MetricForm; precision: { kind: 'decimal-places'; places: number } }
+  | { system: 'imperial'; form: 'feet-and-inches'; precision: DisplayPrecision }
+  | { system: 'imperial'; form: 'decimal-feet' | 'decimal-inches'; precision: DecimalPrecision }
+  | { system: 'metric'; form: MetricForm; precision: DecimalPrecision }
 
 export function formatLength(mm: Millimeters, options: FormatLengthOptions): string
 ```
@@ -339,24 +345,26 @@ Note: `-2438.4 mm = -96 in = -8 ft 0 in`, so it formats as `-8'` (zero inch drop
 `fraction` precision, valid only for `feet-and-inches`. Reduce fractions, carry a full
 `12"` to the next foot, drop zero parts.
 
-| mm        | options                                      | result                                           |
-| --------- | -------------------------------------------- | ------------------------------------------------ |
-| `2044.7`  | `{ imperial, feet-and-inches, fraction 2 }`  | `6'8 1/2"`                                       |
-| `215.9`   | `{ imperial, feet-and-inches, fraction 2 }`  | `8 1/2"`                                         |
-| `2032`    | `{ imperial, feet-and-inches, fraction 16 }` | `6'8"` (zero fraction dropped)                   |
-| `304.038` | `{ imperial, feet-and-inches, fraction 16 }` | `1'0"` (11.97" carries to 1'0")                  |
-| `2051.05` | `{ imperial, feet-and-inches, fraction 8 }`  | `6'8 3/4"` (8.75" → 8 3/4")                      |
-| `0`       | `{ imperial, feet-and-inches, fraction 16 }` | `0"`                                             |
-| `2032`    | `{ imperial, decimal-feet, fraction 16 }`    | throws (fraction only valid for feet-and-inches) |
-| `2032`    | `{ imperial, feet-and-inches, fraction 0 }`  | throws (denominator must be a positive integer)  |
-| `2032`    | `{ imperial, feet-and-inches, fraction -8 }` | throws (denominator must be a positive integer)  |
+| mm        | options                                      | result                                          |
+| --------- | -------------------------------------------- | ----------------------------------------------- |
+| `2044.7`  | `{ imperial, feet-and-inches, fraction 2 }`  | `6'8 1/2"`                                      |
+| `215.9`   | `{ imperial, feet-and-inches, fraction 2 }`  | `8 1/2"`                                        |
+| `2032`    | `{ imperial, feet-and-inches, fraction 16 }` | `6'8"` (zero fraction dropped)                  |
+| `304.038` | `{ imperial, feet-and-inches, fraction 16 }` | `1'0"` (11.97" carries to 1'0")                 |
+| `2051.05` | `{ imperial, feet-and-inches, fraction 8 }`  | `6'8 3/4"` (8.75" → 8 3/4")                     |
+| `0`       | `{ imperial, feet-and-inches, fraction 16 }` | `0"`                                            |
+| `2032`    | `{ imperial, feet-and-inches, fraction 0 }`  | throws (denominator must be a positive integer) |
+| `2032`    | `{ imperial, feet-and-inches, fraction -8 }` | throws (denominator must be a positive integer) |
 
-`formatLength` validates the fraction denominator at this boundary (a positive integer)
+Fraction precision on any non-feet-and-inches form is a compile error (the granular
+`FormatLengthOptions` union forbids it), so no runtime test is needed for that case;
+Task 6 widens only the feet-and-inches arm's precision to the full `DisplayPrecision`.
+`formatLength` still validates the fraction denominator at runtime (a positive integer)
 before handing it to `roundToNearestFraction`, since the denominator originates in
 user-controlled `UnitPreferences` (Task 7). This is the deferred should-fix from the
 Task 2 review: the guard lives at the consumer boundary, not in the low-level helper.
 
-- [ ] RED: `/test-first formatLength renders fractional inches in feet-and-inches, reducing and carrying, and rejects fraction precision for other forms or an invalid denominator`
+- [ ] RED: `/test-first formatLength renders fractional inches in feet-and-inches, reducing and carrying, and rejects a non-positive-integer fraction denominator`
 - [ ] Verify fails.
 - [ ] GREEN: `/implement`
 - [ ] Verify passes.
