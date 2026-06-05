@@ -13,10 +13,12 @@ type DecimalPrecision = { kind: 'decimal-places'; places: number }
 
 type ImperialDecimalForm = Exclude<ImperialForm, 'feet-and-inches'>
 
+// Arms are ordered to match the dispatch order in formatLength: metric first, then the
+// feet-and-inches arm, then the remaining imperial decimal forms.
 export type FormatLengthOptions =
+  | { system: 'metric'; form: MetricForm; precision: DecimalPrecision }
   | { system: 'imperial'; form: 'feet-and-inches'; precision: DecimalPrecision }
   | { system: 'imperial'; form: ImperialDecimalForm; precision: DecimalPrecision }
-  | { system: 'metric'; form: MetricForm; precision: DecimalPrecision }
 
 // en-US unit symbols with a leading space so the value and symbol read as "2.03 m".
 const METRIC_SYMBOL: Record<MetricForm, string> = {
@@ -50,6 +52,10 @@ function formatFeetAndInches(mm: Millimeters, places: number): string {
   // Format the magnitude and reapply the sign around it so the foot/inch split and
   // the rounding carry never have to reason about a negative value.
   const isNegative = mm < 0
+  // Math.abs makes totalInches the magnitude, so every value derived below (feet, the
+  // inch remainder) stays >= 0. That invariant lets the inch-part guard use inches !== 0
+  // ("the part is non-empty") without the reader tracing the sign to confirm it equals
+  // the older inches > 0 test.
   const totalInches = Math.abs(millimetersToInches(mm))
   let feet = Math.floor(totalInches / INCHES_PER_FOOT)
   let inches = roundToDecimalPlaces(totalInches - feet * INCHES_PER_FOOT, places)
@@ -60,9 +66,10 @@ function formatFeetAndInches(mm: Millimeters, places: number): string {
     inches = 0
   }
   const feetPart = feet > 0 ? `${feet}${FOOT_SYMBOL}` : ''
-  const inchPart = inches > 0 ? `${inches.toFixed(places)}${INCH_SYMBOL}` : ''
+  const inchPart = inches !== 0 ? `${inches.toFixed(places)}${INCH_SYMBOL}` : ''
   // When both parts are empty the length is zero, which reads as 0".
-  const body = feetPart + inchPart || `0${INCH_SYMBOL}`
+  const combined = feetPart + inchPart
+  const body = combined.length > 0 ? combined : `0${INCH_SYMBOL}`
   // Apply the sign only when the magnitude is non-zero so -0 mm does not print as -0".
   return isNegative && (feet > 0 || inches > 0) ? `-${body}` : body
 }
