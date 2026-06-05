@@ -5,10 +5,11 @@ import {
   millimetersToInches,
   millimetersToMeters,
 } from './length-units'
-import { roundToDecimalPlaces } from './precision'
+import type { DisplayPrecision } from './precision'
+import { roundToDecimalPlaces, roundToNearestFraction } from './precision'
 
-// Every implemented form honours only decimal-places precision for now. A later task
-// widens just the feet-and-inches arm to the fraction-capable DisplayPrecision.
+// Only feet-and-inches accepts fractional precision; every other form is decimal-only.
+// Encoding that in the union makes an invalid fraction/form pairing a compile error.
 type DecimalPrecision = { kind: 'decimal-places'; places: number }
 
 type ImperialDecimalForm = Exclude<ImperialForm, 'feet-and-inches'>
@@ -17,7 +18,7 @@ type ImperialDecimalForm = Exclude<ImperialForm, 'feet-and-inches'>
 // feet-and-inches arm, then the remaining imperial decimal forms.
 export type FormatLengthOptions =
   | { system: 'metric'; form: MetricForm; precision: DecimalPrecision }
-  | { system: 'imperial'; form: 'feet-and-inches'; precision: DecimalPrecision }
+  | { system: 'imperial'; form: 'feet-and-inches'; precision: DisplayPrecision }
   | { system: 'imperial'; form: ImperialDecimalForm; precision: DecimalPrecision }
 
 // en-US unit symbols with a leading space so the value and symbol read as "2.03 m".
@@ -48,7 +49,7 @@ function formatDecimal(value: number, places: number, suffix: string): string {
   return `${rounded.toFixed(places)}${suffix}`
 }
 
-function formatFeetAndInches(mm: Millimeters, places: number): string {
+function formatFeetAndInchesDecimal(mm: Millimeters, places: number): string {
   // Format the magnitude and reapply the sign around it so the foot/inch split and
   // the rounding carry never have to reason about a negative value.
   const isNegative = mm < 0
@@ -74,16 +75,73 @@ function formatFeetAndInches(mm: Millimeters, places: number): string {
   return isNegative && (feet > 0 || inches > 0) ? `-${body}` : body
 }
 
-export function formatLength(mm: Millimeters, options: FormatLengthOptions): string {
-  const { places } = options.precision
-  if (options.system === 'metric') {
-    return formatDecimal(METRIC_CONVERSION[options.form](mm), places, METRIC_SYMBOL[options.form])
+// Builds the inch portion of a fractional reading: '' when the inch part is empty, a
+// bare whole-inch part when the fraction reduces away, a bare fraction when there are
+// no whole inches, and "8 1/2"" when both are present.
+function formatFractionalInchPart(
+  wholeInches: number,
+  numerator: number,
+  denominator: number,
+): string {
+  if (wholeInches === 0 && numerator === 0) {
+    return ''
   }
-  if (options.form === 'feet-and-inches') {
-    return formatFeetAndInches(mm, places)
+  if (numerator === 0) {
+    return `${wholeInches}${INCH_SYMBOL}`
+  }
+  const wholePrefix = wholeInches > 0 ? `${wholeInches} ` : ''
+  return `${wholePrefix}${numerator}/${denominator}${INCH_SYMBOL}`
+}
+
+function formatFeetAndInchesFraction(mm: Millimeters, denominator: number): string {
+  // The denominator originates in user-controlled UnitPreferences, so guard it at this
+  // consumer boundary before handing it to roundToNearestFraction (which assumes a
+  // positive integer). The message names "positive integer" so the cause is clear.
+  if (!Number.isInteger(denominator) || denominator <= 0) {
+    throw new Error(`fraction denominator must be a positive integer, got ${denominator}`)
+  }
+  // Format the magnitude and reapply the sign around it so the foot/inch split and the
+  // rounding carry never have to reason about a negative value.
+  const isNegative = mm < 0
+  const totalInches = Math.abs(millimetersToInches(mm))
+  let feet = Math.floor(totalInches / INCHES_PER_FOOT)
+  const fraction = roundToNearestFraction(totalInches - feet * INCHES_PER_FOOT, denominator)
+  let wholeInches = fraction.whole
+  // Rounding the inch remainder can reach a full foot (e.g. 11.97" rounds to 12");
+  // carry it up so the result reads 1' rather than 0'12".
+  if (wholeInches >= INCHES_PER_FOOT) {
+    feet += 1
+    wholeInches = 0
+  }
+  const inchPart = formatFractionalInchPart(wholeInches, fraction.numerator, fraction.denominator)
+  const feetPart = feet > 0 ? `${feet}${FOOT_SYMBOL}` : ''
+  // When both parts are empty the length is zero, which reads as 0".
+  const combined = feetPart + inchPart
+  const body = combined.length > 0 ? combined : `0${INCH_SYMBOL}`
+  // Apply the sign only when the magnitude is non-zero so -0 mm does not print as -0".
+  return isNegative && combined.length > 0 ? `-${body}` : body
+}
+
+function formatFeetAndInches(mm: Millimeters, precision: DisplayPrecision): string {
+  return precision.kind === 'fraction'
+    ? formatFeetAndInchesFraction(mm, precision.denominator)
+    : formatFeetAndInchesDecimal(mm, precision.places)
+}
+
+export function formatLength(mm: Millimeters, options: FormatLengthOptions): string {
+  if (options.system === 'metric') {
+    return formatDecimal(
+      METRIC_CONVERSION[options.form](mm),
+      options.precision.places,
+      METRIC_SYMBOL[options.form],
+    )
   }
   if (options.form === 'decimal-feet') {
-    return formatDecimal(millimetersToFeet(mm), places, FOOT_SYMBOL)
+    return formatDecimal(millimetersToFeet(mm), options.precision.places, FOOT_SYMBOL)
   }
-  return formatDecimal(millimetersToInches(mm), places, INCH_SYMBOL)
+  if (options.form === 'decimal-inches') {
+    return formatDecimal(millimetersToInches(mm), options.precision.places, INCH_SYMBOL)
+  }
+  // feet-and-inches: precision is the full DisplayPrecision (decimal or fraction).
+  return formatFeetAndInches(mm, options.precision)
 }
