@@ -6,30 +6,36 @@ export const MM_PER_FOOT = 304.8
 export const MM_PER_CENTIMETER = 10
 export const MM_PER_METER = 1000
 
-// Integer-scaled because 25.4 and 304.8 are not exactly representable in IEEE-754;
-// scaling by whole integers keeps exact inputs (80 in, 6 ft) exact on output.
+// 25.4 = 254/10 and 304.8 = 3048/10 expressed as integer fractions so integer
+// inputs produce exact terminating-decimal outputs (avoids IEEE-754 drift).
+const INCHES_NUMERATOR = 254
+const FEET_NUMERATOR = 3048
+const IMPERIAL_DENOMINATOR = 10
+
 export function inchesToMillimeters(inches: number): Millimeters {
-  return (inches * 254) / 10
+  return (inches * INCHES_NUMERATOR) / IMPERIAL_DENOMINATOR
 }
 
 export function millimetersToInches(mm: Millimeters): number {
-  return (mm * 10) / 254
+  return (mm * IMPERIAL_DENOMINATOR) / INCHES_NUMERATOR
 }
 
 export function feetToMillimeters(feet: number): Millimeters {
-  return (feet * 3048) / 10
+  return (feet * FEET_NUMERATOR) / IMPERIAL_DENOMINATOR
 }
 
 export function millimetersToFeet(mm: Millimeters): number {
-  return (mm * 10) / 3048
+  return (mm * IMPERIAL_DENOMINATOR) / FEET_NUMERATOR
 }
 
 // The metric factors are exact integers, but a decimal input such as 2.03 is not
 // exactly representable, so the bare product drifts (2.03 * 1000 is 2029.9999...).
-// Snapping to 15 significant digits removes that sub-ULP noise while preserving
-// genuine precision (2.032 stays 2.032).
+// IEEE-754 double holds ~15.9 significant decimal digits; 15 sig figs removes
+// sub-ULP noise without rounding away genuine user-supplied precision.
+const SIGNIFICANT_DIGITS_FOR_SNAP = 15
+
 function snapToExactDecimal(value: number): number {
-  return Number(value.toPrecision(15))
+  return Number(value.toPrecision(SIGNIFICANT_DIGITS_FOR_SNAP))
 }
 
 export function centimetersToMillimeters(centimeters: number): Millimeters {
