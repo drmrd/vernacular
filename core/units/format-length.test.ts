@@ -176,3 +176,85 @@ describe('formatLength imperial feet-and-inches', () => {
     ).toBe(`-8'`)
   })
 })
+
+describe('formatLength imperial feet-and-inches with fractional precision', () => {
+  it('renders a reduced half-inch fraction alongside whole feet and inches', () => {
+    expect(
+      formatLength(2044.7, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 2 },
+      }),
+    ).toBe(`6'8 1/2"`)
+  })
+
+  it('drops a zero feet part, leaving the inches and fraction', () => {
+    expect(
+      formatLength(215.9, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 2 },
+      }),
+    ).toBe(`8 1/2"`)
+  })
+
+  it('drops a zero fraction, leaving whole feet and inches', () => {
+    expect(
+      formatLength(2032, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 16 },
+      }),
+    ).toBe(`6'8"`)
+  })
+
+  it('carries a rounded full inch up to the next foot and drops the zero inch part', () => {
+    expect(
+      formatLength(304.038, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 16 },
+      }),
+    ).toBe(`1'`)
+  })
+
+  it('reduces an eighths fraction to lowest terms', () => {
+    expect(
+      formatLength(2051.05, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 8 },
+      }),
+    ).toBe(`6'8 3/4"`)
+  })
+
+  it('renders zero as zero inches without a sign', () => {
+    expect(
+      formatLength(0, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 16 },
+      }),
+    ).toBe(`0"`)
+  })
+
+  it('rejects a zero fraction denominator', () => {
+    expect(() =>
+      formatLength(2032, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: 0 },
+      }),
+    ).toThrow(/positive integer/)
+  })
+
+  it('rejects a negative fraction denominator', () => {
+    expect(() =>
+      formatLength(2032, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'fraction', denominator: -8 },
+      }),
+    ).toThrow(/positive integer/)
+  })
+})
