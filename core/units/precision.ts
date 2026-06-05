@@ -27,9 +27,9 @@ export function roundToNearestFraction(
   value: number,
   denominator: number,
 ): { whole: number; numerator: number; denominator: number } {
-  const units = Math.round(value * denominator)
-  const whole = Math.floor(units / denominator)
-  const numerator = units % denominator
+  const totalParts = Math.round(value * denominator)
+  const whole = Math.floor(totalParts / denominator)
+  const numerator = totalParts % denominator
 
   // A zero numerator has no fraction to display, so report it as 0/1 rather than
   // 0/denominator to avoid a misleading denominator.
