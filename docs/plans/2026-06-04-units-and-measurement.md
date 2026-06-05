@@ -166,7 +166,7 @@ DEFAULT_METRIC_PREFERENCES = { ...DEFAULT_IMPERIAL_PREFERENCES, system: 'metric'
 ```ts
 export type FormatLengthOptions =
   | { system: 'imperial'; form: ImperialForm; precision: DisplayPrecision }
-  | { system: 'metric'; form: MetricForm; precision: DisplayPrecision }
+  | { system: 'metric'; form: MetricForm; precision: { kind: 'decimal-places'; places: number } }
 
 export function formatLength(mm: Millimeters, options: FormatLengthOptions): string
 ```
