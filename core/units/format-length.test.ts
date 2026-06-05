@@ -62,3 +62,55 @@ describe('formatLength metric forms', () => {
     ).toBe('-2030 mm')
   })
 })
+
+describe('formatLength imperial decimal forms', () => {
+  it('renders decimal feet with the requested decimal places', () => {
+    expect(
+      formatLength(2032, {
+        system: 'imperial',
+        form: 'decimal-feet',
+        precision: { kind: 'decimal-places', places: 3 },
+      }),
+    ).toBe("6.667'")
+  })
+
+  it('renders decimal inches as a whole number when zero places are requested', () => {
+    expect(
+      formatLength(2032, {
+        system: 'imperial',
+        form: 'decimal-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe('80"')
+  })
+
+  it('renders decimal inches to one decimal place', () => {
+    expect(
+      formatLength(2044.7, {
+        system: 'imperial',
+        form: 'decimal-inches',
+        precision: { kind: 'decimal-places', places: 1 },
+      }),
+    ).toBe('80.5"')
+  })
+
+  it('keeps trailing zeros in decimal feet to the requested places', () => {
+    expect(
+      formatLength(1828.8, {
+        system: 'imperial',
+        form: 'decimal-feet',
+        precision: { kind: 'decimal-places', places: 2 },
+      }),
+    ).toBe("6.00'")
+  })
+
+  it('preserves the sign of a negative length in decimal inches', () => {
+    expect(
+      formatLength(-2032, {
+        system: 'imperial',
+        form: 'decimal-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe('-80"')
+  })
+})
