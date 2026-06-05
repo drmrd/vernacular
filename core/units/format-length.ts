@@ -49,30 +49,47 @@ function formatDecimal(value: number, places: number, suffix: string): string {
   return `${rounded.toFixed(places)}${suffix}`
 }
 
-function formatFeetAndInchesDecimal(mm: Millimeters, places: number): string {
-  // Format the magnitude and reapply the sign around it so the foot/inch split and
-  // the rounding carry never have to reason about a negative value.
+// Splits a length into its sign, whole feet, and inch remainder. Math.abs makes
+// totalInches the magnitude, so feet and remainderInches stay >= 0; formatting the
+// magnitude and reapplying the sign later keeps the foot/inch split and the rounding
+// carry from ever having to reason about a negative value. That invariant also lets the
+// inch-part guards test "the part is non-empty" without tracing the sign.
+function splitInchesFromMillimeters(mm: Millimeters): {
+  isNegative: boolean
+  feet: number
+  remainderInches: number
+} {
   const isNegative = mm < 0
-  // Math.abs makes totalInches the magnitude, so every value derived below (feet, the
-  // inch remainder) stays >= 0. That invariant lets the inch-part guard use inches !== 0
-  // ("the part is non-empty") without the reader tracing the sign to confirm it equals
-  // the older inches > 0 test.
   const totalInches = Math.abs(millimetersToInches(mm))
-  let feet = Math.floor(totalInches / INCHES_PER_FOOT)
-  let inches = roundToDecimalPlaces(totalInches - feet * INCHES_PER_FOOT, places)
-  // Rounding the inch remainder can reach a full foot (e.g. 11.97" at 0 places rounds
-  // to 12"); carry it up so the result reads 1'0" rather than 0'12".
+  const feet = Math.floor(totalInches / INCHES_PER_FOOT)
+  const remainderInches = totalInches - feet * INCHES_PER_FOOT
+  return { isNegative, feet, remainderInches }
+}
+
+// Rounding the inch remainder can reach a full foot (e.g. 11.97" rounds to 12"); carry
+// it up so the result reads 1'0" rather than 0'12".
+function carryFullFoot(feet: number, inches: number): { feet: number; inches: number } {
   if (inches >= INCHES_PER_FOOT) {
-    feet += 1
-    inches = 0
+    return { feet: feet + 1, inches: 0 }
   }
+  return { feet, inches }
+}
+
+// Joins the foot part and the already-formatted inch part into a reading, falling back
+// to 0" when the length is zero. The sign is applied only for a non-zero magnitude so
+// -0 mm does not print as -0".
+function assembleFeetAndInches(isNegative: boolean, feet: number, inchPart: string): string {
   const feetPart = feet > 0 ? `${feet}${FOOT_SYMBOL}` : ''
-  const inchPart = inches !== 0 ? `${inches.toFixed(places)}${INCH_SYMBOL}` : ''
-  // When both parts are empty the length is zero, which reads as 0".
   const combined = feetPart + inchPart
   const body = combined.length > 0 ? combined : `0${INCH_SYMBOL}`
-  // Apply the sign only when the magnitude is non-zero so -0 mm does not print as -0".
-  return isNegative && (feet > 0 || inches > 0) ? `-${body}` : body
+  return isNegative && combined.length > 0 ? `-${body}` : body
+}
+
+function formatFeetAndInchesDecimal(mm: Millimeters, places: number): string {
+  const { isNegative, feet, remainderInches } = splitInchesFromMillimeters(mm)
+  const carried = carryFullFoot(feet, roundToDecimalPlaces(remainderInches, places))
+  const inchPart = carried.inches !== 0 ? `${carried.inches.toFixed(places)}${INCH_SYMBOL}` : ''
+  return assembleFeetAndInches(isNegative, carried.feet, inchPart)
 }
 
 // Builds the inch portion of a fractional reading: '' when the inch part is empty, a
@@ -100,26 +117,15 @@ function formatFeetAndInchesFraction(mm: Millimeters, denominator: number): stri
   if (!Number.isInteger(denominator) || denominator <= 0) {
     throw new Error(`fraction denominator must be a positive integer, got ${denominator}`)
   }
-  // Format the magnitude and reapply the sign around it so the foot/inch split and the
-  // rounding carry never have to reason about a negative value.
-  const isNegative = mm < 0
-  const totalInches = Math.abs(millimetersToInches(mm))
-  let feet = Math.floor(totalInches / INCHES_PER_FOOT)
-  const fraction = roundToNearestFraction(totalInches - feet * INCHES_PER_FOOT, denominator)
-  let wholeInches = fraction.whole
-  // Rounding the inch remainder can reach a full foot (e.g. 11.97" rounds to 12");
-  // carry it up so the result reads 1' rather than 0'12".
-  if (wholeInches >= INCHES_PER_FOOT) {
-    feet += 1
-    wholeInches = 0
-  }
-  const inchPart = formatFractionalInchPart(wholeInches, fraction.numerator, fraction.denominator)
-  const feetPart = feet > 0 ? `${feet}${FOOT_SYMBOL}` : ''
-  // When both parts are empty the length is zero, which reads as 0".
-  const combined = feetPart + inchPart
-  const body = combined.length > 0 ? combined : `0${INCH_SYMBOL}`
-  // Apply the sign only when the magnitude is non-zero so -0 mm does not print as -0".
-  return isNegative && combined.length > 0 ? `-${body}` : body
+  const { isNegative, feet, remainderInches } = splitInchesFromMillimeters(mm)
+  const fraction = roundToNearestFraction(remainderInches, denominator)
+  const carried = carryFullFoot(feet, fraction.whole)
+  const inchPart = formatFractionalInchPart(
+    carried.inches,
+    fraction.numerator,
+    fraction.denominator,
+  )
+  return assembleFeetAndInches(isNegative, carried.feet, inchPart)
 }
 
 function formatFeetAndInches(mm: Millimeters, precision: DisplayPrecision): string {
