@@ -1,6 +1,8 @@
 /** A length in real-valued millimeters: the canonical storage unit, matching core/model. */
 export type Millimeters = number
 
+export type MetricForm = 'meters' | 'centimeters' | 'millimeters'
+
 export const MM_PER_INCH = 25.4
 export const MM_PER_FOOT = 304.8
 export const MM_PER_CENTIMETER = 10
