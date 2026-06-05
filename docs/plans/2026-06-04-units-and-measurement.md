@@ -374,16 +374,25 @@ Task 2 review: the guard lives at the consumer boundary, not in the low-level he
 
 **Files:** Create `core/units/preferences.ts`, `core/units/preferences.test.ts`.
 
-| call                                                                                                                                                     | result                                                                                             |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `lengthFormatOptions(DEFAULT_IMPERIAL_PREFERENCES)`                                                                                                      | `{ system: 'imperial', form: 'feet-and-inches', precision: { kind: 'fraction', denominator: 8 } }` |
-| `lengthFormatOptions(DEFAULT_METRIC_PREFERENCES)`                                                                                                        | `{ system: 'metric', form: 'millimeters', precision: { kind: 'decimal-places', places: 0 } }`      |
-| `lengthFormatOptions({ ...DEFAULT_IMPERIAL_PREFERENCES, imperialForm: 'decimal-feet', imperialLengthPrecision: { kind: 'decimal-places', places: 3 } })` | `{ system: 'imperial', form: 'decimal-feet', precision: { kind: 'decimal-places', places: 3 } }`   |
+| call                                                                                                                                                      | result                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `lengthFormatOptions(DEFAULT_IMPERIAL_PREFERENCES)`                                                                                                       | `{ system: 'imperial', form: 'feet-and-inches', precision: { kind: 'fraction', denominator: 8 } }` |
+| `lengthFormatOptions(DEFAULT_METRIC_PREFERENCES)`                                                                                                         | `{ system: 'metric', form: 'millimeters', precision: { kind: 'decimal-places', places: 0 } }`      |
+| `lengthFormatOptions({ ...DEFAULT_IMPERIAL_PREFERENCES, imperialForm: 'decimal-feet', imperialLengthPrecision: { kind: 'decimal-places', places: 3 } })`  | `{ system: 'imperial', form: 'decimal-feet', precision: { kind: 'decimal-places', places: 3 } }`   |
+| `lengthFormatOptions({ ...DEFAULT_IMPERIAL_PREFERENCES, imperialForm: 'decimal-inches', imperialLengthPrecision: { kind: 'fraction', denominator: 8 } })` | throws (a decimal form requires decimal-places precision, not a fraction)                          |
+| `lengthFormatOptions({ ...DEFAULT_METRIC_PREFERENCES, metricLengthPrecision: { kind: 'fraction', denominator: 8 } })`                                     | throws (metric forms require decimal-places precision, not a fraction)                             |
 
 Also assert `formatLength(2030, lengthFormatOptions(DEFAULT_METRIC_PREFERENCES)) === '2030 mm'`
 to prove the preference path composes with the formatter.
 
-- [ ] RED: `/test-first lengthFormatOptions resolves the active system's form and precision from preferences`
+`UnitPreferences` carries both precisions as the full `DisplayPrecision` (fraction precision
+is only meaningful for feet-and-inches). Because preferences are persisted per-project and
+loaded from storage, `lengthFormatOptions` validates the form/precision pairing at runtime:
+a fraction precision paired with metric or with a decimal imperial form throws a clear error
+(a private `requireDecimalPlaces` helper narrows the precision and surfaces the misconfiguration).
+Only the feet-and-inches arm passes the `DisplayPrecision` through unchanged.
+
+- [ ] RED: `/test-first lengthFormatOptions resolves preferences into format options and rejects a fraction precision for forms that cannot use one`
 - [ ] Verify fails. Run: `pnpm exec vitest run core/units/preferences.test.ts`
 - [ ] GREEN: `/implement`
 - [ ] Verify passes.
