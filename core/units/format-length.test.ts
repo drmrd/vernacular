@@ -114,3 +114,65 @@ describe('formatLength imperial decimal forms', () => {
     ).toBe('-80"')
   })
 })
+
+describe('formatLength imperial feet-and-inches', () => {
+  it('renders whole feet and whole inches', () => {
+    expect(
+      formatLength(2032, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe(`6'8"`)
+  })
+
+  it('renders a decimal inch part to the requested places', () => {
+    expect(
+      formatLength(2044.7, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'decimal-places', places: 1 },
+      }),
+    ).toBe(`6'8.5"`)
+  })
+
+  it('drops a zero inch part, leaving only the feet', () => {
+    expect(
+      formatLength(1828.8, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe(`6'`)
+  })
+
+  it('drops a zero feet part, leaving only the inches', () => {
+    expect(
+      formatLength(203.2, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe(`8"`)
+  })
+
+  it('renders zero as zero inches without a sign', () => {
+    expect(
+      formatLength(0, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe(`0"`)
+  })
+
+  it('preserves the sign of a negative length and drops the zero inch part', () => {
+    expect(
+      formatLength(-2438.4, {
+        system: 'imperial',
+        form: 'feet-and-inches',
+        precision: { kind: 'decimal-places', places: 0 },
+      }),
+    ).toBe(`-8'`)
+  })
+})
