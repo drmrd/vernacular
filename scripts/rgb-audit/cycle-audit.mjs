@@ -66,3 +66,55 @@ function parseSubject(rawSubject) {
   }
   return { type: match[1], scope: match[2] ?? '', subject: match[3] }
 }
+
+/**
+ * Classify a commit by its role in the red-green-blue cycle.
+ *
+ * @param {ParsedCommit} commit
+ * @returns {'red'|'green'|'blue'|'exempt'}
+ */
+function classify(commit) {
+  if (commit.infra) {
+    return 'exempt'
+  }
+  if (commit.type === 'test') {
+    return commit.scope === 'e2e' ? 'exempt' : 'red'
+  }
+  if (commit.type === 'feat' || commit.type === 'fix') {
+    return 'green'
+  }
+  if (commit.type === 'refactor') {
+    return 'blue'
+  }
+  return 'exempt'
+}
+
+/**
+ * Audit an oldest-first sequence of commits for red-green-blue cycle violations.
+ *
+ * Ordering rule: every GREEN commit must be preceded by at least one RED test
+ * commit that has not already been consumed by an earlier GREEN commit.
+ *
+ * @param {ParsedCommit[]} commits
+ * @returns {Violation[]}
+ */
+export function auditCommits(commits) {
+  const violations = []
+  let pendingRed = 0
+  for (const commit of commits) {
+    const role = classify(commit)
+    if (role === 'red') {
+      pendingRed += 1
+    } else if (role === 'green') {
+      if (pendingRed === 0) {
+        violations.push({
+          sha: commit.sha,
+          rule: 'ordering',
+          message: `GREEN commit ${commit.sha} has no preceding RED test commit in range`,
+        })
+      }
+      pendingRed = 0
+    }
+  }
+  return violations
+}
