@@ -44,6 +44,11 @@ export default tseslint.config(
       'reports',
       '.stryker-tmp',
       '.claude/worktrees',
+      // emitted by `tsc -b` from the tsconfig.node.json composite project
+      'vite.config.js',
+      'vite.config.d.ts',
+      'vitest.config.js',
+      'vitest.config.d.ts',
     ],
   },
   {
