@@ -66,3 +66,30 @@ describe('snapPoint midpoint snapping', () => {
     })
   })
 })
+
+describe('snapPoint grid snapping', () => {
+  it('snaps to the nearest grid intersection when no wall feature is in range', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 100,
+      toleranceMm: 50,
+    }
+
+    expect(snapPoint({ x: 1240, y: 1860 }, context)).toEqual({
+      point: { x: 1200, y: 1900 },
+      kind: 'grid',
+    })
+  })
+
+  it('omits the referenceId for a grid snap', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 100,
+      toleranceMm: 50,
+    }
+
+    const result = snapPoint({ x: 1240, y: 1860 }, context)
+    expect(result).not.toBeNull()
+    expect(result?.referenceId).toBeUndefined()
+  })
+})
