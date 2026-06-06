@@ -5,6 +5,7 @@ import {
   panBy,
   clampScale,
   zoomAtCursor,
+  wheelZoomFactor,
   DEFAULT_PLAN_SCALE,
   MIN_PLAN_SCALE,
   MAX_PLAN_SCALE,
@@ -97,5 +98,27 @@ describe('zoomAtCursor', () => {
     )
 
     expect(zoomed.scale).toBe(MAX_PLAN_SCALE)
+  })
+})
+
+describe('wheelZoomFactor', () => {
+  it('zooms in for an upward scroll (negative deltaY)', () => {
+    expect(wheelZoomFactor(-100)).toBeGreaterThan(1)
+  })
+
+  it('zooms out for a downward scroll (positive deltaY)', () => {
+    expect(wheelZoomFactor(100)).toBeLessThan(1)
+  })
+
+  it('holds the scale steady at rest (deltaY of zero)', () => {
+    expect(wheelZoomFactor(0)).toBe(1)
+  })
+
+  it('moves the factor further from 1 as the upward scroll grows', () => {
+    expect(wheelZoomFactor(-50)).toBeLessThan(wheelZoomFactor(-100))
+  })
+
+  it('moves the factor further from 1 as the downward scroll grows', () => {
+    expect(wheelZoomFactor(50)).toBeGreaterThan(wheelZoomFactor(100))
   })
 })
