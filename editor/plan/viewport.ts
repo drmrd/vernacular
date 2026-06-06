@@ -17,7 +17,7 @@ export interface ViewportSize {
   height: number
 }
 
-/** Pan is a screen-pixel translation of the world origin. Absent offset means the origin (no pan). */
+/** Pan is a screen-pixel translation of the world origin. An absent offset means the world origin maps to the screen origin (no pan). */
 export interface Viewport {
   scale: number
   offset?: ScreenPoint
