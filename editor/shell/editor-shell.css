@@ -123,20 +123,11 @@
 
 .plan-view {
   outline: 1px solid #cbd5e1;
-  background-color: #ffffff;
   /*
-   * Graph paper at the default 0.08 px/mm plan scale: a 200 mm minor grid (16 px)
-   * under a heavier 1 m major grid (80 px) every five cells for quick scale reading.
-   * Major lines are listed first so they paint over the minor lines where they meet.
+   * The plan view draws its own pan- and zoom-aware grid and rulers on the
+   * canvas, so the surface only needs a plain white backdrop here. A static CSS
+   * graph-paper background would not move with the camera and is intentionally
+   * not used.
    */
-  background-image:
-    linear-gradient(#d7dee8 1px, transparent 1px),
-    linear-gradient(90deg, #d7dee8 1px, transparent 1px),
-    linear-gradient(#eef2f7 1px, transparent 1px),
-    linear-gradient(90deg, #eef2f7 1px, transparent 1px);
-  background-size:
-    80px 80px,
-    80px 80px,
-    16px 16px,
-    16px 16px;
+  background-color: #ffffff;
 }
