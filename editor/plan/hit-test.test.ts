@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hitTestWalls, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
+import { hitTestWalls, wallBounds, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import type { WallSceneNode } from '../../core'
 
 function wall(
@@ -39,5 +39,16 @@ describe('hitTestWalls', () => {
     // a point past the end and far away is not.
     expect(hitTestWalls(walls, { x: 1050, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe('wall:a')
     expect(hitTestWalls(walls, { x: 5000, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBeNull()
+  })
+})
+
+describe('wallBounds', () => {
+  it('spans the wall endpoints regardless of draw direction', () => {
+    const rightToLeftBottomToTop = wall('wall:a', { x: 1000, y: 3000 }, { x: 200, y: 500 })
+
+    expect(wallBounds(rightToLeftBottomToTop)).toEqual({
+      min: { x: 200, y: 500 },
+      max: { x: 1000, y: 3000 },
+    })
   })
 })
