@@ -3,6 +3,9 @@ import type { Point } from '../model/types'
 /** Denominator magnitudes below this are treated as parallel or collinear. */
 const PARALLEL_EPSILON = 1e-9
 
+/** Squared lengths below this mark an effectively zero-length (degenerate) segment. */
+const DEGENERATE_SEGMENT_EPSILON = 1e-9
+
 /**
  * Intersection point of the two closed segments [a1, a2] and [b1, b2], or null
  * when they are parallel, collinear, or disjoint. Uses the standard parametric
@@ -43,7 +46,7 @@ export function pointOnSegment(p: Point, a: Point, b: Point, tolerance: number):
   const dy = b.y - a.y
 
   const lengthSquared = dx * dx + dy * dy
-  if (lengthSquared < PARALLEL_EPSILON) {
+  if (lengthSquared < DEGENERATE_SEGMENT_EPSILON) {
     const offx = p.x - a.x
     const offy = p.y - a.y
     return Math.hypot(offx, offy) <= tolerance
