@@ -93,3 +93,37 @@ describe('snapPoint grid snapping', () => {
     expect(result?.referenceId).toBeUndefined()
   })
 })
+
+describe('snapPoint parallel snapping', () => {
+  it('projects the cursor onto the line through origin parallel to a reference wall', () => {
+    // Horizontal reference wall placed far from the cursor so neither endpoint,
+    // midpoint, nor (disabled) grid is in range. The parallel line through the
+    // origin runs horizontally (y = 0).
+    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+    }
+
+    // Cursor sits 8 mm above the parallel line y = 0, within tolerance.
+    const result = snapPoint({ x: 2000, y: 8 }, context)
+    expect(result?.kind).toBe('parallel')
+    expect(result?.point).toEqual({ x: 2000, y: 0 })
+    expect(result?.referenceId).toBe(wall.id)
+  })
+
+  it('does not produce a parallel snap when the cursor is far from the parallel line', () => {
+    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+    }
+
+    // Cursor sits 800 mm off the parallel line; nothing else is in range either.
+    expect(snapPoint({ x: 2000, y: 800 }, context)).toBeNull()
+  })
+})
