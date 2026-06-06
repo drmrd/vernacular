@@ -12,18 +12,72 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
 
 export interface EditorShellProps {
   saveStatus: AutosaveStatus
+  recentProjects?: { id: string; name: string }[]
+  onNewProject?: () => void
+  onOpenRecent?: (id: string) => void
+  onSave?: () => void
+  onExportBundle?: () => void
+  recovery?: { onRestore: () => void; onDiscard: () => void }
 }
 
-export function EditorShell({ saveStatus }: EditorShellProps) {
+export function EditorShell({
+  saveStatus,
+  recentProjects,
+  onNewProject,
+  onOpenRecent,
+  onSave,
+  onExportBundle,
+  recovery,
+}: EditorShellProps) {
   const graph = useSceneGraph()
   const selectedIds = useSelectionIds()
+  const hasRecentProjects = recentProjects !== undefined && recentProjects.length > 0
   return (
     <div className="editor-shell">
       <header className="editor-shell__toolbar" role="banner">
         <h1>Vernacular</h1>
         <p aria-live="polite">Walls: {graph.walls.length}</p>
         <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
+        <nav className="editor-shell__project" aria-label="Project">
+          {onNewProject ? (
+            <button type="button" onClick={onNewProject}>
+              New
+            </button>
+          ) : null}
+          {onSave ? (
+            <button type="button" onClick={onSave}>
+              Save
+            </button>
+          ) : null}
+          {onExportBundle ? (
+            <button type="button" onClick={onExportBundle}>
+              Export bundle
+            </button>
+          ) : null}
+          {hasRecentProjects ? (
+            <ul className="editor-shell__recent">
+              {recentProjects.map((project) => (
+                <li key={project.id}>
+                  <button type="button" onClick={() => onOpenRecent?.(project.id)}>
+                    {project.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </nav>
       </header>
+      {recovery ? (
+        <div className="editor-shell__recovery" role="alert">
+          <p>Unsaved changes were recovered.</p>
+          <button type="button" onClick={recovery.onRestore}>
+            Restore
+          </button>
+          <button type="button" onClick={recovery.onDiscard}>
+            Discard
+          </button>
+        </div>
+      ) : null}
       <nav className="editor-shell__tools" aria-label="Tools">
         <ToolsPanel />
       </nav>

@@ -42,6 +42,37 @@
   color: #475569;
 }
 
+.editor-shell__project {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.editor-shell__recent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editor-shell__recovery {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #f59e0b;
+  border-radius: 0.3rem;
+  padding: 0.5rem 0.75rem;
+  background: #fffbeb;
+}
+
+.editor-shell__recovery p {
+  margin: 0;
+}
+
 .editor-shell__tools {
   grid-area: tools;
 }
