@@ -59,7 +59,7 @@ function buildMetric(match: RegExpMatchArray): Millimeters {
 // so a plain Number() is not enough; the whole part of a mixed fraction is optional.
 function parseInchValueText(text: string): number {
   const trimmed = text.trim()
-  const fraction = trimmed.match(/^(?:(\d+(?:\.\d+)?)[\s-]+)?(\d+)\/(\d+)$/)
+  const fraction = trimmed.match(/^(?:(\d+(?:\.\d+)?)[\s-])?(\d+)\/(\d+)$/)
   if (fraction) {
     const [, wholeText, numerator, denominator] = fraction
     const whole = wholeText === undefined ? 0 : Number(wholeText)
