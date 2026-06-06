@@ -13,9 +13,10 @@ describe('reminderMessages', () => {
     expect(joined.toLowerCase()).toContain('knowledge')
   })
 
-  it('reminds about the knowledge graph for a change in another source layer', () => {
+  it('reminds about both clean-code and the knowledge graph for any source layer', () => {
     const joined = reminderMessages(['engine/scene/build-scene.ts']).join('\n')
 
+    expect(joined.toLowerCase()).toContain('clean-code')
     expect(joined.toLowerCase()).toContain('knowledge')
   })
 
