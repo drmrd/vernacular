@@ -13,17 +13,23 @@ import type { Bounds } from './fit'
 import { DEFAULT_METRIC_PREFERENCES } from '../../core'
 import type { RoomSceneNode, WallSceneNode } from '../../core'
 
+/** A minimal valid `drawPlan` options object that tests override per case. */
+function planOptions(overrides: Partial<Parameters<typeof drawPlan>[1]> = {}) {
+  return {
+    walls: [wall],
+    viewport: { scale: DEFAULT_PLAN_SCALE },
+    width: 800,
+    height: 600,
+    selectedIds: new Set<string>(),
+    ...overrides,
+  }
+}
+
 describe('drawPlan', () => {
   it('clears the surface and strokes each wall projected to screen space', () => {
     const recorder = recordingContext()
 
-    drawPlan(recorder.ctx, {
-      walls: [wall],
-      viewport: { scale: DEFAULT_PLAN_SCALE },
-      width: 800,
-      height: 600,
-      selectedIds: new Set(),
-    })
+    drawPlan(recorder.ctx, planOptions())
 
     expect(recorder.clearCount()).toBe(1)
     expect(recorder.segments).toHaveLength(1)
@@ -119,28 +125,32 @@ describe('drawPlan', () => {
 
   it('fills each room polygon beneath the wall strokes', () => {
     const recorder = recordingContext()
-    const roomWall: WallSceneNode = {
-      id: 'w1',
-      kind: 'wall',
-      floorId: 'f',
-      start: { x: 0, y: 0 },
-      end: { x: 4000, y: 0 },
-      thickness: 114,
-    }
 
-    drawPlan(recorder.ctx, {
-      walls: [roomWall],
-      rooms: [rectangleRoom('room:r'), rectangleRoom('room:s', 5000)],
-      viewport: { scale: DEFAULT_PLAN_SCALE },
-      width: 800,
-      height: 600,
-      selectedIds: new Set<string>(),
-    })
+    drawPlan(
+      recorder.ctx,
+      planOptions({ rooms: [rectangleRoom('room:r'), rectangleRoom('room:s', 5000)] }),
+    )
 
     const { ops } = recorder
     expect(ops).toContain('fill')
     expect(ops).toContain('closePath')
     expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
+  })
+})
+
+describe('drawPlan room labels', () => {
+  it("paints each room's label over the walls when roomLabels is set", () => {
+    const recorder = recordingContext()
+    const named: RoomSceneNode = { ...rectangleRoom('room:r'), name: 'Parlor' }
+    // Grid and rulers stay off (the other fillText source); the "omits grid and
+    // rulers" test pins that a roomLabels-free drawPlan paints no fillText.
+    drawPlan(
+      recorder.ctx,
+      planOptions({ rooms: [named], roomLabels: { preferences: DEFAULT_METRIC_PREFERENCES } }),
+    )
+
+    expect(recorder.texts.map((entry) => entry.text)).toContain('Parlor')
+    expect(recorder.ops.lastIndexOf('stroke')).toBeLessThan(recorder.ops.indexOf('fillText'))
   })
 })
 
