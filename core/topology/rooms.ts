@@ -182,6 +182,9 @@ function facePolygon(face: readonly HalfEdge[], vertices: readonly Point[]): Poi
  * the same vertex `v`. Treating the loop as cyclic, a tip is any position whose
  * previous and next neighbors are the same vertex; drop the tip and one of those
  * duplicated neighbors, then restart until no spike remains.
+ *
+ * Dangling stub walls are dead-end artifacts of the half-edge walk traversing into
+ * and back out of a stub, and their stub endpoints must not appear as room corners.
  */
 function removeSpikes(loop: number[]): number[] {
   const cleaned = [...loop]
@@ -191,7 +194,13 @@ function removeSpikes(loop: number[]): number[] {
     for (let index = 0; index < cleaned.length; index += 1) {
       const previous = cleaned[(index - 1 + cleaned.length) % cleaned.length]
       const next = cleaned[(index + 1) % cleaned.length]
-      if (previous !== undefined && previous === next) {
+      // `next !== undefined` is implied by the equality with the defined `previous`,
+      // but stated explicitly so the asymmetric guard is self-documenting.
+      if (previous !== undefined && next !== undefined && previous === next) {
+        // Drop the spike tip, then drop the duplicated neighbor. Removing the tip
+        // shifts every later element left by one, so the `next` duplicate that was
+        // at `index + 1` now sits at `index % cleaned.length` (the modulus only
+        // matters when the tip was the final element and the duplicate wraps to 0).
         cleaned.splice(index, 1)
         cleaned.splice(index % cleaned.length, 1)
         changed = true
