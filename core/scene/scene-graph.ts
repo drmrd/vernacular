@@ -1,5 +1,5 @@
-import type { Floor, Point, Project, Wall } from '../model/types'
-import { deriveRooms } from '../topology/rooms'
+import type { Floor, Point, Project, RoomOverride, Wall } from '../model/types'
+import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
 
 // Kind-prefixed ids keep floor and wall node ids globally unique within the scene graph.
 const FLOOR_NODE_PREFIX = 'floor:'
@@ -27,6 +27,7 @@ export interface RoomSceneNode {
   floorId: string
   polygon: Point[]
   area: number
+  name?: string
 }
 
 export interface SceneGraph {
@@ -55,8 +56,11 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
   }
 }
 
-export function deriveRoomNodesForFloor(floor: Floor): RoomSceneNode[] {
-  return deriveRooms(floor.walls).map((room) => ({
+export function deriveRoomNodesForFloor(
+  floor: Floor,
+  overrides?: Readonly<Record<string, RoomOverride>>,
+): RoomSceneNode[] {
+  return applyRoomOverrides(deriveRooms(floor.walls), overrides).map((room) => ({
     // room.id already carries the `room:` namespace prefix from the topology
     // layer (see core/topology/rooms.ts), so it is used directly here rather
     // than re-prefixed, unlike the locally namespaced floor and wall node ids.
@@ -65,6 +69,9 @@ export function deriveRoomNodesForFloor(floor: Floor): RoomSceneNode[] {
     floorId: floor.id,
     polygon: room.polygon,
     area: room.area,
+    // Omit the optional name when absent so the no-overrides projection stays
+    // identical to slice 1 under exactOptionalPropertyTypes.
+    ...(room.name !== undefined && { name: room.name }),
   }))
 }
 
@@ -75,6 +82,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     walls: project.floors.flatMap((floor) =>
       floor.walls.map((wall) => deriveWallNode(floor, wall)),
     ),
-    rooms: project.floors.flatMap(deriveRoomNodesForFloor),
+    rooms: project.floors.flatMap((floor) => deriveRoomNodesForFloor(floor, project.roomOverrides)),
   }
 }
