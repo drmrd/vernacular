@@ -20,7 +20,10 @@ describe('deriveRooms', () => {
 
     expect(rooms).toHaveLength(1)
 
-    const [room] = rooms
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
     expect(room.polygon).toHaveLength(4)
 
     const expectedCorners: Point[] = [
