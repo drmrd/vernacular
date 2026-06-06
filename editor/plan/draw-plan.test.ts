@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { drawPlan, type PlanDrawingContext } from './draw-plan'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
-import type { WallSceneNode } from '../../core'
+import type { RoomSceneNode, WallSceneNode } from '../../core'
 
 interface DrawnSegment {
   from: [number, number]
@@ -19,6 +19,7 @@ interface DrawnArc {
 function recordingContext() {
   const segments: DrawnSegment[] = []
   const arcs: DrawnArc[] = []
+  const ops: string[] = []
   let clears = 0
   let pen: [number, number] = [0, 0]
   const ctx: PlanDrawingContext = {
@@ -27,25 +28,39 @@ function recordingContext() {
     strokeStyle: '',
     fillStyle: '',
     clearRect: () => {
+      ops.push('clearRect')
       clears += 1
     },
-    beginPath: () => {},
+    beginPath: () => {
+      ops.push('beginPath')
+    },
     moveTo: (x, y) => {
+      ops.push('moveTo')
       pen = [x, y]
     },
     lineTo: (x, y) => {
+      ops.push('lineTo')
       segments.push({ from: pen, to: [x, y], style: String(ctx.strokeStyle) })
     },
-    stroke: () => {},
+    closePath: () => {
+      ops.push('closePath')
+    },
+    stroke: () => {
+      ops.push('stroke')
+    },
     arc: (x, y, radius) => {
+      ops.push('arc')
       arcs.push({ x, y, radius, fillStyle: String(ctx.fillStyle) })
     },
-    fill: () => {},
+    fill: () => {
+      ops.push('fill')
+    },
   }
   return {
     ctx,
     segments,
     arcs,
+    ops,
     clearCount: () => clears,
   }
 }
@@ -125,5 +140,43 @@ describe('drawPlan', () => {
     expect(recorder.arcs).toHaveLength(1)
     expect(recorder.arcs[0]?.x).toBe(previewStart.x)
     expect(recorder.arcs[0]?.y).toBe(previewStart.y)
+  })
+
+  it('fills each room polygon beneath the wall strokes', () => {
+    const recorder = recordingContext()
+    const room: RoomSceneNode = {
+      id: 'room:r',
+      kind: 'room',
+      floorId: 'f',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 4000, y: 0 },
+        { x: 4000, y: 3000 },
+        { x: 0, y: 3000 },
+      ],
+      area: 12_000_000,
+    }
+    const roomWall: WallSceneNode = {
+      id: 'w1',
+      kind: 'wall',
+      floorId: 'f',
+      start: { x: 0, y: 0 },
+      end: { x: 4000, y: 0 },
+      thickness: 114,
+    }
+
+    drawPlan(recorder.ctx, {
+      walls: [roomWall],
+      rooms: [room],
+      viewport: { scale: DEFAULT_PLAN_SCALE },
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+    })
+
+    const { ops } = recorder
+    expect(ops).toContain('fill')
+    expect(ops).toContain('closePath')
+    expect(ops.indexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
   })
 })
