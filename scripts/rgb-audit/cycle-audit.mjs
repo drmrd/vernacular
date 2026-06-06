@@ -18,6 +18,7 @@
 const RECORD_SEPARATOR = '\x1e'
 const UNIT_SEPARATOR = '\x1f'
 const CONVENTIONAL_COMMIT_PATTERN = /^(\w+)(?:\(([^)]*)\))?!?:\s*(.*)$/
+const TEST_FILE_PATTERN = /\.test\.(ts|tsx|mjs|js)$/
 
 /**
  * Parse raw `git log` output into structured commits.
@@ -95,6 +96,8 @@ function classify(commit) {
  * Ordering rule: every GREEN commit must be preceded by at least one RED test
  * commit that has not already been consumed by an earlier GREEN commit.
  *
+ * Independence rule: a GREEN commit must change no test files.
+ *
  * @param {ParsedCommit[]} commits
  * @returns {Violation[]}
  */
@@ -111,6 +114,14 @@ export function auditCommits(commits) {
           sha: commit.sha,
           rule: 'ordering',
           message: `GREEN commit ${commit.sha} has no preceding RED test commit in range`,
+        })
+      }
+      const matched = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
+      if (matched.length > 0) {
+        violations.push({
+          sha: commit.sha,
+          rule: 'independence',
+          message: `GREEN commit ${commit.sha} modifies test file(s): ${matched.join(', ')}`,
         })
       }
       pendingRed = 0
