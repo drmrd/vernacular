@@ -64,6 +64,7 @@ function recordingContext() {
       ops.push('fillText')
       texts.push({ text, x, y })
     },
+    // eslint-disable-next-line max-params -- mirrors the four-argument CanvasRenderingContext2D.fillRect signature the fake records
     fillRect: (x, y, w, h) => {
       ops.push('fillRect')
       fillRects.push({ x, y, w, h })
