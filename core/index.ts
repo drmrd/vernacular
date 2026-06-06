@@ -58,3 +58,36 @@ export { captureInverse } from './commands/inverse-capture'
 export type { SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
 export { deriveFloorNode, deriveSceneGraph, deriveWallNode } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
+export type {
+  AssumedUnit,
+  DecimalPrecision,
+  DisplayPrecision,
+  FormatLengthOptions,
+  ImperialForm,
+  MetricForm,
+  Millimeters,
+  ParseLengthOptions,
+  UnitPreferences,
+} from './units'
+export {
+  DEFAULT_IMPERIAL_PREFERENCES,
+  DEFAULT_METRIC_PREFERENCES,
+  INCHES_PER_FOOT,
+  MM_PER_CENTIMETER,
+  MM_PER_FOOT,
+  MM_PER_INCH,
+  MM_PER_METER,
+  centimetersToMillimeters,
+  feetToMillimeters,
+  formatLength,
+  inchesToMillimeters,
+  lengthFormatOptions,
+  metersToMillimeters,
+  millimetersToCentimeters,
+  millimetersToFeet,
+  millimetersToInches,
+  millimetersToMeters,
+  parseLength,
+  roundToDecimalPlaces,
+  roundToNearestFraction,
+} from './units'
