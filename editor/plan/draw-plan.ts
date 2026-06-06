@@ -1,5 +1,6 @@
 import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
-import { worldToScreen, type Viewport } from './viewport'
+import { visibleGridLines } from './grid'
+import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
 
 export interface PlanDrawingContext {
   lineWidth: number
@@ -41,6 +42,24 @@ const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2
 const LINE_CAP = 'round' as const
+const GRID_LINE_COLOR = '#e6e9ee'
+const GRID_LINE_WIDTH = 1
+
+export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
+  ctx.strokeStyle = GRID_LINE_COLOR
+  ctx.lineWidth = GRID_LINE_WIDTH
+  for (const line of visibleGridLines(viewport, size).lines) {
+    ctx.beginPath()
+    if (line.orientation === 'vertical') {
+      ctx.moveTo(line.screen, 0)
+      ctx.lineTo(line.screen, size.height)
+    } else {
+      ctx.moveTo(0, line.screen)
+      ctx.lineTo(size.width, line.screen)
+    }
+    ctx.stroke()
+  }
+}
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
