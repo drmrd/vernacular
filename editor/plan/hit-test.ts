@@ -1,4 +1,10 @@
-import type { Point, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+import {
+  pointInPolygon,
+  type Point,
+  type RoomSceneNode,
+  type SceneGraph,
+  type WallSceneNode,
+} from '../../core'
 import { contentBounds, type Bounds } from './fit'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
@@ -63,12 +69,23 @@ function indexEntities(scene: SceneGraph): IndexedEntity[] {
   ]
 }
 
+function containingRoomId(rooms: RoomSceneNode[], point: Point): string | null {
+  const hit = rooms.find((room) => pointInPolygon(point, room.polygon))
+  return hit ? hit.id : null
+}
+
 /**
  * Broad phase then narrow phase: the spatial index supplies candidate ids near
- * the point, then the nearest in-range wall centerline is resolved among them.
+ * the point; the nearest in-range wall centerline wins, and only when no wall is
+ * in range does the search fall back to the room whose polygon contains the point.
  */
 export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
   const candidateIds = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
   const candidateWalls = scene.walls.filter((wall) => candidateIds.has(wall.id))
-  return hitTestWalls(candidateWalls, point, tolerance)
+  const wallHit = hitTestWalls(candidateWalls, point, tolerance)
+  if (wallHit !== null) {
+    return wallHit
+  }
+  const candidateRooms = scene.rooms.filter((room) => candidateIds.has(room.id))
+  return containingRoomId(candidateRooms, point)
 }
