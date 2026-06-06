@@ -108,5 +108,12 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
 
       expect(await directory.list('')).toEqual([])
     })
+
+    it('lists nothing for a path that refers to a stored file', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('a/project.json', bytes(1))
+
+      expect(await directory.list('a/project.json')).toEqual([])
+    })
   })
 }
