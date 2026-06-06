@@ -19,3 +19,19 @@ export type {
   ServiceWorkerRegistrationOutcome,
   RegisterServiceWorkerOptions,
 } from './service-worker/register-service-worker'
+export type { DirectoryPort } from './fs/directory-port'
+export { InMemoryDirectory } from './fs/in-memory-directory'
+export { FolderProjectStore, ProjectFileNotFoundError } from './folder/folder-project-store'
+export type { FolderProjectStoreOptions } from './folder/folder-project-store'
+export { OpfsProjectStore } from './opfs/opfs-project-store'
+export { ZipBundleProjectStore } from './zip/zip-bundle-project-store'
+export { SnapshotStore } from './snapshots/snapshot-store'
+export type { SnapshotStoreOptions } from './snapshots/snapshot-store'
+export { InMemoryRecentProjectStore } from './recent/recent-project-store'
+export type {
+  RecentProjectStore,
+  RecentProjectEntry,
+  ProjectBackend,
+} from './recent/recent-project-store'
+export { createProjectLock } from './locks/project-lock'
+export type { ProjectLock, LockManagerPort, LockOutcome } from './locks/project-lock'
