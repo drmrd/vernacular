@@ -36,6 +36,14 @@ Foundation work in progress (build foundation, documentation, engineering norms,
 | Multi-floor and stairs (beta)                           | pending |
 | Paint, export, site metadata (1.0)                      | pending |
 
+**Phase 1, units and measurement (`core/units/`): done.** Imperial and metric display
+formatting with multiple imperial forms (`6'8"`, `6.667'`, `80"`, and fractional inches),
+tolerant input parsing, per-category display precision, and no round-trip drift between the
+parser and formatter. Deferred (documented in the slice plan): area and volume units, angle
+and bearing units, localized unit symbols and locale-aware number formatting
+(internationalization), reconciling the design specification's "SI meters" wording with the
+model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
+
 ## Beyond 1.0
 
 | Focus                                                    | Notes                |
