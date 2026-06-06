@@ -48,6 +48,20 @@ describe('Dispatcher', () => {
     expect(dispatcher.redo()).toBe(false)
   })
 
+  it('canRedo reflects whether an undone command can be redone', () => {
+    const state: Counter = { value: 0 }
+    const dispatcher = new Dispatcher(state, counterRegistry())
+
+    expect(dispatcher.canRedo()).toBe(false)
+
+    dispatcher.dispatch(setValue(5))
+    dispatcher.undo()
+    expect(dispatcher.canRedo()).toBe(true)
+
+    dispatcher.redo()
+    expect(dispatcher.canRedo()).toBe(false)
+  })
+
   it('discards the redo branch after a new command', () => {
     const state: Counter = { value: 0 }
     const dispatcher = new Dispatcher(state, counterRegistry())
