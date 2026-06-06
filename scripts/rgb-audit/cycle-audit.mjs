@@ -46,13 +46,13 @@ export function parseGitLog(raw) {
  */
 function parseRecord(record) {
   const lines = record.split('\n')
-  const [sha = '', rawSubject = '', infraValue = ''] = lines[0].split(UNIT_SEPARATOR)
+  const [sha = '', rawSubject = '', infraTrailer = ''] = lines[0].split(UNIT_SEPARATOR)
   const files = lines
     .slice(1)
     .map((line) => line.trim())
     .filter((line) => line !== '')
   const { type, scope, subject } = parseSubject(rawSubject)
-  return { sha, type, scope, subject, files, infra: infraValue.trim() !== '' }
+  return { sha, type, scope, subject, files, infra: infraTrailer.trim() !== '' }
 }
 
 /**
