@@ -51,7 +51,7 @@ export {
   renameProject,
   setFloorCeilingHeight,
 } from './commands/handlers/project-commands'
-export type { AddWallParams } from './commands/handlers/wall-commands'
+export type { AddWallParams, WallEnd } from './commands/handlers/wall-commands'
 export { ADD_WALL, addWall, registerWallCommands } from './commands/handlers/wall-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
