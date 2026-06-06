@@ -1,5 +1,6 @@
 import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
 import { visibleGridLines } from './grid'
+import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
 import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
 
 export interface PlanDrawingContext {
@@ -7,6 +8,9 @@ export interface PlanDrawingContext {
   lineCap: CanvasLineCap
   strokeStyle: string | CanvasGradient | CanvasPattern
   fillStyle: string | CanvasGradient | CanvasPattern
+  font: string
+  textAlign: CanvasTextAlign
+  textBaseline: CanvasTextBaseline
   clearRect(x: number, y: number, width: number, height: number): void
   beginPath(): void
   moveTo(x: number, y: number): void
@@ -15,6 +19,8 @@ export interface PlanDrawingContext {
   closePath(): void
   stroke(): void
   fill(): void
+  fillText(text: string, x: number, y: number): void
+  fillRect(x: number, y: number, width: number, height: number): void
 }
 
 export interface PreviewSegment {
@@ -44,6 +50,39 @@ const FULL_CIRCLE = Math.PI * 2
 const LINE_CAP = 'round' as const
 const GRID_LINE_COLOR = '#e6e9ee'
 const GRID_LINE_WIDTH = 1
+const RULER_BAND_COLOR = '#f5f7fa'
+const RULER_TICK_COLOR = '#c2c8d0'
+const RULER_TEXT_COLOR = '#5a6470'
+const RULER_FONT = '10px sans-serif'
+const RULER_LABEL_INSET_PX = 2
+
+export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
+  ctx.fillStyle = RULER_BAND_COLOR
+  ctx.fillRect(0, 0, size.width, RULER_THICKNESS_PX)
+  ctx.fillRect(0, 0, RULER_THICKNESS_PX, size.height)
+  ctx.font = RULER_FONT
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+
+  for (const tick of rulerTicks(viewport, size.width, 'horizontal')) {
+    ctx.strokeStyle = RULER_TICK_COLOR
+    ctx.beginPath()
+    ctx.moveTo(tick.screen, 0)
+    ctx.lineTo(tick.screen, RULER_THICKNESS_PX)
+    ctx.stroke()
+    ctx.fillStyle = RULER_TEXT_COLOR
+    ctx.fillText(tick.label, tick.screen + RULER_LABEL_INSET_PX, RULER_LABEL_INSET_PX)
+  }
+  for (const tick of rulerTicks(viewport, size.height, 'vertical')) {
+    ctx.strokeStyle = RULER_TICK_COLOR
+    ctx.beginPath()
+    ctx.moveTo(0, tick.screen)
+    ctx.lineTo(RULER_THICKNESS_PX, tick.screen)
+    ctx.stroke()
+    ctx.fillStyle = RULER_TEXT_COLOR
+    ctx.fillText(tick.label, RULER_LABEL_INSET_PX, tick.screen + RULER_LABEL_INSET_PX)
+  }
+}
 
 export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
   ctx.strokeStyle = GRID_LINE_COLOR
