@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { drawGrid, drawPlan, type PlanDrawingContext } from './draw-plan'
+import { drawGrid, drawPlan, drawRulers, type PlanDrawingContext } from './draw-plan'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { RoomSceneNode, WallSceneNode } from '../../core'
 
@@ -19,6 +19,8 @@ interface DrawnArc {
 function recordingContext() {
   const segments: DrawnSegment[] = []
   const arcs: DrawnArc[] = []
+  const texts: { text: string; x: number; y: number }[] = []
+  const fillRects: { x: number; y: number; w: number; h: number }[] = []
   const ops: string[] = []
   let clears = 0
   let pen: [number, number] = [0, 0]
@@ -27,6 +29,9 @@ function recordingContext() {
     lineCap: 'butt',
     strokeStyle: '',
     fillStyle: '',
+    font: '',
+    textAlign: 'left' as CanvasTextAlign,
+    textBaseline: 'alphabetic' as CanvasTextBaseline,
     clearRect: () => {
       ops.push('clearRect')
       clears += 1
@@ -55,11 +60,21 @@ function recordingContext() {
     fill: () => {
       ops.push('fill')
     },
+    fillText: (text, x, y) => {
+      ops.push('fillText')
+      texts.push({ text, x, y })
+    },
+    fillRect: (x, y, w, h) => {
+      ops.push('fillRect')
+      fillRects.push({ x, y, w, h })
+    },
   }
   return {
     ctx,
     segments,
     arcs,
+    texts,
+    fillRects,
     ops,
     clearCount: () => clears,
   }
@@ -208,5 +223,18 @@ describe('drawGrid', () => {
     const verticals = recorder.segments.filter((segment) => segment.from[0] === segment.to[0])
     expect(verticals).toHaveLength(6)
     expect(verticals.every((segment) => segment.from[1] === 0 && segment.to[1] === 100)).toBe(true)
+  })
+})
+
+describe('drawRulers', () => {
+  it('fills the top and left ruler bands and draws raw-millimetre tick labels', () => {
+    const recorder = recordingContext()
+
+    drawRulers(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
+
+    // a band along the top and a band along the left
+    expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)
+    // a raw-millimetre tick label (the tick at world 200 mm) appears as text
+    expect(recorder.texts.map((entry) => entry.text)).toContain('200')
   })
 })
