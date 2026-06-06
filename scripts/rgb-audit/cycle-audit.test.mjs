@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { parseGitLog } from './cycle-audit.mjs'
 
 const RECORD_SEPARATOR = '\x1e'
-const FIELD_SEPARATOR = '\x1f'
+const UNIT_SEPARATOR = '\x1f'
 
 function record({ sha, subject, infra = '', files = [] }) {
-  const header = [sha, subject, infra].join(FIELD_SEPARATOR)
+  const header = [sha, subject, infra].join(UNIT_SEPARATOR)
   return [header, ...files].join('\n')
 }
 
@@ -18,7 +18,7 @@ describe('parseGitLog', () => {
     expect(parseGitLog('')).toEqual([])
   })
 
-  it('parses a multi-record sample into structured commit objects', () => {
+  it('parses conventional, scoped, and infrastructure-flagged commits from a multi-record sample', () => {
     const raw = gitLog([
       {
         sha: 'aaa1111',
