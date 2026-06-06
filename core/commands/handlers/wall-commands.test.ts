@@ -1,8 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { addWall, moveWallEndpoint, registerWallCommands, ADD_WALL } from './wall-commands'
+import {
+  addWall,
+  moveWallEndpoint,
+  setWallThickness,
+  registerWallCommands,
+  ADD_WALL,
+} from './wall-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
-import { createEmptyProject, createFloor, createWall } from '../../model/factories'
+import {
+  createEmptyProject,
+  createFloor,
+  createWall,
+  DEFAULT_WALL_THICKNESS_MM,
+} from '../../model/factories'
 import type { Project } from '../../model/types'
 
 function projectWithFloor(): Project {
@@ -67,6 +78,7 @@ const TARGET_THICKNESS = 200
 const SIBLING_START = { x: 0, y: 2000 }
 const SIBLING_END = { x: 1000, y: 2000 }
 const MOVED_POINT = { x: 500, y: 750 }
+const NEW_THICKNESS = 350
 
 function projectWithTwoWalls(): Project {
   const project = projectWithFloor()
@@ -121,5 +133,41 @@ describe('moveWallEndpoint', () => {
     dispatcher.undo()
 
     expect(project.floors[0]!.walls[0]!.start).toEqual(TARGET_START)
+  })
+})
+
+describe('setWallThickness', () => {
+  it('sets the thickness while leaving the endpoints untouched', () => {
+    const project = projectWithTwoWalls()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setWallThickness('g', 'target', NEW_THICKNESS))
+
+    const target = project.floors[0]!.walls[0]!
+    expect(target.thickness).toBe(NEW_THICKNESS)
+    expect(target.start).toEqual(TARGET_START)
+    expect(target.end).toEqual(TARGET_END)
+  })
+
+  it('leaves a sibling wall on the same floor untouched', () => {
+    const project = projectWithTwoWalls()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setWallThickness('g', 'target', NEW_THICKNESS))
+
+    const sibling = project.floors[0]!.walls[1]!
+    expect(sibling.thickness).toBe(DEFAULT_WALL_THICKNESS_MM)
+    expect(sibling.start).toEqual(SIBLING_START)
+    expect(sibling.end).toEqual(SIBLING_END)
+  })
+
+  it('restores the previous thickness on undo', () => {
+    const project = projectWithTwoWalls()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(setWallThickness('g', 'target', NEW_THICKNESS))
+
+    dispatcher.undo()
+
+    expect(project.floors[0]!.walls[0]!.thickness).toBe(TARGET_THICKNESS)
   })
 })
