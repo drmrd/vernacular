@@ -4,17 +4,11 @@ import {
   PROJECT_FILE,
   ProjectFileNotFoundError,
 } from '../folder/folder-project-store'
-import { parseProjectJson } from '../folder/project-json'
+import { parseProjectJson, readProjectName } from '../folder/project-json'
 import type { ProjectStore, ProjectSummary } from '../project-store'
 import { ProjectNotFoundError } from '../project-store'
 import type { DirectoryPort } from '../fs/directory-port'
 import { SubdirectoryPort } from '../fs/subdirectory-port'
-
-/** Read meta.name from a parsed project, or undefined when it is not a string. */
-function readProjectName(raw: unknown): string | undefined {
-  const name = (raw as { meta?: { name?: unknown } }).meta?.name
-  return typeof name === 'string' ? name : undefined
-}
 
 /**
  * Stores each project in its own id-named subdirectory, delegating the

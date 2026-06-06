@@ -1,30 +1,18 @@
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import type { DirectoryPort } from '../fs/directory-port'
 import { FolderProjectStore, PROJECT_FILE } from '../folder/folder-project-store'
-import { parseProjectJson } from '../folder/project-json'
+import { parseProjectJson, readProjectName } from '../folder/project-json'
 import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
 import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
 
-/** Read meta.name from a parsed project, or '' when missing or non-string. */
-function readProjectName(raw: unknown): string {
-  if (typeof raw !== 'object' || raw === null) {
-    return ''
-  }
-  const meta = (raw as { meta?: unknown }).meta
-  if (typeof meta !== 'object' || meta === null) {
-    return ''
-  }
-  const name = (meta as { name?: unknown }).name
-  return typeof name === 'string' ? name : ''
-}
-
 /** Collect every file path stored under a directory, descending into subdirectories. */
-async function collectFilePaths(directory: InMemoryDirectory, prefix: string): Promise<string[]> {
+async function collectFilePaths(directory: DirectoryPort, prefix: string): Promise<string[]> {
   const paths: string[] = []
   for (const segment of await directory.list(prefix)) {
     const childPath = prefix === '' ? segment : `${prefix}/${segment}`
-    const grandchildren = await directory.list(childPath)
-    if (grandchildren.length === 0) {
+    const children = await directory.list(childPath)
+    if (children.length === 0) {
       paths.push(childPath)
     } else {
       paths.push(...(await collectFilePaths(directory, childPath)))
@@ -65,7 +53,9 @@ export class ZipBundleProjectStore implements ProjectStore {
     if (bytes === undefined) {
       return []
     }
-    const name = readProjectName(parseProjectJson(bytes))
+    // Listing reads the stored name without upgrading the schema: parse the raw
+    // document directly rather than migrating it, since no save happens here.
+    const name = readProjectName(parseProjectJson(bytes)) ?? ''
     return [{ id: this.id, name }]
   }
 
@@ -94,9 +84,7 @@ export class ZipBundleProjectStore implements ProjectStore {
     for (const path of await collectFilePaths(this.directory, '')) {
       const content = await this.directory.readFile(path)
       if (content !== undefined) {
-        // Re-wrap so the bytes are a Uint8Array in this realm: jsdom's TextEncoder
-        // yields a foreign-realm array that the zip codec would treat as a sub-folder.
-        entries.set(path, new Uint8Array(content))
+        entries.set(path, content)
       }
     }
     return zipFolder(entries)

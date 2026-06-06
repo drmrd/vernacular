@@ -12,3 +12,9 @@ export function serializeProjectJson(project: Project): Uint8Array {
 export function parseProjectJson(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes))
 }
+
+/** Read a project's display name from a parsed document, or undefined when absent or non-string. */
+export function readProjectName(raw: unknown): string | undefined {
+  const name = (raw as { meta?: { name?: unknown } }).meta?.name
+  return typeof name === 'string' ? name : undefined
+}
