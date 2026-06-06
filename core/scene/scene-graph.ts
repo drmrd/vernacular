@@ -55,8 +55,11 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
   }
 }
 
-export function deriveRoomNodes(floor: Floor): RoomSceneNode[] {
+export function deriveRoomNodesForFloor(floor: Floor): RoomSceneNode[] {
   return deriveRooms(floor.walls).map((room) => ({
+    // room.id already carries the `room:` namespace prefix from the topology
+    // layer (see core/topology/rooms.ts), so it is used directly here rather
+    // than re-prefixed, unlike the locally namespaced floor and wall node ids.
     id: room.id,
     kind: 'room',
     floorId: floor.id,
@@ -72,6 +75,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     walls: project.floors.flatMap((floor) =>
       floor.walls.map((wall) => deriveWallNode(floor, wall)),
     ),
-    rooms: project.floors.flatMap(deriveRoomNodes),
+    rooms: project.floors.flatMap(deriveRoomNodesForFloor),
   }
 }

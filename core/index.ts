@@ -58,7 +58,7 @@ export { captureInverse } from './commands/inverse-capture'
 export type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
 export {
   deriveFloorNode,
-  deriveRoomNodes,
+  deriveRoomNodesForFloor,
   deriveSceneGraph,
   deriveWallNode,
 } from './scene/scene-graph'
