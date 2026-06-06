@@ -43,6 +43,7 @@ export default tseslint.config(
       '.lighthouseci',
       'reports',
       '.stryker-tmp',
+      '.claude/worktrees',
     ],
   },
   {
