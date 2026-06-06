@@ -68,4 +68,14 @@ describe('deriveRooms', () => {
     expect(rooms).toHaveLength(2)
     expect(rooms.map((room) => room.area).sort((a, b) => a - b)).toEqual([9_000_000, 9_000_000])
   })
+
+  it('encloses no room when the walls form an open chain that never closes into a loop', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+    ]
+
+    expect(deriveRooms(walls)).toHaveLength(0)
+  })
 })
