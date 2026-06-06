@@ -1,5 +1,5 @@
 import { distance } from '../geometry/point'
-import { pointOnSegment } from '../geometry/segment'
+import { pointOnSegment, segmentIntersection } from '../geometry/segment'
 import type { Point, Wall } from '../model/types'
 
 /** An edge connecting two vertices of the planar graph, carrying its source wall's id. */
@@ -55,6 +55,11 @@ export function buildWallGraph(
     edges.push({ a, b, wallId: wall.id })
   }
 
+  // Crossing pass: register each interior X-crossing between a pair of edges as
+  // a graph vertex. The splitting pass below then splits both crossing edges at
+  // that shared vertex.
+  registerInteriorCrossings(edges, vertices, vertexIndexFor)
+
   // Splitting pass: where another vertex lies on an edge's interior (a
   // T-junction), replace that edge with a chain of sub-edges between the
   // ordered split points. Only vertices already present in the graph are
@@ -62,6 +67,32 @@ export function buildWallGraph(
   const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
 
   return { vertices, edges: splitEdges }
+}
+
+/**
+ * Register every interior X-crossing between an unordered pair of edges as a
+ * graph vertex (merged through the same endpoint helper). The caller's splitting
+ * pass then splits both crossing edges at the shared vertex.
+ */
+function registerInteriorCrossings(
+  edges: readonly GraphEdge[],
+  vertices: readonly Point[],
+  vertexIndexFor: (point: Point) => number,
+): void {
+  for (const [firstPosition, first] of edges.entries()) {
+    const firstA = vertices[first.a]
+    const firstB = vertices[first.b]
+    if (firstA === undefined || firstB === undefined) continue
+
+    for (const second of edges.slice(firstPosition + 1)) {
+      const secondA = vertices[second.a]
+      const secondB = vertices[second.b]
+      if (secondA === undefined || secondB === undefined) continue
+
+      const crossing = segmentIntersection(firstA, firstB, secondA, secondB)
+      if (crossing !== null) vertexIndexFor(crossing)
+    }
+  }
 }
 
 /**
