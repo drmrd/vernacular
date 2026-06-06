@@ -5,6 +5,7 @@ import type { CommandRegistry } from '../command-registry'
 
 export const ADD_WALL = 'floor/add-wall'
 export const MOVE_WALL_ENDPOINT = 'floor/move-wall-endpoint'
+export const SET_WALL_THICKNESS = 'floor/set-wall-thickness'
 
 export type WallEnd = 'start' | 'end'
 
@@ -18,6 +19,12 @@ export interface MoveWallEndpointParams {
   wallId: string
   end: WallEnd
   to: Point
+}
+
+export interface SetWallThicknessParams {
+  floorId: string
+  wallId: string
+  thickness: number
 }
 
 export function addWall(floorId: string, start: Point, end: Point): Command<AddWallParams> {
@@ -74,8 +81,40 @@ const moveWallEndpointHandler: CommandHandler<Project, MoveWallEndpointParams> =
   },
 }
 
+export function setWallThickness(
+  floorId: string,
+  wallId: string,
+  thickness: number,
+): Command<SetWallThicknessParams> {
+  return {
+    type: SET_WALL_THICKNESS,
+    params: { floorId, wallId, thickness },
+    description: 'Set wall thickness',
+  }
+}
+
+// Reassigns the whole floors slice, then maps the target floor's inner walls
+// array, so the inverse-capture proxy records the change and the dispatcher
+// captures the inverse for undo; only the target floor and target wall become
+// new objects while every untouched floor and wall keeps its reference.
+const setWallThicknessHandler: CommandHandler<Project, SetWallThicknessParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId
+        ? {
+            ...floor,
+            walls: floor.walls.map((wall) =>
+              wall.id === params.wallId ? { ...wall, thickness: params.thickness } : wall,
+            ),
+          }
+        : floor,
+    )
+  },
+}
+
 export function registerWallCommands(registry: CommandRegistry<Project>): CommandRegistry<Project> {
   return registry
     .register(ADD_WALL, addWallHandler)
     .register(MOVE_WALL_ENDPOINT, moveWallEndpointHandler)
+    .register(SET_WALL_THICKNESS, setWallThicknessHandler)
 }
