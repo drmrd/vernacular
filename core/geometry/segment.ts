@@ -19,11 +19,12 @@ export function segmentIntersection(a1: Point, a2: Point, b1: Point, b2: Point):
   const denominator = dax * dby - day * dbx
   if (Math.abs(denominator) < PARALLEL_EPSILON) return null
 
-  const acx = b1.x - a1.x
-  const acy = b1.y - a1.y
+  // Vector from the start of segment a to the start of segment b.
+  const dabx = b1.x - a1.x
+  const daby = b1.y - a1.y
 
-  const t = (acx * dby - acy * dbx) / denominator
-  const u = (acx * day - acy * dax) / denominator
+  const t = (dabx * dby - daby * dbx) / denominator
+  const u = (dabx * day - daby * dax) / denominator
 
   if (t < 0 || t > 1 || u < 0 || u > 1) return null
 
