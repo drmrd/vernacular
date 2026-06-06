@@ -39,6 +39,7 @@ export interface DrawPlanOptions {
   rooms?: readonly RoomSceneNode[]
   grid?: boolean
   rulers?: boolean
+  marquee?: Bounds
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -153,6 +154,9 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
   if (options.preview) {
     drawPreview(ctx, options.preview, options.viewport)
+  }
+  if (options.marquee) {
+    drawMarquee(ctx, options.marquee, options.viewport)
   }
   if (options.rulers) {
     drawRulers(ctx, options.viewport, size)
