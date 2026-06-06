@@ -98,18 +98,27 @@ function classify(commit) {
  *
  * Independence rule: a GREEN commit must change no test files.
  *
+ * Blue presence rule: every GREEN commit must be closed by a BLUE refactor
+ * commit before the next RED commit or the end of the range.
+ *
  * @param {ParsedCommit[]} commits
  * @returns {Violation[]}
  */
 export function auditCommits(commits) {
   const violations = []
   let pendingRed = 0
+  let openGreen = null
   for (const commit of commits) {
     const role = classify(commit)
     if (role === 'red') {
+      if (openGreen !== null) {
+        violations.push(blueViolation(openGreen))
+        openGreen = null
+      }
       pendingRed += 1
     } else if (role === 'green') {
-      if (pendingRed === 0) {
+      const hasPrecedingRed = pendingRed > 0
+      if (!hasPrecedingRed) {
         violations.push({
           sha: commit.sha,
           rule: 'ordering',
@@ -125,7 +134,27 @@ export function auditCommits(commits) {
         })
       }
       pendingRed = 0
+      openGreen = hasPrecedingRed ? commit.sha : null
+    } else if (role === 'blue') {
+      openGreen = null
     }
   }
+  if (openGreen !== null) {
+    violations.push(blueViolation(openGreen))
+  }
   return violations
+}
+
+/**
+ * Build the blue-presence violation for a GREEN commit left unclosed.
+ *
+ * @param {string} sha
+ * @returns {Violation}
+ */
+function blueViolation(sha) {
+  return {
+    sha,
+    rule: 'blue',
+    message: `GREEN commit ${sha} not closed by a BLUE refactor`,
+  }
 }
