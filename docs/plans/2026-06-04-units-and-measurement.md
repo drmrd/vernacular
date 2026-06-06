@@ -472,16 +472,24 @@ Only metric inputs in this task.
 
 **Files:** Modify `core/units/parse-length.ts`, `core/units/parse-length.test.ts`.
 
-| input / options                             | behavior                              |
-| ------------------------------------------- | ------------------------------------- |
-| `parseLength('80', { assumeUnit: 'in' })`   | `2032`                                |
-| `parseLength('2030', { assumeUnit: 'mm' })` | `2030`                                |
-| `parseLength('80')`                         | throws (bare number, no assumed unit) |
-| `parseLength('banana')`                     | throws                                |
-| `parseLength('')`                           | throws                                |
-| `parseLength('6 fathoms')`                  | throws (unknown unit)                 |
+| input / options                             | behavior                                  |
+| ------------------------------------------- | ----------------------------------------- |
+| `parseLength('80', { assumeUnit: 'in' })`   | `2032`                                    |
+| `parseLength('2030', { assumeUnit: 'mm' })` | `2030`                                    |
+| `parseLength('6', { assumeUnit: 'ft' })`    | `1828.8`                                  |
+| `parseLength('80')`                         | throws (bare number, no assumed unit)     |
+| `parseLength('banana')`                     | throws                                    |
+| `parseLength('')`                           | throws                                    |
+| `parseLength('-')`                          | throws (sign only, no magnitude)          |
+| `parseLength('6 fathoms')`                  | throws (unknown unit)                     |
+| `parseLength('1/0"')`                       | throws (fraction denominator cannot be 0) |
+| `parseLength('8 1"')`                       | throws (malformed inch value)             |
 
-Error messages name the offending input and never return null.
+`assumeUnit` is `'mm' | 'cm' | 'm' | 'in' | 'ft'` on a new optional `ParseLengthOptions`
+argument; a bare number is interpreted in that unit, and without it a bare number throws.
+Error messages name the offending input and never return null. This task also adds the
+two validation guards deferred from the Task 10 review: `parseInchValueText` throws on a
+zero denominator and on a non-numeric (NaN) inch value rather than producing `Infinity`/`NaN`.
 
 - [ ] RED: `/test-first parseLength applies an assumed unit to bare numbers and throws a clear error on unparseable input`
 - [ ] Verify fails.
