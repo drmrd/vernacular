@@ -1,7 +1,22 @@
 import type { Point, WallSceneNode } from '../../core'
+import { contentBounds, type Bounds } from './fit'
 
 /** A click within this many millimeters of a wall centerline selects it. */
 export const DEFAULT_HIT_TOLERANCE_MM = 150
+
+/** The single non-null result `contentBounds` returns for any non-empty point set. */
+function spanOf(points: readonly Point[]): Bounds {
+  const bounds = contentBounds(points)
+  if (bounds === null) {
+    throw new Error('cannot compute bounds of an empty point set')
+  }
+  return bounds
+}
+
+/** Axis-aligned bounds spanning a wall's two endpoints, normalized over direction. */
+export function wallBounds(wall: WallSceneNode): Bounds {
+  return spanOf([wall.start, wall.end])
+}
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {
   const dx = end.x - start.x
