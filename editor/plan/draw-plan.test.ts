@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { drawGrid, drawPlan, drawRulers, type PlanDrawingContext } from './draw-plan'
+import { drawGrid, drawMarquee, drawPlan, drawRulers, type PlanDrawingContext } from './draw-plan'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
+import type { Bounds } from './fit'
 import type { RoomSceneNode, WallSceneNode } from '../../core'
 
 interface DrawnSegment {
@@ -257,6 +258,25 @@ describe('drawPlan grid and rulers', () => {
     expect(recorder.ops).not.toContain('fillText')
     expect(recorder.ops).not.toContain('fillRect')
     expect(recorder.segments).toHaveLength(1)
+  })
+})
+
+describe('drawMarquee', () => {
+  it('fills a rectangle covering the marquee projected to screen space', () => {
+    const recorder = recordingContext()
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 10, y: 20 } }
+    const rect: Bounds = { min: { x: 1000, y: 2000 }, max: { x: 5000, y: 6000 } }
+
+    drawMarquee(recorder.ctx, rect, viewport)
+
+    const min = worldToScreen(rect.min, viewport)
+    const max = worldToScreen(rect.max, viewport)
+    expect(recorder.fillRects).toContainEqual({
+      x: min.x,
+      y: min.y,
+      w: max.x - min.x,
+      h: max.y - min.y,
+    })
   })
 })
 
