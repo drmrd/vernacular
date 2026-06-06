@@ -22,7 +22,7 @@ export interface Room {
 const MIN_ROOM_AREA = 1
 
 /** Namespace prefix that distinguishes a room id from its stable key. */
-const ROOM_ID_PREFIX = 'room:'
+export const ROOM_ID_PREFIX = 'room:'
 
 /**
  * The stable key for a room: the sorted bounding-wall-id string that `Room.id`
