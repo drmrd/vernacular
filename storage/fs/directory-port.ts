@@ -16,6 +16,10 @@ export interface DirectoryPort {
    * for the root). For keys `a/p.json`, `a/.house-autosave/x`, `b/p.json`:
    * list('') -> ['a','b']; list('a') -> ['p.json','.house-autosave'];
    * list('a/.house-autosave') -> ['x']. Order is not guaranteed.
+   *
+   * A path that refers to a stored file returns `[]`: a file has no children.
+   * Callers such as OpfsProjectStore's recursive delete use this leaf invariant
+   * to tell files (empty listing) apart from directories (non-empty listing).
    */
   list(prefix: string): Promise<string[]>
 }

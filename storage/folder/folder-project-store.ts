@@ -3,7 +3,8 @@ import { CURRENT_SCHEMA_VERSION, migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
-const PROJECT_FILE = 'project.json'
+/** Canonical project file name written at the root of each project folder. */
+export const PROJECT_FILE = 'project.json'
 const AUTOSAVE_DIR = '.house-autosave'
 
 /** Read meta.schemaVersion from a parsed project, or undefined when missing or non-numeric. */

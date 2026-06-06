@@ -1,12 +1,14 @@
 import type { Project } from '../../core'
-import { FolderProjectStore } from '../folder/folder-project-store'
+import {
+  FolderProjectStore,
+  PROJECT_FILE,
+  ProjectFileNotFoundError,
+} from '../folder/folder-project-store'
 import { parseProjectJson } from '../folder/project-json'
 import type { ProjectStore, ProjectSummary } from '../project-store'
 import { ProjectNotFoundError } from '../project-store'
 import type { DirectoryPort } from '../fs/directory-port'
 import { SubdirectoryPort } from '../fs/subdirectory-port'
-
-const PROJECT_FILE = 'project.json'
 
 /** Read meta.name from a parsed project, or undefined when it is not a string. */
 function readProjectName(raw: unknown): string | undefined {
@@ -32,11 +34,16 @@ export class OpfsProjectStore implements ProjectStore {
   }
 
   async load(id: string): Promise<Project> {
-    const folder = this.folderFor(id)
-    if (!(await folder.exists())) {
-      throw new ProjectNotFoundError(id)
+    try {
+      return await this.folderFor(id).loadProject()
+    } catch (error) {
+      // A single read decides presence: absence surfaces as the id-keyed
+      // ProjectNotFoundError, while any other failure propagates unchanged.
+      if (error instanceof ProjectFileNotFoundError) {
+        throw new ProjectNotFoundError(id)
+      }
+      throw error
     }
-    return folder.loadProject()
   }
 
   async list(): Promise<ProjectSummary[]> {
@@ -69,6 +76,9 @@ export class OpfsProjectStore implements ProjectStore {
   private async removeSubtree(prefix: string): Promise<void> {
     for (const child of await this.root.list(prefix)) {
       const childPath = prefix === '' ? child : `${prefix}/${child}`
+      // Relies on the DirectoryPort.list leaf invariant: listing a stored file
+      // yields [], so a non-empty listing marks a directory to recurse into and
+      // an empty listing marks a file to remove.
       if ((await this.root.list(childPath)).length > 0) {
         await this.removeSubtree(childPath)
       } else {
