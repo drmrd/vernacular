@@ -111,6 +111,9 @@ function usePlanInteraction({
 
 interface PlanScene {
   walls: DrawPlanOptions['walls']
+  // The scene graph always supplies rooms, so this is non-optional here even
+  // though drawPlan accepts rooms as an optional overlay.
+  rooms: NonNullable<DrawPlanOptions['rooms']>
   selectedIds: ReadonlySet<string>
   preview: PreviewSegment | undefined
 }
@@ -124,13 +127,14 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     }
     drawPlan(ctx, {
       walls: scene.walls,
+      rooms: scene.rooms,
       viewport: VIEWPORT,
       width: PLAN_WIDTH,
       height: PLAN_HEIGHT,
       selectedIds: scene.selectedIds,
       ...(scene.preview ? { preview: scene.preview } : {}),
     })
-  }, [canvasRef, scene.walls, scene.selectedIds, scene.preview])
+  }, [canvasRef, scene.walls, scene.rooms, scene.selectedIds, scene.preview])
 }
 
 /**
@@ -153,7 +157,7 @@ export function PlanView() {
     selection,
     tool,
   })
-  usePlanRedraw(canvasRef, { walls: graph.walls, selectedIds, preview })
+  usePlanRedraw(canvasRef, { walls: graph.walls, rooms: graph.rooms, selectedIds, preview })
 
   return (
     <canvas

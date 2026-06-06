@@ -103,3 +103,10 @@ export {
   UnsupportedSchemaVersionError,
   migrateProject,
 } from './migrations'
+export { distance } from './geometry/point'
+export { polygonArea } from './geometry/polygon'
+export { pointOnSegment, segmentIntersection } from './geometry/segment'
+export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
+export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
+export type { Room } from './topology/rooms'
+export { deriveRooms } from './topology/rooms'
