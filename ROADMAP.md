@@ -4,26 +4,28 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work in progress (build foundation, documentation, engineering norms, source skeleton, proof of life). Not yet usable as a floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). Next is the MVP path, starting with the two-dimensional plan editor (design specification section 10, Phase 1). Not yet usable as a floor planner.
 
 ## Foundation work
 
-| Focus                                                                             | Status  |
-| --------------------------------------------------------------------------------- | ------- |
-| Build foundation (TS, Vite, React, Vitest, ESLint, CI)                            | done    |
-| Documentation surface                                                             | done    |
-| 15-day dependency cooldown (pnpm minimum-release-age)                             | done    |
-| Knowledge graph foundation (local-only, for Claude context)                       | done    |
-| Claude Code infrastructure (CLAUDE.md, agents, commands)                          | done    |
-| ESLint guardrails, layer boundaries, jscpd                                        | done    |
-| Husky, commitlint, release-please, PR and issue templates                         | done    |
-| Storybook, Playwright, axe-core, visual regression baselines                      | done    |
-| Lighthouse CI, Stryker, performance harness, fixtures and factories               | done    |
-| Six-layer source skeleton (core, storage, engine, bridge, editor, app all landed) | done    |
-| Wall-drawing proof of life (first user flow)                                      | done    |
-| Storage scaffolds (OPFS, IndexedDB, File System API)                              | done    |
-| Service worker and pack CLI                                                       | done    |
-| Foundation acceptance                                                             | pending |
+| Focus                                                                             | Status |
+| --------------------------------------------------------------------------------- | ------ |
+| Build foundation (TS, Vite, React, Vitest, ESLint, CI)                            | done   |
+| Documentation surface                                                             | done   |
+| 15-day dependency cooldown (pnpm minimum-release-age)                             | done   |
+| Knowledge graph foundation (local-only, for Claude context)                       | done   |
+| Claude Code infrastructure (CLAUDE.md, agents, commands)                          | done   |
+| ESLint guardrails, layer boundaries, jscpd                                        | done   |
+| Husky, commitlint, release-please, PR and issue templates                         | done   |
+| Storybook, Playwright, axe-core, visual regression baselines                      | done   |
+| Lighthouse CI, Stryker, performance harness, fixtures and factories               | done   |
+| Six-layer source skeleton (core, storage, engine, bridge, editor, app all landed) | done   |
+| Wall-drawing proof of life (first user flow)                                      | done   |
+| Storage scaffolds (OPFS, IndexedDB, File System API)                              | done   |
+| Service worker and pack CLI                                                       | done   |
+| Foundation acceptance                                                             | done   |
+
+> **Deferred from Phase 0 with intent:** the `clean-code-pr` CI gate (design specification sections 9.7 and 9.11) is not yet built. The clean-code-reviewer is a model-driven agent that runs locally during the BLUE phase; the intended implementation is a CI job that runs the reviewer over the pull-request diff and fails on must-fix findings. That needs a model credential, per-pull-request cost, and non-deterministic-output handling, so it is scheduled as a follow-on rather than a Phase 0 blocker. The ping-pong gate (`pnpm rgb:audit`) enforces the red-green-blue ordering, independence, and blue-presence invariants in the meantime.
 
 ## MVP path
 
