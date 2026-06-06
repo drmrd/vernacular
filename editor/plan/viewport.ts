@@ -45,8 +45,10 @@ export function clampScale(scale: number): number {
   return Math.min(MAX_PLAN_SCALE, Math.max(MIN_PLAN_SCALE, scale))
 }
 
+/** Zoom about the cursor. `factor > 1` zooms in, `factor < 1` zooms out; the resulting scale is clamped to `[MIN_PLAN_SCALE, MAX_PLAN_SCALE]`. */
 export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: number): Viewport {
   const scale = clampScale(viewport.scale * factor)
+  // Pin the world point under the cursor using the OLD (pre-clamp) viewport, then re-derive the offset so that point stays under the cursor after the scale changes.
   const worldUnder = screenToWorld(cursor, viewport)
   return {
     scale,
