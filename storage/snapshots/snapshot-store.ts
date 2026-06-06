@@ -1,4 +1,5 @@
 import type { Project } from '../../core'
+import { migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { parseProjectJson, serializeProjectJson } from '../folder/project-json'
 
@@ -33,15 +34,19 @@ export class SnapshotStore {
 
   async writeSnapshot(project: Project): Promise<void> {
     const bytes = serializeProjectJson(project)
-    const names = await this.directory.list(AUTOSAVE_DIR)
-    if (!names.includes(SESSION_START_FILE)) {
-      await this.directory.writeFile(`${AUTOSAVE_DIR}/${SESSION_START_FILE}`, bytes)
-    }
+    await this.ensureSessionStart(bytes)
     await this.directory.writeFile(
       `${AUTOSAVE_DIR}/${SNAPSHOT_PREFIX}${this.now()}${SNAPSHOT_SUFFIX}`,
       bytes,
     )
-    await this.pruneRollingSnapshots()
+    await this.pruneOldestRollingSnapshots()
+  }
+
+  private async ensureSessionStart(bytes: Uint8Array): Promise<void> {
+    const names = await this.directory.list(AUTOSAVE_DIR)
+    if (!names.includes(SESSION_START_FILE)) {
+      await this.directory.writeFile(`${AUTOSAVE_DIR}/${SESSION_START_FILE}`, bytes)
+    }
   }
 
   async isRecoverable(): Promise<boolean> {
@@ -49,7 +54,7 @@ export class SnapshotStore {
   }
 
   async restore(): Promise<Project | undefined> {
-    const newest = this.newestRollingSnapshotName(await this.rollingSnapshotNames())
+    const [newest] = await this.rollingNamesNewestFirst()
     if (newest === undefined) {
       return undefined
     }
@@ -57,9 +62,15 @@ export class SnapshotStore {
     if (bytes === undefined) {
       return undefined
     }
-    return parseProjectJson(bytes) as Project
+    // A snapshot is a stored project document, so read it the way a project load does:
+    // validate and migrate an older snapshot forward rather than trust its raw shape.
+    return migrateProject(parseProjectJson(bytes))
   }
 
+  /**
+   * Deletes every autosave file, including the session-start snapshot. This is the full
+   * clear performed on an explicit save, distinct from the internal rolling-cap prune.
+   */
   async prune(): Promise<void> {
     const names = await this.directory.list(AUTOSAVE_DIR)
     for (const name of names) {
@@ -72,21 +83,23 @@ export class SnapshotStore {
     return names.filter((name) => name.startsWith(SNAPSHOT_PREFIX))
   }
 
-  private async pruneRollingSnapshots(): Promise<void> {
+  /**
+   * Well-formed rolling snapshot names sorted newest first. Foreign or stale files whose
+   * timestamp is not a finite number are excluded so they never affect sort, prune, or
+   * newest-snapshot selection.
+   */
+  private async rollingNamesNewestFirst(): Promise<string[]> {
     const names = await this.rollingSnapshotNames()
-    const ordered = [...names].sort(
-      (left, right) => this.timestampOf(right) - this.timestampOf(left),
-    )
+    return names
+      .filter((name) => Number.isFinite(this.timestampOf(name)))
+      .sort((left, right) => this.timestampOf(right) - this.timestampOf(left))
+  }
+
+  private async pruneOldestRollingSnapshots(): Promise<void> {
+    const ordered = await this.rollingNamesNewestFirst()
     for (const name of ordered.slice(this.maxSnapshots)) {
       await this.directory.removeFile(`${AUTOSAVE_DIR}/${name}`)
     }
-  }
-
-  private newestRollingSnapshotName(names: string[]): string | undefined {
-    if (names.length === 0) {
-      return undefined
-    }
-    return [...names].sort((left, right) => this.timestampOf(right) - this.timestampOf(left))[0]
   }
 
   private timestampOf(name: string): number {
