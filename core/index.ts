@@ -98,6 +98,7 @@ export {
   MM_PER_METER,
   centimetersToMillimeters,
   feetToMillimeters,
+  formatArea,
   formatLength,
   inchesToMillimeters,
   lengthFormatOptions,
