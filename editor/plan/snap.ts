@@ -50,6 +50,15 @@ function asResult(candidate: Candidate, kind: SnapKind): SnapResult {
   return { point: candidate.point, kind, referenceId: candidate.referenceId }
 }
 
+/** The nearest grid intersection, or null when grid snapping is disabled. */
+function gridSnap(cursor: Point, gridSpacingMm: number): SnapResult | null {
+  if (gridSpacingMm <= 0) {
+    return null
+  }
+  const round = (value: number): number => Math.round(value / gridSpacingMm) * gridSpacingMm
+  return { point: { x: round(cursor.x), y: round(cursor.y) }, kind: 'grid' }
+}
+
 export function snapPoint(cursor: Point, context: SnapContext): SnapResult | null {
   const endpoint = nearestFeature(cursor, context, (wall) => [wall.start, wall.end])
   if (endpoint !== null) {
@@ -59,5 +68,5 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
   }
-  return null
+  return gridSnap(cursor, context.gridSpacingMm)
 }
