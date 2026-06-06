@@ -66,20 +66,20 @@ model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
 
 The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as roughly twelve independent slices, each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence.
 
-| Slice                                                                               | Status  |
-| ----------------------------------------------------------------------------------- | ------- |
-| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | pending |
-| 3. Pan and zoom infinite canvas, grid, rulers                                       | pending |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending |
-| 6. Wall editing (endpoint move, thickness, construction type)                       | pending |
-| 7. Openings (doors and windows: placement and editing)                              | pending |
-| 8. Room naming and labeling, custom-polygon override                                | pending |
-| 9. Dimensions (live and persisted) and thickness-aware area                         | pending |
-| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | pending |
-| 12. Image underlay with calibration                                                 | pending |
+| Slice                                                                               | Status      |
+| ----------------------------------------------------------------------------------- | ----------- |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done        |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | pending     |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | in progress |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending     |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending     |
+| 6. Wall editing (endpoint move, thickness, construction type)                       | pending     |
+| 7. Openings (doors and windows: placement and editing)                              | pending     |
+| 8. Room naming and labeling, custom-polygon override                                | pending     |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | pending     |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending     |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | pending     |
+| 12. Image underlay with calibration                                                 | pending     |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
 
