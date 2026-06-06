@@ -209,6 +209,57 @@ describe('drawPlan', () => {
   })
 })
 
+describe('drawPlan grid and rulers', () => {
+  const room: RoomSceneNode = {
+    id: 'room:r',
+    kind: 'room',
+    floorId: 'f',
+    polygon: [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 3000 },
+      { x: 0, y: 3000 },
+    ],
+    area: 12_000_000,
+  }
+
+  it('paints grid beneath rooms and rulers above walls when enabled', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, {
+      walls: [wall],
+      rooms: [room],
+      viewport: { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } },
+      width: 200,
+      height: 200,
+      selectedIds: new Set<string>(),
+      grid: true,
+      rulers: true,
+    })
+
+    const { ops } = recorder
+    expect(ops.indexOf('stroke')).toBeLessThan(ops.indexOf('fill'))
+    expect(ops).toContain('fillRect')
+    expect(ops.indexOf('fillText')).toBeGreaterThan(ops.lastIndexOf('fill'))
+  })
+
+  it('omits grid and rulers when the flags are absent', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, {
+      walls: [wall],
+      viewport: { scale: DEFAULT_PLAN_SCALE },
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+    })
+
+    expect(recorder.ops).not.toContain('fillText')
+    expect(recorder.ops).not.toContain('fillRect')
+    expect(recorder.segments).toHaveLength(1)
+  })
+})
+
 describe('drawGrid', () => {
   it('strokes vertical and horizontal grid lines spanning the canvas in one color', () => {
     const recorder = recordingContext()
