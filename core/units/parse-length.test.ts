@@ -38,3 +38,53 @@ describe('parseLength metric inputs', () => {
     expect(parseLength('-2.03 m')).toBe(-2030)
   })
 })
+
+describe('parseLength imperial inputs', () => {
+  it('reads feet-and-inches with the prime and double-prime symbols', () => {
+    expect(parseLength(`6'8"`)).toBe(2032)
+  })
+
+  it('reads feet-and-inches with a space between the feet and inches parts', () => {
+    expect(parseLength(`6' 8"`)).toBe(2032)
+  })
+
+  it('reads feet-and-inches written with compact ft and in abbreviations', () => {
+    expect(parseLength('6ft 8in')).toBe(2032)
+  })
+
+  it('reads feet-and-inches written with spaced ft and in abbreviations', () => {
+    expect(parseLength('6 ft 8 in')).toBe(2032)
+  })
+
+  it('reads feet-and-inches written with full feet and inches unit words', () => {
+    expect(parseLength('6 feet 8 inches')).toBe(2032)
+  })
+
+  it('reads whole inches written with the in abbreviation', () => {
+    expect(parseLength('80 in')).toBe(2032)
+  })
+
+  it('reads whole inches written with the double-prime symbol', () => {
+    expect(parseLength('80"')).toBe(2032)
+  })
+
+  it('reads whole inches written as a full unit word', () => {
+    expect(parseLength('80 inches')).toBe(2032)
+  })
+
+  it('reads decimal feet written with the ft abbreviation', () => {
+    expect(parseLength('6.667 ft')).toBeCloseTo(2032.1016, 6)
+  })
+
+  it('reads decimal feet written with the prime symbol', () => {
+    expect(parseLength(`6.667'`)).toBeCloseTo(2032.1016, 6)
+  })
+
+  it('reads whole feet written with the prime symbol', () => {
+    expect(parseLength(`6'`)).toBe(1828.8)
+  })
+
+  it('preserves the sign of a negative whole-feet length', () => {
+    expect(parseLength(`-8'`)).toBe(-2438.4)
+  })
+})
