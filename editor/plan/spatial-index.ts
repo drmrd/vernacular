@@ -30,6 +30,11 @@ function pointInBounds(point: Point, bounds: Bounds): boolean {
   )
 }
 
+/** Two axis-aligned rectangles overlap; touching edges count as intersecting. */
+function boundsIntersect(a: Bounds, b: Bounds): boolean {
+  return a.min.x <= b.max.x && a.max.x >= b.min.x && a.min.y <= b.max.y && a.max.y >= b.min.y
+}
+
 /**
  * Broad-phase index over per-entity axis-aligned bounds. A correctness-first
  * linear scan answers the query interface; the design specification's quadtree
@@ -42,8 +47,10 @@ export function buildSpatialIndex(entities: readonly IndexedEntity[]): SpatialIn
         .filter((entity) => pointInBounds(point, expandBounds(entity.bounds, tolerance)))
         .map((entity) => entity.id)
     },
-    queryBounds() {
-      return []
+    queryBounds(region) {
+      return entities
+        .filter((entity) => boundsIntersect(entity.bounds, region))
+        .map((entity) => entity.id)
     },
   }
 }
