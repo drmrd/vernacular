@@ -168,3 +168,44 @@ describe('auditCommits independence', () => {
     expect(violations.some((v) => v.rule === 'independence')).toBe(false)
   })
 })
+
+describe('auditCommits blue presence', () => {
+  it('flags a green commit left open when a new red cycle begins before any blue', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] }),
+      commit({ sha: 'red2', type: 'test', files: ['core/x.test.ts'] }),
+    ]
+
+    expect(auditCommits(commits)).toContainEqual({
+      sha: 'green1',
+      rule: 'blue',
+      message: expect.stringContaining('not closed by a BLUE'),
+    })
+  })
+
+  it('flags a green commit left open at the end of the range', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] }),
+    ]
+
+    expect(auditCommits(commits)).toContainEqual({
+      sha: 'green1',
+      rule: 'blue',
+      message: expect.stringContaining('not closed by a BLUE'),
+    })
+  })
+
+  it('does not flag a green commit closed by a blue refactor commit', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] }),
+      commit({ sha: 'blue1', type: 'refactor', files: ['core/w.ts'] }),
+    ]
+
+    const violations = auditCommits(commits)
+
+    expect(violations.some((v) => v.rule === 'blue')).toBe(false)
+  })
+})
