@@ -36,6 +36,8 @@ export interface DrawPlanOptions {
   selectedIds: ReadonlySet<string>
   preview?: PreviewSegment
   rooms?: readonly RoomSceneNode[]
+  grid?: boolean
+  rulers?: boolean
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -115,6 +117,10 @@ export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: View
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
+  const size = { width: options.width, height: options.height }
+  if (options.grid) {
+    drawGrid(ctx, options.viewport, size)
+  }
   // Fill rooms first so wall strokes render on top of them.
   for (const room of options.rooms ?? []) {
     drawRoom(ctx, room, options.viewport)
@@ -124,6 +130,9 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
   if (options.preview) {
     drawPreview(ctx, options.preview, options.viewport)
+  }
+  if (options.rulers) {
+    drawRulers(ctx, options.viewport, size)
   }
 }
 
