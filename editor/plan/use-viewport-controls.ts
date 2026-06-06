@@ -105,9 +105,9 @@ export interface ViewportControls {
   onPanPointerUp: (event: PointerEvent<HTMLCanvasElement>) => void
 }
 
-const clientPoint = (event: PointerEvent<HTMLCanvasElement>): ScreenPoint => ({
-  x: event.clientX,
-  y: event.clientY,
+const screenDelta = (from: ScreenPoint, to: ScreenPoint): ScreenPoint => ({
+  x: to.x - from.x,
+  y: to.y - from.y,
 })
 
 /** A pan starts on a middle-button drag or a spacebar-held primary-button drag. */
@@ -132,7 +132,7 @@ function usePanGesture(
         return false
       }
       event.currentTarget.setPointerCapture(event.pointerId)
-      panOrigin.current = clientPoint(event)
+      panOrigin.current = eventToCanvas(event, event.currentTarget)
       setPanning(true)
       return true
     },
@@ -145,9 +145,9 @@ function usePanGesture(
       if (!origin) {
         return false
       }
-      const delta = { x: event.clientX - origin.x, y: event.clientY - origin.y }
-      setViewport((current) => panBy(current, delta))
-      panOrigin.current = clientPoint(event)
+      const current = eventToCanvas(event, event.currentTarget)
+      setViewport((viewport) => panBy(viewport, screenDelta(origin, current)))
+      panOrigin.current = current
       return true
     },
     [setViewport],
