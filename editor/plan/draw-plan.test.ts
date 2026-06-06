@@ -156,6 +156,18 @@ describe('drawPlan', () => {
       ],
       area: 12_000_000,
     }
+    const secondRoom: RoomSceneNode = {
+      id: 'room:s',
+      kind: 'room',
+      floorId: 'f',
+      polygon: [
+        { x: 5000, y: 0 },
+        { x: 9000, y: 0 },
+        { x: 9000, y: 3000 },
+        { x: 5000, y: 3000 },
+      ],
+      area: 12_000_000,
+    }
     const roomWall: WallSceneNode = {
       id: 'w1',
       kind: 'wall',
@@ -167,7 +179,7 @@ describe('drawPlan', () => {
 
     drawPlan(recorder.ctx, {
       walls: [roomWall],
-      rooms: [room],
+      rooms: [room, secondRoom],
       viewport: { scale: DEFAULT_PLAN_SCALE },
       width: 800,
       height: 600,
@@ -177,6 +189,6 @@ describe('drawPlan', () => {
     const { ops } = recorder
     expect(ops).toContain('fill')
     expect(ops).toContain('closePath')
-    expect(ops.indexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
+    expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
   })
 })
