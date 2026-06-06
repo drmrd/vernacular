@@ -2,7 +2,7 @@ import type { StorageCapabilities } from './storage-capabilities'
 import type { ProjectBackend } from './recent/recent-project-store'
 
 /** The durable backend the running app should construct, before instantiation. */
-export type ProjectStoreBackend = 'opfs' | 'indexeddb' | ProjectBackend
+export type ProjectStoreBackend = 'indexeddb' | ProjectBackend
 
 export interface SelectProjectStoreOptions {
   /** A remembered per-project backend (from a recent entry), when reopening. */
@@ -29,6 +29,9 @@ function defaultBackend(capabilities: StorageCapabilities): ProjectStoreBackend 
   if (capabilities.indexedDb) {
     return 'indexeddb'
   }
+  // A host offering neither durable backend is the ADR-0022 degraded case,
+  // already surfaced by the separate storage-degraded warning. Return 'opfs'
+  // as the universal target rather than throwing.
   return 'opfs'
 }
 
