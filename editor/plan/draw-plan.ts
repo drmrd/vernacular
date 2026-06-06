@@ -67,6 +67,9 @@ const RULER_LABEL_INSET_PX = 2
 const SNAP_MARKER_COLOR = '#f08c00'
 const SNAP_MARKER_RADIUS_PX = 5
 const SNAP_MARKER_LINE_WIDTH = 2
+const ENDPOINT_HANDLE_COLOR = '#1a7fd4'
+const ENDPOINT_HANDLE_RADIUS_PX = 5
+const ENDPOINT_HANDLE_LINE_WIDTH = 2
 const MARQUEE_FILL_COLOR = 'rgba(26, 127, 212, 0.12)'
 const MARQUEE_STROKE_COLOR = '#1a7fd4'
 const MARQUEE_LINE_WIDTH = 1
@@ -238,6 +241,26 @@ function drawStartMarker(ctx: PlanDrawingContext, center: Point): void {
   ctx.beginPath()
   ctx.arc(center.x, center.y, START_MARKER_RADIUS, 0, FULL_CIRCLE)
   ctx.fill()
+}
+
+/** Paint a handle marker at the wall's start and end screen positions so they track pan and zoom. */
+export function drawEndpointHandles(
+  ctx: PlanDrawingContext,
+  wall: WallSceneNode,
+  viewport: Viewport,
+): void {
+  drawEndpointHandle(ctx, worldToScreen(wall.start, viewport))
+  drawEndpointHandle(ctx, worldToScreen(wall.end, viewport))
+}
+
+function drawEndpointHandle(ctx: PlanDrawingContext, center: Point): void {
+  ctx.fillStyle = ENDPOINT_HANDLE_COLOR
+  ctx.strokeStyle = ENDPOINT_HANDLE_COLOR
+  ctx.lineWidth = ENDPOINT_HANDLE_LINE_WIDTH
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, ENDPOINT_HANDLE_RADIUS_PX, 0, FULL_CIRCLE)
+  ctx.fill()
+  ctx.stroke()
 }
 
 /** Paint a ring marker at the snapped point so the user sees where the next click lands. */
