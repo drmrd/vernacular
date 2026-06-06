@@ -53,4 +53,19 @@ describe('deriveRooms', () => {
     }
     expect(room.area).toBe(12_000_000)
   })
+
+  it('splits an enclosure into two rooms when a partition wall divides it into two cells', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 6000, y: 0 }),
+      createWall({ x: 0, y: 3000 }, { x: 6000, y: 3000 }),
+      createWall({ x: 0, y: 0 }, { x: 0, y: 3000 }),
+      createWall({ x: 6000, y: 0 }, { x: 6000, y: 3000 }),
+      createWall({ x: 3000, y: 0 }, { x: 3000, y: 3000 }),
+    ]
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(2)
+    expect(rooms.map((room) => room.area).sort((a, b) => a - b)).toEqual([9_000_000, 9_000_000])
+  })
 })
