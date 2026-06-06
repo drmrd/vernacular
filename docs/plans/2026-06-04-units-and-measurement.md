@@ -114,6 +114,9 @@ export type DisplayPrecision =
   | { kind: 'decimal-places'; places: number }
   | { kind: 'fraction'; denominator: number }
 
+/** The decimal-places member of DisplayPrecision; the only precision metric and decimal forms accept. */
+export type DecimalPrecision = Extract<DisplayPrecision, { kind: 'decimal-places' }>
+
 /** Rounds half away from zero (symmetric for negatives, unlike Math.round). */
 export function roundToDecimalPlaces(value: number, places: number): number
 
@@ -164,7 +167,7 @@ DEFAULT_METRIC_PREFERENCES = { ...DEFAULT_IMPERIAL_PREFERENCES, system: 'metric'
 ### `core/units/format-length.ts`
 
 ```ts
-type DecimalPrecision = { kind: 'decimal-places'; places: number }
+import type { DecimalPrecision } from './precision'
 
 // Only feet-and-inches accepts fractional precision; every other form is decimal-only.
 // Encoding that in the union makes an invalid fraction/form pairing a compile error
