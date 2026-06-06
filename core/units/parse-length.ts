@@ -1,12 +1,15 @@
 import type { Millimeters } from './length-units'
 import { centimetersToMillimeters, metersToMillimeters } from './length-units'
 
-// Each key is a lowercased unit token; the canonical value is already millimeters,
-// so the millimeter forms are an identity conversion with no scaling needed.
+// The canonical value is already in millimeters, so this is an identity.
+const millimetersToMillimeters = (value: number): Millimeters => value
+
+// Each key is a lowercased unit token mapped to its converter into the canonical
+// millimeter representation.
 const METRIC_PARSERS: Record<string, (value: number) => Millimeters> = {
-  mm: (value) => value,
-  millimeter: (value) => value,
-  millimeters: (value) => value,
+  mm: millimetersToMillimeters,
+  millimeter: millimetersToMillimeters,
+  millimeters: millimetersToMillimeters,
   cm: centimetersToMillimeters,
   centimeter: centimetersToMillimeters,
   centimeters: centimetersToMillimeters,
@@ -15,7 +18,8 @@ const METRIC_PARSERS: Record<string, (value: number) => Millimeters> = {
   meters: metersToMillimeters,
 }
 
-// Matches a signed decimal magnitude, optional space, then a letter unit token.
+// Anchored to the full trimmed string so trailing text (e.g. "2 m x 3 m") is
+// rejected rather than silently parsed.
 const METRIC_PATTERN = /^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/
 
 export function parseLength(input: string): Millimeters {
@@ -24,8 +28,9 @@ export function parseLength(input: string): Millimeters {
   if (match === null) {
     throw new Error(`Unrecognized length value: "${input}"`)
   }
-  // The two capture groups are always present once the pattern matches, but
-  // noUncheckedIndexedAccess types them as possibly undefined, so guard once.
+  // Both capture groups are mandatory in the pattern, so this second branch is
+  // unreachable in practice; it exists only to satisfy noUncheckedIndexedAccess,
+  // which types indexed matches as possibly undefined.
   const [, magnitude, unitToken] = match
   if (magnitude === undefined || unitToken === undefined) {
     throw new Error(`Unrecognized length value: "${input}"`)
