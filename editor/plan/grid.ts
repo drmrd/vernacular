@@ -1,3 +1,5 @@
+import { axisProjection, axisSamples, type Viewport, type ViewportSize } from './viewport'
+
 export const GRID_MIN_LINE_SPACING_PX = 12
 
 /** Base of the decade the spacing snaps to; also the rollover step when the gap exceeds the 1-2-5 ratios. */
@@ -19,4 +21,34 @@ export function gridSpacingMm(scale: number /* px/mm */): number {
   const normalized = minWorld / magnitude // in [1, 10)
   const niceMultiplier = NICE_MULTIPLIERS.find((step) => normalized <= step) ?? DECADE_BASE
   return niceMultiplier * magnitude
+}
+
+export interface GridLine {
+  orientation: 'vertical' | 'horizontal'
+  worldValue: number
+  screen: number
+}
+
+export interface VisibleGrid {
+  spacingMm: number
+  lines: GridLine[]
+}
+
+export function visibleGridLines(viewport: Viewport, size: ViewportSize): VisibleGrid {
+  const spacingMm = gridSpacingMm(viewport.scale)
+  const verticals = axisSamples(axisProjection(viewport, 'horizontal'), size.width, spacingMm).map(
+    (sample): GridLine => ({
+      orientation: 'vertical',
+      worldValue: sample.worldValue,
+      screen: sample.screen,
+    }),
+  )
+  const horizontals = axisSamples(axisProjection(viewport, 'vertical'), size.height, spacingMm).map(
+    (sample): GridLine => ({
+      orientation: 'horizontal',
+      worldValue: sample.worldValue,
+      screen: sample.screen,
+    }),
+  )
+  return { spacingMm, lines: [...verticals, ...horizontals] }
 }
