@@ -88,7 +88,7 @@ export interface AxisSample {
   screen: number
 }
 
-/** Step world multiples of `spacingMm` across the visible `[0, lengthPx]` screen range, projecting each to screen pixels. */
+/** Step world multiples of `spacingMm` across the visible `[0, lengthPx]` screen range, projecting each to screen pixels. `spacingMm` must be a positive world distance; a non-positive value would never advance the loop or would walk away from `high`. */
 export function axisSamples(
   projection: AxisProjection,
   lengthPx: number,
