@@ -90,6 +90,20 @@ describe('deriveRooms', () => {
     expect(rooms.map((room) => room.area).sort((a, b) => a - b)).toEqual([9_000_000, 9_000_000])
   })
 
+  it('never reports the unbounded outer face as a room', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+    ]
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+    expect(rooms.every((room) => room.area > 0)).toBe(true)
+  })
+
   it('encloses no room when the walls form an open chain that never closes into a loop', () => {
     const walls = [
       createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
