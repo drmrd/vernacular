@@ -4,6 +4,7 @@ export type {
   Point,
   Project,
   ProjectMeta,
+  RoomOverride,
   SchemaVersion,
   UnitSystem,
   Wall,

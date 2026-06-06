@@ -44,7 +44,30 @@ export interface Floor {
   walls: Wall[]
 }
 
+/**
+ * User-supplied metadata for a derived room, stored separately from geometry.
+ * Held in `Project.roomOverrides`, keyed by `roomKey(room)` (the sorted
+ * bounding-wall-id string the room derivation encodes in `Room.id`). An absent
+ * map means no overrides.
+ *
+ * Room `purpose`, `subPurpose`, and `eraOverride` (the design specification's
+ * room identity) are deliberately not here yet; they arrive additively with the
+ * old-house architectural vocabulary milestone.
+ */
+export interface RoomOverride {
+  /** User-entered display name for the room; absent means geometry only (no name). */
+  name?: string
+  /** Replacement boundary for cases where wall topology cannot infer a room (porch, L-shaped sub-zone). */
+  customPolygon?: Point[]
+}
+
 export interface Project {
   meta: ProjectMeta
   floors: Floor[]
+  /**
+   * Per-room user metadata keyed by `roomKey(room)`. A sibling of `meta` and
+   * `floors` so an undoable command can reassign it whole (the inverse-capture
+   * proxy records only the root's own top-level keys). Absent means no overrides.
+   */
+  roomOverrides?: Record<string, RoomOverride>
 }
