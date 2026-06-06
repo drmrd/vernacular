@@ -27,3 +27,23 @@ describe('buildSpatialIndex queryPoint', () => {
     expect(index.queryPoint({ x: 120, y: 50 }, 10)).toEqual([])
   })
 })
+
+describe('buildSpatialIndex queryBounds', () => {
+  it('returns ids of entities intersecting the region and excludes disjoint ones', () => {
+    const index = buildSpatialIndex([
+      entity('overlapping', { x: 0, y: 0 }, { x: 100, y: 100 }),
+      entity('touching', { x: 100, y: 100 }, { x: 200, y: 200 }),
+      entity('disjoint', { x: 500, y: 500 }, { x: 600, y: 600 }),
+    ])
+
+    const region: Bounds = { min: { x: 50, y: 50 }, max: { x: 150, y: 150 } }
+
+    expect(new Set(index.queryBounds(region))).toEqual(new Set(['overlapping', 'touching']))
+  })
+
+  it('returns an empty array from an empty index', () => {
+    const index = buildSpatialIndex([])
+
+    expect(index.queryBounds({ min: { x: 0, y: 0 }, max: { x: 100, y: 100 } })).toEqual([])
+  })
+})
