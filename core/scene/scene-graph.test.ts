@@ -65,3 +65,34 @@ describe('deriveSceneGraph walls', () => {
     expect(node.floorId).toBe('g')
   })
 })
+
+describe('deriveSceneGraph rooms', () => {
+  it('projects each room a floor encloses into a room node carrying its polygon and area', () => {
+    const floor = createFloor('Ground', {
+      id: 'g',
+      walls: [
+        createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+        createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+        createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+        createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+      ],
+    })
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      era: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [floor]
+
+    const graph = deriveSceneGraph(project)
+
+    expect(graph.rooms).toHaveLength(1)
+    const room = graph.rooms[0]
+    if (room === undefined) {
+      throw new Error('expected one room node')
+    }
+    expect(room).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
+    expect(room.polygon).toHaveLength(4)
+  })
+})
