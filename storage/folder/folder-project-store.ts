@@ -14,15 +14,14 @@ export class ProjectFileNotFoundError extends Error {
 }
 
 export interface FolderProjectStoreOptions {
-  /** Defaults to migrateProject; injected in tests for synthetic chains. */
+  /** Defaults to migrateProject; injected in tests to exercise custom migration sequences. */
   migrate?: (raw: unknown) => Project
 }
 
 /**
  * Reads and writes one project folder (project.json at the directory root) through
- * a DirectoryPort. Single-project; multi-project stores compose one per id. Save
- * serializes immediately, so the stored snapshot is isolated from later caller
- * mutation (the clone-on-save contract from ADR-0003).
+ * a DirectoryPort. Save serializes immediately, so the stored snapshot is isolated
+ * from later caller mutation (the clone-on-save contract from ADR-0003).
  */
 export class FolderProjectStore {
   private readonly migrate: (raw: unknown) => Project
