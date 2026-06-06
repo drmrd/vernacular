@@ -8,6 +8,13 @@
 
 **Tech Stack:** TypeScript (strict, `noUncheckedIndexedAccess`), Canvas 2D for the plan, Vitest for units. No new dependencies. No `core/` change (slice stays entirely within `editor/plan/`).
 
+**Status: complete.** All sections landed on `feat/plan-viewport-pan-zoom` via the red-green-blue cycle (full check chain green, `eslint .` at zero problems, `rgb:audit` clean). ADR-0030 (the viewport projection model) was recorded in the local knowledge graph and `ROADMAP.md` marks the slice done with its deferrals. Deviations from the blueprint below, all settled during GREEN/BLUE:
+
+- **`gridSpacingMm`** could not use the nested ternary in the Task C1 snippet (the repo lints `no-nested-ternary` and `no-magic-numbers`): it ships as a `NICE_MULTIPLIERS.find(...)` selection with named `DECADE_BASE`/`HALF_DECADE` constants, behavior-identical.
+- **Drawing helpers extracted during BLUE:** `gridLinesAlongAxis` (grid) and `drawRulerTicks` (rulers) were factored out to remove the per-axis duplication, each using an options/`span` object to stay within `max-params`.
+- **`PlanView` glue split into two files** to satisfy `max-lines`: the camera input (pan, zoom, fit) moved to `editor/plan/use-viewport-controls.ts`, leaving `plan-view.tsx` as tool/render wiring. Both stay coverage-excluded glue.
+- **Snap-to-fit:** the cheap pure path shipped (`computeFitViewport` + `contentBounds`) with fit-to-content wired to the `f` key; fit-to-selection is deferred to slice 5, as planned.
+
 ---
 
 ## Scope boundary (design spec §6.2, §6.6, §10 Phase 1; this is slice 3 of ~12)
