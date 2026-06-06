@@ -1,4 +1,4 @@
-import type { Point, WallSceneNode } from '../../core'
+import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
 import { contentBounds, type Bounds } from './fit'
 
 /** A click within this many millimeters of a wall centerline selects it. */
@@ -16,6 +16,11 @@ function spanOf(points: readonly Point[]): Bounds {
 /** Axis-aligned bounds spanning a wall's two endpoints, normalized over direction. */
 export function wallBounds(wall: WallSceneNode): Bounds {
   return spanOf([wall.start, wall.end])
+}
+
+/** Axis-aligned bounds spanning every vertex of a room polygon. */
+export function roomBounds(room: RoomSceneNode): Bounds {
+  return spanOf(room.polygon)
 }
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {
