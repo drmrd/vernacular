@@ -125,32 +125,32 @@ describe('parseLength assumed unit for bare numbers', () => {
   })
 
   it('throws for a bare number when no unit is assumed', () => {
-    expect(() => parseLength('80')).toThrow()
+    expect(() => parseLength('80')).toThrow(/needs a unit/)
   })
 })
 
 describe('parseLength error handling', () => {
   it('throws for input that is not a number at all', () => {
-    expect(() => parseLength('banana')).toThrow()
+    expect(() => parseLength('banana')).toThrow(/Unrecognized length value/)
   })
 
   it('throws for empty input', () => {
-    expect(() => parseLength('')).toThrow()
+    expect(() => parseLength('')).toThrow(/Unrecognized length value/)
   })
 
   it('throws for a sign with no magnitude', () => {
-    expect(() => parseLength('-')).toThrow()
+    expect(() => parseLength('-')).toThrow(/Unrecognized length value/)
   })
 
   it('throws for an unknown unit word', () => {
-    expect(() => parseLength('6 fathoms')).toThrow()
+    expect(() => parseLength('6 fathoms')).toThrow(/Unrecognized length unit/)
   })
 
   it('throws for a fraction with a zero denominator', () => {
-    expect(() => parseLength('1/0"')).toThrow()
+    expect(() => parseLength('1/0"')).toThrow(/denominator cannot be zero/)
   })
 
   it('throws for a malformed inch value with a dangling whole part', () => {
-    expect(() => parseLength('8 1"')).toThrow()
+    expect(() => parseLength('8 1"')).toThrow(/Unrecognized inch value/)
   })
 })
