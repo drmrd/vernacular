@@ -91,6 +91,21 @@ const wall: WallSceneNode = {
   thickness: 114,
 }
 
+function rectangleRoom(id: string, originX = 0): RoomSceneNode {
+  return {
+    id,
+    kind: 'room',
+    floorId: 'f',
+    polygon: [
+      { x: originX, y: 0 },
+      { x: originX + 4000, y: 0 },
+      { x: originX + 4000, y: 3000 },
+      { x: originX, y: 3000 },
+    ],
+    area: 12_000_000,
+  }
+}
+
 describe('drawPlan', () => {
   it('clears the surface and strokes each wall projected to screen space', () => {
     const recorder = recordingContext()
@@ -161,30 +176,6 @@ describe('drawPlan', () => {
 
   it('fills each room polygon beneath the wall strokes', () => {
     const recorder = recordingContext()
-    const room: RoomSceneNode = {
-      id: 'room:r',
-      kind: 'room',
-      floorId: 'f',
-      polygon: [
-        { x: 0, y: 0 },
-        { x: 4000, y: 0 },
-        { x: 4000, y: 3000 },
-        { x: 0, y: 3000 },
-      ],
-      area: 12_000_000,
-    }
-    const secondRoom: RoomSceneNode = {
-      id: 'room:s',
-      kind: 'room',
-      floorId: 'f',
-      polygon: [
-        { x: 5000, y: 0 },
-        { x: 9000, y: 0 },
-        { x: 9000, y: 3000 },
-        { x: 5000, y: 3000 },
-      ],
-      area: 12_000_000,
-    }
     const roomWall: WallSceneNode = {
       id: 'w1',
       kind: 'wall',
@@ -196,7 +187,7 @@ describe('drawPlan', () => {
 
     drawPlan(recorder.ctx, {
       walls: [roomWall],
-      rooms: [room, secondRoom],
+      rooms: [rectangleRoom('room:r'), rectangleRoom('room:s', 5000)],
       viewport: { scale: DEFAULT_PLAN_SCALE },
       width: 800,
       height: 600,
@@ -208,41 +199,20 @@ describe('drawPlan', () => {
     expect(ops).toContain('closePath')
     expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
   })
+})
+
+describe('drawPlan selection overlays', () => {
+  const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
 
   it('strokes a highlight around a selected room and leaves an unselected room fill-only', () => {
-    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
-    const room: RoomSceneNode = {
-      id: 'room:r',
-      kind: 'room',
-      floorId: 'f',
-      polygon: [
-        { x: 0, y: 0 },
-        { x: 4000, y: 0 },
-        { x: 4000, y: 3000 },
-        { x: 0, y: 3000 },
-      ],
-      area: 12_000_000,
-    }
+    const room = rectangleRoom('room:r')
+    const base = { walls: [], rooms: [room], viewport, width: 800, height: 600 } as const
 
     const unselected = recordingContext()
-    drawPlan(unselected.ctx, {
-      walls: [],
-      rooms: [room],
-      viewport,
-      width: 800,
-      height: 600,
-      selectedIds: new Set<string>(),
-    })
+    drawPlan(unselected.ctx, { ...base, selectedIds: new Set<string>() })
 
     const selected = recordingContext()
-    drawPlan(selected.ctx, {
-      walls: [],
-      rooms: [room],
-      viewport,
-      width: 800,
-      height: 600,
-      selectedIds: new Set(['room:r']),
-    })
+    drawPlan(selected.ctx, { ...base, selectedIds: new Set(['room:r']) })
 
     expect(unselected.ops).not.toContain('stroke')
     expect(selected.ops).toContain('stroke')
@@ -250,27 +220,14 @@ describe('drawPlan', () => {
   })
 
   it('paints the marquee when the option is set and omits it otherwise', () => {
-    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
     const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
+    const base = { walls: [wall], viewport, width: 800, height: 600 } as const
 
     const without = recordingContext()
-    drawPlan(without.ctx, {
-      walls: [wall],
-      viewport,
-      width: 800,
-      height: 600,
-      selectedIds: new Set<string>(),
-    })
+    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
 
     const withMarquee = recordingContext()
-    drawPlan(withMarquee.ctx, {
-      walls: [wall],
-      viewport,
-      width: 800,
-      height: 600,
-      selectedIds: new Set<string>(),
-      marquee,
-    })
+    drawPlan(withMarquee.ctx, { ...base, selectedIds: new Set<string>(), marquee })
 
     const min = worldToScreen(marquee.min, viewport)
     const max = worldToScreen(marquee.max, viewport)
@@ -285,18 +242,7 @@ describe('drawPlan', () => {
 })
 
 describe('drawPlan grid and rulers', () => {
-  const room: RoomSceneNode = {
-    id: 'room:r',
-    kind: 'room',
-    floorId: 'f',
-    polygon: [
-      { x: 0, y: 0 },
-      { x: 4000, y: 0 },
-      { x: 4000, y: 3000 },
-      { x: 0, y: 3000 },
-    ],
-    area: 12_000_000,
-  }
+  const room = rectangleRoom('room:r')
 
   it('paints grid beneath rooms and rulers above walls when enabled', () => {
     const recorder = recordingContext()
