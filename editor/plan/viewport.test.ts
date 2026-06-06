@@ -4,6 +4,7 @@ import {
   screenToWorld,
   panBy,
   clampScale,
+  zoomAtCursor,
   DEFAULT_PLAN_SCALE,
   MIN_PLAN_SCALE,
   MAX_PLAN_SCALE,
@@ -71,5 +72,26 @@ describe('clampScale', () => {
 
   it('passes an in-range scale through unchanged', () => {
     expect(clampScale(0.1)).toBe(0.1)
+  })
+})
+
+describe('zoomAtCursor', () => {
+  it('scales by the factor and keeps the world point under the cursor fixed', () => {
+    const viewport = { scale: 0.1, offset: { x: 0, y: 0 } }
+    const cursor = { x: 300, y: 200 }
+    const worldUnder = screenToWorld(cursor, viewport)
+
+    const zoomed = zoomAtCursor(viewport, cursor, 2)
+
+    expect(zoomed.scale).toBe(0.2)
+    const after = worldToScreen(worldUnder, zoomed)
+    expect(after.x).toBeCloseTo(cursor.x, 6)
+    expect(after.y).toBeCloseTo(cursor.y, 6)
+  })
+
+  it('clamps the scaled result to the maximum', () => {
+    const zoomed = zoomAtCursor({ scale: MAX_PLAN_SCALE, offset: { x: 0, y: 0 } }, { x: 0, y: 0 }, 4)
+
+    expect(zoomed.scale).toBe(MAX_PLAN_SCALE)
   })
 })
