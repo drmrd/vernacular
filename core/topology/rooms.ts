@@ -99,11 +99,10 @@ function halfEdgeAngle(
   return Math.atan2(to.y - from.y, to.x - from.x)
 }
 
-/** Shared state for a single pass of face tracing over a half-edge graph. */
+/** Read-only half-edge graph data shared across a single pass of face tracing. */
 interface FaceWalk {
   halfEdges: readonly HalfEdge[]
   outgoing: ReadonlyMap<number, number[]>
-  visited: Set<number>
 }
 
 /**
@@ -115,23 +114,23 @@ function enumerateFaces(halfEdges: readonly HalfEdge[], vertices: readonly Point
   const walk: FaceWalk = {
     halfEdges,
     outgoing: outgoingByVertex(halfEdges, vertices),
-    visited: new Set<number>(),
   }
+  const visited = new Set<number>()
   const faces: HalfEdge[][] = []
 
   for (const start of halfEdges.keys()) {
-    if (walk.visited.has(start)) continue
-    faces.push(traceFace(start, walk))
+    if (visited.has(start)) continue
+    faces.push(traceFace(start, walk, visited))
   }
   return faces
 }
 
 /** Walk one face starting from a half-edge index, marking each visited half-edge. */
-function traceFace(start: number, walk: FaceWalk): HalfEdge[] {
+function traceFace(start: number, walk: FaceWalk, visited: Set<number>): HalfEdge[] {
   const face: HalfEdge[] = []
   let current = start
   do {
-    walk.visited.add(current)
+    visited.add(current)
     const half = walk.halfEdges[current]
     if (half === undefined) break
     face.push(half)
@@ -155,6 +154,10 @@ function nextHalfEdge(
   if (group === undefined) return index
   const twin = group.findIndex((candidate) => {
     const other = halfEdges[candidate]
+    // Both half-edges of a wall are created together in buildHalfEdges and share
+    // its wallId, so matching wallId selects the reverse half-edge even when two
+    // distinct walls connect the same vertex pair (parallel edges), where the
+    // endpoint check alone would be ambiguous.
     return other !== undefined && other.to === half.from && other.wallId === half.wallId
   })
   if (twin === -1) return index
