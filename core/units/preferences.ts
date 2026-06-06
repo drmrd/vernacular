@@ -1,7 +1,7 @@
 import type { UnitSystem } from '../model/types'
 import type { FormatLengthOptions } from './format-length'
 import type { ImperialForm, MetricForm } from './length-units'
-import type { DisplayPrecision } from './precision'
+import type { DecimalPrecision, DisplayPrecision } from './precision'
 
 export interface UnitPreferences {
   system: UnitSystem
@@ -20,18 +20,18 @@ export const DEFAULT_IMPERIAL_PREFERENCES: UnitPreferences = {
 }
 
 export const DEFAULT_METRIC_PREFERENCES: UnitPreferences = {
-  ...DEFAULT_IMPERIAL_PREFERENCES,
   system: 'metric',
+  imperialForm: 'feet-and-inches',
+  metricForm: 'millimeters',
+  imperialLengthPrecision: { kind: 'fraction', denominator: 8 },
+  metricLengthPrecision: { kind: 'decimal-places', places: 0 },
 }
 
 // Preferences are loaded from persisted project data, so the form/precision pairing
 // is validated at runtime: only feet-and-inches can use a fraction precision, every
 // other form is decimal-only. This narrows the precision to its decimal-places member
 // and throws when the persisted data pairs a fraction with a decimal-only form.
-function requireDecimalPlaces(precision: DisplayPrecision): {
-  kind: 'decimal-places'
-  places: number
-} {
+function requireDecimalPlaces(precision: DisplayPrecision): DecimalPrecision {
   if (precision.kind === 'fraction') {
     throw new Error(
       'expected decimal-places precision for this form, received a fraction precision',

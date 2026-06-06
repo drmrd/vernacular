@@ -2,6 +2,9 @@ export type DisplayPrecision =
   | { kind: 'decimal-places'; places: number }
   | { kind: 'fraction'; denominator: number }
 
+/** The decimal-places member of DisplayPrecision; the only precision metric and decimal forms accept. */
+export type DecimalPrecision = Extract<DisplayPrecision, { kind: 'decimal-places' }>
+
 const DECIMAL_BASE = 10
 
 /** Rounds half away from zero (symmetric for negatives, unlike Math.round). */

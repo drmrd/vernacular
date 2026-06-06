@@ -5,13 +5,12 @@ import {
   millimetersToInches,
   millimetersToMeters,
 } from './length-units'
-import type { DisplayPrecision } from './precision'
+import type { DecimalPrecision, DisplayPrecision } from './precision'
 import { roundToDecimalPlaces, roundToNearestFraction } from './precision'
 
 // Only feet-and-inches accepts fractional precision; every other form is decimal-only.
-// Encoding that in the union makes an invalid fraction/form pairing a compile error.
-type DecimalPrecision = { kind: 'decimal-places'; places: number }
-
+// Encoding that in the union (via DecimalPrecision) makes an invalid fraction/form
+// pairing a compile error.
 type ImperialDecimalForm = Exclude<ImperialForm, 'feet-and-inches'>
 
 // Arms are ordered to match the dispatch order in formatLength: metric first, then the
