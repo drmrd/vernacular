@@ -1,3 +1,4 @@
+import type { Project } from '../../core'
 import type { ProjectStore } from '../../storage'
 import type { EditorSession } from '../session/editor-session'
 
@@ -16,6 +17,7 @@ export interface AutosaveConfig extends AutosaveOptions {
   session: EditorSession
   store: ProjectStore
   projectId: string
+  snapshots?: { writeSnapshot(project: Project): Promise<void> }
 }
 
 export interface Autosave {
@@ -32,10 +34,11 @@ export function createAutosave(config: AutosaveConfig): Autosave {
     // getProject() is a live reference; reading it when the debounce fires saves
     // the latest coalesced edit. ProjectStore.save clones synchronously, so a
     // dispatch arriving mid-save does not corrupt the written snapshot.
-    void store
-      .save(projectId, session.getProject())
-      .then(() => report('saved'))
-      .catch(() => report('error'))
+    const project = session.getProject()
+    const write = config.snapshots
+      ? config.snapshots.writeSnapshot(project)
+      : store.save(projectId, project)
+    void write.then(() => report('saved')).catch(() => report('error'))
   }
 
   const unsubscribe = session.subscribe(() => {
@@ -53,5 +56,18 @@ export function createAutosave(config: AutosaveConfig): Autosave {
         clearTimeout(timer)
       }
     },
+  }
+}
+
+/** Explicit save: writes the canonical project, then prunes autosave snapshots. */
+export async function commitProject(
+  store: ProjectStore,
+  projectId: string,
+  project: Project,
+  snapshots?: { prune(): Promise<void> },
+): Promise<void> {
+  await store.save(projectId, project)
+  if (snapshots) {
+    await snapshots.prune()
   }
 }
