@@ -206,7 +206,13 @@ describe('drawPlan selection overlays', () => {
 
   it('strokes a highlight around a selected room and leaves an unselected room fill-only', () => {
     const room = rectangleRoom('room:r')
-    const base = { walls: [], rooms: [room], viewport, width: 800, height: 600 } as const
+    const base = {
+      walls: [] as WallSceneNode[],
+      rooms: [room],
+      viewport,
+      width: 800,
+      height: 600,
+    }
 
     const unselected = recordingContext()
     drawPlan(unselected.ctx, { ...base, selectedIds: new Set<string>() })
@@ -221,7 +227,7 @@ describe('drawPlan selection overlays', () => {
 
   it('paints the marquee when the option is set and omits it otherwise', () => {
     const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
-    const base = { walls: [wall], viewport, width: 800, height: 600 } as const
+    const base = { walls: [wall], viewport, width: 800, height: 600 }
 
     const without = recordingContext()
     drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
