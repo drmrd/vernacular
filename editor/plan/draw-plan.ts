@@ -1,7 +1,7 @@
 import type { Point, RoomSceneNode, UnitPreferences, WallSceneNode } from '../../core'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
-import { roomLabelContent } from './room-label'
+import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
@@ -44,6 +44,7 @@ export interface DrawPlanOptions {
   snap?: SnapResult
   marquee?: Bounds
   endpointHandles?: WallSceneNode
+  roomLabels?: RoomLabelOptions
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -184,8 +185,23 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   if (options.marquee) {
     drawMarquee(ctx, options.marquee, options.viewport)
   }
+  drawRoomLabels(ctx, options)
   if (options.rulers) {
     drawRulers(ctx, options.viewport, size)
+  }
+}
+
+/** Paint every room's label as an overlay above the fills and wall strokes so the text reads on top. */
+function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const roomLabels = options.roomLabels
+  if (roomLabels === undefined) {
+    return
+  }
+  for (const room of options.rooms ?? []) {
+    drawRoomLabel(ctx, room, {
+      viewport: options.viewport,
+      preferences: roomLabels.preferences,
+    })
   }
 }
 
