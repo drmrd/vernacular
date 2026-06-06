@@ -34,4 +34,23 @@ describe('deriveRooms', () => {
     ]
     expect([...room.polygon].sort(byXThenY)).toEqual(expectedCorners.sort(byXThenY))
   })
+
+  it('reports the room area as the positive shoelace area of its polygon', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+    ]
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
+    expect(room.area).toBe(12_000_000)
+  })
 })
