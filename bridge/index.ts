@@ -8,8 +8,15 @@ export type {
   AutosaveOptions,
   AutosaveConfig,
   Autosave,
+  SnapshotWriter,
+  SnapshotPruner,
+  CommitProjectOptions,
 } from './autosave/create-autosave'
-export { createAutosave, DEFAULT_AUTOSAVE_DELAY_MS } from './autosave/create-autosave'
+export {
+  createAutosave,
+  commitProject,
+  DEFAULT_AUTOSAVE_DELAY_MS,
+} from './autosave/create-autosave'
 export { useEditorSession } from './react/editor-session-context'
 export type { EditorSessionProviderProps } from './react/editor-session-provider'
 export { EditorSessionProvider } from './react/editor-session-provider'
