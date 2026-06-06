@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createEmptyProject, createFloor, createWall } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { ProjectNotFoundError } from '../project-store'
-import { FolderProjectStore } from './folder-project-store'
+import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-store'
 
 function sampleProject(): Project {
   const wall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'wall-1', thickness: 140 })
@@ -70,9 +69,9 @@ describe('FolderProjectStore', () => {
     expect(await store.exists()).toBe(true)
   })
 
-  it('throws ProjectNotFoundError when loading from an empty directory', async () => {
+  it('throws ProjectFileNotFoundError when loading from an empty directory', async () => {
     const store = new FolderProjectStore(new InMemoryDirectory())
 
-    await expect(store.loadProject()).rejects.toThrow(ProjectNotFoundError)
+    await expect(store.loadProject()).rejects.toBeInstanceOf(ProjectFileNotFoundError)
   })
 })
