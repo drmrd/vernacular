@@ -42,10 +42,8 @@ core/
   geometry/point.ts          (create)  distance
   geometry/polygon.ts        (create)  polygonArea (signed shoelace)
   geometry/segment.ts        (create)  segmentIntersection, pointOnSegment
-  geometry/index.ts          (create, infra)  geometry barrel
   topology/wall-graph.ts     (create)  PlanarGraph, GraphEdge, buildWallGraph
   topology/rooms.ts          (create)  Room, deriveRooms (face enumeration)
-  topology/index.ts          (create, infra)  topology barrel
   scene/scene-graph.ts       (modify)  RoomSceneNode, rooms on SceneGraph, deriveRoomNodes
   scene/scene-graph-deriver.ts (modify) memoize room nodes by Floor reference
   index.ts                   (modify, infra)  barrel exports
@@ -336,21 +334,9 @@ export function pointOnSegment(p: Point, a: Point, b: Point, tolerance: number):
 
 - [ ] **Step 5: BLUE + commit**
 
-### Task A5: geometry barrel (infrastructure)
+### Task A5: no geometry sub-barrel (house convention)
 
-**Files:**
-
-- Create: `core/geometry/index.ts`
-
-- [ ] **Step 1: Re-export the primitives**
-
-```ts
-export { distance } from './point'
-export { polygonArea } from './polygon'
-export { pointOnSegment, segmentIntersection } from './segment'
-```
-
-- [ ] **Step 2: Verify** — `pnpm typecheck` passes. Reviewed by `/clean-code-review`. Commit `build:` with the barrel. (Barrel wiring into `core/index.ts` lands in Task F1 once the topology surface exists.)
+`core/` has exactly one barrel, the top-level `core/index.ts`; sub-modules import directly from specific sibling files (verified: no `index.ts` exists under any `core/` subdirectory). So there is **no** `core/geometry/index.ts`. Consumers import directly: topology uses `import { distance } from '../geometry/point'`, `import { pointOnSegment, segmentIntersection } from '../geometry/segment'`, `import { polygonArea } from '../geometry/polygon'`. The public surface reaches the rest of the app through `core/index.ts` in Task F1.
 
 ---
 
@@ -401,7 +387,7 @@ describe('buildWallGraph', () => {
 - [ ] **Step 3: Minimal implementation**
 
 ```ts
-import { distance } from '../geometry'
+import { distance } from '../geometry/point'
 import type { Point, Wall } from '../model/types'
 
 export interface GraphEdge {
@@ -481,7 +467,8 @@ it('splits a wall where another wall ends on its interior (T-junction)', () => {
 - [ ] **Step 3: Minimal implementation** — split each edge by every vertex on its interior. Add a `splitEdges` pass and call it before returning:
 
 ```ts
-import { distance, pointOnSegment, segmentIntersection } from '../geometry'
+import { distance } from '../geometry/point'
+import { pointOnSegment, segmentIntersection } from '../geometry/segment'
 // ...
   // before `return { vertices, edges }`:
   return { vertices, edges: splitEdges(vertices, edges, tolerance) }
@@ -615,7 +602,7 @@ describe('deriveRooms', () => {
 - [ ] **Step 3: Minimal implementation** — build the graph, enumerate faces, keep bounded (positive-area) faces. This is the general half-edge traversal; it is introduced here and reused unchanged by C2–C7.
 
 ```ts
-import { polygonArea } from '../geometry'
+import { polygonArea } from '../geometry/polygon'
 import type { Point, Wall } from '../model/types'
 import { buildWallGraph, type PlanarGraph } from './wall-graph'
 
@@ -860,7 +847,9 @@ Note: the stub `(4000,0)-(3000,0)` is collinear with the bottom wall. Because th
 - [ ] **Step 3: Minimal implementation** — drop collinear vertices when building the room polygon so a split point on a straight run is not reported as a corner. Extend `buildRoom` to remove collinear points after spike removal:
 
 ```ts
-import { distance, polygonArea, pointOnSegment } from '../geometry'
+import { distance } from '../geometry/point'
+import { polygonArea } from '../geometry/polygon'
+import { pointOnSegment } from '../geometry/segment'
 // ...
 function buildRoom(face: HalfEdge[], graph: PlanarGraph): Room {
   const loop = removeSpikes(face.map((he) => he.from))
@@ -949,22 +938,9 @@ it('gives a room a stable id derived from its bounding wall ids', () => {
 
 - [ ] **Step 5: BLUE + commit**
 
-### Task C8: topology barrel (infrastructure)
+### Task C8: no topology sub-barrel (house convention)
 
-**Files:**
-
-- Create: `core/topology/index.ts`
-
-- [ ] **Step 1: Re-export the topology surface**
-
-```ts
-export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './wall-graph'
-export type { GraphEdge, PlanarGraph } from './wall-graph'
-export { deriveRooms } from './rooms'
-export type { Room } from './rooms'
-```
-
-- [ ] **Step 2: Verify** — `pnpm typecheck` passes. Reviewed by `/clean-code-review`. Commit `build:`.
+As with geometry (Task A5), there is **no** `core/topology/index.ts`. `core/scene/scene-graph.ts` imports `deriveRooms` directly via `import { deriveRooms } from '../topology/rooms'`, and `core/index.ts` (Task F1) re-exports the topology surface from the specific files.
 
 ---
 
@@ -1014,7 +990,7 @@ it('derives a room scene node for each room a floor encloses', () => {
 - [ ] **Step 3: Minimal implementation** — add the type, `deriveRoomNodes`, and the `rooms` array in `core/scene/scene-graph.ts`:
 
 ```ts
-import { deriveRooms } from '../topology'
+import { deriveRooms } from '../topology/rooms'
 // ...
 export interface RoomSceneNode {
   id: string
@@ -1297,11 +1273,15 @@ function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, viewport: Viewpo
 - [ ] **Step 1: Export the new surface from `core/index.ts`**
 
 ```ts
-// geometry
-export { distance, polygonArea, pointOnSegment, segmentIntersection } from './geometry'
+// geometry (no sub-barrel; export from the specific files)
+export { distance } from './geometry/point'
+export { polygonArea } from './geometry/polygon'
+export { pointOnSegment, segmentIntersection } from './geometry/segment'
 // topology
-export type { GraphEdge, PlanarGraph, Room } from './topology'
-export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph, deriveRooms } from './topology'
+export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
+export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
+export type { Room } from './topology/rooms'
+export { deriveRooms } from './topology/rooms'
 // scene rooms
 export type { RoomSceneNode } from './scene/scene-graph'
 export { deriveRoomNodes } from './scene/scene-graph'
