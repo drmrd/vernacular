@@ -116,12 +116,12 @@ export function auditCommits(commits) {
           message: `GREEN commit ${commit.sha} has no preceding RED test commit in range`,
         })
       }
-      const matched = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
-      if (matched.length > 0) {
+      const testFiles = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
+      if (testFiles.length > 0) {
         violations.push({
           sha: commit.sha,
           rule: 'independence',
-          message: `GREEN commit ${commit.sha} modifies test file(s): ${matched.join(', ')}`,
+          message: `GREEN commit ${commit.sha} modifies test file(s): ${testFiles.join(', ')}`,
         })
       }
       pendingRed = 0
