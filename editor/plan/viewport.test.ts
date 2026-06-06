@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { worldToScreen, screenToWorld, DEFAULT_PLAN_SCALE } from './viewport'
+import { worldToScreen, screenToWorld, panBy, DEFAULT_PLAN_SCALE } from './viewport'
 
 describe('viewport projection', () => {
   it('scales world millimeters to screen pixels', () => {
@@ -32,5 +32,22 @@ describe('viewport pan offset', () => {
     const screen = worldToScreen({ x: 1234, y: 5678 }, viewport)
 
     expect(screenToWorld(screen, viewport)).toEqual({ x: 1234, y: 5678 })
+  })
+})
+
+describe('panBy', () => {
+  it('treats an absent offset as the origin, yielding the delta', () => {
+    expect(panBy({ scale: 0.1 }, { x: 12, y: -8 }).offset).toEqual({ x: 12, y: -8 })
+  })
+
+  it('accumulates the screen-pixel delta onto an existing offset', () => {
+    expect(panBy({ scale: 0.1, offset: { x: 5, y: 5 } }, { x: 10, y: 20 }).offset).toEqual({
+      x: 15,
+      y: 25,
+    })
+  })
+
+  it('leaves the scale unchanged', () => {
+    expect(panBy({ scale: 0.1 }, { x: 10, y: 10 }).scale).toBe(0.1)
   })
 })
