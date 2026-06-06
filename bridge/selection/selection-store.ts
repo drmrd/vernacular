@@ -2,6 +2,7 @@ export interface SelectionStore {
   getSelectedIds(): ReadonlySet<string>
   isSelected(id: string): boolean
   select(id: string): void
+  toggle(id: string): void
   clear(): void
   subscribe(listener: () => void): () => void
 }
@@ -26,6 +27,13 @@ export function createSelectionStore(): SelectionStore {
     getSelectedIds: () => selected,
     isSelected: (id) => selected.has(id),
     select: (id) => setSelected(new Set([id])),
+    toggle: (id) => {
+      const next = new Set(selected)
+      if (!next.delete(id)) {
+        next.add(id)
+      }
+      setSelected(next)
+    },
     clear: () => setSelected(EMPTY_SELECTION),
     subscribe(listener) {
       listeners.add(listener)
