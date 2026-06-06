@@ -31,7 +31,7 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 | Focus                                                   | Status      |
 | ------------------------------------------------------- | ----------- |
-| Project stores, persistence, and migrations             | in progress |
+| Project stores, persistence, and migrations             | done        |
 | Two-dimensional plan editor                             | in progress |
 | Three-dimensional preview with color-temperature slider | pending     |
 | Furniture import and curated starter library (alpha)    | pending     |
@@ -39,20 +39,20 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 | Multi-floor and stairs (beta)                           | pending     |
 | Paint, export, site metadata (1.0)                      | pending     |
 
-> **Project stores, persistence, and migrations (deferred with intent):** the
-> durable folder, OPFS, and `.house.zip` stores, the schema-and-registry
-> migration framework, autosave sidecar snapshots with crash recovery, the
-> recent-project list, and Web Locks multi-tab safety are built and tested
-> (OPFS, IndexedDB recent, and Web Locks adapters are verified end to end in
-> Chromium and Firefox). Deferred follow-ups: switching the running app default
-> to the OPFS store (needs async-boot wiring); a WebKit-compatible OPFS write
-> path (main-thread `createWritable` is unsupported, so a worker-side sync access
-> handle is needed); the `.house.zip` export and folder-picker controls in the
-> shell (the stores exist; only the browser download and native-picker glue are
-> pending); `writeHistory` and `packsRequired` project-meta fields (a coordinated
-> shared-schema change); generation of `assets/`, `previews/`, and
+> **Project stores, persistence, and migrations (slice 11 done):** the durable
+> folder, OPFS, and `.house.zip` stores, the schema-and-registry migration
+> framework, autosave sidecar snapshots with crash recovery, the recent-project
+> list, and Web Locks multi-tab safety are built and tested, and the running app
+> now boots against the capability-selected durable store (OPFS-preferred,
+> IndexedDB fallback) with save, open, recent, the `.house.zip` export download,
+> and the Chromium-family folder-open control all wired (verified end to end in
+> Chromium and Firefox). Deferred follow-ups: a WebKit-compatible OPFS write path
+> (main-thread `createWritable` is unsupported, so a worker-side sync access
+> handle is needed); the `writeHistory` and `packsRequired` project-meta fields (a
+> coordinated shared-schema change); generation of `assets/`, `previews/`, and
 > `ATTRIBUTIONS.md` (owned by the asset and pack work); the quota and eviction UI;
-> and the async-with-progress migration surface for very large projects.
+> the take-ownership multi-tab flow; and the async-with-progress migration surface
+> for very large projects. See the slice 11 deferrals below.
 
 **Phase 1, units and measurement (`core/units/`): done.** Imperial and metric display
 formatting with multiple imperial forms (`6'8"`, `6.667'`, `80"`, and fractional inches),
@@ -78,7 +78,7 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 | 8. Room naming and labeling, custom-polygon override                                | pending |
 | 9. Dimensions (live and persisted) and thickness-aware area                         | pending |
 | 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | pending |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done    |
 | 12. Image underlay with calibration                                                 | pending |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
@@ -121,6 +121,17 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 - **Default unit preferences for the thickness input.** The inline editor uses the default preferences for the project's `units` (metric or imperial) until a project-level unit-preferences store lands, mirroring the slice-3 deferral of unit-aware ruler labels.
 - **Wall-drawing end-to-end spec preserved.** All editing wiring is gated on the `select` tool and the default viewport keeps the original scale and a zero pan offset, so the `draw-wall` pointer-to-world mapping is unchanged; the end-to-end spec now asserts the inspector's thickness input appears for the selected wall.
 - **Keyboard affordances beyond click and marquee are deferred.** Select-all and arrow-key nudging are later work.
+
+**Slice 11 (done) scope and deferrals.** Slice 11 makes the durable project stores drive the running app. A pure store-selection rule (`selectProjectStoreBackend`) picks the backend from probed capabilities (OPFS when available, IndexedDB otherwise, honoring a remembered per-project preference); an async boot step (`resolveProjectStore`) probes once and constructs the chosen durable store, which the app now boots against with the loading and error states preserved. The `.house.zip` export button downloads a bundle named by a pure filename rule (`bundleFilename`) through a thin blob-download helper, and a Chromium-family Open folder control opens a picked project through the existing `FileSystemFolderProjectStore`. Opening or saving records a recent entry built by a pure upsert rule (`recentEntryFor`), and the recent list renders most-recent-first and duplicate-free via a pure ordering rule (`orderRecentProjects`); `onOpenRecent` routes through the recorded backend. The store-selection, recent-ordering, recent-entry, and filename rules are pure, unit-tested modules; the async-boot, download, picker, and recording wiring is coverage-excluded glue validated by the app and end-to-end specs (the Export bundle download is covered end to end on Chromium and Firefox). Deliberately deferred, by design:
+
+- **The `writeHistory` and `packsRequired` project-meta fields.** A coordinated shared-schema change on `ProjectMeta` that concurrent model and migration slices also touch; deferred to a coordinated schema migration.
+- **A WebKit-compatible OPFS write path.** The current `FileSystemDirectory.writeFile` uses main-thread `createWritable`, which WebKit does not support; a worker-side `createSyncAccessHandle` write path is needed. WebKit durable-storage and app-shell end-to-end coverage stays read-path-only until it lands (the Export bundle e2e is skipped on WebKit for the same headless-shell limitation).
+- **Generation of `assets/`, `previews/`, and `ATTRIBUTIONS.md`.** Owned by the asset and pack work; this slice writes only `project.json` and `.house-autosave/`.
+- **Quota and eviction UI, `navigator.storage.persist()` on first save, and the async-with-progress migration surface.** Deferred.
+- **The take-ownership multi-tab flow.** `ProjectLock` already produces the read-only outcome; the read-only banner, command-disabling, and take-ownership prompt are a later editing-surface concern (ADR-0030).
+- **Backend choice at creation time.** This slice picks the backend by capability for the default project and records whatever backend a project was opened with; a create-time backend chooser UI is later polish.
+- **Per-backend recent routing edges.** The IndexedDB default store records no recent entry on boot (the recent-list `ProjectBackend` union has no `indexeddb` member; it is the implicit current project), and a `zip-bundle` recent reopen falls back to the default load rather than a dedicated re-import; both consistent with the slice plan's backend-memory open question. The native folder picker needs a user gesture Playwright cannot synthesize headlessly, so the folder-open path stays manually verified.
+- **User-facing error surfacing.** Failures from save, export, open-folder, and open-recent are logged rather than silently swallowed, but not yet surfaced to the user; a notification surface is later work.
 
 ## Beyond 1.0
 
