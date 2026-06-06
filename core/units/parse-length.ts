@@ -11,25 +11,33 @@ import {
 export type AssumedUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft'
 
 export interface ParseLengthOptions {
-  // Unit assumed for a bare number with no unit token. Omitted means a bare number throws.
+  /** Unit assumed for a bare number with no unit token. Omitted means a bare number throws. */
   assumeUnit?: AssumedUnit
 }
 
 // The canonical value is already in millimeters, so this is an identity.
 const millimetersToMillimeters = (value: number): Millimeters => value
 
+// The one place the metric converter choice lives. Both METRIC_PARSERS (token
+// lookup) and ASSUMED_UNIT_CONVERTERS (assumed-unit lookup) build from this.
+const METRIC_CONVERTERS: Record<'mm' | 'cm' | 'm', (value: number) => Millimeters> = {
+  mm: millimetersToMillimeters,
+  cm: centimetersToMillimeters,
+  m: metersToMillimeters,
+}
+
 // Each key is a lowercased unit token mapped to its converter into the canonical
 // millimeter representation.
 const METRIC_PARSERS: Record<string, (value: number) => Millimeters> = {
-  mm: millimetersToMillimeters,
-  millimeter: millimetersToMillimeters,
-  millimeters: millimetersToMillimeters,
-  cm: centimetersToMillimeters,
-  centimeter: centimetersToMillimeters,
-  centimeters: centimetersToMillimeters,
-  m: metersToMillimeters,
-  meter: metersToMillimeters,
-  meters: metersToMillimeters,
+  mm: METRIC_CONVERTERS.mm,
+  millimeter: METRIC_CONVERTERS.mm,
+  millimeters: METRIC_CONVERTERS.mm,
+  cm: METRIC_CONVERTERS.cm,
+  centimeter: METRIC_CONVERTERS.cm,
+  centimeters: METRIC_CONVERTERS.cm,
+  m: METRIC_CONVERTERS.m,
+  meter: METRIC_CONVERTERS.m,
+  meters: METRIC_CONVERTERS.m,
 }
 
 // Anchored to the full trimmed string so trailing text (e.g. "2 m x 3 m") is
@@ -39,11 +47,12 @@ const METRIC_PATTERN = /^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/
 // A bare number with no unit token; interpreted only when a caller supplies assumeUnit.
 const BARE_NUMBER = /^-?\d+(?:\.\d+)?$/
 
-// The canonical millimeter converter for each assumable unit.
+// The canonical millimeter converter for each assumable unit. The metric units
+// reuse METRIC_CONVERTERS so the mm/cm/m converter choice lives in one place.
 const ASSUMED_UNIT_CONVERTERS: Record<AssumedUnit, (value: number) => Millimeters> = {
-  mm: millimetersToMillimeters,
-  cm: centimetersToMillimeters,
-  m: metersToMillimeters,
+  mm: METRIC_CONVERTERS.mm,
+  cm: METRIC_CONVERTERS.cm,
+  m: METRIC_CONVERTERS.m,
   in: inchesToMillimeters,
   ft: feetToMillimeters,
 }
@@ -110,6 +119,16 @@ function buildImperial(match: RegExpMatchArray): Millimeters {
   return sign === '-' ? -magnitude : magnitude
 }
 
+// A bare number has no unit, so it is only meaningful when the caller names the
+// unit to assume; otherwise it is ambiguous and rejected. The input is passed through
+// for the error message so the caller sees the original, untrimmed text.
+function applyAssumedUnit(text: string, options: ParseLengthOptions, input: string): Millimeters {
+  if (options.assumeUnit === undefined) {
+    throw new Error(`Length needs a unit or an assumeUnit option: "${input}"`)
+  }
+  return ASSUMED_UNIT_CONVERTERS[options.assumeUnit](Number(text))
+}
+
 export function parseLength(input: string, options: ParseLengthOptions = {}): Millimeters {
   const trimmed = input.trim()
   const imperial = trimmed.match(IMPERIAL_PATTERN)
@@ -125,13 +144,8 @@ export function parseLength(input: string, options: ParseLengthOptions = {}): Mi
   if (metric) {
     return buildMetric(metric)
   }
-  // A bare number has no unit, so it is only meaningful when the caller names the
-  // unit to assume; otherwise it is ambiguous and rejected.
   if (BARE_NUMBER.test(trimmed)) {
-    if (options.assumeUnit !== undefined) {
-      return ASSUMED_UNIT_CONVERTERS[options.assumeUnit](Number(trimmed))
-    }
-    throw new Error(`Length needs a unit or an assumeUnit option: "${input}"`)
+    return applyAssumedUnit(trimmed, options, input)
   }
   throw new Error(`Unrecognized length value: "${input}"`)
 }
