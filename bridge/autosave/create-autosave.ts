@@ -8,6 +8,16 @@ export const DEFAULT_AUTOSAVE_DELAY_MS = 500
 
 const noop = (): void => {}
 
+/** Writes a rolling autosave snapshot (the SnapshotStore write side). */
+export interface SnapshotWriter {
+  writeSnapshot(project: Project): Promise<void>
+}
+
+/** Prunes autosave snapshots on explicit save (the SnapshotStore prune side). */
+export interface SnapshotPruner {
+  prune(): Promise<void>
+}
+
 export interface AutosaveOptions {
   delayMs?: number
   onStatusChange?: (status: AutosaveStatus) => void
@@ -17,7 +27,7 @@ export interface AutosaveConfig extends AutosaveOptions {
   session: EditorSession
   store: ProjectStore
   projectId: string
-  snapshots?: { writeSnapshot(project: Project): Promise<void> }
+  snapshots?: SnapshotWriter
 }
 
 export interface Autosave {
@@ -25,7 +35,7 @@ export interface Autosave {
 }
 
 export function createAutosave(config: AutosaveConfig): Autosave {
-  const { session, store, projectId } = config
+  const { session, store, projectId, snapshots } = config
   const delayMs = config.delayMs ?? DEFAULT_AUTOSAVE_DELAY_MS
   const report = config.onStatusChange ?? noop
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -35,9 +45,7 @@ export function createAutosave(config: AutosaveConfig): Autosave {
     // the latest coalesced edit. ProjectStore.save clones synchronously, so a
     // dispatch arriving mid-save does not corrupt the written snapshot.
     const project = session.getProject()
-    const write = config.snapshots
-      ? config.snapshots.writeSnapshot(project)
-      : store.save(projectId, project)
+    const write = snapshots ? snapshots.writeSnapshot(project) : store.save(projectId, project)
     void write.then(() => report('saved')).catch(() => report('error'))
   }
 
@@ -59,13 +67,16 @@ export function createAutosave(config: AutosaveConfig): Autosave {
   }
 }
 
+export interface CommitProjectOptions {
+  store: ProjectStore
+  projectId: string
+  project: Project
+  snapshots?: SnapshotPruner
+}
+
 /** Explicit save: writes the canonical project, then prunes autosave snapshots. */
-export async function commitProject(
-  store: ProjectStore,
-  projectId: string,
-  project: Project,
-  snapshots?: { prune(): Promise<void> },
-): Promise<void> {
+export async function commitProject(options: CommitProjectOptions): Promise<void> {
+  const { store, projectId, project, snapshots } = options
   await store.save(projectId, project)
   if (snapshots) {
     await snapshots.prune()
