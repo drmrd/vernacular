@@ -73,6 +73,42 @@ describe('drawPlan', () => {
     expect(recorder.arcs[0]?.y).toBe(previewStart.y)
   })
 
+  it('paints the selected wall endpoint handles when the option is set and omits them otherwise', () => {
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+    const editedWall: WallSceneNode = {
+      id: 'wall:edited',
+      kind: 'wall',
+      floorId: 'g',
+      start: { x: 2000, y: 3000 },
+      end: { x: 6000, y: 1000 },
+      thickness: 114,
+    }
+    const base = { walls: [editedWall], viewport, width: 800, height: 600 }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
+
+    const withHandles = recordingContext()
+    drawPlan(withHandles.ctx, {
+      ...base,
+      selectedIds: new Set<string>(),
+      endpointHandles: editedWall,
+    })
+
+    const start = worldToScreen(editedWall.start, viewport)
+    const end = worldToScreen(editedWall.end, viewport)
+
+    expect(without.arcs).toHaveLength(0)
+    expect(withHandles.arcs).toHaveLength(2)
+    expect(withHandles.arcs.map((handle) => ({ x: handle.x, y: handle.y }))).toEqual(
+      expect.arrayContaining([
+        { x: start.x, y: start.y },
+        { x: end.x, y: end.y },
+      ]),
+    )
+    expect(withHandles.ops.lastIndexOf('stroke')).toBeLessThan(withHandles.ops.lastIndexOf('arc'))
+  })
+
   it('fills each room polygon beneath the wall strokes', () => {
     const recorder = recordingContext()
     const roomWall: WallSceneNode = {
