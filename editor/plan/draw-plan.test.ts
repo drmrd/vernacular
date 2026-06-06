@@ -208,6 +208,40 @@ describe('drawPlan', () => {
     expect(ops).toContain('closePath')
     expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
   })
+
+  it('paints the marquee when the option is set and omits it otherwise', () => {
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+    const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, {
+      walls: [wall],
+      viewport,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+    })
+
+    const withMarquee = recordingContext()
+    drawPlan(withMarquee.ctx, {
+      walls: [wall],
+      viewport,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+      marquee,
+    })
+
+    const min = worldToScreen(marquee.min, viewport)
+    const max = worldToScreen(marquee.max, viewport)
+    expect(without.fillRects).toHaveLength(0)
+    expect(withMarquee.fillRects).toContainEqual({
+      x: min.x,
+      y: min.y,
+      w: max.x - min.x,
+      h: max.y - min.y,
+    })
+  })
 })
 
 describe('drawPlan grid and rulers', () => {
