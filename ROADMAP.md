@@ -69,7 +69,7 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 | Slice                                                                               | Status  |
 | ----------------------------------------------------------------------------------- | ------- |
 | 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | pending |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
 | 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
 | 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending |
 | 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending |
