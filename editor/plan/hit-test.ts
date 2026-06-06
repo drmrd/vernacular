@@ -1,7 +1,34 @@
-import type { Point, WallSceneNode } from '../../core'
+import {
+  pointInPolygon,
+  type Point,
+  type RoomSceneNode,
+  type SceneGraph,
+  type WallSceneNode,
+} from '../../core'
+import { contentBounds, type Bounds } from './fit'
+import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
 /** A click within this many millimeters of a wall centerline selects it. */
 export const DEFAULT_HIT_TOLERANCE_MM = 150
+
+/** The single non-null result `contentBounds` returns for any non-empty point set. */
+function spanOf(points: readonly Point[]): Bounds {
+  const bounds = contentBounds(points)
+  if (bounds === null) {
+    throw new Error('cannot compute bounds of an empty point set')
+  }
+  return bounds
+}
+
+/** Axis-aligned bounds spanning a wall's two endpoints, normalized over direction. */
+export function wallBounds(wall: WallSceneNode): Bounds {
+  return spanOf([wall.start, wall.end])
+}
+
+/** Axis-aligned bounds spanning every vertex of a room polygon. */
+export function roomBounds(room: RoomSceneNode): Bounds {
+  return spanOf(room.polygon)
+}
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {
   const dx = end.x - start.x
@@ -33,4 +60,32 @@ export function hitTestWalls(
     }
   }
   return bestId
+}
+
+function indexEntities(scene: SceneGraph): IndexedEntity[] {
+  return [
+    ...scene.walls.map((wall) => ({ id: wall.id, bounds: wallBounds(wall) })),
+    ...scene.rooms.map((room) => ({ id: room.id, bounds: roomBounds(room) })),
+  ]
+}
+
+function containingRoomId(rooms: RoomSceneNode[], point: Point): string | null {
+  const hit = rooms.find((room) => pointInPolygon(point, room.polygon))
+  return hit ? hit.id : null
+}
+
+/**
+ * Broad phase then narrow phase: the spatial index supplies candidate ids near
+ * the point; the nearest in-range wall centerline wins, and only when no wall is
+ * in range does the search fall back to the room whose polygon contains the point.
+ */
+export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
+  const candidateIds = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
+  const candidateWalls = scene.walls.filter((wall) => candidateIds.has(wall.id))
+  const wallHit = hitTestWalls(candidateWalls, point, tolerance)
+  if (wallHit !== null) {
+    return wallHit
+  }
+  const candidateRooms = scene.rooms.filter((room) => candidateIds.has(room.id))
+  return containingRoomId(candidateRooms, point)
 }

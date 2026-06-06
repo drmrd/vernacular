@@ -1,4 +1,4 @@
-import type { WallSceneNode } from '../../core'
+import type { RoomSceneNode, WallSceneNode } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 
 interface DrawnSegment {
@@ -96,4 +96,23 @@ export const sampleWall: WallSceneNode = {
   start: { x: 0, y: 0 },
   end: { x: 1000, y: 0 },
   thickness: 114,
+}
+
+const ROOM_WIDTH_MM = 4000
+const ROOM_DEPTH_MM = 3000
+
+/** A 4000 by 3000 mm rectangular room, offset along x so several can sit side by side. */
+export function rectangleRoom(id: string, originX = 0): RoomSceneNode {
+  return {
+    id,
+    kind: 'room',
+    floorId: 'f',
+    polygon: [
+      { x: originX, y: 0 },
+      { x: originX + ROOM_WIDTH_MM, y: 0 },
+      { x: originX + ROOM_WIDTH_MM, y: ROOM_DEPTH_MM },
+      { x: originX, y: ROOM_DEPTH_MM },
+    ],
+    area: ROOM_WIDTH_MM * ROOM_DEPTH_MM,
+  }
 }

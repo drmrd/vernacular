@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), and 4 (snapping) are done. Not yet usable as a floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), and 5 (selection and the hit-test index) are done. Not yet usable as a floor planner.
 
 ## Foundation work
 
@@ -72,7 +72,7 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 | 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
 | 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
 | 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done    |
 | 6. Wall editing (endpoint move, thickness, construction type)                       | pending |
 | 7. Openings (doors and windows: placement and editing)                              | pending |
 | 8. Room naming and labeling, custom-polygon override                                | pending |
@@ -104,6 +104,14 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 - **Snap settings UI.** Per-kind enable and disable toggles and a user-configurable snap threshold belong with the editor-preferences surface (the design specification lists snap thresholds among editor preferences). This slice uses fixed default constants; wiring them to a preferences panel is a follow-up.
 - **DOM-overlay snap indicators.** The snap indicator is painted on the Canvas, consistent with the slice-3 decision to draw the grid and rulers on the Canvas. The design specification's DOM-overlay snap indicators (CSS transforms mirroring the Canvas world matrix) are later polish and follow with the overlay work.
 - **Wall-drawing end-to-end spec preserved.** The default viewport keeps the original scale and a zero pan offset, so the pointer-to-world mapping is unchanged; with grid snapping enabled the cursor lands on deterministic grid-aligned coordinates, and the functional wall-drawing end-to-end spec still passes.
+
+**Slice 5 (done) scope and deferrals.** Slice 5 makes the plan selectable: a click picks the wall or room under the cursor (a wall beats a room), a shift-click toggles into an additive multi-selection, a rubber-band marquee replaces the selection with everything fully inside it, and selected rooms gain a highlight while the marquee paints live during the drag. A broad-phase spatial index (the hit-test index) over per-entity axis-aligned bounds answers point and rectangle queries and backs the broad-then-narrow `hitTest`; the narrow phase reuses the nearest-wall-centerline rule and `pointInPolygon` for room containment. Selection state stays bridge-owned and outside undo history (ADR-0020). All the behavior lives in pure, unit-tested modules; the Canvas-and-pointer wiring is thin glue validated by the wall-drawing end-to-end spec. Deliberately deferred, by design:
+
+- **Window (contained) marquee only.** The marquee selects entities fully inside the rectangle (a wall needs both endpoints inside, a room needs every vertex inside). Crossing selection (a right-to-left drag that also grabs partially overlapping entities) is deferred to a later editing slice.
+- **Only walls and rooms are selectable.** Openings and furniture do not exist yet; they become selectable when their slices land (openings in slice 7), at which point they register their own bounds with the index.
+- **Selection persistence and 2D-to-3D sync are later slices.** The store stays in-memory; autosave-snapshot persistence arrives with the project-stores slice (11) and the 3D selection sync with the 3D preview phase (design specification section 6.9).
+- **The index is correctness-first.** It answers the contract's point and rectangle queries correctly; quadtree depth and rebalance tuning, and dirty-region incremental rebuilds (rebuilding only the changed region rather than the whole index per edit), are deferred until the entity count makes them measurable.
+- **Keyboard affordances beyond click and marquee are deferred.** Select-all and arrow-key nudging are later work.
 
 ## Beyond 1.0
 

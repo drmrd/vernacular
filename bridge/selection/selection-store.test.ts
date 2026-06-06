@@ -63,4 +63,51 @@ describe('createSelectionStore', () => {
     expect(store.getSelectedIds()).toBe(firstEmpty)
     expect(firstEmpty.size).toBe(0)
   })
+
+  it('toggles an id into and out of the selection while preserving the rest', () => {
+    const store = createSelectionStore()
+
+    store.toggle('wall:a')
+    expect([...store.getSelectedIds()]).toEqual(['wall:a'])
+
+    store.toggle('wall:b')
+    expect(new Set(store.getSelectedIds())).toEqual(new Set(['wall:a', 'wall:b']))
+
+    store.toggle('wall:a')
+    expect([...store.getSelectedIds()]).toEqual(['wall:b'])
+  })
+
+  it('notifies subscribers when a toggle changes the selection', () => {
+    const store = createSelectionStore()
+    let count = 0
+    store.subscribe(() => {
+      count += 1
+    })
+
+    store.toggle('wall:a')
+    store.toggle('wall:a')
+    expect(count).toBe(2)
+  })
+
+  it('replaces the whole selection with the given ids', () => {
+    const store = createSelectionStore()
+    store.select('wall:z')
+
+    store.setSelection(['wall:a', 'wall:b'])
+    expect(new Set(store.getSelectedIds())).toEqual(new Set(['wall:a', 'wall:b']))
+
+    store.setSelection([])
+    expect(store.getSelectedIds().size).toBe(0)
+  })
+
+  it('notifies subscribers when setSelection changes the selection', () => {
+    const store = createSelectionStore()
+    let count = 0
+    store.subscribe(() => {
+      count += 1
+    })
+
+    store.setSelection(['wall:a', 'wall:b'])
+    expect(count).toBe(1)
+  })
 })

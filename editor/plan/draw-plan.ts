@@ -1,4 +1,5 @@
 import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
+import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
 import type { SnapResult } from './snap'
@@ -40,10 +41,14 @@ export interface DrawPlanOptions {
   grid?: boolean
   rulers?: boolean
   snap?: SnapResult
+  marquee?: Bounds
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
 const ROOM_FILL_COLOR = '#eef2f6'
+const SELECTED_ROOM_FILL_COLOR = '#dbeafe'
+const SELECTED_ROOM_STROKE_COLOR = '#1a7fd4'
+const SELECTED_ROOM_LINE_WIDTH = 2
 const WALL_COLOR = '#222222'
 const SELECTED_WALL_COLOR = '#1a7fd4'
 const PREVIEW_COLOR = '#5b9bd5'
@@ -62,6 +67,9 @@ const RULER_LABEL_INSET_PX = 2
 const SNAP_MARKER_COLOR = '#f08c00'
 const SNAP_MARKER_RADIUS_PX = 5
 const SNAP_MARKER_LINE_WIDTH = 2
+const MARQUEE_FILL_COLOR = 'rgba(26, 127, 212, 0.12)'
+const MARQUEE_STROKE_COLOR = '#1a7fd4'
+const MARQUEE_LINE_WIDTH = 1
 
 export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
   ctx.fillStyle = RULER_BAND_COLOR
@@ -120,6 +128,25 @@ export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: View
   }
 }
 
+/** Paints the rubber-band marquee at its screen position so it tracks pan and zoom. */
+export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, viewport: Viewport): void {
+  const min = worldToScreen(rect.min, viewport)
+  const max = worldToScreen(rect.max, viewport)
+  const width = max.x - min.x
+  const height = max.y - min.y
+  ctx.fillStyle = MARQUEE_FILL_COLOR
+  ctx.fillRect(min.x, min.y, width, height)
+  ctx.strokeStyle = MARQUEE_STROKE_COLOR
+  ctx.lineWidth = MARQUEE_LINE_WIDTH
+  ctx.beginPath()
+  ctx.moveTo(min.x, min.y)
+  ctx.lineTo(max.x, min.y)
+  ctx.lineTo(max.x, max.y)
+  ctx.lineTo(min.x, max.y)
+  ctx.closePath()
+  ctx.stroke()
+}
+
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
   const size = { width: options.width, height: options.height }
@@ -128,7 +155,10 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
   // Fill rooms first so wall strokes render on top of them.
   for (const room of options.rooms ?? []) {
-    drawRoom(ctx, room, options.viewport)
+    drawRoom(ctx, room, {
+      viewport: options.viewport,
+      selected: options.selectedIds.has(room.id),
+    })
   }
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
@@ -139,26 +169,39 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   if (options.snap) {
     drawSnapIndicator(ctx, options.snap, options.viewport)
   }
+  if (options.marquee) {
+    drawMarquee(ctx, options.marquee, options.viewport)
+  }
   if (options.rulers) {
     drawRulers(ctx, options.viewport, size)
   }
 }
 
-function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, viewport: Viewport): void {
+interface RoomDrawing {
+  viewport: Viewport
+  selected: boolean
+}
+
+function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDrawing): void {
   const [firstPoint, ...remainingPoints] = room.polygon
   if (firstPoint === undefined || remainingPoints.length < 2) {
     return
   }
-  const start = worldToScreen(firstPoint, viewport)
-  ctx.fillStyle = ROOM_FILL_COLOR
+  const start = worldToScreen(firstPoint, drawing.viewport)
+  ctx.fillStyle = drawing.selected ? SELECTED_ROOM_FILL_COLOR : ROOM_FILL_COLOR
   ctx.beginPath()
   ctx.moveTo(start.x, start.y)
   for (const point of remainingPoints) {
-    const screenPoint = worldToScreen(point, viewport)
+    const screenPoint = worldToScreen(point, drawing.viewport)
     ctx.lineTo(screenPoint.x, screenPoint.y)
   }
   ctx.closePath()
   ctx.fill()
+  if (drawing.selected) {
+    ctx.strokeStyle = SELECTED_ROOM_STROKE_COLOR
+    ctx.lineWidth = SELECTED_ROOM_LINE_WIDTH
+    ctx.stroke()
+  }
 }
 
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {

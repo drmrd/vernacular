@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { drawGrid, drawPlan, drawRulers } from './draw-plan'
-import { recordingContext, sampleWall as wall } from './draw-plan-test-fixtures'
+import { drawGrid, drawMarquee, drawPlan, drawRulers } from './draw-plan'
+import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
-import type { RoomSceneNode, WallSceneNode } from '../../core'
+import type { Bounds } from './fit'
+import type { WallSceneNode } from '../../core'
 
 describe('drawPlan', () => {
   it('clears the surface and strokes each wall projected to screen space', () => {
@@ -74,30 +75,6 @@ describe('drawPlan', () => {
 
   it('fills each room polygon beneath the wall strokes', () => {
     const recorder = recordingContext()
-    const room: RoomSceneNode = {
-      id: 'room:r',
-      kind: 'room',
-      floorId: 'f',
-      polygon: [
-        { x: 0, y: 0 },
-        { x: 4000, y: 0 },
-        { x: 4000, y: 3000 },
-        { x: 0, y: 3000 },
-      ],
-      area: 12_000_000,
-    }
-    const secondRoom: RoomSceneNode = {
-      id: 'room:s',
-      kind: 'room',
-      floorId: 'f',
-      polygon: [
-        { x: 5000, y: 0 },
-        { x: 9000, y: 0 },
-        { x: 9000, y: 3000 },
-        { x: 5000, y: 3000 },
-      ],
-      area: 12_000_000,
-    }
     const roomWall: WallSceneNode = {
       id: 'w1',
       kind: 'wall',
@@ -109,7 +86,7 @@ describe('drawPlan', () => {
 
     drawPlan(recorder.ctx, {
       walls: [roomWall],
-      rooms: [room, secondRoom],
+      rooms: [rectangleRoom('room:r'), rectangleRoom('room:s', 5000)],
       viewport: { scale: DEFAULT_PLAN_SCALE },
       width: 800,
       height: 600,
@@ -123,19 +100,54 @@ describe('drawPlan', () => {
   })
 })
 
+describe('drawPlan selection overlays', () => {
+  const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+
+  it('strokes a highlight around a selected room and leaves an unselected room fill-only', () => {
+    const room = rectangleRoom('room:r')
+    const base = {
+      walls: [] as WallSceneNode[],
+      rooms: [room],
+      viewport,
+      width: 800,
+      height: 600,
+    }
+
+    const unselected = recordingContext()
+    drawPlan(unselected.ctx, { ...base, selectedIds: new Set<string>() })
+
+    const selected = recordingContext()
+    drawPlan(selected.ctx, { ...base, selectedIds: new Set(['room:r']) })
+
+    expect(unselected.ops).not.toContain('stroke')
+    expect(selected.ops).toContain('stroke')
+    expect(selected.segments.length).toBeGreaterThan(0)
+  })
+
+  it('paints the marquee when the option is set and omits it otherwise', () => {
+    const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
+    const base = { walls: [wall], viewport, width: 800, height: 600 }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
+
+    const withMarquee = recordingContext()
+    drawPlan(withMarquee.ctx, { ...base, selectedIds: new Set<string>(), marquee })
+
+    const min = worldToScreen(marquee.min, viewport)
+    const max = worldToScreen(marquee.max, viewport)
+    expect(without.fillRects).toHaveLength(0)
+    expect(withMarquee.fillRects).toContainEqual({
+      x: min.x,
+      y: min.y,
+      w: max.x - min.x,
+      h: max.y - min.y,
+    })
+  })
+})
+
 describe('drawPlan grid and rulers', () => {
-  const room: RoomSceneNode = {
-    id: 'room:r',
-    kind: 'room',
-    floorId: 'f',
-    polygon: [
-      { x: 0, y: 0 },
-      { x: 4000, y: 0 },
-      { x: 4000, y: 3000 },
-      { x: 0, y: 3000 },
-    ],
-    area: 12_000_000,
-  }
+  const room = rectangleRoom('room:r')
 
   it('paints grid beneath rooms and rulers above walls when enabled', () => {
     const recorder = recordingContext()
@@ -171,6 +183,25 @@ describe('drawPlan grid and rulers', () => {
     expect(recorder.ops).not.toContain('fillText')
     expect(recorder.ops).not.toContain('fillRect')
     expect(recorder.segments).toHaveLength(1)
+  })
+})
+
+describe('drawMarquee', () => {
+  it('fills a rectangle covering the marquee projected to screen space', () => {
+    const recorder = recordingContext()
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 10, y: 20 } }
+    const rect: Bounds = { min: { x: 1000, y: 2000 }, max: { x: 5000, y: 6000 } }
+
+    drawMarquee(recorder.ctx, rect, viewport)
+
+    const min = worldToScreen(rect.min, viewport)
+    const max = worldToScreen(rect.max, viewport)
+    expect(recorder.fillRects).toContainEqual({
+      x: min.x,
+      y: min.y,
+      w: max.x - min.x,
+      h: max.y - min.y,
+    })
   })
 })
 
