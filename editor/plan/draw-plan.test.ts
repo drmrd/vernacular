@@ -286,7 +286,7 @@ describe('drawRulers', () => {
 
     // a band along the top and a band along the left
     expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)
-    // a raw-millimetre tick label (the tick at world 200 mm) appears as text
-    expect(recorder.texts.map((entry) => entry.text)).toContain('200')
+    // the origin label (world 0 mm) appears as text when it is in view at offset 0
+    expect(recorder.texts.map((entry) => entry.text)).toContain('0')
   })
 })
