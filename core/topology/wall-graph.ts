@@ -88,6 +88,8 @@ function splitEdgeAtInteriorVertices(
   if (interiorIndices.length === 0) return [edge]
 
   const ordered = [edge.a, ...interiorIndices, edge.b].sort(
+    // Every index in `ordered` is a valid vertex index, so the `?? a` fallback
+    // is unreachable; it exists only to satisfy noUncheckedIndexedAccess.
     (left, right) =>
       projectionParameter(vertices[left] ?? a, a, b) -
       projectionParameter(vertices[right] ?? a, a, b),
@@ -95,6 +97,8 @@ function splitEdgeAtInteriorVertices(
 
   const subEdges: GraphEdge[] = []
   for (const [position, from] of ordered.slice(0, -1).entries()) {
+    // Iterating the slice without the last element guarantees a successor
+    // exists, so the undefined guard only satisfies noUncheckedIndexedAccess.
     const to = ordered[position + 1]
     if (to === undefined) continue
     subEdges.push({ a: from, b: to, wallId: edge.wallId })
