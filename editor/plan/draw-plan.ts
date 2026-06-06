@@ -1,4 +1,4 @@
-import type { Point, WallSceneNode } from '../../core'
+import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
 import { worldToScreen, type Viewport } from './viewport'
 
 export interface PlanDrawingContext {
@@ -11,6 +11,7 @@ export interface PlanDrawingContext {
   moveTo(x: number, y: number): void
   lineTo(x: number, y: number): void
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void
+  closePath(): void
   stroke(): void
   fill(): void
 }
@@ -27,8 +28,10 @@ export interface DrawPlanOptions {
   height: number
   selectedIds: ReadonlySet<string>
   preview?: PreviewSegment
+  rooms?: readonly RoomSceneNode[]
 }
 
+const ROOM_FILL_COLOR = '#eef2f6'
 const WALL_COLOR = '#222222'
 const SELECTED_WALL_COLOR = '#1a7fd4'
 const PREVIEW_COLOR = '#5b9bd5'
@@ -40,12 +43,32 @@ const LINE_CAP = 'round' as const
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
+  for (const room of options.rooms ?? []) {
+    drawRoom(ctx, room, options.viewport)
+  }
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
   }
   if (options.preview) {
     drawPreview(ctx, options.preview, options.viewport)
   }
+}
+
+function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, viewport: Viewport): void {
+  const [firstPoint, ...remainingPoints] = room.polygon
+  if (firstPoint === undefined || remainingPoints.length < 2) {
+    return
+  }
+  const start = worldToScreen(firstPoint, viewport)
+  ctx.fillStyle = ROOM_FILL_COLOR
+  ctx.beginPath()
+  ctx.moveTo(start.x, start.y)
+  for (const point of remainingPoints) {
+    const screenPoint = worldToScreen(point, viewport)
+    ctx.lineTo(screenPoint.x, screenPoint.y)
+  }
+  ctx.closePath()
+  ctx.fill()
 }
 
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
