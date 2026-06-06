@@ -54,6 +54,27 @@ describe('deriveRooms', () => {
     expect(room.area).toBe(12_000_000)
   })
 
+  it('excludes a dangling stub wall from the derived room polygon', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 3000, y: 1000 }),
+    ]
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
+    expect(room.polygon).toHaveLength(4)
+    expect(room.area).toBe(12_000_000)
+  })
+
   it('splits an enclosure into two rooms when a partition wall divides it into two cells', () => {
     const walls = [
       createWall({ x: 0, y: 0 }, { x: 6000, y: 0 }),
