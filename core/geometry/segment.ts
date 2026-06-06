@@ -9,6 +9,7 @@ const PARALLEL_EPSILON = 1e-9
  * line-segment intersection: the cross-product denominator gives the parameters
  * t and u, and a point is returned only when both lie within [0, 1].
  */
+// eslint-disable-next-line max-params -- four-point parametric form is the conventional mathematical signature for segment-segment intersection
 export function segmentIntersection(a1: Point, a2: Point, b1: Point, b2: Point): Point | null {
   const dax = a2.x - a1.x
   const day = a2.y - a1.y
