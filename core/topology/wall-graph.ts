@@ -1,4 +1,5 @@
 import { distance } from '../geometry/point'
+import { pointOnSegment } from '../geometry/segment'
 import type { Point, Wall } from '../model/types'
 
 /** An edge connecting two vertices of the planar graph, carrying its source wall's id. */
@@ -54,5 +55,58 @@ export function buildWallGraph(
     edges.push({ a, b, wallId: wall.id })
   }
 
-  return { vertices, edges }
+  // Splitting pass: where another vertex lies on an edge's interior (a
+  // T-junction), replace that edge with a chain of sub-edges between the
+  // ordered split points. Only vertices already present in the graph are
+  // considered; X-crossings are not introduced here.
+  const splitEdges = edges.flatMap((edge) => splitEdgeAtInteriorVertices(edge, vertices, tolerance))
+
+  return { vertices, edges: splitEdges }
+}
+
+/**
+ * Replace a single edge with the chain of sub-edges produced by splitting it at
+ * every existing vertex on its interior. Returns the original edge unchanged
+ * when no interior vertex lies on it. Each sub-edge carries the original edge's
+ * wall id.
+ */
+function splitEdgeAtInteriorVertices(
+  edge: GraphEdge,
+  vertices: readonly Point[],
+  tolerance: number,
+): GraphEdge[] {
+  const a = vertices[edge.a]
+  const b = vertices[edge.b]
+  if (a === undefined || b === undefined) return [edge]
+
+  const interiorIndices: number[] = []
+  for (const [index, vertex] of vertices.entries()) {
+    if (index === edge.a || index === edge.b) continue
+    if (pointOnSegment(vertex, a, b, tolerance)) interiorIndices.push(index)
+  }
+
+  if (interiorIndices.length === 0) return [edge]
+
+  const ordered = [edge.a, ...interiorIndices, edge.b].sort(
+    (left, right) =>
+      projectionParameter(vertices[left] ?? a, a, b) -
+      projectionParameter(vertices[right] ?? a, a, b),
+  )
+
+  const subEdges: GraphEdge[] = []
+  for (const [position, from] of ordered.slice(0, -1).entries()) {
+    const to = ordered[position + 1]
+    if (to === undefined) continue
+    subEdges.push({ a: from, b: to, wallId: edge.wallId })
+  }
+  return subEdges
+}
+
+/**
+ * Parameter of point p projected onto the line through a and b, measured along
+ * the a -> b direction. Used only to order split points along an edge, so the
+ * raw dot product (unnormalized by the segment length) is sufficient.
+ */
+function projectionParameter(p: Point, a: Point, b: Point): number {
+  return (p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)
 }
