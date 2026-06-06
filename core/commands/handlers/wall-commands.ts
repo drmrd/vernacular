@@ -55,9 +55,10 @@ export function moveWallEndpoint(
   }
 }
 
-// Reassigns the whole floors slice the same way addWall does so the
-// inverse-capture proxy records the change and the dispatcher captures the
-// inverse for undo; only the target floor and target wall become new objects.
+// Reassigns the whole floors slice, then maps the target floor's inner walls
+// array, so the inverse-capture proxy records the change and the dispatcher
+// captures the inverse for undo; only the target floor and target wall become
+// new objects while every untouched floor and wall keeps its reference.
 const moveWallEndpointHandler: CommandHandler<Project, MoveWallEndpointParams> = {
   apply(state, params) {
     state.floors = state.floors.map((floor) =>
