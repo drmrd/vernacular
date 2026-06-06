@@ -8,12 +8,18 @@
 
 **Tech Stack:** TypeScript (strict, `noUncheckedIndexedAccess`), Canvas 2D for the plan, Vitest for units. No new dependencies. No `core/` change (slice stays entirely within `editor/plan/`).
 
-**Status: complete.** All sections landed on `feat/plan-viewport-pan-zoom` via the red-green-blue cycle (full check chain green, `eslint .` at zero problems, `rgb:audit` clean). ADR-0030 (the viewport projection model) was recorded in the local knowledge graph and `ROADMAP.md` marks the slice done with its deferrals. Deviations from the blueprint below, all settled during GREEN/BLUE:
+**Status: complete.** All sections landed on `feat/plan-viewport-pan-zoom` via the red-green-blue cycle (full check chain green, `eslint .` at zero problems, `rgb:audit` clean). ADR-0031 (the viewport projection model; the next free local number, since ADR-0030 was already taken) was recorded in the local knowledge graph and `ROADMAP.md` marks the slice done with its deferrals. Deviations from the blueprint below, all settled during GREEN/BLUE:
 
 - **`gridSpacingMm`** could not use the nested ternary in the Task C1 snippet (the repo lints `no-nested-ternary` and `no-magic-numbers`): it ships as a `NICE_MULTIPLIERS.find(...)` selection with named `DECADE_BASE`/`HALF_DECADE` constants, behavior-identical.
 - **Drawing helpers extracted during BLUE:** `gridLinesAlongAxis` (grid) and `drawRulerTicks` (rulers) were factored out to remove the per-axis duplication, each using an options/`span` object to stay within `max-params`.
 - **`PlanView` glue split into two files** to satisfy `max-lines`: the camera input (pan, zoom, fit) moved to `editor/plan/use-viewport-controls.ts`, leaving `plan-view.tsx` as tool/render wiring. Both stay coverage-excluded glue.
 - **Snap-to-fit:** the cheap pure path shipped (`computeFitViewport` + `contentBounds`) with fit-to-content wired to the `f` key; fit-to-selection is deferred to slice 5, as planned.
+
+Post-completion refinements (after the first end-of-branch review, same branch):
+
+- **Ruler labels decimate to a readable interval.** A `RULER_MIN_LABEL_GAP_PX` (60) drives `rulerTicks` to label every Nth grid line (smallest integer keeping labels at least that gap apart, an integer multiple of the grid spacing so ticks stay grid-aligned), fixing label crowding at default zoom. Its own red-green-blue triple.
+- **Static CSS grid removed.** `editor/shell/editor-shell.css` previously painted a scale-locked graph-paper backdrop on `.plan-view`; it was removed so the pan/zoom-aware canvas grid is the only grid and they no longer desync. (One authorized exception to the editor/plan-only scope, kept to the `.plan-view` rule.)
+- **Darwin visual baseline refreshed** with `--update-snapshots=all` to capture the grid and rulers; the functional wall-drawing end-to-end spec still passes.
 
 ---
 
