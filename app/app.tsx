@@ -12,7 +12,6 @@ import {
 import { ActiveToolProvider, EditorShell } from '../editor'
 import {
   InMemoryRecentProjectStore,
-  createDefaultProjectStore,
   isStorageDegraded,
   probeStorageCapabilities,
   summarizeStorageCapabilities,
@@ -20,6 +19,7 @@ import {
   type RecentProjectStore,
 } from '../storage'
 import { createEmptyProject, createFloor, type Project } from '../core'
+import { resolveProjectStore } from './resolve-project-store'
 import { version as appVersion } from '../package.json'
 
 const DEFAULT_PROJECT_ID = 'current'
@@ -62,6 +62,7 @@ async function warnIfStorageDegraded(): Promise<void> {
 
 export interface AppProps {
   store?: ProjectStore
+  resolveStore?: () => Promise<ProjectStore>
   projectId?: string
   recentProjects?: RecentProjectStore
   snapshots?: SnapshotsPort
@@ -69,16 +70,20 @@ export interface AppProps {
 
 export function App({
   store: providedStore,
+  resolveStore = resolveProjectStore,
   projectId = DEFAULT_PROJECT_ID,
   recentProjects: providedRecentProjects,
   snapshots,
 }: AppProps) {
-  const store = useMemo(() => providedStore ?? createDefaultProjectStore(), [providedStore])
+  const { store, session, setSession, error } = useProjectBoot(
+    providedStore,
+    resolveStore,
+    projectId,
+  )
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
     [providedRecentProjects],
   )
-  const { session, setSession, error } = useProjectBoot(store, projectId)
 
   // Storage capabilities are a fixed property of the host environment, so probe
   // once at mount rather than on any prop change.
@@ -86,20 +91,8 @@ export function App({
     void warnIfStorageDegraded()
   }, [])
 
-  if (error !== null) {
-    return (
-      <main aria-label="Error">
-        <p role="alert">Could not open the project. Reload the page to try again.</p>
-      </main>
-    )
-  }
-
-  if (session === null) {
-    return (
-      <main aria-label="Loading">
-        <p role="status">Loading project...</p>
-      </main>
-    )
+  if (error !== null || store === null || session === null) {
+    return bootStatusView(error)
   }
 
   return (
@@ -114,36 +107,75 @@ export function App({
   )
 }
 
-function useProjectBoot(
-  store: ProjectStore,
-  projectId: string,
-): {
+// The pre-shell placeholder: the error notice when boot failed, otherwise the
+// loading notice while the store or project is still resolving.
+function bootStatusView(error: Error | null) {
+  if (error !== null) {
+    return (
+      <main aria-label="Error">
+        <p role="alert">Could not open the project. Reload the page to try again.</p>
+      </main>
+    )
+  }
+  return (
+    <main aria-label="Loading">
+      <p role="status">Loading project...</p>
+    </main>
+  )
+}
+
+interface ProjectBoot {
+  store: ProjectStore | null
   session: EditorSession | null
   setSession: (session: EditorSession) => void
   error: Error | null
-} {
+}
+
+// Boots the project: uses an injected store directly, otherwise resolves one
+// asynchronously through resolveStore() exactly once, then loads or creates the
+// project. Each async step is guarded against writes after unmount, and the store
+// and load errors surface through a single error channel.
+function useProjectBoot(
+  providedStore: ProjectStore | undefined,
+  resolveStore: () => Promise<ProjectStore>,
+  projectId: string,
+): ProjectBoot {
+  const [resolved, setResolved] = useState<ProjectStore | null>(null)
   const [session, setSession] = useState<EditorSession | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const store = providedStore ?? resolved
 
   useEffect(() => {
+    if (providedStore) {
+      return
+    }
+    let cancelled = false
+    void resolveStore()
+      .then((it) => !cancelled && setResolved(it))
+      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
+    return () => {
+      cancelled = true
+    }
+  }, [providedStore, resolveStore])
+
+  useEffect(() => {
+    if (store === null) {
+      return
+    }
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => {
-        if (!cancelled) {
-          setSession(createEditorSession(project))
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) {
-          setError(cause instanceof Error ? cause : new Error('Failed to load the project'))
-        }
-      })
+      .then((project) => !cancelled && setSession(createEditorSession(project)))
+      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
       cancelled = true
     }
   }, [store, projectId])
 
-  return { session, setSession, error }
+  return { store, session, setSession, error }
+}
+
+function asError(cause: unknown): Error {
+  return cause instanceof Error ? cause : new Error('Failed to boot the project')
 }
 
 interface EditorWorkspaceProps {
