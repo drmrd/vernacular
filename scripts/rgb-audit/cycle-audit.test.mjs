@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseGitLog } from './cycle-audit.mjs'
+import { auditCommits, parseGitLog } from './cycle-audit.mjs'
 
 const RECORD_SEPARATOR = '\x1e'
 const UNIT_SEPARATOR = '\x1f'
@@ -83,6 +83,42 @@ describe('parseGitLog', () => {
         subject: 'not a conventional subject',
         files: ['README.md'],
         infra: false,
+      },
+    ])
+  })
+})
+
+function commit(overrides = {}) {
+  return {
+    sha: 's',
+    type: '',
+    scope: '',
+    subject: '',
+    files: [],
+    infra: false,
+    ...overrides,
+  }
+}
+
+describe('auditCommits ordering', () => {
+  it('reports no violations when a green commit follows a red commit before a blue commit', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] }),
+      commit({ sha: 'blue1', type: 'refactor', files: ['core/w.ts'] }),
+    ]
+
+    expect(auditCommits(commits)).toEqual([])
+  })
+
+  it('flags a green commit with no preceding red commit as an ordering violation', () => {
+    const commits = [commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] })]
+
+    expect(auditCommits(commits)).toEqual([
+      {
+        sha: 'green1',
+        rule: 'ordering',
+        message: expect.stringContaining('no preceding'),
       },
     ])
   })
