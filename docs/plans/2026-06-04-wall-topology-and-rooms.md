@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript (strict), the existing pure command/scene-graph core, Canvas 2D for the plan, Vitest for units. No new dependencies.
 
+**Status: complete.** All sections landed on `feat/foundation-acceptance` via the red-green-blue cycle (full check chain green, `eslint .` at zero problems, `rgb:audit` clean, wall-drawing end-to-end spec passing on Chromium/Firefox/WebKit). ADR-0026 (room derivation via planar-face enumeration) was recorded in the local knowledge graph and `ROADMAP.md` records the Phase 1 decomposition and slice-1 deferrals. One in-flight deviation from the blueprint below: the planned `dropCollinear` step (Task C5) was not needed and not shipped — the dangling-stub case is handled entirely by `removeSpikes`, since the shipped test uses a non-collinear interior stub (collinear-overlapping walls are out of scope). The sub-namespace barrels (Tasks A5, C8) were also dropped in favor of direct imports, matching the house convention of a single `core/index.ts` barrel.
+
 ---
 
 ## Scope boundary (design spec §10, Phase 1; this is slice 1 of ~12)
