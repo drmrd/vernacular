@@ -1,5 +1,5 @@
 import { createWall } from '../../model/factories'
-import type { Point, Project, Wall } from '../../model/types'
+import type { Floor, Point, Project, Wall } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
@@ -66,18 +66,26 @@ export function moveWallEndpoint(
 // array, so the inverse-capture proxy records the change and the dispatcher
 // captures the inverse for undo; only the target floor and target wall become
 // new objects while every untouched floor and wall keeps its reference.
+// eslint-disable-next-line max-params -- the floors slice plus the floor, wall, and per-wall update is the minimal signature for replacing one wall in place
+function updateWall(
+  floors: Floor[],
+  floorId: string,
+  wallId: string,
+  update: (wall: Wall) => Wall,
+): Floor[] {
+  return floors.map((floor) =>
+    floor.id === floorId
+      ? { ...floor, walls: floor.walls.map((wall) => (wall.id === wallId ? update(wall) : wall)) }
+      : floor,
+  )
+}
+
 const moveWallEndpointHandler: CommandHandler<Project, MoveWallEndpointParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? {
-            ...floor,
-            walls: floor.walls.map((wall) =>
-              wall.id === params.wallId ? { ...wall, [params.end]: params.to } : wall,
-            ),
-          }
-        : floor,
-    )
+    state.floors = updateWall(state.floors, params.floorId, params.wallId, (wall) => ({
+      ...wall,
+      [params.end]: params.to,
+    }))
   },
 }
 
@@ -93,22 +101,12 @@ export function setWallThickness(
   }
 }
 
-// Reassigns the whole floors slice, then maps the target floor's inner walls
-// array, so the inverse-capture proxy records the change and the dispatcher
-// captures the inverse for undo; only the target floor and target wall become
-// new objects while every untouched floor and wall keeps its reference.
 const setWallThicknessHandler: CommandHandler<Project, SetWallThicknessParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? {
-            ...floor,
-            walls: floor.walls.map((wall) =>
-              wall.id === params.wallId ? { ...wall, thickness: params.thickness } : wall,
-            ),
-          }
-        : floor,
-    )
+    state.floors = updateWall(state.floors, params.floorId, params.wallId, (wall) => ({
+      ...wall,
+      thickness: params.thickness,
+    }))
   },
 }
 
