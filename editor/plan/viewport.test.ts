@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { worldToScreen, screenToWorld, panBy, DEFAULT_PLAN_SCALE } from './viewport'
+import {
+  worldToScreen,
+  screenToWorld,
+  panBy,
+  clampScale,
+  DEFAULT_PLAN_SCALE,
+  MIN_PLAN_SCALE,
+  MAX_PLAN_SCALE,
+} from './viewport'
 
 describe('viewport projection', () => {
   it('scales world millimeters to screen pixels', () => {
@@ -49,5 +57,19 @@ describe('panBy', () => {
 
   it('leaves the scale unchanged', () => {
     expect(panBy({ scale: 0.1 }, { x: 10, y: 10 }).scale).toBe(0.1)
+  })
+})
+
+describe('clampScale', () => {
+  it('raises a below-minimum scale up to the minimum', () => {
+    expect(clampScale(MIN_PLAN_SCALE / 10)).toBe(MIN_PLAN_SCALE)
+  })
+
+  it('lowers an above-maximum scale down to the maximum', () => {
+    expect(clampScale(MAX_PLAN_SCALE * 10)).toBe(MAX_PLAN_SCALE)
+  })
+
+  it('passes an in-range scale through unchanged', () => {
+    expect(clampScale(0.1)).toBe(0.1)
   })
 })
