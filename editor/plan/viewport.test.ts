@@ -90,7 +90,11 @@ describe('zoomAtCursor', () => {
   })
 
   it('clamps the scaled result to the maximum', () => {
-    const zoomed = zoomAtCursor({ scale: MAX_PLAN_SCALE, offset: { x: 0, y: 0 } }, { x: 0, y: 0 }, 4)
+    const zoomed = zoomAtCursor(
+      { scale: MAX_PLAN_SCALE, offset: { x: 0, y: 0 } },
+      { x: 0, y: 0 },
+      4,
+    )
 
     expect(zoomed.scale).toBe(MAX_PLAN_SCALE)
   })
