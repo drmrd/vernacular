@@ -1,4 +1,4 @@
-import type { ProjectShape, SchemaMigration } from '../types'
+import type { SchemaMigration } from '../types'
 
 /**
  * Migrates a version-1 document forward to version 2, which introduces the
@@ -11,7 +11,7 @@ import type { ProjectShape, SchemaMigration } from '../types'
  */
 export const addRoomOverridesMigration: SchemaMigration = {
   from: 1,
-  migrate(project: ProjectShape): ProjectShape {
+  migrate(project) {
     return project
   },
 }
