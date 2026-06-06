@@ -140,3 +140,31 @@ describe('auditCommits ordering', () => {
     ])
   })
 })
+
+describe('auditCommits independence', () => {
+  it('flags a green commit that changes a test file as an independence violation', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts', 'core/w.test.ts'] }),
+      commit({ sha: 'blue1', type: 'refactor', files: ['core/w.ts'] }),
+    ]
+
+    expect(auditCommits(commits)).toContainEqual({
+      sha: 'green1',
+      rule: 'independence',
+      message: expect.stringContaining('w.test.ts'),
+    })
+  })
+
+  it('does not flag a green commit that changes only implementation files', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] }),
+      commit({ sha: 'blue1', type: 'refactor', files: ['core/w.ts'] }),
+    ]
+
+    const violations = auditCommits(commits)
+
+    expect(violations.some((v) => v.rule === 'independence')).toBe(false)
+  })
+})
