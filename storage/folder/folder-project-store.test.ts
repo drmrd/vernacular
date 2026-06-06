@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, createWall } from '../../core'
+import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, createWall } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { serializeProjectJson } from './project-json'
@@ -7,14 +7,19 @@ import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-s
 
 const PRE_MIGRATION_BACKUP = '.house-autosave/pre-migration-v1.json'
 
-function seededDirectory(): { directory: InMemoryDirectory; seedBytes: Uint8Array } {
+function seededDirectory(version: number = CURRENT_SCHEMA_VERSION): {
+  directory: InMemoryDirectory
+  seedBytes: Uint8Array
+} {
   const directory = new InMemoryDirectory()
-  const seeded = createEmptyProject({
-    name: 'Seed',
-    units: 'imperial',
-    era: 'modern',
-    appVersion: '0.0.0',
-  })
+  const seeded = bumpSchemaVersionTo(version)(
+    createEmptyProject({
+      name: 'Seed',
+      units: 'imperial',
+      era: 'modern',
+      appVersion: '0.0.0',
+    }),
+  )
   const seedBytes = serializeProjectJson(seeded)
   return { directory, seedBytes }
 }
@@ -98,7 +103,7 @@ describe('FolderProjectStore', () => {
   })
 
   it('backs up the original project file verbatim before migrating it forward', async () => {
-    const { directory, seedBytes } = seededDirectory()
+    const { directory, seedBytes } = seededDirectory(1)
     await directory.writeFile('project.json', seedBytes)
     const store = new FolderProjectStore(directory, {
       migrate: bumpSchemaVersionTo(2),
@@ -112,7 +117,7 @@ describe('FolderProjectStore', () => {
   })
 
   it('leaves the canonical project file intact and keeps the backup when migration throws', async () => {
-    const { directory, seedBytes } = seededDirectory()
+    const { directory, seedBytes } = seededDirectory(1)
     await directory.writeFile('project.json', seedBytes)
     const store = new FolderProjectStore(directory, {
       migrate: () => {
