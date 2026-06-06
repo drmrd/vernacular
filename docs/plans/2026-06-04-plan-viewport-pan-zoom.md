@@ -24,7 +24,7 @@ Phase 1 (the two-dimensional plan editor) is delivered as ~12 independent slices
 **In scope for slice 3:**
 
 - `editor/plan/viewport.ts`: a screen-pixel `offset` on `Viewport`; `worldToScreen`/`screenToWorld` honoring pan and zoom; `panBy`, `clampScale`, `zoomAtCursor` (zoom about the cursor), `wheelZoomFactor` (continuous, non-stepped), and the shared `axisProjection` / `axisSamples` stepping primitive. `ScreenPoint` and `ViewportSize` types.
-- `editor/plan/fit.ts`: `contentBounds` (axis-aligned bounds of points) and `computeFitViewport` (scale-and-center bounds into the canvas with padding) — powers snap-to-fit and snap-to-selection.
+- `editor/plan/fit.ts`: `contentBounds` (axis-aligned bounds of points) and `computeFitViewport` (scale-and-center bounds into the canvas with padding) - powers snap-to-fit and snap-to-selection.
 - `editor/plan/grid.ts`: `gridSpacingMm` (adaptive 1-2-5 nice-number spacing) and `visibleGridLines`.
 - `editor/plan/ruler.ts`: `rulerTicks` (tick positions plus raw-millimetre labels).
 - `editor/plan/draw-plan.ts`: `drawGrid` and `drawRulers` behind an extended `PlanDrawingContext`; `drawPlan` orchestrates grid beneath content and rulers above it, gated by options.
@@ -169,7 +169,7 @@ export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: Vi
 - Modify: `editor/plan/viewport.ts`
 - Test: `editor/plan/viewport.test.ts`
 
-- [ ] **Step 1: Write the failing test** (`/test-first` — behavior: "worldToScreen and screenToWorld account for a screen-pixel pan offset and still round-trip")
+- [ ] **Step 1: Write the failing test** (`/test-first` - behavior: "worldToScreen and screenToWorld account for a screen-pixel pan offset and still round-trip")
 
 ```ts
 import { describe, it, expect } from 'vitest'
@@ -194,7 +194,7 @@ describe('viewport pan offset', () => {
 Run: `pnpm exec vitest run editor/plan/viewport.test.ts`
 Expected: FAIL (offset is ignored; `worldToScreen` returns `{ x: 100, y: 200 }`).
 
-- [ ] **Step 3: Minimal implementation** — add `ScreenPoint`/`ViewportSize`, the optional `offset`, and the `MIN`/`MAX` constants, and fold the offset into both transforms:
+- [ ] **Step 3: Minimal implementation** - add `ScreenPoint`/`ViewportSize`, the optional `offset`, and the `MIN`/`MAX` constants, and fold the offset into both transforms:
 
 ```ts
 import type { Point } from '../../core'
@@ -230,9 +230,9 @@ export function screenToWorld(screen: ScreenPoint, viewport: Viewport): Point {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Run: `pnpm exec vitest run editor/plan/viewport.test.ts`. Expected: PASS. The slice-1 tests (no `offset`) still pass because `offsetOf` defaults to the origin.
+- [ ] **Step 4: Run to verify GREEN** - Run: `pnpm exec vitest run editor/plan/viewport.test.ts`. Expected: PASS. The slice-1 tests (no `offset`) still pass because `offsetOf` defaults to the origin.
 
-- [ ] **Step 5: BLUE + commit** — `/clean-code-review` then `/refactor`.
+- [ ] **Step 5: BLUE + commit** - `/clean-code-review` then `/refactor`.
 
 ### Task A2: `panBy` translates the offset by a screen delta
 
@@ -261,7 +261,7 @@ describe('panBy', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`panBy` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`panBy` not exported).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -272,7 +272,7 @@ export function panBy(viewport: Viewport, deltaPx: ScreenPoint): Viewport {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -297,7 +297,7 @@ describe('clampScale', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`clampScale` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`clampScale` not exported).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -307,7 +307,7 @@ export function clampScale(scale: number): number {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -347,9 +347,9 @@ describe('zoomAtCursor', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`zoomAtCursor` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`zoomAtCursor` not exported).
 
-- [ ] **Step 3: Minimal implementation** — solve the fixed point: the world point under the cursor must reproject to the same screen point at the new scale, so `offset' = cursor - worldUnder * scale'`:
+- [ ] **Step 3: Minimal implementation** - solve the fixed point: the world point under the cursor must reproject to the same screen point at the new scale, so `offset' = cursor - worldUnder * scale'`:
 
 ```ts
 export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: number): Viewport {
@@ -362,7 +362,7 @@ export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: nu
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -392,9 +392,9 @@ describe('wheelZoomFactor', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`wheelZoomFactor` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`wheelZoomFactor` not exported).
 
-- [ ] **Step 3: Minimal implementation** — an exponential keeps the factor smooth and symmetric in log-space:
+- [ ] **Step 3: Minimal implementation** - an exponential keeps the factor smooth and symmetric in log-space:
 
 ```ts
 const ZOOM_WHEEL_SENSITIVITY = 0.0015
@@ -404,7 +404,7 @@ export function wheelZoomFactor(deltaY: number): number {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -443,7 +443,7 @@ describe('axisProjection', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`axisProjection` / `axisSamples` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`axisProjection` / `axisSamples` not exported).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -484,7 +484,7 @@ export function axisSamples(
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -523,7 +523,7 @@ describe('contentBounds', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`contentBounds` not exported / module not found).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`contentBounds` not exported / module not found).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -554,7 +554,7 @@ export function contentBounds(points: readonly Point[]): Bounds | null {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -593,9 +593,9 @@ describe('computeFitViewport', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`computeFitViewport` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`computeFitViewport` not exported).
 
-- [ ] **Step 3: Minimal implementation** — fit the tighter axis, clamp, then center the bounds:
+- [ ] **Step 3: Minimal implementation** - fit the tighter axis, clamp, then center the bounds:
 
 ```ts
 import { clampScale, MAX_PLAN_SCALE, type Viewport, type ViewportSize } from './viewport'
@@ -626,7 +626,7 @@ export function computeFitViewport(
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -663,7 +663,7 @@ describe('gridSpacingMm', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`gridSpacingMm` / `GRID_MIN_LINE_SPACING_PX` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`gridSpacingMm` / `GRID_MIN_LINE_SPACING_PX` not exported).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -679,7 +679,7 @@ export function gridSpacingMm(scale: number): number {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -720,9 +720,9 @@ describe('visibleGridLines', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`visibleGridLines` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`visibleGridLines` not exported).
 
-- [ ] **Step 3: Minimal implementation** — reuse the shared axis primitive so vertical lines come from the horizontal axis (constant world x) and horizontal lines from the vertical axis:
+- [ ] **Step 3: Minimal implementation** - reuse the shared axis primitive so vertical lines come from the horizontal axis (constant world x) and horizontal lines from the vertical axis:
 
 ```ts
 import { axisProjection, axisSamples, type Viewport, type ViewportSize } from './viewport'
@@ -758,7 +758,7 @@ export function visibleGridLines(viewport: Viewport, size: ViewportSize): Visibl
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -795,9 +795,9 @@ describe('rulerTicks', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`rulerTicks` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`rulerTicks` not exported).
 
-- [ ] **Step 3: Minimal implementation** — share the grid spacing and axis primitive; the label is the raw rounded millimetre value (unit-aware formatting is deferred to the units slice):
+- [ ] **Step 3: Minimal implementation** - share the grid spacing and axis primitive; the label is the raw rounded millimetre value (unit-aware formatting is deferred to the units slice):
 
 ```ts
 import { gridSpacingMm } from './grid'
@@ -826,7 +826,7 @@ export function rulerTicks(
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -864,9 +864,9 @@ describe('drawGrid', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`drawGrid` not exported).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`drawGrid` not exported).
 
-- [ ] **Step 3: Minimal implementation** — `drawGrid` uses only members already on `PlanDrawingContext` (`strokeStyle`, `lineWidth`, `beginPath`, `moveTo`, `lineTo`, `stroke`):
+- [ ] **Step 3: Minimal implementation** - `drawGrid` uses only members already on `PlanDrawingContext` (`strokeStyle`, `lineWidth`, `beginPath`, `moveTo`, `lineTo`, `stroke`):
 
 ```ts
 import { visibleGridLines } from './grid'
@@ -894,7 +894,7 @@ export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: View
 
 (The `worldToScreen` import is only needed by later tasks; the `implementer` adds imports as the test requires them.)
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN** - Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -923,9 +923,9 @@ describe('drawRulers', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`drawRulers` not exported; the new fake members are excess until the interface grows).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`drawRulers` not exported; the new fake members are excess until the interface grows).
 
-- [ ] **Step 3: Minimal implementation** — grow `PlanDrawingContext` with `fillText`, `fillRect`, `font`, `textAlign`, `textBaseline`, then implement `drawRulers`:
+- [ ] **Step 3: Minimal implementation** - grow `PlanDrawingContext` with `fillText`, `fillRect`, `font`, `textAlign`, `textBaseline`, then implement `drawRulers`:
 
 ```ts
 export interface PlanDrawingContext {
@@ -974,7 +974,7 @@ export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: Vi
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Run `pnpm exec vitest run editor/plan/draw-plan.test.ts`. Expected: PASS, including the slice-1 tests (the enriched fake still satisfies every existing call). Run `pnpm typecheck` to confirm the grown interface type-checks across the whole file.
+- [ ] **Step 4: Run to verify GREEN** - Run `pnpm exec vitest run editor/plan/draw-plan.test.ts`. Expected: PASS, including the slice-1 tests (the enriched fake still satisfies every existing call). Run `pnpm typecheck` to confirm the grown interface type-checks across the whole file.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -1038,9 +1038,9 @@ describe('drawPlan grid and rulers', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`grid`/`rulers` are not accepted options; no grid/ruler ops recorded).
+- [ ] **Step 2: Run to verify RED** - Expected: FAIL (`grid`/`rulers` are not accepted options; no grid/ruler ops recorded).
 
-- [ ] **Step 3: Minimal implementation** — add the optional flags and call the new draws in order around the existing room/wall/preview painting:
+- [ ] **Step 3: Minimal implementation** - add the optional flags and call the new draws in order around the existing room/wall/preview painting:
 
 ```ts
 export interface DrawPlanOptions {
@@ -1076,7 +1076,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Run `pnpm exec vitest run editor/plan/draw-plan.test.ts`. Expected: PASS, with the slice-1 tests (which omit the flags) unchanged.
+- [ ] **Step 4: Run to verify GREEN** - Run `pnpm exec vitest run editor/plan/draw-plan.test.ts`. Expected: PASS, with the slice-1 tests (which omit the flags) unchanged.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -1092,13 +1092,13 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
 
 This is controller-authored Canvas-and-pointer glue with no RGB triple (jsdom has no 2D canvas; ADR-0021). All of its logic is already factored into the pure modules above; this task only wires them. Reviewed by `/clean-code-review`.
 
-- [ ] **Step 1: Hold the viewport in React state** — replace the module-level `const VIEWPORT` with state initialized to the slice-1 default so the functional wall-drawing e2e mapping is unchanged:
+- [ ] **Step 1: Hold the viewport in React state** - replace the module-level `const VIEWPORT` with state initialized to the slice-1 default so the functional wall-drawing e2e mapping is unchanged:
 
 ```tsx
 const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
 ```
 
-- [ ] **Step 2: Make `eventToWorld` read the live viewport** — change the helper to take the current viewport (drop the module constant):
+- [ ] **Step 2: Make `eventToWorld` read the live viewport** - change the helper to take the current viewport (drop the module constant):
 
 ```tsx
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
@@ -1109,7 +1109,7 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
 
 Thread `viewport` through `usePlanInteraction` and its `applyPointer`/`onPointerDown`/`onPointerMove` calls.
 
-- [ ] **Step 3: Add a pan-and-zoom hook** — a small `useViewportControls(canvasRef, viewport, setViewport)` that owns the browser-only camera input and returns the pan handlers and a `panning` flag for the cursor. Spacebar-held is tracked with `window` key listeners; a pan starts on middle-button **or** spacebar-held primary-button drag; the wheel zooms about the cursor:
+- [ ] **Step 3: Add a pan-and-zoom hook** - a small `useViewportControls(canvasRef, viewport, setViewport)` that owns the browser-only camera input and returns the pan handlers and a `panning` flag for the cursor. Spacebar-held is tracked with `window` key listeners; a pan starts on middle-button **or** spacebar-held primary-button drag; the wheel zooms about the cursor:
 
 ```tsx
 function eventToCanvas(
@@ -1199,7 +1199,7 @@ function useViewportControls(
 }
 ```
 
-- [ ] **Step 4: Compose pan with the existing tool interaction in the handlers** — in `PlanView`, a pan gesture takes priority; otherwise the existing tool path runs. The pointer-down/move handlers call the pan hook first and fall through to `usePlanInteraction` when no pan is active:
+- [ ] **Step 4: Compose pan with the existing tool interaction in the handlers** - in `PlanView`, a pan gesture takes priority; otherwise the existing tool path runs. The pointer-down/move handlers call the pan hook first and fall through to `usePlanInteraction` when no pan is active:
 
 ```tsx
 const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -1219,7 +1219,7 @@ const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
 const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => controls.onPanPointerUp(event)
 ```
 
-- [ ] **Step 5: Wire fit-to-content to a key** — pressing `f` fits the current walls and rooms; this uses `contentBounds` over the scene-graph wall endpoints and room polygon points and `computeFitViewport`:
+- [ ] **Step 5: Wire fit-to-content to a key** - pressing `f` fits the current walls and rooms; this uses `contentBounds` over the scene-graph wall endpoints and room polygon points and `computeFitViewport`:
 
 ```tsx
 useEffect(() => {
@@ -1241,9 +1241,9 @@ useEffect(() => {
 }, [graph.walls, graph.rooms])
 ```
 
-- [ ] **Step 6: Enable grid and rulers in the redraw and thread the live viewport** — pass `viewport`, `grid: true`, and `rulers: true` into the `drawPlan` call inside `usePlanRedraw`, and add `viewport` to the redraw dependencies so pan/zoom repaints. Set the canvas cursor to `grab`/`grabbing` while panning.
+- [ ] **Step 6: Enable grid and rulers in the redraw and thread the live viewport** - pass `viewport`, `grid: true`, and `rulers: true` into the `drawPlan` call inside `usePlanRedraw`, and add `viewport` to the redraw dependencies so pan/zoom repaints. Set the canvas cursor to `grab`/`grabbing` while panning.
 
-- [ ] **Step 7: Verify** — Run the full check chain:
+- [ ] **Step 7: Verify** - Run the full check chain:
 
 `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`
 Expected: all green; `eslint .` at zero problems. `PlanView` stays coverage-excluded glue. Confirm the **functional** wall-drawing e2e logic is unaffected by reasoning: the initial viewport is `{ scale: DEFAULT_PLAN_SCALE }` with no offset, so `eventToWorld` maps the e2e's canvas clicks to the same world points as before.
@@ -1256,19 +1256,19 @@ Expected: all green; `eslint .` at zero problems. `PlanView` stays coverage-excl
 
 - Modify: `ROADMAP.md`
 
-- [ ] **Step 1: Mark slice 3 done and record its deferrals** — flip the slice-3 row from `in progress` to `done`, and add a slice-3 scope/deferrals block mirroring the slice-1 block: raw-millimetre ruler labels until the units slice; fit-to-selection wiring and DOM-overlay mirroring deferred; the darwin visual-regression baseline refresh is a generated-artifact follow-up (CI skips visual regression on linux where no baseline exists; the functional wall-drawing e2e is unaffected).
+- [ ] **Step 1: Mark slice 3 done and record its deferrals** - flip the slice-3 row from `in progress` to `done`, and add a slice-3 scope/deferrals block mirroring the slice-1 block: raw-millimetre ruler labels until the units slice; fit-to-selection wiring and DOM-overlay mirroring deferred; the darwin visual-regression baseline refresh is a generated-artifact follow-up (CI skips visual regression on linux where no baseline exists; the functional wall-drawing e2e is unaffected).
 
-- [ ] **Step 2: Verify** — `pnpm format:check` passes on the Markdown. Reviewed by `/clean-code-review`. Commit `docs:`.
+- [ ] **Step 2: Verify** - `pnpm format:check` passes on the Markdown. Reviewed by `/clean-code-review`. Commit `docs:`.
 
 ### Task F3: knowledge curation (post-merge, controller-run)
 
-- [ ] After the section-level work lands, run the `knowledge-curator` to add local **ADR-0030: 2D plan viewport projection model (pan offset + zoom)** — the screen-pixel-offset projection, zoom-about-cursor fixed-point, adaptive 1-2-5 grid spacing, the shared axis-sampling primitive, raw-label deferral, and the optional grid/ruler draw flags — and to refresh ADR-0021's cross-links for the grown `PlanDrawingContext` seam (`fillText`/`fillRect`/`font`/`textAlign`/`textBaseline`) and the viewport's new pan/zoom surface. Regenerate the local index with `pnpm knowledge:index`. No `docs/specs/` change is required because this implements behavior the spec already mandates (§6.2, §6.6). Run `pnpm rgb:audit` to confirm the red-green-blue ordering across the slice.
+- [ ] After the section-level work lands, run the `knowledge-curator` to add local **ADR-0030: 2D plan viewport projection model (pan offset + zoom)** - the screen-pixel-offset projection, zoom-about-cursor fixed-point, adaptive 1-2-5 grid spacing, the shared axis-sampling primitive, raw-label deferral, and the optional grid/ruler draw flags - and to refresh ADR-0021's cross-links for the grown `PlanDrawingContext` seam (`fillText`/`fillRect`/`font`/`textAlign`/`textBaseline`) and the viewport's new pan/zoom surface. Regenerate the local index with `pnpm knowledge:index`. No `docs/specs/` change is required because this implements behavior the spec already mandates (§6.2, §6.6). Run `pnpm rgb:audit` to confirm the red-green-blue ordering across the slice.
 
 ---
 
 ## Self-review
 
-**Spec coverage:** §6.6 "smooth (non-stepped) pan and zoom, infinite canvas" is covered by Section A (`panBy`, `zoomAtCursor`, `wheelZoomFactor` as a continuous multiplier) and the `PlanView` glue (Task F1: middle-mouse / spacebar-drag pan, scroll/trackpad zoom-to-cursor). §6.6 "snap-to-fit / snap-to-selection" is covered by Section B (`computeFitViewport`) with fit-to-content wired (Task F1 Step 5) and fit-to-selection deferred per the scope boundary. §10 Phase 1 "Pan/zoom Canvas + DOM overlay; grid + rulers" — the grid is Sections C and E1; the rulers are Sections D and E2; the Canvas pan/zoom is Sections A and F1; the DOM overlay (CSS world matrix) is explicitly deferred in the scope boundary. §6.2 Canvas rendering through the narrow seam is covered by Section E (the `PlanDrawingContext` grows by five members, per ADR-0021's "extend the interface rather than reach for the full DOM type").
+**Spec coverage:** §6.6 "smooth (non-stepped) pan and zoom, infinite canvas" is covered by Section A (`panBy`, `zoomAtCursor`, `wheelZoomFactor` as a continuous multiplier) and the `PlanView` glue (Task F1: middle-mouse / spacebar-drag pan, scroll/trackpad zoom-to-cursor). §6.6 "snap-to-fit / snap-to-selection" is covered by Section B (`computeFitViewport`) with fit-to-content wired (Task F1 Step 5) and fit-to-selection deferred per the scope boundary. §10 Phase 1 "Pan/zoom Canvas + DOM overlay; grid + rulers" - the grid is Sections C and E1; the rulers are Sections D and E2; the Canvas pan/zoom is Sections A and F1; the DOM overlay (CSS world matrix) is explicitly deferred in the scope boundary. §6.2 Canvas rendering through the narrow seam is covered by Section E (the `PlanDrawingContext` grows by five members, per ADR-0021's "extend the interface rather than reach for the full DOM type").
 
 **Placeholder scan:** No "TBD"/"TODO"/"handle edge cases" placeholders. Every code step shows concrete code; every run step shows the exact `pnpm exec vitest run <path>` command and the expected PASS/FAIL. Task F1 is labeled `(infrastructure)` glue with no RGB triple, matching the slice-1 convention for `PlanView` wiring; it is reviewed by the clean-code-reviewer.
 
