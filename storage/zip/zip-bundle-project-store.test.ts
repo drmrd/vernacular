@@ -1,3 +1,5 @@
+// @vitest-environment node
+// Pure storage/zip logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it } from 'vitest'
 import { createEmptyProject } from '../../core'
 import { ProjectNotFoundError } from '../project-store'
