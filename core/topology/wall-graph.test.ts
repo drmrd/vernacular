@@ -39,6 +39,24 @@ describe('buildWallGraph', () => {
     expect(incidentToJunction).toHaveLength(3)
   })
 
+  it('splits both walls at an interior crossing where centerlines cross (X-junction)', () => {
+    const horizontal = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 })
+    const vertical = createWall({ x: 2000, y: -1500 }, { x: 2000, y: 1500 })
+
+    const graph = buildWallGraph([horizontal, vertical])
+
+    expect(graph.vertices).toHaveLength(5)
+    expect(graph.edges).toHaveLength(4)
+
+    const crossing = graph.vertices.findIndex((vertex) => vertex.x === 2000 && vertex.y === 0)
+    expect(crossing).toBeGreaterThanOrEqual(0)
+
+    const incidentToCrossing = graph.edges.filter(
+      (edge) => edge.a === crossing || edge.b === crossing,
+    )
+    expect(incidentToCrossing).toHaveLength(4)
+  })
+
   it('drops a zero-length wall, producing no edges', () => {
     const graph = buildWallGraph([createWall({ x: 0, y: 0 }, { x: 0, y: 0 })])
 
