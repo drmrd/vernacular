@@ -1,10 +1,19 @@
 import type { Millimeters } from './length-units'
 import {
   centimetersToMillimeters,
+  feetToMillimeters,
   INCHES_PER_FOOT,
   inchesToMillimeters,
   metersToMillimeters,
 } from './length-units'
+
+// The unit a caller may assume for a bare number that carries no unit token.
+export type AssumedUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft'
+
+export interface ParseLengthOptions {
+  // Unit assumed for a bare number with no unit token. Omitted means a bare number throws.
+  assumeUnit?: AssumedUnit
+}
 
 // The canonical value is already in millimeters, so this is an identity.
 const millimetersToMillimeters = (value: number): Millimeters => value
@@ -26,6 +35,18 @@ const METRIC_PARSERS: Record<string, (value: number) => Millimeters> = {
 // Anchored to the full trimmed string so trailing text (e.g. "2 m x 3 m") is
 // rejected rather than silently parsed.
 const METRIC_PATTERN = /^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/
+
+// A bare number with no unit token; interpreted only when a caller supplies assumeUnit.
+const BARE_NUMBER = /^-?\d+(?:\.\d+)?$/
+
+// The canonical millimeter converter for each assumable unit.
+const ASSUMED_UNIT_CONVERTERS: Record<AssumedUnit, (value: number) => Millimeters> = {
+  mm: millimetersToMillimeters,
+  cm: centimetersToMillimeters,
+  m: metersToMillimeters,
+  in: inchesToMillimeters,
+  ft: feetToMillimeters,
+}
 
 // A leading sign, then an optional feet component and an optional inch component.
 // Both components are optional individually so notations like "6'", "80\"", and
@@ -63,9 +84,20 @@ function parseInchValueText(text: string): number {
   if (fraction) {
     const [, wholeText, numerator, denominator] = fraction
     const whole = wholeText === undefined ? 0 : Number(wholeText)
+    // Guard before dividing so a zero denominator surfaces as a clear error
+    // rather than an Infinity result.
+    if (Number(denominator) === 0) {
+      throw new Error(`Fraction denominator cannot be zero: "${text}"`)
+    }
     return whole + Number(numerator) / Number(denominator)
   }
-  return Number(trimmed)
+  const value = Number(trimmed)
+  // A malformed inch value (e.g. "8 1") parses to NaN; reject it rather than
+  // propagating NaN through the conversion.
+  if (Number.isNaN(value)) {
+    throw new Error(`Unrecognized inch value: "${text}"`)
+  }
+  return value
 }
 
 function buildImperial(match: RegExpMatchArray): Millimeters {
@@ -78,7 +110,7 @@ function buildImperial(match: RegExpMatchArray): Millimeters {
   return sign === '-' ? -magnitude : magnitude
 }
 
-export function parseLength(input: string): Millimeters {
+export function parseLength(input: string, options: ParseLengthOptions = {}): Millimeters {
   const trimmed = input.trim()
   const imperial = trimmed.match(IMPERIAL_PATTERN)
   if (imperial) {
@@ -92,6 +124,14 @@ export function parseLength(input: string): Millimeters {
   const metric = trimmed.match(METRIC_PATTERN)
   if (metric) {
     return buildMetric(metric)
+  }
+  // A bare number has no unit, so it is only meaningful when the caller names the
+  // unit to assume; otherwise it is ambiguous and rejected.
+  if (BARE_NUMBER.test(trimmed)) {
+    if (options.assumeUnit !== undefined) {
+      return ASSUMED_UNIT_CONVERTERS[options.assumeUnit](Number(trimmed))
+    }
+    throw new Error(`Length needs a unit or an assumeUnit option: "${input}"`)
   }
   throw new Error(`Unrecognized length value: "${input}"`)
 }
