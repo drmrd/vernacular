@@ -1,6 +1,9 @@
 import type { RecentProjectEntry } from './recent-project-store'
 
-function byLastOpenedDescending(first: RecentProjectEntry, second: RecentProjectEntry): number {
+export function byLastOpenedDescending(
+  first: RecentProjectEntry,
+  second: RecentProjectEntry,
+): number {
   return second.lastOpened - first.lastOpened
 }
 

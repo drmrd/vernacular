@@ -1,3 +1,5 @@
+import { byLastOpenedDescending } from './recent-projects'
+
 export type ProjectBackend = 'opfs' | 'file-system-folder' | 'zip-bundle'
 
 export interface RecentProjectEntry {
@@ -24,9 +26,7 @@ export class InMemoryRecentProjectStore implements RecentProjectStore {
   private readonly entries = new Map<string, RecentProjectEntry>()
 
   async list(): Promise<RecentProjectEntry[]> {
-    return [...this.entries.values()]
-      .sort((first, second) => second.lastOpened - first.lastOpened)
-      .map((entry) => ({ ...entry }))
+    return [...this.entries.values()].sort(byLastOpenedDescending).map((entry) => ({ ...entry }))
   }
 
   async record(entry: RecentProjectEntry): Promise<void> {
