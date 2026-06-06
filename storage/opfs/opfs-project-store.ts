@@ -8,6 +8,7 @@ import { parseProjectJson, readProjectName } from '../folder/project-json'
 import type { ProjectStore, ProjectSummary } from '../project-store'
 import { ProjectNotFoundError } from '../project-store'
 import type { DirectoryPort } from '../fs/directory-port'
+import { FileSystemDirectory } from '../fs/file-system-directory'
 import { SubdirectoryPort } from '../fs/subdirectory-port'
 
 /**
@@ -80,4 +81,10 @@ export class OpfsProjectStore implements ProjectStore {
       }
     }
   }
+}
+
+/** Build the durable OPFS-backed project store from the origin private file system. */
+export async function createOpfsProjectStore(): Promise<OpfsProjectStore> {
+  const root = await navigator.storage.getDirectory()
+  return new OpfsProjectStore(new FileSystemDirectory(root))
 }
