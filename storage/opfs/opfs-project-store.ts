@@ -8,9 +8,10 @@ import { SubdirectoryPort } from '../fs/subdirectory-port'
 
 const PROJECT_FILE = 'project.json'
 
-/** Read meta.name from a parsed project; it is a string on a valid project. */
-function readProjectName(raw: unknown): string {
-  return (raw as { meta: { name: string } }).meta.name
+/** Read meta.name from a parsed project, or undefined when it is not a string. */
+function readProjectName(raw: unknown): string | undefined {
+  const name = (raw as { meta?: { name?: unknown } }).meta?.name
+  return typeof name === 'string' ? name : undefined
 }
 
 /**
@@ -54,7 +55,11 @@ export class OpfsProjectStore implements ProjectStore {
     if (bytes === undefined) {
       return undefined
     }
-    return { id, name: readProjectName(parseProjectJson(bytes)) }
+    const name = readProjectName(parseProjectJson(bytes))
+    if (name === undefined) {
+      return undefined
+    }
+    return { id, name }
   }
 
   async delete(id: string): Promise<void> {
