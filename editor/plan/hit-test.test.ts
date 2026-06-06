@@ -86,8 +86,8 @@ describe('hitTest', () => {
     expect(hitTest(graph, { x: 500, y: 10 }, DEFAULT_HIT_TOLERANCE_MM)).toBe('wall:near')
   })
 
-  it('falls back to the room whose polygon contains the point when no wall is in range', () => {
-    const graph = scene(
+  const wallAndRoomScene = (): SceneGraph =>
+    scene(
       [wall('wall:edge', { x: 0, y: 0 }, { x: 4000, y: 0 })],
       [
         room('room:a', [
@@ -99,38 +99,21 @@ describe('hitTest', () => {
       ],
     )
 
-    expect(hitTest(graph, { x: 2000, y: 2000 }, DEFAULT_HIT_TOLERANCE_MM)).toBe('room:a')
+  it('falls back to the room whose polygon contains the point when no wall is in range', () => {
+    expect(hitTest(wallAndRoomScene(), { x: 2000, y: 2000 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'room:a',
+    )
   })
 
   it('prefers a wall in range over a containing room', () => {
-    const graph = scene(
-      [wall('wall:edge', { x: 0, y: 0 }, { x: 4000, y: 0 })],
-      [
-        room('room:a', [
-          { x: 0, y: 0 },
-          { x: 4000, y: 0 },
-          { x: 4000, y: 4000 },
-          { x: 0, y: 4000 },
-        ]),
-      ],
+    expect(hitTest(wallAndRoomScene(), { x: 2000, y: 50 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'wall:edge',
     )
-
-    expect(hitTest(graph, { x: 2000, y: 50 }, DEFAULT_HIT_TOLERANCE_MM)).toBe('wall:edge')
   })
 
   it('returns null when the point hits neither a wall nor a room', () => {
-    const graph = scene(
-      [wall('wall:edge', { x: 0, y: 0 }, { x: 4000, y: 0 })],
-      [
-        room('room:a', [
-          { x: 0, y: 0 },
-          { x: 4000, y: 0 },
-          { x: 4000, y: 4000 },
-          { x: 0, y: 4000 },
-        ]),
-      ],
-    )
-
-    expect(hitTest(graph, { x: 50_000, y: 50_000 }, DEFAULT_HIT_TOLERANCE_MM)).toBeNull()
+    expect(
+      hitTest(wallAndRoomScene(), { x: 50_000, y: 50_000 }, DEFAULT_HIT_TOLERANCE_MM),
+    ).toBeNull()
   })
 })
