@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { segmentIntersection } from './segment'
+import { pointOnSegment, segmentIntersection } from './segment'
 
 describe('segmentIntersection', () => {
   it('returns the crossing point of two segments that intersect', () => {
@@ -18,5 +18,23 @@ describe('segmentIntersection', () => {
     expect(
       segmentIntersection({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }),
     ).toBeNull()
+  })
+})
+
+describe('pointOnSegment', () => {
+  it('reports a point in the segment interior as on the segment', () => {
+    expect(pointOnSegment({ x: 2000, y: 0 }, { x: 0, y: 0 }, { x: 4000, y: 0 }, 1)).toBe(true)
+  })
+
+  it('reports a point within tolerance of the segment as on the segment', () => {
+    expect(pointOnSegment({ x: 2000, y: 0.5 }, { x: 0, y: 0 }, { x: 4000, y: 0 }, 1)).toBe(true)
+  })
+
+  it('reports a point off the segment as not on the segment', () => {
+    expect(pointOnSegment({ x: 2000, y: 50 }, { x: 0, y: 0 }, { x: 4000, y: 0 }, 1)).toBe(false)
+  })
+
+  it('reports a point beyond the segment end as not on the segment', () => {
+    expect(pointOnSegment({ x: 5000, y: 0 }, { x: 0, y: 0 }, { x: 4000, y: 0 }, 1)).toBe(false)
   })
 })
