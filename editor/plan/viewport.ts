@@ -35,3 +35,8 @@ export function screenToWorld(screen: ScreenPoint, viewport: Viewport): Point {
   const offset = offsetOf(viewport)
   return { x: (screen.x - offset.x) / viewport.scale, y: (screen.y - offset.y) / viewport.scale }
 }
+
+export function panBy(viewport: Viewport, deltaPx: ScreenPoint): Viewport {
+  const offset = offsetOf(viewport)
+  return { ...viewport, offset: { x: offset.x + deltaPx.x, y: offset.y + deltaPx.y } }
+}
