@@ -1,6 +1,6 @@
 import { deriveFloorNode, deriveRoomNodesForFloor, deriveWallNode } from './scene-graph'
 import type { Floor, Project, Wall } from '../model/types'
-import type { SceneGraph, SceneNode, WallSceneNode } from './scene-graph'
+import type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene-graph'
 
 /**
  * Builds a stateful deriver that memoizes each floor's and wall's scene node by
@@ -14,6 +14,7 @@ import type { SceneGraph, SceneNode, WallSceneNode } from './scene-graph'
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const floorCache = new WeakMap<Floor, SceneNode>()
   const wallCache = new WeakMap<Wall, WallSceneNode>()
+  const roomCache = new WeakMap<Floor, RoomSceneNode[]>()
 
   const floorNodeFor = (floor: Floor): SceneNode => {
     const cached = floorCache.get(floor)
@@ -35,9 +36,19 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     return node
   }
 
+  const roomNodesFor = (floor: Floor): RoomSceneNode[] => {
+    const cached = roomCache.get(floor)
+    if (cached !== undefined) {
+      return cached
+    }
+    const nodes = deriveRoomNodesForFloor(floor)
+    roomCache.set(floor, nodes)
+    return nodes
+  }
+
   return (project) => ({
     nodes: project.floors.map(floorNodeFor),
     walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
-    rooms: project.floors.flatMap(deriveRoomNodesForFloor),
+    rooms: project.floors.flatMap(roomNodesFor),
   })
 }
