@@ -33,6 +33,9 @@ export async function runRgbAudit(argv, { runGit, log }) {
     '--reverse',
     '--no-merges',
     range,
+    // Per commit: record separator (%x1e), then SHA, subject, and the
+    // Infrastructure trailer value, each separated by a unit separator (%x1f);
+    // the --name-only changed filenames follow on subsequent lines.
     '--pretty=format:%x1e%H%x1f%s%x1f%(trailers:key=Infrastructure,valueonly,separator=%x20)',
     '--name-only',
   ])
@@ -76,7 +79,8 @@ if (isDirectInvocation) {
     log: (line) => console.log(line),
   })
     .then((code) => {
-      process.exit(code)
+      // Set, don't exit: let queued async work and beforeExit handlers drain.
+      process.exitCode = code
     })
     .catch((error) => {
       // Defensive: runRgbAudit returns codes and does not reject, so this signals
