@@ -44,7 +44,7 @@ function projectWithWalls(name: string, wallCount: number): Project {
   return { ...base, floors: [createFloor('Ground', { walls })] }
 }
 
-describe('App', () => {
+describe('App boot and storage warnings', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
@@ -98,6 +98,14 @@ describe('App', () => {
     await act(async () => {})
 
     expect(warn).not.toHaveBeenCalled()
+  })
+})
+
+describe('App project actions', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('saves the current project through the store when Save is clicked', async () => {
