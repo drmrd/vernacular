@@ -167,12 +167,39 @@ function nextHalfEdge(
 
 /** Build a polygon from the tail vertices of a face's half-edges. */
 function facePolygon(face: readonly HalfEdge[], vertices: readonly Point[]): Point[] {
+  const loop = removeSpikes(face.map((half) => half.from))
   const polygon: Point[] = []
-  for (const half of face) {
-    const vertex = vertices[half.from]
+  for (const index of loop) {
+    const vertex = vertices[index]
     if (vertex !== undefined) polygon.push(vertex)
   }
   return polygon
+}
+
+/**
+ * Remove dangling-stub spikes from a closed loop of vertex indices. A spike is a
+ * `v -> s -> v` excursion: the path walks out to a tip `s` and immediately back to
+ * the same vertex `v`. Treating the loop as cyclic, a tip is any position whose
+ * previous and next neighbors are the same vertex; drop the tip and one of those
+ * duplicated neighbors, then restart until no spike remains.
+ */
+function removeSpikes(loop: number[]): number[] {
+  const cleaned = [...loop]
+  let changed = true
+  while (changed && cleaned.length > 2) {
+    changed = false
+    for (let index = 0; index < cleaned.length; index += 1) {
+      const previous = cleaned[(index - 1 + cleaned.length) % cleaned.length]
+      const next = cleaned[(index + 1) % cleaned.length]
+      if (previous !== undefined && previous === next) {
+        cleaned.splice(index, 1)
+        cleaned.splice(index % cleaned.length, 1)
+        changed = true
+        break
+      }
+    }
+  }
+  return cleaned
 }
 
 /** Sorted, unique wall ids of a face's half-edges. */
