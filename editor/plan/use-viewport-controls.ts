@@ -105,7 +105,7 @@ export interface ViewportControls {
   onPanPointerUp: (event: PointerEvent<HTMLCanvasElement>) => void
 }
 
-const screenDelta = (from: ScreenPoint, to: ScreenPoint): ScreenPoint => ({
+const pointDelta = (from: ScreenPoint, to: ScreenPoint): ScreenPoint => ({
   x: to.x - from.x,
   y: to.y - from.y,
 })
@@ -145,9 +145,9 @@ function usePanGesture(
       if (!origin) {
         return false
       }
-      const current = eventToCanvas(event, event.currentTarget)
-      setViewport((viewport) => panBy(viewport, screenDelta(origin, current)))
-      panOrigin.current = current
+      const canvasPoint = eventToCanvas(event, event.currentTarget)
+      setViewport((viewport) => panBy(viewport, pointDelta(origin, canvasPoint)))
+      panOrigin.current = canvasPoint
       return true
     },
     [setViewport],
