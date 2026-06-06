@@ -1,3 +1,5 @@
+// @vitest-environment node
+// Pure byte/zip logic; node aligns Uint8Array realms with fflate.
 import { describe, expect, it } from 'vitest'
 import { unzipFolder, zipFolder, type FolderEntries } from './zip-codec'
 
@@ -12,7 +14,6 @@ describe('zip codec', () => {
     const result = unzipFolder(zipFolder(entries))
 
     expect(result).toEqual(entries)
-    expect(result.get('project.json')).toEqual(encode.encode('{"meta":{}}'))
   })
 
   it('round-trips an empty folder to an empty map', () => {
