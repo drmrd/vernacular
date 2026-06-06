@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { hitTestWalls, wallBounds, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import type { WallSceneNode } from '../../core'
+import { hitTestWalls, roomBounds, wallBounds, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
+import type { RoomSceneNode, WallSceneNode } from '../../core'
 
 function wall(
   id: string,
@@ -50,5 +50,24 @@ describe('wallBounds', () => {
       min: { x: 200, y: 500 },
       max: { x: 1000, y: 3000 },
     })
+  })
+})
+
+function room(id: string, polygon: { x: number; y: number }[]): RoomSceneNode {
+  return { id, kind: 'room', floorId: 'g', polygon, area: 0 }
+}
+
+describe('roomBounds', () => {
+  it('spans every vertex of the room polygon', () => {
+    const lShape = room('room:a', [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 2000 },
+      { x: 2000, y: 2000 },
+      { x: 2000, y: 5000 },
+      { x: 0, y: 5000 },
+    ])
+
+    expect(roomBounds(lShape)).toEqual({ min: { x: 0, y: 0 }, max: { x: 4000, y: 5000 } })
   })
 })
