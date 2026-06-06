@@ -110,3 +110,47 @@ describe('parseLength imperial fractional-inch inputs', () => {
     expect(parseLength('1/2"')).toBe(12.7)
   })
 })
+
+describe('parseLength assumed unit for bare numbers', () => {
+  it('interprets a bare number as inches when inches are assumed', () => {
+    expect(parseLength('80', { assumeUnit: 'in' })).toBe(2032)
+  })
+
+  it('interprets a bare number as millimeters when millimeters are assumed', () => {
+    expect(parseLength('2030', { assumeUnit: 'mm' })).toBe(2030)
+  })
+
+  it('interprets a bare number as feet when feet are assumed', () => {
+    expect(parseLength('6', { assumeUnit: 'ft' })).toBe(1828.8)
+  })
+
+  it('throws for a bare number when no unit is assumed', () => {
+    expect(() => parseLength('80')).toThrow()
+  })
+})
+
+describe('parseLength error handling', () => {
+  it('throws for input that is not a number at all', () => {
+    expect(() => parseLength('banana')).toThrow()
+  })
+
+  it('throws for empty input', () => {
+    expect(() => parseLength('')).toThrow()
+  })
+
+  it('throws for a sign with no magnitude', () => {
+    expect(() => parseLength('-')).toThrow()
+  })
+
+  it('throws for an unknown unit word', () => {
+    expect(() => parseLength('6 fathoms')).toThrow()
+  })
+
+  it('throws for a fraction with a zero denominator', () => {
+    expect(() => parseLength('1/0"')).toThrow()
+  })
+
+  it('throws for a malformed inch value with a dangling whole part', () => {
+    expect(() => parseLength('8 1"')).toThrow()
+  })
+})
