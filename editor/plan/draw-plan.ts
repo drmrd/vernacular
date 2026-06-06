@@ -2,6 +2,7 @@ import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
+import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
 
 export interface PlanDrawingContext {
@@ -39,6 +40,7 @@ export interface DrawPlanOptions {
   rooms?: readonly RoomSceneNode[]
   grid?: boolean
   rulers?: boolean
+  snap?: SnapResult
   marquee?: Bounds
 }
 
@@ -62,6 +64,9 @@ const RULER_TICK_COLOR = '#c2c8d0'
 const RULER_TEXT_COLOR = '#5a6470'
 const RULER_FONT = '10px sans-serif'
 const RULER_LABEL_INSET_PX = 2
+const SNAP_MARKER_COLOR = '#f08c00'
+const SNAP_MARKER_RADIUS_PX = 5
+const SNAP_MARKER_LINE_WIDTH = 2
 const MARQUEE_FILL_COLOR = 'rgba(26, 127, 212, 0.12)'
 const MARQUEE_STROKE_COLOR = '#1a7fd4'
 const MARQUEE_LINE_WIDTH = 1
@@ -161,6 +166,9 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   if (options.preview) {
     drawPreview(ctx, options.preview, options.viewport)
   }
+  if (options.snap) {
+    drawSnapIndicator(ctx, options.snap, options.viewport)
+  }
   if (options.marquee) {
     drawMarquee(ctx, options.marquee, options.viewport)
   }
@@ -230,4 +238,18 @@ function drawStartMarker(ctx: PlanDrawingContext, center: Point): void {
   ctx.beginPath()
   ctx.arc(center.x, center.y, START_MARKER_RADIUS, 0, FULL_CIRCLE)
   ctx.fill()
+}
+
+/** Paint a ring marker at the snapped point so the user sees where the next click lands. */
+export function drawSnapIndicator(
+  ctx: PlanDrawingContext,
+  snap: SnapResult,
+  viewport: Viewport,
+): void {
+  const center = worldToScreen(snap.point, viewport)
+  ctx.strokeStyle = SNAP_MARKER_COLOR
+  ctx.lineWidth = SNAP_MARKER_LINE_WIDTH
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, SNAP_MARKER_RADIUS_PX, 0, FULL_CIRCLE)
+  ctx.stroke()
 }

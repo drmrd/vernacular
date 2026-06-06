@@ -17,6 +17,8 @@ import {
   useViewportControls,
   type ViewportControls,
 } from './use-viewport-controls'
+import type { SnapResult } from './snap'
+import { useSnapping } from './use-snapping'
 import { screenToWorld, DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
 import {
   advanceWallTool,
@@ -57,47 +59,65 @@ function applyPointer(world: Point, context: PointerContext): WallToolState {
 
 interface PlanInteractionDeps {
   session: EditorSession
+  walls: DrawPlanOptions['walls']
   tool: ToolId
   viewport: Viewport
 }
 
 interface PlanInteraction {
   preview: PreviewSegment | undefined
+  snap: SnapResult | null
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerLeave: () => void
 }
 
-/** Translates pointer events into wall-tool actions and the live preview segment. */
-function usePlanInteraction({ session, tool, viewport }: PlanInteractionDeps): PlanInteraction {
+/** The in-progress segment start while drawing; absent when the tool is idle. */
+function drawingOrigin(toolState: WallToolState): Point | undefined {
+  return toolState.phase === 'drawing' ? toolState.start : undefined
+}
+
+/** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
+function usePlanInteraction({
+  session,
+  walls,
+  tool,
+  viewport,
+}: PlanInteractionDeps): PlanInteraction {
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
+  const snapping = useSnapping({ walls, viewport, origin: drawingOrigin(toolState) })
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
+      const world = snapping.resolve(eventToWorld(event, viewport))
       const context = { session, tool, toolState }
-      setToolState(applyPointer(eventToWorld(event, viewport), context))
+      setToolState(applyPointer(world, context))
     },
-    [session, tool, toolState, viewport],
+    [session, tool, toolState, viewport, snapping],
   )
 
   // Track the cursor only while the wall tool is active; this drives the live
-  // rubber-band preview. The select tool needs no per-move redraws.
+  // rubber-band preview and the snap indicator. The select tool needs neither.
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (tool === 'draw-wall') {
-        setPointer(eventToWorld(event, viewport))
+        setPointer(snapping.resolve(eventToWorld(event, viewport)))
       }
     },
-    [tool, viewport],
+    [tool, viewport, snapping],
   )
 
-  const onPointerLeave = useCallback(() => setPointer(null), [])
+  const onPointerLeave = useCallback(() => {
+    setPointer(null)
+    snapping.clear()
+  }, [snapping])
 
   const preview =
     tool === 'draw-wall' && pointer ? wallPreviewSegment(toolState, pointer) : undefined
+  const snap = tool === 'draw-wall' ? snapping.snap : null
 
-  return { preview, onPointerDown, onPointerMove, onPointerLeave }
+  return { preview, snap, onPointerDown, onPointerMove, onPointerLeave }
 }
 
 interface ComposedPointerHandlers {
@@ -147,11 +167,12 @@ interface PlanScene {
   rooms: NonNullable<DrawPlanOptions['rooms']>
   selectedIds: ReadonlySet<string>
   preview: PreviewSegment | undefined
+  snap: SnapResult | null
   marquee: Bounds | undefined
   viewport: Viewport
 }
 
-/** Redraws the canvas whenever the walls, selection, viewport, preview, or marquee change. */
+/** Redraws the canvas whenever the walls, selection, viewport, preview, snap, or marquee change. */
 function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: PlanScene): void {
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
@@ -168,6 +189,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
       grid: true,
       rulers: true,
       ...(scene.preview ? { preview: scene.preview } : {}),
+      ...(scene.snap ? { snap: scene.snap } : {}),
       ...(scene.marquee ? { marquee: scene.marquee } : {}),
     })
   }, [
@@ -176,6 +198,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.rooms,
     scene.selectedIds,
     scene.preview,
+    scene.snap,
     scene.marquee,
     scene.viewport,
   ])
@@ -199,20 +222,20 @@ export function PlanView() {
   const session = useEditorSession()
   const graph = useSceneGraph()
   const selection = useSelection()
-  const selectedIds = useSelectionIds()
   const { tool } = useActiveTool()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
 
-  const interaction = usePlanInteraction({ session, tool, viewport })
+  const interaction = usePlanInteraction({ session, walls: graph.walls, tool, viewport })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   usePlanRedraw(canvasRef, {
     walls: graph.walls,
     rooms: graph.rooms,
-    selectedIds,
+    selectedIds: useSelectionIds(),
     preview: interaction.preview,
+    snap: interaction.snap,
     marquee: planSelection.marquee,
     viewport,
   })
