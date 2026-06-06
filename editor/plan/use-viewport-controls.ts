@@ -21,7 +21,7 @@ import {
 
 const MIDDLE_BUTTON = 1
 const PRIMARY_BUTTON = 0
-const FIT_KEY = 'f'
+const FIT_TO_CONTENT_KEY = 'f'
 
 /** Canvas-relative pixel position of a pointer or wheel event. */
 export function eventToCanvas(
@@ -112,8 +112,8 @@ function isPanGesture(
 
 /** Middle-mouse or spacebar-drag pan; the down/move handlers report whether they consumed the event. */
 function usePanGesture(
-  setViewport: Dispatch<SetStateAction<Viewport>>,
   spaceHeld: RefObject<boolean>,
+  setViewport: Dispatch<SetStateAction<Viewport>>,
 ): ViewportControls {
   const panOrigin = useRef<ScreenPoint | null>(null)
   const [panning, setPanning] = useState(false)
@@ -167,7 +167,7 @@ export function useViewportControls(
 ): ViewportControls {
   const spaceHeld = useSpaceHeld()
   useWheelZoom(canvasRef, setViewport)
-  return usePanGesture(setViewport, spaceHeld)
+  return usePanGesture(spaceHeld, setViewport)
 }
 
 /** The content to frame and the canvas to frame it within. */
@@ -185,7 +185,7 @@ export function useFitToContent(
   const { walls, rooms, size } = target
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== FIT_KEY || isEditableTarget(event.target)) {
+      if (event.key !== FIT_TO_CONTENT_KEY || isEditableTarget(event.target)) {
         return
       }
       const points = [

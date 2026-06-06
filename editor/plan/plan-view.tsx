@@ -116,8 +116,16 @@ function usePlanInteraction({
   return { preview, onPointerDown, onPointerMove, onPointerLeave }
 }
 
+interface ComposedPointerHandlers {
+  onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
+  onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
+}
+
 /** A pan gesture takes priority; otherwise the active tool handles the pointer. */
-function composePointerHandlers(controls: ViewportControls, interaction: PlanInteraction) {
+function composePointerHandlers(
+  controls: ViewportControls,
+  interaction: PlanInteraction,
+): ComposedPointerHandlers {
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
       if (!controls.onPanPointerDown(event)) {
