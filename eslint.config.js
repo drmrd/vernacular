@@ -43,6 +43,12 @@ export default tseslint.config(
       '.lighthouseci',
       'reports',
       '.stryker-tmp',
+      '.claude/worktrees',
+      // emitted by `tsc -b` from the tsconfig.node.json composite project
+      'vite.config.js',
+      'vite.config.d.ts',
+      'vitest.config.js',
+      'vitest.config.d.ts',
     ],
   },
   {
@@ -114,7 +120,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts'],
     rules: {
       'no-magic-numbers': 'off',
       'max-lines-per-function': ['warn', { max: 120, skipBlankLines: true, skipComments: true }],

@@ -10,6 +10,7 @@ describe('buildScene', () => {
         { id: 'floor:b', kind: 'floor', name: 'Upper', elevation: 2700 },
       ],
       walls: [],
+      rooms: [],
     }
 
     const root = buildScene(graph)

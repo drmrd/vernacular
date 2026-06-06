@@ -55,6 +55,58 @@ export type { AddWallParams } from './commands/handlers/wall-commands'
 export { ADD_WALL, addWall, registerWallCommands } from './commands/handlers/wall-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
-export type { SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
-export { deriveFloorNode, deriveSceneGraph, deriveWallNode } from './scene/scene-graph'
+export type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
+export {
+  deriveFloorNode,
+  deriveRoomNodesForFloor,
+  deriveSceneGraph,
+  deriveWallNode,
+} from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
+export type {
+  AssumedUnit,
+  DecimalPrecision,
+  DisplayPrecision,
+  FormatLengthOptions,
+  ImperialForm,
+  MetricForm,
+  Millimeters,
+  ParseLengthOptions,
+  UnitPreferences,
+} from './units'
+export {
+  DEFAULT_IMPERIAL_PREFERENCES,
+  DEFAULT_METRIC_PREFERENCES,
+  INCHES_PER_FOOT,
+  MM_PER_CENTIMETER,
+  MM_PER_FOOT,
+  MM_PER_INCH,
+  MM_PER_METER,
+  centimetersToMillimeters,
+  feetToMillimeters,
+  formatLength,
+  inchesToMillimeters,
+  lengthFormatOptions,
+  metersToMillimeters,
+  millimetersToCentimeters,
+  millimetersToFeet,
+  millimetersToInches,
+  millimetersToMeters,
+  parseLength,
+  roundToDecimalPlaces,
+  roundToNearestFraction,
+} from './units'
+export type { MigrateOptions, ProjectShape, RegistryMigration, SchemaMigration } from './migrations'
+export {
+  MalformedProjectError,
+  MigrationFailedError,
+  UnsupportedSchemaVersionError,
+  migrateProject,
+} from './migrations'
+export { distance } from './geometry/point'
+export { polygonArea } from './geometry/polygon'
+export { pointOnSegment, segmentIntersection } from './geometry/segment'
+export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
+export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
+export type { Room } from './topology/rooms'
+export { deriveRooms } from './topology/rooms'

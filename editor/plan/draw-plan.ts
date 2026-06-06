@@ -1,18 +1,26 @@
-import type { Point, WallSceneNode } from '../../core'
-import { worldToScreen, type Viewport } from './viewport'
+import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
+import { visibleGridLines } from './grid'
+import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
+import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
 
 export interface PlanDrawingContext {
   lineWidth: number
   lineCap: CanvasLineCap
   strokeStyle: string | CanvasGradient | CanvasPattern
   fillStyle: string | CanvasGradient | CanvasPattern
+  font: string
+  textAlign: CanvasTextAlign
+  textBaseline: CanvasTextBaseline
   clearRect(x: number, y: number, width: number, height: number): void
   beginPath(): void
   moveTo(x: number, y: number): void
   lineTo(x: number, y: number): void
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void
+  closePath(): void
   stroke(): void
   fill(): void
+  fillText(text: string, x: number, y: number): void
+  fillRect(x: number, y: number, width: number, height: number): void
 }
 
 export interface PreviewSegment {
@@ -27,8 +35,13 @@ export interface DrawPlanOptions {
   height: number
   selectedIds: ReadonlySet<string>
   preview?: PreviewSegment
+  rooms?: readonly RoomSceneNode[]
+  grid?: boolean
+  rulers?: boolean
 }
 
+// Subtle floor tint that must stay readable beneath the dark wall strokes.
+const ROOM_FILL_COLOR = '#eef2f6'
 const WALL_COLOR = '#222222'
 const SELECTED_WALL_COLOR = '#1a7fd4'
 const PREVIEW_COLOR = '#5b9bd5'
@@ -37,15 +50,107 @@ const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2
 const LINE_CAP = 'round' as const
+const GRID_LINE_COLOR = '#e6e9ee'
+const GRID_LINE_WIDTH = 1
+const RULER_BAND_COLOR = '#f5f7fa'
+const RULER_TICK_COLOR = '#c2c8d0'
+const RULER_TEXT_COLOR = '#5a6470'
+const RULER_FONT = '10px sans-serif'
+const RULER_LABEL_INSET_PX = 2
+
+export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
+  ctx.fillStyle = RULER_BAND_COLOR
+  ctx.fillRect(0, 0, size.width, RULER_THICKNESS_PX)
+  ctx.fillRect(0, 0, RULER_THICKNESS_PX, size.height)
+  // Both axes render with shared tick/text styles set once here; drawRulerTicks
+  // relies on this state (strokeStyle, fillStyle, font, textAlign, textBaseline)
+  // and never resets it per tick or per axis.
+  ctx.strokeStyle = RULER_TICK_COLOR
+  ctx.fillStyle = RULER_TEXT_COLOR
+  ctx.font = RULER_FONT
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+
+  drawRulerTicks(ctx, viewport, { orientation: 'horizontal', lengthPx: size.width })
+  drawRulerTicks(ctx, viewport, { orientation: 'vertical', lengthPx: size.height })
+}
+
+function drawRulerTicks(
+  ctx: PlanDrawingContext,
+  viewport: Viewport,
+  axis: { orientation: 'horizontal' | 'vertical'; lengthPx: number },
+): void {
+  const isHorizontal = axis.orientation === 'horizontal'
+  for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation)) {
+    ctx.beginPath()
+    if (isHorizontal) {
+      ctx.moveTo(tick.screen, 0)
+      ctx.lineTo(tick.screen, RULER_THICKNESS_PX)
+    } else {
+      ctx.moveTo(0, tick.screen)
+      ctx.lineTo(RULER_THICKNESS_PX, tick.screen)
+    }
+    ctx.stroke()
+    if (isHorizontal) {
+      ctx.fillText(tick.label, tick.screen + RULER_LABEL_INSET_PX, RULER_LABEL_INSET_PX)
+    } else {
+      ctx.fillText(tick.label, RULER_LABEL_INSET_PX, tick.screen + RULER_LABEL_INSET_PX)
+    }
+  }
+}
+
+export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
+  ctx.strokeStyle = GRID_LINE_COLOR
+  ctx.lineWidth = GRID_LINE_WIDTH
+  for (const line of visibleGridLines(viewport, size).lines) {
+    ctx.beginPath()
+    if (line.orientation === 'vertical') {
+      ctx.moveTo(line.screen, 0)
+      ctx.lineTo(line.screen, size.height)
+    } else {
+      ctx.moveTo(0, line.screen)
+      ctx.lineTo(size.width, line.screen)
+    }
+    ctx.stroke()
+  }
+}
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
+  const size = { width: options.width, height: options.height }
+  if (options.grid) {
+    drawGrid(ctx, options.viewport, size)
+  }
+  // Fill rooms first so wall strokes render on top of them.
+  for (const room of options.rooms ?? []) {
+    drawRoom(ctx, room, options.viewport)
+  }
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
   }
   if (options.preview) {
     drawPreview(ctx, options.preview, options.viewport)
   }
+  if (options.rulers) {
+    drawRulers(ctx, options.viewport, size)
+  }
+}
+
+function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, viewport: Viewport): void {
+  const [firstPoint, ...remainingPoints] = room.polygon
+  if (firstPoint === undefined || remainingPoints.length < 2) {
+    return
+  }
+  const start = worldToScreen(firstPoint, viewport)
+  ctx.fillStyle = ROOM_FILL_COLOR
+  ctx.beginPath()
+  ctx.moveTo(start.x, start.y)
+  for (const point of remainingPoints) {
+    const screenPoint = worldToScreen(point, viewport)
+    ctx.lineTo(screenPoint.x, screenPoint.y)
+  }
+  ctx.closePath()
+  ctx.fill()
 }
 
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {

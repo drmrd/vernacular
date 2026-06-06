@@ -18,6 +18,7 @@
     "knowledge:index": "node scripts/knowledge-index.mjs",
     "pack:build": "node scripts/pack/vernacular-pack.mjs build",
     "pack:validate": "node scripts/pack/vernacular-pack.mjs validate",
+    "rgb:audit": "node scripts/rgb-audit/rgb-audit.mjs",
     "dup": "jscpd --silent .",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build",
@@ -50,6 +51,7 @@
   },
   "dependencies": {
     "@react-three/fiber": "^9.6.1",
+    "fflate": "0.8.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.184.0"
@@ -72,9 +74,9 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.184.0",
-    "@webgpu/types": "^0.1.70",
     "@vitejs/plugin-react": "^4.3.0",
     "@vitest/coverage-v8": "^1.6.0",
+    "@webgpu/types": "^0.1.70",
     "eslint": "^9.7.0",
     "eslint-plugin-boundaries": "^6.0.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

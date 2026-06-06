@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, act } from '@testing-library/react'
-import { EditorShell } from './editor-shell'
+import { render, screen, cleanup, act, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { EditorShell, type EditorShellProps } from './editor-shell'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
 import {
   EditorSessionProvider,
@@ -21,14 +22,14 @@ function projectWithFloor(): Project {
   return project
 }
 
-function renderShell() {
+function renderShell(props: Partial<EditorShellProps> = {}) {
   const session = createEditorSession(projectWithFloor())
   const selection = createSelectionStore()
   render(
     <EditorSessionProvider session={session}>
       <SelectionProvider store={selection}>
         <ActiveToolProvider>
-          <EditorShell saveStatus="idle" />
+          <EditorShell saveStatus="idle" {...props} />
         </ActiveToolProvider>
       </SelectionProvider>
     </EditorSessionProvider>,
@@ -74,5 +75,77 @@ describe('EditorShell', () => {
     })
 
     expect(screen.getByText(/wall selected/i)).toBeInTheDocument()
+  })
+
+  it('invokes the new, save, and export handlers when their buttons are clicked', async () => {
+    vi.stubGlobal('navigator', {})
+    const onNewProject = vi.fn()
+    const onSave = vi.fn()
+    const onExportBundle = vi.fn()
+    const user = userEvent.setup()
+
+    renderShell({ onNewProject, onSave, onExportBundle })
+
+    const project = screen.getByRole('navigation', { name: /project/i })
+    await user.click(within(project).getByRole('button', { name: /^new$/i }))
+    await user.click(within(project).getByRole('button', { name: /^save$/i }))
+    await user.click(within(project).getByRole('button', { name: /export bundle/i }))
+
+    expect(onNewProject).toHaveBeenCalledTimes(1)
+    expect(onSave).toHaveBeenCalledTimes(1)
+    expect(onExportBundle).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens a recent project by its id when its control is clicked', async () => {
+    vi.stubGlobal('navigator', {})
+    const onOpenRecent = vi.fn()
+    const user = userEvent.setup()
+
+    renderShell({
+      recentProjects: [
+        { id: 'a', name: 'Alpha' },
+        { id: 'b', name: 'Beta' },
+      ],
+      onOpenRecent,
+    })
+
+    expect(screen.getByRole('button', { name: /alpha/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /beta/i }))
+
+    expect(onOpenRecent).toHaveBeenCalledTimes(1)
+    expect(onOpenRecent).toHaveBeenCalledWith('b')
+  })
+
+  it('restores or discards from the recovery prompt and hides it otherwise', async () => {
+    vi.stubGlobal('navigator', {})
+    const onRestore = vi.fn()
+    const onDiscard = vi.fn()
+    const user = userEvent.setup()
+
+    renderShell({ recovery: { onRestore, onDiscard } })
+
+    const alert = screen.getByRole('alert')
+    await user.click(within(alert).getByRole('button', { name: /restore/i }))
+    await user.click(within(alert).getByRole('button', { name: /discard/i }))
+
+    expect(onRestore).toHaveBeenCalledTimes(1)
+    expect(onDiscard).toHaveBeenCalledTimes(1)
+
+    cleanup()
+    renderShell()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('button', { name: /restore/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /discard/i })).toBeNull()
+  })
+
+  it('hides project controls, the recent list, and the recovery prompt when no handlers are provided', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.queryByRole('button', { name: /^new$/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /export bundle/i })).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

@@ -26,7 +26,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
-    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'e2e/**'],
+    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'e2e/**', '.claude/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -50,6 +50,7 @@ export default defineConfig({
         'bridge/react/use-scene-graph.ts',
         'bridge/react/use-autosave.ts',
         'editor/plan/plan-view.tsx',
+        'editor/plan/use-viewport-controls.ts',
         'storage/indexeddb/indexeddb-project-store.ts',
       ],
     },

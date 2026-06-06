@@ -2,20 +2,106 @@ import type { Point } from '../../core'
 
 /** Pixels per millimeter. Chosen so a typical room fits the fixed proof-of-life Canvas. */
 export const DEFAULT_PLAN_SCALE = 0.08
-
-export interface Viewport {
-  scale: number
-}
+/** Far zoom-out floor: roughly 1 m spans 2 px. */
+export const MIN_PLAN_SCALE = 0.002
+/** Close zoom-in ceiling: 1 mm spans 4 px. */
+export const MAX_PLAN_SCALE = 4
 
 export interface ScreenPoint {
   x: number
   y: number
 }
 
+export interface ViewportSize {
+  width: number
+  height: number
+}
+
+/** Pan is a screen-pixel translation of the world origin. An absent offset means the world origin maps to the screen origin (no pan). */
+export interface Viewport {
+  scale: number
+  offset?: ScreenPoint
+}
+
+const ORIGIN: ScreenPoint = { x: 0, y: 0 }
+const offsetOf = (viewport: Viewport): ScreenPoint => viewport.offset ?? ORIGIN
+
 export function worldToScreen(point: Point, viewport: Viewport): ScreenPoint {
-  return { x: point.x * viewport.scale, y: point.y * viewport.scale }
+  const offset = offsetOf(viewport)
+  return { x: point.x * viewport.scale + offset.x, y: point.y * viewport.scale + offset.y }
 }
 
 export function screenToWorld(screen: ScreenPoint, viewport: Viewport): Point {
-  return { x: screen.x / viewport.scale, y: screen.y / viewport.scale }
+  const offset = offsetOf(viewport)
+  return { x: (screen.x - offset.x) / viewport.scale, y: (screen.y - offset.y) / viewport.scale }
+}
+
+export function panBy(viewport: Viewport, deltaPx: ScreenPoint): Viewport {
+  const offset = offsetOf(viewport)
+  return { ...viewport, offset: { x: offset.x + deltaPx.x, y: offset.y + deltaPx.y } }
+}
+
+export function clampScale(scale: number): number {
+  return Math.min(MAX_PLAN_SCALE, Math.max(MIN_PLAN_SCALE, scale))
+}
+
+/** How sharply wheel deltas translate into zoom. Tuned so a typical notched scroll feels gradual. */
+const ZOOM_WHEEL_SENSITIVITY = 0.0015
+
+/** Map a wheel `deltaY` to a multiplicative zoom factor. Exponential so the factor is continuous and symmetric in log-space; an upward scroll (negative `deltaY`) returns `> 1` (zoom in), a downward scroll returns `< 1`. */
+export function wheelZoomFactor(deltaY: number): number {
+  return Math.exp(-deltaY * ZOOM_WHEEL_SENSITIVITY)
+}
+
+/** Zoom about the cursor. `factor > 1` zooms in, `factor < 1` zooms out; the resulting scale is clamped to `[MIN_PLAN_SCALE, MAX_PLAN_SCALE]`. */
+export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: number): Viewport {
+  const scale = clampScale(viewport.scale * factor)
+  // Pin the world point under the cursor using the OLD (pre-clamp) viewport, then re-derive the offset so that point stays under the cursor after the scale changes.
+  const worldUnder = screenToWorld(cursor, viewport)
+  return {
+    scale,
+    offset: { x: cursor.x - worldUnder.x * scale, y: cursor.y - worldUnder.y * scale },
+  }
+}
+
+/** The one-dimensional affine map `screen = world * scale + translate` for a single axis. */
+export interface AxisProjection {
+  scale: number
+  translate: number
+}
+
+/** Reduce a viewport to the affine projection of one axis: horizontal uses the x offset, vertical the y. */
+export function axisProjection(
+  viewport: Viewport,
+  orientation: 'horizontal' | 'vertical',
+): AxisProjection {
+  const offset = offsetOf(viewport)
+  return {
+    scale: viewport.scale,
+    translate: orientation === 'horizontal' ? offset.x : offset.y,
+  }
+}
+
+/** A grid line along one axis: its world coordinate and the screen pixel it projects to. */
+export interface AxisSample {
+  worldValue: number
+  screen: number
+}
+
+/** Step world multiples of `spacingMm` across the visible `[0, lengthPx]` screen range, projecting each to screen pixels. `spacingMm` must be a positive world distance; a non-positive value would never advance the loop or would walk away from `high`. */
+export function axisSamples(
+  projection: AxisProjection,
+  lengthPx: number,
+  spacingMm: number,
+): AxisSample[] {
+  const { scale, translate } = projection
+  const worldAtStart = (0 - translate) / scale
+  const worldAtEnd = (lengthPx - translate) / scale
+  const low = Math.min(worldAtStart, worldAtEnd)
+  const high = Math.max(worldAtStart, worldAtEnd)
+  const samples: AxisSample[] = []
+  for (let world = Math.ceil(low / spacingMm) * spacingMm; world <= high; world += spacingMm) {
+    samples.push({ worldValue: world, screen: world * scale + translate })
+  }
+  return samples
 }

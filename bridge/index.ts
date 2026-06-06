@@ -8,8 +8,15 @@ export type {
   AutosaveOptions,
   AutosaveConfig,
   Autosave,
+  SnapshotWriter,
+  SnapshotPruner,
+  CommitProjectOptions,
 } from './autosave/create-autosave'
-export { createAutosave, DEFAULT_AUTOSAVE_DELAY_MS } from './autosave/create-autosave'
+export {
+  createAutosave,
+  commitProject,
+  DEFAULT_AUTOSAVE_DELAY_MS,
+} from './autosave/create-autosave'
 export { useEditorSession } from './react/editor-session-context'
 export type { EditorSessionProviderProps } from './react/editor-session-provider'
 export { EditorSessionProvider } from './react/editor-session-provider'
@@ -17,5 +24,6 @@ export { SelectionContext, useSelection, useSelectionIds } from './react/selecti
 export type { SelectionProviderProps } from './react/selection-provider'
 export { SelectionProvider } from './react/selection-provider'
 export { useSceneGraph } from './react/use-scene-graph'
+export type { UseAutosaveOptions } from './react/use-autosave'
 export { useAutosave } from './react/use-autosave'
 export { SceneCanvas } from './react/scene-canvas'
