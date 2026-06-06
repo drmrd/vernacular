@@ -1,5 +1,10 @@
 import type { Millimeters } from './length-units'
-import { centimetersToMillimeters, inchesToMillimeters, metersToMillimeters } from './length-units'
+import {
+  centimetersToMillimeters,
+  INCHES_PER_FOOT,
+  inchesToMillimeters,
+  metersToMillimeters,
+} from './length-units'
 
 // The canonical value is already in millimeters, so this is an identity.
 const millimetersToMillimeters = (value: number): Millimeters => value
@@ -24,11 +29,11 @@ const METRIC_PATTERN = /^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/
 
 // A leading sign, then an optional feet component and an optional inch component.
 // Both components are optional individually so notations like "6'", "80\"", and
-// "6'8\"" all match; the caller requires at least one to have matched.
+// "6'8\"" all match; the caller requires at least one to have matched. The order is
+// significant: the feet component must precede the inch component if both are present,
+// so reversed input like "8\" 6'" is rejected by design (it falls through to the throw).
 const IMPERIAL_PATTERN =
   /^(-?)\s*(?:(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|'))?\s*(?:(\d+(?:\.\d+)?)\s*(?:inches|inch|in|"))?$/i
-
-const INCHES_PER_FOOT = 12
 
 function buildMetric(match: RegExpMatchArray): Millimeters {
   // Both capture groups are mandatory in METRIC_PATTERN, so the undefined branch is
@@ -59,10 +64,13 @@ function buildImperial(match: RegExpMatchArray): Millimeters {
 export function parseLength(input: string): Millimeters {
   const trimmed = input.trim()
   const imperial = trimmed.match(IMPERIAL_PATTERN)
-  // The imperial pattern's parts are both optional, so require at least one to have
-  // matched (otherwise an empty or sign-only string would falsely match as zero).
-  if (imperial && (imperial[2] !== undefined || imperial[3] !== undefined)) {
-    return buildImperial(imperial)
+  if (imperial) {
+    // The imperial pattern's parts are both optional, so require at least one to have
+    // matched (otherwise an empty or sign-only string would falsely match as zero).
+    const [, , feetText, inchText] = imperial
+    if (feetText !== undefined || inchText !== undefined) {
+      return buildImperial(imperial)
+    }
   }
   const metric = trimmed.match(METRIC_PATTERN)
   if (metric) {

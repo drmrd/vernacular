@@ -1,5 +1,6 @@
 import type { ImperialForm, MetricForm, Millimeters } from './length-units'
 import {
+  INCHES_PER_FOOT,
   millimetersToCentimeters,
   millimetersToFeet,
   millimetersToInches,
@@ -38,8 +39,6 @@ const METRIC_CONVERSION: Record<MetricForm, (mm: Millimeters) => number> = {
 // notation: 6.667' and 80".
 const FOOT_SYMBOL = "'"
 const INCH_SYMBOL = '"'
-
-const INCHES_PER_FOOT = 12
 
 function formatDecimal(value: number, places: number, suffix: string): string {
   // toFixed alone rounds half to even at the boundary; round first so the displayed

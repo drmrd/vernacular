@@ -8,6 +8,7 @@ export const MM_PER_INCH = 25.4
 export const MM_PER_FOOT = 304.8
 export const MM_PER_CENTIMETER = 10
 export const MM_PER_METER = 1000
+export const INCHES_PER_FOOT = 12
 
 // 25.4 = 254/10 and 304.8 = 3048/10 expressed as integer fractions so integer
 // inputs produce exact terminating-decimal outputs (avoids IEEE-754 drift).
