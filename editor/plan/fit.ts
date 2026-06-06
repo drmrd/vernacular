@@ -9,6 +9,11 @@ export interface Bounds {
 
 const DEFAULT_FIT_PADDING_PX = 24
 
+/** Pixels-per-world-unit that fits `worldExtent` into `availablePx`; a degenerate (non-positive) extent falls back to the tightest zoom so the other axis governs the fit. */
+function scaleForAxis(worldExtent: number, availablePx: number): number {
+  return worldExtent > 0 ? availablePx / worldExtent : MAX_PLAN_SCALE
+}
+
 export function computeFitViewport(
   bounds: Bounds,
   size: ViewportSize,
@@ -19,13 +24,11 @@ export function computeFitViewport(
   const availableWidth = size.width - 2 * paddingPx
   const availableHeight = size.height - 2 * paddingPx
   const scale = clampScale(
-    Math.min(
-      worldWidth > 0 ? availableWidth / worldWidth : MAX_PLAN_SCALE,
-      worldHeight > 0 ? availableHeight / worldHeight : MAX_PLAN_SCALE,
-    ),
+    Math.min(scaleForAxis(worldWidth, availableWidth), scaleForAxis(worldHeight, availableHeight)),
   )
   const centerX = (bounds.min.x + bounds.max.x) / 2
   const centerY = (bounds.min.y + bounds.max.y) / 2
+  // Fitting always centers the content, so we always materialize a concrete `offset`; the optional `Viewport.offset` no-pan sentinel never applies to a fit viewport.
   return {
     scale,
     offset: { x: size.width / 2 - centerX * scale, y: size.height / 2 - centerY * scale },
