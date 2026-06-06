@@ -40,3 +40,7 @@ export function panBy(viewport: Viewport, deltaPx: ScreenPoint): Viewport {
   const offset = offsetOf(viewport)
   return { ...viewport, offset: { x: offset.x + deltaPx.x, y: offset.y + deltaPx.y } }
 }
+
+export function clampScale(scale: number): number {
+  return Math.min(MAX_PLAN_SCALE, Math.max(MIN_PLAN_SCALE, scale))
+}
