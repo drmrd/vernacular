@@ -3,24 +3,9 @@ import { createEmptyProject, createFloor, createWall } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { serializeProjectJson } from './project-json'
-import type { FolderProjectStoreOptions } from './folder-project-store'
 import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-store'
 
 const PRE_MIGRATION_BACKUP = '.house-autosave/pre-migration-v1.json'
-
-/**
- * Builds store options that also carry a `targetVersion`, the additive field
- * Cycle C3 introduces. Spread through a wider record so the test typechecks
- * before the field exists on FolderProjectStoreOptions; the RED lives in the
- * runtime backup and atomicity assertions, not in compilation.
- */
-function migrationOptions(
-  targetVersion: number,
-  migrate: (raw: unknown) => Project,
-): FolderProjectStoreOptions {
-  const withTarget: Record<string, unknown> = { migrate, targetVersion }
-  return withTarget as FolderProjectStoreOptions
-}
 
 function seededDirectory(): { directory: InMemoryDirectory; seedBytes: Uint8Array } {
   const directory = new InMemoryDirectory()
@@ -32,16 +17,6 @@ function seededDirectory(): { directory: InMemoryDirectory; seedBytes: Uint8Arra
   })
   const seedBytes = serializeProjectJson(seeded)
   return { directory, seedBytes }
-}
-
-function bytesEqual(actual: Uint8Array | undefined, expected: Uint8Array): boolean {
-  if (actual === undefined) {
-    return false
-  }
-  if (actual.length !== expected.length) {
-    return false
-  }
-  return [...actual].every((value, index) => value === expected[index])
 }
 
 function bumpSchemaVersionTo(version: number): (raw: unknown) => Project {
@@ -125,28 +100,31 @@ describe('FolderProjectStore', () => {
   it('backs up the original project file verbatim before migrating it forward', async () => {
     const { directory, seedBytes } = seededDirectory()
     await directory.writeFile('project.json', seedBytes)
-    const store = new FolderProjectStore(directory, migrationOptions(2, bumpSchemaVersionTo(2)))
+    const store = new FolderProjectStore(directory, {
+      migrate: bumpSchemaVersionTo(2),
+      targetVersion: 2,
+    })
 
     const loaded = await store.loadProject()
 
-    expect(bytesEqual(await directory.readFile(PRE_MIGRATION_BACKUP), seedBytes)).toBe(true)
+    expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toEqual(seedBytes)
     expect(loaded.meta.schemaVersion).toBe(2)
   })
 
   it('leaves the canonical project file intact and keeps the backup when migration throws', async () => {
     const { directory, seedBytes } = seededDirectory()
     await directory.writeFile('project.json', seedBytes)
-    const store = new FolderProjectStore(
-      directory,
-      migrationOptions(2, () => {
+    const store = new FolderProjectStore(directory, {
+      migrate: () => {
         throw new Error('migration boom')
-      }),
-    )
+      },
+      targetVersion: 2,
+    })
 
     await expect(store.loadProject()).rejects.toThrow('migration boom')
 
-    expect(bytesEqual(await directory.readFile('project.json'), seedBytes)).toBe(true)
-    expect(bytesEqual(await directory.readFile(PRE_MIGRATION_BACKUP), seedBytes)).toBe(true)
+    expect(await directory.readFile('project.json')).toEqual(seedBytes)
+    expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toEqual(seedBytes)
   })
 
   it('writes no pre-migration backup when the stored project is already current', async () => {
