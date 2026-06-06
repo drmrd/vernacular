@@ -45,6 +45,14 @@ export function clampScale(scale: number): number {
   return Math.min(MAX_PLAN_SCALE, Math.max(MIN_PLAN_SCALE, scale))
 }
 
+/** How sharply wheel deltas translate into zoom. Tuned so a typical notched scroll feels gradual. */
+const ZOOM_WHEEL_SENSITIVITY = 0.0015
+
+/** Map a wheel `deltaY` to a multiplicative zoom factor. Exponential so the factor is continuous and symmetric in log-space; an upward scroll (negative `deltaY`) returns `> 1` (zoom in), a downward scroll returns `< 1`. */
+export function wheelZoomFactor(deltaY: number): number {
+  return Math.exp(-deltaY * ZOOM_WHEEL_SENSITIVITY)
+}
+
 /** Zoom about the cursor. `factor > 1` zooms in, `factor < 1` zooms out; the resulting scale is clamped to `[MIN_PLAN_SCALE, MAX_PLAN_SCALE]`. */
 export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: number): Viewport {
   const scale = clampScale(viewport.scale * factor)
