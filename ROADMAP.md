@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slice 1 (wall topology and room derivation) is done. Not yet usable as a floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation) and 3 (pan, zoom, grid, and rulers) are done. Not yet usable as a floor planner.
 
 ## Foundation work
 
@@ -66,20 +66,20 @@ model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
 
 The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as roughly twelve independent slices, each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence.
 
-| Slice                                                                               | Status      |
-| ----------------------------------------------------------------------------------- | ----------- |
-| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done        |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | pending     |
-| 3. Pan and zoom infinite canvas, grid, rulers                                       | in progress |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending     |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending     |
-| 6. Wall editing (endpoint move, thickness, construction type)                       | pending     |
-| 7. Openings (doors and windows: placement and editing)                              | pending     |
-| 8. Room naming and labeling, custom-polygon override                                | pending     |
-| 9. Dimensions (live and persisted) and thickness-aware area                         | pending     |
-| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending     |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | pending     |
-| 12. Image underlay with calibration                                                 | pending     |
+| Slice                                                                               | Status  |
+| ----------------------------------------------------------------------------------- | ------- |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | pending |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending |
+| 6. Wall editing (endpoint move, thickness, construction type)                       | pending |
+| 7. Openings (doors and windows: placement and editing)                              | pending |
+| 8. Room naming and labeling, custom-polygon override                                | pending |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | pending |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | pending |
+| 12. Image underlay with calibration                                                 | pending |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
 
@@ -88,6 +88,13 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 - **No room selection or hit-testing.** Selecting a room and a room spatial index belong with slice 5.
 - **No custom-polygon override or room naming.** Those are slice 8.
 - **Best-effort only, documented:** collinear overlapping walls, polygons with holes (courtyard or island), and self-touching topologies. Zero-length walls are ignored.
+
+**Slice 3 (done) scope and deferrals.** Slice 3 turns the fixed scale-only viewport into an interactive infinite canvas: smooth (non-stepped) pan (middle-mouse and spacebar-drag) and zoom-to-cursor (scroll and trackpad), an adaptive grid, rulers, and a fit-to-content key. All coordinate transforms and grid/ruler computation are pure, unit-tested modules; the Canvas-and-pointer wiring is thin glue validated by the wall-drawing end-to-end spec. Deliberately deferred, by design:
+
+- **Raw ruler and grid labels.** Ruler tick labels show the raw millimetre value (for example `1000`); human-readable, unit-aware labels (for example `1 m` or `3' 4"`) need the formatters from slice 2 (units and measurement) and follow there. This mirrors the slice-1 deferral of formatted area labels.
+- **Snap-to-selection.** `computeFitViewport` accepts any bounds, so fitting to the current selection is a one-line caller change; this slice wires only fit-to-content (the `f` key). Fit-to-selection follows once selection lands fully in slice 5.
+- **DOM overlay mirroring and animated camera.** The design specification's DOM overlay for interactive UI (selection rings, dimension chips, snap indicators) and any inertial or animated pan/zoom are later polish; this slice renders grid and rulers on the Canvas and pans/zooms without animation.
+- **Visual-regression baseline refresh.** Grid and rulers intentionally change the rendered plan, so the platform screenshot baseline differs. Continuous integration skips visual regression where no platform baseline exists, so it stays green; refreshing the local darwin baseline (a generated artifact) is a follow-up. The functional wall-drawing end-to-end spec is unaffected because the default viewport keeps the original scale and a zero pan offset, so pointer-to-world mapping is unchanged.
 
 ## Beyond 1.0
 
