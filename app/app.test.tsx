@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, vi, type Mock } from 'vitest'
 import { render, screen, cleanup, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { App } from './app'
@@ -11,21 +11,23 @@ function stubCapableStorage() {
 }
 
 interface SnapshotsFake {
-  writeSnapshot: ReturnType<typeof vi.fn>
-  prune: ReturnType<typeof vi.fn>
-  isRecoverable: ReturnType<typeof vi.fn>
-  restore: ReturnType<typeof vi.fn>
+  writeSnapshot: Mock<[Project], Promise<void>>
+  prune: Mock<[], Promise<void>>
+  isRecoverable: Mock<[], Promise<boolean>>
+  restore: Mock<[], Promise<Project | undefined>>
 }
 
 // A SnapshotStore-shaped stand-in: the four methods the app depends on, each a spy.
 function makeSnapshots(
-  overrides: Partial<Record<keyof SnapshotsFake, unknown>> = {},
+  overrides: { isRecoverable?: boolean; restore?: Project } = {},
 ): SnapshotsFake {
+  const recoverable = overrides.isRecoverable ?? false
+  const restored = overrides.restore
   return {
-    writeSnapshot: vi.fn().mockResolvedValue(undefined),
-    prune: vi.fn().mockResolvedValue(undefined),
-    isRecoverable: vi.fn().mockResolvedValue(overrides.isRecoverable ?? false),
-    restore: vi.fn().mockResolvedValue(overrides.restore ?? undefined),
+    writeSnapshot: vi.fn<[Project], Promise<void>>(async () => {}),
+    prune: vi.fn<[], Promise<void>>(async () => {}),
+    isRecoverable: vi.fn<[], Promise<boolean>>(async () => recoverable),
+    restore: vi.fn<[], Promise<Project | undefined>>(async () => restored),
   }
 }
 
