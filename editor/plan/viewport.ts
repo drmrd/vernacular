@@ -44,3 +44,12 @@ export function panBy(viewport: Viewport, deltaPx: ScreenPoint): Viewport {
 export function clampScale(scale: number): number {
   return Math.min(MAX_PLAN_SCALE, Math.max(MIN_PLAN_SCALE, scale))
 }
+
+export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: number): Viewport {
+  const scale = clampScale(viewport.scale * factor)
+  const worldUnder = screenToWorld(cursor, viewport)
+  return {
+    scale,
+    offset: { x: cursor.x - worldUnder.x * scale, y: cursor.y - worldUnder.y * scale },
+  }
+}
