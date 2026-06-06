@@ -92,11 +92,15 @@ function useSaveAction(context: ProjectActionsContext): () => void {
       projectId,
       project,
       ...(snapshots ? { snapshots } : {}),
-    }).then(() => {
-      if (backend !== null) {
-        recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
-      }
     })
+      .then(() => {
+        if (backend !== null) {
+          recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
+        }
+      })
+      // User-facing surfacing (a notification/toast) is deferred: no notification
+      // system exists in this slice, so failures are logged for now.
+      .catch((error: unknown) => console.error('save failed', error))
   }, [session, store, projectId, snapshots, recentProjects, backend])
 }
 
@@ -109,6 +113,7 @@ function useExportBundleAction(context: ProjectActionsContext): () => void {
       .save(projectId, project)
       .then(() => bundle.exportBundle())
       .then((bytes) => downloadBytes(bytes, bundleFilename(project.meta.name)))
+      .catch((error: unknown) => console.error('export bundle failed', error))
   }, [session, projectId])
 }
 
@@ -124,8 +129,8 @@ function useNewProjectAction(context: ProjectActionsContext): () => void {
 function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: () => void } {
   const { projectId, recentProjects, capabilities, onSession } = context
   const onOpenFolder = useCallback(() => {
-    void FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore()).then(
-      async (store) => {
+    void FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore())
+      .then(async (store) => {
         const project = await store.load(projectId)
         onSession(createEditorSession(project))
         recordRecent(recentProjects, {
@@ -133,8 +138,8 @@ function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: (
           name: project.meta.name,
           backend: 'file-system-folder',
         })
-      },
-    )
+      })
+      .catch((error: unknown) => console.error('open folder failed', error))
   }, [projectId, recentProjects, onSession])
   return capabilities.fileSystemAccess ? { onOpenFolder } : {}
 }
@@ -150,7 +155,10 @@ function useOpenRecentAction(context: ProjectActionsContext): (id: string) => vo
       }
       // OPFS, zip-bundle, or no recorded backend route through the default store
       // load; per-backend reopen for the others is deferred (plan Open questions).
-      void store.load(id).then((project) => onSession(createEditorSession(project)))
+      void store
+        .load(id)
+        .then((project) => onSession(createEditorSession(project)))
+        .catch((error: unknown) => console.error('open recent failed', error))
     },
     [store, projectId, recentEntries, onSession],
   )
@@ -167,15 +175,17 @@ interface OpenFolderRecentContext {
 // store load when no stored handle exists or permission is denied (spec 5.7).
 function openFolderRecent(context: OpenFolderRecentContext): void {
   const { id, projectId, onSession, fallback } = context
-  void FileSystemFolderProjectStore.reopen(id, new DirectoryHandleStore()).then(async (store) => {
-    if (store === undefined) {
-      const project = await fallback.load(id)
+  void FileSystemFolderProjectStore.reopen(id, new DirectoryHandleStore())
+    .then(async (reopenedStore) => {
+      if (reopenedStore === undefined) {
+        const project = await fallback.load(id)
+        onSession(createEditorSession(project))
+        return
+      }
+      const project = await reopenedStore.load(projectId)
       onSession(createEditorSession(project))
-      return
-    }
-    const project = await store.load(projectId)
-    onSession(createEditorSession(project))
-  })
+    })
+    .catch((error: unknown) => console.error('reopen folder failed', error))
 }
 
 export interface RecentAndRecoveryContext {
