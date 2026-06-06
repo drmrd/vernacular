@@ -101,6 +101,48 @@ describe('App boot and storage warnings', () => {
   })
 })
 
+describe('App async store resolution', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('boots into the shell when a store is injected', async () => {
+    stubCapableStorage()
+
+    render(<App store={new InMemoryProjectStore()} />)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /vernacular/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
+  })
+
+  it('resolves a store asynchronously and boots into the shell when none is injected', async () => {
+    stubCapableStorage()
+    const resolveStore = vi.fn(() => Promise.resolve(new InMemoryProjectStore()))
+
+    render(<App resolveStore={resolveStore} />)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /vernacular/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
+    expect(resolveStore).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the error state when async store resolution rejects', async () => {
+    stubCapableStorage()
+    const resolveStore = vi.fn(() => Promise.reject(new Error('no storage backend')))
+
+    render(<App resolveStore={resolveStore} />)
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(resolveStore).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('App project actions', () => {
   afterEach(() => {
     cleanup()

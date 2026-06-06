@@ -54,6 +54,8 @@ export default defineConfig({
         'editor/plan/use-wall-editing.ts',
         'editor/plan/selected-wall.ts',
         'storage/indexeddb/indexeddb-project-store.ts',
+        'storage/download/download-blob.ts',
+        'app/resolve-project-store.ts',
       ],
     },
   },
