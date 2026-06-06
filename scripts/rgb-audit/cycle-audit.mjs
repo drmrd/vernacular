@@ -101,48 +101,123 @@ function classify(commit) {
  * Blue presence rule: every GREEN commit must be closed by a BLUE refactor
  * commit before the next RED commit or the end of the range.
  *
+ * The loop is a small state machine over two carried values: `pendingRed`, the
+ * count of RED commits not yet consumed by a GREEN, and `openGreen`, the sha of
+ * a GREEN cycle still awaiting its closing BLUE (or null). Each role advances
+ * that state and may emit violations; `auditCommits` itself only drives the loop.
+ *
  * @param {ParsedCommit[]} commits
  * @returns {Violation[]}
  */
 export function auditCommits(commits) {
   const violations = []
-  let pendingRed = 0
-  let openGreen = null
+  let state = { pendingRed: 0, openGreen: null }
   for (const commit of commits) {
     const role = classify(commit)
     if (role === 'red') {
-      if (openGreen !== null) {
-        violations.push(blueViolation(openGreen))
-        openGreen = null
-      }
-      pendingRed += 1
+      state = advanceOnRed(state, violations)
     } else if (role === 'green') {
-      const hasPrecedingRed = pendingRed > 0
-      if (!hasPrecedingRed) {
-        violations.push({
-          sha: commit.sha,
-          rule: 'ordering',
-          message: `GREEN commit ${commit.sha} has no preceding RED test commit in range`,
-        })
-      }
-      const testFiles = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
-      if (testFiles.length > 0) {
-        violations.push({
-          sha: commit.sha,
-          rule: 'independence',
-          message: `GREEN commit ${commit.sha} modifies test file(s): ${testFiles.join(', ')}`,
-        })
-      }
-      pendingRed = 0
-      openGreen = hasPrecedingRed ? commit.sha : null
+      state = advanceOnGreen(state, commit, violations)
     } else if (role === 'blue') {
-      openGreen = null
+      state = advanceOnBlue(state)
     }
   }
-  if (openGreen !== null) {
-    violations.push(blueViolation(openGreen))
+  if (state.openGreen !== null) {
+    violations.push(blueViolation(state.openGreen))
   }
   return violations
+}
+
+/**
+ * The state carried across the audit loop.
+ * @typedef {{ pendingRed: number, openGreen: string|null }} AuditState
+ */
+
+/**
+ * A RED commit closes any open GREEN cycle (it cannot have seen its BLUE) and
+ * adds to the pool of RED commits a later GREEN may consume.
+ *
+ * @param {AuditState} state
+ * @param {Violation[]} violations
+ * @returns {AuditState}
+ */
+function advanceOnRed(state, violations) {
+  if (state.openGreen !== null) {
+    violations.push(blueViolation(state.openGreen))
+  }
+  return { pendingRed: state.pendingRed + 1, openGreen: null }
+}
+
+/**
+ * A GREEN commit consumes the pending RED pool and is checked against the
+ * ordering and independence rules (both can fire for the same commit).
+ *
+ * Only an ordering-valid GREEN (one with a preceding RED) opens a cycle to
+ * track for blue presence; an ordering-invalid GREEN has no well-defined cycle
+ * to close, so it is never tracked as `openGreen`.
+ *
+ * @param {AuditState} state
+ * @param {ParsedCommit} commit
+ * @param {Violation[]} violations
+ * @returns {AuditState}
+ */
+function advanceOnGreen(state, commit, violations) {
+  const hasPrecedingRed = state.pendingRed > 0
+  const ordering = orderingViolation(commit, hasPrecedingRed)
+  if (ordering !== null) {
+    violations.push(ordering)
+  }
+  const independence = independenceViolation(commit)
+  if (independence !== null) {
+    violations.push(independence)
+  }
+  return { pendingRed: 0, openGreen: hasPrecedingRed ? commit.sha : null }
+}
+
+/**
+ * A BLUE commit closes the open GREEN cycle, satisfying the blue-presence rule.
+ *
+ * @param {AuditState} state
+ * @returns {AuditState}
+ */
+function advanceOnBlue(state) {
+  return { pendingRed: state.pendingRed, openGreen: null }
+}
+
+/**
+ * Ordering rule: a GREEN commit must be preceded by an unconsumed RED commit.
+ *
+ * @param {ParsedCommit} commit
+ * @param {boolean} hasPrecedingRed
+ * @returns {Violation|null}
+ */
+function orderingViolation(commit, hasPrecedingRed) {
+  if (hasPrecedingRed) {
+    return null
+  }
+  return {
+    sha: commit.sha,
+    rule: 'ordering',
+    message: `GREEN commit ${commit.sha} has no preceding RED test commit in range`,
+  }
+}
+
+/**
+ * Independence rule: a GREEN commit must change no test files.
+ *
+ * @param {ParsedCommit} commit
+ * @returns {Violation|null}
+ */
+function independenceViolation(commit) {
+  const testFiles = commit.files.filter((file) => TEST_FILE_PATTERN.test(file))
+  if (testFiles.length === 0) {
+    return null
+  }
+  return {
+    sha: commit.sha,
+    rule: 'independence',
+    message: `GREEN commit ${commit.sha} modifies test file(s): ${testFiles.join(', ')}`,
+  }
 }
 
 /**
