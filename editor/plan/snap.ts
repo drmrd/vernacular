@@ -24,8 +24,77 @@ interface Candidate {
   distanceMm: number
 }
 
+interface Vector {
+  x: number
+  y: number
+}
+
 function midpointOf(wall: WallSceneNode): Point {
   return { x: (wall.start.x + wall.end.x) / 2, y: (wall.start.y + wall.end.y) / 2 }
+}
+
+/** Unit direction of a wall, or null for a zero-length wall whose direction is undefined. */
+function wallDirection(wall: WallSceneNode): Vector | null {
+  const dx = wall.end.x - wall.start.x
+  const dy = wall.end.y - wall.start.y
+  const length = Math.hypot(dx, dy)
+  if (length === 0) {
+    return null
+  }
+  return { x: dx / length, y: dy / length }
+}
+
+/** The wall whose midpoint is nearest the cursor, the reference for directional snaps. */
+function nearestWall(cursor: Point, walls: readonly WallSceneNode[]): WallSceneNode | null {
+  let best: WallSceneNode | null = null
+  let bestDistance = Infinity
+  for (const wall of walls) {
+    const distanceMm = distance(cursor, midpointOf(wall))
+    if (distanceMm < bestDistance) {
+      best = wall
+      bestDistance = distanceMm
+    }
+  }
+  return best
+}
+
+/** Project the cursor onto the line through `origin` with unit direction `dir`. */
+function projectOntoLine(cursor: Point, origin: Point, dir: Vector): Point {
+  const offsetX = cursor.x - origin.x
+  const offsetY = cursor.y - origin.y
+  const along = offsetX * dir.x + offsetY * dir.y
+  return { x: origin.x + along * dir.x, y: origin.y + along * dir.y }
+}
+
+/** A snap onto the line through `context.origin` along `dir`, accepted within tolerance. */
+function directionalSnap(cursor: Point, context: SnapContext, dir: Vector): Candidate | null {
+  const origin = context.origin
+  if (origin === undefined) {
+    return null
+  }
+  const reference = nearestWall(cursor, context.walls)
+  if (reference === null) {
+    return null
+  }
+  const point = projectOntoLine(cursor, origin, dir)
+  const distanceMm = distance(cursor, point)
+  if (distanceMm > context.toleranceMm) {
+    return null
+  }
+  return { point, referenceId: reference.id, distanceMm }
+}
+
+/** Snap onto the line through `origin` parallel to the nearest wall's direction. */
+function parallelSnap(cursor: Point, context: SnapContext): Candidate | null {
+  const reference = nearestWall(cursor, context.walls)
+  if (reference === null) {
+    return null
+  }
+  const dir = wallDirection(reference)
+  if (dir === null) {
+    return null
+  }
+  return directionalSnap(cursor, context, dir)
 }
 
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
@@ -67,6 +136,10 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
+  }
+  const parallel = parallelSnap(cursor, context)
+  if (parallel !== null) {
+    return asResult(parallel, 'parallel')
   }
   return gridSnap(cursor, context.gridSpacingMm)
 }
