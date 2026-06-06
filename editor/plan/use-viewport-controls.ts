@@ -23,13 +23,21 @@ const MIDDLE_BUTTON = 1
 const PRIMARY_BUTTON = 0
 const FIT_TO_CONTENT_KEY = 'f'
 
-/** Canvas-relative pixel position of a pointer or wheel event. */
+/**
+ * Position of a pointer or wheel event in the canvas backing-store coordinate
+ * space. The displayed-rect offset is scaled by the backing store size over the
+ * displayed CSS size, so a stretched (`rect` larger than `width`/`height`)
+ * canvas still maps the cursor to the correct backing-store pixel.
+ */
 export function eventToCanvas(
   event: { clientX: number; clientY: number },
-  canvas: HTMLElement,
+  canvas: HTMLCanvasElement,
 ): ScreenPoint {
   const rect = canvas.getBoundingClientRect()
-  return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+  return {
+    x: (event.clientX - rect.left) * (canvas.width / rect.width),
+    y: (event.clientY - rect.top) * (canvas.height / rect.height),
+  }
 }
 
 /** True when a keyboard target is a control that owns its own space/typing behavior. */
