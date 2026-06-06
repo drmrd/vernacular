@@ -205,3 +205,26 @@ describe('snapPoint priority ordering', () => {
     expect(snapPoint({ x: 1002, y: 1005 }, context)?.kind).toBe('endpoint')
   })
 })
+
+describe('snapPoint with nothing in range', () => {
+  it('returns null when the grid is disabled, no feature is in range, and no origin is set', () => {
+    const wall = wallNode({ start: { x: 9000, y: 9000 }, end: { x: 9500, y: 9000 } })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+    }
+
+    expect(snapPoint({ x: 0, y: 0 }, context)).toBeNull()
+  })
+
+  it('returns null when the grid is disabled and there are no walls and no origin', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: -1,
+      toleranceMm: 50,
+    }
+
+    expect(snapPoint({ x: 1234, y: 5678 }, context)).toBeNull()
+  })
+})
