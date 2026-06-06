@@ -63,3 +63,45 @@ export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: nu
     offset: { x: cursor.x - worldUnder.x * scale, y: cursor.y - worldUnder.y * scale },
   }
 }
+
+/** The one-dimensional affine map `screen = world * scale + translate` for a single axis. */
+export interface AxisProjection {
+  scale: number
+  translate: number
+}
+
+/** Reduce a viewport to the affine projection of one axis: horizontal uses the x offset, vertical the y. */
+export function axisProjection(
+  viewport: Viewport,
+  orientation: 'horizontal' | 'vertical',
+): AxisProjection {
+  const offset = offsetOf(viewport)
+  return {
+    scale: viewport.scale,
+    translate: orientation === 'horizontal' ? offset.x : offset.y,
+  }
+}
+
+/** A grid line along one axis: its world coordinate and the screen pixel it projects to. */
+export interface AxisSample {
+  worldValue: number
+  screen: number
+}
+
+/** Step world multiples of `spacingMm` across the visible `[0, lengthPx]` screen range, projecting each to screen pixels. */
+export function axisSamples(
+  projection: AxisProjection,
+  lengthPx: number,
+  spacingMm: number,
+): AxisSample[] {
+  const { scale, translate } = projection
+  const worldAtStart = (0 - translate) / scale
+  const worldAtEnd = (lengthPx - translate) / scale
+  const low = Math.min(worldAtStart, worldAtEnd)
+  const high = Math.max(worldAtStart, worldAtEnd)
+  const samples: AxisSample[] = []
+  for (let world = Math.ceil(low / spacingMm) * spacingMm; world <= high; world += spacingMm) {
+    samples.push({ worldValue: world, screen: world * scale + translate })
+  }
+  return samples
+}
