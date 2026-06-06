@@ -1,5 +1,5 @@
 import { polygonArea } from '../geometry/polygon'
-import type { Point, Wall } from '../model/types'
+import type { Point, RoomOverride, Wall } from '../model/types'
 import { buildWallGraph } from './wall-graph'
 
 /** A bounded region of floor enclosed by walls, derived from the wall topology. */
@@ -12,6 +12,11 @@ export interface Room {
   area: number
   /** Sorted, unique ids of the walls that enclose the room. */
   wallIds: string[]
+  /**
+   * User-entered display name merged in from a stored `RoomOverride`. Absent on a
+   * freshly derived room; single-sourced with `RoomSceneNode.name` in a later task.
+   */
+  name?: string
 }
 
 /**
@@ -32,6 +37,33 @@ export const ROOM_ID_PREFIX = 'room:'
  */
 export function roomKey(room: Pick<Room, 'wallIds'>): string {
   return room.wallIds.join('-')
+}
+
+/**
+ * Merge stored overrides onto derived rooms, keyed by `roomKey`. A stored `name`
+ * is attached; a stored `customPolygon` replaces the derived polygon and recomputes
+ * the area as the non-negative shoelace area. Rooms without a matching override are
+ * returned unchanged. An absent `overrides` map returns the input rooms unchanged.
+ * Iteration is over `rooms`, so a stale override key never synthesizes a room.
+ */
+export function applyRoomOverrides(
+  rooms: readonly Room[],
+  overrides: Readonly<Record<string, RoomOverride>> | undefined,
+): Room[] {
+  if (overrides === undefined) return [...rooms]
+  return rooms.map((room) => mergeOverride(room, overrides[roomKey(room)]))
+}
+
+/** Apply one room's override, or return it unchanged when there is no override. */
+function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
+  if (override === undefined) return room
+  const merged: Room = { ...room }
+  if (override.name !== undefined) merged.name = override.name
+  if (override.customPolygon !== undefined) {
+    merged.polygon = override.customPolygon
+    merged.area = Math.abs(polygonArea(override.customPolygon))
+  }
+  return merged
 }
 
 /** A directed half of an undirected graph edge, carrying its source wall's id. */
