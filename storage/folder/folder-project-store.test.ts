@@ -38,13 +38,13 @@ describe('FolderProjectStore', () => {
     await store.saveProject(project)
 
     project.meta.name = 'Mutated'
-    project.floors[0].walls.push(
+    project.floors[0]!.walls.push(
       createWall({ x: 0, y: 0 }, { x: 1, y: 1 }, { id: 'wall-extra', thickness: 100 }),
     )
 
     const loaded = await store.loadProject()
     expect(loaded.meta.name).toBe('Sample House')
-    expect(loaded.floors[0].walls).toHaveLength(1)
+    expect(loaded.floors[0]!.walls).toHaveLength(1)
   })
 
   it('isolates stored state from mutation of a loaded project', async () => {
@@ -53,13 +53,13 @@ describe('FolderProjectStore', () => {
 
     const firstLoad = await store.loadProject()
     firstLoad.meta.name = 'Mutated'
-    firstLoad.floors[0].walls.push(
+    firstLoad.floors[0]!.walls.push(
       createWall({ x: 0, y: 0 }, { x: 1, y: 1 }, { id: 'wall-extra', thickness: 100 }),
     )
 
     const secondLoad = await store.loadProject()
     expect(secondLoad.meta.name).toBe('Sample House')
-    expect(secondLoad.floors[0].walls).toHaveLength(1)
+    expect(secondLoad.floors[0]!.walls).toHaveLength(1)
   })
 
   it('reports existence only after a project has been saved', async () => {
