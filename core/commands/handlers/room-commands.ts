@@ -1,4 +1,4 @@
-import type { Point, Project } from '../../model/types'
+import type { Point, Project, RoomOverride } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
@@ -36,34 +36,29 @@ export function setRoomCustomPolygon(
 }
 
 // Reassigns the whole roomOverrides slice to a new map with a new override
-// object for the target key, preserving any existing customPolygon, so the
-// inverse-capture proxy records only the root's top-level change and undo
+// object for the target key, merging the patch over any existing entry so the
+// entry's other fields survive. Reassigning the root-level slice lets the
+// inverse-capture proxy record only the root's top-level change so undo
 // restores the prior reference (including back to an absent map).
+function mergeRoomOverride(state: Project, roomKey: string, patch: Partial<RoomOverride>): void {
+  state.roomOverrides = {
+    ...state.roomOverrides,
+    [roomKey]: {
+      ...state.roomOverrides?.[roomKey],
+      ...patch,
+    },
+  }
+}
+
 const setRoomNameHandler: CommandHandler<Project, SetRoomNameParams> = {
   apply(state, params) {
-    state.roomOverrides = {
-      ...state.roomOverrides,
-      [params.roomKey]: {
-        ...state.roomOverrides?.[params.roomKey],
-        name: params.name,
-      },
-    }
+    mergeRoomOverride(state, params.roomKey, { name: params.name })
   },
 }
 
-// Reassigns the whole roomOverrides slice to a new map with a new override
-// object for the target key, preserving any existing name, so the
-// inverse-capture proxy records only the root's top-level change and undo
-// restores the prior reference (including back to an absent map).
 const setRoomCustomPolygonHandler: CommandHandler<Project, SetRoomCustomPolygonParams> = {
   apply(state, params) {
-    state.roomOverrides = {
-      ...state.roomOverrides,
-      [params.roomKey]: {
-        ...state.roomOverrides?.[params.roomKey],
-        customPolygon: params.polygon,
-      },
-    }
+    mergeRoomOverride(state, params.roomKey, { customPolygon: params.polygon })
   },
 }
 
