@@ -1,4 +1,5 @@
 import type { Floor, Point, Project, Wall } from '../model/types'
+import { deriveRooms } from '../topology/rooms'
 
 // Kind-prefixed ids keep floor and wall node ids globally unique within the scene graph.
 const FLOOR_NODE_PREFIX = 'floor:'
@@ -20,9 +21,18 @@ export interface WallSceneNode {
   thickness: number
 }
 
+export interface RoomSceneNode {
+  id: string
+  kind: 'room'
+  floorId: string
+  polygon: Point[]
+  area: number
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
   walls: WallSceneNode[]
+  rooms: RoomSceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -45,6 +55,16 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
   }
 }
 
+export function deriveRoomNodes(floor: Floor): RoomSceneNode[] {
+  return deriveRooms(floor.walls).map((room) => ({
+    id: room.id,
+    kind: 'room',
+    floorId: floor.id,
+    polygon: room.polygon,
+    area: room.area,
+  }))
+}
+
 /** Pure projection of the project model into a normalized scene graph. */
 export function deriveSceneGraph(project: Project): SceneGraph {
   return {
@@ -52,5 +72,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     walls: project.floors.flatMap((floor) =>
       floor.walls.map((wall) => deriveWallNode(floor, wall)),
     ),
+    rooms: project.floors.flatMap(deriveRoomNodes),
   }
 }

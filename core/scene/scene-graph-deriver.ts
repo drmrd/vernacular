@@ -1,4 +1,4 @@
-import { deriveFloorNode, deriveWallNode } from './scene-graph'
+import { deriveFloorNode, deriveRoomNodes, deriveWallNode } from './scene-graph'
 import type { Floor, Project, Wall } from '../model/types'
 import type { SceneGraph, SceneNode, WallSceneNode } from './scene-graph'
 
@@ -38,5 +38,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   return (project) => ({
     nodes: project.floors.map(floorNodeFor),
     walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
+    rooms: project.floors.flatMap(deriveRoomNodes),
   })
 }
