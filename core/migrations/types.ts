@@ -6,6 +6,11 @@ export type ProjectShape = Record<string, unknown>
 /** One forward schema migration from version `from` to `from + 1`. */
 export interface SchemaMigration {
   readonly from: SchemaVersion
+  /**
+   * Transform the document's data only. The orchestrator advances
+   * `meta.schemaVersion` after each step, so a migration must not set
+   * `meta.schemaVersion` itself.
+   */
   migrate(project: ProjectShape): ProjectShape
 }
 

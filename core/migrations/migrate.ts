@@ -12,6 +12,10 @@ import {
 
 export interface MigrateOptions {
   schemaMigrations?: readonly SchemaMigration[]
+  /**
+   * Reserved seam for per-registry migrations that run after the schema chain.
+   * The walk for these is not wired yet, so this field is not consumed.
+   */
   registryMigrations?: readonly RegistryMigration[]
   targetVersion?: number
 }
