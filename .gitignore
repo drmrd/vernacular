@@ -29,6 +29,9 @@ reports/
 # local knowledge graph (Claude-side workspace; not committed)
 docs/knowledge/
 
+# Claude-side local git worktrees for parallel sessions (never committed)
+.claude/worktrees/
+
 # Storybook
 storybook-static/
 
