@@ -2,7 +2,54 @@ import { describe, expect, it } from 'vitest'
 import { createEmptyProject, createFloor, createWall } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
+import { serializeProjectJson } from './project-json'
+import type { FolderProjectStoreOptions } from './folder-project-store'
 import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-store'
+
+const PRE_MIGRATION_BACKUP = '.house-autosave/pre-migration-v1.json'
+
+/**
+ * Builds store options that also carry a `targetVersion`, the additive field
+ * Cycle C3 introduces. Spread through a wider record so the test typechecks
+ * before the field exists on FolderProjectStoreOptions; the RED lives in the
+ * runtime backup and atomicity assertions, not in compilation.
+ */
+function migrationOptions(
+  targetVersion: number,
+  migrate: (raw: unknown) => Project,
+): FolderProjectStoreOptions {
+  const withTarget: Record<string, unknown> = { migrate, targetVersion }
+  return withTarget as FolderProjectStoreOptions
+}
+
+function seededDirectory(): { directory: InMemoryDirectory; seedBytes: Uint8Array } {
+  const directory = new InMemoryDirectory()
+  const seeded = createEmptyProject({
+    name: 'Seed',
+    units: 'imperial',
+    era: 'modern',
+    appVersion: '0.0.0',
+  })
+  const seedBytes = serializeProjectJson(seeded)
+  return { directory, seedBytes }
+}
+
+function bytesEqual(actual: Uint8Array | undefined, expected: Uint8Array): boolean {
+  if (actual === undefined) {
+    return false
+  }
+  if (actual.length !== expected.length) {
+    return false
+  }
+  return [...actual].every((value, index) => value === expected[index])
+}
+
+function bumpSchemaVersionTo(version: number): (raw: unknown) => Project {
+  return (raw) => {
+    const project = raw as Project
+    return { ...project, meta: { ...project.meta, schemaVersion: version } }
+  }
+}
 
 function sampleProject(): Project {
   const wall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'wall-1', thickness: 140 })
@@ -73,5 +120,42 @@ describe('FolderProjectStore', () => {
     const store = new FolderProjectStore(new InMemoryDirectory())
 
     await expect(store.loadProject()).rejects.toBeInstanceOf(ProjectFileNotFoundError)
+  })
+
+  it('backs up the original project file verbatim before migrating it forward', async () => {
+    const { directory, seedBytes } = seededDirectory()
+    await directory.writeFile('project.json', seedBytes)
+    const store = new FolderProjectStore(directory, migrationOptions(2, bumpSchemaVersionTo(2)))
+
+    const loaded = await store.loadProject()
+
+    expect(bytesEqual(await directory.readFile(PRE_MIGRATION_BACKUP), seedBytes)).toBe(true)
+    expect(loaded.meta.schemaVersion).toBe(2)
+  })
+
+  it('leaves the canonical project file intact and keeps the backup when migration throws', async () => {
+    const { directory, seedBytes } = seededDirectory()
+    await directory.writeFile('project.json', seedBytes)
+    const store = new FolderProjectStore(
+      directory,
+      migrationOptions(2, () => {
+        throw new Error('migration boom')
+      }),
+    )
+
+    await expect(store.loadProject()).rejects.toThrow('migration boom')
+
+    expect(bytesEqual(await directory.readFile('project.json'), seedBytes)).toBe(true)
+    expect(bytesEqual(await directory.readFile(PRE_MIGRATION_BACKUP), seedBytes)).toBe(true)
+  })
+
+  it('writes no pre-migration backup when the stored project is already current', async () => {
+    const { directory, seedBytes } = seededDirectory()
+    await directory.writeFile('project.json', seedBytes)
+    const store = new FolderProjectStore(directory)
+
+    await store.loadProject()
+
+    expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toBeUndefined()
   })
 })
