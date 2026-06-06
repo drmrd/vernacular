@@ -88,4 +88,26 @@ describe('createSelectionStore', () => {
     store.toggle('wall:a')
     expect(count).toBe(2)
   })
+
+  it('replaces the whole selection with the given ids', () => {
+    const store = createSelectionStore()
+    store.select('wall:z')
+
+    store.setSelection(['wall:a', 'wall:b'])
+    expect(new Set(store.getSelectedIds())).toEqual(new Set(['wall:a', 'wall:b']))
+
+    store.setSelection([])
+    expect(store.getSelectedIds().size).toBe(0)
+  })
+
+  it('notifies subscribers when setSelection changes the selection', () => {
+    const store = createSelectionStore()
+    let count = 0
+    store.subscribe(() => {
+      count += 1
+    })
+
+    store.setSelection(['wall:a', 'wall:b'])
+    expect(count).toBe(1)
+  })
 })
