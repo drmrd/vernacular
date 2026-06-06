@@ -113,27 +113,27 @@ const CASES: readonly RoundTripCase[] = [
   })),
 ]
 
-describe('formatLength / parseLength round-trip invariant', () => {
+describe('format-parse round-trip invariant', () => {
   for (const { label, options, quantumMm } of CASES) {
     it(`reformats to a fixpoint and stays within half a display quantum for ${label} (seed ${SEED})`, () => {
       const tolerance = quantumMm / 2 + 1e-6
       for (const x of caseValues()) {
         const s = formatLength(x, options)
         const x2 = parseLength(s)
+        const reformatted = formatLength(x2, options)
 
-        // (3) String fixpoint: reformatting the parsed value reproduces the
-        // exact same display string. Asserted exactly with toBe.
+        // A fixpoint guarantees a value re-displayed after parsing does not
+        // drift, so repeated edit/redisplay cycles in the editor stay stable.
         expect(
-          formatLength(x2, options),
+          reformatted,
           `string fixpoint broke for ${label} at x=${x}: formatLength(x)=${JSON.stringify(
             s,
-          )}, parseLength(s)=${x2}, formatLength(x2)=${JSON.stringify(
-            formatLength(x2, options),
-          )} (seed ${SEED})`,
+          )}, parseLength(s)=${x2}, formatLength(x2)=${JSON.stringify(reformatted)} (seed ${SEED})`,
         ).toBe(s)
 
-        // (4) Numeric closeness: the parsed value stays within half a display
-        // quantum of the original, plus a tiny epsilon for float fuzz.
+        // The parsed value can differ from the original only by the rounding
+        // the display precision already hides, so the user never observes the
+        // difference.
         expect(
           Math.abs(x2 - x),
           `round-trip drift exceeded half a quantum for ${label} at x=${x}: s=${JSON.stringify(
