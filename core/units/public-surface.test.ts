@@ -12,7 +12,9 @@ describe('the units public surface reached through the core barrel', () => {
     expect(formatLength(2032, lengthFormatOptions(DEFAULT_IMPERIAL_PREFERENCES))).toBe(`6'8"`)
   })
 
-  it('round-trips a value through the barrel formatter and parser', () => {
+  it('exposes parseLength and formatLength as working callables through the barrel', () => {
+    // Deep round-trip coverage lives in core/units/round-trip.test.ts; this case only
+    // confirms that parseLength and formatLength are reachable and working through the barrel.
     expect(parseLength(formatLength(2032, lengthFormatOptions(DEFAULT_IMPERIAL_PREFERENCES)))).toBe(
       2032,
     )
