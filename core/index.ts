@@ -67,6 +67,17 @@ export {
   registerWallCommands,
   setWallThickness,
 } from './commands/handlers/wall-commands'
+export type {
+  SetRoomCustomPolygonParams,
+  SetRoomNameParams,
+} from './commands/handlers/room-commands'
+export {
+  SET_ROOM_CUSTOM_POLYGON,
+  SET_ROOM_NAME,
+  registerRoomCommands,
+  setRoomCustomPolygon,
+  setRoomName,
+} from './commands/handlers/room-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
