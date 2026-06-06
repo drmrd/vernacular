@@ -1,2 +1,5 @@
 #!/usr/bin/env sh
 pnpm exec lint-staged
+
+# Advisory only: prints clean-code and knowledge-update reminders, never blocks.
+node scripts/hooks/commit-reminders.mjs

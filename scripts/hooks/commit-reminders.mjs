@@ -5,6 +5,9 @@
 // it takes repo-relative paths and returns the reminder strings to surface.
 // A commit hook can print these without this module knowing how it does so.
 
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
 const SOURCE_LAYER = /^(core|storage|engine|bridge|editor|app)\//
 const DESIGN_SPEC = /^docs\/specs\//
 
@@ -29,4 +32,31 @@ export function reminderMessages(paths) {
     messages.push(KNOWLEDGE_REMINDER)
   }
   return messages
+}
+
+/**
+ * Print the advisory reminders for the staged paths. Side-effecting shell over
+ * the pure selector; injected dependencies keep it unit-testable.
+ * @param {{ stagedPaths: () => string[], log: (line: string) => void }} deps
+ */
+export function runCommitReminders({ stagedPaths, log }) {
+  for (const message of reminderMessages(stagedPaths())) {
+    log(message)
+  }
+}
+
+// Run only when invoked directly (the pre-commit hook), never when imported by
+// a test. This reminder is advisory: it prints and exits 0, never blocking a
+// commit.
+const invokedPath = process.argv[1]
+const isDirectInvocation =
+  invokedPath !== undefined && fileURLToPath(import.meta.url) === invokedPath
+
+if (isDirectInvocation) {
+  const stagedPaths = () =>
+    execFileSync('git', ['diff', '--cached', '--name-only'], { encoding: 'utf8' })
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '')
+  runCommitReminders({ stagedPaths, log: (line) => console.log(line) })
 }
