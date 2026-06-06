@@ -68,3 +68,49 @@ describe('createSceneGraphDeriver walls', () => {
     expect(second.walls[0]!.end).toEqual({ x: 2, y: 0 })
   })
 })
+
+describe('createSceneGraphDeriver rooms', () => {
+  function rectangleFloor(): Floor {
+    return createFloor('Ground', {
+      id: 'g',
+      walls: [
+        createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'w-south' }),
+        createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }, { id: 'w-east' }),
+        createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }, { id: 'w-north' }),
+        createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }, { id: 'w-west' }),
+      ],
+    })
+  }
+
+  it('reuses room node references for an unchanged floor', () => {
+    const floor = rectangleFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    const second = derive(projectWith([floor]))
+
+    const firstRoom = first.rooms[0]
+    if (firstRoom === undefined) throw new Error('expected a derived room on the first pass')
+    const secondRoom = second.rooms[0]
+    if (secondRoom === undefined) throw new Error('expected a derived room on the second pass')
+
+    expect(secondRoom).toBe(firstRoom)
+  })
+
+  it('rebuilds room nodes when the floor object reference changes', () => {
+    const floor = rectangleFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    const replaced = { ...floor, walls: [...floor.walls] }
+    const third = derive(projectWith([replaced]))
+
+    const firstRoom = first.rooms[0]
+    if (firstRoom === undefined) throw new Error('expected a derived room on the first pass')
+    const thirdRoom = third.rooms[0]
+    if (thirdRoom === undefined)
+      throw new Error('expected a derived room after replacing the floor')
+
+    expect(thirdRoom).not.toBe(firstRoom)
+  })
+})
