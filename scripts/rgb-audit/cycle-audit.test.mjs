@@ -122,4 +122,21 @@ describe('auditCommits ordering', () => {
       },
     ])
   })
+
+  it('consumes the whole red phase per green, so a second green needs its own red', () => {
+    const commits = [
+      commit({ sha: 'red1', type: 'test', files: ['core/w.test.ts'] }),
+      commit({ sha: 'red2', type: 'test', files: ['core/x.test.ts'] }),
+      commit({ sha: 'green1', type: 'feat', files: ['core/w.ts'] }),
+      commit({ sha: 'green2', type: 'feat', files: ['core/x.ts'] }),
+    ]
+
+    expect(auditCommits(commits)).toEqual([
+      {
+        sha: 'green2',
+        rule: 'ordering',
+        message: expect.stringContaining('no preceding'),
+      },
+    ])
+  })
 })
