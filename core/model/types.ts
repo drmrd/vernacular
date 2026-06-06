@@ -69,5 +69,5 @@ export interface Project {
    * `floors` so an undoable command can reassign it whole (the inverse-capture
    * proxy records only the root's own top-level keys). Absent means no overrides.
    */
-  roomOverrides?: Record<string, RoomOverride>
+  roomOverrides?: Record<string, RoomOverride> | undefined
 }
