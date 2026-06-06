@@ -20,7 +20,8 @@ export interface PlanarGraph {
 
 /**
  * Endpoints within this many millimeters of an already-seen vertex are merged
- * into a single junction. See the design specification, section 3.5.
+ * into a single junction. See the design specification, section 3.2 ("Rooms are
+ * derived, not authored"), which computes room geometry from wall topology.
  */
 export const DEFAULT_JUNCTION_TOLERANCE_MM = 1
 
