@@ -1,5 +1,6 @@
 export { migrateProject, type MigrateOptions } from './migrate'
 export {
+  MalformedProjectError,
   MigrationFailedError,
   UnsupportedSchemaVersionError,
   type SchemaMigration,

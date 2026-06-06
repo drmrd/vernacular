@@ -27,6 +27,14 @@ export class MigrationFailedError extends Error {
   }
 }
 
+/** A document is not a recognizable project (missing or non-numeric meta.schemaVersion). */
+export class MalformedProjectError extends Error {
+  constructor(message = 'Project document is missing a numeric meta.schemaVersion') {
+    super(message)
+    this.name = 'MalformedProjectError'
+  }
+}
+
 /** The document is newer than this build can read. */
 export class UnsupportedSchemaVersionError extends Error {
   constructor(
