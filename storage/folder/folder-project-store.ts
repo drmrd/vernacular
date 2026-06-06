@@ -1,10 +1,17 @@
 import type { Project } from '../../core'
 import { migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
-import { ProjectNotFoundError } from '../project-store'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
 const PROJECT_FILE = 'project.json'
+
+/** Thrown by FolderProjectStore.loadProject when no project file exists at the expected path. */
+export class ProjectFileNotFoundError extends Error {
+  constructor(public readonly path: string) {
+    super(`No project file at "${path}"`)
+    this.name = 'ProjectFileNotFoundError'
+  }
+}
 
 export interface FolderProjectStoreOptions {
   /** Defaults to migrateProject; injected in tests for synthetic chains. */
@@ -30,7 +37,7 @@ export class FolderProjectStore {
   async loadProject(): Promise<Project> {
     const bytes = await this.directory.readFile(PROJECT_FILE)
     if (bytes === undefined) {
-      throw new ProjectNotFoundError(PROJECT_FILE)
+      throw new ProjectFileNotFoundError(PROJECT_FILE)
     }
     return this.migrate(parseProjectJson(bytes))
   }
