@@ -66,17 +66,26 @@ function projectOntoLine(cursor: Point, origin: Point, dir: Vector): Point {
   return { x: origin.x + along * dir.x, y: origin.y + along * dir.y }
 }
 
-/** A snap onto the line through `context.origin` along `dir`, accepted within tolerance. */
-function directionalSnap(cursor: Point, context: SnapContext, dir: Vector): Candidate | null {
+/**
+ * Snap onto the line through `context.origin` whose direction `lineDirection`
+ * derives from the nearest wall's direction (identity for a parallel snap, a
+ * quarter turn for a perpendicular one). Accepted only within tolerance.
+ */
+function directionalSnap(
+  cursor: Point,
+  context: SnapContext,
+  lineDirection: (wallDir: Vector) => Vector,
+): Candidate | null {
   const origin = context.origin
-  if (origin === undefined) {
-    return null
-  }
   const reference = nearestWall(cursor, context.walls)
-  if (reference === null) {
+  if (origin === undefined || reference === null) {
     return null
   }
-  const point = projectOntoLine(cursor, origin, dir)
+  const wallDir = wallDirection(reference)
+  if (wallDir === null) {
+    return null
+  }
+  const point = projectOntoLine(cursor, origin, lineDirection(wallDir))
   const distanceMm = distance(cursor, point)
   if (distanceMm > context.toleranceMm) {
     return null
@@ -86,15 +95,7 @@ function directionalSnap(cursor: Point, context: SnapContext, dir: Vector): Cand
 
 /** Snap onto the line through `origin` parallel to the nearest wall's direction. */
 function parallelSnap(cursor: Point, context: SnapContext): Candidate | null {
-  const reference = nearestWall(cursor, context.walls)
-  if (reference === null) {
-    return null
-  }
-  const dir = wallDirection(reference)
-  if (dir === null) {
-    return null
-  }
-  return directionalSnap(cursor, context, dir)
+  return directionalSnap(cursor, context, (wallDir) => wallDir)
 }
 
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
