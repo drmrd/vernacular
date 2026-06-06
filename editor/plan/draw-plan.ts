@@ -1,4 +1,5 @@
 import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
+import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
 import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
@@ -57,6 +58,9 @@ const RULER_TICK_COLOR = '#c2c8d0'
 const RULER_TEXT_COLOR = '#5a6470'
 const RULER_FONT = '10px sans-serif'
 const RULER_LABEL_INSET_PX = 2
+const MARQUEE_FILL_COLOR = 'rgba(26, 127, 212, 0.12)'
+const MARQUEE_STROKE_COLOR = '#1a7fd4'
+const MARQUEE_LINE_WIDTH = 1
 
 export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
   ctx.fillStyle = RULER_BAND_COLOR
@@ -113,6 +117,25 @@ export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: View
     }
     ctx.stroke()
   }
+}
+
+/** Paints the rubber-band marquee at its screen position so it tracks pan and zoom. */
+export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, viewport: Viewport): void {
+  const min = worldToScreen(rect.min, viewport)
+  const max = worldToScreen(rect.max, viewport)
+  const width = max.x - min.x
+  const height = max.y - min.y
+  ctx.fillStyle = MARQUEE_FILL_COLOR
+  ctx.fillRect(min.x, min.y, width, height)
+  ctx.strokeStyle = MARQUEE_STROKE_COLOR
+  ctx.lineWidth = MARQUEE_LINE_WIDTH
+  ctx.beginPath()
+  ctx.moveTo(min.x, min.y)
+  ctx.lineTo(max.x, min.y)
+  ctx.lineTo(max.x, max.y)
+  ctx.lineTo(min.x, max.y)
+  ctx.closePath()
+  ctx.stroke()
 }
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
