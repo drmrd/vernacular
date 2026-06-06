@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { drawGrid, drawMarquee, drawPlan, drawRulers } from './draw-plan'
+import { drawEndpointHandles, drawGrid, drawMarquee, drawPlan, drawRulers } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
@@ -183,6 +183,35 @@ describe('drawPlan grid and rulers', () => {
     expect(recorder.ops).not.toContain('fillText')
     expect(recorder.ops).not.toContain('fillRect')
     expect(recorder.segments).toHaveLength(1)
+  })
+})
+
+describe('drawEndpointHandles', () => {
+  const PAN_OFFSET = { x: 17, y: 23 }
+
+  it('paints one handle at each endpoint projected to screen space', () => {
+    const recorder = recordingContext()
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: PAN_OFFSET }
+    const editedWall: WallSceneNode = {
+      id: 'wall:edited',
+      kind: 'wall',
+      floorId: 'g',
+      start: { x: 2000, y: 3000 },
+      end: { x: 6000, y: 1000 },
+      thickness: 114,
+    }
+
+    drawEndpointHandles(recorder.ctx, editedWall, viewport)
+
+    const start = worldToScreen(editedWall.start, viewport)
+    const end = worldToScreen(editedWall.end, viewport)
+    expect(recorder.arcs).toHaveLength(2)
+    expect(recorder.arcs.map((handle) => ({ x: handle.x, y: handle.y }))).toEqual(
+      expect.arrayContaining([
+        { x: start.x, y: start.y },
+        { x: end.x, y: end.y },
+      ]),
+    )
   })
 })
 
