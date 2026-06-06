@@ -31,6 +31,7 @@ export interface DrawPlanOptions {
   rooms?: readonly RoomSceneNode[]
 }
 
+// Subtle floor tint that must stay readable beneath the dark wall strokes.
 const ROOM_FILL_COLOR = '#eef2f6'
 const WALL_COLOR = '#222222'
 const SELECTED_WALL_COLOR = '#1a7fd4'
@@ -43,6 +44,7 @@ const LINE_CAP = 'round' as const
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
+  // Fill rooms first so wall strokes render on top of them.
   for (const room of options.rooms ?? []) {
     drawRoom(ctx, room, options.viewport)
   }
