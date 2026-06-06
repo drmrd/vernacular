@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createAutosave } from './create-autosave'
+import { createAutosave, commitProject } from './create-autosave'
 import { createEditorSession } from '../session/editor-session'
 import { InMemoryProjectStore } from '../../storage'
 import { addFloor, createEmptyProject, type Project } from '../../core'
@@ -85,5 +85,63 @@ describe('createAutosave', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(statuses).toEqual([])
+  })
+
+  it('writes a snapshot instead of saving when snapshots are provided', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const saveSpy = vi.spyOn(store, 'save')
+    const writeSnapshot = vi.fn().mockResolvedValue(undefined)
+    const statuses: string[] = []
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
+      delayMs: 500,
+      snapshots: { writeSnapshot },
+      onStatusChange: (status) => statuses.push(status),
+    })
+
+    session.dispatch(addFloor('Ground'))
+    expect(statuses).toEqual(['pending'])
+
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(writeSnapshot).toHaveBeenCalledTimes(1)
+    expect(writeSnapshot).toHaveBeenCalledWith(session.getProject())
+    expect(saveSpy).not.toHaveBeenCalled()
+    expect(statuses).toEqual(['pending', 'saved'])
+
+    autosave.dispose()
+  })
+})
+
+describe('commitProject', () => {
+  it('saves the canonical project and then prunes snapshots in order', async () => {
+    const project = emptyProject()
+    const store = new InMemoryProjectStore()
+    const order: string[] = []
+    const saveSpy = vi.spyOn(store, 'save').mockImplementation(async () => {
+      order.push('save')
+    })
+    const prune = vi.fn().mockImplementation(async () => {
+      order.push('prune')
+    })
+
+    await commitProject(store, 'current', project, { prune })
+
+    expect(saveSpy).toHaveBeenCalledWith('current', project)
+    expect(prune).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(['save', 'prune'])
+  })
+
+  it('saves without pruning when no snapshots are provided', async () => {
+    const project = emptyProject()
+    const store = new InMemoryProjectStore()
+    const saveSpy = vi.spyOn(store, 'save')
+
+    await expect(commitProject(store, 'current', project)).resolves.toBeUndefined()
+
+    expect(saveSpy).toHaveBeenCalledWith('current', project)
   })
 })
