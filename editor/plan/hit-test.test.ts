@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { hitTestWalls, roomBounds, wallBounds, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import type { RoomSceneNode, WallSceneNode } from '../../core'
+import { hitTest, hitTestWalls, roomBounds, wallBounds, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
+import type { RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
 
 function wall(
   id: string,
@@ -69,5 +69,20 @@ describe('roomBounds', () => {
     ])
 
     expect(roomBounds(lShape)).toEqual({ min: { x: 0, y: 0 }, max: { x: 4000, y: 5000 } })
+  })
+})
+
+function scene(walls: WallSceneNode[], rooms: RoomSceneNode[] = []): SceneGraph {
+  return { nodes: [], walls, rooms }
+}
+
+describe('hitTest', () => {
+  it('returns the nearest wall within tolerance', () => {
+    const graph = scene([
+      wall('wall:far', { x: 0, y: 100 }, { x: 1000, y: 100 }),
+      wall('wall:near', { x: 0, y: 0 }, { x: 1000, y: 0 }),
+    ])
+
+    expect(hitTest(graph, { x: 500, y: 10 }, DEFAULT_HIT_TOLERANCE_MM)).toBe('wall:near')
   })
 })
