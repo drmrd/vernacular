@@ -42,6 +42,7 @@ export interface DrawPlanOptions {
   rulers?: boolean
   snap?: SnapResult
   marquee?: Bounds
+  endpointHandles?: WallSceneNode
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -166,6 +167,9 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
   }
+  if (options.endpointHandles) {
+    drawEndpointHandles(ctx, options.endpointHandles, options.viewport)
+  }
   if (options.preview) {
     drawPreview(ctx, options.preview, options.viewport)
   }
@@ -260,7 +264,6 @@ function drawEndpointHandle(ctx: PlanDrawingContext, center: Point): void {
   ctx.beginPath()
   ctx.arc(center.x, center.y, ENDPOINT_HANDLE_RADIUS_PX, 0, FULL_CIRCLE)
   ctx.fill()
-  ctx.stroke()
 }
 
 /** Paint a ring marker at the snapped point so the user sees where the next click lands. */
