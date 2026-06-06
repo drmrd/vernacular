@@ -91,3 +91,10 @@ export {
   roundToDecimalPlaces,
   roundToNearestFraction,
 } from './units'
+export type { MigrateOptions, ProjectShape, RegistryMigration, SchemaMigration } from './migrations'
+export {
+  MalformedProjectError,
+  MigrationFailedError,
+  UnsupportedSchemaVersionError,
+  migrateProject,
+} from './migrations'

@@ -42,6 +42,16 @@ function readRegistryVersions(working: ProjectShape): Record<string, number> | u
   return registryVersions as Record<string, number>
 }
 
+function findRegistryMigration(
+  migrations: readonly RegistryMigration[],
+  registry: string,
+  version: number,
+): RegistryMigration | undefined {
+  return migrations.find(
+    (candidate) => candidate.registry === registry && candidate.from === version,
+  )
+}
+
 function applyRegistryMigrations(
   project: ProjectShape,
   migrations: readonly RegistryMigration[],
@@ -54,9 +64,7 @@ function applyRegistryMigrations(
   let working = project
   for (const registry of Object.keys(registryVersions)) {
     let version = registryVersions[registry] ?? 0
-    let migration = migrations.find(
-      (candidate) => candidate.registry === registry && candidate.from === version,
-    )
+    let migration = findRegistryMigration(migrations, registry, version)
     while (migration !== undefined) {
       working = migration.migrate(working)
       const meta = working.meta as Record<string, unknown>
@@ -66,9 +74,7 @@ function applyRegistryMigrations(
         meta: { ...meta, registryVersions: { ...versions, [registry]: version + 1 } },
       }
       version += 1
-      migration = migrations.find(
-        (candidate) => candidate.registry === registry && candidate.from === version,
-      )
+      migration = findRegistryMigration(migrations, registry, version)
     }
   }
   return working

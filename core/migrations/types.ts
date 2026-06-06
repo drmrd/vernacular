@@ -18,6 +18,11 @@ export interface SchemaMigration {
 export interface RegistryMigration {
   readonly registry: string
   readonly from: number
+  /**
+   * Transform the document's data only. The orchestrator advances this
+   * registry's entry in `meta.registryVersions` after each step, so a
+   * migration must not set its own registry's version itself.
+   */
   migrate(project: ProjectShape): ProjectShape
 }
 
