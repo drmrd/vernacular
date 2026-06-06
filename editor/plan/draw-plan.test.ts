@@ -209,6 +209,46 @@ describe('drawPlan', () => {
     expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
   })
 
+  it('strokes a highlight around a selected room and leaves an unselected room fill-only', () => {
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+    const room: RoomSceneNode = {
+      id: 'room:r',
+      kind: 'room',
+      floorId: 'f',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 4000, y: 0 },
+        { x: 4000, y: 3000 },
+        { x: 0, y: 3000 },
+      ],
+      area: 12_000_000,
+    }
+
+    const unselected = recordingContext()
+    drawPlan(unselected.ctx, {
+      walls: [],
+      rooms: [room],
+      viewport,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+    })
+
+    const selected = recordingContext()
+    drawPlan(selected.ctx, {
+      walls: [],
+      rooms: [room],
+      viewport,
+      width: 800,
+      height: 600,
+      selectedIds: new Set(['room:r']),
+    })
+
+    expect(unselected.ops).not.toContain('stroke')
+    expect(selected.ops).toContain('stroke')
+    expect(selected.segments.length).toBeGreaterThan(0)
+  })
+
   it('paints the marquee when the option is set and omits it otherwise', () => {
     const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
     const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
