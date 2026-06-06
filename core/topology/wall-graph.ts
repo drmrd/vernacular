@@ -37,6 +37,8 @@ export function buildWallGraph(
   const vertices: Point[] = []
   const edges: GraphEdge[] = []
 
+  // Linear scan per endpoint (O(n^2) over all walls) is acceptable for the
+  // expected wall counts; switch to a spatial index if profiling flags it.
   function vertexIndexFor(point: Point): number {
     for (const [index, vertex] of vertices.entries()) {
       if (distance(vertex, point) <= tolerance) return index
