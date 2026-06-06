@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { drawGrid, drawMarquee, drawPlan, drawRulers } from './draw-plan'
+import { drawEndpointHandles, drawGrid, drawMarquee, drawPlan, drawRulers } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
@@ -71,6 +71,42 @@ describe('drawPlan', () => {
     expect(recorder.arcs).toHaveLength(1)
     expect(recorder.arcs[0]?.x).toBe(previewStart.x)
     expect(recorder.arcs[0]?.y).toBe(previewStart.y)
+  })
+
+  it('paints the selected wall endpoint handles when the option is set and omits them otherwise', () => {
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+    const editedWall: WallSceneNode = {
+      id: 'wall:edited',
+      kind: 'wall',
+      floorId: 'g',
+      start: { x: 2000, y: 3000 },
+      end: { x: 6000, y: 1000 },
+      thickness: 114,
+    }
+    const base = { walls: [editedWall], viewport, width: 800, height: 600 }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
+
+    const withHandles = recordingContext()
+    drawPlan(withHandles.ctx, {
+      ...base,
+      selectedIds: new Set<string>(),
+      endpointHandles: editedWall,
+    })
+
+    const start = worldToScreen(editedWall.start, viewport)
+    const end = worldToScreen(editedWall.end, viewport)
+
+    expect(without.arcs).toHaveLength(0)
+    expect(withHandles.arcs).toHaveLength(2)
+    expect(withHandles.arcs.map((handle) => ({ x: handle.x, y: handle.y }))).toEqual(
+      expect.arrayContaining([
+        { x: start.x, y: start.y },
+        { x: end.x, y: end.y },
+      ]),
+    )
+    expect(withHandles.ops.lastIndexOf('stroke')).toBeLessThan(withHandles.ops.lastIndexOf('arc'))
   })
 
   it('fills each room polygon beneath the wall strokes', () => {
@@ -183,6 +219,35 @@ describe('drawPlan grid and rulers', () => {
     expect(recorder.ops).not.toContain('fillText')
     expect(recorder.ops).not.toContain('fillRect')
     expect(recorder.segments).toHaveLength(1)
+  })
+})
+
+describe('drawEndpointHandles', () => {
+  const PAN_OFFSET = { x: 17, y: 23 }
+
+  it('paints one handle at each endpoint projected to screen space', () => {
+    const recorder = recordingContext()
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: PAN_OFFSET }
+    const editedWall: WallSceneNode = {
+      id: 'wall:edited',
+      kind: 'wall',
+      floorId: 'g',
+      start: { x: 2000, y: 3000 },
+      end: { x: 6000, y: 1000 },
+      thickness: 114,
+    }
+
+    drawEndpointHandles(recorder.ctx, editedWall, viewport)
+
+    const start = worldToScreen(editedWall.start, viewport)
+    const end = worldToScreen(editedWall.end, viewport)
+    expect(recorder.arcs).toHaveLength(2)
+    expect(recorder.arcs.map((handle) => ({ x: handle.x, y: handle.y }))).toEqual(
+      expect.arrayContaining([
+        { x: start.x, y: start.y },
+        { x: end.x, y: end.y },
+      ]),
+    )
   })
 })
 

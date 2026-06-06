@@ -20,6 +20,6 @@ test.describe('Wall-drawing proof of life', () => {
 
     await page.getByRole('button', { name: 'Select' }).click()
     await page.getByLabel('Floor plan').click({ position: { x: 320, y: 200 } })
-    await expect(page.getByText('Wall selected')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: /thickness/i })).toBeVisible()
   })
 })

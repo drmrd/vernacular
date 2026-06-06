@@ -51,6 +51,8 @@ export default defineConfig({
         'bridge/react/use-autosave.ts',
         'editor/plan/plan-view.tsx',
         'editor/plan/use-viewport-controls.ts',
+        'editor/plan/use-wall-editing.ts',
+        'editor/plan/selected-wall.ts',
         'storage/indexeddb/indexeddb-project-store.ts',
       ],
     },

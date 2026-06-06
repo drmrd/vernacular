@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), and 5 (selection and the hit-test index) are done. Not yet usable as a floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), and 6 (wall editing: endpoint move and thickness) are done. Not yet usable as a floor planner.
 
 ## Foundation work
 
@@ -73,7 +73,7 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 | 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
 | 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
 | 5. Selection (click, marquee, multi-select) and the hit-test index                  | done    |
-| 6. Wall editing (endpoint move, thickness, construction type)                       | pending |
+| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done    |
 | 7. Openings (doors and windows: placement and editing)                              | pending |
 | 8. Room naming and labeling, custom-polygon override                                | pending |
 | 9. Dimensions (live and persisted) and thickness-aware area                         | pending |
@@ -111,6 +111,15 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 - **Only walls and rooms are selectable.** Openings and furniture do not exist yet; they become selectable when their slices land (openings in slice 7), at which point they register their own bounds with the index.
 - **Selection persistence and 2D-to-3D sync are later slices.** The store stays in-memory; autosave-snapshot persistence arrives with the project-stores slice (11) and the 3D selection sync with the 3D preview phase (design specification section 6.9).
 - **The index is correctness-first.** It answers the contract's point and rectangle queries correctly; quadtree depth and rebalance tuning, and dirty-region incremental rebuilds (rebuilding only the changed region rather than the whole index per edit), are deferred until the entity count makes them measurable.
+
+**Slice 6 (done) scope and deferrals.** Slice 6 makes an existing wall editable: dragging either endpoint of the selected wall moves it to a new, snapped position, and a unit-aware inspector input changes the selected wall's thickness. Both edits flow through `dispatch(command)` as two new undoable commands (`moveWallEndpoint` and `setWallThickness`) that reassign `state.floors` immutably so the dispatcher captures the inverse for undo (ADR-0005), and the room derivation re-runs from the wall graph after every edit. The endpoint drag reuses the slice-4 snapping and the slice-5 selection; `pickWallEndpoint` (the grab rule) and `drawEndpointHandles` (handles painted through the narrow plan-drawing seam) are pure, unit-tested modules, while the Canvas-and-pointer drag wiring and the inline thickness editor's shell placement are thin glue validated by the wall-drawing end-to-end spec. Deliberately deferred, by design:
+
+- **Construction type.** This slice ships the two wall-editing operations fully specifiable against today's model (endpoint move and thickness). Construction type is deferred to the old-house architectural vocabulary milestone, which owns the construction-type registry and era-aware catalogs; `Wall` gains no `constructionType` field here, and editing it lands with that vocabulary work.
+- **Perpendicular-drag thickness gizmo.** The design specification's perpendicular-drag thickness gizmo is deferred in favor of the inline unit-aware input, mirroring the slice-3 decision to paint rulers on the Canvas and defer the DOM-overlay gizmos.
+- **Junction-cohesive dragging.** Moving a shared junction so every incident wall moves together is deferred; this slice moves only the selected wall's endpoint. The room derivation re-runs from the wall graph regardless, so a moved endpoint that lands on (or off) a junction reshapes the derived rooms either way.
+- **Multi-wall batch editing.** Thickness editing and endpoint dragging act on a single selected wall; applying one thickness or one nudge across a multi-selection is later work, consistent with the slice-5 deferral of selection batch operations.
+- **Default unit preferences for the thickness input.** The inline editor uses the default preferences for the project's `units` (metric or imperial) until a project-level unit-preferences store lands, mirroring the slice-3 deferral of unit-aware ruler labels.
+- **Wall-drawing end-to-end spec preserved.** All editing wiring is gated on the `select` tool and the default viewport keeps the original scale and a zero pan offset, so the `draw-wall` pointer-to-world mapping is unchanged; the end-to-end spec now asserts the inspector's thickness input appears for the selected wall.
 - **Keyboard affordances beyond click and marquee are deferred.** Select-all and arrow-key nudging are later work.
 
 ## Beyond 1.0
