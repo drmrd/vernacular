@@ -128,7 +128,7 @@ describe('commitProject', () => {
       order.push('prune')
     })
 
-    await commitProject(store, 'current', project, { prune })
+    await commitProject({ store, projectId: 'current', project, snapshots: { prune } })
 
     expect(saveSpy).toHaveBeenCalledWith('current', project)
     expect(prune).toHaveBeenCalledTimes(1)
@@ -140,7 +140,7 @@ describe('commitProject', () => {
     const store = new InMemoryProjectStore()
     const saveSpy = vi.spyOn(store, 'save')
 
-    await expect(commitProject(store, 'current', project)).resolves.toBeUndefined()
+    await expect(commitProject({ store, projectId: 'current', project })).resolves.toBeUndefined()
 
     expect(saveSpy).toHaveBeenCalledWith('current', project)
   })
