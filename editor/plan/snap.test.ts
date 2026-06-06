@@ -47,3 +47,22 @@ describe('snapPoint endpoint snapping', () => {
     })
   })
 })
+
+describe('snapPoint midpoint snapping', () => {
+  it('snaps a cursor near a wall midpoint, away from the endpoints, to the midpoint', () => {
+    // Wall from (1000, 1000) to (5000, 1000) has midpoint (3000, 1000).
+    const wall = wallNode()
+    // Grid spacing that does not coincide with the midpoint (3000, 1000).
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 700,
+      toleranceMm: 50,
+    }
+
+    expect(snapPoint({ x: 3004, y: 997 }, context)).toEqual({
+      point: { x: 3000, y: 1000 },
+      kind: 'midpoint',
+      referenceId: wall.id,
+    })
+  })
+})
