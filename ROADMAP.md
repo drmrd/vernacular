@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). Next is the MVP path, starting with the two-dimensional plan editor (design specification section 10, Phase 1). Not yet usable as a floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slice 1 (wall topology and room derivation) is done. Not yet usable as a floor planner.
 
 ## Foundation work
 
@@ -32,7 +32,7 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 | Focus                                                   | Status      |
 | ------------------------------------------------------- | ----------- |
 | Project stores, persistence, and migrations             | in progress |
-| Two-dimensional plan editor                             | pending     |
+| Two-dimensional plan editor                             | in progress |
 | Three-dimensional preview with color-temperature slider | pending     |
 | Furniture import and curated starter library (alpha)    | pending     |
 | Old-house architectural vocabulary                      | pending     |
@@ -61,6 +61,33 @@ parser and formatter. Deferred (documented in the slice plan): area and volume u
 and bearing units, localized unit symbols and locale-aware number formatting
 (internationalization), reconciling the design specification's "SI meters" wording with the
 model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
+
+### Phase 1: two-dimensional plan editor
+
+The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as roughly twelve independent slices, each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence.
+
+| Slice                                                                               | Status  |
+| ----------------------------------------------------------------------------------- | ------- |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | pending |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | pending |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending |
+| 6. Wall editing (endpoint move, thickness, construction type)                       | pending |
+| 7. Openings (doors and windows: placement and editing)                              | pending |
+| 8. Room naming and labeling, custom-polygon override                                | pending |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | pending |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | pending |
+| 12. Image underlay with calibration                                                 | pending |
+
+**Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
+
+- **Centerline polygons.** Room polygons and area use wall centerlines; thickness-aware interior inset (clear-area polygons) lands with slice 9 (dimensions and area).
+- **No formatted area labels.** The numeric room area is carried for later consumers; human-readable labels (for example `12.5 m²`) need the unit formatters from slice 2 and the labeling work in slice 8.
+- **No room selection or hit-testing.** Selecting a room and a room spatial index belong with slice 5.
+- **No custom-polygon override or room naming.** Those are slice 8.
+- **Best-effort only, documented:** collinear overlapping walls, polygons with holes (courtyard or island), and self-touching topologies. Zero-length walls are ignored.
 
 ## Beyond 1.0
 
