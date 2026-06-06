@@ -163,3 +163,45 @@ describe('snapPoint perpendicular snapping', () => {
     expect(result?.kind).toBe('perpendicular')
   })
 })
+
+describe('snapPoint priority ordering', () => {
+  // A short wall so a single cursor can sit within tolerance of an endpoint, the
+  // midpoint, and a grid intersection at once.
+  const shortWall = wallNode({ start: { x: 1000, y: 1000 }, end: { x: 1060, y: 1000 } })
+
+  it('prefers an in-range endpoint over a nearer midpoint and the grid', () => {
+    const context: SnapContext = {
+      walls: [shortWall],
+      gridSpacingMm: 100,
+      toleranceMm: 50,
+    }
+
+    // 1 mm from the midpoint (1030, 1000), 29 mm from the end endpoint, and the
+    // grid node (1000, 1000) is also in range: the endpoint must still win.
+    expect(snapPoint({ x: 1031, y: 1000 }, context)?.kind).toBe('endpoint')
+  })
+
+  it('prefers an in-range midpoint over the grid when no endpoint is in range', () => {
+    const context: SnapContext = {
+      walls: [shortWall],
+      gridSpacingMm: 100,
+      toleranceMm: 20,
+    }
+
+    // Only the midpoint (2 mm away) and the grid are within the tight tolerance.
+    expect(snapPoint({ x: 1032, y: 1000 }, context)?.kind).toBe('midpoint')
+  })
+
+  it('prefers an in-range endpoint over an origin-based perpendicular line', () => {
+    const context: SnapContext = {
+      walls: [shortWall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 1000, y: 1000 },
+    }
+
+    // The cursor is near the start endpoint (1000, 1000) and near the vertical
+    // perpendicular line x = 1000 through the origin; the endpoint outranks it.
+    expect(snapPoint({ x: 1002, y: 1005 }, context)?.kind).toBe('endpoint')
+  })
+})
