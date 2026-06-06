@@ -21,6 +21,19 @@ export interface Room {
  */
 const MIN_ROOM_AREA = 1
 
+/** Namespace prefix that distinguishes a room id from its stable key. */
+const ROOM_ID_PREFIX = 'room:'
+
+/**
+ * The stable key for a room: the sorted bounding-wall-id string that `Room.id`
+ * encodes, without the `room:` prefix. `room.id === ROOM_ID_PREFIX + roomKey(room)`
+ * for every derived room, and the key depends only on the room's bounding wall ids
+ * (sorted, unique), so re-derivation and different insertion order yield the same key.
+ */
+export function roomKey(room: Pick<Room, 'wallIds'>): string {
+  return room.wallIds.join('-')
+}
+
 /** A directed half of an undirected graph edge, carrying its source wall's id. */
 interface HalfEdge {
   /** Index into the graph's vertices of the half-edge's tail. */
@@ -47,7 +60,7 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
     const area = polygonArea(polygon)
     if (area <= MIN_ROOM_AREA) continue
     const wallIds = sortedUniqueWallIds(face)
-    rooms.push({ id: `room:${wallIds.join('-')}`, polygon, area, wallIds })
+    rooms.push({ id: ROOM_ID_PREFIX + roomKey({ wallIds }), polygon, area, wallIds })
   }
   return rooms
 }
