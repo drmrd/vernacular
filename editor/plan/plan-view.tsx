@@ -11,6 +11,12 @@ import {
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import { hitTestWalls, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
+import {
+  eventToCanvas,
+  useFitToContent,
+  useViewportControls,
+  type ViewportControls,
+} from './use-viewport-controls'
 import { screenToWorld, DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
 import {
   advanceWallTool,
@@ -21,7 +27,7 @@ import {
 
 const PLAN_WIDTH = 800
 const PLAN_HEIGHT = 600
-const VIEWPORT: Viewport = { scale: DEFAULT_PLAN_SCALE }
+const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 
 interface PointerContext {
   walls: DrawPlanOptions['walls']
@@ -31,9 +37,8 @@ interface PointerContext {
   toolState: WallToolState
 }
 
-function eventToWorld(event: PointerEvent<HTMLCanvasElement>): Point {
-  const rect = event.currentTarget.getBoundingClientRect()
-  return screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, VIEWPORT)
+function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
+  return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
 }
 
 /** Applies a click and returns the next wall-tool state. */
@@ -63,6 +68,7 @@ interface PlanInteractionDeps {
   walls: DrawPlanOptions['walls']
   selection: SelectionStore
   tool: ToolId
+  viewport: Viewport
 }
 
 interface PlanInteraction {
@@ -78,6 +84,7 @@ function usePlanInteraction({
   walls,
   selection,
   tool,
+  viewport,
 }: PlanInteractionDeps): PlanInteraction {
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
@@ -85,9 +92,9 @@ function usePlanInteraction({
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       const context = { walls, session, selection, tool, toolState }
-      setToolState(applyPointer(eventToWorld(event), context))
+      setToolState(applyPointer(eventToWorld(event, viewport), context))
     },
-    [walls, selection, session, tool, toolState],
+    [walls, selection, session, tool, toolState, viewport],
   )
 
   // Track the cursor only while the wall tool is active; this drives the live
@@ -95,10 +102,10 @@ function usePlanInteraction({
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (tool === 'draw-wall') {
-        setPointer(eventToWorld(event))
+        setPointer(eventToWorld(event, viewport))
       }
     },
-    [tool],
+    [tool, viewport],
   )
 
   const onPointerLeave = useCallback(() => setPointer(null), [])
@@ -109,6 +116,22 @@ function usePlanInteraction({
   return { preview, onPointerDown, onPointerMove, onPointerLeave }
 }
 
+/** A pan gesture takes priority; otherwise the active tool handles the pointer. */
+function composePointerHandlers(controls: ViewportControls, interaction: PlanInteraction) {
+  return {
+    onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
+      if (!controls.onPanPointerDown(event)) {
+        interaction.onPointerDown(event)
+      }
+    },
+    onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
+      if (!controls.onPanPointerMove(event)) {
+        interaction.onPointerMove(event)
+      }
+    },
+  }
+}
+
 interface PlanScene {
   walls: DrawPlanOptions['walls']
   // The scene graph always supplies rooms, so this is non-optional here even
@@ -116,9 +139,10 @@ interface PlanScene {
   rooms: NonNullable<DrawPlanOptions['rooms']>
   selectedIds: ReadonlySet<string>
   preview: PreviewSegment | undefined
+  viewport: Viewport
 }
 
-/** Redraws the canvas whenever the walls, selection, or in-progress preview change. */
+/** Redraws the canvas whenever the walls, selection, viewport, or preview change. */
 function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: PlanScene): void {
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
@@ -128,20 +152,30 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     drawPlan(ctx, {
       walls: scene.walls,
       rooms: scene.rooms,
-      viewport: VIEWPORT,
+      viewport: scene.viewport,
       width: PLAN_WIDTH,
       height: PLAN_HEIGHT,
       selectedIds: scene.selectedIds,
+      grid: true,
+      rulers: true,
       ...(scene.preview ? { preview: scene.preview } : {}),
     })
-  }, [canvasRef, scene.walls, scene.rooms, scene.selectedIds, scene.preview])
+  }, [canvasRef, scene.walls, scene.rooms, scene.selectedIds, scene.preview, scene.viewport])
+}
+
+function planCursor(tool: ToolId, panning: boolean): string {
+  if (panning) {
+    return 'grabbing'
+  }
+  return tool === 'draw-wall' ? 'crosshair' : 'default'
 }
 
 /**
  * The 2D plan editing surface: the Canvas-and-pointer glue binding the tested pure
- * pieces (viewport, wall tool, hit testing, drawing) to React, the session, the
- * selection store, and the active tool. It is coverage-excluded and validated by
- * the wall-drawing end-to-end spec, since jsdom has no 2D Canvas.
+ * pieces (viewport projection, pan/zoom, grid, rulers, wall tool, hit testing,
+ * drawing) to React, the session, the selection store, and the active tool. It is
+ * coverage-excluded and validated by the wall-drawing end-to-end spec, since jsdom
+ * has no 2D Canvas.
  */
 export function PlanView() {
   const session = useEditorSession()
@@ -150,14 +184,19 @@ export function PlanView() {
   const selectedIds = useSelectionIds()
   const { tool } = useActiveTool()
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
 
-  const { preview, onPointerDown, onPointerMove, onPointerLeave } = usePlanInteraction({
-    session,
+  const interaction = usePlanInteraction({ session, walls: graph.walls, selection, tool, viewport })
+  const controls = useViewportControls(canvasRef, setViewport)
+  useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
+  usePlanRedraw(canvasRef, {
     walls: graph.walls,
-    selection,
-    tool,
+    rooms: graph.rooms,
+    selectedIds,
+    preview: interaction.preview,
+    viewport,
   })
-  usePlanRedraw(canvasRef, { walls: graph.walls, rooms: graph.rooms, selectedIds, preview })
+  const pointerHandlers = composePointerHandlers(controls, interaction)
 
   return (
     <canvas
@@ -166,10 +205,11 @@ export function PlanView() {
       height={PLAN_HEIGHT}
       aria-label="Floor plan"
       className="plan-view"
-      style={{ touchAction: 'none', cursor: tool === 'draw-wall' ? 'crosshair' : 'default' }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerLeave={onPointerLeave}
+      style={{ touchAction: 'none', cursor: planCursor(tool, controls.panning) }}
+      onPointerDown={pointerHandlers.onPointerDown}
+      onPointerMove={pointerHandlers.onPointerMove}
+      onPointerUp={controls.onPanPointerUp}
+      onPointerLeave={interaction.onPointerLeave}
     />
   )
 }
