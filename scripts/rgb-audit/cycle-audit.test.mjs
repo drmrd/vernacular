@@ -209,3 +209,22 @@ describe('auditCommits blue presence', () => {
     expect(violations.some((v) => v.rule === 'blue')).toBe(false)
   })
 })
+
+describe('auditCommits exemptions', () => {
+  it('ignores an infrastructure-trailered feat commit', () => {
+    const commits = [commit({ sha: 'infra1', type: 'feat', files: ['package.json'], infra: true })]
+
+    expect(auditCommits(commits)).toEqual([])
+  })
+
+  it('ignores docs, chore, ci, and e2e-scoped test commits entirely', () => {
+    const commits = [
+      commit({ sha: 'docs1', type: 'docs', files: ['README.md'] }),
+      commit({ sha: 'chore1', type: 'chore', files: ['package.json'] }),
+      commit({ sha: 'ci1', type: 'ci', files: ['.github/workflows/ci.yml'] }),
+      commit({ sha: 'e2e1', type: 'test', scope: 'e2e', files: ['e2e/x.spec.ts'] }),
+    ]
+
+    expect(auditCommits(commits)).toEqual([])
+  })
+})
