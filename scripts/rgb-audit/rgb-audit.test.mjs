@@ -38,7 +38,7 @@ describe('runRgbAudit', () => {
 
     expect(code).toBe(0)
     expect(runGit).toHaveBeenCalledTimes(1)
-    expect(joinedLog(log)).toContain('clean')
+    expect(joinedLog(log)).toMatch(/clean \(main\.\.HEAD\)/)
   })
 
   it('reports the ordering rule and resolves exit code 1 for a lone green commit', async () => {
