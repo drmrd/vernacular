@@ -14,6 +14,20 @@ function wallNode(overrides: Partial<WallSceneNode> = {}): WallSceneNode {
   }
 }
 
+/**
+ * A context for the directional snaps: a far-off horizontal reference wall (so no
+ * endpoint, midpoint, or grid is in range), grid disabled, and an origin at the
+ * world origin. The parallel line through the origin is then y = 0 and the
+ * perpendicular line is x = 0.
+ */
+function directionalContext(): { wall: WallSceneNode; context: SnapContext } {
+  const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
+  return {
+    wall,
+    context: { walls: [wall], gridSpacingMm: 0, toleranceMm: 50, origin: { x: 0, y: 0 } },
+  }
+}
+
 describe('snapPoint endpoint snapping', () => {
   it('snaps a cursor near a wall endpoint to that endpoint', () => {
     const wall = wallNode()
@@ -96,16 +110,7 @@ describe('snapPoint grid snapping', () => {
 
 describe('snapPoint parallel snapping', () => {
   it('projects the cursor onto the line through origin parallel to a reference wall', () => {
-    // Horizontal reference wall placed far from the cursor so neither endpoint,
-    // midpoint, nor (disabled) grid is in range. The parallel line through the
-    // origin runs horizontally (y = 0).
-    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
-    const context: SnapContext = {
-      walls: [wall],
-      gridSpacingMm: 0,
-      toleranceMm: 50,
-      origin: { x: 0, y: 0 },
-    }
+    const { wall, context } = directionalContext()
 
     // Cursor sits 8 mm above the parallel line y = 0, within tolerance.
     const result = snapPoint({ x: 2000, y: 8 }, context)
@@ -115,13 +120,7 @@ describe('snapPoint parallel snapping', () => {
   })
 
   it('does not produce a parallel snap when the cursor is far from the parallel line', () => {
-    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
-    const context: SnapContext = {
-      walls: [wall],
-      gridSpacingMm: 0,
-      toleranceMm: 50,
-      origin: { x: 0, y: 0 },
-    }
+    const { context } = directionalContext()
 
     // Cursor sits 800 mm off the parallel line; nothing else is in range either.
     expect(snapPoint({ x: 2000, y: 800 }, context)).toBeNull()
@@ -130,16 +129,9 @@ describe('snapPoint parallel snapping', () => {
 
 describe('snapPoint perpendicular snapping', () => {
   it('projects the cursor onto the line through origin perpendicular to a reference wall', () => {
-    // Horizontal reference wall, so the perpendicular line through the origin is
-    // vertical (x = 0). The wall is far away so no endpoint, midpoint, or grid
-    // (disabled) is in range; the cursor is far from the parallel line y = 0.
-    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
-    const context: SnapContext = {
-      walls: [wall],
-      gridSpacingMm: 0,
-      toleranceMm: 50,
-      origin: { x: 0, y: 0 },
-    }
+    // The reference wall is horizontal, so the perpendicular line through the
+    // origin is vertical (x = 0) and the cursor is far from the parallel line.
+    const { wall, context } = directionalContext()
 
     // Cursor sits 8 mm right of the vertical line x = 0 and 2000 mm down it.
     const result = snapPoint({ x: 8, y: 2000 }, context)
@@ -151,13 +143,7 @@ describe('snapPoint perpendicular snapping', () => {
   it('prefers a perpendicular snap over a parallel one when the cursor is near both lines', () => {
     // Near the origin, the cursor is close to both the vertical perpendicular
     // line (x = 0) and the horizontal parallel line (y = 0).
-    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
-    const context: SnapContext = {
-      walls: [wall],
-      gridSpacingMm: 0,
-      toleranceMm: 50,
-      origin: { x: 0, y: 0 },
-    }
+    const { context } = directionalContext()
 
     const result = snapPoint({ x: 6, y: 6 }, context)
     expect(result?.kind).toBe('perpendicular')
