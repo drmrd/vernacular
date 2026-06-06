@@ -2,20 +2,36 @@ import type { Point } from '../../core'
 
 /** Pixels per millimeter. Chosen so a typical room fits the fixed proof-of-life Canvas. */
 export const DEFAULT_PLAN_SCALE = 0.08
-
-export interface Viewport {
-  scale: number
-}
+/** Far zoom-out floor: roughly 1 m spans 2 px. */
+export const MIN_PLAN_SCALE = 0.002
+/** Close zoom-in ceiling: 1 mm spans 4 px. */
+export const MAX_PLAN_SCALE = 4
 
 export interface ScreenPoint {
   x: number
   y: number
 }
 
+export interface ViewportSize {
+  width: number
+  height: number
+}
+
+/** Pan is a screen-pixel translation of the world origin. Absent offset means the origin (no pan). */
+export interface Viewport {
+  scale: number
+  offset?: ScreenPoint
+}
+
+const ORIGIN: ScreenPoint = { x: 0, y: 0 }
+const offsetOf = (viewport: Viewport): ScreenPoint => viewport.offset ?? ORIGIN
+
 export function worldToScreen(point: Point, viewport: Viewport): ScreenPoint {
-  return { x: point.x * viewport.scale, y: point.y * viewport.scale }
+  const offset = offsetOf(viewport)
+  return { x: point.x * viewport.scale + offset.x, y: point.y * viewport.scale + offset.y }
 }
 
 export function screenToWorld(screen: ScreenPoint, viewport: Viewport): Point {
-  return { x: screen.x / viewport.scale, y: screen.y / viewport.scale }
+  const offset = offsetOf(viewport)
+  return { x: (screen.x - offset.x) / viewport.scale, y: (screen.y - offset.y) / viewport.scale }
 }
