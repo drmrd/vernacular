@@ -1,9 +1,23 @@
 import type { Project } from '../../core'
-import { migrateProject } from '../../core'
+import { CURRENT_SCHEMA_VERSION, migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
 const PROJECT_FILE = 'project.json'
+const AUTOSAVE_DIR = '.house-autosave'
+
+/** Read meta.schemaVersion from a parsed project, or undefined when missing or non-numeric. */
+function readStoredSchemaVersion(raw: unknown): number | undefined {
+  if (typeof raw !== 'object' || raw === null) {
+    return undefined
+  }
+  const meta = (raw as { meta?: unknown }).meta
+  if (typeof meta !== 'object' || meta === null) {
+    return undefined
+  }
+  const schemaVersion = (meta as { schemaVersion?: unknown }).schemaVersion
+  return typeof schemaVersion === 'number' ? schemaVersion : undefined
+}
 
 /** Thrown by FolderProjectStore.loadProject when no project file exists at the expected path. */
 export class ProjectFileNotFoundError extends Error {
@@ -16,6 +30,11 @@ export class ProjectFileNotFoundError extends Error {
 export interface FolderProjectStoreOptions {
   /** Defaults to migrateProject; injected in tests to exercise custom migration sequences. */
   migrate?: (raw: unknown) => Project
+  /**
+   * Schema version this store migrates toward; controls when a pre-migration backup
+   * is taken. Defaults to CURRENT_SCHEMA_VERSION.
+   */
+  targetVersion?: number
 }
 
 /**
@@ -25,12 +44,14 @@ export interface FolderProjectStoreOptions {
  */
 export class FolderProjectStore {
   private readonly migrate: (raw: unknown) => Project
+  private readonly targetVersion: number
 
   constructor(
     private readonly directory: DirectoryPort,
     options?: FolderProjectStoreOptions,
   ) {
     this.migrate = options?.migrate ?? migrateProject
+    this.targetVersion = options?.targetVersion ?? CURRENT_SCHEMA_VERSION
   }
 
   async loadProject(): Promise<Project> {
@@ -38,7 +59,14 @@ export class FolderProjectStore {
     if (bytes === undefined) {
       throw new ProjectFileNotFoundError(PROJECT_FILE)
     }
-    return this.migrate(parseProjectJson(bytes))
+    const raw = parseProjectJson(bytes)
+    const storedVersion = readStoredSchemaVersion(raw)
+    if (storedVersion !== undefined && storedVersion < this.targetVersion) {
+      // Back up the canonical bytes verbatim before migrating, so a failed migration
+      // leaves both the original file and an identical pre-migration copy.
+      await this.directory.writeFile(`${AUTOSAVE_DIR}/pre-migration-v${storedVersion}.json`, bytes)
+    }
+    return this.migrate(raw)
   }
 
   async saveProject(project: Project): Promise<void> {
