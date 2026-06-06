@@ -44,6 +44,9 @@ export interface DrawPlanOptions {
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
 const ROOM_FILL_COLOR = '#eef2f6'
+const SELECTED_ROOM_FILL_COLOR = '#dbeafe'
+const SELECTED_ROOM_STROKE_COLOR = '#1a7fd4'
+const SELECTED_ROOM_LINE_WIDTH = 2
 const WALL_COLOR = '#222222'
 const SELECTED_WALL_COLOR = '#1a7fd4'
 const PREVIEW_COLOR = '#5b9bd5'
@@ -147,7 +150,10 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
   // Fill rooms first so wall strokes render on top of them.
   for (const room of options.rooms ?? []) {
-    drawRoom(ctx, room, options.viewport)
+    drawRoom(ctx, room, {
+      viewport: options.viewport,
+      selected: options.selectedIds.has(room.id),
+    })
   }
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
@@ -163,21 +169,31 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
 }
 
-function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, viewport: Viewport): void {
+interface RoomDrawing {
+  viewport: Viewport
+  selected: boolean
+}
+
+function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDrawing): void {
   const [firstPoint, ...remainingPoints] = room.polygon
   if (firstPoint === undefined || remainingPoints.length < 2) {
     return
   }
-  const start = worldToScreen(firstPoint, viewport)
-  ctx.fillStyle = ROOM_FILL_COLOR
+  const start = worldToScreen(firstPoint, drawing.viewport)
+  ctx.fillStyle = drawing.selected ? SELECTED_ROOM_FILL_COLOR : ROOM_FILL_COLOR
   ctx.beginPath()
   ctx.moveTo(start.x, start.y)
   for (const point of remainingPoints) {
-    const screenPoint = worldToScreen(point, viewport)
+    const screenPoint = worldToScreen(point, drawing.viewport)
     ctx.lineTo(screenPoint.x, screenPoint.y)
   }
   ctx.closePath()
   ctx.fill()
+  if (drawing.selected) {
+    ctx.strokeStyle = SELECTED_ROOM_STROKE_COLOR
+    ctx.lineWidth = SELECTED_ROOM_LINE_WIDTH
+    ctx.stroke()
+  }
 }
 
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
