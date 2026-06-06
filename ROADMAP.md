@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation) and 3 (pan, zoom, grid, and rulers) are done. Not yet usable as a floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), and 4 (snapping) are done. Not yet usable as a floor planner.
 
 ## Foundation work
 
@@ -71,7 +71,7 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 | 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
 | 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
 | 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | pending |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
 | 5. Selection (click, marquee, multi-select) and the hit-test index                  | pending |
 | 6. Wall editing (endpoint move, thickness, construction type)                       | pending |
 | 7. Openings (doors and windows: placement and editing)                              | pending |
@@ -96,6 +96,14 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 - **DOM overlay mirroring and animated camera.** The design specification's DOM overlay for interactive UI (selection rings, dimension chips, snap indicators) and any inertial or animated pan/zoom are later polish; this slice renders grid and rulers on the Canvas and pans/zooms without animation.
 - **Canvas owns the grid.** The plan canvas now draws the only grid (pan- and zoom-aware); the static CSS graph-paper backdrop that was locked to one scale has been removed so the grid no longer desyncs from the content when the camera moves.
 - **Visual-regression baseline.** Grid and rulers intentionally change the rendered plan, so the darwin screenshot baseline was refreshed to match. Continuous integration skips visual regression where no platform baseline exists (so it stays green on linux); the baseline will need another refresh once later slices change the home view (for example the save/open chrome). The functional wall-drawing end-to-end spec is unaffected because the default viewport keeps the original scale and a zero pan offset, so pointer-to-world mapping is unchanged.
+
+**Slice 4 (done) scope and deferrals.** Slice 4 adds interactive snapping to wall drawing: while a wall is being drawn, the moving cursor snaps to the best nearby feature (a wall endpoint, a wall midpoint, a perpendicular or parallel line through the in-progress start, or the grid), resolved in a fixed priority order (endpoint, then midpoint, then perpendicular, then parallel, then grid), and a snap indicator is painted at the snapped point. The snap computation is a pure, unit-tested module (`editor/plan/snap.ts`); the indicator drawing extends the narrow plan-drawing seam, and the Canvas-and-pointer wiring is thin glue validated by the wall-drawing end-to-end spec. The perpendicular and parallel line-projection math lives inside `snap.ts` (not `core/geometry/`), so this slice stays decoupled from the selection work in slice 5. Deliberately deferred, by design:
+
+- **Snapping while editing walls.** Snapping applies to wall drawing only. Snapping while dragging an existing wall endpoint or moving a wall is part of slice 6 (wall editing) and follows there, mirroring the slice-3 deferral of fit-to-selection until selection lands.
+- **The five listed kinds only.** Snap to wall-line intersections (where two existing wall lines cross), snap to the nearest point along a wall edge (an on-wall snap rather than to an endpoint or midpoint), and absolute angle and orthogonal snaps (0, 45, and 90 degrees against the world axes, independent of any existing wall) are deferred. The slice ships the endpoint, midpoint, perpendicular, parallel, and grid kinds the design specification names for Phase 1, and no others.
+- **Snap settings UI.** Per-kind enable and disable toggles and a user-configurable snap threshold belong with the editor-preferences surface (the design specification lists snap thresholds among editor preferences). This slice uses fixed default constants; wiring them to a preferences panel is a follow-up.
+- **DOM-overlay snap indicators.** The snap indicator is painted on the Canvas, consistent with the slice-3 decision to draw the grid and rulers on the Canvas. The design specification's DOM-overlay snap indicators (CSS transforms mirroring the Canvas world matrix) are later polish and follow with the overlay work.
+- **Wall-drawing end-to-end spec preserved.** The default viewport keeps the original scale and a zero pan offset, so the pointer-to-world mapping is unchanged; with grid snapping enabled the cursor lands on deterministic grid-aligned coordinates, and the functional wall-drawing end-to-end spec still passes.
 
 ## Beyond 1.0
 
