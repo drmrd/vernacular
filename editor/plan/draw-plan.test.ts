@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { drawPlan, type PlanDrawingContext } from './draw-plan'
+import { drawGrid, drawPlan, type PlanDrawingContext } from './draw-plan'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { RoomSceneNode, WallSceneNode } from '../../core'
 
@@ -190,5 +190,23 @@ describe('drawPlan', () => {
     expect(ops).toContain('fill')
     expect(ops).toContain('closePath')
     expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
+  })
+})
+
+describe('drawGrid', () => {
+  it('strokes vertical and horizontal grid lines spanning the canvas in one color', () => {
+    const recorder = recordingContext()
+
+    drawGrid(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
+
+    // 6 verticals + 6 horizontals at 200 mm spacing across a 100 px (1000 mm) canvas
+    expect(recorder.segments).toHaveLength(12)
+
+    const styles = new Set(recorder.segments.map((segment) => segment.style))
+    expect(styles.size).toBe(1)
+
+    const verticals = recorder.segments.filter((segment) => segment.from[0] === segment.to[0])
+    expect(verticals).toHaveLength(6)
+    expect(verticals.every((segment) => segment.from[1] === 0 && segment.to[1] === 100)).toBe(true)
   })
 })
