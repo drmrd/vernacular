@@ -60,27 +60,40 @@ export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: Vi
   ctx.fillStyle = RULER_BAND_COLOR
   ctx.fillRect(0, 0, size.width, RULER_THICKNESS_PX)
   ctx.fillRect(0, 0, RULER_THICKNESS_PX, size.height)
+  // Both axes render with shared tick/text styles set once here; drawRulerTicks
+  // relies on this state (strokeStyle, fillStyle, font, textAlign, textBaseline)
+  // and never resets it per tick or per axis.
+  ctx.strokeStyle = RULER_TICK_COLOR
+  ctx.fillStyle = RULER_TEXT_COLOR
   ctx.font = RULER_FONT
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
 
-  for (const tick of rulerTicks(viewport, size.width, 'horizontal')) {
-    ctx.strokeStyle = RULER_TICK_COLOR
+  drawRulerTicks(ctx, viewport, { orientation: 'horizontal', lengthPx: size.width })
+  drawRulerTicks(ctx, viewport, { orientation: 'vertical', lengthPx: size.height })
+}
+
+function drawRulerTicks(
+  ctx: PlanDrawingContext,
+  viewport: Viewport,
+  axis: { orientation: 'horizontal' | 'vertical'; lengthPx: number },
+): void {
+  const isHorizontal = axis.orientation === 'horizontal'
+  for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation)) {
     ctx.beginPath()
-    ctx.moveTo(tick.screen, 0)
-    ctx.lineTo(tick.screen, RULER_THICKNESS_PX)
+    if (isHorizontal) {
+      ctx.moveTo(tick.screen, 0)
+      ctx.lineTo(tick.screen, RULER_THICKNESS_PX)
+    } else {
+      ctx.moveTo(0, tick.screen)
+      ctx.lineTo(RULER_THICKNESS_PX, tick.screen)
+    }
     ctx.stroke()
-    ctx.fillStyle = RULER_TEXT_COLOR
-    ctx.fillText(tick.label, tick.screen + RULER_LABEL_INSET_PX, RULER_LABEL_INSET_PX)
-  }
-  for (const tick of rulerTicks(viewport, size.height, 'vertical')) {
-    ctx.strokeStyle = RULER_TICK_COLOR
-    ctx.beginPath()
-    ctx.moveTo(0, tick.screen)
-    ctx.lineTo(RULER_THICKNESS_PX, tick.screen)
-    ctx.stroke()
-    ctx.fillStyle = RULER_TEXT_COLOR
-    ctx.fillText(tick.label, RULER_LABEL_INSET_PX, tick.screen + RULER_LABEL_INSET_PX)
+    if (isHorizontal) {
+      ctx.fillText(tick.label, tick.screen + RULER_LABEL_INSET_PX, RULER_LABEL_INSET_PX)
+    } else {
+      ctx.fillText(tick.label, RULER_LABEL_INSET_PX, tick.screen + RULER_LABEL_INSET_PX)
+    }
   }
 }
 
