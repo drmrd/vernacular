@@ -88,3 +88,25 @@ describe('parseLength imperial inputs', () => {
     expect(parseLength(`-8'`)).toBe(-2438.4)
   })
 })
+
+describe('parseLength imperial fractional-inch inputs', () => {
+  it('reads feet with a fractional inch in prime and double-prime notation', () => {
+    expect(parseLength(`6'8 1/2"`)).toBe(2044.7)
+  })
+
+  it('reads a fractional inch with no feet part in double-prime notation', () => {
+    expect(parseLength('8 1/2"')).toBe(215.9)
+  })
+
+  it('reads feet with a fractional inch written with full ft and in unit words', () => {
+    expect(parseLength('6 ft 8 1/2 in')).toBe(2044.7)
+  })
+
+  it('reads a hyphen between the whole inches and the fraction', () => {
+    expect(parseLength('8-1/2"')).toBe(215.9)
+  })
+
+  it('reads a bare fraction with no whole inches in double-prime notation', () => {
+    expect(parseLength('1/2"')).toBe(12.7)
+  })
+})
