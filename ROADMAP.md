@@ -27,14 +27,30 @@ Foundation work in progress (build foundation, documentation, engineering norms,
 
 ## MVP path
 
-| Focus                                                   | Status  |
-| ------------------------------------------------------- | ------- |
-| Two-dimensional plan editor                             | pending |
-| Three-dimensional preview with color-temperature slider | pending |
-| Furniture import and curated starter library (alpha)    | pending |
-| Old-house architectural vocabulary                      | pending |
-| Multi-floor and stairs (beta)                           | pending |
-| Paint, export, site metadata (1.0)                      | pending |
+| Focus                                                   | Status      |
+| ------------------------------------------------------- | ----------- |
+| Project stores, persistence, and migrations             | in progress |
+| Two-dimensional plan editor                             | pending     |
+| Three-dimensional preview with color-temperature slider | pending     |
+| Furniture import and curated starter library (alpha)    | pending     |
+| Old-house architectural vocabulary                      | pending     |
+| Multi-floor and stairs (beta)                           | pending     |
+| Paint, export, site metadata (1.0)                      | pending     |
+
+> **Project stores, persistence, and migrations (deferred with intent):** the
+> durable folder, OPFS, and `.house.zip` stores, the schema-and-registry
+> migration framework, autosave sidecar snapshots with crash recovery, the
+> recent-project list, and Web Locks multi-tab safety are built and tested
+> (OPFS, IndexedDB recent, and Web Locks adapters are verified end to end in
+> Chromium and Firefox). Deferred follow-ups: switching the running app default
+> to the OPFS store (needs async-boot wiring); a WebKit-compatible OPFS write
+> path (main-thread `createWritable` is unsupported, so a worker-side sync access
+> handle is needed); the `.house.zip` export and folder-picker controls in the
+> shell (the stores exist; only the browser download and native-picker glue are
+> pending); `writeHistory` and `packsRequired` project-meta fields (a coordinated
+> shared-schema change); generation of `assets/`, `previews/`, and
+> `ATTRIBUTIONS.md` (owned by the asset and pack work); the quota and eviction UI;
+> and the async-with-progress migration surface for very large projects.
 
 **Phase 1, units and measurement (`core/units/`): done.** Imperial and metric display
 formatting with multiple imperial forms (`6'8"`, `6.667'`, `80"`, and fractional inches),
