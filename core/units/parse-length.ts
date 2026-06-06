@@ -32,8 +32,11 @@ const METRIC_PATTERN = /^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/
 // "6'8\"" all match; the caller requires at least one to have matched. The order is
 // significant: the feet component must precede the inch component if both are present,
 // so reversed input like "8\" 6'" is rejected by design (it falls through to the throw).
+// The inch group captures raw text non-greedily (digits, dots, slashes, spaces, hyphens)
+// because the inch value may be a decimal or a mixed/bare fraction; parseInchValueText
+// interprets that text separately. Feet stays a plain decimal number.
 const IMPERIAL_PATTERN =
-  /^(-?)\s*(?:(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|'))?\s*(?:(\d+(?:\.\d+)?)\s*(?:inches|inch|in|"))?$/i
+  /^(-?)\s*(?:(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|'))?\s*(?:([\d./\s-]+?)\s*(?:inches|inch|in|"))?$/i
 
 function buildMetric(match: RegExpMatchArray): Millimeters {
   // Both capture groups are mandatory in METRIC_PATTERN, so the undefined branch is
@@ -51,10 +54,24 @@ function buildMetric(match: RegExpMatchArray): Millimeters {
   return parser(value)
 }
 
+// Converts the captured inch-value text to a number of inches. The text may be a
+// decimal ("8.5"), a mixed fraction ("8 1/2" or "8-1/2"), or a bare fraction ("1/2"),
+// so a plain Number() is not enough; the whole part of a mixed fraction is optional.
+function parseInchValueText(text: string): number {
+  const trimmed = text.trim()
+  const fraction = trimmed.match(/^(?:(\d+(?:\.\d+)?)[\s-]+)?(\d+)\/(\d+)$/)
+  if (fraction) {
+    const [, wholeText, numerator, denominator] = fraction
+    const whole = wholeText === undefined ? 0 : Number(wholeText)
+    return whole + Number(numerator) / Number(denominator)
+  }
+  return Number(trimmed)
+}
+
 function buildImperial(match: RegExpMatchArray): Millimeters {
   const [, sign, feetText, inchText] = match
   const feet = feetText === undefined ? 0 : Number(feetText)
-  const inches = inchText === undefined ? 0 : Number(inchText)
+  const inches = inchText === undefined ? 0 : parseInchValueText(inchText)
   // Convert via total inches (feet*12 + inches) so an exact value like 6'8" stays
   // exactly 2032 rather than drifting from adding two separately-rounded products.
   const magnitude = inchesToMillimeters(feet * INCHES_PER_FOOT + inches)
