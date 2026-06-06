@@ -1,5 +1,6 @@
-import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
+import type { Point, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
 import { contentBounds, type Bounds } from './fit'
+import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
 /** A click within this many millimeters of a wall centerline selects it. */
 export const DEFAULT_HIT_TOLERANCE_MM = 150
@@ -53,4 +54,21 @@ export function hitTestWalls(
     }
   }
   return bestId
+}
+
+function indexEntities(scene: SceneGraph): IndexedEntity[] {
+  return [
+    ...scene.walls.map((wall) => ({ id: wall.id, bounds: wallBounds(wall) })),
+    ...scene.rooms.map((room) => ({ id: room.id, bounds: roomBounds(room) })),
+  ]
+}
+
+/**
+ * Broad phase then narrow phase: the spatial index supplies candidate ids near
+ * the point, then the nearest in-range wall centerline is resolved among them.
+ */
+export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
+  const candidateIds = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
+  const candidateWalls = scene.walls.filter((wall) => candidateIds.has(wall.id))
+  return hitTestWalls(candidateWalls, point, tolerance)
 }
