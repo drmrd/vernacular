@@ -1,10 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import type { Point } from '../model/types'
+import type { Point, Wall } from '../model/types'
 import { createWall } from '../model/factories'
-import { deriveRooms } from './rooms'
+import { deriveRooms, roomKey } from './rooms'
+
+const ROOM_ID_PREFIX = 'room:'
+
+const RECTANGLE_CORNERS: Point[] = [
+  { x: 0, y: 0 },
+  { x: 4000, y: 0 },
+  { x: 4000, y: 3000 },
+  { x: 0, y: 3000 },
+]
 
 function byXThenY(a: Point, b: Point): number {
   return a.x - b.x || a.y - b.y
+}
+
+function rectangleEdgesWithIds(): Wall[] {
+  return RECTANGLE_CORNERS.map((corner, index) => {
+    const next = RECTANGLE_CORNERS[(index + 1) % RECTANGLE_CORNERS.length]
+    if (next === undefined) {
+      throw new Error('expected a closing corner')
+    }
+    return createWall(corner, next, { id: `wall-${index}` })
+  })
+}
+
+function onlyRoom(walls: Wall[]): { id: string; wallIds: string[] } {
+  const rooms = deriveRooms(walls)
+  const room = rooms[0]
+  if (room === undefined || rooms.length !== 1) {
+    throw new Error('expected exactly one derived room')
+  }
+  return room
 }
 
 describe('deriveRooms', () => {
@@ -131,5 +159,29 @@ describe('deriveRooms', () => {
     for (const wall of walls) {
       expect(allWallIds).toContain(wall.id)
     }
+  })
+})
+
+describe('roomKey', () => {
+  it('equals the room id with the room: prefix stripped', () => {
+    const room = onlyRoom(rectangleEdgesWithIds())
+
+    expect(room.id).toBe(ROOM_ID_PREFIX + roomKey(room))
+  })
+
+  it('is stable across two derivations of the same walls', () => {
+    const walls = rectangleEdgesWithIds()
+
+    const firstKey = roomKey(onlyRoom(walls))
+    const secondKey = roomKey(onlyRoom(walls))
+
+    expect(firstKey).toBe(secondKey)
+  })
+
+  it('is independent of the insertion order of the bounding walls', () => {
+    const walls = rectangleEdgesWithIds()
+    const reordered = [...walls].reverse()
+
+    expect(roomKey(onlyRoom(reordered))).toBe(roomKey(onlyRoom(walls)))
   })
 })
