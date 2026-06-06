@@ -1,5 +1,9 @@
 # Units and Measurement Implementation Plan
 
+> **Status: complete.** All tasks below landed on branch `feat/units-and-measurement`; the
+> branch commit history is the authoritative record. The step checkboxes are kept as written
+> during planning rather than ticked off after the fact.
+
 > **For agentic workers:** This plan is executed with the project's red-green-blue
 > TDD workflow (see `CLAUDE.md` and `.claude/rules.md`), not the generic
 > single-engineer flow. Each task is one RGB cycle: `/test-first <behavior>` (RED,
