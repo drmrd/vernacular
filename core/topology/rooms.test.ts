@@ -113,4 +113,23 @@ describe('deriveRooms', () => {
 
     expect(deriveRooms(walls)).toHaveLength(0)
   })
+
+  it('gives a room a stable room-prefixed id derived from its bounding wall ids', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
+    ]
+
+    const firstIds = deriveRooms(walls).map((room) => room.id)
+    const secondIds = deriveRooms(walls).map((room) => room.id)
+    expect(firstIds).toEqual(secondIds)
+    expect(firstIds.every((id) => id.startsWith('room:'))).toBe(true)
+
+    const allWallIds = deriveRooms(walls).flatMap((room) => room.wallIds)
+    for (const wall of walls) {
+      expect(allWallIds).toContain(wall.id)
+    }
+  })
 })
