@@ -6,6 +6,8 @@ import {
   clampScale,
   zoomAtCursor,
   wheelZoomFactor,
+  axisProjection,
+  axisSamples,
   DEFAULT_PLAN_SCALE,
   MIN_PLAN_SCALE,
   MAX_PLAN_SCALE,
@@ -120,5 +122,35 @@ describe('wheelZoomFactor', () => {
 
   it('moves the factor further from 1 as the downward scroll grows', () => {
     expect(wheelZoomFactor(50)).toBeGreaterThan(wheelZoomFactor(100))
+  })
+})
+
+describe('axisProjection', () => {
+  it('reads the horizontal axis as the viewport scale and x-offset', () => {
+    const viewport = { scale: 0.1, offset: { x: 30, y: -20 } }
+
+    expect(axisProjection(viewport, 'horizontal')).toEqual({ scale: 0.1, translate: 30 })
+  })
+
+  it('reads the vertical axis as the viewport scale and y-offset', () => {
+    const viewport = { scale: 0.1, offset: { x: 30, y: -20 } }
+
+    expect(axisProjection(viewport, 'vertical')).toEqual({ scale: 0.1, translate: -20 })
+  })
+})
+
+describe('axisSamples', () => {
+  it('steps world multiples of the spacing across the visible length, projected to screen', () => {
+    const samples = axisSamples({ scale: 0.1, translate: 0 }, 100, 200)
+
+    expect(samples.map((sample) => sample.worldValue)).toEqual([0, 200, 400, 600, 800, 1000])
+    expect(samples.map((sample) => sample.screen)).toEqual([0, 20, 40, 60, 80, 100])
+  })
+
+  it('includes only multiples within the visible range when the axis is panned', () => {
+    // screen = world * 0.1 - 50, so the visible world range is [500, 1500]
+    const samples = axisSamples({ scale: 0.1, translate: -50 }, 100, 500)
+
+    expect(samples.map((sample) => sample.worldValue)).toEqual([500, 1000, 1500])
   })
 })
