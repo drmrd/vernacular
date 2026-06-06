@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { drawGrid, drawPlan, drawRulers, type PlanDrawingContext } from './draw-plan'
+import {
+  drawGrid,
+  drawPlan,
+  drawRulers,
+  drawSnapIndicator,
+  type PlanDrawingContext,
+} from './draw-plan'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { RoomSceneNode, WallSceneNode } from '../../core'
+import type { SnapResult } from './snap'
 
 interface DrawnSegment {
   from: [number, number]
@@ -257,6 +264,22 @@ describe('drawPlan grid and rulers', () => {
     expect(recorder.ops).not.toContain('fillText')
     expect(recorder.ops).not.toContain('fillRect')
     expect(recorder.segments).toHaveLength(1)
+  })
+})
+
+describe('drawSnapIndicator', () => {
+  it('paints a marker centered at the snapped point projected to screen space', () => {
+    const recorder = recordingContext()
+    const viewport = { scale: DEFAULT_PLAN_SCALE }
+    const snap: SnapResult = { point: { x: 1000, y: 0 }, kind: 'grid' }
+
+    drawSnapIndicator(recorder.ctx, snap, viewport)
+
+    const expected = worldToScreen(snap.point, viewport)
+    expect(recorder.ops).toContain('arc')
+    expect(recorder.arcs).toHaveLength(1)
+    expect(recorder.arcs[0]?.x).toBe(expected.x)
+    expect(recorder.arcs[0]?.y).toBe(expected.y)
   })
 })
 
