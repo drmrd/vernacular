@@ -23,13 +23,21 @@ const MIDDLE_BUTTON = 1
 const PRIMARY_BUTTON = 0
 const FIT_TO_CONTENT_KEY = 'f'
 
-/** Canvas-relative pixel position of a pointer or wheel event. */
+/**
+ * Position of a pointer or wheel event in the canvas backing-store coordinate
+ * space. The displayed-rect offset is scaled by the backing store size over the
+ * displayed CSS size, so a stretched (`rect` larger than `width`/`height`)
+ * canvas still maps the cursor to the correct backing-store pixel.
+ */
 export function eventToCanvas(
   event: { clientX: number; clientY: number },
-  canvas: HTMLElement,
+  canvas: HTMLCanvasElement,
 ): ScreenPoint {
   const rect = canvas.getBoundingClientRect()
-  return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+  return {
+    x: (event.clientX - rect.left) * (canvas.width / rect.width),
+    y: (event.clientY - rect.top) * (canvas.height / rect.height),
+  }
 }
 
 /** True when a keyboard target is a control that owns its own space/typing behavior. */
@@ -97,9 +105,9 @@ export interface ViewportControls {
   onPanPointerUp: (event: PointerEvent<HTMLCanvasElement>) => void
 }
 
-const clientPoint = (event: PointerEvent<HTMLCanvasElement>): ScreenPoint => ({
-  x: event.clientX,
-  y: event.clientY,
+const pointDelta = (from: ScreenPoint, to: ScreenPoint): ScreenPoint => ({
+  x: to.x - from.x,
+  y: to.y - from.y,
 })
 
 /** A pan starts on a middle-button drag or a spacebar-held primary-button drag. */
@@ -124,7 +132,7 @@ function usePanGesture(
         return false
       }
       event.currentTarget.setPointerCapture(event.pointerId)
-      panOrigin.current = clientPoint(event)
+      panOrigin.current = eventToCanvas(event, event.currentTarget)
       setPanning(true)
       return true
     },
@@ -137,9 +145,9 @@ function usePanGesture(
       if (!origin) {
         return false
       }
-      const delta = { x: event.clientX - origin.x, y: event.clientY - origin.y }
-      setViewport((current) => panBy(current, delta))
-      panOrigin.current = clientPoint(event)
+      const canvasPoint = eventToCanvas(event, event.currentTarget)
+      setViewport((viewport) => panBy(viewport, pointDelta(origin, canvasPoint)))
+      panOrigin.current = canvasPoint
       return true
     },
     [setViewport],
