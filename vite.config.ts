@@ -50,6 +50,7 @@ export default defineConfig({
         'bridge/react/use-scene-graph.ts',
         'bridge/react/use-autosave.ts',
         'editor/plan/plan-view.tsx',
+        'editor/plan/use-viewport-controls.ts',
         'storage/indexeddb/indexeddb-project-store.ts',
       ],
     },
