@@ -24,16 +24,12 @@ import { version as appVersion } from '../package.json'
 
 const DEFAULT_PROJECT_ID = 'current'
 
-/**
- * The subset of SnapshotStore the app depends on for autosave and crash recovery.
- * Method results are awaited rather than chained, so the port stays loose enough to
- * accept both the real SnapshotStore and the structural test doubles that stand in for it.
- */
+/** The subset of SnapshotStore the app depends on for autosave and crash recovery. */
 export interface SnapshotsPort {
-  writeSnapshot(project: Project): unknown
-  prune(): unknown
-  isRecoverable(): unknown
-  restore(): unknown
+  writeSnapshot(project: Project): Promise<void>
+  prune(): Promise<void>
+  isRecoverable(): Promise<boolean>
+  restore(): Promise<Project | undefined>
 }
 
 interface RecentEntry {
@@ -168,7 +164,9 @@ function EditorWorkspace({
   onSession,
 }: EditorWorkspaceProps) {
   const selection = useMemo(() => createSelectionStore(), [])
-  const saveStatus = useAutosaveWithSnapshots(session, store, projectId, snapshots)
+  // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
+  // option rejects an explicit undefined.
+  const saveStatus = useAutosave({ session, store, projectId, ...(snapshots ? { snapshots } : {}) })
   const { recentEntries, recovery } = useRecentProjectsAndRecovery(
     recentProjects,
     snapshots,
@@ -192,31 +190,13 @@ function EditorWorkspace({
             onSave={onSave}
             onOpenRecent={onOpenRecent}
             onNewProject={onNewProject}
+            // Spread recovery only when present: the optional prop rejects an explicit undefined.
             {...(recovery ? { recovery } : {})}
           />
         </ActiveToolProvider>
       </SelectionProvider>
     </EditorSessionProvider>
   )
-}
-
-// Adapts the loose SnapshotsPort into the SnapshotWriter the autosave loop expects, so
-// autosave writes sidecar snapshots when a port is present and falls back to canonical
-// saves when it is not.
-function useAutosaveWithSnapshots(
-  session: EditorSession,
-  store: ProjectStore,
-  projectId: string,
-  snapshots: SnapshotsPort | undefined,
-): ReturnType<typeof useAutosave> {
-  const snapshotWriter = useMemo(
-    () =>
-      snapshots
-        ? { writeSnapshot: (project: Project) => writeSnapshot(snapshots, project) }
-        : undefined,
-    [snapshots],
-  )
-  return useAutosave(session, store, projectId, snapshotWriter)
 }
 
 interface ProjectActionsContext {
@@ -243,7 +223,7 @@ function useProjectActions({
       store,
       projectId,
       project: session.getProject(),
-      ...(snapshots ? { snapshots: { prune: () => prune(snapshots) } } : {}),
+      ...(snapshots ? { snapshots } : {}),
     })
   }, [store, projectId, session, snapshots])
 
@@ -261,24 +241,6 @@ function useProjectActions({
   return { onSave, onOpenRecent, onNewProject }
 }
 
-// The SnapshotsPort methods are declared loosely so test doubles satisfy them; these
-// adapters await each call and narrow the result back into the typed shape the app uses.
-async function writeSnapshot(snapshots: SnapshotsPort, project: Project): Promise<void> {
-  await snapshots.writeSnapshot(project)
-}
-
-async function prune(snapshots: SnapshotsPort): Promise<void> {
-  await snapshots.prune()
-}
-
-async function isRecoverable(snapshots: SnapshotsPort): Promise<boolean> {
-  return (await snapshots.isRecoverable()) === true
-}
-
-async function restore(snapshots: SnapshotsPort): Promise<Project | undefined> {
-  return (await snapshots.restore()) as Project | undefined
-}
-
 function useRecentProjectsAndRecovery(
   recentProjects: RecentProjectStore,
   snapshots: SnapshotsPort | undefined,
@@ -289,31 +251,19 @@ function useRecentProjectsAndRecovery(
 
   useEffect(() => {
     let cancelled = false
+    const isLive = () => !cancelled
 
     void recentProjects.list().then((entries) => {
-      if (!cancelled) {
+      if (isLive()) {
         setRecentEntries(entries.map(({ id, name }) => ({ id, name })))
       }
     })
 
     if (snapshots) {
-      void isRecoverable(snapshots).then((recoverable) => {
-        if (cancelled || !recoverable) {
-          return
+      void snapshots.isRecoverable().then((recoverable) => {
+        if (isLive() && recoverable) {
+          setRecovery(buildRecovery({ snapshots, onSession, setRecovery, isLive }))
         }
-        setRecovery({
-          onRestore: () => {
-            void restore(snapshots).then((project) => {
-              if (project) {
-                onSession(createEditorSession(project))
-              }
-              setRecovery(null)
-            })
-          },
-          onDiscard: () => {
-            void prune(snapshots).then(() => setRecovery(null))
-          },
-        })
       })
     }
 
@@ -323,4 +273,41 @@ function useRecentProjectsAndRecovery(
   }, [recentProjects, snapshots, onSession])
 
   return { recentEntries, recovery }
+}
+
+interface RecoveryHandlersContext {
+  snapshots: SnapshotsPort
+  onSession: (session: EditorSession) => void
+  setRecovery: (recovery: Recovery | null) => void
+  isLive: () => boolean
+}
+
+// Builds the restore/discard handlers, each guarded so they never touch React state
+// after the owning effect has been torn down.
+function buildRecovery({
+  snapshots,
+  onSession,
+  setRecovery,
+  isLive,
+}: RecoveryHandlersContext): Recovery {
+  return {
+    onRestore: () => {
+      void snapshots.restore().then((project) => {
+        if (!isLive()) {
+          return
+        }
+        if (project) {
+          onSession(createEditorSession(project))
+        }
+        setRecovery(null)
+      })
+    },
+    onDiscard: () => {
+      void snapshots.prune().then(() => {
+        if (isLive()) {
+          setRecovery(null)
+        }
+      })
+    },
+  }
 }

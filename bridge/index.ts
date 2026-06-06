@@ -24,5 +24,6 @@ export { SelectionContext, useSelection, useSelectionIds } from './react/selecti
 export type { SelectionProviderProps } from './react/selection-provider'
 export { SelectionProvider } from './react/selection-provider'
 export { useSceneGraph } from './react/use-scene-graph'
+export type { UseAutosaveOptions } from './react/use-autosave'
 export { useAutosave } from './react/use-autosave'
 export { SceneCanvas } from './react/scene-canvas'
