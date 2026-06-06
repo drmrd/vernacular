@@ -1,5 +1,5 @@
 import type { Millimeters } from './length-units'
-import { centimetersToMillimeters, metersToMillimeters } from './length-units'
+import { centimetersToMillimeters, inchesToMillimeters, metersToMillimeters } from './length-units'
 
 // The canonical value is already in millimeters, so this is an identity.
 const millimetersToMillimeters = (value: number): Millimeters => value
@@ -22,18 +22,21 @@ const METRIC_PARSERS: Record<string, (value: number) => Millimeters> = {
 // rejected rather than silently parsed.
 const METRIC_PATTERN = /^(-?\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/
 
-export function parseLength(input: string): Millimeters {
-  const trimmed = input.trim()
-  const match = trimmed.match(METRIC_PATTERN)
-  if (match === null) {
-    throw new Error(`Unrecognized length value: "${input}"`)
-  }
-  // Both capture groups are mandatory in the pattern, so this second branch is
+// A leading sign, then an optional feet component and an optional inch component.
+// Both components are optional individually so notations like "6'", "80\"", and
+// "6'8\"" all match; the caller requires at least one to have matched.
+const IMPERIAL_PATTERN =
+  /^(-?)\s*(?:(\d+(?:\.\d+)?)\s*(?:feet|foot|ft|'))?\s*(?:(\d+(?:\.\d+)?)\s*(?:inches|inch|in|"))?$/i
+
+const INCHES_PER_FOOT = 12
+
+function buildMetric(match: RegExpMatchArray): Millimeters {
+  // Both capture groups are mandatory in METRIC_PATTERN, so the undefined branch is
   // unreachable in practice; it exists only to satisfy noUncheckedIndexedAccess,
   // which types indexed matches as possibly undefined.
   const [, magnitude, unitToken] = match
   if (magnitude === undefined || unitToken === undefined) {
-    throw new Error(`Unrecognized length value: "${input}"`)
+    throw new Error(`Unrecognized length value: "${match[0]}"`)
   }
   const value = Number(magnitude)
   const parser = METRIC_PARSERS[unitToken.toLowerCase()]
@@ -41,4 +44,29 @@ export function parseLength(input: string): Millimeters {
     throw new Error(`Unrecognized length unit: "${unitToken}"`)
   }
   return parser(value)
+}
+
+function buildImperial(match: RegExpMatchArray): Millimeters {
+  const [, sign, feetText, inchText] = match
+  const feet = feetText === undefined ? 0 : Number(feetText)
+  const inches = inchText === undefined ? 0 : Number(inchText)
+  // Convert via total inches (feet*12 + inches) so an exact value like 6'8" stays
+  // exactly 2032 rather than drifting from adding two separately-rounded products.
+  const magnitude = inchesToMillimeters(feet * INCHES_PER_FOOT + inches)
+  return sign === '-' ? -magnitude : magnitude
+}
+
+export function parseLength(input: string): Millimeters {
+  const trimmed = input.trim()
+  const imperial = trimmed.match(IMPERIAL_PATTERN)
+  // The imperial pattern's parts are both optional, so require at least one to have
+  // matched (otherwise an empty or sign-only string would falsely match as zero).
+  if (imperial && (imperial[2] !== undefined || imperial[3] !== undefined)) {
+    return buildImperial(imperial)
+  }
+  const metric = trimmed.match(METRIC_PATTERN)
+  if (metric) {
+    return buildMetric(metric)
+  }
+  throw new Error(`Unrecognized length value: "${input}"`)
 }
