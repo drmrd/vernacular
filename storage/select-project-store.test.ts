@@ -51,4 +51,12 @@ describe('selectProjectStoreBackend', () => {
 
     expect(backend).toBe('zip-bundle')
   })
+
+  it('selects OPFS as the universal target on a degraded host with no durable backend', () => {
+    const backend = selectProjectStoreBackend(
+      capabilities({ opfs: false, indexedDb: false, fileSystemAccess: false }),
+    )
+
+    expect(backend).toBe('opfs')
+  })
 })
