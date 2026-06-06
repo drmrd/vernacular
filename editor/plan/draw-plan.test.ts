@@ -1,9 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { drawEndpointHandles, drawGrid, drawMarquee, drawPlan, drawRulers } from './draw-plan'
+import {
+  drawEndpointHandles,
+  drawGrid,
+  drawMarquee,
+  drawPlan,
+  drawRoomLabel,
+  drawRulers,
+} from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
-import type { WallSceneNode } from '../../core'
+import { DEFAULT_METRIC_PREFERENCES } from '../../core'
+import type { RoomSceneNode, WallSceneNode } from '../../core'
 
 describe('drawPlan', () => {
   it('clears the surface and strokes each wall projected to screen space', () => {
@@ -298,5 +306,54 @@ describe('drawRulers', () => {
     expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)
     // the origin label (world 0 mm) appears as text when it is in view at offset 0
     expect(recorder.texts.map((entry) => entry.text)).toContain('0')
+  })
+})
+
+describe('drawRoomLabel', () => {
+  // rectangleRoom is a 4 m by 3 m rectangle whose vertices average to the world
+  // centroid below; a pan offset makes the projection non-trivial so the label
+  // must track it. (The formatted area string is irrelevant to placement.)
+  const CENTROID_WORLD = { x: 2000, y: 1500 }
+  const VIEWPORT = { scale: DEFAULT_PLAN_SCALE, offset: { x: 31, y: 47 } }
+
+  function room(overrides: Partial<RoomSceneNode> = {}): RoomSceneNode {
+    return { ...rectangleRoom('room:r'), ...overrides }
+  }
+
+  it('paints the name then the area below it at the projected centroid for a named room', () => {
+    const recorder = recordingContext()
+
+    drawRoomLabel(recorder.ctx, room({ name: 'Parlor' }), {
+      viewport: VIEWPORT,
+      preferences: DEFAULT_METRIC_PREFERENCES,
+    })
+
+    const centroid = worldToScreen(CENTROID_WORLD, VIEWPORT)
+    const fillTexts = recorder.texts
+    expect(fillTexts).toHaveLength(2)
+
+    const [nameLine, areaLine] = fillTexts
+    expect(nameLine?.text).toBe('Parlor')
+    expect(nameLine?.x).toBe(centroid.x)
+    expect(nameLine?.y).toBe(centroid.y)
+
+    // The area is a second line below the name: same x, greater y.
+    expect(areaLine?.x).toBe(centroid.x)
+    expect(areaLine?.y).toBeGreaterThan(centroid.y)
+  })
+
+  it('paints only the area at the projected centroid for an unnamed room', () => {
+    const recorder = recordingContext()
+
+    drawRoomLabel(recorder.ctx, room(), {
+      viewport: VIEWPORT,
+      preferences: DEFAULT_METRIC_PREFERENCES,
+    })
+
+    const centroid = worldToScreen(CENTROID_WORLD, VIEWPORT)
+    const fillTexts = recorder.texts
+    expect(fillTexts).toHaveLength(1)
+    expect(fillTexts[0]?.x).toBe(centroid.x)
+    expect(fillTexts[0]?.y).toBe(centroid.y)
   })
 })
