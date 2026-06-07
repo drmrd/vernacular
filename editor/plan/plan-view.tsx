@@ -3,7 +3,6 @@ import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   type Point,
-  type SceneGraph,
   type UnitPreferences,
   type UnitSystem,
   type WallSceneNode,
@@ -17,6 +16,7 @@ import {
 } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
+import type { DrawableUnderlay } from './draw-underlay'
 import { singleSelectedWall } from './selected-wall'
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
@@ -197,81 +197,78 @@ function composePointerHandlers({
   }
 }
 
-interface SceneInputs {
-  graph: SceneGraph
+interface PlanScene {
+  walls: DrawPlanOptions['walls']
+  // The scene graph always supplies rooms, so this is non-optional here even
+  // though drawPlan accepts rooms as an optional overlay.
+  rooms: NonNullable<DrawPlanOptions['rooms']>
   selectedIds: ReadonlySet<string>
-  selectedWall: WallSceneNode | null
-  interaction: PlanInteraction
-  planSelection: PlanSelection
-  wallEditing: WallEditing
+  preview: PreviewSegment | undefined
+  snap: SnapResult | null
+  marquee: DrawPlanOptions['marquee']
+  // The single selected wall under the select tool whose endpoint handles paint,
+  // or null when no wall is editable.
+  endpointHandles: WallSceneNode | null
   viewport: Viewport
+  // The active unit preferences that format the room-label area text.
   preferences: UnitPreferences
-  underlayLayer: PlanUnderlayLayer
+  underlays: readonly DrawableUnderlay[]
+  // The live calibration measurement segment, or undefined when not measuring.
+  calibration: PreviewSegment | undefined
 }
 
 /**
- * Assembles the drawPlan options from the resolved hooks; the endpoint drag and
- * the wall tool never preview at once. Optional overlays (preview, snap, marquee,
- * endpoint handles, calibration) are spread in only when present so an absent one
- * stays off under exactOptionalPropertyTypes.
+ * Assembles the drawPlan options from the flattened scene leaves. Optional
+ * overlays (preview, snap, marquee, endpoint handles, calibration) are spread in
+ * only when present so an absent one stays off under exactOptionalPropertyTypes.
  */
-function buildDrawOptions(inputs: SceneInputs): DrawPlanOptions {
-  const preview = inputs.wallEditing.preview ?? inputs.interaction.preview
-  const { snap } = inputs.interaction
-  const { marquee } = inputs.planSelection
-  const calibration = inputs.underlayLayer.calibration.calibration
+function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
   return {
-    walls: inputs.graph.walls,
-    rooms: inputs.graph.rooms,
-    viewport: inputs.viewport,
+    walls: scene.walls,
+    rooms: scene.rooms,
+    viewport: scene.viewport,
     width: PLAN_WIDTH,
     height: PLAN_HEIGHT,
-    selectedIds: inputs.selectedIds,
+    selectedIds: scene.selectedIds,
     grid: true,
     rulers: true,
-    roomLabels: { preferences: inputs.preferences },
-    underlays: inputs.underlayLayer.underlays,
-    ...(preview ? { preview } : {}),
-    ...(snap ? { snap } : {}),
-    ...(marquee ? { marquee } : {}),
-    ...(inputs.selectedWall ? { endpointHandles: inputs.selectedWall } : {}),
-    ...(calibration ? { calibration } : {}),
+    roomLabels: { preferences: scene.preferences },
+    underlays: scene.underlays,
+    ...(scene.preview ? { preview: scene.preview } : {}),
+    ...(scene.snap ? { snap: scene.snap } : {}),
+    ...(scene.marquee ? { marquee: scene.marquee } : {}),
+    ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
+    ...(scene.calibration ? { calibration: scene.calibration } : {}),
   }
 }
 
-/** Redraws the canvas whenever a resolved scene input changes. */
-function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, inputs: SceneInputs): void {
-  const { graph, selectedIds, selectedWall, interaction, planSelection } = inputs
-  const { wallEditing, viewport, preferences, underlayLayer } = inputs
+/**
+ * Redraws the canvas whenever any draw-meaningful scene leaf changes. The effect
+ * depends on each leaf member individually rather than on the per-render scene
+ * object, which would rasterize on every render; the scene members are listed
+ * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
+ */
+function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: PlanScene): void {
+  const options = buildDrawOptions(scene)
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx) {
-      drawPlan(
-        ctx,
-        buildDrawOptions({
-          graph,
-          selectedIds,
-          selectedWall,
-          interaction,
-          planSelection,
-          wallEditing,
-          viewport,
-          preferences,
-          underlayLayer,
-        }),
-      )
+      drawPlan(ctx, options)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- leaf deps, not `options`/`scene`
   }, [
     canvasRef,
-    graph,
-    selectedIds,
-    selectedWall,
-    interaction,
-    planSelection,
-    wallEditing,
-    viewport,
-    preferences,
-    underlayLayer,
+    scene.walls,
+    scene.rooms,
+    scene.selectedIds,
+    scene.preview,
+    scene.snap,
+    scene.marquee,
+    scene.endpointHandles,
+    scene.viewport,
+    scene.preferences,
+    scene.underlays,
+    scene.calibration,
   ])
 }
 
@@ -309,17 +306,24 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
-  usePlanRedraw(canvasRef, {
-    graph,
+  // Flatten the resolved hooks into the draw-meaningful leaves the redraw depends
+  // on; a pure transform (no hooks) so the effect lists each leaf instead of the
+  // per-render hook-result objects. The endpoint drag and the wall tool never
+  // preview at once, so a single resolved preview leaf covers both.
+  const scene: PlanScene = {
+    walls: graph.walls,
+    rooms: graph.rooms,
     selectedIds,
-    selectedWall,
-    interaction,
-    planSelection,
-    wallEditing,
+    preview: wallEditing.preview ?? interaction.preview,
+    snap: interaction.snap,
+    marquee: planSelection.marquee,
+    endpointHandles: selectedWall,
     viewport,
     preferences,
-    underlayLayer,
-  })
+    underlays: underlayLayer.underlays,
+    calibration: underlayLayer.calibration.calibration,
+  }
+  usePlanRedraw(canvasRef, scene)
   return {
     cursor: planCursor(tool, controls.panning),
     pointerHandlers: composePointerHandlers({

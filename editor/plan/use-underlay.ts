@@ -97,19 +97,25 @@ interface LoadImageDeps {
 
 // Decode the chosen file, cache the bitmap under its content hash, and dispatch a
 // place-underlay command onto the project's first floor. No floor means nothing
-// to place, so the load is dropped.
+// to place, so the load is dropped. The image bytes are read once: the same
+// buffer feeds both the content hash and the bitmap decode. A failed read, hash,
+// or decode is logged; a user-facing toast is a documented follow-up.
 async function loadImageFile(file: File, deps: LoadImageDeps): Promise<void> {
   const floorId = deps.session.getProject().floors[0]?.id
   if (floorId === undefined) {
     return
   }
-  const bytes = await file.arrayBuffer()
-  const contentHash = await sha256Hex(bytes)
-  const bitmap = await createImageBitmap(file)
-  deps.cache.set(contentHash, bitmap)
-  const image: AssetReference = { scope: 'project', contentHash }
-  const underlay = createUnderlay({ image, width: bitmap.width, height: bitmap.height })
-  deps.session.dispatch(placeUnderlay(floorId, underlay))
+  try {
+    const bytes = await file.arrayBuffer()
+    const contentHash = await sha256Hex(bytes)
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: file.type }))
+    deps.cache.set(contentHash, bitmap)
+    const image: AssetReference = { scope: 'project', contentHash }
+    const underlay = createUnderlay({ image, width: bitmap.width, height: bitmap.height })
+    deps.session.dispatch(placeUnderlay(floorId, underlay))
+  } catch (error) {
+    console.error('Failed to load underlay image', error)
+  }
 }
 
 // A transient file input clicked programmatically; created per pick so it does
@@ -157,7 +163,13 @@ function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
     [setTool],
   )
 
-  return { armedUnderlayId, calibrationToolState, setCalibrationToolState, startCalibration }
+  // Memoize the bundle so consumers (the provider's context-value memo) see a
+  // stable reference across renders that do not change the armed underlay or the
+  // measurement state. setCalibrationToolState and startCalibration are stable.
+  return useMemo(
+    () => ({ armedUnderlayId, calibrationToolState, setCalibrationToolState, startCalibration }),
+    [armedUnderlayId, calibrationToolState, startCalibration],
+  )
 }
 
 // Pair each underlay node on the floor with its decoded bitmap; a node whose
@@ -178,7 +190,9 @@ function resolveDrawablesFrom(
       drawables.push({ node, image })
     }
   }
-  return drawables
+  // Reuse the shared empty array so a floor with no drawables yields a stable
+  // reference, sparing the plan redraw an unrelated repaint.
+  return drawables.length > 0 ? drawables : NO_DRAWABLES
 }
 
 export interface UnderlayProviderProps {
@@ -201,15 +215,11 @@ export function UnderlayProvider({ children }: UnderlayProviderProps) {
     [cache],
   )
 
+  // arming is a stable memoized bundle of exactly the four arming context fields,
+  // so spreading it keeps the value referentially stable across renders that do
+  // not change arming, the loaded image, or the resolver.
   const value = useMemo<UnderlayContextValue>(
-    () => ({
-      loadImage,
-      startCalibration: arming.startCalibration,
-      armedUnderlayId: arming.armedUnderlayId,
-      calibrationToolState: arming.calibrationToolState,
-      setCalibrationToolState: arming.setCalibrationToolState,
-      resolveDrawables,
-    }),
+    () => ({ loadImage, ...arming, resolveDrawables }),
     [loadImage, arming, resolveDrawables],
   )
 
@@ -376,6 +386,9 @@ export function usePlanUnderlayLayer(deps: PlanUnderlayLayerDeps): PlanUnderlayL
   const underlay = useUnderlay()
   const project = session.getProject()
   const floorId = project.floors[0]?.id
+  // resolveDrawablesFrom returns the shared empty array when the floor has no
+  // drawable underlays, so this stays referentially stable across renders in the
+  // common no-underlay case and the plan redraw skips them.
   const underlays = underlay.resolveDrawables(graph, floorId)
   const calibration = useCalibrationInteraction({
     session,
