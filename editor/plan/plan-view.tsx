@@ -17,8 +17,8 @@ import {
 } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
-import type { Bounds } from './fit'
 import { singleSelectedWall } from './selected-wall'
+import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
@@ -141,25 +141,30 @@ interface ComposedPointerHandlers {
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => void
+  onPointerLeave: () => void
 }
 
 interface PointerSources {
   controls: ViewportControls
   wallEditing: WallEditing
   interaction: PlanInteraction
+  calibration: PlanUnderlayLayer['calibration']
   selection: PlanSelection
 }
 
 /**
  * A pan gesture takes top priority. Next, an endpoint-drag grab (only possible
  * under the select tool, when a handle is hit) consumes the pointer so it does
- * not also start a marquee or click selection. Otherwise the wall tool and the
- * select-tool selection both see the pointer (each inert under the other's tool).
+ * not also start a marquee or click selection. The calibration interaction runs
+ * next but is inert unless the calibrate tool is active. Otherwise the wall tool
+ * and the select-tool selection both see the pointer (each inert under the
+ * other's tool).
  */
 function composePointerHandlers({
   controls,
   wallEditing,
   interaction,
+  calibration,
   selection,
 }: PointerSources): ComposedPointerHandlers {
   return {
@@ -167,6 +172,7 @@ function composePointerHandlers({
       if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) {
         return
       }
+      calibration.onPointerDown(event)
       interaction.onPointerDown(event)
       selection.onPointerDown(event)
     },
@@ -174,6 +180,7 @@ function composePointerHandlers({
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) {
         return
       }
+      calibration.onPointerMove(event)
       interaction.onPointerMove(event)
       selection.onPointerMove(event)
     },
@@ -182,60 +189,12 @@ function composePointerHandlers({
       wallEditing.onPointerUp(event)
       selection.onPointerUp(event)
     },
+    // Clear both the wall-tool and calibration cursors when the pointer leaves.
+    onPointerLeave: () => {
+      interaction.onPointerLeave()
+      calibration.onPointerLeave()
+    },
   }
-}
-
-interface PlanScene {
-  walls: DrawPlanOptions['walls']
-  // The scene graph always supplies rooms, so this is non-optional here even
-  // though drawPlan accepts rooms as an optional overlay.
-  rooms: NonNullable<DrawPlanOptions['rooms']>
-  selectedIds: ReadonlySet<string>
-  preview: PreviewSegment | undefined
-  snap: SnapResult | null
-  marquee: Bounds | undefined
-  // The single selected wall under the select tool whose endpoint handles paint,
-  // or null when no wall is editable.
-  endpointHandles: WallSceneNode | null
-  viewport: Viewport
-  // The active unit preferences that format the room-label area text.
-  preferences: UnitPreferences
-}
-
-/** Redraws the canvas whenever the walls, selection, viewport, preview, snap, marquee, or handles change. */
-function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: PlanScene): void {
-  useEffect(() => {
-    const ctx = canvasRef.current?.getContext('2d')
-    if (!ctx) {
-      return
-    }
-    drawPlan(ctx, {
-      walls: scene.walls,
-      rooms: scene.rooms,
-      viewport: scene.viewport,
-      width: PLAN_WIDTH,
-      height: PLAN_HEIGHT,
-      selectedIds: scene.selectedIds,
-      grid: true,
-      rulers: true,
-      roomLabels: { preferences: scene.preferences },
-      ...(scene.preview ? { preview: scene.preview } : {}),
-      ...(scene.snap ? { snap: scene.snap } : {}),
-      ...(scene.marquee ? { marquee: scene.marquee } : {}),
-      ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
-    })
-  }, [
-    canvasRef,
-    scene.walls,
-    scene.rooms,
-    scene.selectedIds,
-    scene.preview,
-    scene.snap,
-    scene.marquee,
-    scene.endpointHandles,
-    scene.viewport,
-    scene.preferences,
-  ])
 }
 
 interface SceneInputs {
@@ -247,41 +206,93 @@ interface SceneInputs {
   wallEditing: WallEditing
   viewport: Viewport
   preferences: UnitPreferences
+  underlayLayer: PlanUnderlayLayer
 }
 
-/** Assembles the draw scene from the resolved hooks; the endpoint drag and the wall tool never preview at once. */
-function buildScene(inputs: SceneInputs): PlanScene {
+/**
+ * Assembles the drawPlan options from the resolved hooks; the endpoint drag and
+ * the wall tool never preview at once. Optional overlays (preview, snap, marquee,
+ * endpoint handles, calibration) are spread in only when present so an absent one
+ * stays off under exactOptionalPropertyTypes.
+ */
+function buildDrawOptions(inputs: SceneInputs): DrawPlanOptions {
+  const preview = inputs.wallEditing.preview ?? inputs.interaction.preview
+  const { snap } = inputs.interaction
+  const { marquee } = inputs.planSelection
+  const calibration = inputs.underlayLayer.calibration.calibration
   return {
     walls: inputs.graph.walls,
     rooms: inputs.graph.rooms,
-    selectedIds: inputs.selectedIds,
-    preview: inputs.wallEditing.preview ?? inputs.interaction.preview,
-    snap: inputs.interaction.snap,
-    marquee: inputs.planSelection.marquee,
-    endpointHandles: inputs.selectedWall,
     viewport: inputs.viewport,
-    preferences: inputs.preferences,
+    width: PLAN_WIDTH,
+    height: PLAN_HEIGHT,
+    selectedIds: inputs.selectedIds,
+    grid: true,
+    rulers: true,
+    roomLabels: { preferences: inputs.preferences },
+    underlays: inputs.underlayLayer.underlays,
+    ...(preview ? { preview } : {}),
+    ...(snap ? { snap } : {}),
+    ...(marquee ? { marquee } : {}),
+    ...(inputs.selectedWall ? { endpointHandles: inputs.selectedWall } : {}),
+    ...(calibration ? { calibration } : {}),
   }
+}
+
+/** Redraws the canvas whenever a resolved scene input changes. */
+function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, inputs: SceneInputs): void {
+  const { graph, selectedIds, selectedWall, interaction, planSelection } = inputs
+  const { wallEditing, viewport, preferences, underlayLayer } = inputs
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext('2d')
+    if (ctx) {
+      drawPlan(
+        ctx,
+        buildDrawOptions({
+          graph,
+          selectedIds,
+          selectedWall,
+          interaction,
+          planSelection,
+          wallEditing,
+          viewport,
+          preferences,
+          underlayLayer,
+        }),
+      )
+    }
+  }, [
+    canvasRef,
+    graph,
+    selectedIds,
+    selectedWall,
+    interaction,
+    planSelection,
+    wallEditing,
+    viewport,
+    preferences,
+    underlayLayer,
+  ])
 }
 
 function planCursor(tool: ToolId, panning: boolean): string {
   if (panning) {
     return 'grabbing'
   }
-  return tool === 'draw-wall' ? 'crosshair' : 'default'
+  return tool === 'draw-wall' || tool === 'calibrate' ? 'crosshair' : 'default'
 }
 
 interface PlanController {
   cursor: string
   pointerHandlers: ComposedPointerHandlers
-  onPointerLeave: () => void
 }
 
 /**
  * Resolves and composes all the plan-editing hooks (pan/zoom, wall tool, hit-test
- * selection, endpoint-drag wall editing), drives the redraw, and exposes the
- * canvas cursor and pointer handlers. The pure decision logic lives in the tested
- * modules; this binds them to the session, selection, and active tool.
+ * selection, endpoint-drag wall editing, underlay layer, calibration), drives the
+ * redraw, and exposes the canvas cursor and pointer handlers. The pure decision
+ * logic lives in the tested modules; this binds them to the session, selection,
+ * active tool, and underlay state.
  */
 function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): PlanController {
   const session = useEditorSession()
@@ -297,7 +308,8 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
-  const scene = buildScene({
+  const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
+  usePlanRedraw(canvasRef, {
     graph,
     selectedIds,
     selectedWall,
@@ -306,17 +318,17 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
     wallEditing,
     viewport,
     preferences,
+    underlayLayer,
   })
-  usePlanRedraw(canvasRef, scene)
   return {
     cursor: planCursor(tool, controls.panning),
     pointerHandlers: composePointerHandlers({
       controls,
       wallEditing,
       interaction,
+      calibration: underlayLayer.calibration,
       selection: planSelection,
     }),
-    onPointerLeave: interaction.onPointerLeave,
   }
 }
 
@@ -329,7 +341,7 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { cursor, pointerHandlers, onPointerLeave } = usePlanController(canvasRef)
+  const { cursor, pointerHandlers } = usePlanController(canvasRef)
 
   return (
     <canvas
@@ -342,7 +354,7 @@ export function PlanView() {
       onPointerDown={pointerHandlers.onPointerDown}
       onPointerMove={pointerHandlers.onPointerMove}
       onPointerUp={pointerHandlers.onPointerUp}
-      onPointerLeave={onPointerLeave}
+      onPointerLeave={pointerHandlers.onPointerLeave}
     />
   )
 }
