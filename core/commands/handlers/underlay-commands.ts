@@ -1,6 +1,28 @@
-import type { Project, Underlay, UnderlayPlacement } from '../../model/types'
+import type { Floor, Project, Underlay, UnderlayPlacement } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+
+// Applies `update` to the floor whose id matches `floorId`, leaving all other floors
+// reference-equal. Reassigns state.floors so the inverse-capture proxy (ADR-0005) records
+// the slice replacement and the dispatcher can capture the inverse for undo.
+function mapTargetFloor(state: Project, floorId: string, update: (floor: Floor) => Floor): void {
+  state.floors = state.floors.map((floor) => (floor.id === floorId ? update(floor) : floor))
+}
+
+// Returns a new floor whose underlay matching `underlayId` is replaced by `update(underlay)`;
+// all other underlays are reference-equal.
+function mapTargetUnderlay(
+  floor: Floor,
+  underlayId: string,
+  update: (underlay: Underlay) => Underlay,
+): Floor {
+  return {
+    ...floor,
+    underlays: floor.underlays.map((underlay) =>
+      underlay.id === underlayId ? update(underlay) : underlay,
+    ),
+  }
+}
 
 export const PLACE_UNDERLAY = 'floor/place-underlay'
 
@@ -17,16 +39,12 @@ export function placeUnderlay(floorId: string, underlay: Underlay): Command<Plac
   }
 }
 
-// Reassigns the whole floors slice because the inverse-capture proxy records
-// only the root's top-level properties; the edited floor becomes a new object
-// while untouched floors keep their reference for entity-keyed dirty tracking.
 const placeUnderlayHandler: CommandHandler<Project, PlaceUnderlayParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? { ...floor, underlays: [...floor.underlays, params.underlay] }
-        : floor,
-    )
+    mapTargetFloor(state, params.floorId, (floor) => ({
+      ...floor,
+      underlays: [...floor.underlays, params.underlay],
+    }))
   },
 }
 
@@ -50,20 +68,13 @@ export function calibrateUnderlay(
   }
 }
 
-// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
 const calibrateUnderlayHandler: CommandHandler<Project, CalibrateUnderlayParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? {
-            ...floor,
-            underlays: floor.underlays.map((underlay) =>
-              underlay.id === params.underlayId
-                ? { ...underlay, placement: params.placement }
-                : underlay,
-            ),
-          }
-        : floor,
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetUnderlay(floor, params.underlayId, (underlay) => ({
+        ...underlay,
+        placement: params.placement,
+      })),
     )
   },
 }
@@ -88,20 +99,13 @@ export function setUnderlayOpacity(
   }
 }
 
-// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
 const setUnderlayOpacityHandler: CommandHandler<Project, SetUnderlayOpacityParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? {
-            ...floor,
-            underlays: floor.underlays.map((underlay) =>
-              underlay.id === params.underlayId
-                ? { ...underlay, opacity: params.opacity }
-                : underlay,
-            ),
-          }
-        : floor,
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetUnderlay(floor, params.underlayId, (underlay) => ({
+        ...underlay,
+        opacity: params.opacity,
+      })),
     )
   },
 }
@@ -126,20 +130,13 @@ export function setUnderlayVisibility(
   }
 }
 
-// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
 const setUnderlayVisibilityHandler: CommandHandler<Project, SetUnderlayVisibilityParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? {
-            ...floor,
-            underlays: floor.underlays.map((underlay) =>
-              underlay.id === params.underlayId
-                ? { ...underlay, visible: params.visible }
-                : underlay,
-            ),
-          }
-        : floor,
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetUnderlay(floor, params.underlayId, (underlay) => ({
+        ...underlay,
+        visible: params.visible,
+      })),
     )
   },
 }
@@ -159,17 +156,12 @@ export function removeUnderlay(floorId: string, underlayId: string): Command<Rem
   }
 }
 
-// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
 const removeUnderlayHandler: CommandHandler<Project, RemoveUnderlayParams> = {
   apply(state, params) {
-    state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId
-        ? {
-            ...floor,
-            underlays: floor.underlays.filter((underlay) => underlay.id !== params.underlayId),
-          }
-        : floor,
-    )
+    mapTargetFloor(state, params.floorId, (floor) => ({
+      ...floor,
+      underlays: floor.underlays.filter((underlay) => underlay.id !== params.underlayId),
+    }))
   },
 }
 
