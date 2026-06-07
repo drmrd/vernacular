@@ -66,7 +66,9 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
 }
 
 // Pre-calibration baseline: one world millimeter per source image pixel. The
-// calibration tool replaces this once the user matches a known dimension.
+// calibration tool replaces this once the user matches a known dimension;
+// calibrated scans typically land well above 1 (often tens of millimeters per
+// pixel for a whole-floor plan scanned at low resolution).
 export const DEFAULT_UNDERLAY_MM_PER_PIXEL = 1
 
 export interface NewUnderlayOptions {

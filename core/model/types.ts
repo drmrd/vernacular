@@ -41,7 +41,11 @@ export interface UnderlayPlacement {
   offset: Point
   /** World millimeters per source image pixel; the calibrated scale. */
   millimetersPerPixel: number
-  /** Clockwise rotation in radians about `offset`; 0 for an axis-aligned underlay. */
+  /**
+   * Rotation in radians about `offset`. Positive values rotate clockwise on
+   * screen, matching the image's downward-y pixel axes; 0 for an axis-aligned
+   * underlay.
+   */
   rotation: number
 }
 
