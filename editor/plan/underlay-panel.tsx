@@ -20,15 +20,17 @@ export interface UnderlayPanelProps {
 interface UnderlayRowProps {
   floorId: string
   underlay: Underlay
+  label: string
   dispatch: (command: unknown) => void
   onCalibrate: (underlayId: string) => void
 }
 
-function UnderlayRow({ floorId, underlay, dispatch, onCalibrate }: UnderlayRowProps) {
+function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: UnderlayRowProps) {
   const opacityInputId = `underlay-opacity-${underlay.id}`
 
   return (
     <fieldset>
+      <legend>{label}</legend>
       <label htmlFor={opacityInputId}>Opacity</label>
       <input
         id={opacityInputId}
@@ -68,14 +70,15 @@ export function UnderlayPanel({
 }: UnderlayPanelProps) {
   return (
     <div>
-      <button type="button" onClick={() => onLoadImage()}>
+      <button type="button" onClick={onLoadImage}>
         Load image
       </button>
-      {underlays.map((underlay) => (
+      {underlays.map((underlay, index) => (
         <UnderlayRow
           key={underlay.id}
           floorId={floorId}
           underlay={underlay}
+          label={`Underlay ${index + 1}`}
           dispatch={dispatch}
           onCalibrate={onCalibrate}
         />
