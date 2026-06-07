@@ -109,11 +109,20 @@ export {
 } from './commands/handlers/room-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
-export type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
+export type {
+  RoomSceneNode,
+  SceneGraph,
+  SceneNode,
+  UnderlaySceneNode,
+  WallSceneNode,
+} from './scene/scene-graph'
 export {
+  UNDERLAY_NODE_PREFIX,
   deriveFloorNode,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
+  deriveUnderlayNode,
+  deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
