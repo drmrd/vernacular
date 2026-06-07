@@ -6,16 +6,25 @@ export type {
   ProjectMeta,
   RoomOverride,
   SchemaVersion,
+  Underlay,
+  UnderlayPlacement,
   UnitSystem,
   Wall,
 } from './model/types'
-export type { NewFloorOptions, NewProjectOptions, NewWallOptions } from './model/factories'
+export type {
+  NewFloorOptions,
+  NewProjectOptions,
+  NewUnderlayOptions,
+  NewWallOptions,
+} from './model/factories'
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createEmptyProject,
   createFloor,
+  createUnderlay,
   createWall,
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
