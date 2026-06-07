@@ -96,6 +96,19 @@ describe('EditorShell', () => {
     expect(onExportBundle).toHaveBeenCalledTimes(1)
   })
 
+  it('invokes the open-folder handler when its button is clicked', async () => {
+    vi.stubGlobal('navigator', {})
+    const onOpenFolder = vi.fn()
+    const user = userEvent.setup()
+
+    renderShell({ onOpenFolder })
+
+    const project = screen.getByRole('navigation', { name: /project/i })
+    await user.click(within(project).getByRole('button', { name: /open folder/i }))
+
+    expect(onOpenFolder).toHaveBeenCalledTimes(1)
+  })
+
   it('opens a recent project by its id when its control is clicked', async () => {
     vi.stubGlobal('navigator', {})
     const onOpenRecent = vi.fn()
@@ -146,6 +159,7 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('button', { name: /^new$/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /export bundle/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /open folder/i })).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
   })
 })

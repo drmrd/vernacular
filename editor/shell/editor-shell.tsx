@@ -81,6 +81,7 @@ interface ProjectControlsProps {
   onOpenRecent?: (id: string) => void
   onSave?: () => void
   onExportBundle?: () => void
+  onOpenFolder?: () => void
 }
 
 function ProjectControls({
@@ -89,6 +90,7 @@ function ProjectControls({
   onOpenRecent,
   onSave,
   onExportBundle,
+  onOpenFolder,
 }: ProjectControlsProps) {
   const hasRecentProjects = recentProjects !== undefined && recentProjects.length > 0
   return (
@@ -106,6 +108,11 @@ function ProjectControls({
       {onExportBundle ? (
         <button type="button" onClick={onExportBundle}>
           Export bundle
+        </button>
+      ) : null}
+      {onOpenFolder ? (
+        <button type="button" onClick={onOpenFolder}>
+          Open folder
         </button>
       ) : null}
       {hasRecentProjects && onOpenRecent ? (
