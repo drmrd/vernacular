@@ -78,7 +78,7 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
       state.ops.push('fillRect')
       state.fillRects.push({ x, y, w, h })
     },
-    // eslint-disable-next-line max-params -- mirrors the five-argument CanvasRenderingContext2D.drawImage signature the fake records
+    // eslint-disable-next-line max-params -- mirrors the five-argument CanvasRenderingContext2D.drawImage signature, recording the four destination parameters
     drawImage: (_image, dx, dy, dWidth, dHeight) => {
       state.ops.push('drawImage')
       state.images.push({ dx, dy, dWidth, dHeight, alpha: ctx.globalAlpha })
