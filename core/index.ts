@@ -76,9 +76,14 @@ export {
   registerWallCommands,
   setWallThickness,
 } from './commands/handlers/wall-commands'
-export type { PlaceUnderlayParams } from './commands/handlers/underlay-commands'
+export type {
+  CalibrateUnderlayParams,
+  PlaceUnderlayParams,
+} from './commands/handlers/underlay-commands'
 export {
+  CALIBRATE_UNDERLAY,
   PLACE_UNDERLAY,
+  calibrateUnderlay,
   placeUnderlay,
   registerUnderlayCommands,
 } from './commands/handlers/underlay-commands'

@@ -1,4 +1,4 @@
-import type { Project, Underlay } from '../../model/types'
+import type { Project, Underlay, UnderlayPlacement } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
@@ -30,8 +30,47 @@ const placeUnderlayHandler: CommandHandler<Project, PlaceUnderlayParams> = {
   },
 }
 
+export const CALIBRATE_UNDERLAY = 'floor/calibrate-underlay'
+
+export interface CalibrateUnderlayParams {
+  floorId: string
+  underlayId: string
+  placement: UnderlayPlacement
+}
+
+export function calibrateUnderlay(
+  floorId: string,
+  underlayId: string,
+  placement: UnderlayPlacement,
+): Command<CalibrateUnderlayParams> {
+  return {
+    type: CALIBRATE_UNDERLAY,
+    params: { floorId, underlayId, placement },
+    description: 'Calibrate underlay',
+  }
+}
+
+const calibrateUnderlayHandler: CommandHandler<Project, CalibrateUnderlayParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId
+        ? {
+            ...floor,
+            underlays: floor.underlays.map((underlay) =>
+              underlay.id === params.underlayId
+                ? { ...underlay, placement: params.placement }
+                : underlay,
+            ),
+          }
+        : floor,
+    )
+  },
+}
+
 export function registerUnderlayCommands(
   registry: CommandRegistry<Project>,
 ): CommandRegistry<Project> {
-  return registry.register(PLACE_UNDERLAY, placeUnderlayHandler)
+  return registry
+    .register(PLACE_UNDERLAY, placeUnderlayHandler)
+    .register(CALIBRATE_UNDERLAY, calibrateUnderlayHandler)
 }
