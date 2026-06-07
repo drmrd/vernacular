@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calibrationScale } from './calibration'
+import type { UnderlayPlacement } from '../model/types'
+import { applyCalibration, calibrationScale } from './calibration'
 import { distance } from './point'
 
 // Decimal places for toBeCloseTo: the round trip should reproduce the known
@@ -38,5 +39,43 @@ describe('calibrationScale', () => {
 
   it('throws for a negative known distance', () => {
     expect(() => calibrationScale({ start: { x: 0, y: 0 }, end: { x: 100, y: 0 } }, -50)).toThrow()
+  })
+})
+
+describe('applyCalibration', () => {
+  it('returns a placement carrying the new millimeters-per-pixel', () => {
+    const placement: UnderlayPlacement = {
+      offset: { x: 100, y: 200 },
+      millimetersPerPixel: 1,
+      rotation: 0,
+    }
+
+    expect(applyCalibration(placement, 12.5).millimetersPerPixel).toBe(12.5)
+  })
+
+  it('preserves the offset and rotation of the input placement', () => {
+    const placement: UnderlayPlacement = {
+      offset: { x: 100, y: 200 },
+      millimetersPerPixel: 1,
+      rotation: Math.PI / 4,
+    }
+
+    const result = applyCalibration(placement, 12.5)
+
+    expect(result.offset).toEqual({ x: 100, y: 200 })
+    expect(result.rotation).toBe(Math.PI / 4)
+  })
+
+  it('does not mutate the input and returns a new object reference', () => {
+    const placement: UnderlayPlacement = {
+      offset: { x: 100, y: 200 },
+      millimetersPerPixel: 1,
+      rotation: 0,
+    }
+
+    const result = applyCalibration(placement, 12.5)
+
+    expect(result).not.toBe(placement)
+    expect(placement.millimetersPerPixel).toBe(1)
   })
 })
