@@ -1,4 +1,4 @@
-import type { Point } from '../model/types'
+import type { Point, UnderlayPlacement } from '../model/types'
 import { distance } from './point'
 
 /** A line segment in image pixel coordinates, used as the calibration reference. */
@@ -23,4 +23,12 @@ export function calibrationScale(segment: PixelSegment, knownDistanceMm: number)
     throw new Error('calibrationScale requires a positive known distance')
   }
   return knownDistanceMm / pixelLength
+}
+
+/** Returns the placement updated to the given millimeters-per-pixel, keeping the offset and rotation unchanged. */
+export function applyCalibration(
+  placement: UnderlayPlacement,
+  millimetersPerPixel: number,
+): UnderlayPlacement {
+  return { ...placement, millimetersPerPixel }
 }

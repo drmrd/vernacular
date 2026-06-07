@@ -139,6 +139,8 @@ export {
   migrateProject,
 } from './migrations'
 export { distance } from './geometry/point'
+export type { PixelSegment } from './geometry/calibration'
+export { applyCalibration, calibrationScale } from './geometry/calibration'
 export { pointInPolygon, polygonArea } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
