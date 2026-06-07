@@ -5,6 +5,12 @@ import { worldToScreen, type Viewport } from './viewport'
 /** The narrow structural slice of a decoded bitmap that drawImage needs (a real ImageBitmap satisfies it). */
 export type UnderlayImage = { readonly width: number; readonly height: number }
 
+/** An underlay scene node paired with its resolved decoded bitmap, ready to paint. */
+export interface DrawableUnderlay {
+  node: UnderlaySceneNode
+  image: UnderlayImage
+}
+
 const FULLY_OPAQUE = 1 // restore alpha after the dimmed underlay draw so later strokes are not dimmed
 
 // Distinct amber for the calibration measure line and its endpoint markers, set apart from the snap marker's orange.
@@ -34,6 +40,30 @@ export function drawUnderlay(
     node.height * pixelToScreen,
   )
   ctx.globalAlpha = FULLY_OPAQUE
+}
+
+/** Paint every visible underlay as the bottom layer; nodes flagged not visible are skipped. */
+export function drawUnderlays(
+  ctx: PlanDrawingContext,
+  underlays: readonly DrawableUnderlay[] | undefined,
+  viewport: Viewport,
+): void {
+  for (const du of underlays ?? []) {
+    if (du.node.visible !== false) {
+      drawUnderlay(ctx, du.node, viewport, du.image)
+    }
+  }
+}
+
+/** Paint the calibration measure segment when one is set, above the plan but below the rulers. */
+export function drawCalibration(
+  ctx: PlanDrawingContext,
+  segment: PreviewSegment | undefined,
+  viewport: Viewport,
+): void {
+  if (segment) {
+    drawCalibrationSegment(ctx, segment, viewport)
+  }
 }
 
 /** Paint the calibration measure line and a filled marker at each of its screen endpoints. */
