@@ -68,10 +68,40 @@ const calibrateUnderlayHandler: CommandHandler<Project, CalibrateUnderlayParams>
   },
 }
 
+export const REMOVE_UNDERLAY = 'floor/remove-underlay'
+
+export interface RemoveUnderlayParams {
+  floorId: string
+  underlayId: string
+}
+
+export function removeUnderlay(floorId: string, underlayId: string): Command<RemoveUnderlayParams> {
+  return {
+    type: REMOVE_UNDERLAY,
+    params: { floorId, underlayId },
+    description: 'Remove underlay',
+  }
+}
+
+// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
+const removeUnderlayHandler: CommandHandler<Project, RemoveUnderlayParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId
+        ? {
+            ...floor,
+            underlays: floor.underlays.filter((underlay) => underlay.id !== params.underlayId),
+          }
+        : floor,
+    )
+  },
+}
+
 export function registerUnderlayCommands(
   registry: CommandRegistry<Project>,
 ): CommandRegistry<Project> {
   return registry
     .register(PLACE_UNDERLAY, placeUnderlayHandler)
     .register(CALIBRATE_UNDERLAY, calibrateUnderlayHandler)
+    .register(REMOVE_UNDERLAY, removeUnderlayHandler)
 }

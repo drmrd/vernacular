@@ -79,13 +79,16 @@ export {
 export type {
   CalibrateUnderlayParams,
   PlaceUnderlayParams,
+  RemoveUnderlayParams,
 } from './commands/handlers/underlay-commands'
 export {
   CALIBRATE_UNDERLAY,
   PLACE_UNDERLAY,
+  REMOVE_UNDERLAY,
   calibrateUnderlay,
   placeUnderlay,
   registerUnderlayCommands,
+  removeUnderlay,
 } from './commands/handlers/underlay-commands'
 export type {
   SetRoomCustomPolygonParams,
