@@ -25,7 +25,14 @@ export function calibrationScale(segment: PixelSegment, knownDistanceMm: number)
   return knownDistanceMm / pixelLength
 }
 
-/** Returns the placement updated to the given millimeters-per-pixel, keeping the offset and rotation unchanged. */
+/**
+ * Returns the placement updated to the given millimeters-per-pixel scale,
+ * keeping the offset and rotation unchanged.
+ *
+ * @param placement - the current underlay placement.
+ * @param millimetersPerPixel - the calibrated world millimeters per source pixel.
+ * @returns a new placement with the updated scale; the input is not mutated.
+ */
 export function applyCalibration(
   placement: UnderlayPlacement,
   millimetersPerPixel: number,
