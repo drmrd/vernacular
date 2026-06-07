@@ -3,10 +3,12 @@ import {
   placeUnderlay,
   calibrateUnderlay,
   removeUnderlay,
+  setUnderlayOpacity,
   registerUnderlayCommands,
   PLACE_UNDERLAY,
   CALIBRATE_UNDERLAY,
   REMOVE_UNDERLAY,
+  SET_UNDERLAY_OPACITY,
 } from './underlay-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
@@ -174,5 +176,55 @@ describe('removeUnderlay', () => {
 
   it('carries a stable command type', () => {
     expect(removeUnderlay('g', 'underlay-1').type).toBe(REMOVE_UNDERLAY)
+  })
+})
+
+const REDUCED_OPACITY = 0.5
+const FACTORY_DEFAULT_OPACITY = 1
+
+describe('setUnderlayOpacity', () => {
+  it('sets the target underlay opacity to the given value', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+
+    dispatcher.dispatch(setUnderlayOpacity('g', target.id, REDUCED_OPACITY))
+
+    expect(project.floors[0]?.underlays[0]?.opacity).toBe(REDUCED_OPACITY)
+  })
+
+  it('leaves the target underlay other fields and a sibling underlay untouched', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    const sibling = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+    dispatcher.dispatch(placeUnderlay('g', sibling))
+
+    dispatcher.dispatch(setUnderlayOpacity('g', target.id, REDUCED_OPACITY))
+
+    const adjusted = project.floors[0]?.underlays[0]
+    expect(adjusted?.placement).toEqual(target.placement)
+    expect(adjusted?.image).toEqual(target.image)
+    expect(adjusted?.visible).toBe(target.visible)
+    expect(project.floors[0]?.underlays[1]).toEqual(sibling)
+    expect(project.floors[1]?.underlays).toHaveLength(0)
+  })
+
+  it('restores the previous opacity on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+
+    dispatcher.dispatch(setUnderlayOpacity('g', target.id, REDUCED_OPACITY))
+    dispatcher.undo()
+
+    expect(project.floors[0]?.underlays[0]?.opacity).toBe(FACTORY_DEFAULT_OPACITY)
+  })
+
+  it('carries a stable command type', () => {
+    expect(setUnderlayOpacity('g', 'underlay-1', REDUCED_OPACITY).type).toBe(SET_UNDERLAY_OPACITY)
   })
 })
