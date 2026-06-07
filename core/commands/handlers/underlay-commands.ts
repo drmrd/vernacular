@@ -50,6 +50,7 @@ export function calibrateUnderlay(
   }
 }
 
+// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
 const calibrateUnderlayHandler: CommandHandler<Project, CalibrateUnderlayParams> = {
   apply(state, params) {
     state.floors = state.floors.map((floor) =>
