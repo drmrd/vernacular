@@ -4,11 +4,13 @@ import {
   calibrateUnderlay,
   removeUnderlay,
   setUnderlayOpacity,
+  setUnderlayVisibility,
   registerUnderlayCommands,
   PLACE_UNDERLAY,
   CALIBRATE_UNDERLAY,
   REMOVE_UNDERLAY,
   SET_UNDERLAY_OPACITY,
+  SET_UNDERLAY_VISIBILITY,
 } from './underlay-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
@@ -226,5 +228,54 @@ describe('setUnderlayOpacity', () => {
 
   it('carries a stable command type', () => {
     expect(setUnderlayOpacity('g', 'underlay-1', REDUCED_OPACITY).type).toBe(SET_UNDERLAY_OPACITY)
+  })
+})
+
+const FACTORY_DEFAULT_VISIBILITY = true
+
+describe('setUnderlayVisibility', () => {
+  it('sets the target underlay visibility to the given value', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+
+    dispatcher.dispatch(setUnderlayVisibility('g', target.id, false))
+
+    expect(project.floors[0]?.underlays[0]?.visible).toBe(false)
+  })
+
+  it('leaves the target underlay other fields and a sibling underlay untouched', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    const sibling = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+    dispatcher.dispatch(placeUnderlay('g', sibling))
+
+    dispatcher.dispatch(setUnderlayVisibility('g', target.id, false))
+
+    const adjusted = project.floors[0]?.underlays[0]
+    expect(adjusted?.placement).toEqual(target.placement)
+    expect(adjusted?.image).toEqual(target.image)
+    expect(adjusted?.opacity).toBe(target.opacity)
+    expect(project.floors[0]?.underlays[1]).toEqual(sibling)
+    expect(project.floors[1]?.underlays).toHaveLength(0)
+  })
+
+  it('restores the previous visibility on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+
+    dispatcher.dispatch(setUnderlayVisibility('g', target.id, false))
+    dispatcher.undo()
+
+    expect(project.floors[0]?.underlays[0]?.visible).toBe(FACTORY_DEFAULT_VISIBILITY)
+  })
+
+  it('carries a stable command type', () => {
+    expect(setUnderlayVisibility('g', 'underlay-1', false).type).toBe(SET_UNDERLAY_VISIBILITY)
   })
 })
