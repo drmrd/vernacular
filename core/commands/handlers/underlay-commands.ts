@@ -68,6 +68,44 @@ const calibrateUnderlayHandler: CommandHandler<Project, CalibrateUnderlayParams>
   },
 }
 
+export const SET_UNDERLAY_OPACITY = 'floor/set-underlay-opacity'
+
+export interface SetUnderlayOpacityParams {
+  floorId: string
+  underlayId: string
+  opacity: number
+}
+
+export function setUnderlayOpacity(
+  floorId: string,
+  underlayId: string,
+  opacity: number,
+): Command<SetUnderlayOpacityParams> {
+  return {
+    type: SET_UNDERLAY_OPACITY,
+    params: { floorId, underlayId, opacity },
+    description: 'Set underlay opacity',
+  }
+}
+
+// Reassigns state.floors for the same inverse-capture reason as placeUnderlayHandler above (ADR-0005).
+const setUnderlayOpacityHandler: CommandHandler<Project, SetUnderlayOpacityParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId
+        ? {
+            ...floor,
+            underlays: floor.underlays.map((underlay) =>
+              underlay.id === params.underlayId
+                ? { ...underlay, opacity: params.opacity }
+                : underlay,
+            ),
+          }
+        : floor,
+    )
+  },
+}
+
 export const REMOVE_UNDERLAY = 'floor/remove-underlay'
 
 export interface RemoveUnderlayParams {
@@ -103,5 +141,6 @@ export function registerUnderlayCommands(
   return registry
     .register(PLACE_UNDERLAY, placeUnderlayHandler)
     .register(CALIBRATE_UNDERLAY, calibrateUnderlayHandler)
+    .register(SET_UNDERLAY_OPACITY, setUnderlayOpacityHandler)
     .register(REMOVE_UNDERLAY, removeUnderlayHandler)
 }
