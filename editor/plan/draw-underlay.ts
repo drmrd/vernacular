@@ -42,20 +42,20 @@ export function drawUnderlay(
   ctx.globalAlpha = FULLY_OPAQUE
 }
 
-/** Paint every visible underlay as the bottom layer; nodes flagged not visible are skipped. */
+/** Paints each visible underlay as the bottom layer; a missing or empty list paints nothing. */
 export function drawUnderlays(
   ctx: PlanDrawingContext,
   underlays: readonly DrawableUnderlay[] | undefined,
   viewport: Viewport,
 ): void {
-  for (const du of underlays ?? []) {
-    if (du.node.visible !== false) {
-      drawUnderlay(ctx, du.node, viewport, du.image)
+  for (const drawable of underlays ?? []) {
+    if (drawable.node.visible) {
+      drawUnderlay(ctx, drawable.node, viewport, drawable.image)
     }
   }
 }
 
-/** Paint the calibration measure segment when one is set, above the plan but below the rulers. */
+/** Paints the calibration measure line when one is in progress; no-ops when absent. */
 export function drawCalibration(
   ctx: PlanDrawingContext,
   segment: PreviewSegment | undefined,
