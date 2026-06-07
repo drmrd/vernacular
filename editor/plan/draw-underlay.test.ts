@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { drawUnderlay, type UnderlayImage } from './draw-underlay'
+import { drawUnderlay, drawCalibrationSegment, type UnderlayImage } from './draw-underlay'
 import { recordingContext } from './draw-plan-test-fixtures'
+import type { PreviewSegment } from './draw-plan'
 import { worldToScreen, type Viewport } from './viewport'
 import type { UnderlaySceneNode } from '../../core'
 
@@ -64,5 +65,48 @@ describe('drawUnderlay', () => {
     // The underlay dims itself via globalAlpha; a later wall stroke must not
     // inherit that dimming, so the alpha is restored to 1 before returning.
     expect(recorder.ctx.globalAlpha).toBe(1)
+  })
+})
+
+describe('drawCalibrationSegment', () => {
+  // Two distinct world points so the projected screen endpoints differ in both
+  // axes, paired with the non-identity VIEWPORT so the projection is observable.
+  const segment: PreviewSegment = {
+    start: { x: 1200, y: 800 },
+    end: { x: 3400, y: 2600 },
+  }
+
+  it('strokes the calibration line between the two projected screen endpoints', () => {
+    const recorder = recordingContext()
+
+    drawCalibrationSegment(recorder.ctx, segment, VIEWPORT)
+
+    const from = worldToScreen(segment.start, VIEWPORT)
+    const to = worldToScreen(segment.end, VIEWPORT)
+    expect(recorder.segments).toContainEqual(
+      expect.objectContaining({
+        from: [from.x, from.y],
+        to: [to.x, to.y],
+      }),
+    )
+  })
+
+  it('marks each measured endpoint with a filled arc at its projected screen position', () => {
+    const recorder = recordingContext()
+
+    drawCalibrationSegment(recorder.ctx, segment, VIEWPORT)
+
+    const from = worldToScreen(segment.start, VIEWPORT)
+    const to = worldToScreen(segment.end, VIEWPORT)
+    expect(recorder.arcs).toHaveLength(2)
+    expect(recorder.arcs).toContainEqual(
+      expect.objectContaining({ x: from.x, y: from.y, radius: expect.any(Number) }),
+    )
+    expect(recorder.arcs).toContainEqual(
+      expect.objectContaining({ x: to.x, y: to.y, radius: expect.any(Number) }),
+    )
+    for (const arc of recorder.arcs) {
+      expect(arc.radius).toBeGreaterThan(0)
+    }
   })
 })
