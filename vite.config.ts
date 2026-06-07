@@ -52,6 +52,7 @@ export default defineConfig({
         'editor/plan/plan-view.tsx',
         'editor/plan/use-viewport-controls.ts',
         'editor/plan/use-wall-editing.ts',
+        'editor/plan/use-underlay.ts',
         'editor/plan/selected-wall.ts',
         'storage/indexeddb/indexeddb-project-store.ts',
         'storage/download/download-blob.ts',

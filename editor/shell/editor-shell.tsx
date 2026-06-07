@@ -4,6 +4,7 @@ import {
   useSceneGraph,
   useSelectionIds,
   type AutosaveStatus,
+  type EditorSession,
 } from '../../bridge'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
@@ -18,6 +19,8 @@ import {
 } from '../../core'
 import { PlanView } from '../plan/plan-view'
 import { RoomNameEditor } from '../plan/room-name-editor'
+import { UnderlayPanel } from '../plan/underlay-panel'
+import { useUnderlay, UnderlayProvider } from '../plan/use-underlay'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 import { ToolsPanel } from '../tools/tools-panel'
 import './editor-shell.css'
@@ -201,16 +204,16 @@ function RoomInspector({ roomNode, dispatch }: RoomInspectorProps) {
   )
 }
 
-function Inspector() {
-  const session = useEditorSession()
-  const graph = useSceneGraph()
-  const selectedIds = useSelectionIds()
-  // The editors' dispatch prop is intentionally loose (`unknown`) so the inline
-  // editors drive their unit tests without the command types; each only ever
-  // dispatches a valid command, so forwarding it to the session is sound.
-  const dispatch = (command: unknown): void => {
-    session.dispatch(command as Command)
-  }
+interface SelectionInspectorProps {
+  session: EditorSession
+  graph: SceneGraph
+  selectedIds: ReadonlySet<string>
+  dispatch: (command: unknown) => void
+}
+
+// The selection-driven content: the wall or room editor for a single selection,
+// otherwise a brief selection summary.
+function SelectionInspector({ session, graph, selectedIds, dispatch }: SelectionInspectorProps) {
   const wallNode = singleSelectedWallNode(selectedIds, graph)
   if (wallNode !== null) {
     const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
@@ -223,6 +226,41 @@ function Inspector() {
   return <p>{selectedIds.size > 0 ? 'Wall selected' : 'No selection'}</p>
 }
 
+function Inspector() {
+  const session = useEditorSession()
+  const graph = useSceneGraph()
+  const selectedIds = useSelectionIds()
+  const underlay = useUnderlay()
+  // The editors' dispatch prop is intentionally loose (`unknown`) so the inline
+  // editors drive their unit tests without the command types; each only ever
+  // dispatches a valid command, so forwarding it to the session is sound.
+  const dispatch = (command: unknown): void => {
+    session.dispatch(command as Command)
+  }
+  // A single-floor MVP: the underlay panel always lists the active (first) floor's
+  // underlays. The panel renders nothing for the rows when the floor has none.
+  const floor = session.getProject().floors[0]
+  return (
+    <>
+      <SelectionInspector
+        session={session}
+        graph={graph}
+        selectedIds={selectedIds}
+        dispatch={dispatch}
+      />
+      {floor ? (
+        <UnderlayPanel
+          floorId={floor.id}
+          underlays={floor.underlays}
+          dispatch={dispatch}
+          onLoadImage={underlay.loadImage}
+          onCalibrate={underlay.startCalibration}
+        />
+      ) : null}
+    </>
+  )
+}
+
 export interface EditorShellProps extends ProjectControlsProps {
   saveStatus: AutosaveStatus
   recovery?: { onRestore: () => void; onDiscard: () => void }
@@ -231,28 +269,33 @@ export interface EditorShellProps extends ProjectControlsProps {
 export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
   const graph = useSceneGraph()
   return (
-    <div className="editor-shell">
-      <header className="editor-shell__toolbar" role="banner">
-        <h1>Vernacular</h1>
-        <p aria-live="polite">Walls: {graph.walls.length}</p>
-        <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
-        <ProjectControls {...projectControls} />
-      </header>
-      {recovery ? (
-        <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-      ) : null}
-      <nav className="editor-shell__tools" aria-label="Tools">
-        <ToolsPanel />
-      </nav>
-      <main className="editor-shell__viewport" aria-label="Viewport">
-        <PlanView />
-        <section className="editor-shell__preview" aria-label="3D preview">
-          <SceneCanvas />
-        </section>
-      </main>
-      <aside className="editor-shell__inspector" aria-label="Inspector">
-        <Inspector />
-      </aside>
-    </div>
+    // The underlay provider wraps both the plan view and the inspector so the
+    // shared underlay state (the decoded-bitmap cache and the armed calibration)
+    // reaches the canvas glue and the inspector panel from one source.
+    <UnderlayProvider>
+      <div className="editor-shell">
+        <header className="editor-shell__toolbar" role="banner">
+          <h1>Vernacular</h1>
+          <p aria-live="polite">Walls: {graph.walls.length}</p>
+          <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
+          <ProjectControls {...projectControls} />
+        </header>
+        {recovery ? (
+          <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+        ) : null}
+        <nav className="editor-shell__tools" aria-label="Tools">
+          <ToolsPanel />
+        </nav>
+        <main className="editor-shell__viewport" aria-label="Viewport">
+          <PlanView />
+          <section className="editor-shell__preview" aria-label="3D preview">
+            <SceneCanvas />
+          </section>
+        </main>
+        <aside className="editor-shell__inspector" aria-label="Inspector">
+          <Inspector />
+        </aside>
+      </div>
+    </UnderlayProvider>
   )
 }

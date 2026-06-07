@@ -16,7 +16,7 @@ function room(id: string, polygon: { x: number; y: number }[]): RoomSceneNode {
 }
 
 function scene(walls: WallSceneNode[], rooms: RoomSceneNode[]): SceneGraph {
-  return { nodes: [], walls, rooms }
+  return { nodes: [], walls, rooms, underlays: [] }
 }
 
 const rect: Bounds = { min: { x: 0, y: 0 }, max: { x: 1000, y: 1000 } }

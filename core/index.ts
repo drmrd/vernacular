@@ -6,16 +6,25 @@ export type {
   ProjectMeta,
   RoomOverride,
   SchemaVersion,
+  Underlay,
+  UnderlayPlacement,
   UnitSystem,
   Wall,
 } from './model/types'
-export type { NewFloorOptions, NewProjectOptions, NewWallOptions } from './model/factories'
+export type {
+  NewFloorOptions,
+  NewProjectOptions,
+  NewUnderlayOptions,
+  NewWallOptions,
+} from './model/factories'
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createEmptyProject,
   createFloor,
+  createUnderlay,
   createWall,
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
@@ -68,6 +77,26 @@ export {
   setWallThickness,
 } from './commands/handlers/wall-commands'
 export type {
+  CalibrateUnderlayParams,
+  PlaceUnderlayParams,
+  RemoveUnderlayParams,
+  SetUnderlayOpacityParams,
+  SetUnderlayVisibilityParams,
+} from './commands/handlers/underlay-commands'
+export {
+  CALIBRATE_UNDERLAY,
+  PLACE_UNDERLAY,
+  REMOVE_UNDERLAY,
+  SET_UNDERLAY_OPACITY,
+  SET_UNDERLAY_VISIBILITY,
+  calibrateUnderlay,
+  placeUnderlay,
+  registerUnderlayCommands,
+  removeUnderlay,
+  setUnderlayOpacity,
+  setUnderlayVisibility,
+} from './commands/handlers/underlay-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
@@ -80,11 +109,20 @@ export {
 } from './commands/handlers/room-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
-export type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
+export type {
+  RoomSceneNode,
+  SceneGraph,
+  SceneNode,
+  UnderlaySceneNode,
+  WallSceneNode,
+} from './scene/scene-graph'
 export {
+  UNDERLAY_NODE_PREFIX,
   deriveFloorNode,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
+  deriveUnderlayNode,
+  deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
@@ -130,6 +168,8 @@ export {
   migrateProject,
 } from './migrations'
 export { distance } from './geometry/point'
+export type { PixelSegment } from './geometry/calibration'
+export { applyCalibration, calibrationScale } from './geometry/calibration'
 export { pointInPolygon, polygonArea } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'

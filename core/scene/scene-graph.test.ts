@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, createWall } from '../model/factories'
-import type { Floor, Project, RoomOverride } from '../model/types'
+import type { AssetReference } from '../model/asset-reference'
+import { createEmptyProject, createFloor, createUnderlay, createWall } from '../model/factories'
+import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
 import { ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
-import { deriveRoomNodesForFloor, deriveSceneGraph, deriveWallNode } from './scene-graph'
+import {
+  deriveRoomNodesForFloor,
+  deriveSceneGraph,
+  deriveUnderlayNode,
+  deriveUnderlayNodesForFloor,
+  deriveWallNode,
+} from './scene-graph'
 
 function projectWithFloors(): Project {
   const project = createEmptyProject({
@@ -178,5 +185,105 @@ describe('deriveRoomNodesForFloor with overrides', () => {
     expect(node.polygon).toEqual(customPolygon)
     expect(node.area).toBe(CUSTOM_AREA)
     expect(node.area).toBeGreaterThanOrEqual(0)
+  })
+})
+
+const UNDERLAY_IMAGE: AssetReference = { scope: 'project', contentHash: 'deadbeef' }
+const UNDERLAY_WIDTH = 1024
+const UNDERLAY_HEIGHT = 768
+
+function underlayWithId(id: string): Underlay {
+  return {
+    ...createUnderlay({ image: UNDERLAY_IMAGE, width: UNDERLAY_WIDTH, height: UNDERLAY_HEIGHT }),
+    id,
+  }
+}
+
+function floorWithUnderlay(underlay: Underlay): Floor {
+  return { ...createFloor('Ground', { id: 'g' }), underlays: [underlay] }
+}
+
+describe('deriveUnderlayNode', () => {
+  it('namespaces the underlay node id under its source underlay and carries the floor id', () => {
+    const underlay = underlayWithId('u1')
+    const floor = createFloor('Ground', { id: 'g' })
+
+    const node = deriveUnderlayNode(floor, underlay)
+
+    expect(node.id).toBe('underlay:u1')
+    expect(node.floorId).toBe('g')
+  })
+
+  it('projects the underlay into a node copying its image, dimensions, placement, and display fields', () => {
+    const underlay = underlayWithId('u1')
+    const floor = createFloor('Ground', { id: 'g' })
+
+    const node = deriveUnderlayNode(floor, underlay)
+
+    expect(node).toEqual({
+      id: 'underlay:u1',
+      kind: 'underlay',
+      floorId: 'g',
+      image: underlay.image,
+      width: underlay.width,
+      height: underlay.height,
+      placement: underlay.placement,
+      opacity: underlay.opacity,
+      visible: underlay.visible,
+    })
+  })
+
+  it('derives one node per underlay on a floor, each tagged with that floor id', () => {
+    const floor = { ...createFloor('Ground', { id: 'g' }), underlays: [underlayWithId('u1')] }
+
+    const nodes = deriveUnderlayNodesForFloor(floor)
+
+    expect(nodes).toHaveLength(1)
+    expect(nodes.map((node) => node.id)).toEqual(['underlay:u1'])
+    expect(nodes.map((node) => node.floorId)).toEqual(['g'])
+  })
+})
+
+describe('deriveSceneGraph underlays', () => {
+  it('flat-maps each floor underlay into graph.underlays, tagged with its floor id', () => {
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      era: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [floorWithUnderlay(underlayWithId('u1'))]
+
+    const graph = deriveSceneGraph(project)
+
+    expect(graph.underlays).toHaveLength(1)
+    expect(graph.underlays[0]).toEqual({
+      id: 'underlay:u1',
+      kind: 'underlay',
+      floorId: 'g',
+      image: UNDERLAY_IMAGE,
+      width: UNDERLAY_WIDTH,
+      height: UNDERLAY_HEIGHT,
+      placement: project.floors[0]?.underlays[0]?.placement,
+      opacity: 1,
+      visible: true,
+    })
+  })
+
+  it('yields an empty underlays array and unchanged wall/room derivation when no floor has an underlay', () => {
+    const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      era: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]
+
+    const graph = deriveSceneGraph(project)
+
+    expect(graph.underlays).toEqual([])
+    expect(graph.walls).toHaveLength(1)
+    expect(graph.walls[0]).toMatchObject({ id: 'wall:w1', kind: 'wall', floorId: 'g' })
   })
 })

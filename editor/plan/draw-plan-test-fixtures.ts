@@ -19,15 +19,26 @@ interface RecorderState {
   arcs: DrawnArc[]
   texts: { text: string; x: number; y: number }[]
   fillRects: { x: number; y: number; w: number; h: number }[]
+  images: { dx: number; dy: number; dWidth: number; dHeight: number; alpha: number }[]
   ops: string[]
   clears: number
   pen: [number, number]
 }
 
 function emptyState(): RecorderState {
-  return { segments: [], arcs: [], texts: [], fillRects: [], ops: [], clears: 0, pen: [0, 0] }
+  return {
+    segments: [],
+    arcs: [],
+    texts: [],
+    fillRects: [],
+    images: [],
+    ops: [],
+    clears: 0,
+    pen: [0, 0],
+  }
 }
 
+// eslint-disable-next-line max-lines-per-function -- one recorder method per PlanDrawingContext seam member; the list grows with the seam
 function recordingCtx(state: RecorderState): PlanDrawingContext {
   const ctx: PlanDrawingContext = {
     lineWidth: 0,
@@ -37,6 +48,7 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
     font: '',
     textAlign: 'left' as CanvasTextAlign,
     textBaseline: 'alphabetic' as CanvasTextBaseline,
+    globalAlpha: 1,
     clearRect: () => {
       state.ops.push('clearRect')
       state.clears += 1
@@ -66,6 +78,11 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
       state.ops.push('fillRect')
       state.fillRects.push({ x, y, w, h })
     },
+    // eslint-disable-next-line max-params -- mirrors the five-argument CanvasRenderingContext2D.drawImage signature, recording the four destination parameters
+    drawImage: (_image, dx, dy, dWidth, dHeight) => {
+      state.ops.push('drawImage')
+      state.images.push({ dx, dy, dWidth, dHeight, alpha: ctx.globalAlpha })
+    },
   }
   return ctx
 }
@@ -84,6 +101,7 @@ export function recordingContext() {
     arcs: state.arcs,
     texts: state.texts,
     fillRects: state.fillRects,
+    images: state.images,
     ops: state.ops,
     clearCount: () => state.clears,
   }

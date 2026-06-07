@@ -1,9 +1,19 @@
-import type { Floor, Point, Project, RoomOverride, Wall } from '../model/types'
+import type { AssetReference } from '../model/asset-reference'
+import type {
+  Floor,
+  Point,
+  Project,
+  RoomOverride,
+  Underlay,
+  UnderlayPlacement,
+  Wall,
+} from '../model/types'
 import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
 
-// Kind-prefixed ids keep floor and wall node ids globally unique within the scene graph.
+// Kind-prefixed ids keep node ids globally unique within the scene graph.
 const FLOOR_NODE_PREFIX = 'floor:'
 const WALL_NODE_PREFIX = 'wall:'
+export const UNDERLAY_NODE_PREFIX = 'underlay:'
 
 export interface SceneNode {
   id: string
@@ -30,10 +40,23 @@ export interface RoomSceneNode {
   name?: string
 }
 
+export interface UnderlaySceneNode {
+  id: string
+  kind: 'underlay'
+  floorId: string
+  image: AssetReference
+  width: number
+  height: number
+  placement: UnderlayPlacement
+  opacity: number
+  visible: boolean
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
+  underlays: UnderlaySceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -54,6 +77,24 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
     end: wall.end,
     thickness: wall.thickness,
   }
+}
+
+export function deriveUnderlayNode(floor: Floor, underlay: Underlay): UnderlaySceneNode {
+  return {
+    id: `${UNDERLAY_NODE_PREFIX}${underlay.id}`,
+    kind: 'underlay',
+    floorId: floor.id,
+    image: underlay.image,
+    width: underlay.width,
+    height: underlay.height,
+    placement: underlay.placement,
+    opacity: underlay.opacity,
+    visible: underlay.visible,
+  }
+}
+
+export function deriveUnderlayNodesForFloor(floor: Floor): UnderlaySceneNode[] {
+  return floor.underlays.map((underlay) => deriveUnderlayNode(floor, underlay))
 }
 
 export function deriveRoomNodesForFloor(
@@ -83,5 +124,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
       floor.walls.map((wall) => deriveWallNode(floor, wall)),
     ),
     rooms: project.floors.flatMap((floor) => deriveRoomNodesForFloor(floor, project.roomOverrides)),
+    underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
   }
 }

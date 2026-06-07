@@ -1,4 +1,5 @@
 import type { Point, RoomSceneNode, UnitPreferences, WallSceneNode } from '../../core'
+import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
@@ -14,6 +15,7 @@ export interface PlanDrawingContext {
   font: string
   textAlign: CanvasTextAlign
   textBaseline: CanvasTextBaseline
+  globalAlpha: number
   clearRect(x: number, y: number, width: number, height: number): void
   beginPath(): void
   moveTo(x: number, y: number): void
@@ -24,6 +26,7 @@ export interface PlanDrawingContext {
   fill(): void
   fillText(text: string, x: number, y: number): void
   fillRect(x: number, y: number, width: number, height: number): void
+  drawImage(image: CanvasImageSource, dx: number, dy: number, dWidth: number, dHeight: number): void
 }
 
 export interface PreviewSegment {
@@ -45,6 +48,8 @@ export interface DrawPlanOptions {
   marquee?: Bounds
   endpointHandles?: WallSceneNode
   roomLabels?: RoomLabelOptions
+  underlays?: readonly DrawableUnderlay[]
+  calibration?: PreviewSegment
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -160,6 +165,8 @@ export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, viewport: Vie
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
   const size = { width: options.width, height: options.height }
+  // Underlays paint first so they sit beneath the grid and the plan.
+  drawUnderlays(ctx, options.underlays, options.viewport)
   if (options.grid) {
     drawGrid(ctx, options.viewport, size)
   }
@@ -186,6 +193,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
     drawMarquee(ctx, options.marquee, options.viewport)
   }
   drawRoomLabels(ctx, options)
+  // Calibration sits above the plan but below the rulers.
+  drawCalibration(ctx, options.calibration, options.viewport)
   if (options.rulers) {
     drawRulers(ctx, options.viewport, size)
   }
