@@ -70,9 +70,9 @@ For every non-trivial change, follow:
 
 ## Knowledge graph
 
-The knowledge graph at `docs/knowledge/` is a Claude-side workspace, not a part of the committed repository. The whole tree is gitignored (ADRs, glossary, the generated `INDEX.md` and `index.json`). Treat it as a local cache that supplements the design specification: regenerate or extend it as useful for context, but do not rely on it being present in a fresh clone, and do not propose changes that require it to be committed. The authoritative architectural source is the design specification under `docs/specs/`.
+The knowledge graph at `docs/knowledge/` is a Claude-side workspace. Architecture Decision Records under `docs/knowledge/decisions/` are committed to the repository as durable design history and are authoritative alongside the design specification under `docs/specs/`. The generated `INDEX.md` and `index.json` (and any glossary cache) stay gitignored and local: treat them as a regenerable cache, not a source of truth, and do not rely on them being present in a fresh clone.
 
-Before proposing an architectural change, check whether a local ADR captures relevant prior reasoning. After landing a meaningful architectural change, write or refresh an ADR locally so future sessions can pick up the context. Use `pnpm knowledge:index` to regenerate the local indices when useful.
+Before proposing an architectural change, check whether an ADR captures relevant prior reasoning. After landing a meaningful architectural change, write or refresh an ADR (committed with the change) so future sessions and contributors can pick up the context. Use `pnpm knowledge:index` to regenerate the local indices when useful.
 
 ## Slash commands
 
