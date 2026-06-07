@@ -28,3 +28,11 @@ export function advanceCalibrationTool(
   }
   return { state: IDLE_CALIBRATION_TOOL, segment: { start: state.start, end: point } }
 }
+
+/** The live { start, end } rubber-band while measuring; undefined when idle. */
+export function calibrationPreviewSegment(
+  state: CalibrationToolState,
+  point: Point,
+): PreviewSegment | undefined {
+  return state.phase === 'measuring' ? { start: state.start, end: point } : undefined
+}
