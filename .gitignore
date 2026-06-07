@@ -26,8 +26,12 @@ vitest.config.d.ts
 # jscpd duplicate reports
 reports/
 
-# local knowledge graph (Claude-side workspace; not committed)
-docs/knowledge/
+# local knowledge graph (Claude-side workspace).
+# Architecture Decision Records under decisions/ are committed as durable design
+# history; the generated INDEX.md and index.json (and any other local cache)
+# stay out of the repository.
+docs/knowledge/*
+!docs/knowledge/decisions/
 
 # Claude-side local git worktrees for parallel sessions (never committed)
 .claude/worktrees/
