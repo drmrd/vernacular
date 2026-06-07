@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
-import type { Point, SceneGraph, WallSceneNode } from '../../core'
+import {
+  DEFAULT_IMPERIAL_PREFERENCES,
+  DEFAULT_METRIC_PREFERENCES,
+  type Point,
+  type SceneGraph,
+  type UnitPreferences,
+  type UnitSystem,
+  type WallSceneNode,
+} from '../../core'
 import {
   useEditorSession,
   useSceneGraph,
@@ -32,6 +40,13 @@ import {
 const PLAN_WIDTH = 800
 const PLAN_HEIGHT = 600
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
+
+// A project-level unit-preferences store is later work; this slice picks the
+// default preferences for the project's units (see the slice deferrals).
+const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
+  metric: DEFAULT_METRIC_PREFERENCES,
+  imperial: DEFAULT_IMPERIAL_PREFERENCES,
+}
 
 interface PointerContext {
   session: EditorSession
@@ -183,6 +198,8 @@ interface PlanScene {
   // or null when no wall is editable.
   endpointHandles: WallSceneNode | null
   viewport: Viewport
+  // The active unit preferences that format the room-label area text.
+  preferences: UnitPreferences
 }
 
 /** Redraws the canvas whenever the walls, selection, viewport, preview, snap, marquee, or handles change. */
@@ -201,6 +218,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
       selectedIds: scene.selectedIds,
       grid: true,
       rulers: true,
+      roomLabels: { preferences: scene.preferences },
       ...(scene.preview ? { preview: scene.preview } : {}),
       ...(scene.snap ? { snap: scene.snap } : {}),
       ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -216,6 +234,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.marquee,
     scene.endpointHandles,
     scene.viewport,
+    scene.preferences,
   ])
 }
 
@@ -227,6 +246,7 @@ interface SceneInputs {
   planSelection: PlanSelection
   wallEditing: WallEditing
   viewport: Viewport
+  preferences: UnitPreferences
 }
 
 /** Assembles the draw scene from the resolved hooks; the endpoint drag and the wall tool never preview at once. */
@@ -240,6 +260,7 @@ function buildScene(inputs: SceneInputs): PlanScene {
     marquee: inputs.planSelection.marquee,
     endpointHandles: inputs.selectedWall,
     viewport: inputs.viewport,
+    preferences: inputs.preferences,
   }
 }
 
@@ -275,6 +296,7 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
+  const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const scene = buildScene({
     graph,
     selectedIds,
@@ -283,6 +305,7 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
     planSelection,
     wallEditing,
     viewport,
+    preferences,
   })
   usePlanRedraw(canvasRef, scene)
   return {

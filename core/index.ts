@@ -4,6 +4,7 @@ export type {
   Point,
   Project,
   ProjectMeta,
+  RoomOverride,
   SchemaVersion,
   UnitSystem,
   Wall,
@@ -66,6 +67,17 @@ export {
   registerWallCommands,
   setWallThickness,
 } from './commands/handlers/wall-commands'
+export type {
+  SetRoomCustomPolygonParams,
+  SetRoomNameParams,
+} from './commands/handlers/room-commands'
+export {
+  SET_ROOM_CUSTOM_POLYGON,
+  SET_ROOM_NAME,
+  registerRoomCommands,
+  setRoomCustomPolygon,
+  setRoomName,
+} from './commands/handlers/room-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene/scene-graph'
@@ -97,6 +109,7 @@ export {
   MM_PER_METER,
   centimetersToMillimeters,
   feetToMillimeters,
+  formatArea,
   formatLength,
   inchesToMillimeters,
   lengthFormatOptions,
@@ -122,4 +135,4 @@ export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { Room } from './topology/rooms'
-export { deriveRooms } from './topology/rooms'
+export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'

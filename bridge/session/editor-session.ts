@@ -3,6 +3,7 @@ import {
   Dispatcher,
   createSceneGraphDeriver,
   registerProjectCommands,
+  registerRoomCommands,
   registerWallCommands,
   type Command,
   type Project,
@@ -38,6 +39,7 @@ export function createEditorSession(project: Project): EditorSession {
   const registry = new CommandRegistry<Project>()
   registerProjectCommands(registry)
   registerWallCommands(registry)
+  registerRoomCommands(registry)
   const dispatcher = new Dispatcher<Project>(project, registry)
   const notifier = createChangeNotifier()
   const sceneGraph = createMemoizedSceneGraph(project)

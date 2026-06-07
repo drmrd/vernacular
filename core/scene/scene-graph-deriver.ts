@@ -1,6 +1,19 @@
 import { deriveFloorNode, deriveRoomNodesForFloor, deriveWallNode } from './scene-graph'
-import type { Floor, Project, Wall } from '../model/types'
+import type { Floor, Project, RoomOverride, Wall } from '../model/types'
 import type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene-graph'
+
+type RoomOverrides = Readonly<Record<string, RoomOverride>> | undefined
+
+/**
+ * Cached room nodes plus the `roomOverrides` reference they were built from. A
+ * room override (a name or custom polygon) changes the room nodes without
+ * changing the floor reference, so keying the room cache on the floor alone
+ * would serve stale nodes after an override edit.
+ */
+interface CachedRoomNodes {
+  overrides: RoomOverrides
+  nodes: RoomSceneNode[]
+}
 
 /**
  * Builds a stateful deriver that memoizes each floor's and wall's scene node by
@@ -14,7 +27,7 @@ import type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scen
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const floorCache = new WeakMap<Floor, SceneNode>()
   const wallCache = new WeakMap<Wall, WallSceneNode>()
-  const roomCache = new WeakMap<Floor, RoomSceneNode[]>()
+  const roomCache = new WeakMap<Floor, CachedRoomNodes>()
 
   const floorNodeFor = (floor: Floor): SceneNode => {
     const cached = floorCache.get(floor)
@@ -36,19 +49,19 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     return node
   }
 
-  const roomNodesFor = (floor: Floor): RoomSceneNode[] => {
+  const roomNodesFor = (floor: Floor, overrides: RoomOverrides): RoomSceneNode[] => {
     const cached = roomCache.get(floor)
-    if (cached !== undefined) {
-      return cached
+    if (cached !== undefined && cached.overrides === overrides) {
+      return cached.nodes
     }
-    const nodes = deriveRoomNodesForFloor(floor)
-    roomCache.set(floor, nodes)
+    const nodes = deriveRoomNodesForFloor(floor, overrides)
+    roomCache.set(floor, { overrides, nodes })
     return nodes
   }
 
   return (project) => ({
     nodes: project.floors.map(floorNodeFor),
     walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
-    rooms: project.floors.flatMap(roomNodesFor),
+    rooms: project.floors.flatMap((floor) => roomNodesFor(floor, project.roomOverrides)),
   })
 }

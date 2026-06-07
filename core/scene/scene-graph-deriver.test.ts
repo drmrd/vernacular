@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyProject, createFloor, createWall } from '../model/factories'
 import type { Floor, Project } from '../model/types'
+import { ROOM_ID_PREFIX } from '../topology/rooms'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
 
 function projectWith(floors: Floor[]): Project {
@@ -112,5 +113,67 @@ describe('createSceneGraphDeriver rooms', () => {
       throw new Error('expected a derived room after replacing the floor')
 
     expect(thirdRoom).not.toBe(firstRoom)
+  })
+})
+
+describe('createSceneGraphDeriver rooms with overrides', () => {
+  function rectangleFloor(): Floor {
+    return createFloor('Ground', {
+      id: 'g',
+      walls: [
+        createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'w-south' }),
+        createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }, { id: 'w-east' }),
+        createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }, { id: 'w-north' }),
+        createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }, { id: 'w-west' }),
+      ],
+    })
+  }
+
+  function projectWithOverrides(floors: Floor[], roomOverrides: Project['roomOverrides']): Project {
+    return { ...projectWith(floors), roomOverrides }
+  }
+
+  function onlyRoom(graph: ReturnType<ReturnType<typeof createSceneGraphDeriver>>) {
+    const room = graph.rooms[0]
+    if (room === undefined) throw new Error('expected a derived room')
+    return room
+  }
+
+  function keyOf(graph: ReturnType<ReturnType<typeof createSceneGraphDeriver>>): string {
+    return onlyRoom(graph).id.slice(ROOM_ID_PREFIX.length)
+  }
+
+  it('reuses room nodes when the floor and undefined overrides are unchanged', () => {
+    const floor = rectangleFloor()
+    const project = projectWith([floor])
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(project)
+    const second = derive(project)
+
+    expect(onlyRoom(second)).toBe(onlyRoom(first))
+  })
+
+  it('rebuilds room nodes carrying the new name when roomOverrides change', () => {
+    const floor = rectangleFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    const named = projectWithOverrides([floor], { [keyOf(first)]: { name: 'Parlor' } })
+    const second = derive(named)
+
+    expect(onlyRoom(second)).not.toBe(onlyRoom(first))
+    expect(onlyRoom(second).name).toBe('Parlor')
+  })
+
+  it('keeps wall node references when only roomOverrides change', () => {
+    const floor = rectangleFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    const named = projectWithOverrides([floor], { [keyOf(first)]: { name: 'Parlor' } })
+    const second = derive(named)
+
+    expect(second.walls[0]).toBe(first.walls[0])
   })
 })

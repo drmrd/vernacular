@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyProject, createFloor, createWall } from '../model/factories'
-import type { Project } from '../model/types'
-import { deriveSceneGraph, deriveWallNode } from './scene-graph'
+import type { Floor, Project, RoomOverride } from '../model/types'
+import { ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
+import { deriveRoomNodesForFloor, deriveSceneGraph, deriveWallNode } from './scene-graph'
 
 function projectWithFloors(): Project {
   const project = createEmptyProject({
@@ -94,5 +95,88 @@ describe('deriveSceneGraph rooms', () => {
     }
     expect(room).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
     expect(room.polygon).toHaveLength(4)
+  })
+})
+
+const ROOM_WIDTH = 4000
+const ROOM_HEIGHT = 3000
+const CUSTOM_WIDTH = 2000
+const CUSTOM_HEIGHT = 5000
+const CUSTOM_AREA = CUSTOM_WIDTH * CUSTOM_HEIGHT
+
+function oneRoomFloor(): Floor {
+  return createFloor('Ground', {
+    id: 'g',
+    walls: [
+      createWall({ x: 0, y: 0 }, { x: ROOM_WIDTH, y: 0 }),
+      createWall({ x: ROOM_WIDTH, y: 0 }, { x: ROOM_WIDTH, y: ROOM_HEIGHT }),
+      createWall({ x: ROOM_WIDTH, y: ROOM_HEIGHT }, { x: 0, y: ROOM_HEIGHT }),
+      createWall({ x: 0, y: ROOM_HEIGHT }, { x: 0, y: 0 }),
+    ],
+  })
+}
+
+function soleRoomNode(floor: Floor, overrides?: Readonly<Record<string, RoomOverride>>) {
+  const nodes = deriveRoomNodesForFloor(floor, overrides)
+  const node = nodes[0]
+  if (node === undefined) {
+    throw new Error('expected one room node')
+  }
+  return node
+}
+
+function overrideKeyFor(floor: Floor): string {
+  const room = soleRoomNode(floor)
+  return room.id.slice(ROOM_ID_PREFIX.length)
+}
+
+describe('deriveRoomNodesForFloor with overrides', () => {
+  it('matches the slice-1 derivation and carries no name when given no overrides', () => {
+    const floor = oneRoomFloor()
+
+    const node = soleRoomNode(floor)
+
+    expect(node).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
+    expect(node.polygon).toHaveLength(4)
+    expect(node.name).toBeUndefined()
+  })
+
+  it('keys correctly: the override key matches the derived room id', () => {
+    const floor = oneRoomFloor()
+
+    expect(roomKey({ wallIds: floor.walls.map((wall) => wall.id) })).toBeDefined()
+    expect(soleRoomNode(floor).id).toBe(ROOM_ID_PREFIX + overrideKeyFor(floor))
+  })
+
+  it('sets the room node name from a name override, leaving polygon and area unchanged', () => {
+    const floor = oneRoomFloor()
+    const key = overrideKeyFor(floor)
+    const baseline = soleRoomNode(floor)
+
+    const node = soleRoomNode(floor, { [key]: { name: 'Parlor' } })
+
+    expect(node.name).toBe('Parlor')
+    expect(node.id).toBe(baseline.id)
+    expect(node.polygon).toEqual(baseline.polygon)
+    expect(node.area).toBe(baseline.area)
+  })
+
+  it('replaces the polygon and recomputes the area from a custom-polygon override', () => {
+    const floor = oneRoomFloor()
+    const key = overrideKeyFor(floor)
+    const baseline = soleRoomNode(floor)
+    const customPolygon = [
+      { x: 0, y: 0 },
+      { x: CUSTOM_WIDTH, y: 0 },
+      { x: CUSTOM_WIDTH, y: CUSTOM_HEIGHT },
+      { x: 0, y: CUSTOM_HEIGHT },
+    ]
+
+    const node = soleRoomNode(floor, { [key]: { customPolygon } })
+
+    expect(node.id).toBe(baseline.id)
+    expect(node.polygon).toEqual(customPolygon)
+    expect(node.area).toBe(CUSTOM_AREA)
+    expect(node.area).toBeGreaterThanOrEqual(0)
   })
 })

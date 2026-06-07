@@ -1,6 +1,7 @@
 import type { EraId, Floor, Point, Project, UnitSystem, Wall } from './types'
 
-export const CURRENT_SCHEMA_VERSION = 1
+// v2 introduces the optional top-level `roomOverrides` map.
+export const CURRENT_SCHEMA_VERSION = 2
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438

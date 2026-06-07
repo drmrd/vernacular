@@ -8,13 +8,16 @@ import {
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
+  ROOM_ID_PREFIX,
   type Command,
+  type RoomSceneNode,
   type SceneGraph,
   type UnitPreferences,
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
 import { PlanView } from '../plan/plan-view'
+import { RoomNameEditor } from '../plan/room-name-editor'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 import { ToolsPanel } from '../tools/tools-panel'
 import './editor-shell.css'
@@ -50,6 +53,21 @@ function singleSelectedWallNode(
   }
   const [onlyId] = selectedIds
   return graph.walls.find((wall) => wall.id === onlyId) ?? null
+}
+
+/**
+ * The single selected room node, or null. A wall and a room are mutually
+ * exclusive for a single selection because a node id is either a wall or a room.
+ */
+function singleSelectedRoomNode(
+  selectedIds: ReadonlySet<string>,
+  graph: SceneGraph,
+): RoomSceneNode | null {
+  if (selectedIds.size !== 1) {
+    return null
+  }
+  const [onlyId] = selectedIds
+  return graph.rooms.find((room) => room.id === onlyId) ?? null
 }
 
 interface RecentProject {
@@ -142,21 +160,13 @@ function RecoveryPrompt({ onRestore, onDiscard }: RecoveryPromptProps) {
   )
 }
 
-function Inspector() {
-  const session = useEditorSession()
-  const graph = useSceneGraph()
-  const selectedIds = useSelectionIds()
-  const wallNode = singleSelectedWallNode(selectedIds, graph)
-  if (wallNode === null) {
-    return <p>{selectedIds.size > 0 ? 'Wall selected' : 'No selection'}</p>
-  }
-  const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
-  // The editor's dispatch prop is intentionally loose (`unknown`) so its unit
-  // test drives it without the command types; the editor only ever dispatches a
-  // valid `setWallThickness` command, so forwarding it to the session is sound.
-  const dispatch = (command: unknown): void => {
-    session.dispatch(command as Command)
-  }
+interface WallInspectorProps {
+  wallNode: WallSceneNode
+  preferences: UnitPreferences
+  dispatch: (command: unknown) => void
+}
+
+function WallInspector({ wallNode, preferences, dispatch }: WallInspectorProps) {
   return (
     // Key on the node id and thickness so the editor remounts when the selected
     // wall changes or an undo restores a different thickness; the editor captures
@@ -170,6 +180,47 @@ function Inspector() {
       preferences={preferences}
     />
   )
+}
+
+interface RoomInspectorProps {
+  roomNode: RoomSceneNode
+  dispatch: (command: unknown) => void
+}
+
+function RoomInspector({ roomNode, dispatch }: RoomInspectorProps) {
+  return (
+    // Key on the node id and name so the editor remounts when the selected room
+    // changes or an undo restores a different name; the editor seeds its input
+    // from the effective name at mount.
+    <RoomNameEditor
+      key={`${roomNode.id}:${roomNode.name ?? ''}`}
+      roomKey={roomNode.id.slice(ROOM_ID_PREFIX.length)}
+      name={roomNode.name ?? ''}
+      dispatch={dispatch}
+    />
+  )
+}
+
+function Inspector() {
+  const session = useEditorSession()
+  const graph = useSceneGraph()
+  const selectedIds = useSelectionIds()
+  // The editors' dispatch prop is intentionally loose (`unknown`) so the inline
+  // editors drive their unit tests without the command types; each only ever
+  // dispatches a valid command, so forwarding it to the session is sound.
+  const dispatch = (command: unknown): void => {
+    session.dispatch(command as Command)
+  }
+  const wallNode = singleSelectedWallNode(selectedIds, graph)
+  if (wallNode !== null) {
+    const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
+    return <WallInspector wallNode={wallNode} preferences={preferences} dispatch={dispatch} />
+  }
+  const roomNode = singleSelectedRoomNode(selectedIds, graph)
+  if (roomNode !== null) {
+    return <RoomInspector roomNode={roomNode} dispatch={dispatch} />
+  }
+  return <p>{selectedIds.size > 0 ? 'Wall selected' : 'No selection'}</p>
 }
 
 export interface EditorShellProps extends ProjectControlsProps {

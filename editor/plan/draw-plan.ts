@@ -1,6 +1,7 @@
-import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
+import type { Point, RoomSceneNode, UnitPreferences, WallSceneNode } from '../../core'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
+import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
@@ -43,6 +44,7 @@ export interface DrawPlanOptions {
   snap?: SnapResult
   marquee?: Bounds
   endpointHandles?: WallSceneNode
+  roomLabels?: RoomLabelOptions
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -73,6 +75,11 @@ const ENDPOINT_HANDLE_RADIUS_PX = 5
 const MARQUEE_FILL_COLOR = 'rgba(26, 127, 212, 0.12)'
 const MARQUEE_STROKE_COLOR = '#1a7fd4'
 const MARQUEE_LINE_WIDTH = 1
+const LABEL_COLOR = '#37414d'
+const LABEL_FONT = '12px sans-serif'
+const LABEL_TEXT_ALIGN = 'center' as const
+const LABEL_TEXT_BASELINE = 'middle' as const
+const LABEL_LINE_HEIGHT = 14
 
 export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
   ctx.fillStyle = RULER_BAND_COLOR
@@ -178,8 +185,23 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   if (options.marquee) {
     drawMarquee(ctx, options.marquee, options.viewport)
   }
+  drawRoomLabels(ctx, options)
   if (options.rulers) {
     drawRulers(ctx, options.viewport, size)
+  }
+}
+
+/** Paint every room's label as an overlay above the fills and wall strokes so the text reads on top. */
+function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const roomLabels = options.roomLabels
+  if (roomLabels === undefined) {
+    return
+  }
+  for (const room of options.rooms ?? []) {
+    drawRoomLabel(ctx, room, {
+      viewport: options.viewport,
+      preferences: roomLabels.preferences,
+    })
   }
 }
 
@@ -261,6 +283,26 @@ function drawEndpointHandle(ctx: PlanDrawingContext, center: Point): void {
   ctx.beginPath()
   ctx.arc(center.x, center.y, ENDPOINT_HANDLE_RADIUS_PX, 0, FULL_CIRCLE)
   ctx.fill()
+}
+
+/** Paint a room's name and area at its centroid; the area drops below a present name. */
+export function drawRoomLabel(
+  ctx: PlanDrawingContext,
+  room: RoomSceneNode,
+  options: { viewport: Viewport; preferences: UnitPreferences },
+): void {
+  const content = roomLabelContent(room, { preferences: options.preferences })
+  const anchor = worldToScreen(content.anchor, options.viewport)
+  ctx.font = LABEL_FONT
+  ctx.fillStyle = LABEL_COLOR
+  ctx.textAlign = LABEL_TEXT_ALIGN
+  ctx.textBaseline = LABEL_TEXT_BASELINE
+  if (content.name === undefined) {
+    ctx.fillText(content.area, anchor.x, anchor.y)
+    return
+  }
+  ctx.fillText(content.name, anchor.x, anchor.y)
+  ctx.fillText(content.area, anchor.x, anchor.y + LABEL_LINE_HEIGHT)
 }
 
 /** Paint a ring marker at the snapped point so the user sees where the next click lands. */
