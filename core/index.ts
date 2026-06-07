@@ -76,6 +76,12 @@ export {
   registerWallCommands,
   setWallThickness,
 } from './commands/handlers/wall-commands'
+export type { PlaceUnderlayParams } from './commands/handlers/underlay-commands'
+export {
+  PLACE_UNDERLAY,
+  placeUnderlay,
+  registerUnderlayCommands,
+} from './commands/handlers/underlay-commands'
 export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
