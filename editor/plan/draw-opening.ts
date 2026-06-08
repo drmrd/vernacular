@@ -19,8 +19,6 @@ const OPENING_INK_COLOR = '#222222'
 const OPENING_SELECTION_COLOR = '#1a7fd4'
 const OPENING_INK_WIDTH = 1
 const OPENING_SELECTION_WIDTH = 2
-// A swing covers a quarter turn; arcs sweep from the leaf toward the wall.
-const QUARTER_TURN = Math.PI / 2
 // The pivot dot radius in screen pixels.
 const PIVOT_DOT_RADIUS_PX = 3
 const FULL_CIRCLE = Math.PI * 2
@@ -69,16 +67,46 @@ function strokeSegment(painter: OpeningPainter, from: Point, to: Point): void {
   painter.ctx.stroke()
 }
 
-function strokeArc(painter: OpeningPainter, center: Point, radiusPx: number): void {
-  const screen = worldToScreen(center, painter.viewport)
+/**
+ * Stroke a swing arc centered at the hinge, sweeping from the open leaf end
+ * toward the closed-door position. All three world points are projected to
+ * screen first, so the y-axis flip and any wall orientation are handled by the
+ * `atan2` angles rather than assuming screen axes.
+ */
+function strokeArc(
+  painter: OpeningPainter,
+  swing: { hinge: Point; leafEnd: Point; closed: Point },
+): void {
+  const center = worldToScreen(swing.hinge, painter.viewport)
+  const open = worldToScreen(swing.leafEnd, painter.viewport)
+  const closed = worldToScreen(swing.closed, painter.viewport)
+  const radius = Math.hypot(open.x - center.x, open.y - center.y)
+  const startAngle = Math.atan2(open.y - center.y, open.x - center.x)
+  const endAngle = Math.atan2(closed.y - center.y, closed.x - center.x)
   painter.ctx.beginPath()
-  painter.ctx.arc(screen.x, screen.y, radiusPx, 0, QUARTER_TURN)
+  painter.ctx.arc(center.x, center.y, radius, startAngle, endAngle)
+  painter.ctx.stroke()
+}
+
+/** Stroke a connected open path through the world-space points, projecting each to screen. No `closePath`, so the last point is not joined back to the first. */
+function strokePolyline(painter: OpeningPainter, ...points: Point[]): void {
+  const screen = points.map((point) => worldToScreen(point, painter.viewport))
+  const first = screen[0]
+  if (first === undefined) {
+    return
+  }
+  painter.ctx.beginPath()
+  painter.ctx.moveTo(first.x, first.y)
+  for (const point of screen.slice(1)) {
+    painter.ctx.lineTo(point.x, point.y)
+  }
   painter.ctx.stroke()
 }
 
 function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void {
   const screen = corners.map((corner) => worldToScreen(corner, painter.viewport))
   const first = screen[0]
+  // The guard handles an empty corner list: with no first vertex there is nothing to trace.
   if (first === undefined) {
     return
   }
@@ -120,18 +148,21 @@ function leafEnd(node: OpeningSceneNode, hinge: Point, sign: number): Point {
 function drawSwingLeaf(
   painter: OpeningPainter,
   node: OpeningSceneNode,
-  leaf: { hinge: Point; sign: number },
+  leaf: { hinge: Point; closed: Point; sign: number },
 ): void {
-  strokeSegment(painter, leaf.hinge, leafEnd(node, leaf.hinge, leaf.sign))
-  strokeArc(painter, leaf.hinge, node.width * painter.viewport.scale)
+  const open = leafEnd(node, leaf.hinge, leaf.sign)
+  strokeSegment(painter, leaf.hinge, open)
+  strokeArc(painter, { hinge: leaf.hinge, leafEnd: open, closed: leaf.closed })
 }
 
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
   setInk(painter)
   const node = opening.node
-  drawSwingLeaf(painter, node, { hinge: hingeJamb(node), sign: 1 })
+  const hinge = hingeJamb(node)
+  const other = otherJamb(node)
+  drawSwingLeaf(painter, node, { hinge, closed: other, sign: 1 })
   if (opening.double) {
-    drawSwingLeaf(painter, node, { hinge: otherJamb(node), sign: -1 })
+    drawSwingLeaf(painter, node, { hinge: other, closed: hinge, sign: -1 })
   }
 }
 
@@ -154,21 +185,15 @@ function drawDoorFold(painter: OpeningPainter, opening: DrawableOpening): void {
   const hinge = hingeJamb(node)
   // A two-segment zigzag: out to the fold knuckle on the facing side, then back to the other jamb.
   const knuckle = add(node.center, scale(node.normal, facingSign(node) * node.width * HALF))
-  const a = worldToScreen(hinge, painter.viewport)
-  const b = worldToScreen(knuckle, painter.viewport)
-  const c = worldToScreen(otherJamb(node), painter.viewport)
-  painter.ctx.beginPath()
-  painter.ctx.moveTo(a.x, a.y)
-  painter.ctx.lineTo(b.x, b.y)
-  painter.ctx.lineTo(c.x, c.y)
-  painter.ctx.stroke()
+  strokePolyline(painter, hinge, knuckle, otherJamb(node))
 }
 
 function drawDoorPivot(painter: OpeningPainter, opening: DrawableOpening): void {
   const node = opening.node
   setInk(painter)
   const hinge = hingeJamb(node)
-  strokeSegment(painter, hinge, leafEnd(node, hinge, 1))
+  const open = leafEnd(node, hinge, 1)
+  strokeSegment(painter, hinge, open)
   // A filled pivot dot at the hinge.
   const dot = worldToScreen(hinge, painter.viewport)
   painter.ctx.fillStyle = OPENING_INK_COLOR
@@ -176,11 +201,13 @@ function drawDoorPivot(painter: OpeningPainter, opening: DrawableOpening): void 
   painter.ctx.arc(dot.x, dot.y, PIVOT_DOT_RADIUS_PX, 0, FULL_CIRCLE)
   painter.ctx.fill()
   // The swing arc.
-  strokeArc(painter, hinge, node.width * painter.viewport.scale)
+  strokeArc(painter, { hinge, leafEnd: open, closed: otherJamb(node) })
 }
 
 function drawCasedOpening(): void {
-  // Cased openings draw nothing beyond the gap and jamb caps.
+  // Cased openings draw nothing beyond the gap and jamb caps. The unused
+  // `FamilyRoutine` parameters are omitted because the signature is structurally
+  // assignable to it without them.
 }
 
 function drawWindowFrame(painter: OpeningPainter, node: OpeningSceneNode): void {
