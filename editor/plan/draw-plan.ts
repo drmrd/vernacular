@@ -1,4 +1,5 @@
 import type { Point, RoomSceneNode, UnitPreferences, WallSceneNode } from '../../core'
+import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
@@ -49,6 +50,7 @@ export interface DrawPlanOptions {
   endpointHandles?: WallSceneNode
   roomLabels?: RoomLabelOptions
   underlays?: readonly DrawableUnderlay[]
+  openings?: readonly DrawableOpening[]
   calibration?: PreviewSegment
 }
 
@@ -172,14 +174,14 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
   // Fill rooms first so wall strokes render on top of them.
   for (const room of options.rooms ?? []) {
-    drawRoom(ctx, room, {
-      viewport: options.viewport,
-      selected: options.selectedIds.has(room.id),
-    })
+    const selected = options.selectedIds.has(room.id)
+    drawRoom(ctx, room, { viewport: options.viewport, selected })
   }
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
   }
+  // Openings break the wall stroke, so they paint after the walls.
+  drawOpenings(ctx, options)
   if (options.endpointHandles) {
     drawEndpointHandles(ctx, options.endpointHandles, options.viewport)
   }
@@ -200,17 +202,22 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
 }
 
+/** Paint each opening's plan symbol over the wall stroke it breaks. */
+function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  for (const opening of options.openings ?? []) {
+    drawOpening(ctx, opening, options.viewport)
+  }
+}
+
 /** Paint every room's label as an overlay above the fills and wall strokes so the text reads on top. */
 function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const roomLabels = options.roomLabels
   if (roomLabels === undefined) {
     return
   }
+  const preferences = roomLabels.preferences
   for (const room of options.rooms ?? []) {
-    drawRoomLabel(ctx, room, {
-      viewport: options.viewport,
-      preferences: roomLabels.preferences,
-    })
+    drawRoomLabel(ctx, room, { viewport: options.viewport, preferences })
   }
 }
 
