@@ -1,5 +1,17 @@
+import { builtinElementTypes } from '../registries/element-types'
+import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
-import type { EraId, Floor, Point, Project, Underlay, UnitSystem, Wall } from './types'
+import type {
+  EraId,
+  Floor,
+  Opening,
+  OpeningOrientation,
+  Point,
+  Project,
+  Underlay,
+  UnitSystem,
+  Wall,
+} from './types'
 
 // v2 introduces the optional top-level `roomOverrides` map.
 export const CURRENT_SCHEMA_VERSION = 2
@@ -62,6 +74,38 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
     defaultCeilingHeight: options.defaultCeilingHeight ?? DEFAULT_CEILING_HEIGHT_MM,
     walls: options.walls ?? [],
     underlays: [],
+    openings: [],
+  }
+}
+
+// A nominal interior door leaf: 32 in wide by 80 in tall (813 mm by 2032 mm),
+// rounded to whole millimeters. Used when the named opening type carries no
+// `opening` record with its own defaults.
+export const DEFAULT_OPENING_WIDTH_MM = 813
+export const DEFAULT_OPENING_HEIGHT_MM = 2032
+
+export interface NewOpeningOptions {
+  type: string
+  hostWallId: string
+  position: number
+  width?: number
+  height?: number
+  sillHeight?: number
+  orientation?: OpeningOrientation
+  id?: string
+}
+
+export function createOpening(options: NewOpeningOptions): Opening {
+  const params = getEntry(builtinElementTypes, options.type)?.opening
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    type: options.type,
+    hostWallId: options.hostWallId,
+    position: options.position,
+    width: options.width ?? params?.defaultWidth ?? DEFAULT_OPENING_WIDTH_MM,
+    height: options.height ?? params?.defaultHeight ?? DEFAULT_OPENING_HEIGHT_MM,
+    sillHeight: options.sillHeight ?? params?.defaultSillHeight ?? 0,
+    orientation: options.orientation ?? { hinge: 'start', facing: 'positive' },
   }
 }
 

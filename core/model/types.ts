@@ -36,6 +36,32 @@ export interface Wall {
   thickness: number
 }
 
+/** One end of a wall: its start point or its end point. */
+export type WallEnd = 'start' | 'end'
+
+export interface OpeningOrientation {
+  /** Which jamb anchors the leaf, as the host-wall end nearer it. */
+  hinge: WallEnd
+  /** Sign of the wall's left-hand normal the leaf opens toward. */
+  facing: 'positive' | 'negative'
+}
+
+export interface Opening {
+  id: string
+  /** ElementType id, category 'opening'. */
+  type: string
+  hostWallId: string
+  /** Millimeters from the host wall start to the opening center, along the wall. */
+  position: number
+  /** Opening width in millimeters. */
+  width: number
+  /** Opening height in millimeters. */
+  height: number
+  /** Height of the sill above the finished floor, in millimeters. */
+  sillHeight: number
+  orientation: OpeningOrientation
+}
+
 export interface UnderlayPlacement {
   /** World position (millimeters) of the underlay's pixel origin (top-left). */
   offset: Point
@@ -71,6 +97,7 @@ export interface Floor {
   defaultCeilingHeight: number
   walls: Wall[]
   underlays: Underlay[]
+  openings: Opening[]
 }
 
 /**
