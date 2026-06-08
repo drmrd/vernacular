@@ -1,5 +1,4 @@
 import {
-  openingFootprint,
   pointInPolygon,
   type OpeningSceneNode,
   type Point,
@@ -8,6 +7,7 @@ import {
   type WallSceneNode,
 } from '../../core'
 import { contentBounds, type Bounds } from './fit'
+import { openingCorners } from './opening-geometry'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
 /** A click within this many millimeters of a wall centerline selects it. */
@@ -30,17 +30,6 @@ export function wallBounds(wall: WallSceneNode): Bounds {
 /** Axis-aligned bounds spanning every vertex of a room polygon. */
 export function roomBounds(room: RoomSceneNode): Bounds {
   return spanOf(room.polygon)
-}
-
-/** The four footprint corners of an opening as a polygon. */
-function openingCorners(opening: OpeningSceneNode): Point[] {
-  return openingFootprint(
-    opening.center,
-    opening.along,
-    opening.normal,
-    opening.width,
-    opening.hostThickness,
-  )
 }
 
 /** Axis-aligned bounds spanning an opening's footprint corners. */
@@ -83,10 +72,12 @@ export function hitTestWalls(
 export function hitTestOpenings(
   openings: OpeningSceneNode[],
   point: Point,
-  tolerance: number,
+  // Narrow containment against the footprint is exact: the footprint is an area,
+  // not a thin line, so no tolerance band is needed. `_tolerance` exists only to
+  // keep the signature parallel with `hitTestWalls` so `hitTest` can dispatch uniformly.
+  _tolerance: number,
 ): string | null {
-  // Accepted for signature parity with the broad phase; narrow containment is exact.
-  void tolerance
+  void _tolerance
   let hitId: string | null = null
   for (const opening of openings) {
     // Iterate forward so a later (more recently added) opening wins on overlap.

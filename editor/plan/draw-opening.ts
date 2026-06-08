@@ -1,5 +1,6 @@
-import { openingFootprint, type OpeningSceneNode, type Point } from '../../core'
+import { type OpeningSceneNode, type Point } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
+import { openingCorners } from './opening-geometry'
 import { worldToScreen, type Viewport } from './viewport'
 
 /** A scene-graph opening node paired with the render decisions resolved from its element type and the selection. */
@@ -118,14 +119,10 @@ function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void 
   painter.ctx.closePath()
 }
 
-function footprintCorners(node: OpeningSceneNode): readonly Point[] {
-  return openingFootprint(node.center, node.along, node.normal, node.width, node.hostThickness)
-}
-
 /** Fill the opening footprint in the gap color so the wall stroke is broken, then stroke a jamb cap across the wall at each jamb. */
 function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void {
   painter.ctx.fillStyle = OPENING_GAP_COLOR
-  tracePolygon(painter, footprintCorners(node))
+  tracePolygon(painter, openingCorners(node))
   painter.ctx.fill()
 
   painter.ctx.strokeStyle = OPENING_INK_COLOR
@@ -263,7 +260,7 @@ function familyRoutine(symbol: string): FamilyRoutine | undefined {
 function drawSelectionHighlight(painter: OpeningPainter, node: OpeningSceneNode): void {
   painter.ctx.strokeStyle = OPENING_SELECTION_COLOR
   painter.ctx.lineWidth = OPENING_SELECTION_WIDTH
-  tracePolygon(painter, footprintCorners(node))
+  tracePolygon(painter, openingCorners(node))
   painter.ctx.stroke()
 }
 

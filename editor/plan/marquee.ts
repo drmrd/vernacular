@@ -1,5 +1,4 @@
 import {
-  openingFootprint,
   type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
@@ -7,6 +6,7 @@ import {
   type WallSceneNode,
 } from '../../core'
 import type { Bounds } from './fit'
+import { openingCorners } from './opening-geometry'
 
 /** A point lies in the rectangle; points on the edges count as contained. */
 function pointInRect(point: Point, rect: Bounds): boolean {
@@ -24,14 +24,7 @@ function roomContained(room: RoomSceneNode, rect: Bounds): boolean {
 }
 
 function openingContained(opening: OpeningSceneNode, rect: Bounds): boolean {
-  const corners = openingFootprint(
-    opening.center,
-    opening.along,
-    opening.normal,
-    opening.width,
-    opening.hostThickness,
-  )
-  return corners.every((corner) => pointInRect(corner, rect))
+  return openingCorners(opening).every((corner) => pointInRect(corner, rect))
 }
 
 /**
