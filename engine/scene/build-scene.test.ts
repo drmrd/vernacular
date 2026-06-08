@@ -12,6 +12,7 @@ describe('buildScene', () => {
       walls: [],
       rooms: [],
       underlays: [],
+      openings: [],
     }
 
     const root = buildScene(graph)

@@ -73,7 +73,7 @@ describe('roomBounds', () => {
 })
 
 function scene(walls: WallSceneNode[], rooms: RoomSceneNode[] = []): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [] }
+  return { nodes: [], walls, rooms, underlays: [], openings: [] }
 }
 
 describe('hitTest', () => {
