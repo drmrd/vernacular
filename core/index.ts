@@ -105,6 +105,28 @@ export {
   setUnderlayVisibility,
 } from './commands/handlers/underlay-commands'
 export type {
+  FlipOpeningParams,
+  MoveOpeningParams,
+  OpeningDimensions,
+  OpeningOrientationAxis,
+  PlaceOpeningParams,
+  RemoveOpeningParams,
+  ResizeOpeningParams,
+} from './commands/handlers/opening-commands'
+export {
+  FLIP_OPENING,
+  MOVE_OPENING,
+  PLACE_OPENING,
+  REMOVE_OPENING,
+  RESIZE_OPENING,
+  flipOpening,
+  moveOpening,
+  placeOpening,
+  registerOpeningCommands,
+  removeOpening,
+  resizeOpening,
+} from './commands/handlers/opening-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
