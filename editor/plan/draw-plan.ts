@@ -4,9 +4,11 @@ import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-un
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
-import { rulerTicks, RULER_THICKNESS_PX } from './ruler'
+import { drawRulers } from './ruler'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
+
+export { drawRulers } from './ruler'
 
 export interface PlanDrawingContext {
   lineWidth: number
@@ -69,11 +71,6 @@ const FULL_CIRCLE = Math.PI * 2
 const LINE_CAP = 'round' as const
 const GRID_LINE_COLOR = '#e6e9ee'
 const GRID_LINE_WIDTH = 1
-const RULER_BAND_COLOR = '#f5f7fa'
-const RULER_TICK_COLOR = '#c2c8d0'
-const RULER_TEXT_COLOR = '#5a6470'
-const RULER_FONT = '10px sans-serif'
-const RULER_LABEL_INSET_PX = 2
 const SNAP_MARKER_COLOR = '#f08c00'
 const SNAP_MARKER_RADIUS_PX = 5
 const SNAP_MARKER_LINE_WIDTH = 2
@@ -87,47 +84,6 @@ const LABEL_FONT = '12px sans-serif'
 const LABEL_TEXT_ALIGN = 'center' as const
 const LABEL_TEXT_BASELINE = 'middle' as const
 const LABEL_LINE_HEIGHT = 14
-
-export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
-  ctx.fillStyle = RULER_BAND_COLOR
-  ctx.fillRect(0, 0, size.width, RULER_THICKNESS_PX)
-  ctx.fillRect(0, 0, RULER_THICKNESS_PX, size.height)
-  // Both axes render with shared tick/text styles set once here; drawRulerTicks
-  // relies on this state (strokeStyle, fillStyle, font, textAlign, textBaseline)
-  // and never resets it per tick or per axis.
-  ctx.strokeStyle = RULER_TICK_COLOR
-  ctx.fillStyle = RULER_TEXT_COLOR
-  ctx.font = RULER_FONT
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-
-  drawRulerTicks(ctx, viewport, { orientation: 'horizontal', lengthPx: size.width })
-  drawRulerTicks(ctx, viewport, { orientation: 'vertical', lengthPx: size.height })
-}
-
-function drawRulerTicks(
-  ctx: PlanDrawingContext,
-  viewport: Viewport,
-  axis: { orientation: 'horizontal' | 'vertical'; lengthPx: number },
-): void {
-  const isHorizontal = axis.orientation === 'horizontal'
-  for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation)) {
-    ctx.beginPath()
-    if (isHorizontal) {
-      ctx.moveTo(tick.screen, 0)
-      ctx.lineTo(tick.screen, RULER_THICKNESS_PX)
-    } else {
-      ctx.moveTo(0, tick.screen)
-      ctx.lineTo(RULER_THICKNESS_PX, tick.screen)
-    }
-    ctx.stroke()
-    if (isHorizontal) {
-      ctx.fillText(tick.label, tick.screen + RULER_LABEL_INSET_PX, RULER_LABEL_INSET_PX)
-    } else {
-      ctx.fillText(tick.label, RULER_LABEL_INSET_PX, tick.screen + RULER_LABEL_INSET_PX)
-    }
-  }
-}
 
 export function drawGrid(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
   ctx.strokeStyle = GRID_LINE_COLOR
@@ -174,8 +130,10 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   }
   // Fill rooms first so wall strokes render on top of them.
   for (const room of options.rooms ?? []) {
-    const selected = options.selectedIds.has(room.id)
-    drawRoom(ctx, room, { viewport: options.viewport, selected })
+    drawRoom(ctx, room, {
+      viewport: options.viewport,
+      selected: options.selectedIds.has(room.id),
+    })
   }
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
@@ -215,9 +173,11 @@ function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void
   if (roomLabels === undefined) {
     return
   }
-  const preferences = roomLabels.preferences
   for (const room of options.rooms ?? []) {
-    drawRoomLabel(ctx, room, { viewport: options.viewport, preferences })
+    drawRoomLabel(ctx, room, {
+      viewport: options.viewport,
+      preferences: roomLabels.preferences,
+    })
   }
 }
 
