@@ -1,13 +1,43 @@
 import { describe, it, expect } from 'vitest'
-import { hitTest, hitTestWalls, roomBounds, wallBounds, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import type { RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+import {
+  hitTest,
+  hitTestWalls,
+  hitTestOpenings,
+  openingBounds,
+  roomBounds,
+  wallBounds,
+  DEFAULT_HIT_TOLERANCE_MM,
+} from './hit-test'
+import type { OpeningSceneNode, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+
+const WALL_THICKNESS_MM = 114
+const OPENING_WIDTH_MM = 800
+const OPENING_HALF_WIDTH_MM = OPENING_WIDTH_MM / 2
+const HOST_HALF_THICKNESS_MM = WALL_THICKNESS_MM / 2
 
 function wall(
   id: string,
   start: { x: number; y: number },
   end: { x: number; y: number },
 ): WallSceneNode {
-  return { id, kind: 'wall', floorId: 'g', start, end, thickness: 114 }
+  return { id, kind: 'wall', floorId: 'g', start, end, thickness: WALL_THICKNESS_MM }
+}
+
+function opening(id: string, center: { x: number; y: number }): OpeningSceneNode {
+  return {
+    id,
+    kind: 'opening',
+    floorId: 'g',
+    type: 'single-swing-door',
+    center,
+    along: { x: 1, y: 0 },
+    normal: { x: 0, y: 1 },
+    width: OPENING_WIDTH_MM,
+    height: 2032,
+    sillHeight: 0,
+    hostThickness: WALL_THICKNESS_MM,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
 }
 
 describe('hitTestWalls', () => {
@@ -72,8 +102,12 @@ describe('roomBounds', () => {
   })
 })
 
-function scene(walls: WallSceneNode[], rooms: RoomSceneNode[] = []): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [], openings: [] }
+function scene(
+  walls: WallSceneNode[],
+  rooms: RoomSceneNode[] = [],
+  openings: OpeningSceneNode[] = [],
+): SceneGraph {
+  return { nodes: [], walls, rooms, underlays: [], openings }
 }
 
 describe('hitTest', () => {
@@ -115,5 +149,66 @@ describe('hitTest', () => {
     expect(
       hitTest(wallAndRoomScene(), { x: 50_000, y: 50_000 }, DEFAULT_HIT_TOLERANCE_MM),
     ).toBeNull()
+  })
+})
+
+describe('openingBounds', () => {
+  it('spans the opening footprint, width along the wall by thickness across', () => {
+    const node = opening('opening:o1', { x: 1000, y: 0 })
+
+    expect(openingBounds(node)).toEqual({
+      min: { x: 1000 - OPENING_HALF_WIDTH_MM, y: -HOST_HALF_THICKNESS_MM },
+      max: { x: 1000 + OPENING_HALF_WIDTH_MM, y: HOST_HALF_THICKNESS_MM },
+    })
+  })
+})
+
+describe('hitTestOpenings', () => {
+  it('returns the id of an opening whose footprint contains the point', () => {
+    const openings = [opening('opening:o1', { x: 1000, y: 0 })]
+
+    expect(hitTestOpenings(openings, { x: 1000, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'opening:o1',
+    )
+  })
+
+  it('returns null when the point is outside every opening footprint', () => {
+    const openings = [opening('opening:o1', { x: 1000, y: 0 })]
+
+    expect(hitTestOpenings(openings, { x: 5000, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBeNull()
+  })
+})
+
+describe('hitTest opening priority', () => {
+  const openingOnWallScene = (): SceneGraph =>
+    scene(
+      [wall('wall:host', { x: 0, y: 0 }, { x: 2000, y: 0 })],
+      [
+        room('room:a', [
+          { x: 0, y: 0 },
+          { x: 2000, y: 0 },
+          { x: 2000, y: 2000 },
+          { x: 0, y: 2000 },
+        ]),
+      ],
+      [opening('opening:o1', { x: 1000, y: 0 })],
+    )
+
+  it('returns the opening id when the click is on an opening that sits on its host wall', () => {
+    expect(hitTest(openingOnWallScene(), { x: 1000, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'opening:o1',
+    )
+  })
+
+  it('returns the wall id when the click is on the host wall but off every opening', () => {
+    expect(hitTest(openingOnWallScene(), { x: 100, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'wall:host',
+    )
+  })
+
+  it('falls back to the containing room when no wall or opening is in range', () => {
+    expect(hitTest(openingOnWallScene(), { x: 1000, y: 1500 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'room:a',
+    )
   })
 })
