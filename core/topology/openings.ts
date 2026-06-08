@@ -49,8 +49,8 @@ export function deriveOpeningGeometry(opening: Opening, hostWall: Wall): Opening
     x: (hostWall.end.x - hostWall.start.x) / length,
     y: (hostWall.end.y - hostWall.start.y) / length,
   }
-  // `-along.y` produces negative zero on an axis-aligned wall; adding zero
-  // normalizes it back to positive zero so the normal compares equal to (0, 1).
+  // Adding zero normalizes negative zero to positive zero so structural equality
+  // checks on axis-aligned normals hold.
   const normal: Point = { x: -along.y + 0, y: along.x }
 
   const effectiveWidth = Math.min(opening.width, length)
@@ -64,7 +64,12 @@ export function deriveOpeningGeometry(opening: Opening, hostWall: Wall): Opening
   return { center, along, normal, width: effectiveWidth, jambStart, jambEnd }
 }
 
-/** The four footprint corners (width along the wall by `thickness` across), centered on `center`. */
+/**
+ * The four footprint corners (width along the wall by `thickness` across), centered on `center`.
+ *
+ * The five parameters (center, along and normal axes, width and thickness extents) are the
+ * natural signature for a wall-aligned planar rectangle and are kept rather than bundled.
+ */
 // eslint-disable-next-line max-params -- center plus the along/normal axes plus the width and thickness extents is the natural signature for a wall-aligned rectangle footprint
 export function openingFootprint(
   center: Point,
