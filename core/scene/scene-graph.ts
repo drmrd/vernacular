@@ -60,6 +60,7 @@ export interface OpeningSceneNode {
   id: string
   kind: 'opening'
   floorId: string
+  /** ElementType id, category 'opening'. */
   type: string
   center: Point
   along: Point

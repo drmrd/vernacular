@@ -140,6 +140,7 @@ export {
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type {
+  OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
   SceneNode,
@@ -147,8 +148,11 @@ export type {
   WallSceneNode,
 } from './scene/scene-graph'
 export {
+  OPENING_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
   deriveFloorNode,
+  deriveOpeningNode,
+  deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
   deriveUnderlayNode,
