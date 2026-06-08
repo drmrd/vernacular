@@ -48,10 +48,14 @@ updated: 2026-06-07
 
 ## Status
 
-Accepted; implementation in progress (slice 7 of the Phase 1 two-dimensional
-plan editor, branch `feat/openings-doors-and-windows`). This ADR will be
-refreshed to "landed" with its merge reference when the slice completes. The
-slice design is `docs/specs/2026-06-07-openings-doors-and-windows.md`; the
+Accepted; implemented (slice 7 of the Phase 1 two-dimensional plan editor) on
+branch `feat/openings-doors-and-windows`, pending merge. The model, factory,
+expanded element-type registry, the five undoable commands, the pure geometry
+and scene projection, the v2-to-v3 migration, the seven plan-symbol routines,
+opening selection and marquee, and the place-opening tool, inspector, and drag
+are all implemented; the full check chain and `rgb:audit` are green. This ADR
+should gain its merge reference when the branch lands. The slice design is
+`docs/specs/2026-06-07-openings-doors-and-windows.md`; the
 parent design specification (`docs/specs/2026-06-01-vernacular-design.md`,
 sections 3.1, 3.2, and the section 10 Phase 1 deliverables) remains
 authoritative. This ADR records the interpretation and the one deliberate
