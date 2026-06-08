@@ -94,16 +94,33 @@ export interface NewOpeningOptions {
   id?: string
 }
 
+// Doors sit on the floor; the sill height only matters for windows and other
+// raised openings, so the fallback when an element type omits it is zero.
+const DEFAULT_OPENING_SILL_HEIGHT_MM = 0
+
+function openingDefaults(type: string): {
+  width: number
+  height: number
+  sillHeight: number
+} {
+  const params = getEntry(builtinElementTypes, type)?.opening
+  return {
+    width: params?.defaultWidth ?? DEFAULT_OPENING_WIDTH_MM,
+    height: params?.defaultHeight ?? DEFAULT_OPENING_HEIGHT_MM,
+    sillHeight: params?.defaultSillHeight ?? DEFAULT_OPENING_SILL_HEIGHT_MM,
+  }
+}
+
 export function createOpening(options: NewOpeningOptions): Opening {
-  const params = getEntry(builtinElementTypes, options.type)?.opening
+  const defaults = openingDefaults(options.type)
   return {
     id: options.id ?? globalThis.crypto.randomUUID(),
     type: options.type,
     hostWallId: options.hostWallId,
     position: options.position,
-    width: options.width ?? params?.defaultWidth ?? DEFAULT_OPENING_WIDTH_MM,
-    height: options.height ?? params?.defaultHeight ?? DEFAULT_OPENING_HEIGHT_MM,
-    sillHeight: options.sillHeight ?? params?.defaultSillHeight ?? 0,
+    width: options.width ?? defaults.width,
+    height: options.height ?? defaults.height,
+    sillHeight: options.sillHeight ?? defaults.sillHeight,
     orientation: options.orientation ?? { hinge: 'start', facing: 'positive' },
   }
 }
