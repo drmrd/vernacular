@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-export type ToolId = 'draw-wall' | 'select' | 'calibrate'
+export type ToolId = 'draw-wall' | 'select' | 'calibrate' | 'place-opening'
 
 export const DEFAULT_TOOL: ToolId = 'draw-wall'
 

@@ -1,41 +1,32 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
-  type Point,
+  type SceneGraph,
   type UnitPreferences,
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
-import {
-  useEditorSession,
-  useSceneGraph,
-  useSelection,
-  useSelectionIds,
-  type EditorSession,
-} from '../../bridge'
+import { useEditorSession, useSceneGraph, useSelection, useSelectionIds } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
+import type { DrawableOpening } from './draw-opening'
 import type { DrawableUnderlay } from './draw-underlay'
 import { singleSelectedWall } from './selected-wall'
+import type { OpeningPlacement } from './use-opening-placement'
+import type { OpeningEditing } from './use-opening-editing'
+import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
+import { usePlanInteraction, type PlanInteraction } from './use-plan-interaction'
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
-  eventToCanvas,
   useFitToContent,
   useViewportControls,
   type ViewportControls,
 } from './use-viewport-controls'
 import type { SnapResult } from './snap'
-import { useSnapping } from './use-snapping'
-import { screenToWorld, DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
-import {
-  advanceWallTool,
-  IDLE_WALL_TOOL,
-  wallPreviewSegment,
-  type WallToolState,
-} from './wall-tool'
+import { DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
 
 const PLAN_WIDTH = 800
 const PLAN_HEIGHT = 600
@@ -48,95 +39,6 @@ const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
 }
 
-interface PointerContext {
-  session: EditorSession
-  tool: ToolId
-  toolState: WallToolState
-}
-
-function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
-  return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
-}
-
-/** Applies a wall-tool click and returns the next wall-tool state; other tools are inert here. */
-function applyPointer(world: Point, context: PointerContext): WallToolState {
-  if (context.tool !== 'draw-wall') {
-    return context.toolState
-  }
-  const floorId = context.session.getProject().floors[0]?.id
-  if (floorId === undefined) {
-    return context.toolState
-  }
-  const result = advanceWallTool(context.toolState, world, floorId)
-  if (result.command) {
-    context.session.dispatch(result.command)
-  }
-  return result.state
-}
-
-interface PlanInteractionDeps {
-  session: EditorSession
-  walls: DrawPlanOptions['walls']
-  tool: ToolId
-  viewport: Viewport
-}
-
-interface PlanInteraction {
-  preview: PreviewSegment | undefined
-  snap: SnapResult | null
-  onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
-  onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
-  onPointerLeave: () => void
-}
-
-/** The in-progress segment start while drawing; absent when the tool is idle. */
-function drawingOrigin(toolState: WallToolState): Point | undefined {
-  return toolState.phase === 'drawing' ? toolState.start : undefined
-}
-
-/** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
-function usePlanInteraction({
-  session,
-  walls,
-  tool,
-  viewport,
-}: PlanInteractionDeps): PlanInteraction {
-  const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
-  const [pointer, setPointer] = useState<Point | null>(null)
-  const snapping = useSnapping({ walls, viewport, origin: drawingOrigin(toolState) })
-
-  const onPointerDown = useCallback(
-    (event: PointerEvent<HTMLCanvasElement>) => {
-      const world = snapping.resolve(eventToWorld(event, viewport))
-      const context = { session, tool, toolState }
-      setToolState(applyPointer(world, context))
-    },
-    [session, tool, toolState, viewport, snapping],
-  )
-
-  // Track the cursor only while the wall tool is active; this drives the live
-  // rubber-band preview and the snap indicator. The select tool needs neither.
-  const onPointerMove = useCallback(
-    (event: PointerEvent<HTMLCanvasElement>) => {
-      if (tool === 'draw-wall') {
-        setPointer(snapping.resolve(eventToWorld(event, viewport)))
-      }
-    },
-    [tool, viewport, snapping],
-  )
-
-  const onPointerLeave = useCallback(() => {
-    setPointer(null)
-    snapping.clear()
-  }, [snapping])
-
-  const preview =
-    tool === 'draw-wall' && pointer ? wallPreviewSegment(toolState, pointer) : undefined
-  const snap = tool === 'draw-wall' ? snapping.snap : null
-
-  return { preview, snap, onPointerDown, onPointerMove, onPointerLeave }
-}
-
 interface ComposedPointerHandlers {
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
@@ -147,37 +49,43 @@ interface ComposedPointerHandlers {
 interface PointerSources {
   controls: ViewportControls
   wallEditing: WallEditing
+  openingEditing: OpeningEditing
   interaction: PlanInteraction
   calibration: PlanUnderlayLayer['calibration']
   selection: PlanSelection
+  openingPlacement: OpeningPlacement
 }
 
 /**
- * A pan gesture takes top priority. Next, an endpoint-drag grab (only possible
- * under the select tool, when a handle is hit) consumes the pointer so it does
- * not also start a marquee or click selection. The calibration interaction runs
- * next but is inert unless the calibrate tool is active. Otherwise the wall tool
- * and the select-tool selection both see the pointer (each inert under the
- * other's tool).
+ * A pan gesture takes top priority. Next, an endpoint-drag grab or an opening
+ * footprint grab (both only possible under the select tool, when the pointer is
+ * over a handle or footprint) consumes the pointer so it does not also start a
+ * marquee or click selection. The calibration interaction runs next but is inert
+ * unless the calibrate tool is active. Otherwise the wall tool, the place-opening
+ * tool, and the select-tool selection all see the pointer, each inert under the
+ * others' tool.
  */
-function composePointerHandlers({
-  controls,
-  wallEditing,
-  interaction,
-  calibration,
-  selection,
-}: PointerSources): ComposedPointerHandlers {
+function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
+  const { controls, wallEditing, openingEditing, interaction } = sources
+  const { calibration, selection, openingPlacement } = sources
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
       if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) {
         return
       }
+      if (openingEditing.onPointerDown(event)) {
+        return
+      }
       calibration.onPointerDown(event)
       interaction.onPointerDown(event)
+      openingPlacement.onPointerDown(event)
       selection.onPointerDown(event)
     },
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) {
+        return
+      }
+      if (openingEditing.onPointerMove(event)) {
         return
       }
       calibration.onPointerMove(event)
@@ -187,6 +95,7 @@ function composePointerHandlers({
     onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => {
       controls.onPanPointerUp(event)
       wallEditing.onPointerUp(event)
+      openingEditing.onPointerUp(event)
       selection.onPointerUp(event)
     },
     // Clear both the wall-tool and calibration cursors when the pointer leaves.
@@ -213,6 +122,7 @@ interface PlanScene {
   // The active unit preferences that format the room-label area text.
   preferences: UnitPreferences
   underlays: readonly DrawableUnderlay[]
+  openings: readonly DrawableOpening[]
   // The live calibration measurement segment, or undefined when not measuring.
   calibration: PreviewSegment | undefined
 }
@@ -234,6 +144,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     rulers: true,
     roomLabels: { preferences: scene.preferences },
     underlays: scene.underlays,
+    openings: scene.openings,
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -268,15 +179,57 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.viewport,
     scene.preferences,
     scene.underlays,
+    scene.openings,
     scene.calibration,
   ])
 }
+
+const CROSSHAIR_TOOLS: ReadonlySet<ToolId> = new Set(['draw-wall', 'calibrate', 'place-opening'])
 
 function planCursor(tool: ToolId, panning: boolean): string {
   if (panning) {
     return 'grabbing'
   }
-  return tool === 'draw-wall' || tool === 'calibrate' ? 'crosshair' : 'default'
+  return CROSSHAIR_TOOLS.has(tool) ? 'crosshair' : 'default'
+}
+
+interface PlanLayers {
+  graph: SceneGraph
+  tool: ToolId
+  selectedIds: ReadonlySet<string>
+  selectedWall: WallSceneNode | null
+  viewport: Viewport
+  preferences: UnitPreferences
+  interaction: PlanInteraction
+  planSelection: PlanSelection
+  wallEditing: WallEditing
+  controls: ViewportControls
+  underlayLayer: PlanUnderlayLayer
+  openingLayer: OpeningLayer
+}
+
+/**
+ * Flattens the resolved hooks into the draw-meaningful scene leaves the redraw
+ * depends on. A pure transform (no hooks) so the effect lists each leaf instead
+ * of the per-render hook-result objects. The endpoint drag and the wall tool
+ * never preview at once, so a single resolved preview leaf covers both.
+ */
+function buildScene(inputs: PlanLayers): PlanScene {
+  const { graph, interaction, planSelection, wallEditing, underlayLayer, openingLayer } = inputs
+  return {
+    walls: graph.walls,
+    rooms: graph.rooms,
+    selectedIds: inputs.selectedIds,
+    preview: wallEditing.preview ?? interaction.preview,
+    snap: interaction.snap,
+    marquee: planSelection.marquee,
+    endpointHandles: inputs.selectedWall,
+    viewport: inputs.viewport,
+    preferences: inputs.preferences,
+    underlays: underlayLayer.underlays,
+    openings: openingLayer.drawables,
+    calibration: underlayLayer.calibration.calibration,
+  }
 }
 
 interface PlanController {
@@ -285,13 +238,13 @@ interface PlanController {
 }
 
 /**
- * Resolves and composes all the plan-editing hooks (pan/zoom, wall tool, hit-test
- * selection, endpoint-drag wall editing, underlay layer, calibration), drives the
- * redraw, and exposes the canvas cursor and pointer handlers. The pure decision
- * logic lives in the tested modules; this binds them to the session, selection,
- * active tool, and underlay state.
+ * Resolves all the plan-editing hooks (pan/zoom, wall tool, hit-test selection,
+ * endpoint-drag wall editing, underlay layer, calibration, opening layer) plus the
+ * active unit preferences into the flat layer set the scene and pointer handlers
+ * consume. The pure decision logic lives in the tested modules; this binds them to
+ * the session, selection, active tool, and viewport.
  */
-function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): PlanController {
+function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLayers {
   const session = useEditorSession()
   const graph = useSceneGraph()
   const selection = useSelection()
@@ -306,32 +259,42 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
-  // Flatten the resolved hooks into the draw-meaningful leaves the redraw depends
-  // on; a pure transform (no hooks) so the effect lists each leaf instead of the
-  // per-render hook-result objects. The endpoint drag and the wall tool never
-  // preview at once, so a single resolved preview leaf covers both.
-  const scene: PlanScene = {
-    walls: graph.walls,
-    rooms: graph.rooms,
+  const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds })
+  return {
+    graph,
+    tool,
     selectedIds,
-    preview: wallEditing.preview ?? interaction.preview,
-    snap: interaction.snap,
-    marquee: planSelection.marquee,
-    endpointHandles: selectedWall,
+    selectedWall,
     viewport,
     preferences,
-    underlays: underlayLayer.underlays,
-    calibration: underlayLayer.calibration.calibration,
+    interaction,
+    planSelection,
+    wallEditing,
+    controls,
+    underlayLayer,
+    openingLayer,
   }
-  usePlanRedraw(canvasRef, scene)
+}
+
+/**
+ * Composes the resolved plan layers into the redraw, the canvas cursor, and the
+ * pointer handlers. Coverage-excluded glue validated by the wall-drawing
+ * end-to-end spec, since jsdom has no 2D Canvas.
+ */
+function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): PlanController {
+  const layers = usePlanLayers(canvasRef)
+  usePlanRedraw(canvasRef, buildScene(layers))
+  const { controls, wallEditing, interaction, planSelection, underlayLayer, openingLayer } = layers
   return {
-    cursor: planCursor(tool, controls.panning),
+    cursor: planCursor(layers.tool, controls.panning),
     pointerHandlers: composePointerHandlers({
       controls,
       wallEditing,
+      openingEditing: openingLayer.editing,
       interaction,
       calibration: underlayLayer.calibration,
       selection: planSelection,
+      openingPlacement: openingLayer.placement,
     }),
   }
 }
