@@ -18,4 +18,47 @@ describe('builtin element types', () => {
     expect(door?.plan2D.symbol).toBe('door-swing')
     expect(door?.scene3D.builder).toBe('door-frame')
   })
+
+  it('exposes the opening types and bumps the registry version to 2', () => {
+    const cases = [
+      {
+        id: 'single-swing-door',
+        symbol: 'door-swing',
+        opening: { family: 'swing', defaultWidth: 813, defaultHeight: 2032, defaultSillHeight: 0 },
+      },
+      {
+        id: 'double-swing-door',
+        symbol: 'door-swing',
+        opening: { family: 'swing', double: true, defaultWidth: 1626 },
+      },
+      { id: 'pocket-door', symbol: 'door-slide', opening: { family: 'slide' } },
+      { id: 'bifold-door', symbol: 'door-fold', opening: { family: 'fold' } },
+      { id: 'pivot-door', symbol: 'door-pivot', opening: { family: 'pivot' } },
+      { id: 'cased-opening', symbol: 'cased-opening', opening: { family: 'cased' } },
+      {
+        id: 'double-hung-window',
+        symbol: 'window-fixed',
+        opening: {
+          family: 'window-fixed',
+          defaultWidth: 900,
+          defaultHeight: 1200,
+          defaultSillHeight: 900,
+        },
+      },
+      {
+        id: 'casement-window',
+        symbol: 'window-crank',
+        opening: { family: 'window-crank' },
+      },
+    ] as const
+
+    for (const expected of cases) {
+      const entry = getEntry(builtinElementTypes, expected.id)
+      expect(entry?.category).toBe('opening')
+      expect(entry?.plan2D.symbol).toBe(expected.symbol)
+      expect(entry?.opening).toMatchObject(expected.opening)
+    }
+
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(2)
+  })
 })
