@@ -15,7 +15,7 @@ import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
 
 // Kind-prefixed ids keep node ids globally unique within the scene graph.
 const FLOOR_NODE_PREFIX = 'floor:'
-const WALL_NODE_PREFIX = 'wall:'
+export const WALL_NODE_PREFIX = 'wall:'
 export const UNDERLAY_NODE_PREFIX = 'underlay:'
 export const OPENING_NODE_PREFIX = 'opening:'
 

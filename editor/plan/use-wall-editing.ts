@@ -7,7 +7,13 @@ import {
   type RefObject,
   type SetStateAction,
 } from 'react'
-import { moveWallEndpoint, type Point, type WallEnd, type WallSceneNode } from '../../core'
+import {
+  moveWallEndpoint,
+  WALL_NODE_PREFIX,
+  type Point,
+  type WallEnd,
+  type WallSceneNode,
+} from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { DrawPlanOptions, PreviewSegment } from './draw-plan'
 import { pickWallEndpoint } from './wall-editing'
@@ -16,8 +22,8 @@ import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
 const PRIMARY_BUTTON = 0
-// The wall-node id carries the `wall:` namespace; the command takes the raw id.
-const WALL_NODE_PREFIX = 'wall:'
+// The wall-node id carries the `wall:` namespace (WALL_NODE_PREFIX from core); the
+// command takes the raw id.
 // A generous grab radius around a handle, in screen pixels, converted to a world
 // tolerance so it stays a fixed on-screen target across zoom (like the snap
 // tolerance in use-snapping). Slightly larger than the painted handle radius.

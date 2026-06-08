@@ -10,6 +10,7 @@ import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   ROOM_ID_PREFIX,
+  WALL_NODE_PREFIX,
   type Command,
   type RoomSceneNode,
   type SceneGraph,
@@ -31,9 +32,6 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   saved: 'All changes saved',
   error: 'Save failed',
 }
-
-// The wall-node id carries the `wall:` namespace; the command takes the raw id.
-const WALL_NODE_PREFIX = 'wall:'
 
 // A project-level unit-preferences store is later work; this slice picks the
 // default preferences for the project's units (see the slice deferrals).

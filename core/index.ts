@@ -150,6 +150,7 @@ export type {
 export {
   OPENING_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
+  WALL_NODE_PREFIX,
   deriveFloorNode,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
