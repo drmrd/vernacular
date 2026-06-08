@@ -8,6 +8,7 @@ import {
   parseLength,
   removeOpening,
   resizeOpening,
+  type AssumedUnit,
   type Command,
   type Opening,
   type OpeningDimensions,
@@ -15,13 +16,17 @@ import {
   type UnitSystem,
 } from '../../core'
 
-// The inspector edits raw millimeter values, so a bare number always means
-// millimeters regardless of the active system.
-const PARSE_OPTIONS = { assumeUnit: 'mm' } as const
+// A bare number entered for a metric project means millimetres; for an imperial
+// project it means feet. This is the active system's assume-unit, so a number
+// without a unit token still parses, matching the wall thickness editor.
+const ASSUME_UNIT_BY_SYSTEM: Record<UnitSystem, AssumedUnit> = {
+  metric: 'mm',
+  imperial: 'ft',
+}
 
 // Default unit preferences for each system. The inspector formats and parses
 // against the active system's defaults, mirroring the wall thickness editor.
-const PREFERENCES_BY_SYSTEM: Record<UnitSystem, UnitPreferences> = {
+const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
 }
@@ -31,6 +36,7 @@ interface LengthFieldProps {
   label: string
   valueMm: number
   preferences: UnitPreferences
+  assumeUnit: AssumedUnit
   onCommitMm: (mm: number) => void
 }
 
@@ -39,6 +45,7 @@ function LengthField({
   label,
   valueMm,
   preferences,
+  assumeUnit,
   onCommitMm,
 }: LengthFieldProps): ReactElement {
   const formatted = formatLength(valueMm, lengthFormatOptions(preferences))
@@ -46,7 +53,7 @@ function LengthField({
 
   function commit(): void {
     try {
-      onCommitMm(parseLength(text, PARSE_OPTIONS))
+      onCommitMm(parseLength(text, { assumeUnit }))
     } catch {
       // An unparseable entry dispatches nothing; the input keeps its invalid text.
     }
@@ -79,19 +86,23 @@ export interface OpeningInspectorProps {
   dispatch: (command: Command) => void
 }
 
-// The three editable dimensions, each described by its visible label, the key it
-// occupies in a snapshot of the opening, and the suffix for its input id.
+// The three editable dimensions, each described by its visible label and the key
+// it occupies in a snapshot of the opening. The input id suffix is derived from
+// the key (camelCase to kebab-case) so it never falls out of sync.
 interface DimensionDescriptor {
   key: keyof OpeningDimensions
   label: string
-  idSuffix: string
 }
 
 const DIMENSION_DESCRIPTORS: readonly DimensionDescriptor[] = [
-  { key: 'width', label: 'Width', idSuffix: 'width' },
-  { key: 'height', label: 'Height', idSuffix: 'height' },
-  { key: 'sillHeight', label: 'Sill height', idSuffix: 'sill-height' },
+  { key: 'width', label: 'Width' },
+  { key: 'height', label: 'Height' },
+  { key: 'sillHeight', label: 'Sill height' },
 ]
+
+function kebabCase(key: string): string {
+  return key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
+}
 
 function openingDimensions(opening: Opening): OpeningDimensions {
   return { width: opening.width, height: opening.height, sillHeight: opening.sillHeight }
@@ -100,20 +111,27 @@ function openingDimensions(opening: Opening): OpeningDimensions {
 interface DimensionFieldsProps {
   opening: Opening
   preferences: UnitPreferences
+  assumeUnit: AssumedUnit
   onResize: (dimensions: OpeningDimensions) => void
 }
 
-function DimensionFields({ opening, preferences, onResize }: DimensionFieldsProps): ReactElement {
+function DimensionFields({
+  opening,
+  preferences,
+  assumeUnit,
+  onResize,
+}: DimensionFieldsProps): ReactElement {
   const current = openingDimensions(opening)
   return (
     <>
-      {DIMENSION_DESCRIPTORS.map(({ key, label, idSuffix }) => (
+      {DIMENSION_DESCRIPTORS.map(({ key, label }) => (
         <LengthField
           key={key}
-          inputId={`opening-${idSuffix}-${opening.id}`}
+          inputId={`opening-${kebabCase(key)}-${opening.id}`}
           label={label}
           valueMm={current[key]}
           preferences={preferences}
+          assumeUnit={assumeUnit}
           onCommitMm={(value) => onResize({ ...current, [key]: value })}
         />
       ))}
@@ -149,13 +167,15 @@ export function OpeningInspector({
   units,
   dispatch,
 }: OpeningInspectorProps): ReactElement {
-  const preferences = PREFERENCES_BY_SYSTEM[units]
+  const preferences = PREFERENCES_BY_UNITS[units]
+  const assumeUnit = ASSUME_UNIT_BY_SYSTEM[units]
 
   return (
     <div>
       <DimensionFields
         opening={opening}
         preferences={preferences}
+        assumeUnit={assumeUnit}
         onResize={(dimensions) => dispatch(resizeOpening(floorId, opening.id, dimensions))}
       />
       <OpeningControls floorId={floorId} openingId={opening.id} dispatch={dispatch} />
