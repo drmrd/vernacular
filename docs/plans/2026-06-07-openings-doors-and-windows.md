@@ -535,7 +535,7 @@ Each command mirrors the slice-12 underlay commands: a `type` constant, a params
 
 ## Self-review
 
-- **Spec coverage:** model and factory (A), the five commands (B), geometry (C), scene projection (D), migration (E), the seven family symbols and the wall gap (F), selection and marquee (G), placement, inspector, and drag (H), docs (I) — every slice-spec goal maps to a task; every deferral is recorded in the scope boundary.
+- **Spec coverage:** model and factory (A), the five commands (B), geometry (C), scene projection (D), migration (E), the seven family symbols and the wall gap (F), selection and marquee (G), placement, inspector, and drag (H), docs (I): every slice-spec goal maps to a task; every deferral is recorded in the scope boundary.
 - **Type consistency:** `WallEnd` is single-sourced in `core/model/types.ts` and reused by `OpeningOrientation.hinge` and the wall commands; `OpeningDimensions` is used by `resizeOpening` and the inspector; `OpeningSceneNode` is produced in D and consumed by F, G, and H; `DrawableOpening` is produced in plan-view glue and consumed by `drawOpening` and `drawPlan`; `OpeningPlacement` and `placeOpeningTarget` feed the H1b dispatch.
 - **No placeholders:** every task names its signature and its behavior; default dimensions and the type-to-symbol mapping are tabulated rather than left to the implementer.
 
