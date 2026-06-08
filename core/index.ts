@@ -36,6 +36,8 @@ export { FINISH_REGISTRY_VERSION, builtinFinishes } from './registries/finishes'
 export type {
   ElementCategory,
   ElementType,
+  OpeningFamily,
+  OpeningTypeParameters,
   Plan2DSymbol,
   Scene3DReference,
 } from './registries/element-types'

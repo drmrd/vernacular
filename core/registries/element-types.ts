@@ -73,6 +73,9 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       },
     },
     {
+      // A glazed double door: opening parameters are intentionally identical to
+      // double-swing-door for now. Registered as a distinct architectural type so a
+      // later phase can differentiate its symbol/3D without a schema change.
       id: 'french-door',
       category: 'opening',
       plan2D: { symbol: 'door-swing' },
@@ -194,6 +197,9 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       },
     },
     {
+      // Opening parameters are intentionally identical to double-hung-window for now.
+      // Registered as a distinct architectural type (different sash operation) so a later
+      // phase can differentiate its symbol/3D without a schema change.
       id: 'single-hung-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
