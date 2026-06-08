@@ -79,8 +79,7 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
 }
 
 // A nominal interior door leaf: 32 in wide by 80 in tall (813 mm by 2032 mm),
-// rounded to whole millimeters. Used when the named opening type carries no
-// `opening` record with its own defaults.
+// rounded to whole millimeters.
 export const DEFAULT_OPENING_WIDTH_MM = 813
 export const DEFAULT_OPENING_HEIGHT_MM = 2032
 

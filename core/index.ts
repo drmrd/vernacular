@@ -1,6 +1,8 @@
 export type {
   EraId,
   Floor,
+  Opening,
+  OpeningOrientation,
   Point,
   Project,
   ProjectMeta,
@@ -13,6 +15,7 @@ export type {
 } from './model/types'
 export type {
   NewFloorOptions,
+  NewOpeningOptions,
   NewProjectOptions,
   NewUnderlayOptions,
   NewWallOptions,
@@ -20,10 +23,13 @@ export type {
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_OPENING_HEIGHT_MM,
+  DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createEmptyProject,
   createFloor,
+  createOpening,
   createUnderlay,
   createWall,
 } from './model/factories'
