@@ -24,8 +24,7 @@ export function SelectionTransformPanel({
     dispatch(rotateEntities(floorId, [...entityIds], center, radians))
   }
 
-  function applyAngle(event: React.FormEvent): void {
-    event.preventDefault()
+  function applyAngle(): void {
     rotateBy(Number.parseFloat(angle) * DEGREES_TO_RADIANS)
   }
 
@@ -37,7 +36,12 @@ export function SelectionTransformPanel({
       <button type="button" onClick={() => rotateBy(-QUARTER_TURN)}>
         Rotate clockwise
       </button>
-      <form onSubmit={applyAngle}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          applyAngle()
+        }}
+      >
         <label>
           Angle
           <input type="number" value={angle} onChange={(event) => setAngle(event.target.value)} />
