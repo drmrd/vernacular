@@ -4,11 +4,13 @@ import { Dispatcher } from '../dispatcher'
 import { DEFAULT_CEILING_HEIGHT_MM, createEmptyProject } from '../../model/factories'
 import type { Project } from '../../model/types'
 import {
+  SET_UNITS,
   addFloor,
   registerProjectCommands,
   removeFloor,
   renameProject,
   setFloorCeilingHeight,
+  setUnits,
 } from './project-commands'
 
 function newProject(): Project {
@@ -72,6 +74,23 @@ describe('project commands', () => {
 
     dispatcher.undo()
     expect(state.floors[0]!.defaultCeilingHeight).toBe(DEFAULT_CEILING_HEIGHT_MM)
+  })
+
+  it('switches the project units and restores the prior system on undo', () => {
+    const state = newProject()
+    const dispatcher = projectDispatcher(state)
+
+    const command = setUnits('imperial')
+    expect(command.type).toBe(SET_UNITS)
+    expect(command.params.units).toBe('imperial')
+
+    dispatcher.dispatch(command)
+    expect(state.meta.units).toBe('imperial')
+    expect(state.meta.name).toBe('House')
+    expect(state.floors).toEqual([])
+
+    dispatcher.undo()
+    expect(state.meta.units).toBe('metric')
   })
 
   it('leaves untouched floors referentially identical after an edit', () => {
