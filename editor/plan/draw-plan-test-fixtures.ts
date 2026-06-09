@@ -121,16 +121,18 @@ const ROOM_DEPTH_MM = 3000
 
 /** A 4000 by 3000 mm rectangular room, offset along x so several can sit side by side. */
 export function rectangleRoom(id: string, originX = 0): RoomSceneNode {
+  const polygon = [
+    { x: originX, y: 0 },
+    { x: originX + ROOM_WIDTH_MM, y: 0 },
+    { x: originX + ROOM_WIDTH_MM, y: ROOM_DEPTH_MM },
+    { x: originX, y: ROOM_DEPTH_MM },
+  ]
   return {
     id,
     kind: 'room',
     floorId: 'f',
-    polygon: [
-      { x: originX, y: 0 },
-      { x: originX + ROOM_WIDTH_MM, y: 0 },
-      { x: originX + ROOM_WIDTH_MM, y: ROOM_DEPTH_MM },
-      { x: originX, y: ROOM_DEPTH_MM },
-    ],
+    polygon,
+    clearPolygon: polygon,
     area: ROOM_WIDTH_MM * ROOM_DEPTH_MM,
   }
 }

@@ -15,7 +15,7 @@ function wall(
 }
 
 function room(id: string, polygon: { x: number; y: number }[]): RoomSceneNode {
-  return { id, kind: 'room', floorId: 'g', polygon, area: 0 }
+  return { id, kind: 'room', floorId: 'g', polygon, area: 0, clearPolygon: polygon }
 }
 
 function opening(id: string, center: { x: number; y: number }): OpeningSceneNode {

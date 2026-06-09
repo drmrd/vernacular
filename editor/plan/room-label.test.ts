@@ -24,6 +24,7 @@ function rectangularRoom(overrides: Partial<RoomSceneNode> = {}): RoomSceneNode 
     kind: 'room',
     floorId: 'floor-1',
     polygon: RECTANGLE_POLYGON,
+    clearPolygon: RECTANGLE_POLYGON,
     area: TWENTY_SQUARE_METERS_IN_MM2,
     ...overrides,
   }
