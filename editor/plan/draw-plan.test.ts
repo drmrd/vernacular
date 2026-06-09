@@ -10,10 +10,11 @@ import {
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import type { DrawableOpening } from './draw-opening'
+import type { DrawableDimension } from './draw-dimension'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
 import { DEFAULT_METRIC_PREFERENCES } from '../../core'
-import type { OpeningSceneNode, RoomSceneNode, WallSceneNode } from '../../core'
+import type { DimensionSceneNode, OpeningSceneNode, RoomSceneNode, WallSceneNode } from '../../core'
 
 /** A minimal valid `drawPlan` options object that tests override per case. */
 function planOptions(overrides: Partial<Parameters<typeof drawPlan>[1]> = {}) {
@@ -187,6 +188,37 @@ describe('drawPlan openings', () => {
     expect(countArcs(withOpening.ops)).toBeGreaterThan(countArcs(without.ops))
     // That arc lands after a wall stroke: the host wall is painted, then broken.
     expect(withOpening.ops.indexOf('arc')).toBeGreaterThan(withOpening.ops.indexOf('stroke'))
+  })
+})
+
+describe('drawPlan dimensions', () => {
+  // A horizontal 1000 mm dimension offset 200 mm to one side, built the way the
+  // dimension scene node is projected. drawDimension fills its length label as
+  // text, so the call carrying a dimension records more fillText calls than the
+  // otherwise-identical call without one, and that label lands after the wall.
+  // prettier-ignore
+  const dimensionNode: DimensionSceneNode = {
+    id: 'dimension:d1', kind: 'dimension', floorId: 'g',
+    start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, offset: 200, length: 1000,
+  }
+  const dimension: DrawableDimension = { node: dimensionNode, selected: false }
+  const countText = (ops: readonly string[]) => ops.filter((op) => op === 'fillText').length
+
+  it('renders each provided dimension after the walls, adding the length label the wall-only plan lacks', () => {
+    const labelled = { roomLabels: { preferences: DEFAULT_METRIC_PREFERENCES } }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, planOptions(labelled))
+    const withDimension = recordingContext()
+    drawPlan(withDimension.ctx, planOptions({ ...labelled, dimensions: [dimension] }))
+
+    // The dimension routine fills its length label, so the call carrying a
+    // dimension records strictly more fillText calls than the wall-only call.
+    expect(countText(withDimension.ops)).toBeGreaterThan(countText(without.ops))
+    // That label lands after a wall stroke: the wall is painted, then dimensioned.
+    expect(withDimension.ops.indexOf('fillText')).toBeGreaterThan(
+      withDimension.ops.indexOf('stroke'),
+    )
   })
 })
 
