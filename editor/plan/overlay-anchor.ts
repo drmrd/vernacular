@@ -6,16 +6,13 @@ import type {
   RoomSceneNode,
   WallSceneNode,
 } from '../../core'
+import { midpoint } from './geometry'
 
 export type SelectableSceneNode =
   | WallSceneNode
   | RoomSceneNode
   | OpeningSceneNode
   | DimensionSceneNode
-
-function midpoint(a: Point, b: Point): Point {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-}
 
 /** The world-space point the overlay proxy and tooltip anchor to. */
 export function entityAnchor(node: SelectableSceneNode): Point {

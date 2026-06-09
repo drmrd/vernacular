@@ -5,9 +5,9 @@ import {
   formatLength,
   lengthFormatOptions,
   type DimensionSceneNode,
-  type Point,
   type UnitPreferences,
 } from '../../core'
+import { midpoint } from './geometry'
 
 /** Minimum on-screen dimension length (px) below which a chip would be illegible and is dropped. */
 export const MIN_CHIP_LENGTH_PX = 24
@@ -16,10 +16,6 @@ export interface DimensionChip {
   id: string
   screen: ScreenPoint
   label: string
-}
-
-function midpoint(a: Point, b: Point): Point {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
 export function dimensionChips(
