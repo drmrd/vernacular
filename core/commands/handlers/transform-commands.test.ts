@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   translateEntities,
   rotateEntities,
+  deleteEntities,
   selectionCenter,
   registerTransformCommands,
   TRANSLATE_ENTITIES,
   ROTATE_ENTITIES,
+  DELETE_ENTITIES,
 } from './transform-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
@@ -148,6 +150,58 @@ describe('rotateEntities', () => {
 
   it('carries a stable command type', () => {
     expect(rotateEntities(FLOOR_ID, ['w1'], { x: 0, y: 0 }, Math.PI / 2).type).toBe(ROTATE_ENTITIES)
+  })
+})
+
+describe('deleteEntities', () => {
+  it('removes a wall and cascades to openings hosted on it, keeping the other wall and dimension', () => {
+    const project = projectWithMixedEntities()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(deleteEntities(FLOOR_ID, ['w1']))
+
+    const floor = floorOf(project)
+    expect(floor.walls.map((wall) => wall.id)).toEqual(['w2'])
+    expect(floor.openings.map((opening) => opening.id)).toEqual([])
+    expect(floor.dimensions.map((dimension) => dimension.id)).toEqual(['d1'])
+  })
+
+  it('restores the deleted wall and its hosted opening on undo', () => {
+    const project = projectWithMixedEntities()
+    const before = structuredClone(floorOf(project))
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(deleteEntities(FLOOR_ID, ['w1']))
+    dispatcher.undo()
+
+    expect(floorOf(project)).toEqual(before)
+  })
+
+  it('removes only the named opening and dimension, leaving both walls', () => {
+    const project = projectWithMixedEntities()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(deleteEntities(FLOOR_ID, ['o1', 'd1']))
+
+    const floor = floorOf(project)
+    expect(floor.walls.map((wall) => wall.id)).toEqual(['w1', 'w2'])
+    expect(floor.openings.map((opening) => opening.id)).toEqual([])
+    expect(floor.dimensions.map((dimension) => dimension.id)).toEqual([])
+  })
+
+  it('restores the deleted opening and dimension on undo', () => {
+    const project = projectWithMixedEntities()
+    const before = structuredClone(floorOf(project))
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(deleteEntities(FLOOR_ID, ['o1', 'd1']))
+    dispatcher.undo()
+
+    expect(floorOf(project)).toEqual(before)
+  })
+
+  it('carries a stable command type', () => {
+    expect(deleteEntities(FLOOR_ID, ['w1']).type).toBe(DELETE_ENTITIES)
   })
 })
 
