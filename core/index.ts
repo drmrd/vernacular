@@ -154,6 +154,7 @@ export {
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type {
+  DimensionSceneNode,
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
@@ -162,9 +163,12 @@ export type {
   WallSceneNode,
 } from './scene/scene-graph'
 export {
+  DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
   WALL_NODE_PREFIX,
+  deriveDimensionNode,
+  deriveDimensionNodesForFloor,
   deriveFloorNode,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
