@@ -25,8 +25,25 @@ function transformFloorEntities(
   }
 }
 
+// Removes every selected wall, dimension, and opening, and additionally cascades to
+// any opening hosted on a deleted wall so no opening is left without a host.
+function deleteFloorEntities(floor: Floor, idSet: ReadonlySet<string>): Floor {
+  const deletedWallIds = new Set(
+    floor.walls.filter((wall) => idSet.has(wall.id)).map((wall) => wall.id),
+  )
+  return {
+    ...floor,
+    walls: floor.walls.filter((wall) => !idSet.has(wall.id)),
+    openings: floor.openings.filter(
+      (opening) => !idSet.has(opening.id) && !deletedWallIds.has(opening.hostWallId),
+    ),
+    dimensions: floor.dimensions.filter((dimension) => !idSet.has(dimension.id)),
+  }
+}
+
 export const TRANSLATE_ENTITIES = 'floor/translate-entities'
 export const ROTATE_ENTITIES = 'floor/rotate-entities'
+export const DELETE_ENTITIES = 'floor/delete-entities'
 
 export interface TranslateEntitiesParams {
   floorId: string
@@ -39,6 +56,11 @@ export interface RotateEntitiesParams {
   entityIds: string[]
   pivot: Point
   radians: number
+}
+
+export interface DeleteEntitiesParams {
+  floorId: string
+  entityIds: string[]
 }
 
 export function translateEntities(
@@ -87,6 +109,24 @@ const rotateEntitiesHandler: CommandHandler<Project, RotateEntitiesParams> = {
   },
 }
 
+export function deleteEntities(
+  floorId: string,
+  entityIds: string[],
+): Command<DeleteEntitiesParams> {
+  return {
+    type: DELETE_ENTITIES,
+    params: { floorId, entityIds },
+    description: 'Delete',
+  }
+}
+
+const deleteEntitiesHandler: CommandHandler<Project, DeleteEntitiesParams> = {
+  apply(state, params) {
+    const idSet = new Set(params.entityIds)
+    mapTargetFloor(state, params.floorId, (floor) => deleteFloorEntities(floor, idSet))
+  },
+}
+
 function collectSelectedEndpoints(floor: Floor, idSet: ReadonlySet<string>): Point[] {
   const endpoints: Point[] = []
   for (const wall of floor.walls) {
@@ -123,4 +163,5 @@ export function registerTransformCommands(
   return registry
     .register(TRANSLATE_ENTITIES, translateEntitiesHandler)
     .register(ROTATE_ENTITIES, rotateEntitiesHandler)
+    .register(DELETE_ENTITIES, deleteEntitiesHandler)
 }
