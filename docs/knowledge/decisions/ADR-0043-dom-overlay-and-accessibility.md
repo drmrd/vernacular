@@ -48,10 +48,10 @@ updated: 2026-06-09
 
 ## Status
 
-Proposed (design approved 2026-06-09); to be accepted when the slice lands. This
-is the architectural record for the second of the two Phase-1 finishing slices
-named in ADR-0041 (the first being underlay asset persistence, ADR-0042). It is a
-sibling of ADR-0042 on an independent branch; the two do not depend on each other.
+Accepted (landed 2026-06-09 on `feat/dom-overlay-accessibility`). This is the
+architectural record for the second of the two Phase-1 finishing slices named in
+ADR-0041 (the first being underlay asset persistence, ADR-0042). It is a sibling
+of ADR-0042 on an independent branch; the two do not depend on each other.
 
 ## Context
 
