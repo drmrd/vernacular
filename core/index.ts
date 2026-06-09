@@ -60,17 +60,20 @@ export type {
   RemoveFloorParams,
   RenameProjectParams,
   SetFloorCeilingHeightParams,
+  SetUnitsParams,
 } from './commands/handlers/project-commands'
 export {
   ADD_FLOOR,
   REMOVE_FLOOR,
   RENAME_PROJECT,
   SET_FLOOR_CEILING_HEIGHT,
+  SET_UNITS,
   addFloor,
   registerProjectCommands,
   removeFloor,
   renameProject,
   setFloorCeilingHeight,
+  setUnits,
 } from './commands/handlers/project-commands'
 export type {
   AddWallParams,

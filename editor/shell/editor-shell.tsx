@@ -13,6 +13,7 @@ import {
   OPENING_NODE_PREFIX,
   ROOM_ID_PREFIX,
   selectionCenter,
+  setUnits,
   WALL_NODE_PREFIX,
   type Command,
   type DimensionSceneNode,
@@ -39,6 +40,7 @@ import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
+import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
 const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
@@ -305,6 +307,7 @@ export interface EditorShellProps extends ProjectControlsProps {
 
 export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
   const graph = useSceneGraph()
+  const session = useEditorSession()
   return (
     // The underlay and opening-tool providers wrap both the plan view and the
     // inspector so the shared underlay state (the decoded-bitmap cache and the
@@ -317,6 +320,10 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
             <h1>Vernacular</h1>
             <p aria-live="polite">Walls: {graph.walls.length}</p>
             <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
+            <UnitToggle
+              units={session.getProject().meta.units}
+              onChange={(units) => session.dispatch(setUnits(units))}
+            />
             <ProjectControls {...projectControls} />
           </header>
           {recovery ? (

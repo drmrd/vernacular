@@ -42,6 +42,56 @@
   color: #475569;
 }
 
+/* A compact segmented control: the metric/imperial radios as two abutting pills. */
+.unit-toggle {
+  display: inline-flex;
+  align-self: center;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.unit-toggle legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.unit-toggle__option {
+  padding: 0.1rem 0.6rem;
+  border-radius: 4px;
+  color: #475569;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* Hide the native radio dot but keep it in the accessibility tree and focusable. */
+.unit-toggle__option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* The checked segment uses a darker blue so white text clears WCAG AA (4.5:1). */
+.unit-toggle__option:has(input:checked) {
+  background: #0b5394;
+  color: #fff;
+}
+
+.unit-toggle__option:has(input:focus-visible) {
+  outline: 2px solid #1a7fd4;
+  outline-offset: 1px;
+}
+
 .editor-shell__project {
   display: flex;
   align-items: center;
