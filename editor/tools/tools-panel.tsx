@@ -4,6 +4,7 @@ const TOOLS: ReadonlyArray<{ id: ToolId; label: string }> = [
   { id: 'draw-wall', label: 'Draw wall' },
   { id: 'select', label: 'Select' },
   { id: 'place-opening', label: 'Opening' },
+  { id: 'dimension', label: 'Dimension' },
 ]
 
 export function ToolsPanel() {

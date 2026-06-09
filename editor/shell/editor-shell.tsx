@@ -9,10 +9,12 @@ import {
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
+  DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   ROOM_ID_PREFIX,
   WALL_NODE_PREFIX,
   type Command,
+  type DimensionSceneNode,
   type Opening,
   type Project,
   type RoomSceneNode,
@@ -21,11 +23,13 @@ import {
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
+import { DimensionInspector } from '../plan/dimension-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
 import { RoomNameEditor } from '../plan/room-name-editor'
+import { singleSelectedDimension } from '../plan/selected-dimension'
 import { UnderlayPanel } from '../plan/underlay-panel'
 import { useUnderlay, UnderlayProvider } from '../plan/use-underlay'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
@@ -152,6 +156,26 @@ function RoomInspector({ roomNode, dispatch }: RoomInspectorProps) {
   )
 }
 
+interface SelectedDimensionInspectorProps {
+  node: DimensionSceneNode
+  units: UnitSystem
+  session: EditorSession
+}
+
+// The selection holds the namespaced scene-node id; strip DIMENSION_NODE_PREFIX
+// so the inspector edits the raw model dimension on its floor.
+function SelectedDimensionInspector({ node, units, session }: SelectedDimensionInspectorProps) {
+  return (
+    <DimensionInspector
+      floorId={node.floorId}
+      dimensionId={node.id.slice(DIMENSION_NODE_PREFIX.length)}
+      length={node.length}
+      units={units}
+      dispatch={session.dispatch}
+    />
+  )
+}
+
 interface SelectionInspectorProps {
   session: EditorSession
   graph: SceneGraph
@@ -159,8 +183,8 @@ interface SelectionInspectorProps {
   dispatch: (command: unknown) => void
 }
 
-// The selection-driven content: the wall, room, or opening editor for a single
-// selection, otherwise a brief selection summary.
+// The selection-driven content: the wall, room, opening, or dimension editor for
+// a single selection, otherwise a brief selection summary.
 function SelectionInspector({ session, graph, selectedIds, dispatch }: SelectionInspectorProps) {
   const wallNode = singleSelectedWallNode(selectedIds, graph)
   if (wallNode !== null) {
@@ -183,6 +207,16 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
         opening={selectedOpening.opening}
         units={project.meta.units}
         dispatch={session.dispatch}
+      />
+    )
+  }
+  const dimensionNode = singleSelectedDimension(selectedIds, graph)
+  if (dimensionNode !== null) {
+    return (
+      <SelectedDimensionInspector
+        node={dimensionNode}
+        units={project.meta.units}
+        session={session}
       />
     )
   }

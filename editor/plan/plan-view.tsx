@@ -9,10 +9,13 @@ import {
 } from '../../core'
 import { useEditorSession, useSceneGraph, useSelection, useSelectionIds } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
+import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableUnderlay } from './draw-underlay'
+import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
+import { useDimensionTool, type DimensionTool } from './use-dimension-tool'
 import type { OpeningPlacement } from './use-opening-placement'
 import type { OpeningEditing } from './use-opening-editing'
 import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
@@ -51,6 +54,7 @@ interface PointerSources {
   wallEditing: WallEditing
   openingEditing: OpeningEditing
   interaction: PlanInteraction
+  dimensionTool: DimensionTool
   calibration: PlanUnderlayLayer['calibration']
   selection: PlanSelection
   openingPlacement: OpeningPlacement
@@ -66,30 +70,24 @@ interface PointerSources {
  * others' tool.
  */
 function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
-  const { controls, wallEditing, openingEditing, interaction } = sources
+  const { controls, wallEditing, openingEditing, interaction, dimensionTool } = sources
   const { calibration, selection, openingPlacement } = sources
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
-      if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) {
-        return
-      }
-      if (openingEditing.onPointerDown(event)) {
-        return
-      }
+      if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
+      if (openingEditing.onPointerDown(event)) return
       calibration.onPointerDown(event)
       interaction.onPointerDown(event)
+      dimensionTool.onPointerDown(event)
       openingPlacement.onPointerDown(event)
       selection.onPointerDown(event)
     },
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
-      if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) {
-        return
-      }
-      if (openingEditing.onPointerMove(event)) {
-        return
-      }
+      if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
+      if (openingEditing.onPointerMove(event)) return
       calibration.onPointerMove(event)
       interaction.onPointerMove(event)
+      dimensionTool.onPointerMove(event)
       selection.onPointerMove(event)
     },
     onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => {
@@ -98,9 +96,10 @@ function composePointerHandlers(sources: PointerSources): ComposedPointerHandler
       openingEditing.onPointerUp(event)
       selection.onPointerUp(event)
     },
-    // Clear both the wall-tool and calibration cursors when the pointer leaves.
+    // Clear the wall-tool, dimension-tool, and calibration cursors on leave.
     onPointerLeave: () => {
       interaction.onPointerLeave()
+      dimensionTool.onPointerLeave()
       calibration.onPointerLeave()
     },
   }
@@ -123,6 +122,7 @@ interface PlanScene {
   preferences: UnitPreferences
   underlays: readonly DrawableUnderlay[]
   openings: readonly DrawableOpening[]
+  dimensions: readonly DrawableDimension[]
   // The live calibration measurement segment, or undefined when not measuring.
   calibration: PreviewSegment | undefined
 }
@@ -145,6 +145,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     roomLabels: { preferences: scene.preferences },
     underlays: scene.underlays,
     openings: scene.openings,
+    dimensions: scene.dimensions,
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -180,11 +181,17 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.preferences,
     scene.underlays,
     scene.openings,
+    scene.dimensions,
     scene.calibration,
   ])
 }
 
-const CROSSHAIR_TOOLS: ReadonlySet<ToolId> = new Set(['draw-wall', 'calibrate', 'place-opening'])
+const CROSSHAIR_TOOLS: ReadonlySet<ToolId> = new Set([
+  'draw-wall',
+  'calibrate',
+  'place-opening',
+  'dimension',
+])
 
 function planCursor(tool: ToolId, panning: boolean): string {
   if (panning) {
@@ -201,6 +208,8 @@ interface PlanLayers {
   viewport: Viewport
   preferences: UnitPreferences
   interaction: PlanInteraction
+  dimensionTool: DimensionTool
+  dimensions: readonly DrawableDimension[]
   planSelection: PlanSelection
   wallEditing: WallEditing
   controls: ViewportControls
@@ -215,12 +224,15 @@ interface PlanLayers {
  * never preview at once, so a single resolved preview leaf covers both.
  */
 function buildScene(inputs: PlanLayers): PlanScene {
-  const { graph, interaction, planSelection, wallEditing, underlayLayer, openingLayer } = inputs
+  const { graph, interaction, dimensionTool, planSelection } = inputs
+  const { wallEditing, underlayLayer, openingLayer } = inputs
   return {
     walls: graph.walls,
     rooms: graph.rooms,
     selectedIds: inputs.selectedIds,
-    preview: wallEditing.preview ?? interaction.preview,
+    // The endpoint drag, the wall tool, and the dimension tool never preview at
+    // once (each gated on its own tool), so one resolved preview leaf covers all.
+    preview: wallEditing.preview ?? interaction.preview ?? dimensionTool.preview,
     snap: interaction.snap,
     marquee: planSelection.marquee,
     endpointHandles: inputs.selectedWall,
@@ -228,6 +240,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
     preferences: inputs.preferences,
     underlays: underlayLayer.underlays,
     openings: openingLayer.drawables,
+    dimensions: inputs.dimensions,
     calibration: underlayLayer.calibration.calibration,
   }
 }
@@ -253,6 +266,8 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const interaction = usePlanInteraction({ session, walls: graph.walls, tool, viewport })
+  const dimensionTool = useDimensionTool({ session, tool, viewport })
+  const dimensions = toDrawableDimensions(graph.dimensions, selectedIds)
   const planSelection = usePlanSelection({ graph, selection, tool, viewport })
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
@@ -268,6 +283,8 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
     viewport,
     preferences,
     interaction,
+    dimensionTool,
+    dimensions,
     planSelection,
     wallEditing,
     controls,
@@ -284,7 +301,8 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
 function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): PlanController {
   const layers = usePlanLayers(canvasRef)
   usePlanRedraw(canvasRef, buildScene(layers))
-  const { controls, wallEditing, interaction, planSelection, underlayLayer, openingLayer } = layers
+  const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
+  const { underlayLayer, openingLayer } = layers
   return {
     cursor: planCursor(layers.tool, controls.panning),
     pointerHandlers: composePointerHandlers({
@@ -292,6 +310,7 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
       wallEditing,
       openingEditing: openingLayer.editing,
       interaction,
+      dimensionTool,
       calibration: underlayLayer.calibration,
       selection: planSelection,
       openingPlacement: openingLayer.placement,
