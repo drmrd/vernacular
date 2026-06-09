@@ -41,10 +41,9 @@ updated: 2026-06-09
 
 ## Status
 
-Proposed (slice 13 of the Phase 1 two-dimensional plan editor, the first finishing
-slice per ADR-0041), branch `feat/underlay-asset-persistence`. Records how the
-underlay raster is persisted to close the "zero state loss" acceptance gap. Set to
-accepted when the slice lands.
+Accepted (slice 13 of the Phase 1 two-dimensional plan editor, the first finishing
+slice per ADR-0041), landed on branch `feat/underlay-asset-persistence`. Records
+how the underlay raster is persisted to close the "zero state loss" acceptance gap.
 
 ## Context
 
