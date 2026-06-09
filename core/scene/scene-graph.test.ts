@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { AssetReference } from '../model/asset-reference'
-import { createEmptyProject, createFloor, createUnderlay, createWall } from '../model/factories'
+import {
+  createEmptyProject,
+  createFloor,
+  createUnderlay,
+  createWall,
+  DEFAULT_WALL_THICKNESS_MM,
+} from '../model/factories'
 import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
 import { ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
@@ -100,7 +106,11 @@ describe('deriveSceneGraph rooms', () => {
     if (room === undefined) {
       throw new Error('expected one room node')
     }
-    expect(room).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
+    expect(room).toMatchObject({
+      kind: 'room',
+      floorId: floor.id,
+      area: (4000 - DEFAULT_WALL_THICKNESS_MM) * (3000 - DEFAULT_WALL_THICKNESS_MM),
+    })
     expect(room.polygon).toHaveLength(4)
   })
 })
@@ -143,7 +153,11 @@ describe('deriveRoomNodesForFloor with overrides', () => {
 
     const node = soleRoomNode(floor)
 
-    expect(node).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
+    expect(node).toMatchObject({
+      kind: 'room',
+      floorId: floor.id,
+      area: (ROOM_WIDTH - DEFAULT_WALL_THICKNESS_MM) * (ROOM_HEIGHT - DEFAULT_WALL_THICKNESS_MM),
+    })
     expect(node.polygon).toHaveLength(4)
     expect(node.name).toBeUndefined()
   })
