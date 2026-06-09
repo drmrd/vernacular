@@ -5,6 +5,7 @@ export type { SelectionStore } from './selection/selection-store'
 export { createSelectionStore } from './selection/selection-store'
 export type { ClipboardStore } from './clipboard/clipboard-store'
 export { createClipboardStore } from './clipboard/clipboard-store'
+export { readSystemClipboard, writeSystemClipboard } from './clipboard/system-clipboard'
 export type {
   AutosaveStatus,
   AutosaveOptions,

@@ -9,14 +9,14 @@ const emptySnapshot = (): ClipboardSnapshot => ({
 })
 
 interface FakeClipboard {
-  writeText(text: string): void
+  writeText(text: string): Promise<void>
   readText(): Promise<string>
 }
 
 const fakeClipboard = (initial = ''): FakeClipboard => {
   let stored = initial
   return {
-    writeText(text: string): void {
+    async writeText(text: string): Promise<void> {
       stored = text
     },
     async readText(): Promise<string> {
