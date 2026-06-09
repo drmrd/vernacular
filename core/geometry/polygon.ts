@@ -31,6 +31,18 @@ export function polygonArea(points: readonly Point[]): number {
   return sum / 2
 }
 
+/** Arithmetic mean of the polygon vertices; the empty polygon yields the origin. */
+export function polygonCentroid(polygon: readonly Point[]): Point {
+  if (polygon.length === 0) {
+    return { x: 0, y: 0 }
+  }
+  const sum = polygon.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), {
+    x: 0,
+    y: 0,
+  })
+  return { x: sum.x / polygon.length, y: sum.y / polygon.length }
+}
+
 /** True when `point` lies on the segment from `a` to `b` (collinear and within the span). */
 function pointOnEdge(point: Point, a: Point, b: Point): boolean {
   const cross = (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x)

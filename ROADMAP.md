@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done and slice 13 (minimal underlay asset persistence) has landed, closing the named "zero state loss" acceptance gap. Phase 1 is not complete until the final finishing slice lands: slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 2 (the three-dimensional preview) begins once it lands. See ADR-0041 and ADR-0042.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, and both finishing slices have now landed: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 1 is complete; Phase 2 (the three-dimensional preview) begins next. See ADR-0041, ADR-0042, and ADR-0043.
 
 ## Foundation work
 
@@ -29,17 +29,17 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 ## MVP path
 
-| Focus                                                   | Status      |
-| ------------------------------------------------------- | ----------- |
-| Project stores, persistence, and migrations             | done        |
-| Two-dimensional plan editor                             | in progress |
-| Three-dimensional preview with color-temperature slider | pending     |
-| Furniture import and curated starter library (alpha)    | pending     |
-| Old-house architectural vocabulary                      | pending     |
-| Multi-floor and stairs (beta)                           | pending     |
-| Paint, export, site metadata (1.0)                      | pending     |
+| Focus                                                   | Status  |
+| ------------------------------------------------------- | ------- |
+| Project stores, persistence, and migrations             | done    |
+| Two-dimensional plan editor                             | done    |
+| Three-dimensional preview with color-temperature slider | pending |
+| Furniture import and curated starter library (alpha)    | pending |
+| Old-house architectural vocabulary                      | pending |
+| Multi-floor and stairs (beta)                           | pending |
+| Paint, export, site metadata (1.0)                      | pending |
 
-> **Two-dimensional plan editor (in progress):** the twelve build slices and slice 13 (underlay asset persistence) are done; the final finishing slice, 14 (DOM overlay and accessibility), closes the remaining named Phase-1 acceptance items before Phase 2. See ADR-0041 and the Phase 1 section below.
+> **Two-dimensional plan editor (done):** the twelve build slices and both finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), are done; together they close the remaining named Phase-1 acceptance items. Phase 1 is complete; Phase 2 begins next. See ADR-0041, ADR-0042, ADR-0043, and the Phase 1 section below.
 
 > **Project stores, persistence, and migrations (slice 11 done):** the durable
 > folder, OPFS, and `.house.zip` stores, the schema-and-registry migration
@@ -66,24 +66,24 @@ model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
 
 ### Phase 1: two-dimensional plan editor
 
-The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as twelve build slices plus two finishing slices (13, 14), each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence. The twelve build slices are done; the two finishing slices (ADR-0041) close the remaining named Phase-1 acceptance items.
+The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as twelve build slices plus two finishing slices (13, 14), each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence. The twelve build slices and the two finishing slices (ADR-0041, ADR-0042, ADR-0043) are all done, closing the remaining named Phase-1 acceptance items; Phase 1 is complete.
 
-| Slice                                                                               | Status  |
-| ----------------------------------------------------------------------------------- | ------- |
-| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
-| 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done    |
-| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done    |
-| 7. Openings (doors and windows: placement and editing)                              | done    |
-| 8. Room naming and labeling, custom-polygon override                                | done    |
-| 9. Dimensions (live and persisted) and thickness-aware area                         | done    |
-| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done    |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done    |
-| 12. Image underlay with calibration                                                 | done    |
-| 13. Underlay asset persistence (raster survives save and reopen)                    | done    |
-| 14. DOM overlay and accessibility (ARIA, focus, keyboard nav; unit-aware labels)    | pending |
+| Slice                                                                               | Status |
+| ----------------------------------------------------------------------------------- | ------ |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done   |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | done   |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | done   |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done   |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done   |
+| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done   |
+| 7. Openings (doors and windows: placement and editing)                              | done   |
+| 8. Room naming and labeling, custom-polygon override                                | done   |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | done   |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done   |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done   |
+| 12. Image underlay with calibration                                                 | done   |
+| 13. Underlay asset persistence (raster survives save and reopen)                    | done   |
+| 14. DOM overlay and accessibility (ARIA, focus, keyboard nav; unit-aware labels)    | done   |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
 
@@ -194,7 +194,7 @@ The wall-drawing end-to-end flow is unaffected: the underlay and calibration wir
 - **Durable IndexedDB asset persistence.** The OPFS and folder stores persist assets through the `DirectoryAssetCache`; the IndexedDB default and in-memory stores pair with an `InMemoryAssetCache`, so an underlay does not survive reload on those backends. A durable IndexedDB-backed `AssetCache` is the near-term follow-up, additive behind the interface this slice lands.
 - **The full asset-and-pack pipeline.** No `previews/`, `ATTRIBUTIONS.md`, library packs, or pack- and user-scoped assets; only `scope: 'project'` underlay rasters. Quota, eviction, and orphan collection, and the `.house.zip` bundle asset round-trip, stay with the Phase-3 asset pipeline. See ADR-0041 and the plan `docs/plans/2026-06-09-phase-1-finishing-underlay-persistence-and-overlay-accessibility.md`.
 
-**Slice 14 (planned) scope.** Slice 14 adds the React DOM overlay (a named Phase-1 deliverable) that mirrors the Canvas world matrix with CSS transforms and carries the interactive UI the design specification names (selection rings, dimension chips, snap indicators, hover tooltips) with ARIA labels, focus management, and keyboard navigation. The Canvas stays the renderer; the overlay is an additive, accessible, styleable chrome layer over it, consistent with the Canvas-drawing seam (ADR-0021). Because the unit formatters already exist (slice 2) and labels live in the overlay, unit-aware ruler and dimension labels and a project-level metric-or-imperial unit-display toggle ride this slice. See ADR-0041 and the same plan.
+**Slice 14 (done) scope.** Slice 14 adds the React DOM overlay (a named Phase-1 deliverable) that mirrors the Canvas world matrix with CSS transforms and carries the interactive UI the design specification names (selection rings, dimension chips, snap indicators, hover tooltips) with ARIA labels, focus management, and keyboard navigation. The Canvas stays the renderer; the overlay is an additive, accessible, styleable chrome layer over it, consistent with the Canvas-drawing seam (ADR-0021). Because the unit formatters already exist (slice 2) and labels live in the overlay, unit-aware ruler and dimension labels and a project-level metric-or-imperial unit-display toggle ride this slice. See ADR-0041 and the same plan.
 
 **Phase 1 follow-ups (tracked, not gating).** Items named in or implied by the design specification but not gating Phase-1 completion, recorded here so none is lost:
 

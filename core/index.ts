@@ -60,17 +60,20 @@ export type {
   RemoveFloorParams,
   RenameProjectParams,
   SetFloorCeilingHeightParams,
+  SetUnitsParams,
 } from './commands/handlers/project-commands'
 export {
   ADD_FLOOR,
   REMOVE_FLOOR,
   RENAME_PROJECT,
   SET_FLOOR_CEILING_HEIGHT,
+  SET_UNITS,
   addFloor,
   registerProjectCommands,
   removeFloor,
   renameProject,
   setFloorCeilingHeight,
+  setUnits,
 } from './commands/handlers/project-commands'
 export type {
   AddWallParams,
@@ -243,7 +246,7 @@ export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
 export type { DimensionGeometry } from './geometry/dimension'
 export { dimensionGeometry, dimensionLength } from './geometry/dimension'
-export { insetPolygon, pointInPolygon, polygonArea } from './geometry/polygon'
+export { insetPolygon, pointInPolygon, polygonArea, polygonCentroid } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint } from './topology/openings'

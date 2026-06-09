@@ -7,6 +7,7 @@ import {
   lengthFormatOptions,
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
+import { midpoint } from './geometry'
 import { worldToScreen, type Viewport, type ScreenPoint } from './viewport'
 
 /** A dimension scene node paired with the render decisions resolved from the selection. */
@@ -32,7 +33,6 @@ const TEXT_COLOR = '#37414d'
 const TEXT_FONT = '12px sans-serif'
 const TEXT_ALIGN = 'center' as const
 const TEXT_BASELINE = 'middle' as const
-const HALF = 0.5
 
 /** The seam plus the viewport, the two collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
 interface DimensionPainter {
@@ -130,11 +130,8 @@ export function drawDimension(
   strokeArrowhead(painter, lineStart, direction)
   strokeArrowhead(painter, lineEnd, { x: -direction.x, y: -direction.y })
 
-  const midpoint: ScreenPoint = {
-    x: lineStart.x + (lineEnd.x - lineStart.x) * HALF,
-    y: lineStart.y + (lineEnd.y - lineStart.y) * HALF,
-  }
-  fillLengthText(painter, { node, midpoint, preferences })
+  const labelMidpoint: ScreenPoint = midpoint(lineStart, lineEnd)
+  fillLengthText(painter, { node, midpoint: labelMidpoint, preferences })
 
   if (dimension.selected) {
     // Only the dimension line highlights on selection; the extension lines and arrowheads stay ink color, since the line is the primary visual selection target.

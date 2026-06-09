@@ -1,0 +1,83 @@
+/*
+ * Keyboard-and-screen-reader proxies for the selectable scene-graph entities.
+ * Each proxy is a transparent, focusable target positioned over its anchor on
+ * the Canvas. The proxies carry no visible chrome of their own; only the focus
+ * ring shows, and it is intentionally distinct from the Canvas selection ring.
+ */
+
+.plan-overlay__proxy {
+  min-width: 8px;
+  min-height: 8px;
+  background: transparent;
+  border: 0;
+}
+
+.plan-overlay__proxy:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+/*
+ * The plan stage stacks the Canvas and the overlay. It is the positioned ancestor
+ * the overlay's inset:0 resolves against; its pixel size is set inline from the
+ * PLAN_WIDTH/PLAN_HEIGHT constants so the two stay in step.
+ */
+.plan-stage {
+  position: relative;
+}
+
+/*
+ * The overlay layer fills the plan stage and is transparent to the pointer so the
+ * Canvas underneath keeps its hit-test; only the focusable proxies (which need
+ * keyboard focus, unaffected by pointer-events) opt back in to interaction.
+ */
+.plan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/*
+ * Dimension chips and the focus tooltip are read-only pills centered on their
+ * screen anchor. The near-opaque dark fill keeps white text at WCAG AA contrast
+ * (white on #212529 is about 15:1), and tabular figures stop measurements from
+ * jittering as digits change.
+ */
+.plan-overlay__chip,
+.plan-overlay__tooltip {
+  transform: translate(-50%, -50%);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(33, 37, 41, 0.92);
+  color: #fff;
+  font: 11px sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.plan-overlay__tooltip {
+  transform: translate(-50%, calc(-50% - 16px));
+  background: rgba(15, 23, 42, 0.95);
+}
+
+/* The live region is available to assistive technology but visually hidden. */
+.plan-overlay__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-overlay__chip,
+  .plan-overlay__tooltip {
+    transition: none;
+  }
+}
