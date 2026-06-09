@@ -3,6 +3,8 @@ export { createEditorSession } from './session/editor-session'
 export { loadOrCreateProject } from './session/load-or-create-project'
 export type { SelectionStore } from './selection/selection-store'
 export { createSelectionStore } from './selection/selection-store'
+export type { ClipboardStore } from './clipboard/clipboard-store'
+export { createClipboardStore } from './clipboard/clipboard-store'
 export type {
   AutosaveStatus,
   AutosaveOptions,
