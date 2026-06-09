@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -14,6 +14,7 @@ import {
   useSelection,
   useSelectionIds,
   type ClipboardStore,
+  type SelectionStore,
 } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import type { DrawableDimension } from './draw-dimension'
@@ -22,12 +23,12 @@ import type { DrawableOpening } from './draw-opening'
 import type { DrawableUnderlay } from './draw-underlay'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
+import { composePointerHandlers, type ComposedPointerHandlers } from './compose-pointer-handlers'
 import { useDimensionTool, type DimensionTool } from './use-dimension-tool'
-import type { OpeningPlacement } from './use-opening-placement'
-import type { OpeningEditing } from './use-opening-editing'
 import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
 import { usePlanInteraction, type PlanInteraction } from './use-plan-interaction'
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
+import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useSelectionKeyboard } from './use-selection-keyboard'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
@@ -49,72 +50,6 @@ const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
-}
-
-interface ComposedPointerHandlers {
-  onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
-  onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
-  onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => void
-  onPointerLeave: () => void
-}
-
-interface PointerSources {
-  controls: ViewportControls
-  wallEditing: WallEditing
-  openingEditing: OpeningEditing
-  selectionMove: SelectionMove
-  interaction: PlanInteraction
-  dimensionTool: DimensionTool
-  calibration: PlanUnderlayLayer['calibration']
-  selection: PlanSelection
-  openingPlacement: OpeningPlacement
-}
-
-/**
- * A pan gesture takes top priority. Next, an endpoint-drag grab, an opening
- * footprint grab, or a press on the already-selected entities (all only possible
- * under the select tool) consumes the pointer so it does not also start a marquee
- * or click selection; the selection move-drag sits just beneath the endpoint and
- * opening drags and above the marquee. The calibration interaction runs next but
- * is inert unless the calibrate tool is active. Otherwise the wall tool, the
- * place-opening tool, and the select-tool selection all see the pointer, each
- * inert under the others' tool.
- */
-function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
-  const { controls, wallEditing, openingEditing, selectionMove, interaction } = sources
-  const { dimensionTool, calibration, selection, openingPlacement } = sources
-  return {
-    onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
-      if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
-      if (openingEditing.onPointerDown(event) || selectionMove.onPointerDown(event)) return
-      calibration.onPointerDown(event)
-      interaction.onPointerDown(event)
-      dimensionTool.onPointerDown(event)
-      openingPlacement.onPointerDown(event)
-      selection.onPointerDown(event)
-    },
-    onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
-      if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
-      if (openingEditing.onPointerMove(event) || selectionMove.onPointerMove(event)) return
-      calibration.onPointerMove(event)
-      interaction.onPointerMove(event)
-      dimensionTool.onPointerMove(event)
-      selection.onPointerMove(event)
-    },
-    onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => {
-      controls.onPanPointerUp(event)
-      wallEditing.onPointerUp(event)
-      openingEditing.onPointerUp(event)
-      if (selectionMove.onPointerUp(event)) return
-      selection.onPointerUp(event)
-    },
-    // Clear the wall-tool, dimension-tool, and calibration cursors on leave.
-    onPointerLeave: () => {
-      interaction.onPointerLeave()
-      dimensionTool.onPointerLeave()
-      calibration.onPointerLeave()
-    },
-  }
 }
 
 interface PlanScene {
@@ -223,6 +158,7 @@ interface PlanLayers {
   selectedWall: WallSceneNode | null
   viewport: Viewport
   preferences: UnitPreferences
+  selection: SelectionStore
   interaction: PlanInteraction
   dimensionTool: DimensionTool
   dimensions: readonly DrawableDimension[]
@@ -266,6 +202,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
 interface PlanController {
   cursor: string
   pointerHandlers: ComposedPointerHandlers
+  overlay: PlanOverlayProps
 }
 
 /**
@@ -298,7 +235,6 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
-  const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
   const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds })
   return {
@@ -307,7 +243,8 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
     selectedIds,
     selectedWall,
     viewport,
-    preferences,
+    preferences: PREFERENCES_BY_UNITS[session.getProject().meta.units],
+    selection,
     interaction,
     dimensionTool,
     dimensions,
@@ -343,6 +280,14 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
       selection: planSelection,
       openingPlacement: openingLayer.placement,
     }),
+    overlay: {
+      viewport: layers.viewport,
+      graph: layers.graph,
+      selectedIds: layers.selectedIds,
+      selection: layers.selection,
+      preferences: layers.preferences,
+      snap: interaction.snap,
+    },
   }
 }
 
@@ -355,20 +300,26 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { cursor, pointerHandlers } = usePlanController(canvasRef)
+  const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef)
 
+  // The stage is a positioned wrapper sized to the Canvas so the absolutely
+  // positioned overlay (inset: 0) registers exactly over it. The canvas element,
+  // its aria-label, and its pointer handlers are unchanged from before the overlay.
   return (
-    <canvas
-      ref={canvasRef}
-      width={PLAN_WIDTH}
-      height={PLAN_HEIGHT}
-      aria-label="Floor plan"
-      className="plan-view"
-      style={{ touchAction: 'none', cursor }}
-      onPointerDown={pointerHandlers.onPointerDown}
-      onPointerMove={pointerHandlers.onPointerMove}
-      onPointerUp={pointerHandlers.onPointerUp}
-      onPointerLeave={pointerHandlers.onPointerLeave}
-    />
+    <div className="plan-stage" style={{ width: PLAN_WIDTH, height: PLAN_HEIGHT }}>
+      <canvas
+        ref={canvasRef}
+        width={PLAN_WIDTH}
+        height={PLAN_HEIGHT}
+        aria-label="Floor plan"
+        className="plan-view"
+        style={{ touchAction: 'none', cursor }}
+        onPointerDown={pointerHandlers.onPointerDown}
+        onPointerMove={pointerHandlers.onPointerMove}
+        onPointerUp={pointerHandlers.onPointerUp}
+        onPointerLeave={pointerHandlers.onPointerLeave}
+      />
+      <PlanOverlay {...overlay} />
+    </div>
   )
 }

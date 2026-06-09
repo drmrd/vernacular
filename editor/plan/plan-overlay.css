@@ -18,6 +18,15 @@
 }
 
 /*
+ * The plan stage stacks the Canvas and the overlay. It is the positioned ancestor
+ * the overlay's inset:0 resolves against; its pixel size is set inline from the
+ * PLAN_WIDTH/PLAN_HEIGHT constants so the two stay in step.
+ */
+.plan-stage {
+  position: relative;
+}
+
+/*
  * The overlay layer fills the plan stage and is transparent to the pointer so the
  * Canvas underneath keeps its hit-test; only the focusable proxies (which need
  * keyboard focus, unaffected by pointer-events) opt back in to interaction.

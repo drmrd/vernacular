@@ -7,7 +7,7 @@ import { EntityProxy } from './entity-proxy'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
 import { selectionAnnouncement, snapAnnouncement } from './overlay-announce'
 import type { SnapResult } from './snap'
-import { useOverlayKeyboard } from './use-overlay-keyboard'
+import { useOverlayKeyboard, type OverlayKeyboard } from './use-overlay-keyboard'
 import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
 
 export interface PlanOverlayProps {
@@ -101,6 +101,46 @@ function focusLeftContainer(event: FocusEvent<HTMLDivElement>): boolean {
   return !event.currentTarget.contains(event.relatedTarget)
 }
 
+interface ProxyListboxProps {
+  entities: readonly OverlayEntity[]
+  viewport: Viewport
+  keyboard: OverlayKeyboard
+  onFocusChange: (focused: boolean) => void
+}
+
+// The listbox wrapping the entity proxies. It renders only when there are entities
+// so an empty listbox (which has no option children) never reaches the accessibility
+// tree, and it holds the roving-focus container ref and keyboard handler.
+function ProxyListbox({
+  entities,
+  viewport,
+  keyboard,
+  onFocusChange,
+}: ProxyListboxProps): ReactElement | null {
+  if (entities.length === 0) {
+    return null
+  }
+  return (
+    <div
+      ref={keyboard.containerRef}
+      role="listbox"
+      aria-label="Plan entities"
+      aria-multiselectable="true"
+      tabIndex={-1}
+      onKeyDown={keyboard.onKeyDown}
+      onFocus={() => onFocusChange(true)}
+      onBlur={(event) => focusLeftContainer(event) && onFocusChange(false)}
+    >
+      <ProxyLayer
+        entities={entities}
+        viewport={viewport}
+        focusIndex={keyboard.focusIndex}
+        onSelect={keyboard.onSelect}
+      />
+    </div>
+  )
+}
+
 /**
  * The accessibility overlay layered over the plan Canvas: one keyboard/AT proxy per
  * selectable entity (positioned via worldToScreen), the dimension chips, a focus
@@ -112,31 +152,19 @@ function focusLeftContainer(event: FocusEvent<HTMLDivElement>): boolean {
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const { viewport, graph, selectedIds, selection, preferences, snap } = props
   const entities = overlayEntities(graph, selectedIds, preferences)
-  const { focusIndex, containerRef, onKeyDown, onSelect } = useOverlayKeyboard(
-    entities.length,
-    selection,
-  )
+  const keyboard = useOverlayKeyboard(entities.length, selection)
   const [focused, setFocused] = useState(false)
-  const focusedEntity = entities[focusIndex]
+  const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
   const announcement = snap ? snapAnnouncement(snap) : selectionAnnouncement(selected)
 
   return (
-    <div
-      ref={containerRef}
-      className="plan-overlay"
-      role="listbox"
-      aria-label="Plan entities"
-      aria-multiselectable="true"
-      onKeyDown={onKeyDown}
-      onFocus={() => setFocused(true)}
-      onBlur={(event) => focusLeftContainer(event) && setFocused(false)}
-    >
-      <ProxyLayer
+    <div className="plan-overlay">
+      <ProxyListbox
         entities={entities}
         viewport={viewport}
-        focusIndex={focusIndex}
-        onSelect={onSelect}
+        keyboard={keyboard}
+        onFocusChange={setFocused}
       />
       <ChipLayer chips={dimensionChips(graph.dimensions, viewport, preferences)} />
       <FocusTooltip entity={focusedEntity} viewport={viewport} visible={focused} />
