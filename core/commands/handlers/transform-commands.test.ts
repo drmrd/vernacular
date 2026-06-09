@@ -3,14 +3,17 @@ import {
   translateEntities,
   rotateEntities,
   deleteEntities,
+  pasteEntities,
   selectionCenter,
   registerTransformCommands,
   TRANSLATE_ENTITIES,
   ROTATE_ENTITIES,
   DELETE_ENTITIES,
+  PASTE_ENTITIES,
 } from './transform-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
+import { buildClipboardSnapshot, instantiateClipboard } from '../../clipboard/clipboard'
 import {
   createEmptyProject,
   createFloor,
@@ -202,6 +205,86 @@ describe('deleteEntities', () => {
 
   it('carries a stable command type', () => {
     expect(deleteEntities(FLOOR_ID, ['w1']).type).toBe(DELETE_ENTITIES)
+  })
+})
+
+function sequentialMintId(): () => string {
+  let next = 0
+  return () => {
+    next += 1
+    return `paste-${String(next)}`
+  }
+}
+
+describe('pasteEntities', () => {
+  function projectWithSiblingFloor(): Project {
+    const project = projectWithMixedEntities()
+    project.floors = [...project.floors, createFloor('Upper', { id: 'upper' })]
+    return project
+  }
+
+  function instantiatedFor(floor: Floor) {
+    const snapshot = buildClipboardSnapshot(floor, ['w1', 'd1'])
+    return instantiateClipboard(snapshot, { x: 100, y: 0 }, sequentialMintId())
+  }
+
+  it('appends exactly the instantiated walls, openings, and dimensions to the floor', () => {
+    const project = projectWithSiblingFloor()
+    const dispatcher = dispatcherFor(project)
+    const instantiated = instantiatedFor(floorOf(project))
+
+    dispatcher.dispatch(pasteEntities(FLOOR_ID, instantiated))
+
+    const floor = floorOf(project)
+    expect(floor.walls).toHaveLength(3)
+    expect(floor.walls[2]).toBe(instantiated.walls[0])
+    expect(floor.openings).toHaveLength(2)
+    expect(floor.openings[1]).toBe(instantiated.openings[0])
+    expect(floor.dimensions).toHaveLength(2)
+    expect(floor.dimensions[1]).toBe(instantiated.dimensions[0])
+  })
+
+  it('keeps the original wall, opening, and dimension at the front of each list', () => {
+    const project = projectWithSiblingFloor()
+    const dispatcher = dispatcherFor(project)
+    const instantiated = instantiatedFor(floorOf(project))
+
+    dispatcher.dispatch(pasteEntities(FLOOR_ID, instantiated))
+
+    const floor = floorOf(project)
+    expect(floor.walls[0]?.id).toBe('w1')
+    expect(floor.openings[0]?.id).toBe('o1')
+    expect(floor.dimensions[0]?.id).toBe('d1')
+  })
+
+  it('leaves a sibling floor reference-equal', () => {
+    const project = projectWithSiblingFloor()
+    const sibling = project.floors[1]
+    const dispatcher = dispatcherFor(project)
+    const instantiated = instantiatedFor(floorOf(project))
+
+    dispatcher.dispatch(pasteEntities(FLOOR_ID, instantiated))
+
+    expect(project.floors[1]).toBe(sibling)
+  })
+
+  it('removes exactly the pasted entities on undo', () => {
+    const project = projectWithSiblingFloor()
+    const before = structuredClone(floorOf(project))
+    const dispatcher = dispatcherFor(project)
+    const instantiated = instantiatedFor(floorOf(project))
+
+    dispatcher.dispatch(pasteEntities(FLOOR_ID, instantiated))
+    dispatcher.undo()
+
+    expect(floorOf(project)).toEqual(before)
+  })
+
+  it('carries a stable command type', () => {
+    const project = projectWithSiblingFloor()
+    const instantiated = instantiatedFor(floorOf(project))
+
+    expect(pasteEntities(FLOOR_ID, instantiated).type).toBe(PASTE_ENTITIES)
   })
 })
 
