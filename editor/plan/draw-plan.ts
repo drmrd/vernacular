@@ -6,6 +6,7 @@ import {
   type WallSceneNode,
 } from '../../core'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
+import { drawGhost } from './draw-ghost'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
@@ -62,6 +63,7 @@ export interface DrawPlanOptions {
   openings?: readonly DrawableOpening[]
   dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
+  ghost?: readonly PreviewSegment[]
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -165,6 +167,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawDimensions(ctx, options)
   // Calibration sits above the plan but below the rulers.
   drawCalibration(ctx, options.calibration, options.viewport)
+  // The ghost overlay (mirror previews) paints above the plan but below the rulers.
+  drawGhost(ctx, options.ghost, options.viewport)
   if (options.rulers) {
     drawRulers(ctx, options.viewport, size)
   }
