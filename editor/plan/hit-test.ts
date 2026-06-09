@@ -1,5 +1,6 @@
 import {
   pointInPolygon,
+  type DimensionSceneNode,
   type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
@@ -37,6 +38,11 @@ export function openingBounds(opening: OpeningSceneNode): Bounds {
   return spanOf(openingCorners(opening))
 }
 
+/** Axis-aligned bounds spanning a dimension's two endpoints. */
+export function dimensionBounds(dimension: DimensionSceneNode): Bounds {
+  return spanOf([dimension.start, dimension.end])
+}
+
 function distanceToSegment(point: Point, start: Point, end: Point): number {
   const dx = end.x - start.x
   const dy = end.y - start.y
@@ -69,6 +75,24 @@ export function hitTestWalls(
   return bestId
 }
 
+export function hitTestDimensions(
+  dimensions: DimensionSceneNode[],
+  point: Point,
+  tolerance: number,
+): string | null {
+  let bestId: string | null = null
+  let bestDistance = tolerance
+  for (const dimension of dimensions) {
+    const distance = distanceToSegment(point, dimension.start, dimension.end)
+    // <= so that on equal distance the later (more recently drawn) dimension wins.
+    if (distance <= bestDistance) {
+      bestDistance = distance
+      bestId = dimension.id
+    }
+  }
+  return bestId
+}
+
 export function hitTestOpenings(
   openings: OpeningSceneNode[],
   point: Point,
@@ -92,6 +116,10 @@ function indexEntities(scene: SceneGraph): IndexedEntity[] {
   return [
     ...scene.openings.map((opening) => ({ id: opening.id, bounds: openingBounds(opening) })),
     ...scene.walls.map((wall) => ({ id: wall.id, bounds: wallBounds(wall) })),
+    ...scene.dimensions.map((dimension) => ({
+      id: dimension.id,
+      bounds: dimensionBounds(dimension),
+    })),
     ...scene.rooms.map((room) => ({ id: room.id, bounds: roomBounds(room) })),
   ]
 }
@@ -117,6 +145,11 @@ export function hitTest(scene: SceneGraph, point: Point, tolerance: number): str
   const wallHit = hitTestWalls(candidateWalls, point, tolerance)
   if (wallHit !== null) {
     return wallHit
+  }
+  const candidateDimensions = scene.dimensions.filter((dimension) => candidateIds.has(dimension.id))
+  const dimensionHit = hitTestDimensions(candidateDimensions, point, tolerance)
+  if (dimensionHit !== null) {
+    return dimensionHit
   }
   const candidateRooms = scene.rooms.filter((room) => candidateIds.has(room.id))
   return containingRoomId(candidateRooms, point)
