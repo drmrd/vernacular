@@ -220,7 +220,7 @@ export {
   UnsupportedSchemaVersionError,
   migrateProject,
 } from './migrations'
-export { distance } from './geometry/point'
+export { distance, rotatePoint, translatePoint } from './geometry/point'
 export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
 export type { DimensionGeometry } from './geometry/dimension'
