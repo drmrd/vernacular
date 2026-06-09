@@ -289,6 +289,8 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
   const planSelection = usePlanSelection({ graph, selection, tool, viewport })
   // The in-app clipboard backs copy/cut/paste; created once and held for the
   // session, mirroring the bridge-owned selection store (it stays outside undo).
+  // The ref starts null and is lazily filled on first render, so the store is
+  // never rebuilt on a re-render; reads below are non-null from here on.
   const clipboardRef = useRef<ClipboardStore | null>(null)
   clipboardRef.current ??= createClipboardStore()
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
