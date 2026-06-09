@@ -1,7 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import { buildClipboardSnapshot } from './clipboard'
+import {
+  buildClipboardSnapshot,
+  serializeClipboard,
+  deserializeClipboard,
+  type ClipboardSnapshot,
+} from './clipboard'
 import { createFloor, createWall, createOpening, createDimension } from '../model/factories'
 import type { Floor } from '../model/types'
+
+function clipboardSnapshotFixture(): ClipboardSnapshot {
+  const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })
+  const opening = createOpening({
+    type: 'single-swing-door',
+    hostWallId: 'w1',
+    position: 500,
+    id: 'o1',
+  })
+  const dimension = createDimension({
+    start: { x: 0, y: 0 },
+    end: { x: 300, y: 400 },
+    id: 'd1',
+  })
+  return { walls: [wall], openings: [opening], dimensions: [dimension] }
+}
 
 function floorWithWallsOpeningsAndDimension(): Floor {
   const w1 = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })
@@ -53,5 +74,35 @@ describe('buildClipboardSnapshot', () => {
 
     expect(snapshot.walls.map((wall) => wall.id)).toEqual(['w1', 'w2'])
     expect(snapshot.openings.map((opening) => opening.id)).toEqual(['o1', 'o2'])
+  })
+})
+
+describe('serializeClipboard and deserializeClipboard', () => {
+  it('round-trips a snapshot back to a deep-equal value', () => {
+    const snapshot = clipboardSnapshotFixture()
+
+    const restored = deserializeClipboard(serializeClipboard(snapshot))
+
+    expect(restored).toEqual(snapshot)
+  })
+
+  it('returns undefined for text that is not valid JSON', () => {
+    expect(deserializeClipboard('not json at all')).toBeUndefined()
+  })
+
+  it('returns undefined for a payload tagged with a foreign kind', () => {
+    const foreign = JSON.stringify({ kind: 'something/else', version: 1 })
+
+    expect(deserializeClipboard(foreign)).toBeUndefined()
+  })
+
+  it('returns undefined for a payload with an unsupported future version', () => {
+    const future = JSON.stringify({
+      kind: 'vernacular/clipboard',
+      version: 999,
+      snapshot: { walls: [], openings: [], dimensions: [] },
+    })
+
+    expect(deserializeClipboard(future)).toBeUndefined()
   })
 })
