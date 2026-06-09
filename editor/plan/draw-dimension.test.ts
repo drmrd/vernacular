@@ -34,7 +34,9 @@ function dimensionNode(overrides: Partial<DimensionSceneNode> = {}): DimensionSc
   }
 }
 
-function drawable(options: { selected?: boolean; node?: Partial<DimensionSceneNode> } = {}): DrawableDimension {
+function drawable(
+  options: { selected?: boolean; node?: Partial<DimensionSceneNode> } = {},
+): DrawableDimension {
   return {
     node: dimensionNode(options.node),
     selected: options.selected ?? false,
