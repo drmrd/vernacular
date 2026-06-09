@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as roughly twelve independent slices, all of which are now done: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). The two-dimensional plan editor is feature-complete for Phase 1; attention now turns to the three-dimensional preview (Phase 2).
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, but Phase 1 is not complete until two finishing slices land: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 2 (the three-dimensional preview) begins once they land. See ADR-0041.
 
 ## Foundation work
 
@@ -29,15 +29,17 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 ## MVP path
 
-| Focus                                                   | Status  |
-| ------------------------------------------------------- | ------- |
-| Project stores, persistence, and migrations             | done    |
-| Two-dimensional plan editor                             | done    |
-| Three-dimensional preview with color-temperature slider | pending |
-| Furniture import and curated starter library (alpha)    | pending |
-| Old-house architectural vocabulary                      | pending |
-| Multi-floor and stairs (beta)                           | pending |
-| Paint, export, site metadata (1.0)                      | pending |
+| Focus                                                   | Status      |
+| ------------------------------------------------------- | ----------- |
+| Project stores, persistence, and migrations             | done        |
+| Two-dimensional plan editor                             | in progress |
+| Three-dimensional preview with color-temperature slider | pending     |
+| Furniture import and curated starter library (alpha)    | pending     |
+| Old-house architectural vocabulary                      | pending     |
+| Multi-floor and stairs (beta)                           | pending     |
+| Paint, export, site metadata (1.0)                      | pending     |
+
+> **Two-dimensional plan editor (in progress):** the twelve build slices are done; two finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), close the remaining named Phase-1 acceptance items before Phase 2. See ADR-0041 and the Phase 1 section below.
 
 > **Project stores, persistence, and migrations (slice 11 done):** the durable
 > folder, OPFS, and `.house.zip` stores, the schema-and-registry migration
@@ -64,22 +66,24 @@ model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
 
 ### Phase 1: two-dimensional plan editor
 
-The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as roughly twelve independent slices, each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence.
+The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as twelve build slices plus two finishing slices (13, 14), each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence. The twelve build slices are done; the two finishing slices (ADR-0041) close the remaining named Phase-1 acceptance items.
 
-| Slice                                                                               | Status |
-| ----------------------------------------------------------------------------------- | ------ |
-| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done   |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | done   |
-| 3. Pan and zoom infinite canvas, grid, rulers                                       | done   |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done   |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done   |
-| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done   |
-| 7. Openings (doors and windows: placement and editing)                              | done   |
-| 8. Room naming and labeling, custom-polygon override                                | done   |
-| 9. Dimensions (live and persisted) and thickness-aware area                         | done   |
-| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done   |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done   |
-| 12. Image underlay with calibration                                                 | done   |
+| Slice                                                                               | Status  |
+| ----------------------------------------------------------------------------------- | ------- |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done    |
+| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done    |
+| 7. Openings (doors and windows: placement and editing)                              | done    |
+| 8. Room naming and labeling, custom-polygon override                                | done    |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | done    |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done    |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done    |
+| 12. Image underlay with calibration                                                 | done    |
+| 13. Underlay asset persistence (raster survives save and reopen)                    | pending |
+| 14. DOM overlay and accessibility (ARIA, focus, keyboard nav; unit-aware labels)    | pending |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
 
@@ -154,7 +158,7 @@ The wall-drawing end-to-end flow is unaffected: opening placement and editing ar
 
 The wall-drawing end-to-end flow is unaffected: the dimension tool and inspector are gated on the `dimension` and `select` tools, and a project with no dimensions paints exactly as before. This slice is stacked on slice 7 (its base schema is version 3), so it lands after slice 7 in the merge order.
 
-**Slice 10 (done) scope and deferrals.** Slice 10 turns selection into editing: the user moves, rotates, deletes, copies, cuts, and pastes the selected plan entities (walls and free-floating dimensions; openings ride their host wall parametrically, and derived rooms re-derive), all undoable. Pure `translatePoint`/`rotatePoint` feed three transform commands (`translateEntities`, `rotateEntities`, `deleteEntities`, the last cascading a deleted wall's openings) plus a `pasteEntities` command, all reassigning `state.floors` so the dispatcher captures the inverse. A pure, serializable clipboard core (`buildClipboardSnapshot`, `serializeClipboard`/`deserializeClipboard` with a tagged, version-checked, shape-validated payload, and `instantiateClipboard` minting fresh ids and remapping each opening onto its pasted host wall) backs two clipboard layers: an in-app store and an operating-system-clipboard adapter sharing the serializer. In the editor a move-drag previews a translated ghost and commits a translate on release (routed beneath the endpoint and opening drags, above the marquee), the arrow keys nudge, Delete and Backspace delete, the platform copy/cut/paste shortcuts drive the clipboard (ignored while a form control is focused), and a selection transform panel rotates the selection ninety degrees each way or by a typed angle about its center. All decision logic lives in pure, unit-tested modules (including the selection-to-entity-id mapping and the ghost segments); the move-drag and keyboard hooks, the panel placement, and the plan-view composition are coverage-excluded glue. With this slice the two-dimensional plan editor is feature-complete for Phase 1. Deliberately deferred, by design (see ADR-0040 and the slice spec `docs/specs/2026-06-08-clipboard-and-transforms.md`):
+**Slice 10 (done) scope and deferrals.** Slice 10 turns selection into editing: the user moves, rotates, deletes, copies, cuts, and pastes the selected plan entities (walls and free-floating dimensions; openings ride their host wall parametrically, and derived rooms re-derive), all undoable. Pure `translatePoint`/`rotatePoint` feed three transform commands (`translateEntities`, `rotateEntities`, `deleteEntities`, the last cascading a deleted wall's openings) plus a `pasteEntities` command, all reassigning `state.floors` so the dispatcher captures the inverse. A pure, serializable clipboard core (`buildClipboardSnapshot`, `serializeClipboard`/`deserializeClipboard` with a tagged, version-checked, shape-validated payload, and `instantiateClipboard` minting fresh ids and remapping each opening onto its pasted host wall) backs two clipboard layers: an in-app store and an operating-system-clipboard adapter sharing the serializer. In the editor a move-drag previews a translated ghost and commits a translate on release (routed beneath the endpoint and opening drags, above the marquee), the arrow keys nudge, Delete and Backspace delete, the platform copy/cut/paste shortcuts drive the clipboard (ignored while a form control is focused), and a selection transform panel rotates the selection ninety degrees each way or by a typed angle about its center. All decision logic lives in pure, unit-tested modules (including the selection-to-entity-id mapping and the ghost segments); the move-drag and keyboard hooks, the panel placement, and the plan-view composition are coverage-excluded glue. With this slice the twelve build slices of the two-dimensional plan editor are complete; the two finishing slices (13, 14) close the remaining named Phase-1 acceptance items before Phase 2 (see ADR-0041). Deliberately deferred, by design (see ADR-0040 and the slice spec `docs/specs/2026-06-08-clipboard-and-transforms.md`):
 
 - **Free-angle rotate by a draggable handle, with modifier-key angle snapping.** The committed near-term follow-up: a rotate gizmo on the selection bounds emitting a continuous angle with a held modifier snapping to common angles (fifteen, forty-five, ninety degrees). The `rotateEntities` command already accepts an arbitrary angle and an explicit pivot, so only the editor gizmo and its hit-test remain.
 - **Paste at the pointer.** Paste lands the copy at a small fixed offset so it is visible and distinct; honoring the cursor position is later polish.
@@ -181,9 +185,23 @@ The wall-drawing end-to-end flow is unaffected: the move-drag, nudging, delete, 
 - **Rotation and free-move gizmos.** `UnderlayPlacement` carries an `offset` and a `rotation`, but this slice ships placement via calibration (scale) and the default origin offset only; an interactive drag-to-move or rotate gizmo is later polish, mirroring how wall editing deferred the perpendicular-drag thickness gizmo in favor of an inline control. The drawing path is axis-aligned (rotation zero); the commands accept any offset and rotation, so a future gizmo dispatches `calibrateUnderlay` (or a dedicated move command) with no model change.
 - **Underlay selection and hit-testing.** The underlay is managed through its panel, not the click-selection and hit-test index; registering underlay bounds for selection is later work, consistent with how openings and furniture wait for their slices.
 - **A dedicated known-distance input.** The calibration tool prompts for the known real-world distance through a simple text prompt parsed by the slice-2 `parseLength`; a styled distance field in the panel is follow-up UI.
-- **Persistence of the raster bytes.** The decoded bitmap is held in memory for the session only, because the content-addressed asset pipeline (the `AssetCache` and the project-store `assets/` writeback) is asset-and-store follow-up work that is not yet wired. The `Underlay.image` reference is content-addressed today, so the model and the command set are forward-compatible: when the asset pipeline lands, persisting and reloading the bytes is a storage-side change behind the same reference. Until then, an underlay does not survive a save and reopen. A follow-up planning round finalizes persistence (writeback on placement, resolution on load, and large-raster quota and eviction) once the asset and store pipeline lands.
+- **Persistence of the raster bytes.** The decoded bitmap is held in memory for the session only, because the content-addressed asset pipeline (the `AssetCache` and the project-store `assets/` writeback) is asset-and-store follow-up work that is not yet wired. The `Underlay.image` reference is content-addressed today, so the model and the command set are forward-compatible: when the asset pipeline lands, persisting and reloading the bytes is a storage-side change behind the same reference. Until then, an underlay does not survive a save and reopen. Slice 13 (underlay asset persistence, ADR-0041) closes this: it wires the minimal `AssetCache` writeback and load resolution behind the same content-addressed reference so an underlay survives save and reopen; large-raster quota and eviction stay with the Phase-3 asset pipeline.
 
 The wall-drawing end-to-end flow is unaffected: the underlay and calibration wiring is gated on the underlay panel and the `calibrate` tool, which the wall-drawing flow does not trigger, and a project with no underlays paints exactly as before.
+
+**Slice 13 (planned) scope.** Slice 13 closes the "zero state loss" Phase-1 acceptance test for underlays. It wires `AssetCache` writeback and load resolution behind the existing content-addressed `Underlay.image` (`AssetReference`), so a placed underlay's decoded raster is written to the project store's asset area on placement (or save) and resolved back into the in-memory load (`editor/plan/use-underlay.ts`) on reopen. It is a thin, forward-compatible subset of the full asset-and-pack pipeline, which stays Phase 3 and owns `previews/`, `ATTRIBUTIONS.md`, library packs, and quota and eviction; slice 13 writes only what an underlay needs. See ADR-0041 and the plan `docs/plans/2026-06-09-phase-1-finishing-underlay-persistence-and-overlay-accessibility.md`.
+
+**Slice 14 (planned) scope.** Slice 14 adds the React DOM overlay (a named Phase-1 deliverable) that mirrors the Canvas world matrix with CSS transforms and carries the interactive UI the design specification names (selection rings, dimension chips, snap indicators, hover tooltips) with ARIA labels, focus management, and keyboard navigation. The Canvas stays the renderer; the overlay is an additive, accessible, styleable chrome layer over it, consistent with the Canvas-drawing seam (ADR-0021). Because the unit formatters already exist (slice 2) and labels live in the overlay, unit-aware ruler and dimension labels and a project-level metric-or-imperial unit-display toggle ride this slice. See ADR-0041 and the same plan.
+
+**Phase 1 follow-ups (tracked, not gating).** Items named in or implied by the design specification but not gating Phase-1 completion, recorded here so none is lost:
+
+- **Construction-type wall editing.** An accepted Phase-4 carve-out; it needs the construction-type registry and era-aware catalogs (ADR-0035, ADR-0041).
+- **Editor preferences beyond unit display.** Snap-settings UI (per-kind toggles, configurable threshold), default ceiling height, and default wall thickness; tracked, not gating (ADR-0041).
+- **The free-angle rotate handle.** The committed near-term follow-up to slice 10's rotate controls, with a held modifier snapping to common angles (ADR-0040).
+- **Wall-anchored, auto-updating dimensions.** Dimensions store fixed world points today; anchoring them to entities so they track edits is later work (ADR-0039).
+- **Crossing (right-to-left) marquee.** The marquee selects fully-contained entities only; a crossing selection is a later editing-slice addition (ADR-0032).
+- **A WebKit-compatible OPFS write path.** Main-thread `createWritable` is unsupported on WebKit; a worker-side sync access handle is needed (ADR-0030, slice 11).
+- **Asset-pipeline-owned items.** `previews/`, `ATTRIBUTIONS.md`, and quota and eviction belong to the Phase-3 asset and pack work (ADR-0007).
 
 ## Beyond 1.0
 
