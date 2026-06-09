@@ -1,4 +1,5 @@
 import {
+  type DimensionSceneNode,
   type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
@@ -27,6 +28,10 @@ function openingContained(opening: OpeningSceneNode, rect: Bounds): boolean {
   return openingCorners(opening).every((corner) => pointInRect(corner, rect))
 }
 
+function dimensionContained(dimension: DimensionSceneNode, rect: Bounds): boolean {
+  return pointInRect(dimension.start, rect) && pointInRect(dimension.end, rect)
+}
+
 /**
  * Window (contained) selection: the ids of walls whose both endpoints and rooms
  * whose every vertex lie inside `rect`. Partially overlapping entities are
@@ -38,5 +43,8 @@ export function entitiesInRect(scene: SceneGraph, rect: Bounds): string[] {
   const openings = scene.openings
     .filter((opening) => openingContained(opening, rect))
     .map((opening) => opening.id)
-  return [...walls, ...rooms, ...openings]
+  const dimensions = scene.dimensions
+    .filter((dimension) => dimensionContained(dimension, rect))
+    .map((dimension) => dimension.id)
+  return [...walls, ...rooms, ...openings, ...dimensions]
 }

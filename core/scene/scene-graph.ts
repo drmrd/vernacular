@@ -1,5 +1,7 @@
 import type { AssetReference } from '../model/asset-reference'
+import { dimensionLength } from '../geometry/dimension'
 import type {
+  Dimension,
   Floor,
   Opening,
   OpeningOrientation,
@@ -18,6 +20,7 @@ const FLOOR_NODE_PREFIX = 'floor:'
 export const WALL_NODE_PREFIX = 'wall:'
 export const UNDERLAY_NODE_PREFIX = 'underlay:'
 export const OPENING_NODE_PREFIX = 'opening:'
+export const DIMENSION_NODE_PREFIX = 'dimension:'
 
 export interface SceneNode {
   id: string
@@ -40,6 +43,8 @@ export interface RoomSceneNode {
   kind: 'room'
   floorId: string
   polygon: Point[]
+  /** The thickness-aware clear-area polygon from the derived room. */
+  clearPolygon: Point[]
   area: number
   name?: string
 }
@@ -72,12 +77,23 @@ export interface OpeningSceneNode {
   orientation: OpeningOrientation
 }
 
+export interface DimensionSceneNode {
+  id: string
+  kind: 'dimension'
+  floorId: string
+  start: Point
+  end: Point
+  offset: number
+  length: number
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
   underlays: UnderlaySceneNode[]
   openings: OpeningSceneNode[]
+  dimensions: DimensionSceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -147,6 +163,22 @@ export function deriveOpeningNodesForFloor(floor: Floor): OpeningSceneNode[] {
   })
 }
 
+export function deriveDimensionNode(floor: Floor, dimension: Dimension): DimensionSceneNode {
+  return {
+    id: `${DIMENSION_NODE_PREFIX}${dimension.id}`,
+    kind: 'dimension',
+    floorId: floor.id,
+    start: dimension.start,
+    end: dimension.end,
+    offset: dimension.offset,
+    length: dimensionLength(dimension),
+  }
+}
+
+export function deriveDimensionNodesForFloor(floor: Floor): DimensionSceneNode[] {
+  return floor.dimensions.map((dimension) => deriveDimensionNode(floor, dimension))
+}
+
 export function deriveRoomNodesForFloor(
   floor: Floor,
   overrides?: Readonly<Record<string, RoomOverride>>,
@@ -159,6 +191,7 @@ export function deriveRoomNodesForFloor(
     kind: 'room',
     floorId: floor.id,
     polygon: room.polygon,
+    clearPolygon: room.clearPolygon,
     area: room.area,
     // Omit the optional name when absent so the no-overrides projection stays
     // identical to slice 1 under exactOptionalPropertyTypes.
@@ -176,5 +209,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     rooms: project.floors.flatMap((floor) => deriveRoomNodesForFloor(floor, project.roomOverrides)),
     underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
     openings: project.floors.flatMap(deriveOpeningNodesForFloor),
+    dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
   }
 }

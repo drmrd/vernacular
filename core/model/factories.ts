@@ -2,6 +2,7 @@ import { builtinElementTypes } from '../registries/element-types'
 import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
 import type {
+  Dimension,
   EraId,
   Floor,
   Opening,
@@ -14,8 +15,8 @@ import type {
 } from './types'
 
 // v2 introduces the optional top-level `roomOverrides` map; v3 adds the
-// per-floor `openings` array.
-export const CURRENT_SCHEMA_VERSION = 3
+// per-floor `openings` array; v4 adds the per-floor `dimensions` array.
+export const CURRENT_SCHEMA_VERSION = 4
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -76,6 +77,7 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
     walls: options.walls ?? [],
     underlays: [],
     openings: [],
+    dimensions: [],
   }
 }
 
@@ -151,5 +153,21 @@ export function createUnderlay(options: NewUnderlayOptions): Underlay {
     },
     opacity: 1,
     visible: true,
+  }
+}
+
+export interface NewDimensionOptions {
+  start: Point
+  end: Point
+  offset?: number
+  id?: string
+}
+
+export function createDimension(options: NewDimensionOptions): Dimension {
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    start: options.start,
+    end: options.end,
+    offset: options.offset ?? 0,
   }
 }

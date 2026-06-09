@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { AssetReference } from '../model/asset-reference'
-import { createEmptyProject, createFloor, createUnderlay, createWall } from '../model/factories'
+import {
+  createEmptyProject,
+  createFloor,
+  createUnderlay,
+  createWall,
+  DEFAULT_WALL_THICKNESS_MM,
+} from '../model/factories'
 import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
 import { ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
@@ -100,7 +106,11 @@ describe('deriveSceneGraph rooms', () => {
     if (room === undefined) {
       throw new Error('expected one room node')
     }
-    expect(room).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
+    expect(room).toMatchObject({
+      kind: 'room',
+      floorId: floor.id,
+      area: (4000 - DEFAULT_WALL_THICKNESS_MM) * (3000 - DEFAULT_WALL_THICKNESS_MM),
+    })
     expect(room.polygon).toHaveLength(4)
   })
 })
@@ -143,9 +153,30 @@ describe('deriveRoomNodesForFloor with overrides', () => {
 
     const node = soleRoomNode(floor)
 
-    expect(node).toMatchObject({ kind: 'room', floorId: floor.id, area: 12_000_000 })
+    expect(node).toMatchObject({
+      kind: 'room',
+      floorId: floor.id,
+      area: (ROOM_WIDTH - DEFAULT_WALL_THICKNESS_MM) * (ROOM_HEIGHT - DEFAULT_WALL_THICKNESS_MM),
+    })
     expect(node.polygon).toHaveLength(4)
     expect(node.name).toBeUndefined()
+  })
+
+  it('copies the clear (thickness-aware) polygon onto the room node', () => {
+    const floor = oneRoomFloor()
+    const inset = DEFAULT_WALL_THICKNESS_MM / 2
+
+    const node = soleRoomNode(floor)
+
+    expect(node.clearPolygon).toHaveLength(4)
+    for (const corner of [
+      { x: inset, y: inset },
+      { x: ROOM_WIDTH - inset, y: inset },
+      { x: ROOM_WIDTH - inset, y: ROOM_HEIGHT - inset },
+      { x: inset, y: ROOM_HEIGHT - inset },
+    ]) {
+      expect(node.clearPolygon).toContainEqual(corner)
+    }
   })
 
   it('keys correctly: the override key matches the derived room id', () => {

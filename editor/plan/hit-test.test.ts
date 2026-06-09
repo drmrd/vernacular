@@ -3,12 +3,20 @@ import {
   hitTest,
   hitTestWalls,
   hitTestOpenings,
+  hitTestDimensions,
+  dimensionBounds,
   openingBounds,
   roomBounds,
   wallBounds,
   DEFAULT_HIT_TOLERANCE_MM,
 } from './hit-test'
-import type { OpeningSceneNode, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+import type {
+  DimensionSceneNode,
+  OpeningSceneNode,
+  RoomSceneNode,
+  SceneGraph,
+  WallSceneNode,
+} from '../../core'
 
 const WALL_THICKNESS_MM = 114
 const OPENING_WIDTH_MM = 800
@@ -84,7 +92,15 @@ describe('wallBounds', () => {
 })
 
 function room(id: string, polygon: { x: number; y: number }[]): RoomSceneNode {
-  return { id, kind: 'room', floorId: 'g', polygon, area: 0 }
+  return { id, kind: 'room', floorId: 'g', polygon, area: 0, clearPolygon: polygon }
+}
+
+function dimension(
+  id: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): DimensionSceneNode {
+  return { id, kind: 'dimension', floorId: 'g', start, end, offset: 0, length: 0 }
 }
 
 describe('roomBounds', () => {
@@ -102,12 +118,24 @@ describe('roomBounds', () => {
   })
 })
 
+interface SceneExtras {
+  openings?: OpeningSceneNode[]
+  dimensions?: DimensionSceneNode[]
+}
+
 function scene(
   walls: WallSceneNode[],
   rooms: RoomSceneNode[] = [],
-  openings: OpeningSceneNode[] = [],
+  extras: SceneExtras = {},
 ): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [], openings }
+  return {
+    nodes: [],
+    walls,
+    rooms,
+    underlays: [],
+    openings: extras.openings ?? [],
+    dimensions: extras.dimensions ?? [],
+  }
 }
 
 describe('hitTest', () => {
@@ -191,7 +219,7 @@ describe('hitTest opening priority', () => {
           { x: 0, y: 2000 },
         ]),
       ],
-      [opening('opening:o1', { x: 1000, y: 0 })],
+      { openings: [opening('opening:o1', { x: 1000, y: 0 })] },
     )
 
   it('returns the opening id when the click is on an opening that sits on its host wall', () => {
@@ -210,5 +238,63 @@ describe('hitTest opening priority', () => {
     expect(hitTest(openingOnWallScene(), { x: 1000, y: 1500 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
       'room:a',
     )
+  })
+})
+
+describe('dimensionBounds', () => {
+  it('spans the dimension endpoints', () => {
+    const node = dimension('dimension:d1', { x: 0, y: 0 }, { x: 1000, y: 0 })
+
+    expect(dimensionBounds(node)).toEqual({ min: { x: 0, y: 0 }, max: { x: 1000, y: 0 } })
+  })
+})
+
+describe('hitTestDimensions', () => {
+  it('returns the id of a dimension whose line lies within tolerance of the point', () => {
+    const dimensions = [dimension('dimension:d1', { x: 0, y: 0 }, { x: 1000, y: 0 })]
+
+    expect(hitTestDimensions(dimensions, { x: 500, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'dimension:d1',
+    )
+  })
+
+  it('returns null when the point is beyond the tolerance of every dimension line', () => {
+    const dimensions = [dimension('dimension:d1', { x: 0, y: 0 }, { x: 1000, y: 0 })]
+
+    expect(hitTestDimensions(dimensions, { x: 500, y: 5000 }, DEFAULT_HIT_TOLERANCE_MM)).toBeNull()
+  })
+})
+
+describe('hitTest dimension priority', () => {
+  const wallRoomAndDimensionScene = (): SceneGraph =>
+    scene(
+      [wall('wall:edge', { x: 0, y: 0 }, { x: 4000, y: 0 })],
+      [
+        room('room:a', [
+          { x: 0, y: 0 },
+          { x: 4000, y: 0 },
+          { x: 4000, y: 4000 },
+          { x: 0, y: 4000 },
+        ]),
+      ],
+      { dimensions: [dimension('dimension:d1', { x: 0, y: 2000 }, { x: 4000, y: 2000 })] },
+    )
+
+  it('returns the dimension id when the click is on the dimension line away from the wall', () => {
+    expect(
+      hitTest(wallRoomAndDimensionScene(), { x: 2000, y: 2000 }, DEFAULT_HIT_TOLERANCE_MM),
+    ).toBe('dimension:d1')
+  })
+
+  it('prefers the wall over a dimension when the click is on the wall', () => {
+    expect(hitTest(wallRoomAndDimensionScene(), { x: 2000, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'wall:edge',
+    )
+  })
+
+  it('falls back to the containing room when no wall, opening, or dimension is in range', () => {
+    expect(
+      hitTest(wallRoomAndDimensionScene(), { x: 2000, y: 1000 }, DEFAULT_HIT_TOLERANCE_MM),
+    ).toBe('room:a')
   })
 })

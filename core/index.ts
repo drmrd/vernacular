@@ -1,4 +1,5 @@
 export type {
+  Dimension,
   EraId,
   Floor,
   Opening,
@@ -14,6 +15,7 @@ export type {
   Wall,
 } from './model/types'
 export type {
+  NewDimensionOptions,
   NewFloorOptions,
   NewOpeningOptions,
   NewProjectOptions,
@@ -27,6 +29,7 @@ export {
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
+  createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
@@ -127,6 +130,17 @@ export {
   resizeOpening,
 } from './commands/handlers/opening-commands'
 export type {
+  AddDimensionParams,
+  RemoveDimensionParams,
+} from './commands/handlers/dimension-commands'
+export {
+  ADD_DIMENSION,
+  REMOVE_DIMENSION,
+  addDimension,
+  registerDimensionCommands,
+  removeDimension,
+} from './commands/handlers/dimension-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
@@ -140,6 +154,7 @@ export {
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type {
+  DimensionSceneNode,
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
@@ -148,9 +163,12 @@ export type {
   WallSceneNode,
 } from './scene/scene-graph'
 export {
+  DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
   WALL_NODE_PREFIX,
+  deriveDimensionNode,
+  deriveDimensionNodesForFloor,
   deriveFloorNode,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
@@ -205,7 +223,9 @@ export {
 export { distance } from './geometry/point'
 export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
-export { pointInPolygon, polygonArea } from './geometry/polygon'
+export type { DimensionGeometry } from './geometry/dimension'
+export { dimensionGeometry, dimensionLength } from './geometry/dimension'
+export { insetPolygon, pointInPolygon, polygonArea } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint } from './topology/openings'

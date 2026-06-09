@@ -1,4 +1,4 @@
-import { polygonArea } from '../geometry/polygon'
+import { insetPolygon, polygonArea } from '../geometry/polygon'
 import type { Point, RoomOverride, Wall } from '../model/types'
 import { buildWallGraph } from './wall-graph'
 
@@ -8,7 +8,12 @@ export interface Room {
   id: string
   /** Corner points of the room boundary, in floor-plan space. */
   polygon: Point[]
-  /** Signed area of the room polygon, in squared millimeters. */
+  /**
+   * The centerline `polygon` inset inward by each bounding wall's half-thickness:
+   * the thickness-aware clear floor area boundary, in floor-plan space.
+   */
+  clearPolygon: Point[]
+  /** Clear (thickness-aware) floor area, in squared millimeters. */
   area: number
   /** Sorted, unique ids of the walls that enclose the room. */
   wallIds: string[]
@@ -28,6 +33,13 @@ const MIN_ROOM_AREA = 1
 
 /** Namespace prefix that distinguishes a room id from its stable key. */
 export const ROOM_ID_PREFIX = 'room:'
+
+/**
+ * Wall thickness, in millimeters, assumed for a face edge whose host wall is
+ * missing from the thickness map. Faces only ever reference real walls, so this
+ * is a defensive fallback that should never be reached in practice.
+ */
+const DEFAULT_WALL_THICKNESS = 0
 
 /**
  * The stable key for a room: the sorted bounding-wall-id string that `Room.id`
@@ -61,6 +73,9 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
   if (override.name !== undefined) merged.name = override.name
   if (override.customPolygon !== undefined) {
     merged.polygon = override.customPolygon
+    // Copy so `polygon` and `clearPolygon` are not the same array; a later mutation
+    // of one must not silently alter the other.
+    merged.clearPolygon = [...override.customPolygon]
     merged.area = Math.abs(polygonArea(override.customPolygon))
   }
   return merged
@@ -85,14 +100,16 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
   const graph = buildWallGraph(walls, options)
   const halfEdges = buildHalfEdges(graph.edges)
   const faces = enumerateFaces(halfEdges, graph.vertices)
+  const thicknessByWallId = new Map(walls.map((wall) => [wall.id, wall.thickness]))
 
   const rooms: Room[] = []
   for (const face of faces) {
-    const polygon = facePolygon(face, graph.vertices)
-    const area = polygonArea(polygon)
-    if (area <= MIN_ROOM_AREA) continue
+    const { polygon, edgeOffsets } = faceBoundary(face, graph.vertices, thicknessByWallId)
+    if (polygonArea(polygon) <= MIN_ROOM_AREA) continue
+    const clearPolygon = insetPolygon(polygon, edgeOffsets)
+    const area = Math.abs(polygonArea(clearPolygon))
     const wallIds = sortedUniqueWallIds(face)
-    rooms.push({ id: ROOM_ID_PREFIX + roomKey({ wallIds }), polygon, area, wallIds })
+    rooms.push({ id: ROOM_ID_PREFIX + roomKey({ wallIds }), polygon, clearPolygon, area, wallIds })
   }
   return rooms
 }
@@ -210,42 +227,90 @@ function nextHalfEdge(
   return previous ?? index
 }
 
-/** Build a polygon from the tail vertices of a face's half-edges. */
-function facePolygon(face: readonly HalfEdge[], vertices: readonly Point[]): Point[] {
-  const loop = removeSpikes(face.map((half) => half.from))
-  const polygon: Point[] = []
-  for (const index of loop) {
-    const vertex = vertices[index]
-    if (vertex !== undefined) polygon.push(vertex)
-  }
-  return polygon
+/**
+ * A face corner paired with the inward inset of the edge leaving it: the tail
+ * vertex index and half the leaving edge's host-wall thickness.
+ */
+interface BoundaryCorner {
+  /** Index into the graph's vertices of this corner. */
+  vertexIndex: number
+  /** Half the thickness of the wall hosting the edge that leaves this corner. */
+  halfThickness: number
 }
 
 /**
- * Remove dangling-stub spikes from a closed loop of vertex indices. A spike is a
+ * Build the room boundary from a face's half-edges: the centerline `polygon` and
+ * the per-edge inward inset distances, kept index-aligned so `edgeOffsets[i]` is
+ * the inset for the edge from `polygon[i]` to `polygon[i+1]`. Spike removal runs
+ * over corners carrying their leaving-edge offset, so the polygon and its offsets
+ * drop the same excursions in step. The polygon matches the loop of cleaned tail
+ * vertices exactly.
+ */
+function faceBoundary(
+  face: readonly HalfEdge[],
+  vertices: readonly Point[],
+  thicknessByWallId: ReadonlyMap<string, number>,
+): { polygon: Point[]; edgeOffsets: number[] } {
+  const corners = removeSpikes(toBoundaryCorners(face, thicknessByWallId))
+  const polygon: Point[] = []
+  const edgeOffsets: number[] = []
+  for (const corner of corners) {
+    const vertex = vertices[corner.vertexIndex]
+    // Skipping a vertex also skips its paired offset, keeping polygon and
+    // edgeOffsets index-aligned.
+    if (vertex === undefined) continue
+    polygon.push(vertex)
+    edgeOffsets.push(corner.halfThickness)
+  }
+  return { polygon, edgeOffsets }
+}
+
+/** Pair each face corner with half the thickness of its leaving edge's host wall. */
+function toBoundaryCorners(
+  face: readonly HalfEdge[],
+  thicknessByWallId: ReadonlyMap<string, number>,
+): BoundaryCorner[] {
+  return face.map((half) => {
+    const thickness = thicknessByWallId.get(half.wallId) ?? DEFAULT_WALL_THICKNESS
+    return { vertexIndex: half.from, halfThickness: thickness / 2 }
+  })
+}
+
+/**
+ * Remove dangling-stub spikes from a closed loop of boundary corners. A spike is a
  * `v -> s -> v` excursion: the path walks out to a tip `s` and immediately back to
  * the same vertex `v`. Treating the loop as cyclic, a tip is any position whose
- * previous and next neighbors are the same vertex; drop the tip and one of those
- * duplicated neighbors, then restart until no spike remains.
+ * previous and next neighbors are the same vertex; drop the tip and the duplicated
+ * next neighbor, and re-point the surviving corner's leaving-edge offset to that
+ * next neighbor's offset (the edge `v` now continues along). Restart until no spike
+ * remains.
  *
  * Dangling stub walls are dead-end artifacts of the half-edge walk traversing into
  * and back out of a stub, and their stub endpoints must not appear as room corners.
  */
-function removeSpikes(loop: number[]): number[] {
-  const cleaned = [...loop]
+function removeSpikes(loop: BoundaryCorner[]): BoundaryCorner[] {
+  const cleaned = loop.map((corner) => ({ ...corner }))
   let changed = true
   while (changed && cleaned.length > 2) {
     changed = false
     for (let index = 0; index < cleaned.length; index += 1) {
       const previous = cleaned[(index - 1 + cleaned.length) % cleaned.length]
       const next = cleaned[(index + 1) % cleaned.length]
-      // `next !== undefined` is implied by the equality with the defined `previous`,
-      // but stated explicitly so the asymmetric guard is self-documenting.
-      if (previous !== undefined && next !== undefined && previous === next) {
-        // Drop the spike tip, then drop the duplicated neighbor. Removing the tip
-        // shifts every later element left by one, so the `next` duplicate that was
-        // at `index + 1` now sits at `index % cleaned.length` (the modulus only
-        // matters when the tip was the final element and the duplicate wraps to 0).
+      // Both guards satisfy noUncheckedIndexedAccess; once `previous` is defined,
+      // `next !== undefined` is structurally implied (the loop has at least three
+      // corners), but the check keeps the type narrowing explicit.
+      if (
+        previous !== undefined &&
+        next !== undefined &&
+        previous.vertexIndex === next.vertexIndex
+      ) {
+        // The surviving corner `v` (at `previous`) keeps the spike's exit edge, so
+        // its offset becomes the next neighbor's offset (the edge `v` continues along).
+        previous.halfThickness = next.halfThickness
+        // Drop the spike tip, then the duplicated neighbor. Removing the tip shifts
+        // every later element left by one, so the duplicate that was at `index + 1`
+        // now sits at `index % cleaned.length` (the modulus only matters when the
+        // tip was the final element and the duplicate wraps to 0).
         cleaned.splice(index, 1)
         cleaned.splice(index % cleaned.length, 1)
         changed = true

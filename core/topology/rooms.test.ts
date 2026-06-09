@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Point, RoomOverride, Wall } from '../model/types'
-import { createWall } from '../model/factories'
+import { createWall, DEFAULT_WALL_THICKNESS_MM } from '../model/factories'
 import { polygonArea } from '../geometry/polygon'
 import type { Room } from './rooms'
 import { applyRoomOverrides, deriveRooms, ROOM_ID_PREFIX, roomKey } from './rooms'
@@ -14,6 +14,31 @@ const RECTANGLE_CORNERS: Point[] = [
 
 function byXThenY(a: Point, b: Point): number {
   return a.x - b.x || a.y - b.y
+}
+
+function expectCornerSet(polygon: Point[], expectedCorners: Point[]): void {
+  expect(polygon).toHaveLength(expectedCorners.length)
+  for (const corner of expectedCorners) {
+    expect(polygon).toContainEqual(corner)
+  }
+}
+
+const CENTERLINE_RECTANGLE_CORNERS: Point[] = [
+  { x: 0, y: 0 },
+  { x: 2000, y: 0 },
+  { x: 2000, y: 1000 },
+  { x: 0, y: 1000 },
+]
+
+function centerlineRectangleWalls(thicknesses: number[]): Wall[] {
+  return CENTERLINE_RECTANGLE_CORNERS.map((corner, index) => {
+    const next = CENTERLINE_RECTANGLE_CORNERS[(index + 1) % CENTERLINE_RECTANGLE_CORNERS.length]
+    const thickness = thicknesses[index]
+    if (next === undefined || thickness === undefined) {
+      throw new Error('expected a closing corner and a thickness per edge')
+    }
+    return createWall(corner, next, { thickness })
+  })
 }
 
 function rectangleEdgesWithIds(): Wall[] {
@@ -79,7 +104,7 @@ describe('deriveRooms', () => {
     if (room === undefined) {
       throw new Error('expected exactly one room')
     }
-    expect(room.area).toBe(12_000_000)
+    expect(room.area).toBe((4000 - DEFAULT_WALL_THICKNESS_MM) * (3000 - DEFAULT_WALL_THICKNESS_MM))
   })
 
   it('excludes a dangling stub wall from the derived room polygon', () => {
@@ -100,7 +125,7 @@ describe('deriveRooms', () => {
       throw new Error('expected exactly one room')
     }
     expect(room.polygon).toHaveLength(4)
-    expect(room.area).toBe(12_000_000)
+    expect(room.area).toBe((4000 - DEFAULT_WALL_THICKNESS_MM) * (3000 - DEFAULT_WALL_THICKNESS_MM))
   })
 
   it('splits an enclosure into two rooms when a partition wall divides it into two cells', () => {
@@ -115,7 +140,11 @@ describe('deriveRooms', () => {
     const rooms = deriveRooms(walls)
 
     expect(rooms).toHaveLength(2)
-    expect(rooms.map((room) => room.area).sort((a, b) => a - b)).toEqual([9_000_000, 9_000_000])
+    const clearCellArea = (3000 - DEFAULT_WALL_THICKNESS_MM) ** 2
+    expect(rooms.map((room) => room.area).sort((a, b) => a - b)).toEqual([
+      clearCellArea,
+      clearCellArea,
+    ])
   })
 
   it('never reports the unbounded outer face as a room', () => {
@@ -159,6 +188,48 @@ describe('deriveRooms', () => {
     for (const wall of walls) {
       expect(allWallIds).toContain(wall.id)
     }
+  })
+})
+
+describe('deriveRooms thickness-aware clear area', () => {
+  it('insets the clear polygon by each wall half-thickness for a uniform-thickness room', () => {
+    const walls = centerlineRectangleWalls([200, 200, 200, 200])
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
+    expectCornerSet(room.clearPolygon, [
+      { x: 100, y: 100 },
+      { x: 1900, y: 100 },
+      { x: 1900, y: 900 },
+      { x: 100, y: 900 },
+    ])
+    expect(room.area).toBe(1_440_000)
+  })
+
+  it('insets each clear-polygon edge by its own wall half-thickness', () => {
+    const walls = centerlineRectangleWalls([400, 200, 200, 200])
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
+    expectCornerSet(room.clearPolygon, [
+      { x: 100, y: 200 },
+      { x: 1900, y: 200 },
+      { x: 1900, y: 900 },
+      { x: 100, y: 900 },
+    ])
+    expect(room.area).toBe(1_260_000)
   })
 })
 
@@ -210,6 +281,16 @@ describe('applyRoomOverrides', () => {
     const merged = appliedRectangleRoom(overrides)
 
     expect(merged.polygon).toEqual(CUSTOM_POLYGON)
+    expect(merged.area).toBe(Math.abs(polygonArea(CUSTOM_POLYGON)))
+  })
+
+  it('sets the clear polygon to the custom polygon with its shoelace area and no inset', () => {
+    const room = deriveRectangleRoom()
+    const overrides = { [roomKey(room)]: { customPolygon: CUSTOM_POLYGON } }
+
+    const merged = appliedRectangleRoom(overrides)
+
+    expect(merged.clearPolygon).toEqual(CUSTOM_POLYGON)
     expect(merged.area).toBe(Math.abs(polygonArea(CUSTOM_POLYGON)))
   })
 

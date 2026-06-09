@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { pointInPolygon, polygonArea } from './polygon'
+import type { Point } from '../model/types'
+import { insetPolygon, pointInPolygon, polygonArea } from './polygon'
 
 describe('polygonArea', () => {
   it('returns the signed shoelace area, positive for counter-clockwise winding', () => {
@@ -58,5 +59,56 @@ describe('pointInPolygon', () => {
 
     expect(pointInPolygon({ x: 3000, y: 3000 }, lShape)).toBe(false)
     expect(pointInPolygon({ x: 1000, y: 3000 }, lShape)).toBe(true)
+  })
+})
+
+describe('insetPolygon', () => {
+  const counterClockwiseRectangle: Point[] = [
+    { x: 0, y: 0 },
+    { x: 1000, y: 0 },
+    { x: 1000, y: 600 },
+    { x: 0, y: 600 },
+  ]
+
+  const containsCorner = (corners: readonly Point[], expected: Point): boolean =>
+    corners.some((corner) => corner.x === expected.x && corner.y === expected.y)
+
+  it('insets a counter-clockwise rectangle uniformly toward its interior', () => {
+    const inset = insetPolygon(counterClockwiseRectangle, [57, 57, 57, 57])
+
+    expect(inset).toEqual([
+      { x: 57, y: 57 },
+      { x: 943, y: 57 },
+      { x: 943, y: 543 },
+      { x: 57, y: 543 },
+    ])
+  })
+
+  it('insets toward the interior regardless of input winding by normalizing it', () => {
+    const clockwiseRectangle: Point[] = [
+      { x: 0, y: 0 },
+      { x: 0, y: 600 },
+      { x: 1000, y: 600 },
+      { x: 1000, y: 0 },
+    ]
+
+    const inset = insetPolygon(clockwiseRectangle, [57, 57, 57, 57])
+
+    expect(inset).toHaveLength(4)
+    expect(containsCorner(inset, { x: 57, y: 57 })).toBe(true)
+    expect(containsCorner(inset, { x: 943, y: 57 })).toBe(true)
+    expect(containsCorner(inset, { x: 943, y: 543 })).toBe(true)
+    expect(containsCorner(inset, { x: 57, y: 543 })).toBe(true)
+  })
+
+  it('insets each edge inward by its own offset when offsets differ', () => {
+    const inset = insetPolygon(counterClockwiseRectangle, [100, 50, 100, 50])
+
+    expect(inset).toEqual([
+      { x: 50, y: 100 },
+      { x: 950, y: 100 },
+      { x: 950, y: 500 },
+      { x: 50, y: 500 },
+    ])
   })
 })

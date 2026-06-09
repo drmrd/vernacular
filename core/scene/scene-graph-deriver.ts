@@ -1,4 +1,5 @@
 import {
+  deriveDimensionNodesForFloor,
   deriveFloorNode,
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
@@ -71,5 +72,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     rooms: project.floors.flatMap((floor) => roomNodesFor(floor, project.roomOverrides)),
     underlays: project.floors.flatMap((floor) => deriveUnderlayNodesForFloor(floor)),
     openings: project.floors.flatMap((floor) => deriveOpeningNodesForFloor(floor)),
+    dimensions: project.floors.flatMap((floor) => deriveDimensionNodesForFloor(floor)),
   })
 }

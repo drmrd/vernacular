@@ -1,4 +1,11 @@
-import type { Point, RoomSceneNode, UnitPreferences, WallSceneNode } from '../../core'
+import {
+  DEFAULT_METRIC_PREFERENCES,
+  type Point,
+  type RoomSceneNode,
+  type UnitPreferences,
+  type WallSceneNode,
+} from '../../core'
+import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
@@ -53,6 +60,7 @@ export interface DrawPlanOptions {
   roomLabels?: RoomLabelOptions
   underlays?: readonly DrawableUnderlay[]
   openings?: readonly DrawableOpening[]
+  dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
 }
 
@@ -153,6 +161,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
     drawMarquee(ctx, options.marquee, options.viewport)
   }
   drawRoomLabels(ctx, options)
+  // Dimensions are annotation overlays above the plan but below the ruler chrome.
+  drawDimensions(ctx, options)
   // Calibration sits above the plan but below the rulers.
   drawCalibration(ctx, options.calibration, options.viewport)
   if (options.rulers) {
@@ -164,6 +174,14 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
 function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   for (const opening of options.openings ?? []) {
     drawOpening(ctx, opening, options.viewport)
+  }
+}
+
+/** Paint each dimension as an annotation overlay above the plan. */
+function drawDimensions(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
+  for (const dimension of options.dimensions ?? []) {
+    drawDimension(ctx, dimension, options.viewport, preferences)
   }
 }
 

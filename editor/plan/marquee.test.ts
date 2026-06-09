@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { entitiesInRect } from './marquee'
 import type { Bounds } from './fit'
-import type { OpeningSceneNode, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+import type {
+  DimensionSceneNode,
+  OpeningSceneNode,
+  RoomSceneNode,
+  SceneGraph,
+  WallSceneNode,
+} from '../../core'
 
 const WALL_THICKNESS_MM = 114
 const OPENING_WIDTH_MM = 800
@@ -15,7 +21,7 @@ function wall(
 }
 
 function room(id: string, polygon: { x: number; y: number }[]): RoomSceneNode {
-  return { id, kind: 'room', floorId: 'g', polygon, area: 0 }
+  return { id, kind: 'room', floorId: 'g', polygon, area: 0, clearPolygon: polygon }
 }
 
 function opening(id: string, center: { x: number; y: number }): OpeningSceneNode {
@@ -35,12 +41,32 @@ function opening(id: string, center: { x: number; y: number }): OpeningSceneNode
   }
 }
 
+function dimension(
+  id: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): DimensionSceneNode {
+  return { id, kind: 'dimension', floorId: 'g', start, end, offset: 0, length: 0 }
+}
+
+interface SceneExtras {
+  openings?: OpeningSceneNode[]
+  dimensions?: DimensionSceneNode[]
+}
+
 function scene(
   walls: WallSceneNode[],
   rooms: RoomSceneNode[],
-  openings: OpeningSceneNode[] = [],
+  extras: SceneExtras = {},
 ): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [], openings }
+  return {
+    nodes: [],
+    walls,
+    rooms,
+    underlays: [],
+    openings: extras.openings ?? [],
+    dimensions: extras.dimensions ?? [],
+  }
 }
 
 const rect: Bounds = { min: { x: 0, y: 0 }, max: { x: 1000, y: 1000 } }
@@ -78,15 +104,24 @@ describe('entitiesInRect', () => {
   })
 
   it('includes an opening whose footprint lies fully inside and excludes a partial one', () => {
-    const graph = scene(
-      [],
-      [],
-      [
+    const graph = scene([], [], {
+      openings: [
         opening('opening:inside', { x: 500, y: 500 }),
         opening('opening:straddling', { x: 800, y: 500 }),
       ],
-    )
+    })
 
     expect(entitiesInRect(graph, rect)).toEqual(['opening:inside'])
+  })
+
+  it('includes a dimension whose both endpoints lie inside and excludes a partial one', () => {
+    const graph = scene([], [], {
+      dimensions: [
+        dimension('dimension:inside', { x: 100, y: 100 }, { x: 900, y: 900 }),
+        dimension('dimension:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 }),
+      ],
+    })
+
+    expect(entitiesInRect(graph, rect)).toEqual(['dimension:inside'])
   })
 })
