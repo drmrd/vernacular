@@ -15,8 +15,8 @@ import type {
 } from './types'
 
 // v2 introduces the optional top-level `roomOverrides` map; v3 adds the
-// per-floor `openings` array.
-export const CURRENT_SCHEMA_VERSION = 3
+// per-floor `openings` array; v4 adds the per-floor `dimensions` array.
+export const CURRENT_SCHEMA_VERSION = 4
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
