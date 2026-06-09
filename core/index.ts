@@ -141,6 +141,18 @@ export {
   removeDimension,
 } from './commands/handlers/dimension-commands'
 export type {
+  RotateEntitiesParams,
+  TranslateEntitiesParams,
+} from './commands/handlers/transform-commands'
+export {
+  ROTATE_ENTITIES,
+  TRANSLATE_ENTITIES,
+  registerTransformCommands,
+  rotateEntities,
+  selectionCenter,
+  translateEntities,
+} from './commands/handlers/transform-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
