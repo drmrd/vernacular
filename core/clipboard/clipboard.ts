@@ -32,6 +32,18 @@ interface ClipboardEnvelope {
   snapshot: ClipboardSnapshot
 }
 
+function isClipboardSnapshot(value: unknown): value is ClipboardSnapshot {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const candidate = value as Record<string, unknown>
+  return (
+    Array.isArray(candidate.walls) &&
+    Array.isArray(candidate.openings) &&
+    Array.isArray(candidate.dimensions)
+  )
+}
+
 function isClipboardEnvelope(value: unknown): value is ClipboardEnvelope {
   if (typeof value !== 'object' || value === null) {
     return false
@@ -40,8 +52,7 @@ function isClipboardEnvelope(value: unknown): value is ClipboardEnvelope {
   return (
     candidate.kind === CLIPBOARD_KIND &&
     candidate.version === CLIPBOARD_VERSION &&
-    typeof candidate.snapshot === 'object' &&
-    candidate.snapshot !== null
+    isClipboardSnapshot(candidate.snapshot)
   )
 }
 
