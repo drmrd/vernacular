@@ -1,4 +1,4 @@
-import { dimensionGeometry } from '../../core'
+import { dimensionGeometry, polygonCentroid } from '../../core'
 import type {
   DimensionSceneNode,
   OpeningSceneNode,
@@ -15,17 +15,6 @@ export type SelectableSceneNode =
 
 function midpoint(a: Point, b: Point): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-}
-
-function polygonCentroid(polygon: readonly Point[]): Point {
-  if (polygon.length === 0) {
-    return { x: 0, y: 0 }
-  }
-  const sum = polygon.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), {
-    x: 0,
-    y: 0,
-  })
-  return { x: sum.x / polygon.length, y: sum.y / polygon.length }
 }
 
 /** The world-space point the overlay proxy and tooltip anchor to. */
