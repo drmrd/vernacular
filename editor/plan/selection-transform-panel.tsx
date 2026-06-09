@@ -25,7 +25,11 @@ export function SelectionTransformPanel({
   }
 
   function applyAngle(): void {
-    rotateBy(Number.parseFloat(angle) * DEGREES_TO_RADIANS)
+    const degrees = Number.parseFloat(angle)
+    if (!Number.isFinite(degrees)) {
+      return
+    }
+    rotateBy(degrees * DEGREES_TO_RADIANS)
   }
 
   return (
