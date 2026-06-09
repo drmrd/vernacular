@@ -107,7 +107,7 @@ function scene(
   rooms: RoomSceneNode[] = [],
   openings: OpeningSceneNode[] = [],
 ): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [], openings }
+  return { nodes: [], walls, rooms, underlays: [], openings, dimensions: [] }
 }
 
 describe('hitTest', () => {

@@ -19,7 +19,7 @@ function wall(
 }
 
 function scene(walls: WallSceneNode[]): SceneGraph {
-  return { nodes: [], walls, rooms: [], underlays: [], openings: [] }
+  return { nodes: [], walls, rooms: [], underlays: [], openings: [], dimensions: [] }
 }
 
 const horizontalWall = (id: string, y = 0): WallSceneNode =>

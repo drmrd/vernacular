@@ -40,7 +40,7 @@ function scene(
   rooms: RoomSceneNode[],
   openings: OpeningSceneNode[] = [],
 ): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [], openings }
+  return { nodes: [], walls, rooms, underlays: [], openings, dimensions: [] }
 }
 
 const rect: Bounds = { min: { x: 0, y: 0 }, max: { x: 1000, y: 1000 } }
