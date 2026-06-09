@@ -7,7 +7,10 @@ export interface ClipboardSnapshot {
   dimensions: Dimension[]
 }
 
-/** Gathers the selected walls, the openings hosted on those walls, and the selected dimensions. */
+/**
+ * Gathers the selected walls and dimensions. An opening is included only when its host wall is
+ * also selected, because an opening without its host wall cannot be re-hosted on paste.
+ */
 export function buildClipboardSnapshot(
   floor: Floor,
   entityIds: Iterable<string>,
@@ -65,6 +68,7 @@ export interface InstantiatedEntities {
   walls: Wall[]
   openings: Opening[]
   dimensions: Dimension[]
+  /** The new id of every instantiated entity (walls, then openings, then dimensions), with no duplicates. */
   ids: string[]
 }
 
@@ -112,16 +116,19 @@ function cloneDimensions(dimensions: Dimension[], offset: Point, mint: () => str
   }))
 }
 
-/** Clones a snapshot's entities with fresh ids, offsetting geometry and remapping opening host walls. */
+/**
+ * Clones a snapshot's entities with fresh ids, offsetting geometry and remapping opening host walls.
+ * An opening is instantiated only when its host wall is part of the snapshot, because an opening
+ * whose host wall was not copied has no wall to be re-hosted on.
+ */
 export function instantiateClipboard(
   snapshot: ClipboardSnapshot,
   offset: Point,
-  mintId?: () => string,
+  mintId: () => string = () => globalThis.crypto.randomUUID(),
 ): InstantiatedEntities {
-  const mint = mintId ?? (() => globalThis.crypto.randomUUID())
-  const [walls, idByOldWallId] = cloneWalls(snapshot.walls, offset, mint)
-  const openings = cloneOpenings(snapshot.openings, idByOldWallId, mint)
-  const dimensions = cloneDimensions(snapshot.dimensions, offset, mint)
+  const [walls, idByOldWallId] = cloneWalls(snapshot.walls, offset, mintId)
+  const openings = cloneOpenings(snapshot.openings, idByOldWallId, mintId)
+  const dimensions = cloneDimensions(snapshot.dimensions, offset, mintId)
   const ids = [...walls, ...openings, ...dimensions].map((entity) => entity.id)
   return { walls, openings, dimensions, ids }
 }
