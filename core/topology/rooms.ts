@@ -73,7 +73,9 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
   if (override.name !== undefined) merged.name = override.name
   if (override.customPolygon !== undefined) {
     merged.polygon = override.customPolygon
-    merged.clearPolygon = override.customPolygon
+    // Copy so `polygon` and `clearPolygon` are not the same array; a later mutation
+    // of one must not silently alter the other.
+    merged.clearPolygon = [...override.customPolygon]
     merged.area = Math.abs(polygonArea(override.customPolygon))
   }
   return merged
@@ -254,6 +256,8 @@ function faceBoundary(
   const edgeOffsets: number[] = []
   for (const corner of corners) {
     const vertex = vertices[corner.vertexIndex]
+    // Skipping a vertex also skips its paired offset, keeping polygon and
+    // edgeOffsets index-aligned.
     if (vertex === undefined) continue
     polygon.push(vertex)
     edgeOffsets.push(corner.halfThickness)
@@ -292,6 +296,9 @@ function removeSpikes(loop: BoundaryCorner[]): BoundaryCorner[] {
     for (let index = 0; index < cleaned.length; index += 1) {
       const previous = cleaned[(index - 1 + cleaned.length) % cleaned.length]
       const next = cleaned[(index + 1) % cleaned.length]
+      // Both guards satisfy noUncheckedIndexedAccess; once `previous` is defined,
+      // `next !== undefined` is structurally implied (the loop has at least three
+      // corners), but the check keeps the type narrowing explicit.
       if (
         previous !== undefined &&
         next !== undefined &&
