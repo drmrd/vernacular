@@ -1,4 +1,5 @@
 export type {
+  Dimension,
   EraId,
   Floor,
   Opening,
@@ -14,6 +15,7 @@ export type {
   Wall,
 } from './model/types'
 export type {
+  NewDimensionOptions,
   NewFloorOptions,
   NewOpeningOptions,
   NewProjectOptions,
@@ -27,6 +29,7 @@ export {
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
+  createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
