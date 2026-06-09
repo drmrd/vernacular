@@ -25,8 +25,9 @@ import { resolveProjectStorage } from './resolve-project-store'
 
 const DEFAULT_PROJECT_ID = 'current'
 
-// The default boot resolver still yields just the ProjectStore; F1 threads the
-// paired AssetCache through to the editor via AssetCacheProvider.
+// The default boot resolver still yields just the ProjectStore; the app-boot
+// wiring threads the paired AssetCache through to the editor via the
+// AssetCacheProvider.
 async function resolveDefaultStore(): Promise<ProjectStore> {
   return (await resolveProjectStorage()).store
 }
