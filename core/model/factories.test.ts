@@ -6,6 +6,7 @@ import {
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
+  createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
@@ -80,6 +81,45 @@ describe('createFloor walls', () => {
 describe('createFloor openings', () => {
   it('initializes a floor with an empty openings array', () => {
     expect(createFloor('Ground', {}).openings).toEqual([])
+  })
+})
+
+describe('createFloor dimensions', () => {
+  it('initializes a floor with an empty dimensions array', () => {
+    expect(createFloor('Ground', {}).dimensions).toEqual([])
+  })
+})
+
+describe('createDimension', () => {
+  it('mints a dimension with a fresh id, the given endpoints, and a zero offset', () => {
+    const dimension = createDimension({ start: { x: 0, y: 0 }, end: { x: 300, y: 400 } })
+
+    expect(dimension.id).toEqual(expect.any(String))
+    expect(dimension.id.length).toBeGreaterThan(0)
+    expect(dimension.start).toEqual({ x: 0, y: 0 })
+    expect(dimension.end).toEqual({ x: 300, y: 400 })
+    expect(dimension.offset).toBe(0)
+  })
+
+  it('honors an explicit offset and id', () => {
+    const dimension = createDimension({
+      start: { x: 1, y: 2 },
+      end: { x: 3, y: 4 },
+      offset: 250,
+      id: 'fixed-dim',
+    })
+
+    expect(dimension.id).toBe('fixed-dim')
+    expect(dimension.start).toEqual({ x: 1, y: 2 })
+    expect(dimension.end).toEqual({ x: 3, y: 4 })
+    expect(dimension.offset).toBe(250)
+  })
+
+  it('mints a unique id per dimension when none is supplied', () => {
+    const first = createDimension({ start: { x: 0, y: 0 }, end: { x: 1, y: 1 } })
+    const second = createDimension({ start: { x: 0, y: 0 }, end: { x: 1, y: 1 } })
+
+    expect(first.id).not.toBe(second.id)
   })
 })
 
