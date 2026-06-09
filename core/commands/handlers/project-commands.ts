@@ -29,7 +29,7 @@ export function setUnits(units: UnitSystem): Command<SetUnitsParams> {
   return {
     type: SET_UNITS,
     params: { units },
-    description: 'Change units',
+    description: `Switch units to ${units}`,
   }
 }
 
