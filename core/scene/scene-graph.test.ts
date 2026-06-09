@@ -162,6 +162,23 @@ describe('deriveRoomNodesForFloor with overrides', () => {
     expect(node.name).toBeUndefined()
   })
 
+  it('copies the clear (thickness-aware) polygon onto the room node', () => {
+    const floor = oneRoomFloor()
+    const inset = DEFAULT_WALL_THICKNESS_MM / 2
+
+    const node = soleRoomNode(floor)
+
+    expect(node.clearPolygon).toHaveLength(4)
+    for (const corner of [
+      { x: inset, y: inset },
+      { x: ROOM_WIDTH - inset, y: inset },
+      { x: ROOM_WIDTH - inset, y: ROOM_HEIGHT - inset },
+      { x: inset, y: ROOM_HEIGHT - inset },
+    ]) {
+      expect(node.clearPolygon).toContainEqual(corner)
+    }
+  })
+
   it('keys correctly: the override key matches the derived room id', () => {
     const floor = oneRoomFloor()
 
