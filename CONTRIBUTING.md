@@ -77,14 +77,21 @@ multiple PRs.
 
 These will tighten in later phases as the tooling lands. Current state:
 
-- **Dependency cooldown.** This repository enforces a 15-day minimum
+- **Dependency cooldown.** This repository enforces a 30-day minimum
   release age on every direct and transitive dependency (configured in
-  [`.npmrc`](.npmrc) as `minimum-release-age=21600`). If you add or
-  bump a dependency to a version that was published within the last 15
+  [`.npmrc`](.npmrc) as `minimum-release-age=43200`). If you add or
+  bump a dependency to a version that was published within the last 30
   days, `pnpm install` will refuse the install. Pin to an older
   patch/minor or wait the cooldown out. This is a supply-chain safety
   measure: malicious package releases are usually caught and yanked
   within days, so the cooldown filters out the highest-risk window.
+- **Exact version pins.** Every dependency is pinned to an exact
+  version, never a range (`.npmrc` sets `save-exact=true`), so direct
+  dependencies never float to a newer release on a later install.
+  Transitive dependencies are pinned by the committed `pnpm-lock.yaml`,
+  and CI installs with `--frozen-lockfile`, so the whole tree is
+  reproducible and nothing upgrades automatically. Use `pnpm update`
+  explicitly (and intentionally) to move a version.
 - **Commit messages** follow
   [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
   Common types we use: `feat`, `fix`, `refactor`, `docs`, `chore`,

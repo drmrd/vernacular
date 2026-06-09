@@ -37,7 +37,7 @@ See `.claude/rules.md` for the authoritative list. The non-negotiable highlights
 2. `engine/` is the only Three.js importer.
 3. All mutations flow through `dispatch(command)`.
 4. Asset references are content-addressed.
-5. 15-day dependency cooldown (`.npmrc` `minimum-release-age=21600`).
+5. 30-day dependency cooldown (`.npmrc` `minimum-release-age=43200`); exact version pins, no ranges (`save-exact=true`, committed lockfile).
 6. No `Co-Authored-By` trailers in commit messages.
 7. No em-dashes in newly composed text.
 8. Conventional Commits.
@@ -99,7 +99,7 @@ The pack-validator and migration-author agents land alongside the pack tooling.
 
 ## Common shell commands
 
-- `pnpm install --frozen-lockfile`: install dependencies (honors the 15-day cooldown).
+- `pnpm install --frozen-lockfile`: install dependencies (honors the 30-day cooldown).
 - `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`: the full check chain.
 - `pnpm knowledge:index`: regenerate the optional knowledge index (gitignored).
 - `pnpm dev`: dev server.
@@ -111,7 +111,8 @@ The pack-validator and migration-author agents land alongside the pack tooling.
 - Add an em-dash to newly composed prose.
 - Push directly to `main`.
 - Force-push `main` without an explicit user authorization for that specific operation.
-- Install a dependency younger than 15 days; pin to an older version or wait.
+- Install a dependency younger than 30 days; pin to an older version or wait.
+- Use a version range (`^`/`~`) for any dependency; pin the exact version.
 - Modify the design specification in `docs/specs/` without a corresponding ADR explaining the change.
 - Touch a test file from the `implementer` agent role; touch implementation source from the `test-author` agent role.
 - Use cryptic internal identifiers (such as milestone codes) in branch names, commit messages, or persisted document text.

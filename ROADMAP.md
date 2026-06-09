@@ -12,7 +12,7 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 | --------------------------------------------------------------------------------- | ------ |
 | Build foundation (TS, Vite, React, Vitest, ESLint, CI)                            | done   |
 | Documentation surface                                                             | done   |
-| 15-day dependency cooldown (pnpm minimum-release-age)                             | done   |
+| 30-day dependency cooldown (pnpm minimum-release-age), exact version pins         | done   |
 | Knowledge graph foundation (local-only, for Claude context)                       | done   |
 | Claude Code infrastructure (CLAUDE.md, agents, commands)                          | done   |
 | ESLint guardrails, layer boundaries, jscpd                                        | done   |
