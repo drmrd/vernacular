@@ -130,6 +130,17 @@ export {
   resizeOpening,
 } from './commands/handlers/opening-commands'
 export type {
+  AddDimensionParams,
+  RemoveDimensionParams,
+} from './commands/handlers/dimension-commands'
+export {
+  ADD_DIMENSION,
+  REMOVE_DIMENSION,
+  addDimension,
+  registerDimensionCommands,
+  removeDimension,
+} from './commands/handlers/dimension-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
