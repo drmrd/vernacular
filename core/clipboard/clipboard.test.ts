@@ -130,6 +130,36 @@ describe('serializeClipboard and deserializeClipboard', () => {
 
     expect(deserializeClipboard(future)).toBeUndefined()
   })
+
+  it('returns undefined when the snapshot is missing every entity array', () => {
+    const emptySnapshot = JSON.stringify({
+      kind: 'vernacular/clipboard',
+      version: 1,
+      snapshot: {},
+    })
+
+    expect(deserializeClipboard(emptySnapshot)).toBeUndefined()
+  })
+
+  it('returns undefined when the snapshot is missing the dimensions array', () => {
+    const noDimensions = JSON.stringify({
+      kind: 'vernacular/clipboard',
+      version: 1,
+      snapshot: { walls: [], openings: [] },
+    })
+
+    expect(deserializeClipboard(noDimensions)).toBeUndefined()
+  })
+
+  it('returns undefined when an entity field is present but is not an array', () => {
+    const wallsNotArray = JSON.stringify({
+      kind: 'vernacular/clipboard',
+      version: 1,
+      snapshot: { walls: 'nope', openings: [], dimensions: [] },
+    })
+
+    expect(deserializeClipboard(wallsNotArray)).toBeUndefined()
+  })
 })
 
 describe('instantiateClipboard', () => {
