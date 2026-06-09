@@ -141,12 +141,15 @@ export {
   removeDimension,
 } from './commands/handlers/dimension-commands'
 export type {
+  DeleteEntitiesParams,
   RotateEntitiesParams,
   TranslateEntitiesParams,
 } from './commands/handlers/transform-commands'
 export {
+  DELETE_ENTITIES,
   ROTATE_ENTITIES,
   TRANSLATE_ENTITIES,
+  deleteEntities,
   registerTransformCommands,
   rotateEntities,
   selectionCenter,
