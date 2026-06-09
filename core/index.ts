@@ -219,6 +219,8 @@ export {
 export { distance } from './geometry/point'
 export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
+export type { DimensionGeometry } from './geometry/dimension'
+export { dimensionGeometry, dimensionLength } from './geometry/dimension'
 export { insetPolygon, pointInPolygon, polygonArea } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { OpeningGeometry } from './topology/openings'
