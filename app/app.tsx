@@ -21,9 +21,15 @@ import {
 import type { Project } from '../core'
 import { createInitialProject } from './create-initial-project'
 import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
-import { resolveProjectStore } from './resolve-project-store'
+import { resolveProjectStorage } from './resolve-project-store'
 
 const DEFAULT_PROJECT_ID = 'current'
+
+// The default boot resolver still yields just the ProjectStore; F1 threads the
+// paired AssetCache through to the editor via AssetCacheProvider.
+async function resolveDefaultStore(): Promise<ProjectStore> {
+  return (await resolveProjectStorage()).store
+}
 
 /** The subset of SnapshotStore the app depends on for autosave and crash recovery. */
 export interface SnapshotsPort {
@@ -43,7 +49,7 @@ export interface AppProps {
 
 export function App({
   store: providedStore,
-  resolveStore = resolveProjectStore,
+  resolveStore = resolveDefaultStore,
   projectId = DEFAULT_PROJECT_ID,
   recentProjects: providedRecentProjects,
   snapshots,
