@@ -205,7 +205,7 @@ export {
 export { distance } from './geometry/point'
 export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
-export { pointInPolygon, polygonArea } from './geometry/polygon'
+export { insetPolygon, pointInPolygon, polygonArea } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint } from './topology/openings'

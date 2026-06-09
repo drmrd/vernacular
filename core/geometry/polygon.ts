@@ -97,6 +97,9 @@ function shiftedEdgeLine(
 ): Line {
   const { index, inwardSign } = context
   const count = polygon.length
+  // insetPolygon only calls this with count >= MINIMUM_POLYGON_VERTICES, so the
+  // indexed lookups below are always in bounds; the ?? fallbacks exist solely to
+  // satisfy noUncheckedIndexedAccess and never run.
   const start = polygon[index] ?? polygon[0]!
   const end = polygon[(index + 1) % count] ?? start
   let dx = end.x - start.x
@@ -106,6 +109,9 @@ function shiftedEdgeLine(
     dx = start.x - previous.x
     dy = start.y - previous.y
   }
+  // The `|| 1` is a best-effort guard for the second degenerate case: when the
+  // edge and its predecessor share an endpoint (two identical adjacent vertices),
+  // both fallbacks yield a zero-length direction and `|| 1` avoids dividing by 0.
   const length = Math.hypot(dx, dy) || 1
   const inwardX = (inwardSign * -dy) / length
   const inwardY = (inwardSign * dx) / length
