@@ -1,6 +1,8 @@
 export type {
   EraId,
   Floor,
+  Opening,
+  OpeningOrientation,
   Point,
   Project,
   ProjectMeta,
@@ -13,6 +15,7 @@ export type {
 } from './model/types'
 export type {
   NewFloorOptions,
+  NewOpeningOptions,
   NewProjectOptions,
   NewUnderlayOptions,
   NewWallOptions,
@@ -20,10 +23,13 @@ export type {
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_OPENING_HEIGHT_MM,
+  DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createEmptyProject,
   createFloor,
+  createOpening,
   createUnderlay,
   createWall,
 } from './model/factories'
@@ -36,6 +42,8 @@ export { FINISH_REGISTRY_VERSION, builtinFinishes } from './registries/finishes'
 export type {
   ElementCategory,
   ElementType,
+  OpeningFamily,
+  OpeningTypeParameters,
   Plan2DSymbol,
   Scene3DReference,
 } from './registries/element-types'
@@ -97,6 +105,28 @@ export {
   setUnderlayVisibility,
 } from './commands/handlers/underlay-commands'
 export type {
+  FlipOpeningParams,
+  MoveOpeningParams,
+  OpeningDimensions,
+  OpeningOrientationAxis,
+  PlaceOpeningParams,
+  RemoveOpeningParams,
+  ResizeOpeningParams,
+} from './commands/handlers/opening-commands'
+export {
+  FLIP_OPENING,
+  MOVE_OPENING,
+  PLACE_OPENING,
+  REMOVE_OPENING,
+  RESIZE_OPENING,
+  flipOpening,
+  moveOpening,
+  placeOpening,
+  registerOpeningCommands,
+  removeOpening,
+  resizeOpening,
+} from './commands/handlers/opening-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
@@ -110,6 +140,7 @@ export {
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type {
+  OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
   SceneNode,
@@ -117,8 +148,12 @@ export type {
   WallSceneNode,
 } from './scene/scene-graph'
 export {
+  OPENING_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
+  WALL_NODE_PREFIX,
   deriveFloorNode,
+  deriveOpeningNode,
+  deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
   deriveUnderlayNode,
@@ -172,6 +207,8 @@ export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
 export { pointInPolygon, polygonArea } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
+export type { OpeningGeometry } from './topology/openings'
+export { deriveOpeningGeometry, openingFootprint } from './topology/openings'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { Room } from './topology/rooms'

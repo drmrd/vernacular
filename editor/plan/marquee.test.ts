@@ -1,22 +1,46 @@
 import { describe, expect, it } from 'vitest'
 import { entitiesInRect } from './marquee'
 import type { Bounds } from './fit'
-import type { RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
+
+const WALL_THICKNESS_MM = 114
+const OPENING_WIDTH_MM = 800
 
 function wall(
   id: string,
   start: { x: number; y: number },
   end: { x: number; y: number },
 ): WallSceneNode {
-  return { id, kind: 'wall', floorId: 'g', start, end, thickness: 114 }
+  return { id, kind: 'wall', floorId: 'g', start, end, thickness: WALL_THICKNESS_MM }
 }
 
 function room(id: string, polygon: { x: number; y: number }[]): RoomSceneNode {
   return { id, kind: 'room', floorId: 'g', polygon, area: 0 }
 }
 
-function scene(walls: WallSceneNode[], rooms: RoomSceneNode[]): SceneGraph {
-  return { nodes: [], walls, rooms, underlays: [] }
+function opening(id: string, center: { x: number; y: number }): OpeningSceneNode {
+  return {
+    id,
+    kind: 'opening',
+    floorId: 'g',
+    type: 'single-swing-door',
+    center,
+    along: { x: 1, y: 0 },
+    normal: { x: 0, y: 1 },
+    width: OPENING_WIDTH_MM,
+    height: 2032,
+    sillHeight: 0,
+    hostThickness: WALL_THICKNESS_MM,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+}
+
+function scene(
+  walls: WallSceneNode[],
+  rooms: RoomSceneNode[],
+  openings: OpeningSceneNode[] = [],
+): SceneGraph {
+  return { nodes: [], walls, rooms, underlays: [], openings }
 }
 
 const rect: Bounds = { min: { x: 0, y: 0 }, max: { x: 1000, y: 1000 } }
@@ -51,5 +75,18 @@ describe('entitiesInRect', () => {
     const graph = scene([wall('wall:onEdge', { x: 0, y: 0 }, { x: 1000, y: 1000 })], [])
 
     expect(entitiesInRect(graph, rect)).toEqual(['wall:onEdge'])
+  })
+
+  it('includes an opening whose footprint lies fully inside and excludes a partial one', () => {
+    const graph = scene(
+      [],
+      [],
+      [
+        opening('opening:inside', { x: 500, y: 500 }),
+        opening('opening:straddling', { x: 800, y: 500 }),
+      ],
+    )
+
+    expect(entitiesInRect(graph, rect)).toEqual(['opening:inside'])
   })
 })

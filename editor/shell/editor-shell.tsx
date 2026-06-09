@@ -9,20 +9,29 @@ import {
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
+  OPENING_NODE_PREFIX,
   ROOM_ID_PREFIX,
+  WALL_NODE_PREFIX,
   type Command,
+  type Opening,
+  type Project,
   type RoomSceneNode,
   type SceneGraph,
   type UnitPreferences,
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
+import { OpeningInspector } from '../plan/opening-inspector'
+import { OpeningToolProvider } from '../plan/opening-tool-context'
+import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
 import { RoomNameEditor } from '../plan/room-name-editor'
 import { UnderlayPanel } from '../plan/underlay-panel'
 import { useUnderlay, UnderlayProvider } from '../plan/use-underlay'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
+import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
+import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import './editor-shell.css'
 
 const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
@@ -31,9 +40,6 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   saved: 'All changes saved',
   error: 'Save failed',
 }
-
-// The wall-node id carries the `wall:` namespace; the command takes the raw id.
-const WALL_NODE_PREFIX = 'wall:'
 
 // A project-level unit-preferences store is later work; this slice picks the
 // default preferences for the project's units (see the slice deferrals).
@@ -73,94 +79,36 @@ function singleSelectedRoomNode(
   return graph.rooms.find((room) => room.id === onlyId) ?? null
 }
 
-interface RecentProject {
-  id: string
-  name: string
+interface SelectedOpening {
+  floorId: string
+  opening: Opening
 }
 
-interface ProjectControlsProps {
-  recentProjects?: RecentProject[]
-  onNewProject?: () => void
-  onOpenRecent?: (id: string) => void
-  onSave?: () => void
-  onExportBundle?: () => void
-  onOpenFolder?: () => void
-}
-
-function ProjectControls({
-  recentProjects,
-  onNewProject,
-  onOpenRecent,
-  onSave,
-  onExportBundle,
-  onOpenFolder,
-}: ProjectControlsProps) {
-  const hasRecentProjects = recentProjects !== undefined && recentProjects.length > 0
-  return (
-    <nav className="editor-shell__project" aria-label="Project">
-      {onNewProject ? (
-        <button type="button" onClick={onNewProject}>
-          New
-        </button>
-      ) : null}
-      {onSave ? (
-        <button type="button" onClick={onSave}>
-          Save
-        </button>
-      ) : null}
-      {onExportBundle ? (
-        <button type="button" onClick={onExportBundle}>
-          Export bundle
-        </button>
-      ) : null}
-      {onOpenFolder ? (
-        <button type="button" onClick={onOpenFolder}>
-          Open folder
-        </button>
-      ) : null}
-      {hasRecentProjects && onOpenRecent ? (
-        <RecentProjectsList projects={recentProjects} onOpenRecent={onOpenRecent} />
-      ) : null}
-    </nav>
-  )
-}
-
-interface RecentProjectsListProps {
-  projects: RecentProject[]
-  onOpenRecent: (id: string) => void
-}
-
-function RecentProjectsList({ projects, onOpenRecent }: RecentProjectsListProps) {
-  return (
-    <ul className="editor-shell__recent">
-      {projects.map((project) => (
-        <li key={project.id}>
-          <button type="button" onClick={() => onOpenRecent(project.id)}>
-            {project.name}
-          </button>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-interface RecoveryPromptProps {
-  onRestore: () => void
-  onDiscard: () => void
-}
-
-function RecoveryPrompt({ onRestore, onDiscard }: RecoveryPromptProps) {
-  return (
-    <div className="editor-shell__recovery" role="alert">
-      <p>Unsaved changes were recovered.</p>
-      <button type="button" onClick={onRestore}>
-        Restore
-      </button>
-      <button type="button" onClick={onDiscard}>
-        Discard
-      </button>
-    </div>
-  )
+/**
+ * The single selected raw `Opening` and its floor, or null. The selection holds
+ * the namespaced scene-node id; this strips `OPENING_NODE_PREFIX` and finds the
+ * raw model opening on its floor so the inspector edits the persisted record.
+ * Mutually exclusive with a single selected wall or room (a node id names one).
+ */
+function singleSelectedOpening(
+  selectedIds: ReadonlySet<string>,
+  project: Readonly<Project>,
+): SelectedOpening | null {
+  if (selectedIds.size !== 1) {
+    return null
+  }
+  const [onlyId] = selectedIds
+  if (onlyId === undefined || !onlyId.startsWith(OPENING_NODE_PREFIX)) {
+    return null
+  }
+  const rawId = onlyId.slice(OPENING_NODE_PREFIX.length)
+  for (const floor of project.floors) {
+    const opening = floor.openings.find((candidate) => candidate.id === rawId)
+    if (opening !== undefined) {
+      return { floorId: floor.id, opening }
+    }
+  }
+  return null
 }
 
 interface WallInspectorProps {
@@ -211,8 +159,8 @@ interface SelectionInspectorProps {
   dispatch: (command: unknown) => void
 }
 
-// The selection-driven content: the wall or room editor for a single selection,
-// otherwise a brief selection summary.
+// The selection-driven content: the wall, room, or opening editor for a single
+// selection, otherwise a brief selection summary.
 function SelectionInspector({ session, graph, selectedIds, dispatch }: SelectionInspectorProps) {
   const wallNode = singleSelectedWallNode(selectedIds, graph)
   if (wallNode !== null) {
@@ -222,6 +170,21 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const roomNode = singleSelectedRoomNode(selectedIds, graph)
   if (roomNode !== null) {
     return <RoomInspector roomNode={roomNode} dispatch={dispatch} />
+  }
+  const project = session.getProject()
+  const selectedOpening = singleSelectedOpening(selectedIds, project)
+  if (selectedOpening !== null) {
+    return (
+      // Key on the opening id so the inspector remounts when the selected opening
+      // changes; its dimension fields seed from the opening at mount.
+      <OpeningInspector
+        key={selectedOpening.opening.id}
+        floorId={selectedOpening.floorId}
+        opening={selectedOpening.opening}
+        units={project.meta.units}
+        dispatch={session.dispatch}
+      />
+    )
   }
   return <p>{selectedIds.size > 0 ? 'Wall selected' : 'No selection'}</p>
 }
@@ -261,6 +224,18 @@ function Inspector() {
   )
 }
 
+// The tools nav: the tool buttons, plus the opening-type chooser surfaced only
+// while the place-opening tool is active so the user picks what to place.
+function ToolsNav() {
+  const { tool } = useActiveTool()
+  return (
+    <nav className="editor-shell__tools" aria-label="Tools">
+      <ToolsPanel />
+      {tool === 'place-opening' ? <OpeningTypeChooser /> : null}
+    </nav>
+  )
+}
+
 export interface EditorShellProps extends ProjectControlsProps {
   saveStatus: AutosaveStatus
   recovery?: { onRestore: () => void; onDiscard: () => void }
@@ -269,33 +244,34 @@ export interface EditorShellProps extends ProjectControlsProps {
 export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
   const graph = useSceneGraph()
   return (
-    // The underlay provider wraps both the plan view and the inspector so the
-    // shared underlay state (the decoded-bitmap cache and the armed calibration)
-    // reaches the canvas glue and the inspector panel from one source.
+    // The underlay and opening-tool providers wrap both the plan view and the
+    // inspector so the shared underlay state (the decoded-bitmap cache and the
+    // armed calibration) and the opening placement type reach the canvas glue and
+    // the inspector/tools panels from one source.
     <UnderlayProvider>
-      <div className="editor-shell">
-        <header className="editor-shell__toolbar" role="banner">
-          <h1>Vernacular</h1>
-          <p aria-live="polite">Walls: {graph.walls.length}</p>
-          <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
-          <ProjectControls {...projectControls} />
-        </header>
-        {recovery ? (
-          <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-        ) : null}
-        <nav className="editor-shell__tools" aria-label="Tools">
-          <ToolsPanel />
-        </nav>
-        <main className="editor-shell__viewport" aria-label="Viewport">
-          <PlanView />
-          <section className="editor-shell__preview" aria-label="3D preview">
-            <SceneCanvas />
-          </section>
-        </main>
-        <aside className="editor-shell__inspector" aria-label="Inspector">
-          <Inspector />
-        </aside>
-      </div>
+      <OpeningToolProvider>
+        <div className="editor-shell">
+          <header className="editor-shell__toolbar" role="banner">
+            <h1>Vernacular</h1>
+            <p aria-live="polite">Walls: {graph.walls.length}</p>
+            <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
+            <ProjectControls {...projectControls} />
+          </header>
+          {recovery ? (
+            <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+          ) : null}
+          <ToolsNav />
+          <main className="editor-shell__viewport" aria-label="Viewport">
+            <PlanView />
+            <section className="editor-shell__preview" aria-label="3D preview">
+              <SceneCanvas />
+            </section>
+          </main>
+          <aside className="editor-shell__inspector" aria-label="Inspector">
+            <Inspector />
+          </aside>
+        </div>
+      </OpeningToolProvider>
     </UnderlayProvider>
   )
 }

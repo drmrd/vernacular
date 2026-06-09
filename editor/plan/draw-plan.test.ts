@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- one describe block per drawPlan layer; the suite grows as the plan gains layers (openings here) */
 import { describe, it, expect } from 'vitest'
 import {
   drawEndpointHandles,
@@ -8,10 +9,11 @@ import {
   drawRulers,
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
+import type { DrawableOpening } from './draw-opening'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
 import { DEFAULT_METRIC_PREFERENCES } from '../../core'
-import type { RoomSceneNode, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, RoomSceneNode, WallSceneNode } from '../../core'
 
 /** A minimal valid `drawPlan` options object that tests override per case. */
 function planOptions(overrides: Partial<Parameters<typeof drawPlan>[1]> = {}) {
@@ -151,6 +153,40 @@ describe('drawPlan room labels', () => {
 
     expect(recorder.texts.map((entry) => entry.text)).toContain('Parlor')
     expect(recorder.ops.lastIndexOf('stroke')).toBeLessThan(recorder.ops.indexOf('fillText'))
+  })
+})
+
+describe('drawPlan openings', () => {
+  // A horizontal door-swing opening built the way draw-opening.test.ts builds
+  // its fixture: leaf along +x, the host wall's left-hand normal pointing +y, a
+  // residential width, and a typical interior-wall thickness. A single
+  // (non-double) swing adds exactly one swing arc, which is the signal that
+  // drawPlan rendered the opening on top of the wall it breaks into.
+  // prettier-ignore
+  const swingNode: OpeningSceneNode = {
+    id: 'opening:a', kind: 'opening', floorId: 'g', type: 'single-swing-door',
+    center: { x: 500, y: 0 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+    width: 800, height: 2032, sillHeight: 0, hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+  // prettier-ignore
+  const swingOpening: DrawableOpening = {
+    node: swingNode, symbol: 'door-swing', double: false, selected: false,
+  }
+  const countArcs = (ops: readonly string[]) => ops.filter((op) => op === 'arc').length
+
+  it('renders each provided opening after the walls, adding a swing arc the wall-only plan lacks', () => {
+    const without = recordingContext()
+    drawPlan(without.ctx, planOptions())
+    const withOpening = recordingContext()
+    drawPlan(withOpening.ctx, planOptions({ openings: [swingOpening] }))
+
+    // The single door-swing routine emits exactly one swing arc, so the call
+    // carrying an opening records strictly more arcs than the wall-only call.
+    expect(countArcs(without.ops)).toBe(0)
+    expect(countArcs(withOpening.ops)).toBeGreaterThan(countArcs(without.ops))
+    // That arc lands after a wall stroke: the host wall is painted, then broken.
+    expect(withOpening.ops.indexOf('arc')).toBeGreaterThan(withOpening.ops.indexOf('stroke'))
   })
 })
 

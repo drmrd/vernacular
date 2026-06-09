@@ -1,6 +1,8 @@
 import type { AssetReference } from '../model/asset-reference'
 import type {
   Floor,
+  Opening,
+  OpeningOrientation,
   Point,
   Project,
   RoomOverride,
@@ -8,12 +10,14 @@ import type {
   UnderlayPlacement,
   Wall,
 } from '../model/types'
+import { deriveOpeningGeometry } from '../topology/openings'
 import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
 
 // Kind-prefixed ids keep node ids globally unique within the scene graph.
 const FLOOR_NODE_PREFIX = 'floor:'
-const WALL_NODE_PREFIX = 'wall:'
+export const WALL_NODE_PREFIX = 'wall:'
 export const UNDERLAY_NODE_PREFIX = 'underlay:'
+export const OPENING_NODE_PREFIX = 'opening:'
 
 export interface SceneNode {
   id: string
@@ -52,11 +56,28 @@ export interface UnderlaySceneNode {
   visible: boolean
 }
 
+export interface OpeningSceneNode {
+  id: string
+  kind: 'opening'
+  floorId: string
+  /** ElementType id, category 'opening'. */
+  type: string
+  center: Point
+  along: Point
+  normal: Point
+  width: number
+  height: number
+  sillHeight: number
+  hostThickness: number
+  orientation: OpeningOrientation
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
   underlays: UnderlaySceneNode[]
+  openings: OpeningSceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -97,6 +118,35 @@ export function deriveUnderlayNodesForFloor(floor: Floor): UnderlaySceneNode[] {
   return floor.underlays.map((underlay) => deriveUnderlayNode(floor, underlay))
 }
 
+export function deriveOpeningNode(
+  floor: Floor,
+  opening: Opening,
+  hostWall: Wall,
+): OpeningSceneNode {
+  const geometry = deriveOpeningGeometry(opening, hostWall)
+  return {
+    id: `${OPENING_NODE_PREFIX}${opening.id}`,
+    kind: 'opening',
+    floorId: floor.id,
+    type: opening.type,
+    center: geometry.center,
+    along: geometry.along,
+    normal: geometry.normal,
+    width: geometry.width,
+    height: opening.height,
+    sillHeight: opening.sillHeight,
+    hostThickness: hostWall.thickness,
+    orientation: opening.orientation,
+  }
+}
+
+export function deriveOpeningNodesForFloor(floor: Floor): OpeningSceneNode[] {
+  return floor.openings.flatMap((opening) => {
+    const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
+    return hostWall ? [deriveOpeningNode(floor, opening, hostWall)] : []
+  })
+}
+
 export function deriveRoomNodesForFloor(
   floor: Floor,
   overrides?: Readonly<Record<string, RoomOverride>>,
@@ -125,5 +175,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     ),
     rooms: project.floors.flatMap((floor) => deriveRoomNodesForFloor(floor, project.roomOverrides)),
     underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
+    openings: project.floors.flatMap(deriveOpeningNodesForFloor),
   }
 }

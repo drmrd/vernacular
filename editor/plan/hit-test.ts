@@ -1,11 +1,13 @@
 import {
   pointInPolygon,
+  type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
   type SceneGraph,
   type WallSceneNode,
 } from '../../core'
 import { contentBounds, type Bounds } from './fit'
+import { openingCorners } from './opening-geometry'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
 /** A click within this many millimeters of a wall centerline selects it. */
@@ -28,6 +30,11 @@ export function wallBounds(wall: WallSceneNode): Bounds {
 /** Axis-aligned bounds spanning every vertex of a room polygon. */
 export function roomBounds(room: RoomSceneNode): Bounds {
   return spanOf(room.polygon)
+}
+
+/** Axis-aligned bounds spanning an opening's footprint corners. */
+export function openingBounds(opening: OpeningSceneNode): Bounds {
+  return spanOf(openingCorners(opening))
 }
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {
@@ -62,8 +69,28 @@ export function hitTestWalls(
   return bestId
 }
 
+export function hitTestOpenings(
+  openings: OpeningSceneNode[],
+  point: Point,
+  // Narrow containment against the footprint is exact: the footprint is an area,
+  // not a thin line, so no tolerance band is needed. `_tolerance` exists only to
+  // keep the signature parallel with `hitTestWalls` so `hitTest` can dispatch uniformly.
+  _tolerance: number,
+): string | null {
+  void _tolerance
+  let hitId: string | null = null
+  for (const opening of openings) {
+    // Iterate forward so a later (more recently added) opening wins on overlap.
+    if (pointInPolygon(point, openingCorners(opening))) {
+      hitId = opening.id
+    }
+  }
+  return hitId
+}
+
 function indexEntities(scene: SceneGraph): IndexedEntity[] {
   return [
+    ...scene.openings.map((opening) => ({ id: opening.id, bounds: openingBounds(opening) })),
     ...scene.walls.map((wall) => ({ id: wall.id, bounds: wallBounds(wall) })),
     ...scene.rooms.map((room) => ({ id: room.id, bounds: roomBounds(room) })),
   ]
@@ -81,6 +108,11 @@ function containingRoomId(rooms: RoomSceneNode[], point: Point): string | null {
  */
 export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
   const candidateIds = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
+  const candidateOpenings = scene.openings.filter((opening) => candidateIds.has(opening.id))
+  const openingHit = hitTestOpenings(candidateOpenings, point, tolerance)
+  if (openingHit !== null) {
+    return openingHit
+  }
   const candidateWalls = scene.walls.filter((wall) => candidateIds.has(wall.id))
   const wallHit = hitTestWalls(candidateWalls, point, tolerance)
   if (wallHit !== null) {

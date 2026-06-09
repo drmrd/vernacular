@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_OPENING_HEIGHT_MM,
+  DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createEmptyProject,
   createFloor,
+  createOpening,
   createUnderlay,
   createWall,
 } from './factories'
@@ -71,6 +74,82 @@ describe('createWall', () => {
 describe('createFloor walls', () => {
   it('initializes a floor with an empty walls array', () => {
     expect(createFloor('Ground').walls).toEqual([])
+  })
+})
+
+describe('createFloor openings', () => {
+  it('initializes a floor with an empty openings array', () => {
+    expect(createFloor('Ground', {}).openings).toEqual([])
+  })
+})
+
+describe('createOpening', () => {
+  it('mints a door opening with a fresh id, the registry defaults, and the default orientation', () => {
+    const opening = createOpening({
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      position: 1000,
+    })
+
+    expect(opening.id).toEqual(expect.any(String))
+    expect(opening.id.length).toBeGreaterThan(0)
+    expect(opening.type).toBe('single-swing-door')
+    expect(opening.hostWallId).toBe('w1')
+    expect(opening.position).toBe(1000)
+    expect(opening.width).toBe(813)
+    expect(opening.height).toBe(2032)
+    expect(opening.sillHeight).toBe(0)
+    expect(opening.orientation).toEqual({ hinge: 'start', facing: 'positive' })
+  })
+
+  it('resolves the registry default dimensions for a window type', () => {
+    const opening = createOpening({
+      type: 'double-hung-window',
+      hostWallId: 'w1',
+      position: 500,
+    })
+
+    expect(opening.width).toBe(900)
+    expect(opening.height).toBe(1200)
+    expect(opening.sillHeight).toBe(900)
+  })
+
+  it('honors explicit dimensions, orientation, and id', () => {
+    const opening = createOpening({
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      position: 0,
+      width: 1000,
+      height: 2100,
+      sillHeight: 50,
+      orientation: { hinge: 'end', facing: 'negative' },
+      id: 'fixed-id',
+    })
+
+    expect(opening.id).toBe('fixed-id')
+    expect(opening.width).toBe(1000)
+    expect(opening.height).toBe(2100)
+    expect(opening.sillHeight).toBe(50)
+    expect(opening.orientation).toEqual({ hinge: 'end', facing: 'negative' })
+  })
+
+  it('falls back to the module default constants for a type with no opening registry record', () => {
+    const opening = createOpening({
+      type: 'no-such-opening-type',
+      hostWallId: 'w1',
+      position: 0,
+    })
+
+    expect(opening.width).toBe(DEFAULT_OPENING_WIDTH_MM)
+    expect(opening.height).toBe(DEFAULT_OPENING_HEIGHT_MM)
+    expect(opening.sillHeight).toBe(0)
+  })
+
+  it('mints a unique id per opening when none is supplied', () => {
+    const first = createOpening({ type: 'single-swing-door', hostWallId: 'w1', position: 0 })
+    const second = createOpening({ type: 'single-swing-door', hostWallId: 'w1', position: 0 })
+
+    expect(first.id).not.toBe(second.id)
   })
 })
 

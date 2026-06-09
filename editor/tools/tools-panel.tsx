@@ -3,6 +3,7 @@ import { useActiveTool, type ToolId } from './active-tool-context'
 const TOOLS: ReadonlyArray<{ id: ToolId; label: string }> = [
   { id: 'draw-wall', label: 'Draw wall' },
   { id: 'select', label: 'Select' },
+  { id: 'place-opening', label: 'Opening' },
 ]
 
 export function ToolsPanel() {

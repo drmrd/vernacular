@@ -1,8 +1,21 @@
+import { builtinElementTypes } from '../registries/element-types'
+import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
-import type { EraId, Floor, Point, Project, Underlay, UnitSystem, Wall } from './types'
+import type {
+  EraId,
+  Floor,
+  Opening,
+  OpeningOrientation,
+  Point,
+  Project,
+  Underlay,
+  UnitSystem,
+  Wall,
+} from './types'
 
-// v2 introduces the optional top-level `roomOverrides` map.
-export const CURRENT_SCHEMA_VERSION = 2
+// v2 introduces the optional top-level `roomOverrides` map; v3 adds the
+// per-floor `openings` array.
+export const CURRENT_SCHEMA_VERSION = 3
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -62,6 +75,54 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
     defaultCeilingHeight: options.defaultCeilingHeight ?? DEFAULT_CEILING_HEIGHT_MM,
     walls: options.walls ?? [],
     underlays: [],
+    openings: [],
+  }
+}
+
+// A nominal interior door leaf: 32 in wide by 80 in tall (813 mm by 2032 mm),
+// rounded to whole millimeters.
+export const DEFAULT_OPENING_WIDTH_MM = 813
+export const DEFAULT_OPENING_HEIGHT_MM = 2032
+
+export interface NewOpeningOptions {
+  type: string
+  hostWallId: string
+  position: number
+  width?: number
+  height?: number
+  sillHeight?: number
+  orientation?: OpeningOrientation
+  id?: string
+}
+
+// Doors sit on the floor; the sill height only matters for windows and other
+// raised openings, so the fallback when an element type omits it is zero.
+const DEFAULT_OPENING_SILL_HEIGHT_MM = 0
+
+function openingDefaults(type: string): {
+  width: number
+  height: number
+  sillHeight: number
+} {
+  const params = getEntry(builtinElementTypes, type)?.opening
+  return {
+    width: params?.defaultWidth ?? DEFAULT_OPENING_WIDTH_MM,
+    height: params?.defaultHeight ?? DEFAULT_OPENING_HEIGHT_MM,
+    sillHeight: params?.defaultSillHeight ?? DEFAULT_OPENING_SILL_HEIGHT_MM,
+  }
+}
+
+export function createOpening(options: NewOpeningOptions): Opening {
+  const defaults = openingDefaults(options.type)
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    type: options.type,
+    hostWallId: options.hostWallId,
+    position: options.position,
+    width: options.width ?? defaults.width,
+    height: options.height ?? defaults.height,
+    sillHeight: options.sillHeight ?? defaults.sillHeight,
+    orientation: options.orientation ?? { hinge: 'start', facing: 'positive' },
   }
 }
 

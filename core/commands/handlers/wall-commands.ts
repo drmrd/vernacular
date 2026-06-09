@@ -1,13 +1,13 @@
 import { createWall } from '../../model/factories'
-import type { Floor, Point, Project, Wall } from '../../model/types'
+import type { Floor, Point, Project, Wall, WallEnd } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+
+export type { WallEnd } from '../../model/types'
 
 export const ADD_WALL = 'floor/add-wall'
 export const MOVE_WALL_ENDPOINT = 'floor/move-wall-endpoint'
 export const SET_WALL_THICKNESS = 'floor/set-wall-thickness'
-
-export type WallEnd = 'start' | 'end'
 
 export interface AddWallParams {
   floorId: string
