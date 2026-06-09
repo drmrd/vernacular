@@ -7,7 +7,14 @@ import {
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
-import { useEditorSession, useSceneGraph, useSelection, useSelectionIds } from '../../bridge'
+import {
+  createClipboardStore,
+  useEditorSession,
+  useSceneGraph,
+  useSelection,
+  useSelectionIds,
+  type ClipboardStore,
+} from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
@@ -22,6 +29,8 @@ import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
 import { usePlanInteraction, type PlanInteraction } from './use-plan-interaction'
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
+import { useSelectionKeyboard } from './use-selection-keyboard'
+import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
   useFitToContent,
@@ -53,6 +62,7 @@ interface PointerSources {
   controls: ViewportControls
   wallEditing: WallEditing
   openingEditing: OpeningEditing
+  selectionMove: SelectionMove
   interaction: PlanInteraction
   dimensionTool: DimensionTool
   calibration: PlanUnderlayLayer['calibration']
@@ -61,21 +71,22 @@ interface PointerSources {
 }
 
 /**
- * A pan gesture takes top priority. Next, an endpoint-drag grab or an opening
- * footprint grab (both only possible under the select tool, when the pointer is
- * over a handle or footprint) consumes the pointer so it does not also start a
- * marquee or click selection. The calibration interaction runs next but is inert
- * unless the calibrate tool is active. Otherwise the wall tool, the place-opening
- * tool, and the select-tool selection all see the pointer, each inert under the
- * others' tool.
+ * A pan gesture takes top priority. Next, an endpoint-drag grab, an opening
+ * footprint grab, or a press on the already-selected entities (all only possible
+ * under the select tool) consumes the pointer so it does not also start a marquee
+ * or click selection; the selection move-drag sits just beneath the endpoint and
+ * opening drags and above the marquee. The calibration interaction runs next but
+ * is inert unless the calibrate tool is active. Otherwise the wall tool, the
+ * place-opening tool, and the select-tool selection all see the pointer, each
+ * inert under the others' tool.
  */
 function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
-  const { controls, wallEditing, openingEditing, interaction, dimensionTool } = sources
-  const { calibration, selection, openingPlacement } = sources
+  const { controls, wallEditing, openingEditing, selectionMove, interaction } = sources
+  const { dimensionTool, calibration, selection, openingPlacement } = sources
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
       if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
-      if (openingEditing.onPointerDown(event)) return
+      if (openingEditing.onPointerDown(event) || selectionMove.onPointerDown(event)) return
       calibration.onPointerDown(event)
       interaction.onPointerDown(event)
       dimensionTool.onPointerDown(event)
@@ -84,7 +95,7 @@ function composePointerHandlers(sources: PointerSources): ComposedPointerHandler
     },
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
-      if (openingEditing.onPointerMove(event)) return
+      if (openingEditing.onPointerMove(event) || selectionMove.onPointerMove(event)) return
       calibration.onPointerMove(event)
       interaction.onPointerMove(event)
       dimensionTool.onPointerMove(event)
@@ -94,6 +105,7 @@ function composePointerHandlers(sources: PointerSources): ComposedPointerHandler
       controls.onPanPointerUp(event)
       wallEditing.onPointerUp(event)
       openingEditing.onPointerUp(event)
+      if (selectionMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },
     // Clear the wall-tool, dimension-tool, and calibration cursors on leave.
@@ -125,6 +137,8 @@ interface PlanScene {
   dimensions: readonly DrawableDimension[]
   // The live calibration measurement segment, or undefined when not measuring.
   calibration: PreviewSegment | undefined
+  // The translated ghost of the selection during a move-drag, empty otherwise.
+  ghost: readonly PreviewSegment[]
 }
 
 /**
@@ -151,6 +165,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
     ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
     ...(scene.calibration ? { calibration: scene.calibration } : {}),
+    ...(scene.ghost.length > 0 ? { ghost: scene.ghost } : {}),
   }
 }
 
@@ -183,6 +198,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.openings,
     scene.dimensions,
     scene.calibration,
+    scene.ghost,
   ])
 }
 
@@ -211,6 +227,7 @@ interface PlanLayers {
   dimensionTool: DimensionTool
   dimensions: readonly DrawableDimension[]
   planSelection: PlanSelection
+  selectionMove: SelectionMove
   wallEditing: WallEditing
   controls: ViewportControls
   underlayLayer: PlanUnderlayLayer
@@ -242,6 +259,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
     openings: openingLayer.drawables,
     dimensions: inputs.dimensions,
     calibration: underlayLayer.calibration.calibration,
+    ghost: inputs.selectionMove.ghost,
   }
 }
 
@@ -269,6 +287,12 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
   const dimensionTool = useDimensionTool({ session, tool, viewport })
   const dimensions = toDrawableDimensions(graph.dimensions, selectedIds)
   const planSelection = usePlanSelection({ graph, selection, tool, viewport })
+  // The in-app clipboard backs copy/cut/paste; created once and held for the
+  // session, mirroring the bridge-owned selection store (it stays outside undo).
+  const clipboardRef = useRef<ClipboardStore | null>(null)
+  clipboardRef.current ??= createClipboardStore()
+  const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
+  useSelectionKeyboard({ session, selection, clipboard: clipboardRef.current, selectedIds, tool })
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
@@ -286,6 +310,7 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
     dimensionTool,
     dimensions,
     planSelection,
+    selectionMove,
     wallEditing,
     controls,
     underlayLayer,
@@ -302,13 +327,14 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
   const layers = usePlanLayers(canvasRef)
   usePlanRedraw(canvasRef, buildScene(layers))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
-  const { underlayLayer, openingLayer } = layers
+  const { underlayLayer, openingLayer, selectionMove } = layers
   return {
     cursor: planCursor(layers.tool, controls.panning),
     pointerHandlers: composePointerHandlers({
       controls,
       wallEditing,
       openingEditing: openingLayer.editing,
+      selectionMove,
       interaction,
       dimensionTool,
       calibration: underlayLayer.calibration,

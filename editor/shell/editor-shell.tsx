@@ -12,6 +12,7 @@ import {
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   ROOM_ID_PREFIX,
+  selectionCenter,
   WALL_NODE_PREFIX,
   type Command,
   type DimensionSceneNode,
@@ -29,6 +30,8 @@ import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
 import { RoomNameEditor } from '../plan/room-name-editor'
+import { selectedEntityIds } from '../plan/selection-entities'
+import { SelectionTransformPanel } from '../plan/selection-transform-panel'
 import { singleSelectedDimension } from '../plan/selected-dimension'
 import { UnderlayPanel } from '../plan/underlay-panel'
 import { useUnderlay, UnderlayProvider } from '../plan/use-underlay'
@@ -223,6 +226,30 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   return <p>{selectedIds.size > 0 ? 'Wall selected' : 'No selection'}</p>
 }
 
+interface TransformPanelProps {
+  session: EditorSession
+  selectedIds: ReadonlySet<string>
+}
+
+// The rotate controls for any non-empty selection of transformable entities
+// (walls, openings, dimensions), about the selection center. Rooms are derived,
+// so a room-only selection yields no entity ids and renders nothing.
+function TransformPanel({ session, selectedIds }: TransformPanelProps) {
+  const floor = session.getProject().floors[0]
+  const entityIds = selectedEntityIds(selectedIds)
+  if (floor === undefined || entityIds.length === 0) {
+    return null
+  }
+  return (
+    <SelectionTransformPanel
+      floorId={floor.id}
+      entityIds={entityIds}
+      center={selectionCenter(floor, entityIds)}
+      dispatch={session.dispatch}
+    />
+  )
+}
+
 function Inspector() {
   const session = useEditorSession()
   const graph = useSceneGraph()
@@ -245,6 +272,7 @@ function Inspector() {
         selectedIds={selectedIds}
         dispatch={dispatch}
       />
+      <TransformPanel session={session} selectedIds={selectedIds} />
       {floor ? (
         <UnderlayPanel
           floorId={floor.id}

@@ -65,6 +65,8 @@ export default defineConfig({
         'editor/plan/use-opening-layer.ts',
         'editor/plan/use-plan-interaction.ts',
         'editor/plan/use-dimension-tool.ts',
+        'editor/plan/use-selection-move.ts',
+        'editor/plan/use-selection-keyboard.ts',
         'storage/indexeddb/indexeddb-project-store.ts',
         'storage/download/download-blob.ts',
         'app/resolve-project-store.ts',
