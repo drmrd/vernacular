@@ -1,0 +1,18 @@
+/*
+ * Keyboard-and-screen-reader proxies for the selectable scene-graph entities.
+ * Each proxy is a transparent, focusable target positioned over its anchor on
+ * the Canvas. The proxies carry no visible chrome of their own; only the focus
+ * ring shows, and it is intentionally distinct from the Canvas selection ring.
+ */
+
+.plan-overlay__proxy {
+  min-width: 8px;
+  min-height: 8px;
+  background: transparent;
+  border: 0;
+}
+
+.plan-overlay__proxy:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
