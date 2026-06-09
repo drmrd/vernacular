@@ -2,13 +2,7 @@ import { rotatePoint, translatePoint } from '../../geometry/point'
 import type { Floor, Point, Project } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
-
-// Applies `update` to the floor whose id matches `floorId`, leaving all other floors
-// reference-equal. Reassigns state.floors so the inverse-capture proxy (ADR-0005) records
-// the slice replacement and the dispatcher can capture the inverse for undo.
-function mapTargetFloor(state: Project, floorId: string, update: (floor: Floor) => Floor): void {
-  state.floors = state.floors.map((floor) => (floor.id === floorId ? update(floor) : floor))
-}
+import { mapTargetFloor } from './map-target-floor'
 
 // Moves the start/end of every wall and dimension whose id is in `idSet` through `move`,
 // leaving openings and every unselected entity reference-equal so dirty tracking stays
@@ -93,7 +87,6 @@ const rotateEntitiesHandler: CommandHandler<Project, RotateEntitiesParams> = {
   },
 }
 
-// Collects the start and end of every selected wall and dimension into `endpoints`.
 function collectSelectedEndpoints(floor: Floor, idSet: ReadonlySet<string>): Point[] {
   const endpoints: Point[] = []
   for (const wall of floor.walls) {
@@ -105,6 +98,10 @@ function collectSelectedEndpoints(floor: Floor, idSet: ReadonlySet<string>): Poi
   return endpoints
 }
 
+function midpoint(min: number, max: number): number {
+  return (min + max) / 2
+}
+
 /**
  * Midpoint of the axis-aligned bounding box of every selected wall and dimension
  * endpoint. Returns the origin when the selection has no measurable geometry.
@@ -114,10 +111,9 @@ export function selectionCenter(floor: Floor, entityIds: Iterable<string>): Poin
   if (endpoints.length === 0) return { x: 0, y: 0 }
   const xs = endpoints.map((point) => point.x)
   const ys = endpoints.map((point) => point.y)
-  const half = 2
   return {
-    x: (Math.min(...xs) + Math.max(...xs)) / half,
-    y: (Math.min(...ys) + Math.max(...ys)) / half,
+    x: midpoint(Math.min(...xs), Math.max(...xs)),
+    y: midpoint(Math.min(...ys), Math.max(...ys)),
   }
 }
 
