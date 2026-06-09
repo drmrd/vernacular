@@ -2,6 +2,7 @@ import { builtinElementTypes } from '../registries/element-types'
 import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
 import type {
+  Dimension,
   EraId,
   Floor,
   Opening,
@@ -76,6 +77,7 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
     walls: options.walls ?? [],
     underlays: [],
     openings: [],
+    dimensions: [],
   }
 }
 
@@ -151,5 +153,21 @@ export function createUnderlay(options: NewUnderlayOptions): Underlay {
     },
     opacity: 1,
     visible: true,
+  }
+}
+
+export interface NewDimensionOptions {
+  start: Point
+  end: Point
+  offset?: number
+  id?: string
+}
+
+export function createDimension(options: NewDimensionOptions): Dimension {
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    start: options.start,
+    end: options.end,
+    offset: options.offset ?? 0,
   }
 }

@@ -88,6 +88,19 @@ export interface Underlay {
   visible: boolean
 }
 
+export interface Dimension {
+  id: string
+  /** First measured point, in world millimeters. */
+  start: Point
+  /** Second measured point, in world millimeters. */
+  end: Point
+  /**
+   * Perpendicular offset of the dimension line from the measured segment, in
+   * millimeters. 0 places the dimension line on the segment.
+   */
+  offset: number
+}
+
 export interface Floor {
   id: string
   name: string
@@ -98,6 +111,7 @@ export interface Floor {
   walls: Wall[]
   underlays: Underlay[]
   openings: Opening[]
+  dimensions: Dimension[]
 }
 
 /**
