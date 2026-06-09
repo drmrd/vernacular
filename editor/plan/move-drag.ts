@@ -18,7 +18,7 @@ export interface MoveDragResult {
   command?: Command<TranslateEntitiesParams>
 }
 
-function delta(origin: Point, pointer: Point): Point {
+function dragDelta(origin: Point, pointer: Point): Point {
   return { x: pointer.x - origin.x, y: pointer.y - origin.y }
 }
 
@@ -28,10 +28,10 @@ export function beginMoveDrag(origin: Point, segments: readonly PreviewSegment[]
 
 export function moveDragGhost(state: MoveDragState, pointer: Point): readonly PreviewSegment[] {
   if (state.phase !== 'dragging') return []
-  const d = delta(state.origin, pointer)
+  const delta = dragDelta(state.origin, pointer)
   return state.segments.map((segment) => ({
-    start: translatePoint(segment.start, d),
-    end: translatePoint(segment.end, d),
+    start: translatePoint(segment.start, delta),
+    end: translatePoint(segment.end, delta),
   }))
 }
 
@@ -40,10 +40,10 @@ export function endMoveDrag(
   state: MoveDragState,
   pointer: Point,
   floorId: string,
-  entityIds: string[],
+  entityIds: readonly string[],
 ): MoveDragResult {
   if (state.phase !== 'dragging') return { state: IDLE_MOVE_DRAG }
-  const d = delta(state.origin, pointer)
-  if (d.x === 0 && d.y === 0) return { state: IDLE_MOVE_DRAG }
-  return { state: IDLE_MOVE_DRAG, command: translateEntities(floorId, entityIds, d) }
+  const delta = dragDelta(state.origin, pointer)
+  if (delta.x === 0 && delta.y === 0) return { state: IDLE_MOVE_DRAG }
+  return { state: IDLE_MOVE_DRAG, command: translateEntities(floorId, [...entityIds], delta) }
 }
