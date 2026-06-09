@@ -85,4 +85,14 @@ describe('SelectionTransformPanel', () => {
     expect(command.params.pivot).toEqual(CENTER)
     expect(command.params.radians).toBeCloseTo((30 * Math.PI) / 180, ANGLE_PRECISION_DIGITS)
   })
+
+  it('dispatches nothing when the empty angle entry is applied', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderPanel(dispatch)
+
+    await user.click(screen.getByRole('button', { name: /apply|rotate by|^rotate$/i }))
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
 })
