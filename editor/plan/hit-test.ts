@@ -129,28 +129,25 @@ function containingRoomId(rooms: RoomSceneNode[], point: Point): string | null {
   return hit ? hit.id : null
 }
 
+function withId<Entity extends { id: string }>(
+  entities: readonly Entity[],
+  ids: ReadonlySet<string>,
+): Entity[] {
+  return entities.filter((entity) => ids.has(entity.id))
+}
+
 /**
  * Broad phase then narrow phase: the spatial index supplies candidate ids near
- * the point; the nearest in-range wall centerline wins, and only when no wall is
- * in range does the search fall back to the room whose polygon contains the point.
+ * the point. Openings, then walls, then dimensions are tried in priority order,
+ * and only when none is in range does the search fall back to the room whose
+ * polygon contains the point.
  */
 export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
-  const candidateIds = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
-  const candidateOpenings = scene.openings.filter((opening) => candidateIds.has(opening.id))
-  const openingHit = hitTestOpenings(candidateOpenings, point, tolerance)
-  if (openingHit !== null) {
-    return openingHit
-  }
-  const candidateWalls = scene.walls.filter((wall) => candidateIds.has(wall.id))
-  const wallHit = hitTestWalls(candidateWalls, point, tolerance)
-  if (wallHit !== null) {
-    return wallHit
-  }
-  const candidateDimensions = scene.dimensions.filter((dimension) => candidateIds.has(dimension.id))
-  const dimensionHit = hitTestDimensions(candidateDimensions, point, tolerance)
-  if (dimensionHit !== null) {
-    return dimensionHit
-  }
-  const candidateRooms = scene.rooms.filter((room) => candidateIds.has(room.id))
-  return containingRoomId(candidateRooms, point)
+  const ids = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
+  return (
+    hitTestOpenings(withId(scene.openings, ids), point, tolerance) ??
+    hitTestWalls(withId(scene.walls, ids), point, tolerance) ??
+    hitTestDimensions(withId(scene.dimensions, ids), point, tolerance) ??
+    containingRoomId(withId(scene.rooms, ids), point)
+  )
 }
