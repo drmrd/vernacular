@@ -1,5 +1,6 @@
+import type { InstantiatedEntities } from '../../clipboard/clipboard'
 import { rotatePoint, translatePoint } from '../../geometry/point'
-import type { Floor, Point, Project } from '../../model/types'
+import type { Dimension, Floor, Opening, Point, Project, Wall } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 import { mapTargetFloor } from './map-target-floor'
@@ -44,6 +45,7 @@ function deleteFloorEntities(floor: Floor, idSet: ReadonlySet<string>): Floor {
 export const TRANSLATE_ENTITIES = 'floor/translate-entities'
 export const ROTATE_ENTITIES = 'floor/rotate-entities'
 export const DELETE_ENTITIES = 'floor/delete-entities'
+export const PASTE_ENTITIES = 'floor/paste-entities'
 
 export interface TranslateEntitiesParams {
   floorId: string
@@ -61,6 +63,13 @@ export interface RotateEntitiesParams {
 export interface DeleteEntitiesParams {
   floorId: string
   entityIds: string[]
+}
+
+export interface PasteEntitiesParams {
+  floorId: string
+  walls: Wall[]
+  openings: Opening[]
+  dimensions: Dimension[]
 }
 
 export function translateEntities(
@@ -127,6 +136,35 @@ const deleteEntitiesHandler: CommandHandler<Project, DeleteEntitiesParams> = {
   },
 }
 
+export function pasteEntities(
+  floorId: string,
+  entities: InstantiatedEntities,
+): Command<PasteEntitiesParams> {
+  // Capture the already-instantiated entities in params so redo reuses the same ids
+  // rather than minting fresh ones, mirroring addWall.
+  return {
+    type: PASTE_ENTITIES,
+    params: {
+      floorId,
+      walls: entities.walls,
+      openings: entities.openings,
+      dimensions: entities.dimensions,
+    },
+    description: 'Paste',
+  }
+}
+
+const pasteEntitiesHandler: CommandHandler<Project, PasteEntitiesParams> = {
+  apply(state, params) {
+    mapTargetFloor(state, params.floorId, (floor) => ({
+      ...floor,
+      walls: [...floor.walls, ...params.walls],
+      openings: [...floor.openings, ...params.openings],
+      dimensions: [...floor.dimensions, ...params.dimensions],
+    }))
+  },
+}
+
 function collectSelectedEndpoints(floor: Floor, idSet: ReadonlySet<string>): Point[] {
   const endpoints: Point[] = []
   for (const wall of floor.walls) {
@@ -164,4 +202,5 @@ export function registerTransformCommands(
     .register(TRANSLATE_ENTITIES, translateEntitiesHandler)
     .register(ROTATE_ENTITIES, rotateEntitiesHandler)
     .register(DELETE_ENTITIES, deleteEntitiesHandler)
+    .register(PASTE_ENTITIES, pasteEntitiesHandler)
 }
