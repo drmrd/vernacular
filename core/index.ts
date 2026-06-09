@@ -248,9 +248,10 @@ export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
-export type { ClipboardSnapshot } from './clipboard/clipboard'
+export type { ClipboardSnapshot, InstantiatedEntities } from './clipboard/clipboard'
 export {
   buildClipboardSnapshot,
   deserializeClipboard,
+  instantiateClipboard,
   serializeClipboard,
 } from './clipboard/clipboard'
