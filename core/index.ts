@@ -141,6 +141,24 @@ export {
   removeDimension,
 } from './commands/handlers/dimension-commands'
 export type {
+  DeleteEntitiesParams,
+  PasteEntitiesParams,
+  RotateEntitiesParams,
+  TranslateEntitiesParams,
+} from './commands/handlers/transform-commands'
+export {
+  DELETE_ENTITIES,
+  PASTE_ENTITIES,
+  ROTATE_ENTITIES,
+  TRANSLATE_ENTITIES,
+  deleteEntities,
+  pasteEntities,
+  registerTransformCommands,
+  rotateEntities,
+  selectionCenter,
+  translateEntities,
+} from './commands/handlers/transform-commands'
+export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
 } from './commands/handlers/room-commands'
@@ -220,7 +238,7 @@ export {
   UnsupportedSchemaVersionError,
   migrateProject,
 } from './migrations'
-export { distance } from './geometry/point'
+export { distance, rotatePoint, translatePoint } from './geometry/point'
 export type { PixelSegment } from './geometry/calibration'
 export { applyCalibration, calibrationScale } from './geometry/calibration'
 export type { DimensionGeometry } from './geometry/dimension'
@@ -233,3 +251,10 @@ export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
+export type { ClipboardSnapshot, InstantiatedEntities } from './clipboard/clipboard'
+export {
+  buildClipboardSnapshot,
+  deserializeClipboard,
+  instantiateClipboard,
+  serializeClipboard,
+} from './clipboard/clipboard'

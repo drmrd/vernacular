@@ -141,6 +141,51 @@ describe('drawPlan', () => {
   })
 })
 
+describe('drawPlan ghost', () => {
+  // The wall stroke uses this color while unselected, so a ghost segment painted
+  // in a distinct preview style is identifiable apart from the wall (mirroring how
+  // the preview/calibration tests distinguish overlay strokes from wall strokes).
+  const WALL_COLOR = '#222222'
+  const viewport = { scale: DEFAULT_PLAN_SCALE }
+
+  it('strokes each ghost segment between its projected screen endpoints after the walls', () => {
+    const recorder = recordingContext()
+    const ghost = [{ start: { x: 1000, y: 2000 }, end: { x: 5000, y: 2000 } }]
+
+    drawPlan(recorder.ctx, planOptions({ ghost }))
+
+    const wallIndex = recorder.segments.findIndex((segment) => segment.style === WALL_COLOR)
+    const ghostSegment = recorder.segments[recorder.segments.length - 1]
+    const start = worldToScreen(ghost[0]!.start, viewport)
+    const end = worldToScreen(ghost[0]!.end, viewport)
+
+    expect(ghostSegment?.from).toEqual([start.x, start.y])
+    expect(ghostSegment?.to).toEqual([end.x, end.y])
+    // The ghost is an overlay painted in its own style, distinct from the wall.
+    expect(ghostSegment?.style).not.toBe(WALL_COLOR)
+    // It lands after the wall: the plan is painted, then the ghost floats over it.
+    expect(recorder.segments.lastIndexOf(ghostSegment!)).toBeGreaterThan(wallIndex)
+  })
+
+  it('strokes one segment per ghost entry and records none when ghost is absent', () => {
+    const ghost = [
+      { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } },
+      { start: { x: 1000, y: 0 }, end: { x: 1000, y: 2000 } },
+    ]
+
+    const without = recordingContext()
+    drawPlan(without.ctx, planOptions())
+
+    const withGhost = recordingContext()
+    drawPlan(withGhost.ctx, planOptions({ ghost }))
+
+    // The wall-only plan strokes just its single wall; a two-segment ghost adds
+    // exactly two more stroked segments on top of it.
+    expect(without.segments).toHaveLength(1)
+    expect(withGhost.segments).toHaveLength(without.segments.length + ghost.length)
+  })
+})
+
 describe('drawPlan room labels', () => {
   it("paints each room's label over the walls when roomLabels is set", () => {
     const recorder = recordingContext()

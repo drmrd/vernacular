@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), which is delivered as roughly twelve independent slices; slices 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration) are done. Clipboard and transforms (10) remains before the editor is a usable floor planner.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as roughly twelve independent slices, all of which are now done: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). The two-dimensional plan editor is feature-complete for Phase 1; attention now turns to the three-dimensional preview (Phase 2).
 
 ## Foundation work
 
@@ -29,15 +29,15 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 ## MVP path
 
-| Focus                                                   | Status      |
-| ------------------------------------------------------- | ----------- |
-| Project stores, persistence, and migrations             | done        |
-| Two-dimensional plan editor                             | in progress |
-| Three-dimensional preview with color-temperature slider | pending     |
-| Furniture import and curated starter library (alpha)    | pending     |
-| Old-house architectural vocabulary                      | pending     |
-| Multi-floor and stairs (beta)                           | pending     |
-| Paint, export, site metadata (1.0)                      | pending     |
+| Focus                                                   | Status  |
+| ------------------------------------------------------- | ------- |
+| Project stores, persistence, and migrations             | done    |
+| Two-dimensional plan editor                             | done    |
+| Three-dimensional preview with color-temperature slider | pending |
+| Furniture import and curated starter library (alpha)    | pending |
+| Old-house architectural vocabulary                      | pending |
+| Multi-floor and stairs (beta)                           | pending |
+| Paint, export, site metadata (1.0)                      | pending |
 
 > **Project stores, persistence, and migrations (slice 11 done):** the durable
 > folder, OPFS, and `.house.zip` stores, the schema-and-registry migration
@@ -66,20 +66,20 @@ model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
 
 The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as roughly twelve independent slices, each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence.
 
-| Slice                                                                               | Status  |
-| ----------------------------------------------------------------------------------- | ------- |
-| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
-| 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done    |
-| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done    |
-| 7. Openings (doors and windows: placement and editing)                              | done    |
-| 8. Room naming and labeling, custom-polygon override                                | done    |
-| 9. Dimensions (live and persisted) and thickness-aware area                         | done    |
-| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | pending |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done    |
-| 12. Image underlay with calibration                                                 | done    |
+| Slice                                                                               | Status |
+| ----------------------------------------------------------------------------------- | ------ |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done   |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | done   |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | done   |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done   |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done   |
+| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done   |
+| 7. Openings (doors and windows: placement and editing)                              | done   |
+| 8. Room naming and labeling, custom-polygon override                                | done   |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | done   |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done   |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done   |
+| 12. Image underlay with calibration                                                 | done   |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
 
@@ -153,6 +153,16 @@ The wall-drawing end-to-end flow is unaffected: opening placement and editing ar
 - **Best-effort clear-area geometry.** `insetPolygon` is correct for simple convex and mildly non-convex rooms; over-inset self-intersection (a wall wider than the room), holes, and very acute corners are best-effort, mirroring slice 1's best-effort topology.
 
 The wall-drawing end-to-end flow is unaffected: the dimension tool and inspector are gated on the `dimension` and `select` tools, and a project with no dimensions paints exactly as before. This slice is stacked on slice 7 (its base schema is version 3), so it lands after slice 7 in the merge order.
+
+**Slice 10 (done) scope and deferrals.** Slice 10 turns selection into editing: the user moves, rotates, deletes, copies, cuts, and pastes the selected plan entities (walls and free-floating dimensions; openings ride their host wall parametrically, and derived rooms re-derive), all undoable. Pure `translatePoint`/`rotatePoint` feed three transform commands (`translateEntities`, `rotateEntities`, `deleteEntities`, the last cascading a deleted wall's openings) plus a `pasteEntities` command, all reassigning `state.floors` so the dispatcher captures the inverse. A pure, serializable clipboard core (`buildClipboardSnapshot`, `serializeClipboard`/`deserializeClipboard` with a tagged, version-checked, shape-validated payload, and `instantiateClipboard` minting fresh ids and remapping each opening onto its pasted host wall) backs two clipboard layers: an in-app store and an operating-system-clipboard adapter sharing the serializer. In the editor a move-drag previews a translated ghost and commits a translate on release (routed beneath the endpoint and opening drags, above the marquee), the arrow keys nudge, Delete and Backspace delete, the platform copy/cut/paste shortcuts drive the clipboard (ignored while a form control is focused), and a selection transform panel rotates the selection ninety degrees each way or by a typed angle about its center. All decision logic lives in pure, unit-tested modules (including the selection-to-entity-id mapping and the ghost segments); the move-drag and keyboard hooks, the panel placement, and the plan-view composition are coverage-excluded glue. With this slice the two-dimensional plan editor is feature-complete for Phase 1. Deliberately deferred, by design (see ADR-0040 and the slice spec `docs/specs/2026-06-08-clipboard-and-transforms.md`):
+
+- **Free-angle rotate by a draggable handle, with modifier-key angle snapping.** The committed near-term follow-up: a rotate gizmo on the selection bounds emitting a continuous angle with a held modifier snapping to common angles (fifteen, forty-five, ninety degrees). The `rotateEntities` command already accepts an arbitrary angle and an explicit pivot, so only the editor gizmo and its hit-test remain.
+- **Paste at the pointer.** Paste lands the copy at a small fixed offset so it is visible and distinct; honoring the cursor position is later polish.
+- **Snap-while-moving and explicit junction-merge.** Room derivation is geometric, so a moved or pasted wall whose endpoint lands on another's forms a junction for free; reusing the slice-4 snap model during a drag, and an explicit merge pass if that proves insufficient, are later polish.
+- **Transforming underlays or rooms directly.** Underlays keep their own placement and calibration tooling and are not in the hit-test selection; rooms are derived and transform only through their bounding walls.
+- **Cross-floor paste.** Every command targets the active (single) floor, matching the rest of Phase 1.
+
+The wall-drawing end-to-end flow is unaffected: the move-drag, nudging, delete, clipboard shortcuts, and rotate panel are gated on the `select` tool, and a project the user never transforms behaves exactly as before. This slice is stacked on slice 9.
 
 **Slice 11 (done) scope and deferrals.** Slice 11 makes the durable project stores drive the running app. A pure store-selection rule (`selectProjectStoreBackend`) picks the backend from probed capabilities (OPFS when available, IndexedDB otherwise, honoring a remembered per-project preference); an async boot step (`resolveProjectStore`) probes once and constructs the chosen durable store, which the app now boots against with the loading and error states preserved. The `.house.zip` export button downloads a bundle named by a pure filename rule (`bundleFilename`) through a thin blob-download helper, and a Chromium-family Open folder control opens a picked project through the existing `FileSystemFolderProjectStore`. Opening or saving records a recent entry built by a pure upsert rule (`recentEntryFor`), and the recent list renders most-recent-first and duplicate-free via a pure ordering rule (`orderRecentProjects`); `onOpenRecent` routes through the recorded backend. The store-selection, recent-ordering, recent-entry, and filename rules are pure, unit-tested modules; the async-boot, download, picker, and recording wiring is coverage-excluded glue validated by the app and end-to-end specs (the Export bundle download is covered end to end on Chromium and Firefox). Deliberately deferred, by design:
 
