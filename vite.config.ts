@@ -50,6 +50,8 @@ export default defineConfig({
         'bridge/react/use-scene-graph.ts',
         'bridge/react/use-autosave.ts',
         'editor/plan/plan-view.tsx',
+        'editor/plan/plan-overlay.tsx',
+        'editor/plan/use-overlay-keyboard.ts',
         'editor/plan/use-viewport-controls.ts',
         'editor/plan/use-wall-editing.ts',
         'editor/plan/use-underlay.ts',
