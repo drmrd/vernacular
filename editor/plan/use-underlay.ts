@@ -13,11 +13,8 @@ import {
   applyCalibration,
   calibrateUnderlay,
   calibrationScale,
-  createUnderlay,
   parseLength,
-  placeUnderlay,
   UNDERLAY_NODE_PREFIX,
-  type AssetReference,
   type AssumedUnit,
   type Point,
   type SceneGraph,
@@ -25,10 +22,12 @@ import {
   type UnderlaySceneNode,
   type UnitSystem,
 } from '../../core'
-import { useEditorSession, type EditorSession } from '../../bridge'
+import { useAssetCache, useEditorSession, useSceneGraph, type EditorSession } from '../../bridge'
 import { useActiveTool, type ActiveToolValue, type ToolId } from '../tools/active-tool-context'
 import type { PreviewSegment } from './draw-plan'
 import type { DrawableUnderlay } from './draw-underlay'
+import { useLoadImage } from './use-load-underlay-image'
+import { useResolveUnderlaysOnOpen } from './use-resolve-underlays'
 import {
   advanceCalibrationTool,
   calibrationPreviewSegment,
@@ -39,9 +38,10 @@ import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
 // The decoded-bitmap cache and the calibration arming live only in memory for
-// the editing session. Persisting decoded bitmaps (or re-decoding the
-// content-addressed bytes on load) is a documented follow-up; this slice keeps
-// the loaded image alive only until the page reloads.
+// the editing session. The underlay's source bytes are persisted through the
+// AssetCache on load and re-decoded into this cache on open (ADR-0042), so a
+// placed underlay survives a reload; the decoded bitmaps themselves are not
+// persisted (they re-decode from the content-addressed bytes).
 type BitmapCache = Map<string, ImageBitmap>
 
 export interface UnderlayContextValue {
@@ -76,69 +76,6 @@ const UnderlayContext = createContext<UnderlayContextValue | null>(null)
 
 export function useUnderlay(): UnderlayContextValue {
   return useContext(UnderlayContext) ?? FALLBACK_VALUE
-}
-
-const HEX_RADIX = 16
-const HEX_BYTE_WIDTH = 2
-
-// Hex-encode the SHA-256 digest of the image bytes; this is the content hash the
-// asset reference and the bitmap cache key share.
-async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, '0'))
-    .join('')
-}
-
-interface LoadImageDeps {
-  session: EditorSession
-  cache: BitmapCache
-}
-
-// Decode the chosen file, cache the bitmap under its content hash, and dispatch a
-// place-underlay command onto the project's first floor. No floor means nothing
-// to place, so the load is dropped. The image bytes are read once: the same
-// buffer feeds both the content hash and the bitmap decode. A failed read, hash,
-// or decode is logged; a user-facing toast is a documented follow-up.
-async function loadImageFile(file: File, deps: LoadImageDeps): Promise<void> {
-  const floorId = deps.session.getProject().floors[0]?.id
-  if (floorId === undefined) {
-    return
-  }
-  try {
-    const bytes = await file.arrayBuffer()
-    const contentHash = await sha256Hex(bytes)
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: file.type }))
-    deps.cache.set(contentHash, bitmap)
-    const image: AssetReference = { scope: 'project', contentHash }
-    const underlay = createUnderlay({ image, width: bitmap.width, height: bitmap.height })
-    deps.session.dispatch(placeUnderlay(floorId, underlay))
-  } catch (error) {
-    console.error('Failed to load underlay image', error)
-  }
-}
-
-// A transient file input clicked programmatically; created per pick so it does
-// not need to live in the React tree.
-function pickImageFile(onFile: (file: File) => void): void {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.addEventListener('change', () => {
-    const file = input.files?.[0]
-    if (file) {
-      onFile(file)
-    }
-  })
-  input.click()
-}
-
-function useLoadImage(session: EditorSession, cache: BitmapCache): () => void {
-  return useCallback(() => {
-    pickImageFile((file) => {
-      void loadImageFile(file, { session, cache })
-    })
-  }, [session, cache])
 }
 
 interface CalibrationArming {
@@ -202,17 +139,25 @@ export interface UnderlayProviderProps {
 export function UnderlayProvider({ children }: UnderlayProviderProps) {
   const session = useEditorSession()
   const activeTool = useActiveTool()
+  const assets = useAssetCache()
+  const graph = useSceneGraph()
   // A ref, not state: caching a decoded bitmap must not itself trigger a render.
-  // The place-underlay dispatch that follows drives the redraw instead.
+  // On load the place-underlay dispatch drives the redraw; on resolve-on-open the
+  // decode tick below drives it instead (no dispatch happens there).
   const cacheRef = useRef<BitmapCache>(new Map())
   const cache = cacheRef.current
 
-  const loadImage = useLoadImage(session, cache)
+  const loadImage = useLoadImage(session, cache, assets)
   const arming = useCalibrationArming(activeTool)
+  const decodeTick = useResolveUnderlaysOnOpen(graph, assets, cache)
   const resolveDrawables = useCallback(
-    (graph: SceneGraph, floorId: string | undefined): DrawableUnderlay[] =>
-      resolveDrawablesFrom(cache, graph, floorId),
-    [cache],
+    (sceneGraph: SceneGraph, floorId: string | undefined): DrawableUnderlay[] =>
+      resolveDrawablesFrom(cache, sceneGraph, floorId),
+    // decodeTick busts this memo when a resolve-on-open decode finishes, so a
+    // fresh resolveDrawables re-reads the now-populated cache and the underlay
+    // paints; cache is a stable ref, so it never changes this identity on its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- decodeTick is the repaint signal
+    [cache, decodeTick],
   )
 
   // arming is a stable memoized bundle of exactly the four arming context fields,
