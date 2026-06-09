@@ -40,6 +40,8 @@ export interface RoomSceneNode {
   kind: 'room'
   floorId: string
   polygon: Point[]
+  /** The thickness-aware clear-area polygon from the derived room. */
+  clearPolygon: Point[]
   area: number
   name?: string
 }
@@ -159,6 +161,7 @@ export function deriveRoomNodesForFloor(
     kind: 'room',
     floorId: floor.id,
     polygon: room.polygon,
+    clearPolygon: room.clearPolygon,
     area: room.area,
     // Omit the optional name when absent so the no-overrides projection stays
     // identical to slice 1 under exactOptionalPropertyTypes.
