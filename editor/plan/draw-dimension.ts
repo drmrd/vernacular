@@ -23,9 +23,10 @@ const DIMENSION_INK_WIDTH = 1
 const DIMENSION_SELECTION_WIDTH = 2
 // Each arrowhead vee reaches this many screen pixels back from the line tip.
 const ARROWHEAD_LENGTH_PX = 8
-// The half-angle of the arrowhead vee, in radians.
-const ARROWHEAD_VEE_DIVISIONS = 8
-const ARROWHEAD_ANGLE = Math.PI / ARROWHEAD_VEE_DIVISIONS
+// One eighth of a half-turn, the divisor that yields the arrowhead's 22.5-degree half-angle.
+const ARROWHEAD_HALF_ANGLE_DIVISOR = 8
+// The half-angle of the arrowhead vee, in radians (Math.PI / 8 = 22.5 degrees).
+const ARROWHEAD_HALF_ANGLE_RADIANS = Math.PI / ARROWHEAD_HALF_ANGLE_DIVISOR
 // The measured-length text styling mirrors the room label.
 const TEXT_COLOR = '#37414d'
 const TEXT_FONT = '12px sans-serif'
@@ -60,7 +61,7 @@ function strokeArrowhead(
   tip: ScreenPoint,
   direction: ScreenPoint,
 ): void {
-  for (const angle of [ARROWHEAD_ANGLE, -ARROWHEAD_ANGLE]) {
+  for (const angle of [ARROWHEAD_HALF_ANGLE_RADIANS, -ARROWHEAD_HALF_ANGLE_RADIANS]) {
     const cos = Math.cos(angle)
     const sin = Math.sin(angle)
     const rotatedX = direction.x * cos - direction.y * sin
@@ -136,6 +137,7 @@ export function drawDimension(
   fillLengthText(painter, { node, midpoint, preferences })
 
   if (dimension.selected) {
+    // Only the dimension line highlights on selection; the extension lines and arrowheads stay ink color, since the line is the primary visual selection target.
     painter.ctx.strokeStyle = DIMENSION_SELECTION_COLOR
     painter.ctx.lineWidth = DIMENSION_SELECTION_WIDTH
     strokeScreenSegment(painter, lineStart, lineEnd)
