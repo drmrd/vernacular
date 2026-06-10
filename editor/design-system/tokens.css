@@ -11,13 +11,11 @@
   /* Primitive ramp (raw values live only here). */
   --slate-900: #1e293b;
   --slate-600: #475569;
-  --slate-500: #64748b;
   --slate-300: #cbd5e1;
   --slate-200: #e2e8f0;
   --slate-50: #f8fafc;
   --white: #ffffff;
   --blue-400: #1a7fd4;
-  --blue-600: #1670c9;
   --blue-800: #0b5394;
 
   /* Semantic (role) tokens: light theme defaults. */
