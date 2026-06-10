@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AssetReference } from '../../core'
+import { missingAsset } from '../../core'
 import { AssetRegistry } from './asset-registry'
 import { InMemoryAssetSource } from './in-memory-asset-source'
 
@@ -90,6 +91,38 @@ describe('AssetRegistry pack-version fallback', () => {
     expect(resolution.outcome).toBe('resolved')
     if (resolution.outcome === 'resolved') {
       expect(resolution.resolvedScope).toBe('pack:craftsman@1.0.0')
+    }
+  })
+})
+
+describe('AssetRegistry missing-asset placeholder', () => {
+  const ABSENT_HASH = 'missing99'
+
+  it('returns a labeled placeholder when no source holds the hash', async () => {
+    const registry = new AssetRegistry([{ kind: 'user', source: new InMemoryAssetSource('user') }])
+    const reference: AssetReference = { scope: 'user', contentHash: ABSENT_HASH }
+
+    const resolution = await registry.resolve(reference)
+
+    expect(resolution).toEqual(missingAsset(reference))
+    expect(resolution.outcome).toBe('missing')
+  })
+
+  it('carries the footprint from the footprint lookup when one is known', async () => {
+    const footprint = { width: 600, depth: 400, height: 900 }
+    const registry = new AssetRegistry(
+      [{ kind: 'user', source: new InMemoryAssetSource('user') }],
+      {
+        footprintFor: () => footprint,
+      },
+    )
+    const reference: AssetReference = { scope: 'user', contentHash: ABSENT_HASH }
+
+    const resolution = await registry.resolve(reference)
+
+    expect(resolution).toEqual(missingAsset(reference, footprint))
+    if (resolution.outcome === 'missing') {
+      expect(resolution.footprint).toEqual(footprint)
     }
   })
 })
