@@ -15,7 +15,7 @@ function projectWithFloor(): Project {
   const project = createEmptyProject({
     name: 'Test',
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0',
   })
   project.floors = [createFloor('Ground', { id: 'g' })]

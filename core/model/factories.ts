@@ -3,12 +3,13 @@ import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
 import type {
   Dimension,
-  EraId,
   Floor,
   Opening,
   OpeningOrientation,
+  PeriodId,
   Point,
   Project,
+  StyleTag,
   Underlay,
   UnitSystem,
   Wall,
@@ -24,7 +25,8 @@ export const DEFAULT_CEILING_HEIGHT_MM = 2438
 export interface NewProjectOptions {
   name: string
   units: UnitSystem
-  era: EraId
+  period: PeriodId
+  style?: StyleTag
   appVersion: string
 }
 
@@ -33,7 +35,8 @@ export function createEmptyProject(options: NewProjectOptions): Project {
     meta: {
       name: options.name,
       units: options.units,
-      era: options.era,
+      period: options.period,
+      ...(options.style !== undefined ? { style: options.style } : {}),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       appVersion: options.appVersion,
       registryVersions: {},

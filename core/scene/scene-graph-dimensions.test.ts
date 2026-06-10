@@ -55,7 +55,7 @@ describe('deriveSceneGraph dimensions', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [floorWithDimension()]
@@ -79,7 +79,7 @@ describe('deriveSceneGraph dimensions', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]

@@ -2,8 +2,28 @@ import type { AssetReference } from './asset-reference'
 
 export type UnitSystem = 'imperial' | 'metric'
 
-/** References an entry in the EraRegistry. Validated at the registry boundary, not by this alias. */
-export type EraId = string
+/** References an entry in the PeriodRegistry. Validated at the registry boundary, not by this alias. */
+export type PeriodId = string
+
+/** References an entry in the StyleRegistry. Validated at the registry boundary, not by this alias. */
+export type StyleId = string
+
+/**
+ * References an entry in the RoomPurposeRegistry. Validated at the registry
+ * boundary, not by this alias.
+ */
+export type RoomPurposeId = string
+
+/**
+ * A style tag: a StyleRegistry id, optionally marked as the vernacular variant
+ * of an academic style. The `vernacular` modifier is meaningful only when the
+ * referenced Style entry declares `hasVernacularVariant`; it is ignored on
+ * entries that are themselves vernacular forms.
+ */
+export interface StyleTag {
+  styleId: StyleId
+  vernacular?: boolean
+}
 
 /** Monotonically increasing project-schema version; drives the migration chain. */
 export type SchemaVersion = number
@@ -11,7 +31,10 @@ export type SchemaVersion = number
 export interface ProjectMeta {
   name: string
   units: UnitSystem
-  era: EraId
+  /** The project's default chronological period; floors and rooms can override. */
+  period: PeriodId
+  /** The project's default architectural style; floors and rooms can override. */
+  style?: StyleTag
   schemaVersion: SchemaVersion
   appVersion: string
   /**
@@ -108,6 +131,10 @@ export interface Floor {
   elevation: number
   /** Default ceiling height for rooms on this floor, in millimeters. */
   defaultCeilingHeight: number
+  /** Explicit period override; absent means inherit the project period. */
+  periodOverride?: PeriodId
+  /** Explicit style override; absent means inherit the project style. */
+  styleOverride?: StyleTag
   walls: Wall[]
   underlays: Underlay[]
   openings: Opening[]

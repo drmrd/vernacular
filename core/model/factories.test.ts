@@ -20,7 +20,7 @@ describe('createEmptyProject', () => {
     const project = createEmptyProject({
       name: 'Test House',
       units: 'imperial',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
 

@@ -28,7 +28,7 @@ function newProject(): Project {
   return createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
 }

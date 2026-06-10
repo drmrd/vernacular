@@ -57,7 +57,10 @@ describe('add-room-overrides schema migration', () => {
     expect(migrated.floors).toEqual(before.floors)
     expect(migrated.meta.name).toBe('Test House')
     expect(migrated.meta.units).toBe('imperial')
-    expect(migrated.meta.era).toBe('victorian')
+    // The legacy on-disk meta.era field passes through untouched at this schema
+    // version; the era-to-period rename migration lands in a later cycle. Read it
+    // structurally because the typed ProjectMeta no longer declares `era`.
+    expect((migrated.meta as unknown as Record<string, unknown>).era).toBe('victorian')
   })
 
   it('lets the orchestrator advance the schema version to 2', () => {
