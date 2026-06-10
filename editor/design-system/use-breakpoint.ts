@@ -16,6 +16,8 @@ export function breakpointForWidth(width: number): Breakpoint {
 }
 
 export function useBreakpoint(ref: RefObject<HTMLElement | null>): Breakpoint {
+  // Default to 'wide' so the first paint matches the most common layout and
+  // avoids a narrow-layout flash before the ResizeObserver reports a width.
   const [breakpoint, setBreakpoint] = useState<Breakpoint>('wide')
   useEffect(() => {
     const element = ref.current
@@ -28,6 +30,8 @@ export function useBreakpoint(ref: RefObject<HTMLElement | null>): Breakpoint {
     })
     observer.observe(element)
     return () => observer.disconnect()
+    // A RefObject is stable across renders, so this effect runs once on mount
+    // to wire up the observer and tears it down on unmount.
   }, [ref])
   return breakpoint
 }
