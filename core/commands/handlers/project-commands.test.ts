@@ -8,6 +8,7 @@ import {
   addFloor,
   registerProjectCommands,
   removeFloor,
+  renameFloor,
   renameProject,
   setFloorCeilingHeight,
   setFloorPeriod,
@@ -170,5 +171,30 @@ describe('setProjectPeriod', () => {
 
     dispatcher.undo()
     expect(project.meta.period).toBe('victorian')
+  })
+})
+
+function projectWithTwoFloors(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [createFloor('Ground', { id: 'f1' }), createFloor('Upper', { id: 'f2' })]
+  return project
+}
+
+describe('renameFloor', () => {
+  it('renames only the target floor and restores the prior name on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(renameFloor('f2', 'Second Floor'))
+    expect(project.floors[1]?.name).toBe('Second Floor')
+    expect(project.floors[0]?.name).toBe('Ground')
+
+    dispatcher.undo()
+    expect(project.floors[1]?.name).toBe('Upper')
   })
 })
