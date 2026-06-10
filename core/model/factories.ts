@@ -16,8 +16,12 @@ import type {
 } from './types'
 
 // v2 introduces the optional top-level `roomOverrides` map; v3 adds the
-// per-floor `openings` array; v4 adds the per-floor `dimensions` array.
-export const CURRENT_SCHEMA_VERSION = 4
+// per-floor `openings` array; v4 adds the per-floor `dimensions` array; v5
+// renames the project `era` field to `period`, adds the optional project
+// `style`, and adds the optional per-floor `periodOverride` and `styleOverride`
+// (the per-room period, style, purpose, and sub-purpose ride inside the optional
+// roomOverrides map and need no migration).
+export const CURRENT_SCHEMA_VERSION = 5
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
