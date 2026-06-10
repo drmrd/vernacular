@@ -173,6 +173,8 @@ export interface RoomOverride {
   periodOverride?: PeriodId
   /** Explicit style override; absent means inherit the floor or project style. */
   styleOverride?: StyleTag
+  /** Explicit ceiling-height override in millimeters; absent means inherit the floor default. */
+  ceilingHeight?: number
 }
 
 /** How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2. */
