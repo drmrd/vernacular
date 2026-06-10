@@ -11,6 +11,7 @@ import {
   renameFloor,
   renameProject,
   setFloorCeilingHeight,
+  setFloorElevation,
   setFloorPeriod,
   setFloorStyle,
   setProjectPeriod,
@@ -196,5 +197,41 @@ describe('renameFloor', () => {
 
     dispatcher.undo()
     expect(project.floors[1]?.name).toBe('Upper')
+  })
+})
+
+function projectWithGroundFloor(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [createFloor('Ground', { id: 'f1', elevation: 0 })]
+  return project
+}
+
+describe('setFloorElevation', () => {
+  it("sets the target floor's elevation and restores the prior value on undo", () => {
+    const project = projectWithGroundFloor()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setFloorElevation('f1', 3000))
+    expect(project.floors[0]?.elevation).toBe(3000)
+
+    dispatcher.undo()
+    expect(project.floors[0]?.elevation).toBe(0)
+  })
+
+  it('coalesces successive elevation edits on the same floor into one undo step', () => {
+    const project = projectWithGroundFloor()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setFloorElevation('f1', 1000))
+    dispatcher.dispatch(setFloorElevation('f1', 2000))
+    expect(project.floors[0]?.elevation).toBe(2000)
+
+    dispatcher.undo()
+    expect(project.floors[0]?.elevation).toBe(0)
   })
 })
