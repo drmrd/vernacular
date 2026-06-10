@@ -41,13 +41,14 @@ updated: 2026-06-09
 
 ## Status
 
-Accepted (slice 13 of the Phase 1 two-dimensional plan editor, the first finishing
-slice per ADR-0041), landed on branch `feat/underlay-asset-persistence`. Records
+Accepted (slice 13, underlay asset persistence, the first finishing slice of the
+Phase 1 two-dimensional plan editor per ADR-0041), landed on branch
+`feat/underlay-asset-persistence`. Records
 how the underlay raster is persisted to close the "zero state loss" acceptance gap.
 
 ## Context
 
-Slice 12 (ADR-0037) holds the decoded underlay bitmap in an in-memory cache for
+The image underlay slice (slice 12, ADR-0037) holds the decoded underlay bitmap in an in-memory cache for
 the session only: the image bytes are read from the picked file, SHA-256 hashed,
 decoded, and discarded, and a saved project records only the underlay's
 `image: AssetReference` (a `scope` plus the content hash). On reload the raster is
@@ -131,8 +132,8 @@ erroring.
 - **A durable IndexedDB AssetCache now, for the fallback default.** Deferred: the
   OPFS directory path (the preferred runtime and the e2e target) satisfies the
   acceptance, and the interface this slice lands makes an IndexedDB backend a
-  purely additive follow-up, consistent with slice 11's IndexedDB and WebKit-OPFS
-  deferrals.
+  purely additive follow-up, consistent with the project-stores slice's (slice 11)
+  IndexedDB and WebKit-OPFS deferrals.
 - **Persist the decoded `ImageBitmap` rather than the source bytes.** Rejected:
   bitmaps are not serializable and are platform-decoded; the content-addressed
   source bytes are the durable, portable, dedupable unit, re-decoded on load.

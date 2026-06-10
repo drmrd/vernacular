@@ -145,8 +145,9 @@ chips and proxy labels use the same formatter, all driven by the one `meta.units
   low-risk; the existing visual-regression baseline and the wall-drawing
   end-to-end flow stay green, and no pointer interaction changes.
 - Measurement text reads in the project's units and is toggleable, closing the
-  slice-3 raw-millimetre ruler deferral and serving an audience that thinks in
-  feet and inches. The toggle is an ordinary undoable project edit, so it persists
+  raw-millimetre ruler deferral from the pan, zoom, grid, and rulers slice (slice 3)
+  and serving an audience that thinks in feet and inches. The toggle is an ordinary
+  undoable project edit, so it persists
   and participates in undo and autosave.
 - A small amount of geometry is now described twice (Canvas paints it; the overlay
   computes screen anchors for proxies and chips), accepted as the cost of an
