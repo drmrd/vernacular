@@ -38,6 +38,19 @@ export {
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
+export type {
+  AssetFootprint,
+  AssetResolution,
+  MissingAsset,
+  ResolvedAsset,
+  ScopeKind,
+} from './assets/asset-resolution'
+export {
+  SCOPE_PRECEDENCE,
+  missingAsset,
+  orderScopesByPrecedence,
+  resolvedAsset,
+} from './assets/asset-resolution'
 export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
