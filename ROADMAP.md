@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, and both finishing slices have now landed: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 1 is complete; Phase 2 (the three-dimensional preview) begins next. See ADR-0041, ADR-0042, and ADR-0043.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, and both finishing slices have now landed: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 1 is complete. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones; the three-dimensional preview, the assets and furniture pipeline, and the user-experience foundation start in parallel. See ADR-0041, ADR-0042, ADR-0043, and ADR-0044, and the MVP path section below.
 
 ## Foundation work
 
@@ -29,17 +29,92 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 ## MVP path
 
-| Focus                                                   | Status  |
-| ------------------------------------------------------- | ------- |
-| Project stores, persistence, and migrations             | done    |
-| Two-dimensional plan editor                             | done    |
-| Three-dimensional preview with color-temperature slider | pending |
-| Furniture import and curated starter library (alpha)    | pending |
-| Old-house architectural vocabulary                      | pending |
-| Multi-floor and stairs (beta)                           | pending |
-| Paint, export, site metadata (1.0)                      | pending |
+Phase 1 (the two-dimensional plan editor) and the project-stores work are done. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones (ADR-0044). The re-sequencing is possible because Phase 1 already shipped the decoupling layer (scene-graph derivation, the registry pattern, and the single dispatch boundary): a new entity kind is an additive scene-graph projection that the two-dimensional renderer, the three-dimensional renderer, and the export pipeline each pick up independently, so "what an entity is" is independent of "how each surface draws it."
 
-> **Two-dimensional plan editor (done):** the twelve build slices and both finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), are done; together they close the remaining named Phase-1 acceptance items. Phase 1 is complete; Phase 2 begins next. See ADR-0041, ADR-0042, ADR-0043, and the Phase 1 section below.
+| Area                                    | Status                   |
+| --------------------------------------- | ------------------------ |
+| Project stores, persistence, migrations | done                     |
+| Two-dimensional plan editor             | done                     |
+| Three-dimensional preview               | track, start-now enabler |
+| Assets and furniture                    | track, start-now enabler |
+| User-experience foundation              | track, start-now enabler |
+| Old-house vocabulary                    | track                    |
+| Structure and multi-floor               | track                    |
+| Output and export                       | track                    |
+| Paint and metadata                      | track                    |
+
+### Dependency graph
+
+Every track fans out from the shipped Phase-1 foundation and can start immediately. The only work that must wait is the bottom row of convergence nodes, which gate on the three-dimensional preview track, the assets track, or both.
+
+```
+        Phase-1 foundation (shipped): project model, scene-graph derivation,
+        command dispatch, registries, hit-test and snapping, transforms,
+        DOM overlay, two-dimensional renderer
+                                  |
+   +-----------+-----------+------+------+-----------+-----------+-----------+
+   v           v           v             v           v           v           v
+ 3D          Assets &    Old-house     Structure   Output &    Paint &     User-
+ preview     furniture   vocabulary    & multi-    export      metadata    experience
+                                       floor                               foundation
+ shell       pack CLI    era registry  floors      SVG export  paint model design
+ renderer    asset cache room purpose  stair 2D    PDF export  palettes    tokens
+ camera /    asset reg.  surface       + topology  PNG (2D)    color and   theming
+ walk        library     historic      complete    standard    finish      component
+ lighting +  browser     vocabulary    underlay    exporters   pickers     primitives
+ color-temp  custom      curved 2D     (doc/scene, (ifcJSON,   site        layout
+ split-pane  import      openings      trace)      DXF)        metadata    shell
+ + selection placement   trim data                                        empty and
+ sync        (2D)        wall/ceiling                                      loading
+                         features                                         states
+                         construction
+                         profiles (2D)
+   |           |           |             |           |           |           |
+   +-----------+-----------+------+------+-----------+-----------+-----------+
+                                  |
+            Convergence nodes (each gates on the 3D preview track,
+            the assets track, or both):
+              - furniture in three dimensions          (needs 3D preview)
+              - three-dimensional openings, trim,
+                wall and ceiling features               (needs 3D preview + data)
+              - parametric stair geometry, cutaway,
+                floor-by-floor three-dimensional view   (needs 3D preview + structure)
+              - painted preview                         (needs 3D preview + paint material)
+              - library era filtering                  (needs library browser + era registry)
+              - bundle export with attributions        (needs asset index)
+```
+
+### Start-now enablers
+
+Three pieces of work depend only on shipped Phase-1 infrastructure, depend on nothing in each other, and unblock the most downstream work, so they start in parallel and are staffed first:
+
+1. **The three-dimensional shell renderer**, because the three-dimensional view of openings, trim, features, stairs, the cutaway, the snapshot export, and the painted preview all converge on it.
+2. **The asset cache and registry**, because furniture in three dimensions, the library browser, era filtering, the bundle export, and the palette pack all hang off it.
+3. **The design-system foundation**, because it is a dependency reducer: every user-interface-bearing node is cheaper and avoids re-polishing when the tokens, theming, and primitives exist first.
+
+### Delivery tracks
+
+| Track                      | Independent (start-now) portion                                                                                                                      | Converges later on                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Three-dimensional preview  | shell renderer, camera and walk, basic lighting and color-temperature slider, split-pane, selection sync                                             | nothing (it is the convergence target)                             |
+| Assets and furniture       | pack format and CLI, asset cache, asset registry and resolution, library, custom import, placement (2D)                                              | furniture in three dimensions (3D preview)                         |
+| Old-house vocabulary       | era registry and tagging, room-purpose registry, surfacing shipped vocabulary, curved 2D openings, trim and feature data, construction profiles (2D) | three-dimensional renderings (3D preview); era filtering (library) |
+| Structure and multi-floor  | floor management, stair entity and 2D symbol and floor-spanning topology, complete underlay, per-room ceiling height                                 | stair 3D geometry, cutaway, floor-by-floor 3D (3D preview)         |
+| Output and export          | vector, document, and image export of the 2D plan in `core/export/`; standard-format exporters                                                       | 3D snapshot export (3D preview); bundle export (asset index)       |
+| Paint and metadata         | paint assignment model, palette registry, color and finish pickers, site metadata                                                                    | painted preview (3D preview paint material)                        |
+| User-experience foundation | design tokens, theming, component primitives, layout shell, empty and loading states, then continuous polish                                         | nothing (it feeds every other track's UI)                          |
+
+### Milestone composition
+
+- **Public alpha** = the Phase-1 editor (done) plus the three-dimensional preview; the assets and furniture track delivered and de-risked end to end; the identity-bearing front of the old-house vocabulary (era registry, era tagging, room-purpose registry, and surfacing the already-shipped historic opening vocabulary); two-dimensional export (vector, document, image); and the user-experience foundation. The alpha leads with the product's identity, ships furniture, produces a real artifact, and is not rough.
+- **Public beta** = multi-floor and stairs; the three-dimensional renderings of the old-house vocabulary; the complete underlay layer; and library era filtering.
+- **1.0** = paint, palettes, and finishes; site metadata; full export including the bundle and standard formats; and the final polish pass.
+
+### Open-standard interoperability
+
+The native project model stays the source of truth. There is no established lightweight open standard for residential floor plans with room and era semantics; the one real open building-data standard (the Industry Foundation Classes, ISO 16739-1:2024, with its `ifcJSON` serialization) is full building-information-modeling and belongs behind the reserved exporter and importer seam, not at the core. Open standards land as exporters and importers within the output track (an `ifcJSON` exporter proves interoperability), and the project schema is published formally with the historic extensions namespaced so it can anchor an open reference over time. See ADR-0044.
+
+> **Two-dimensional plan editor (done):** the twelve build slices and both finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), are done; together they close the remaining named Phase-1 acceptance items. Phase 1 is complete; the remaining MVP work proceeds as the parallel delivery tracks above (ADR-0044). See ADR-0041, ADR-0042, ADR-0043, and the Phase 1 section below.
 
 > **Project stores, persistence, and migrations (slice 11 done):** the durable
 > folder, OPFS, and `.house.zip` stores, the schema-and-registry migration

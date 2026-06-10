@@ -76,8 +76,8 @@ Several capabilities, valuable to the historic and old-house audience but out of
 
 Already accommodated by the typed-element, registry, trim, and feature models (recorded so future work does not mistake them for gaps):
 
-- **Non-rectangular and curved openings** (arched, half-round, ovular, bay and bow windows, casement variants). Section 3.2 types the building shell at the element level: an opening is an `Opening` record whose `type` points to the `ElementTypeRegistry`, with shape and parameters in the registry, so a half-round or ovular window is a registry addition, not a schema change (the full vocabulary is a Phase-5 milestone item). The only discipline this imposes: opening geometry derivation and rendering must read shape from the element type, never hardcode width-by-height rectangles.
-- **Arches, columns, and alcoves** are `wallFeatures[]`; **window and door casing, aprons, and stools** are path-based trim with a `TrimProfileRegistry` cross-section; **wall construction profiles** (plaster, lath-and-plaster, brick, stone) are a Phase-5 milestone item.
+- **Non-rectangular and curved openings** (arched, half-round, ovular, bay and bow windows, casement variants). Section 3.2 types the building shell at the element level: an opening is an `Opening` record whose `type` points to the `ElementTypeRegistry`, with shape and parameters in the registry, so a half-round or ovular window is a registry addition, not a schema change (the full vocabulary is a Phase-4 milestone item). The only discipline this imposes: opening geometry derivation and rendering must read shape from the element type, never hardcode width-by-height rectangles.
+- **Arches, columns, and alcoves** are `wallFeatures[]`; **window and door casing, aprons, and stools** are path-based trim with a `TrimProfileRegistry` cross-section; **wall construction profiles** (plaster, lath-and-plaster, brick, stone) are a Phase-4 milestone item.
 
 Deferred as features, with their additive seams protected now:
 
