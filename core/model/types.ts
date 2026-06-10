@@ -166,9 +166,42 @@ export interface RoomOverride {
   styleOverride?: StyleTag
 }
 
+/** How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2. */
+export type StairRunType = 'straight' | 'l-turn' | 'u-turn' | 'winder' | 'spiral'
+
+/** The pair of floors a stair joins, lower to upper. */
+export interface StairConnection {
+  fromFloorId: string
+  toFloorId: string
+}
+
+/**
+ * A stair joining two floors. Stairs live in a top-level, floor-spanning array
+ * rather than on a single floor because they connect two floors; see the design
+ * specification, sections 3.1 and 3.2.
+ */
+export interface Stair {
+  id: string
+  runType: StairRunType
+  /** Plan position of the stair origin, in world millimeters. */
+  position: Point
+  /** Run width in millimeters. */
+  width: number
+  /** Run length (plan footprint) in millimeters. */
+  length: number
+  /** Rotation in radians about `position`. */
+  rotation: number
+  connection: StairConnection
+}
+
 export interface Project {
   meta: ProjectMeta
   floors: Floor[]
+  /**
+   * Floor-spanning stairs. A sibling of `floors` because each stair connects two
+   * floors; see the design specification, sections 3.1 and 3.2.
+   */
+  stairs: Stair[]
   /**
    * Per-room user metadata keyed by `roomKey(room)`. A sibling of `meta` and
    * `floors` so an undoable command can reassign it whole (the inverse-capture
