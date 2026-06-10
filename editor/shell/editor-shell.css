@@ -1,34 +1,16 @@
 /*
- * Minimal proof-of-life styling for the editor shell. The plan canvas keeps its
- * intrinsic 800x600 size (no width/height override) so screen-to-world mapping
- * stays correct; only an outline and a graph-paper background make it visible.
- * Richer theming and a responsive, pannable canvas arrive with the 2D core.
+ * The editor shell chrome: the toolbar content, the unit toggle, the project and
+ * recent controls, the recovery prompt, the tools panel, the 3D preview label, and
+ * the plan view. The frame grid itself lives in app-frame.css. Every color is a
+ * semantic design-system token except the recovery-prompt warning pair, which has
+ * no semantic token yet and is declared locally on the recovery rule below.
  */
 
-.editor-shell {
-  display: grid;
-  grid-template-columns: 11rem 1fr 15rem;
-  grid-template-rows: auto 1fr;
-  grid-template-areas:
-    'toolbar toolbar toolbar'
-    'tools viewport inspector';
-  gap: 0.75rem;
-  box-sizing: border-box;
-  min-height: 100vh;
-  padding: 0.75rem;
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: #1e293b;
-}
-
 .editor-shell__toolbar {
-  grid-area: toolbar;
   display: flex;
   align-items: baseline;
   gap: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
   padding-bottom: 0.5rem;
 }
 
@@ -39,7 +21,7 @@
 
 .editor-shell__toolbar p {
   margin: 0;
-  color: #475569;
+  color: var(--color-text-muted);
 }
 
 /* A compact segmented control: the metric/imperial radios as two abutting pills. */
@@ -48,7 +30,7 @@
   align-self: center;
   margin: 0;
   padding: 2px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
@@ -68,7 +50,7 @@
 .unit-toggle__option {
   padding: 0.1rem 0.6rem;
   border-radius: 4px;
-  color: #475569;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -81,14 +63,14 @@
   opacity: 0;
 }
 
-/* The checked segment uses a darker blue so white text clears WCAG AA (4.5:1). */
+/* The checked segment uses the strong accent so white text clears WCAG AA (4.5:1). */
 .unit-toggle__option:has(input:checked) {
-  background: #0b5394;
-  color: #fff;
+  background: var(--color-accent-strong);
+  color: var(--color-surface);
 }
 
 .unit-toggle__option:has(input:focus-visible) {
-  outline: 2px solid #1a7fd4;
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
 
@@ -108,42 +90,30 @@
   list-style: none;
 }
 
+/*
+ * The recovery-prompt warning colors have no semantic token yet, so they are
+ * declared as two local custom properties here (a documented follow-up for the
+ * token set) rather than scattered as raw hex through the rules.
+ */
 .editor-shell__recovery {
-  grid-column: 1 / -1;
+  --shell-warning-border: #f59e0b;
+  --shell-warning-surface: #fffbeb;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #f59e0b;
+  border: 1px solid var(--shell-warning-border);
   border-radius: 0.3rem;
   padding: 0.5rem 0.75rem;
-  background: #fffbeb;
+  background: var(--shell-warning-surface);
 }
 
 .editor-shell__recovery p {
   margin: 0;
 }
 
-.editor-shell__tools {
-  grid-area: tools;
-}
-
-.editor-shell__viewport {
-  grid-area: viewport;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.editor-shell__inspector {
-  grid-area: inspector;
-  border-left: 1px solid #e2e8f0;
-  padding-left: 0.75rem;
-}
-
 .editor-shell__preview {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .tools-panel {
@@ -158,26 +128,24 @@
 .tools-panel button {
   width: 100%;
   padding: 0.4rem 0.6rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border);
   border-radius: 0.3rem;
-  background: #f8fafc;
+  background: var(--color-surface-raised);
   cursor: pointer;
 }
 
 /* Darker than the wall-selection accent so white label text clears WCAG AA (4.5:1). */
 .tools-panel button[aria-pressed='true'] {
-  border-color: #1670c9;
-  background: #1670c9;
-  color: #ffffff;
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-strong);
+  color: var(--color-surface);
 }
 
 .plan-view {
-  outline: 1px solid #cbd5e1;
+  outline: 1px solid var(--color-border);
   /*
-   * The plan view draws its own pan- and zoom-aware grid and rulers on the
-   * canvas, so the surface only needs a plain white backdrop here. A static CSS
-   * graph-paper background would not move with the camera and is intentionally
-   * not used.
+   * The plan view draws its own pan- and zoom-aware grid and rulers on the canvas,
+   * so the surface only needs a plain backdrop here.
    */
-  background-color: #ffffff;
+  background-color: var(--color-surface);
 }

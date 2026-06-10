@@ -11,6 +11,7 @@ import {
   type EditorSession,
 } from '../bridge'
 import { ActiveToolProvider, EditorShell } from '../editor'
+import { ThemeProvider } from '../editor/design-system'
 import {
   InMemoryAssetCache,
   InMemoryRecentProjectStore,
@@ -247,20 +248,22 @@ function EditorWorkspace(props: EditorWorkspaceProps) {
   const actions = useProjectActions({ ...props, recentEntries })
 
   return (
-    <EditorSessionProvider session={session}>
-      <AssetCacheProvider assets={assets}>
-        <SelectionProvider store={selection}>
-          <ActiveToolProvider>
-            <EditorShell
-              saveStatus={saveStatus}
-              recentProjects={recentEntries}
-              {...actions}
-              // Spread recovery only when present: the optional prop rejects an explicit undefined.
-              {...(recovery ? { recovery } : {})}
-            />
-          </ActiveToolProvider>
-        </SelectionProvider>
-      </AssetCacheProvider>
-    </EditorSessionProvider>
+    <ThemeProvider>
+      <EditorSessionProvider session={session}>
+        <AssetCacheProvider assets={assets}>
+          <SelectionProvider store={selection}>
+            <ActiveToolProvider>
+              <EditorShell
+                saveStatus={saveStatus}
+                recentProjects={recentEntries}
+                {...actions}
+                // Spread recovery only when present: the optional prop rejects an explicit undefined.
+                {...(recovery ? { recovery } : {})}
+              />
+            </ActiveToolProvider>
+          </SelectionProvider>
+        </AssetCacheProvider>
+      </EditorSessionProvider>
+    </ThemeProvider>
   )
 }
