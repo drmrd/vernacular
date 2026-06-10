@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   AssetCacheProvider,
   EditorSessionProvider,
+  SceneHarnessView,
   SelectionProvider,
   createEditorSession,
   createSelectionStore,
@@ -28,6 +29,17 @@ import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-a
 import { resolveProjectStorage } from './resolve-project-store'
 
 const DEFAULT_PROJECT_ID = 'current'
+
+// Test-only render-harness seam. When `?fixture=scene-harness` is present the app
+// mounts the deterministic three-dimensional render harness instead of the editor, so
+// the Playwright visual baseline boots a fixed scene with no storage, autosave, or
+// editor chrome in the frame. A normal page load never carries this parameter, so it
+// is a no-op for real users (mirrors the `e2e-storage` hook in src/main.tsx).
+const SCENE_HARNESS_FIXTURE = 'scene-harness'
+
+function requestedFixture(): string | null {
+  return new URLSearchParams(globalThis.location?.search ?? '').get('fixture')
+}
 
 // Resolve the durable {store, assets} pair to boot against. An injected
 // store-only resolver (tests) pairs its store with an in-memory asset cache; the
@@ -60,7 +72,14 @@ export interface AppProps {
   snapshots?: SnapshotsPort
 }
 
-export function App({
+export function App(props: AppProps) {
+  if (requestedFixture() === SCENE_HARNESS_FIXTURE) {
+    return <SceneHarnessView />
+  }
+  return <AppWorkspace {...props} />
+}
+
+function AppWorkspace({
   store: providedStore,
   assets: providedAssets,
   resolveStore,

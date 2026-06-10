@@ -38,15 +38,17 @@ export default defineConfig({
       testIgnore: /scene-visual-regression\.spec\.ts/,
     },
     {
-      // WebGPU-capable runner for the three-dimensional scene visual harness.
-      // Uses the full Chrome for Testing build (channel 'chromium') with the new
-      // headless mode, which carries the GPU stack the stripped-down default
-      // headless shell omits. The harness self-skips where no WebGPU adapter is
-      // present: verified absent under Playwright on the development Mac on
-      // 2026-06-09 (software-only SwiftShader fallback, navigator.gpu undefined),
-      // so the baseline is produced on a WebGPU-capable runner. See the slice-0
-      // ADR for the durable record of this verification.
-      name: 'webgpu',
+      // Hardware-GPU runner for the three-dimensional scene visual harness. Uses the
+      // full Chrome for Testing build (channel 'chromium') with the new headless mode,
+      // which carries the GPU stack the stripped-down default headless shell omits, and
+      // selects the Apple Metal ANGLE backend so WebGL 2 renders on the real GPU rather
+      // than a software rasterizer. The harness forces three's WebGL 2 backend so the
+      // committed baseline (scene-empty-webgl.png) is a hardware-WebGL render that never
+      // collides with a future WebGPU baseline. Empirically verified on the development
+      // Mac on 2026-06-09: under these flags navigator.gpu is present and WebGPU also
+      // renders, but the baseline is pinned to the WebGL backend by product decision.
+      // See the slice-0 ADR for the durable record of this verification.
+      name: 'scene-webgl',
       testMatch: /scene-visual-regression\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
