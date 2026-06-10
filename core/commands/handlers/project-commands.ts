@@ -24,8 +24,8 @@ export const SET_PROJECT_STYLE = 'project/set-style'
 function coalesceByFloorId(floorId: string, rebuild: () => Command) {
   return (previous: Command) => {
     const next = rebuild()
-    const previousFloorId = (previous.params as { floorId: string }).floorId
-    return previous.type === next.type && previousFloorId === floorId ? next : null
+    const matchesFloor = () => (previous.params as { floorId: string }).floorId === floorId
+    return previous.type === next.type && matchesFloor() ? next : null
   }
 }
 
