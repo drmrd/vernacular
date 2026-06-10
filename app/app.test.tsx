@@ -99,6 +99,15 @@ describe('App boot and storage warnings', () => {
 
     expect(warn).not.toHaveBeenCalled()
   })
+
+  it('renders the editor inside a themed container', async () => {
+    stubCapableStorage()
+
+    render(<App store={new InMemoryProjectStore()} />)
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    expect(document.querySelector('[data-theme]')).not.toBeNull()
+  })
 })
 
 describe('App async store resolution', () => {
