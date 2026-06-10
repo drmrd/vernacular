@@ -9,7 +9,7 @@ function makeCurrentProject(): Project {
   return createEmptyProject({
     name: 'Test House',
     units: 'imperial',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
 }

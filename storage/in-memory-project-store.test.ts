@@ -7,7 +7,7 @@ function sampleProject() {
   return createEmptyProject({
     name: 'Sample',
     units: 'metric',
-    era: 'craftsman',
+    period: 'craftsman',
     appVersion: '0.1.0',
   })
 }

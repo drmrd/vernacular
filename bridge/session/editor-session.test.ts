@@ -3,7 +3,12 @@ import { createEditorSession } from './editor-session'
 import { addFloor, addWall, createEmptyProject, type Project } from '../../core'
 
 function emptyProject(): Project {
-  return createEmptyProject({ name: 'Test', units: 'metric', era: 'modern', appVersion: '0.0.0' })
+  return createEmptyProject({
+    name: 'Test',
+    units: 'metric',
+    period: 'modern',
+    appVersion: '0.0.0',
+  })
 }
 
 describe('createEditorSession', () => {

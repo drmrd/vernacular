@@ -16,7 +16,7 @@ function seededDirectory(version: number = CURRENT_SCHEMA_VERSION): {
     createEmptyProject({
       name: 'Seed',
       units: 'imperial',
-      era: 'modern',
+      period: 'modern',
       appVersion: '0.0.0',
     }),
   )
@@ -41,7 +41,7 @@ function sampleProject(): Project {
   const project = createEmptyProject({
     name: 'Sample House',
     units: 'metric',
-    era: 'craftsman',
+    period: 'craftsman',
     appVersion: '0.1.0',
   })
   project.floors.push(floor)

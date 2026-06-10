@@ -13,7 +13,7 @@ function representativeProject(): Project {
   const project = createEmptyProject({
     name: 'Sample House',
     units: 'metric',
-    era: 'craftsman',
+    period: 'craftsman',
     appVersion: '0.1.0',
   })
   project.floors.push(floor)

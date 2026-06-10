@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
-import { DEFAULT_CEILING_HEIGHT_MM, createEmptyProject } from '../../model/factories'
+import { DEFAULT_CEILING_HEIGHT_MM, createEmptyProject, createFloor } from '../../model/factories'
 import type { Project } from '../../model/types'
 import {
   SET_UNITS,
@@ -10,6 +10,9 @@ import {
   removeFloor,
   renameProject,
   setFloorCeilingHeight,
+  setFloorPeriod,
+  setFloorStyle,
+  setProjectPeriod,
   setUnits,
 } from './project-commands'
 
@@ -17,7 +20,7 @@ function newProject(): Project {
   return createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
 }
@@ -104,5 +107,68 @@ describe('project commands', () => {
     dispatcher.dispatch(setFloorCeilingHeight(editedId, 2600))
 
     expect(state.floors[0]).toBe(untouched)
+  })
+})
+
+function projectWithFloor(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [createFloor('Ground', { id: 'floor-1' })]
+  return project
+}
+
+function dispatcherFor(project: Project): Dispatcher<Project> {
+  return new Dispatcher(project, registerProjectCommands(new CommandRegistry<Project>()))
+}
+
+describe('setFloorPeriod', () => {
+  it('tags a floor with a period', () => {
+    const project = projectWithFloor()
+
+    dispatcherFor(project).dispatch(setFloorPeriod('floor-1', 'edwardian'))
+
+    expect(project.floors[0]?.periodOverride).toBe('edwardian')
+  })
+
+  it('restores the prior period on undo', () => {
+    const project = projectWithFloor()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(setFloorPeriod('floor-1', 'edwardian'))
+
+    dispatcher.undo()
+
+    expect(project.floors[0]?.periodOverride).toBeUndefined()
+  })
+})
+
+describe('setFloorStyle', () => {
+  it('tags a floor with a style and the vernacular modifier', () => {
+    const project = projectWithFloor()
+
+    dispatcherFor(project).dispatch(
+      setFloorStyle('floor-1', { styleId: 'gothic-revival', vernacular: true }),
+    )
+
+    expect(project.floors[0]?.styleOverride).toEqual({
+      styleId: 'gothic-revival',
+      vernacular: true,
+    })
+  })
+})
+
+describe('setProjectPeriod', () => {
+  it('changes the project default period and restores it on undo', () => {
+    const project = projectWithFloor()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setProjectPeriod('interwar'))
+    expect(project.meta.period).toBe('interwar')
+
+    dispatcher.undo()
+    expect(project.meta.period).toBe('victorian')
   })
 })

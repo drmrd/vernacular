@@ -8,7 +8,7 @@ function projectWith(floors: Floor[]): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
   project.floors = floors

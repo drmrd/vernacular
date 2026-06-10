@@ -3,20 +3,25 @@ import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
 import type {
   Dimension,
-  EraId,
   Floor,
   Opening,
   OpeningOrientation,
+  PeriodId,
   Point,
   Project,
+  StyleTag,
   Underlay,
   UnitSystem,
   Wall,
 } from './types'
 
 // v2 introduces the optional top-level `roomOverrides` map; v3 adds the
-// per-floor `openings` array; v4 adds the per-floor `dimensions` array.
-export const CURRENT_SCHEMA_VERSION = 4
+// per-floor `openings` array; v4 adds the per-floor `dimensions` array; v5
+// renames the project `era` field to `period`, adds the optional project
+// `style`, and adds the optional per-floor `periodOverride` and `styleOverride`
+// (the per-room period, style, purpose, and sub-purpose ride inside the optional
+// roomOverrides map and need no migration).
+export const CURRENT_SCHEMA_VERSION = 5
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -24,7 +29,8 @@ export const DEFAULT_CEILING_HEIGHT_MM = 2438
 export interface NewProjectOptions {
   name: string
   units: UnitSystem
-  era: EraId
+  period: PeriodId
+  style?: StyleTag
   appVersion: string
 }
 
@@ -33,7 +39,8 @@ export function createEmptyProject(options: NewProjectOptions): Project {
     meta: {
       name: options.name,
       units: options.units,
-      era: options.era,
+      period: options.period,
+      ...(options.style !== undefined ? { style: options.style } : {}),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       appVersion: options.appVersion,
       registryVersions: {},

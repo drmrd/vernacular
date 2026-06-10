@@ -21,7 +21,7 @@ describe('underlay persistence round-trip', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.0.0',
     })
     const image: AssetReference = { scope: 'project', contentHash: CONTENT_HASH }

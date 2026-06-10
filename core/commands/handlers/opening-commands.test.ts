@@ -30,7 +30,7 @@ function projectWithTwoFloors(): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.0.0',
   })
   const hostWall = createWall({ x: 0, y: 0 }, { x: 3000, y: 0 }, { id: HOST_WALL_ID })

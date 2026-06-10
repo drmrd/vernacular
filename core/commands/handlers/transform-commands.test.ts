@@ -30,7 +30,7 @@ function projectWithMixedEntities(): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.0.0',
   })
   const w1 = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })

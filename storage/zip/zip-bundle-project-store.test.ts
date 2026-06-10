@@ -9,7 +9,7 @@ function sampleProject() {
   return createEmptyProject({
     name: 'My House',
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0',
   })
 }

@@ -38,7 +38,7 @@ function projectWithWalls(name: string, wallCount: number): Project {
   const base = createEmptyProject({
     name,
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0-test',
   })
   return { ...base, floors: [createFloor('Ground', { walls })] }

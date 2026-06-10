@@ -21,7 +21,7 @@ function projectWithFloors(): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
   project.floors = [
@@ -53,7 +53,7 @@ describe('deriveSceneGraph walls', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]
@@ -94,7 +94,7 @@ describe('deriveSceneGraph rooms', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [floor]
@@ -280,7 +280,7 @@ describe('deriveSceneGraph underlays', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [floorWithUnderlay(underlayWithId('u1'))]
@@ -306,7 +306,7 @@ describe('deriveSceneGraph underlays', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]
