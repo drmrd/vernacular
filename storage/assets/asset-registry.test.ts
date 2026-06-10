@@ -54,3 +54,42 @@ describe('AssetRegistry resolution', () => {
     }
   })
 })
+
+describe('AssetRegistry pack-version fallback', () => {
+  const PACK_HASH = 'feed01'
+  const PACK_BYTES = Uint8Array.of(7, 7, 7)
+
+  it('resolves a pack hash from a different version of the same pack', async () => {
+    const registry = new AssetRegistry([
+      {
+        kind: 'pack',
+        source: new InMemoryAssetSource('pack:victorian@1.1.0', { [PACK_HASH]: PACK_BYTES }),
+      },
+    ])
+    const reference: AssetReference = { scope: 'pack:victorian@1.2.0', contentHash: PACK_HASH }
+
+    const resolution = await registry.resolve(reference)
+
+    expect(resolution.outcome).toBe('resolved')
+    if (resolution.outcome === 'resolved') {
+      expect(resolution.bytes).toEqual(PACK_BYTES)
+      expect(resolution.resolvedScope).toBe('pack:victorian@1.1.0')
+    }
+  })
+
+  it('does not cross to a different pack id on a pack-version fallback', async () => {
+    const registry = new AssetRegistry([
+      {
+        kind: 'pack',
+        source: new InMemoryAssetSource('pack:craftsman@1.0.0', { [PACK_HASH]: PACK_BYTES }),
+      },
+    ])
+    const reference: AssetReference = { scope: 'pack:victorian@1.2.0', contentHash: PACK_HASH }
+
+    const resolution = await registry.resolve(reference)
+    expect(resolution.outcome).toBe('resolved')
+    if (resolution.outcome === 'resolved') {
+      expect(resolution.resolvedScope).toBe('pack:craftsman@1.0.0')
+    }
+  })
+})
