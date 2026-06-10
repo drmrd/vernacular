@@ -3,7 +3,7 @@ import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createStair } from '../../model/factories'
 import type { Project } from '../../model/types'
-import { addStair, registerStairCommands, removeStair } from './stair-commands'
+import { addStair, moveStair, registerStairCommands, removeStair } from './stair-commands'
 
 function newProject(): Project {
   return createEmptyProject({
@@ -42,5 +42,38 @@ describe('stair commands', () => {
 
     dispatcher.undo()
     expect(state.stairs.map((s) => s.id)).toEqual(['s1'])
+  })
+
+  it('repositions a stair footprint and restores the prior position on undo', () => {
+    const stair = createStair({
+      id: 's1',
+      position: { x: 0, y: 0 },
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    const state: Project = { ...newProject(), stairs: [stair] }
+    const dispatcher = stairDispatcher(state)
+
+    dispatcher.dispatch(moveStair('s1', { x: 1500, y: 2500 }))
+    expect(state.stairs[0]?.position).toEqual({ x: 1500, y: 2500 })
+
+    dispatcher.undo()
+    expect(state.stairs[0]?.position).toEqual({ x: 0, y: 0 })
+  })
+
+  it('coalesces consecutive moves of the same stair into one undo step', () => {
+    const stair = createStair({
+      id: 's1',
+      position: { x: 0, y: 0 },
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    const state: Project = { ...newProject(), stairs: [stair] }
+    const dispatcher = stairDispatcher(state)
+
+    dispatcher.dispatch(moveStair('s1', { x: 100, y: 100 }))
+    dispatcher.dispatch(moveStair('s1', { x: 200, y: 200 }))
+    expect(state.stairs[0]?.position).toEqual({ x: 200, y: 200 })
+
+    dispatcher.undo()
+    expect(state.stairs[0]?.position).toEqual({ x: 0, y: 0 })
   })
 })
