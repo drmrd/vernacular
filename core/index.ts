@@ -261,3 +261,8 @@ export {
   instantiateClipboard,
   serializeClipboard,
 } from './clipboard/clipboard'
+export type { ExportMediaType, ExportResult, Exporter } from './export/exporter'
+export type { PlanBounds, SvgView, SvgViewOptions } from './export/svg/svg-view'
+export { createSvgView, planContentBounds } from './export/svg/svg-view'
+export type { SvgPlanExportOptions } from './export/svg/svg-plan-exporter'
+export { SvgPlanExporter } from './export/svg/svg-plan-exporter'
