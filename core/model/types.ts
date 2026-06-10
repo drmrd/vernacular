@@ -1,3 +1,4 @@
+import type { NamedColor } from '../color/color'
 import type { AssetReference } from './asset-reference'
 
 export type UnitSystem = 'imperial' | 'metric'
@@ -177,6 +178,19 @@ export interface RoomOverride {
   ceilingHeight?: number
 }
 
+/**
+ * A project-local, user-editable palette (design spec 3.1: palettes[] is
+ * project-local; the read-only bundled palettes live in the PaletteRegistry).
+ */
+export interface ProjectPalette {
+  id: string
+  name: string
+  description?: string
+  /** Optional chronological-period tags, referencing the PeriodRegistry (ADR-0046). */
+  periods?: PeriodId[]
+  colors: NamedColor[]
+}
+
 /** How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2. */
 export type StairRunType = 'straight' | 'l-turn' | 'u-turn' | 'winder' | 'spiral'
 
@@ -223,4 +237,6 @@ export interface Project {
    * proxy records only the root's own top-level keys). Absent means no overrides.
    */
   roomOverrides?: Record<string, RoomOverride> | undefined
+  /** Project-local, user-editable palettes (design spec 3.1). Absent means none. */
+  palettes?: ProjectPalette[] | undefined
 }
