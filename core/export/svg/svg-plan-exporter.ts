@@ -29,10 +29,10 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
 
 /** Render every wall as a projected `<line>`, wrapped in a walls layer group. */
 function renderWalls(graph: SceneGraph, view: SvgView): string {
+  /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
   const lines = graph.walls.map((wall) => {
     const start = view.project(wall.start)
     const end = view.project(wall.end)
-    /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
     return svgLine({
       x1: start.x,
       y1: start.y,
@@ -46,9 +46,7 @@ function renderWalls(graph: SceneGraph, view: SvgView): string {
         'data-node-id': wall.id,
       },
     })
-    /* eslint-enable @typescript-eslint/naming-convention */
   })
-  // SVG attribute names are kebab-case per the SVG specification.
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   return svgGroup(lines, { 'data-layer': 'walls' })
+  /* eslint-enable @typescript-eslint/naming-convention */
 }
