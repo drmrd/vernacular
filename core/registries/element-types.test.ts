@@ -59,6 +59,14 @@ describe('builtin element types', () => {
       expect(entry?.opening).toMatchObject(expected.opening)
     }
 
-    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(2)
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(3)
+  })
+})
+
+describe('stair element type', () => {
+  it('registers a straight stair in the stair category with a stair plan symbol', () => {
+    const stair = getEntry(builtinElementTypes, 'straight-stair')
+    expect(stair?.category).toBe('stair')
+    expect(stair?.plan2D.symbol).toBe('stair-run')
   })
 })
