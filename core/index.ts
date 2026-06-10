@@ -200,6 +200,8 @@ export {
   deriveWallNode,
 } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
+export type { Vector3, Bounds3 } from './scene/vector3'
+export { planToWorld } from './scene/plan-to-world'
 export type {
   AssumedUnit,
   DecimalPrecision,
