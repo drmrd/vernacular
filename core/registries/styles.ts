@@ -77,6 +77,9 @@ export const builtinStyles: Registry<Style> = createRegistry(STYLE_REGISTRY_VERS
   vernacular('gabled-ell', 'Gabled Ell'),
   vernacular('shotgun', 'Shotgun'),
   vernacular('saltbox', 'Saltbox'),
+  // Registry-level sentinel for an unclassified style, not a real academic high
+  // style. It needs some category to satisfy the type; 'academic' is the
+  // placeholder. A dedicated 'unclassified' category may follow if this proves wrong.
   academic('unknown', 'Unknown'),
 ])
 /* eslint-enable @typescript-eslint/naming-convention */
