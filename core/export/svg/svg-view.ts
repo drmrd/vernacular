@@ -43,6 +43,8 @@ function pointsFromGraph(graph: SceneGraph): Point[] {
         opening.along,
         opening.normal,
         opening.width,
+        // The host wall's thickness is the opening's across-wall depth: the
+        // footprint spans the full thickness of the wall it cuts through.
         opening.hostThickness,
       ),
     )
