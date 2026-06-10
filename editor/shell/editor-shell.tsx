@@ -39,7 +39,9 @@ import { useUnderlay, UnderlayProvider } from '../plan/use-underlay'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
+import { AppFrame, PanelSlot } from '../design-system'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
+import { FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -300,46 +302,89 @@ function ToolsNav() {
   )
 }
 
+interface ShellHeaderProps {
+  saveStatus: AutosaveStatus
+  projectControls: ProjectControlsProps
+}
+
+// The toolbar content. It renders a plain container, NOT a <header role="banner">,
+// because AppFrame's own <header> provides the single banner landmark.
+function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
+  const graph = useSceneGraph()
+  const session = useEditorSession()
+  return (
+    <div className="editor-shell__toolbar">
+      <h1>Vernacular</h1>
+      <p aria-live="polite">Walls: {graph.walls.length}</p>
+      <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
+      <UnitToggle
+        units={session.getProject().meta.units}
+        onChange={(units) => session.dispatch(setUnits(units))}
+      />
+      <ProjectControls {...projectControls} />
+    </div>
+  )
+}
+
+// The tool rail content: the existing tools nav plus the empty floor-switcher seam
+// the structure track mounts into later.
+function ToolRail() {
+  return (
+    <>
+      <ToolsNav />
+      <PanelSlot slotId={FLOOR_SWITCHER_SLOT} label="Floors" emptyTitle="Floors" />
+    </>
+  )
+}
+
+// The central area: the 2D plan view and the 3D preview region (both unchanged).
+function ViewportArea() {
+  return (
+    <>
+      <PlanView />
+      <section className="editor-shell__preview" aria-label="3D preview">
+        <SceneCanvas />
+      </section>
+    </>
+  )
+}
+
+// The inspector content: the existing selection inspector plus the empty paint seams
+// the paint track mounts into later.
+function InspectorPanels() {
+  return (
+    <>
+      <Inspector />
+      <PanelSlot slotId={PAINT_PICKER_SLOT} label="Paint" emptyTitle="Paint" />
+      <PanelSlot slotId={PAINT_INSPECTOR_SLOT} label="Surface paint" emptyTitle="Surface paint" />
+    </>
+  )
+}
+
 export interface EditorShellProps extends ProjectControlsProps {
   saveStatus: AutosaveStatus
   recovery?: { onRestore: () => void; onDiscard: () => void }
 }
 
 export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
-  const graph = useSceneGraph()
-  const session = useEditorSession()
   return (
-    // The underlay and opening-tool providers wrap both the plan view and the
-    // inspector so the shared underlay state (the decoded-bitmap cache and the
-    // armed calibration) and the opening placement type reach the canvas glue and
-    // the inspector/tools panels from one source.
+    // The underlay and opening-tool providers wrap the whole frame so the shared
+    // underlay state and the opening placement type reach the canvas glue and the
+    // inspector/tools panels from one source.
     <UnderlayProvider>
       <OpeningToolProvider>
-        <div className="editor-shell">
-          <header className="editor-shell__toolbar" role="banner">
-            <h1>Vernacular</h1>
-            <p aria-live="polite">Walls: {graph.walls.length}</p>
-            <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
-            <UnitToggle
-              units={session.getProject().meta.units}
-              onChange={(units) => session.dispatch(setUnits(units))}
-            />
-            <ProjectControls {...projectControls} />
-          </header>
-          {recovery ? (
-            <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-          ) : null}
-          <ToolsNav />
-          <main className="editor-shell__viewport" aria-label="Viewport">
-            <PlanView />
-            <section className="editor-shell__preview" aria-label="3D preview">
-              <SceneCanvas />
-            </section>
-          </main>
-          <aside className="editor-shell__inspector" aria-label="Inspector">
-            <Inspector />
-          </aside>
-        </div>
+        {recovery ? (
+          <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+        ) : null}
+        <AppFrame
+          header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
+          railLabel="Tool rail"
+          rail={<ToolRail />}
+          mainLabel="Viewport"
+          main={<ViewportArea />}
+          inspectorLabel="Inspector"
+          inspector={<InspectorPanels />}
+        />
       </OpeningToolProvider>
     </UnderlayProvider>
   )
