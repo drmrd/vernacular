@@ -2,14 +2,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_METRIC_PREFERENCES,
+  OPENING_NODE_PREFIX,
   deriveSceneGraph,
   formatArea,
+  openingFootprint,
   polygonCentroid,
   roomKey,
 } from '../../'
-import { createEmptyProject, createFloor, createWall } from '../../model/factories'
+import { createEmptyProject, createFloor, createOpening, createWall } from '../../model/factories'
 import type { Project } from '../../model/types'
-import type { RoomSceneNode } from '../../scene/scene-graph'
+import type { OpeningSceneNode, RoomSceneNode } from '../../scene/scene-graph'
+import { createSvgView, planContentBounds } from './svg-view'
 import { SvgPlanExporter } from './svg-plan-exporter'
 
 /**
@@ -85,6 +88,120 @@ function soleDerivedRoom(project: Project): RoomSceneNode {
   }
   return room
 }
+
+/**
+ * Build a deterministic project with one floor, one horizontal wall, and a single
+ * door opening centered on it. `deriveSceneGraph` resolves the opening against its
+ * host wall into exactly one `opening:`-prefixed scene node, which the exporter is
+ * expected to render. Ids are fixed so two independent builds are byte-identical.
+ */
+function createSingleOpeningProject(): Project {
+  const wall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'wall-a' })
+  const opening = createOpening({
+    type: 'single-swing-door',
+    hostWallId: 'wall-a',
+    position: 2000,
+    id: 'opening-a',
+  })
+  const floor = createFloor('Ground Floor', { id: 'floor-a', walls: [wall] })
+  return {
+    ...createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      era: 'victorian',
+      appVersion: '0.1.0',
+    }),
+    floors: [{ ...floor, openings: [opening] }],
+  }
+}
+
+/** The sole derived opening scene node for the single-opening fixture above. */
+function soleDerivedOpening(project: Project): OpeningSceneNode {
+  const [opening] = deriveSceneGraph(project).openings
+  if (opening === undefined) {
+    throw new Error('expected the door fixture to derive exactly one opening')
+  }
+  return opening
+}
+
+/** Parse an SVG `points="x,y x,y ..."` attribute into an array of points. */
+function parsePoints(attribute: string | null): { x: number; y: number }[] {
+  if (attribute === null) {
+    return []
+  }
+  return attribute
+    .trim()
+    .split(/\s+/u)
+    .map((pair) => {
+      const [x, y] = pair.split(',').map(Number)
+      return { x: x ?? Number.NaN, y: y ?? Number.NaN }
+    })
+}
+
+describe('SvgPlanExporter emitting openings', () => {
+  it('emits an opening element group per opening carrying the opening node id', () => {
+    const project = createSingleOpeningProject()
+    const opening = soleDerivedOpening(project)
+    expect(opening.id).toBe(`${OPENING_NODE_PREFIX}opening-a`)
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const groups = [...document.querySelectorAll('[data-node-id]')].filter(
+      (element) => element.getAttribute('data-node-id') === opening.id,
+    )
+
+    expect(groups).toHaveLength(1)
+  })
+
+  it('breaks the host wall with an opening gap polygon', () => {
+    const project = createSingleOpeningProject()
+    const graph = deriveSceneGraph(project)
+    const opening = soleDerivedOpening(project)
+    const view = createSvgView(planContentBounds(graph))
+    const expectedCorners = openingFootprint(
+      opening.center,
+      opening.along,
+      opening.normal,
+      opening.width,
+      opening.hostThickness,
+    ).map((corner) => view.project(corner))
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const group = document.querySelector(`[data-node-id="${opening.id}"]`)
+    const polygon = group?.querySelector('polygon') ?? null
+    expect(polygon).not.toBeNull()
+    expect(polygon?.getAttribute('fill')).toBe('#ffffff')
+
+    const actualCorners = parsePoints(polygon?.getAttribute('points') ?? null)
+    expect(actualCorners).toHaveLength(expectedCorners.length)
+    expectedCorners.forEach((expected, index) => {
+      expect(actualCorners[index]?.x).toBeCloseTo(expected.x, 3)
+      expect(actualCorners[index]?.y).toBeCloseTo(expected.y, 3)
+    })
+  })
+
+  it('draws a jamb cap at each opening jamb', () => {
+    const project = createSingleOpeningProject()
+    const opening = soleDerivedOpening(project)
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const group = document.querySelector(`[data-node-id="${opening.id}"]`)
+    expect(group).not.toBeNull()
+
+    const jambLines = group ? [...group.querySelectorAll('line')] : []
+    const jambPolylines = group ? [...group.querySelectorAll('polyline')] : []
+    // Two across-wall jamb caps, one at each jamb: two `<line>`s, or a single
+    // `<polyline>` covering both. Either way the jamb ink is the opening stroke.
+    const inkedLines = jambLines.filter((line) => line.getAttribute('stroke') === '#222222')
+    const inkedPolylines = jambPolylines.filter(
+      (polyline) => polyline.getAttribute('stroke') === '#222222',
+    )
+
+    expect(inkedLines.length === 2 || inkedPolylines.length >= 1).toBe(true)
+  })
+})
 
 describe('SvgPlanExporter emitting rooms', () => {
   it('emits a filled polygon per derived room carrying the room node id', () => {
