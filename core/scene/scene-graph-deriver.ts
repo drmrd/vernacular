@@ -3,6 +3,7 @@ import {
   deriveFloorNode,
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
+  deriveStairNodes,
   deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene-graph'
@@ -38,9 +39,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
 
   const floorNodeFor = (floor: Floor): SceneNode => {
     const cached = floorCache.get(floor)
-    if (cached !== undefined) {
-      return cached
-    }
+    if (cached !== undefined) return cached
     const node = deriveFloorNode(floor)
     floorCache.set(floor, node)
     return node
@@ -48,9 +47,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
 
   const wallNodeFor = (floor: Floor, wall: Wall): WallSceneNode => {
     const cached = wallCache.get(wall)
-    if (cached !== undefined) {
-      return cached
-    }
+    if (cached !== undefined) return cached
     const node = deriveWallNode(floor, wall)
     wallCache.set(wall, node)
     return node
@@ -58,9 +55,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
 
   const roomNodesFor = (floor: Floor, overrides: RoomOverrides): RoomSceneNode[] => {
     const cached = roomCache.get(floor)
-    if (cached !== undefined && cached.overrides === overrides) {
-      return cached.nodes
-    }
+    if (cached !== undefined && cached.overrides === overrides) return cached.nodes
     const nodes = deriveRoomNodesForFloor(floor, overrides)
     roomCache.set(floor, { overrides, nodes })
     return nodes
@@ -70,8 +65,9 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     nodes: project.floors.map(floorNodeFor),
     walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
     rooms: project.floors.flatMap((floor) => roomNodesFor(floor, project.roomOverrides)),
-    underlays: project.floors.flatMap((floor) => deriveUnderlayNodesForFloor(floor)),
-    openings: project.floors.flatMap((floor) => deriveOpeningNodesForFloor(floor)),
-    dimensions: project.floors.flatMap((floor) => deriveDimensionNodesForFloor(floor)),
+    underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
+    openings: project.floors.flatMap(deriveOpeningNodesForFloor),
+    dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
+    stairs: deriveStairNodes(project),
   })
 }
