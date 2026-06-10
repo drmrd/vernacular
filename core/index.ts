@@ -368,3 +368,64 @@ export type { PlanBounds, SvgView, SvgViewOptions } from './export/svg/svg-view'
 export { createSvgView, planContentBounds } from './export/svg/svg-view'
 export type { SvgPlanExportOptions } from './export/svg/svg-plan-exporter'
 export { SvgPlanExporter } from './export/svg/svg-plan-exporter'
+export type { LinearRgb, OkLab, Srgb } from './color/oklab'
+export { linearToSrgb, okLabToSrgb, srgbToLinear, srgbToOkLab } from './color/oklab'
+export { formatHex, parseHex } from './color/hex'
+export type { Color, NamedColor } from './color/color'
+export { colorFromHex, colorFromOkLab } from './color/color'
+export { mixColors, nearestColor, perceptualDistance } from './color/operations'
+export type { Palette } from './registries/palettes'
+export { PALETTE_REGISTRY_VERSION, builtinPalettes } from './registries/palettes'
+export type { ProjectPalette } from './model/types'
+export type { PaintAssignment, SurfaceRef } from './model/paint'
+export { surfaceKey } from './model/paint'
+export { resolveSurfacePaint } from './paint/resolve-surface-paint'
+export type { LatLong, Obstruction, Site } from './model/site'
+export type {
+  AddPaletteColorParams,
+  CreateProjectPaletteParams,
+  RemovePaletteColorParams,
+  RemoveProjectPaletteParams,
+  RenameProjectPaletteParams,
+} from './commands/handlers/palette-commands'
+export {
+  ADD_PALETTE_COLOR,
+  CREATE_PROJECT_PALETTE,
+  REMOVE_PALETTE_COLOR,
+  REMOVE_PROJECT_PALETTE,
+  RENAME_PROJECT_PALETTE,
+  addPaletteColor,
+  createProjectPalette,
+  registerPaletteCommands,
+  removePaletteColor,
+  removeProjectPalette,
+  renameProjectPalette,
+} from './commands/handlers/palette-commands'
+export type {
+  AssignSurfacePaintParams,
+  ClearSurfacePaintParams,
+} from './commands/handlers/paint-commands'
+export {
+  ASSIGN_SURFACE_PAINT,
+  CLEAR_SURFACE_PAINT,
+  assignSurfacePaint,
+  clearSurfacePaint,
+  registerPaintCommands,
+} from './commands/handlers/paint-commands'
+export type {
+  AddObstructionParams,
+  RemoveObstructionParams,
+  SetSiteLocationParams,
+  SetSiteNorthBearingParams,
+} from './commands/handlers/site-commands'
+export {
+  ADD_OBSTRUCTION,
+  REMOVE_OBSTRUCTION,
+  SET_SITE_LOCATION,
+  SET_SITE_NORTH_BEARING,
+  addObstruction,
+  registerSiteCommands,
+  removeObstruction,
+  setSiteLocation,
+  setSiteNorthBearing,
+} from './commands/handlers/site-commands'
