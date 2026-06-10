@@ -169,7 +169,11 @@ export interface RoomOverride {
 /** How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2. */
 export type StairRunType = 'straight' | 'l-turn' | 'u-turn' | 'winder' | 'spiral'
 
-/** The pair of floors a stair joins, lower to upper. */
+/**
+ * The pair of floors a stair joins. The run rises from `fromFloorId` to
+ * `toFloorId`; the type does not enforce any elevation ordering, so keeping
+ * the direction sensible is the caller's responsibility.
+ */
 export interface StairConnection {
   fromFloorId: string
   toFloorId: string
