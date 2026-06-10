@@ -15,7 +15,9 @@ export function signedArea(loop: Point[]): number {
 }
 
 /** Newell's-method normal of the loop after mapping it to world space at
- *  `height`. For a horizontal floor loop this is +/- world Y. */
+ *  `height`. For a horizontal floor loop this is +/- world Y. The returned
+ *  vector is the raw Newell accumulator and is not normalized; only its
+ *  direction is meaningful, encoding the face orientation. */
 export function loopWorldNormal(loop: Point[], height: number): Vector3 {
   const world = loop.map((p) => planToWorld(p, height))
   const normal: Vector3 = { x: 0, y: 0, z: 0 }
@@ -35,8 +37,8 @@ export function canonicalOuterLoop(loop: Point[]): Point[] {
   return loopWorldNormal(loop, 0).y >= 0 ? loop : [...loop].reverse()
 }
 
-/** A hole is wound opposite the canonical outer loop, matching THREE.Shape
- *  hole expectations (foundation spec 3.2). */
+/** A hole is wound opposite the outer loop so the engine's polygon builder
+ *  treats it as a subtracted region (foundation spec 3.2). */
 export function canonicalHoleLoop(loop: Point[]): Point[] {
   return [...canonicalOuterLoop(loop)].reverse()
 }
