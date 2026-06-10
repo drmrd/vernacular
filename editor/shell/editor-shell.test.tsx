@@ -4,8 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { EditorShell, type EditorShellProps } from './editor-shell'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
 import {
+  ActiveFloorProvider,
   EditorSessionProvider,
   SelectionProvider,
+  createActiveFloorStore,
   createEditorSession,
   createSelectionStore,
 } from '../../bridge'
@@ -26,12 +28,15 @@ function projectWithFloor(): Project {
 function renderShell(props: Partial<EditorShellProps> = {}) {
   const session = createEditorSession(projectWithFloor())
   const selection = createSelectionStore()
+  const activeFloor = createActiveFloorStore(session.getProject().floors[0]?.id ?? null)
   render(
     <EditorSessionProvider session={session}>
       <SelectionProvider store={selection}>
-        <ActiveToolProvider>
-          <EditorShell saveStatus="idle" {...props} />
-        </ActiveToolProvider>
+        <ActiveFloorProvider store={activeFloor}>
+          <ActiveToolProvider>
+            <EditorShell saveStatus="idle" {...props} />
+          </ActiveToolProvider>
+        </ActiveFloorProvider>
       </SelectionProvider>
     </EditorSessionProvider>,
   )
