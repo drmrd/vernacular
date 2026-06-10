@@ -3,7 +3,13 @@ import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createStair } from '../../model/factories'
 import type { Project } from '../../model/types'
-import { addStair, moveStair, registerStairCommands, removeStair } from './stair-commands'
+import {
+  addStair,
+  moveStair,
+  registerStairCommands,
+  removeStair,
+  setStairRunType,
+} from './stair-commands'
 
 function newProject(): Project {
   return createEmptyProject({
@@ -75,5 +81,21 @@ describe('stair commands', () => {
 
     dispatcher.undo()
     expect(state.stairs[0]?.position).toEqual({ x: 0, y: 0 })
+  })
+
+  it('changes the stair run type and restores the prior value on undo', () => {
+    const stair = createStair({
+      id: 's1',
+      runType: 'straight',
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    const state: Project = { ...newProject(), stairs: [stair] }
+    const dispatcher = stairDispatcher(state)
+
+    dispatcher.dispatch(setStairRunType('s1', 'u-turn'))
+    expect(state.stairs[0]?.runType).toBe('u-turn')
+
+    dispatcher.undo()
+    expect(state.stairs[0]?.runType).toBe('straight')
   })
 })
