@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  AssetCacheProvider,
   EditorSessionProvider,
   SelectionProvider,
   createEditorSession,
@@ -10,10 +11,13 @@ import {
 } from '../bridge'
 import { ActiveToolProvider, EditorShell } from '../editor'
 import {
+  InMemoryAssetCache,
   InMemoryRecentProjectStore,
   isStorageDegraded,
   probeStorageCapabilities,
   summarizeStorageCapabilities,
+  type AssetCache,
+  type ProjectStorage,
   type ProjectStore,
   type RecentProjectStore,
   type StorageCapabilities,
@@ -21,9 +25,22 @@ import {
 import type { Project } from '../core'
 import { createInitialProject } from './create-initial-project'
 import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
-import { resolveProjectStore } from './resolve-project-store'
+import { resolveProjectStorage } from './resolve-project-store'
 
 const DEFAULT_PROJECT_ID = 'current'
+
+// Resolve the durable {store, assets} pair to boot against. An injected
+// store-only resolver (tests) pairs its store with an in-memory asset cache; the
+// default resolves the real pair, so the OPFS runtime gets a directory-backed
+// asset cache that persists underlay rasters beside project.json (ADR-0042).
+async function resolveBootStorage(
+  resolveStore?: () => Promise<ProjectStore>,
+): Promise<ProjectStorage> {
+  if (resolveStore) {
+    return { store: await resolveStore(), assets: new InMemoryAssetCache() }
+  }
+  return resolveProjectStorage()
+}
 
 /** The subset of SnapshotStore the app depends on for autosave and crash recovery. */
 export interface SnapshotsPort {
@@ -35,6 +52,8 @@ export interface SnapshotsPort {
 
 export interface AppProps {
   store?: ProjectStore
+  /** Injected asset cache; defaults to the boot-resolved cache, or in-memory under an injected store. */
+  assets?: AssetCache
   resolveStore?: () => Promise<ProjectStore>
   projectId?: string
   recentProjects?: RecentProjectStore
@@ -43,30 +62,36 @@ export interface AppProps {
 
 export function App({
   store: providedStore,
-  resolveStore = resolveProjectStore,
+  assets: providedAssets,
+  resolveStore,
   projectId = DEFAULT_PROJECT_ID,
   recentProjects: providedRecentProjects,
   snapshots,
 }: AppProps) {
-  const { store, session, setSession, error } = useProjectBoot(
+  const { store, assets, session, setSession, error } = useProjectBoot({
     providedStore,
+    providedAssets,
     resolveStore,
     projectId,
-  )
+  })
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
     [providedRecentProjects],
   )
   const capabilities = useStorageCapabilities()
 
-  if (error !== null || store === null || session === null || capabilities === null) {
+  if (error !== null) {
     return bootStatusView(error)
+  }
+  if (store === null || assets === null || session === null || capabilities === null) {
+    return bootStatusView(null)
   }
 
   return (
     <EditorWorkspace
       session={session}
       store={store}
+      assets={assets}
       projectId={projectId}
       recentProjects={recentProjects}
       capabilities={capabilities}
@@ -118,31 +143,39 @@ function bootStatusView(error: Error | null) {
 
 interface ProjectBoot {
   store: ProjectStore | null
+  assets: AssetCache | null
   session: EditorSession | null
   setSession: (session: EditorSession) => void
   error: Error | null
 }
 
-// Boots the project: uses an injected store directly, otherwise resolves one
-// asynchronously through resolveStore() exactly once, then loads or creates the
-// project. Each async step is guarded against writes after unmount, and the store
-// and load errors surface through a single error channel.
-function useProjectBoot(
-  providedStore: ProjectStore | undefined,
-  resolveStore: () => Promise<ProjectStore>,
-  projectId: string,
-): ProjectBoot {
-  const [resolved, setResolved] = useState<ProjectStore | null>(null)
+interface ProjectBootInputs {
+  providedStore: ProjectStore | undefined
+  providedAssets: AssetCache | undefined
+  resolveStore: (() => Promise<ProjectStore>) | undefined
+  projectId: string
+}
+
+// Boots the project: uses an injected store directly, otherwise resolves the
+// durable {store, assets} pair asynchronously exactly once, then loads or creates
+// the project. An injected store pairs with the injected asset cache or a fresh
+// in-memory one. Each async step is guarded against writes after unmount, and the
+// store and load errors surface through a single error channel.
+function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
+  const { providedStore, providedAssets, resolveStore, projectId } = inputs
+  const [resolved, setResolved] = useState<ProjectStorage | null>(null)
   const [session, setSession] = useState<EditorSession | null>(null)
   const [error, setError] = useState<Error | null>(null)
-  const store = providedStore ?? resolved
+  const fallbackAssets = useMemo(() => new InMemoryAssetCache(), [])
+  const store = providedStore ?? resolved?.store ?? null
+  const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
 
   useEffect(() => {
     if (providedStore) {
       return
     }
     let cancelled = false
-    void resolveStore()
+    void resolveBootStorage(resolveStore)
       .then((it) => !cancelled && setResolved(it))
       .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
@@ -163,7 +196,7 @@ function useProjectBoot(
     }
   }, [store, projectId])
 
-  return { store, session, setSession, error }
+  return { store, assets, session, setSession, error }
 }
 
 function asError(cause: unknown): Error {
@@ -173,6 +206,7 @@ function asError(cause: unknown): Error {
 interface EditorWorkspaceProps {
   session: EditorSession
   store: ProjectStore
+  assets: AssetCache
   projectId: string
   recentProjects: RecentProjectStore
   capabilities: StorageCapabilities
@@ -181,7 +215,7 @@ interface EditorWorkspaceProps {
 }
 
 function EditorWorkspace(props: EditorWorkspaceProps) {
-  const { session, store, projectId, recentProjects, snapshots, onSession } = props
+  const { session, store, assets, projectId, recentProjects, snapshots, onSession } = props
   const selection = useMemo(() => createSelectionStore(), [])
   // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
   // option rejects an explicit undefined.
@@ -195,17 +229,19 @@ function EditorWorkspace(props: EditorWorkspaceProps) {
 
   return (
     <EditorSessionProvider session={session}>
-      <SelectionProvider store={selection}>
-        <ActiveToolProvider>
-          <EditorShell
-            saveStatus={saveStatus}
-            recentProjects={recentEntries}
-            {...actions}
-            // Spread recovery only when present: the optional prop rejects an explicit undefined.
-            {...(recovery ? { recovery } : {})}
-          />
-        </ActiveToolProvider>
-      </SelectionProvider>
+      <AssetCacheProvider assets={assets}>
+        <SelectionProvider store={selection}>
+          <ActiveToolProvider>
+            <EditorShell
+              saveStatus={saveStatus}
+              recentProjects={recentEntries}
+              {...actions}
+              // Spread recovery only when present: the optional prop rejects an explicit undefined.
+              {...(recovery ? { recovery } : {})}
+            />
+          </ActiveToolProvider>
+        </SelectionProvider>
+      </AssetCacheProvider>
     </EditorSessionProvider>
   )
 }

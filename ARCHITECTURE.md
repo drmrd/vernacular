@@ -12,7 +12,7 @@ the codebase, not the spec itself.
 
 The codebase is divided into six layers. Each layer depends only on the
 layers below it. Layer-crossing imports are enforced by ESLint
-(boundary rules land in Phase 0d).
+boundary rules (ADR-0012, ADR-0017).
 
 ```
 +------------------------------------------------------------+
@@ -46,14 +46,14 @@ Hard invariants:
 
 ## Where to find things
 
-| Topic                                  | Where to look                                   |
-| -------------------------------------- | ----------------------------------------------- |
-| Full design rationale                  | `docs/specs/2026-06-01-vernacular-design.md`    |
-| Per-phase implementation plans         | `docs/plans/`                                   |
-| Current roadmap                        | [`ROADMAP.md`](ROADMAP.md)                      |
-| Contributing                           | [`CONTRIBUTING.md`](CONTRIBUTING.md)            |
-| License and required attributions      | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE)        |
-| Architecture decision records (future) | `docs/knowledge/decisions/` (added in Phase 0c) |
+| Topic                             | Where to look                                |
+| --------------------------------- | -------------------------------------------- |
+| Full design rationale             | `docs/specs/2026-06-01-vernacular-design.md` |
+| Per-phase implementation plans    | `docs/plans/`                                |
+| Current roadmap                   | [`ROADMAP.md`](ROADMAP.md)                   |
+| Contributing                      | [`CONTRIBUTING.md`](CONTRIBUTING.md)         |
+| License and required attributions | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE)     |
+| Architecture decision records     | `docs/knowledge/decisions/`                  |
 
 ## Subagents and slash commands
 
@@ -69,8 +69,13 @@ See `CLAUDE.md` for the full command list and `.claude/rules.md` for the rubric 
 
 ## Status
 
-Phase 0 is in progress. The current state of the codebase is the
-build foundation only: a working TypeScript + React + Vite + Vitest
-skeleton with a single-component smoke test. Most of the architecture
-described above is still ahead of us; it will land incrementally
-through Phases 0f and 0g, then Phase 1 onward.
+The bootstrap foundation (Phase 0) and the two-dimensional plan editor
+(Phase 1) are complete: all six layers are scaffolded and in active use,
+from the pure-TypeScript domain, registries, commands, and scene-graph
+derivation in `core/`, through the durable project stores in `storage/`,
+the Canvas plan renderer and accessible DOM overlay in `editor/`, and the
+command-dispatch boundary in `bridge/`. The `engine/` Three.js layer holds
+the scene-renderer skeleton. The remaining MVP work proceeds as the parallel
+delivery tracks recorded in ADR-0044 and ROADMAP.md, beginning with the
+three-dimensional preview, the assets and furniture pipeline, and the
+user-experience foundation.

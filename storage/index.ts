@@ -2,6 +2,10 @@ export type { ProjectStore, ProjectSummary } from './project-store'
 export { ProjectNotFoundError } from './project-store'
 export type { LibraryItemSummary, LibraryStore } from './library-store'
 export type { AssetCache } from './asset-cache'
+export { InMemoryAssetCache } from './in-memory-asset-cache'
+export { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from './directory-asset-cache'
+export type { ProjectStorage } from './project-storage'
+export { createOpfsProjectStorage, createDefaultProjectStorage } from './project-storage'
 export { InMemoryProjectStore } from './in-memory-project-store'
 export {
   IndexedDbProjectStore,

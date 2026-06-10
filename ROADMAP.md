@@ -4,7 +4,7 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, but Phase 1 is not complete until two finishing slices land: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 2 (the three-dimensional preview) begins once they land. See ADR-0041.
+Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, and both finishing slices have now landed: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 1 is complete. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones; the three-dimensional preview, the assets and furniture pipeline, and the user-experience foundation start in parallel. See ADR-0041, ADR-0042, ADR-0043, and ADR-0044, and the MVP path section below.
 
 ## Foundation work
 
@@ -29,17 +29,92 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 ## MVP path
 
-| Focus                                                   | Status      |
-| ------------------------------------------------------- | ----------- |
-| Project stores, persistence, and migrations             | done        |
-| Two-dimensional plan editor                             | in progress |
-| Three-dimensional preview with color-temperature slider | pending     |
-| Furniture import and curated starter library (alpha)    | pending     |
-| Old-house architectural vocabulary                      | pending     |
-| Multi-floor and stairs (beta)                           | pending     |
-| Paint, export, site metadata (1.0)                      | pending     |
+Phase 1 (the two-dimensional plan editor) and the project-stores work are done. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones (ADR-0044). The re-sequencing is possible because Phase 1 already shipped the decoupling layer (scene-graph derivation, the registry pattern, and the single dispatch boundary): a new entity kind is an additive scene-graph projection that the two-dimensional renderer, the three-dimensional renderer, and the export pipeline each pick up independently, so "what an entity is" is independent of "how each surface draws it."
 
-> **Two-dimensional plan editor (in progress):** the twelve build slices are done; two finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), close the remaining named Phase-1 acceptance items before Phase 2. See ADR-0041 and the Phase 1 section below.
+| Area                                    | Status                   |
+| --------------------------------------- | ------------------------ |
+| Project stores, persistence, migrations | done                     |
+| Two-dimensional plan editor             | done                     |
+| Three-dimensional preview               | track, start-now enabler |
+| Assets and furniture                    | track, start-now enabler |
+| User-experience foundation              | track, start-now enabler |
+| Old-house vocabulary                    | track                    |
+| Structure and multi-floor               | track                    |
+| Output and export                       | track                    |
+| Paint and metadata                      | track                    |
+
+### Dependency graph
+
+Every track fans out from the shipped Phase-1 foundation and can start immediately. The only work that must wait is the bottom row of convergence nodes, which gate on the three-dimensional preview track, the assets track, or both.
+
+```
+        Phase-1 foundation (shipped): project model, scene-graph derivation,
+        command dispatch, registries, hit-test and snapping, transforms,
+        DOM overlay, two-dimensional renderer
+                                  |
+   +-----------+-----------+------+------+-----------+-----------+-----------+
+   v           v           v             v           v           v           v
+ 3D          Assets &    Old-house     Structure   Output &    Paint &     User-
+ preview     furniture   vocabulary    & multi-    export      metadata    experience
+                                       floor                               foundation
+ shell       pack CLI    era registry  floors      SVG export  paint model design
+ renderer    asset cache room purpose  stair 2D    PDF export  palettes    tokens
+ camera /    asset reg.  surface       + topology  PNG (2D)    color and   theming
+ walk        library     historic      complete    standard    finish      component
+ lighting +  browser     vocabulary    underlay    exporters   pickers     primitives
+ color-temp  custom      curved 2D     (doc/scene, (ifcJSON,   site        layout
+ split-pane  import      openings      trace)      DXF)        metadata    shell
+ + selection placement   trim data                                        empty and
+ sync        (2D)        wall/ceiling                                      loading
+                         features                                         states
+                         construction
+                         profiles (2D)
+   |           |           |             |           |           |           |
+   +-----------+-----------+------+------+-----------+-----------+-----------+
+                                  |
+            Convergence nodes (each gates on the 3D preview track,
+            the assets track, or both):
+              - furniture in three dimensions          (needs 3D preview)
+              - three-dimensional openings, trim,
+                wall and ceiling features               (needs 3D preview + data)
+              - parametric stair geometry, cutaway,
+                floor-by-floor three-dimensional view   (needs 3D preview + structure)
+              - painted preview                         (needs 3D preview + paint material)
+              - library era filtering                  (needs library browser + era registry)
+              - bundle export with attributions        (needs asset index)
+```
+
+### Start-now enablers
+
+Three pieces of work depend only on shipped Phase-1 infrastructure, depend on nothing in each other, and unblock the most downstream work, so they start in parallel and are staffed first:
+
+1. **The three-dimensional shell renderer**, because the three-dimensional view of openings, trim, features, stairs, the cutaway, the snapshot export, and the painted preview all converge on it.
+2. **The asset cache and registry**, because furniture in three dimensions, the library browser, era filtering, the bundle export, and the palette pack all hang off it.
+3. **The design-system foundation**, because it is a dependency reducer: every user-interface-bearing node is cheaper and avoids re-polishing when the tokens, theming, and primitives exist first.
+
+### Delivery tracks
+
+| Track                      | Independent (start-now) portion                                                                                                                      | Converges later on                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Three-dimensional preview  | shell renderer, camera and walk, basic lighting and color-temperature slider, split-pane, selection sync                                             | nothing (it is the convergence target)                             |
+| Assets and furniture       | pack format and CLI, asset cache, asset registry and resolution, library, custom import, placement (2D)                                              | furniture in three dimensions (3D preview)                         |
+| Old-house vocabulary       | era registry and tagging, room-purpose registry, surfacing shipped vocabulary, curved 2D openings, trim and feature data, construction profiles (2D) | three-dimensional renderings (3D preview); era filtering (library) |
+| Structure and multi-floor  | floor management, stair entity and 2D symbol and floor-spanning topology, complete underlay, per-room ceiling height                                 | stair 3D geometry, cutaway, floor-by-floor 3D (3D preview)         |
+| Output and export          | vector, document, and image export of the 2D plan in `core/export/`; standard-format exporters                                                       | 3D snapshot export (3D preview); bundle export (asset index)       |
+| Paint and metadata         | paint assignment model, palette registry, color and finish pickers, site metadata                                                                    | painted preview (3D preview paint material)                        |
+| User-experience foundation | design tokens, theming, component primitives, layout shell, empty and loading states, then continuous polish                                         | nothing (it feeds every other track's UI)                          |
+
+### Milestone composition
+
+- **Public alpha** = the Phase-1 editor (done) plus the three-dimensional preview; the assets and furniture track delivered and de-risked end to end; the identity-bearing front of the old-house vocabulary (era registry, era tagging, room-purpose registry, and surfacing the already-shipped historic opening vocabulary); two-dimensional export (vector, document, image); and the user-experience foundation. The alpha leads with the product's identity, ships furniture, produces a real artifact, and is not rough.
+- **Public beta** = multi-floor and stairs; the three-dimensional renderings of the old-house vocabulary; the complete underlay layer; and library era filtering.
+- **1.0** = paint, palettes, and finishes; site metadata; full export including the bundle and standard formats; and the final polish pass.
+
+### Open-standard interoperability
+
+The native project model stays the source of truth. There is no established lightweight open standard for residential floor plans with room and era semantics; the one real open building-data standard (the Industry Foundation Classes, ISO 16739-1:2024, with its `ifcJSON` serialization) is full building-information-modeling and belongs behind the reserved exporter and importer seam, not at the core. Open standards land as exporters and importers within the output track (an `ifcJSON` exporter proves interoperability), and the project schema is published formally with the historic extensions namespaced so it can anchor an open reference over time. See ADR-0044.
+
+> **Two-dimensional plan editor (done):** the twelve build slices and both finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), are done; together they close the remaining named Phase-1 acceptance items. Phase 1 is complete; the remaining MVP work proceeds as the parallel delivery tracks above (ADR-0044). See ADR-0041, ADR-0042, ADR-0043, and the Phase 1 section below.
 
 > **Project stores, persistence, and migrations (slice 11 done):** the durable
 > folder, OPFS, and `.house.zip` stores, the schema-and-registry migration
@@ -66,24 +141,24 @@ model's millimeter storage (see ADR-0027), and a branded `Millimeters` type.
 
 ### Phase 1: two-dimensional plan editor
 
-The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as twelve build slices plus two finishing slices (13, 14), each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence. The twelve build slices are done; the two finishing slices (ADR-0041) close the remaining named Phase-1 acceptance items.
+The two-dimensional plan editor (design specification section 10, Phase 1) is delivered as twelve build slices plus two finishing slices (13, 14), each with its own implementation plan in `docs/plans/` and its own red-green-blue cycle. Build order follows dependencies: geometry and model core first, then the interactive surface, then editing tools, then persistence. The twelve build slices and the two finishing slices (ADR-0041, ADR-0042, ADR-0043) are all done, closing the remaining named Phase-1 acceptance items; Phase 1 is complete.
 
-| Slice                                                                               | Status  |
-| ----------------------------------------------------------------------------------- | ------- |
-| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done    |
-| 2. Units and measurement (imperial and metric parsing and formatting)               | done    |
-| 3. Pan and zoom infinite canvas, grid, rulers                                       | done    |
-| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done    |
-| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done    |
-| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done    |
-| 7. Openings (doors and windows: placement and editing)                              | done    |
-| 8. Room naming and labeling, custom-polygon override                                | done    |
-| 9. Dimensions (live and persisted) and thickness-aware area                         | done    |
-| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done    |
-| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done    |
-| 12. Image underlay with calibration                                                 | done    |
-| 13. Underlay asset persistence (raster survives save and reopen)                    | pending |
-| 14. DOM overlay and accessibility (ARIA, focus, keyboard nav; unit-aware labels)    | pending |
+| Slice                                                                               | Status |
+| ----------------------------------------------------------------------------------- | ------ |
+| 1. Wall topology and room derivation (junctions, room polygons, area, plan fill)    | done   |
+| 2. Units and measurement (imperial and metric parsing and formatting)               | done   |
+| 3. Pan and zoom infinite canvas, grid, rulers                                       | done   |
+| 4. Snapping (endpoint, midpoint, perpendicular, parallel, grid)                     | done   |
+| 5. Selection (click, marquee, multi-select) and the hit-test index                  | done   |
+| 6. Wall editing (endpoint move and thickness; construction type deferred)           | done   |
+| 7. Openings (doors and windows: placement and editing)                              | done   |
+| 8. Room naming and labeling, custom-polygon override                                | done   |
+| 9. Dimensions (live and persisted) and thickness-aware area                         | done   |
+| 10. Clipboard and transforms (copy, paste, delete, move, rotate)                    | done   |
+| 11. Project stores, save/open/recent, autosave sidecar, migrations, multi-tab locks | done   |
+| 12. Image underlay with calibration                                                 | done   |
+| 13. Underlay asset persistence (raster survives save and reopen)                    | done   |
+| 14. DOM overlay and accessibility (ARIA, focus, keyboard nav; unit-aware labels)    | done   |
 
 **Slice 1 (done) scope and deferrals.** Slice 1 derives rooms as a pure, memoized projection of the wall model (no stored room state) and fills them in the two-dimensional plan. Deliberately deferred, by design:
 
@@ -128,11 +203,11 @@ The two-dimensional plan editor (design specification section 10, Phase 1) is de
 
 **Slice 7 (done) scope and deferrals.** Slice 7 makes openings first-class: the user picks an opening type, clicks a wall to place it, sees the correct architectural plan symbol drawn into a gap in the host wall, selects it, drags it along its wall, edits its size and sill height, flips its swing, and removes it. Openings are typed at the element level (an `Opening` record whose `type` points to the `ElementTypeRegistry`) and wall-hosted (a host wall, a position along the wall, and an orientation), the first entity to use the general wall-hosting relationship that furniture and wall features will reuse. The plan symbol is chosen by operation family (swing, slide, fold, pivot, cased, fixed window, crank window), so the broad residential vocabulary (single and double swing, French, dutch, pocket, bypass, barn, bifold, and pivot doors; cased openings; double- and single-hung, sliding, picture, casement, awning, hopper, transom, and sidelight windows) is a set of registry additions over a few shared symbol routines, and shape is a registry parameter. Five undoable commands (`placeOpening`, `moveOpening`, `resizeOpening`, `flipOpening`, `removeOpening`) flow through `dispatch`; opening geometry derives in pure core into an `OpeningSceneNode`, paints through the existing Canvas seam, and joins the hit-test index and marquee (an opening beats a wall beats a room). An additive v2-to-v3 schema migration backfills `openings: []` (and defensively the `underlays: []` array the underlay slice added without its own bump). Deliberately deferred, by design (see ADR-0038 and the slice spec `docs/specs/2026-06-07-openings-doors-and-windows.md`):
 
-- **Projecting windows (bay, bow, oriel, garden).** They change the floor footprint and feed room-polygon and area derivation, coupled to slice 9; the wall-hosted model here is the substrate they extend.
+- **Projecting windows (bay, bow, oriel, garden).** They change the floor footprint and feed room-polygon and area derivation, coupled to the dimensions and thickness-aware area slice (slice 9); the wall-hosted model here is the substrate they extend.
 - **Shape variants (arched, half-round, round, lancet, Palladian, fanlight, eyebrow, octagonal).** A registry shape parameter plus curved rendering, Phase 4; the renderer reads shape from the element type now, so the parameter joins without a model change.
 - **Period multi-element assemblies as one placeable surround.** Transoms and sidelights are their own openings; composing a door surround is later work.
 - **3D builders, trim and casing, and rehosting an opening across walls by drag.** The `scene3D` reference is reserved for Phase 2, trim is path-based later work, and dragging clamps to the host wall (no rehosting this slice).
-- **Opening-aware room derivation, the perpendicular-drag resize gizmo, and garage, skylight, and dormer openings.** Rooms still derive from wall centerlines, the inline inspector replaces the resize gizmo (mirroring slice 6), and non-wall hosts are out of this slice's wall-hosted scope.
+- **Opening-aware room derivation, the perpendicular-drag resize gizmo, and garage, skylight, and dormer openings.** Rooms still derive from wall centerlines, the inline inspector replaces the resize gizmo (mirroring the wall-editing slice, slice 6), and non-wall hosts are out of this slice's wall-hosted scope.
 - **The opening drag's live preview and a styled type chooser.** The drag dispatches an undoable `moveOpening` on release without a live ghost, and the place-opening type chooser is a plain select; both are follow-on polish.
 - **The slide-family symbol distinction and the opening-inspector end-to-end assertion.** Pocket, bypass, sliding-glass, and barn doors share one `door-slide` symbol this slice, so a barn door and a pocket door read alike in plan; the pocket-specific dashing (which needs a `setLineDash` member on the Canvas seam) is deferred. The wall-drawing end-to-end assertion that the inspector appears for a selected opening is also deferred, because the headless Playwright run is not available in this environment; the opening placement and editing glue is validated by the pure-module tests and a manual check.
 
@@ -156,7 +231,7 @@ The wall-drawing end-to-end flow is unaffected: opening placement and editing ar
 - **Thickness-aware fill and hit-testing.** Rooms still fill and hit-test on the centerline `polygon`; only the reported `area` and the new `clearPolygon` are thickness-aware. Painting the fill inside the clear polygon is a one-line renderer change deferred to overlay polish now that `clearPolygon` is derived.
 - **Best-effort clear-area geometry.** `insetPolygon` is correct for simple convex and mildly non-convex rooms; over-inset self-intersection (a wall wider than the room), holes, and very acute corners are best-effort, mirroring slice 1's best-effort topology.
 
-The wall-drawing end-to-end flow is unaffected: the dimension tool and inspector are gated on the `dimension` and `select` tools, and a project with no dimensions paints exactly as before. This slice is stacked on slice 7 (its base schema is version 3), so it lands after slice 7 in the merge order.
+The wall-drawing end-to-end flow is unaffected: the dimension tool and inspector are gated on the `dimension` and `select` tools, and a project with no dimensions paints exactly as before. This slice is stacked on the openings slice (slice 7; its base schema is version 3), so it lands after the openings slice in the merge order.
 
 **Slice 10 (done) scope and deferrals.** Slice 10 turns selection into editing: the user moves, rotates, deletes, copies, cuts, and pastes the selected plan entities (walls and free-floating dimensions; openings ride their host wall parametrically, and derived rooms re-derive), all undoable. Pure `translatePoint`/`rotatePoint` feed three transform commands (`translateEntities`, `rotateEntities`, `deleteEntities`, the last cascading a deleted wall's openings) plus a `pasteEntities` command, all reassigning `state.floors` so the dispatcher captures the inverse. A pure, serializable clipboard core (`buildClipboardSnapshot`, `serializeClipboard`/`deserializeClipboard` with a tagged, version-checked, shape-validated payload, and `instantiateClipboard` minting fresh ids and remapping each opening onto its pasted host wall) backs two clipboard layers: an in-app store and an operating-system-clipboard adapter sharing the serializer. In the editor a move-drag previews a translated ghost and commits a translate on release (routed beneath the endpoint and opening drags, above the marquee), the arrow keys nudge, Delete and Backspace delete, the platform copy/cut/paste shortcuts drive the clipboard (ignored while a form control is focused), and a selection transform panel rotates the selection ninety degrees each way or by a typed angle about its center. All decision logic lives in pure, unit-tested modules (including the selection-to-entity-id mapping and the ghost segments); the move-drag and keyboard hooks, the panel placement, and the plan-view composition are coverage-excluded glue. With this slice the twelve build slices of the two-dimensional plan editor are complete; the two finishing slices (13, 14) close the remaining named Phase-1 acceptance items before Phase 2 (see ADR-0041). Deliberately deferred, by design (see ADR-0040 and the slice spec `docs/specs/2026-06-08-clipboard-and-transforms.md`):
 
@@ -189,9 +264,12 @@ The wall-drawing end-to-end flow is unaffected: the move-drag, nudging, delete, 
 
 The wall-drawing end-to-end flow is unaffected: the underlay and calibration wiring is gated on the underlay panel and the `calibrate` tool, which the wall-drawing flow does not trigger, and a project with no underlays paints exactly as before.
 
-**Slice 13 (planned) scope.** Slice 13 closes the "zero state loss" Phase-1 acceptance test for underlays. It wires `AssetCache` writeback and load resolution behind the existing content-addressed `Underlay.image` (`AssetReference`), so a placed underlay's decoded raster is written to the project store's asset area on placement (or save) and resolved back into the in-memory load (`editor/plan/use-underlay.ts`) on reopen. It is a thin, forward-compatible subset of the full asset-and-pack pipeline, which stays Phase 3 and owns `previews/`, `ATTRIBUTIONS.md`, library packs, and quota and eviction; slice 13 writes only what an underlay needs. See ADR-0041 and the plan `docs/plans/2026-06-09-phase-1-finishing-underlay-persistence-and-overlay-accessibility.md`.
+**Slice 13 (done) scope and deferrals.** Slice 13 closes the "zero state loss" Phase-1 acceptance test for underlays. It adds two `AssetCache` implementations (an `InMemoryAssetCache` and a `DirectoryAssetCache` that stores bytes at `assets/<contentHash>` through the existing `DirectoryPort`), resolves a `{ store, assets }` `ProjectStorage` pair at boot so the OPFS runtime pairs its store with a directory-backed cache, exposes the cache to the editor through a bridge `AssetCacheProvider` and `useAssetCache()` hook, and wires the underlay load path to write the raster bytes on load and re-decode them on open (`editor/plan/use-underlay.ts`, split into `use-load-underlay-image` and `use-resolve-underlays`) behind the existing content-addressed `Underlay.image` (`AssetReference`), so a placed underlay survives save and reopen. It is a thin, forward-compatible subset of the full asset-and-pack pipeline. Deliberately deferred, by design (see ADR-0042 and the slice spec `docs/specs/2026-06-09-underlay-asset-persistence.md`):
 
-**Slice 14 (planned) scope.** Slice 14 adds the React DOM overlay (a named Phase-1 deliverable) that mirrors the Canvas world matrix with CSS transforms and carries the interactive UI the design specification names (selection rings, dimension chips, snap indicators, hover tooltips) with ARIA labels, focus management, and keyboard navigation. The Canvas stays the renderer; the overlay is an additive, accessible, styleable chrome layer over it, consistent with the Canvas-drawing seam (ADR-0021). Because the unit formatters already exist (slice 2) and labels live in the overlay, unit-aware ruler and dimension labels and a project-level metric-or-imperial unit-display toggle ride this slice. See ADR-0041 and the same plan.
+- **Durable IndexedDB asset persistence.** The OPFS and folder stores persist assets through the `DirectoryAssetCache`; the IndexedDB default and in-memory stores pair with an `InMemoryAssetCache`, so an underlay does not survive reload on those backends. A durable IndexedDB-backed `AssetCache` is the near-term follow-up, additive behind the interface this slice lands.
+- **The full asset-and-pack pipeline.** No `previews/`, `ATTRIBUTIONS.md`, library packs, or pack- and user-scoped assets; only `scope: 'project'` underlay rasters. Quota, eviction, and orphan collection, and the `.house.zip` bundle asset round-trip, stay with the Phase-3 asset pipeline. See ADR-0041 and the plan `docs/plans/2026-06-09-phase-1-finishing-underlay-persistence-and-overlay-accessibility.md`.
+
+**Slice 14 (done) scope.** Slice 14 adds the React DOM overlay (a named Phase-1 deliverable) that mirrors the Canvas world matrix with CSS transforms and carries the interactive UI the design specification names (selection rings, dimension chips, snap indicators, hover tooltips) with ARIA labels, focus management, and keyboard navigation. The Canvas stays the renderer; the overlay is an additive, accessible, styleable chrome layer over it, consistent with the Canvas-drawing seam (ADR-0021). Because the unit formatters already exist (slice 2) and labels live in the overlay, unit-aware ruler and dimension labels and a project-level metric-or-imperial unit-display toggle ride this slice. See ADR-0041 and the same plan.
 
 **Phase 1 follow-ups (tracked, not gating).** Items named in or implied by the design specification but not gating Phase-1 completion, recorded here so none is lost:
 

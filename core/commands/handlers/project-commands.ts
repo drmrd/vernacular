@@ -1,9 +1,10 @@
 import { createFloor } from '../../model/factories'
-import type { Floor, Project } from '../../model/types'
+import type { Floor, Project, UnitSystem } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
 export const RENAME_PROJECT = 'project/rename'
+export const SET_UNITS = 'project/set-units'
 export const ADD_FLOOR = 'project/add-floor'
 export const REMOVE_FLOOR = 'project/remove-floor'
 export const SET_FLOOR_CEILING_HEIGHT = 'project/set-floor-ceiling-height'
@@ -17,6 +18,18 @@ export function renameProject(name: string): Command<RenameProjectParams> {
     type: RENAME_PROJECT,
     params: { name },
     description: `Rename project to "${name}"`,
+  }
+}
+
+export interface SetUnitsParams {
+  units: UnitSystem
+}
+
+export function setUnits(units: UnitSystem): Command<SetUnitsParams> {
+  return {
+    type: SET_UNITS,
+    params: { units },
+    description: `Switch units to ${units}`,
   }
 }
 
@@ -81,6 +94,12 @@ const renameProjectHandler: CommandHandler<Project, RenameProjectParams> = {
   },
 }
 
+const setUnitsHandler: CommandHandler<Project, SetUnitsParams> = {
+  apply(state, params) {
+    state.meta = { ...state.meta, units: params.units }
+  },
+}
+
 const addFloorHandler: CommandHandler<Project, AddFloorParams> = {
   apply(state, params) {
     state.floors = [...state.floors, params.floor]
@@ -106,6 +125,7 @@ export function registerProjectCommands(
 ): CommandRegistry<Project> {
   return registry
     .register(RENAME_PROJECT, renameProjectHandler)
+    .register(SET_UNITS, setUnitsHandler)
     .register(ADD_FLOOR, addFloorHandler)
     .register(REMOVE_FLOOR, removeFloorHandler)
     .register(SET_FLOOR_CEILING_HEIGHT, setFloorCeilingHeightHandler)

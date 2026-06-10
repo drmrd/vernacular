@@ -420,15 +420,16 @@ describe('drawGrid', () => {
 })
 
 describe('drawRulers', () => {
-  it('fills the top and left ruler bands and draws raw-millimetre tick labels', () => {
+  it('fills the top and left ruler bands and draws unit-formatted tick labels', () => {
     const recorder = recordingContext()
 
     drawRulers(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
 
     // a band along the top and a band along the left
     expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)
-    // the origin label (world 0 mm) appears as text when it is in view at offset 0
-    expect(recorder.texts.map((entry) => entry.text)).toContain('0')
+    // the origin label appears as text when in view at offset 0, formatted in the
+    // metric default unit system
+    expect(recorder.texts.map((entry) => entry.text)).toContain('0 mm')
   })
 })
 

@@ -1,3 +1,9 @@
+import {
+  DEFAULT_METRIC_PREFERENCES,
+  formatLength,
+  lengthFormatOptions,
+  type UnitPreferences,
+} from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { gridSpacingMm } from './grid'
 import { axisProjection, axisSamples, type Viewport, type ViewportSize } from './viewport'
@@ -18,10 +24,12 @@ export interface RulerTick {
   label: string
 }
 
+// eslint-disable-next-line max-params -- the public seam takes viewport, length, and orientation plus the unit preferences each tick label needs.
 export function rulerTicks(
   viewport: Viewport,
   lengthPx: number,
   orientation: 'horizontal' | 'vertical',
+  preferences: UnitPreferences,
 ): RulerTick[] {
   const gridSpacing = gridSpacingMm(viewport.scale)
   const stepPx = gridSpacing * viewport.scale
@@ -34,13 +42,18 @@ export function rulerTicks(
     (sample) => ({
       worldValue: sample.worldValue,
       screen: sample.screen,
-      // Raw millimetre value; unit-aware formatting arrives with the units slice.
-      label: String(Math.round(sample.worldValue)),
+      label: formatLength(sample.worldValue, lengthFormatOptions(preferences)),
     }),
   )
 }
 
-export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: ViewportSize): void {
+// eslint-disable-next-line max-params -- ctx, viewport, and size are the draw seam plus the unit preferences threaded down to the tick labels.
+export function drawRulers(
+  ctx: PlanDrawingContext,
+  viewport: Viewport,
+  size: ViewportSize,
+  preferences: UnitPreferences = DEFAULT_METRIC_PREFERENCES,
+): void {
   ctx.fillStyle = RULER_BAND_COLOR
   ctx.fillRect(0, 0, size.width, RULER_THICKNESS_PX)
   ctx.fillRect(0, 0, RULER_THICKNESS_PX, size.height)
@@ -53,17 +66,19 @@ export function drawRulers(ctx: PlanDrawingContext, viewport: Viewport, size: Vi
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
 
-  drawRulerTicks(ctx, viewport, { orientation: 'horizontal', lengthPx: size.width })
-  drawRulerTicks(ctx, viewport, { orientation: 'vertical', lengthPx: size.height })
+  drawRulerTicks(ctx, viewport, { orientation: 'horizontal', lengthPx: size.width }, preferences)
+  drawRulerTicks(ctx, viewport, { orientation: 'vertical', lengthPx: size.height }, preferences)
 }
 
+// eslint-disable-next-line max-params -- ctx, viewport, and axis describe one ruler edge plus the unit preferences rulerTicks formats labels with.
 function drawRulerTicks(
   ctx: PlanDrawingContext,
   viewport: Viewport,
   axis: { orientation: 'horizontal' | 'vertical'; lengthPx: number },
+  preferences: UnitPreferences,
 ): void {
   const isHorizontal = axis.orientation === 'horizontal'
-  for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation)) {
+  for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation, preferences)) {
     ctx.beginPath()
     if (isHorizontal) {
       ctx.moveTo(tick.screen, 0)

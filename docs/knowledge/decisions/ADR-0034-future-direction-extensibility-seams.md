@@ -31,7 +31,7 @@ related:
   ]
 sourceFiles: [docs/specs/2026-06-01-vernacular-design.md]
 status: current
-updated: 2026-06-06
+updated: 2026-06-09
 ---
 
 # ADR-0034: Future-direction extensibility seams (historic forms and building systems)
@@ -75,12 +75,12 @@ Recorded so future work does not mistake these for missing architecture:
   level (design spec section 3.2): an opening is an `Opening` record whose `type`
   points to the `ElementTypeRegistry`, with shape and parameters in the registry,
   so a half-round or ovular window is a registry addition, not a schema change
-  (the full vocabulary is a Phase-5 milestone item). The only discipline this
+  (the full vocabulary is a Phase-4 milestone item). The only discipline this
   imposes is on slice 7: opening geometry derivation and rendering must read
   shape from the element type, never hardcode width-by-height rectangles.
 - **Arches, columns, alcoves** are `wallFeatures[]`; **casing, aprons, stools**
   are path-based trim with a `TrimProfileRegistry` cross-section; **wall
-  construction profiles** (plaster, lath-and-plaster, brick, stone) are a Phase-5
+  construction profiles** (plaster, lath-and-plaster, brick, stone) are a Phase-4
   item (this is why construction type was deferred out of slice 6).
 
 ## Decision

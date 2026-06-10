@@ -170,8 +170,18 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // The move-drag ghost sits above the plan but below the rulers, like the preview.
   drawGhost(ctx, options.ghost, options.viewport)
   if (options.rulers) {
-    drawRulers(ctx, options.viewport, size)
+    drawPlanRulers(ctx, options, size)
   }
+}
+
+/** Paint the ruler chrome in the project's units so it agrees with the DOM overlay. */
+function drawPlanRulers(
+  ctx: PlanDrawingContext,
+  options: DrawPlanOptions,
+  size: ViewportSize,
+): void {
+  const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
+  drawRulers(ctx, options.viewport, size, preferences)
 }
 
 /** Paint each opening's plan symbol over the wall stroke it breaks. */
