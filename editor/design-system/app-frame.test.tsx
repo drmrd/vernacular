@@ -96,3 +96,44 @@ describe('AppFrame collapse', () => {
     )
   })
 })
+
+describe('AppFrame resize', () => {
+  it('exposes a keyboard-operable vertical separator for the rail', async () => {
+    const user = userEvent.setup()
+    render(
+      <AppFrame
+        header={<h1>Vernacular</h1>}
+        rail={<p>rail</p>}
+        railLabel="Tools"
+        main={<p>canvas</p>}
+        mainLabel="Viewport"
+        inspector={<p>inspector</p>}
+        inspectorLabel="Inspector"
+      />,
+    )
+    const separator = screen.getByRole('separator', { name: /resize tools/i })
+    expect(separator).toHaveAttribute('aria-orientation', 'vertical')
+    const before = Number(separator.getAttribute('aria-valuenow'))
+    separator.focus()
+    await user.keyboard('{ArrowRight}')
+    const after = Number(
+      screen.getByRole('separator', { name: /resize tools/i }).getAttribute('aria-valuenow'),
+    )
+    expect(after).toBeGreaterThan(before)
+  })
+
+  it('exposes a separate resize separator for the inspector', () => {
+    render(
+      <AppFrame
+        header={<h1>Vernacular</h1>}
+        rail={<p>rail</p>}
+        railLabel="Tools"
+        main={<p>canvas</p>}
+        mainLabel="Viewport"
+        inspector={<p>inspector</p>}
+        inspectorLabel="Inspector"
+      />,
+    )
+    expect(screen.getByRole('separator', { name: /resize inspector/i })).toBeInTheDocument()
+  })
+})
