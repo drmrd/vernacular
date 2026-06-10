@@ -90,6 +90,9 @@ export function setFloorCeilingHeight(
 
 export interface SetFloorPeriodParams {
   floorId: string
+  // A floor override is clearable: `undefined` removes the override so the floor
+  // falls back to the inherited project period. (Contrast setProjectPeriod, which
+  // always carries a default and so has no clear path.)
   period: PeriodId | undefined
 }
 
@@ -106,6 +109,8 @@ export function setFloorPeriod(
 
 export interface SetFloorStyleParams {
   floorId: string
+  // Clearable like the floor period: `undefined` removes the override so the
+  // floor inherits the project style rather than pinning its own.
   style: StyleTag | undefined
 }
 
@@ -121,6 +126,9 @@ export function setFloorStyle(
 }
 
 export interface SetProjectPeriodParams {
+  // Non-clearable: a project always has a default period, so there is no
+  // "inherit" state to fall back to. (Contrast setFloorPeriod, whose override
+  // is clearable to undefined.)
   period: PeriodId
 }
 
@@ -167,14 +175,15 @@ const setFloorCeilingHeightHandler: CommandHandler<Project, SetFloorCeilingHeigh
   },
 }
 
+interface FloorOverrides {
+  periodOverride: PeriodId | undefined
+  styleOverride: StyleTag | undefined
+}
+
 // Rebuilds a floor with new period and style overrides, omitting either when it
 // resolves to undefined. The overrides are optional under exactOptionalPropertyTypes,
 // so an absent value must be left off the object rather than written as undefined.
-function rebuildFloor(
-  floor: Floor,
-  periodOverride: PeriodId | undefined,
-  styleOverride: StyleTag | undefined,
-): Floor {
+function rebuildFloor(floor: Floor, { periodOverride, styleOverride }: FloorOverrides): Floor {
   const next: Floor = {
     id: floor.id,
     name: floor.name,
@@ -197,7 +206,9 @@ function rebuildFloor(
 const setFloorPeriodHandler: CommandHandler<Project, SetFloorPeriodParams> = {
   apply(state, params) {
     state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId ? rebuildFloor(floor, params.period, floor.styleOverride) : floor,
+      floor.id === params.floorId
+        ? rebuildFloor(floor, { periodOverride: params.period, styleOverride: floor.styleOverride })
+        : floor,
     )
   },
 }
@@ -205,7 +216,9 @@ const setFloorPeriodHandler: CommandHandler<Project, SetFloorPeriodParams> = {
 const setFloorStyleHandler: CommandHandler<Project, SetFloorStyleParams> = {
   apply(state, params) {
     state.floors = state.floors.map((floor) =>
-      floor.id === params.floorId ? rebuildFloor(floor, floor.periodOverride, params.style) : floor,
+      floor.id === params.floorId
+        ? rebuildFloor(floor, { periodOverride: floor.periodOverride, styleOverride: params.style })
+        : floor,
     )
   },
 }
