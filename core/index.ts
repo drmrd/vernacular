@@ -21,7 +21,9 @@ export type {
   StyleId,
   StyleTag,
   Underlay,
+  UnderlayKind,
   UnderlayPlacement,
+  UnderlaySource,
   UnitSystem,
   Wall,
 } from './model/types'
