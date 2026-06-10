@@ -271,12 +271,14 @@ export type {
   RoomSceneNode,
   SceneGraph,
   SceneNode,
+  StairSceneNode,
   UnderlaySceneNode,
   WallSceneNode,
 } from './scene/scene-graph'
 export {
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
+  STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
   WALL_NODE_PREFIX,
   deriveDimensionNode,
@@ -286,6 +288,7 @@ export {
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
+  deriveStairNodes,
   deriveUnderlayNode,
   deriveUnderlayNodesForFloor,
   deriveWallNode,
