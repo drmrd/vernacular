@@ -3,7 +3,9 @@ import type { Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
 import { DEFAULT_METRIC_PREFERENCES, formatArea } from '../../units'
 import { deriveSceneGraph } from '../../scene/scene-graph'
-import type { RoomSceneNode, SceneGraph } from '../../scene/scene-graph'
+import type { OpeningSceneNode, RoomSceneNode, SceneGraph } from '../../scene/scene-graph'
+import { openingFootprint } from '../../topology/openings'
+import type { Point } from '../../model/types'
 import type { Exporter, ExportResult } from '../exporter'
 import { svgDocument, svgGroup, svgLine, svgPolygon, svgText } from './svg-document'
 import { createSvgView, planContentBounds } from './svg-view'
@@ -15,6 +17,10 @@ const WALL_INK = '#222222'
 const ROOM_FILL = '#eef2f6'
 /** Room label ink, mirroring the on-screen label color (redeclared in core). */
 const LABEL_INK = '#37414d'
+/** Opening gap fill, painted over the wall stroke so the wall reads as broken. */
+const OPENING_GAP = '#ffffff'
+/** Opening jamb cap stroke, mirroring the wall ink. */
+const OPENING_INK = '#222222'
 /** Room label font size in world millimeters. */
 const LABEL_FONT_SIZE = 280
 /** Vertical advance between the name and area label lines, in world millimeters. */
@@ -44,7 +50,13 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
     const preferences = options?.preferences ?? DEFAULT_METRIC_PREFERENCES
     const context: SvgPlanContext = { view, preferences }
     const body = svgGroup(
-      [renderRooms(graph, context), renderWalls(graph, context), renderRoomLabels(graph, context)],
+      [
+        renderRooms(graph, context),
+        renderWalls(graph, context),
+        // Openings paint over the wall stroke so the wall reads as broken.
+        renderOpenings(graph, context),
+        renderRoomLabels(graph, context),
+      ],
       {},
     )
     return { media: 'image/svg+xml', extension: 'svg', content: svgDocument(view, body) }
@@ -73,6 +85,68 @@ function renderWalls(graph: SceneGraph, { view }: SvgPlanContext): string {
   })
   return svgGroup(lines, { 'data-layer': 'walls' })
   /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+/** Render every opening as a gap polygon plus jamb caps, wrapped in an openings layer group. */
+function renderOpenings(graph: SceneGraph, context: SvgPlanContext): string {
+  const groups = graph.openings.map((opening) => renderOpening(opening, context))
+  /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  return svgGroup(groups, { 'data-layer': 'openings' })
+  /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+/**
+ * Render one opening as its gap polygon and two jamb caps.
+ *
+ * The coarse per-family glyph (swing leaf, window frame lines) is deferred per
+ * Decision 4: registry-driven symbol classification is an editor/bridge concern,
+ * and no committed test drives a glyph this slice.
+ */
+function renderOpening(opening: OpeningSceneNode, context: SvgPlanContext): string {
+  const fragments = [openingGap(opening, context), ...openingJambs(opening, context)]
+  // opening.id already carries the `opening:` scene-node prefix (see scene-graph).
+  /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  return svgGroup(fragments, { 'data-node-id': opening.id })
+}
+
+/** Emit the opening's gap `<polygon>`, projected, filled with the gap color. */
+function openingGap(opening: OpeningSceneNode, { view }: SvgPlanContext): string {
+  const corners = openingFootprint(
+    opening.center,
+    opening.along,
+    opening.normal,
+    opening.width,
+    opening.hostThickness,
+  )
+  const projected = corners.map((corner) => view.project(corner))
+  return svgPolygon(projected, { fill: OPENING_GAP, stroke: 'none' })
+}
+
+/** Emit an across-wall `<line>` jamb cap at each of the opening's two jambs. */
+function openingJambs(opening: OpeningSceneNode, { view }: SvgPlanContext): string[] {
+  const halfWidth = opening.width / 2
+  const jambStart = translate(opening.center, opening.along, -halfWidth)
+  const jambEnd = translate(opening.center, opening.along, halfWidth)
+  return [jambCap(jambStart, opening, view), jambCap(jambEnd, opening, view)]
+}
+
+/** Emit one across-wall jamb cap centered on `jamb`, spanning the host thickness. */
+function jambCap(jamb: Point, opening: OpeningSceneNode, view: SvgView): string {
+  const halfThickness = opening.hostThickness / 2
+  const near = view.project(translate(jamb, opening.normal, -halfThickness))
+  const far = view.project(translate(jamb, opening.normal, halfThickness))
+  return svgLine({
+    x1: near.x,
+    y1: near.y,
+    x2: far.x,
+    y2: far.y,
+    attributes: { stroke: OPENING_INK },
+  })
+}
+
+/** Translate `origin` along unit `direction` by `distance` (world millimeters). */
+function translate(origin: Point, direction: Point, distance: number): Point {
+  return { x: origin.x + direction.x * distance, y: origin.y + direction.y * distance }
 }
 
 /** Render every room as a projected fill `<polygon>`, wrapped in a rooms layer group. */
