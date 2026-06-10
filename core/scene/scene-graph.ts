@@ -7,7 +7,6 @@ import type {
   Point,
   Project,
   RoomOverride,
-  Stair,
   StairRunType,
   Underlay,
   UnderlayPlacement,
@@ -216,7 +215,7 @@ export function deriveRoomNodesForFloor(
 }
 
 export function deriveStairNodes(project: Project): StairSceneNode[] {
-  return project.stairs.map((stair: Stair) => ({
+  return project.stairs.map((stair) => ({
     id: `${STAIR_NODE_PREFIX}${stair.id}`,
     kind: 'stair',
     floorId: stair.connection.fromFloorId,
