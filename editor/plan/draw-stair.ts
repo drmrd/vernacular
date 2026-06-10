@@ -7,13 +7,12 @@ const STAIR_INK_COLOR = '#222222'
 const STAIR_INK_WIDTH = 1
 // The number of evenly spaced tread lines drawn across a straight run.
 const TREAD_COUNT = 8
-const HALF = 0.5
 // The direction arrowhead spans this fraction of the run width to each side of the centerline.
 const ARROW_HEAD_HALF_WIDTH_FRACTION = 0.2
 // The arrowhead barbs reach back this fraction of the run length from the arrow tip.
 const ARROW_HEAD_LENGTH_FRACTION = 0.12
 
-/** The seam plus the viewport, the two collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
+/** Drawing context and viewport bundled for the helper routines; keeps helper signatures within the three-parameter limit. */
 interface StairPainter {
   ctx: PlanDrawingContext
   viewport: Viewport
@@ -25,14 +24,18 @@ function footprintPoint(stair: StairSceneNode, acrossMm: number, alongMm: number
   return rotatePoint(local, stair.position, stair.rotation)
 }
 
-/** The four footprint corners in world space: width runs across +x, length along +y, each rotated about the stair position. */
-function footprintCorners(stair: StairSceneNode): Point[] {
-  const halfWidth = stair.width * HALF
+/**
+ * The four footprint corners in world space, matching `stairWellPolygon`'s
+ * min-corner convention: across runs 0 (left edge at the stair position) to
+ * `width`, length runs 0 to `length`, each corner rotated about the stair
+ * position.
+ */
+function footprintCorners(stair: StairSceneNode): readonly [Point, Point, Point, Point] {
   return [
-    footprintPoint(stair, -halfWidth, 0),
-    footprintPoint(stair, halfWidth, 0),
-    footprintPoint(stair, halfWidth, stair.length),
-    footprintPoint(stair, -halfWidth, stair.length),
+    footprintPoint(stair, 0, 0),
+    footprintPoint(stair, stair.width, 0),
+    footprintPoint(stair, stair.width, stair.length),
+    footprintPoint(stair, 0, stair.length),
   ]
 }
 
@@ -51,42 +54,43 @@ function setInk(painter: StairPainter): void {
 }
 
 /** Stroke the closed footprint outline through the four world-space corners, projecting each to screen. */
-function drawFootprint(painter: StairPainter, corners: readonly Point[]): void {
-  const screen = corners.map((corner) => worldToScreen(corner, painter.viewport))
-  const first = screen[0]
-  if (first === undefined) {
-    return
-  }
+function drawFootprint(
+  painter: StairPainter,
+  corners: readonly [Point, Point, Point, Point],
+): void {
+  const [first, ...rest] = corners
+  const start = worldToScreen(first, painter.viewport)
   setInk(painter)
   painter.ctx.beginPath()
-  painter.ctx.moveTo(first.x, first.y)
-  for (const point of screen.slice(1)) {
+  painter.ctx.moveTo(start.x, start.y)
+  for (const corner of rest) {
+    const point = worldToScreen(corner, painter.viewport)
     painter.ctx.lineTo(point.x, point.y)
   }
   painter.ctx.closePath()
   painter.ctx.stroke()
 }
 
-/** Draw evenly spaced tread lines across the run, perpendicular to the +y run direction. */
+/** Draw evenly spaced tread lines across the run, spanning across 0 to `width`, perpendicular to the +y run direction. */
 function drawTreads(painter: StairPainter, stair: StairSceneNode): void {
-  const halfWidth = stair.width * HALF
   for (let tread = 1; tread < TREAD_COUNT; tread += 1) {
     const alongMm = (stair.length * tread) / TREAD_COUNT
-    const left = footprintPoint(stair, -halfWidth, alongMm)
-    const right = footprintPoint(stair, halfWidth, alongMm)
+    const left = footprintPoint(stair, 0, alongMm)
+    const right = footprintPoint(stair, stair.width, alongMm)
     strokeSegment(painter, left, right)
   }
 }
 
-/** Draw a single direction arrow up the run centerline, from the base toward the top of the run. */
+/** Draw a single direction arrow up the run centerline (across at half the width), from the base toward the top of the run. */
 function drawDirectionArrow(painter: StairPainter, stair: StairSceneNode): void {
-  const base = footprintPoint(stair, 0, 0)
-  const tip = footprintPoint(stair, 0, stair.length)
+  const center = stair.width / 2
+  const base = footprintPoint(stair, center, 0)
+  const tip = footprintPoint(stair, center, stair.length)
   strokeSegment(painter, base, tip)
   const barbAlong = stair.length * (1 - ARROW_HEAD_LENGTH_FRACTION)
   const barbAcross = stair.width * ARROW_HEAD_HALF_WIDTH_FRACTION
-  strokeSegment(painter, tip, footprintPoint(stair, -barbAcross, barbAlong))
-  strokeSegment(painter, tip, footprintPoint(stair, barbAcross, barbAlong))
+  strokeSegment(painter, tip, footprintPoint(stair, center - barbAcross, barbAlong))
+  strokeSegment(painter, tip, footprintPoint(stair, center + barbAcross, barbAlong))
 }
 
 /**
