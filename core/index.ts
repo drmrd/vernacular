@@ -15,6 +15,9 @@ export type {
   RoomOverride,
   RoomPurposeId,
   SchemaVersion,
+  Stair,
+  StairConnection,
+  StairRunType,
   StyleId,
   StyleTag,
   Underlay,
@@ -27,6 +30,7 @@ export type {
   NewFloorOptions,
   NewOpeningOptions,
   NewProjectOptions,
+  NewStairOptions,
   NewUnderlayOptions,
   NewWallOptions,
 } from './model/factories'
@@ -35,12 +39,15 @@ export {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
+  DEFAULT_STAIR_LENGTH_MM,
+  DEFAULT_STAIR_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
+  createStair,
   createUnderlay,
   createWall,
 } from './model/factories'
@@ -125,6 +132,23 @@ export {
   setProjectStyle,
   setUnits,
 } from './commands/handlers/project-commands'
+export type {
+  AddStairParams,
+  MoveStairParams,
+  RemoveStairParams,
+  SetStairRunTypeParams,
+} from './commands/handlers/stair-commands'
+export {
+  ADD_STAIR,
+  MOVE_STAIR,
+  REMOVE_STAIR,
+  SET_STAIR_RUN_TYPE,
+  addStair,
+  moveStair,
+  registerStairCommands,
+  removeStair,
+  setStairRunType,
+} from './commands/handlers/stair-commands'
 export type {
   AddWallParams,
   MoveWallEndpointParams,
