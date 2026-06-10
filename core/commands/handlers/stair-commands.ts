@@ -1,10 +1,11 @@
-import type { Point, Project, Stair } from '../../model/types'
+import type { Point, Project, Stair, StairRunType } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
 export const ADD_STAIR = 'project/add-stair'
 export const REMOVE_STAIR = 'project/remove-stair'
 export const MOVE_STAIR = 'project/move-stair'
+export const SET_STAIR_RUN_TYPE = 'project/set-stair-run-type'
 
 export interface AddStairParams {
   stair: Stair
@@ -54,6 +55,22 @@ export function moveStair(stairId: string, position: Point): Command<MoveStairPa
   }
 }
 
+export interface SetStairRunTypeParams {
+  stairId: string
+  runType: StairRunType
+}
+
+export function setStairRunType(
+  stairId: string,
+  runType: StairRunType,
+): Command<SetStairRunTypeParams> {
+  return {
+    type: SET_STAIR_RUN_TYPE,
+    params: { stairId, runType },
+    description: 'Set stair run type',
+  }
+}
+
 // Reassigns the whole `stairs` slice so the inverse-capture proxy records the
 // change; mutating the array in place would leave the change invisible to undo.
 const addStairHandler: CommandHandler<Project, AddStairParams> = {
@@ -76,6 +93,14 @@ const moveStairHandler: CommandHandler<Project, MoveStairParams> = {
   },
 }
 
+const setStairRunTypeHandler: CommandHandler<Project, SetStairRunTypeParams> = {
+  apply(state, params) {
+    state.stairs = state.stairs.map((stair) =>
+      stair.id === params.stairId ? { ...stair, runType: params.runType } : stair,
+    )
+  },
+}
+
 export function registerStairCommands(
   registry: CommandRegistry<Project>,
 ): CommandRegistry<Project> {
@@ -83,4 +108,5 @@ export function registerStairCommands(
     .register(ADD_STAIR, addStairHandler)
     .register(REMOVE_STAIR, removeStairHandler)
     .register(MOVE_STAIR, moveStairHandler)
+    .register(SET_STAIR_RUN_TYPE, setStairRunTypeHandler)
 }
