@@ -4,12 +4,14 @@ import {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
+  DEFAULT_STAIR_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
+  createStair,
   createUnderlay,
   createWall,
 } from './factories'
@@ -190,6 +192,24 @@ describe('createOpening', () => {
     const second = createOpening({ type: 'single-swing-door', hostWallId: 'w1', position: 0 })
 
     expect(first.id).not.toBe(second.id)
+  })
+})
+
+describe('createStair', () => {
+  it('builds a stair with the default run type, width, and the given connection', () => {
+    const stair = createStair({
+      id: 's1',
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+
+    expect(stair).toMatchObject({
+      id: 's1',
+      runType: 'straight',
+      width: DEFAULT_STAIR_WIDTH_MM,
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    expect(stair.position).toEqual({ x: 0, y: 0 })
+    expect(stair.rotation).toBe(0)
   })
 })
 
