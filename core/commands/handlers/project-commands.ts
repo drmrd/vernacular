@@ -7,6 +7,7 @@ export const RENAME_PROJECT = 'project/rename'
 export const SET_UNITS = 'project/set-units'
 export const ADD_FLOOR = 'project/add-floor'
 export const REMOVE_FLOOR = 'project/remove-floor'
+export const RENAME_FLOOR = 'project/rename-floor'
 export const SET_FLOOR_CEILING_HEIGHT = 'project/set-floor-ceiling-height'
 export const SET_FLOOR_PERIOD = 'project/set-floor-period'
 export const SET_FLOOR_STYLE = 'project/set-floor-style'
@@ -60,6 +61,19 @@ export function removeFloor(floorId: string): Command<RemoveFloorParams> {
     type: REMOVE_FLOOR,
     params: { floorId },
     description: 'Remove floor',
+  }
+}
+
+export interface RenameFloorParams {
+  floorId: string
+  name: string
+}
+
+export function renameFloor(floorId: string, name: string): Command<RenameFloorParams> {
+  return {
+    type: RENAME_FLOOR,
+    params: { floorId, name },
+    description: `Rename floor to "${name}"`,
   }
 }
 
@@ -183,6 +197,14 @@ const removeFloorHandler: CommandHandler<Project, RemoveFloorParams> = {
   },
 }
 
+const renameFloorHandler: CommandHandler<Project, RenameFloorParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId ? { ...floor, name: params.name } : floor,
+    )
+  },
+}
+
 const setFloorCeilingHeightHandler: CommandHandler<Project, SetFloorCeilingHeightParams> = {
   apply(state, params) {
     state.floors = state.floors.map((floor) =>
@@ -278,6 +300,7 @@ export function registerProjectCommands(
     .register(SET_UNITS, setUnitsHandler)
     .register(ADD_FLOOR, addFloorHandler)
     .register(REMOVE_FLOOR, removeFloorHandler)
+    .register(RENAME_FLOOR, renameFloorHandler)
     .register(SET_FLOOR_CEILING_HEIGHT, setFloorCeilingHeightHandler)
     .register(SET_FLOOR_PERIOD, setFloorPeriodHandler)
     .register(SET_FLOOR_STYLE, setFloorStyleHandler)
