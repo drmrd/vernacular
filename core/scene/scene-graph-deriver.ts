@@ -7,8 +7,14 @@ import {
   deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene-graph'
-import type { Floor, Project, RoomOverride, Wall } from '../model/types'
-import type { RoomSceneNode, SceneGraph, SceneNode, WallSceneNode } from './scene-graph'
+import type { Floor, Project, RoomOverride, Stair, Wall } from '../model/types'
+import type {
+  RoomSceneNode,
+  SceneGraph,
+  SceneNode,
+  StairSceneNode,
+  WallSceneNode,
+} from './scene-graph'
 
 type RoomOverrides = Readonly<Record<string, RoomOverride>> | undefined
 
@@ -24,6 +30,20 @@ interface CachedRoomNodes {
 }
 
 /**
+ * Returns the cached value for `key`, deriving and caching it on a miss. Shared
+ * by the reference-keyed memos so the deriver closure stays under its line cap.
+ */
+function memoizeByRef<K extends object, V>(cache: WeakMap<K, V>, key: K, derive: () => V): V {
+  const cached = cache.get(key)
+  if (cached !== undefined) {
+    return cached
+  }
+  const value = derive()
+  cache.set(key, value)
+  return value
+}
+
+/**
  * Builds a stateful deriver that memoizes each floor's and wall's scene node by
  * the source object's reference. This is the entity-keyed dirty tracking from
  * the design specification, sections 6.1 and 6.10: re-deriving reuses cached
@@ -36,22 +56,14 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const floorCache = new WeakMap<Floor, SceneNode>()
   const wallCache = new WeakMap<Wall, WallSceneNode>()
   const roomCache = new WeakMap<Floor, CachedRoomNodes>()
+  const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
 
-  const floorNodeFor = (floor: Floor): SceneNode => {
-    const cached = floorCache.get(floor)
-    if (cached !== undefined) return cached
-    const node = deriveFloorNode(floor)
-    floorCache.set(floor, node)
-    return node
-  }
-
-  const wallNodeFor = (floor: Floor, wall: Wall): WallSceneNode => {
-    const cached = wallCache.get(wall)
-    if (cached !== undefined) return cached
-    const node = deriveWallNode(floor, wall)
-    wallCache.set(wall, node)
-    return node
-  }
+  const floorNodeFor = (floor: Floor) =>
+    memoizeByRef(floorCache, floor, () => deriveFloorNode(floor))
+  const wallNodeFor = (floor: Floor, wall: Wall) =>
+    memoizeByRef(wallCache, wall, () => deriveWallNode(floor, wall))
+  const stairNodesFor = (project: Project) =>
+    memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project))
 
   const roomNodesFor = (floor: Floor, overrides: RoomOverrides): RoomSceneNode[] => {
     const cached = roomCache.get(floor)
@@ -68,6 +80,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
     openings: project.floors.flatMap(deriveOpeningNodesForFloor),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
-    stairs: deriveStairNodes(project),
+    stairs: stairNodesFor(project),
   })
 }
