@@ -53,3 +53,13 @@
 .ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__rail {
   display: none;
 }
+
+.ds-app-frame__rail[data-collapsed='true'],
+.ds-app-frame__inspector[data-collapsed='true'] {
+  --ds-rail-size: var(--space-5);
+  --ds-inspector-size: var(--space-5);
+}
+
+.ds-app-frame__collapse {
+  align-self: flex-end;
+}
