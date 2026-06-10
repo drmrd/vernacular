@@ -12,8 +12,15 @@ export interface AppFrameProps {
   inspectorLabel: string
 }
 
-export function AppFrame(props: AppFrameProps) {
-  const { header, rail, railLabel, main, mainLabel, inspector, inspectorLabel } = props
+export function AppFrame({
+  header,
+  rail,
+  railLabel,
+  main,
+  mainLabel,
+  inspector,
+  inspectorLabel,
+}: AppFrameProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const breakpoint = useBreakpoint(frameRef)
   return (
