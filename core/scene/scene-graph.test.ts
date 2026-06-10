@@ -3,6 +3,7 @@ import type { AssetReference } from '../model/asset-reference'
 import {
   createEmptyProject,
   createFloor,
+  createStair,
   createUnderlay,
   createWall,
   DEFAULT_WALL_THICKNESS_MM,
@@ -44,6 +45,29 @@ describe('deriveSceneGraph', () => {
     const project = projectWithFloors()
 
     expect(deriveSceneGraph(project)).toEqual(deriveSceneGraph(project))
+  })
+})
+
+describe('deriveSceneGraph stairs', () => {
+  it('projects each stair into a stair node on its lower floor, recording the upper floor as its well', () => {
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      period: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [createFloor('Ground', { id: 'f1' }), createFloor('Upper', { id: 'f2' })]
+    project.stairs = [createStair({ id: 's1', connection: { fromFloorId: 'f1', toFloorId: 'f2' } })]
+
+    const graph = deriveSceneGraph(project)
+
+    expect(graph.stairs).toHaveLength(1)
+    expect(graph.stairs[0]).toMatchObject({
+      kind: 'stair',
+      floorId: 'f1',
+      wellFloorId: 'f2',
+      runType: 'straight',
+    })
   })
 })
 
