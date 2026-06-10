@@ -7,6 +7,8 @@ export { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from './directory-asset-c
 export type { AssetSource } from './assets/asset-source'
 export { InMemoryAssetSource } from './assets/in-memory-asset-source'
 export { CacheAssetSource } from './assets/cache-asset-source'
+export { AssetRegistry } from './assets/asset-registry'
+export type { ScopedAssetSource } from './assets/asset-registry'
 export type { ProjectStorage } from './project-storage'
 export { createOpfsProjectStorage, createDefaultProjectStorage } from './project-storage'
 export { InMemoryProjectStore } from './in-memory-project-store'
