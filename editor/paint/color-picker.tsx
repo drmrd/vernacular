@@ -3,6 +3,7 @@ import {
   assignSurfacePaint,
   builtinPalettes,
   type Color,
+  type Command,
   type NamedColor,
   type SurfaceRef,
 } from '../../core'
@@ -13,7 +14,7 @@ export interface ColorPickerProps {
   surface: SurfaceRef
   finishId: string
   recent: Color[]
-  dispatch: (command: ReturnType<typeof assignSurfacePaint>) => void
+  dispatch: (command: Command) => void
 }
 
 function paletteColors(): NamedColor[] {

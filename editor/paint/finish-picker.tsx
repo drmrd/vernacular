@@ -1,10 +1,16 @@
-import { assignSurfacePaint, builtinFinishes, type Color, type SurfaceRef } from '../../core'
+import {
+  assignSurfacePaint,
+  builtinFinishes,
+  type Color,
+  type Command,
+  type SurfaceRef,
+} from '../../core'
 
 export interface FinishPickerProps {
   surface: SurfaceRef
   color: Color
   finishId: string
-  dispatch: (command: ReturnType<typeof assignSurfacePaint>) => void
+  dispatch: (command: Command) => void
 }
 
 export function FinishPicker({ surface, color, finishId, dispatch }: FinishPickerProps) {
