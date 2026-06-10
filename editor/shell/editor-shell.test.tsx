@@ -10,6 +10,7 @@ import {
   createSelectionStore,
 } from '../../bridge'
 import { createEmptyProject, createFloor, type Project } from '../../core'
+import { FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 
 function projectWithFloor(): Project {
   const project = createEmptyProject({
@@ -161,5 +162,22 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('button', { name: /export bundle/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /open folder/i })).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('lays out the shell in the application frame with empty sibling panel slots', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByRole('complementary', { name: /tool rail/i })).toBeInTheDocument()
+    expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
+
+    const slotIds = [FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT]
+    for (const slotId of slotIds) {
+      expect(document.querySelector(`[data-slot-id="${slotId}"]`)).not.toBeNull()
+    }
+
+    expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: /inspector/i })).toBeInTheDocument()
   })
 })
