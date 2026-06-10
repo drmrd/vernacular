@@ -19,6 +19,8 @@
 }
 .ds-app-frame__rail {
   grid-area: rail;
+  display: flex;
+  flex-direction: column;
 }
 .ds-app-frame__main {
   grid-area: main;
@@ -27,6 +29,8 @@
 .ds-app-frame__inspector {
   grid-area: inspector;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Medium: drop the rail; keep the header strip and the inspector. */
@@ -54,9 +58,11 @@
   display: none;
 }
 
-.ds-app-frame__rail[data-collapsed='true'],
-.ds-app-frame__inspector[data-collapsed='true'] {
+.ds-app-frame:has(.ds-app-frame__rail[data-collapsed='true']) {
   --ds-rail-size: var(--space-5);
+}
+
+.ds-app-frame:has(.ds-app-frame__inspector[data-collapsed='true']) {
   --ds-inspector-size: var(--space-5);
 }
 
