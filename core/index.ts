@@ -235,6 +235,13 @@ export {
   deriveWallNode,
 } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
+export type { Vector3, Bounds3 } from './scene/vector3'
+export { planToWorld } from './scene/plan-to-world'
+export type { CameraPose } from './scene/camera-framing'
+export { frameSceneCamera, DEFAULT_CAMERA_POSE } from './scene/camera-framing'
+export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
+export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
+export type { Contour, ContourSegment } from './scene/contour'
 export type {
   AssumedUnit,
   DecimalPrecision,
