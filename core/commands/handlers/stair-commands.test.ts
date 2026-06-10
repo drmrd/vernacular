@@ -3,7 +3,7 @@ import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createStair } from '../../model/factories'
 import type { Project } from '../../model/types'
-import { addStair, registerStairCommands } from './stair-commands'
+import { addStair, registerStairCommands, removeStair } from './stair-commands'
 
 function newProject(): Project {
   return createEmptyProject({
@@ -30,5 +30,17 @@ describe('stair commands', () => {
 
     dispatcher.undo()
     expect(state.stairs).toHaveLength(0)
+  })
+
+  it('removes the target stair from the project and restores it on undo', () => {
+    const stair = createStair({ id: 's1', connection: { fromFloorId: 'f1', toFloorId: 'f2' } })
+    const state: Project = { ...newProject(), stairs: [stair] }
+    const dispatcher = stairDispatcher(state)
+
+    dispatcher.dispatch(removeStair('s1'))
+    expect(state.stairs).toHaveLength(0)
+
+    dispatcher.undo()
+    expect(state.stairs.map((s) => s.id)).toEqual(['s1'])
   })
 })
