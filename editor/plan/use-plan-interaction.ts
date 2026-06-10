@@ -45,6 +45,8 @@ export interface PlanInteractionDeps {
   walls: DrawPlanOptions['walls']
   tool: ToolId
   viewport: Viewport
+  // Underlay footprint corners to snap to in trace mode; absent when off.
+  tracePoints?: readonly Point[]
 }
 
 export interface PlanInteraction {
@@ -66,10 +68,16 @@ export function usePlanInteraction({
   walls,
   tool,
   viewport,
+  tracePoints,
 }: PlanInteractionDeps): PlanInteraction {
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
-  const snapping = useSnapping({ walls, viewport, origin: drawingOrigin(toolState) })
+  const snapping = useSnapping({
+    walls,
+    viewport,
+    origin: drawingOrigin(toolState),
+    ...(tracePoints ? { tracePoints } : {}),
+  })
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {

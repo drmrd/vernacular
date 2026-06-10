@@ -16,6 +16,9 @@ interface SnappingInputs {
   // The in-progress segment start while drawing; enables perpendicular and
   // parallel snapping and is absent when the tool is idle.
   origin: Point | undefined
+  // Underlay footprint corners the cursor can snap to when trace mode is on;
+  // absent or empty when trace mode is off.
+  tracePoints?: readonly Point[]
 }
 
 export interface Snapping {
@@ -29,7 +32,7 @@ export interface Snapping {
   clear: () => void
 }
 
-function buildContext({ walls, viewport, origin }: SnappingInputs): SnapContext {
+function buildContext({ walls, viewport, origin, tracePoints }: SnappingInputs): SnapContext {
   return {
     walls,
     gridSpacingMm: DEFAULT_SNAP_GRID_MM,
@@ -37,6 +40,7 @@ function buildContext({ walls, viewport, origin }: SnappingInputs): SnapContext 
     // generous when zoomed out, tight when zoomed in.
     toleranceMm: SNAP_PIXEL_TOLERANCE / viewport.scale,
     ...(origin ? { origin } : {}),
+    ...(tracePoints && tracePoints.length > 0 ? { tracePoints } : {}),
   }
 }
 
