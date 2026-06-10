@@ -48,7 +48,7 @@ export class AssetRegistry {
       }
       const bytes = await scoped.source.read(reference.contentHash)
       if (bytes !== undefined) {
-        return resolvedAsset(bytes, scopeForKind(kind, reference))
+        return resolvedAsset(bytes, resolvedScopeFor(scoped, reference))
       }
     }
     return undefined
@@ -63,14 +63,25 @@ export class AssetRegistry {
 }
 
 /**
- * The scope to report for a resolved hit. When the hit came from the requested
- * scope's kind, report the exact requested scope; otherwise report the kind as a
- * plain scope label (`'user'` / `'project'`), or for a pack hit, the requested
- * scope is kept since the cross-pack-version case is handled in Task 5.
+ * The scope to report for a resolved hit. A pack hit reports the source's own
+ * scope id, so a pack-version fallback (design specification section 4.2 step 3)
+ * surfaces the version that actually held the bytes. A user or project hit
+ * reports the kind as its plain scope.
  */
-function scopeForKind(kind: ScopeKind, reference: AssetReference): AssetReference['scope'] {
-  if (kind === 'user' || kind === 'project') {
-    return kind
+function resolvedScopeFor(
+  scoped: ScopedAssetSource,
+  reference: AssetReference,
+): AssetReference['scope'] {
+  if (scoped.kind === 'user' || scoped.kind === 'project') {
+    return scoped.kind
+  }
+  if (isPackScope(scoped.source.id)) {
+    return scoped.source.id
   }
   return reference.scope
+}
+
+/** Narrows a source id to a pack scope (`pack:<name>@<version>`). */
+function isPackScope(value: string): value is `pack:${string}@${string}` {
+  return /^pack:.+@.+$/.test(value)
 }
