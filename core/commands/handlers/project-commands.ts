@@ -74,6 +74,16 @@ export function renameFloor(floorId: string, name: string): Command<RenameFloorP
     type: RENAME_FLOOR,
     params: { floorId, name },
     description: `Rename floor to "${name}"`,
+    coalesceWith(previous) {
+      if (previous.type !== RENAME_FLOOR) {
+        return null
+      }
+      const previousParams = previous.params as RenameFloorParams
+      if (previousParams.floorId !== floorId) {
+        return null
+      }
+      return renameFloor(floorId, name)
+    },
   }
 }
 
