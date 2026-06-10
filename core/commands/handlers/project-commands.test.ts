@@ -10,6 +10,7 @@ import {
   removeFloor,
   renameFloor,
   renameProject,
+  reorderFloor,
   setFloorCeilingHeight,
   setFloorElevation,
   setFloorPeriod,
@@ -233,5 +234,33 @@ describe('setFloorElevation', () => {
 
     dispatcher.undo()
     expect(project.floors[0]?.elevation).toBe(0)
+  })
+})
+
+function projectWithThreeFloors(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [
+    createFloor('Basement', { id: 'a' }),
+    createFloor('Ground', { id: 'b' }),
+    createFloor('Upper', { id: 'c' }),
+  ]
+  return project
+}
+
+describe('reorderFloor', () => {
+  it('moves a floor to a new index and restores the original order on undo', () => {
+    const project = projectWithThreeFloors()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(reorderFloor('c', 0))
+    expect(project.floors.map((floor) => floor.id)).toEqual(['c', 'a', 'b'])
+
+    dispatcher.undo()
+    expect(project.floors.map((floor) => floor.id)).toEqual(['a', 'b', 'c'])
   })
 })
