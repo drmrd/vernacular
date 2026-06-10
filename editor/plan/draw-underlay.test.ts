@@ -21,7 +21,7 @@ function underlayNode(overrides: Partial<UnderlaySceneNode> = {}): UnderlayScene
     id: 'underlay:a',
     kind: 'underlay',
     floorId: 'f',
-    image: { scope: 'project', contentHash: 'sha256-abc' },
+    source: { kind: 'raster', image: { scope: 'project', contentHash: 'sha256-abc' } },
     width: SOURCE_WIDTH_PX,
     height: SOURCE_HEIGHT_PX,
     placement: {

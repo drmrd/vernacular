@@ -245,7 +245,7 @@ describe('deriveUnderlayNode', () => {
     expect(node.floorId).toBe('g')
   })
 
-  it('projects the underlay into a node copying its image, dimensions, placement, and display fields', () => {
+  it('projects the underlay into a node copying its source, dimensions, placement, and display fields', () => {
     const underlay = underlayWithId('u1')
     const floor = createFloor('Ground', { id: 'g' })
 
@@ -255,7 +255,7 @@ describe('deriveUnderlayNode', () => {
       id: 'underlay:u1',
       kind: 'underlay',
       floorId: 'g',
-      image: underlay.image,
+      source: underlay.source,
       width: underlay.width,
       height: underlay.height,
       placement: underlay.placement,
@@ -292,7 +292,7 @@ describe('deriveSceneGraph underlays', () => {
       id: 'underlay:u1',
       kind: 'underlay',
       floorId: 'g',
-      image: UNDERLAY_IMAGE,
+      source: { kind: 'raster', image: UNDERLAY_IMAGE },
       width: UNDERLAY_WIDTH,
       height: UNDERLAY_HEIGHT,
       placement: project.floors[0]?.underlays[0]?.placement,

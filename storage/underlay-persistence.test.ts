@@ -36,7 +36,7 @@ describe('underlay persistence round-trip', () => {
 
     const reopened = await freshStore.loadProject()
     expect(reopened.floors[0]?.underlays).toHaveLength(1)
-    expect(reopened.floors[0]?.underlays[0]?.image.contentHash).toBe(CONTENT_HASH)
+    expect(reopened.floors[0]?.underlays[0]?.source).toEqual({ kind: 'raster', image })
     expect(reopened.floors[0]?.underlays[0]).toEqual(underlay)
 
     expect(await freshCache.get(CONTENT_HASH)).toEqual(RASTER_BYTES)

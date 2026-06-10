@@ -108,7 +108,7 @@ describe('calibrateUnderlay', () => {
     dispatcher.dispatch(calibrateUnderlay('g', target.id, NEW_PLACEMENT))
 
     const calibrated = project.floors[0]?.underlays[0]
-    expect(calibrated?.image).toEqual(target.image)
+    expect(calibrated?.source).toEqual(target.source)
     expect(calibrated?.width).toBe(target.width)
     expect(calibrated?.height).toBe(target.height)
     expect(calibrated?.opacity).toBe(target.opacity)
@@ -208,7 +208,7 @@ describe('setUnderlayOpacity', () => {
 
     const adjusted = project.floors[0]?.underlays[0]
     expect(adjusted?.placement).toEqual(target.placement)
-    expect(adjusted?.image).toEqual(target.image)
+    expect(adjusted?.source).toEqual(target.source)
     expect(adjusted?.visible).toBe(target.visible)
     expect(project.floors[0]?.underlays[1]).toEqual(sibling)
     expect(project.floors[1]?.underlays).toHaveLength(0)
@@ -257,7 +257,7 @@ describe('setUnderlayVisibility', () => {
 
     const adjusted = project.floors[0]?.underlays[0]
     expect(adjusted?.placement).toEqual(target.placement)
-    expect(adjusted?.image).toEqual(target.image)
+    expect(adjusted?.source).toEqual(target.source)
     expect(adjusted?.opacity).toBe(target.opacity)
     expect(project.floors[0]?.underlays[1]).toEqual(sibling)
     expect(project.floors[1]?.underlays).toHaveLength(0)

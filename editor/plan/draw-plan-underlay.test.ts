@@ -28,7 +28,7 @@ describe('drawPlan underlays and calibration', () => {
       id: 'underlay:a',
       kind: 'underlay',
       floorId: 'f',
-      image: { scope: 'project', contentHash: 'sha256-abc' },
+      source: { kind: 'raster', image: { scope: 'project', contentHash: 'sha256-abc' } },
       width: 800,
       height: 600,
       placement: { offset: { x: 1000, y: 500 }, millimetersPerPixel: 10, rotation: 0 },

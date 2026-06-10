@@ -216,10 +216,10 @@ describe('createStair', () => {
 describe('createUnderlay', () => {
   const image: AssetReference = { scope: 'project', contentHash: 'deadbeef' }
 
-  it('carries the image and source pixel dimensions through', () => {
+  it('wraps the image in a discriminated raster source and carries the source pixel dimensions through', () => {
     const underlay = createUnderlay({ image, width: 1024, height: 768 })
 
-    expect(underlay.image).toEqual(image)
+    expect(underlay.source).toEqual({ kind: 'raster', image })
     expect(underlay.width).toBe(1024)
     expect(underlay.height).toBe(768)
   })
