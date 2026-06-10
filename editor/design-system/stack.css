@@ -1,0 +1,13 @@
+.ds-stack {
+  display: flex;
+  gap: var(--ds-stack-gap, var(--space-3));
+}
+
+.ds-stack--vertical {
+  flex-direction: column;
+}
+
+.ds-stack--horizontal {
+  flex-direction: row;
+  align-items: center;
+}
