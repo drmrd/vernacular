@@ -1,3 +1,8 @@
+/* eslint-disable max-lines --
+ * Public barrel: a flat aggregation of the core package's public re-exports. It
+ * grows with the API surface (five parallel foundation tracks now contribute to
+ * it), and the per-file line cap is not a meaningful constraint on a file that is
+ * nothing but re-export statements. */
 export type {
   Dimension,
   Floor,
