@@ -44,7 +44,7 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
     const preferences = options?.preferences ?? DEFAULT_METRIC_PREFERENCES
     const context: SvgPlanContext = { view, preferences }
     const body = svgGroup(
-      [renderRooms(graph, context), renderWalls(graph, view), renderRoomLabels(graph, context)],
+      [renderRooms(graph, context), renderWalls(graph, context), renderRoomLabels(graph, context)],
       {},
     )
     return { media: 'image/svg+xml', extension: 'svg', content: svgDocument(view, body) }
@@ -52,7 +52,7 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
 }
 
 /** Render every wall as a projected `<line>`, wrapped in a walls layer group. */
-function renderWalls(graph: SceneGraph, view: SvgView): string {
+function renderWalls(graph: SceneGraph, { view }: SvgPlanContext): string {
   /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
   const lines = graph.walls.map((wall) => {
     const start = view.project(wall.start)
@@ -90,8 +90,9 @@ function renderRooms(graph: SceneGraph, context: SvgPlanContext): string {
 /** Render every room's name and area labels, wrapped in a labels layer group painted last. */
 function renderRoomLabels(graph: SceneGraph, context: SvgPlanContext): string {
   const labels = graph.rooms.flatMap((room) => renderRoomLabel(room, context))
-  /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
   return svgGroup(labels, { 'data-layer': 'room-labels' })
+  /* eslint-enable @typescript-eslint/naming-convention */
 }
 
 /** Render one room's label: its name above its area, or just the area when unnamed. */
