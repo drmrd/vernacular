@@ -147,15 +147,23 @@ export interface Floor {
  * bounding-wall-id string the room derivation encodes in `Room.id`). An absent
  * map means no overrides.
  *
- * Room `purpose`, `subPurpose`, and `eraOverride` (the design specification's
- * room identity) are deliberately not here yet; they arrive additively with the
- * old-house architectural vocabulary milestone.
+ * The old-house architectural vocabulary fields (`purpose`, `subPurpose`,
+ * `periodOverride`, `styleOverride`) live here, each optional, alongside the
+ * room name and custom polygon.
  */
 export interface RoomOverride {
   /** User-entered display name for the room; absent means geometry only (no name). */
   name?: string
   /** Replacement boundary for cases where wall topology cannot infer a room (porch, L-shaped sub-zone). */
   customPolygon?: Point[]
+  /** Primary room purpose, a RoomPurposeRegistry id. Absent means untagged. */
+  purpose?: RoomPurposeId
+  /** Optional finer-grained free-text purpose label (for example "Silver Pantry"). Never required. */
+  subPurpose?: string
+  /** Explicit period override; absent means inherit the floor or project period. */
+  periodOverride?: PeriodId
+  /** Explicit style override; absent means inherit the floor or project style. */
+  styleOverride?: StyleTag
 }
 
 export interface Project {

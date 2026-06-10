@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { setRoomName, setRoomCustomPolygon, registerRoomCommands } from './room-commands'
+import { setRoomPeriod, setRoomPurpose, setRoomStyle, setRoomSubPurpose } from './room-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject } from '../../model/factories'
@@ -140,5 +141,71 @@ describe('setRoomCustomPolygon', () => {
 
     expect(project.roomOverrides?.[TARGET_KEY]?.name).toBe('Kitchen')
     expect(project.roomOverrides?.[TARGET_KEY]?.customPolygon).toBeUndefined()
+  })
+})
+
+describe('setRoomPurpose', () => {
+  it('tags a room with a purpose while preserving an existing name and leaving sub-purpose absent', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(setRoomName(TARGET_KEY, 'Kitchen'))
+
+    dispatcher.dispatch(setRoomPurpose(TARGET_KEY, 'kitchen'))
+
+    expect(project.roomOverrides?.[TARGET_KEY]?.name).toBe('Kitchen')
+    expect(project.roomOverrides?.[TARGET_KEY]?.purpose).toBe('kitchen')
+    expect(project.roomOverrides?.[TARGET_KEY]?.subPurpose).toBeUndefined()
+  })
+
+  it('restores absent overrides on undo when none existed before', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(setRoomPurpose(TARGET_KEY, 'kitchen'))
+
+    dispatcher.undo()
+
+    expect(project.roomOverrides).toBeUndefined()
+  })
+})
+
+describe('setRoomSubPurpose', () => {
+  it('records an optional free-text sub-purpose and clears it on undo', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(setRoomPurpose(TARGET_KEY, 'butlers-pantry'))
+
+    dispatcher.dispatch(setRoomSubPurpose(TARGET_KEY, 'Silver Pantry'))
+    expect(project.roomOverrides?.[TARGET_KEY]?.subPurpose).toBe('Silver Pantry')
+
+    dispatcher.undo()
+    expect(project.roomOverrides?.[TARGET_KEY]?.subPurpose).toBeUndefined()
+    expect(project.roomOverrides?.[TARGET_KEY]?.purpose).toBe('butlers-pantry')
+  })
+})
+
+describe('setRoomPeriod', () => {
+  it('overrides a room period and restores the prior value on undo', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(setRoomPeriod(TARGET_KEY, 'edwardian'))
+    expect(project.roomOverrides?.[TARGET_KEY]?.periodOverride).toBe('edwardian')
+
+    dispatcher.undo()
+
+    expect(project.roomOverrides).toBeUndefined()
+  })
+})
+
+describe('setRoomStyle', () => {
+  it('tags a room with a style and the vernacular modifier', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setRoomStyle(TARGET_KEY, { styleId: 'italianate', vernacular: true }))
+
+    expect(project.roomOverrides?.[TARGET_KEY]?.styleOverride).toEqual({
+      styleId: 'italianate',
+      vernacular: true,
+    })
   })
 })
