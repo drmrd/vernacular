@@ -1,6 +1,7 @@
 import type { NamedColor } from '../color/color'
 import type { AssetReference } from './asset-reference'
 import type { PaintAssignment } from './paint'
+import type { Site } from './site'
 
 export type UnitSystem = 'imperial' | 'metric'
 
@@ -242,4 +243,6 @@ export interface Project {
   palettes?: ProjectPalette[] | undefined
   /** Surface paint assignments keyed by surfaceKey(ref). Absent means none. */
   paint?: Record<string, PaintAssignment> | undefined
+  /** Optional site metadata (design spec 3.1). Absent means none. */
+  site?: Site | undefined
 }
