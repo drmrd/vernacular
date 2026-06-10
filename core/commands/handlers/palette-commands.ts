@@ -44,7 +44,10 @@ export function removeProjectPalette(paletteId: string): Command<RemoveProjectPa
 
 const removeProjectPaletteHandler: CommandHandler<Project, RemoveProjectPaletteParams> = {
   apply(state, params) {
-    state.palettes = (state.palettes ?? []).filter((palette) => palette.id !== params.paletteId)
+    const remaining = (state.palettes ?? []).filter((palette) => palette.id !== params.paletteId)
+    // The palettes field treats an absent array as "none", so collapse an emptied
+    // list back to undefined rather than leaving a contract-violating empty array.
+    state.palettes = remaining.length > 0 ? remaining : undefined
   },
 }
 
