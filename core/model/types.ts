@@ -98,6 +98,7 @@ export interface UnderlayPlacement {
   rotation: number
 }
 
+/** Enumerates the discriminant `kind` values of `UnderlaySource`: the raster, document, and scene source families. */
 export type UnderlayKind = 'raster' | 'document' | 'scene'
 
 /** Reference + per-kind data for an underlay's source content (content-addressed, ADR-0007). */

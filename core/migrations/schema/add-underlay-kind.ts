@@ -14,12 +14,12 @@ export const addUnderlayKindMigration: SchemaMigration = {
     if (!Array.isArray(floors)) {
       return project
     }
-    const migrated = floors.map((floor) => {
+    const migratedFloors = floors.map((floor) => {
       const record = floor as Record<string, unknown>
       const underlays = Array.isArray(record.underlays) ? record.underlays : []
       return { ...record, underlays: underlays.map(migrateUnderlay) }
     })
-    return { ...project, floors: migrated } satisfies ProjectShape
+    return { ...project, floors: migratedFloors } satisfies ProjectShape
   },
 }
 
