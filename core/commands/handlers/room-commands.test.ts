@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { setRoomName, setRoomCustomPolygon, registerRoomCommands } from './room-commands'
 import { setRoomPeriod, setRoomPurpose, setRoomStyle, setRoomSubPurpose } from './room-commands'
+import { setRoomCeilingHeight } from './room-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject } from '../../model/factories'
@@ -193,6 +194,32 @@ describe('setRoomPeriod', () => {
     dispatcher.undo()
 
     expect(project.roomOverrides).toBeUndefined()
+  })
+})
+
+describe('setRoomCeilingHeight', () => {
+  const CEILING_HEIGHT_MM = 2700
+
+  it('records a per-room ceiling height and clears it on undo', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setRoomCeilingHeight(TARGET_KEY, CEILING_HEIGHT_MM))
+    expect(project.roomOverrides?.[TARGET_KEY]?.ceilingHeight).toBe(CEILING_HEIGHT_MM)
+
+    dispatcher.undo()
+
+    expect(project.roomOverrides?.[TARGET_KEY]?.ceilingHeight).toBeUndefined()
+  })
+
+  it('clears the override when set to undefined', () => {
+    const project = newProject()
+    project.roomOverrides = { [TARGET_KEY]: { ceilingHeight: CEILING_HEIGHT_MM } }
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setRoomCeilingHeight(TARGET_KEY, undefined))
+
+    expect(project.roomOverrides?.[TARGET_KEY]?.ceilingHeight).toBeUndefined()
   })
 })
 
