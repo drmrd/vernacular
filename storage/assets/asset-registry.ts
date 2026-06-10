@@ -1,11 +1,19 @@
 import {
+  missingAsset,
   orderScopesByPrecedence,
   resolvedAsset,
+  type AssetFootprint,
   type AssetReference,
   type AssetResolution,
   type ScopeKind,
 } from '../../core'
 import type { AssetSource } from './asset-source'
+
+/** Options that adjust how the registry degrades when an asset is missing. */
+export interface AssetRegistryOptions {
+  /** Footprint to draw a placeholder at when an asset cannot be resolved. */
+  footprintFor?: (reference: AssetReference) => AssetFootprint | undefined
+}
 
 /** A source tagged with the scope kind it stands for, for precedence ordering. */
 export interface ScopedAssetSource {
@@ -21,7 +29,10 @@ export interface ScopedAssetSource {
  * in later slices of this track.
  */
 export class AssetRegistry {
-  constructor(private readonly sources: readonly ScopedAssetSource[]) {}
+  constructor(
+    private readonly sources: readonly ScopedAssetSource[],
+    private readonly options: AssetRegistryOptions = {},
+  ) {}
 
   async resolve(reference: AssetReference): Promise<AssetResolution> {
     const order = orderScopesByPrecedence(reference, this.availableKinds())
@@ -54,11 +65,12 @@ export class AssetRegistry {
     return undefined
   }
 
-  // Overridden in Task 6 to return a labeled placeholder. For now, a request
-  // that finds no bytes throws so the missing path is unmistakably unimplemented
-  // until its own RED test drives it.
-  protected notResolved(reference: AssetReference): AssetResolution {
-    throw new Error(`Unresolved asset reference: ${reference.scope}#${reference.contentHash}`)
+  // Design specification section 4.2 step 4: a clearly-labeled placeholder with
+  // the correct footprint so editing continues and the asset panel surfaces the
+  // gap with a recovery path.
+  private notResolved(reference: AssetReference): AssetResolution {
+    const footprint = this.options.footprintFor?.(reference)
+    return missingAsset(reference, footprint)
   }
 }
 
