@@ -9,6 +9,7 @@ export const ADD_FLOOR = 'project/add-floor'
 export const REMOVE_FLOOR = 'project/remove-floor'
 export const RENAME_FLOOR = 'project/rename-floor'
 export const SET_FLOOR_CEILING_HEIGHT = 'project/set-floor-ceiling-height'
+export const SET_FLOOR_ELEVATION = 'project/set-floor-elevation'
 export const SET_FLOOR_PERIOD = 'project/set-floor-period'
 export const SET_FLOOR_STYLE = 'project/set-floor-style'
 export const SET_PROJECT_PERIOD = 'project/set-period'
@@ -109,6 +110,32 @@ export function setFloorCeilingHeight(
         return null
       }
       return setFloorCeilingHeight(floorId, height)
+    },
+  }
+}
+
+export interface SetFloorElevationParams {
+  floorId: string
+  elevation: number
+}
+
+export function setFloorElevation(
+  floorId: string,
+  elevation: number,
+): Command<SetFloorElevationParams> {
+  return {
+    type: SET_FLOOR_ELEVATION,
+    params: { floorId, elevation },
+    description: 'Set floor elevation',
+    coalesceWith(previous) {
+      if (previous.type !== SET_FLOOR_ELEVATION) {
+        return null
+      }
+      const previousParams = previous.params as SetFloorElevationParams
+      if (previousParams.floorId !== floorId) {
+        return null
+      }
+      return setFloorElevation(floorId, elevation)
     },
   }
 }
@@ -223,6 +250,14 @@ const setFloorCeilingHeightHandler: CommandHandler<Project, SetFloorCeilingHeigh
   },
 }
 
+const setFloorElevationHandler: CommandHandler<Project, SetFloorElevationParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId ? { ...floor, elevation: params.elevation } : floor,
+    )
+  },
+}
+
 interface FloorOverrides {
   periodOverride: PeriodId | undefined
   styleOverride: StyleTag | undefined
@@ -312,6 +347,7 @@ export function registerProjectCommands(
     .register(REMOVE_FLOOR, removeFloorHandler)
     .register(RENAME_FLOOR, renameFloorHandler)
     .register(SET_FLOOR_CEILING_HEIGHT, setFloorCeilingHeightHandler)
+    .register(SET_FLOOR_ELEVATION, setFloorElevationHandler)
     .register(SET_FLOOR_PERIOD, setFloorPeriodHandler)
     .register(SET_FLOOR_STYLE, setFloorStyleHandler)
     .register(SET_PROJECT_PERIOD, setProjectPeriodHandler)
