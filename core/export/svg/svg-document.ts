@@ -66,6 +66,7 @@ export function svgElement(
   return `<${tag}${svgAttributes(attributes)}/>`
 }
 
+/** Emit a line segment. Endpoint coordinates must already be in SVG space (projected). */
 export function svgLine(line: {
   x1: number
   y1: number
@@ -87,7 +88,7 @@ function serializePoints(points: readonly Point[]): string {
   return points.map((point) => `${roundCoordinate(point.x)},${roundCoordinate(point.y)}`).join(' ')
 }
 
-/** points are SVG-space points already projected. */
+/** Emit a closed polygon. Points must already be in SVG space (projected). */
 export function svgPolygon(
   points: readonly Point[],
   attributes?: Record<string, string | number | undefined>,
@@ -95,6 +96,7 @@ export function svgPolygon(
   return svgElement('polygon', { points: serializePoints(points), ...attributes })
 }
 
+/** Emit an open polyline. Points must already be in SVG space (projected). */
 export function svgPolyline(
   points: readonly Point[],
   attributes?: Record<string, string | number | undefined>,
@@ -116,7 +118,7 @@ export function svgGroup(
   children: readonly string[],
   attributes?: Record<string, string | number | undefined>,
 ): string {
-  return `<g${svgAttributes({ ...attributes })}>${children.join('')}</g>`
+  return `<g${svgAttributes(attributes ?? {})}>${children.join('')}</g>`
 }
 
 /** The full document envelope with namespace, viewBox '0 0 w h', and width/height. */
