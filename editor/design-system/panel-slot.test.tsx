@@ -41,4 +41,9 @@ describe('PanelSlot', () => {
     expect(screen.getByRole('heading', { name: 'No paint yet' })).toBeInTheDocument()
     expect(screen.getByText('Pick a surface to paint it.')).toBeInTheDocument()
   })
+
+  it('exposes exactly one region landmark when empty (no nested duplicate)', () => {
+    render(<PanelSlot slotId="paint-pickers" label="Paint" />)
+    expect(screen.getAllByRole('region')).toHaveLength(1)
+  })
 })
