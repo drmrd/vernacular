@@ -1,5 +1,5 @@
 import { createFloor } from '../../model/factories'
-import type { Floor, Project, UnitSystem } from '../../model/types'
+import type { Floor, PeriodId, Project, StyleTag, UnitSystem } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
@@ -8,6 +8,9 @@ export const SET_UNITS = 'project/set-units'
 export const ADD_FLOOR = 'project/add-floor'
 export const REMOVE_FLOOR = 'project/remove-floor'
 export const SET_FLOOR_CEILING_HEIGHT = 'project/set-floor-ceiling-height'
+export const SET_FLOOR_PERIOD = 'project/set-floor-period'
+export const SET_FLOOR_STYLE = 'project/set-floor-style'
+export const SET_PROJECT_PERIOD = 'project/set-period'
 
 export interface RenameProjectParams {
   name: string
@@ -85,6 +88,50 @@ export function setFloorCeilingHeight(
   }
 }
 
+export interface SetFloorPeriodParams {
+  floorId: string
+  period: PeriodId | undefined
+}
+
+export function setFloorPeriod(
+  floorId: string,
+  period: PeriodId | undefined,
+): Command<SetFloorPeriodParams> {
+  return {
+    type: SET_FLOOR_PERIOD,
+    params: { floorId, period },
+    description: 'Set floor period',
+  }
+}
+
+export interface SetFloorStyleParams {
+  floorId: string
+  style: StyleTag | undefined
+}
+
+export function setFloorStyle(
+  floorId: string,
+  style: StyleTag | undefined,
+): Command<SetFloorStyleParams> {
+  return {
+    type: SET_FLOOR_STYLE,
+    params: { floorId, style },
+    description: 'Set floor style',
+  }
+}
+
+export interface SetProjectPeriodParams {
+  period: PeriodId
+}
+
+export function setProjectPeriod(period: PeriodId): Command<SetProjectPeriodParams> {
+  return {
+    type: SET_PROJECT_PERIOD,
+    params: { period },
+    description: 'Set project period',
+  }
+}
+
 // Each handler reassigns a whole top-level slice of the root because the
 // inverse-capture proxy records only the root's top-level properties; mutating a
 // nested object in place would leave the change invisible to undo.
@@ -120,6 +167,55 @@ const setFloorCeilingHeightHandler: CommandHandler<Project, SetFloorCeilingHeigh
   },
 }
 
+// Rebuilds a floor with new period and style overrides, omitting either when it
+// resolves to undefined. The overrides are optional under exactOptionalPropertyTypes,
+// so an absent value must be left off the object rather than written as undefined.
+function rebuildFloor(
+  floor: Floor,
+  periodOverride: PeriodId | undefined,
+  styleOverride: StyleTag | undefined,
+): Floor {
+  const next: Floor = {
+    id: floor.id,
+    name: floor.name,
+    elevation: floor.elevation,
+    defaultCeilingHeight: floor.defaultCeilingHeight,
+    walls: floor.walls,
+    underlays: floor.underlays,
+    openings: floor.openings,
+    dimensions: floor.dimensions,
+  }
+  if (periodOverride !== undefined) {
+    next.periodOverride = periodOverride
+  }
+  if (styleOverride !== undefined) {
+    next.styleOverride = styleOverride
+  }
+  return next
+}
+
+const setFloorPeriodHandler: CommandHandler<Project, SetFloorPeriodParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId ? rebuildFloor(floor, params.period, floor.styleOverride) : floor,
+    )
+  },
+}
+
+const setFloorStyleHandler: CommandHandler<Project, SetFloorStyleParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId ? rebuildFloor(floor, floor.periodOverride, params.style) : floor,
+    )
+  },
+}
+
+const setProjectPeriodHandler: CommandHandler<Project, SetProjectPeriodParams> = {
+  apply(state, params) {
+    state.meta = { ...state.meta, period: params.period }
+  },
+}
+
 export function registerProjectCommands(
   registry: CommandRegistry<Project>,
 ): CommandRegistry<Project> {
@@ -129,4 +225,7 @@ export function registerProjectCommands(
     .register(ADD_FLOOR, addFloorHandler)
     .register(REMOVE_FLOOR, removeFloorHandler)
     .register(SET_FLOOR_CEILING_HEIGHT, setFloorCeilingHeightHandler)
+    .register(SET_FLOOR_PERIOD, setFloorPeriodHandler)
+    .register(SET_FLOOR_STYLE, setFloorStyleHandler)
+    .register(SET_PROJECT_PERIOD, setProjectPeriodHandler)
 }
