@@ -203,6 +203,7 @@ export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
 export type { Vector3, Bounds3 } from './scene/vector3'
 export { planToWorld } from './scene/plan-to-world'
 export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
+export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
 export type {
   AssumedUnit,
   DecimalPrecision,
