@@ -45,6 +45,14 @@ export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
 export { FINISH_REGISTRY_VERSION, builtinFinishes } from './registries/finishes'
+export type { Period } from './registries/periods'
+export { PERIOD_REGISTRY_VERSION, builtinPeriods } from './registries/periods'
+export type { Style, StyleCategory } from './registries/styles'
+export { STYLE_REGISTRY_VERSION, builtinStyles } from './registries/styles'
+export type { RoomPurpose } from './registries/room-purposes'
+export { ROOM_PURPOSE_REGISTRY_VERSION, builtinRoomPurposes } from './registries/room-purposes'
+export { resolvePeriod } from './architecture-era/resolve-period'
+export { resolveStyle } from './architecture-era/resolve-style'
 export type {
   ElementCategory,
   ElementType,
@@ -66,6 +74,7 @@ export type {
   SetFloorPeriodParams,
   SetFloorStyleParams,
   SetProjectPeriodParams,
+  SetProjectStyleParams,
   SetUnitsParams,
 } from './commands/handlers/project-commands'
 export {
@@ -76,6 +85,7 @@ export {
   SET_FLOOR_PERIOD,
   SET_FLOOR_STYLE,
   SET_PROJECT_PERIOD,
+  SET_PROJECT_STYLE,
   SET_UNITS,
   addFloor,
   registerProjectCommands,
@@ -85,6 +95,7 @@ export {
   setFloorPeriod,
   setFloorStyle,
   setProjectPeriod,
+  setProjectStyle,
   setUnits,
 } from './commands/handlers/project-commands'
 export type {
@@ -176,13 +187,25 @@ export {
 export type {
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
+  SetRoomPeriodParams,
+  SetRoomPurposeParams,
+  SetRoomStyleParams,
+  SetRoomSubPurposeParams,
 } from './commands/handlers/room-commands'
 export {
   SET_ROOM_CUSTOM_POLYGON,
   SET_ROOM_NAME,
+  SET_ROOM_PERIOD,
+  SET_ROOM_PURPOSE,
+  SET_ROOM_STYLE,
+  SET_ROOM_SUB_PURPOSE,
   registerRoomCommands,
   setRoomCustomPolygon,
   setRoomName,
+  setRoomPeriod,
+  setRoomPurpose,
+  setRoomStyle,
+  setRoomSubPurpose,
 } from './commands/handlers/room-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'

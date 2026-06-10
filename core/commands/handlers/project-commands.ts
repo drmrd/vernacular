@@ -1,5 +1,5 @@
 import { createFloor } from '../../model/factories'
-import type { Floor, PeriodId, Project, StyleTag, UnitSystem } from '../../model/types'
+import type { Floor, PeriodId, Project, ProjectMeta, StyleTag, UnitSystem } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
@@ -11,6 +11,7 @@ export const SET_FLOOR_CEILING_HEIGHT = 'project/set-floor-ceiling-height'
 export const SET_FLOOR_PERIOD = 'project/set-floor-period'
 export const SET_FLOOR_STYLE = 'project/set-floor-style'
 export const SET_PROJECT_PERIOD = 'project/set-period'
+export const SET_PROJECT_STYLE = 'project/set-style'
 
 export interface RenameProjectParams {
   name: string
@@ -140,6 +141,21 @@ export function setProjectPeriod(period: PeriodId): Command<SetProjectPeriodPara
   }
 }
 
+export interface SetProjectStyleParams {
+  // Clearable: the project style is optional, so `undefined` removes it and
+  // leaves the project with no default style. (Contrast setProjectPeriod, whose
+  // period is always present.)
+  style: StyleTag | undefined
+}
+
+export function setProjectStyle(style: StyleTag | undefined): Command<SetProjectStyleParams> {
+  return {
+    type: SET_PROJECT_STYLE,
+    params: { style },
+    description: 'Set project style',
+  }
+}
+
 // Each handler reassigns a whole top-level slice of the root because the
 // inverse-capture proxy records only the root's top-level properties; mutating a
 // nested object in place would leave the change invisible to undo.
@@ -223,9 +239,34 @@ const setFloorStyleHandler: CommandHandler<Project, SetFloorStyleParams> = {
   },
 }
 
+// Rebuilds the project meta with a new style, omitting the field when the style
+// resolves to undefined. ProjectMeta.style is optional under
+// exactOptionalPropertyTypes, so an absent value must be left off the object
+// rather than written as undefined; a cleared style therefore drops the key.
+function rebuildMetaStyle(meta: ProjectMeta, style: StyleTag | undefined): ProjectMeta {
+  const next: ProjectMeta = {
+    name: meta.name,
+    units: meta.units,
+    period: meta.period,
+    schemaVersion: meta.schemaVersion,
+    appVersion: meta.appVersion,
+    registryVersions: meta.registryVersions,
+  }
+  if (style !== undefined) {
+    next.style = style
+  }
+  return next
+}
+
 const setProjectPeriodHandler: CommandHandler<Project, SetProjectPeriodParams> = {
   apply(state, params) {
     state.meta = { ...state.meta, period: params.period }
+  },
+}
+
+const setProjectStyleHandler: CommandHandler<Project, SetProjectStyleParams> = {
+  apply(state, params) {
+    state.meta = rebuildMetaStyle(state.meta, params.style)
   },
 }
 
@@ -241,4 +282,5 @@ export function registerProjectCommands(
     .register(SET_FLOOR_PERIOD, setFloorPeriodHandler)
     .register(SET_FLOOR_STYLE, setFloorStyleHandler)
     .register(SET_PROJECT_PERIOD, setProjectPeriodHandler)
+    .register(SET_PROJECT_STYLE, setProjectStyleHandler)
 }
