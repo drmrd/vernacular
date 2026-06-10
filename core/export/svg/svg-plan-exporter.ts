@@ -1,9 +1,21 @@
+import { dimensionGeometry } from '../../geometry/dimension'
+import type { DimensionGeometry } from '../../geometry/dimension'
 import { polygonCentroid } from '../../geometry/polygon'
 import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
-import { DEFAULT_METRIC_PREFERENCES, formatArea } from '../../units'
+import {
+  DEFAULT_METRIC_PREFERENCES,
+  formatArea,
+  formatLength,
+  lengthFormatOptions,
+} from '../../units'
 import { deriveSceneGraph } from '../../scene/scene-graph'
-import type { OpeningSceneNode, RoomSceneNode, SceneGraph } from '../../scene/scene-graph'
+import type {
+  DimensionSceneNode,
+  OpeningSceneNode,
+  RoomSceneNode,
+  SceneGraph,
+} from '../../scene/scene-graph'
 import { openingFootprint } from '../../topology/openings'
 import type { Exporter, ExportResult } from '../exporter'
 import { svgDocument, svgGroup, svgLine, svgPolygon, svgText } from './svg-document'
@@ -20,10 +32,18 @@ const LABEL_INK = '#37414d'
 const OPENING_GAP = '#ffffff'
 /** Opening jamb cap stroke, mirroring the wall ink. */
 const OPENING_INK = '#222222'
+/** Dimension line, extension, and arrowhead ink, mirroring the on-screen dimension. */
+const DIMENSION_INK = '#222222'
 /** Room label font size in world millimeters. */
 const LABEL_FONT_SIZE = 280
 /** Vertical advance between the name and area label lines, in world millimeters. */
 const LABEL_LINE_HEIGHT = 320
+/** Arrowhead barb length in world millimeters (SVG user units are millimeters). */
+const ARROWHEAD_LENGTH_MM = 120
+/** Divisor of pi giving the arrowhead barb half-angle (a 22.5 degree barb). */
+const ARROWHEAD_HALF_ANGLE_DIVISOR = 8
+/** Half-angle each arrowhead barb is rotated from the dimension line direction. */
+const ARROWHEAD_HALF_ANGLE = Math.PI / ARROWHEAD_HALF_ANGLE_DIVISOR
 
 export interface SvgPlanExportOptions {
   /** Margin around the content in world millimeters. Default 100. */
@@ -55,6 +75,8 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
         // Openings paint over the wall stroke so the wall reads as broken.
         renderOpenings(graph, context),
         renderRoomLabels(graph, context),
+        // Dimensions are annotation overlays painted above the plan.
+        renderDimensions(graph, context),
       ],
       {},
     )
@@ -188,4 +210,100 @@ function labelText(text: string, position: { x: number; y: number }): string {
     'text-anchor': 'middle',
   })
   /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+/** A world-space line segment with the SVG stroke attributes to render it. */
+interface WorldSegment {
+  from: Point
+  to: Point
+  attributes: Record<string, string | number | undefined>
+}
+
+/** Project a world segment's endpoints and emit the `<line>` between them in SVG space. */
+function svgLineWorld({ view }: SvgPlanContext, segment: WorldSegment): string {
+  const start = view.project(segment.from)
+  const end = view.project(segment.to)
+  return svgLine({
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+    attributes: segment.attributes,
+  })
+}
+
+/** Render every dimension as its line, extensions, arrowheads, and length text. */
+function renderDimensions(graph: SceneGraph, context: SvgPlanContext): string {
+  const groups = graph.dimensions.map((dimension) => renderDimension(dimension, context))
+  /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  return svgGroup(groups, { 'data-layer': 'dimensions' })
+}
+
+/** Render one dimension: offset line, two extension lines, arrowheads, and length text. */
+function renderDimension(dimension: DimensionSceneNode, context: SvgPlanContext): string {
+  const geom = dimensionGeometry(dimension.start, dimension.end, dimension.offset)
+  const ink = { stroke: DIMENSION_INK }
+  const fragments = [
+    svgLineWorld(context, { from: geom.lineStart, to: geom.lineEnd, attributes: ink }),
+    svgLineWorld(context, {
+      from: geom.extensionStart[0],
+      to: geom.extensionStart[1],
+      attributes: ink,
+    }),
+    svgLineWorld(context, {
+      from: geom.extensionEnd[0],
+      to: geom.extensionEnd[1],
+      attributes: ink,
+    }),
+    ...dimensionArrowheads(geom, context),
+    dimensionLabel(dimension, geom, context),
+  ]
+  // dimension.id already carries the `dimension:` scene-node prefix (see scene-graph).
+  /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  return svgGroup(fragments, { 'data-node-id': dimension.id })
+}
+
+/** Emit two arrowhead barb `<line>`s at each end of the projected dimension line. */
+function dimensionArrowheads(geom: DimensionGeometry, context: SvgPlanContext): string[] {
+  const start = context.view.project(geom.lineStart)
+  const end = context.view.project(geom.lineEnd)
+  return [...arrowheadBarbs(end, start), ...arrowheadBarbs(start, end)]
+}
+
+/** Two short `<line>` barbs at `tip`, opening back toward the line's `other` end. */
+function arrowheadBarbs(tip: Point, other: Point): string[] {
+  const dx = other.x - tip.x
+  const dy = other.y - tip.y
+  const length = Math.hypot(dx, dy)
+  if (length === 0) {
+    return []
+  }
+  const angle = Math.atan2(dy, dx)
+  return [angle - ARROWHEAD_HALF_ANGLE, angle + ARROWHEAD_HALF_ANGLE].map((barbAngle) =>
+    arrowheadBarb(tip, barbAngle),
+  )
+}
+
+/** One arrowhead barb `<line>` from `tip` along `barbAngle` for the barb length. */
+function arrowheadBarb(tip: Point, barbAngle: number): string {
+  return svgLine({
+    x1: tip.x,
+    y1: tip.y,
+    x2: tip.x + Math.cos(barbAngle) * ARROWHEAD_LENGTH_MM,
+    y2: tip.y + Math.sin(barbAngle) * ARROWHEAD_LENGTH_MM,
+    attributes: { stroke: DIMENSION_INK },
+  })
+}
+
+/** Emit the formatted length `<text>` centered at the projected dimension-line midpoint. */
+function dimensionLabel(
+  dimension: DimensionSceneNode,
+  geom: DimensionGeometry,
+  context: SvgPlanContext,
+): string {
+  const start = context.view.project(geom.lineStart)
+  const end = context.view.project(geom.lineEnd)
+  const midpoint = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
+  const text = formatLength(dimension.length, lengthFormatOptions(context.preferences))
+  return labelText(text, midpoint)
 }
