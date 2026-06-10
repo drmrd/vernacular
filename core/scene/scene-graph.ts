@@ -1,4 +1,3 @@
-import type { AssetReference } from '../model/asset-reference'
 import { dimensionLength } from '../geometry/dimension'
 import type {
   Dimension,
@@ -10,6 +9,7 @@ import type {
   RoomOverride,
   Underlay,
   UnderlayPlacement,
+  UnderlaySource,
   Wall,
 } from '../model/types'
 import { deriveOpeningGeometry } from '../topology/openings'
@@ -53,7 +53,7 @@ export interface UnderlaySceneNode {
   id: string
   kind: 'underlay'
   floorId: string
-  image: AssetReference
+  source: UnderlaySource
   width: number
   height: number
   placement: UnderlayPlacement
@@ -121,7 +121,7 @@ export function deriveUnderlayNode(floor: Floor, underlay: Underlay): UnderlaySc
     id: `${UNDERLAY_NODE_PREFIX}${underlay.id}`,
     kind: 'underlay',
     floorId: floor.id,
-    image: underlay.image,
+    source: underlay.source,
     width: underlay.width,
     height: underlay.height,
     placement: underlay.placement,

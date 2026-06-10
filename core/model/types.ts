@@ -98,11 +98,19 @@ export interface UnderlayPlacement {
   rotation: number
 }
 
+export type UnderlayKind = 'raster' | 'document' | 'scene'
+
+/** Reference + per-kind data for an underlay's source content (content-addressed, ADR-0007). */
+export type UnderlaySource =
+  | { kind: 'raster'; image: AssetReference }
+  | { kind: 'document'; document: AssetReference; page: number }
+  | { kind: 'scene'; scene: AssetReference }
+
 export interface Underlay {
   id: string
-  /** Content-addressed reference to the raster image bytes (ADR-0007). */
-  image: AssetReference
-  /** Source image dimensions in pixels. */
+  /** Discriminated reference to the underlay's source content (content-addressed, ADR-0007). */
+  source: UnderlaySource
+  /** Source content dimensions in pixels. */
   width: number
   height: number
   placement: UnderlayPlacement

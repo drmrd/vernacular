@@ -24,8 +24,9 @@ import type {
 // `style`, and adds the optional per-floor `periodOverride` and `styleOverride`
 // (the per-room period, style, purpose, and sub-purpose ride inside the optional
 // roomOverrides map and need no migration); v6 adds the top-level floor-spanning
-// `stairs` array.
-export const CURRENT_SCHEMA_VERSION = 6
+// `stairs` array; v7 replaces each underlay's bare `image` with a discriminated
+// `source`, wrapping the existing image in a raster source.
+export const CURRENT_SCHEMA_VERSION = 7
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -155,7 +156,7 @@ export interface NewUnderlayOptions {
 export function createUnderlay(options: NewUnderlayOptions): Underlay {
   return {
     id: globalThis.crypto.randomUUID(),
-    image: options.image,
+    source: { kind: 'raster', image: options.image },
     width: options.width,
     height: options.height,
     placement: {
