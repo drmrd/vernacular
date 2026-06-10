@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ActiveFloorProvider,
   AssetCacheProvider,
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
+  createActiveFloorStore,
   createEditorSession,
   createSelectionStore,
   loadOrCreateProject,
@@ -237,6 +239,10 @@ interface EditorWorkspaceProps {
 function EditorWorkspace(props: EditorWorkspaceProps) {
   const { session, store, assets, projectId, recentProjects, snapshots, onSession } = props
   const selection = useMemo(() => createSelectionStore(), [])
+  const activeFloorStore = useMemo(
+    () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
+    [session],
+  )
   // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
   // option rejects an explicit undefined.
   const saveStatus = useAutosave({ session, store, projectId, ...(snapshots ? { snapshots } : {}) })
@@ -252,15 +258,17 @@ function EditorWorkspace(props: EditorWorkspaceProps) {
       <EditorSessionProvider session={session}>
         <AssetCacheProvider assets={assets}>
           <SelectionProvider store={selection}>
-            <ActiveToolProvider>
-              <EditorShell
-                saveStatus={saveStatus}
-                recentProjects={recentEntries}
-                {...actions}
-                // Spread recovery only when present: the optional prop rejects an explicit undefined.
-                {...(recovery ? { recovery } : {})}
-              />
-            </ActiveToolProvider>
+            <ActiveFloorProvider store={activeFloorStore}>
+              <ActiveToolProvider>
+                <EditorShell
+                  saveStatus={saveStatus}
+                  recentProjects={recentEntries}
+                  {...actions}
+                  // Spread recovery only when present: the optional prop rejects an explicit undefined.
+                  {...(recovery ? { recovery } : {})}
+                />
+              </ActiveToolProvider>
+            </ActiveFloorProvider>
           </SelectionProvider>
         </AssetCacheProvider>
       </EditorSessionProvider>

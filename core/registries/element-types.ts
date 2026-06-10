@@ -1,6 +1,6 @@
 import { createRegistry, type Registry, type RegistryEntry } from './registry'
 
-export type ElementCategory = 'wall' | 'opening'
+export type ElementCategory = 'wall' | 'opening' | 'stair'
 
 export interface Plan2DSymbol {
   /** Identifier of the 2D plan-symbol drawing routine. */
@@ -36,7 +36,7 @@ export interface ElementType extends RegistryEntry {
   opening?: OpeningTypeParameters
 }
 
-export const ELEMENT_TYPE_REGISTRY_VERSION = 2
+export const ELEMENT_TYPE_REGISTRY_VERSION = 3
 
 export const builtinElementTypes: Registry<ElementType> = createRegistry(
   ELEMENT_TYPE_REGISTRY_VERSION,
@@ -294,6 +294,12 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
         defaultHeight: 2032,
         defaultSillHeight: 0,
       },
+    },
+    {
+      id: 'straight-stair',
+      category: 'stair',
+      plan2D: { symbol: 'stair-run' },
+      scene3D: { builder: 'parametric-stair' },
     },
   ],
 )

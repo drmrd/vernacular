@@ -7,11 +7,27 @@ export const RENAME_PROJECT = 'project/rename'
 export const SET_UNITS = 'project/set-units'
 export const ADD_FLOOR = 'project/add-floor'
 export const REMOVE_FLOOR = 'project/remove-floor'
+export const RENAME_FLOOR = 'project/rename-floor'
+export const REORDER_FLOOR = 'project/reorder-floor'
 export const SET_FLOOR_CEILING_HEIGHT = 'project/set-floor-ceiling-height'
+export const SET_FLOOR_ELEVATION = 'project/set-floor-elevation'
 export const SET_FLOOR_PERIOD = 'project/set-floor-period'
 export const SET_FLOOR_STYLE = 'project/set-floor-style'
 export const SET_PROJECT_PERIOD = 'project/set-period'
 export const SET_PROJECT_STYLE = 'project/set-style'
+
+// Coalesces a floor-scoped command with the immediately preceding one when both
+// share a `type` and target `floorId`, collapsing a continuous edit (such as
+// dragging a value slider) into a single undoable step. `rebuild` is invoked only
+// while coalescing (never at factory-construction time, which would recurse); its
+// result is the merged command and supplies the `type` the previous one must match.
+function coalesceByFloorId(floorId: string, rebuild: () => Command) {
+  return (previous: Command) => {
+    const next = rebuild()
+    const matchesFloor = () => (previous.params as { floorId: string }).floorId === floorId
+    return previous.type === next.type && matchesFloor() ? next : null
+  }
+}
 
 export interface RenameProjectParams {
   name: string
@@ -63,6 +79,33 @@ export function removeFloor(floorId: string): Command<RemoveFloorParams> {
   }
 }
 
+export interface RenameFloorParams {
+  floorId: string
+  name: string
+}
+
+export function renameFloor(floorId: string, name: string): Command<RenameFloorParams> {
+  return {
+    type: RENAME_FLOOR,
+    params: { floorId, name },
+    description: `Rename floor to "${name}"`,
+    coalesceWith: coalesceByFloorId(floorId, () => renameFloor(floorId, name)),
+  }
+}
+
+export interface ReorderFloorParams {
+  floorId: string
+  toIndex: number
+}
+
+export function reorderFloor(floorId: string, toIndex: number): Command<ReorderFloorParams> {
+  return {
+    type: REORDER_FLOOR,
+    params: { floorId, toIndex },
+    description: 'Reorder floor',
+  }
+}
+
 export interface SetFloorCeilingHeightParams {
   floorId: string
   height: number
@@ -76,16 +119,24 @@ export function setFloorCeilingHeight(
     type: SET_FLOOR_CEILING_HEIGHT,
     params: { floorId, height },
     description: 'Adjust ceiling height',
-    coalesceWith(previous) {
-      if (previous.type !== SET_FLOOR_CEILING_HEIGHT) {
-        return null
-      }
-      const previousParams = previous.params as SetFloorCeilingHeightParams
-      if (previousParams.floorId !== floorId) {
-        return null
-      }
-      return setFloorCeilingHeight(floorId, height)
-    },
+    coalesceWith: coalesceByFloorId(floorId, () => setFloorCeilingHeight(floorId, height)),
+  }
+}
+
+export interface SetFloorElevationParams {
+  floorId: string
+  elevation: number
+}
+
+export function setFloorElevation(
+  floorId: string,
+  elevation: number,
+): Command<SetFloorElevationParams> {
+  return {
+    type: SET_FLOOR_ELEVATION,
+    params: { floorId, elevation },
+    description: 'Set floor elevation',
+    coalesceWith: coalesceByFloorId(floorId, () => setFloorElevation(floorId, elevation)),
   }
 }
 
@@ -183,10 +234,39 @@ const removeFloorHandler: CommandHandler<Project, RemoveFloorParams> = {
   },
 }
 
+const renameFloorHandler: CommandHandler<Project, RenameFloorParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId ? { ...floor, name: params.name } : floor,
+    )
+  },
+}
+
+const reorderFloorHandler: CommandHandler<Project, ReorderFloorParams> = {
+  apply(state, params) {
+    const moved = state.floors.find((floor) => floor.id === params.floorId)
+    if (moved === undefined) {
+      return
+    }
+    const next = state.floors.filter((floor) => floor.id !== params.floorId)
+    const clamped = Math.max(0, Math.min(params.toIndex, next.length))
+    next.splice(clamped, 0, moved)
+    state.floors = next
+  },
+}
+
 const setFloorCeilingHeightHandler: CommandHandler<Project, SetFloorCeilingHeightParams> = {
   apply(state, params) {
     state.floors = state.floors.map((floor) =>
       floor.id === params.floorId ? { ...floor, defaultCeilingHeight: params.height } : floor,
+    )
+  },
+}
+
+const setFloorElevationHandler: CommandHandler<Project, SetFloorElevationParams> = {
+  apply(state, params) {
+    state.floors = state.floors.map((floor) =>
+      floor.id === params.floorId ? { ...floor, elevation: params.elevation } : floor,
     )
   },
 }
@@ -278,7 +358,10 @@ export function registerProjectCommands(
     .register(SET_UNITS, setUnitsHandler)
     .register(ADD_FLOOR, addFloorHandler)
     .register(REMOVE_FLOOR, removeFloorHandler)
+    .register(RENAME_FLOOR, renameFloorHandler)
+    .register(REORDER_FLOOR, reorderFloorHandler)
     .register(SET_FLOOR_CEILING_HEIGHT, setFloorCeilingHeightHandler)
+    .register(SET_FLOOR_ELEVATION, setFloorElevationHandler)
     .register(SET_FLOOR_PERIOD, setFloorPeriodHandler)
     .register(SET_FLOOR_STYLE, setFloorStyleHandler)
     .register(SET_PROJECT_PERIOD, setProjectPeriodHandler)

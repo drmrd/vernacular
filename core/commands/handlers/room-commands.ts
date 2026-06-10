@@ -161,6 +161,30 @@ const setRoomStyleHandler: CommandHandler<Project, SetRoomStyleParams> = {
   },
 }
 
+export const SET_ROOM_CEILING_HEIGHT = 'room/set-ceiling-height'
+
+export interface SetRoomCeilingHeightParams {
+  roomKey: string
+  height: number | undefined
+}
+
+export function setRoomCeilingHeight(
+  roomKey: string,
+  height: number | undefined,
+): Command<SetRoomCeilingHeightParams> {
+  return {
+    type: SET_ROOM_CEILING_HEIGHT,
+    params: { roomKey, height },
+    description: 'Set room ceiling height',
+  }
+}
+
+const setRoomCeilingHeightHandler: CommandHandler<Project, SetRoomCeilingHeightParams> = {
+  apply(state, params) {
+    mergeRoomOverride(state, params.roomKey, { ceilingHeight: params.height })
+  },
+}
+
 export function registerRoomCommands(registry: CommandRegistry<Project>): CommandRegistry<Project> {
   return registry
     .register(SET_ROOM_NAME, setRoomNameHandler)
@@ -169,4 +193,5 @@ export function registerRoomCommands(registry: CommandRegistry<Project>): Comman
     .register(SET_ROOM_SUB_PURPOSE, setRoomSubPurposeHandler)
     .register(SET_ROOM_PERIOD, setRoomPeriodHandler)
     .register(SET_ROOM_STYLE, setRoomStyleHandler)
+    .register(SET_ROOM_CEILING_HEIGHT, setRoomCeilingHeightHandler)
 }

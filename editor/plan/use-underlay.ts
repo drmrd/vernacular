@@ -122,7 +122,8 @@ function resolveDrawablesFrom(
     if (node.floorId !== floorId) {
       continue
     }
-    const image = cache.get(node.image.contentHash)
+    const image =
+      node.source.kind === 'raster' ? cache.get(node.source.image.contentHash) : undefined
     if (image) {
       drawables.push({ node, image })
     }

@@ -8,8 +8,11 @@ import {
   addFloor,
   registerProjectCommands,
   removeFloor,
+  renameFloor,
   renameProject,
+  reorderFloor,
   setFloorCeilingHeight,
+  setFloorElevation,
   setFloorPeriod,
   setFloorStyle,
   setProjectPeriod,
@@ -170,5 +173,94 @@ describe('setProjectPeriod', () => {
 
     dispatcher.undo()
     expect(project.meta.period).toBe('victorian')
+  })
+})
+
+function projectWithTwoFloors(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [createFloor('Ground', { id: 'f1' }), createFloor('Upper', { id: 'f2' })]
+  return project
+}
+
+describe('renameFloor', () => {
+  it('renames only the target floor and restores the prior name on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(renameFloor('f2', 'Second Floor'))
+    expect(project.floors[1]?.name).toBe('Second Floor')
+    expect(project.floors[0]?.name).toBe('Ground')
+
+    dispatcher.undo()
+    expect(project.floors[1]?.name).toBe('Upper')
+  })
+})
+
+function projectWithGroundFloor(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [createFloor('Ground', { id: 'f1', elevation: 0 })]
+  return project
+}
+
+describe('setFloorElevation', () => {
+  it("sets the target floor's elevation and restores the prior value on undo", () => {
+    const project = projectWithGroundFloor()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setFloorElevation('f1', 3000))
+    expect(project.floors[0]?.elevation).toBe(3000)
+
+    dispatcher.undo()
+    expect(project.floors[0]?.elevation).toBe(0)
+  })
+
+  it('coalesces successive elevation edits on the same floor into one undo step', () => {
+    const project = projectWithGroundFloor()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setFloorElevation('f1', 1000))
+    dispatcher.dispatch(setFloorElevation('f1', 2000))
+    expect(project.floors[0]?.elevation).toBe(2000)
+
+    dispatcher.undo()
+    expect(project.floors[0]?.elevation).toBe(0)
+  })
+})
+
+function projectWithThreeFloors(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [
+    createFloor('Basement', { id: 'a' }),
+    createFloor('Ground', { id: 'b' }),
+    createFloor('Upper', { id: 'c' }),
+  ]
+  return project
+}
+
+describe('reorderFloor', () => {
+  it('moves a floor to a new index and restores the original order on undo', () => {
+    const project = projectWithThreeFloors()
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(reorderFloor('c', 0))
+    expect(project.floors.map((floor) => floor.id)).toEqual(['c', 'a', 'b'])
+
+    dispatcher.undo()
+    expect(project.floors.map((floor) => floor.id)).toEqual(['a', 'b', 'c'])
   })
 })

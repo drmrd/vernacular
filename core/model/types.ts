@@ -98,11 +98,20 @@ export interface UnderlayPlacement {
   rotation: number
 }
 
+/** Enumerates the discriminant `kind` values of `UnderlaySource`: the raster, document, and scene source families. */
+export type UnderlayKind = 'raster' | 'document' | 'scene'
+
+/** Reference + per-kind data for an underlay's source content (content-addressed, ADR-0007). */
+export type UnderlaySource =
+  | { kind: 'raster'; image: AssetReference }
+  | { kind: 'document'; document: AssetReference; page: number }
+  | { kind: 'scene'; scene: AssetReference }
+
 export interface Underlay {
   id: string
-  /** Content-addressed reference to the raster image bytes (ADR-0007). */
-  image: AssetReference
-  /** Source image dimensions in pixels. */
+  /** Discriminated reference to the underlay's source content (content-addressed, ADR-0007). */
+  source: UnderlaySource
+  /** Source content dimensions in pixels. */
   width: number
   height: number
   placement: UnderlayPlacement
@@ -164,11 +173,50 @@ export interface RoomOverride {
   periodOverride?: PeriodId
   /** Explicit style override; absent means inherit the floor or project style. */
   styleOverride?: StyleTag
+  /** Explicit ceiling-height override in millimeters; absent means inherit the floor default. */
+  ceilingHeight?: number
+}
+
+/** How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2. */
+export type StairRunType = 'straight' | 'l-turn' | 'u-turn' | 'winder' | 'spiral'
+
+/**
+ * The pair of floors a stair joins. The run rises from `fromFloorId` to
+ * `toFloorId`; the type does not enforce any elevation ordering, so keeping
+ * the direction sensible is the caller's responsibility.
+ */
+export interface StairConnection {
+  fromFloorId: string
+  toFloorId: string
+}
+
+/**
+ * A stair joining two floors. Stairs live in a top-level, floor-spanning array
+ * rather than on a single floor because they connect two floors; see the design
+ * specification, sections 3.1 and 3.2.
+ */
+export interface Stair {
+  id: string
+  runType: StairRunType
+  /** Plan position of the stair origin, in world millimeters. */
+  position: Point
+  /** Run width in millimeters. */
+  width: number
+  /** Run length (plan footprint) in millimeters. */
+  length: number
+  /** Rotation in radians about `position`. */
+  rotation: number
+  connection: StairConnection
 }
 
 export interface Project {
   meta: ProjectMeta
   floors: Floor[]
+  /**
+   * Floor-spanning stairs. A sibling of `floors` because each stair connects two
+   * floors; see the design specification, sections 3.1 and 3.2.
+   */
+  stairs: Stair[]
   /**
    * Per-room user metadata keyed by `roomKey(room)`. A sibling of `meta` and
    * `floors` so an undoable command can reassign it whole (the inverse-capture

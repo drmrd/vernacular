@@ -90,6 +90,7 @@ function graphWithOneOfEach(): SceneGraph {
     underlays: [],
     openings: [opening()],
     dimensions: [dimension()],
+    stairs: [],
   }
 }
 
@@ -138,6 +139,7 @@ describe('overlayEntities', () => {
       underlays: [],
       openings: [],
       dimensions: [],
+      stairs: [],
     }
 
     expect(overlayEntities(empty, EMPTY_SELECTION, DEFAULT_METRIC_PREFERENCES)).toEqual([])

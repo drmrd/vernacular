@@ -15,10 +15,15 @@ export type {
   RoomOverride,
   RoomPurposeId,
   SchemaVersion,
+  Stair,
+  StairConnection,
+  StairRunType,
   StyleId,
   StyleTag,
   Underlay,
+  UnderlayKind,
   UnderlayPlacement,
+  UnderlaySource,
   UnitSystem,
   Wall,
 } from './model/types'
@@ -27,6 +32,7 @@ export type {
   NewFloorOptions,
   NewOpeningOptions,
   NewProjectOptions,
+  NewStairOptions,
   NewUnderlayOptions,
   NewWallOptions,
 } from './model/factories'
@@ -35,12 +41,15 @@ export {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
+  DEFAULT_STAIR_LENGTH_MM,
+  DEFAULT_STAIR_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
+  createStair,
   createUnderlay,
   createWall,
 } from './model/factories'
@@ -87,8 +96,11 @@ export { DEFAULT_MAX_HISTORY, Dispatcher } from './commands/dispatcher'
 export type {
   AddFloorParams,
   RemoveFloorParams,
+  RenameFloorParams,
   RenameProjectParams,
+  ReorderFloorParams,
   SetFloorCeilingHeightParams,
+  SetFloorElevationParams,
   SetFloorPeriodParams,
   SetFloorStyleParams,
   SetProjectPeriodParams,
@@ -98,8 +110,11 @@ export type {
 export {
   ADD_FLOOR,
   REMOVE_FLOOR,
+  RENAME_FLOOR,
   RENAME_PROJECT,
+  REORDER_FLOOR,
   SET_FLOOR_CEILING_HEIGHT,
+  SET_FLOOR_ELEVATION,
   SET_FLOOR_PERIOD,
   SET_FLOOR_STYLE,
   SET_PROJECT_PERIOD,
@@ -108,14 +123,34 @@ export {
   addFloor,
   registerProjectCommands,
   removeFloor,
+  renameFloor,
   renameProject,
+  reorderFloor,
   setFloorCeilingHeight,
+  setFloorElevation,
   setFloorPeriod,
   setFloorStyle,
   setProjectPeriod,
   setProjectStyle,
   setUnits,
 } from './commands/handlers/project-commands'
+export type {
+  AddStairParams,
+  MoveStairParams,
+  RemoveStairParams,
+  SetStairRunTypeParams,
+} from './commands/handlers/stair-commands'
+export {
+  ADD_STAIR,
+  MOVE_STAIR,
+  REMOVE_STAIR,
+  SET_STAIR_RUN_TYPE,
+  addStair,
+  moveStair,
+  registerStairCommands,
+  removeStair,
+  setStairRunType,
+} from './commands/handlers/stair-commands'
 export type {
   AddWallParams,
   MoveWallEndpointParams,
@@ -203,6 +238,7 @@ export {
   translateEntities,
 } from './commands/handlers/transform-commands'
 export type {
+  SetRoomCeilingHeightParams,
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
   SetRoomPeriodParams,
@@ -211,6 +247,7 @@ export type {
   SetRoomSubPurposeParams,
 } from './commands/handlers/room-commands'
 export {
+  SET_ROOM_CEILING_HEIGHT,
   SET_ROOM_CUSTOM_POLYGON,
   SET_ROOM_NAME,
   SET_ROOM_PERIOD,
@@ -218,6 +255,7 @@ export {
   SET_ROOM_STYLE,
   SET_ROOM_SUB_PURPOSE,
   registerRoomCommands,
+  setRoomCeilingHeight,
   setRoomCustomPolygon,
   setRoomName,
   setRoomPeriod,
@@ -233,12 +271,14 @@ export type {
   RoomSceneNode,
   SceneGraph,
   SceneNode,
+  StairSceneNode,
   UnderlaySceneNode,
   WallSceneNode,
 } from './scene/scene-graph'
 export {
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
+  STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
   WALL_NODE_PREFIX,
   deriveDimensionNode,
@@ -248,6 +288,7 @@ export {
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
+  deriveStairNodes,
   deriveUnderlayNode,
   deriveUnderlayNodesForFloor,
   deriveWallNode,
@@ -314,6 +355,7 @@ export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
+export { stairWellPolygon } from './topology/stair-well'
 export type { ClipboardSnapshot, InstantiatedEntities } from './clipboard/clipboard'
 export {
   buildClipboardSnapshot,

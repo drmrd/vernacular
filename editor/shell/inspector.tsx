@@ -1,4 +1,10 @@
-import { useEditorSession, useSceneGraph, useSelectionIds, type EditorSession } from '../../bridge'
+import {
+  useActiveFloorId,
+  useEditorSession,
+  useSceneGraph,
+  useSelectionIds,
+  type EditorSession,
+} from '../../bridge'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -32,6 +38,12 @@ import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
+}
+
+// The floor the inspector edits: the active floor, falling back to the first floor
+// when the active id is null or no longer names a floor in the project.
+function activeFloor(project: Readonly<Project>, activeFloorId: string | null) {
+  return project.floors.find((floor) => floor.id === activeFloorId) ?? project.floors[0]
 }
 
 /**
@@ -214,7 +226,8 @@ interface TransformPanelProps {
 // (walls, openings, dimensions), about the selection center. Rooms are derived,
 // so a room-only selection yields no entity ids and renders nothing.
 function TransformPanel({ session, selectedIds }: TransformPanelProps) {
-  const floor = session.getProject().floors[0]
+  const activeFloorId = useActiveFloorId()
+  const floor = activeFloor(session.getProject(), activeFloorId)
   const entityIds = selectedEntityIds(selectedIds)
   if (floor === undefined || entityIds.length === 0) {
     return null
@@ -233,6 +246,7 @@ export function Inspector() {
   const session = useEditorSession()
   const graph = useSceneGraph()
   const selectedIds = useSelectionIds()
+  const activeFloorId = useActiveFloorId()
   const underlay = useUnderlay()
   // The editors' dispatch prop is intentionally loose (`unknown`) so the inline
   // editors drive their unit tests without the command types; each only ever
@@ -240,9 +254,9 @@ export function Inspector() {
   const dispatch = (command: unknown): void => {
     session.dispatch(command as Command)
   }
-  // A single-floor MVP: the underlay panel always lists the active (first) floor's
-  // underlays. The panel renders nothing for the rows when the floor has none.
-  const floor = session.getProject().floors[0]
+  // The underlay panel lists the active floor's underlays, falling back to the
+  // first floor. The panel renders nothing for the rows when the floor has none.
+  const floor = activeFloor(session.getProject(), activeFloorId)
   return (
     <>
       <SelectionInspector

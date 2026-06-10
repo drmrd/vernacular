@@ -1,5 +1,12 @@
-import { SceneCanvas, useEditorSession, useSceneGraph, type AutosaveStatus } from '../../bridge'
-import { setUnits } from '../../core'
+import {
+  SceneCanvas,
+  useActiveFloorId,
+  useEditorSession,
+  useSceneGraph,
+  useSetActiveFloorId,
+  type AutosaveStatus,
+} from '../../bridge'
+import { addFloor, setUnits, type Project } from '../../core'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
@@ -7,6 +14,7 @@ import { UnderlayProvider } from '../plan/use-underlay'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { AppFrame, PanelSlot } from '../design-system'
+import { FloorSwitcher } from './floor-switcher'
 import { Inspector } from './inspector'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
@@ -56,13 +64,32 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   )
 }
 
-// The tool rail content: the existing tools nav plus the empty floor-switcher seam
-// the structure track mounts into later.
+// The floor rows the switcher renders: each floor's raw id and name (not the
+// scene-node prefixed id).
+function floorSummaries(project: Project): { id: string; name: string }[] {
+  return project.floors.map((floor) => ({ id: floor.id, name: floor.name }))
+}
+
+// The tool rail content: the existing tools nav plus the live floor switcher. It
+// subscribes to the scene graph so the floor list refreshes on add/remove floor,
+// and to the active-floor hooks so the switcher reflects the active floor (both
+// hoisted here to honor the hooks rule).
 function ToolRail() {
+  const session = useEditorSession()
+  const activeFloorId = useActiveFloorId()
+  const setActiveFloorId = useSetActiveFloorId()
+  useSceneGraph()
   return (
     <>
       <ToolsNav />
-      <PanelSlot slotId={FLOOR_SWITCHER_SLOT} label="Floors" emptyTitle="Floors" />
+      <PanelSlot slotId={FLOOR_SWITCHER_SLOT} label="Floors">
+        <FloorSwitcher
+          floors={floorSummaries(session.getProject())}
+          activeFloorId={activeFloorId}
+          onSelectFloor={setActiveFloorId}
+          onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+        />
+      </PanelSlot>
     </>
   )
 }

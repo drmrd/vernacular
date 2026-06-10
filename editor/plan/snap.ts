@@ -1,6 +1,6 @@
 import { distance, type Point, type WallSceneNode } from '../../core'
 
-export type SnapKind = 'endpoint' | 'midpoint' | 'perpendicular' | 'parallel' | 'grid'
+export type SnapKind = 'endpoint' | 'midpoint' | 'perpendicular' | 'parallel' | 'grid' | 'trace'
 
 export interface SnapResult {
   point: Point
@@ -13,6 +13,7 @@ export interface SnapContext {
   gridSpacingMm: number
   toleranceMm: number
   origin?: Point
+  tracePoints?: readonly Point[]
 }
 
 export const DEFAULT_SNAP_GRID_MM = 100
@@ -125,6 +126,24 @@ function asResult(candidate: Candidate, kind: SnapKind): SnapResult {
   return { point: candidate.point, kind, referenceId: candidate.referenceId }
 }
 
+/** The nearest underlay trace point within tolerance, or null when none qualifies. */
+function nearestTracePoint(
+  cursor: Point,
+  points: readonly Point[],
+  toleranceMm: number,
+): Point | null {
+  let best: Point | null = null
+  let bestDistance = Infinity
+  for (const point of points) {
+    const distanceMm = distance(cursor, point)
+    if (distanceMm <= toleranceMm && distanceMm < bestDistance) {
+      best = point
+      bestDistance = distanceMm
+    }
+  }
+  return best
+}
+
 /** The nearest grid intersection, or null when grid snapping is disabled. */
 function gridSnap(cursor: Point, gridSpacingMm: number): SnapResult | null {
   if (gridSpacingMm <= 0) {
@@ -135,6 +154,10 @@ function gridSnap(cursor: Point, gridSpacingMm: number): SnapResult | null {
 }
 
 export function snapPoint(cursor: Point, context: SnapContext): SnapResult | null {
+  const trace = nearestTracePoint(cursor, context.tracePoints ?? [], context.toleranceMm)
+  if (trace !== null) {
+    return { point: trace, kind: 'trace' }
+  }
   const endpoint = nearestFeature(cursor, context, (wall) => [wall.start, wall.end])
   if (endpoint !== null) {
     return asResult(endpoint, 'endpoint')

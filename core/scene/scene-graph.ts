@@ -1,4 +1,3 @@
-import type { AssetReference } from '../model/asset-reference'
 import { dimensionLength } from '../geometry/dimension'
 import type {
   Dimension,
@@ -8,8 +7,10 @@ import type {
   Point,
   Project,
   RoomOverride,
+  StairRunType,
   Underlay,
   UnderlayPlacement,
+  UnderlaySource,
   Wall,
 } from '../model/types'
 import { deriveOpeningGeometry } from '../topology/openings'
@@ -21,6 +22,7 @@ export const WALL_NODE_PREFIX = 'wall:'
 export const UNDERLAY_NODE_PREFIX = 'underlay:'
 export const OPENING_NODE_PREFIX = 'opening:'
 export const DIMENSION_NODE_PREFIX = 'dimension:'
+export const STAIR_NODE_PREFIX = 'stair:'
 
 export interface SceneNode {
   id: string
@@ -53,7 +55,7 @@ export interface UnderlaySceneNode {
   id: string
   kind: 'underlay'
   floorId: string
-  image: AssetReference
+  source: UnderlaySource
   width: number
   height: number
   placement: UnderlayPlacement
@@ -87,6 +89,18 @@ export interface DimensionSceneNode {
   length: number
 }
 
+export interface StairSceneNode {
+  id: string
+  kind: 'stair'
+  floorId: string
+  runType: StairRunType
+  position: Point
+  width: number
+  length: number
+  rotation: number
+  wellFloorId: string
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
   walls: WallSceneNode[]
@@ -94,6 +108,7 @@ export interface SceneGraph {
   underlays: UnderlaySceneNode[]
   openings: OpeningSceneNode[]
   dimensions: DimensionSceneNode[]
+  stairs: StairSceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -121,7 +136,7 @@ export function deriveUnderlayNode(floor: Floor, underlay: Underlay): UnderlaySc
     id: `${UNDERLAY_NODE_PREFIX}${underlay.id}`,
     kind: 'underlay',
     floorId: floor.id,
-    image: underlay.image,
+    source: underlay.source,
     width: underlay.width,
     height: underlay.height,
     placement: underlay.placement,
@@ -199,6 +214,20 @@ export function deriveRoomNodesForFloor(
   }))
 }
 
+export function deriveStairNodes(project: Project): StairSceneNode[] {
+  return project.stairs.map((stair) => ({
+    id: `${STAIR_NODE_PREFIX}${stair.id}`,
+    kind: 'stair',
+    floorId: stair.connection.fromFloorId,
+    runType: stair.runType,
+    position: stair.position,
+    width: stair.width,
+    length: stair.length,
+    rotation: stair.rotation,
+    wellFloorId: stair.connection.toFloorId,
+  }))
+}
+
 /** Pure projection of the project model into a normalized scene graph. */
 export function deriveSceneGraph(project: Project): SceneGraph {
   return {
@@ -210,5 +239,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
     openings: project.floors.flatMap(deriveOpeningNodesForFloor),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
+    stairs: deriveStairNodes(project),
   }
 }

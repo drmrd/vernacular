@@ -3,6 +3,8 @@ export { createEditorSession } from './session/editor-session'
 export { loadOrCreateProject } from './session/load-or-create-project'
 export type { SelectionStore } from './selection/selection-store'
 export { createSelectionStore } from './selection/selection-store'
+export type { ActiveFloorStore } from './active-floor/active-floor-store'
+export { createActiveFloorStore } from './active-floor/active-floor-store'
 export type { ClipboardStore } from './clipboard/clipboard-store'
 export { createClipboardStore } from './clipboard/clipboard-store'
 export { readSystemClipboard, writeSystemClipboard } from './clipboard/system-clipboard'
@@ -29,6 +31,13 @@ export type { AssetCacheProviderProps } from './react/asset-cache-context'
 export { SelectionContext, useSelection, useSelectionIds } from './react/selection-context'
 export type { SelectionProviderProps } from './react/selection-provider'
 export { SelectionProvider } from './react/selection-provider'
+export {
+  ActiveFloorContext,
+  useActiveFloorId,
+  useSetActiveFloorId,
+} from './react/active-floor-context'
+export type { ActiveFloorProviderProps } from './react/active-floor-provider'
+export { ActiveFloorProvider } from './react/active-floor-provider'
 export { useSceneGraph } from './react/use-scene-graph'
 export type { UseAutosaveOptions } from './react/use-autosave'
 export { useAutosave } from './react/use-autosave'

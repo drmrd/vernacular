@@ -4,12 +4,14 @@ import {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
+  DEFAULT_STAIR_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
+  createStair,
   createUnderlay,
   createWall,
 } from './factories'
@@ -193,13 +195,31 @@ describe('createOpening', () => {
   })
 })
 
+describe('createStair', () => {
+  it('builds a stair with the default run type, width, and the given connection', () => {
+    const stair = createStair({
+      id: 's1',
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+
+    expect(stair).toMatchObject({
+      id: 's1',
+      runType: 'straight',
+      width: DEFAULT_STAIR_WIDTH_MM,
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    expect(stair.position).toEqual({ x: 0, y: 0 })
+    expect(stair.rotation).toBe(0)
+  })
+})
+
 describe('createUnderlay', () => {
   const image: AssetReference = { scope: 'project', contentHash: 'deadbeef' }
 
-  it('carries the image and source pixel dimensions through', () => {
+  it('wraps the image in a discriminated raster source and carries the source pixel dimensions through', () => {
     const underlay = createUnderlay({ image, width: 1024, height: 768 })
 
-    expect(underlay.image).toEqual(image)
+    expect(underlay.source).toEqual({ kind: 'raster', image })
     expect(underlay.width).toBe(1024)
     expect(underlay.height).toBe(768)
   })
