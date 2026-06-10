@@ -4,7 +4,7 @@
 
 **Goal:** Generate a committed, machine-readable JSON Schema for the Vernacular Floor Plan Format CORE model, validate Documents against it with a `core/` validator, guard against schema drift, and ship conformant project fixtures.
 
-**Architecture:** The TypeScript types in `core/model/` stay the single source of truth. A Node build script runs `ts-json-schema-generator` over `core/model/types.ts` and writes `schema/5/vernacular.schema.json`. A pure `core/format/` module wraps Ajv to validate a Document against a supplied schema (so `core/` stays decoupled from the file's on-disk location). Tests in `tests/format/` load the committed schema and validate fixtures and a regenerated schema (the drift guard). The model gains an additive optional `extensions` member on each entity so the strict schema still admits reverse-DNS-namespaced third-party data.
+**Architecture:** The TypeScript types in `core/model/` stay the single source of truth. A Node build script runs `ts-json-schema-generator` over `core/model/types.ts` and writes `schema/<version>/vernacular.schema.json`. A pure `core/format/` module wraps Ajv to validate a Document against a supplied schema (so `core/` stays decoupled from the file's on-disk location). Tests in `tests/format/` load the committed schema and validate fixtures and a regenerated schema (the drift guard). The model gains an additive optional `extensions` member on each entity so the strict schema still admits reverse-DNS-namespaced third-party data.
 
 **Tech Stack:** TypeScript, pnpm (exact pins, 30-day cooldown), Vitest, `ts-json-schema-generator` (build-time), `ajv` (validation).
 
@@ -17,12 +17,24 @@
 
 ---
 
+## Before you start (integration coordination)
+
+Other integration work is in flight in sibling worktrees, so this plan is written to be version-agnostic and low-conflict. Honor these before and during execution:
+
+- **Rebase onto the live integration tip first.** This branch (`docs/vernacular-floor-plan-format`) is based on an older commit. Rebase it onto the current tip of the local integration branch `feat/parallel-track-foundations` so the schema is generated from the current model. The rebase is conflict-free for the committed docs (they are new files).
+- **The version is not 5.** Read `CURRENT_SCHEMA_VERSION` from `core/model/factories.ts` (it is 7 or later; a paint track may make it 8). Throughout this plan, `<version>` means that live integer. `build-schema.mjs` derives it automatically; the fixtures show `"schemaVersion": 7` but you MUST set it to the live value; the `schema/<version>/` and `git add` paths use the live value.
+- **One shared source file.** The only shared file this plan edits is `core/model/types.ts` (an additive optional `extensions` member on each entity). Other tracks (notably paint) may also append fields to `types.ts`; the edit is additive, so a merge is trivial, but if convenient land this work after the paint track merges. Do NOT touch `core/migrations/` (this plan adds no migration) or any shared config (`eslint.config.js`, `tsconfig*.json`, `.npmrc`).
+- **Local only.** The push and PR hold is active: commit on the branch, do not push or open a pull request.
+- **Run the cycle from the main (this) thread.** The role-separated red-green-blue subagents (`test-author`, `implementer`, `refactorer`) can only be dispatched from the main thread, so orchestrate each task here. Give each subagent the exact allowed files for its step and tell it to STOP rather than touch anything else. Each cycle is test, then feat, then refactor; close every green with a (possibly empty) refactor marker before the next test.
+
+---
+
 ## File structure
 
 - `package.json` (modify): add `ts-json-schema-generator` (dev), `ajv` (runtime), and `schema:generate` + `schema:check` scripts.
 - `scripts/schema/build-schema.mjs` (create): pure `buildProjectSchema()` that returns the schema object. One responsibility: turn the types into a schema object.
 - `scripts/schema/generate-schema.mjs` (create): write `buildProjectSchema()` output to disk. One responsibility: the write side effect.
-- `schema/5/vernacular.schema.json` (create, generated): the published CORE schema for `schemaVersion` 5.
+- `schema/<version>/vernacular.schema.json` (create, generated): the published CORE schema for the live `schemaVersion`.
 - `schema/README.md` (already present): conventions (committed earlier with the spec).
 - `core/model/types.ts` (modify): add the optional `extensions` member to each entity.
 - `core/format/validate-document.ts` (create): `createDocumentValidator(schema)` over Ajv. One responsibility: compile and run validation.
@@ -133,16 +145,26 @@ git commit -m "feat(core): reserve an optional extensions member on every entity
 **Files:**
 - Create: `scripts/schema/build-schema.mjs`
 - Create: `scripts/schema/generate-schema.mjs`
-- Create: `schema/5/vernacular.schema.json` (generated)
+- Create: `schema/<version>/vernacular.schema.json` (generated)
 
 - [ ] **Step 1: Write the pure schema builder**
 
 Create `scripts/schema/build-schema.mjs`:
 
 ```js
+import { readFileSync } from 'node:fs'
 import { createGenerator } from 'ts-json-schema-generator'
 
-export const SCHEMA_VERSION = 5
+// Track the live format version from the single source of truth so the schema
+// follows the model as other integration work bumps it. The integration branch
+// is past version 5 (version 7 or later, and a paint track may make it 8); never
+// hardcode the version here.
+const factoriesSource = readFileSync('core/model/factories.ts', 'utf8')
+const versionMatch = factoriesSource.match(/CURRENT_SCHEMA_VERSION\s*=\s*(\d+)/)
+if (versionMatch === null) {
+  throw new Error('Could not read CURRENT_SCHEMA_VERSION from core/model/factories.ts')
+}
+export const SCHEMA_VERSION = Number(versionMatch[1])
 export const SCHEMA_ID = `https://drmrd.github.io/vernacular/schema/${SCHEMA_VERSION}/vernacular.schema.json`
 
 /**
@@ -196,11 +218,11 @@ if (process.argv.includes('--check')) {
 - [ ] **Step 3: Generate the schema**
 
 Run: `pnpm schema:generate`
-Expected: prints `Wrote schema/5/vernacular.schema.json`.
+Expected: prints `Wrote schema/<version>/vernacular.schema.json`.
 
 - [ ] **Step 4: Verify the generated schema's key invariants**
 
-Open `schema/5/vernacular.schema.json` and confirm:
+Open `schema/<version>/vernacular.schema.json` and confirm:
 - top-level `"additionalProperties": false` and `"required"` includes `"meta"` and `"floors"`;
 - `definitions` (or `$defs`) contains `Wall`, `Opening`, `Underlay`, `Dimension`, `Floor`, `ProjectMeta`, `RoomOverride`;
 - the `extensions` property exists on the entity definitions and is an open object (`"type": "object"` with no `"additionalProperties": false`);
@@ -211,7 +233,7 @@ If `ts-json-schema-generator` rendered `extensions` as strict or omitted it, set
 - [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/schema/build-schema.mjs scripts/schema/generate-schema.mjs schema/5/vernacular.schema.json
+git add scripts/schema/build-schema.mjs scripts/schema/generate-schema.mjs schema/<version>/vernacular.schema.json
 git commit -m "feat(format): generate the CORE schema from the model types"
 ```
 
@@ -372,8 +394,10 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createDocumentValidator } from '../../core'
+import { SCHEMA_VERSION } from '../../scripts/schema/build-schema.mjs'
 
-const schema = JSON.parse(readFileSync(resolve('schema/5/vernacular.schema.json'), 'utf8'))
+const schemaPath = resolve('schema', String(SCHEMA_VERSION), 'vernacular.schema.json')
+const schema = JSON.parse(readFileSync(schemaPath, 'utf8'))
 const validate = createDocumentValidator(schema)
 
 function fixture(name: string): Record<string, unknown> {
@@ -422,7 +446,7 @@ Create `tests/fixtures/projects/minimal.vernacular.json`:
     "name": "Minimal example",
     "units": "imperial",
     "period": "victorian",
-    "schemaVersion": 5,
+    "schemaVersion": 7,
     "appVersion": "0.0.0-fixture",
     "registryVersions": {}
   },
@@ -451,7 +475,7 @@ Create `tests/fixtures/projects/two-floor-cottage.vernacular.json` (a small rect
     "name": "Two-floor cottage",
     "units": "imperial",
     "period": "victorian",
-    "schemaVersion": 5,
+    "schemaVersion": 7,
     "appVersion": "0.0.0-fixture",
     "registryVersions": {}
   },
@@ -575,7 +599,7 @@ Expected: all pass. Common ESLint snags in this codebase: `max-lines-per-functio
 - [ ] **Step 2: Confirm the drift script is wired**
 
 Run: `pnpm schema:check`
-Expected: prints `schema/5/vernacular.schema.json is up to date.` and exits 0. This is the command continuous integration should run to fail builds on drift (wiring it into the CI workflow is a one-line addition tracked with the CI work, not this plan).
+Expected: prints `schema/<version>/vernacular.schema.json is up to date.` and exits 0. This is the command continuous integration should run to fail builds on drift (wiring it into the CI workflow is a one-line addition tracked with the CI work, not this plan).
 
 - [ ] **Step 3: Close the cycle with a refactor marker**
 
@@ -590,5 +614,5 @@ git commit --allow-empty -m "refactor(format): no changes after review"
 ## Self-review notes (for the implementer)
 
 - **Spec coverage:** This plan implements spec sections 4 (CORE schema), 6.3 (the `extensions` seam, schema side), 8 (generation, validation, drift guard), and 9 (fixtures as conformant Documents). Sections 2.4 (rename), 6.4 (preservation rule round-trip), 7 (migrate-then-validate on load), and the full reserved-namespace and Strict-profile behavior are deferred to plans 2 and 3 as stated above.
-- **No silent schema edits:** when a fixture fails validation, the fix is the fixture or the types, never a hand-edit of the generated `schema/5/vernacular.schema.json` (the drift guard would catch a hand-edit anyway).
+- **No silent schema edits:** when a fixture fails validation, the fix is the fixture or the types, never a hand-edit of the generated `schema/<version>/vernacular.schema.json` (the drift guard would catch a hand-edit anyway).
 - **Type and name consistency:** `createDocumentValidator`, `DocumentValidationResult`, `DocumentValidator`, `buildProjectSchema`, `SCHEMA_VERSION`, and `SCHEMA_ID` are used identically across tasks 3 through 7.

@@ -12,7 +12,8 @@ schema/
     vernacular.schema.json    generated CORE schema for that schemaVersion
 ```
 
-`<version>` matches the project `schemaVersion` (the current model is version 5). Each version
+`<version>` matches the project `schemaVersion` (read the live value from
+`core/model/factories.ts`; it is 7 or later as integration work advances). Each version
 keeps its own committed schema so older Documents validate against the schema they were written
 for, and the migration chain moves a Document up to the current version before validation.
 
