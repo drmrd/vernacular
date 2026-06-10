@@ -1,7 +1,6 @@
 import {
   orderScopesByPrecedence,
   resolvedAsset,
-  type AssetFootprint,
   type AssetReference,
   type AssetResolution,
   type ScopeKind,
@@ -75,5 +74,3 @@ function scopeForKind(kind: ScopeKind, reference: AssetReference): AssetReferenc
   }
   return reference.scope
 }
-
-export type { AssetFootprint }
