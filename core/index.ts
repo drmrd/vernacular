@@ -238,6 +238,7 @@ export {
   translateEntities,
 } from './commands/handlers/transform-commands'
 export type {
+  SetRoomCeilingHeightParams,
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
   SetRoomPeriodParams,
@@ -246,6 +247,7 @@ export type {
   SetRoomSubPurposeParams,
 } from './commands/handlers/room-commands'
 export {
+  SET_ROOM_CEILING_HEIGHT,
   SET_ROOM_CUSTOM_POLYGON,
   SET_ROOM_NAME,
   SET_ROOM_PERIOD,
@@ -253,6 +255,7 @@ export {
   SET_ROOM_STYLE,
   SET_ROOM_SUB_PURPOSE,
   registerRoomCommands,
+  setRoomCeilingHeight,
   setRoomCustomPolygon,
   setRoomName,
   setRoomPeriod,
