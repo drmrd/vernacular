@@ -1,11 +1,10 @@
 import { polygonCentroid } from '../../geometry/polygon'
-import type { Project } from '../../model/types'
+import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
 import { DEFAULT_METRIC_PREFERENCES, formatArea } from '../../units'
 import { deriveSceneGraph } from '../../scene/scene-graph'
 import type { OpeningSceneNode, RoomSceneNode, SceneGraph } from '../../scene/scene-graph'
 import { openingFootprint } from '../../topology/openings'
-import type { Point } from '../../model/types'
 import type { Exporter, ExportResult } from '../exporter'
 import { svgDocument, svgGroup, svgLine, svgPolygon, svgText } from './svg-document'
 import { createSvgView, planContentBounds } from './svg-view'
@@ -123,15 +122,15 @@ function openingGap(opening: OpeningSceneNode, { view }: SvgPlanContext): string
 }
 
 /** Emit an across-wall `<line>` jamb cap at each of the opening's two jambs. */
-function openingJambs(opening: OpeningSceneNode, { view }: SvgPlanContext): string[] {
+function openingJambs(opening: OpeningSceneNode, context: SvgPlanContext): string[] {
   const halfWidth = opening.width / 2
   const jambStart = translate(opening.center, opening.along, -halfWidth)
   const jambEnd = translate(opening.center, opening.along, halfWidth)
-  return [jambCap(jambStart, opening, view), jambCap(jambEnd, opening, view)]
+  return [jambCap(jambStart, opening, context), jambCap(jambEnd, opening, context)]
 }
 
 /** Emit one across-wall jamb cap centered on `jamb`, spanning the host thickness. */
-function jambCap(jamb: Point, opening: OpeningSceneNode, view: SvgView): string {
+function jambCap(jamb: Point, opening: OpeningSceneNode, { view }: SvgPlanContext): string {
   const halfThickness = opening.hostThickness / 2
   const near = view.project(translate(jamb, opening.normal, -halfThickness))
   const far = view.project(translate(jamb, opening.normal, halfThickness))
