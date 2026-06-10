@@ -70,6 +70,8 @@ interface PlanScene {
   underlays: readonly DrawableUnderlay[]
   openings: readonly DrawableOpening[]
   dimensions: readonly DrawableDimension[]
+  // Stairs drawn over the room fills and beneath the wall strokes.
+  stairs: NonNullable<DrawPlanOptions['stairs']>
   // The live calibration measurement segment, or undefined when not measuring.
   calibration: PreviewSegment | undefined
   // The translated ghost of the selection during a move-drag, empty otherwise.
@@ -95,6 +97,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     underlays: scene.underlays,
     openings: scene.openings,
     dimensions: scene.dimensions,
+    stairs: scene.stairs,
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -132,6 +135,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.underlays,
     scene.openings,
     scene.dimensions,
+    scene.stairs,
     scene.calibration,
     scene.ghost,
   ])
@@ -194,6 +198,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
     underlays: underlayLayer.underlays,
     openings: openingLayer.drawables,
     dimensions: inputs.dimensions,
+    stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
     ghost: inputs.selectionMove.ghost,
   }
