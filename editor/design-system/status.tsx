@@ -17,12 +17,18 @@ export interface EmptyStateProps {
   title: string
   description?: string
   action?: ReactNode
+  /** Whether to expose a region landmark. Set false when nested inside an existing region. Defaults to true. */
+  asRegion?: boolean
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ title, description, action, asRegion = true }: EmptyStateProps) {
   const titleId = useId()
   return (
-    <section className="ds-status ds-status--empty" aria-labelledby={titleId} role="region">
+    <section
+      className="ds-status ds-status--empty"
+      role={asRegion ? 'region' : undefined}
+      aria-labelledby={asRegion ? titleId : undefined}
+    >
       <h2 id={titleId} className="ds-status__title">
         {title}
       </h2>

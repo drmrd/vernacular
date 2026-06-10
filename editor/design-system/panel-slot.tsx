@@ -22,6 +22,7 @@ export function PanelSlot({
       {children ?? (
         <EmptyState
           title={emptyTitle ?? label}
+          asRegion={false}
           {...(emptyDescription ? { description: emptyDescription } : {})}
         />
       )}
