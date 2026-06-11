@@ -5,6 +5,7 @@
  * nothing but re-export statements. */
 export type {
   Dimension,
+  Extensions,
   Floor,
   Opening,
   OpeningOrientation,
@@ -429,3 +430,5 @@ export {
   setSiteLocation,
   setSiteNorthBearing,
 } from './commands/handlers/site-commands'
+export { createDocumentValidator } from './format'
+export type { DocumentValidationResult, DocumentValidator } from './format'

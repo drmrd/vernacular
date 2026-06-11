@@ -3,6 +3,15 @@ import type { AssetReference } from './asset-reference'
 import type { PaintAssignment } from './paint'
 import type { Site } from './site'
 
+/**
+ * Third-party extension data. Keys are reverse-DNS namespaces (for example
+ * "com.example.solar"); values are arbitrary JSON owned by that namespace. The
+ * CORE schema validates this as an open object so namespaced data never breaks
+ * CORE validation. See docs/specs/2026-06-10-vernacular-floor-plan-format.md,
+ * section 6.3.
+ */
+export type Extensions = Record<string, unknown>
+
 export type UnitSystem = 'imperial' | 'metric'
 
 /** References an entry in the PeriodRegistry. Validated at the registry boundary, not by this alias. */
@@ -46,6 +55,8 @@ export interface ProjectMeta {
    * migration. See the design specification, section 3.4.
    */
   registryVersions: Record<string, number>
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 /** A point in floor-plan space, in millimeters. x increases rightward, y increases upward. */
@@ -60,6 +71,8 @@ export interface Wall {
   end: Point
   /** Wall thickness in millimeters. */
   thickness: number
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 /** One end of a wall: its start point or its end point. */
@@ -86,6 +99,8 @@ export interface Opening {
   /** Height of the sill above the finished floor, in millimeters. */
   sillHeight: number
   orientation: OpeningOrientation
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 export interface UnderlayPlacement {
@@ -121,6 +136,8 @@ export interface Underlay {
   /** 0 (transparent) to 1 (opaque). */
   opacity: number
   visible: boolean
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 export interface Dimension {
@@ -134,6 +151,8 @@ export interface Dimension {
    * millimeters. 0 places the dimension line on the segment.
    */
   offset: number
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 export interface Floor {
@@ -151,6 +170,8 @@ export interface Floor {
   underlays: Underlay[]
   openings: Opening[]
   dimensions: Dimension[]
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 /**
@@ -178,6 +199,8 @@ export interface RoomOverride {
   styleOverride?: StyleTag
   /** Explicit ceiling-height override in millimeters; absent means inherit the floor default. */
   ceilingHeight?: number
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 /**
@@ -191,6 +214,8 @@ export interface ProjectPalette {
   /** Optional chronological-period tags, referencing the PeriodRegistry (ADR-0046). */
   periods?: PeriodId[]
   colors: NamedColor[]
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 /** How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2. */
@@ -223,6 +248,8 @@ export interface Stair {
   /** Rotation in radians about `position`. */
   rotation: number
   connection: StairConnection
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }
 
 export interface Project {
@@ -245,4 +272,6 @@ export interface Project {
   paint?: Record<string, PaintAssignment> | undefined
   /** Optional site metadata (design spec 3.1). Absent means none. */
   site?: Site | undefined
+  /** Third-party extension data; see {@link Extensions}. */
+  extensions?: Extensions
 }

@@ -6,6 +6,8 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, and both finishing slices have now landed: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 1 is complete. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones; the three-dimensional preview, the assets and furniture pipeline, and the user-experience foundation start in parallel. See ADR-0041, ADR-0042, ADR-0043, and ADR-0044, and the MVP path section below.
 
+The first wave of parallel-track work has now landed on `main` (pull request #48): the design-system foundation and the application layout shell, the period, style, and room-purpose registries, the three-dimensional render harness, the asset cache and registry, the two-dimensional plan export, multi-floor structure with the stair entity, and paint and metadata (palettes, color and finish, and site metadata). Each track continues from that merged foundation. In parallel, the project file format is being published formally as the Vernacular Floor Plan Format (the format specification and ADR-0047); generating its CORE JSON Schema from the `core/model` types, validating Documents, and shipping conformant fixtures are the next step.
+
 ## Foundation work
 
 | Focus                                                                             | Status |
@@ -31,17 +33,17 @@ Foundation work complete (build foundation, documentation, engineering norms, so
 
 Phase 1 (the two-dimensional plan editor) and the project-stores work are done. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones (ADR-0044). The re-sequencing is possible because Phase 1 already shipped the decoupling layer (scene-graph derivation, the registry pattern, and the single dispatch boundary): a new entity kind is an additive scene-graph projection that the two-dimensional renderer, the three-dimensional renderer, and the export pipeline each pick up independently, so "what an entity is" is independent of "how each surface draws it."
 
-| Area                                    | Status                   |
-| --------------------------------------- | ------------------------ |
-| Project stores, persistence, migrations | done                     |
-| Two-dimensional plan editor             | done                     |
-| Three-dimensional preview               | track, start-now enabler |
-| Assets and furniture                    | track, start-now enabler |
-| User-experience foundation              | track, start-now enabler |
-| Old-house vocabulary                    | track                    |
-| Structure and multi-floor               | track                    |
-| Output and export                       | track                    |
-| Paint and metadata                      | track                    |
+| Area                                    | Status                                                             |
+| --------------------------------------- | ------------------------------------------------------------------ |
+| Project stores, persistence, migrations | done                                                               |
+| Two-dimensional plan editor             | done                                                               |
+| Three-dimensional preview               | render harness landed; track continues                             |
+| Assets and furniture                    | cache and registry landed; track continues                         |
+| User-experience foundation              | design system and layout shell landed; track continues             |
+| Old-house vocabulary                    | period, style, and room-purpose registries landed; track continues |
+| Structure and multi-floor               | floors and stairs landed; track continues                          |
+| Output and export                       | two-dimensional plan export landed; track continues                |
+| Paint and metadata                      | paint model, palettes, and site metadata landed; track continues   |
 
 ### Dependency graph
 
@@ -112,7 +114,7 @@ Three pieces of work depend only on shipped Phase-1 infrastructure, depend on no
 
 ### Open-standard interoperability
 
-The native project model stays the source of truth. There is no established lightweight open standard for residential floor plans with room and era semantics; the one real open building-data standard (the Industry Foundation Classes, ISO 16739-1:2024, with its `ifcJSON` serialization) is full building-information-modeling and belongs behind the reserved exporter and importer seam, not at the core. Open standards land as exporters and importers within the output track (an `ifcJSON` exporter proves interoperability), and the project schema is published formally with the historic extensions namespaced so it can anchor an open reference over time. See ADR-0044.
+The native project model stays the source of truth. There is no established lightweight open standard for residential floor plans with room and era semantics; the one real open building-data standard (the Industry Foundation Classes, ISO 16739-1:2024, with its `ifcJSON` serialization) is full building-information-modeling and belongs behind the reserved exporter and importer seam, not at the core. Open standards land as exporters and importers within the output track (an `ifcJSON` exporter proves interoperability), and the project schema is published formally with the historic extensions namespaced so it can anchor an open reference over time. See ADR-0044. The published format now has a normative specification, the Vernacular Floor Plan Format (`docs/specs/2026-06-10-vernacular-floor-plan-format.md`) and ADR-0047, defining the packaging tiers, the registry-typed, reserved-namespace, and reverse-DNS extension seams, and a CORE JSON Schema generated from the `core/model` types and published under `schema/<version>/`; generating that schema, validating Documents in `core/`, and guarding against drift are being implemented now.
 
 > **Two-dimensional plan editor (done):** the twelve build slices and both finishing slices, 13 (underlay asset persistence) and 14 (DOM overlay and accessibility), are done; together they close the remaining named Phase-1 acceptance items. Phase 1 is complete; the remaining MVP work proceeds as the parallel delivery tracks above (ADR-0044). See ADR-0041, ADR-0042, ADR-0043, and the Phase 1 section below.
 

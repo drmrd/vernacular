@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "Minimal example",
+    "units": "imperial",
+    "period": "victorian",
+    "schemaVersion": 8,
+    "appVersion": "0.0.0-fixture",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 2438,
+      "walls": [],
+      "underlays": [],
+      "openings": [],
+      "dimensions": []
+    }
+  ],
+  "stairs": []
+}
