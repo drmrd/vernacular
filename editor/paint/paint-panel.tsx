@@ -61,7 +61,7 @@ function SurfaceSection(props: SurfaceSectionProps): ReactElement | null {
   }
   return (
     <Stack>
-      <h3>{props.heading}</h3>
+      <h2>{props.heading}</h2>
       {props.surfaces.map((surface) => (
         <SurfaceRow
           key={surfaceKey(surface.ref)}
