@@ -31,4 +31,15 @@ describe('runIntegrationAudit', () => {
     expect(code).toBe(1)
     expect(d.log).toHaveBeenCalledWith(expect.stringContaining('undo-redo'))
   })
+
+  it('ignores pending capabilities', async () => {
+    const d = deps({
+      capabilities: [
+        { id: 'edit-color', title: 'edits a surface color and it applies', status: 'pending' },
+      ],
+      titles: [],
+    })
+    const code = await runIntegrationAudit([], d)
+    expect(code).toBe(0)
+  })
 })
