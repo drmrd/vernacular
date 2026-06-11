@@ -36,5 +36,6 @@
     "multi-floor (second floor of a stacked house)",
     "straight-run stairs (two, both descending)"
   ],
-  "gap_features": []
+  "gap_features": [],
+  "representabilityTier": 1
 }

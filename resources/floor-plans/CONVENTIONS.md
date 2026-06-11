@@ -39,8 +39,26 @@ Research and download fields (filled when the plan is added):
 Analysis fields (filled by reading the image):
 `feature_highlights` (notable things to draw or test), `supported_examples` (capabilities
 the plan exercises that ship today), `roadmap_examples` (capabilities it needs that are on
-the roadmap), and `gap_features` (an array of `{ "slug": ..., "why": ... }` for capabilities
-that are neither shipped nor on the roadmap).
+the roadmap), `gap_features` (an array of `{ "slug": ..., "why": ... }` for capabilities
+that are neither shipped nor on the roadmap), and `representabilityTier` (an integer `0`,
+`1`, or `2` classifying how the plan becomes a conformant `vernacular.json` fixture; see
+the representability tiers below).
+
+## Representability tiers
+
+`representabilityTier` records how much of a plan the published Vernacular Floor Plan Format
+can express today, and therefore how a fixture is derived from it (spec section 9):
+
+- **Tier 0 (underlay):** expressible only as a calibrated background to trace over. The
+  fixture is `meta` plus one `Floor` plus one `Underlay` that references the raster. Always
+  derivable for any plan with calibration.
+- **Tier 1 (core):** the plan's walls, openings, dimensions, and rooms are expressible in the
+  CORE schema today (its `gap_features` is empty or cosmetic). The fixture is a hand-traced
+  CORE Document.
+- **Tier 2 (reserved):** the plan needs one or more reserved or gap features (curved walls,
+  covered outdoor rooms, split levels). The fixture is a Tier-1 CORE trace of the expressible
+  part plus the un-modeled aspect carried in an `extensions` namespace, which the format's
+  preservation rule keeps intact across load and save.
 
 ## Capability taxonomy
 
