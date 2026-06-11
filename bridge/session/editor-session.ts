@@ -7,6 +7,7 @@ import {
   registerProjectCommands,
   registerRoomCommands,
   registerStairCommands,
+  registerTransformCommands,
   registerUnderlayCommands,
   registerWallCommands,
   type Command,
@@ -89,6 +90,7 @@ function createCommandRegistry(): CommandRegistry<Project> {
   registerOpeningCommands(registry)
   registerDimensionCommands(registry)
   registerStairCommands(registry)
+  registerTransformCommands(registry)
   return registry
 }
 
