@@ -30,6 +30,7 @@ import type { Project } from '../core'
 import { createInitialProject } from './create-initial-project'
 import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
 import { resolveProjectStorage } from './resolve-project-store'
+import { validateLoadedProject } from './validate-loaded-project'
 
 const DEFAULT_PROJECT_ID = 'current'
 
@@ -211,7 +212,14 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     }
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => !cancelled && setSession(createEditorSession(project)))
+      .then((project) => {
+        if (cancelled) {
+          return
+        }
+        // Non-fatal dev gate: warn if the migrated Document fails CORE shape (VFPF sections 7, 8).
+        validateLoadedProject(project)
+        setSession(createEditorSession(project))
+      })
       .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
       cancelled = true
