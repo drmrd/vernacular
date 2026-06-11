@@ -357,5 +357,3 @@ Dispatch the `pr-reviewer` over `origin/main..HEAD`. Address any must-fix findin
 - **Spec coverage:** section 2.1 (the Document is named `vernacular.json`) is implemented by Task 1; section 2.3 (the Archive uses the `.building` extension) by Task 2; section 2.4 (clean rename, no shim, recorded in release notes) by the `BREAKING CHANGE:` footers and the no-shim value swaps. The retained `.house-autosave/` honors section 2.2.
 - **No silent design-spec edits:** the design specification, ROADMAP, ADRs, and CHANGELOG stay as historical or generated records, per the out-of-scope list and the CLAUDE.md ADR gate.
 - **Name consistency:** `PROJECT_FILE`, `BUNDLE_SUFFIX`, `bundleFilename`, `FolderProjectStore`, and the `'vernacular.json'` / `'.building'` string values are used identically across tasks.
-  </content>
-  </invoke>
