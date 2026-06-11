@@ -431,5 +431,5 @@ export {
   setSiteLocation,
   setSiteNorthBearing,
 } from './commands/handlers/site-commands'
-export { createDocumentValidator } from './format'
+export { createDocumentValidator, createTolerantValidator } from './format'
 export type { DocumentValidationResult, DocumentValidator } from './format'
