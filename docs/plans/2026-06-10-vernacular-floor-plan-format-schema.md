@@ -11,6 +11,7 @@
 **Spec:** `docs/specs/2026-06-10-vernacular-floor-plan-format.md`. **Decision:** ADR-0047.
 
 **Scope and decomposition.** This is plan 1 of a decomposed set. It delivers the published schema, the validator, the drift guard, and conformant fixtures, all shippable and testable on their own. Deferred to follow-on plans, not implemented here:
+
 - **Plan 2 (rename):** `project.json` to `vernacular.json` and `.house.zip` to `.building` across the storage layer, with the release-notes deprecation. A clean pre-1.0 break, no compatibility shim.
 - **Plan 3 (preservation and app wiring):** the forward-compatibility preservation rule (round-trip unknown `extensions` and reserved keys through the store's load and save), validate-after-migration on app load, and the optional Strict profile.
 - **Plan 4 (fixture corpus):** generate Tier-0 underlay and Tier-1 faithful fixtures from the floor-plan image corpus.
@@ -21,9 +22,11 @@
 
 Other integration work is in flight in sibling worktrees, so this plan is written to be version-agnostic and low-conflict. Honor these before and during execution:
 
-- **Rebase onto the live integration tip first.** This branch (`docs/vernacular-floor-plan-format`) is based on an older commit. Rebase it onto the current tip of the local integration branch `feat/parallel-track-foundations` so the schema is generated from the current model. The rebase is conflict-free for the committed docs (they are new files).
-- **The version is not 5.** Read `CURRENT_SCHEMA_VERSION` from `core/model/factories.ts` (it is 7 or later; a paint track may make it 8). Throughout this plan, `<version>` means that live integer. `build-schema.mjs` derives it automatically; the fixtures show `"schemaVersion": 7` but you MUST set it to the live value; the `schema/<version>/` and `git add` paths use the live value.
-- **One shared source file.** The only shared file this plan edits is `core/model/types.ts` (an additive optional `extensions` member on each entity). Other tracks (notably paint) may also append fields to `types.ts`; the edit is additive, so a merge is trivial, but if convenient land this work after the paint track merges. Do NOT touch `core/migrations/` (this plan adds no migration) or any shared config (`eslint.config.js`, `tsconfig*.json`, `.npmrc`).
+> **Integration update (2026-06-10):** the parallel-track foundation work, including the paint and metadata track, has merged to `main` (pull request #48). This branch is rebased onto `origin/main`, and the live `CURRENT_SCHEMA_VERSION` is `8`. The notes below are updated for that reality.
+
+- **Base off `origin/main`.** The parallel-track integration merged to `main` in pull request #48, so this branch (`docs/vernacular-floor-plan-format`) is rebased onto `origin/main` and the schema is generated from the current model. The rebase is conflict-free for the committed docs (they are new files).
+- **The version is 8.** Read `CURRENT_SCHEMA_VERSION` from `core/model/factories.ts` (it is `8` on the current base). Throughout this plan, `<version>` means that live integer. `build-schema.mjs` derives it automatically; the fixtures below show `"schemaVersion": 8` (the current live value); always set it to the live `CURRENT_SCHEMA_VERSION`; the `schema/<version>/` and `git add` paths use the live value (`schema/8/`).
+- **One shared source file.** The only shared file this plan edits is `core/model/types.ts` (an additive optional `extensions` member on each entity). The paint track has already merged, so the earlier collision caveat no longer applies. Because the multi-floor track landed, `Project` now has a **required** `stairs` member (plus optional `palettes`, `paint`, and `site`), so every fixture MUST include `"stairs": []`, and the `extensions` seam also covers the newly-merged `Stair` and `ProjectPalette` entities defined in `types.ts`. Do NOT touch `core/migrations/` (this plan adds no migration) or any shared config (`eslint.config.js`, `tsconfig*.json`, `.npmrc`).
 - **Local only.** The push and PR hold is active: commit on the branch, do not push or open a pull request.
 - **Run the cycle from the main (this) thread.** The role-separated red-green-blue subagents (`test-author`, `implementer`, `refactorer`) can only be dispatched from the main thread, so orchestrate each task here. Give each subagent the exact allowed files for its step and tell it to STOP rather than touch anything else. Each cycle is test, then feat, then refactor; close every green with a (possibly empty) refactor marker before the next test.
 
@@ -51,6 +54,7 @@ Other integration work is in flight in sibling worktrees, so this plan is writte
 ## Task 1: Add tooling dependencies and scripts
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Add the build-time schema generator**
@@ -93,6 +97,7 @@ git commit -m "build: add schema generation and validation tooling"
 The strict CORE schema rejects unknown properties. To carry third-party data without breaking CORE validation, every entity gains an optional `extensions` map (spec section 6.3). This is additive: existing Documents omit it.
 
 **Files:**
+
 - Modify: `core/model/types.ts`
 
 - [ ] **Step 1: Add a shared extension type and apply it**
@@ -143,6 +148,7 @@ git commit -m "feat(core): reserve an optional extensions member on every entity
 ## Task 3: Generate and commit the CORE schema
 
 **Files:**
+
 - Create: `scripts/schema/build-schema.mjs`
 - Create: `scripts/schema/generate-schema.mjs`
 - Create: `schema/<version>/vernacular.schema.json` (generated)
@@ -223,6 +229,7 @@ Expected: prints `Wrote schema/<version>/vernacular.schema.json`.
 - [ ] **Step 4: Verify the generated schema's key invariants**
 
 Open `schema/<version>/vernacular.schema.json` and confirm:
+
 - top-level `"additionalProperties": false` and `"required"` includes `"meta"` and `"floors"`;
 - `definitions` (or `$defs`) contains `Wall`, `Opening`, `Underlay`, `Dimension`, `Floor`, `ProjectMeta`, `RoomOverride`;
 - the `extensions` property exists on the entity definitions and is an open object (`"type": "object"` with no `"additionalProperties": false`);
@@ -242,6 +249,7 @@ git commit -m "feat(format): generate the CORE schema from the model types"
 ## Task 4: The document validator
 
 **Files:**
+
 - Create: `core/format/validate-document.ts`
 - Create: `core/format/validate-document.test.ts`
 
@@ -343,6 +351,7 @@ git commit -m "feat(format): add an Ajv document validator"
 ## Task 5: Export the validator from the core barrel
 
 **Files:**
+
 - Create: `core/format/index.ts`
 - Modify: `core/index.ts`
 
@@ -381,6 +390,7 @@ git commit -m "feat(format): export the document validator from core"
 ## Task 6: Conformant fixtures and the conformance test
 
 **Files:**
+
 - Create: `tests/fixtures/projects/minimal.vernacular.json`
 - Create: `tests/fixtures/projects/two-floor-cottage.vernacular.json`
 - Create: `tests/format/schema-conformance.test.ts`
@@ -446,7 +456,7 @@ Create `tests/fixtures/projects/minimal.vernacular.json`:
     "name": "Minimal example",
     "units": "imperial",
     "period": "victorian",
-    "schemaVersion": 7,
+    "schemaVersion": 8,
     "appVersion": "0.0.0-fixture",
     "registryVersions": {}
   },
@@ -461,7 +471,8 @@ Create `tests/fixtures/projects/minimal.vernacular.json`:
       "openings": [],
       "dimensions": []
     }
-  ]
+  ],
+  "stairs": []
 }
 ```
 
@@ -475,7 +486,7 @@ Create `tests/fixtures/projects/two-floor-cottage.vernacular.json` (a small rect
     "name": "Two-floor cottage",
     "units": "imperial",
     "period": "victorian",
-    "schemaVersion": 7,
+    "schemaVersion": 8,
     "appVersion": "0.0.0-fixture",
     "registryVersions": {}
   },
@@ -487,8 +498,18 @@ Create `tests/fixtures/projects/two-floor-cottage.vernacular.json` (a small rect
       "defaultCeilingHeight": 2438,
       "walls": [
         { "id": "w1", "start": { "x": 0, "y": 0 }, "end": { "x": 4000, "y": 0 }, "thickness": 114 },
-        { "id": "w2", "start": { "x": 4000, "y": 0 }, "end": { "x": 4000, "y": 3000 }, "thickness": 114 },
-        { "id": "w3", "start": { "x": 4000, "y": 3000 }, "end": { "x": 0, "y": 3000 }, "thickness": 114 },
+        {
+          "id": "w2",
+          "start": { "x": 4000, "y": 0 },
+          "end": { "x": 4000, "y": 3000 },
+          "thickness": 114
+        },
+        {
+          "id": "w3",
+          "start": { "x": 4000, "y": 3000 },
+          "end": { "x": 0, "y": 3000 },
+          "thickness": 114
+        },
         { "id": "w4", "start": { "x": 0, "y": 3000 }, "end": { "x": 0, "y": 0 }, "thickness": 114 }
       ],
       "openings": [
@@ -519,6 +540,7 @@ Create `tests/fixtures/projects/two-floor-cottage.vernacular.json` (a small rect
       "underlays": []
     }
   ],
+  "stairs": [],
   "roomOverrides": {
     "w1|w2|w3|w4": { "name": "Parlor" }
   }
@@ -544,6 +566,7 @@ git commit -m "test(format): add conformant fixtures and the schema conformance 
 The committed schema must never fall behind the types. This test regenerates the schema in-process and compares it to the committed file.
 
 **Files:**
+
 - Create: `tests/format/schema-drift.test.ts`
 
 - [ ] **Step 1: Write the drift test**
@@ -589,6 +612,7 @@ git commit -m "test(format): guard against schema and type drift"
 ## Task 8: Full verification and refactor pass
 
 **Files:**
+
 - None required beyond any clean-up the checks surface.
 
 - [ ] **Step 1: Run the full check chain**
