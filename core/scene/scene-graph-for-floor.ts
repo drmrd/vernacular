@@ -1,8 +1,4 @@
-import type { SceneGraph } from './scene-graph'
-
-// Mirrors the kind-prefixed floor node id from scene-graph (FLOOR_NODE_PREFIX is
-// not exported there, so the literal is repeated here).
-const FLOOR_NODE_PREFIX = 'floor:'
+import { FLOOR_NODE_PREFIX, type SceneGraph } from './scene-graph'
 
 const emptyGraph = (): SceneGraph => ({
   nodes: [],
