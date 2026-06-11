@@ -653,6 +653,35 @@ git commit --allow-empty -m "refactor: close the type-and-elevation cycle"
   `--font-family-mono`, with the heading adopted on the status title and the mono
   shown in the readout swatch.
 - No furniture/shell/command-registry work here; those are later slices.
-- Type consistency: the helper exports `parseColor`, `relativeLuminance`,
-  `contrastRatio`; the guardrail imports `contrastRatio`; the registry keys are
-  `fontFamilyHeading`, `fontFamilyMono`, `elevationRaised`, `elevationOverlay`.
+- Type consistency: the registry keys are `fontFamilyHeading`, `fontFamilyMono`,
+  `elevationRaised`, `elevationOverlay`; the guardrail imports `contrastRatio` from
+  the core barrel.
+
+## Execution outcome (actual landed sequence)
+
+Four red-green-blue cycles landed, with two deviations driven by clean-code review
+during the BLUE phases:
+
+1. **The WCAG contrast math helper.** The BLUE review found the helper duplicated
+   `core/color/hex.ts` (`parseHex`) and the sRGB transfer function in
+   `core/color/oklab.ts` (`srgbToLinear`), and that pure color math belongs in
+   `core/`. The refactor relocated it to `core/color/contrast.ts` (exporting
+   `relativeLuminance` and `contrastRatio`, composing the existing core primitives,
+   added to the core barrel) and dropped the unused `parseColor`/`rgb()` parsing.
+   The guardrail imports `contrastRatio` from `../../core`.
+2. **The drafting-table palette retheme (light and dark), with the AA guardrail.**
+   The guardrail (`palette-contrast.test.ts`) drove this cycle to green: the legacy
+   dark `--color-accent-strong` was 3.5:1 (below AA), and the retheme fixed it.
+3. **The on-accent label token (inserted from review).** The Cycle 2 review caught a
+   WCAG regression the guardrail had not covered: `button.css` set white text on the
+   accent fill, which in dark mode became light brass (1.98:1). A new cycle added a
+   `--color-on-accent` semantic token (light `var(--vellum-50)`, dark
+   `var(--umber-900)`), repointed the primary button to it, removed the now-unused
+   `--white` primitive (resolving the contract violation of a component referencing a
+   raw primitive), and extended the guardrail with the on-accent/accent-strong pair.
+4. **The serif heading, monospace, and elevation tokens**, with the heading adopted
+   on the status title and a render-only `DraftingTable` Storybook showcase.
+
+No ADR was warranted: the retheme is an application of the existing token and theming
+contract (no architectural change), and `e2e/journey-coverage.json` is unchanged
+(a retheme adds no journey capability).
