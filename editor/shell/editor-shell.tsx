@@ -14,6 +14,7 @@ import {
   CommandPalette,
   CommandPaletteProvider,
   createEditorCommands,
+  createViewCommands,
   useCommandPalette,
   useKeybindings,
   type CommandContext,
@@ -24,6 +25,8 @@ import { PlanView } from '../plan/plan-view'
 import { UnderlayProvider } from '../plan/use-underlay'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
+import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
+import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
 import { FloorSwitcher } from './floor-switcher'
 import { Inspector } from './inspector'
@@ -59,7 +62,8 @@ function KeybindingLayer() {
   const activeFloorId = useActiveFloorId()
   const graph = useSceneGraph()
   const palette = useCommandPalette()
-  const commands = useMemo(() => createEditorCommands(), [])
+  const view = useViewMode()
+  const commands = useMemo(() => [...createEditorCommands(), ...createViewCommands(view)], [view])
   const context: CommandContext = {
     session,
     selection,
@@ -126,15 +130,18 @@ function ToolRail() {
   )
 }
 
-// The central area: the 2D plan view and the 3D preview region (both unchanged).
+// The central area: the view-mode viewport, which shows the 2D plan view and/or
+// the 3D preview region depending on the active view mode.
 function ViewportArea() {
   return (
-    <>
-      <PlanView />
-      <section className="editor-shell__preview" aria-label="3D preview">
-        <SceneCanvas />
-      </section>
-    </>
+    <ViewModeViewport
+      plan={<PlanView />}
+      preview={
+        <section className="editor-shell__preview" aria-label="3D preview">
+          <SceneCanvas />
+        </section>
+      }
+    />
   )
 }
 
@@ -163,24 +170,26 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
     // state and the opening placement type reach the canvas glue and the
     // inspector/tools panels from one source.
     <CommandPaletteProvider>
-      <UnderlayProvider>
-        <OpeningToolProvider>
-          <KeybindingLayer />
-          <CommandPalette />
-          {recovery ? (
-            <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-          ) : null}
-          <AppFrame
-            header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
-            railLabel="Tool rail"
-            rail={<ToolRail />}
-            mainLabel="Viewport"
-            main={<ViewportArea />}
-            inspectorLabel="Inspector"
-            inspector={<InspectorPanels />}
-          />
-        </OpeningToolProvider>
-      </UnderlayProvider>
+      <ViewModeProvider>
+        <UnderlayProvider>
+          <OpeningToolProvider>
+            <KeybindingLayer />
+            <CommandPalette />
+            {recovery ? (
+              <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+            ) : null}
+            <AppFrame
+              header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
+              railLabel="Tool rail"
+              rail={<ToolRail />}
+              mainLabel="Viewport"
+              main={<ViewportArea />}
+              inspectorLabel="Inspector"
+              inspector={<InspectorPanels />}
+            />
+          </OpeningToolProvider>
+        </UnderlayProvider>
+      </ViewModeProvider>
     </CommandPaletteProvider>
   )
 }

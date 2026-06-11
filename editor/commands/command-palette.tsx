@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
+import { useViewMode } from '../viewport/view-mode'
 import type { CommandContext, EditorCommand } from './command'
 import { createEditorCommands } from './editor-commands'
+import { createViewCommands } from './view-commands'
 import { useCommandPalette } from './command-context'
 
 interface CommandPaletteDialogProps {
@@ -72,7 +74,8 @@ export function CommandPalette() {
   const selection = useSelection()
   const activeFloorId = useActiveFloorId()
   const graph = useSceneGraph()
-  const commands = useMemo(() => createEditorCommands(), [])
+  const view = useViewMode()
+  const commands = useMemo(() => [...createEditorCommands(), ...createViewCommands(view)], [view])
   if (!isOpen) {
     return null
   }
