@@ -1,0 +1,197 @@
+{
+  "meta": {
+    "name": "Modern CAD line plan",
+    "units": "imperial",
+    "period": "unknown",
+    "schemaVersion": 8,
+    "appVersion": "0.0.0-fixture",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 2438,
+      "walls": [
+        {
+          "id": "w-south",
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 10668, "y": 0 },
+          "thickness": 152
+        },
+        {
+          "id": "w-east",
+          "start": { "x": 10668, "y": 0 },
+          "end": { "x": 10668, "y": 9144 },
+          "thickness": 152
+        },
+        {
+          "id": "w-north",
+          "start": { "x": 10668, "y": 9144 },
+          "end": { "x": 0, "y": 9144 },
+          "thickness": 152
+        },
+        {
+          "id": "w-west",
+          "start": { "x": 0, "y": 9144 },
+          "end": { "x": 0, "y": 0 },
+          "thickness": 152
+        },
+        {
+          "id": "w-left-vertical",
+          "start": { "x": 2743, "y": 0 },
+          "end": { "x": 2743, "y": 9144 },
+          "thickness": 102
+        },
+        {
+          "id": "w-parking-kit-divider",
+          "start": { "x": 0, "y": 5410 },
+          "end": { "x": 2743, "y": 5410 },
+          "thickness": 102
+        },
+        {
+          "id": "w-hall-left",
+          "start": { "x": 4877, "y": 0 },
+          "end": { "x": 4877, "y": 5410 },
+          "thickness": 102
+        },
+        {
+          "id": "w-hall-r3-top",
+          "start": { "x": 2743, "y": 5410 },
+          "end": { "x": 4877, "y": 5410 },
+          "thickness": 102
+        },
+        {
+          "id": "w-right-vertical",
+          "start": { "x": 7620, "y": 0 },
+          "end": { "x": 7620, "y": 9144 },
+          "thickness": 102
+        },
+        {
+          "id": "w-r1-b-divider",
+          "start": { "x": 7620, "y": 6096 },
+          "end": { "x": 10668, "y": 6096 },
+          "thickness": 102
+        },
+        {
+          "id": "w-b-r2-divider",
+          "start": { "x": 7620, "y": 4445 },
+          "end": { "x": 10668, "y": 4445 },
+          "thickness": 102
+        },
+        {
+          "id": "w-r3-hall-right",
+          "start": { "x": 4877, "y": 0 },
+          "end": { "x": 4877, "y": 3658 },
+          "thickness": 102
+        },
+        {
+          "id": "w-r3-top",
+          "start": { "x": 2743, "y": 3658 },
+          "end": { "x": 4877, "y": 3658 },
+          "thickness": 102
+        }
+      ],
+      "underlays": [],
+      "openings": [
+        {
+          "id": "door-hall-parking",
+          "type": "single-swing-door",
+          "hostWallId": "w-left-vertical",
+          "position": 6500,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        },
+        {
+          "id": "door-parking-kit",
+          "type": "single-swing-door",
+          "hostWallId": "w-parking-kit-divider",
+          "position": 1500,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "negative" }
+        },
+        {
+          "id": "door-hall-kit",
+          "type": "single-swing-door",
+          "hostWallId": "w-left-vertical",
+          "position": 4900,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "end", "facing": "positive" }
+        },
+        {
+          "id": "door-hall-r3",
+          "type": "single-swing-door",
+          "hostWallId": "w-r3-top",
+          "position": 1300,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        },
+        {
+          "id": "door-hall-r1",
+          "type": "single-swing-door",
+          "hostWallId": "w-right-vertical",
+          "position": 7000,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        },
+        {
+          "id": "door-hall-b",
+          "type": "single-swing-door",
+          "hostWallId": "w-right-vertical",
+          "position": 5200,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        },
+        {
+          "id": "door-hall-r2",
+          "type": "single-swing-door",
+          "hostWallId": "w-right-vertical",
+          "position": 2000,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        }
+      ],
+      "dimensions": [
+        {
+          "id": "dim-overall-width",
+          "start": { "x": 0, "y": 9144 },
+          "end": { "x": 10668, "y": 9144 },
+          "offset": 914
+        },
+        {
+          "id": "dim-overall-depth",
+          "start": { "x": 10668, "y": 0 },
+          "end": { "x": 10668, "y": 9144 },
+          "offset": 914
+        }
+      ]
+    }
+  ],
+  "stairs": [],
+  "roomOverrides": {
+    "w-left-vertical|w-north|w-parking-kit-divider|w-west": { "name": "PARKING" },
+    "w-left-vertical|w-parking-kit-divider|w-south|w-west": { "name": "KIT" },
+    "w-hall-left|w-hall-r3-top|w-left-vertical|w-r3-hall-right|w-r3-top": {
+      "name": "HALL"
+    },
+    "w-r3-hall-right|w-r3-top|w-right-vertical|w-south": { "name": "R3" },
+    "w-east|w-north|w-r1-b-divider|w-right-vertical": { "name": "R1" },
+    "w-b-r2-divider|w-east|w-r1-b-divider|w-right-vertical": { "name": "B" },
+    "w-b-r2-divider|w-east|w-right-vertical|w-south": { "name": "R2" }
+  }
+}

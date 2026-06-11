@@ -32,5 +32,6 @@
     "snapping to an orthogonal grid"
   ],
   "roadmap_examples": ["straight-run stairs as a 2D symbol"],
-  "gap_features": []
+  "gap_features": [],
+  "representabilityTier": 1
 }

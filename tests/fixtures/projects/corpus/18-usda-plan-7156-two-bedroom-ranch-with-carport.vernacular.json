@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "name": "USDA Plan 7156 two-bedroom ranch",
+    "units": "imperial",
+    "period": "unknown",
+    "schemaVersion": 8,
+    "appVersion": "0.0.0-fixture",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 2438,
+      "walls": [
+        {
+          "id": "w-south",
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 11379, "y": 0 },
+          "thickness": 152
+        },
+        {
+          "id": "w-east",
+          "start": { "x": 11379, "y": 0 },
+          "end": { "x": 11379, "y": 11989 },
+          "thickness": 152
+        },
+        {
+          "id": "w-north-right",
+          "start": { "x": 11379, "y": 11989 },
+          "end": { "x": 6705, "y": 11989 },
+          "thickness": 152
+        },
+        {
+          "id": "w-core-west-upper",
+          "start": { "x": 6705, "y": 11989 },
+          "end": { "x": 6705, "y": 5588 },
+          "thickness": 152
+        },
+        {
+          "id": "w-core-north",
+          "start": { "x": 6705, "y": 5588 },
+          "end": { "x": 0, "y": 5588 },
+          "thickness": 152
+        },
+        {
+          "id": "w-west",
+          "start": { "x": 0, "y": 5588 },
+          "end": { "x": 0, "y": 0 },
+          "thickness": 152
+        },
+        {
+          "id": "w-core-wing-divider",
+          "start": { "x": 6705, "y": 0 },
+          "end": { "x": 6705, "y": 5588 },
+          "thickness": 102
+        },
+        {
+          "id": "w-living-bed2-divider",
+          "start": { "x": 6705, "y": 5588 },
+          "end": { "x": 11379, "y": 5588 },
+          "thickness": 102
+        },
+        {
+          "id": "w-bed2-bed1-divider",
+          "start": { "x": 6705, "y": 8636 },
+          "end": { "x": 11379, "y": 8636 },
+          "thickness": 102
+        },
+        {
+          "id": "w-core-mid-divider",
+          "start": { "x": 0, "y": 3150 },
+          "end": { "x": 6705, "y": 3150 },
+          "thickness": 102
+        },
+        {
+          "id": "w-kitchen-dining-divider",
+          "start": { "x": 2896, "y": 0 },
+          "end": { "x": 2896, "y": 3150 },
+          "thickness": 102
+        },
+        {
+          "id": "w-workroom-bath-divider",
+          "start": { "x": 3962, "y": 3150 },
+          "end": { "x": 3962, "y": 5588 },
+          "thickness": 102
+        }
+      ],
+      "underlays": [],
+      "openings": [
+        {
+          "id": "door-living-bed2",
+          "type": "single-swing-door",
+          "hostWallId": "w-living-bed2-divider",
+          "position": 2337,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        },
+        {
+          "id": "door-dining-living",
+          "type": "single-swing-door",
+          "hostWallId": "w-core-wing-divider",
+          "position": 1524,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        }
+      ],
+      "dimensions": [
+        {
+          "id": "dim-overall-width",
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 11379, "y": 0 },
+          "offset": -914
+        }
+      ]
+    }
+  ],
+  "stairs": [],
+  "roomOverrides": {
+    "w-core-wing-divider|w-east|w-living-bed2-divider|w-south": {
+      "name": "Living Room"
+    },
+    "w-bed2-bed1-divider|w-core-west-upper|w-east|w-living-bed2-divider": {
+      "name": "Bedroom"
+    },
+    "w-bed2-bed1-divider|w-core-west-upper|w-east|w-north-right": {
+      "name": "Bedroom"
+    },
+    "w-core-mid-divider|w-kitchen-dining-divider|w-south|w-west": {
+      "name": "Kitchen"
+    },
+    "w-core-mid-divider|w-core-wing-divider|w-kitchen-dining-divider|w-south": {
+      "name": "Dining Area"
+    },
+    "w-core-mid-divider|w-core-north|w-west|w-workroom-bath-divider": {
+      "name": "Workroom"
+    },
+    "w-core-mid-divider|w-core-north|w-core-wing-divider|w-workroom-bath-divider": {
+      "name": "Bath"
+    }
+  },
+  "extensions": {
+    "org.vernacular.covered-outdoor": {
+      "rooms": [
+        {
+          "name": "Carport",
+          "footprint": [
+            { "x": -6706, "y": 0 },
+            { "x": 0, "y": 0 },
+            { "x": 0, "y": 9144 },
+            { "x": -6706, "y": 9144 }
+          ]
+        },
+        {
+          "name": "Terrace",
+          "footprint": [
+            { "x": 0, "y": 5588 },
+            { "x": 6502, "y": 5588 },
+            { "x": 6502, "y": 8636 },
+            { "x": 0, "y": 8636 }
+          ]
+        }
+      ]
+    }
+  }
+}

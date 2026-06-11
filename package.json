@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "schema:generate": "node scripts/schema/generate-schema.mjs",
     "schema:check": "node scripts/schema/generate-schema.mjs --check",
+    "fixtures:generate": "node scripts/fixtures/generate-underlay-fixtures.mjs",
     "knowledge:index": "node scripts/knowledge-index.mjs",
     "pack:build": "node scripts/pack/vernacular-pack.mjs build",
     "pack:validate": "node scripts/pack/vernacular-pack.mjs validate",

@@ -40,5 +40,6 @@
       "slug": "covered-outdoor-rooms",
       "why": "the attached carport is a roofed but unenclosed covered space (and the Terrace is an open outdoor space) that must be drawable without being a fully wall-enclosed room"
     }
-  ]
+  ],
+  "representabilityTier": 2
 }

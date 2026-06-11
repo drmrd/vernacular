@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "name": "Radford Design No. 5054, Tiny Square Cottage",
+    "units": "imperial",
+    "period": "craftsman",
+    "schemaVersion": 8,
+    "appVersion": "0.0.0-fixture",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "ground-floor",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 2743,
+      "walls": [
+        {
+          "id": "w-south",
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 7315, "y": 0 },
+          "thickness": 152
+        },
+        {
+          "id": "w-east",
+          "start": { "x": 7315, "y": 0 },
+          "end": { "x": 7315, "y": 7315 },
+          "thickness": 152
+        },
+        {
+          "id": "w-north",
+          "start": { "x": 7315, "y": 7315 },
+          "end": { "x": 0, "y": 7315 },
+          "thickness": 152
+        },
+        {
+          "id": "w-west",
+          "start": { "x": 0, "y": 7315 },
+          "end": { "x": 0, "y": 0 },
+          "thickness": 152
+        },
+        {
+          "id": "w-front-rear-divider",
+          "start": { "x": 0, "y": 4191 },
+          "end": { "x": 7315, "y": 4191 },
+          "thickness": 102
+        },
+        {
+          "id": "w-kitchen-bedroom-divider",
+          "start": { "x": 3048, "y": 4191 },
+          "end": { "x": 3048, "y": 7315 },
+          "thickness": 102
+        },
+        {
+          "id": "w-pantry-east",
+          "start": { "x": 1676, "y": 6401 },
+          "end": { "x": 1676, "y": 7315 },
+          "thickness": 102
+        },
+        {
+          "id": "w-pantry-south",
+          "start": { "x": 0, "y": 6401 },
+          "end": { "x": 1676, "y": 6401 },
+          "thickness": 102
+        },
+        {
+          "id": "w-closet-west",
+          "start": { "x": 5639, "y": 3277 },
+          "end": { "x": 5639, "y": 4191 },
+          "thickness": 102
+        },
+        {
+          "id": "w-closet-south",
+          "start": { "x": 5639, "y": 3277 },
+          "end": { "x": 7315, "y": 3277 },
+          "thickness": 102
+        }
+      ],
+      "underlays": [],
+      "openings": [
+        {
+          "id": "door-living-kitchen",
+          "type": "single-swing-door",
+          "hostWallId": "w-front-rear-divider",
+          "position": 1524,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        },
+        {
+          "id": "door-living-bedroom",
+          "type": "single-swing-door",
+          "hostWallId": "w-front-rear-divider",
+          "position": 5181,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "end", "facing": "positive" }
+        }
+      ],
+      "dimensions": [
+        {
+          "id": "dim-overall-width",
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 7315, "y": 0 },
+          "offset": -914
+        }
+      ]
+    }
+  ],
+  "stairs": [],
+  "roomOverrides": {
+    "w-front-rear-divider|w-east|w-south|w-west": { "name": "Living Room" },
+    "w-front-rear-divider|w-kitchen-bedroom-divider|w-north|w-west": { "name": "Kitchen" },
+    "w-east|w-front-rear-divider|w-kitchen-bedroom-divider|w-north": { "name": "Bed Room" }
+  },
+  "extensions": {
+    "org.vernacular.covered-outdoor": {
+      "rooms": [
+        {
+          "name": "Front Porch",
+          "footprint": [
+            { "x": -1562, "y": -1600 },
+            { "x": 8877, "y": -1600 },
+            { "x": 8877, "y": 0 },
+            { "x": -1562, "y": 0 }
+          ]
+        },
+        {
+          "name": "Rear Porch",
+          "footprint": [
+            { "x": -1562, "y": 7315 },
+            { "x": 8877, "y": 7315 },
+            { "x": 8877, "y": 8915 },
+            { "x": -1562, "y": 8915 }
+          ]
+        }
+      ]
+    }
+  }
+}
