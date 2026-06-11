@@ -1,0 +1,42 @@
+{
+  "ordinal": 20,
+  "slug": "modern-open-plan-2bhk-ground-floor-color-rendered",
+  "title": "2 BHK Bungalow Floor Plan (color-rendered modern ground-floor plan)",
+  "image_file": "modern-open-plan-2bhk-ground-floor-color-rendered.jpg",
+  "building_type": "single-family house (modern open-plan bungalow)",
+  "architectural_style": "Contemporary open-plan residence",
+  "era_or_year": "contemporary (uploaded 2020s)",
+  "country": "India",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:2_bhk_Bungalow_floor_plan.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2%20bhk%20Bungalow%20floor%20plan.jpg?width=1600",
+  "license": "CC BY-SA 4.0",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+  "creator": "Wikimedia Commons user Jithurad4539",
+  "rightsholder_or_source": "Wikimedia Commons uploader (Jithurad4539)",
+  "research_notes": "Raster JPEG, 2160x2576. Color-coded rooms. Contrasts well with the vector-line CC0 plan below.",
+  "research_features": "Clean modern open-plan test case: a single color-rendered GROUND FLOOR PLAN with an open living/dining/kitchen zone, utility, two bedrooms, two baths + WC, entry lobby, and a stair. Notably uses a door/window SCHEDULE-style legend (D1, D2, W, V codes) plus drawn dimensions, and furniture/fixture symbols and material hatching. Good for testing schedule-coded openings.",
+  "feature_highlights": [
+    "open living/dining/kitchen core with an L-shaped kitchen",
+    "schedule-style opening codes (D1, D2 for doors; W, V for windows/ventilators) implying a door/window schedule legend",
+    "color-rendered presentation plan with tile-texture hatching and tinted wet rooms",
+    "dense furniture and fixture symbols (sofas, beds, dining table, range, sinks, tub, water closets)",
+    "named rooms with dimension strings (e.g. LIVING ROOM 14'0\"x12'8\")",
+    "straight-run stair with UP arrow implying a floor above",
+    "stack of small wet rooms (WC, bath, toilet) along one edge"
+  ],
+  "supported_examples": [
+    "orthogonal straight walls",
+    "rectangular rooms with names and labels",
+    "thickness-aware clear floor area from drawn room dimensions",
+    "single-swing doors and sliding/hung windows with placement and flip",
+    "linear point-to-point dimensions in imperial units",
+    "click selection and clipboard for repeated identical bedrooms"
+  ],
+  "roadmap_examples": [
+    "furniture and fixture placement (beds, sofas, range, sinks, tub, water closets)",
+    "straight-run stairs as a 2D symbol",
+    "floor management for the implied upper floor",
+    "paint/finish model and palettes for the color-coded rooms"
+  ],
+  "gap_features": []
+}

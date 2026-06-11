@@ -1,0 +1,46 @@
+{
+  "ordinal": 16,
+  "slug": "isaac-bell-house-shingle-style-second-floor-plan",
+  "title": "Isaac Bell House, Second Floor Plan (HABS RI-308, sheet 3)",
+  "image_file": "isaac-bell-house-shingle-style-second-floor-plan.jpg",
+  "building_type": "single-family house (seaside cottage / villa)",
+  "architectural_style": "Shingle Style",
+  "era_or_year": "house built 1881-1883 (McKim, Mead & White); HABS drawings 1969",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/ri0034/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/ri/ri0000/ri0034/sheet/00003v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; design architects McKim, Mead & White; delineator Thomas B. Schubert",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plan is sheet 3 (00003v.jpg) of the HABS RI-308 'Drawings' resource (resource index 1; resource 0 is photographs). Title block reads 'Second Floor Plan, Sheet 3 of 8'.",
+  "research_features": "Large round corner tower (true curved walls), multiple staircases, deep wraparound porch with curved steps, irregular Shingle Style massing. Excellent curved-wall + complex-circulation test case.",
+  "feature_highlights": [
+    "large round corner tower with genuinely curved exterior walls enclosing a round room",
+    "second curved, apsidal bay projecting from the lower plan",
+    "fan of curved porch steps splaying outward in an arc",
+    "multiple staircases including a dogleg and a curved stair",
+    "sprawling, irregular stepped-and-jogged Shingle Style footprint",
+    "dimensioned overall runs and a graphic scale bar"
+  ],
+  "supported_examples": [
+    "straight walls at right angles for the rectilinear remainder of the plan",
+    "rooms derived from walls; room naming and labels",
+    "linear point-to-point dimensions in imperial units",
+    "door and window plan symbols"
+  ],
+  "roadmap_examples": [
+    "multi-floor (second floor of a stacked house)",
+    "straight-run stairs (dogleg stair runs)"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the round corner tower and the apsidal bay have truly curved exterior walls and circular/apsidal room polygons that straight-segment Phase-1 walls cannot represent"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the porch reached by the curved steps is a roofed but open space, not a fully wall-enclosed room"
+    }
+  ]
+}

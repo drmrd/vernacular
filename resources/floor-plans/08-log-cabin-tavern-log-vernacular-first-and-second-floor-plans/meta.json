@@ -1,0 +1,50 @@
+{
+  "ordinal": 8,
+  "slug": "log-cabin-tavern-log-vernacular-first-and-second-floor-plans",
+  "title": "Log Cabin Tavern, First and Second Floor Plans (HABS AR-32-10, sheet 1)",
+  "image_file": "log-cabin-tavern-log-vernacular-first-and-second-floor-plans.jpg",
+  "building_type": "single-family dwelling / tavern (two-story log)",
+  "architectural_style": "Log / rustic vernacular (dogtrot 'open hall')",
+  "era_or_year": "early-to-mid 19th century log construction; HABS drawings documented after 1933",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/ar0005/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/ar/ar0000/ar0005/sheet/00001v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; delineators P. V. Burton and H. M. Black",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plans are sheet 1 (00001v.jpg, indexed 'Sheet 1 of 3') of HABS AR-32-10 'Drawings' (resource index 1; resource 0 is photographs). Note the drawing file sequence in this item starts at 00000v.",
+  "research_features": "Simple two-story hewn-log dwelling with a central 'Open Hall' (dogtrot-style) passage, four rooms, a winding stair, and a porch. Construction notes call out hewn pine logs chinked with mud. Good small/vernacular + log-construction test case. Combined sheet: 1st and 2nd floor plans side by side.",
+  "feature_highlights": [
+    "two-story hewn-log dwelling with first and second floor plans on one sheet",
+    "central OPEN HALL dogtrot passage on both floors",
+    "spiral/winding stair in the open hall with UP 16 R note",
+    "covered PORCH along one long side",
+    "four numbered rooms (101/102 below, 201/202 above) plus an old stair well",
+    "construction notes: hewn pine logs chinked with mud and bucks",
+    "removed-fireplace callouts and door swings at room openings",
+    "combined imperial and metric scale bar with a north arrow"
+  ],
+  "supported_examples": [
+    "straight log walls with thickness and junctions",
+    "rectangular rooms with room labels",
+    "single-swing door openings with swing arcs",
+    "linear imperial dimension chains",
+    "a single active floor at a time"
+  ],
+  "roadmap_examples": [
+    "floor management (two stacked stories on one sheet)",
+    "wall construction profiles for hewn-log walls",
+    "covered-porch handling via the period vocabulary tracks"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the central OPEN HALL dogtrot passage and the side PORCH are roofed-but-open spaces, not fully enclosed rooms"
+    },
+    {
+      "slug": "vertical-circulation-beyond-stairs",
+      "why": "the open-hall stair is a spiral/winding stair, not a straight-run stair"
+    }
+  ]
+}

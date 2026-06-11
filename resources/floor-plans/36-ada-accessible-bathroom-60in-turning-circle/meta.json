@@ -1,0 +1,39 @@
+{
+  "ordinal": 36,
+  "slug": "ada-accessible-bathroom-60in-turning-circle",
+  "title": "Accessible Toilet Room with 60-inch Turning Space (US Access Board)",
+  "image_file": "ada-accessible-bathroom-60in-turning-circle.png",
+  "building_type": "accessible room plan (toilet room)",
+  "architectural_style": "Barrier-free / universal design (ADA)",
+  "era_or_year": "2010 ADA Standards guidance",
+  "country": "United States",
+  "source_landing_url": "https://www.access-board.gov/ada/guides/chapter-6-toilet-rooms/",
+  "direct_download_url": "https://www.access-board.gov/images/ada-aba/guides/chapter6/toilet-rooms/32.png",
+  "license": "Public Domain (US Government Work)",
+  "license_url": "https://www.access-board.gov/ada/guides/chapter-6-toilet-rooms/",
+  "creator": "U.S. Access Board",
+  "rightsholder_or_source": "U.S. Access Board, Guide to the ADA Standards, Chapter 6 (Toilet Rooms)",
+  "research_notes": "A clean plan-view figure showing a 60-inch minimum circular wheelchair turning space, a water closet with grab bars, a lavatory, and the entry door swing. It isolates the single most iconic accessibility requirement, the turning circle, at room scale; its whole-unit companion is plan 37, a complete accessible apartment from HUD that shows the same rules across an entire home.",
+  "research_features": "Barrier-free toilet room driven entirely by accessibility clearances: a 60-inch turning circle, grab-bar zones, fixture clear floor space, and a door that swings clear of the turning space.",
+  "feature_highlights": [
+    "the plan is organized around a 60-inch minimum circular wheelchair turning space",
+    "water closet with side and rear grab bars at code clearances",
+    "lavatory positioned to leave the turning circle clear",
+    "entry door swing kept out of the required clear floor space",
+    "a measured grid backdrop expressing the clearance dimensions",
+    "a barrier-free design where the clearances, not the room shape, drive the layout"
+  ],
+  "supported_examples": [
+    "the rectangular room outline and its straight walls",
+    "a door plan symbol with a swing arc"
+  ],
+  "roadmap_examples": [
+    "fixtures (water closet, lavatory) as placed assets from the furniture and assets track"
+  ],
+  "gap_features": [
+    {
+      "slug": "accessibility-clearances-and-turning-spaces",
+      "why": "the entire plan is defined by accessibility clearances (a 60-inch turning circle, grab-bar zones, and fixture clear floor space) and a route kept free of door swings, none of which the editor can express or check"
+    }
+  ]
+}

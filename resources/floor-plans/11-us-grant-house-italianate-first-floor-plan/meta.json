@@ -1,0 +1,49 @@
+{
+  "ordinal": 11,
+  "slug": "us-grant-house-italianate-first-floor-plan",
+  "title": "U.S. Grant House, First Floor Plan (HABS IL-1221, sheet 4)",
+  "image_file": "us-grant-house-italianate-first-floor-plan.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Italianate",
+  "era_or_year": "house built 1859-1860 (architect William Dennison); HABS drawings documented after 1933",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/il0918/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/il/il0900/il0918/sheet/00004v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; design architect William Dennison; builders Daniel Farr and Joseph Maefefete",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "First floor plan is sheet 4 (00004v.jpg) of HABS IL-1221 'Drawings'. Sheet 2 of the same item is a SITE PLAN (with plant-materials legend and adjacent visitor's center) and sheet 3 is a basement/joist plan, if those variants are wanted.",
+  "research_features": "Classic Italianate plan: Parlor, Library, Dining Room, Kitchen, Pantry, Bathroom & Laundry, and a grand staircase, with full dimensions. Home of Ulysses S. Grant in Galena, Illinois.",
+  "feature_highlights": [
+    "well-mannered Italianate town-house plan with a main block and rear service wing",
+    "labeled rooms: Parlor, Dining Room, Library, Kitchen, Pantry, Bathroom & Laundry",
+    "U-shaped dog-leg stair with winder treads and a scrolled curved bottom step",
+    "hatched masonry walls with many perimeter window and door openings",
+    "full running dimension chains on top, bottom, and left",
+    "north arrow plus separate feet and meter scale bars"
+  ],
+  "supported_examples": [
+    "straight masonry walls with thickness and junctions",
+    "rectangular rooms with room labels and clear floor area",
+    "multiple door and window openings drawn as plan symbols",
+    "linear running dimensions in imperial units",
+    "dual imperial and metric scale bars for underlay calibration"
+  ],
+  "roadmap_examples": [
+    "floor management (this is one of several stacked levels)",
+    "wall construction profiles/poché for masonry walls",
+    "straight-run portions of the stair as a 2D stair symbol",
+    "furniture/fixture placement for bath, laundry, and kitchen fixtures"
+  ],
+  "gap_features": [
+    {
+      "slug": "vertical-circulation-beyond-stairs",
+      "why": "the main stair turns on winder treads with a curved scrolled bottom step, which is winding-stair geometry beyond a straight run"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the sheet carries a north arrow and separate feet/meter graphic scale bars as plan annotations"
+    }
+  ]
+}

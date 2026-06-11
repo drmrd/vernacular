@@ -1,0 +1,50 @@
+{
+  "ordinal": 3,
+  "slug": "lindstrom-1920-design-208-bungalow-with-curved-sun-porch",
+  "title": "Cottages and Semi-Bungalows, Design No. 208 (first and second floor plans)",
+  "image_file": "lindstrom-1920-design-208-bungalow-with-curved-sun-porch.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Craftsman semi-bungalow (1920s)",
+  "era_or_year": "1920",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/JWLindstromCottagesandsemibungalow0001",
+  "direct_download_url": "https://archive.org/download/JWLindstromCottagesandsemibungalow0001/page/n8_w1200.jpg",
+  "license": "Public Domain Mark 1.0",
+  "license_url": "http://creativecommons.org/publicdomain/mark/1.0/",
+  "creator": "J. W. Lindstrom (architect/publisher)",
+  "rightsholder_or_source": "Internet Archive (Public Domain Mark 1.0); originally J. W. Lindstrom, Minneapolis, 1920",
+  "research_notes": "Floor-plan plate is page n8 of the scan. Plan No. 208; second-floor sewing room and two bedrooms; first-floor living room, dining room, kitchen, plus the rounded sun porch.",
+  "research_features": "Curved-wall test case: a semicircular bowed SUN PORCH and a curved bay on the dining/sewing rooms. First and second floor plans, room dimensions labeled. Good for testing non-rectilinear room boundaries.",
+  "feature_highlights": [
+    "semicircular bowed sun porch with a true curved outer wall",
+    "canted/angled bay projecting over the porch on the second floor",
+    "chamfered projecting bay on the dining/sewing rooms",
+    "first and second floor plans on one plate",
+    "central straight-run stair tying the two floors",
+    "first-floor bedroom in addition to upstairs bedrooms",
+    "bath with plumbing fixtures drawn in",
+    "blue-line blueprint rendering on cream stock"
+  ],
+  "supported_examples": [
+    "straight walls at right angles for the conventional rooms",
+    "rectangular rooms derived from walls with labels and sizes",
+    "interior door openings",
+    "linear dimensions in imperial units",
+    "raster underlay tracing of the blueprint"
+  ],
+  "roadmap_examples": [
+    "multi-floor management (stacked first and second floors)",
+    "straight-run stairs with floor-spanning topology",
+    "fixture placement in the bath"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the sun porch outer wall is a true semicircular arc and the dining/upper bays are bowed/canted, none of which the straight-segment wall model can represent"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the glazed sun porch is an open roofed space, not a fully wall-enclosed interior room"
+    }
+  ]
+}

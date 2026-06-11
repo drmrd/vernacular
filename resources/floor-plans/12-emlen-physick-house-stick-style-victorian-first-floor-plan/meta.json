@@ -1,0 +1,51 @@
+{
+  "ordinal": 12,
+  "slug": "emlen-physick-house-stick-style-victorian-first-floor-plan",
+  "title": "Emlen Physick House (Estate), First Floor Plan (HABS NJ-746, sheet 3)",
+  "image_file": "emlen-physick-house-stick-style-victorian-first-floor-plan.jpg",
+  "building_type": "single-family house (Victorian estate house)",
+  "architectural_style": "Stick Style Victorian",
+  "era_or_year": "house built 1879 (attributed to Frank Furness); HABS drawings 1973",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/nj0034/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/nj/nj0000/nj0034/sheet/00003v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; design architect attributed to Frank Furness; delineator H. J. McCauley",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plan is sheet 3 (00003v.jpg) of HABS NJ-746 'Drawings' (resource index 1; resource 0 is photographs). Combined sheet: plan + fence elevation detail.",
+  "research_features": "Complex Stick Style Victorian massing with multiple bay/projecting rooms, several fireplaces, and a porch. Combined sheet: the floor plan plus an inset elevation detail of the decorative property fence.",
+  "feature_highlights": [
+    "restless Stick Style massing of many stepped rectangular volumes",
+    "multiple projecting bay rooms pushing past the main wall lines",
+    "numerous hatched masonry fireplaces set into the rooms",
+    "two separate straight-run stairs near the plan center",
+    "roofed porch shown by dashed roof/floor lines plus a stepped stoop",
+    "north arrow and graphic scale bar on the sheet",
+    "inset elevation detail of the decorative (now removed) fence and gate"
+  ],
+  "supported_examples": [
+    "straight walls at varied angles forming L-shaped and bayed rooms",
+    "custom non-rectangular room polygons for the projecting bays",
+    "door openings with swing arcs between many partitioned rooms",
+    "window openings around the perimeter",
+    "raster underlay calibration and the graphic scale bar"
+  ],
+  "roadmap_examples": [
+    "floor management (this is one of several stacked levels)",
+    "wall construction profiles/poché for masonry walls and chimneys",
+    "straight-run stairs as 2D symbols with floor-spanning topology",
+    "furniture/fixture placement for the fireplaces",
+    "projecting/bay windows that change footprint (named-but-deferred)"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "a roofed porch (shown by dashed roof/floor lines) and a stepped stoop are covered-but-open spaces that must be drawable without full wall enclosure"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the sheet carries a north arrow and a graphic scale bar as plan annotations"
+    }
+  ]
+}

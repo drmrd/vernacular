@@ -1,0 +1,55 @@
+{
+  "ordinal": 31,
+  "slug": "palladio-villa-barbaro-maser-symmetric-wings-plan",
+  "title": "Villa Barbaro at Maser plan, from I quattro libri dell'architettura",
+  "image_file": "palladio-villa-barbaro-maser-symmetric-wings-plan.jpg",
+  "building_type": "estate",
+  "architectural_style": "Renaissance / Palladian",
+  "era_or_year": "1570",
+  "country": "Italy",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Villa_Barbaro,_from_I_quattro_libri_dell%27architettura_di_Andrea_Palladio_(Book_2,_page_51)_MET_DP109543.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Villa_Barbaro,_from_I_quattro_libri_dell%27architettura_di_Andrea_Palladio_(Book_2,_page_51)_MET_DP109543.jpg?width=1600",
+  "license": "CC0 1.0",
+  "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "creator": "Andrea Palladio (delineator); plate from I quattro libri dell'architettura",
+  "rightsholder_or_source": "Metropolitan Museum of Art (Open Access); via Wikimedia Commons",
+  "research_notes": "Combined sheet: plan plus elevation on one plate. High-res MET Open Access scan.",
+  "research_features": "Central residential block flanked by long symmetric service wings (barchesse, agricultural arcades) ending in pavilions: a multi-building villa-farm estate on one plan. Strong axial symmetry and attached outbuildings.",
+  "feature_highlights": [
+    "mirror-symmetric Palladian villa-farm parti drawn as one composition",
+    "compact central residential block of rooms around a cruciform hall",
+    "two long straight arcaded service wings (barchesse) of repeated open bays",
+    "square corner pavilions (dovecotes) terminating each wing",
+    "large semicircular garden exedra / nymphaeum behind the house",
+    "combined plan-plus-elevation Renaissance woodcut plate",
+    "no dimension strings or scale bar; size implied by drawing and prose"
+  ],
+  "supported_examples": [
+    "straight orthogonal walls and junctions in the residential core",
+    "rectangular rooms around a central hall",
+    "repeated-bay straight wing walls",
+    "wall thickness"
+  ],
+  "roadmap_examples": [
+    "era registry / period tagging (Renaissance / Palladian)",
+    "room-purpose registry for villa and service-wing rooms"
+  ],
+  "gap_features": [
+    {
+      "slug": "multi-building-properties",
+      "why": "one composition holds several distinct structures: the central villa plus two long service wings ending in corner pavilions/dovecotes"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the barchesse are roofed but open arcaded colonnades, not fully wall-enclosed rooms"
+    },
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the semicircular garden exedra / nymphaeum behind the house is a true curved (apsidal) wall"
+    },
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "the engraving carries no on-plan dimensions or labels; room identity and size come from the accompanying prose legend rather than drawn measurement"
+    }
+  ]
+}

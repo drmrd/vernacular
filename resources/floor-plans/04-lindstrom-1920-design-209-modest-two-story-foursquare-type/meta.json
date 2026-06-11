@@ -1,0 +1,46 @@
+{
+  "ordinal": 4,
+  "slug": "lindstrom-1920-design-209-modest-two-story-foursquare-type",
+  "title": "Cottages and Semi-Bungalows, Design No. 209 (first and second floor plans)",
+  "image_file": "lindstrom-1920-design-209-modest-two-story-foursquare-type.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "American Foursquare / modest two-story (1920s)",
+  "era_or_year": "1920",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/JWLindstromCottagesandsemibungalow0001",
+  "direct_download_url": "https://archive.org/download/JWLindstromCottagesandsemibungalow0001/page/n10_w1200.jpg",
+  "license": "Public Domain Mark 1.0",
+  "license_url": "http://creativecommons.org/publicdomain/mark/1.0/",
+  "creator": "J. W. Lindstrom (architect/publisher)",
+  "rightsholder_or_source": "Internet Archive (Public Domain Mark 1.0); originally J. W. Lindstrom, Minneapolis, 1920",
+  "research_notes": "Floor-plan plate is page n10. Design No. 209, first floor 34'-0\" wide; first-floor bath/bedroom in addition to second-floor bedrooms.",
+  "research_features": "Compact roughly-square two-story plan (Foursquare lineage): full upper floor of bedrooms plus sewing room, lower floor with living, dining, kitchen, and deep front porch. Room dimensions labeled. Balances the bungalows with a true two-story box.",
+  "feature_highlights": [
+    "compact roughly-square two-story Foursquare-type box, 34'0\"x27'0\"",
+    "first and second floor plans on one plate",
+    "central straight-run stair and hall",
+    "first-floor bedroom and bath plus full upper floor of bedrooms",
+    "sewing room on the second floor",
+    "long open side porch drawn with posts",
+    "all rectangular rooms at right angles",
+    "blue-line blueprint rendering"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls with labels and sizes",
+    "interior door openings with swings",
+    "linear dimensions in imperial units",
+    "raster underlay tracing of the blueprint"
+  ],
+  "roadmap_examples": [
+    "multi-floor management (stacked first and second floors)",
+    "straight-run stairs with floor-spanning topology",
+    "fixture placement in the baths"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the long side porch is a roofed-but-open space drawn with posts, not a wall-enclosed room"
+    }
+  ]
+}

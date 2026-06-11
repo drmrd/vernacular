@@ -1,0 +1,53 @@
+{
+  "ordinal": 22,
+  "slug": "buckminster-fuller-geodesic-dome-home-carbondale",
+  "title": "Richard Buckminster Fuller & Anne Hewlett Fuller Dome Home (measured drawing sheet 1)",
+  "image_file": "buckminster-fuller-geodesic-dome-home-carbondale.jpg",
+  "building_type": "single-family house (geodesic dome)",
+  "architectural_style": "Geodesic dome (Buckminster Fuller paperboard/plydome)",
+  "era_or_year": "built 1960; HABS documentation drawing",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/il0995/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/il/il0900/il0995/sheet/00001v.jpg",
+  "license": "US Government Work / Public Domain",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey (HABS IL-1234), delineated by NPS/HABS",
+  "rightsholder_or_source": "Library of Congress HABS (Prints & Photographs Division)",
+  "research_notes": "Combined sheet: plan + roof plan + loft + elevation + section all on one drawing. This is the single drawing sheet (resource 0) of LoC item il0995 (HABS IL-1234); a data-pages PDF is the only other resource. Use the main-floor-plan quadrant at lower left.",
+  "research_features": "Geodesic dome dwelling: the only measured-drawing sheet (sheet 1 of 1) combines a SITE PLAN / MAIN FLOOR PLAN (an octagonal interior layout inside the round dome with kitchen, living, master bedroom, entry terrace), plus a ROOF PLAN, LOFT PLAN, southwest elevation, and a full section. Excellent round/curved-shell test case where interior rooms are rectilinear inside a circular envelope.",
+  "feature_highlights": [
+    "geodesic dome shell as the entire building envelope, with no conventional vertical exterior walls",
+    "rectilinear interior fitted inside a round, many-sided dome wall (rooms clipped/angled at the perimeter)",
+    "loft as a partial upper level inside the same dome volume",
+    "triangulated roof plan that is pure geodesic geometry",
+    "entry terrace as a roofed-but-open outdoor space rather than an enclosed room",
+    "ventilation alcove carved into the curved edge",
+    "dense composite HABS sheet: plan, roof plan, loft plan, elevation, section, details",
+    "site plan with property line, north arrow, and scale bars"
+  ],
+  "supported_examples": [
+    "straight interior partition walls",
+    "rooms with names (entry, guest, bath, master bedroom, kitchen, living, dining)",
+    "custom-polygon room override for perimeter rooms clipped to straight facets",
+    "raster underlay with scale-bar calibration"
+  ],
+  "roadmap_examples": [
+    "floor management for the loft as a partial upper level",
+    "straight-run stairs to the loft",
+    "site metadata for the surveyed property"
+  ],
+  "gap_features": [
+    {
+      "slug": "dome-and-shell-structures",
+      "why": "the building envelope is a geodesic dome shell with no vertical wall layout; a straight thickness-bearing wall model cannot represent the curved triangulated shell that defines the entire perimeter and roof"
+    },
+    {
+      "slug": "roof-and-sloped-ceiling-geometry",
+      "why": "the geodesic roof and the curved shell over the living/loft volume are roof/sloped-ceiling geometry, not a flat per-room ceiling height"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the entry terrace is a roofed-but-open outdoor space that must be drawable as a space without being a fully wall-enclosed room"
+    }
+  ]
+}

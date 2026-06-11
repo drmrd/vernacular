@@ -1,0 +1,46 @@
+{
+  "ordinal": 25,
+  "slug": "palladio-villa-rotonda-round-central-hall-plan",
+  "title": "Villa Almerico Capra (La Rotonda) plan, from I quattro libri dell'architettura",
+  "image_file": "palladio-villa-rotonda-round-central-hall-plan.jpg",
+  "building_type": "villa",
+  "architectural_style": "Renaissance / Palladian",
+  "era_or_year": "1570",
+  "country": "Italy",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Villa_Almerico_(Villa_Rotunda),_from_I_quattro_libri_dell%27architettura_di_Andrea_Palladio_(Book_2,_page_19)_MET_DP109542.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Villa_Almerico_(Villa_Rotunda),_from_I_quattro_libri_dell%27architettura_di_Andrea_Palladio_(Book_2,_page_19)_MET_DP109542.jpg?width=1600",
+  "license": "CC0 1.0",
+  "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "creator": "Andrea Palladio (delineator); plate from I quattro libri dell'architettura",
+  "rightsholder_or_source": "Metropolitan Museum of Art (Open Access); via Wikimedia Commons",
+  "research_notes": "Combined sheet: plan plus elevation/section on one plate (the plan is the lower portion). High-resolution MET Open Access scan. Late-Renaissance graphic convention (no dimensions).",
+  "research_features": "Perfectly symmetric central round hall (rotunda) inscribed in a square, with four identical projecting temple-front porches/stairs on all sides. Excellent test of radial/curved geometry and 4-fold symmetry.",
+  "feature_highlights": [
+    "round central hall (rotunda) inscribed in a square block",
+    "four identical projecting temple-front porticoes with steps",
+    "two-axis and four-fold rotational symmetry",
+    "rooms tagged with inscribed dimension figures (P. 30, P. 26, P. 15, P. 12)",
+    "combined plan plus elevation/section on one Renaissance plate",
+    "straight-walled perimeter rooms around a single curved space"
+  ],
+  "supported_examples": [
+    "straight walls at angles forming rectangular perimeter rooms",
+    "symmetric room layout with paired mirror-image rooms",
+    "linear inscribed dimension figures on rooms",
+    "raster underlay with scale calibration to trace the historic plate"
+  ],
+  "roadmap_examples": [
+    "site/textual metadata for a named historic villa",
+    "era registry tagging (Renaissance / Palladian)"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the great central rotunda is a true round room bounded by curved arc walls, not straight segments"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the four projecting temple-front porticoes are roofed, columned, open-air loggias rather than fully wall-enclosed rooms"
+    }
+  ]
+}

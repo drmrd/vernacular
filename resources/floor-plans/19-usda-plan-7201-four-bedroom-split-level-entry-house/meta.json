@@ -1,0 +1,45 @@
+{
+  "ordinal": 19,
+  "slug": "usda-plan-7201-four-bedroom-split-level-entry-house",
+  "title": "USDA Plan No. 7201 - 4-Bedroom House with Split-Level Entry (lower & upper level plans)",
+  "image_file": "usda-plan-7201-four-bedroom-split-level-entry-house.jpg",
+  "building_type": "single-family house (split-level)",
+  "architectural_style": "Mid-20th-century suburban split-level",
+  "era_or_year": "1975",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/4bedroomhousewit1294unit",
+  "direct_download_url": "https://archive.org/download/4bedroomhousewit1294unit/page/n2_w1200.jpg",
+  "license": "US Government Work / Public Domain",
+  "license_url": "https://archive.org/details/4bedroomhousewit1294unit",
+  "creator": "U.S. Department of Agriculture, Agricultural Research Service (Cooperative Farm Building Plan Exchange)",
+  "rightsholder_or_source": "USDA / Internet Archive (contributing institution states item is not in copyright; US Government work)",
+  "research_notes": "Combined cover sheet (page n2 of the scan) carries both floor plans plus a perspective; USDA Miscellaneous Publication No. 1294, 3-sheet plan set. Page n3 is wall sections (not a plan). Raster page image extracted from the archive.org BookReader.",
+  "research_features": "Split-level configuration test case: a single sheet drawing BOTH the LOWER LEVEL FLOOR PLAN (family/office-or-bedroom, bath, laundry, two bedrooms) and the UPPER LEVEL FLOOR PLAN (living, dining, kitchen, two bedrooms, bath) with drawn dimensions and a split-level foyer linking the two half-levels. Forces handling of staggered floor levels rather than a single Z-height per floor.",
+  "feature_highlights": [
+    "two staggered half-level plans (lower + upper) on one sheet linked by a split-level foyer",
+    "intermediate stair landing between the two half-levels rather than a full story offset",
+    "four bedrooms split across the two levels plus family, living, dining, kitchen, two baths, laundry",
+    "drawn overall and partial dimensions on each level (~37x16 ft lower, ~38x16 ft upper)",
+    "small graphic scale bar under each plan for underlay calibration",
+    "perspective sketch plus two distinct floor plans plus marketing prose on a single cover sheet",
+    "rectangular rooms with single-swing doors and double-hung windows"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms with room labels (family, living, dining, kitchen, bedroom, bath, laundry)",
+    "single-swing interior doors",
+    "double-hung windows",
+    "linear point-to-point dimensions in imperial units",
+    "raster underlay with scale-bar calibration"
+  ],
+  "roadmap_examples": [
+    "floor management for multiple levels",
+    "straight-run stairs as a 2D symbol with floor-spanning topology"
+  ],
+  "gap_features": [
+    {
+      "slug": "split-level-and-mezzanine",
+      "why": "the house is two staggered half-levels offset by a half flight at a shared foyer, not one floor at a single height nor two cleanly stacked full stories; roadmap floor management covers discrete stacked levels but not partial/intermediate ones"
+    }
+  ]
+}

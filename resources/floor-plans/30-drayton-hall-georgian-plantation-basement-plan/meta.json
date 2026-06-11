@@ -1,0 +1,51 @@
+{
+  "ordinal": 30,
+  "slug": "drayton-hall-georgian-plantation-basement-plan",
+  "title": "Drayton Hall, Basement Plan (HABS SC-377, sheet 3)",
+  "image_file": "drayton-hall-georgian-plantation-basement-plan.jpg",
+  "building_type": "estate / plantation house",
+  "architectural_style": "Georgian",
+  "era_or_year": "house built circa 1738-1742; HABS drawings documented 1979",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/sc0132/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/sc/sc0100/sc0132/sheet/00003v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; delineators John A. Burns, James B. Garrison, Laura L. Hochuli, Charles Edwin Chase",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plan is sheet 3 of the HABS SC-377 drawings set (resource 'Drawings'). Sheet 2 (00002v.jpg) of the same item is a SITE PLAN showing the main house plus a brick office and former dependencies if a multi-building plot plan is preferred. v.jpg is the largest JPEG variant (~1024px); a master TIFF also exists.",
+  "research_features": "Symmetrical Georgian plantation house; basement floor plan with thick masonry walls, central hall, flanking stairs, labeled rooms (Storage, Passage, Office, Hall, Northwest Room) and full dimensions.",
+  "feature_highlights": [
+    "rigorously symmetrical Georgian plan about a central axis",
+    "large central Hall with a regular grid of square structural piers",
+    "thick load-bearing masonry walls drawn as dense brick poche",
+    "named, dimensioned service rooms (Storage, Passage, Office, Northwest Room)",
+    "doors with quarter-circle swing arcs cut through heavy walls",
+    "two monumental flared exterior stairs projecting from the side elevations",
+    "continuous imperial dimension strings on all four sides",
+    "feet-and-meters graphic scale bar plus orientation symbol"
+  ],
+  "supported_examples": [
+    "straight orthogonal walls and wall junctions",
+    "named rectangular rooms with labels and dimensions",
+    "single and double door swing symbols",
+    "continuous linear imperial dimension strings",
+    "wall thickness"
+  ],
+  "roadmap_examples": [
+    "thick masonry wall construction profiles with brick poche",
+    "multi-floor management (this is the basement level of a stacked house)",
+    "graphic scale bar and orientation symbol as plan annotations",
+    "straight-run stairs as a 2D symbol"
+  ],
+  "gap_features": [
+    {
+      "slug": "multi-building-properties",
+      "why": "this is the main house of a larger plantation estate documented with dependencies and a separate site plan; the model is single-building"
+    },
+    {
+      "slug": "site-and-landscape-plan",
+      "why": "the deeply projecting flared exterior stairs splay out onto the grounds and the sheet implies the building's placement on the plantation lot, which is site geometry rather than building interior"
+    }
+  ]
+}

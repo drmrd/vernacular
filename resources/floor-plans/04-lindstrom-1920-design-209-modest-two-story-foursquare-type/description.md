@@ -1,0 +1,7 @@
+This blue-line plate gives the first and second floor plans of Design No. 209, a modest two-story house in the American Foursquare lineage. The first floor measures 34'0" wide by 27'0" deep, drawn as a compact, nearly square box. The two plans are stacked on the page, the second floor above and the first floor below, each with its own scale note.
+
+The first floor is a clean rectilinear arrangement around a central straight-run stair and Hall. A large Living Room (14'0" x 16'6") and Dining Room (12'6" x 12'6") occupy the front and one side, with a Kitchen (7'3" x 13'0"), a Bath, and a first-floor Bed Room (11'0" x 12'0") filling out the rear. A long open Porch (8'6" x 20'6") runs down one side of the house, drawn with posts rather than enclosing walls. The second floor stacks two Bed Rooms (12'6" x 12'6" and 12'6" x 16'6"), a Sewing Room, a central Hall, and a Bath with fixtures.
+
+Every interior room here is a simple rectangle, all partitions meet at right angles, and the only vertical circulation is a conventional straight-run stair. Door swings and bathroom fixtures are indicated in the linework, and rooms are labeled with names and imperial dimensions.
+
+This is a useful "true two-story box" baseline that balances the single-story bungalows in the set. Its interior is fully representable once multi-floor management and straight-run stairs (both on the roadmap) are available. The only element that is not an enclosed room is the open side porch.

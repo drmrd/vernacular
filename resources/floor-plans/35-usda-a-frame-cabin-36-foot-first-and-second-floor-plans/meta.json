@@ -1,0 +1,54 @@
+{
+  "ordinal": 35,
+  "slug": "usda-a-frame-cabin-36-foot-first-and-second-floor-plans",
+  "title": "A-Frame Cabins, First and Second Floor Plans (USDA Plan 5964/5965)",
+  "image_file": "usda-a-frame-cabin-36-foot-first-and-second-floor-plans.jpg",
+  "building_type": "single-family recreation cabin (A-frame)",
+  "architectural_style": "Mid-century A-frame",
+  "era_or_year": "issued November 1964",
+  "country": "United States",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:A-frame_cabins_(IA_aframecabins981unit).pdf",
+  "direct_download_url": "https://archive.org/details/aframecabins981unit",
+  "license": "Public Domain (US Government Work)",
+  "license_url": "https://commons.wikimedia.org/wiki/File:A-frame_cabins_(IA_aframecabins981unit).pdf",
+  "creator": "U.S. Department of Agriculture, Cooperative Farm Building Plan Exchange",
+  "rightsholder_or_source": "U.S. Department of Agriculture; scanned by the National Agricultural Library via the Internet Archive; mirrored on Wikimedia Commons",
+  "research_notes": "The corpus image is a two-page montage rendered from the Internet Archive scan (item aframecabins981unit): left is the cover sheet (PDF page 1) with the perspective view and the dimensioned first-floor plan plus a scale bar; right is page 2 with the interior cutaway section through the A-frame and the second-floor plan. Misc. Publication No. 981; covers a 24-foot and a 36-foot A-frame.",
+  "research_features": "Genuine A-frame: steep roof planes form the walls and ceiling; two gable-end porches; a double-height living room with a second-floor balcony open above it.",
+  "feature_highlights": [
+    "genuine A-frame: the steeply pitched roof planes are the walls and the ceiling",
+    "interior cutaway section makes the triangular cross-section explicit",
+    "double-height living room with a second-floor balcony open above it",
+    "compact 36 by 20 foot rectangular floor plate",
+    "two gable-end porches drawn as open, post-supported bays",
+    "first floor: bedroom, bath, kitchen, dining, living, hall; second floor: two bedrooms and a balcony",
+    "graphic scale bar in feet rather than full dimension strings"
+  ],
+  "supported_examples": [
+    "the rectangular 36 by 20 foot footprint and its straight-walled, right-angled rooms",
+    "room naming and labels; door and window plan symbols",
+    "a single-floor plan view of either level on its own"
+  ],
+  "roadmap_examples": [
+    "multi-floor (a two-story cabin)",
+    "straight-run stairs linking the two levels"
+  ],
+  "gap_features": [
+    {
+      "slug": "roof-and-sloped-ceiling-geometry",
+      "why": "the A-frame has no vertical exterior walls; its steeply pitched roof planes are the walls and ceiling, and the upper floor sits under those sloping surfaces, which a straight-walled flat-ceiling model cannot represent"
+    },
+    {
+      "slug": "courtyard-and-atrium-spaces",
+      "why": "the 'upper part of living room' is a double-height void where the second-floor plate is open to the living room below, so the upper floor polygon has a hole"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the porch bay at each gable end is a roofed but open, post-supported space rather than an enclosed room"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the sheet sizes the plan with a graphic scale bar in feet rather than with dimension strings"
+    }
+  ]
+}

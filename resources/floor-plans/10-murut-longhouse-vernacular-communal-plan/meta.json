@@ -1,0 +1,48 @@
+{
+  "ordinal": 10,
+  "slug": "murut-longhouse-vernacular-communal-plan",
+  "title": "Floor plan of a Murut longhouse (Borneo)",
+  "image_file": "murut-longhouse-vernacular-communal-plan.png",
+  "building_type": "longhouse (communal dwelling)",
+  "architectural_style": "Southeast Asian vernacular",
+  "era_or_year": "1912",
+  "country": "Malaysia (Borneo)",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Floor_plan_of_a_Murut_longhouse.png",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Floor_plan_of_a_Murut_longhouse.png?width=1600",
+  "license": "Public Domain",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Floor_plan_of_a_Murut_longhouse.png",
+  "creator": "J. C. Moulton",
+  "rightsholder_or_source": "Public-domain ethnographic plate (1912, Journal of the Straits Branch of the Royal Asiatic Society); via Wikimedia Commons",
+  "research_notes": "Wide ethnographic plan (2473x984). Pre-modern, non-Western vernacular; good repetition/modularity test case.",
+  "research_features": "Long, narrow communal longhouse: a continuous covered gallery/veranda running the full length with a row of repeated private family compartments off one side. Highly linear, repetitive modular geometry unlike Western houses.",
+  "feature_highlights": [
+    "long, narrow communal longhouse as a single repeated module",
+    "row of repeated private family compartments each on a numbered hearth (1-5)",
+    "continuous covered gallery serving as the shared communal spine",
+    "lower 'str' gallery/street band with numbered sleeping platforms (6-8)",
+    "pile dwelling carried on rows of posts (post points throughout)",
+    "lettered legend: M partitions/mats, N notched-log ladders, P posts, R end room",
+    "bays grouped into labeled sections i, ii, iii",
+    "schematic, dimensionless ethnographic drawing"
+  ],
+  "supported_examples": [
+    "straight walls forming the long rectangular perimeter",
+    "repeated rectangular compartments as rooms with labels",
+    "marquee selection and copy/paste for the repeated unit modules"
+  ],
+  "roadmap_examples": ["raster underlay tracing of a schematic ethnographic plate"],
+  "gap_features": [
+    {
+      "slug": "multi-unit-dwellings",
+      "why": "one structure houses many separate family compartments served by a shared communal gallery, which the single-residence model cannot represent"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the continuous covered gallery and the lower 'str' street are roofed-but-open communal spaces rather than enclosed rooms"
+    },
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "the plan is dimensionless and conveys unit identity only through numbered hearth and platform legend symbols, not drawn measurements"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "ordinal": 1,
+  "slug": "radford-1908-design-5054-tiny-square-cottage",
+  "title": "Radford's Artistic Bungalows, Design No. 5054 (floor plan)",
+  "image_file": "radford-1908-design-5054-tiny-square-cottage.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Vernacular cottage (minimal hip-roof)",
+  "era_or_year": "1908",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/cu31924014996395",
+  "direct_download_url": "https://archive.org/download/cu31924014996395/page/n50_w1200.jpg",
+  "license": "Public Domain",
+  "license_url": "https://archive.org/details/cu31924014996395",
+  "creator": "Radford Architectural Company",
+  "rightsholder_or_source": "Internet Archive (Cornell University Library scan); published 1908, public domain by age",
+  "research_notes": "Page n50 of scan; Design No. 5054. Single-floor plan with two porches; room dimensions labeled. Among the smallest plans in the book.",
+  "research_features": "Very small/simple minimal test case: a 24'x24' square cottage with just kitchen, one bedroom, and a living room, plus a front and rear porch. Excellent 'uninteresting'/baseline plan for the corpus.",
+  "feature_highlights": [
+    "perfectly square 24'x24' footprint",
+    "only three rectangular rooms (kitchen, bedroom, living room)",
+    "small pantry with sink notch and a single closet",
+    "front and rear open porches with square-post colonnades",
+    "built-in 'SEAT' benches along the porches",
+    "all right-angle partitions, single story",
+    "room names and dimensions lettered in each space"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls",
+    "room naming and room labels",
+    "thickness-aware clear floor area",
+    "interior door openings and a sink fixture symbol",
+    "linear dimensions in imperial units"
+  ],
+  "roadmap_examples": ["furniture/fixture placement (built-in porch seats, kitchen sink)"],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "front and rear porches are roofed-but-open colonnaded spaces, not fully wall-enclosed rooms"
+    }
+  ]
+}

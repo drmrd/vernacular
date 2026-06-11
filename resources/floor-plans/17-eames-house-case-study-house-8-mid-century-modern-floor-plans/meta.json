@@ -1,0 +1,52 @@
+{
+  "ordinal": 17,
+  "slug": "eames-house-case-study-house-8-mid-century-modern-floor-plans",
+  "title": "Eames House (Case Study House No. 8), Overall First and Second Floor Plans (HABS CA-2903, sheet 2)",
+  "image_file": "eames-house-case-study-house-8-mid-century-modern-floor-plans.jpg",
+  "building_type": "single-family house plus detached studio (two-building compound)",
+  "architectural_style": "Mid-Century Modern",
+  "era_or_year": "house built 1949 (Charles and Ray Eames); HABS drawings documented 2013",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/ca4169/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/ca/ca4100/ca4169/sheet/00002v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; design architects Charles Eames and Ray Eames; delineators Amabel Garcia Enguita and Timothy Fench",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Sheet 2 (00002v.jpg) of HABS CA-2903 'Drawings' shows OVERALL FIRST FLOOR PLAN and OVERALL SECOND FLOOR PLAN for the house plus the studio plan. Good MCM + multi-building + modular-grid test case.",
+  "research_features": "Iconic Mid-Century Modern Case Study House: open-plan modular steel-frame house on a rectilinear grid, plus a separate detached studio building (multi-building compound). Includes a spiral stair and double-height living volume; first and second floor plans both shown.",
+  "feature_highlights": [
+    "two-building compound: long rectilinear house plus a detached studio, each with its own plans",
+    "overall first-floor and second-floor plans shown on one sheet at one scale",
+    "modular steel-frame grid drawn across both buildings",
+    "open-plan steel-and-glass living volume with a service core",
+    "spiral stair threading both levels of the house",
+    "double-height living volume with the second floor open to the void below",
+    "graphic scale bar with imperial and metric divisions"
+  ],
+  "supported_examples": [
+    "straight, orthogonal walls",
+    "rectangular rooms set within a modular grid",
+    "room naming and labels",
+    "door and window plan symbols",
+    "raster underlay with scale calibration"
+  ],
+  "roadmap_examples": [
+    "multi-floor (stacked first and second floors)",
+    "furniture and fixture placement (kitchen and bath fixtures)"
+  ],
+  "gap_features": [
+    {
+      "slug": "multi-building-properties",
+      "why": "the detached studio is a separate structure from the main house on the same property, which the single-building model cannot hold as one project"
+    },
+    {
+      "slug": "vertical-circulation-beyond-stairs",
+      "why": "the house is served by a spiral stair, and spiral/winding stair geometry sits beyond the straight-run stairs on the roadmap"
+    },
+    {
+      "slug": "courtyard-and-atrium-spaces",
+      "why": "the double-height living volume leaves the second-floor plan open to the floor below, an open-to-below well that reads as a holed room polygon"
+    }
+  ]
+}

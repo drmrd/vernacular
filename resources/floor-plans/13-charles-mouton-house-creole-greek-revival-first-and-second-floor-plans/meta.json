@@ -1,0 +1,45 @@
+{
+  "ordinal": 13,
+  "slug": "charles-mouton-house-creole-greek-revival-first-and-second-floor-plans",
+  "title": "Charles Mouton House, First and Second Floor Plans (HABS LA-210, sheet 3)",
+  "image_file": "charles-mouton-house-creole-greek-revival-first-and-second-floor-plans.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Creole / Greek Revival",
+  "era_or_year": "house 19th century; HABS drawings documented after 1933 (2016 Peterson Prize entry)",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/la0774/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/la/la0700/la0774/sheet/00003v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey (Charles E. Peterson Prize competition entry)",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plan is sheet 3 (00003v.jpg) of HABS LA-210 'Drawings'. Sheet 2 (00002v.jpg) of the same item is a SITE PLAN with a plant-species legend table showing the Main House plus a Garage House (multi-building) if a site/legend plan is desired.",
+  "research_features": "Combined sheet with BOTH 1st-floor and 2nd-floor plans side by side; richly labeled rooms (Kitchen, Sunroom, Dining, Living, Music, Office, Atchafalaya Room, Napoleon Suite, Voorhies Suite), deep galleries/porches, full dimensions.",
+  "feature_highlights": [
+    "combined sheet with first-floor and second-floor plans side by side",
+    "deep Creole galleries (colonnaded porches) ringing both long sides",
+    "richly named rooms (Living, Music, Dining, Office, Sunroom, Kitchen; Napoleon and Voorhies Suites, Atchafalaya Room, Sitting Room)",
+    "regular rows of square porch columns with per-bay dimensions",
+    "central stair and hallway linking the two stacked floors",
+    "stacked washer/dryer service zone and HVAC closet",
+    "north arrow and graphic scale annotations"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular and straight-edged rooms derived from walls",
+    "room naming and labels",
+    "linear point-to-point dimensions in imperial units",
+    "door and window plan symbols"
+  ],
+  "roadmap_examples": [
+    "multi-floor (two stacked levels on one sheet)",
+    "straight-run stairs (floor-spanning)",
+    "furniture and fixture placement (washer/dryer, plumbing fixtures)"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the deep Creole galleries are roofed but largely open colonnaded porches that need to be drawn as covered outdoor space rather than fully wall-enclosed rooms"
+    }
+  ]
+}

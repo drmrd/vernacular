@@ -1,0 +1,58 @@
+{
+  "ordinal": 29,
+  "slug": "french-hotel-particulier-piano-nobile-plan-belanger",
+  "title": "Plan d'un hotel particulier (Francois-Joseph Belanger)",
+  "image_file": "french-hotel-particulier-piano-nobile-plan-belanger.jpg",
+  "building_type": "townhouse (hotel particulier)",
+  "architectural_style": "French Neoclassical",
+  "era_or_year": "late 18th century",
+  "country": "France",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Plan_d%27un_h%C3%B4tel_particulier_-_dessin_-_Fran%C3%A7ois-Joseph_B%C3%A9langer_-_btv1b10029350k.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Plan_d%27un_h%C3%B4tel_particulier_-_dessin_-_Fran%C3%A7ois-Joseph_B%C3%A9langer_-_btv1b10029350k.jpg?width=1600",
+  "license": "Public Domain",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Plan_d%27un_h%C3%B4tel_particulier_-_dessin_-_Fran%C3%A7ois-Joseph_B%C3%A9langer_-_btv1b10029350k.jpg",
+  "creator": "Francois-Joseph Belanger (1744-1818), draughtsman",
+  "rightsholder_or_source": "Bibliotheque nationale de France (Gallica); via Wikimedia Commons",
+  "research_notes": "Very high-resolution original drawing (5012x6322 native). French hotel-particulier court-and-garden layout.",
+  "research_features": "Hand-drawn architect's presentation plan of a Parisian aristocratic townhouse: entrance court (cour d'honneur), main reception suite, and service rooms arranged between court and garden. Drawn in a period ink-wash convention with curved-wall salons.",
+  "feature_highlights": [
+    "original hand-drawn ink-and-wash plan with pink/rose poché walls",
+    "handwritten inscribed dimensions in period French numerals",
+    "three staircases: two curved/winding plus one straight-run",
+    "curved bay / apsidal salon end in the main block",
+    "long narrow service wing of small repeated rooms",
+    "court-and-garden layout: cour d'honneur, colonnade, and garden grounds",
+    "colonnade/portico drawn as a row of dots bounding the open court",
+    "central graphic scale bar"
+  ],
+  "supported_examples": [
+    "straight walls forming the partitioned interior rooms and service wing",
+    "thickness-aware walls and wall junctions",
+    "handwritten linear inscribed dimensions (not a lettered legend)",
+    "raster underlay with scale calibration to trace the original drawing"
+  ],
+  "roadmap_examples": [
+    "straight-run stair (2D symbol) for the parallel-tread flight",
+    "wall construction profiles / poché for masonry walls",
+    "site/textual metadata for an aristocratic townhouse",
+    "era registry tagging (French Neoclassical)"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "a salon has a curved bay/apsidal end and two stairs are curved/winding, all needing nonlinear geometry"
+    },
+    {
+      "slug": "site-and-landscape-plan",
+      "why": "the sheet lays out the building between an entrance court and a garden, drawing the cour d'honneur and grounds as geometry rather than only the building footprint"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the colonnade/portico bounding the court is a roofed-but-open space, not a fully wall-enclosed room"
+    },
+    {
+      "slug": "vertical-circulation-beyond-stairs",
+      "why": "two of the staircases are curved/winding rather than straight-run flights"
+    }
+  ]
+}

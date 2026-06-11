@@ -1,0 +1,45 @@
+{
+  "ordinal": 37,
+  "slug": "hud-accessible-dwelling-unit-route-and-clearances",
+  "title": "Accessible Dwelling Unit with 36-inch Route Through the Unit (HUD)",
+  "image_file": "hud-accessible-dwelling-unit-route-and-clearances.png",
+  "building_type": "accessible dwelling unit (one-bedroom apartment)",
+  "architectural_style": "Barrier-free / universal design (Fair Housing Act)",
+  "era_or_year": "1998 (HUD Fair Housing Act Design Manual)",
+  "country": "United States",
+  "source_landing_url": "https://www.huduser.gov/portal/publications/fairhsg/fhefhag.html",
+  "direct_download_url": "https://www.huduser.gov/portal/publications/PDF/FAIRHOUSING/fairch4.pdf",
+  "license": "Public Domain (US Government Work)",
+  "license_url": "https://www.huduser.gov/portal/publications/fairhsg/fhefhag.html",
+  "creator": "U.S. Department of Housing and Urban Development, Office of Fair Housing and Equal Opportunity",
+  "rightsholder_or_source": "HUD, Fair Housing Act Design Manual (1998), Chapter 4 'Accessible Route Into and Through the Covered Dwelling Unit', page 4.3",
+  "research_notes": "Rendered and cropped from the public-domain HUD Fair Housing Act Design Manual, Chapter 4 PDF (page 4.3), figure captioned '36-Inch Wide Minimum Accessible Route Through Dwelling Unit'. This is the whole-unit accessible plan that complements the room-scale turning-circle figure in plan 36.",
+  "research_features": "A complete one-bedroom apartment showing the shaded 36-inch accessible route threading from the entrance through the living room, kitchen, bedroom, and two bathrooms, adjoining the clear floor space at every appliance and fixture, plus a wood deck reached with a minimal level change.",
+  "feature_highlights": [
+    "a complete one-bedroom apartment unit, not just a single room",
+    "a shaded 36-inch minimum accessible route threading from the entrance through every room",
+    "the route adjoins clear floor space at all kitchen appliances and all bathroom fixtures",
+    "two bathrooms, both required to have usable doors",
+    "a wood deck reached with a 1/2 inch maximum change in level",
+    "callouts annotating the route, the clearances, and the door requirements",
+    "furniture and fixtures drawn in to show the clearances are real"
+  ],
+  "supported_examples": [
+    "the straight-walled, right-angled rooms and the overall unit footprint",
+    "room layout with doors and door swings",
+    "a single-floor apartment plan"
+  ],
+  "roadmap_examples": [
+    "furniture and fixtures (sofa, bed, kitchen appliances, bathroom fixtures) as placed assets"
+  ],
+  "gap_features": [
+    {
+      "slug": "accessibility-clearances-and-turning-spaces",
+      "why": "the entire unit is organized around an accessible route of a minimum width that must adjoin clear floor space at every appliance and fixture, with turning space in the kitchen and baths; the editor cannot draw a route, reserve clear floor space, or verify the route reaches every fixture"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the wood deck is an exterior space attached to the unit and joined to it by the accessible route, not an enclosed interior room"
+    }
+  ]
+}

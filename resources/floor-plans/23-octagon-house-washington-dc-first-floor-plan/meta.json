@@ -1,0 +1,53 @@
+{
+  "ordinal": 23,
+  "slug": "octagon-house-washington-dc-first-floor-plan",
+  "title": "The Octagon House, Washington DC (HABS DC-25, first floor plan, sheet 3)",
+  "image_file": "octagon-house-washington-dc-first-floor-plan.jpg",
+  "building_type": "single-family house (octagonal / curved-wall mansion)",
+  "architectural_style": "Federal (octagon-form town house, William Thornton, 1799-1801)",
+  "era_or_year": "1799-1801; HABS drawings ca. 2004",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/dc0195/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/dc/dc0100/dc0195/sheet/00003v.jpg",
+  "license": "US Government Work / Public Domain",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey (HABS DC-25); original architect William Thornton",
+  "rightsholder_or_source": "Library of Congress HABS (Prints & Photographs Division)",
+  "research_notes": "Floor-plan sheet is sheet 3 of 12 drawing sheets in resource 1 (00003v.jpg = First Floor Plan). Sheet 2 (00002v.jpg) is the Basement floor plan with the same splayed octagonal geometry. The item also has 175 photos; ignore those for plan purposes.",
+  "research_features": "Outstanding curved-wall / non-orthogonal test case: a circular entry foyer (30 ft diameter) at the apex of two splayed wings set at an oblique angle, semicircular stair, angled dining and drawing rooms, fully dimensioned, drawn within its corner site at 18th & New York Ave. Sheet 2 (basement plan) is an equally strong curved/splayed plan if a second is wanted.",
+  "feature_highlights": [
+    "not actually eight-sided: a round entry foyer at a corner-lot apex with two wings splayed at an oblique angle (a bow-tie/wide-V footprint)",
+    "circular Entry Foyer, 30 ft diameter, fronted by a curved semicircular bowed exterior wall",
+    "major rooms (Dining Room, Drawing Room) drawn as angled parallelograms at the oblique splay angle, not orthogonal",
+    "curving stair on the centerline in a central Stair Hall",
+    "small service rooms (Butler, Coats) and a Bookstore flanking the foyer",
+    "fully dimensioned rooms (Dining 19'-9\"x28'-4\", Drawing 19'-11\"x27'-11\")",
+    "rendered corner site at 18th & New York Ave with walks, plantings, and street edges",
+    "HABS sheet with north arrow and graphic scale bar"
+  ],
+  "supported_examples": [
+    "straight walls at oblique (non-orthogonal) angles for the splayed wings",
+    "custom-polygon room override for the angled parallelogram wings and service rooms",
+    "rooms with names and labels (Dining Room, Drawing Room, Stair Hall, Butler, Coats)",
+    "linear point-to-point dimensions in imperial units",
+    "raster underlay with scale-bar calibration"
+  ],
+  "roadmap_examples": [
+    "curving stair geometry in the stair hall (named-but-deferred for spiral/winding stairs)",
+    "site metadata for the corner lot"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the 30 ft round entry foyer has a truly curved, semicircular exterior wall that a straight-segment wall model can only approximate by faceting; the foyer is a genuine round room"
+    },
+    {
+      "slug": "site-and-landscape-plan",
+      "why": "the sheet draws the building's placement on its real corner lot with walks, plantings, and street edges as site geometry, which is not representable (only textual site metadata is on the roadmap)"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the drawing carries a north arrow and a graphic scale bar as plan annotations"
+    }
+  ]
+}
