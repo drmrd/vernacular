@@ -2,7 +2,11 @@
 // naming-convention rule is scoped off for these intentionally-namespaced literal keys.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import { createStrictValidator, type ExtensionSchemaRegistry } from './strict-profile'
+import {
+  createStrictValidator,
+  isReverseDnsNamespace,
+  type ExtensionSchemaRegistry,
+} from './strict-profile'
 
 const coreSchema = {
   type: 'object',
@@ -46,5 +50,20 @@ describe('createStrictValidator registered namespaces', () => {
       ],
     }
     expect(validate(document).valid).toBe(false)
+  })
+})
+
+describe('reverse-DNS namespace keys', () => {
+  it('accepts a well-formed reverse-DNS key', () => {
+    expect(isReverseDnsNamespace('com.example.solar')).toBe(true)
+  })
+
+  it('rejects a key without a dot', () => {
+    expect(isReverseDnsNamespace('solar')).toBe(false)
+  })
+
+  it('reports a malformed namespace key under the strict profile', () => {
+    const validate = createStrictValidator(coreSchema, new Map())
+    expect(validate({ meta: {}, extensions: { solar: { kw: 6 } } }).valid).toBe(false)
   })
 })
