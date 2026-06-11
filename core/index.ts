@@ -381,8 +381,8 @@ export { mixColors, nearestColor, perceptualDistance } from './color/operations'
 export type { Palette } from './registries/palettes'
 export { PALETTE_REGISTRY_VERSION, builtinPalettes } from './registries/palettes'
 export type { ProjectPalette } from './model/types'
-export type { PaintAssignment, SurfaceRef } from './model/paint'
-export { surfaceKey } from './model/paint'
+export type { SurfaceRef, SurfaceTreatment } from './model/paint'
+export { solidTreatment, surfaceKey } from './model/paint'
 export { resolveSurfacePaint } from './paint/resolve-surface-paint'
 export type { LatLong, Obstruction, Site } from './model/site'
 export type {
@@ -406,13 +406,14 @@ export {
   renameProjectPalette,
 } from './commands/handlers/palette-commands'
 export type {
-  AssignSurfacePaintParams,
+  AssignSurfaceTreatmentParams,
   ClearSurfacePaintParams,
 } from './commands/handlers/paint-commands'
 export {
   ASSIGN_SURFACE_PAINT,
   CLEAR_SURFACE_PAINT,
   assignSurfacePaint,
+  assignSurfaceTreatment,
   clearSurfacePaint,
   registerPaintCommands,
 } from './commands/handlers/paint-commands'
