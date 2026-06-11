@@ -43,6 +43,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Integration-acceptance audit
+        run: pnpm integration:audit
+
       - name: Build
         run: pnpm build
 
