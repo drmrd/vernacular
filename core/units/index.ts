@@ -23,6 +23,7 @@ export {
   lengthFormatOptions,
 } from './preferences'
 export { formatArea } from './format-area'
+export { formatAdaptiveLength } from './format-adaptive-length'
 export type { FormatLengthOptions } from './format-length'
 export { formatLength } from './format-length'
 export type { AssumedUnit, ParseLengthOptions } from './parse-length'
