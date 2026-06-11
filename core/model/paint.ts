@@ -8,7 +8,8 @@ import type { Color } from '../color/color'
  * the painted preview reads the paint store keyed below.
  */
 export type SurfaceRef =
-  | { kind: 'wall-face'; wallId: string; side: 'left' | 'right' }
+  // `region` is the optional face-subdivision seam (ADR-0052); absent means the whole face.
+  | { kind: 'wall-face'; wallId: string; side: 'left' | 'right'; region?: string }
   | { kind: 'floor'; floorId: string }
   | { kind: 'ceiling'; floorId: string }
 
@@ -24,7 +25,9 @@ export function solidTreatment(color: Color, finishId: string): SurfaceTreatment
 export function surfaceKey(ref: SurfaceRef): string {
   switch (ref.kind) {
     case 'wall-face':
-      return `wall-face:${ref.wallId}:${ref.side}`
+      return ref.region === undefined
+        ? `wall-face:${ref.wallId}:${ref.side}`
+        : `wall-face:${ref.wallId}:${ref.side}:${ref.region}`
     case 'floor':
       return `floor:${ref.floorId}`
     case 'ceiling':
