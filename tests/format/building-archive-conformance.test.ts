@@ -2,7 +2,7 @@
 // Pure byte/zip logic; node aligns Uint8Array realms with the fflate-backed codec.
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { createDocumentValidator } from '../../core'
 import {
   buildAttributions,
@@ -33,9 +33,20 @@ const underlay = document.floors[0].underlays[0] as {
 const contentHash = underlay.source.image.contentHash
 
 describe('Tier-0 corpus plan packed into a conformant .building archive', () => {
-  const attributions = buildAttributions(meta)
-  const entries = buildBuildingArchiveEntries({ document, rasterBytes, contentHash, attributions })
-  const unpacked = unzipFolder(zipFolder(entries))
+  // Pack and unpack once through the real codec inside the Vitest lifecycle, so a codec
+  // failure is attributed to this suite rather than crashing test collection.
+  let unpacked: Map<string, Uint8Array>
+
+  beforeAll(() => {
+    const attributions = buildAttributions(meta)
+    const entries = buildBuildingArchiveEntries({
+      document,
+      rasterBytes,
+      contentHash,
+      attributions,
+    })
+    unpacked = unzipFolder(zipFolder(entries))
+  })
 
   it('embeds a CORE-valid Document as vernacular.json', () => {
     const bytes = unpacked.get('vernacular.json')
@@ -44,7 +55,7 @@ describe('Tier-0 corpus plan packed into a conformant .building archive', () => 
     expect(validate(parsed).valid).toBe(true)
   })
 
-  it('rides the underlay raster as a content-addressed asset', () => {
+  it('stores the underlay raster under assets/<contentHash>', () => {
     const asset = unpacked.get(`assets/${contentHash}`)
     expect(asset).toBeDefined()
     expect(asset).toEqual(rasterBytes)
