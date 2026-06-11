@@ -89,7 +89,7 @@ This slice renders these three slots **empty** (the `EmptyState` placeholder). T
 
 ---
 
-## File Structure
+## File structure
 
 All paths are relative to the worktree root (`/Users/dan/workspace/vernacular.wt/app-layout-shell/`).
 
@@ -1907,7 +1907,7 @@ git commit --allow-empty -m "refactor: theme provider wiring (no changes needed)
 
 ---
 
-## Self-Review
+## Self-review
 
 **Spec and ADR coverage.** ADR-0044 user-experience foundation: "the layout shell" is the in-scope deliverable (Slices 4 and 5); tokens/theming/primitives/empty states are the consumed foundation. Spec section 7.7 (theme via CSS custom properties, system follows `prefers-color-scheme`): satisfied by wrapping in the existing `ThemeProvider` (Task 14), which loads `tokens.css` and resolves the theme. Section 6.13 and 7.9 (semantic UI, ARIA roles and labels, keyboard navigation, `prefers-reduced-motion`): the frame's regions are landmarks with labels (Task 8), collapse uses `aria-expanded` (Task 9), resize uses keyboard-operable `separator`s with `aria-orientation`/`aria-valuenow` (Task 10), and the consumed tokens already honor `prefers-reduced-motion` and `prefers-contrast`. Section 6.6 (a 3D view pane in the frame): the `SceneCanvas` 3D preview region is carried into the frame's `main` slot unchanged (Task 12), so the layout reserves the central area for both the 2D plan and the 3D preview the camera/navigation work renders into.
 

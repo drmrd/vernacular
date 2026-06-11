@@ -173,7 +173,7 @@ className="editor-shell__preview"><SceneCanvas /></section>} />`. In `Keybinding
 - Keep `editor/shell/editor-shell.test.tsx` passing (it renders `EditorShell` within
   the providers; `ViewModeProvider` is now internal). If a shell test assertion about
   the always-on 3D preview breaks, STOP and report (the default mode is now 'plan', so
-  the preview region is no longer present on first render - this is the intended
+  the preview region is no longer present on first render, which is the intended
   behavior change, and that assertion must move into the wiring change or be reported).
 
 Then verify the chromium journey passes (`pnpm build` + `pnpm exec playwright test

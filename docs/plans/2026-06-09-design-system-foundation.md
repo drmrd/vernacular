@@ -20,7 +20,7 @@ The token _resolution_ logic (which theme is active given a stored preference an
 
 ---
 
-## File Structure
+## File structure
 
 All paths are relative to the repository root (`/Users/dan/workspace/vernacular.wt/design-system/`). Every file is **new**. No existing file is modified by Tasks 1 through 6. The single optional wiring touch is called out explicitly in Task 7 and is gated behind a clear coordination note.
 

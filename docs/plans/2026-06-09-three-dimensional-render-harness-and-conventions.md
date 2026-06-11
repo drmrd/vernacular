@@ -27,7 +27,7 @@
 
 ---
 
-## File Structure
+## File structure
 
 **New pure-core modules (no React, no Three.js):**
 
@@ -914,7 +914,7 @@ Run: `pnpm rgb:audit` (range `origin/main..HEAD`) to confirm each behavior lande
 
 ---
 
-## Self-Review
+## Self-review
 
 - **Spec coverage:** WebGPU runner (Task 1), visual harness (Task 8), Node geometry + scene-tree helpers (Task 7), camera-framing helper with empty-scene fallback (Task 5), and the coordinate/datum/winding conventions (Tasks 2, 3, 4) and contour types (Task 6) all map to foundation spec sections 2.1, 2.2, 2.3, 3.2, 6.1, 6.2, and 7 (slice 0). The wall-exterior-face normal and the rectangle void generator are explicitly deferred to slices 1 and 2 against these conventions.
 - **Placeholder scan:** Task 1 and Task 8 contain genuine empirical decision points (the verified flag set; the fixture mechanism) that cannot be pre-decided without running on this machine and reading the boot path; both give concrete candidate sets and a decision procedure rather than "TBD".

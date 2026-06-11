@@ -164,7 +164,7 @@ Expected: no errors referencing `.storybook/*`. If TypeScript complains about St
 
 ### Task 4: Write the App starter story
 
-Storybook is a documentation surface for components. The App shell is the only meaningful component today; the story serves as a smoke test for the Storybook pipeline.
+Storybook is a documentation surface for components. The App shell is the only meaningful component today; the story is a smoke test for the Storybook pipeline.
 
 - [ ] **Step 1: Create `src/App.stories.tsx`**
 

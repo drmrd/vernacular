@@ -5,8 +5,8 @@
 > `/clean-code-review` -> `/refactor`). Each cycle is one Conventional Commit
 > sequence: `test:` -> `feat:` -> `refactor:`.
 
-**Goal:** Add the editor's interaction spine - a single command registry that the
-keybinding layer and a command palette both read - and wire undo, redo, delete, and
+**Goal:** Add the editor's interaction spine, a single command registry that the
+keybinding layer and a command palette both read, and wire undo, redo, delete, and
 deselect through it with visible controls and keyboard shortcuts, so those
 capabilities become reachable from the assembled editor. Two journey tests flip
 `undo-redo` and `delete-selection` to `required`.
@@ -28,7 +28,7 @@ engine change beyond the session interface.
 
 - `core` `Dispatcher` already has `undo()`, `redo()`, `canUndo()`, `canRedo()`.
 - bridge `EditorSession` (`bridge/session/editor-session.ts`) exposes `dispatch`,
-  `undo`, `redo`, `getProject`, `getSceneGraph`, `subscribe` - but NOT `canUndo`/
+  `undo`, `redo`, `getProject`, `getSceneGraph`, `subscribe`, but not `canUndo`/
   `canRedo`. The undo/redo controls need them.
 - Selection is `SelectionStore` (`getSelectedIds()`, `clear()`, ...). The active
   floor id is the raw floor id from `useActiveFloorId()`.
