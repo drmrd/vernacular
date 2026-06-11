@@ -5,6 +5,7 @@
  * nothing but re-export statements. */
 export type {
   Dimension,
+  Extensions,
   Floor,
   Opening,
   OpeningOrientation,
