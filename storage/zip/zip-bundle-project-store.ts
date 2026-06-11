@@ -23,7 +23,7 @@ async function collectFilePaths(directory: DirectoryPort, prefix: string): Promi
 
 /**
  * Single-project ProjectStore bound to one id, backed by an in-memory expansion of a
- * .house.zip bundle. Loading and saving delegate to a FolderProjectStore over the same
+ * .building bundle. Loading and saving delegate to a FolderProjectStore over the same
  * directory; exportBundle repacks the current directory contents into bundle bytes.
  */
 export class ZipBundleProjectStore implements ProjectStore {
