@@ -46,7 +46,7 @@ function sampleProject(name: string): Project {
   const project = createEmptyProject({
     name,
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0',
   })
   return { ...project, floors: [createFloor('Ground')] }

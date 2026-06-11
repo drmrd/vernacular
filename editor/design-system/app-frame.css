@@ -1,0 +1,88 @@
+.ds-app-frame {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'header header header'
+    'rail main inspector';
+  gap: var(--space-3);
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+}
+
+.ds-app-frame__header {
+  grid-area: header;
+}
+.ds-app-frame__rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  width: var(--ds-rail-size, 11rem);
+}
+.ds-app-frame__main {
+  grid-area: main;
+  min-width: 0;
+}
+.ds-app-frame__inspector {
+  grid-area: inspector;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  width: var(--ds-inspector-size, 15rem);
+}
+
+/* Medium: drop the rail; keep the header strip and the inspector. */
+.ds-app-frame[data-breakpoint='medium'] {
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'header header'
+    'main inspector';
+}
+
+.ds-app-frame[data-breakpoint='medium'] .ds-app-frame__rail {
+  display: none;
+}
+
+/* Narrow: stack every region in one column. */
+.ds-app-frame[data-breakpoint='narrow'] {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    'header'
+    'main'
+    'inspector';
+}
+
+.ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__rail {
+  display: none;
+}
+
+/* Collapsing a pane overrides its live resize width with a thin fixed strip. */
+.ds-app-frame__rail[data-collapsed='true'] {
+  width: var(--space-5);
+}
+
+.ds-app-frame__inspector[data-collapsed='true'] {
+  width: var(--space-5);
+}
+
+.ds-app-frame__collapse {
+  align-self: flex-end;
+}
+
+.ds-app-frame__resize {
+  align-self: stretch;
+  width: var(--space-1);
+  margin-left: auto;
+  border-radius: var(--radius-sm);
+  background: var(--color-border);
+  cursor: col-resize;
+}
+
+.ds-app-frame__resize:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}

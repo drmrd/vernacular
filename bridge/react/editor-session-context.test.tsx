@@ -13,7 +13,12 @@ function Probe() {
 describe('useEditorSession', () => {
   it('returns the session provided by EditorSessionProvider', () => {
     const session = createEditorSession(
-      createEmptyProject({ name: 'Provided', units: 'metric', era: 'modern', appVersion: '0.0.0' }),
+      createEmptyProject({
+        name: 'Provided',
+        units: 'metric',
+        period: 'modern',
+        appVersion: '0.0.0',
+      }),
     )
 
     render(

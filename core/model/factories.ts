@@ -3,20 +3,32 @@ import { getEntry } from '../registries/registry'
 import type { AssetReference } from './asset-reference'
 import type {
   Dimension,
-  EraId,
   Floor,
   Opening,
   OpeningOrientation,
+  PeriodId,
   Point,
   Project,
+  Stair,
+  StairConnection,
+  StairRunType,
+  StyleTag,
   Underlay,
   UnitSystem,
   Wall,
 } from './types'
 
 // v2 introduces the optional top-level `roomOverrides` map; v3 adds the
-// per-floor `openings` array; v4 adds the per-floor `dimensions` array.
-export const CURRENT_SCHEMA_VERSION = 4
+// per-floor `openings` array; v4 adds the per-floor `dimensions` array; v5
+// renames the project `era` field to `period`, adds the optional project
+// `style`, and adds the optional per-floor `periodOverride` and `styleOverride`
+// (the per-room period, style, purpose, and sub-purpose ride inside the optional
+// roomOverrides map and need no migration); v6 adds the top-level floor-spanning
+// `stairs` array; v7 replaces each underlay's bare `image` with a discriminated
+// `source`, wrapping the existing image in a raster source; v8 adds the optional
+// top-level `palettes`, `paint`, and `site` fields (all absent-by-default, so the
+// migration is a structural pass-through).
+export const CURRENT_SCHEMA_VERSION = 8
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -24,7 +36,8 @@ export const DEFAULT_CEILING_HEIGHT_MM = 2438
 export interface NewProjectOptions {
   name: string
   units: UnitSystem
-  era: EraId
+  period: PeriodId
+  style?: StyleTag
   appVersion: string
 }
 
@@ -33,12 +46,14 @@ export function createEmptyProject(options: NewProjectOptions): Project {
     meta: {
       name: options.name,
       units: options.units,
-      era: options.era,
+      period: options.period,
+      ...(options.style !== undefined ? { style: options.style } : {}),
       schemaVersion: CURRENT_SCHEMA_VERSION,
       appVersion: options.appVersion,
       registryVersions: {},
     },
     floors: [],
+    stairs: [],
   }
 }
 
@@ -143,7 +158,7 @@ export interface NewUnderlayOptions {
 export function createUnderlay(options: NewUnderlayOptions): Underlay {
   return {
     id: globalThis.crypto.randomUUID(),
-    image: options.image,
+    source: { kind: 'raster', image: options.image },
     width: options.width,
     height: options.height,
     placement: {
@@ -169,5 +184,32 @@ export function createDimension(options: NewDimensionOptions): Dimension {
     start: options.start,
     end: options.end,
     offset: options.offset ?? 0,
+  }
+}
+
+// A nominal residential stair: 36 in wide (914 mm) by a 3000 mm plan footprint,
+// rounded to whole millimeters.
+export const DEFAULT_STAIR_WIDTH_MM = 914
+export const DEFAULT_STAIR_LENGTH_MM = 3000
+
+export interface NewStairOptions {
+  runType?: StairRunType
+  position?: Point
+  width?: number
+  length?: number
+  rotation?: number
+  connection: StairConnection
+  id?: string
+}
+
+export function createStair(options: NewStairOptions): Stair {
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    runType: options.runType ?? 'straight',
+    position: options.position ?? { x: 0, y: 0 },
+    width: options.width ?? DEFAULT_STAIR_WIDTH_MM,
+    length: options.length ?? DEFAULT_STAIR_LENGTH_MM,
+    rotation: options.rotation ?? 0,
+    connection: options.connection,
   }
 }

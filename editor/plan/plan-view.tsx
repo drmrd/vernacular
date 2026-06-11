@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
+  type Point,
   type SceneGraph,
   type UnitPreferences,
   type UnitSystem,
@@ -26,8 +27,13 @@ import { singleSelectedWall } from './selected-wall'
 import { composePointerHandlers, type ComposedPointerHandlers } from './compose-pointer-handlers'
 import { useDimensionTool, type DimensionTool } from './use-dimension-tool'
 import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
-import { usePlanInteraction, type PlanInteraction } from './use-plan-interaction'
+import {
+  usePlanInteraction,
+  type PlanInteraction,
+  type PlanInteractionDeps,
+} from './use-plan-interaction'
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
+import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useSelectionKeyboard } from './use-selection-keyboard'
@@ -44,6 +50,8 @@ import { DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
 const PLAN_WIDTH = 800
 const PLAN_HEIGHT = 600
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
+
+type CanvasRef = RefObject<HTMLCanvasElement | null>
 
 // A project-level unit-preferences store is later work; this slice picks the
 // default preferences for the project's units (see the slice deferrals).
@@ -70,6 +78,8 @@ interface PlanScene {
   underlays: readonly DrawableUnderlay[]
   openings: readonly DrawableOpening[]
   dimensions: readonly DrawableDimension[]
+  // Stairs drawn over the room fills and beneath the wall strokes.
+  stairs: NonNullable<DrawPlanOptions['stairs']>
   // The live calibration measurement segment, or undefined when not measuring.
   calibration: PreviewSegment | undefined
   // The translated ghost of the selection during a move-drag, empty otherwise.
@@ -95,6 +105,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     underlays: scene.underlays,
     openings: scene.openings,
     dimensions: scene.dimensions,
+    stairs: scene.stairs,
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -110,7 +121,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
  * object, which would rasterize on every render; the scene members are listed
  * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
  */
-function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: PlanScene): void {
+function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
   const options = buildDrawOptions(scene)
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
@@ -132,6 +143,7 @@ function usePlanRedraw(canvasRef: RefObject<HTMLCanvasElement | null>, scene: Pl
     scene.underlays,
     scene.openings,
     scene.dimensions,
+    scene.stairs,
     scene.calibration,
     scene.ghost,
   ])
@@ -194,6 +206,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
     underlays: underlayLayer.underlays,
     openings: openingLayer.drawables,
     dimensions: inputs.dimensions,
+    stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
     ghost: inputs.selectionMove.ghost,
   }
@@ -206,13 +219,50 @@ interface PlanController {
 }
 
 /**
+ * The visible underlays' footprint corners that the wall tool can snap to in
+ * trace mode, or undefined when trace mode is off so snapping is byte-for-byte
+ * unchanged.
+ */
+function floorTracePoints(graph: SceneGraph, traceMode: boolean): readonly Point[] | undefined {
+  return traceMode
+    ? graph.underlays.filter((underlay) => underlay.visible).flatMap(underlayTracePoints)
+    : undefined
+}
+
+/**
+ * Builds the wall-tool interaction deps, spreading trace points in only when
+ * trace mode produced some so the field stays absent under
+ * exactOptionalPropertyTypes when off.
+ */
+function planInteractionDeps(
+  base: Omit<PlanInteractionDeps, 'walls' | 'tracePoints'>,
+  graph: SceneGraph,
+  traceMode: boolean,
+): PlanInteractionDeps {
+  const tracePoints = floorTracePoints(graph, traceMode)
+  return { ...base, walls: graph.walls, ...(tracePoints ? { tracePoints } : {}) }
+}
+
+/**
+ * The in-app clipboard backing copy/cut/paste; created once and held for the
+ * session, mirroring the bridge-owned selection store (it stays outside undo).
+ * The ref starts null and is lazily filled on first render, so the store is
+ * never rebuilt on a re-render; the returned value is non-null from here on.
+ */
+function useClipboardStore(): ClipboardStore {
+  const clipboardRef = useRef<ClipboardStore | null>(null)
+  clipboardRef.current ??= createClipboardStore()
+  return clipboardRef.current
+}
+
+/**
  * Resolves all the plan-editing hooks (pan/zoom, wall tool, hit-test selection,
  * endpoint-drag wall editing, underlay layer, calibration, opening layer) plus the
  * active unit preferences into the flat layer set the scene and pointer handlers
  * consume. The pure decision logic lives in the tested modules; this binds them to
  * the session, selection, active tool, and viewport.
  */
-function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLayers {
+function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const session = useEditorSession()
   const graph = useSceneGraph()
   const selection = useSelection()
@@ -220,18 +270,14 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
   const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
-  const interaction = usePlanInteraction({ session, walls: graph.walls, tool, viewport })
+  const deps = planInteractionDeps({ session, tool, viewport }, graph, traceMode)
+  const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
   const dimensions = toDrawableDimensions(graph.dimensions, selectedIds)
   const planSelection = usePlanSelection({ graph, selection, tool, viewport })
-  // The in-app clipboard backs copy/cut/paste; created once and held for the
-  // session, mirroring the bridge-owned selection store (it stays outside undo).
-  // The ref starts null and is lazily filled on first render, so the store is
-  // never rebuilt on a re-render; reads below are non-null from here on.
-  const clipboardRef = useRef<ClipboardStore | null>(null)
-  clipboardRef.current ??= createClipboardStore()
+  const clipboard = useClipboardStore()
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
-  useSelectionKeyboard({ session, selection, clipboard: clipboardRef.current, selectedIds, tool })
+  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
@@ -262,8 +308,8 @@ function usePlanLayers(canvasRef: RefObject<HTMLCanvasElement | null>): PlanLaye
  * pointer handlers. Coverage-excluded glue validated by the wall-drawing
  * end-to-end spec, since jsdom has no 2D Canvas.
  */
-function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): PlanController {
-  const layers = usePlanLayers(canvasRef)
+function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanController {
+  const layers = usePlanLayers(canvasRef, traceMode)
   usePlanRedraw(canvasRef, buildScene(layers))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
@@ -300,7 +346,8 @@ function usePlanController(canvasRef: RefObject<HTMLCanvasElement | null>): Plan
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef)
+  const [traceMode, setTraceMode] = useState(false)
+  const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceMode)
 
   // The stage is a positioned wrapper sized to the Canvas so the absolutely
   // positioned overlay (inset: 0) registers exactly over it. The canvas element,
@@ -319,6 +366,14 @@ export function PlanView() {
         onPointerUp={pointerHandlers.onPointerUp}
         onPointerLeave={pointerHandlers.onPointerLeave}
       />
+      <label className="plan-trace-toggle">
+        <input
+          type="checkbox"
+          checked={traceMode}
+          onChange={(event) => setTraceMode(event.target.checked)}
+        />{' '}
+        Trace underlay
+      </label>
       <PlanOverlay {...overlay} />
     </div>
   )

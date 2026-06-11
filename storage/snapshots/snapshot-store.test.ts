@@ -11,7 +11,7 @@ function projectNamed(name: string): Project {
   const project = createEmptyProject({
     name: 'Snap',
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0',
   })
   project.meta.name = name

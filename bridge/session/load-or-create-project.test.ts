@@ -7,7 +7,7 @@ function fallback(): Project {
   return createEmptyProject({
     name: 'Fresh',
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0',
   })
 }
@@ -26,7 +26,7 @@ describe('loadOrCreateProject', () => {
     const saved = createEmptyProject({
       name: 'Saved',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.0.0',
     })
     await store.save('current', saved)

@@ -192,6 +192,21 @@ describe('snapPoint priority ordering', () => {
   })
 })
 
+describe('snapPoint underlay trace snapping', () => {
+  it('snaps to a nearby underlay trace point when trace points are supplied', () => {
+    const result = snapPoint(
+      { x: 1005, y: 2003 },
+      { walls: [], gridSpacingMm: 0, toleranceMm: 20, tracePoints: [{ x: 1000, y: 2000 }] },
+    )
+    expect(result).toEqual({ point: { x: 1000, y: 2000 }, kind: 'trace' })
+  })
+
+  it('does not snap to a trace point when none are supplied', () => {
+    const result = snapPoint({ x: 1005, y: 2003 }, { walls: [], gridSpacingMm: 0, toleranceMm: 20 })
+    expect(result).toBeNull()
+  })
+})
+
 describe('snapPoint with nothing in range', () => {
   it('returns null when the grid is disabled, no feature is in range, and no origin is set', () => {
     const wall = wallNode({ start: { x: 9000, y: 9000 }, end: { x: 9500, y: 9000 } })

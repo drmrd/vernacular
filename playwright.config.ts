@@ -22,9 +22,47 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /scene-visual-regression\.spec\.ts/,
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testIgnore: /scene-visual-regression\.spec\.ts/,
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testIgnore: /scene-visual-regression\.spec\.ts/,
+    },
+    {
+      // Hardware-GPU runner for the three-dimensional scene visual harness. Uses the
+      // full Chrome for Testing build (channel 'chromium') with the new headless mode,
+      // which carries the GPU stack the stripped-down default headless shell omits, and
+      // selects the Apple Metal ANGLE backend so WebGL 2 renders on the real GPU rather
+      // than a software rasterizer. The harness forces three's WebGL 2 backend so the
+      // committed baseline (scene-empty-webgl.png) is a hardware-WebGL render that never
+      // collides with a future WebGPU baseline. Empirically verified on the development
+      // Mac on 2026-06-09: under these flags navigator.gpu is present and WebGPU also
+      // renders, but the baseline is pinned to the WebGL backend by product decision.
+      // See the slice-0 ADR for the durable record of this verification.
+      name: 'scene-webgl',
+      testMatch: /scene-visual-regression\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        launchOptions: {
+          args: [
+            '--enable-unsafe-webgpu',
+            '--use-angle=metal',
+            '--use-gpu-in-tests',
+            '--ignore-gpu-blocklist',
+          ],
+        },
+      },
+    },
   ],
   webServer: {
     command: 'pnpm preview --port 4173 --strictPort',

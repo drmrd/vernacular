@@ -6,7 +6,7 @@ export function createInitialProject(): Project {
   const project = createEmptyProject({
     name: 'Untitled project',
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion,
   })
   return { ...project, floors: [createFloor('Ground')] }

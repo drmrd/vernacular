@@ -6,6 +6,7 @@ import {
   registerOpeningCommands,
   registerProjectCommands,
   registerRoomCommands,
+  registerStairCommands,
   registerUnderlayCommands,
   registerWallCommands,
   type Command,
@@ -46,6 +47,7 @@ export function createEditorSession(project: Project): EditorSession {
   registerUnderlayCommands(registry)
   registerOpeningCommands(registry)
   registerDimensionCommands(registry)
+  registerStairCommands(registry)
   const dispatcher = new Dispatcher<Project>(project, registry)
   const notifier = createChangeNotifier()
   const sceneGraph = createMemoizedSceneGraph(project)

@@ -10,7 +10,7 @@ function projectNamed(name: string): Project {
   return createEmptyProject({
     name,
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0',
   })
 }

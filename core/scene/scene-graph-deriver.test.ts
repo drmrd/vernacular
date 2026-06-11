@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, createWall } from '../model/factories'
+import { createEmptyProject, createFloor, createStair, createWall } from '../model/factories'
 import type { Floor, Project } from '../model/types'
 import { ROOM_ID_PREFIX } from '../topology/rooms'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
@@ -8,7 +8,7 @@ function projectWith(floors: Floor[]): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
   project.floors = floors
@@ -40,6 +40,26 @@ describe('createSceneGraphDeriver', () => {
     expect(second.nodes[0]).toBe(first.nodes[0])
     expect(second.nodes[1]).not.toBe(first.nodes[1])
     expect(second.nodes[1]!.name).toBe('Attic')
+  })
+})
+
+describe('createSceneGraphDeriver stairs', () => {
+  it('reuses stair nodes for an unchanged stairs reference and rebuilds on change', () => {
+    const stair = createStair({ id: 's1', connection: { fromFloorId: 'f1', toFloorId: 'f2' } })
+    const project = projectWith([
+      createFloor('Ground', { id: 'f1' }),
+      createFloor('Upper', { id: 'f2' }),
+    ])
+    const withStairs = { ...project, stairs: [stair] }
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(withStairs)
+    const second = derive(withStairs)
+
+    expect(second.stairs).toBe(first.stairs)
+
+    const replaced = { ...withStairs, stairs: [stair] }
+    expect(derive(replaced).stairs).not.toBe(first.stairs)
   })
 })
 

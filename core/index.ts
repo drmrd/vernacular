@@ -1,16 +1,29 @@
+/* eslint-disable max-lines --
+ * Public barrel: a flat aggregation of the core package's public re-exports. It
+ * grows with the API surface (five parallel foundation tracks now contribute to
+ * it), and the per-file line cap is not a meaningful constraint on a file that is
+ * nothing but re-export statements. */
 export type {
   Dimension,
-  EraId,
   Floor,
   Opening,
   OpeningOrientation,
+  PeriodId,
   Point,
   Project,
   ProjectMeta,
   RoomOverride,
+  RoomPurposeId,
   SchemaVersion,
+  Stair,
+  StairConnection,
+  StairRunType,
+  StyleId,
+  StyleTag,
   Underlay,
+  UnderlayKind,
   UnderlayPlacement,
+  UnderlaySource,
   UnitSystem,
   Wall,
 } from './model/types'
@@ -19,6 +32,7 @@ export type {
   NewFloorOptions,
   NewOpeningOptions,
   NewProjectOptions,
+  NewStairOptions,
   NewUnderlayOptions,
   NewWallOptions,
 } from './model/factories'
@@ -27,21 +41,45 @@ export {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
+  DEFAULT_STAIR_LENGTH_MM,
+  DEFAULT_STAIR_WIDTH_MM,
   DEFAULT_UNDERLAY_MM_PER_PIXEL,
   DEFAULT_WALL_THICKNESS_MM,
   createDimension,
   createEmptyProject,
   createFloor,
   createOpening,
+  createStair,
   createUnderlay,
   createWall,
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
+export type {
+  AssetFootprint,
+  AssetResolution,
+  MissingAsset,
+  ResolvedAsset,
+  ScopeKind,
+} from './assets/asset-resolution'
+export {
+  SCOPE_PRECEDENCE,
+  missingAsset,
+  orderScopesByPrecedence,
+  resolvedAsset,
+} from './assets/asset-resolution'
 export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
 export { FINISH_REGISTRY_VERSION, builtinFinishes } from './registries/finishes'
+export type { Period } from './registries/periods'
+export { PERIOD_REGISTRY_VERSION, builtinPeriods } from './registries/periods'
+export type { Style, StyleCategory } from './registries/styles'
+export { STYLE_REGISTRY_VERSION, builtinStyles } from './registries/styles'
+export type { RoomPurpose } from './registries/room-purposes'
+export { ROOM_PURPOSE_REGISTRY_VERSION, builtinRoomPurposes } from './registries/room-purposes'
+export { resolvePeriod } from './architecture-era/resolve-period'
+export { resolveStyle } from './architecture-era/resolve-style'
 export type {
   ElementCategory,
   ElementType,
@@ -58,23 +96,61 @@ export { DEFAULT_MAX_HISTORY, Dispatcher } from './commands/dispatcher'
 export type {
   AddFloorParams,
   RemoveFloorParams,
+  RenameFloorParams,
   RenameProjectParams,
+  ReorderFloorParams,
   SetFloorCeilingHeightParams,
+  SetFloorElevationParams,
+  SetFloorPeriodParams,
+  SetFloorStyleParams,
+  SetProjectPeriodParams,
+  SetProjectStyleParams,
   SetUnitsParams,
 } from './commands/handlers/project-commands'
 export {
   ADD_FLOOR,
   REMOVE_FLOOR,
+  RENAME_FLOOR,
   RENAME_PROJECT,
+  REORDER_FLOOR,
   SET_FLOOR_CEILING_HEIGHT,
+  SET_FLOOR_ELEVATION,
+  SET_FLOOR_PERIOD,
+  SET_FLOOR_STYLE,
+  SET_PROJECT_PERIOD,
+  SET_PROJECT_STYLE,
   SET_UNITS,
   addFloor,
   registerProjectCommands,
   removeFloor,
+  renameFloor,
   renameProject,
+  reorderFloor,
   setFloorCeilingHeight,
+  setFloorElevation,
+  setFloorPeriod,
+  setFloorStyle,
+  setProjectPeriod,
+  setProjectStyle,
   setUnits,
 } from './commands/handlers/project-commands'
+export type {
+  AddStairParams,
+  MoveStairParams,
+  RemoveStairParams,
+  SetStairRunTypeParams,
+} from './commands/handlers/stair-commands'
+export {
+  ADD_STAIR,
+  MOVE_STAIR,
+  REMOVE_STAIR,
+  SET_STAIR_RUN_TYPE,
+  addStair,
+  moveStair,
+  registerStairCommands,
+  removeStair,
+  setStairRunType,
+} from './commands/handlers/stair-commands'
 export type {
   AddWallParams,
   MoveWallEndpointParams,
@@ -162,15 +238,30 @@ export {
   translateEntities,
 } from './commands/handlers/transform-commands'
 export type {
+  SetRoomCeilingHeightParams,
   SetRoomCustomPolygonParams,
   SetRoomNameParams,
+  SetRoomPeriodParams,
+  SetRoomPurposeParams,
+  SetRoomStyleParams,
+  SetRoomSubPurposeParams,
 } from './commands/handlers/room-commands'
 export {
+  SET_ROOM_CEILING_HEIGHT,
   SET_ROOM_CUSTOM_POLYGON,
   SET_ROOM_NAME,
+  SET_ROOM_PERIOD,
+  SET_ROOM_PURPOSE,
+  SET_ROOM_STYLE,
+  SET_ROOM_SUB_PURPOSE,
   registerRoomCommands,
+  setRoomCeilingHeight,
   setRoomCustomPolygon,
   setRoomName,
+  setRoomPeriod,
+  setRoomPurpose,
+  setRoomStyle,
+  setRoomSubPurpose,
 } from './commands/handlers/room-commands'
 export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
@@ -180,12 +271,14 @@ export type {
   RoomSceneNode,
   SceneGraph,
   SceneNode,
+  StairSceneNode,
   UnderlaySceneNode,
   WallSceneNode,
 } from './scene/scene-graph'
 export {
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
+  STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
   WALL_NODE_PREFIX,
   deriveDimensionNode,
@@ -195,11 +288,19 @@ export {
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
+  deriveStairNodes,
   deriveUnderlayNode,
   deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene/scene-graph'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
+export type { Vector3, Bounds3 } from './scene/vector3'
+export { planToWorld } from './scene/plan-to-world'
+export type { CameraPose } from './scene/camera-framing'
+export { frameSceneCamera, DEFAULT_CAMERA_POSE } from './scene/camera-framing'
+export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
+export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
+export type { Contour, ContourSegment } from './scene/contour'
 export type {
   AssumedUnit,
   DecimalPrecision,
@@ -254,6 +355,7 @@ export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
+export { stairWellPolygon } from './topology/stair-well'
 export type { ClipboardSnapshot, InstantiatedEntities } from './clipboard/clipboard'
 export {
   buildClipboardSnapshot,
@@ -261,3 +363,69 @@ export {
   instantiateClipboard,
   serializeClipboard,
 } from './clipboard/clipboard'
+export type { ExportMediaType, ExportResult, Exporter } from './export/exporter'
+export type { PlanBounds, SvgView, SvgViewOptions } from './export/svg/svg-view'
+export { createSvgView, planContentBounds } from './export/svg/svg-view'
+export type { SvgPlanExportOptions } from './export/svg/svg-plan-exporter'
+export { SvgPlanExporter } from './export/svg/svg-plan-exporter'
+export type { LinearRgb, OkLab, Srgb } from './color/oklab'
+export { linearToSrgb, okLabToSrgb, srgbToLinear, srgbToOkLab } from './color/oklab'
+export { formatHex, parseHex } from './color/hex'
+export type { Color, NamedColor } from './color/color'
+export { colorFromHex, colorFromOkLab } from './color/color'
+export { mixColors, nearestColor, perceptualDistance } from './color/operations'
+export type { Palette } from './registries/palettes'
+export { PALETTE_REGISTRY_VERSION, builtinPalettes } from './registries/palettes'
+export type { ProjectPalette } from './model/types'
+export type { PaintAssignment, SurfaceRef } from './model/paint'
+export { surfaceKey } from './model/paint'
+export { resolveSurfacePaint } from './paint/resolve-surface-paint'
+export type { LatLong, Obstruction, Site } from './model/site'
+export type {
+  AddPaletteColorParams,
+  CreateProjectPaletteParams,
+  RemovePaletteColorParams,
+  RemoveProjectPaletteParams,
+  RenameProjectPaletteParams,
+} from './commands/handlers/palette-commands'
+export {
+  ADD_PALETTE_COLOR,
+  CREATE_PROJECT_PALETTE,
+  REMOVE_PALETTE_COLOR,
+  REMOVE_PROJECT_PALETTE,
+  RENAME_PROJECT_PALETTE,
+  addPaletteColor,
+  createProjectPalette,
+  registerPaletteCommands,
+  removePaletteColor,
+  removeProjectPalette,
+  renameProjectPalette,
+} from './commands/handlers/palette-commands'
+export type {
+  AssignSurfacePaintParams,
+  ClearSurfacePaintParams,
+} from './commands/handlers/paint-commands'
+export {
+  ASSIGN_SURFACE_PAINT,
+  CLEAR_SURFACE_PAINT,
+  assignSurfacePaint,
+  clearSurfacePaint,
+  registerPaintCommands,
+} from './commands/handlers/paint-commands'
+export type {
+  AddObstructionParams,
+  RemoveObstructionParams,
+  SetSiteLocationParams,
+  SetSiteNorthBearingParams,
+} from './commands/handlers/site-commands'
+export {
+  ADD_OBSTRUCTION,
+  REMOVE_OBSTRUCTION,
+  SET_SITE_LOCATION,
+  SET_SITE_NORTH_BEARING,
+  addObstruction,
+  registerSiteCommands,
+  removeObstruction,
+  setSiteLocation,
+  setSiteNorthBearing,
+} from './commands/handlers/site-commands'

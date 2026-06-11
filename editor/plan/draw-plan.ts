@@ -2,12 +2,14 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   type Point,
   type RoomSceneNode,
+  type StairSceneNode,
   type UnitPreferences,
   type WallSceneNode,
 } from '../../core'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { drawGhost } from './draw-ghost'
 import { drawOpening, type DrawableOpening } from './draw-opening'
+import { drawStair } from './draw-stair'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
@@ -61,6 +63,7 @@ export interface DrawPlanOptions {
   roomLabels?: RoomLabelOptions
   underlays?: readonly DrawableUnderlay[]
   openings?: readonly DrawableOpening[]
+  stairs?: readonly StairSceneNode[]
   dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
   ghost?: readonly PreviewSegment[]
@@ -145,6 +148,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
       selected: options.selectedIds.has(room.id),
     })
   }
+  // Stairs sit on top of the floor fills but below the wall strokes, like a room.
+  drawStairs(ctx, options)
   for (const wall of options.walls) {
     drawWall(ctx, wall, options)
   }
@@ -188,6 +193,13 @@ function drawPlanRulers(
 function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   for (const opening of options.openings ?? []) {
     drawOpening(ctx, opening, options.viewport)
+  }
+}
+
+/** Paint each stair's footprint over the floor fills but beneath the wall strokes. */
+function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  for (const stair of options.stairs ?? []) {
+    drawStair(ctx, stair, options.viewport)
   }
 }
 

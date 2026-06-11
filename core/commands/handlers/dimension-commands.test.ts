@@ -19,7 +19,7 @@ function projectWithTwoFloors(): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.0.0',
   })
   project.floors = [createFloor('Ground', { id: 'g' }), createFloor('Upper', { id: 'u' })]

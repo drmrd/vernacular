@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SceneGraph } from '../../core'
+import type { SceneGraph, UnderlaySceneNode } from '../../core'
 import type { AssetCache } from '../../bridge'
 import { underlaysNeedingDecode, type UnderlayRef } from './underlay-resolve'
 
@@ -31,6 +31,12 @@ async function resolveUnderlayBitmap(
     console.error('Failed to resolve underlay image', error)
     return false
   }
+}
+
+// Only raster underlays decode to a bitmap; document and scene sources resolve
+// through their own pipelines, so they contribute no decode ref here.
+function rasterDecodeRefs(node: UnderlaySceneNode): UnderlayRef[] {
+  return node.source.kind === 'raster' ? [{ contentHash: node.source.image.contentHash }] : []
 }
 
 interface DecodeDeps {
@@ -71,9 +77,7 @@ export function useResolveUnderlaysOnOpen(
     let cancelled = false
     const inFlight = inFlightRef.current
     const known = new Set<string>([...cache.keys(), ...inFlight])
-    const refs: UnderlayRef[] = graph.underlays.map((node) => ({
-      contentHash: node.image.contentHash,
-    }))
+    const refs: UnderlayRef[] = graph.underlays.flatMap(rasterDecodeRefs)
     const pending = underlaysNeedingDecode(refs, known)
     for (const contentHash of pending) {
       inFlight.add(contentHash)

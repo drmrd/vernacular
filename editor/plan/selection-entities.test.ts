@@ -44,6 +44,7 @@ function scene(walls: WallSceneNode[], extras: SceneExtras = {}): SceneGraph {
     underlays: [],
     openings: extras.openings ?? [],
     dimensions: extras.dimensions ?? [],
+    stairs: [],
   }
 }
 

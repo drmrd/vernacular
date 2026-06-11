@@ -14,7 +14,13 @@ import type { DrawableDimension } from './draw-dimension'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
 import { DEFAULT_METRIC_PREFERENCES } from '../../core'
-import type { DimensionSceneNode, OpeningSceneNode, RoomSceneNode, WallSceneNode } from '../../core'
+import type {
+  DimensionSceneNode,
+  OpeningSceneNode,
+  RoomSceneNode,
+  StairSceneNode,
+  WallSceneNode,
+} from '../../core'
 
 /** A minimal valid `drawPlan` options object that tests override per case. */
 function planOptions(overrides: Partial<Parameters<typeof drawPlan>[1]> = {}) {
@@ -264,6 +270,36 @@ describe('drawPlan dimensions', () => {
     expect(withDimension.ops.indexOf('fillText')).toBeGreaterThan(
       withDimension.ops.indexOf('stroke'),
     )
+  })
+})
+
+describe('drawPlan stairs', () => {
+  // A single straight stair run, sized like a typical residential flight. With no
+  // walls, rooms, underlays, grid, or rulers, the only stroke any draw call can
+  // record is the stair footprint, so a recorded 'stroke' proves drawPlan painted
+  // the stair passed in options.stairs.
+  // prettier-ignore
+  const straightStair: StairSceneNode = {
+    id: 'stair:s1', kind: 'stair', floorId: 'f', wellFloorId: 'f2',
+    runType: 'straight', position: { x: 0, y: 0 }, width: 1000, length: 3000, rotation: 0,
+  }
+
+  it('strokes each provided stair footprint above the otherwise empty plan', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, {
+      walls: [],
+      rooms: [],
+      viewport: { scale: DEFAULT_PLAN_SCALE },
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+      stairs: [straightStair],
+    })
+
+    // No walls, rooms, underlays, grid, or rulers means the stair footprint is the
+    // only thing that can stroke, so a recorded stroke is the stair being drawn.
+    expect(recorder.ops).toContain('stroke')
   })
 })
 

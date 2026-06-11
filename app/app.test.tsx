@@ -38,7 +38,7 @@ function projectWithWalls(name: string, wallCount: number): Project {
   const base = createEmptyProject({
     name,
     units: 'imperial',
-    era: 'modern',
+    period: 'modern',
     appVersion: '0.0.0-test',
   })
   return { ...base, floors: [createFloor('Ground', { walls })] }
@@ -98,6 +98,15 @@ describe('App boot and storage warnings', () => {
     await act(async () => {})
 
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('renders the editor inside a themed container', async () => {
+    stubCapableStorage()
+
+    render(<App store={new InMemoryProjectStore()} />)
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    expect(document.querySelector('[data-theme]')).not.toBeNull()
   })
 })
 

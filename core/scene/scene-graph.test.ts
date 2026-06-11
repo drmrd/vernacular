@@ -3,6 +3,7 @@ import type { AssetReference } from '../model/asset-reference'
 import {
   createEmptyProject,
   createFloor,
+  createStair,
   createUnderlay,
   createWall,
   DEFAULT_WALL_THICKNESS_MM,
@@ -21,7 +22,7 @@ function projectWithFloors(): Project {
   const project = createEmptyProject({
     name: 'House',
     units: 'metric',
-    era: 'victorian',
+    period: 'victorian',
     appVersion: '0.1.0',
   })
   project.floors = [
@@ -47,13 +48,36 @@ describe('deriveSceneGraph', () => {
   })
 })
 
+describe('deriveSceneGraph stairs', () => {
+  it('projects each stair into a stair node on its lower floor, recording the upper floor as its well', () => {
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      period: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [createFloor('Ground', { id: 'f1' }), createFloor('Upper', { id: 'f2' })]
+    project.stairs = [createStair({ id: 's1', connection: { fromFloorId: 'f1', toFloorId: 'f2' } })]
+
+    const graph = deriveSceneGraph(project)
+
+    expect(graph.stairs).toHaveLength(1)
+    expect(graph.stairs[0]).toMatchObject({
+      kind: 'stair',
+      floorId: 'f1',
+      wellFloorId: 'f2',
+      runType: 'straight',
+    })
+  })
+})
+
 describe('deriveSceneGraph walls', () => {
   it('derives a namespaced wall node per wall, carrying its floor id and geometry', () => {
     const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]
@@ -94,7 +118,7 @@ describe('deriveSceneGraph rooms', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [floor]
@@ -245,7 +269,7 @@ describe('deriveUnderlayNode', () => {
     expect(node.floorId).toBe('g')
   })
 
-  it('projects the underlay into a node copying its image, dimensions, placement, and display fields', () => {
+  it('projects the underlay into a node copying its source, dimensions, placement, and display fields', () => {
     const underlay = underlayWithId('u1')
     const floor = createFloor('Ground', { id: 'g' })
 
@@ -255,7 +279,7 @@ describe('deriveUnderlayNode', () => {
       id: 'underlay:u1',
       kind: 'underlay',
       floorId: 'g',
-      image: underlay.image,
+      source: underlay.source,
       width: underlay.width,
       height: underlay.height,
       placement: underlay.placement,
@@ -280,7 +304,7 @@ describe('deriveSceneGraph underlays', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [floorWithUnderlay(underlayWithId('u1'))]
@@ -292,7 +316,7 @@ describe('deriveSceneGraph underlays', () => {
       id: 'underlay:u1',
       kind: 'underlay',
       floorId: 'g',
-      image: UNDERLAY_IMAGE,
+      source: { kind: 'raster', image: UNDERLAY_IMAGE },
       width: UNDERLAY_WIDTH,
       height: UNDERLAY_HEIGHT,
       placement: project.floors[0]?.underlays[0]?.placement,
@@ -306,7 +330,7 @@ describe('deriveSceneGraph underlays', () => {
     const project = createEmptyProject({
       name: 'House',
       units: 'metric',
-      era: 'victorian',
+      period: 'victorian',
       appVersion: '0.1.0',
     })
     project.floors = [createFloor('Ground', { id: 'g', elevation: 0, walls: [wall] })]
