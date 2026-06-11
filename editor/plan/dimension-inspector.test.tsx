@@ -1,14 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  DEFAULT_METRIC_PREFERENCES,
-  REMOVE_DIMENSION,
-  formatLength,
-  lengthFormatOptions,
-  type Command,
-  type RemoveDimensionParams,
-} from '../../core'
+import { REMOVE_DIMENSION, type Command, type RemoveDimensionParams } from '../../core'
 import { DimensionInspector } from './dimension-inspector'
 
 // A single selected dimension, fixed so the formatted length and the dispatched
@@ -19,7 +12,9 @@ const DIMENSION_ID = 'd1'
 const LENGTH_MM = 1000
 const UNITS = 'metric' as const
 
-const EXPECTED_LENGTH = formatLength(LENGTH_MM, lengthFormatOptions(DEFAULT_METRIC_PREFERENCES))
+// A metre-scale length reads in metres with two decimals under the adaptive
+// metric rule: 1000 mm renders as "1.00 m", not "1000 mm".
+const EXPECTED_LENGTH = '1.00 m'
 
 function renderInspector(dispatch: (command: unknown) => void) {
   render(

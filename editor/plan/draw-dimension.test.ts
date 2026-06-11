@@ -2,12 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { recordingContext } from './draw-plan-test-fixtures'
 import type { Viewport } from './viewport'
-import {
-  DEFAULT_METRIC_PREFERENCES,
-  formatLength,
-  lengthFormatOptions,
-  type DimensionSceneNode,
-} from '../../core'
+import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode } from '../../core'
 
 // A non-trivial scale and pan so the projection is observable rather than an
 // identity map, mirroring the underlay and opening draw tests.
@@ -59,7 +54,9 @@ describe('drawDimension', () => {
 
     drawDimension(recorder.ctx, drawable(), VIEWPORT, PREFERENCES)
 
-    const expected = formatLength(DIMENSION_LENGTH_MM, lengthFormatOptions(PREFERENCES))
+    // A metre-scale dimension reads in metres with two decimals under the
+    // adaptive metric rule: 1000 mm renders as "1.00 m", not "1000 mm".
+    const expected = '1.00 m'
     expect(countOp(recorder.ops, 'fillText')).toBeGreaterThanOrEqual(1)
     expect(recorder.texts.map((entry) => entry.text)).toContain(expected)
   })

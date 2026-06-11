@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 import {
   DEFAULT_METRIC_PREFERENCES,
   SET_WALL_THICKNESS,
-  formatLength,
-  lengthFormatOptions,
   parseLength,
   type Command,
   type SetWallThicknessParams,
@@ -28,7 +26,9 @@ const METRIC_ASSUMED_UNIT = 'mm' as const
 const VALID_ENTRY = '150'
 const UNPARSEABLE_ENTRY = 'abc'
 
-const EXPECTED_FORMATTED = formatLength(CURRENT_THICKNESS_MM, lengthFormatOptions(PREFERENCES))
+// A wall-thickness-scale length reads in centimetres with one decimal under the
+// adaptive metric rule: 100 mm renders as "10.0 cm", not "100 mm".
+const EXPECTED_FORMATTED = '10.0 cm'
 const EXPECTED_PARSED_MM = parseLength(VALID_ENTRY, { assumeUnit: METRIC_ASSUMED_UNIT })
 
 function renderEditor(dispatch: (command: unknown) => void) {
