@@ -75,9 +75,20 @@ function SurfaceSection(props: SurfaceSectionProps): ReactElement | null {
   )
 }
 
-function ActiveSurfaceEditor(props: PaintPanelProps & { activeSurface: SurfaceRef }): ReactElement {
+interface ActiveSurfaceEditorProps {
+  activeSurface: SurfaceRef
+  treatmentFor: (ref: SurfaceRef) => SurfaceTreatment | undefined
+  recent: Color[]
+  dispatch: (command: Command) => void
+}
+
+// The finish handed to ColorPicker before the user has chosen one: a new
+// solid treatment starts matte until they pick a different finish.
+const DEFAULT_FINISH_ID = 'matte'
+
+function ActiveSurfaceEditor(props: ActiveSurfaceEditorProps): ReactElement {
   const treatment = props.treatmentFor(props.activeSurface)
-  const finishId = treatment?.kind === 'solid' ? treatment.finishId : 'matte'
+  const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
   return (
     <Stack>
       <ColorPicker
@@ -101,24 +112,26 @@ function ActiveSurfaceEditor(props: PaintPanelProps & { activeSurface: SurfaceRe
 export function PaintPanel(props: PaintPanelProps): ReactElement {
   const walls = props.surfaces.filter((surface) => surface.group === 'wall')
   const floorCeiling = props.surfaces.filter((surface) => surface.group === 'floor-ceiling')
+  const renderSection = (heading: string, surfaces: readonly PaintableSurface[]): ReactElement => (
+    <SurfaceSection
+      heading={heading}
+      surfaces={surfaces}
+      activeSurface={props.activeSurface}
+      treatmentFor={props.treatmentFor}
+      onSelectSurface={props.onSelectSurface}
+    />
+  )
   return (
     <Stack>
-      <SurfaceSection
-        heading="Walls"
-        surfaces={walls}
-        activeSurface={props.activeSurface}
-        treatmentFor={props.treatmentFor}
-        onSelectSurface={props.onSelectSurface}
-      />
-      <SurfaceSection
-        heading="Floor & ceiling"
-        surfaces={floorCeiling}
-        activeSurface={props.activeSurface}
-        treatmentFor={props.treatmentFor}
-        onSelectSurface={props.onSelectSurface}
-      />
+      {renderSection('Walls', walls)}
+      {renderSection('Floor & ceiling', floorCeiling)}
       {props.activeSurface !== null ? (
-        <ActiveSurfaceEditor {...props} activeSurface={props.activeSurface} />
+        <ActiveSurfaceEditor
+          activeSurface={props.activeSurface}
+          treatmentFor={props.treatmentFor}
+          recent={props.recent}
+          dispatch={props.dispatch}
+        />
       ) : (
         <p>Select a surface to paint</p>
       )}
