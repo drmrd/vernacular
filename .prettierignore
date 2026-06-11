@@ -8,3 +8,9 @@ CHANGELOG.md
 .lighthouseci
 reports/stryker
 .stryker-tmp
+
+# Generated CORE schema artifacts. These must match the generator's exact
+# output byte-for-byte (the schema-drift guard regenerates and compares), so
+# Prettier must not reformat them. Hand-written docs like schema/README.md
+# stay formatted.
+schema/*/vernacular.schema.json
