@@ -26,3 +26,25 @@ describe('graftUnknown object union', () => {
     expect(graftUnknown({ meta: { name: 'p' } }, next)).toEqual(next)
   })
 })
+
+describe('graftUnknown id-array reconciliation', () => {
+  it('restores a dropped unknown sub-key on a surviving entity matched by id', () => {
+    const previous = { walls: [{ id: 'w1', thickness: 100, curve: { radius: 50 } }] }
+    const next = { walls: [{ id: 'w1', thickness: 120 }] }
+    expect(graftUnknown(previous, next)).toEqual({
+      walls: [{ id: 'w1', thickness: 120, curve: { radius: 50 } }],
+    })
+  })
+
+  it('does not resurrect an array element the next document deleted', () => {
+    const previous = { walls: [{ id: 'w1' }, { id: 'w2', curve: { r: 1 } }] }
+    const next = { walls: [{ id: 'w1' }] }
+    expect(graftUnknown(previous, next)).toEqual({ walls: [{ id: 'w1' }] })
+  })
+
+  it('passes through arrays of id-less values as next', () => {
+    const previous = { customPolygon: [{ x: 0, y: 0 }] }
+    const next = { customPolygon: [{ x: 1, y: 1 }] }
+    expect(graftUnknown(previous, next)).toEqual({ customPolygon: [{ x: 1, y: 1 }] })
+  })
+})
