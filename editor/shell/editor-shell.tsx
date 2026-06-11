@@ -1,12 +1,23 @@
+import { useMemo } from 'react'
 import {
   SceneCanvas,
   useActiveFloorId,
   useEditorSession,
   useSceneGraph,
+  useSelection,
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
 import { addFloor, setUnits, type Project } from '../../core'
+import {
+  CommandBar,
+  CommandPalette,
+  CommandPaletteProvider,
+  createEditorCommands,
+  useCommandPalette,
+  useKeybindings,
+  type CommandContext,
+} from '../commands'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
@@ -40,6 +51,26 @@ function ToolsNav() {
   )
 }
 
+// A render-nothing layer that assembles the command context from the editor
+// hooks and registers the global keybindings (undo/redo/delete/deselect/palette).
+function KeybindingLayer() {
+  const session = useEditorSession()
+  const selection = useSelection()
+  const activeFloorId = useActiveFloorId()
+  const graph = useSceneGraph()
+  const palette = useCommandPalette()
+  const commands = useMemo(() => createEditorCommands(), [])
+  const context: CommandContext = {
+    session,
+    selection,
+    graph,
+    activeFloorId,
+    openPalette: palette.open,
+  }
+  useKeybindings(commands, context)
+  return null
+}
+
 interface ShellHeaderProps {
   saveStatus: AutosaveStatus
   projectControls: ProjectControlsProps
@@ -60,6 +91,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         onChange={(units) => session.dispatch(setUnits(units))}
       />
       <ProjectControls {...projectControls} />
+      <CommandBar />
     </div>
   )
 }
@@ -125,24 +157,30 @@ export interface EditorShellProps extends ProjectControlsProps {
 
 export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
   return (
-    // The underlay and opening-tool providers wrap the whole frame so the shared
-    // underlay state and the opening placement type reach the canvas glue and the
+    // The command-palette provider wraps everything so the keybinding layer, the
+    // command bar, and the palette dialog all share one open/close state. The
+    // underlay and opening-tool providers then wrap the frame so the shared underlay
+    // state and the opening placement type reach the canvas glue and the
     // inspector/tools panels from one source.
-    <UnderlayProvider>
-      <OpeningToolProvider>
-        {recovery ? (
-          <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-        ) : null}
-        <AppFrame
-          header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
-          railLabel="Tool rail"
-          rail={<ToolRail />}
-          mainLabel="Viewport"
-          main={<ViewportArea />}
-          inspectorLabel="Inspector"
-          inspector={<InspectorPanels />}
-        />
-      </OpeningToolProvider>
-    </UnderlayProvider>
+    <CommandPaletteProvider>
+      <UnderlayProvider>
+        <OpeningToolProvider>
+          <KeybindingLayer />
+          <CommandPalette />
+          {recovery ? (
+            <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+          ) : null}
+          <AppFrame
+            header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
+            railLabel="Tool rail"
+            rail={<ToolRail />}
+            mainLabel="Viewport"
+            main={<ViewportArea />}
+            inspectorLabel="Inspector"
+            inspector={<InspectorPanels />}
+          />
+        </OpeningToolProvider>
+      </UnderlayProvider>
+    </CommandPaletteProvider>
   )
 }
