@@ -69,4 +69,32 @@ describe('ViewModeViewport', () => {
 
     expect(screen.queryByLabelText('3D preview')).toBeNull()
   })
+
+  it('exposes the split position on the separator for assistive tech', async () => {
+    const user = userEvent.setup()
+    renderViewport()
+
+    await user.click(screen.getByRole('button', { name: 'Split view' }))
+
+    const separator = screen.getByRole('separator')
+    expect(separator).toHaveAttribute('aria-valuenow', '60')
+    expect(separator).toHaveAttribute('aria-valuemin', '30')
+    expect(separator).toHaveAttribute('aria-valuemax', '80')
+  })
+
+  it('resizes the split with the arrow keys', async () => {
+    const user = userEvent.setup()
+    renderViewport()
+
+    await user.click(screen.getByRole('button', { name: 'Split view' }))
+
+    const separator = screen.getByRole('separator')
+    separator.focus()
+
+    await user.keyboard('{ArrowRight}')
+    expect(separator).toHaveAttribute('aria-valuenow', '65')
+
+    await user.keyboard('{ArrowLeft}')
+    expect(separator).toHaveAttribute('aria-valuenow', '60')
+  })
 })
