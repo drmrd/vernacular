@@ -74,3 +74,54 @@ export const Foundation: Story = {
     await expect(screen.getByRole('region', { name: 'No projects yet' })).toBeInTheDocument()
   },
 }
+
+function DraftingTableShowcase() {
+  return (
+    <Stack gap="space-4">
+      <ThemeSwitcher />
+      <h2 style={{ margin: 0, fontFamily: 'var(--font-family-heading)' }}>Parlor restoration</h2>
+      <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
+        A warm vellum canvas with ink-blue chrome.
+      </p>
+      <div
+        style={{
+          padding: 'var(--space-4)',
+          background: 'var(--color-surface-raised)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--elevation-raised)',
+        }}
+      >
+        {/* A representative coordinate readout, not live data, to show the mono token. */}
+        <p style={{ margin: 0, fontFamily: 'var(--font-family-mono)' }}>x 3.20 m y 1.05 m</p>
+      </div>
+      {/*
+        This showcase is the design system's own gallery, so it deliberately reads
+        the raw material-accent primitives by name to display the palette. Product
+        component code must still reference only semantic tokens (the contract).
+      */}
+      <Stack direction="horizontal" gap="space-2">
+        {['--brass-500', '--clay-500', '--sage-500', '--ink-900'].map((swatch) => (
+          <span
+            key={swatch}
+            aria-hidden="true"
+            style={{
+              width: 'var(--space-5)',
+              height: 'var(--space-5)',
+              borderRadius: 'var(--radius-sm)',
+              background: `var(${swatch})`,
+            }}
+          />
+        ))}
+      </Stack>
+    </Stack>
+  )
+}
+
+export const DraftingTable: Story = {
+  render: () => (
+    <ThemeProvider>
+      <DraftingTableShowcase />
+    </ThemeProvider>
+  ),
+}

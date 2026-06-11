@@ -9,24 +9,41 @@
 
 :root {
   /* Primitive ramp (raw values live only here). */
-  --slate-900: #1e293b;
-  --slate-600: #475569;
-  --slate-300: #cbd5e1;
-  --slate-200: #e2e8f0;
-  --slate-50: #f8fafc;
-  --white: #ffffff;
-  --blue-400: #1a7fd4;
-  --blue-800: #0b5394;
+
+  /* Warm paper (vellum) ramp. */
+  --vellum-50: #fbf7ef;
+  --vellum-100: #f4efe4;
+  --vellum-200: #ece3d2;
+  --vellum-300: #d9cdb4;
+
+  /* Warm ink (umber) text ramp. */
+  --umber-900: #2f2615;
+  --umber-700: #4a3c26;
+  --umber-500: #6e5a3c;
+
+  /* Ink-blue chrome ramp. */
+  --ink-950: #1a2738;
+  --ink-900: #23344d;
+  --ink-800: #2c3e57;
+  --ink-600: #3a5273;
+
+  /* Material accents: used in the design-system showcase; semantic consumers
+     follow in surface-finish work. */
+  --brass-500: #b08646;
+  --brass-300: #c8b78f;
+  --clay-500: #9c5f4a;
+  --sage-500: #7a8b6f;
 
   /* Semantic (role) tokens: light theme defaults. */
-  --color-text: var(--slate-900);
-  --color-text-muted: var(--slate-600);
-  --color-surface: var(--white);
-  --color-surface-raised: var(--slate-50);
-  --color-border: var(--slate-200);
-  --color-accent: var(--blue-400);
-  --color-accent-strong: var(--blue-800);
-  --color-focus-ring: var(--blue-400);
+  --color-text: var(--umber-900);
+  --color-text-muted: var(--umber-500);
+  --color-surface: var(--vellum-100);
+  --color-surface-raised: var(--vellum-50);
+  --color-border: var(--vellum-300);
+  --color-accent: var(--ink-800);
+  --color-accent-strong: var(--ink-900);
+  --color-on-accent: var(--vellum-50);
+  --color-focus-ring: var(--ink-900);
 
   /* Spacing scale (rem). */
   --space-1: 0.25rem;
@@ -43,40 +60,48 @@
   --font-size-sm: 0.85rem;
   --font-size-md: 1rem;
   --font-size-lg: 1.25rem;
-  --font-family-ui: system-ui, -apple-system, sans-serif;
+  --font-family-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-family-heading: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  /* Elevation. */
+  --elevation-raised: 0 2px 8px rgba(35, 52, 77, 0.1);
+  --elevation-overlay: 0 12px 32px rgba(35, 52, 77, 0.18);
 
   /* Motion. */
   --motion-duration: 150ms;
 }
 
 [data-theme='dark'] {
-  --color-text: var(--slate-50);
-  --color-text-muted: var(--slate-300);
-  --color-surface: var(--slate-900);
-  --color-surface-raised: var(--slate-600);
-  --color-border: var(--slate-600);
-  --color-accent: var(--blue-400);
-  --color-accent-strong: var(--blue-400);
-  --color-focus-ring: var(--blue-400);
+  --color-text: var(--vellum-50);
+  --color-text-muted: var(--brass-300);
+  --color-surface: var(--ink-950);
+  --color-surface-raised: var(--ink-900);
+  --color-border: var(--ink-600);
+  --color-accent: var(--brass-500);
+  --color-accent-strong: var(--brass-300);
+  --color-on-accent: var(--umber-900);
+  --color-focus-ring: var(--brass-500);
 }
 
 @media (prefers-color-scheme: dark) {
   [data-theme='system'] {
-    --color-text: var(--slate-50);
-    --color-text-muted: var(--slate-300);
-    --color-surface: var(--slate-900);
-    --color-surface-raised: var(--slate-600);
-    --color-border: var(--slate-600);
-    --color-accent: var(--blue-400);
-    --color-accent-strong: var(--blue-400);
-    --color-focus-ring: var(--blue-400);
+    --color-text: var(--vellum-50);
+    --color-text-muted: var(--brass-300);
+    --color-surface: var(--ink-950);
+    --color-surface-raised: var(--ink-900);
+    --color-border: var(--ink-600);
+    --color-accent: var(--brass-500);
+    --color-accent-strong: var(--brass-300);
+    --color-on-accent: var(--umber-900);
+    --color-focus-ring: var(--brass-500);
   }
 }
 
 @media (prefers-contrast: more) {
   :root {
-    --color-border: var(--slate-600);
-    --color-focus-ring: var(--blue-800);
+    --color-border: var(--umber-700);
+    --color-focus-ring: var(--ink-900);
   }
 }
 

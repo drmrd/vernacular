@@ -15,6 +15,7 @@ export const tokens = {
   colorBorder: token('--color-border'),
   colorAccent: token('--color-accent'),
   colorAccentStrong: token('--color-accent-strong'),
+  colorOnAccent: token('--color-on-accent'),
   colorFocusRing: token('--color-focus-ring'),
   space1: token('--space-1'),
   space2: token('--space-2'),
@@ -27,6 +28,10 @@ export const tokens = {
   fontSizeMd: token('--font-size-md'),
   fontSizeLg: token('--font-size-lg'),
   fontFamilyUi: token('--font-family-ui'),
+  fontFamilyHeading: token('--font-family-heading'),
+  fontFamilyMono: token('--font-family-mono'),
+  elevationRaised: token('--elevation-raised'),
+  elevationOverlay: token('--elevation-overlay'),
   motionDuration: token('--motion-duration'),
 } as const
 

@@ -44,3 +44,41 @@ describe('design tokens', () => {
     expect(tokens.fontFamilyUi.name).toBe('--font-family-ui')
   })
 })
+
+describe('drafting-table palette', () => {
+  it('introduces the drafting-table primitive ramp', () => {
+    expect(tokensCss).toContain('#f4efe4') // vellum canvas
+    expect(tokensCss).toContain('#23344d') // ink chrome
+    expect(tokensCss).toContain('#b08646') // brass accent
+    expect(tokensCss).toContain('#9c5f4a') // clay accent
+    expect(tokensCss).toContain('#7a8b6f') // sage accent
+  })
+
+  it('retires the slate and blue starter ramp', () => {
+    expect(tokensCss).not.toContain('#1a7fd4') // old blue accent
+    expect(tokensCss).not.toContain('#1e293b') // old slate-900
+  })
+
+  it('paints the light canvas on warm vellum rather than white', () => {
+    expect(tokensCss).toMatch(/--color-surface:\s*var\(--vellum-100\)/)
+  })
+
+  it('grounds the dark canvas on deep ink', () => {
+    expect(tokensCss).toMatch(/--color-surface:\s*var\(--ink-950\)/)
+  })
+})
+
+describe('drafting-table type and elevation tokens', () => {
+  it('registers the heading, mono, and elevation tokens', () => {
+    const names = tokenList.map((entry) => entry.name)
+    expect(names).toContain('--font-family-heading')
+    expect(names).toContain('--font-family-mono')
+    expect(names).toContain('--elevation-raised')
+    expect(names).toContain('--elevation-overlay')
+  })
+
+  it('gives the heading a serif stack and the readout a monospace stack', () => {
+    expect(tokensCss).toMatch(/--font-family-heading:[^;]*serif/)
+    expect(tokensCss).toMatch(/--font-family-mono:[^;]*monospace/)
+  })
+})
