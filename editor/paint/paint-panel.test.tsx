@@ -47,6 +47,13 @@ describe('PaintPanel', () => {
     expect(screen.getByRole('button', { name: 'Floor' })).toBeTruthy()
   })
 
+  it('renders the section headings at level 2 so they nest under the app title', () => {
+    renderPanel()
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Walls' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Floor & ceiling' })).toBeTruthy()
+  })
+
   it('reports the clicked surface ref to onSelectSurface', async () => {
     const user = userEvent.setup()
     const { onSelectSurface } = renderPanel()
