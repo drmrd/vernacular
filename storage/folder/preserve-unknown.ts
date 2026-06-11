@@ -1,3 +1,5 @@
+import type { Project } from '../../core'
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -73,4 +75,10 @@ export function graftUnknown(previous: unknown, next: unknown): unknown {
     return graftObject(previous, next)
   }
   return next
+}
+
+/** Apply the preservation overlay, returning a Document that restores dropped unknown data. */
+export function preserveUnknown(previous: unknown, project: Project): Project {
+  // The graft only adds keys the typed model omits, so the result is still a Project shape.
+  return graftUnknown(previous, project) as Project
 }

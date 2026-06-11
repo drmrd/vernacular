@@ -1,6 +1,7 @@
 import type { Project } from '../../core'
 import { CURRENT_SCHEMA_VERSION, migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
+import { preserveUnknown } from './preserve-unknown'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
 /** Canonical project file name written at the root of each project folder. */
@@ -71,8 +72,14 @@ export class FolderProjectStore {
   }
 
   async saveProject(project: Project): Promise<void> {
-    // Serializing now captures a snapshot, so later caller mutation cannot reach the stored bytes.
-    await this.directory.writeFile(PROJECT_FILE, serializeProjectJson(project))
+    // Read the prior Document so the overlay can restore any unknown or reserved data a
+    // read-modify-write cycle dropped (VFPF section 6.4). With no prior file, serialize directly.
+    const previousBytes = await this.directory.readFile(PROJECT_FILE)
+    const document =
+      previousBytes === undefined
+        ? project
+        : preserveUnknown(parseProjectJson(previousBytes), project)
+    await this.directory.writeFile(PROJECT_FILE, serializeProjectJson(document))
   }
 
   async exists(): Promise<boolean> {
