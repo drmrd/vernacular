@@ -1,0 +1,99 @@
+import Ajv from 'ajv'
+import type { ErrorObject, ValidateFunction } from 'ajv'
+import type { DocumentValidationResult, DocumentValidator } from './validate-document'
+import { createDocumentValidator } from './validate-document'
+
+const REVERSE_DNS = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i
+
+/** A reverse-DNS extension namespace has at least two dot-separated labels (VFPF section 6.3). */
+export function isReverseDnsNamespace(key: string): boolean {
+  return REVERSE_DNS.test(key)
+}
+
+/** Maps a reverse-DNS extension namespace to the JSON Schema that validates its payloads. */
+export type ExtensionSchemaRegistry = Map<string, object>
+
+function compileRegistry(registry: ExtensionSchemaRegistry): Map<string, ValidateFunction> {
+  // strict: false here for a different reason than in validate-document.ts: these
+  // extension schemas are caller-supplied vendor schemas, not generated CORE
+  // artifacts, so they may carry metadata keywords Ajv strict mode would reject.
+  // Payload correctness is still enforced, and allErrors collects every violation.
+  const ajv = new Ajv({ allErrors: true, strict: false })
+  const compiled = new Map<string, ValidateFunction>()
+  for (const [namespace, schema] of registry) {
+    compiled.set(namespace, ajv.compile(schema))
+  }
+  return compiled
+}
+
+function malformedNamespaceError(namespace: string): ErrorObject {
+  return {
+    keyword: 'reverseDns',
+    instancePath: `/extensions/${namespace}`,
+    schemaPath: '#/extensions',
+    params: { namespace },
+    message: 'extension namespace must be reverse-DNS',
+  } as ErrorObject
+}
+
+function validateExtensions(
+  extensions: Record<string, unknown>,
+  compiled: Map<string, ValidateFunction>,
+): ErrorObject[] {
+  const errors: ErrorObject[] = []
+  for (const [namespace, payload] of Object.entries(extensions)) {
+    if (!isReverseDnsNamespace(namespace)) {
+      errors.push(malformedNamespaceError(namespace))
+      continue
+    }
+    const validate = compiled.get(namespace)
+    if (validate !== undefined && validate(payload) !== true) {
+      errors.push(...(validate.errors ?? []))
+    }
+  }
+  return errors
+}
+
+function isExtensionsObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function collectExtensions(node: unknown, found: Record<string, unknown>[]): void {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      collectExtensions(item, found)
+    }
+    return
+  }
+  if (!isExtensionsObject(node)) {
+    return
+  }
+  if (isExtensionsObject(node.extensions)) {
+    found.push(node.extensions)
+  }
+  // Recurse into every child value, including the extensions object itself, so
+  // nested entity trees (and extensions nested within extensions) are fully covered.
+  for (const value of Object.values(node)) {
+    collectExtensions(value, found)
+  }
+}
+
+/**
+ * The Strict profile (VFPF section 3): CORE validation plus per-namespace validation of registered
+ * reverse-DNS extension namespaces against their published schemas. Unregistered namespaces pass.
+ */
+export function createStrictValidator(
+  coreSchema: object,
+  registry: ExtensionSchemaRegistry,
+): DocumentValidator {
+  const core = createDocumentValidator(coreSchema)
+  const compiled = compileRegistry(registry)
+  return (document: unknown): DocumentValidationResult => {
+    const coreResult = core(document)
+    const found: Record<string, unknown>[] = []
+    collectExtensions(document, found)
+    const extensionErrors = found.flatMap((extensions) => validateExtensions(extensions, compiled))
+    const errors = [...coreResult.errors, ...extensionErrors]
+    return { valid: errors.length === 0, errors }
+  }
+}

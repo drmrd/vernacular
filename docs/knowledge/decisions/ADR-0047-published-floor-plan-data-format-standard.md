@@ -34,8 +34,8 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
-status: accepted
-updated: 2026-06-10
+status: current
+updated: 2026-06-11
 ---
 
 # ADR-0047: Published floor-plan data format standard (Vernacular Floor Plan Format)
@@ -48,8 +48,9 @@ CORE JSON Schema is generated from the `core/model` types and committed under
 `schema/<version>/`, a `core/` Ajv validator checks Documents against it, a drift guard keeps
 the committed schema in lockstep with the types, and the project fixtures validate as
 conformant Documents. The file rename (`project.json` to `vernacular.json` and `.house.zip` to
-`.building`), the forward-compatibility preservation round-trip, and validate-after-migration on
-load are sequenced in later implementation plans. This ADR justifies a design-specification
+`.building`) landed next, and the forward-compatibility preservation round-trip,
+validate-after-migration on load, and the optional Strict profile followed in ADR-0051. This ADR
+justifies a design-specification
 addendum (it formalizes sections 3.3, 3.4, and 4) per the project rule that any change to the
 specification carries a corresponding ADR.
 

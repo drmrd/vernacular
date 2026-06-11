@@ -1,6 +1,7 @@
 import type { Project } from '../../core'
 import { CURRENT_SCHEMA_VERSION, migrateProject } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
+import { preserveUnknown } from './preserve-unknown'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
 /** Canonical project file name written at the root of each project folder. */
@@ -71,8 +72,25 @@ export class FolderProjectStore {
   }
 
   async saveProject(project: Project): Promise<void> {
-    // Serializing now captures a snapshot, so later caller mutation cannot reach the stored bytes.
-    await this.directory.writeFile(PROJECT_FILE, serializeProjectJson(project))
+    // Apply the preservation overlay against the prior Document so a read-modify-write cycle keeps
+    // any unknown or reserved data the app's edit-dispatch path dropped (VFPF section 6.4). With no
+    // prior file, or an unreadable one, serialize the project directly.
+    const previous = await this.readPriorDocument()
+    const payload = previous === undefined ? project : preserveUnknown(previous, project)
+    await this.directory.writeFile(PROJECT_FILE, serializeProjectJson(payload))
+  }
+
+  private async readPriorDocument(): Promise<unknown> {
+    const previousBytes = await this.directory.readFile(PROJECT_FILE)
+    if (previousBytes === undefined) {
+      return undefined
+    }
+    try {
+      return parseProjectJson(previousBytes)
+    } catch {
+      // A corrupt prior file must not block saving; skip the overlay and overwrite it.
+      return undefined
+    }
   }
 
   async exists(): Promise<boolean> {
