@@ -69,9 +69,8 @@ describe('drafting-table palette', () => {
 })
 
 describe('drafting-table type and elevation tokens', () => {
-  const names = tokenList.map((entry) => entry.name)
-
   it('registers the heading, mono, and elevation tokens', () => {
+    const names = tokenList.map((entry) => entry.name)
     expect(names).toContain('--font-family-heading')
     expect(names).toContain('--font-family-mono')
     expect(names).toContain('--elevation-raised')

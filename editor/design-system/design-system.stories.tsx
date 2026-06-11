@@ -92,8 +92,14 @@ function DraftingTableShowcase() {
           boxShadow: 'var(--elevation-raised)',
         }}
       >
+        {/* A representative coordinate readout, not live data, to show the mono token. */}
         <p style={{ margin: 0, fontFamily: 'var(--font-family-mono)' }}>x 3.20 m y 1.05 m</p>
       </div>
+      {/*
+        This showcase is the design system's own gallery, so it deliberately reads
+        the raw material-accent primitives by name to display the palette. Product
+        component code must still reference only semantic tokens (the contract).
+      */}
       <Stack direction="horizontal" gap="space-2">
         {['--brass-500', '--clay-500', '--sage-500', '--ink-900'].map((swatch) => (
           <span
