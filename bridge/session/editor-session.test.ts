@@ -23,6 +23,25 @@ describe('createEditorSession', () => {
     expect(session.getProject().floors).toHaveLength(1)
   })
 
+  it('reports undo and redo availability across a dispatch and an undo', () => {
+    const session = createEditorSession(emptyProject())
+
+    expect(session.canUndo()).toBe(false)
+    expect(session.canRedo()).toBe(false)
+
+    session.dispatch(addFloor('Ground'))
+    const floorId = session.getProject().floors[0]!.id
+    session.dispatch(addWall(floorId, { x: 0, y: 0 }, { x: 500, y: 0 }))
+
+    expect(session.canUndo()).toBe(true)
+    expect(session.canRedo()).toBe(false)
+
+    session.undo()
+
+    expect(session.canUndo()).toBe(true)
+    expect(session.canRedo()).toBe(true)
+  })
+
   it('undoes and redoes dispatched commands through the boundary', () => {
     const session = createEditorSession(emptyProject())
     session.dispatch(addFloor('Ground'))
