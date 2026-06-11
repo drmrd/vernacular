@@ -198,28 +198,28 @@ The following names are reserved. Status is one of reserved (named, not yet defi
 (shape proposed), or core (defined in the current CORE schema). Each row links the concept to
 the design-specification section, ADR, or floor-plan corpus gap that motivates it.
 
-| Reserved name | Status | Motivated by |
-| --- | --- | --- |
-| `site` | reserved | design spec 3.1; corpus gap `site-and-landscape-plan` |
-| `floor.trim` | reserved | design spec 3.1, ADR-0034 (path-based trim) |
-| `floor.wallFeatures` | reserved | design spec 3.1, ADR-0034 |
-| `floor.ceilingFeatures` | reserved | design spec 3.1 |
-| `floor.floorFeatures` | reserved | design spec 3.1 |
-| `floor.furniture` | reserved | design spec 3.1 (assets and furniture track) |
-| `stairs` | reserved | design spec 3.1, 3.2 (top-level, spans floors) |
-| `palettes` | reserved | design spec 3.1 (paint and metadata track) |
-| `assetIndex` | reserved | design spec 3.1, 4.8 (license and provenance) |
-| `building` | reserved | corpus gap `multi-building-properties` (multiple structures) |
-| `wall.curve` | reserved | ADR-0034 (curved walls), corpus gap `curved-and-nonlinear-walls` |
-| `wall.heightProfile` | reserved | ADR-0034 (variable and sloped wall heights) |
-| `roof` | reserved | corpus gap `roof-and-sloped-ceiling-geometry` |
-| `room.coveredOutdoor` | reserved | corpus gap `covered-outdoor-rooms` |
-| `room.holes` | reserved | corpus gap `courtyard-and-atrium-spaces` |
-| `accessibility` | reserved | corpus gap `accessibility-clearances-and-turning-spaces` |
-| `room.schedule` | reserved | corpus gap `room-schedule-and-legend` |
-| `annotations` | reserved | corpus gap `plan-annotations-north-arrow-scale-bar` |
-| `verticalCirculation` | reserved | corpus gap `vertical-circulation-beyond-stairs` |
-| `level.partial` | reserved | corpus gap `split-level-and-mezzanine` |
+| Reserved name           | Status   | Motivated by                                                     |
+| ----------------------- | -------- | ---------------------------------------------------------------- |
+| `site`                  | reserved | design spec 3.1; corpus gap `site-and-landscape-plan`            |
+| `floor.trim`            | reserved | design spec 3.1, ADR-0034 (path-based trim)                      |
+| `floor.wallFeatures`    | reserved | design spec 3.1, ADR-0034                                        |
+| `floor.ceilingFeatures` | reserved | design spec 3.1                                                  |
+| `floor.floorFeatures`   | reserved | design spec 3.1                                                  |
+| `floor.furniture`       | reserved | design spec 3.1 (assets and furniture track)                     |
+| `stairs`                | reserved | design spec 3.1, 3.2 (top-level, spans floors)                   |
+| `palettes`              | reserved | design spec 3.1 (paint and metadata track)                       |
+| `assetIndex`            | reserved | design spec 3.1, 4.8 (license and provenance)                    |
+| `building`              | reserved | corpus gap `multi-building-properties` (multiple structures)     |
+| `wall.curve`            | reserved | ADR-0034 (curved walls), corpus gap `curved-and-nonlinear-walls` |
+| `wall.heightProfile`    | reserved | ADR-0034 (variable and sloped wall heights)                      |
+| `roof`                  | reserved | corpus gap `roof-and-sloped-ceiling-geometry`                    |
+| `room.coveredOutdoor`   | reserved | corpus gap `covered-outdoor-rooms`                               |
+| `room.holes`            | reserved | corpus gap `courtyard-and-atrium-spaces`                         |
+| `accessibility`         | reserved | corpus gap `accessibility-clearances-and-turning-spaces`         |
+| `room.schedule`         | reserved | corpus gap `room-schedule-and-legend`                            |
+| `annotations`           | reserved | corpus gap `plan-annotations-north-arrow-scale-bar`              |
+| `verticalCirculation`   | reserved | corpus gap `vertical-circulation-beyond-stairs`                  |
+| `level.partial`         | reserved | corpus gap `split-level-and-mezzanine`                           |
 
 This table is normative for name ownership and informative for shape. A reserved name is
 promoted to core only by a `schemaVersion` increment and an accompanying ADR.
