@@ -152,3 +152,83 @@ describe('FolderProjectStore', () => {
     expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toBeUndefined()
   })
 })
+
+function priorDocumentBytes(): Uint8Array {
+  const document = {
+    meta: {
+      name: 'Original',
+      units: 'imperial',
+      period: 'victorian',
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      appVersion: '0.0.0',
+      registryVersions: {},
+    },
+    floors: [
+      {
+        id: 'f1',
+        name: 'Ground',
+        elevation: 0,
+        defaultCeilingHeight: 2400,
+        walls: [
+          {
+            id: 'w1',
+            start: { x: 0, y: 0 },
+            end: { x: 1000, y: 0 },
+            thickness: 100,
+            curve: { radius: 50 },
+          },
+        ],
+        openings: [],
+        dimensions: [],
+        underlays: [],
+        trim: { profile: 'ogee' },
+      },
+    ],
+    stairs: [],
+    annotations: { northArrow: { angle: 12 } },
+  }
+  return new TextEncoder().encode(JSON.stringify(document))
+}
+
+function projectKeeping(walls: ReturnType<typeof createWall>[]): Project {
+  const project = createEmptyProject({
+    name: 'Renamed',
+    units: 'imperial',
+    period: 'victorian',
+    appVersion: '0.0.0',
+  })
+  project.floors.push(createFloor('Ground', { id: 'f1', elevation: 0, walls }))
+  return project
+}
+
+describe('FolderProjectStore preservation overlay', () => {
+  it('restores unknown and reserved keys the saved project dropped, from the prior document', async () => {
+    const directory = new InMemoryDirectory()
+    await directory.writeFile('vernacular.json', priorDocumentBytes())
+    const store = new FolderProjectStore(directory)
+
+    const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1', thickness: 100 })
+    await store.saveProject(projectKeeping([wall]))
+
+    const saved = JSON.parse(
+      new TextDecoder().decode((await directory.readFile('vernacular.json'))!),
+    )
+    expect(saved.annotations).toEqual({ northArrow: { angle: 12 } })
+    expect(saved.floors[0].trim).toEqual({ profile: 'ogee' })
+    expect(saved.floors[0].walls[0].curve).toEqual({ radius: 50 })
+    expect(saved.meta.name).toBe('Renamed')
+  })
+
+  it('does not resurrect a wall the saved project deleted', async () => {
+    const directory = new InMemoryDirectory()
+    await directory.writeFile('vernacular.json', priorDocumentBytes())
+    const store = new FolderProjectStore(directory)
+
+    await store.saveProject(projectKeeping([]))
+
+    const saved = JSON.parse(
+      new TextDecoder().decode((await directory.readFile('vernacular.json'))!),
+    )
+    expect(saved.floors[0].walls).toEqual([])
+  })
+})
