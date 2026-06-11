@@ -43,3 +43,12 @@ export type { UseAutosaveOptions } from './react/use-autosave'
 export { useAutosave } from './react/use-autosave'
 export { SceneCanvas } from './react/scene-canvas'
 export { SceneHarnessView } from './react/scene-harness-view'
+export type { SurfaceSelectionStore } from './selection/surface-selection-store'
+export { createSurfaceSelectionStore } from './selection/surface-selection-store'
+export {
+  SurfaceSelectionContext,
+  useSurfaceSelection,
+  useActiveSurface,
+} from './react/surface-selection-context'
+export type { SurfaceSelectionProviderProps } from './react/surface-selection-provider'
+export { SurfaceSelectionProvider } from './react/surface-selection-provider'
