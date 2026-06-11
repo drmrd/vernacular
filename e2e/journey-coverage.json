@@ -4,7 +4,7 @@
     {
       "id": "cancel-wall",
       "title": "cancels a half-drawn wall with the cancel key",
-      "status": "pending"
+      "status": "required"
     },
     { "id": "undo-redo", "title": "undoes and redoes a wall", "status": "required" },
     { "id": "delete-selection", "title": "deletes the selected entities", "status": "required" },
