@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { surfaceKey, type SurfaceRef } from './paint'
+import { solidTreatment, surfaceKey, type SurfaceRef } from './paint'
+import { colorFromHex } from '../color/color'
 
 const leftFace: SurfaceRef = { kind: 'wall-face', wallId: 'wall-1', side: 'left' }
 const rightFace: SurfaceRef = { kind: 'wall-face', wallId: 'wall-1', side: 'right' }
@@ -17,5 +18,16 @@ describe('surfaceKey', () => {
 
   it('distinguishes a floor from a ceiling on the same floor', () => {
     expect(surfaceKey(floor)).not.toBe(surfaceKey(ceiling))
+  })
+})
+
+describe('solidTreatment', () => {
+  it('builds a solid surface treatment from a color and finish', () => {
+    const color = colorFromHex('#9aa583')
+    expect(solidTreatment(color, 'matte')).toEqual({
+      kind: 'solid',
+      color: colorFromHex('#9aa583'),
+      finishId: 'matte',
+    })
   })
 })
