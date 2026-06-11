@@ -26,7 +26,14 @@ function ModeToolbar({ mode, setMode }: ViewControls) {
   )
 }
 
-function Splitter({ onResizeStep }: { onResizeStep: (delta: number) => void }) {
+interface SplitterProps {
+  size: number
+  min: number
+  max: number
+  onResizeStep: (delta: number) => void
+}
+
+function Splitter({ size, min, max, onResizeStep }: SplitterProps) {
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'ArrowLeft') {
       event.preventDefault()
@@ -41,6 +48,10 @@ function Splitter({ onResizeStep }: { onResizeStep: (delta: number) => void }) {
       role="separator"
       aria-orientation="vertical"
       aria-label="Resize panes"
+      aria-valuenow={size}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuetext={`${size}%`}
       tabIndex={0}
       className="view-mode-viewport__separator"
       onKeyDown={onKeyDown}
@@ -59,7 +70,7 @@ function SplitBody({ plan, preview }: { plan: ReactNode; preview: ReactNode }) {
       <div className="view-mode-viewport__pane" style={{ flexBasis: `${size}%` }}>
         {plan}
       </div>
-      <Splitter onResizeStep={onResizeStep} />
+      <Splitter size={size} min={SPLIT_MIN} max={SPLIT_MAX} onResizeStep={onResizeStep} />
       <div className="view-mode-viewport__pane">{preview}</div>
     </div>
   )
