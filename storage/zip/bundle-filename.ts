@@ -2,7 +2,7 @@
 const FALLBACK_STEM = 'project'
 
 /** The fixed suffix every exported bundle filename ends in. */
-const BUNDLE_SUFFIX = '.house.zip'
+const BUNDLE_SUFFIX = '.building'
 
 /** Any run of characters outside the safe set, replaced by a single hyphen. */
 const UNSAFE_RUN = /[^a-z0-9]+/g
