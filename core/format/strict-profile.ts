@@ -3,6 +3,13 @@ import type { ErrorObject, ValidateFunction } from 'ajv'
 import type { DocumentValidationResult, DocumentValidator } from './validate-document'
 import { createDocumentValidator } from './validate-document'
 
+const REVERSE_DNS = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i
+
+/** A reverse-DNS extension namespace has at least two dot-separated labels (VFPF section 6.3). */
+export function isReverseDnsNamespace(key: string): boolean {
+  return REVERSE_DNS.test(key)
+}
+
 /** Maps a reverse-DNS extension namespace to the JSON Schema that validates its payloads. */
 export type ExtensionSchemaRegistry = Map<string, object>
 
@@ -19,12 +26,26 @@ function compileRegistry(registry: ExtensionSchemaRegistry): Map<string, Validat
   return compiled
 }
 
+function malformedNamespaceError(namespace: string): ErrorObject {
+  return {
+    keyword: 'reverseDns',
+    instancePath: `/extensions/${namespace}`,
+    schemaPath: '#/extensions',
+    params: { namespace },
+    message: 'extension namespace must be reverse-DNS',
+  } as ErrorObject
+}
+
 function validateExtensions(
   extensions: Record<string, unknown>,
   compiled: Map<string, ValidateFunction>,
 ): ErrorObject[] {
   const errors: ErrorObject[] = []
   for (const [namespace, payload] of Object.entries(extensions)) {
+    if (!isReverseDnsNamespace(namespace)) {
+      errors.push(malformedNamespaceError(namespace))
+      continue
+    }
     const validate = compiled.get(namespace)
     if (validate !== undefined && validate(payload) !== true) {
       errors.push(...(validate.errors ?? []))

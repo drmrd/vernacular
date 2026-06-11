@@ -436,6 +436,7 @@ export {
   createLoadValidationGate,
   createStrictValidator,
   createTolerantValidator,
+  isReverseDnsNamespace,
 } from './format'
 export type {
   DocumentIssueReporter,
