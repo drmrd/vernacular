@@ -1,7 +1,7 @@
 /**
  * Flat, path-keyed async file surface. Paths use forward slashes and no leading
- * slash (for example `project.json`, `.house-autosave/snapshot.json`,
- * `<id>/project.json`). The single seam durable stores read and write through,
+ * slash (for example `vernacular.json`, `.house-autosave/snapshot.json`,
+ * `<id>/vernacular.json`). The single seam durable stores read and write through,
  * so the folder codec is testable against an in-memory fake.
  */
 export interface DirectoryPort {

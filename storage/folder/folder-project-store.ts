@@ -39,7 +39,7 @@ export interface FolderProjectStoreOptions {
 }
 
 /**
- * Reads and writes one project folder (project.json at the directory root) through
+ * Reads and writes one project folder (vernacular.json at the directory root) through
  * a DirectoryPort. Save serializes immediately, so the stored snapshot is isolated
  * from later caller mutation (the clone-on-save contract from ADR-0003).
  */

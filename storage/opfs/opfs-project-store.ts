@@ -13,7 +13,7 @@ import { SubdirectoryPort } from '../fs/subdirectory-port'
 
 /**
  * Stores each project in its own id-named subdirectory, delegating the
- * project.json codec, migration, and backup to a FolderProjectStore that
+ * vernacular.json codec, migration, and backup to a FolderProjectStore that
  * operates inside that subdirectory. Absence of a project is reported as the
  * id-keyed ProjectNotFoundError.
  */

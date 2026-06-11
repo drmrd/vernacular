@@ -1,6 +1,6 @@
 import type { Project } from '../../core'
 
-/** Pretty-printed (two-space) UTF-8 JSON bytes for project.json, with a trailing newline. */
+/** Pretty-printed (two-space) UTF-8 JSON bytes for vernacular.json, with a trailing newline. */
 export function serializeProjectJson(project: Project): Uint8Array {
   // The trailing newline keeps the output a well-formed text file that diffs cleanly.
   // Project key order ({ meta, floors }) is preserved by JSON.stringify, so the output
@@ -8,7 +8,7 @@ export function serializeProjectJson(project: Project): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(project, null, 2) + '\n')
 }
 
-/** Parse project.json bytes into a raw document for migration. Throws on invalid JSON. */
+/** Parse vernacular.json bytes into a raw document for migration. Throws on invalid JSON. */
 export function parseProjectJson(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder().decode(bytes))
 }
