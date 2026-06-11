@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CommandPaletteDialog } from './command-palette'
 import type { CommandContext, EditorCommand } from './command'
@@ -79,5 +79,26 @@ describe('CommandPaletteDialog', () => {
     await userEvent.keyboard('{Escape}')
 
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('labels the search input for assistive tech', () => {
+    renderDialog(vi.fn())
+
+    expect(screen.getByRole('textbox', { name: 'Search commands' })).toBeInTheDocument()
+  })
+
+  it('does not leak handled keystrokes to the window', () => {
+    const onWindowKeyDown = vi.fn()
+    window.addEventListener('keydown', onWindowKeyDown)
+
+    try {
+      renderDialog(vi.fn())
+
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+
+      expect(onWindowKeyDown).not.toHaveBeenCalled()
+    } finally {
+      window.removeEventListener('keydown', onWindowKeyDown)
+    }
   })
 })
