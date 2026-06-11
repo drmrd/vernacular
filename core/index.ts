@@ -434,11 +434,13 @@ export {
 export {
   createDocumentValidator,
   createLoadValidationGate,
+  createStrictValidator,
   createTolerantValidator,
 } from './format'
 export type {
   DocumentIssueReporter,
   DocumentValidationResult,
   DocumentValidator,
+  ExtensionSchemaRegistry,
   LoadValidationGateOptions,
 } from './format'
