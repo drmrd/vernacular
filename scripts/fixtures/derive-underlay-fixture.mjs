@@ -8,6 +8,10 @@
 
 import { SCHEMA_VERSION } from '../schema/build-schema.mjs'
 
+// The canonical default ceiling height also lives in core/model/factories.ts, but this
+// generator runs under plain `node`, which cannot import TypeScript source at runtime
+// (the same reason build-schema.mjs reads factories.ts as text). A Tier-0 fixture has no
+// rooms, so this default is cosmetic; the small duplication is deliberate, not drift.
 const DEFAULT_CEILING_HEIGHT_MM = 2438
 
 /**
