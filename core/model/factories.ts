@@ -27,8 +27,9 @@ import type {
 // `stairs` array; v7 replaces each underlay's bare `image` with a discriminated
 // `source`, wrapping the existing image in a raster source; v8 adds the optional
 // top-level `palettes`, `paint`, and `site` fields (all absent-by-default, so the
-// migration is a structural pass-through).
-export const CURRENT_SCHEMA_VERSION = 8
+// migration is a structural pass-through); v9 generalizes a paint assignment into a
+// SurfaceTreatment union, wrapping each legacy assignment as a solid treatment.
+export const CURRENT_SCHEMA_VERSION = 9
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
