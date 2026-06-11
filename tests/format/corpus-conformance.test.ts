@@ -88,7 +88,12 @@ function loadMinimalDocument(): Record<string, unknown> {
 }
 
 function declaresCoveredOutdoorNamespace(document: unknown): boolean {
-  return JSON.stringify(document).includes(COVERED_OUTDOOR_NAMESPACE)
+  // The covered-outdoor ring is a project-level concern, declared on the Document's
+  // top-level `extensions`. A direct structural lookup states that intent plainly.
+  const { extensions } = document as { extensions?: Record<string, unknown> }
+  return (
+    typeof extensions === 'object' && extensions !== null && COVERED_OUTDOOR_NAMESPACE in extensions
+  )
 }
 
 describe('VFPF corpus conformance gate (Strict profile)', () => {
