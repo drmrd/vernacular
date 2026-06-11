@@ -19,12 +19,28 @@ function graftObject(
   return result
 }
 
+function idOf(value: unknown): string | undefined {
+  return isPlainObject(value) && typeof value.id === 'string' ? value.id : undefined
+}
+
+function graftArray(previous: readonly unknown[], next: readonly unknown[]): unknown[] {
+  return next.map((item) => {
+    const id = idOf(item)
+    const match =
+      id === undefined ? undefined : previous.find((candidate) => idOf(candidate) === id)
+    return match === undefined ? item : graftUnknown(match, item)
+  })
+}
+
 /**
  * Re-graft any value the previous Document carried that the next Document dropped, so a
  * read-modify-write cycle preserves extension payloads and reserved keys a reader does not
  * model (VFPF section 6.4). Shared keys take the next value; previous-only keys are restored.
  */
 export function graftUnknown(previous: unknown, next: unknown): unknown {
+  if (Array.isArray(previous) && Array.isArray(next)) {
+    return graftArray(previous, next)
+  }
   if (isPlainObject(previous) && isPlainObject(next)) {
     return graftObject(previous, next)
   }
