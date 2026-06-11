@@ -17,6 +17,12 @@ export type DocumentValidator = (document: unknown) => DocumentValidationResult
  * lives. See docs/specs/2026-06-10-vernacular-floor-plan-format.md.
  */
 export function createDocumentValidator(schema: object): DocumentValidator {
+  // strict: false keeps Ajv from rejecting the generated CORE *schema* over
+  // strict-mode schema-quality checks (for example metadata keywords kept
+  // beside a $ref in the generated artifact). That schema is generated from the
+  // model, guarded against drift, and exercised by the conformance suite, so
+  // Document correctness is covered without Ajv's strict schema linting.
+  // allErrors collects every violation so callers can report them all.
   const ajv = new Ajv({ allErrors: true, strict: false })
   const validate: ValidateFunction = ajv.compile(schema)
   return (document: unknown): DocumentValidationResult => {
