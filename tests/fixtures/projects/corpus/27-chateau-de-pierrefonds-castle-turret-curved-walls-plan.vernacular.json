@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "name": "Plan of the Château de Pierrefonds",
+    "units": "imperial",
+    "period": "unknown",
+    "schemaVersion": 8,
+    "appVersion": "0.0.0-fixture",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "name": "Main Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 2438,
+      "walls": [],
+      "underlays": [
+        {
+          "id": "underlay-1",
+          "source": {
+            "kind": "raster",
+            "image": {
+              "scope": "project",
+              "contentHash": "539b7f776886d40ceafb53d888d0517f21878581378e53f5109ad57c684af8ea"
+            }
+          },
+          "width": 1920,
+          "height": 1140,
+          "placement": {
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "millimetersPerPixel": 80,
+            "rotation": 0
+          },
+          "opacity": 1,
+          "visible": true
+        }
+      ],
+      "openings": [],
+      "dimensions": []
+    }
+  ],
+  "stairs": []
+}
