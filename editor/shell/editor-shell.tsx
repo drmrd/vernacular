@@ -1,14 +1,25 @@
 import { useMemo } from 'react'
 import {
   SceneCanvas,
+  createSurfaceSelectionStore,
+  SurfaceSelectionProvider,
   useActiveFloorId,
+  useActiveSurface,
   useEditorSession,
   useSceneGraph,
   useSelection,
   useSetActiveFloorId,
+  useSurfaceSelection,
   type AutosaveStatus,
 } from '../../bridge'
-import { addFloor, sceneGraphForFloor, setUnits, type Project } from '../../core'
+import {
+  addFloor,
+  paintableSurfaces,
+  resolveSurfacePaint,
+  sceneGraphForFloor,
+  setUnits,
+  type Project,
+} from '../../core'
 import {
   CommandBar,
   CommandPalette,
@@ -19,6 +30,7 @@ import {
   useKeybindings,
   type CommandContext,
 } from '../commands'
+import { PaintPanel } from '../paint/paint-panel'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
@@ -145,13 +157,40 @@ function ViewportArea() {
   )
 }
 
-// The inspector content: the existing selection inspector plus the empty paint seams
-// the paint track mounts into later.
+// The paint inspector content: the paint panel for the active floor's surfaces,
+// kept live by subscribing to the scene graph (the session re-derives the graph
+// on every dispatch, paint included).
+function PaintInspector() {
+  const session = useEditorSession()
+  const activeFloorId = useActiveFloorId()
+  const surfaceSelection = useSurfaceSelection()
+  const activeSurface = useActiveSurface()
+  useSceneGraph()
+  const project = session.getProject()
+  const floor =
+    project.floors.find((candidate) => candidate.id === activeFloorId) ?? project.floors[0]
+  const surfaces = floor ? paintableSurfaces(floor) : []
+  return (
+    <PaintPanel
+      surfaces={surfaces}
+      activeSurface={activeSurface}
+      treatmentFor={(ref) => resolveSurfacePaint(project, ref)}
+      recent={[]}
+      onSelectSurface={surfaceSelection.select}
+      dispatch={session.dispatch}
+    />
+  )
+}
+
+// The inspector content: the existing selection inspector, the live paint panel,
+// and the empty surface-paint seam the paint track mounts into later.
 function InspectorPanels() {
   return (
     <>
       <Inspector />
-      <PanelSlot slotId={PAINT_PICKER_SLOT} label="Paint" emptyTitle="Paint" />
+      <PanelSlot slotId={PAINT_PICKER_SLOT} label="Paint">
+        <PaintInspector />
+      </PanelSlot>
       <PanelSlot slotId={PAINT_INSPECTOR_SLOT} label="Surface paint" emptyTitle="Surface paint" />
     </>
   )
@@ -163,6 +202,9 @@ export interface EditorShellProps extends ProjectControlsProps {
 }
 
 export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
+  // The surface-selection store is created once so the paint inspector and the
+  // viewport share one active-surface source across the frame.
+  const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
   return (
     // The command-palette provider wraps everything so the keybinding layer, the
     // command bar, and the palette dialog all share one open/close state. The
@@ -178,15 +220,17 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
             {recovery ? (
               <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
             ) : null}
-            <AppFrame
-              header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
-              railLabel="Tool rail"
-              rail={<ToolRail />}
-              mainLabel="Viewport"
-              main={<ViewportArea />}
-              inspectorLabel="Inspector"
-              inspector={<InspectorPanels />}
-            />
+            <SurfaceSelectionProvider store={surfaceSelection}>
+              <AppFrame
+                header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
+                railLabel="Tool rail"
+                rail={<ToolRail />}
+                mainLabel="Viewport"
+                main={<ViewportArea />}
+                inspectorLabel="Inspector"
+                inspector={<InspectorPanels />}
+              />
+            </SurfaceSelectionProvider>
           </OpeningToolProvider>
         </UnderlayProvider>
       </ViewModeProvider>
