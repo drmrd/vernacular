@@ -30,7 +30,7 @@ sourceFiles:
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
     docs/plans/2026-06-11-vernacular-format-preservation.md,
   ]
-status: accepted
+status: current
 updated: 2026-06-11
 ---
 

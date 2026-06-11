@@ -34,8 +34,8 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
-status: accepted
-updated: 2026-06-10
+status: current
+updated: 2026-06-11
 ---
 
 # ADR-0047: Published floor-plan data format standard (Vernacular Floor Plan Format)
