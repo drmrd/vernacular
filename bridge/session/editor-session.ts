@@ -7,6 +7,7 @@ import {
   registerProjectCommands,
   registerRoomCommands,
   registerStairCommands,
+  registerTransformCommands,
   registerUnderlayCommands,
   registerWallCommands,
   type Command,
@@ -23,6 +24,10 @@ export interface EditorSession {
   dispatch(command: Command): void
   undo(): boolean
   redo(): boolean
+  /** Reports whether there is a dispatched command available to undo. */
+  canUndo(): boolean
+  /** Reports whether there is an undone command available to redo. */
+  canRedo(): boolean
   /**
    * Returns the current project as a read-only view. The reference is live: it
    * reflects later mutations rather than being a point-in-time snapshot. Callers
@@ -40,15 +45,7 @@ export interface EditorSession {
 }
 
 export function createEditorSession(project: Project): EditorSession {
-  const registry = new CommandRegistry<Project>()
-  registerProjectCommands(registry)
-  registerWallCommands(registry)
-  registerRoomCommands(registry)
-  registerUnderlayCommands(registry)
-  registerOpeningCommands(registry)
-  registerDimensionCommands(registry)
-  registerStairCommands(registry)
-  const dispatcher = new Dispatcher<Project>(project, registry)
+  const dispatcher = new Dispatcher<Project>(project, createCommandRegistry())
   const notifier = createChangeNotifier()
   const sceneGraph = createMemoizedSceneGraph(project)
 
@@ -76,10 +73,25 @@ export function createEditorSession(project: Project): EditorSession {
       }
       return changed
     },
+    canUndo: () => dispatcher.canUndo(),
+    canRedo: () => dispatcher.canRedo(),
     getProject: () => project,
     getSceneGraph: sceneGraph.get,
     subscribe: notifier.subscribe,
   }
+}
+
+function createCommandRegistry(): CommandRegistry<Project> {
+  const registry = new CommandRegistry<Project>()
+  registerProjectCommands(registry)
+  registerWallCommands(registry)
+  registerRoomCommands(registry)
+  registerUnderlayCommands(registry)
+  registerOpeningCommands(registry)
+  registerDimensionCommands(registry)
+  registerStairCommands(registry)
+  registerTransformCommands(registry)
+  return registry
 }
 
 interface ChangeNotifier {

@@ -7,6 +7,10 @@ export const selectors = {
   wallCount: (page: Page, count: number) => page.getByText(`Walls: ${count}`),
   savedStatus: (page: Page) => page.getByText('All changes saved'),
   tool: (page: Page, name: string) => page.getByRole('button', { name }),
+  undoButton: (page: Page) => page.getByRole('button', { name: 'Undo' }),
+  redoButton: (page: Page) => page.getByRole('button', { name: 'Redo' }),
+  wallProxy: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
+  selectTool: (page: Page) => page.getByRole('button', { name: 'Select' }),
 }
 
 // Boot the assembled editor at its root and wait for the plan canvas.
