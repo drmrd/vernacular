@@ -216,6 +216,21 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('mounts the Paint panel and binds the picker to a chosen surface', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+
+    expect(screen.getByRole('button', { name: 'Floor' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ceiling' })).toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Floor' }))
+
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+  })
+
   it('lays out the shell in the application frame with empty sibling panel slots', () => {
     vi.stubGlobal('navigator', {})
 
