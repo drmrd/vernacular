@@ -29,6 +29,14 @@ export function advanceWallTool(
   return { state: IDLE_WALL_TOOL, command: addWall(floorId, state.start, point) }
 }
 
+// Abandon any in-progress wall, returning the tool to idle. Every state cancels to
+// idle, so the current state is accepted (for a uniform tool-transition signature
+// with advanceWallTool) but not read.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uniform transition signature; cancel ignores the current state
+export function cancelWallTool(_state: WallToolState): WallToolState {
+  return IDLE_WALL_TOOL
+}
+
 export function wallPreviewSegment(
   state: WallToolState,
   point: Point,

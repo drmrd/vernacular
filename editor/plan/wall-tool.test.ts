@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { advanceWallTool, wallPreviewSegment, IDLE_WALL_TOOL } from './wall-tool'
+import { advanceWallTool, cancelWallTool, wallPreviewSegment, IDLE_WALL_TOOL } from './wall-tool'
 import { ADD_WALL, type AddWallParams, type Command } from '../../core'
 
 describe('advanceWallTool', () => {
@@ -28,6 +28,16 @@ describe('advanceWallTool', () => {
 
     expect(result.state).toEqual(IDLE_WALL_TOOL)
     expect(result.command).toBeUndefined()
+  })
+})
+
+describe('cancelWallTool', () => {
+  it('cancels a drawing to idle', () => {
+    expect(cancelWallTool({ phase: 'drawing', start: { x: 1, y: 2 } })).toEqual(IDLE_WALL_TOOL)
+  })
+
+  it('is idempotent on idle', () => {
+    expect(cancelWallTool(IDLE_WALL_TOOL)).toEqual(IDLE_WALL_TOOL)
   })
 })
 
