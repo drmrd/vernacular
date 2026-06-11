@@ -384,6 +384,8 @@ export type { ProjectPalette } from './model/types'
 export type { SurfaceRef, SurfaceTreatment } from './model/paint'
 export { solidTreatment, surfaceKey } from './model/paint'
 export { resolveSurfacePaint } from './paint/resolve-surface-paint'
+export type { PaintableSurface } from './paint/paintable-surfaces'
+export { paintableSurfaces } from './paint/paintable-surfaces'
 export type { LatLong, Obstruction, Site } from './model/site'
 export type {
   AddPaletteColorParams,
