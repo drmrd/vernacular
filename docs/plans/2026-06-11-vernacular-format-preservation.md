@@ -15,7 +15,7 @@ CORE schema (so `pnpm schema:check` stays green and no new dependency is needed)
 preservation overlay that, on save, re-grafts any value the prior on-disk Document carried that the
 saved Document dropped. (2) A `core/format` tolerant validator plus a non-fatal load gate, wired at
 the single app-load seam. (3) A `core/format` Strict profile that validates registered reverse-DNS
-extension namespaces against their schemas. See `docs/knowledge/decisions/ADR-0050-...` for the
+extension namespaces against their schemas. See `docs/knowledge/decisions/ADR-0051-...` for the
 decision record, and `docs/specs/2026-06-10-vernacular-floor-plan-format.md` sections 6.3, 6.4, 6.5,
 7, and 8 for the normative requirements.
 
@@ -833,7 +833,7 @@ for (const [namespace, payload] of Object.entries(extensions)) {
 
 ## Knowledge curation and finalization
 
-- [ ] Add ADR-0050 (`docs/knowledge/decisions/ADR-0050-format-preservation-and-load-validation.md`)
+- [ ] Add ADR-0051 (`docs/knowledge/decisions/ADR-0051-format-preservation-and-load-validation.md`)
       recording the three decisions; refresh ADR-0047's status note to mark preservation and
       validate-after-migration as landed. Commit as `docs:` (these can be the branch's opening commits,
       with the plan doc committed first).

@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0050-format-preservation-and-load-validation
-title: 'ADR-0050: Forward-compatibility preservation and load-time validation for the floor plan format'
+slug: decisions/ADR-0051-format-preservation-and-load-validation
+title: 'ADR-0051: Forward-compatibility preservation and load-time validation for the floor plan format'
 type: decision
 tags:
   [
@@ -34,7 +34,7 @@ status: current
 updated: 2026-06-11
 ---
 
-# ADR-0050: Forward-compatibility preservation and load-time validation for the floor plan format
+# ADR-0051: Forward-compatibility preservation and load-time validation for the floor plan format
 
 ## Status
 

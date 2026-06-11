@@ -49,7 +49,7 @@ CORE JSON Schema is generated from the `core/model` types and committed under
 the committed schema in lockstep with the types, and the project fixtures validate as
 conformant Documents. The file rename (`project.json` to `vernacular.json` and `.house.zip` to
 `.building`) landed next, and the forward-compatibility preservation round-trip,
-validate-after-migration on load, and the optional Strict profile followed in ADR-0050. This ADR
+validate-after-migration on load, and the optional Strict profile followed in ADR-0051. This ADR
 justifies a design-specification
 addendum (it formalizes sections 3.3, 3.4, and 4) per the project rule that any change to the
 specification carries a corresponding ADR.
