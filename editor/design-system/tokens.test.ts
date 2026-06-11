@@ -67,3 +67,19 @@ describe('drafting-table palette', () => {
     expect(tokensCss).toMatch(/--color-surface:\s*var\(--ink-950\)/)
   })
 })
+
+describe('drafting-table type and elevation tokens', () => {
+  const names = tokenList.map((entry) => entry.name)
+
+  it('registers the heading, mono, and elevation tokens', () => {
+    expect(names).toContain('--font-family-heading')
+    expect(names).toContain('--font-family-mono')
+    expect(names).toContain('--elevation-raised')
+    expect(names).toContain('--elevation-overlay')
+  })
+
+  it('gives the heading a serif stack and the readout a monospace stack', () => {
+    expect(tokensCss).toMatch(/--font-family-heading:[^;]*serif/)
+    expect(tokensCss).toMatch(/--font-family-mono:[^;]*monospace/)
+  })
+})
