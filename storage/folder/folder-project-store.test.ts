@@ -231,4 +231,17 @@ describe('FolderProjectStore preservation overlay', () => {
     )
     expect(saved.floors[0].walls).toEqual([])
   })
+
+  it('falls back to direct serialization when the prior document is unparseable', async () => {
+    const directory = new InMemoryDirectory()
+    await directory.writeFile('vernacular.json', new TextEncoder().encode('{ this is not json'))
+    const store = new FolderProjectStore(directory)
+
+    await store.saveProject(projectKeeping([]))
+
+    const saved = JSON.parse(
+      new TextDecoder().decode((await directory.readFile('vernacular.json'))!),
+    )
+    expect(saved.meta.name).toBe('Renamed')
+  })
 })
