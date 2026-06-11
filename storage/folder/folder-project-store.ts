@@ -72,15 +72,25 @@ export class FolderProjectStore {
   }
 
   async saveProject(project: Project): Promise<void> {
-    // Read the prior Document so the overlay can restore any unknown or reserved data the app's
-    // edit-dispatch path dropped from the typed model (VFPF section 6.4). With no prior file,
-    // serialize the project directly.
-    const previousBytes = await this.directory.readFile(PROJECT_FILE)
-    const payload =
-      previousBytes === undefined
-        ? project
-        : preserveUnknown(parseProjectJson(previousBytes), project)
+    // Apply the preservation overlay against the prior Document so a read-modify-write cycle keeps
+    // any unknown or reserved data the app's edit-dispatch path dropped (VFPF section 6.4). With no
+    // prior file, or an unreadable one, serialize the project directly.
+    const previous = await this.readPriorDocument()
+    const payload = previous === undefined ? project : preserveUnknown(previous, project)
     await this.directory.writeFile(PROJECT_FILE, serializeProjectJson(payload))
+  }
+
+  private async readPriorDocument(): Promise<unknown> {
+    const previousBytes = await this.directory.readFile(PROJECT_FILE)
+    if (previousBytes === undefined) {
+      return undefined
+    }
+    try {
+      return parseProjectJson(previousBytes)
+    } catch {
+      // A corrupt prior file must not block saving; skip the overlay and overwrite it.
+      return undefined
+    }
   }
 
   async exists(): Promise<boolean> {
