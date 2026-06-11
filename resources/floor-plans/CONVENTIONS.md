@@ -60,6 +60,21 @@ can express today, and therefore how a fixture is derived from it (spec section 
   part plus the un-modeled aspect carried in an `extensions` namespace, which the format's
   preservation rule keeps intact across load and save.
 
+## Calibration fields
+
+A Tier-0 underlay fixture needs the raster's pixel size and a world scale. Plans that have
+been calibrated (a first batch; calibrating all of them is iterative) carry three more
+`meta.json` fields:
+
+- `image_width_px`, `image_height_px`: the downscaled raster's actual pixel dimensions.
+- `calibration`: an anchor with `millimetersPerPixel` (world millimeters per source pixel),
+  an `offset` (`{ x, y }`, the world millimeters of the raster's top-left pixel), a
+  `rotation` (radians), and a free-text `basis` recording how the scale was derived. Where a
+  scale has not yet been measured precisely, `basis` says so and the value is provisional.
+
+The Tier-0 derivation reads these plus the content hash of the raster bytes to emit a
+calibrated `Underlay` Document.
+
 ## Capability taxonomy
 
 Each plan is read against three buckets.

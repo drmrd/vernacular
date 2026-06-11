@@ -58,5 +58,14 @@
       "slug": "plan-annotations-north-arrow-scale-bar",
       "why": "the plate carries a compass rose north arrow and a graphic metric scale bar as drawn annotations"
     }
-  ]
+  ],
+  "representabilityTier": 0,
+  "image_width_px": 1920,
+  "image_height_px": 1140,
+  "calibration": {
+    "millimetersPerPixel": 80,
+    "offset": { "x": 0, "y": 0 },
+    "rotation": 0,
+    "basis": "Provisional: the plate carries a graphic metric scale bar, but it is not yet measured in pixels. This value approximates the fortified site at roughly 150 m across the 1920 px width; refine it against the scale bar before treating the underlay as dimensionally exact."
+  }
 }
