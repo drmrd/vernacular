@@ -2,13 +2,28 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function graftObject(
+// Top-level members that are keyed collections of modeled entries, not entities. A key absent from
+// `next` here is a user deletion, so it must not be re-grafted (unlike an unknown key on an entity).
+const KEYED_COLLECTIONS = new Set(['roomOverrides', 'paint'])
+
+function graftKeyedCollection(
   previous: Record<string, unknown>,
   next: Record<string, unknown>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(next)) {
     result[key] = key in previous ? graftUnknown(previous[key], next[key]) : next[key]
+  }
+  return result
+}
+
+function graftObject(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(next)) {
+    result[key] = graftMember(key, previous, next)
   }
   for (const key of Object.keys(previous)) {
     // A key the next document lacks is unknown or reserved data the reader dropped; preserve it.
@@ -17,6 +32,19 @@ function graftObject(
     }
   }
   return result
+}
+
+function graftMember(
+  key: string,
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+): unknown {
+  const previousValue = previous[key]
+  const nextValue = next[key]
+  if (KEYED_COLLECTIONS.has(key) && isPlainObject(previousValue) && isPlainObject(nextValue)) {
+    return graftKeyedCollection(previousValue, nextValue)
+  }
+  return key in previous ? graftUnknown(previousValue, nextValue) : nextValue
 }
 
 function idOf(value: unknown): string | undefined {
