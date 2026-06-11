@@ -207,6 +207,49 @@ describe('snapPoint underlay trace snapping', () => {
   })
 })
 
+describe('snapPoint on-edge snapping', () => {
+  // Wall from (1000,1000) to (5000,1000): endpoints at x=1000,5000; midpoint x=3000.
+  it('snaps a cursor near a wall, away from endpoints and midpoint, to the nearest point on it', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2000, y: 1005 }, context)).toEqual({
+      point: { x: 2000, y: 1000 },
+      kind: 'edge',
+      referenceId: wall.id,
+    })
+  })
+
+  it('returns null when the cursor is farther from every wall than the tolerance', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2000, y: 1100 }, context)).toBeNull()
+  })
+
+  it('prefers the midpoint over the on-edge point when the cursor is near the midpoint', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    // 5 mm above the midpoint (3000,1000); both midpoint and on-edge are in range.
+    expect(snapPoint({ x: 3002, y: 1005 }, context)?.kind).toBe('midpoint')
+  })
+
+  it('prefers the on-edge point over a perpendicular construction line', () => {
+    const wall = wallNode()
+    // Origin sits off the wall; the perpendicular line through it is x = 2000.
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 2000, y: 5000 },
+    }
+
+    // (2002,1005): 2 mm from the perpendicular line x=2000 and 5 mm from the wall.
+    expect(snapPoint({ x: 2002, y: 1005 }, context)?.kind).toBe('edge')
+  })
+})
+
 describe('snapPoint with nothing in range', () => {
   it('returns null when the grid is disabled, no feature is in range, and no origin is set', () => {
     const wall = wallNode({ start: { x: 9000, y: 9000 }, end: { x: 9500, y: 9000 } })
