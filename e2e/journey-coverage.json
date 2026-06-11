@@ -11,7 +11,7 @@
     {
       "id": "switch-floor",
       "title": "switches floors and the canvas changes",
-      "status": "pending"
+      "status": "required"
     },
     { "id": "edit-color", "title": "edits a surface color and it applies", "status": "pending" },
     {

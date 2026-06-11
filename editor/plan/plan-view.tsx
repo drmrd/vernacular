@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
+  sceneGraphForFloor,
   type Point,
   type SceneGraph,
   type UnitPreferences,
@@ -10,6 +11,7 @@ import {
 } from '../../core'
 import {
   createClipboardStore,
+  useActiveFloorId,
   useEditorSession,
   useSceneGraph,
   useSelection,
@@ -255,6 +257,13 @@ function useClipboardStore(): ClipboardStore {
   return clipboardRef.current
 }
 
+/** The scene graph narrowed to the active floor, so downstream layers see only it. */
+function useActiveFloorGraph(): SceneGraph {
+  const fullGraph = useSceneGraph()
+  const floorId = useActiveFloorId()
+  return useMemo(() => sceneGraphForFloor(fullGraph, floorId), [fullGraph, floorId])
+}
+
 /**
  * Resolves all the plan-editing hooks (pan/zoom, wall tool, hit-test selection,
  * endpoint-drag wall editing, underlay layer, calibration, opening layer) plus the
@@ -264,7 +273,7 @@ function useClipboardStore(): ClipboardStore {
  */
 function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const session = useEditorSession()
-  const graph = useSceneGraph()
+  const graph = useActiveFloorGraph()
   const selection = useSelection()
   const { tool } = useActiveTool()
   const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
@@ -273,7 +282,6 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const deps = planInteractionDeps({ session, tool, viewport }, graph, traceMode)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
-  const dimensions = toDrawableDimensions(graph.dimensions, selectedIds)
   const planSelection = usePlanSelection({ graph, selection, tool, viewport })
   const clipboard = useClipboardStore()
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
@@ -293,7 +301,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
     selection,
     interaction,
     dimensionTool,
-    dimensions,
+    dimensions: toDrawableDimensions(graph.dimensions, selectedIds),
     planSelection,
     selectionMove,
     wallEditing,

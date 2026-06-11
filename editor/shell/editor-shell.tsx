@@ -8,7 +8,7 @@ import {
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
-import { addFloor, setUnits, type Project } from '../../core'
+import { addFloor, sceneGraphForFloor, setUnits, type Project } from '../../core'
 import {
   CommandBar,
   CommandPalette,
@@ -83,7 +83,7 @@ interface ShellHeaderProps {
 // The toolbar content. It renders a plain container, NOT a <header role="banner">,
 // because AppFrame's own <header> provides the single banner landmark.
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
-  const graph = useSceneGraph()
+  const graph = sceneGraphForFloor(useSceneGraph(), useActiveFloorId())
   const session = useEditorSession()
   return (
     <div className="editor-shell__toolbar">
