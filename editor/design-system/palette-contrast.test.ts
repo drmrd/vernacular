@@ -24,7 +24,7 @@ function blockBody(source: string, selector: string): string {
   const start = source.indexOf(selector)
   const open = source.indexOf('{', start)
   // Assumes the target block has no nested braces: it takes the first '}'
-  // after the selector's '{' as the block's end (true for flat token blocks).
+  // after the selector's '{' as the block's end.
   const close = source.indexOf('}', open)
   return source.slice(open + 1, close)
 }

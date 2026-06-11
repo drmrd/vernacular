@@ -27,8 +27,8 @@
   --ink-800: #2c3e57;
   --ink-600: #3a5273;
 
-  /* Material accents (reserved for the design-system showcase and later
-     surface-finish work; not orphaned tokens). */
+  /* Material accents: used in the design-system showcase; semantic consumers
+     follow in surface-finish work. */
   --brass-500: #b08646;
   --brass-300: #c8b78f;
   --clay-500: #9c5f4a;
