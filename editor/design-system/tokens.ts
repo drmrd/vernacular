@@ -28,6 +28,10 @@ export const tokens = {
   fontSizeMd: token('--font-size-md'),
   fontSizeLg: token('--font-size-lg'),
   fontFamilyUi: token('--font-family-ui'),
+  fontFamilyHeading: token('--font-family-heading'),
+  fontFamilyMono: token('--font-family-mono'),
+  elevationRaised: token('--elevation-raised'),
+  elevationOverlay: token('--elevation-overlay'),
   motionDuration: token('--motion-duration'),
 } as const
 

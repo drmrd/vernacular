@@ -13,6 +13,7 @@
 .ds-status__title {
   margin: 0;
   color: var(--color-text);
+  font-family: var(--font-family-heading);
   font-size: var(--font-size-md);
 }
 
