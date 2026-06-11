@@ -29,6 +29,12 @@ export function advanceWallTool(
   return { state: IDLE_WALL_TOOL, command: addWall(floorId, state.start, point) }
 }
 
+// Abandon any in-progress wall, returning the tool to idle.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function cancelWallTool(_state: WallToolState): WallToolState {
+  return IDLE_WALL_TOOL
+}
+
 export function wallPreviewSegment(
   state: WallToolState,
   point: Point,
