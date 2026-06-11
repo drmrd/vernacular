@@ -27,7 +27,7 @@ describe('OpfsProjectStore', () => {
 
     expect(await store.load('alpha')).toEqual(projectA)
     expect(await store.load('beta')).toEqual(projectB)
-    expect(await root.readFile('alpha/project.json')).toBeDefined()
+    expect(await root.readFile('alpha/vernacular.json')).toBeDefined()
   })
 
   it('lists every saved project as an id and name summary', async () => {
@@ -78,7 +78,7 @@ describe('OpfsProjectStore', () => {
     await expect(store.load('nope')).rejects.toBeInstanceOf(ProjectNotFoundError)
   })
 
-  it('omits id directories that hold no project.json from the listing', async () => {
+  it('omits id directories that hold no vernacular.json from the listing', async () => {
     const root = new InMemoryDirectory()
     await root.writeFile('ghost/.house-autosave/snap.json', new TextEncoder().encode('x'))
     const store = new OpfsProjectStore(root)
@@ -91,10 +91,10 @@ describe('OpfsProjectStore', () => {
     expect(summaries.map((summary: ProjectSummary) => summary.id)).not.toContain('ghost')
   })
 
-  it('omits id directories whose project.json lacks a string meta.name from the listing', async () => {
+  it('omits id directories whose vernacular.json lacks a string meta.name from the listing', async () => {
     const root = new InMemoryDirectory()
     await root.writeFile(
-      'broken/project.json',
+      'broken/vernacular.json',
       new TextEncoder().encode(JSON.stringify({ meta: {} })),
     )
     const store = new OpfsProjectStore(root)

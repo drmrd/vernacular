@@ -58,6 +58,16 @@ describe('FolderProjectStore', () => {
     expect(await store.loadProject()).toEqual(project)
   })
 
+  it('writes the canonical Document to vernacular.json', async () => {
+    const directory = new InMemoryDirectory()
+    const store = new FolderProjectStore(directory)
+
+    await store.saveProject(sampleProject())
+
+    expect(await directory.readFile('vernacular.json')).toBeDefined()
+    expect(await directory.readFile('project.json')).toBeUndefined()
+  })
+
   it('isolates stored state from later mutation of the saved project', async () => {
     const store = new FolderProjectStore(new InMemoryDirectory())
     const project = sampleProject()
@@ -104,7 +114,7 @@ describe('FolderProjectStore', () => {
 
   it('backs up the original project file verbatim before migrating it forward', async () => {
     const { directory, seedBytes } = seededDirectory(1)
-    await directory.writeFile('project.json', seedBytes)
+    await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory, {
       migrate: bumpSchemaVersionTo(2),
       targetVersion: 2,
@@ -118,7 +128,7 @@ describe('FolderProjectStore', () => {
 
   it('leaves the canonical project file intact and keeps the backup when migration throws', async () => {
     const { directory, seedBytes } = seededDirectory(1)
-    await directory.writeFile('project.json', seedBytes)
+    await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory, {
       migrate: () => {
         throw new Error('migration boom')
@@ -128,13 +138,13 @@ describe('FolderProjectStore', () => {
 
     await expect(store.loadProject()).rejects.toThrow('migration boom')
 
-    expect(await directory.readFile('project.json')).toEqual(seedBytes)
+    expect(await directory.readFile('vernacular.json')).toEqual(seedBytes)
     expect(await directory.readFile(PRE_MIGRATION_BACKUP)).toEqual(seedBytes)
   })
 
   it('writes no pre-migration backup when the stored project is already current', async () => {
     const { directory, seedBytes } = seededDirectory()
-    await directory.writeFile('project.json', seedBytes)
+    await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory)
 
     await store.loadProject()

@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
 // The Export bundle button triggers a synthetic-anchor download of a
-// `.house.zip` archive named by `bundleFilename(project.meta.name)`. The app
+// `.building` archive named by `bundleFilename(project.meta.name)`. The app
 // boots with the default project "Untitled project", so the suggested filename
-// is `untitled-project.house.zip`.
-const EXPECTED_FILENAME = 'untitled-project.house.zip'
+// is `untitled-project.building`.
+const EXPECTED_FILENAME = 'untitled-project.building'
 
 test.describe('Export bundle download', () => {
-  test('downloads the default project as a named .house.zip bundle', async ({
+  test('downloads the default project as a named .building bundle', async ({
     page,
     browserName,
   }) => {

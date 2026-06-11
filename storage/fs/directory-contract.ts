@@ -20,60 +20,60 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
     it('resolves to undefined when reading a path that has no file', async () => {
       const directory = makeEmpty()
 
-      expect(await directory.readFile('project.json')).toBeUndefined()
+      expect(await directory.readFile('doc.json')).toBeUndefined()
     })
 
     it('reads back byte-equal content after a write', async () => {
       const directory = makeEmpty()
 
-      await directory.writeFile('project.json', bytes(1, 2, 3))
+      await directory.writeFile('doc.json', bytes(1, 2, 3))
 
-      const read = await directory.readFile('project.json')
+      const read = await directory.readFile('doc.json')
       expect(read).toEqual(bytes(1, 2, 3))
     })
 
     it('overwrites the file when writing the same path twice', async () => {
       const directory = makeEmpty()
 
-      await directory.writeFile('project.json', bytes(1, 2, 3))
-      await directory.writeFile('project.json', bytes(9, 8))
+      await directory.writeFile('doc.json', bytes(1, 2, 3))
+      await directory.writeFile('doc.json', bytes(9, 8))
 
-      expect(await directory.readFile('project.json')).toEqual(bytes(9, 8))
+      expect(await directory.readFile('doc.json')).toEqual(bytes(9, 8))
     })
 
     it('does not let later mutation of the caller array change stored bytes', async () => {
       const directory = makeEmpty()
       const written = bytes(1, 2, 3)
 
-      await directory.writeFile('project.json', written)
+      await directory.writeFile('doc.json', written)
       written[0] = 99
 
-      expect(await directory.readFile('project.json')).toEqual(bytes(1, 2, 3))
+      expect(await directory.readFile('doc.json')).toEqual(bytes(1, 2, 3))
     })
 
     it('does not let mutation of a returned array change stored bytes', async () => {
       const directory = makeEmpty()
-      await directory.writeFile('project.json', bytes(1, 2, 3))
+      await directory.writeFile('doc.json', bytes(1, 2, 3))
 
-      const first = await directory.readFile('project.json')
+      const first = await directory.readFile('doc.json')
       first?.set([99], 0)
 
-      expect(await directory.readFile('project.json')).toEqual(bytes(1, 2, 3))
+      expect(await directory.readFile('doc.json')).toEqual(bytes(1, 2, 3))
     })
 
     it('does not throw when removing a path that has no file', async () => {
       const directory = makeEmpty()
 
-      await expect(directory.removeFile('project.json')).resolves.toBeUndefined()
+      await expect(directory.removeFile('doc.json')).resolves.toBeUndefined()
     })
 
     it('reads undefined after removing a file', async () => {
       const directory = makeEmpty()
-      await directory.writeFile('project.json', bytes(1, 2, 3))
+      await directory.writeFile('doc.json', bytes(1, 2, 3))
 
-      await directory.removeFile('project.json')
+      await directory.removeFile('doc.json')
 
-      expect(await directory.readFile('project.json')).toBeUndefined()
+      expect(await directory.readFile('doc.json')).toBeUndefined()
     })
 
     it('lists the immediate child segments directly under the root', async () => {
@@ -111,9 +111,9 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
 
     it('lists nothing for a path that refers to a stored file', async () => {
       const directory = makeEmpty()
-      await directory.writeFile('a/project.json', bytes(1))
+      await directory.writeFile('a/doc.json', bytes(1))
 
-      expect(await directory.list('a/project.json')).toEqual([])
+      expect(await directory.list('a/doc.json')).toEqual([])
     })
   })
 }

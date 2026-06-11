@@ -4,7 +4,7 @@ import type { DirectoryPort } from '../fs/directory-port'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
 /** Canonical project file name written at the root of each project folder. */
-export const PROJECT_FILE = 'project.json'
+export const PROJECT_FILE = 'vernacular.json'
 const AUTOSAVE_DIR = '.house-autosave'
 
 /** Read meta.schemaVersion from a parsed project, or undefined when missing or non-numeric. */
@@ -39,7 +39,7 @@ export interface FolderProjectStoreOptions {
 }
 
 /**
- * Reads and writes one project folder (project.json at the directory root) through
+ * Reads and writes one project folder (vernacular.json at the directory root) through
  * a DirectoryPort. Save serializes immediately, so the stored snapshot is isolated
  * from later caller mutation (the clone-on-save contract from ADR-0003).
  */

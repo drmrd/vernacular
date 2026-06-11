@@ -1,6 +1,6 @@
 # Project fixtures
 
-Hand-authored `*.project.json` files that exercise specific domain
+Hand-authored `*.vernacular.json` files that exercise specific domain
 configurations. Typical uses:
 
 - Deterministic input for scene-graph derivation tests.

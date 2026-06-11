@@ -47,7 +47,7 @@ function requestedFixture(): string | null {
 // Resolve the durable {store, assets} pair to boot against. An injected
 // store-only resolver (tests) pairs its store with an in-memory asset cache; the
 // default resolves the real pair, so the OPFS runtime gets a directory-backed
-// asset cache that persists underlay rasters beside project.json (ADR-0042).
+// asset cache that persists underlay rasters beside vernacular.json (ADR-0042).
 async function resolveBootStorage(
   resolveStore?: () => Promise<ProjectStore>,
 ): Promise<ProjectStorage> {

@@ -2,7 +2,7 @@
 const FALLBACK_STEM = 'project'
 
 /** The fixed suffix every exported bundle filename ends in. */
-const BUNDLE_SUFFIX = '.house.zip'
+const BUNDLE_SUFFIX = '.building'
 
 /** Any run of characters outside the safe set, replaced by a single hyphen. */
 const UNSAFE_RUN = /[^a-z0-9]+/g
@@ -11,10 +11,10 @@ const UNSAFE_RUN = /[^a-z0-9]+/g
 const EDGE_HYPHENS = /^-+|-+$/g
 
 /**
- * A safe `.house.zip` download filename derived from a project name: lowercased,
+ * A safe `.building` download filename derived from a project name: lowercased,
  * spaces and unsafe characters collapsed to single hyphens, trimmed, with a
  * fixed fallback stem when the name yields an empty slug. Always ends in
- * `.house.zip`.
+ * `.building`.
  */
 export function bundleFilename(projectName: string): string {
   const slug = projectName.toLowerCase().replace(UNSAFE_RUN, '-').replace(EDGE_HYPHENS, '')
