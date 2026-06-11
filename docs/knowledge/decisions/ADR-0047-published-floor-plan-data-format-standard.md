@@ -34,7 +34,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
-status: proposed
+status: accepted
 updated: 2026-06-10
 ---
 
@@ -42,13 +42,16 @@ updated: 2026-06-10
 
 ## Status
 
-Proposed, pending review of the companion specification
-`docs/specs/2026-06-10-vernacular-floor-plan-format.md`. This ADR records the decision to
-publish a formal data format; the specification is the normative artifact. No format code lands
-with this decision. Generation, validation, and the rename transition are sequenced in a
-separate implementation plan. This ADR justifies a design-specification addendum (it formalizes
-sections 3.3, 3.4, and 4) per the project rule that any change to the specification carries a
-corresponding ADR.
+Accepted. The companion specification `docs/specs/2026-06-10-vernacular-floor-plan-format.md`
+is the normative artifact this ADR introduces. The first implementation plan has landed: the
+CORE JSON Schema is generated from the `core/model` types and committed under
+`schema/<version>/`, a `core/` Ajv validator checks Documents against it, a drift guard keeps
+the committed schema in lockstep with the types, and the project fixtures validate as
+conformant Documents. The file rename (`project.json` to `vernacular.json` and `.house.zip` to
+`.building`), the forward-compatibility preservation round-trip, and validate-after-migration on
+load are sequenced in later implementation plans. This ADR justifies a design-specification
+addendum (it formalizes sections 3.3, 3.4, and 4) per the project rule that any change to the
+specification carries a corresponding ADR.
 
 ## Context
 
