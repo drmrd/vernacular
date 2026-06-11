@@ -1,0 +1,39 @@
+{
+  "capabilities": [
+    { "id": "draw-wall", "title": "draws a wall and shows it on the plan", "status": "required" },
+    {
+      "id": "cancel-wall",
+      "title": "cancels a half-drawn wall with the cancel key",
+      "status": "pending"
+    },
+    { "id": "undo-redo", "title": "undoes and redoes a wall", "status": "pending" },
+    { "id": "delete-selection", "title": "deletes the selected entities", "status": "pending" },
+    {
+      "id": "switch-floor",
+      "title": "switches floors and the canvas changes",
+      "status": "pending"
+    },
+    { "id": "edit-color", "title": "edits a surface color and it applies", "status": "pending" },
+    {
+      "id": "toggle-three-d",
+      "title": "toggles between the two- and three-dimensional views",
+      "status": "pending"
+    },
+    {
+      "id": "edit-endpoint",
+      "title": "re-edits a wall endpoint after placement",
+      "status": "pending"
+    },
+    {
+      "id": "snap-along-wall",
+      "title": "snaps a new wall onto an existing wall",
+      "status": "pending"
+    },
+    {
+      "id": "opening-host-guard",
+      "title": "a wall cannot host on an opening",
+      "status": "pending"
+    },
+    { "id": "donut-room", "title": "derives a room with an interior void", "status": "pending" }
+  ]
+}
