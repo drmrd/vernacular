@@ -165,19 +165,28 @@ Reduced motion: unchanged (`--motion-duration: 0ms`).
 
 ---
 
-## Cycle 1: the WCAG contrast helper and the AA palette guardrail
+## Cycle 1: the WCAG contrast math helper
 
-**Behavior:** the design system enforces, in the unit gate, that the live color
-tokens clear WCAG AA in both themes.
+**Behavior:** the design system has a pure WCAG luminance/contrast helper, verified
+in the unit gate.
+
+> **Re-sequencing note (learned during execution):** the palette AA guardrail
+> (`palette-contrast.test.ts`, shown in Step 2 below for reference) was moved into
+> Cycle 2. Reason: the _legacy_ dark palette already violates AA - dark
+> `--color-accent-strong` (`#1a7fd4`) on the dark surface (`#1e293b`) scores only
+> 3.5:1, below the 4.5 threshold - so the guardrail cannot pass until the
+> drafting-table dark palette lands. It therefore belongs with the retheme it
+> guards, where it provides a real RED -> GREEN. Cycle 1 ships the math helper plus
+> its own unit test only.
 
 **Files:**
 
 - Create: `editor/design-system/contrast.ts`
-- Test: `editor/design-system/contrast.test.ts`, `editor/design-system/palette-contrast.test.ts`
+- Test: `editor/design-system/contrast.test.ts`
 
-Dispatch: `/test-first`. Tell the test-author the allowed files are exactly the two
-test files above, that the helper module `./contrast` does not exist yet (so the
-imports drive the RED), and to STOP rather than create or edit any implementation
+Dispatch: `/test-first`. Tell the test-author the allowed file is exactly
+`contrast.test.ts`, that the helper module `./contrast` does not exist yet (so the
+import drives the RED), and to STOP rather than create or edit any implementation
 or shared config.
 
 - [ ] **Step 1 (RED): write `contrast.test.ts`** (math helper unit tests)
@@ -209,7 +218,7 @@ describe('contrast math', () => {
 })
 ```
 
-- [ ] **Step 2 (RED): write `palette-contrast.test.ts`** (the guardrail)
+- [ ] **Step 2 (reference only - committed in Cycle 2): `palette-contrast.test.ts`** (the guardrail)
 
 ```ts
 import { readFileSync } from 'node:fs'
@@ -226,7 +235,10 @@ const AA_UI = 3
 function declarationsIn(block: string): Map<string, string> {
   const map = new Map<string, string>()
   for (const match of block.matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
-    map.set(match[1], match[2].trim())
+    const [, name, value] = match
+    if (name !== undefined && value !== undefined) {
+      map.set(name, value.trim())
+    }
   }
   return map
 }
@@ -240,8 +252,8 @@ function blockBody(source: string, selector: string): string {
 
 function resolveColor(name: string, vars: Map<string, string>): string {
   const value = vars.get(name) ?? name
-  const reference = value.match(/var\((--[\w-]+)\)/)
-  return reference ? resolveColor(reference[1], vars) : value
+  const captured = value.match(/var\((--[\w-]+)\)/)?.[1]
+  return captured !== undefined ? resolveColor(captured, vars) : value
 }
 
 function paletteFor(theme: 'light' | 'dark'): Map<string, string> {
@@ -280,14 +292,14 @@ describe.each(['light', 'dark'] as const)('drafting-table %s contrast', (theme) 
 })
 ```
 
-- [ ] **Step 3 (RED): confirm both tests fail.** Run
-      `pnpm exec vitest run editor/design-system/contrast.test.ts editor/design-system/palette-contrast.test.ts`.
+- [ ] **Step 3 (RED): confirm the test fails.** Run
+      `pnpm exec vitest run editor/design-system/contrast.test.ts`.
       Expected: FAIL - `Failed to resolve import "./contrast"` (the module does not
-      exist yet). Commit RED:
+      exist yet). Commit RED (only `contrast.test.ts`):
 
 ```bash
-git add editor/design-system/contrast.test.ts editor/design-system/palette-contrast.test.ts
-git commit -m "test: assert the design tokens clear WCAG AA in both themes"
+git add editor/design-system/contrast.test.ts
+git commit -m "test: cover the WCAG contrast math helper"
 ```
 
 - [ ] **Step 4 (GREEN): write `contrast.ts`.** Dispatch `/implement`. The
@@ -320,12 +332,12 @@ const CONTRAST_AMBIENT = 0.05
 function parseHex(text: string): Rgb {
   const body = text.slice(1)
   const full = body.length === SHORT_HEX_LENGTH ? body.replace(/./g, (c) => c + c) : body
-  const [r, g, b] = (full.match(/.{2}/g) ?? []).map((pair) => parseInt(pair, HEX_RADIX))
+  const [r = 0, g = 0, b = 0] = (full.match(/.{2}/g) ?? []).map((pair) => parseInt(pair, HEX_RADIX))
   return { r, g, b }
 }
 
 function parseRgb(text: string): Rgb {
-  const [r, g, b] = text
+  const [r = 0, g = 0, b = 0] = text
     .replace(/rgba?\(|\)/g, '')
     .split(/[,\s/]+/)
     .filter(Boolean)
@@ -363,18 +375,18 @@ export function contrastRatio(foreground: string, background: string): number {
 }
 ```
 
-- [ ] **Step 5 (GREEN): confirm both tests pass.** Run the same command as Step 3.
-      Expected: PASS. The guardrail passes against the _current_ (pre-retheme) palette,
-      which is already AA; it then keeps Cycle 2 honest. Commit GREEN:
+- [ ] **Step 5 (GREEN): confirm the test passes.** Run the same command as Step 3.
+      Expected: PASS (the four math tests). Commit GREEN:
 
 ```bash
 git add editor/design-system/contrast.ts
-git commit -m "feat: add WCAG contrast math and the token AA guardrail"
+git commit -m "feat: add the WCAG contrast math helper"
 ```
 
 - [ ] **Step 6 (BLUE): review and refactor.** Dispatch `/clean-code-review`
-      (scope: the three new files), then `/refactor` (implementation only;
-      `contrast.ts`). Land the refactor commit, empty marker if nothing actionable:
+      (scope: `contrast.ts`, `contrast.test.ts`), then `/refactor` (implementation
+      only; `contrast.ts`). Land the refactor commit, empty marker if nothing
+      actionable:
 
 ```bash
 git commit --allow-empty -m "refactor: close the contrast-helper cycle"
@@ -391,12 +403,17 @@ slate/blue starter ramp is retired.
 **Files:**
 
 - Modify: `editor/design-system/tokens.css`
-- Test: `editor/design-system/tokens.test.ts`
+- Test: `editor/design-system/tokens.test.ts`, plus the guardrail
+  `editor/design-system/palette-contrast.test.ts` (authored in Cycle 1, committed
+  here - it fails RED on the legacy dark `--color-accent-strong` and goes GREEN with
+  the retheme).
 
-Dispatch `/test-first`. Allowed file: `editor/design-system/tokens.test.ts` only.
+Dispatch `/test-first`. Allowed files: `editor/design-system/tokens.test.ts` and
+`editor/design-system/palette-contrast.test.ts` only.
 
 - [ ] **Step 1 (RED): extend `tokens.test.ts`** with a `drafting-table palette`
-      block. Add these tests (keep the existing `design tokens` describe intact):
+      block (keep the existing `design tokens` describe intact), and stage the
+      already-present `palette-contrast.test.ts` guardrail. Add these tests:
 
 ```ts
 describe('drafting-table palette', () => {
@@ -424,13 +441,14 @@ describe('drafting-table palette', () => {
 ```
 
 - [ ] **Step 2 (RED): confirm failure.** Run
-      `pnpm exec vitest run editor/design-system/tokens.test.ts`.
-      Expected: FAIL (the drafting-table hexes are absent; `#1a7fd4`/`#1e293b` still
-      present). Commit RED:
+      `pnpm exec vitest run editor/design-system/tokens.test.ts editor/design-system/palette-contrast.test.ts`.
+      Expected: FAIL - the migration pins fail (drafting-table hexes absent,
+      `#1a7fd4`/`#1e293b` still present) and the guardrail's dark strong-accent
+      assertion fails (3.5:1 < 4.5). Commit RED:
 
 ```bash
-git add editor/design-system/tokens.test.ts
-git commit -m "test: pin the drafting-table primitives and theme grounds"
+git add editor/design-system/tokens.test.ts editor/design-system/palette-contrast.test.ts
+git commit -m "test: pin the accessible drafting-table palette and theme grounds"
 ```
 
 - [ ] **Step 3 (GREEN): rewrite `tokens.css`.** Dispatch `/implement`. Allowed
@@ -441,12 +459,14 @@ git commit -m "test: pin the drafting-table primitives and theme grounds"
       "The drafting-table token values" above. Keep `--white`, the spacing/radius/font
       -size/motion declarations, and the leading file comment. Do not add the type or
       elevation tokens yet (that is Cycle 3). The implementer must keep the dark and
-      system blocks identical, and `palette-contrast.test.ts` must stay green.
+      system blocks identical, and the retheme must take `palette-contrast.test.ts`
+      from RED to GREEN (the new dark `--color-accent-strong`, brass `#c8b78f` on the
+      ink `#1a2738` surface, clears AA at about 7.6:1).
 
 - [ ] **Step 4 (GREEN): confirm green.** Run
-      `pnpm exec vitest run editor/design-system`. Expected: PASS, including the Cycle 1
-      guardrail against the new palette and the existing "declares every named token"
-      pin. Commit GREEN:
+      `pnpm exec vitest run editor/design-system`. Expected: PASS, including the
+      palette guardrail against the new palette and the existing "declares every named
+      token" pin. Commit GREEN:
 
 ```bash
 git add editor/design-system/tokens.css
