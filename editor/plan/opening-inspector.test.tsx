@@ -2,13 +2,10 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
-  DEFAULT_METRIC_PREFERENCES,
   FLIP_OPENING,
   REMOVE_OPENING,
   RESIZE_OPENING,
   createOpening,
-  formatLength,
-  lengthFormatOptions,
   parseLength,
   type Command,
   type FlipOpeningParams,
@@ -30,8 +27,9 @@ const SILL_HEIGHT_MM = 0
 const UNITS = 'metric' as const
 const METRIC_ASSUMED_UNIT = 'mm' as const
 
-const FORMAT_OPTIONS = lengthFormatOptions(DEFAULT_METRIC_PREFERENCES)
-const EXPECTED_WIDTH = formatLength(WIDTH_MM, FORMAT_OPTIONS)
+// A door-width-scale length reads in centimetres with one decimal under the
+// adaptive metric rule: 813 mm renders as "81.3 cm", not "813 mm".
+const EXPECTED_WIDTH = '81.3 cm'
 
 const NEW_WIDTH_ENTRY = '900'
 const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, { assumeUnit: METRIC_ASSUMED_UNIT })

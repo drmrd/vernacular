@@ -1,4 +1,4 @@
-import { distance, formatArea, formatLength, lengthFormatOptions } from '../../core'
+import { distance, formatAdaptiveLength, formatArea } from '../../core'
 import type { UnitPreferences } from '../../core'
 import type { SelectableSceneNode } from './overlay-anchor'
 
@@ -13,14 +13,14 @@ function titleCase(elementType: string): string {
 export function ariaLabel(node: SelectableSceneNode, preferences: UnitPreferences): string {
   switch (node.kind) {
     case 'wall':
-      return `Wall, ${formatLength(distance(node.start, node.end), lengthFormatOptions(preferences))}`
+      return `Wall, ${formatAdaptiveLength(distance(node.start, node.end), preferences)}`
     case 'room':
       return node.name
         ? `Room ${node.name}, ${formatArea(node.area, preferences)}`
         : `Room, ${formatArea(node.area, preferences)}`
     case 'opening':
-      return `${titleCase(node.type)}, ${formatLength(node.width, lengthFormatOptions(preferences))} wide`
+      return `${titleCase(node.type)}, ${formatAdaptiveLength(node.width, preferences)} wide`
     case 'dimension':
-      return `Dimension, ${formatLength(node.length, lengthFormatOptions(preferences))}`
+      return `Dimension, ${formatAdaptiveLength(node.length, preferences)}`
   }
 }

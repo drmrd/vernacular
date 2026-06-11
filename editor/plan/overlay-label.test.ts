@@ -74,7 +74,7 @@ function dimension(length: number): DimensionSceneNode {
 describe('ariaLabel', () => {
   it('labels a wall with its metric length', () => {
     const node: SelectableSceneNode = wall(WALL_START, WALL_END)
-    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Wall, 3000 mm')
+    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Wall, 3.00 m')
   })
 
   it('labels a named room with its metric area in square meters', () => {
@@ -89,12 +89,12 @@ describe('ariaLabel', () => {
 
   it('labels an opening with a title-cased type and its width', () => {
     const node: SelectableSceneNode = opening('single-swing-door', OPENING_WIDTH_MM)
-    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Single Swing Door, 900 mm wide')
+    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Single Swing Door, 90.0 cm wide')
   })
 
   it('labels a dimension with its metric length', () => {
     const node: SelectableSceneNode = dimension(DIMENSION_LENGTH_MM)
-    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Dimension, 2500 mm')
+    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Dimension, 2.50 m')
   })
 
   it('re-formats the wall measurement under imperial preferences', () => {
