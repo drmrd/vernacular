@@ -7,7 +7,7 @@ describe('zip codec', () => {
   it('round-trips folder entries including nested paths', () => {
     const encode = new TextEncoder()
     const entries: FolderEntries = new Map([
-      ['project.json', encode.encode('{"meta":{}}')],
+      ['vernacular.json', encode.encode('{"meta":{}}')],
       ['.house-autosave/snap.json', encode.encode('{"snapshot":true}')],
     ])
 
