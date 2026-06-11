@@ -6,8 +6,8 @@
       "title": "cancels a half-drawn wall with the cancel key",
       "status": "pending"
     },
-    { "id": "undo-redo", "title": "undoes and redoes a wall", "status": "pending" },
-    { "id": "delete-selection", "title": "deletes the selected entities", "status": "pending" },
+    { "id": "undo-redo", "title": "undoes and redoes a wall", "status": "required" },
+    { "id": "delete-selection", "title": "deletes the selected entities", "status": "required" },
     {
       "id": "switch-floor",
       "title": "switches floors and the canvas changes",
