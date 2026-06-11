@@ -1,0 +1,44 @@
+{
+  "ordinal": 18,
+  "slug": "usda-plan-7156-two-bedroom-ranch-with-carport",
+  "title": "USDA Plan No. 7156 - 2-Bedroom Farmhouse with Carport (single-story plan + perspective)",
+  "image_file": "usda-plan-7156-two-bedroom-ranch-with-carport.jpg",
+  "building_type": "single-family house (one-story ranch with attached carport)",
+  "architectural_style": "Mid-Century single-story ranch farmhouse",
+  "era_or_year": "1962 (design revised from a 1952 experimental house)",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/2bedroomfarmhous897unit",
+  "direct_download_url": "https://archive.org/download/2bedroomfarmhous897unit/page/n2_w1200.jpg",
+  "license": "US Government Work / Public Domain",
+  "license_url": "https://archive.org/details/2bedroomfarmhous897unit",
+  "creator": "U.S. Department of Agriculture, Agricultural Research Service (Cooperative Farm Building Plan Exchange)",
+  "rightsholder_or_source": "USDA / Internet Archive (contributing institution states item is not in copyright; US Government work)",
+  "research_notes": "USDA Miscellaneous Publication No. 897, 3-sheet plan set. Page n2 (cover sheet) carries the floor plan + perspective; page n3 carries a separate SITE PLAN and terrace detail. Raster page image from archive.org BookReader.",
+  "research_features": "Single-story ranch with an attached CARPORT and an expansible bedroom wing; the plan shows a combination living-dining room, two bedrooms, bath, and the covered carport that can later become a building (multi-element / expansible test case). Mid-Century open-living layout with drawn dimensions. A companion SITE PLAN (house + carport + drive + terrace + plantings) appears on page n3 of the same pamphlet.",
+  "feature_highlights": [
+    "attached carport (about 660 sq ft) drawn as a roofed but open rectangle crossed by an X",
+    "open combination Living Room and Dining Area with an adjoining Terrace",
+    "two bedrooms, compact Kitchen/Workroom core, and Bath strung along the rectangle",
+    "expansible plan: main part built first, bedrooms and carport deferred",
+    "drawn-in furniture and fixtures (beds, sofas, dining set, kitchen equipment)",
+    "per-room dimensions plus a graphic scale bar in feet",
+    "perspective rendering paired with the plan on the cover sheet"
+  ],
+  "supported_examples": [
+    "straight, orthogonal walls",
+    "rectangular rooms derived from walls",
+    "room naming and labels",
+    "linear point-to-point dimensions in imperial units",
+    "door and window plan symbols"
+  ],
+  "roadmap_examples": [
+    "furniture and fixture placement (beds, sofas, dining set, kitchen fixtures)",
+    "site metadata (textual square-footage callouts)"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the attached carport is a roofed but unenclosed covered space (and the Terrace is an open outdoor space) that must be drawable without being a fully wall-enclosed room"
+    }
+  ]
+}

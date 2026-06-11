@@ -1,0 +1,51 @@
+{
+  "ordinal": 33,
+  "slug": "mcnamee-torbert-queen-anne-multi-building-site-plan",
+  "title": "McNamee-Torbert House, Site Plan and Historic Site Plan (HABS AL-892, sheet 2)",
+  "image_file": "mcnamee-torbert-queen-anne-multi-building-site-plan.jpg",
+  "building_type": "single-family house with detached outbuildings (multi-building property)",
+  "architectural_style": "Queen Anne Victorian",
+  "era_or_year": "house circa late 19th century; HABS drawings documented 1989",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/al0904/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/al/al0900/al0904/sheet/00002v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey (Auburn University School of Architecture); delineator Krista A. Minotti and others",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Sheet 2 (00002v.jpg) of HABS AL-892 'Drawings' is the multi-building site plan. Sheet 3 (00003v.jpg) of the same item is the FOUNDATION/BASEMENT PLAN, which clearly shows the rounded Queen Anne corner turret base, if a room-level plan is preferred instead.",
+  "research_features": "Multi-building Queen Anne property: a current SITE PLAN plus a c.1930 HISTORIC SITE PLAN showing the main house with chicken house, two-room tenant house, doll house, three-section barn, privy, storage shed, lily pond, and arbor. Plot/site-plan with explanatory text, not a single-room plan.",
+  "feature_highlights": [
+    "two site plans on one sheet: a c.1930 historic reconstruction and a measured current plan",
+    "main house surrounded by many labeled detached outbuildings",
+    "historic outbuildings: chicken house, tenant houses, carport, doll house, three-section barn, privy, well",
+    "irregular lot bounded by Seneca Street at one inch to twenty feet",
+    "individually labeled trees with trunk diameters, stumps, and a filled lily pond",
+    "brick retaining walls of several heights, a concrete pad, and a storage shed",
+    "north arrow and feet-and-meters graphic scale bar",
+    "explanatory narrative text instead of room dimensions"
+  ],
+  "supported_examples": [
+    "raster image underlay with scale calibration (the sheet itself as a tracing base)",
+    "straight wall segments for outbuilding and house footprints"
+  ],
+  "roadmap_examples": [
+    "era registry / period tagging (Queen Anne Victorian)",
+    "textual site metadata for the property",
+    "north arrow and graphic scale bar as plan annotations"
+  ],
+  "gap_features": [
+    {
+      "slug": "multi-building-properties",
+      "why": "the property is a main house plus many detached outbuildings (chicken house, tenant houses, doll house, barn, privy, carport, storage shed); the model is single-building"
+    },
+    {
+      "slug": "site-and-landscape-plan",
+      "why": "the sheet is dominated by lot boundary, street edge, retaining walls, walks, lily pond, and individually surveyed trees, which is site and landscape geometry"
+    },
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "structures and trees are identified by on-drawing text labels and narrative paragraphs rather than drawn room dimensions"
+    }
+  ]
+}

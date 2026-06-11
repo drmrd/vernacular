@@ -1,0 +1,50 @@
+{
+  "ordinal": 5,
+  "slug": "aladdin-1917-the-venus-two-story-bungalow-with-cellar",
+  "title": "Aladdin Homes Catalog No. 29, 'The Venus' (first and second floor plans)",
+  "image_file": "aladdin-1917-the-venus-two-story-bungalow-with-cellar.jpg",
+  "building_type": "single-family house (kit/catalog home)",
+  "architectural_style": "Craftsman bungalow, two-story",
+  "era_or_year": "1917",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/aladdinhomes00alad",
+  "direct_download_url": "https://archive.org/download/aladdinhomes00alad/page/n50_w1200.jpg",
+  "license": "Public Domain",
+  "license_url": "https://archive.org/details/aladdinhomes00alad",
+  "creator": "Aladdin Company (Bay City, Michigan)",
+  "rightsholder_or_source": "Internet Archive scan; Aladdin Co. Catalog No. 29, 1917, public domain by age",
+  "research_notes": "Page n50 of scan; 'The Venus'. Two floor plans on one page plus a cutaway isometric. Casement windows, exposed rafters; combination gable-and-drop roof noted in text.",
+  "research_features": "Two-story modest home WITH BASEMENT: text describes a grade cellar door and access to cellar/second floor. First-floor plan (living, dining, kitchen, front bedroom) and second-floor plan (bedrooms + bath) shown side by side, with an arched opening between living and dining rooms.",
+  "feature_highlights": [
+    "two floor plans plus a cutaway isometric on one catalog page",
+    "story-and-a-half bungalow with a partial second floor",
+    "large 'ROOF' area hatched on the upper plan (open sloping roof)",
+    "slightly sloping upstairs ceilings noted in the copy",
+    "grade cellar door and basement access under the main stair",
+    "central straight-run stair serving cellar and bedrooms",
+    "arched opening between living and dining rooms",
+    "front porch and three upstairs bedrooms with a bath"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls with labels and sizes",
+    "interior door openings",
+    "linear dimensions in imperial units"
+  ],
+  "roadmap_examples": [
+    "multi-floor management (cellar plus two stories)",
+    "straight-run stairs with floor-spanning topology",
+    "arched interior opening (curved/period door shapes)",
+    "fixture placement in the bath"
+  ],
+  "gap_features": [
+    {
+      "slug": "roof-and-sloped-ceiling-geometry",
+      "why": "the upper floor is a partial story under hatched roof planes with slightly sloping (attic knee-wall) ceilings, which is roof/sloped-ceiling geometry rather than a flat per-room height"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the front porch is a roofed-but-open space, not a wall-enclosed room"
+    }
+  ]
+}

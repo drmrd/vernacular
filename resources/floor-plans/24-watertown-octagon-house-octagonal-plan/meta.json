@@ -1,0 +1,55 @@
+{
+  "ordinal": 24,
+  "slug": "watertown-octagon-house-octagonal-plan",
+  "title": "Octagon House, Watertown, Wisconsin - floor plans (HABS)",
+  "image_file": "watertown-octagon-house-octagonal-plan.png",
+  "building_type": "single-family house",
+  "architectural_style": "Octagon house (Fowler movement)",
+  "era_or_year": "house c.1854 (drawing 1935)",
+  "country": "United States",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Watertown_Octagon_House-plans.png",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Watertown_Octagon_House-plans.png?width=1600",
+  "license": "US Government Work",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Watertown_Octagon_House-plans.png",
+  "creator": "Historic American Buildings Survey (HABS WIS-28)",
+  "rightsholder_or_source": "Library of Congress, Prints & Photographs Division (HABS); via Wikimedia Commons",
+  "research_notes": "HABS measured-drawing sheet (US Government work, public domain). Lane A may also cover US HABS; included here for octagon-geometry coverage.",
+  "research_features": "Octagonal (eight-sided) house: trapezoidal/wedge-shaped rooms radiating around a central core and stair. Multiple floor plans on one measured-drawing sheet. Core test for non-rectangular octagon geometry.",
+  "feature_highlights": [
+    "a true eight-sided octagon envelope of eight straight exterior walls",
+    "rooms ringing a central stair hall in a radial, eight-sided organization",
+    "four corner rooms are five-sided shapes with one wall cut at 45 degrees on the diagonal faces",
+    "central hall and service spaces become wedge and trapezoidal shapes around the stair",
+    "Butlery served by a labeled dumb waiter (a small vertical lift)",
+    "Veranda wrapping the lower faces as a roofed-but-open porch",
+    "two plans on one sheet (first floor + ground/lower floor) with matching octagon geometry",
+    "compass rose north indicator plus dual imperial and metric (proportional) scale bars"
+  ],
+  "supported_examples": [
+    "straight exterior walls at 45-degree and right angles forming the octagon",
+    "custom-polygon room override for the pentagonal corner rooms and wedge/trapezoidal core spaces",
+    "rooms with names (Dining Room, Living Room, Parlor, Music Room, Bed Room, Kitchen, Pantry, Cellar)",
+    "straight-sided octagonal-with-straight-sides rooms (explicitly representable)",
+    "linear point-to-point dimensions in imperial units",
+    "raster underlay with scale-bar calibration"
+  ],
+  "roadmap_examples": [
+    "floor management for the two stacked floors (first floor over ground/cellar level)",
+    "straight-run or winding stairs in the central hall",
+    "era registry/tagging for the Fowler octagon-movement style"
+  ],
+  "gap_features": [
+    {
+      "slug": "vertical-circulation-beyond-stairs",
+      "why": "the Butlery is served by a labeled dumb waiter, a small vertical lift that is neither a stair nor any roadmap circulation element"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the Veranda wraps the lower faces of the octagon as a roofed-but-open porch that must be drawable as a space without being a fully wall-enclosed room"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the survey sheet carries a compass-rose north indicator and dual imperial/metric graphic scale bars as plan annotations"
+    }
+  ]
+}

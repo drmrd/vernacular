@@ -1,0 +1,62 @@
+{
+  "ordinal": 27,
+  "slug": "chateau-de-pierrefonds-castle-turret-curved-walls-plan",
+  "title": "Plan of the Ch\u00e2teau de Pierrefonds",
+  "image_file": "chateau-de-pierrefonds-castle-turret-curved-walls-plan.png",
+  "building_type": "castle",
+  "architectural_style": "Medieval / Viollet-le-Duc restoration",
+  "era_or_year": "published 1898/1899 (restoration of a 14th-15th c. castle)",
+  "country": "France",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Ch%C3%A2teau_de_Pierrefonds_-_plan.png",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Ch%C3%A2teau_de_Pierrefonds_-_plan.png?width=1600",
+  "license": "Public Domain",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Ch%C3%A2teau_de_Pierrefonds_-_plan.png",
+  "creator": "After Eugene Viollet-le-Duc; delineator not credited",
+  "rightsholder_or_source": "Public-domain plate from The Architectural Review vol. 5 (1898/9); via Wikimedia Commons",
+  "research_notes": "Large clean scan (2018x1198). Plan of a real fortified castle; great for non-orthogonal walls.",
+  "research_features": "Irregular polygonal curtain-wall castle with multiple large round towers/turrets and curved walls, an inner courtyard, and a keep. Heavy curved-wall and thick-wall geometry, no two rooms alike.",
+  "feature_highlights": [
+    "irregular polygonal curtain wall with non-orthogonal angled segments",
+    "multiple large round towers and turrets, some with spiral stairs",
+    "curved wall segments linking round towers to straight ranges",
+    "large open inner courtyard (castle ward)",
+    "great hall and chapel with vaulted, cross-hatched bays",
+    "detached outwork/keep across a moat as a separate structure",
+    "angled outer site/glacis boundary enclosing the fortress",
+    "compass rose (north arrow) and metric scale bar annotations",
+    "very thick masonry walls in heavy black poché"
+  ],
+  "supported_examples": [
+    "straight wall segments at many non-orthogonal angles",
+    "thickness-aware walls and wall junctions for the straight ranges",
+    "raster underlay with scale calibration to trace the historic plate"
+  ],
+  "roadmap_examples": [
+    "wall construction profiles / poché for thick masonry curtain walls",
+    "spiral/winding stair geometry inside the towers",
+    "site/textual metadata for a named historic castle",
+    "era registry tagging (medieval / Viollet-le-Duc restoration)"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the round towers and turrets are true circular structures and the connecting curtain walls bow and curve rather than running straight"
+    },
+    {
+      "slug": "multi-building-properties",
+      "why": "a detached outwork/keep with its own corner towers sits apart from the main castle across a moat on the same site"
+    },
+    {
+      "slug": "site-and-landscape-plan",
+      "why": "the plan draws the fortified site boundary (glacis/enclosure line) and the moat around the structures, not just the building footprint"
+    },
+    {
+      "slug": "courtyard-and-atrium-spaces",
+      "why": "the building wraps around a large open inner courtyard (castle ward) enclosed by the ranges"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the plate carries a compass rose north arrow and a graphic metric scale bar as drawn annotations"
+    }
+  ]
+}

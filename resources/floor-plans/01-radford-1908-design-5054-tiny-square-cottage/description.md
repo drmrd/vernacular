@@ -1,0 +1,7 @@
+This sheet pairs a soft watercolor perspective of a low hip-roofed cottage with a single labeled floor plan beneath it. The note at the top fixes the footprint precisely: width 24 feet, length 24 feet, a perfect square. It is about as small and plain as a complete house plan gets, which makes it an ideal baseline test case for the editor.
+
+The plan itself is almost diagrammatic. The square shell holds just three interior rooms: a Kitchen (10'0" x 9'0") and a Bed Room (13'0" x 9'0") across the rear, and a Living Room (16'3" x 13'9") spanning the front. A small Pantry (5'6" x 3'0") with a sink notch is tucked beside the kitchen, and a single Closet (CL) sits between the bedroom and the living room. Every room is a plain rectangle, and the partitions meet at right angles. Room names and dimensions are lettered directly into each space.
+
+The one wrinkle worth noting is that the square is wrapped front and rear by two shallow porches, each labeled 34'3" x 5'3" and drawn with a colonnade of square posts rather than full walls. These are roofed-but-open spaces, not enclosed rooms, and several built-in "SEAT" benches line their edges. The porches read clearly as covered outdoor space rather than additional interior area.
+
+Because the walls are all straight, the rooms are all rectangular, and there is a single story with no stairs, the interior is fully representable with the shipped two-dimensional editor. The only feature that does not map cleanly to an enclosed room is the open porch ring around the house.

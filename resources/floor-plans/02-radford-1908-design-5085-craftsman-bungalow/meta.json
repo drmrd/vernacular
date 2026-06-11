@@ -1,0 +1,46 @@
+{
+  "ordinal": 2,
+  "slug": "radford-1908-design-5085-craftsman-bungalow",
+  "title": "Radford's Artistic Bungalows, Design No. 5085 (floor plan)",
+  "image_file": "radford-1908-design-5085-craftsman-bungalow.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Craftsman bungalow",
+  "era_or_year": "1908",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/cu31924014996395",
+  "direct_download_url": "https://archive.org/download/cu31924014996395/page/n30_w1200.jpg",
+  "license": "Public Domain",
+  "license_url": "https://archive.org/details/cu31924014996395",
+  "creator": "Radford Architectural Company",
+  "rightsholder_or_source": "Internet Archive (Cornell University Library scan); published 1908, public domain by age",
+  "research_notes": "Page n30 of scan; Design No. 5085. Single-floor plan plus separate rendering on the same page (book also offers foundation/attic/roof plans not shown). Clean black-line plan.",
+  "research_features": "Textbook one-story Craftsman bungalow: single floor plan with two bedrooms, living/dining, kitchen, a breakfast NOOK, bath, closets, and a deep front porch. Room names and dimensions labeled (30'6\"x40'6\"). Perspective rendering above the plan.",
+  "feature_highlights": [
+    "classic one-story Craftsman bungalow, 30'6\"x40'6\"",
+    "living/dining/kitchen run down one side, two bedrooms and bath down the other",
+    "breakfast nook and pantry off the kitchen",
+    "stacked closets along a central spine",
+    "deep open front porch plus small rear service porch",
+    "entry vestibule with a 'DOWN' stair to a basement",
+    "bath fixture grouping (tub/toilet) indicated"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls",
+    "room naming and labels for many rooms",
+    "interior and exterior door openings with swings",
+    "linear dimensions in imperial units",
+    "thickness-aware clear floor area"
+  ],
+  "roadmap_examples": [
+    "fixture placement (tub, toilet, kitchen sink)",
+    "floor management / basement level implied by the 'DOWN' stair",
+    "straight-run stairs"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the deep front porch and rear service porch are roofed-but-open spaces, not enclosed rooms"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "ordinal": 15,
+  "slug": "gb-cooley-house-prairie-school-second-floor-plan",
+  "title": "G. B. Cooley House, Second Floor Plan (HABS LA-1230, sheet 3)",
+  "image_file": "gb-cooley-house-prairie-school-second-floor-plan.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Prairie School",
+  "era_or_year": "house designed 1908 (Walter Burley Griffin); HABS drawings documented 1991",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/la0329/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/la/la0300/la0329/sheet/00003v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey; design architect Walter Burley Griffin; delineator David Zeigler (and others)",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plan is sheet 3 (00003v.jpg) of HABS LA-1230 'Drawings'. Title block 'Second Floor Plan, Sheet 3 of 7'.",
+  "research_features": "Clean Prairie School plan: long horizontal massing, Sun Porch, two bedrooms, two stairs, square structural piers, full dimensions. Designed by Walter Burley Griffin (Frank Lloyd Wright associate).",
+  "feature_highlights": [
+    "long horizontal Prairie School bar, about 88 feet end to end",
+    "regular rhythm of square structural piers along the perimeter",
+    "Sun Porch at one end, two roughly equal central bedrooms",
+    "two separate stairs (both marked DN) for vertical circulation",
+    "fully dimensioned bays with imperial and metric scale bars and a north arrow",
+    "deliberately simple, fully-supported baseline case"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls",
+    "square structural piers as point-like fixtures",
+    "room naming and labels",
+    "linear point-to-point dimensions",
+    "imperial and metric units",
+    "door and window plan symbols"
+  ],
+  "roadmap_examples": [
+    "multi-floor (second floor of a stacked house)",
+    "straight-run stairs (two, both descending)"
+  ],
+  "gap_features": []
+}

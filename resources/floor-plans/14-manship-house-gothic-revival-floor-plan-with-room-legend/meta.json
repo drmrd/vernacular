@@ -1,0 +1,48 @@
+{
+  "ordinal": 14,
+  "slug": "manship-house-gothic-revival-floor-plan-with-room-legend",
+  "title": "Manship House, Floor Plan with Room Schedule (HABS MS-68, sheet 3)",
+  "image_file": "manship-house-gothic-revival-floor-plan-with-room-legend.jpg",
+  "building_type": "single-family house (Gothic Revival cottage)",
+  "architectural_style": "Gothic Revival",
+  "era_or_year": "house built circa 1857; HABS drawings documented 1976",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/ms0219/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/ms/ms0200/ms0219/sheet/00003v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Plan is sheet 3 (00003v.jpg) of the HABS MS-68 'Drawings' resource (resource index 1; resource 0 is photographs). Good test case for legend/schedule-driven room sizing.",
+  "research_features": "Symmetrical one-story Gothic Revival cottage; the plan uses a NUMBERED-ROOM legend/schedule (rooms 1-10) with a right-hand notes table describing each room's finishes rather than only drawn dimensions. Front and side galleries (porches), enclosed porch, detached outbuilding shown.",
+  "feature_highlights": [
+    "numbered-room legend (rooms 1-10) with a right-hand NOTES finish table keyed to circled tags",
+    "symmetrical one-story Gothic Revival cottage around a wide central Hall",
+    "front and side galleries (open porches) plus a rear enclosed porch",
+    "detached out building drawn off the rear corner",
+    "finish schedule describing flooring, base, mantels, wall finish, and woodwork per room",
+    "north arrow and imperial plus metric graphic scale bars"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls",
+    "room naming and labels",
+    "linear point-to-point dimensions in imperial units",
+    "door and window plan symbols"
+  ],
+  "roadmap_examples": ["per-room ceiling height (general note records 14'-3\" ceilings)"],
+  "gap_features": [
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "room identity and finish data are given indirectly through circled numbers keyed to a right-hand notes/schedule table rather than drawn on the rooms themselves"
+    },
+    {
+      "slug": "multi-building-properties",
+      "why": "a detached out building is drawn off the rear corner, a second structure the single-building model cannot hold"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the front and side galleries are roofed but open porch spaces that need to be drawn without being fully wall-enclosed rooms"
+    }
+  ]
+}

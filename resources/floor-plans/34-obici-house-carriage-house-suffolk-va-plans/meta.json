@@ -1,0 +1,59 @@
+{
+  "ordinal": 34,
+  "slug": "obici-house-carriage-house-suffolk-va-plans",
+  "title": "Obici House - Carriage House (HABS VA-1438-A, plans sheet 1)",
+  "image_file": "obici-house-carriage-house-suffolk-va-plans.jpg",
+  "building_type": "accessory dwelling / carriage house (garage below, apartment above)",
+  "architectural_style": "Early-20th-century estate carriage house / garage with upper dwelling",
+  "era_or_year": "Obici estate (Planters Peanuts founder Amedeo Obici); HABS drawings",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/va2130/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/va/va2100/va2130/sheet/00001v.jpg",
+  "license": "US Government Work / Public Domain",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey (HABS VA-1438-A), delineated by Raphael Lister",
+  "rightsholder_or_source": "Library of Congress HABS (Prints & Photographs Division)",
+  "research_notes": "Combined sheet: ground-floor garage plan + upper apartment plan + roof plan on sheet 1 of 2. Pairs naturally with the main Obici House (LoC va2129 / HABS VA-1438) to model a multi-building property.",
+  "research_features": "Fills the known multi-building/accessory-dwelling gap: this is the detached CARRIAGE HOUSE of a larger estate (the Obici House is the main residence, documented separately as VA-1438). One combined sheet shows the GROUND FLOOR PLAN (garage bay with two stairs, water heater, storage), the FIRST FLOOR PLAN (an upstairs apartment: three bedrooms, living room, kitchen, dining, bath, two stairs), and a ROOF PLAN. Good two-stair, mixed-use accessory-building test case.",
+  "feature_highlights": [
+    "detached estate carriage house: garage below, full apartment above",
+    "three stacked drawings on one sheet: ground floor, first floor, roof plan",
+    "large open garage bay flanked by two stairs and storage rooms",
+    "upstairs dwelling with three bedrooms, living, dining, kitchen, and bath",
+    "two stairways (Stair 1 with landing, Stair 2) spanning both floors",
+    "hip-roofed projecting porch/terrace drawn with diagonal hatch",
+    "roof plan with hipped shingle hatch and ridge/hip lines",
+    "full imperial dimension strings and per-plan materials notes"
+  ],
+  "supported_examples": [
+    "straight orthogonal walls and junctions",
+    "named rectangular rooms (bedrooms, kitchen, bath, garage, storage)",
+    "doors and closet openings",
+    "continuous linear imperial dimension strings",
+    "wall thickness"
+  ],
+  "roadmap_examples": [
+    "multi-floor management (two stacked occupied levels plus a roof plan)",
+    "straight-run stairs as 2D symbols with floor-spanning topology",
+    "roof plan / complete underlay",
+    "north arrow and graphic scale bar as plan annotations"
+  ],
+  "gap_features": [
+    {
+      "slug": "multi-building-properties",
+      "why": "this is a detached accessory carriage house, one of several structures on the Obici estate whose main residence is documented separately"
+    },
+    {
+      "slug": "multi-unit-dwellings",
+      "why": "a self-contained apartment is stacked over a garage in one structure, a small mixed-use dwelling-over-service arrangement beyond the single-residence model"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the hip-roofed projecting porch/terrace at the right end is a roofed but open space rather than an enclosed room"
+    },
+    {
+      "slug": "roof-and-sloped-ceiling-geometry",
+      "why": "the sheet includes a dedicated roof plan of the hipped roof with ridge and hip lines, which is roof geometry not a floor"
+    }
+  ]
+}

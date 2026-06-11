@@ -1,0 +1,53 @@
+{
+  "ordinal": 26,
+  "slug": "chiswick-house-palladian-villa-octagonal-hall-with-wings",
+  "title": "Floor plan of Chiswick House with additional wings",
+  "image_file": "chiswick-house-palladian-villa-octagonal-hall-with-wings.jpg",
+  "building_type": "villa",
+  "architectural_style": "English Palladian (Neo-Palladian)",
+  "era_or_year": "house c.1729 (diagram drawn 2008)",
+  "country": "United Kingdom",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Floor_paln_of_Chiswick_House_with_additional_wings.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Floor_paln_of_Chiswick_House_with_additional_wings.jpg?width=1600",
+  "license": "CC BY-SA 3.0",
+  "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+  "creator": "Wikimedia user Chivalrick1",
+  "rightsholder_or_source": "Wikimedia Commons uploader (own work)",
+  "research_notes": "Modern measured/diagram redraw of an 18th-century villa; clean labeled plan. CC BY-SA requires attribution.",
+  "research_features": "Neo-Palladian villa with a central octagonal domed saloon (polygonal room) and a strictly symmetric suite of variously shaped rooms (circular, apsidal, octagonal) plus flanking wings. Mixed polygonal/curved interior geometry.",
+  "feature_highlights": [
+    "central domed saloon flanked by a suite of distinct room shapes",
+    "apsidal (curved-end) rooms and small circular closets",
+    "octagonal and other straight-sided polygonal rooms",
+    "two spiral staircases drawn as curved coils",
+    "heavy black poché walls (solid-filled masonry)",
+    "numbered-room key instead of inscribed dimensions",
+    "graphic scale bar (SCALE OF FEET)",
+    "symmetric layout with two flanking pavilion-wings and an exterior double stair"
+  ],
+  "supported_examples": [
+    "straight-sided polygonal rooms (octagonal and angular) via custom room polygons",
+    "symmetric room arrangement with mirrored pairs",
+    "straight walls at varied angles forming the wing blocks",
+    "raster underlay tracing of a measured diagram"
+  ],
+  "roadmap_examples": [
+    "wall construction profiles / poché for thick masonry walls",
+    "straight-run and (eventually) stair topology for the exterior double stair",
+    "era registry tagging (English Palladian)"
+  ],
+  "gap_features": [
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "apsidal curved-end rooms, round closets, and spiral-stair enclosures need true arc walls, not straight segments"
+    },
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "rooms are identified by small numbers keyed to a separate legend rather than by drawn dimensions"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the plan carries a graphic SCALE OF FEET bar as a drawn annotation"
+    }
+  ]
+}

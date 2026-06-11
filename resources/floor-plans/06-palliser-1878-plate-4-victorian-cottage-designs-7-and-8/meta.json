@@ -1,0 +1,50 @@
+{
+  "ordinal": 6,
+  "slug": "palliser-1878-plate-4-victorian-cottage-designs-7-and-8",
+  "title": "Palliser's American Cottage Homes, Plate 4 (Designs 7 and 8)",
+  "image_file": "palliser-1878-plate-4-victorian-cottage-designs-7-and-8.jpg",
+  "building_type": "single-family house",
+  "architectural_style": "Victorian (Stick/Gothic cottage)",
+  "era_or_year": "1878",
+  "country": "United States",
+  "source_landing_url": "https://archive.org/details/palliser.cottagehomes.1878",
+  "direct_download_url": "https://archive.org/download/palliser.cottagehomes.1878/page/n10_w1200.jpg",
+  "license": "Public Domain",
+  "license_url": "https://archive.org/details/palliser.cottagehomes.1878",
+  "creator": "Palliser, Palliser & Co.",
+  "rightsholder_or_source": "Internet Archive (Clatsop County Historical Society); published 1878, public domain by age",
+  "research_notes": "Combined sheet (multiple floor plans + elevations + section). Engraved 1878 pattern-book plate. Page n10 of scan; bears 'Copyright 1878 by Palliser, Palliser & Co.' which has long expired.",
+  "research_features": "Dense combined Victorian plate: first- and second-floor plans for several small cottages (Designs 7 and 8), plus front/side/rear elevations and a section. Small workman-style cottages with parlor, living room, kitchen, pantry; room sizes labeled in tiny lettering.",
+  "feature_highlights": [
+    "single 1878 plate carrying two separate cottage designs (7 and 8)",
+    "first- and second-floor plans for each design, four plans total",
+    "elevations, a section, and a central perspective on the same sheet",
+    "graphic scale bar ('SCALE ... OF FEET') at the bottom",
+    "open piazza on Design 7 and a porch with entry stoop on Design 8",
+    "tiny engraved room labels and dimensions",
+    "small workman-style rooms: kitchen, pantry, scullery/china room, chambers",
+    "steep Gothic-cottage massing in the rendering"
+  ],
+  "supported_examples": [
+    "straight walls at right angles",
+    "rectangular rooms derived from walls with labels and sizes",
+    "room naming and labels",
+    "interior door openings",
+    "linear dimensions in imperial units",
+    "raster underlay tracing of the engraved plans"
+  ],
+  "roadmap_examples": [
+    "multi-floor management (first and second floors for each design)",
+    "straight-run stairs"
+  ],
+  "gap_features": [
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the plate dimensions its plans through a graphic scale bar across the bottom, which the editor has no annotation for"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "Design 7's piazza and Design 8's porch/stoop are open columned spaces, not wall-enclosed rooms"
+    }
+  ]
+}

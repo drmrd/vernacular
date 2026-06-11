@@ -1,0 +1,44 @@
+{
+  "ordinal": 9,
+  "slug": "lucero-house-spanish-colonial-adobe-floor-plan",
+  "title": "Lucero House, Floor Plan and Roof/Vega Plan (HABS NM-129, sheet 2)",
+  "image_file": "lucero-house-spanish-colonial-adobe-floor-plan.jpg",
+  "building_type": "single-family house (adobe dwelling)",
+  "architectural_style": "Spanish Colonial / New Mexico adobe",
+  "era_or_year": "vernacular adobe (19th century); HABS drawings documented after 1933",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/item/nm0034/",
+  "direct_download_url": "https://tile.loc.gov/storage-services/service/pnp/habshaer/nm/nm0000/nm0034/sheet/00002v.jpg",
+  "license": "US Government Work",
+  "license_url": "https://www.loc.gov/rr/print/res/114_habs.html",
+  "creator": "Historic American Buildings Survey",
+  "rightsholder_or_source": "Library of Congress HABS",
+  "research_notes": "Floor plan is sheet 2 (00002v.jpg) of HABS NM-129 'Drawings'. Combined sheet: floor plan + vega/roof plan + fireplace section/elevation. Thick masonry walls make a good distinct-wall-thickness test case.",
+  "research_features": "Adobe dwelling with very thick (hatched) adobe walls, labeled rooms (Bedroom, Kitchen, Zaguan covered passage), and a later bedroom addition. Combined sheet also includes a roof vega (ceiling beam) plan and fireplace details.",
+  "feature_highlights": [
+    "very thick adobe walls drawn with dense diagonal poché hatching",
+    "ZAGUAN covered through-passage running between the rooms",
+    "four labeled rooms (two Bedrooms, Kitchen, Bedroom) around a central spine",
+    "later bedroom addition flagged with lighter wall hatching",
+    "combined sheet: floor plan plus a vega (ceiling-beam) roof plan",
+    "corner adobe fireplace details (section, elevation, plan)",
+    "circled keys tying openings and beams to schedules"
+  ],
+  "supported_examples": [
+    "straight adobe walls with substantial thickness and junctions",
+    "rectangular rooms with room labels",
+    "linear imperial dimension chains",
+    "raster underlay calibration from the floor-plan portion of the sheet"
+  ],
+  "roadmap_examples": [
+    "wall construction profiles and poché for thick adobe masonry",
+    "furniture/fixture placement for the corner adobe fireplaces",
+    "site/textual metadata for the addition note"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the ZAGUAN is a roofed covered passage cut through the house that must be drawable as an open space, not a fully enclosed room"
+    }
+  ]
+}

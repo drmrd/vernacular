@@ -1,0 +1,36 @@
+{
+  "ordinal": 21,
+  "slug": "modern-cad-line-plan-30x35-parking-three-rooms",
+  "title": "30 x 35 ft Home Plan (CAD line drawing with full dimension chains)",
+  "image_file": "modern-cad-line-plan-30x35-parking-three-rooms.jpg",
+  "building_type": "single-family house (modern compact plan)",
+  "architectural_style": "Contemporary compact house",
+  "era_or_year": "contemporary (uploaded 2020s)",
+  "country": "India",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:30BY35_home_plan_by_ER._AYUSH_TOMAR_9997233546.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/30BY35%20home%20plan%20by%20ER.%20AYUSH%20TOMAR%209997233546.jpg?width=1600",
+  "license": "CC0 1.0",
+  "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "creator": "Wikimedia Commons user Erayushtomar (Ayush Tomar)",
+  "rightsholder_or_source": "Wikimedia Commons uploader (Erayushtomar); CC0 dedication",
+  "research_notes": "Plain CAD export (no color fills), useful contrast to the rendered 2 BHK plan. CC0 means no attribution constraint.",
+  "research_features": "A CAD-style black-line plan with green dimension strings on all four sides (overall 35'x30' with sub-dimensions), swing-arc doors in yellow, a covered PARKING bay, central HALL, three rooms (R1/R2/R3), and a kitchen. Good vector-look test case with explicit running dimension chains and door swing arcs but no room labels beyond codes.",
+  "feature_highlights": [
+    "flat CAD vector look: black walls, yellow door swing arcs, green dimension strings, no fills",
+    "full running dimension chains on all four sides (overall 35'x30' broken into sub-dimensions)",
+    "central HALL with an interior stair drawn in yellow/magenta",
+    "rooms identified only by terse codes (R1, R2, R3, B, KIT, HALL, PARKING), no names or in-room dimensions",
+    "covered PARKING bay drawn as a fully enclosed room",
+    "single-swing doors with clearly drawn swing arcs",
+    "entirely orthogonal grid of rectangular rooms"
+  ],
+  "supported_examples": [
+    "straight walls at right angles with wall thickness",
+    "rectangular rooms",
+    "single-swing doors with swing arcs, placement and flip",
+    "linear point-to-point dimensions in imperial units",
+    "snapping to an orthogonal grid"
+  ],
+  "roadmap_examples": ["straight-run stairs as a 2D symbol"],
+  "gap_features": []
+}

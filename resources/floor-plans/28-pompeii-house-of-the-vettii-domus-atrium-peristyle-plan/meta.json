@@ -1,0 +1,57 @@
+{
+  "ordinal": 28,
+  "slug": "pompeii-house-of-the-vettii-domus-atrium-peristyle-plan",
+  "title": "Floor plan of the House of the Vettii, Pompeii (VI 15,1)",
+  "image_file": "pompeii-house-of-the-vettii-domus-atrium-peristyle-plan.jpg",
+  "building_type": "house (Roman domus)",
+  "architectural_style": "Ancient Roman domus",
+  "era_or_year": "1st century AD (plan published 1907)",
+  "country": "Italy",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Floor_Plan_of_the_House_of_the_Vettii_Pompeii_(VI_15,1)_by_August_Mau_1907.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Floor_Plan_of_the_House_of_the_Vettii_Pompeii_(VI_15,1)_by_August_Mau_1907.jpg?width=1600",
+  "license": "Public Domain",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Floor_Plan_of_the_House_of_the_Vettii_Pompeii_(VI_15,1)_by_August_Mau_1907.jpg",
+  "creator": "August Mau",
+  "rightsholder_or_source": "Public-domain plate from Mau, 'Pompeii: Its Life and Art' (1907); via Wikimedia Commons",
+  "research_notes": "Lettered room key (legend) instead of drawn dimensions; courtyard-with-hole geometry.",
+  "research_features": "Classic Roman domus: entrance fauces, atrium with central impluvium, flanking cubicula and alae, tablinum, and a large colonnaded peristyle GARDEN COURTYARD (a room/polygon with a central hole). Rooms labeled with letters keyed to a legend rather than dimensions.",
+  "feature_highlights": [
+    "classic Roman domus sequence: fauces, atrium, tablinum, peristyle",
+    "atrium with a central impluvium basin (small open-air court)",
+    "large colonnaded peristyle garden courtyard as a room polygon with a hole",
+    "regular ring of columns drawn as dots around the garden ambulatory",
+    "every room labeled with a single letter keyed to a printed legend",
+    "compass rose north arrow and metric graphic scale bar",
+    "section line A-B drawn across the plan",
+    "thick masonry walls in black poché, all straight segments"
+  ],
+  "supported_examples": [
+    "straight walls forming many small rectangular rooms (cubicula, alae)",
+    "thickness-aware walls and wall junctions",
+    "room polygons and custom-polygon overrides for irregular rooms",
+    "raster underlay with scale calibration to trace the historic plate"
+  ],
+  "roadmap_examples": [
+    "wall construction profiles / poché for thick masonry walls",
+    "site/textual metadata for a named excavated house",
+    "era registry tagging (ancient Roman domus)"
+  ],
+  "gap_features": [
+    {
+      "slug": "courtyard-and-atrium-spaces",
+      "why": "the peristyle is a covered ring around an open garden (a room polygon with a hole) and the atrium is a smaller open-air court with an impluvium"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the colonnaded ambulatory around the peristyle garden is a roofed-but-open walkway, not a fully wall-enclosed room"
+    },
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "rooms are identified entirely by single letters keyed to a separate legend, with no inscribed dimensions on the plan"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the plate carries a compass-rose north arrow and a graphic metric scale bar as drawn annotations"
+    }
+  ]
+}

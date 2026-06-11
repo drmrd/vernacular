@@ -1,0 +1,49 @@
+{
+  "ordinal": 7,
+  "slug": "cunningham-cabin-dog-trot-floor-plan-grand-teton",
+  "title": "Cunningham Cabin Floor Plan, Grand Teton NP (HABS WYO-25, sheet 2)",
+  "image_file": "cunningham-cabin-dog-trot-floor-plan-grand-teton.png",
+  "building_type": "single-family cabin (tiny / dog-trot homestead)",
+  "architectural_style": "Frontier log dog-trot cabin",
+  "era_or_year": "ca. 1888 (restored 1956); HABS drawings",
+  "country": "United States",
+  "source_landing_url": "https://www.loc.gov/pictures/item/wy0038.sheet/",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Floor%20Plan%20-%20Cunningham%20Cabin%2C%20Between%20Snake%20River%20and%20U.S.%20Route%2089%2C%20Moose%2C%20Teton%20County%2C%20WY%20HABS%20WYO%2C20-MOOS.V%2C2-%20%28sheet%202%20of%205%29.png",
+  "license": "US Government Work / Public Domain",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Floor_Plan_-_Cunningham_Cabin,_Between_Snake_River_and_U.S._Route_89,_Moose,_Teton_County,_WY_HABS_WYO,20-MOOS.V,2-_(sheet_2_of_5).png",
+  "creator": "Historic American Buildings Survey (HABS WYO-25), delineated by Charles B. Goldy Jr.",
+  "rightsholder_or_source": "Library of Congress HABS, via Wikimedia Commons (public domain US Government work)",
+  "research_notes": "High-resolution PNG (9634x7584) hosted on Wikimedia Commons; original is LoC HABS sheet 2 of 5 (wy0038). Plan only (no elevations on this sheet).",
+  "research_features": "Tiny/simple vernacular test case with an unusual configuration: a classic DOG-TROT cabin = Living Room and Blacksmith Shop (with forge and anvil noted) flanking an open central BREEZEWAY, total footprint only 41'-5\" x 15'-3\". Full running dimension chains on all sides, log-wall hatching, scale bars in BOTH feet and meters, and a north arrow. Great for thick-log-wall, open-passage, and dual-unit-measurement handling.",
+  "feature_highlights": [
+    "dog-trot plan: two log pens flanking an open central breezeway",
+    "tiny footprint, 41'-5\" x 15'-3\"",
+    "thick hewn/round log walls with timber hatching",
+    "blacksmith-shop pen with forge, anvil, and work bench callouts",
+    "complete running dimension chains on all four sides",
+    "north arrow plus dual feet-and-meter graphic scale bars",
+    "note flagging a log wall as a later addition"
+  ],
+  "supported_examples": [
+    "straight log walls with wall thickness",
+    "two rectangular rooms (Living Room, Blacksmith Shop)",
+    "simple door openings as gaps in the log walls",
+    "linear running dimensions in imperial units",
+    "dual imperial and metric scale bars for underlay calibration"
+  ],
+  "roadmap_examples": [
+    "wall construction profiles for thick log walls and poché",
+    "site/textual metadata for the forge and work bench fixtures",
+    "furniture/fixture placement (forge, anvil, work bench)"
+  ],
+  "gap_features": [
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the central BREEZEWAY is a roofed-but-open dog-trot passage that must be drawable as a space without being a fully wall-enclosed room"
+    },
+    {
+      "slug": "plan-annotations-north-arrow-scale-bar",
+      "why": "the sheet carries a north arrow and dual feet/meter graphic scale bars as plan annotations"
+    }
+  ]
+}

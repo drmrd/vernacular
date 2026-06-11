@@ -1,0 +1,64 @@
+{
+  "ordinal": 32,
+  "slug": "blenheim-palace-baroque-courtyard-estate-plan",
+  "title": "Blenheim Palace overall plan (from Vitruvius Britannicus)",
+  "image_file": "blenheim-palace-baroque-courtyard-estate-plan.jpg",
+  "building_type": "palace / estate",
+  "architectural_style": "English Baroque",
+  "era_or_year": "1725",
+  "country": "United Kingdom",
+  "source_landing_url": "https://commons.wikimedia.org/wiki/File:Blenheim_overall_plan.jpg",
+  "direct_download_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Blenheim_overall_plan.jpg?width=1600",
+  "license": "Public Domain",
+  "license_url": "https://commons.wikimedia.org/wiki/File:Blenheim_overall_plan.jpg",
+  "creator": "Unknown delineator; engraving from Colen Campbell, Vitruvius Britannicus (1725)",
+  "rightsholder_or_source": "Public-domain 18th-century engraving; via Wikimedia Commons",
+  "research_notes": "Engraved ground plan from an 18th-century pattern/survey folio; no metric dimensions.",
+  "research_features": "Monumental Baroque palace with a great central court flanked by symmetric service ranges enclosing two further courtyards (kitchen court and stable court): a multi-block estate plan with many wings and outbuildings on one sheet.",
+  "feature_highlights": [
+    "monumental symmetric Baroque estate plan keyed by an A-Y legend",
+    "enormous central Great Court closed by a bowed colonnade",
+    "deep main body of the house with state rooms, chapel and stairs",
+    "two detached service quadrangles: Kitchen Court and Stable Court",
+    "stables, coach houses, greenhouses, bakehouse and laundry called out",
+    "arcaded colonnades and little porticoes edging the terraces",
+    "terraces, gates, water cistern and the great-bridge approach",
+    "centered graphic scale bar (100 feet, extends 830) with no numeric strings"
+  ],
+  "supported_examples": [
+    "straight orthogonal walls and junctions",
+    "rectangular rooms across the main house and service ranges",
+    "wall thickness"
+  ],
+  "roadmap_examples": [
+    "room-purpose registry (chapel, kitchen, stables, greenhouse, laundry)",
+    "graphic scale bar as a plan annotation",
+    "site metadata for the named estate"
+  ],
+  "gap_features": [
+    {
+      "slug": "multi-building-properties",
+      "why": "one sheet holds the main house plus two largely detached service quadrangles and stable/coach blocks, far beyond a single building"
+    },
+    {
+      "slug": "courtyard-and-atrium-spaces",
+      "why": "the great court and the two flanking service quadrangles are open-air courts whose building footprints form rings around them"
+    },
+    {
+      "slug": "covered-outdoor-rooms",
+      "why": "the bowed colonnade, the colonnade upon the great terrace, and the little porticoes are roofed but open arcaded spaces, not enclosed rooms"
+    },
+    {
+      "slug": "site-and-landscape-plan",
+      "why": "the surrounding terraces, gates, water cistern, and great-bridge approach are site and landscape geometry rather than building interior"
+    },
+    {
+      "slug": "curved-and-nonlinear-walls",
+      "why": "the bowed colonnade closing the head of the great court is a curved wall segment"
+    },
+    {
+      "slug": "room-schedule-and-legend",
+      "why": "spaces are identified by an A-Y marginal legend keyed to letters on the plan, with size read from a graphic scale bar rather than drawn dimensions"
+    }
+  ]
+}
