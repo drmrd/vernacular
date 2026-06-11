@@ -1,0 +1,45 @@
+import { describe, expect, it, vi } from 'vitest'
+import { runIntegrationAudit } from './integration-audit.mjs'
+
+function deps({ capabilities, titles }) {
+  return {
+    readMatrix: async () => ({ capabilities }),
+    readJourneyTitles: async () => titles,
+    log: vi.fn(),
+  }
+}
+
+describe('runIntegrationAudit', () => {
+  it('reports clean when every required capability has a journey test', async () => {
+    const d = deps({
+      capabilities: [
+        { id: 'draw-wall', title: 'draws a wall and shows it on the plan', status: 'required' },
+      ],
+      titles: ['draws a wall and shows it on the plan'],
+    })
+    const code = await runIntegrationAudit([], d)
+    expect(code).toBe(0)
+    expect(d.log).toHaveBeenCalledWith(expect.stringContaining('clean'))
+  })
+
+  it('fails when a required capability lacks a journey test', async () => {
+    const d = deps({
+      capabilities: [{ id: 'undo-redo', title: 'undoes and redoes a wall', status: 'required' }],
+      titles: [],
+    })
+    const code = await runIntegrationAudit([], d)
+    expect(code).toBe(1)
+    expect(d.log).toHaveBeenCalledWith(expect.stringContaining('undo-redo'))
+  })
+
+  it('ignores pending capabilities', async () => {
+    const d = deps({
+      capabilities: [
+        { id: 'edit-color', title: 'edits a surface color and it applies', status: 'pending' },
+      ],
+      titles: [],
+    })
+    const code = await runIntegrationAudit([], d)
+    expect(code).toBe(0)
+  })
+})
