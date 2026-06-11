@@ -1,3 +1,5 @@
 export { createDocumentValidator } from './validate-document'
 export { createTolerantValidator } from './tolerant-validation'
 export type { DocumentValidationResult, DocumentValidator } from './validate-document'
+export { createLoadValidationGate } from './load-validation-gate'
+export type { DocumentIssueReporter, LoadValidationGateOptions } from './load-validation-gate'
