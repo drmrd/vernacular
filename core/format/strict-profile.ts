@@ -7,6 +7,10 @@ import { createDocumentValidator } from './validate-document'
 export type ExtensionSchemaRegistry = Map<string, object>
 
 function compileRegistry(registry: ExtensionSchemaRegistry): Map<string, ValidateFunction> {
+  // strict: false here for a different reason than in validate-document.ts: these
+  // extension schemas are caller-supplied vendor schemas, not generated CORE
+  // artifacts, so they may carry metadata keywords Ajv strict mode would reject.
+  // Payload correctness is still enforced, and allErrors collects every violation.
   const ajv = new Ajv({ allErrors: true, strict: false })
   const compiled = new Map<string, ValidateFunction>()
   for (const [namespace, schema] of registry) {
@@ -46,6 +50,8 @@ function collectExtensions(node: unknown, found: Record<string, unknown>[]): voi
   if (isExtensionsObject(node.extensions)) {
     found.push(node.extensions)
   }
+  // Recurse into every child value, including the extensions object itself, so
+  // nested entity trees (and extensions nested within extensions) are fully covered.
   for (const value of Object.values(node)) {
     collectExtensions(value, found)
   }
