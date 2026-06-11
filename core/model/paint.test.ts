@@ -19,6 +19,38 @@ describe('surfaceKey', () => {
   it('distinguishes a floor from a ceiling on the same floor', () => {
     expect(surfaceKey(floor)).not.toBe(surfaceKey(ceiling))
   })
+
+  it('keys an unsubdivided wall face without a region segment', () => {
+    expect(surfaceKey(leftFace)).toBe('wall-face:wall-1:left')
+  })
+
+  it('appends the region to the key of a subdivided wall face', () => {
+    const fieldRegion: SurfaceRef = {
+      kind: 'wall-face',
+      wallId: 'wall-1',
+      side: 'left',
+      region: 'field',
+    }
+    expect(surfaceKey(fieldRegion)).toBe('wall-face:wall-1:left:field')
+  })
+
+  it('distinguishes sub-areas of one wall face by region', () => {
+    const wainscot: SurfaceRef = {
+      kind: 'wall-face',
+      wallId: 'wall-1',
+      side: 'left',
+      region: 'wainscot',
+    }
+    const field: SurfaceRef = {
+      kind: 'wall-face',
+      wallId: 'wall-1',
+      side: 'left',
+      region: 'field',
+    }
+    expect(surfaceKey(wainscot)).not.toBe(surfaceKey(field))
+    expect(surfaceKey(wainscot)).not.toBe(surfaceKey(leftFace))
+    expect(surfaceKey(field)).not.toBe(surfaceKey(leftFace))
+  })
 })
 
 describe('solidTreatment', () => {
