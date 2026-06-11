@@ -23,6 +23,8 @@ function declarationsIn(block: string): Map<string, string> {
 function blockBody(source: string, selector: string): string {
   const start = source.indexOf(selector)
   const open = source.indexOf('{', start)
+  // Assumes the target block has no nested braces: it takes the first '}'
+  // after the selector's '{' as the block's end (true for flat token blocks).
   const close = source.indexOf('}', open)
   return source.slice(open + 1, close)
 }
@@ -61,6 +63,10 @@ describe.each(['light', 'dark'] as const)('drafting-table %s contrast', (theme) 
 
   it('keeps the strong accent usable as text on the surface', () => {
     expect(ratio('--color-accent-strong', '--color-surface')).toBeGreaterThanOrEqual(AA_NORMAL)
+  })
+
+  it('keeps on-accent label text readable on the strong accent fill', () => {
+    expect(ratio('--color-on-accent', '--color-accent-strong')).toBeGreaterThanOrEqual(AA_NORMAL)
   })
 
   it('keeps the focus ring visible against the surface', () => {
