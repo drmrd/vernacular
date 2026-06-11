@@ -19,6 +19,7 @@
     "pack:build": "node scripts/pack/vernacular-pack.mjs build",
     "pack:validate": "node scripts/pack/vernacular-pack.mjs validate",
     "rgb:audit": "node scripts/rgb-audit/rgb-audit.mjs",
+    "integration:audit": "node scripts/integration-audit/integration-audit.mjs",
     "dup": "jscpd --silent .",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build",
