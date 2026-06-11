@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode } from 'react'
 import { Button, usePaneResize } from '../design-system'
-import { useViewMode, type ViewControls, type ViewMode } from './view-mode'
+import { useViewMode, type ViewControls } from './view-mode'
+import { VIEW_MODES, VIEW_MODE_LABELS } from './view-mode-labels'
 import './view-mode-viewport.css'
 
 const RESIZE_STEP = 5
@@ -8,18 +9,12 @@ const SPLIT_DEFAULT = 60
 const SPLIT_MIN = 30
 const SPLIT_MAX = 80
 
-const MODES: ReadonlyArray<{ mode: ViewMode; label: string }> = [
-  { mode: 'plan', label: 'Plan view' },
-  { mode: 'split', label: 'Split view' },
-  { mode: 'preview', label: '3D view' },
-]
-
 function ModeToolbar({ mode, setMode }: ViewControls) {
   return (
     <div className="view-mode-viewport__toolbar" role="toolbar" aria-label="View mode">
-      {MODES.map(({ mode: value, label }) => (
+      {VIEW_MODES.map((value) => (
         <Button key={value} aria-pressed={mode === value} onClick={() => setMode(value)}>
-          {label}
+          {VIEW_MODE_LABELS[value]}
         </Button>
       ))}
     </div>
