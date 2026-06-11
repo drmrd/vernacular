@@ -2,8 +2,7 @@ import type { ReactElement } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
-  formatLength,
-  lengthFormatOptions,
+  formatAdaptiveLength,
   removeDimension,
   type Command,
   type UnitPreferences,
@@ -33,7 +32,7 @@ export function DimensionInspector({
   dispatch,
 }: DimensionInspectorProps): ReactElement {
   const preferences = PREFERENCES_BY_UNITS[units]
-  const formatted = formatLength(length, lengthFormatOptions(preferences))
+  const formatted = formatAdaptiveLength(length, preferences)
 
   return (
     <div>

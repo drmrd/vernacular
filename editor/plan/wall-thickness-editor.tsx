@@ -1,7 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import {
-  formatLength,
-  lengthFormatOptions,
+  formatAdaptiveLength,
   parseLength,
   setWallThickness,
   type AssumedUnit,
@@ -32,7 +31,7 @@ export function WallThicknessEditor({
   dispatch,
   preferences,
 }: WallThicknessEditorProps) {
-  const formatted = formatLength(thickness, lengthFormatOptions(preferences))
+  const formatted = formatAdaptiveLength(thickness, preferences)
   const [text, setText] = useState(formatted)
 
   function commit() {

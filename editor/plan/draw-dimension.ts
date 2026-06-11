@@ -3,8 +3,7 @@ import {
   type Point,
   type UnitPreferences,
   dimensionGeometry,
-  formatLength,
-  lengthFormatOptions,
+  formatAdaptiveLength,
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { midpoint } from './geometry'
@@ -96,7 +95,7 @@ function fillLengthText(painter: DimensionPainter, label: DimensionLabel): void 
   painter.ctx.textAlign = TEXT_ALIGN
   painter.ctx.textBaseline = TEXT_BASELINE
   painter.ctx.fillText(
-    formatLength(label.node.length, lengthFormatOptions(label.preferences)),
+    formatAdaptiveLength(label.node.length, label.preferences),
     label.midpoint.x,
     label.midpoint.y,
   )

@@ -2,8 +2,7 @@ import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
 import {
   dimensionGeometry,
   distance,
-  formatLength,
-  lengthFormatOptions,
+  formatAdaptiveLength,
   type DimensionSceneNode,
   type UnitPreferences,
 } from '../../core'
@@ -34,7 +33,7 @@ export function dimensionChips(
       {
         id: node.id,
         screen: worldToScreen(midpoint(geom.lineStart, geom.lineEnd), viewport),
-        label: formatLength(node.length, lengthFormatOptions(preferences)),
+        label: formatAdaptiveLength(node.length, preferences),
       },
     ]
   })

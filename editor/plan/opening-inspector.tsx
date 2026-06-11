@@ -3,8 +3,7 @@ import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   flipOpening,
-  formatLength,
-  lengthFormatOptions,
+  formatAdaptiveLength,
   parseLength,
   removeOpening,
   resizeOpening,
@@ -48,7 +47,7 @@ function LengthField({
   assumeUnit,
   onCommitMm,
 }: LengthFieldProps): ReactElement {
-  const formatted = formatLength(valueMm, lengthFormatOptions(preferences))
+  const formatted = formatAdaptiveLength(valueMm, preferences)
   const [text, setText] = useState(formatted)
 
   function commit(): void {
