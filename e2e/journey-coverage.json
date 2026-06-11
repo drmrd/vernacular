@@ -22,7 +22,7 @@
     {
       "id": "edit-endpoint",
       "title": "re-edits a wall endpoint after placement",
-      "status": "pending"
+      "status": "required"
     },
     {
       "id": "snap-along-wall",
