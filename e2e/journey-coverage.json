@@ -17,7 +17,7 @@
     {
       "id": "toggle-three-d",
       "title": "toggles between the two- and three-dimensional views",
-      "status": "pending"
+      "status": "required"
     },
     {
       "id": "edit-endpoint",

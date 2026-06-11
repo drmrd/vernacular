@@ -11,6 +11,8 @@ export const selectors = {
   redoButton: (page: Page) => page.getByRole('button', { name: 'Redo' }),
   wallProxy: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
   selectTool: (page: Page) => page.getByRole('button', { name: 'Select' }),
+  threeDRegion: (page: Page) => page.getByLabel('3D preview'),
+  viewModeButton: (page: Page, name: string) => page.getByRole('button', { name }),
 }
 
 // Boot the assembled editor at its root and wait for the plan canvas.

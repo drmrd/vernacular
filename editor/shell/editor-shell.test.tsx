@@ -49,7 +49,7 @@ describe('EditorShell', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders labeled toolbar, tools, viewport, 3D preview, and inspector regions', () => {
+  it('renders labeled toolbar, tools, viewport, and inspector regions', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
@@ -58,9 +58,21 @@ describe('EditorShell', () => {
     expect(screen.getByRole('heading', { level: 1, name: /vernacular/i })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: /3d preview/i })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: /inspector/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/floor plan/i)).toBeInTheDocument()
+  })
+
+  it('reveals the 3D preview when the 3D view mode is selected', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+
+    expect(screen.queryByRole('region', { name: /3d preview/i })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '3D view' }))
+
+    expect(screen.getByRole('region', { name: /3d preview/i })).toBeInTheDocument()
   })
 
   it('shows a live wall count and the empty selection state', () => {
