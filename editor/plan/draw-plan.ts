@@ -3,8 +3,6 @@ import {
   type Point,
   type RoomSceneNode,
   type StairSceneNode,
-  type SurfaceRef,
-  type SurfaceTreatment,
   type UnitPreferences,
   type WallSceneNode,
 } from '../../core'
@@ -12,7 +10,7 @@ import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { drawGhost } from './draw-ghost'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
-import { drawSurfacePaint } from './draw-surface-paint'
+import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
@@ -70,10 +68,7 @@ export interface DrawPlanOptions {
   dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
   ghost?: readonly PreviewSegment[]
-  surfacePaint?: {
-    treatmentForFace: (wallId: string, side: 'left' | 'right') => SurfaceTreatment | undefined
-    activeSurface: SurfaceRef | null
-  }
+  surfacePaint?: Pick<SurfacePaintLayer, 'treatmentForFace' | 'activeSurface'>
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -151,9 +146,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawStairs(ctx, options)
   // Surface paint bands sit beneath the wall strokes so the ink reads over them.
   drawSurfacePaintLayer(ctx, options)
-  for (const wall of options.walls) {
-    drawWall(ctx, wall, options)
-  }
+  drawWalls(ctx, options)
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options)
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options.viewport)
@@ -198,6 +191,13 @@ function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
 function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   for (const stair of options.stairs ?? []) {
     drawStair(ctx, stair, options.viewport)
+  }
+}
+
+/** Stroke each wall over the floor fills, stair footprints, and surface-paint bands. */
+function drawWalls(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  for (const wall of options.walls) {
+    drawWall(ctx, wall, options)
   }
 }
 

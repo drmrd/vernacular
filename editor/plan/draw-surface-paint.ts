@@ -45,8 +45,9 @@ function unitDirection(start: Point, end: Point): Point {
   return { x: delta.x / length, y: delta.y / length }
 }
 
+/** The raw wall id with the `wall:` scene-node prefix that `deriveWallNode` always prepends removed. */
 function rawWallId(wall: WallSceneNode): string {
-  return wall.id.startsWith(WALL_NODE_PREFIX) ? wall.id.slice(WALL_NODE_PREFIX.length) : wall.id
+  return wall.id.slice(WALL_NODE_PREFIX.length)
 }
 
 /** Stroke a single screen-space segment from `from` to `to`, like `drawWall` in draw-plan.ts. */
