@@ -48,3 +48,21 @@ describe('graftUnknown id-array reconciliation', () => {
     expect(graftUnknown(previous, next)).toEqual({ customPolygon: [{ x: 1, y: 1 }] })
   })
 })
+
+describe('graftUnknown keyed-collection maps', () => {
+  it('does not resurrect a deleted roomOverrides entry but enriches survivors', () => {
+    const previous = {
+      roomOverrides: { a: { name: 'A', extra: 1 }, b: { name: 'B' } },
+    }
+    const next = { roomOverrides: { a: { name: 'A2' } } }
+    expect(graftUnknown(previous, next)).toEqual({
+      roomOverrides: { a: { name: 'A2', extra: 1 } },
+    })
+  })
+
+  it('treats paint the same way', () => {
+    const previous = { paint: { s1: { color: 'old' }, s2: { color: 'gone' } } }
+    const next = { paint: { s1: { color: 'new' } } }
+    expect(graftUnknown(previous, next)).toEqual({ paint: { s1: { color: 'new' } } })
+  })
+})
