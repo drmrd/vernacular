@@ -23,11 +23,11 @@
   opacity: 0.6;
 }
 
-/* The strong accent keeps white label text above the WCAG AA 4.5:1 threshold. */
+/* The on-accent label color stays above WCAG AA 4.5:1 on the accent fill in both themes. */
 .ds-button--primary {
   border-color: var(--color-accent-strong);
   background: var(--color-accent-strong);
-  color: var(--white);
+  color: var(--color-on-accent);
 }
 
 .ds-button--neutral {

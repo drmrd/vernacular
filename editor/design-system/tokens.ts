@@ -15,6 +15,7 @@ export const tokens = {
   colorBorder: token('--color-border'),
   colorAccent: token('--color-accent'),
   colorAccentStrong: token('--color-accent-strong'),
+  colorOnAccent: token('--color-on-accent'),
   colorFocusRing: token('--color-focus-ring'),
   space1: token('--space-1'),
   space2: token('--space-2'),

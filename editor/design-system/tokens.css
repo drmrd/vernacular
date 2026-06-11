@@ -27,14 +27,12 @@
   --ink-800: #2c3e57;
   --ink-600: #3a5273;
 
-  /* Material accents. */
+  /* Material accents (reserved for the design-system showcase and later
+     surface-finish work; not orphaned tokens). */
   --brass-500: #b08646;
   --brass-300: #c8b78f;
   --clay-500: #9c5f4a;
   --sage-500: #7a8b6f;
-
-  /* Neutral retained for on-accent text in button.css. */
-  --white: #ffffff;
 
   /* Semantic (role) tokens: light theme defaults. */
   --color-text: var(--umber-900);
@@ -44,6 +42,7 @@
   --color-border: var(--vellum-300);
   --color-accent: var(--ink-800);
   --color-accent-strong: var(--ink-900);
+  --color-on-accent: var(--vellum-50);
   --color-focus-ring: var(--ink-900);
 
   /* Spacing scale (rem). */
@@ -75,6 +74,7 @@
   --color-border: var(--ink-600);
   --color-accent: var(--brass-500);
   --color-accent-strong: var(--brass-300);
+  --color-on-accent: var(--umber-900);
   --color-focus-ring: var(--brass-500);
 }
 
@@ -87,6 +87,7 @@
     --color-border: var(--ink-600);
     --color-accent: var(--brass-500);
     --color-accent-strong: var(--brass-300);
+    --color-on-accent: var(--umber-900);
     --color-focus-ring: var(--brass-500);
   }
 }
