@@ -12,7 +12,7 @@ import type { CommandRegistry } from '../command-registry'
 /** The finish a surface takes when none is named explicitly. */
 const DEFAULT_FINISH_ID = 'matte'
 
-export const ASSIGN_SURFACE_PAINT = 'paint/assign'
+export const ASSIGN_SURFACE_TREATMENT = 'paint/assign'
 
 export interface AssignSurfaceTreatmentParams {
   key: string
@@ -24,7 +24,7 @@ export function assignSurfaceTreatment(
   treatment: SurfaceTreatment,
 ): Command<AssignSurfaceTreatmentParams> {
   return {
-    type: ASSIGN_SURFACE_PAINT,
+    type: ASSIGN_SURFACE_TREATMENT,
     params: { key: surfaceKey(ref), treatment },
     description: 'Paint surface',
   }
@@ -38,7 +38,7 @@ export function assignSurfacePaint(
   return assignSurfaceTreatment(ref, solidTreatment(color, finishId))
 }
 
-const assignSurfacePaintHandler: CommandHandler<Project, AssignSurfaceTreatmentParams> = {
+const assignSurfaceTreatmentHandler: CommandHandler<Project, AssignSurfaceTreatmentParams> = {
   apply(state, params) {
     // Reassign the whole paint slice so the inverse-capture proxy records the
     // root-level change and undo restores the prior reference (including back to
@@ -75,6 +75,6 @@ export function registerPaintCommands(
   registry: CommandRegistry<Project>,
 ): CommandRegistry<Project> {
   return registry
-    .register(ASSIGN_SURFACE_PAINT, assignSurfacePaintHandler)
+    .register(ASSIGN_SURFACE_TREATMENT, assignSurfaceTreatmentHandler)
     .register(CLEAR_SURFACE_PAINT, clearSurfacePaintHandler)
 }

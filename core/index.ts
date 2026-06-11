@@ -410,7 +410,7 @@ export type {
   ClearSurfacePaintParams,
 } from './commands/handlers/paint-commands'
 export {
-  ASSIGN_SURFACE_PAINT,
+  ASSIGN_SURFACE_TREATMENT,
   CLEAR_SURFACE_PAINT,
   assignSurfacePaint,
   assignSurfaceTreatment,
