@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Executed with the project's role-separated red-green-blue cycle (CLAUDE.md, `.claude/rules.md`). Each behavior runs RED (`/test-first` -> `test-author`, commit `test:`), GREEN (`/implement` -> `implementer`, commit `feat:`), then BLUE (`/clean-code-review` then `/refactor`, commit `refactor:` or an empty marker). Tasks marked `(infrastructure)` are controller-authored glue (React/Canvas/keyboard/tool wiring, docs) committed as `build:`/`docs:` or with an `Infrastructure:` trailer so the cycle audit skips them. This plan names each behavior and its public signature; it ships no literal test bodies.
 
-**Goal:** Turn selection into editing: move, rotate, and delete the selected plan entities through undoable commands, and copy, cut, and paste them through a clipboard, completing the usable two-dimensional editor.
+**Goal:** Turn selection into editing: move, rotate, and delete the selected plan entities through undoable commands, and copy, cut, and paste them through a clipboard.
 
 **Architecture:** Pure point transforms (`translatePoint`, `rotatePoint`) feed three undoable floor commands (`translateEntities`, `rotateEntities`, `deleteEntities`) that map selected wall and dimension endpoints (openings ride their host wall; rooms re-derive). A pure clipboard core (`buildClipboardSnapshot`, `serializeClipboard`/`deserializeClipboard`, `instantiateClipboard`) feeds a `pasteEntities` command and two bridge backings (an in-app store plus an operating-system-clipboard adapter sharing the serializer). The editor adds a move-drag with a ghost preview, a ghost render in `drawPlan`, a rotate panel, and keyboard glue, all gated on the `select` tool.
 

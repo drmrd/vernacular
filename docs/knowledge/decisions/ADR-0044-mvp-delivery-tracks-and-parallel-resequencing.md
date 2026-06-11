@@ -52,8 +52,8 @@ updated: 2026-06-09
 
 Accepted, forward-looking. No feature code lands with this decision. It records
 how the remaining MVP work (everything after the Phase-1 two-dimensional plan
-editor) is sequenced and parallelized, and it serves as the corresponding
-architecture record for the spec-level changes it makes to the delivery model in
+editor) is sequenced and parallelized, and it is the corresponding architecture
+record for the spec-level changes it makes to the delivery model in
 design specification section 10 (the composition of the public alpha, the timing
 of export, the addition of a user-experience track, and the open-standard
 interoperability posture). Every named deliverable in section 10 still ships; this

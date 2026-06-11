@@ -14,11 +14,11 @@
 
 **Positioning.** Power user's floor planner with a heavy lean toward old houses. Not the "old-house tool" as exclusive identity, but a tool that respects old houses where others don't. Mainstream/new-construction features land in the roadmap but don't dominate.
 
-**Stack.** Web app — React + Three.js + React-Three-Fiber + WebGPU (WebGL2 fallback as a fast-follow). No desktop wrapper in scope; if desktop ever becomes warranted, evaluated then as a separate decision rather than a default-Tauri shipping path.
+**Stack.** Web app: React + Three.js + React-Three-Fiber + WebGPU (WebGL2 fallback as a fast-follow). No desktop wrapper in scope; if desktop ever becomes warranted, evaluated then as a separate decision rather than a default-Tauri shipping path.
 
 **License.** Apache-2.0 throughout the app code, data schemas, and pack manifests. Asset packs declare their own SPDX licenses (CC0 / CC-BY predominant).
 
-**Scope shape.** Six MVP phases (0–6) culminating in v1.0; phases 7–10 carry the roadmap forward through DXF import, lighting fidelity, pathing critic, and a code-plugin runtime.
+**Scope shape.** Six MVP phases (0 to 6) culminating in v1.0; phases 7 to 10 carry the roadmap forward through DXF import, lighting fidelity, pathing critic, and a code-plugin runtime.
 
 ---
 
@@ -40,7 +40,7 @@ Six top-level layers with hard boundaries; each depends only on layers below it.
 ├────────────────────────────────────────────────────────────┤
 │  storage/     Project store, library store, asset cache    │
 ├────────────────────────────────────────────────────────────┤
-│  core/        Pure-TS domain — types, project model,       │
+│  core/        Pure-TS domain: types, project model,        │
 │               registries, commands, units, color, geometry,│
 │               import/export interfaces (no React,          │
 │               no Three.js)                                 │
@@ -51,17 +51,17 @@ Six top-level layers with hard boundaries; each depends only on layers below it.
 
 - `core/` has zero React, zero Three.js, zero DOM dependencies. Pure TypeScript, testable in Node.
 - `engine/` is the only layer that imports Three.js.
-- `bridge/` is the only place that touches both React state and Three.js scene state — it owns the command dispatch boundary: UI events → commands → `core/` mutations → engine sync.
+- `bridge/` is the only place that touches both React state and Three.js scene state. It owns the command dispatch boundary: UI events → commands → `core/` mutations → engine sync.
 - `storage/` is provider-shaped from day one: `ProjectStore`, `LibraryStore`, `AssetCache` interfaces with multiple implementations.
 
 ### 2.2 Extension points (designed in, not added later)
 
-- `Importer` interface in `core/import/` — glTF/OBJ/STL at MVP; DXF, IFC, competitor formats drop in later.
-- `Exporter` interface in `core/export/` — PDF/SVG/PNG at MVP; glTF, DXF later.
-- `AssetSource` interface in `storage/` — bundled, pack, user-filesystem, project-embedded, future cloud-sync.
-- `Registry` pattern in `core/registries/` — element types, eras, categories, finishes, palettes, trim profiles, room purposes. All JSON-driven, mergeable, versioned.
-- `PlanRenderer` (2D) and `SceneRenderer` (3D) — distinct plug points. The phase-8 lighting fidelity renderer replaces only `SceneRenderer`.
-- `Critic` interface in `core/` — stubbed in MVP; the phase-9 pathing critic and any future analysis (lighting, structural) conform to it.
+- `Importer` interface in `core/import/`: glTF/OBJ/STL at MVP; DXF, IFC, competitor formats drop in later.
+- `Exporter` interface in `core/export/`: PDF/SVG/PNG at MVP; glTF, DXF later.
+- `AssetSource` interface in `storage/`: bundled, pack, user-filesystem, project-embedded, future cloud-sync.
+- `Registry` pattern in `core/registries/`: element types, eras, categories, finishes, palettes, trim profiles, room purposes. All JSON-driven, mergeable, versioned.
+- `PlanRenderer` (2D) and `SceneRenderer` (3D) are distinct plug points. The phase-8 lighting fidelity renderer replaces only `SceneRenderer`.
+- `Critic` interface in `core/`: stubbed in MVP; the phase-9 pathing critic and any future analysis (lighting, structural) conform to it.
 
 ### 2.3 Deliberately deferred
 
@@ -125,7 +125,7 @@ Project
 
 **Rooms are derived, not authored.** A room's polygon is computed from wall topology. Users name and tag rooms; geometry comes from walls. A `customPolygon` override exists for cases where wall topology can't infer a room (porch, L-shaped sub-zone).
 
-**All third-party content is referenced, not embedded inline.** Furniture, custom 3D models, underlays — every external thing is an `AssetReference`. References resolve through the `AssetRegistry` to concrete sources.
+**All third-party content is referenced, not embedded inline.** Furniture, custom 3D models, underlays: every external thing is an `AssetReference`. References resolve through the `AssetRegistry` to concrete sources.
 
 **`AssetReference` is content-addressed.** Format: `(scope, contentHash)`. Scope is `pack:<id>@<version>`, `user`, or `project`.
 
@@ -170,11 +170,11 @@ For sharing/export: the folder is zipped as `.house.zip`. Re-opening a `.house.z
 
 Captured at project level:
 
-- `schemaVersion` — project schema version; drives the migration chain.
-- `appVersion` — app that wrote the file; for bug-trail.
-- `registryVersions` — map of each registry to its version at write time.
-- `packsRequired` — `{ packId, minVersion, contentHashesUsed }[]`.
-- `writeHistory` — short rolling log of the last ~10 saves.
+- `schemaVersion`: project schema version; drives the migration chain.
+- `appVersion`: app that wrote the file; for bug-trail.
+- `registryVersions`: map of each registry to its version at write time.
+- `packsRequired`: `{ packId, minVersion, contentHashesUsed }[]`.
+- `writeHistory`: short rolling log of the last ~10 saves.
 
 Explicitly **not captured**: OS, browser, user identity, machine UUID. A user-toggleable diagnostic flag can add browser info to the file if desired.
 
@@ -184,7 +184,7 @@ Explicitly **not captured**: OS, browser, user identity, machine UUID. A user-to
 - Per-registry migrations (renames, deprecations) in `core/migrations/registries/<registry>/`.
 - Both run on open, layered.
 - Pre-migration backup saved to `.house-autosave/pre-migration-v<n>.json` before applying.
-- Failure is atomic — original is never partially written.
+- Failure is atomic; the original is never partially written.
 
 ---
 
@@ -206,10 +206,10 @@ interface AssetSource {
 
 MVP implementations:
 
-- **`BundledSource`** — tiny set shipped with the app build (registries, fonts, placeholder model, missing-asset glyph).
-- **`PackSource`** — versioned asset packs from a CDN. The curated starter library is `pack:vernacular-starter@1.x.y`.
-- **`UserFilesystemSource`** — user-imported assets in OPFS + IndexedDB metadata index; FileSystemAccess handles where the user opts in.
-- **`ProjectEmbeddedSource`** — assets in the current project's `assets/`.
+- **`BundledSource`**: tiny set shipped with the app build (registries, fonts, placeholder model, missing-asset glyph).
+- **`PackSource`**: versioned asset packs from a CDN. The curated starter library is `pack:vernacular-starter@1.x.y`.
+- **`UserFilesystemSource`**: user-imported assets in OPFS + IndexedDB metadata index; FileSystemAccess handles where the user opts in.
+- **`ProjectEmbeddedSource`**: assets in the current project's `assets/`.
 
 Consumers interact only with the `AssetRegistry`, which aggregates all sources.
 
@@ -217,10 +217,10 @@ Consumers interact only with the `AssetRegistry`, which aggregates all sources.
 
 When resolving `(scope, contentHash)`:
 
-1. **Exact match** — return from the named scope.
-2. **Hash match in another source** — content addressing means substitution is safe. Precedence: `user > project > pack > bundled`.
-3. **Pack version fallback** — same hash in a different version of the same pack.
-4. **Missing-asset placeholder** — visible, clearly labeled placeholder with correct footprint dimensions. User can keep editing; asset panel surfaces the gap with a recovery path.
+1. **Exact match**: return from the named scope.
+2. **Hash match in another source**: content addressing means substitution is safe. Precedence: `user > project > pack > bundled`.
+3. **Pack version fallback**: same hash in a different version of the same pack.
+4. **Missing-asset placeholder**: visible, clearly labeled placeholder with correct footprint dimensions. User can keep editing; asset panel surfaces the gap with a recovery path.
 
 Loaders (which produce Three.js scene graphs from Blobs) are a separate concern in `engine/loaders/`. Sources do not know about Three.js.
 
@@ -251,13 +251,13 @@ Loaders (which produce Three.js scene graphs from Blobs) are a separate concern 
 
 Seven typed registries, each with the same shape (versioned JSON, mergeable across sources, append-only by convention, with per-registry migration tables):
 
-- **`ElementTypeRegistry`** — door/window/wall-feature/ceiling-feature/stair-component types. Each entry includes `plan2D` rendering rules AND `scene3D` reference (assetRef or parameters). 2D plan symbols are first-class.
-- **`EraRegistry`** — Victorian, Edwardian, Craftsman, Mid-Century, Contemporary, Mixed/Uncertain at MVP. Locale-aware display names; per-locale default vocabularies.
-- **`CategoryRegistry`** — hierarchical furniture and feature categories.
-- **`TrimProfileRegistry`** — cross-section shapes for moldings.
-- **`FinishRegistry`** — paint finishes (flat, matte, eggshell, satin, semi-gloss, gloss) and other surface finishes; map to material parameter presets.
-- **`PaletteRegistry`** — color palettes (bundled CC0, user-defined, future community/brand).
-- **`RoomPurposeRegistry`** — kitchen, bedroom, dining, parlor, sitting room, etc. Era-aware vocabulary. Drives library biasing and future pathing critic.
+- **`ElementTypeRegistry`**: door/window/wall-feature/ceiling-feature/stair-component types. Each entry includes `plan2D` rendering rules AND `scene3D` reference (assetRef or parameters). 2D plan symbols are first-class.
+- **`EraRegistry`**: Victorian, Edwardian, Craftsman, Mid-Century, Contemporary, Mixed/Uncertain at MVP. Locale-aware display names; per-locale default vocabularies.
+- **`CategoryRegistry`**: hierarchical furniture and feature categories.
+- **`TrimProfileRegistry`**: cross-section shapes for moldings.
+- **`FinishRegistry`**: paint finishes (flat, matte, eggshell, satin, semi-gloss, gloss) and other surface finishes; map to material parameter presets.
+- **`PaletteRegistry`**: color palettes (bundled CC0, user-defined, future community/brand).
+- **`RoomPurposeRegistry`**: kitchen, bedroom, dining, parlor, sitting room, etc. Era-aware vocabulary. Drives library biasing and future pathing critic.
 
 ### 4.5 Asset `kind` enumeration
 
@@ -288,7 +288,7 @@ A contributor publishes a pack as a GitHub release; users install by URL with ex
 
 ### 4.7 Phase-2+ furniture pipelines
 
-Image-to-3D and website-to-3D pipelines plug in as additional `Importer` implementations. They produce normalized internal assets that flow through the standard "save to library" path. The asset & extension system does not change — only the front door of import does.
+Image-to-3D and website-to-3D pipelines plug in as additional `Importer` implementations. They produce normalized internal assets that flow through the standard "save to library" path. The asset & extension system does not change; only the front door of import does.
 
 ### 4.8 License and provenance enforcement
 
@@ -310,7 +310,7 @@ Image-to-3D and website-to-3D pipelines plug in as additional `Importer` impleme
 
 ### 4.11 Asset variants
 
-MVP uses **discrete variants** — each size/option is a separate asset with its own content hash. **Parametric assets** (one model with parameters) are reserved as a phase-3 hook via an optional `parameters: AssetParameterSet` on `FurnitureInstance.customizations`. The field is reserved so a future migration is unnecessary.
+MVP uses **discrete variants**: each size/option is a separate asset with its own content hash. **Parametric assets** (one model with parameters) are reserved as a phase-3 hook via an optional `parameters: AssetParameterSet` on `FurnitureInstance.customizations`. The field is reserved so a future migration is unnecessary.
 
 ---
 
@@ -359,9 +359,9 @@ Adding a future `CloudSyncProjectStore` is purely additive.
 
 ### 5.3 ProjectStore implementations
 
-- **`FileSystemFolderProjectStore`** — Chromium-family browsers; FileSystemDirectoryHandle persisted in IndexedDB; permission re-prompted at session start.
-- **`OPFSProjectStore`** — universal; logical model identical, persistence backend differs.
-- **`ZipBundleProjectStore`** — universal `.house.zip` import/export; contents expand to OPFS during editing.
+- **`FileSystemFolderProjectStore`**: Chromium-family browsers; FileSystemDirectoryHandle persisted in IndexedDB; permission re-prompted at session start.
+- **`OPFSProjectStore`**: universal; logical model identical, persistence backend differs.
+- **`ZipBundleProjectStore`**: universal `.house.zip` import/export; contents expand to OPFS during editing.
 
 User picks a backend per project at creation time; choice is remembered with the recent-project entry. Switching backends is supported.
 
@@ -379,7 +379,7 @@ Layered: schema-level (in `core/migrations/schema/`) and per-registry (in `core/
 
 - Pre-migration backup to `.house-autosave/pre-migration-v<n>.json` before applying.
 - Sync for fast migrations; async with progress UI for slow ones (> 1000 entities or > 1MB of JSON).
-- Atomic — original is never partially written. Migration throws → restore from backup, surface error with "report bug" prompt.
+- Atomic; the original is never partially written. Migration throws → restore from backup, surface error with "report bug" prompt.
 
 ### 5.6 Multi-tab safety
 
@@ -388,7 +388,7 @@ Web Locks-based exclusive ownership. First tab to open holds the lock; second ta
 ### 5.7 File System Access permission lifecycle
 
 - Directory handle stored in IndexedDB after first open.
-- `handle.requestPermission()` on reopen — most browsers re-prompt at session start.
+- `handle.requestPermission()` on reopen; most browsers re-prompt at session start.
 - Mid-session permission revocation triggers a recovery flow: "save copy to OPFS, or re-grant access." Never silently fails.
 
 ### 5.8 Quota and eviction
@@ -434,8 +434,8 @@ The scene graph in `core/scene/` is pure data, no Three.js or DOM dependencies. 
 
 ### 6.2 2D plan renderer
 
-- **Canvas (2D context) for the bulk** — walls, floors, openings, trim paths, furniture footprints, underlay images. Custom transform, batched draws, dirty-region re-render.
-- **DOM overlay (React) for interactive UI** — selection rings, dimension chips, snap indicators, hover tooltips. CSS transforms mirror the Canvas world matrix. Gives accessibility + easy styling.
+- **Canvas (2D context) for the bulk**: walls, floors, openings, trim paths, furniture footprints, underlay images. Custom transform, batched draws, dirty-region re-render.
+- **DOM overlay (React) for interactive UI**: selection rings, dimension chips, snap indicators, hover tooltips. CSS transforms mirror the Canvas world matrix. Gives accessibility + easy styling.
 - **No SVG for live rendering.** SVG is the **export** output for vector floor plans.
 - **Hit testing** via a quadtree spatial index over scene entities.
 
@@ -443,7 +443,7 @@ The scene graph in `core/scene/` is pure data, no Three.js or DOM dependencies. 
 
 - **Three.js + React-Three-Fiber + WebGPURenderer** primary; WebGL2 fallback as a post-MVP fast-follow (the renderer detects backend at startup).
 - **R3F for declarative composition.** Imperative Three.js access via refs is allowed for hot paths (e.g., wall drag).
-- **Custom GLSL/WGSL materials** where needed — walls, floors, ceilings use the custom `PaintMaterial`. Furniture uses Three.js `MeshPhysicalMaterial` defaults from imported glTF.
+- **Custom GLSL/WGSL materials** where needed: walls, floors, ceilings use the custom `PaintMaterial`. Furniture uses Three.js `MeshPhysicalMaterial` defaults from imported glTF.
 
 ### 6.4 Data flow
 
@@ -583,7 +583,7 @@ Commands live in `core/commands/handlers/`, grouped by domain. Single dispatcher
 - Multiple imperial display forms (`6'8"`, `6.667'`, `80"`).
 - Tolerant input parsers (`6'8"`, `6 ft 8 in`, `6.667 ft`, `80 in`, `2.03 m`, `2030 mm`).
 - Display precision configurable per category.
-- No round-trip drift — parser/formatter pair preserves precision against the stored value.
+- No round-trip drift; the parser/formatter pair preserves precision against the stored value.
 
 ### 7.4 Color science
 
@@ -594,20 +594,20 @@ Commands live in `core/commands/handlers/`, grouped by domain. Single dispatcher
 - Display P3 used where supported for wider color reproduction.
 - Color-blind accessibility: every paint chip carries its color name as accessible text; optional simulation toggle.
 
-### 7.5 License and provenance — runtime view
+### 7.5 License and provenance: runtime view
 
 Architecturally covered in §4.8. Cross-cutting commitments:
 
 - Every asset record carries SPDX license + attribution + sourceUrl.
 - `Project.assetIndex` is the project's aggregated view.
 - Export bundling validates, surfaces required attribution, refuses for clear conflicts, warns loudly for nuanced cases.
-- License changes are versioned — the project records the license-at-time-of-use; reopening surfaces the change.
+- License changes are versioned; the project records the license-at-time-of-use, and reopening surfaces the change.
 
 ### 7.6 Errors, logging, diagnostics
 
 - Errors at the command boundary caught and rolled back atomically. User sees plain-language message with a "view details" expander.
 - I/O errors shown with concrete recovery actions ("retry", "open read-only", "import from backup").
-- **Diagnostic export** — one-click "copy diagnostic info to clipboard" generates a JSON payload (app version, browser, WebGPU capabilities, project metadata summary, last 50 anonymized command-history entries, recent error logs). No automatic transmission.
+- **Diagnostic export**: one-click "copy diagnostic info to clipboard" generates a JSON payload (app version, browser, WebGPU capabilities, project metadata summary, last 50 anonymized command-history entries, recent error logs). No automatic transmission.
 - Structured logging in dev/debug. Production strips verbose logs; warnings and errors retained.
 - **Zero telemetry by default.**
 
@@ -635,7 +635,7 @@ No cloud sync of settings in MVP. Export/import as JSON for portability.
 - Cheat sheet panel (`?` to open).
 - OS-aware (Cmd on macOS, Ctrl elsewhere).
 
-### 7.9 Accessibility — cross-cutting commitments
+### 7.9 Accessibility: cross-cutting commitments
 
 - Semantic UI throughout (roles, labels, focus management, ARIA states).
 - Keyboard navigation for every editor function.
@@ -673,7 +673,7 @@ docs/
 - Release branches `release/v<major>.<minor>.x` for back-porting.
 - Tags on every release; release notes mirrored to GitHub Releases.
 
-### 8.3 CLAUDE.md — operating manual
+### 8.3 CLAUDE.md: operating manual
 
 Under 200 lines; read at every Claude Code conversation start.
 
@@ -683,14 +683,14 @@ Sections:
 2. Repo layout (6-layer architecture diagram)
 3. Hard invariants (the lint-enforced rules)
 4. Workflow: brainstorm → spec → plan → test → implement → refactor → review
-5. Knowledge graph reliance — consult `docs/knowledge/INDEX.md` before exploring; update after meaningful changes
+5. Knowledge graph reliance: consult `docs/knowledge/INDEX.md` before exploring; update after meaningful changes
 6. Subagent inventory
 7. Slash command inventory
 8. Common shell commands
 9. Things to never do
 10. Pointers to other docs
 
-### 8.4 The knowledge graph — `docs/knowledge/`
+### 8.4 The knowledge graph: `docs/knowledge/`
 
 Indexed, ever-expanding, Claude-Code-reliant, routinely updated.
 
@@ -722,7 +722,7 @@ updated: YYYY-MM-DD
 ---
 ```
 
-**Indexing — `pnpm knowledge:index`** scans, validates frontmatter, regenerates `INDEX.md` and `index.json`. Runs in pre-commit and CI.
+**Indexing (`pnpm knowledge:index`)** scans, validates frontmatter, regenerates `INDEX.md` and `index.json`. Runs in pre-commit and CI.
 
 **Reliance from Claude Code:**
 
@@ -784,29 +784,29 @@ Sequential phases, each gating the next:
 
 ### 8.8 Subagents (`.claude/agents/`)
 
-- **`test-author`** — writes failing tests against spec/knowledge/type signatures; **cannot read implementation source**. Allowed paths: `tests/**`, `**/__tests__/**`, `**/*.test.ts`, `**/*.spec.ts`.
-- **`implementer`** — writes minimal code to pass failing tests; receives only test-runner output, not test source; **cannot modify test files**.
-- **`refactorer`** — improves code while keeping tests green.
-- **`clean-code-reviewer`** — read-only; invoked during blue phase and at PR time. Produces structured Clean Code reports with must-fix / should-fix / consider severities.
-- **`pr-reviewer`** — read-only; verifies ping-pong adherence, knowledge graph updates, acceptance criteria, blue-phase presence.
-- **`knowledge-curator`** — read repo / write `docs/knowledge/` only; proposes updates after significant changes.
-- **`pack-validator`** — invoked when asset/registry packs change.
-- **`migration-author`** — invoked when registry or schema changes require migrations.
+- **`test-author`**: writes failing tests against spec/knowledge/type signatures; **cannot read implementation source**. Allowed paths: `tests/**`, `**/__tests__/**`, `**/*.test.ts`, `**/*.spec.ts`.
+- **`implementer`**: writes minimal code to pass failing tests; receives only test-runner output, not test source; **cannot modify test files**.
+- **`refactorer`**: improves code while keeping tests green.
+- **`clean-code-reviewer`**: read-only; invoked during blue phase and at PR time. Produces structured Clean Code reports with must-fix / should-fix / consider severities.
+- **`pr-reviewer`**: read-only; verifies ping-pong adherence, knowledge graph updates, acceptance criteria, blue-phase presence.
+- **`knowledge-curator`**: read repo / write `docs/knowledge/` only; proposes updates after significant changes.
+- **`pack-validator`**: invoked when asset/registry packs change.
+- **`migration-author`**: invoked when registry or schema changes require migrations.
 
 Access controls enforced via tool wrappers in `.claude/tools/`.
 
 ### 8.9 Custom slash commands (`.claude/commands/`)
 
-- `/knowledge [query]` — list/search/open knowledge graph entries
-- `/adr <slug> "title"` — scaffold a new ADR
-- `/knowledge:update <slug>` — open an entry with changelist prompt
-- `/test-first <feature>` — invoke `test-author`
-- `/implement` — invoke `implementer` against most recent failing test
-- `/refactor` — invoke `refactorer`
-- `/clean-code-review [files]` — ad-hoc Clean Code review
-- `/review` — invoke `pr-reviewer`
-- `/pack:new <kind>` — scaffold pack source
-- `/migration:new <registry> <fromVersion>` — scaffold a migration
+- `/knowledge [query]`: list/search/open knowledge graph entries
+- `/adr <slug> "title"`: scaffold a new ADR
+- `/knowledge:update <slug>`: open an entry with changelist prompt
+- `/test-first <feature>`: invoke `test-author`
+- `/implement`: invoke `implementer` against most recent failing test
+- `/refactor`: invoke `refactorer`
+- `/clean-code-review [files]`: ad-hoc Clean Code review
+- `/review`: invoke `pr-reviewer`
+- `/pack:new <kind>`: scaffold pack source
+- `/migration:new <registry> <fromVersion>`: scaffold a migration
 
 ---
 
@@ -851,27 +851,27 @@ Layered from broad-and-fast to narrow-and-expensive. No upper bounds on test cou
 
 ### 9.3 Test layer details
 
-**Unit tests** — every pure function, command handler, registry resolver, parser, geometry primitive in `core/`. Coverage target ≥ 90% on `core/`. No mocks for owned code; mocks only at I/O boundaries.
+**Unit tests** cover every pure function, command handler, registry resolver, parser, geometry primitive in `core/`. Coverage target ≥ 90% on `core/`. No mocks for owned code; mocks only at I/O boundaries.
 
-**Property-based tests** — geometry under random configurations, units round-trip, color round-trip, file format migrations, command coalescing. Failing seeds logged for reproducibility.
+**Property-based tests** cover geometry under random configurations, units round-trip, color round-trip, file format migrations, command coalescing. Failing seeds logged for reproducibility.
 
-**Integration tests** — `core/` end-to-end flows: scene graph derivation, asset registry resolution, command dispatch with undo across entities, importer wiring. Pure TS.
+**Integration tests** cover `core/` end-to-end flows: scene graph derivation, asset registry resolution, command dispatch with undo across entities, importer wiring. Pure TS.
 
-**Component tests** — React Testing Library; Storybook play functions double as visual documentation. Real components with real bridge layer where feasible.
+**Component tests** use React Testing Library; Storybook play functions double as visual documentation. Real components with real bridge layer where feasible.
 
-**E2E tests** — Playwright across Chromium (WebGPU), Firefox, WebKit. Categories: smoke, editor flows, asset workflows, multi-floor + stairs, paint + export, migration + bundle. Traces saved on failure.
+**E2E tests** run with Playwright across Chromium (WebGPU), Firefox, WebKit. Categories: smoke, editor flows, asset workflows, multi-floor + stairs, paint + export, migration + bundle. Traces saved on failure.
 
-**3D scene snapshot tests** — render known scenes (project JSON fixtures) with fixed camera and lighting. Perceptual diff (pHash / SSIM with tolerance) primary; bit-exact via software-rasterizer in nightly. Per-renderer baselines (WebGPU vs WebGL2).
+**3D scene snapshot tests** render known scenes (project JSON fixtures) with fixed camera and lighting. Perceptual diff (pHash / SSIM with tolerance) primary; bit-exact via software-rasterizer in nightly. Per-renderer baselines (WebGPU vs WebGL2).
 
-**Visual regression** — Playwright `toHaveScreenshot` with per-browser baselines for chrome UI. Volatile regions masked. Storybook stories doubled as visual baselines.
+**Visual regression** uses Playwright `toHaveScreenshot` with per-browser baselines for chrome UI. Volatile regions masked. Storybook stories doubled as visual baselines.
 
-**Accessibility** — @axe-core/playwright on every page transition. Color contrast across themes. Keyboard-only navigation tests. Screen reader checklist (manual, documented).
+**Accessibility** runs @axe-core/playwright on every page transition. Color contrast across themes. Keyboard-only navigation tests. Screen reader checklist (manual, documented).
 
-**Performance** — render benchmark harness in `engine/profiling/` (p50/p95/p99 frame times at known scene complexities). Bundle-size budget. Lighthouse CI. Memory leak detection via repeated render + GC.
+**Performance** uses a render benchmark harness in `engine/profiling/` (p50/p95/p99 frame times at known scene complexities). Bundle-size budget. Lighthouse CI. Memory leak detection via repeated render + GC.
 
-**Acceptance tests** — user journeys from the spec. BDD-style names traceable to AC IDs (e.g., "AC5.4: ...").
+**Acceptance tests** cover user journeys from the spec. BDD-style names traceable to AC IDs (e.g., "AC5.4: ...").
 
-### 9.4 Ping-pong TDD — red → green → blue
+### 9.4 Ping-pong TDD: red → green → blue
 
 The cycle:
 
@@ -908,15 +908,15 @@ The cycle:
         └───────────────┘
 ```
 
-**Blue is non-optional.** Every cycle includes it. If `clean-code-reviewer` finds no actionable issues, the cycle still produces an empty `refactor: clean-code-review pass — no changes needed (cycle <n>)` commit. This preserves cycle traceability in commit history without amending the green commit.
+**Blue is non-optional.** Every cycle includes it. If `clean-code-reviewer` finds no actionable issues, the cycle still produces an empty `refactor: clean-code-review pass, no changes needed (cycle <n>)` commit. This preserves cycle traceability in commit history without amending the green commit.
 
 ### 9.5 Independence enforcement
 
 Three layers, increasingly strict:
 
-1. **Agent-level access control** — subagent definitions declare file-access rules; custom tool wrappers in `.claude/tools/` filter reads by path and produce structured test-runner output for `implementer`.
-2. **Commit-history CI check** — verifies test commits precede impl commits, test files unchanged in impl commits (with legitimate test-refactor exceptions), each impl commit makes a previously-failing test pass.
-3. **`pr-reviewer` agent** — read-only repo audit; surfaces violations the CI didn't catch; flags tests that look written _after_ implementation.
+1. **Agent-level access control**: subagent definitions declare file-access rules; custom tool wrappers in `.claude/tools/` filter reads by path and produce structured test-runner output for `implementer`.
+2. **Commit-history CI check**: verifies test commits precede impl commits, test files unchanged in impl commits (with legitimate test-refactor exceptions), each impl commit makes a previously-failing test pass.
+3. **`pr-reviewer` agent**: read-only repo audit; surfaces violations the CI didn't catch; flags tests that look written _after_ implementation.
 
 ### 9.6 Clean Code review during blue phase
 
@@ -938,9 +938,9 @@ Three layers, increasingly strict:
 
 Severity:
 
-- **must-fix** — clearly misleading names, function with 5+ responsibilities, cyclomatic complexity >15, hidden mutation in a "pure" function. Gates PR.
-- **should-fix** — function modestly oversized, mild abstraction-level mixing, missed extraction. Strongly encouraged; passes with maintainer approval logged to `docs/knowledge/exceptions/`.
-- **consider** — stylistic notes. Informational.
+- **must-fix**: clearly misleading names, function with 5+ responsibilities, cyclomatic complexity >15, hidden mutation in a "pure" function. Gates PR.
+- **should-fix**: function modestly oversized, mild abstraction-level mixing, missed extraction. Strongly encouraged; passes with maintainer approval logged to `docs/knowledge/exceptions/`.
+- **consider**: stylistic notes. Informational.
 
 ### 9.7 PR-level Clean Code assessment
 
@@ -959,7 +959,7 @@ Configured in `eslint.config.js`:
 - `no-magic-numbers` with allowlist
 - `no-nested-ternary`, `no-console`, `import/no-cycle`
 - `import/no-internal-modules` for layer-boundary enforcement
-- `boundaries/element-types` (eslint-plugin-boundaries) — enforces `core/` cannot import React/Three.js
+- `boundaries/element-types` (eslint-plugin-boundaries): enforces `core/` cannot import React/Three.js
 - Custom `no-direct-three-imports-outside-engine`
 - Custom `no-direct-storage-API-outside-storage`
 - `jsdoc/require-jsdoc` on public APIs
@@ -974,10 +974,10 @@ Stryker runs weekly on main against `core/`. New code cannot lower the mutation 
 
 ### 9.10 Fixtures and test data
 
-- `tests/fixtures/projects/` — reusable project JSONs.
-- `tests/fixtures/assets/` — small CC0 test assets, license-tagged.
-- `tests/fixtures/registries/` — frozen registry versions for migration testing.
-- `tests/factories/` — `makeWall`, `makeProject`, etc.
+- `tests/fixtures/projects/`: reusable project JSONs.
+- `tests/fixtures/assets/`: small CC0 test assets, license-tagged.
+- `tests/fixtures/registries/`: frozen registry versions for migration testing.
+- `tests/factories/`: `makeWall`, `makeProject`, etc.
 - No shared mutable test state; each test gets fresh data.
 - Deterministic random seeds where randomness is unavoidable.
 
@@ -995,7 +995,7 @@ Stryker runs weekly on main against `core/`. New code cannot lower the mutation 
 
 - Tests that mock the system under test instead of exercising it
 - Tests modified to make them pass instead of fixing implementation
-- Test names like "test wall move" — names describe _behaviors_, not method names
+- Test names like "test wall move"; names describe _behaviors_, not method names
 - Commenting out failing tests (CI rejects `// skip` / `xtest` without ADR linking to a tracked issue)
 - E2E tests that depend on timing (`sleep(500)` forbidden; use explicit wait-for-condition)
 - Snapshot baselines committed without diff review
@@ -1007,7 +1007,7 @@ Stryker runs weekly on main against `core/`. New code cannot lower the mutation 
 
 Phased delivery with public alpha at phase 3 and public beta at phase 5. Each phase has explicit deliverables, acceptance criteria, and out-of-scope reminders.
 
-### Phase 0 — Bootstrap (2–3 weeks)
+### Phase 0: Bootstrap (2 to 3 weeks)
 
 **Goal:** Architecturally correct skeleton. CI green. Foundations of engineering norms and TDD workflow operational.
 
@@ -1046,7 +1046,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Out of scope:** snapping, dimensions, openings, 3D rendering, persistence to user filesystem.
 
-### Phase 1 — 2D core (4–6 weeks)
+### Phase 1: 2D core (4 to 6 weeks)
 
 **Goal:** The 2D plan editor is genuinely useful for single-floor planning.
 
@@ -1082,7 +1082,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Out of scope:** 3D, furniture, old-house elements, multi-floor, paint.
 
-### Phase 2 — 3D preview + light slider (2–3 weeks)
+### Phase 2: 3D preview + light slider (2 to 3 weeks)
 
 **Goal:** 3D companion view with basic feel and the color-temperature hook.
 
@@ -1110,7 +1110,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Out of scope:** furniture, painted walls, solar position, full WebGL2 rendering fallback.
 
-### Phase 3 — Furniture (3–4 weeks) — **public alpha release**
+### Phase 3: Furniture (3 to 4 weeks), **public alpha release**
 
 **Goal:** Power users can add furniture. First version with a real identity people can try.
 
@@ -1118,7 +1118,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Asset pack system (manifest format, sha256 integrity, lazy fetch)
 - `vernacular-pack` CLI (build, validate, publish; license + dimension sanity checks)
-- `pack:vernacular-starter@1.0` — curated ~30–50 essential furniture pieces, license-audited
+- `pack:vernacular-starter@1.0`: curated ~30 to 50 essential furniture pieces, license-audited
 - Library browser (categories, era filter, dimension filter, source pack filter, fuzzy search)
 - Furniture placement tool (drag-from-library, snap-to-floor, align-to-wall, rotation gizmo)
 - Custom asset import (glTF/GLB/OBJ/STL with sidecar textures)
@@ -1140,7 +1140,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Out of scope:** old-house elements, multi-floor, paint, parametric variants, image→3D.
 
-### Phase 4 — Old-house shell (3–4 weeks)
+### Phase 4: Old-house shell (3 to 4 weeks)
 
 **Goal:** Architectural vocabulary the target audience needs.
 
@@ -1169,7 +1169,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Out of scope:** multi-floor, paint, solar position.
 
-### Phase 5 — Multi-floor + stairs (3–4 weeks) — **public beta release**
+### Phase 5: Multi-floor + stairs (3 to 4 weeks), **public beta release**
 
 **Goal:** Multi-floor support. First version that meaningfully serves the target audience.
 
@@ -1177,7 +1177,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Multiple floors (add/remove/reorder/name, elevation entry, default ceiling height per floor)
 - Stair entities (straight run, L-turn, U-turn, winder, spiral)
-- Stair geometry (treads, risers, runs, landings, railings, balusters, newels — parametric)
+- Stair geometry (treads, risers, runs, landings, railings, balusters, newels; parametric)
 - Stair placement (connect two floors, position on each plan)
 - Floor-by-floor view in 2D and 3D
 - Cutaway preview with adjustable transparency on floors above
@@ -1186,7 +1186,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 - Complete underlay layer (image, PDF via pdf.js, glTF/glb scene; all calibrated)
 - Trace mode (wall tool snaps to underlay features; basic; no auto-trace)
 - Public beta release (refined docs, contribution guide, opt-in error reporting)
-- First community asset/registry pack accepted — proves contribution pipeline end-to-end
+- First community asset/registry pack accepted; proves contribution pipeline end-to-end
 
 **Acceptance:**
 
@@ -1199,7 +1199,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 **Out of scope:** paint, DXF, solar position, auto-trace.
 
-### Phase 6 — Paint, export, metadata (2–3 weeks) — **MVP 1.0**
+### Phase 6: Paint, export, metadata (2 to 3 weeks), **MVP 1.0**
 
 **Goal:** Visual identity for rooms, export workflows complete, site metadata for phase-8 lighting prep.
 
@@ -1207,7 +1207,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 - Paint application (surface-by-surface) via dedicated paint tool
 - Complete `PaintMaterial` shader (base color + finish + color-temperature responsive)
-- `pack:vernacular-historic-palettes@1.0` — bundled CC0 historic palette, ~50–100 colors, thoroughly provenance-audited, era-tagged
+- `pack:vernacular-historic-palettes@1.0`: bundled CC0 historic palette, ~50 to 100 colors, thoroughly provenance-audited, era-tagged
 - User palette UI (create/name/describe/name colors, import/export as JSON)
 - Color picker (OKLab-aware, palette browser, recent, fuzzy name search)
 - Finish picker (visually distinguishable in preview)
@@ -1232,11 +1232,11 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 
 ### Beyond MVP 1.0
 
-**Phase 7 (~v1.1, 3–4 weeks):** DXF import (structured + trace modes), opt-in importers for competitor exports via underlay path, additional era packs (Georgian, Federalist; 1960s–contemporary detail).
+**Phase 7 (~v1.1, 3 to 4 weeks):** DXF import (structured + trace modes), opt-in importers for competitor exports via underlay path, additional era packs (Georgian, Federalist; 1960s to contemporary detail).
 
-**Phase 8 (v2, 8–12 weeks, high priority):** Lighting fidelity. Solar position from lat/long + datetime, outdoor obstruction shadow casters (consumes phase 6 metadata), HDR sky IBL, day-of-year sliders with sun-path visualization, optional baked GI / light maps, physically-based paint BRDFs aligned with finish definitions, brand catalog opt-in fetch mechanism (legally distinct distribution).
+**Phase 8 (v2, 8 to 12 weeks, high priority):** Lighting fidelity. Solar position from lat/long + datetime, outdoor obstruction shadow casters (consumes phase 6 metadata), HDR sky IBL, day-of-year sliders with sun-path visualization, optional baked GI / light maps, physically-based paint BRDFs aligned with finish definitions, brand catalog opt-in fetch mechanism (legally distinct distribution).
 
-**Phase 9 (v2.x, 6–10 weeks):** Pathing + ergonomic critic. Geodesic path computation, path visualization toggle, expanded door-swing collision, room-purpose-specific ergonomic rules (kitchen aisle widths, dining clearances, bedroom walkways), sub-purpose vocabulary expansion, critic-surface UX, customizable rule sets via registry packs.
+**Phase 9 (v2.x, 6 to 10 weeks):** Pathing + ergonomic critic. Geodesic path computation, path visualization toggle, expanded door-swing collision, room-purpose-specific ergonomic rules (kitchen aisle widths, dining clearances, bedroom walkways), sub-purpose vocabulary expansion, critic-surface UX, customizable rule sets via registry packs.
 
 **Phase 10 (v3+):** Code-plugin runtime (sandboxed, capability-permissioned), image→3D pipeline, website→3D pipeline, cloud sync service (opt-in), async collaboration beyond git, asset hierarchies / parametric variants, mobile/tablet polish, full screen-reader 3D-scene descriptions.
 
@@ -1266,27 +1266,27 @@ These are intentionally deferred to the writing-plans skill, not unresolved:
 
 ## 12. Glossary
 
-- **AC** — Acceptance Criterion
-- **ADR** — Architecture Decision Record
-- **AssetReference** — content-addressed identifier `(scope, contentHash)` resolving via `AssetRegistry`
-- **BIM** — Building Information Modeling (the IFC ecosystem)
-- **Blue (phase)** — the Clean Code review + refactor step in the red-green-blue TDD cycle
-- **CRDT** — Conflict-free Replicated Data Type
-- **DXF** — Drawing Exchange Format (AutoCAD 2D interchange)
-- **Era** — historical period associated with architectural style (Victorian, etc.)
-- **FIRST** — Fast / Independent / Repeatable / Self-validating / Timely (test principles)
-- **glTF / GLB** — open 3D asset format; binary form is GLB
-- **IBL** — Image-Based Lighting
-- **IFC** — Industry Foundation Classes (BIM interchange format)
-- **MVP** — Minimum Viable Product (here, v1.0)
-- **OKLab** — perceptually uniform color space; the internal color representation
-- **OPFS** — Origin Private File System (browser sandboxed filesystem)
-- **PBR** — Physically Based Rendering
-- **R3F** — React-Three-Fiber
-- **Red/Green/Blue** — TDD cycle phases: failing test / passing implementation / Clean Code review + refactor
-- **SDF** — Signed Distance Field (text rendering technique)
-- **SPDX** — Software Package Data Exchange (license identifier registry)
-- **Underlay** — a calibrated reference image/PDF/scene pinned to a floor
+- **AC**: Acceptance Criterion
+- **ADR**: Architecture Decision Record
+- **AssetReference**: content-addressed identifier `(scope, contentHash)` resolving via `AssetRegistry`
+- **BIM**: Building Information Modeling (the IFC ecosystem)
+- **Blue (phase)**: the Clean Code review + refactor step in the red-green-blue TDD cycle
+- **CRDT**: Conflict-free Replicated Data Type
+- **DXF**: Drawing Exchange Format (AutoCAD 2D interchange)
+- **Era**: historical period associated with architectural style (Victorian, etc.)
+- **FIRST**: Fast / Independent / Repeatable / Self-validating / Timely (test principles)
+- **glTF / GLB**: open 3D asset format; binary form is GLB
+- **IBL**: Image-Based Lighting
+- **IFC**: Industry Foundation Classes (BIM interchange format)
+- **MVP**: Minimum Viable Product (here, v1.0)
+- **OKLab**: perceptually uniform color space; the internal color representation
+- **OPFS**: Origin Private File System (browser sandboxed filesystem)
+- **PBR**: Physically Based Rendering
+- **R3F**: React-Three-Fiber
+- **Red/Green/Blue**: TDD cycle phases: failing test / passing implementation / Clean Code review + refactor
+- **SDF**: Signed Distance Field (text rendering technique)
+- **SPDX**: Software Package Data Exchange (license identifier registry)
+- **Underlay**: a calibrated reference image/PDF/scene pinned to a floor
 
 ---
 

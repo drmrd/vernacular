@@ -36,5 +36,4 @@ JSON Schema `$id` is an identifier first.
 ## Status
 
 The generator, the validator, and the committed schema files are produced by the implementation
-plan that follows this specification. This README marks the directory and its conventions ahead
-of that work.
+plan that follows this specification.

@@ -31,7 +31,7 @@ RED (`wall-tool.test.ts`): add tests:
 GREEN (`wall-tool.ts`): `export function cancelWallTool(_state: WallToolState):
 WallToolState { return IDLE_WALL_TOOL }`. (The parameter is accepted for a uniform
 state-transition signature even though every state cancels to idle; name it `_state`
-or reference it so eslint stays clean - prefer `(): WallToolState` if the unused
+or reference it so eslint stays clean; prefer `(): WallToolState` if the unused
 parameter trips a rule, but keeping the state parameter documents the transition.)
 
 ## Cycle 2: Escape cancels the draw, plus the journey

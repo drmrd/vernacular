@@ -44,8 +44,8 @@ same commands (design specification section 6.5).
   splitting and interior-crossing handling. This is the adjacency junction-aware
   meshing consumes.
 
-**What is missing** is everything between an empty floor group and a navigable lit
-shell. The rest of this document fixes the decisions that all of that work shares.
+Everything between an empty floor group and a navigable lit shell is missing.
+The rest of this document fixes the decisions that all of that work shares.
 
 ---
 
@@ -323,7 +323,7 @@ WebGPU is primary, detected at startup; the WebGL2 backend is a post-alpha
 fast-follow (ADR-0044). To keep that additive, the track's materials and lighting
 stay within a feature set both backends can express (forward rendering, soft shadow
 maps, a paint material that needs no compute shaders or storage buffers). The work
-that genuinely leans on the newer backend is past this track.
+that relies on the newer backend is past this track.
 
 ### 5.7 Accessibility (a foundation seam)
 
@@ -406,7 +406,7 @@ variation (the design specification notes three-dimensional output is GPU-sensit
 section 9.3). Baselines are committed only after diff review (section 9.12), through
 the existing update-snapshots flow.
 
-Honest limit, and a real prerequisite. `playwright.config.ts` launches its browsers
+There is a real prerequisite here. `playwright.config.ts` launches its browsers
 with no GPU or WebGPU flags today, and headless Chromium does not enable WebGPU
 without explicit launch arguments and a capable backend, so the harness is not
 proven to render until that is configured. Slice 0's first task is therefore to

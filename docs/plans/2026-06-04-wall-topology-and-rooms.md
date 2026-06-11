@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript (strict), the existing pure command/scene-graph core, Canvas 2D for the plan, Vitest for units. No new dependencies.
 
-**Status: complete.** All sections landed on `feat/foundation-acceptance` via the red-green-blue cycle (full check chain green, `eslint .` at zero problems, `rgb:audit` clean, wall-drawing end-to-end spec passing on Chromium/Firefox/WebKit). ADR-0026 (room derivation via planar-face enumeration) was recorded in the local knowledge graph and `ROADMAP.md` records the Phase 1 decomposition and slice-1 deferrals. One in-flight deviation from the blueprint below: the planned `dropCollinear` step (Task C5) was not needed and not shipped — the dangling-stub case is handled entirely by `removeSpikes`, since the shipped test uses a non-collinear interior stub (collinear-overlapping walls are out of scope). The sub-namespace barrels (Tasks A5, C8) were also dropped in favor of direct imports, matching the house convention of a single `core/index.ts` barrel.
+**Status: complete.** All sections landed on `feat/foundation-acceptance` via the red-green-blue cycle (full check chain green, `eslint .` at zero problems, `rgb:audit` clean, wall-drawing end-to-end spec passing on Chromium/Firefox/WebKit). ADR-0026 (room derivation via planar-face enumeration) was recorded in the local knowledge graph and `ROADMAP.md` records the Phase 1 decomposition and slice-1 deferrals. One in-flight deviation from the blueprint below: the planned `dropCollinear` step (Task C5) was not needed and not shipped. The dangling-stub case is handled entirely by `removeSpikes`, since the shipped test uses a non-collinear interior stub (collinear-overlapping walls are out of scope). The sub-namespace barrels (Tasks A5, C8) were also dropped in favor of direct imports, matching the house convention of a single `core/index.ts` barrel.
 
 ---
 
@@ -123,7 +123,7 @@ export function deriveRoomNodes(floor: Floor): RoomSceneNode[]
 - Create: `core/geometry/point.ts`
 - Test: `core/geometry/point.test.ts`
 
-- [ ] **Step 1: Write the failing test** (`/test-first` — behavior: "Euclidean distance between two points")
+- [ ] **Step 1: Write the failing test** (`/test-first`, behavior: "Euclidean distance between two points")
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -219,7 +219,7 @@ export function polygonArea(points: readonly Point[]): number {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -258,7 +258,7 @@ describe('segmentIntersection', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`segmentIntersection` not exported).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`segmentIntersection` not exported).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -284,7 +284,7 @@ export function segmentIntersection(a1: Point, a2: Point, b1: Point, b2: Point):
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -313,7 +313,7 @@ describe('pointOnSegment', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`pointOnSegment` not exported).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`pointOnSegment` not exported).
 
 - [ ] **Step 3: Minimal implementation** (append to `core/geometry/segment.ts`)
 
@@ -332,7 +332,7 @@ export function pointOnSegment(p: Point, a: Point, b: Point, tolerance: number):
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -384,7 +384,7 @@ describe('buildWallGraph', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`buildWallGraph` not exported).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`buildWallGraph` not exported).
 
 - [ ] **Step 3: Minimal implementation**
 
@@ -438,7 +438,7 @@ export function buildWallGraph(
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -464,9 +464,9 @@ it('splits a wall where another wall ends on its interior (T-junction)', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (base edge is not split; `edges` has length 2).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (base edge is not split; `edges` has length 2).
 
-- [ ] **Step 3: Minimal implementation** — split each edge by every vertex on its interior. Add a `splitEdges` pass and call it before returning:
+- [ ] **Step 3: Minimal implementation:** split each edge by every vertex on its interior. Add a `splitEdges` pass and call it before returning:
 
 ```ts
 import { distance } from '../geometry/point'
@@ -502,7 +502,7 @@ function paramAlong(a: Point, b: Point, p: Point): number {
 
 (The `segmentIntersection` import is unused until Task B3; the `implementer` adds imports as the test requires them.)
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -527,9 +527,9 @@ it('splits both walls at an interior crossing (X-junction)', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (no crossing vertex; 4 vertices, 2 edges).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (no crossing vertex; 4 vertices, 2 edges).
 
-- [ ] **Step 3: Minimal implementation** — register interior crossings as vertices before splitting. Insert a crossing pass into `buildWallGraph` after the initial edges are built and before `splitEdges`:
+- [ ] **Step 3: Minimal implementation:** register interior crossings as vertices before splitting. Insert a crossing pass into `buildWallGraph` after the initial edges are built and before `splitEdges`:
 
 ```ts
 // register interior crossings so splitEdges picks them up on both edges
@@ -549,7 +549,7 @@ for (let i = 0; i < edges.length; i += 1) {
 return { vertices, edges: splitEdges(vertices, edges, tolerance) }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS. Re-run the whole file to confirm B1 and B2 still pass.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS. Re-run the whole file to confirm B1 and B2 still pass.
 
 Run: `pnpm exec vitest run core/topology/wall-graph.test.ts`
 
@@ -599,9 +599,9 @@ describe('deriveRooms', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`deriveRooms` not exported).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`deriveRooms` not exported).
 
-- [ ] **Step 3: Minimal implementation** — build the graph, enumerate faces, keep bounded (positive-area) faces. This is the general half-edge traversal; it is introduced here and reused unchanged by C2–C7.
+- [ ] **Step 3: Minimal implementation:** build the graph, enumerate faces, keep bounded (positive-area) faces. This is the general half-edge traversal; it is introduced here and reused unchanged by C2-C7.
 
 ```ts
 import { polygonArea } from '../geometry/polygon'
@@ -717,7 +717,7 @@ function removeSpikes(loop: number[]): number[] {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -742,7 +742,7 @@ Expected: PASS or FAIL depending on the face winding the C1 implementation produ
 
 Run: `pnpm exec vitest run core/topology/rooms.test.ts`
 
-- [ ] **Step 3: Minimal implementation** — if RED, ensure bounded faces are emitted counter-clockwise (positive area). The `AREA_EPSILON` filter already keeps only positive-area faces; if the traversal produced the bounded face clockwise, normalize in `buildRoom` by reversing when `polygonArea(polygon) < 0`:
+- [ ] **Step 3: Minimal implementation:** if RED, ensure bounded faces are emitted counter-clockwise (positive area). The `AREA_EPSILON` filter already keeps only positive-area faces; if the traversal produced the bounded face clockwise, normalize in `buildRoom` by reversing when `polygonArea(polygon) < 0`:
 
 ```ts
 function buildRoom(face: HalfEdge[], graph: PlanarGraph): Room {
@@ -755,9 +755,9 @@ function buildRoom(face: HalfEdge[], graph: PlanarGraph): Room {
 }
 ```
 
-(If C2 was already GREEN, land an empty `refactor:` BLUE marker and move on — no code change needed.)
+(If C2 was already GREEN, land an empty `refactor:` BLUE marker and move on, as no code change is needed.)
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -784,11 +784,11 @@ it('derives two rooms when a partition wall splits an enclosure', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: PASS if T-junction splitting (B2) plus general face enumeration (C1) already cover this; otherwise FAIL. Run and observe. (The partition's endpoints land on the top and bottom walls' interiors, so B2 splits them and the graph has two cells.) This test is the integration guard that the topology and face enumeration compose.
+- [ ] **Step 2: Run to verify RED.** Expected: PASS if T-junction splitting (B2) plus general face enumeration (C1) already cover this; otherwise FAIL. Run and observe. (The partition's endpoints land on the top and bottom walls' interiors, so B2 splits them and the graph has two cells.) This test is the integration guard that the topology and face enumeration compose.
 
-- [ ] **Step 3: Minimal implementation** — if FAIL, the most likely cause is the face traversal `while (!visited.has(current))` guard terminating a face early on shared edges; the correct loop terminates when it returns to the starting half-edge. Confirm the loop condition is `while (!visited.has(current))` and that `nextOf` uses the clockwise-previous neighbor as written in C1; no new code is expected. If GREEN, land an empty `refactor:` marker.
+- [ ] **Step 3: Minimal implementation:** if FAIL, the most likely cause is the face traversal `while (!visited.has(current))` guard terminating a face early on shared edges; the correct loop terminates when it returns to the starting half-edge. Confirm the loop condition is `while (!visited.has(current))` and that `nextOf` uses the clockwise-previous neighbor as written in C1; no new code is expected. If GREEN, land an empty `refactor:` marker.
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS. Re-run the whole file.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS. Re-run the whole file.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -812,11 +812,11 @@ it('derives no rooms from an open (non-closed) wall chain', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: PASS or FAIL. An open chain has a single unbounded face whose only signed area is the back-and-forth excursion (≈ 0 after spike removal), so `area > AREA_EPSILON` excludes it. If GREEN already, this is a regression guard; if FAIL, observe what area the open chain produced.
+- [ ] **Step 2: Run to verify RED.** Expected: PASS or FAIL. An open chain has a single unbounded face whose only signed area is the back-and-forth excursion (≈ 0 after spike removal), so `area > AREA_EPSILON` excludes it. If GREEN already, this is a regression guard; if FAIL, observe what area the open chain produced.
 
-- [ ] **Step 3: Minimal implementation** — if FAIL, ensure the open-chain face collapses to near-zero area after `removeSpikes` and is filtered by `AREA_EPSILON`. No new code expected if C1's spike removal and area filter are correct. Otherwise land an empty `refactor:` marker.
+- [ ] **Step 3: Minimal implementation:** if FAIL, ensure the open-chain face collapses to near-zero area after `removeSpikes` and is filtered by `AREA_EPSILON`. No new code expected if C1's spike removal and area filter are correct. Otherwise land an empty `refactor:` marker.
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -844,9 +844,9 @@ it('excludes a dangling stub wall from the room polygon', () => {
 
 Note: the stub `(4000,0)-(3000,0)` is collinear with the bottom wall. Because the stub's far endpoint `(3000,0)` lands on the bottom wall's interior, B2 splits the bottom wall at `(3000,0)`; the face traversal then walks out to `(3000,0)` and back, which `removeSpikes` collapses. The polygon keeps four geometric corners (the extra collinear point at `(3000,0)` is removed as a spike only if it is a true back-and-forth excursion; if it remains as a collinear vertex, see Step 3).
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL if the collinear split point survives as a fifth polygon vertex (`polygon` length 5).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL if the collinear split point survives as a fifth polygon vertex (`polygon` length 5).
 
-- [ ] **Step 3: Minimal implementation** — drop collinear vertices when building the room polygon so a split point on a straight run is not reported as a corner. Extend `buildRoom` to remove collinear points after spike removal:
+- [ ] **Step 3: Minimal implementation:** drop collinear vertices when building the room polygon so a split point on a straight run is not reported as a corner. Extend `buildRoom` to remove collinear points after spike removal:
 
 ```ts
 import { distance } from '../geometry/point'
@@ -880,7 +880,7 @@ function dropCollinear(polygon: Point[]): Point[] {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS. Re-run the whole file to confirm C1–C4 still pass (a clean rectangle has no collinear interior points, so `dropCollinear` leaves it unchanged).
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS. Re-run the whole file to confirm C1-C4 still pass (a clean rectangle has no collinear interior points, so `dropCollinear` leaves it unchanged).
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -902,11 +902,11 @@ it('never reports the unbounded outer face as a room', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: PASS (the `AREA_EPSILON` positive-area filter already drops the negative-area outer face). This is the explicit regression guard for the outer-face exclusion. If it FAILS, the filter or winding is wrong.
+- [ ] **Step 2: Run to verify RED.** Expected: PASS (the `AREA_EPSILON` positive-area filter already drops the negative-area outer face). This is the explicit regression guard for the outer-face exclusion. If it FAILS, the filter or winding is wrong.
 
-- [ ] **Step 3: Minimal implementation** — none expected; the positive-area filter from C1 handles it. Land an empty `refactor:` BLUE marker if GREEN.
+- [ ] **Step 3: Minimal implementation:** none expected; the positive-area filter from C1 handles it. Land an empty `refactor:` BLUE marker if GREEN.
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -932,11 +932,11 @@ it('gives a room a stable id derived from its bounding wall ids', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: PASS (C1 already derives `id` from sorted `wallIds`). Regression guard for id stability, which downstream selection relies on. If it FAILS, make `id` deterministic from the sorted `wallIds`.
+- [ ] **Step 2: Run to verify RED.** Expected: PASS (C1 already derives `id` from sorted `wallIds`). Regression guard for id stability, which downstream selection relies on. If it FAILS, make `id` deterministic from the sorted `wallIds`.
 
-- [ ] **Step 3: Minimal implementation** — none expected; land an empty `refactor:` marker if GREEN.
+- [ ] **Step 3: Minimal implementation:** none expected; land an empty `refactor:` marker if GREEN.
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -987,9 +987,9 @@ it('derives a room scene node for each room a floor encloses', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`graph.rooms` is undefined; `RoomSceneNode` / `deriveRoomNodes` not exported).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`graph.rooms` is undefined; `RoomSceneNode` / `deriveRoomNodes` not exported).
 
-- [ ] **Step 3: Minimal implementation** — add the type, `deriveRoomNodes`, and the `rooms` array in `core/scene/scene-graph.ts`:
+- [ ] **Step 3: Minimal implementation:** add the type, `deriveRoomNodes`, and the `rooms` array in `core/scene/scene-graph.ts`:
 
 ```ts
 import { deriveRooms } from '../topology/rooms'
@@ -1029,7 +1029,7 @@ export function deriveSceneGraph(project: Project): SceneGraph {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS. Run `pnpm exec vitest run core/scene/scene-graph.test.ts`.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS. Run `pnpm exec vitest run core/scene/scene-graph.test.ts`.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -1079,9 +1079,9 @@ it('reuses room nodes for an unchanged floor and rebuilds them for a replaced fl
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`second.rooms` is built fresh each call; nodes are not reference-equal).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`second.rooms` is built fresh each call; nodes are not reference-equal).
 
-- [ ] **Step 3: Minimal implementation** — add a per-`Floor` room-node cache to the deriver:
+- [ ] **Step 3: Minimal implementation:** add a per-`Floor` room-node cache to the deriver:
 
 ```ts
 import { deriveFloorNode, deriveRoomNodes, deriveWallNode } from './scene-graph'
@@ -1111,7 +1111,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS. Run `pnpm exec vitest run core/scene/scene-graph-deriver.test.ts`.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS. Run `pnpm exec vitest run core/scene/scene-graph-deriver.test.ts`.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -1207,9 +1207,9 @@ describe('drawPlan room fills', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify RED** — Expected: FAIL (`rooms` is not an accepted option; `closePath` is not on `PlanDrawingContext`; no room fill is drawn).
+- [ ] **Step 2: Run to verify RED.** Expected: FAIL (`rooms` is not an accepted option; `closePath` is not on `PlanDrawingContext`; no room fill is drawn).
 
-- [ ] **Step 3: Minimal implementation** — extend `PlanDrawingContext` and `DrawPlanOptions`, and draw rooms first:
+- [ ] **Step 3: Minimal implementation:** extend `PlanDrawingContext` and `DrawPlanOptions`, and draw rooms first:
 
 ```ts
 import type { Point, RoomSceneNode, WallSceneNode } from '../../core'
@@ -1257,7 +1257,7 @@ function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, viewport: Viewpo
 }
 ```
 
-- [ ] **Step 4: Run to verify GREEN** — Expected: PASS. Run `pnpm exec vitest run editor/plan/draw-plan.test.ts`.
+- [ ] **Step 4: Run to verify GREEN.** Expected: PASS. Run `pnpm exec vitest run editor/plan/draw-plan.test.ts`.
 
 - [ ] **Step 5: BLUE + commit**
 
@@ -1289,7 +1289,7 @@ export type { RoomSceneNode } from './scene/scene-graph'
 export { deriveRoomNodes } from './scene/scene-graph'
 ```
 
-- [ ] **Step 2: Thread `graph.rooms` into the plan redraw** — in `editor/plan/plan-view.tsx`, add `rooms` to the `PlanScene` interface and the `usePlanRedraw` `drawPlan` call, sourcing it from `graph.rooms`:
+- [ ] **Step 2: Thread `graph.rooms` into the plan redraw.** In `editor/plan/plan-view.tsx`, add `rooms` to the `PlanScene` interface and the `usePlanRedraw` `drawPlan` call, sourcing it from `graph.rooms`:
 
 ```tsx
 interface PlanScene {
@@ -1310,7 +1310,7 @@ usePlanRedraw(canvasRef, { walls: graph.walls, rooms: graph.rooms, selectedIds, 
 
 Update the `usePlanRedraw` `useEffect` dependency array to include `scene.rooms`.
 
-- [ ] **Step 3: Verify** — Run the full check chain:
+- [ ] **Step 3: Verify.** Run the full check chain:
 
 `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test`
 Expected: all green. `PlanView` is coverage-excluded glue (jsdom has no 2D Canvas), validated by the existing wall-drawing end-to-end spec, which must still pass.
@@ -1325,7 +1325,7 @@ Expected: all green. `PlanView` is coverage-excluded glue (jsdom has no 2D Canva
 
 - [ ] **Step 1: Add a Phase 1 decomposition block** under the MVP path documenting the ~12 slices, that each has its own plan, slice 1's status as in progress, and the slice-1 deferrals (centerline polygons; no formatted labels until the units slice; `customPolygon`/naming in the room-labeling slice; collinear-overlap and polygons-with-holes out of scope). This satisfies the standing requirement that anything omitted from a slice is documented in a planning/roadmap doc.
 
-- [ ] **Step 2: Verify** — `pnpm format:check` passes on the Markdown. Reviewed by `/clean-code-review`. Commit `docs:`.
+- [ ] **Step 2: Verify.** `pnpm format:check` passes on the Markdown. Reviewed by `/clean-code-review`. Commit `docs:`.
 
 ### Task F3: knowledge curation (post-merge, controller-run)
 

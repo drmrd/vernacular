@@ -14,7 +14,7 @@ group of entities to a new orientation. This slice turns selection into editing:
 it adds **transforms** (move and rotate the selection, delete the selection) and
 a **clipboard** (copy, cut, paste the selection), all undoable, completing the
 editing surface the Phase-1 deliverable list names and making the two-dimensional
-editor genuinely usable.
+editor usable.
 
 The behavioral contracts: **the selected plan entities translate and rotate as a
 rigid group through undoable commands**; **deleting the selection removes its

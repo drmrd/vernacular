@@ -52,6 +52,7 @@ These are absolute and apply to every artifact that persists in the repo (branch
 3. **Branch names are descriptive.** Use `feat/<short-description>` or `fix/<short-description>` or `docs/<short-description>`. Do not embed milestone identifiers.
 4. **Commit messages describe what the change is.** Use Conventional Commits (`type: subject`). Do not append milestone tags such as " (Phase X)" or "[stage Y]" to the subject or body.
 5. **Plan and spec filenames are descriptive.** `YYYY-MM-DD-<short-name>.md`. No internal identifiers.
+6. **Prose reads as human-written.** New or substantially revised prose in Markdown and other text files passes through the `humanizer` skill before it lands, so specs, plans, ADRs, and READMEs avoid the common machine-writing tells. See `.claude/rules.md` rule 17. Code blocks, data tables, canonical downloaded text, and version-scoped release notes are exempt.
 
 ## Workflow
 
@@ -109,6 +110,7 @@ The pack-validator and migration-author agents land alongside the pack tooling.
 - Skip the BLUE phase of a TDD cycle.
 - Add a `Co-Authored-By: Claude` trailer to any commit.
 - Add an em-dash to newly composed prose.
+- Commit AI-voiced prose in Markdown or other text files without a `humanizer` pass.
 - Push directly to `main`.
 - Force-push `main` without an explicit user authorization for that specific operation.
 - Install a dependency younger than 30 days; pin to an older version or wait.

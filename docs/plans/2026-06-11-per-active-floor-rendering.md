@@ -74,7 +74,7 @@ with every array empty. Otherwise return a new `SceneGraph` where `walls`, `room
 `underlays`, `openings`, `dimensions`, `stairs` are filtered by `node.floorId ===
 floorId`, and `nodes` is filtered by `node.floorId === floorId` (the floor node and
 all entity nodes for that floor carry `floorId`; confirm the floor node has a
-`floorId` field - the `FloorSceneNode` in scene-graph.ts; if the floor node does not
+`floorId` field, the `FloorSceneNode` in scene-graph.ts; if the floor node does not
 carry `floorId`, also keep nodes whose id is `\`floor:${floorId}\``). Import the
 `SceneGraph`type from './scene-graph'. Keep it a small pure function. Export`sceneGraphForFloor`from`core/index.ts` near the other scene exports.
 

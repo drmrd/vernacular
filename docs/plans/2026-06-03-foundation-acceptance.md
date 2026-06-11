@@ -12,10 +12,10 @@
 
 In scope:
 
-- `scripts/rgb-audit/` — a pure commit-history auditor enforcing the section 9.5 ping-pong invariants (RED precedes GREEN, GREEN touches no test files, GREEN closed by a BLUE) over a commit range, plus a dependency-injected CLI shell and a `pnpm rgb:audit` script.
+- `scripts/rgb-audit/`: a pure commit-history auditor enforcing the section 9.5 ping-pong invariants (RED precedes GREEN, GREEN touches no test files, GREEN closed by a BLUE) over a commit range, plus a dependency-injected CLI shell and a `pnpm rgb:audit` script.
 - A descriptive `Infrastructure: <reason>` git-trailer exemption so controller-authored glue commits do not trip the auditor.
 - A `ping-pong` CI job that runs `pnpm rgb:audit` on pull requests.
-- `scripts/hooks/commit-reminders.mjs` — an advisory, non-blocking pre-commit helper that prints a clean-code review reminder when source layers change and a knowledge-update reminder when a source layer or `docs/specs/` changes, wired into `.husky/pre-commit`.
+- `scripts/hooks/commit-reminders.mjs`: an advisory, non-blocking pre-commit helper that prints a clean-code review reminder when source layers change and a knowledge-update reminder when a source layer or `docs/specs/` changes, wired into `.husky/pre-commit`.
 - A characterization unit test for `Dispatcher.canRedo()`, the one untested public function in `core/`.
 - Roadmap status flip to done with a note recording the `clean-code-pr` deferral and its intended future implementation.
 - A local ADR recording the audit-tooling design and the `clean-code-pr` deferral decision.
@@ -247,7 +247,7 @@ git add scripts/rgb-audit/cycle-audit.mjs
 git commit -m "feat(scripts): parse git-log output into structured commits"
 ```
 
-- [ ] **Step 6: BLUE** — run `/clean-code-review` then `/refactor`; a `refactor:` marker commit closes the phase.
+- [ ] **Step 6: BLUE**: run `/clean-code-review` then `/refactor`; a `refactor:` marker commit closes the phase.
 
 ---
 
@@ -344,7 +344,7 @@ git add scripts/rgb-audit/cycle-audit.mjs
 git commit -m "feat(scripts): flag green commits with no preceding red"
 ```
 
-- [ ] **Step 6: BLUE** — `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
+- [ ] **Step 6: BLUE**: `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
 
 ---
 
@@ -422,7 +422,7 @@ git add scripts/rgb-audit/cycle-audit.mjs
 git commit -m "feat(scripts): flag green commits that modify test files"
 ```
 
-- [ ] **Step 6: BLUE** — `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
+- [ ] **Step 6: BLUE**: `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
 
 ---
 
@@ -528,7 +528,7 @@ git add scripts/rgb-audit/cycle-audit.mjs
 git commit -m "feat(scripts): flag green commits not closed by a blue refactor"
 ```
 
-- [ ] **Step 6: BLUE** — `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
+- [ ] **Step 6: BLUE**: `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
 
 ---
 
@@ -567,7 +567,7 @@ describe('auditCommits exemptions', () => {
 - [ ] **Step 2: Run test to verify it passes immediately (characterization of `classify`)**
 
 Run: `pnpm exec vitest run scripts/rgb-audit/cycle-audit.test.mjs`
-Expected: PASS — `classify` (Task 2) already exempts these. If any test fails, the implementer adjusts `classify` minimally to satisfy it; otherwise this is a RED that documents existing behavior and proceeds straight to BLUE.
+Expected: PASS. `classify` (Task 2) already exempts these. If any test fails, the implementer adjusts `classify` minimally to satisfy it; otherwise this is a RED that documents existing behavior and proceeds straight to BLUE.
 
 - [ ] **Step 3: Commit**
 
@@ -578,7 +578,7 @@ git commit -m "test: pin rgb-audit infrastructure and non-cycle exemptions"
 
 If `classify` needed a change, the implementer commits it `feat(scripts): ...`.
 
-- [ ] **Step 4: BLUE** — `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
+- [ ] **Step 4: BLUE**: `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
 
 ---
 
@@ -725,7 +725,7 @@ git add scripts/rgb-audit/rgb-audit.mjs
 git commit -m "feat(scripts): map a commit range to an rgb-audit exit code"
 ```
 
-- [ ] **Step 6: BLUE** — `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
+- [ ] **Step 6: BLUE**: `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
 
 ---
 
@@ -763,7 +763,7 @@ git commit -m "build(scripts): expose the rgb:audit command" \
   --trailer "Infrastructure: package.json script wiring for the rgb audit"
 ```
 
-- [ ] **Step 5: BLUE** — `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
+- [ ] **Step 5: BLUE**: `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
 
 ---
 
@@ -854,7 +854,7 @@ git add scripts/hooks/commit-reminders.mjs
 git commit -m "feat(scripts): select advisory clean-code and knowledge reminders"
 ```
 
-- [ ] **Step 6: BLUE** — `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
+- [ ] **Step 6: BLUE**: `/clean-code-review` then `/refactor`; `refactor:` marker closes the phase.
 
 ---
 
@@ -918,7 +918,7 @@ git commit -m "build(hooks): print advisory reminders in pre-commit" \
   --trailer "Infrastructure: husky hook wiring for advisory reminders"
 ```
 
-- [ ] **Step 6: BLUE** — `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
+- [ ] **Step 6: BLUE**: `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
 
 ---
 
@@ -930,7 +930,7 @@ git commit -m "build(hooks): print advisory reminders in pre-commit" \
 
 `Dispatcher.canRedo()` is the one untested public function in `core/` (acceptance criterion "All public functions in `core/` have unit tests"). The behavior already exists, so this is a characterization test that passes on first run; it is dispatched through the test-author to keep test ownership with that role.
 
-- [ ] **Step 1: RED — dispatch the test-author**
+- [ ] **Step 1: RED**: dispatch the test-author
 
 Run `/test-first` for: "Dispatcher.canRedo reflects whether a redoable command is on the redo stack: false on a fresh dispatcher, true after a dispatched command is undone, and false again after that command is redone."
 
@@ -939,14 +939,14 @@ The test-author writes a test in `core/commands/dispatcher.test.ts` covering: fr
 - [ ] **Step 2: Run the new test**
 
 Run: `pnpm exec vitest run core/commands/dispatcher.test.ts`
-Expected: PASS — pins existing behavior (no GREEN implementation needed). The test-author commits it `test: pin Dispatcher.canRedo redo-stack reporting`.
+Expected: PASS. This pins existing behavior (no GREEN implementation needed). The test-author commits it `test: pin Dispatcher.canRedo redo-stack reporting`.
 
 - [ ] **Step 3: Confirm the coverage gap is closed**
 
 Run: `pnpm exec vitest run core --coverage --coverage.reporter=text | grep dispatcher`
 Expected: `dispatcher.ts` functions at 100% (lines 64-66 now covered).
 
-- [ ] **Step 4: BLUE** — `/clean-code-review` over the test diff; land an empty `refactor:` marker if no changes.
+- [ ] **Step 4: BLUE**: `/clean-code-review` over the test diff; land an empty `refactor:` marker if no changes.
 
 ---
 
@@ -1003,7 +1003,7 @@ git commit -m "ci: audit red-green-blue compliance on pull requests" \
   --trailer "Infrastructure: CI job wiring for the rgb audit"
 ```
 
-- [ ] **Step 4: BLUE** — `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
+- [ ] **Step 4: BLUE**: `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
 
 ---
 
@@ -1033,7 +1033,7 @@ git commit -m "docs: mark foundation acceptance done and record the clean-code-p
   --trailer "Infrastructure: roadmap status and deferral note"
 ```
 
-- [ ] **Step 4: BLUE** — `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
+- [ ] **Step 4: BLUE**: `/clean-code-review` over the diff; apply any fixes in place. No marker commit is needed for an infrastructure change.
 
 ---
 
@@ -1065,8 +1065,8 @@ The knowledge graph is gitignored; nothing to commit.
 
 ## Final verification (before /review)
 
-- [ ] **Full check chain:** `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build` — all green.
-- [ ] **Self-audit:** `pnpm rgb:audit` — reports `clean` for `main..HEAD`.
-- [ ] **Coverage:** `pnpm exec vitest run core --coverage --coverage.reporter=text` — `core/commands/dispatcher.ts` functions at 100%.
+- [ ] **Full check chain:** `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`: all green.
+- [ ] **Self-audit:** `pnpm rgb:audit`: reports `clean` for `main..HEAD`.
+- [ ] **Coverage:** `pnpm exec vitest run core --coverage --coverage.reporter=text`: `core/commands/dispatcher.ts` functions at 100%.
 - [ ] **PR-level review:** `/review` dispatches the pr-reviewer; resolve findings.
 - [ ] **Acceptance recheck:** confirm each Phase 0 acceptance criterion (section 10) is satisfied, with `clean-code-pr` recorded as a documented deferral.
