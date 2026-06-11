@@ -19,7 +19,12 @@ interface ExtensionBearingDocument {
 function readFixtureBytes(): Uint8Array {
   try {
     return new Uint8Array(readFileSync(fixturePath))
-  } catch {
+  } catch (error) {
+    // Only a genuinely absent file is the "add the fixture" signal; surface any other
+    // OS error (permissions, descriptor limits) as-is rather than disguising it as missing.
+    if ((error as { code?: string }).code !== 'ENOENT') {
+      throw error
+    }
     throw new Error(
       `Tier-2 corpus fixture is missing: ${fixturePath}. ` +
         'The covered-outdoor preservation round-trip needs this fixture on disk.',
