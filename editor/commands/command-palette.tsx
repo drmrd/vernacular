@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import type { CommandContext, EditorCommand } from './command'
 import { createEditorCommands } from './editor-commands'
@@ -37,11 +37,13 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key === 'Escape') {
+      event.stopPropagation()
       onClose()
       return
     }
     const first = filtered[0]
     if (event.key === 'Enter' && first !== undefined) {
+      event.stopPropagation()
       runCommand(first)
     }
   }
@@ -51,6 +53,7 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
       <input
         ref={inputRef}
         type="text"
+        aria-label="Search commands"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
@@ -69,10 +72,10 @@ export function CommandPalette() {
   const selection = useSelection()
   const activeFloorId = useActiveFloorId()
   const graph = useSceneGraph()
+  const commands = useMemo(() => createEditorCommands(), [])
   if (!isOpen) {
     return null
   }
-  const commands = createEditorCommands()
   const context: CommandContext = {
     session,
     selection,
