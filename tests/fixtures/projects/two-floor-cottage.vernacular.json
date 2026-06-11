@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "name": "Two-floor cottage",
+    "units": "imperial",
+    "period": "victorian",
+    "schemaVersion": 8,
+    "appVersion": "0.0.0-fixture",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "floor-1",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 2438,
+      "walls": [
+        { "id": "w1", "start": { "x": 0, "y": 0 }, "end": { "x": 4000, "y": 0 }, "thickness": 114 },
+        {
+          "id": "w2",
+          "start": { "x": 4000, "y": 0 },
+          "end": { "x": 4000, "y": 3000 },
+          "thickness": 114
+        },
+        {
+          "id": "w3",
+          "start": { "x": 4000, "y": 3000 },
+          "end": { "x": 0, "y": 3000 },
+          "thickness": 114
+        },
+        { "id": "w4", "start": { "x": 0, "y": 3000 }, "end": { "x": 0, "y": 0 }, "thickness": 114 }
+      ],
+      "openings": [
+        {
+          "id": "o1",
+          "type": "single-swing-door",
+          "hostWallId": "w1",
+          "position": 2000,
+          "width": 813,
+          "height": 2032,
+          "sillHeight": 0,
+          "orientation": { "hinge": "start", "facing": "positive" }
+        }
+      ],
+      "dimensions": [
+        { "id": "d1", "start": { "x": 0, "y": 0 }, "end": { "x": 4000, "y": 0 }, "offset": -300 }
+      ],
+      "underlays": []
+    },
+    {
+      "id": "floor-2",
+      "name": "Upper Floor",
+      "elevation": 2700,
+      "defaultCeilingHeight": 2438,
+      "walls": [],
+      "openings": [],
+      "dimensions": [],
+      "underlays": []
+    }
+  ],
+  "stairs": [],
+  "roomOverrides": {
+    "w1|w2|w3|w4": { "name": "Parlor" }
+  }
+}
