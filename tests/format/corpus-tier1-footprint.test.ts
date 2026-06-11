@@ -60,26 +60,27 @@ function footprintOf(document: CorpusDocument): { width: number; height: number 
   return { width, height }
 }
 
+function expectWithinWindow(
+  value: number,
+  label: string,
+  window: { min: number; max: number },
+): void {
+  const message = `expected the overall ${label} (within [${window.min}, ${window.max}] mm), but measured ${value} mm`
+  expect(value, message).toBeGreaterThanOrEqual(window.min)
+  expect(value, message).toBeLessThanOrEqual(window.max)
+}
+
 describe('plan-21 Tier-1 corpus footprint', () => {
   it('traces its labelled 35 ft by 30 ft overall footprint from the wall geometry', () => {
     const { width, height } = footprintOf(loadFixture())
 
-    expect(
-      width,
-      `expected the overall width to trace the labelled 35 ft (within [${MIN_WIDTH_MM}, ${MAX_WIDTH_MM}] mm), but measured ${width} mm`,
-    ).toBeGreaterThanOrEqual(MIN_WIDTH_MM)
-    expect(
-      width,
-      `expected the overall width to trace the labelled 35 ft (within [${MIN_WIDTH_MM}, ${MAX_WIDTH_MM}] mm), but measured ${width} mm`,
-    ).toBeLessThanOrEqual(MAX_WIDTH_MM)
-
-    expect(
-      height,
-      `expected the overall height to trace the labelled 30 ft (within [${MIN_HEIGHT_MM}, ${MAX_HEIGHT_MM}] mm), but measured ${height} mm`,
-    ).toBeGreaterThanOrEqual(MIN_HEIGHT_MM)
-    expect(
-      height,
-      `expected the overall height to trace the labelled 30 ft (within [${MIN_HEIGHT_MM}, ${MAX_HEIGHT_MM}] mm), but measured ${height} mm`,
-    ).toBeLessThanOrEqual(MAX_HEIGHT_MM)
+    expectWithinWindow(width, 'width to trace the labelled 35 ft', {
+      min: MIN_WIDTH_MM,
+      max: MAX_WIDTH_MM,
+    })
+    expectWithinWindow(height, 'height to trace the labelled 30 ft', {
+      min: MIN_HEIGHT_MM,
+      max: MAX_HEIGHT_MM,
+    })
   })
 })
