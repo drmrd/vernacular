@@ -63,9 +63,9 @@
   "image_width_px": 1920,
   "image_height_px": 1140,
   "calibration": {
-    "millimetersPerPixel": 80,
+    "millimetersPerPixel": 97.19,
     "offset": { "x": 0, "y": 0 },
     "rotation": 0,
-    "basis": "Provisional: the plate carries a graphic metric scale bar, but it is not yet measured in pixels. This value approximates the fortified site at roughly 150 m across the 1920 px width; refine it against the scale bar before treating the underlay as dimensionally exact."
+    "basis": "Measured from the graphic metric scale bar. The 0 m and 20 m ticks sit at x = 1593.5 px and x = 1799.3 px in the 1920 px raster, spanning 205.8 px, so millimetersPerPixel = (20 m * 1000) / 205.8 px = 97.19. Cross-checked against the 5 m (51.8 px) and 10 m intervals; segment-derived values range 96.5 to 97.9 mm/px, a residual of about 1.5 percent from sub-pixel tick centroiding and the hand-engraved bar's slight nonlinearity."
   }
 }
