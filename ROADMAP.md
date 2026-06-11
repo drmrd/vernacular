@@ -108,7 +108,7 @@ Three pieces of work depend only on shipped Phase-1 infrastructure, depend on no
 
 ### Milestone composition
 
-- **Public alpha** = the Phase-1 editor (done) plus the three-dimensional preview; the assets and furniture track delivered and de-risked end to end; the identity-bearing front of the old-house vocabulary (era registry, era tagging, room-purpose registry, and surfacing the already-shipped historic opening vocabulary); two-dimensional export (vector, document, image); and the user-experience foundation. The alpha leads with the product's identity, ships furniture, produces a real artifact, and is not rough.
+- **Public alpha** = the Phase-1 editor (done) plus the three-dimensional preview; the assets and furniture track delivered and de-risked end to end; the identity-bearing front of the old-house vocabulary (era registry, era tagging, room-purpose registry, and surfacing the already-shipped historic opening vocabulary); two-dimensional export (vector, document, image); and the user-experience foundation. The alpha leads with the product's identity, ships furniture, produces a real export artifact, and is reasonably polished.
 - **Public beta** = multi-floor and stairs; the three-dimensional renderings of the old-house vocabulary; the complete underlay layer; and library era filtering.
 - **1.0** = paint, palettes, and finishes; site metadata; full export including the bundle and standard formats; and the final polish pass.
 
