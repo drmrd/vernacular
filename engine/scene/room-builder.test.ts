@@ -8,27 +8,42 @@ import type { RoomSceneNode, Vector3 } from '../../core'
 
 const ROOM_WIDTH = 4000
 const ROOM_DEPTH = 3000
+const CEILING_HEIGHT = 2600
 const PRECISION = 3
+const PRECISION_5 = 5
 const FLOOR_DATUM_Y = 0
 const ORIGIN = 0
 
+const RECTANGLE = [
+  { x: ORIGIN, y: ORIGIN },
+  { x: ROOM_WIDTH, y: ORIGIN },
+  { x: ROOM_WIDTH, y: ROOM_DEPTH },
+  { x: ORIGIN, y: ROOM_DEPTH },
+]
+
+function rectangularRoom(overrides: Partial<RoomSceneNode> = {}): RoomSceneNode {
+  return {
+    id: 'room:r1',
+    kind: 'room',
+    floorId: 'g',
+    polygon: RECTANGLE,
+    clearPolygon: RECTANGLE,
+    area: ROOM_WIDTH * ROOM_DEPTH,
+    ...overrides,
+  }
+}
+
+function meshesOf(group: THREE.Object3D): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = []
+  group.traverse((object) => {
+    if (object instanceof THREE.Mesh) meshes.push(object)
+  })
+  return meshes
+}
+
 describe('buildRoomShell', () => {
   it('returns a room group carrying the room id with a floor slab hanging below the finished floor', () => {
-    const rectangle = [
-      { x: ORIGIN, y: ORIGIN },
-      { x: ROOM_WIDTH, y: ORIGIN },
-      { x: ROOM_WIDTH, y: ROOM_DEPTH },
-      { x: ORIGIN, y: ROOM_DEPTH },
-    ]
-
-    const node: RoomSceneNode = {
-      id: 'room:r1',
-      kind: 'room',
-      floorId: 'g',
-      polygon: rectangle,
-      clearPolygon: rectangle,
-      area: ROOM_WIDTH * ROOM_DEPTH,
-    }
+    const node = rectangularRoom()
 
     const group = buildRoomShell(node, new NeutralMaterialProvider())
 
@@ -36,7 +51,15 @@ describe('buildRoomShell', () => {
     expect(group.name).toBe('room:r1')
     expect(group.userData.entityId).toBe('room:r1')
 
-    const aabb = new THREE.Box3().setFromObject(group)
+    // Measure the floor slab specifically (the group also holds the ceiling),
+    // selecting it as the only surface that carries an upward `top` cap.
+    const slab = meshesOf(group).find(
+      (mesh) =>
+        Array.isArray(mesh.material) && mesh.material.some((material) => material.name === 'top'),
+    )
+    expect(slab).toBeDefined()
+
+    const aabb = new THREE.Box3().setFromObject(slab as THREE.Mesh)
     expect(aabb.min.x).toBeCloseTo(ORIGIN, PRECISION)
     expect(aabb.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
     expect(aabb.min.z).toBeCloseTo(ORIGIN, PRECISION)
@@ -46,28 +69,11 @@ describe('buildRoomShell', () => {
   })
 
   it('groups the floor slab faces into top, base, and exteriorFace surfaces covering every triangle', () => {
-    const rectangle = [
-      { x: ORIGIN, y: ORIGIN },
-      { x: ROOM_WIDTH, y: ORIGIN },
-      { x: ROOM_WIDTH, y: ROOM_DEPTH },
-      { x: ORIGIN, y: ROOM_DEPTH },
-    ]
-
-    const node: RoomSceneNode = {
-      id: 'room:r1',
-      kind: 'room',
-      floorId: 'g',
-      polygon: rectangle,
-      clearPolygon: rectangle,
-      area: ROOM_WIDTH * ROOM_DEPTH,
-    }
+    const node = rectangularRoom()
 
     const group = buildRoomShell(node, new NeutralMaterialProvider())
 
-    const meshes: THREE.Mesh[] = []
-    group.traverse((object) => {
-      if (object instanceof THREE.Mesh) meshes.push(object)
-    })
+    const meshes = meshesOf(group)
 
     // A later cycle adds a ceiling mesh to the same group, so select the floor
     // slab as the only surface that carries an upward `top` cap.
@@ -94,28 +100,11 @@ describe('buildRoomShell', () => {
   })
 
   it('winds the floor slab faces so role normals tie to the foundation orientation rule', () => {
-    const rectangle = [
-      { x: ORIGIN, y: ORIGIN },
-      { x: ROOM_WIDTH, y: ORIGIN },
-      { x: ROOM_WIDTH, y: ROOM_DEPTH },
-      { x: ORIGIN, y: ROOM_DEPTH },
-    ]
-
-    const node: RoomSceneNode = {
-      id: 'room:r1',
-      kind: 'room',
-      floorId: 'g',
-      polygon: rectangle,
-      clearPolygon: rectangle,
-      area: ROOM_WIDTH * ROOM_DEPTH,
-    }
+    const node = rectangularRoom()
 
     const group = buildRoomShell(node, new NeutralMaterialProvider())
 
-    const meshes: THREE.Mesh[] = []
-    group.traverse((object) => {
-      if (object instanceof THREE.Mesh) meshes.push(object)
-    })
+    const meshes = meshesOf(group)
 
     // A later cycle adds a ceiling mesh to the same group, so select the floor
     // slab as the only surface that carries an upward `top` cap.
@@ -139,8 +128,6 @@ describe('buildRoomShell', () => {
       return matched === undefined ? undefined : normals[matched.start]
     }
 
-    const PRECISION_5 = 5
-
     const top = roleNormal('top')
     expect(top).toBeDefined()
     expect(top?.x).toBeCloseTo(0, PRECISION_5)
@@ -159,5 +146,52 @@ describe('buildRoomShell', () => {
     // The vertical sides carry a horizontal normal: y is flat, pointing along x or z.
     expect(sideNormal.y).toBeCloseTo(0, PRECISION_5)
     expect(Math.hypot(sideNormal.x, sideNormal.z)).toBeCloseTo(1, PRECISION_5)
+  })
+
+  it('hangs a downward-facing base-role ceiling plane over the room at the ceiling height', () => {
+    const node = rectangularRoom({ ceilingHeight: CEILING_HEIGHT })
+
+    const group = buildRoomShell(node, new NeutralMaterialProvider())
+
+    const meshes = meshesOf(group)
+
+    // The floor slab sits at roughly y in [-250, 0]; the ceiling is the only
+    // surface lifted up to the ceiling height, so select it by its world AABB.
+    const ceiling = meshes.find((mesh) => {
+      const box = new THREE.Box3().setFromObject(mesh)
+      return Math.abs(box.min.y - CEILING_HEIGHT) < 1
+    })
+    expect(ceiling).toBeDefined()
+    const ceilingMesh = ceiling as THREE.Mesh
+
+    const ceilingBox = new THREE.Box3().setFromObject(ceilingMesh)
+    // A flat horizontal plane: no thickness, both faces at the ceiling height.
+    expect(ceilingBox.min.y).toBeCloseTo(CEILING_HEIGHT, PRECISION)
+    expect(ceilingBox.max.y).toBeCloseTo(CEILING_HEIGHT, PRECISION)
+    // It spans the room's clear polygon in x and z.
+    expect(ceilingBox.min.x).toBeCloseTo(ORIGIN, PRECISION)
+    expect(ceilingBox.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
+    expect(ceilingBox.min.z).toBeCloseTo(ORIGIN, PRECISION)
+    expect(ceilingBox.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+
+    const geometry = ceilingMesh.geometry as THREE.BufferGeometry
+    const normals = readNormals(geometry)
+    // The single-sided ceiling faces world -Y, down into the room.
+    const ceilingNormal = normals[0]
+    expect(ceilingNormal).toBeDefined()
+    expect(ceilingNormal?.x).toBeCloseTo(0, PRECISION_5)
+    expect(ceilingNormal?.y).toBeCloseTo(-1, PRECISION_5)
+    expect(ceilingNormal?.z).toBeCloseTo(0, PRECISION_5)
+
+    // Its one drawn surface role is `base`, like the slab's downward face.
+    const ceilingMaterials = Array.isArray(ceilingMesh.material)
+      ? ceilingMesh.material
+      : [ceilingMesh.material]
+    const groups = materialGroups(geometry)
+    const drawnRoles =
+      groups.length > 0
+        ? new Set(groups.map((g) => ceilingMaterials[g.materialIndex]?.name))
+        : new Set(ceilingMaterials.map((material) => material.name))
+    expect([...drawnRoles]).toEqual(['base'])
   })
 })
