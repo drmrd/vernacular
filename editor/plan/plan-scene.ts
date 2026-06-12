@@ -39,6 +39,9 @@ export interface PlanScene {
   // The per-face treatment lookup and active surface the plan renders as paint
   // bands and a highlight beneath the wall strokes.
   surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>
+  // The active floor's solid paint color, which tints the room fills, or undefined
+  // when the floor is unpainted.
+  roomFillColor: string | undefined
 }
 
 /**
@@ -62,6 +65,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     dimensions: scene.dimensions,
     stairs: scene.stairs,
     surfacePaint: scene.surfacePaint,
+    ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -103,5 +107,6 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
     scene.calibration,
     scene.ghost,
     scene.surfacePaint,
+    scene.roomFillColor,
   ])
 }

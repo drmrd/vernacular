@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- the cohesive plan-drawing seam: one small routine per drawable layer (rooms, walls, openings, dimensions, stairs, underlays, handles). Splitting it would scatter the PlanDrawingContext seam this module defines. */
 import {
   DEFAULT_METRIC_PREFERENCES,
   type Point,
@@ -69,6 +70,8 @@ export interface DrawPlanOptions {
   calibration?: PreviewSegment
   ghost?: readonly PreviewSegment[]
   surfacePaint?: Pick<SurfacePaintLayer, 'treatmentForFace' | 'activeSurface'>
+  /** The active floor's solid paint color; tints every room fill when set. */
+  roomFillColor?: string
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -183,7 +186,11 @@ function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
 /** Fill each room first so the wall strokes render on top of the floor tint. */
 function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   for (const room of options.rooms ?? []) {
-    drawRoom(ctx, room, { viewport: options.viewport, selected: options.selectedIds.has(room.id) })
+    drawRoom(ctx, room, {
+      viewport: options.viewport,
+      selected: options.selectedIds.has(room.id),
+      ...(options.roomFillColor !== undefined && { fillColor: options.roomFillColor }),
+    })
   }
 }
 
@@ -231,12 +238,16 @@ function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void
 interface RoomDrawing {
   viewport: Viewport
   selected: boolean
+  /** The floor paint tint for an unselected room, or undefined for the default fill. */
+  fillColor?: string
 }
 
 function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDrawing): void {
   const [firstPoint, ...remainingPoints] = room.polygon
   if (firstPoint === undefined || remainingPoints.length < 2) return
-  ctx.fillStyle = drawing.selected ? SELECTED_ROOM_FILL_COLOR : ROOM_FILL_COLOR
+  ctx.fillStyle = drawing.selected
+    ? SELECTED_ROOM_FILL_COLOR
+    : (drawing.fillColor ?? ROOM_FILL_COLOR)
   ctx.beginPath()
   traceRingPath(ctx, room.polygon, drawing.viewport)
   // Holes wind opposite the outer ring so the nonzero rule leaves them unpainted.
