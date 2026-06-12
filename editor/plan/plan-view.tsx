@@ -1,3 +1,6 @@
+/* eslint-disable max-lines -- the plan composition root: it aggregates every plan-editing hook, the
+   redraw scene shape, and the draw-options builder. The pieces are already extracted into use-* hooks
+   and pure builders, so the residual length is irreducible composition glue, not a missing extraction. */
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
@@ -38,6 +41,7 @@ import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
+import { useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
@@ -86,6 +90,9 @@ interface PlanScene {
   calibration: PreviewSegment | undefined
   // The translated ghost of the selection during a move-drag, empty otherwise.
   ghost: readonly PreviewSegment[]
+  // The per-face treatment lookup and active surface the plan renders as paint
+  // bands and a highlight beneath the wall strokes.
+  surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>
 }
 
 /**
@@ -108,6 +115,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     openings: scene.openings,
     dimensions: scene.dimensions,
     stairs: scene.stairs,
+    surfacePaint: scene.surfacePaint,
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -148,6 +156,7 @@ function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
     scene.stairs,
     scene.calibration,
     scene.ghost,
+    scene.surfacePaint,
   ])
 }
 
@@ -190,7 +199,10 @@ interface PlanLayers {
  * of the per-render hook-result objects. The endpoint drag and the wall tool
  * never preview at once, so a single resolved preview leaf covers both.
  */
-function buildScene(inputs: PlanLayers): PlanScene {
+function buildScene(
+  inputs: PlanLayers,
+  surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>,
+): PlanScene {
   const { graph, interaction, dimensionTool, planSelection } = inputs
   const { wallEditing, underlayLayer, openingLayer } = inputs
   return {
@@ -211,6 +223,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
     stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
     ghost: inputs.selectionMove.ghost,
+    surfacePaint,
   }
 }
 
@@ -318,7 +331,8 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
  */
 function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanController {
   const layers = usePlanLayers(canvasRef, traceMode)
-  usePlanRedraw(canvasRef, buildScene(layers))
+  const surfacePaint = useSurfacePaintLayer()
+  usePlanRedraw(canvasRef, buildScene(layers, surfacePaint))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
   return {

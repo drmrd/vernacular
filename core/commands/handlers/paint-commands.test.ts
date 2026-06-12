@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { assignSurfacePaint, clearSurfacePaint, registerPaintCommands } from './paint-commands'
+import {
+  assignSurfacePaint,
+  assignSurfaceTreatment,
+  clearSurfacePaint,
+  registerPaintCommands,
+} from './paint-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject } from '../../model/factories'
-import { surfaceKey, type SurfaceRef } from '../../model/paint'
+import { solidTreatment, surfaceKey, type SurfaceRef } from '../../model/paint'
 import { colorFromHex } from '../../color/color'
 import type { Project } from '../../model/types'
 
@@ -29,12 +34,13 @@ describe('assignSurfacePaint', () => {
   it('paints a wall face with a color and finish', () => {
     const project = newProject()
     dispatcherFor(project).dispatch(assignSurfacePaint(REF, SAGE, 'satin'))
-    expect(project.paint?.[surfaceKey(REF)]).toEqual({ color: SAGE, finishId: 'satin' })
+    expect(project.paint?.[surfaceKey(REF)]).toEqual(solidTreatment(SAGE, 'satin'))
   })
 
   it('defaults the finish to matte when none is given', () => {
     const project = newProject()
     dispatcherFor(project).dispatch(assignSurfacePaint(REF, SAGE))
+    expect(project.paint?.[surfaceKey(REF)]?.kind).toBe('solid')
     expect(project.paint?.[surfaceKey(REF)]?.finishId).toBe('matte')
   })
 
@@ -55,6 +61,14 @@ describe('clearSurfacePaint', () => {
     dispatcher.dispatch(clearSurfacePaint(REF))
     expect(project.paint?.[surfaceKey(REF)]).toBeUndefined()
     dispatcher.undo()
-    expect(project.paint?.[surfaceKey(REF)]).toEqual({ color: SAGE, finishId: 'satin' })
+    expect(project.paint?.[surfaceKey(REF)]).toEqual(solidTreatment(SAGE, 'satin'))
+  })
+})
+
+describe('assignSurfaceTreatment', () => {
+  it('stores the given treatment at the surface key', () => {
+    const project = newProject()
+    dispatcherFor(project).dispatch(assignSurfaceTreatment(REF, solidTreatment(SAGE, 'gloss')))
+    expect(project.paint?.[surfaceKey(REF)]).toEqual(solidTreatment(SAGE, 'gloss'))
   })
 })

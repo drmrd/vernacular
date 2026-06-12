@@ -10,6 +10,7 @@ import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { drawGhost } from './draw-ghost'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
+import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
@@ -67,6 +68,7 @@ export interface DrawPlanOptions {
   dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
   ghost?: readonly PreviewSegment[]
+  surfacePaint?: Pick<SurfacePaintLayer, 'treatmentForFace' | 'activeSurface'>
 }
 
 // Subtle floor tint that must stay readable beneath the dark wall strokes.
@@ -138,35 +140,19 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   const size = { width: options.width, height: options.height }
   // Underlays paint first so they sit beneath the grid and the plan.
   drawUnderlays(ctx, options.underlays, options.viewport)
-  if (options.grid) {
-    drawGrid(ctx, options.viewport, size)
-  }
-  // Fill rooms first so wall strokes render on top of them.
-  for (const room of options.rooms ?? []) {
-    drawRoom(ctx, room, {
-      viewport: options.viewport,
-      selected: options.selectedIds.has(room.id),
-    })
-  }
+  if (options.grid) drawGrid(ctx, options.viewport, size)
+  drawRooms(ctx, options)
   // Stairs sit on top of the floor fills but below the wall strokes, like a room.
   drawStairs(ctx, options)
-  for (const wall of options.walls) {
-    drawWall(ctx, wall, options)
-  }
+  // Surface paint bands sit beneath the wall strokes so the ink reads over them.
+  drawSurfacePaintLayer(ctx, options)
+  drawWalls(ctx, options)
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options)
-  if (options.endpointHandles) {
-    drawEndpointHandles(ctx, options.endpointHandles, options.viewport)
-  }
-  if (options.preview) {
-    drawPreview(ctx, options.preview, options.viewport)
-  }
-  if (options.snap) {
-    drawSnapIndicator(ctx, options.snap, options.viewport)
-  }
-  if (options.marquee) {
-    drawMarquee(ctx, options.marquee, options.viewport)
-  }
+  if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options.viewport)
+  if (options.preview) drawPreview(ctx, options.preview, options.viewport)
+  if (options.snap) drawSnapIndicator(ctx, options.snap, options.viewport)
+  if (options.marquee) drawMarquee(ctx, options.marquee, options.viewport)
   drawRoomLabels(ctx, options)
   // Dimensions are annotation overlays above the plan but below the ruler chrome.
   drawDimensions(ctx, options)
@@ -174,9 +160,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawCalibration(ctx, options.calibration, options.viewport)
   // The move-drag ghost sits above the plan but below the rulers, like the preview.
   drawGhost(ctx, options.ghost, options.viewport)
-  if (options.rulers) {
-    drawPlanRulers(ctx, options, size)
-  }
+  if (options.rulers) drawPlanRulers(ctx, options, size)
 }
 
 /** Paint the ruler chrome in the project's units so it agrees with the DOM overlay. */
@@ -196,11 +180,32 @@ function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   }
 }
 
+/** Fill each room first so the wall strokes render on top of the floor tint. */
+function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  for (const room of options.rooms ?? []) {
+    drawRoom(ctx, room, { viewport: options.viewport, selected: options.selectedIds.has(room.id) })
+  }
+}
+
 /** Paint each stair's footprint over the floor fills but beneath the wall strokes. */
 function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   for (const stair of options.stairs ?? []) {
     drawStair(ctx, stair, options.viewport)
   }
+}
+
+/** Stroke each wall over the floor fills, stair footprints, and surface-paint bands. */
+function drawWalls(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  for (const wall of options.walls) {
+    drawWall(ctx, wall, options)
+  }
+}
+
+/** Paint the surface-paint face bands and the active-surface highlight beneath the wall strokes. */
+function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  if (options.surfacePaint === undefined) return
+  const { walls, viewport } = options
+  drawSurfacePaint(ctx, { walls, viewport, ...options.surfacePaint })
 }
 
 /** Paint each dimension as an annotation overlay above the plan. */
@@ -214,9 +219,7 @@ function drawDimensions(ctx: PlanDrawingContext, options: DrawPlanOptions): void
 /** Paint every room's label as an overlay above the fills and wall strokes so the text reads on top. */
 function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const roomLabels = options.roomLabels
-  if (roomLabels === undefined) {
-    return
-  }
+  if (roomLabels === undefined) return
   for (const room of options.rooms ?? []) {
     drawRoomLabel(ctx, room, {
       viewport: options.viewport,

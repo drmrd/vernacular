@@ -4,6 +4,7 @@ import {
   createSceneGraphDeriver,
   registerDimensionCommands,
   registerOpeningCommands,
+  registerPaintCommands,
   registerProjectCommands,
   registerRoomCommands,
   registerStairCommands,
@@ -91,6 +92,7 @@ function createCommandRegistry(): CommandRegistry<Project> {
   registerDimensionCommands(registry)
   registerStairCommands(registry)
   registerTransformCommands(registry)
+  registerPaintCommands(registry)
   return registry
 }
 

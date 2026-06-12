@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveSurfacePaint } from './resolve-surface-paint'
-import { surfaceKey, type SurfaceRef } from '../model/paint'
+import { solidTreatment, surfaceKey, type SurfaceRef } from '../model/paint'
 import { colorFromHex } from '../color/color'
 import { createEmptyProject } from '../model/factories'
 import type { Project } from '../model/types'
@@ -21,10 +21,12 @@ describe('resolveSurfacePaint', () => {
     expect(resolveSurfacePaint(newProject(), REF)).toBeUndefined()
   })
 
-  it('returns the assignment for a painted surface', () => {
+  it('returns the stored treatment for a painted surface', () => {
     const project = newProject()
-    const assignment = { color: colorFromHex('#9aa583'), finishId: 'satin' }
-    project.paint = { [surfaceKey(REF)]: assignment }
-    expect(resolveSurfacePaint(project, REF)).toEqual(assignment)
+    const treatment = solidTreatment(colorFromHex('#9aa583'), 'satin')
+    project.paint = { [surfaceKey(REF)]: treatment }
+    const resolved = resolveSurfacePaint(project, REF)
+    expect(resolved).toEqual(treatment)
+    expect(resolved?.kind).toBe('solid')
   })
 })
