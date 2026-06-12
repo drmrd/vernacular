@@ -24,7 +24,15 @@ function directionalContext(): { wall: WallSceneNode; context: SnapContext } {
   const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
   return {
     wall,
-    context: { walls: [wall], gridSpacingMm: 0, toleranceMm: 50, origin: { x: 0, y: 0 } },
+    context: {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+      // Free the angle lock so these tests keep exercising the perpendicular and
+      // parallel kinds; the default-on lock would otherwise pre-empt them.
+      freeAngle: true,
+    },
   }
 }
 
@@ -147,6 +155,74 @@ describe('snapPoint perpendicular snapping', () => {
 
     const result = snapPoint({ x: 6, y: 6 }, context)
     expect(result?.kind).toBe('perpendicular')
+  })
+})
+
+describe('snapPoint angle snapping', () => {
+  it('locks a near-horizontal drag onto the world 0-degree ray', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    // The origin-to-cursor bearing is about 3 degrees, so the nearest world ray
+    // is 0 degrees and the cursor projects onto the x-axis.
+    expect(snapPoint({ x: 1000, y: 50 }, context)).toEqual({
+      point: { x: 1000, y: 0 },
+      kind: 'angle',
+    })
+  })
+
+  it('locks a near-diagonal drag onto the world 45-degree ray', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    // The bearing is about 42 degrees, so the nearest world ray is 45 degrees.
+    const result = snapPoint({ x: 1000, y: 900 }, context)
+    expect(result?.kind).toBe('angle')
+    expect(result?.point.x).toBeCloseTo(950, 5)
+    expect(result?.point.y).toBeCloseTo(950, 5)
+  })
+
+  it('does not lock before a segment starts', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+    }
+
+    expect(snapPoint({ x: 1000, y: 50 }, context)).toBeNull()
+  })
+
+  it('does not lock when the cursor sits on the origin', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    expect(snapPoint({ x: 0, y: 0 }, context)).toBeNull()
+  })
+
+  it('prefers an in-range endpoint over the angle lock', () => {
+    // The wall's start endpoint sits at an off-45 bearing (about 17 degrees) from
+    // the origin, and the cursor is within tolerance of that endpoint.
+    const wall = wallNode({ start: { x: 1000, y: 300 }, end: { x: 5000, y: 300 } })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+    }
+
+    expect(snapPoint({ x: 1002, y: 301 }, context)?.kind).toBe('endpoint')
   })
 })
 
