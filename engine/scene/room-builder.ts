@@ -7,7 +7,7 @@ import {
   type Point,
   type RoomSceneNode,
 } from '../../core'
-import type { MaterialProvider } from '../materials/material-provider'
+import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
 /** The finished-floor datum: the slab's top sits at local world Y = 0. */
 const FLOOR_DATUM_Y = 0
@@ -15,6 +15,12 @@ const FLOOR_DATUM_Y = 0
 const COMPONENTS_PER_VERTEX = 3
 
 type Triangle = [number, number, number]
+
+/** One contiguous geometry section paired with the surface role it draws. */
+interface SlabSection {
+  role: SurfaceRole
+  positions: number[]
+}
 
 /** Pushes a plan boundary point, at the given height, as a world position. */
 function pushWorldPoint(positions: number[], point: Point, height: number): void {
@@ -57,27 +63,45 @@ function slabCapTriangles(boundary: Point[]): Triangle[] {
   return THREE.ShapeUtils.triangulateShape(contour, []) as Triangle[]
 }
 
+/** The slab's three contiguous sections, in geometry order: top, base, sides. */
+function slabSections(boundary: Point[], thickness: number): SlabSection[] {
+  const triangles = slabCapTriangles(boundary)
+  return [
+    { role: 'top', positions: slabCapPositions(boundary, triangles, FLOOR_DATUM_Y) },
+    { role: 'base', positions: slabCapPositions(boundary, triangles, FLOOR_DATUM_Y - thickness) },
+    { role: 'exteriorFace', positions: slabSidePositions(boundary, thickness) },
+  ]
+}
+
+/** Adds one material group per section, advancing the running vertex offset. */
+function addSlabGroups(geometry: THREE.BufferGeometry, sections: SlabSection[]): void {
+  let runningStart = 0
+  sections.forEach((section, materialIndex) => {
+    const vertexCount = section.positions.length / COMPONENTS_PER_VERTEX
+    geometry.addGroup(runningStart, vertexCount, materialIndex)
+    runningStart += vertexCount
+  })
+}
+
 /**
  * Builds the floor slab as a solid prism: a top cap at the floor datum (Y = 0),
  * a bottom cap at Y = -thickness, and vertical sides connecting them. Every
  * vertex passes through `planToWorld`, so the slab shares the walls' axis map.
+ * Each section draws its own surface role through a per-section material group.
  */
 function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
   const boundary = canonicalOuterLoop(node.clearPolygon)
-  const thickness = floorSlabThickness()
-  const triangles = slabCapTriangles(boundary)
-  const positions = [
-    ...slabCapPositions(boundary, triangles, FLOOR_DATUM_Y),
-    ...slabCapPositions(boundary, triangles, FLOOR_DATUM_Y - thickness),
-    ...slabSidePositions(boundary, thickness),
-  ]
+  const sections = slabSections(boundary, floorSlabThickness())
+  const positions = sections.flatMap((section) => section.positions)
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute(
     'position',
     new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
   )
+  addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
-  return new THREE.Mesh(geometry, materials.material('top'))
+  const slabMaterials = sections.map((section) => materials.material(section.role))
+  return new THREE.Mesh(geometry, slabMaterials)
 }
 
 /**
