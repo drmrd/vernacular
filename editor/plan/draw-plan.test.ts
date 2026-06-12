@@ -551,3 +551,20 @@ describe('drawRoomLabel', () => {
     expect(fillTexts[0]?.y).toBe(centroid.y)
   })
 })
+
+describe('drawPlan floor fill tint', () => {
+  it('tints the room fills with the floor paint color when one is set', () => {
+    const recorder = recordingContext()
+    drawPlan(
+      recorder.ctx,
+      planOptions({ rooms: [rectangleRoom('room:r')], roomFillColor: '#9aa583' }),
+    )
+    expect(recorder.fills).toContain('#9aa583')
+  })
+
+  it('uses the default room fill when no floor paint is set', () => {
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions({ rooms: [rectangleRoom('room:r')] }))
+    expect(recorder.fills).toContain('#eef2f6')
+  })
+})

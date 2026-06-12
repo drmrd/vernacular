@@ -20,6 +20,7 @@ interface RecorderState {
   texts: { text: string; x: number; y: number }[]
   fillRects: { x: number; y: number; w: number; h: number }[]
   images: { dx: number; dy: number; dWidth: number; dHeight: number; alpha: number }[]
+  fills: string[]
   ops: string[]
   clears: number
   pen: [number, number]
@@ -32,6 +33,7 @@ function emptyState(): RecorderState {
     texts: [],
     fillRects: [],
     images: [],
+    fills: [],
     ops: [],
     clears: 0,
     pen: [0, 0],
@@ -68,7 +70,10 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
       state.ops.push('arc')
       state.arcs.push({ x, y, radius, fillStyle: String(ctx.fillStyle) })
     },
-    fill: () => state.ops.push('fill'),
+    fill: () => {
+      state.ops.push('fill')
+      state.fills.push(String(ctx.fillStyle))
+    },
     fillText: (text, x, y) => {
       state.ops.push('fillText')
       state.texts.push({ text, x, y })
@@ -102,6 +107,7 @@ export function recordingContext() {
     texts: state.texts,
     fillRects: state.fillRects,
     images: state.images,
+    fills: state.fills,
     ops: state.ops,
     clearCount: () => state.clears,
   }
