@@ -207,6 +207,82 @@ describe('snapPoint underlay trace snapping', () => {
   })
 })
 
+describe('snapPoint on-edge snapping', () => {
+  // Wall from (1000,1000) to (5000,1000): endpoints at x=1000,5000; midpoint x=3000.
+  it('snaps a cursor near a wall, away from endpoints and midpoint, to the nearest point on it', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2000, y: 1005 }, context)).toEqual({
+      point: { x: 2000, y: 1000 },
+      kind: 'edge',
+      referenceId: wall.id,
+    })
+  })
+
+  it('returns null when the cursor is farther from every wall than the tolerance', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2000, y: 1100 }, context)).toBeNull()
+  })
+
+  it('prefers the midpoint over the on-edge point when the cursor is near the midpoint', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    // 5 mm above the midpoint (3000,1000); both midpoint and on-edge are in range.
+    expect(snapPoint({ x: 3002, y: 1005 }, context)?.kind).toBe('midpoint')
+  })
+
+  it('prefers the on-edge point over a perpendicular construction line', () => {
+    const wall = wallNode()
+    // Origin sits off the wall; the perpendicular line through it is x = 2000.
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 2000, y: 5000 },
+    }
+
+    // (2002,1005): 2 mm from the perpendicular line x=2000 and 5 mm from the wall.
+    expect(snapPoint({ x: 2002, y: 1005 }, context)?.kind).toBe('edge')
+  })
+})
+
+describe('snapPoint wall-line intersection snapping', () => {
+  it('snaps to where two wall lines cross, even past the segment ends', () => {
+    // A: line y=1000 over x in [1000,2000]. B: line x=4000 over y in [2000,3000].
+    // The lines cross at (4000,1000), which lies past the end of both segments.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 2000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 4000, y: 2000 }, end: { x: 4000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    const result = snapPoint({ x: 4003, y: 1004 }, context)
+    expect(result?.kind).toBe('intersection')
+    expect(result?.point).toEqual({ x: 4000, y: 1000 })
+  })
+
+  it('prefers an intersection over the on-edge point when they coincide on a wall', () => {
+    // A horizontal line y=1000; B vertical line x=2000 crossing it at (2000,1000),
+    // which also lies on segment A, so the on-edge snap would otherwise fire there.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 5000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 2000, y: 2000 }, end: { x: 2000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2003, y: 1004 }, context)?.kind).toBe('intersection')
+  })
+
+  it('produces no intersection for parallel walls', () => {
+    // Two parallel horizontal walls; the cursor sits clear of both edges.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 5000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 1000, y: 3000 }, end: { x: 5000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 3000, y: 2000 }, context)).toBeNull()
+  })
+})
+
 describe('snapPoint with nothing in range', () => {
   it('returns null when the grid is disabled, no feature is in range, and no origin is set', () => {
     const wall = wallNode({ start: { x: 9000, y: 9000 }, end: { x: 9500, y: 9000 } })

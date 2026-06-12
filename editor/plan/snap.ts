@@ -1,6 +1,14 @@
 import { distance, type Point, type WallSceneNode } from '../../core'
 
-export type SnapKind = 'endpoint' | 'midpoint' | 'perpendicular' | 'parallel' | 'grid' | 'trace'
+export type SnapKind =
+  | 'endpoint'
+  | 'intersection'
+  | 'midpoint'
+  | 'edge'
+  | 'perpendicular'
+  | 'parallel'
+  | 'grid'
+  | 'trace'
 
 export interface SnapResult {
   point: Point
@@ -32,6 +40,19 @@ interface Vector {
 
 function midpointOf(wall: WallSceneNode): Point {
   return { x: (wall.start.x + wall.end.x) / 2, y: (wall.start.y + wall.end.y) / 2 }
+}
+
+/** Nearest point on the segment [a, b] to p, clamped to the segment ends. */
+function nearestPointOnSegment(p: Point, a: Point, b: Point): Point {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSq = dx * dx + dy * dy
+  if (lengthSq === 0) {
+    return a
+  }
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq
+  const clamped = Math.max(0, Math.min(1, t))
+  return { x: a.x + clamped * dx, y: a.y + clamped * dy }
 }
 
 /** Unit direction of a wall, or null for a zero-length wall whose direction is undefined. */
@@ -104,6 +125,13 @@ function perpendicularSnap(cursor: Point, context: SnapContext): Candidate | nul
   return directionalSnap(cursor, context, (wallDir) => ({ x: -wallDir.y, y: wallDir.x }))
 }
 
+/** Snap onto the nearest point along any wall, clamped to its segment ends. */
+function edgeSnap(cursor: Point, context: SnapContext): Candidate | null {
+  return nearestFeature(cursor, context, (wall) => [
+    nearestPointOnSegment(cursor, wall.start, wall.end),
+  ])
+}
+
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
 function nearestFeature(
   cursor: Point,
@@ -116,6 +144,40 @@ function nearestFeature(
       const distanceMm = distance(cursor, point)
       if (distanceMm <= context.toleranceMm && (best === null || distanceMm < best.distanceMm)) {
         best = { point, referenceId: wall.id, distanceMm }
+      }
+    }
+  }
+  return best
+}
+
+/** Intersection of the infinite lines through walls a and b, or null when parallel. */
+function lineIntersection(a: WallSceneNode, b: WallSceneNode): Point | null {
+  const r = { x: a.end.x - a.start.x, y: a.end.y - a.start.y }
+  const s = { x: b.end.x - b.start.x, y: b.end.y - b.start.y }
+  const denominator = r.x * s.y - r.y * s.x
+  if (denominator === 0) {
+    return null
+  }
+  const offset = { x: b.start.x - a.start.x, y: b.start.y - a.start.y }
+  const t = (offset.x * s.y - offset.y * s.x) / denominator
+  return { x: a.start.x + t * r.x, y: a.start.y + t * r.y }
+}
+
+/** The nearest in-range crossing of two wall lines, or null when none qualifies. */
+function nearestIntersection(cursor: Point, context: SnapContext): Candidate | null {
+  let best: Candidate | null = null
+  const { walls } = context
+  for (const [index, a] of walls.entries()) {
+    for (const b of walls.slice(index + 1)) {
+      const point = lineIntersection(a, b)
+      if (point === null) {
+        continue
+      }
+      const distanceMm = distance(cursor, point)
+      if (distanceMm <= context.toleranceMm && (best === null || distanceMm < best.distanceMm)) {
+        // referenceId is the first wall of the pair; the second is intentionally
+        // not captured (the single-wall reference model the other kinds use).
+        best = { point, referenceId: a.id, distanceMm }
       }
     }
   }
@@ -162,9 +224,17 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   if (endpoint !== null) {
     return asResult(endpoint, 'endpoint')
   }
+  const intersection = nearestIntersection(cursor, context)
+  if (intersection !== null) {
+    return asResult(intersection, 'intersection')
+  }
   const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
+  }
+  const edge = edgeSnap(cursor, context)
+  if (edge !== null) {
+    return asResult(edge, 'edge')
   }
   const perpendicular = perpendicularSnap(cursor, context)
   if (perpendicular !== null) {
