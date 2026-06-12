@@ -7,7 +7,6 @@ import type { RoomSceneNode } from '../../core'
 
 const ROOM_WIDTH = 4000
 const ROOM_DEPTH = 3000
-const CEILING_HEIGHT = 2600
 const PRECISION = 3
 const FLOOR_DATUM_Y = 0
 const ORIGIN = 0
@@ -28,7 +27,6 @@ describe('buildRoomShell', () => {
       polygon: rectangle,
       clearPolygon: rectangle,
       area: ROOM_WIDTH * ROOM_DEPTH,
-      ceilingHeight: CEILING_HEIGHT,
     }
 
     const group = buildRoomShell(node, new NeutralMaterialProvider())

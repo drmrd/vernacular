@@ -53,6 +53,7 @@ function slabSidePositions(boundary: Point[], thickness: number): number[] {
 /** Triangulates the slab cap and returns index triples into `boundary`. */
 function slabCapTriangles(boundary: Point[]): Triangle[] {
   const contour = boundary.map((p) => new THREE.Vector2(p.x, p.y))
+  // No holes this cycle; interior voids (donut and courtyard rooms) are cut later.
   return THREE.ShapeUtils.triangulateShape(contour, []) as Triangle[]
 }
 
