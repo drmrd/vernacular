@@ -117,27 +117,24 @@ const DEGREES_PER_HALF_TURN = 180
 const ANGLE_STEP_DEG = 45
 const DEG_TO_RAD = Math.PI / DEGREES_PER_HALF_TURN
 
-/** Build the eight unit ray directions at 45-degree intervals off the world axes. */
-function buildWorldDirections(): Vector[] {
-  const directions: Vector[] = []
-  for (let deg = 0; deg < DEGREES_PER_TURN; deg += ANGLE_STEP_DEG) {
-    const radians = deg * DEG_TO_RAD
-    directions.push({ x: Math.cos(radians), y: Math.sin(radians) })
-  }
-  return directions
-}
-
-/** The eight world-axis directions at 45-degree intervals, computed once at load. */
-const WORLD_DIRECTIONS: readonly Vector[] = buildWorldDirections()
-
 /** A candidate angle-lock ray, optionally tagged with the wall it derives from. */
 interface DirectedRay {
   direction: Vector
   referenceId?: string
 }
 
-/** The world-axis rays, untagged. */
-const WORLD_RAYS: readonly DirectedRay[] = WORLD_DIRECTIONS.map((direction) => ({ direction }))
+/** Build the eight untagged world-axis rays at 45-degree intervals off the world axes. */
+function buildWorldRays(): DirectedRay[] {
+  const rays: DirectedRay[] = []
+  for (let deg = 0; deg < DEGREES_PER_TURN; deg += ANGLE_STEP_DEG) {
+    const radians = deg * DEG_TO_RAD
+    rays.push({ direction: { x: Math.cos(radians), y: Math.sin(radians) } })
+  }
+  return rays
+}
+
+/** The eight world-axis directions at 45-degree intervals, computed once at load. */
+const WORLD_RAYS: readonly DirectedRay[] = buildWorldRays()
 
 /**
  * Rays every 45 degrees off the nearest wall's direction, tagged with that wall,
@@ -168,16 +165,19 @@ function wallRelativeRays(cursor: Point, context: SnapContext): DirectedRay[] {
  * The candidate ray nearest the offset bearing, by largest dot product, keeping its
  * reference. Maximizing the dot product finds the nearest bearing over the full circle
  * (no atan2 needed) because all signed directions are candidates, so the most
- * forward-aligned ray is the closest in angle. `rays` must be non-empty.
+ * forward-aligned ray is the closest in angle. The groups are scanned in sequence
+ * without building a combined array, and together must supply at least one ray.
  */
-function nearestRay(offset: Vector, rays: readonly DirectedRay[]): DirectedRay {
+function nearestRay(offset: Vector, ...groups: readonly (readonly DirectedRay[])[]): DirectedRay {
   let best: DirectedRay | undefined
   let bestDot = -Infinity
-  for (const ray of rays) {
-    const dot = offset.x * ray.direction.x + offset.y * ray.direction.y
-    if (dot > bestDot) {
-      best = ray
-      bestDot = dot
+  for (const group of groups) {
+    for (const ray of group) {
+      const dot = offset.x * ray.direction.x + offset.y * ray.direction.y
+      if (dot > bestDot) {
+        best = ray
+        bestDot = dot
+      }
     }
   }
   if (best === undefined) {
@@ -201,7 +201,7 @@ function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
   if (offset.x === 0 && offset.y === 0) {
     return null
   }
-  const ray = nearestRay(offset, [...WORLD_RAYS, ...wallRelativeRays(cursor, context)])
+  const ray = nearestRay(offset, WORLD_RAYS, wallRelativeRays(cursor, context))
   const along = offset.x * ray.direction.x + offset.y * ray.direction.y
   const point = { x: origin.x + along * ray.direction.x, y: origin.y + along * ray.direction.y }
   return ray.referenceId === undefined
