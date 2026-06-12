@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import {
   canonicalOuterLoop,
+  ceilingHeight,
   floorSlabThickness,
   planToWorld,
   type Point,
@@ -114,14 +115,33 @@ function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.
 }
 
 /**
+ * Builds the ceiling as a single downward-facing plane at the room's ceiling
+ * height. It reuses the slab's cap triangulation in its natural order, which
+ * faces world `-Y` (down into the room), and draws the `base` role.
+ */
+function buildCeilingMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
+  const boundary = canonicalOuterLoop(node.clearPolygon)
+  const triangles = slabCapTriangles(boundary)
+  const positions = slabCapPositions(boundary, triangles, ceilingHeight(node))
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
+  )
+  geometry.computeVertexNormals()
+  return new THREE.Mesh(geometry, materials.material('base'))
+}
+
+/**
  * Builds the shell for one derived room, returning a group named with the
  * room's id and carrying `userData.entityId`, so a raycaster walks up to the
- * room. The group holds the floor slab mesh (the ceiling arrives next cycle).
+ * room. The group holds the floor slab mesh and the ceiling plane above it.
  */
 export function buildRoomShell(node: RoomSceneNode, materials: MaterialProvider): THREE.Group {
   const group = new THREE.Group()
   group.name = node.id
   group.userData.entityId = node.id
   group.add(buildSlabMesh(node, materials))
+  group.add(buildCeilingMesh(node, materials))
   return group
 }
