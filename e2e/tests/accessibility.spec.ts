@@ -16,6 +16,8 @@ test.describe('Home page accessibility', () => {
     // Draw a wall so the overlay exposes a selectable entity.
     await canvas.click({ position: { x: 120, y: 200 } })
     await canvas.click({ position: { x: 520, y: 200 } })
+    // Finish the run with Enter so the buffered wall commits.
+    await page.keyboard.press('Enter')
     await expect(page.getByText('Walls: 1')).toBeVisible()
 
     // The wall is reachable as a keyboard-focusable option whose accessible name is

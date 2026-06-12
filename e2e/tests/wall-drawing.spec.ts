@@ -9,6 +9,8 @@ test.describe('Wall-drawing proof of life', () => {
 
     await canvas.click({ position: { x: 120, y: 200 } })
     await canvas.click({ position: { x: 520, y: 200 } })
+    // Finish the run with Enter so the buffered wall commits.
+    await page.keyboard.press('Enter')
 
     await expect(page.getByText('All changes saved')).toBeVisible()
     await expect(page.getByText('Walls: 1')).toBeVisible()
