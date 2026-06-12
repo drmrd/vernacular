@@ -116,11 +116,13 @@ function useReresolveOnFreeAngleToggle({
     if (tool === 'draw-wall' && lastRawCursor.current !== null) {
       setPointer(snapping.resolve(lastRawCursor.current))
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-resolve only when the modifier toggles
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the effect callback is recreated each render, so snapping and setPointer are always current; depend only on the modifier toggle
   }, [freeAngle])
-  return (raw) => {
+  // A stable recorder: it only writes a ref, so its identity needs no deps, which
+  // keeps the move handler's useCallback (which lists it) from re-creating each render.
+  return useCallback((raw: Point) => {
     lastRawCursor.current = raw
-  }
+  }, [])
 }
 
 /** Abandons an in-progress wall draw when Escape is pressed while the wall tool is active. */

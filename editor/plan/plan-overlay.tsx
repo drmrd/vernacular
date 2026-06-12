@@ -162,17 +162,15 @@ function liveAnnouncement(
   return selectionAnnouncement(selected)
 }
 
-// The near-cursor readout pill for the in-progress wall draw: its length and bearing,
-// anchored at the (snapped) segment end and offset to the side so it stays legible.
-function ReadoutChip({
-  preview,
-  viewport,
-  preferences,
-}: {
+interface ReadoutChipProps {
   preview: PreviewSegment
   viewport: Viewport
   preferences: UnitPreferences
-}): ReactElement {
+}
+
+// The near-cursor readout pill for the in-progress wall draw: its length and bearing,
+// anchored at the (snapped) segment end and offset to the side so it stays legible.
+function ReadoutChip({ preview, viewport, preferences }: ReadoutChipProps): ReactElement {
   return (
     <PositionedPill
       className="plan-overlay__readout"
