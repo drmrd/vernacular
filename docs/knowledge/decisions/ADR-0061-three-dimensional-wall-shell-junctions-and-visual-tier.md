@@ -75,11 +75,14 @@ geometry and the first slice that has a shell worth looking at.
 
 Each wall renders as a box extruded from its centerline, its thickness, and its
 height. Walls that share a junction overlap into a solid mass rather than mitering
-or butting against each other. The wall builder still takes the foundation's
-`WallBuildInput` shape (the wall graph, the wall nodes, the openings keyed by
-wall, and the material provider), so the opening slices and a future mitered
-builder extend the same seam, but the straight-planar builder this slice ships
-consumes only the centerline, thickness, and height.
+or butting against each other. This slice ships a per-wall builder,
+`buildWallMesh(node, materials)`, that `buildScene` maps over each floor's walls;
+it reads only the centerline, thickness, and height. The foundation's graph-aware
+`WallBuildInput` seam (the wall graph, the openings keyed by wall, the material
+provider) is introduced by the opening slice, which is the first consumer that
+needs the graph and openings and is the slice the foundation (section 3.3) expects
+to settle that shape. Slice 1 does not thread an unread graph just to hold the
+seam open.
 
 This is the minimal correct first shell. A union of overlapping opaque boxes reads
 as a continuous solid wall, which is what a first navigable preview needs. Clean
@@ -147,8 +150,9 @@ wants the visual tier to gate continuous integration rather than self-skip there
 - The first shell ships with the minimal correct geometry: a union of extruded
   boxes that reads as solid walls. Corner quality is a known, isolated follow-on
   that reuses the wall graph already threaded through the builder seam.
-- The builder seam is the foundation's `WallBuildInput`, so the opening slices and
-  a mitered builder extend it without reshaping callers.
+- Slice 1 ships a per-wall `buildWallMesh`; the opening slice introduces the
+  graph-aware `WallBuildInput` seam when it first needs the graph and openings, so
+  the seam is shaped by its real consumer rather than guessed at here.
 - Height is read through one accessor, so a per-wall override or a sloped-top
   profile is an additive change at a single point.
 - Per-surface material groups exist from the first mesh, so the paint track is a

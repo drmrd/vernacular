@@ -67,11 +67,11 @@ other four roles.
 
 ### 3.3 The straight-planar box builder
 
-A wall builder takes the foundation's `WallBuildInput` shape (the wall graph, the
-wall scene nodes, openings keyed by wall, and the material provider) so the
-opening slices extend the same seam. This slice consumes only the centerline,
-thickness, and height: it extrudes each wall as a box and ignores the graph and
-the openings, which are empty here.
+A per-wall builder, `buildWallMesh(node, materials)`, extrudes each wall as a box
+from its centerline, thickness, and height. `buildScene` maps it over each floor's
+walls. The graph-aware `WallBuildInput` seam (the wall graph plus openings keyed by
+wall) described in the foundation lands with the opening slice, its first real
+consumer; this slice does not thread an unread graph just to hold the seam open.
 
 Each wall box:
 
