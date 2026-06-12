@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0052-surface-paint-selection-and-treatments
-title: 'ADR-0052: Surface selection, 2D paint rendering, and the surface-treatment union'
+slug: decisions/ADR-0056-surface-paint-selection-and-treatments
+title: 'ADR-0056: Surface selection, 2D paint rendering, and the surface-treatment union'
 type: decision
 tags:
   [
@@ -45,7 +45,7 @@ status: current
 updated: 2026-06-11
 ---
 
-# ADR-0052: Surface selection, 2D paint rendering, and the surface-treatment union
+# ADR-0056: Surface selection, 2D paint rendering, and the surface-treatment union
 
 ## Status
 

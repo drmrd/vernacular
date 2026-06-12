@@ -5,7 +5,7 @@ The makeover spec frames this slice as "paint, finish, and site-metadata wiring.
 the built-but-unwired pickers to life turns out to need one missing concept that the spec did
 not name: a producer of the "selected surface" the pickers consume. This document designs that
 producer, the visible result of a paint assignment, and the extension seams for richer surface
-treatments. The realized shapes and the supersedes are recorded in ADR-0052.
+treatments. The realized shapes and the supersedes are recorded in ADR-0056.
 
 ## Context
 
@@ -93,7 +93,7 @@ the spirit of the 3D-pick direction in the view that supports it today.
 ## The visible result on the plan (built)
 
 The plan renderer draws the assigned paint so the result is visible where the user works,
-superseding ADR-0048's deferral of a 2D paint overlay (recorded in ADR-0052):
+superseding ADR-0048's deferral of a 2D paint overlay (recorded in ADR-0056):
 
 - **Wall face:** a thin color band along the room-facing side of the wall, offset to the painted
   side, drawn from `resolveSurfacePaint(project, ref)`.
@@ -108,7 +108,7 @@ clearly indicated.
 ## Cross-view highlight and the 3D seam (designed)
 
 Because both views read `activeSurface`, the 3D highlight is wiring, not redesign, once meshes
-exist. The seam, recorded in ADR-0052: when the 3D render track adds wall-face meshes, each face
+exist. The seam, recorded in ADR-0056: when the 3D render track adds wall-face meshes, each face
 mesh carries `userData.surface = SurfaceRef` (mirroring today's `userData.entityId` on the node
 group); a click maps it back to a `SurfaceRef` and calls `surfaceSelection.select(ref)`, and the
 mesh reads `activeSurface` for an emissive highlight and reads `resolveSurfacePaint` for its
@@ -190,7 +190,7 @@ discipline.
   canvas-selection bridge keeps the common path (paint the wall I just clicked) short, and the
   list stays scoped to the active floor.
 - **Superseding the ADR-0048 2D-overlay deferral** widens the slice beyond pure wiring; the
-  rendering is pure-2D with no dependency on the render seam, and ADR-0052 records the change.
+  rendering is pure-2D with no dependency on the render seam, and ADR-0056 records the change.
 - **The migration touches just-shipped data.** Paint maps are rarely populated yet, so the v8 to
   v9 rewrite is low-risk; it is still covered by fixtures for an older painted document.
 
