@@ -25,6 +25,7 @@ import {
   CommandPalette,
   CommandPaletteProvider,
   createEditorCommands,
+  createSnapCommands,
   createViewCommands,
   useCommandPalette,
   useKeybindings,
@@ -34,6 +35,10 @@ import { PaintPanel } from '../paint/paint-panel'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
+import { SnapPanel } from '../plan/snap-panel'
+import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
+import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
+import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
@@ -43,7 +48,12 @@ import { AppFrame, PanelSlot } from '../design-system'
 import { FloorSwitcher } from './floor-switcher'
 import { Inspector } from './inspector'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import { FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
+import {
+  FLOOR_SWITCHER_SLOT,
+  PAINT_PICKER_SLOT,
+  PAINT_INSPECTOR_SLOT,
+  SNAP_PANEL_SLOT,
+} from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -75,7 +85,15 @@ function KeybindingLayer() {
   const graph = useSceneGraph()
   const palette = useCommandPalette()
   const view = useViewMode()
-  const commands = useMemo(() => [...createEditorCommands(), ...createViewCommands(view)], [view])
+  const snapStore = useSnapPreferencesStore()
+  const commands = useMemo(
+    () => [
+      ...createEditorCommands(),
+      ...createViewCommands(view),
+      ...createSnapCommands(snapStore),
+    ],
+    [view, snapStore],
+  )
   const context: CommandContext = {
     session,
     selection,
@@ -137,6 +155,9 @@ function ToolRail() {
           onSelectFloor={setActiveFloorId}
           onAddFloor={() => session.dispatch(addFloor('New Floor'))}
         />
+      </PanelSlot>
+      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
+        <SnapPanel />
       </PanelSlot>
     </>
   )
@@ -205,6 +226,10 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // The surface-selection store is created once so the paint inspector and the
   // viewport share one active-surface source across the frame.
   const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
+  // The snap-preferences store is created once so the keybinding layer, the command
+  // palette, the snap panel, and the plan's snapping all read one source, persisted
+  // to localStorage as an editor preference.
+  const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
   return (
     // The command-palette provider wraps everything so the keybinding layer, the
     // command bar, and the palette dialog all share one open/close state. The
@@ -212,28 +237,30 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
     // state and the opening placement type reach the canvas glue and the
     // inspector/tools panels from one source.
     <CommandPaletteProvider>
-      <ViewModeProvider>
-        <UnderlayProvider>
-          <OpeningToolProvider>
-            <KeybindingLayer />
-            <CommandPalette />
-            {recovery ? (
-              <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-            ) : null}
-            <SurfaceSelectionProvider store={surfaceSelection}>
-              <AppFrame
-                header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
-                railLabel="Tool rail"
-                rail={<ToolRail />}
-                mainLabel="Viewport"
-                main={<ViewportArea />}
-                inspectorLabel="Inspector"
-                inspector={<InspectorPanels />}
-              />
-            </SurfaceSelectionProvider>
-          </OpeningToolProvider>
-        </UnderlayProvider>
-      </ViewModeProvider>
+      <SnapPreferencesProvider store={snapPreferences}>
+        <ViewModeProvider>
+          <UnderlayProvider>
+            <OpeningToolProvider>
+              <KeybindingLayer />
+              <CommandPalette />
+              {recovery ? (
+                <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+              ) : null}
+              <SurfaceSelectionProvider store={surfaceSelection}>
+                <AppFrame
+                  header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
+                  railLabel="Tool rail"
+                  rail={<ToolRail />}
+                  mainLabel="Viewport"
+                  main={<ViewportArea />}
+                  inspectorLabel="Inspector"
+                  inspector={<InspectorPanels />}
+                />
+              </SurfaceSelectionProvider>
+            </OpeningToolProvider>
+          </UnderlayProvider>
+        </ViewModeProvider>
+      </SnapPreferencesProvider>
     </CommandPaletteProvider>
   )
 }

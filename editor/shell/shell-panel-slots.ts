@@ -6,9 +6,11 @@
 export const FLOOR_SWITCHER_SLOT = 'floor-switcher'
 export const PAINT_PICKER_SLOT = 'paint-pickers'
 export const PAINT_INSPECTOR_SLOT = 'paint-inspector'
+export const SNAP_PANEL_SLOT = 'snap-panel'
 
 export const SHELL_PANEL_SLOTS = [
   FLOOR_SWITCHER_SLOT,
   PAINT_PICKER_SLOT,
   PAINT_INSPECTOR_SLOT,
+  SNAP_PANEL_SLOT,
 ] as const
