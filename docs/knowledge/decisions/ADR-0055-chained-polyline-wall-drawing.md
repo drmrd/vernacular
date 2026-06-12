@@ -20,13 +20,18 @@ sourceFiles:
     editor/plan/draw-plan.ts,
     core/topology/rooms.ts,
   ]
-status: current
-updated: 2026-06-11
+status: superseded
+updated: 2026-06-12
 ---
 
 # ADR-0055: Chained polyline wall drawing buffers vertices and commits one wall per segment
 
 ## Status
+
+Superseded by ADR-0060. The buffering described here (corners held in tool state and
+committed only on finish) is replaced by immediate per-segment commit, which the
+makeover specification's "commit each segment and continue" language already called
+for. The rest of this record stands as the history of the chained-polyline slice.
 
 Accepted. This evolves the wall-tool state machine from ADR-0021 and composes with the
 snap origin that ADR-0033 and ADR-0054 read. The makeover specification already mandates
