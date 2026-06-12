@@ -124,6 +124,13 @@ function perpendicularSnap(cursor: Point, context: SnapContext): Candidate | nul
   return directionalSnap(cursor, context, (wallDir) => ({ x: -wallDir.y, y: wallDir.x }))
 }
 
+/** Snap onto the nearest point along any wall, clamped to its segment ends. */
+function edgeSnap(cursor: Point, context: SnapContext): Candidate | null {
+  return nearestFeature(cursor, context, (wall) => [
+    nearestPointOnSegment(cursor, wall.start, wall.end),
+  ])
+}
+
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
 function nearestFeature(
   cursor: Point,
@@ -186,9 +193,7 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
   }
-  const edge = nearestFeature(cursor, context, (wall) => [
-    nearestPointOnSegment(cursor, wall.start, wall.end),
-  ])
+  const edge = edgeSnap(cursor, context)
   if (edge !== null) {
     return asResult(edge, 'edge')
   }
