@@ -1,4 +1,5 @@
 import { distance, type Point, type WallSceneNode } from '../../core'
+import { DEG_TO_RAD, DEGREES_PER_TURN } from './angles'
 
 export type SnapKind =
   | 'endpoint'
@@ -112,10 +113,7 @@ function perpendicularSnap(cursor: Point, context: SnapContext): Candidate | nul
   return directionalSnap(cursor, context, (wallDir) => ({ x: -wallDir.y, y: wallDir.x }))
 }
 
-const DEGREES_PER_TURN = 360
-const DEGREES_PER_HALF_TURN = 180
 const ANGLE_STEP_DEG = 45
-const DEG_TO_RAD = Math.PI / DEGREES_PER_HALF_TURN
 
 /** A candidate angle-lock ray, optionally tagged with the wall it derives from. */
 interface DirectedRay {
