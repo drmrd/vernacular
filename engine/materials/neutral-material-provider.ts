@@ -18,8 +18,7 @@ export class NeutralMaterialProvider implements MaterialProvider {
     if (cached) {
       return cached
     }
-    const created = new THREE.MeshStandardMaterial({ color: NEUTRAL_COLOR })
-    created.name = role
+    const created = new THREE.MeshStandardMaterial({ color: NEUTRAL_COLOR, name: role })
     this.materials.set(role, created)
     return created
   }
