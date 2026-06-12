@@ -67,7 +67,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       if (selectionMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },
-    onDoubleClick: () => interaction.onDoubleClick(),
+    onDoubleClick: interaction.onDoubleClick,
     // Clear the wall-tool, dimension-tool, and calibration cursors on leave.
     onPointerLeave: () => {
       interaction.onPointerLeave()
