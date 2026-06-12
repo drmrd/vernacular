@@ -130,33 +130,67 @@ function buildWorldDirections(): Vector[] {
 /** The eight world-axis directions at 45-degree intervals, computed once at load. */
 const WORLD_DIRECTIONS: readonly Vector[] = buildWorldDirections()
 
+/** A candidate angle-lock ray, optionally tagged with the wall it derives from. */
+interface DirectedRay {
+  direction: Vector
+  referenceId?: string
+}
+
+/** The world-axis rays, untagged. */
+const WORLD_RAYS: readonly DirectedRay[] = WORLD_DIRECTIONS.map((direction) => ({ direction }))
+
 /**
- * The candidate ray nearest the offset bearing, by largest dot product. Maximizing
- * the dot product finds the nearest bearing over the full circle (no atan2 needed)
- * because all eight signed directions are candidates, so the most forward-aligned
- * ray is the closest in angle. `directions` must be non-empty.
+ * Rays every 45 degrees off the nearest wall's direction, tagged with that wall,
+ * or [] when no wall gives a usable direction.
  */
-function nearestDirection(offset: Vector, directions: readonly Vector[]): Vector {
-  let best: Vector | undefined
+function wallRelativeRays(cursor: Point, context: SnapContext): DirectedRay[] {
+  const reference = nearestWall(cursor, context.walls)
+  if (reference === null) {
+    return []
+  }
+  const wallDir = wallDirection(reference)
+  if (wallDir === null) {
+    return []
+  }
+  const baseRadians = Math.atan2(wallDir.y, wallDir.x)
+  const rays: DirectedRay[] = []
+  for (let step = 0; step < DEGREES_PER_TURN; step += ANGLE_STEP_DEG) {
+    const radians = baseRadians + step * DEG_TO_RAD
+    rays.push({
+      direction: { x: Math.cos(radians), y: Math.sin(radians) },
+      referenceId: reference.id,
+    })
+  }
+  return rays
+}
+
+/**
+ * The candidate ray nearest the offset bearing, by largest dot product, keeping its
+ * reference. Maximizing the dot product finds the nearest bearing over the full circle
+ * (no atan2 needed) because all signed directions are candidates, so the most
+ * forward-aligned ray is the closest in angle. `rays` must be non-empty.
+ */
+function nearestRay(offset: Vector, rays: readonly DirectedRay[]): DirectedRay {
+  let best: DirectedRay | undefined
   let bestDot = -Infinity
-  for (const direction of directions) {
-    const dot = offset.x * direction.x + offset.y * direction.y
+  for (const ray of rays) {
+    const dot = offset.x * ray.direction.x + offset.y * ray.direction.y
     if (dot > bestDot) {
-      best = direction
+      best = ray
       bestDot = dot
     }
   }
   if (best === undefined) {
-    throw new Error('nearestDirection requires at least one candidate direction')
+    throw new Error('nearestRay requires at least one candidate ray')
   }
   return best
 }
 
 /**
- * Lock the drawn direction to the nearest 45-degree ray off the world axes,
- * projecting the cursor onto it. This currently locks only to world-axis
- * 45-degree increments; wall-relative angle directions are deferred to a later
- * cycle in this slice.
+ * Lock the drawn direction to the nearest 45-degree ray, projecting the cursor onto
+ * it. Candidates are the world-axis rays and the rays every 45 degrees off the nearest
+ * wall's direction, so a run squares up to the world axes or to an angled wall; a
+ * wall-relative lock carries that wall's `referenceId`.
  */
 function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
   const origin = context.origin
@@ -167,12 +201,12 @@ function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
   if (offset.x === 0 && offset.y === 0) {
     return null
   }
-  const direction = nearestDirection(offset, WORLD_DIRECTIONS)
-  const along = offset.x * direction.x + offset.y * direction.y
-  return {
-    point: { x: origin.x + along * direction.x, y: origin.y + along * direction.y },
-    kind: 'angle',
-  }
+  const ray = nearestRay(offset, [...WORLD_RAYS, ...wallRelativeRays(cursor, context)])
+  const along = offset.x * ray.direction.x + offset.y * ray.direction.y
+  const point = { x: origin.x + along * ray.direction.x, y: origin.y + along * ray.direction.y }
+  return ray.referenceId === undefined
+    ? { point, kind: 'angle' }
+    : { point, kind: 'angle', referenceId: ray.referenceId }
 }
 
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
