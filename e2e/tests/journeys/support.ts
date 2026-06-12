@@ -16,6 +16,8 @@ export const selectors = {
   selectTool: (page: Page) => page.getByRole('button', { name: 'Select' }),
   threeDRegion: (page: Page) => page.getByLabel('3D preview'),
   viewModeButton: (page: Page, name: string) => page.getByRole('button', { name }),
+  liveRegion: (page: Page) => page.locator('.plan-overlay__live'),
+  drawReadout: (page: Page) => page.locator('.plan-overlay__readout'),
 }
 
 // Boot the assembled editor at its root and wait for the plan canvas.
