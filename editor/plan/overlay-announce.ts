@@ -20,3 +20,8 @@ export function snapAnnouncement(snap: SnapResult | null): string {
   }
   return `Snapped to ${snap.kind}`
 }
+
+/** Screen-reader text naming the angle the drawn wall is locked to. */
+export function angleLockAnnouncement(bearingDeg: number): string {
+  return `Locked to ${Math.round(bearingDeg)} degrees`
+}

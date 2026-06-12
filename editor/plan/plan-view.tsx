@@ -1,7 +1,4 @@
-/* eslint-disable max-lines -- the plan composition root: it aggregates every plan-editing hook, the
-   redraw scene shape, and the draw-options builder. The pieces are already extracted into use-* hooks
-   and pure builders, so the residual length is irreducible composition glue, not a missing extraction. */
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -24,9 +21,6 @@ import {
 } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import type { DrawableDimension } from './draw-dimension'
-import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
-import type { DrawableOpening } from './draw-opening'
-import type { DrawableUnderlay } from './draw-underlay'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
 import { composePointerHandlers, type ComposedPointerHandlers } from './compose-pointer-handlers'
@@ -50,114 +44,22 @@ import {
   useViewportControls,
   type ViewportControls,
 } from './use-viewport-controls'
-import type { SnapResult } from './snap'
+import {
+  PLAN_HEIGHT,
+  PLAN_WIDTH,
+  usePlanRedraw,
+  type CanvasRef,
+  type PlanScene,
+} from './plan-scene'
 import { DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
 
-const PLAN_WIDTH = 800
-const PLAN_HEIGHT = 600
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
-
-type CanvasRef = RefObject<HTMLCanvasElement | null>
 
 // A project-level unit-preferences store is later work; this slice picks the
 // default preferences for the project's units (see the slice deferrals).
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
-}
-
-interface PlanScene {
-  walls: DrawPlanOptions['walls']
-  // The scene graph always supplies rooms, so this is non-optional here even
-  // though drawPlan accepts rooms as an optional overlay.
-  rooms: NonNullable<DrawPlanOptions['rooms']>
-  selectedIds: ReadonlySet<string>
-  preview: PreviewSegment | undefined
-  snap: SnapResult | null
-  marquee: DrawPlanOptions['marquee']
-  // The single selected wall under the select tool whose endpoint handles paint,
-  // or null when no wall is editable.
-  endpointHandles: WallSceneNode | null
-  viewport: Viewport
-  // The active unit preferences that format the room-label area text.
-  preferences: UnitPreferences
-  underlays: readonly DrawableUnderlay[]
-  openings: readonly DrawableOpening[]
-  dimensions: readonly DrawableDimension[]
-  // Stairs drawn over the room fills and beneath the wall strokes.
-  stairs: NonNullable<DrawPlanOptions['stairs']>
-  // The live calibration measurement segment, or undefined when not measuring.
-  calibration: PreviewSegment | undefined
-  // The translated ghost of the selection during a move-drag, empty otherwise.
-  ghost: readonly PreviewSegment[]
-  // The per-face treatment lookup and active surface the plan renders as paint
-  // bands and a highlight beneath the wall strokes.
-  surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>
-}
-
-/**
- * Assembles the drawPlan options from the flattened scene leaves. Optional
- * overlays (preview, snap, marquee, endpoint handles, calibration) are spread in
- * only when present so an absent one stays off under exactOptionalPropertyTypes.
- */
-function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
-  return {
-    walls: scene.walls,
-    rooms: scene.rooms,
-    viewport: scene.viewport,
-    width: PLAN_WIDTH,
-    height: PLAN_HEIGHT,
-    selectedIds: scene.selectedIds,
-    grid: true,
-    rulers: true,
-    roomLabels: { preferences: scene.preferences },
-    underlays: scene.underlays,
-    openings: scene.openings,
-    dimensions: scene.dimensions,
-    stairs: scene.stairs,
-    surfacePaint: scene.surfacePaint,
-    ...(scene.preview ? { preview: scene.preview } : {}),
-    ...(scene.snap ? { snap: scene.snap } : {}),
-    ...(scene.marquee ? { marquee: scene.marquee } : {}),
-    ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
-    ...(scene.calibration ? { calibration: scene.calibration } : {}),
-    ...(scene.ghost.length > 0 ? { ghost: scene.ghost } : {}),
-  }
-}
-
-/**
- * Redraws the canvas whenever any draw-meaningful scene leaf changes. The effect
- * depends on each leaf member individually rather than on the per-render scene
- * object, which would rasterize on every render; the scene members are listed
- * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
- */
-function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
-  const options = buildDrawOptions(scene)
-  useEffect(() => {
-    const ctx = canvasRef.current?.getContext('2d')
-    if (ctx) {
-      drawPlan(ctx, options)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- leaf deps, not `options`/`scene`
-  }, [
-    canvasRef,
-    scene.walls,
-    scene.rooms,
-    scene.selectedIds,
-    scene.preview,
-    scene.snap,
-    scene.marquee,
-    scene.endpointHandles,
-    scene.viewport,
-    scene.preferences,
-    scene.underlays,
-    scene.openings,
-    scene.dimensions,
-    scene.stairs,
-    scene.calibration,
-    scene.ghost,
-    scene.surfacePaint,
-  ])
 }
 
 const CROSSHAIR_TOOLS: ReadonlySet<ToolId> = new Set([
@@ -199,10 +101,7 @@ interface PlanLayers {
  * of the per-render hook-result objects. The endpoint drag and the wall tool
  * never preview at once, so a single resolved preview leaf covers both.
  */
-function buildScene(
-  inputs: PlanLayers,
-  surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>,
-): PlanScene {
+function buildScene(inputs: PlanLayers, surfacePaint: PlanScene['surfacePaint']): PlanScene {
   const { graph, interaction, dimensionTool, planSelection } = inputs
   const { wallEditing, underlayLayer, openingLayer } = inputs
   return {
@@ -355,6 +254,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
       selection: layers.selection,
       preferences: layers.preferences,
       snap: interaction.snap,
+      ...(interaction.preview ? { preview: interaction.preview } : {}),
     },
   }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { Point } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
@@ -70,6 +70,61 @@ interface CancelWallOnEscapeDeps {
   setPointer: (pointer: Point | null) => void
 }
 
+/**
+ * Tracks the Alt (Option on a Mac) key as the held free-angle modifier while the wall
+ * tool is active. Holding it suppresses the default angle lock so the cursor draws a
+ * free angle; releasing it restores the lock. Reset to false whenever the tool changes.
+ */
+function useFreeAngleModifier(tool: ToolId): boolean {
+  const [free, setFree] = useState(false)
+  useEffect(() => {
+    if (tool !== 'draw-wall') {
+      setFree(false)
+      return
+    }
+    const update = (event: KeyboardEvent) => setFree(event.altKey)
+    window.addEventListener('keydown', update)
+    window.addEventListener('keyup', update)
+    return () => {
+      window.removeEventListener('keydown', update)
+      window.removeEventListener('keyup', update)
+    }
+  }, [tool])
+  return free
+}
+
+interface FreeAngleResolveDeps {
+  tool: ToolId
+  freeAngle: boolean
+  snapping: Snapping
+  setPointer: (pointer: Point | null) => void
+}
+
+/**
+ * Tracks the last raw (pre-snap) cursor and re-resolves the snapped ghost when the
+ * free-angle modifier toggles, so pressing or releasing Alt updates the ghost without a
+ * pointer move. Returns a recorder the move handler calls with each raw cursor.
+ */
+function useReresolveOnFreeAngleToggle({
+  tool,
+  freeAngle,
+  snapping,
+  setPointer,
+}: FreeAngleResolveDeps): (raw: Point) => void {
+  const lastRawCursor = useRef<Point | null>(null)
+  useEffect(() => {
+    if (tool === 'draw-wall' && lastRawCursor.current !== null) {
+      setPointer(snapping.resolve(lastRawCursor.current))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the effect callback is recreated each render, so snapping and setPointer are always current; depend only on the modifier toggle
+  }, [freeAngle])
+  // A stable recorder: it only writes a ref, so its identity needs no deps, which
+  // keeps the move handler's useCallback (which lists it) from re-creating each render.
+  return useCallback((raw: Point) => {
+    lastRawCursor.current = raw
+  }, [])
+}
+
 /** Abandons an in-progress wall draw when Escape is pressed while the wall tool is active. */
 function useCancelWallOnEscape({
   tool,
@@ -94,21 +149,19 @@ function useCancelWallOnEscape({
 }
 
 /** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
-export function usePlanInteraction({
-  session,
-  walls,
-  tool,
-  viewport,
-  tracePoints,
-}: PlanInteractionDeps): PlanInteraction {
+export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
+  const { session, walls, tool, viewport, tracePoints } = deps
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
+  const freeAngle = useFreeAngleModifier(tool)
   const snapping = useSnapping({
     walls,
     viewport,
     origin: drawingOrigin(toolState),
     ...(tracePoints ? { tracePoints } : {}),
+    freeAngle,
   })
+  const recordRawCursor = useReresolveOnFreeAngleToggle({ tool, freeAngle, snapping, setPointer })
 
   useCancelWallOnEscape({ tool, snapping, setToolState, setPointer })
 
@@ -125,10 +178,12 @@ export function usePlanInteraction({
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (tool === 'draw-wall') {
-        setPointer(snapping.resolve(eventToWorld(event, viewport)))
+        const raw = eventToWorld(event, viewport)
+        recordRawCursor(raw)
+        setPointer(snapping.resolve(raw))
       }
     },
-    [tool, viewport, snapping],
+    [tool, viewport, snapping, recordRawCursor],
   )
 
   const onPointerLeave = useCallback(() => {

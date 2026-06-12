@@ -19,6 +19,9 @@ interface SnappingInputs {
   // Underlay footprint corners the cursor can snap to when trace mode is on;
   // absent or empty when trace mode is off.
   tracePoints?: readonly Point[]
+  // When set, the held free-angle modifier suppresses the default angle lock so
+  // the cursor draws a free angle.
+  freeAngle?: boolean
 }
 
 export interface Snapping {
@@ -32,7 +35,13 @@ export interface Snapping {
   clear: () => void
 }
 
-function buildContext({ walls, viewport, origin, tracePoints }: SnappingInputs): SnapContext {
+function buildContext({
+  walls,
+  viewport,
+  origin,
+  tracePoints,
+  freeAngle,
+}: SnappingInputs): SnapContext {
   return {
     walls,
     gridSpacingMm: DEFAULT_SNAP_GRID_MM,
@@ -41,6 +50,7 @@ function buildContext({ walls, viewport, origin, tracePoints }: SnappingInputs):
     toleranceMm: SNAP_PIXEL_TOLERANCE / viewport.scale,
     ...(origin ? { origin } : {}),
     ...(tracePoints && tracePoints.length > 0 ? { tracePoints } : {}),
+    ...(freeAngle ? { freeAngle } : {}),
   }
 }
 
