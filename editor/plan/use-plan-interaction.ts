@@ -35,9 +35,7 @@ function applyPointer(world: Point, context: PointerContext): WallToolState {
     return context.toolState
   }
   const result = advanceWallTool(context.toolState, world, floorId)
-  if (result.command) {
-    context.session.dispatch(result.command)
-  }
+  result.commands?.forEach((command) => context.session.dispatch(command))
   return result.state
 }
 
@@ -58,9 +56,11 @@ export interface PlanInteraction {
   onPointerLeave: () => void
 }
 
-/** The in-progress segment start while drawing; absent when the tool is idle. */
+/** The corner the next segment draws from while drawing; absent when the tool is idle. */
 function drawingOrigin(toolState: WallToolState): Point | undefined {
-  return toolState.phase === 'drawing' ? toolState.start : undefined
+  return toolState.phase === 'drawing'
+    ? toolState.vertices[toolState.vertices.length - 1]
+    : undefined
 }
 
 interface CancelWallOnEscapeDeps {
