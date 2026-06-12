@@ -1,7 +1,25 @@
 import * as THREE from 'three'
 
 import { wallHeight, type WallSceneNode } from '../../core'
-import { FACE_ROLES, type MaterialProvider } from '../materials/material-provider'
+import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
+
+/**
+ * The shell role for each of a BoxGeometry's six material groups, in its fixed
+ * face order: index 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z. After the
+ * wall builder's world-Y rotation, +Y is the upward face, -Y the downward face,
+ * +Z and -Z are the two long faces along the wall, and +X / -X are the end caps.
+ * A single wall has no room context to distinguish its two long faces, so the
+ * interior/exterior split is a consistent convention; every role renders the
+ * same in this slice.
+ */
+const FACE_ROLES: SurfaceRole[] = [
+  'exteriorFace', // +X end cap
+  'exteriorFace', // -X end cap
+  'top', // +Y upward face
+  'base', // -Y downward face
+  'interiorFace', // +Z long face
+  'exteriorFace', // -Z long face
+]
 
 /**
  * Builds the solid box mesh for one wall, in the pinned world-space convention
