@@ -27,7 +27,7 @@
     {
       "id": "snap-along-wall",
       "title": "snaps a new wall onto an existing wall",
-      "status": "pending"
+      "status": "required"
     },
     {
       "id": "opening-host-guard",
