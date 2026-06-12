@@ -121,7 +121,7 @@ function buildScene(inputs: PlanLayers, surfacePaint: PlanScene['surfacePaint'])
     dimensions: inputs.dimensions,
     stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
-    ghost: inputs.selectionMove.ghost,
+    ghost: interaction.ghost.length > 0 ? interaction.ghost : inputs.selectionMove.ghost,
     surfacePaint,
   }
 }
@@ -286,6 +286,7 @@ export function PlanView() {
         onPointerDown={pointerHandlers.onPointerDown}
         onPointerMove={pointerHandlers.onPointerMove}
         onPointerUp={pointerHandlers.onPointerUp}
+        onDoubleClick={pointerHandlers.onDoubleClick}
         onPointerLeave={pointerHandlers.onPointerLeave}
       />
       <label className="plan-trace-toggle">

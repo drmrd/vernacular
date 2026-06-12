@@ -13,6 +13,7 @@ export interface ComposedPointerHandlers {
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => void
+  onDoubleClick: () => void
   onPointerLeave: () => void
 }
 
@@ -66,6 +67,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       if (selectionMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },
+    onDoubleClick: () => interaction.onDoubleClick(),
     // Clear the wall-tool, dimension-tool, and calibration cursors on leave.
     onPointerLeave: () => {
       interaction.onPointerLeave()
