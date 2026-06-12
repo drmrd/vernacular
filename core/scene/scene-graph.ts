@@ -59,6 +59,14 @@ export interface RoomSceneNode {
   name?: string
   /** Interior void rings in floor-plan space, mirroring the derived room's holes. */
   holes?: Point[][]
+  /**
+   * Ceiling height in floor-plan units. Nodes from `deriveRoomNodesForFloor`
+   * always carry it, sourced from the host floor's `defaultCeilingHeight`. It is
+   * optional because hand-built `RoomSceneNode` literals (chiefly fixtures) omit
+   * it; `ceilingHeight` supplies the `DEFAULT_CEILING_HEIGHT_MM` fallback for
+   * those literal-built nodes.
+   */
+  ceilingHeight?: number
 }
 
 export interface UnderlaySceneNode {
@@ -219,6 +227,7 @@ export function deriveRoomNodesForFloor(
     polygon: room.polygon,
     clearPolygon: room.clearPolygon,
     area: room.area,
+    ceilingHeight: floor.defaultCeilingHeight,
     // Omit the optional name when absent so the no-overrides projection stays
     // identical to slice 1 under exactOptionalPropertyTypes.
     ...(room.name !== undefined && { name: room.name }),

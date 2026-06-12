@@ -304,6 +304,7 @@ export { frameSceneCamera, DEFAULT_CAMERA_POSE } from './scene/camera-framing'
 export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
 export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
 export { wallHeight } from './scene/wall-height'
+export { ceilingHeight } from './scene/ceiling-height'
 export type { Contour, ContourSegment } from './scene/contour'
 export type {
   AssumedUnit,
