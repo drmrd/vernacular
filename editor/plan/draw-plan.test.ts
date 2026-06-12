@@ -145,6 +145,40 @@ describe('drawPlan', () => {
     expect(ops).toContain('closePath')
     expect(ops.lastIndexOf('fill')).toBeLessThan(ops.indexOf('stroke'))
   })
+
+  it("cuts a room's interior void out of its fill by drawing the hole ring as a second sub-path", () => {
+    const viewport = { scale: DEFAULT_PLAN_SCALE }
+    // A square void well inside the 4 m by 3 m room, given as a single closed ring.
+    const hole = [
+      { x: 1000, y: 1000 },
+      { x: 2000, y: 1000 },
+      { x: 2000, y: 2000 },
+      { x: 1000, y: 2000 },
+    ]
+    const donut: RoomSceneNode = { ...rectangleRoom('room:donut'), holes: [hole] }
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, {
+      walls: [],
+      rooms: [donut],
+      viewport,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+    })
+
+    // Every corner the fill path visits surfaces as a segment endpoint, since the
+    // fake records each lineTo target and the pen position it ran from.
+    const visited = recorder.segments.flatMap((segment) => [segment.from, segment.to])
+    for (const corner of hole) {
+      const screen = worldToScreen(corner, viewport)
+      expect(visited).toContainEqual([screen.x, screen.y])
+    }
+
+    // The void is cut from the same fill: the room is still painted with one fill,
+    // not a separate fill per ring.
+    expect(recorder.ops.filter((op) => op === 'fill')).toHaveLength(1)
+  })
 })
 
 describe('drawPlan ghost', () => {
