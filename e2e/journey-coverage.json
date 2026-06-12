@@ -32,7 +32,7 @@
     {
       "id": "opening-host-guard",
       "title": "a wall cannot host on an opening",
-      "status": "pending"
+      "status": "required"
     },
     { "id": "donut-room", "title": "derives a room with an interior void", "status": "pending" }
   ]
