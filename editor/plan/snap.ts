@@ -117,8 +117,8 @@ const DEGREES_PER_HALF_TURN = 180
 const ANGLE_STEP_DEG = 45
 const DEG_TO_RAD = Math.PI / DEGREES_PER_HALF_TURN
 
-/** Unit ray directions every 45 degrees off the world axes. */
-function worldDirections(): Vector[] {
+/** Build the eight unit ray directions at 45-degree intervals off the world axes. */
+function buildWorldDirections(): Vector[] {
   const directions: Vector[] = []
   for (let deg = 0; deg < DEGREES_PER_TURN; deg += ANGLE_STEP_DEG) {
     const radians = deg * DEG_TO_RAD
@@ -127,9 +127,17 @@ function worldDirections(): Vector[] {
   return directions
 }
 
-/** The candidate ray nearest the offset bearing, by largest dot product (a forward projection). */
-function nearestDirection(offset: Vector, directions: readonly Vector[]): Vector | null {
-  let best: Vector | null = null
+/** The eight world-axis directions at 45-degree intervals, computed once at load. */
+const WORLD_DIRECTIONS: readonly Vector[] = buildWorldDirections()
+
+/**
+ * The candidate ray nearest the offset bearing, by largest dot product. Maximizing
+ * the dot product finds the nearest bearing over the full circle (no atan2 needed)
+ * because all eight signed directions are candidates, so the most forward-aligned
+ * ray is the closest in angle. `directions` must be non-empty.
+ */
+function nearestDirection(offset: Vector, directions: readonly Vector[]): Vector {
+  let best: Vector | undefined
   let bestDot = -Infinity
   for (const direction of directions) {
     const dot = offset.x * direction.x + offset.y * direction.y
@@ -138,23 +146,28 @@ function nearestDirection(offset: Vector, directions: readonly Vector[]): Vector
       bestDot = dot
     }
   }
+  if (best === undefined) {
+    throw new Error('nearestDirection requires at least one candidate direction')
+  }
   return best
 }
 
-/** Lock the drawn direction to the nearest 45-degree ray off the world axes, projecting the cursor onto it. */
+/**
+ * Lock the drawn direction to the nearest 45-degree ray off the world axes,
+ * projecting the cursor onto it. This currently locks only to world-axis
+ * 45-degree increments; wall-relative angle directions are deferred to a later
+ * cycle in this slice.
+ */
 function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
   const origin = context.origin
-  if (context.freeAngle === true || origin === undefined) {
+  if (context.freeAngle || origin === undefined) {
     return null
   }
   const offset = { x: cursor.x - origin.x, y: cursor.y - origin.y }
   if (offset.x === 0 && offset.y === 0) {
     return null
   }
-  const direction = nearestDirection(offset, worldDirections())
-  if (direction === null) {
-    return null
-  }
+  const direction = nearestDirection(offset, WORLD_DIRECTIONS)
   const along = offset.x * direction.x + offset.y * direction.y
   return {
     point: { x: origin.x + along * direction.x, y: origin.y + along * direction.y },
