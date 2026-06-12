@@ -38,6 +38,7 @@ export interface WallSceneNode {
   start: Point
   end: Point
   thickness: number
+  height?: number
 }
 
 export interface RoomSceneNode {
@@ -130,6 +131,7 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
     start: wall.start,
     end: wall.end,
     thickness: wall.thickness,
+    height: floor.defaultCeilingHeight,
   }
 }
 
