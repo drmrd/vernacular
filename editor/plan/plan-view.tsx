@@ -341,6 +341,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
       selection: layers.selection,
       preferences: layers.preferences,
       snap: interaction.snap,
+      ...(interaction.preview ? { preview: interaction.preview } : {}),
     },
   }
 }

@@ -3,9 +3,11 @@ import { useState, type FocusEvent, type ReactElement } from 'react'
 import type { SceneGraph, UnitPreferences } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import { dimensionChips, type DimensionChip } from './dimension-chip'
+import type { PreviewSegment } from './draw-plan'
+import { formatReadout, segmentReadout } from './draw-readout'
 import { EntityProxy } from './entity-proxy'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
-import { selectionAnnouncement, snapAnnouncement } from './overlay-announce'
+import { angleLockAnnouncement, selectionAnnouncement, snapAnnouncement } from './overlay-announce'
 import type { SnapResult } from './snap'
 import { useOverlayKeyboard, type OverlayKeyboard } from './use-overlay-keyboard'
 import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
@@ -17,6 +19,9 @@ export interface PlanOverlayProps {
   selection: SelectionStore
   preferences: UnitPreferences
   snap: SnapResult | null
+  // The in-progress wall-draw segment, present only while drawing, which drives the
+  // live readout chip and the angle-lock announcement.
+  preview?: PreviewSegment
 }
 
 interface PillProps {
@@ -141,22 +146,59 @@ function ProxyListbox({
   )
 }
 
+// The live-region text. An engaged angle lock reads as its bearing ("Locked to 90
+// degrees"); otherwise the active snap, or the current selection, is announced.
+function liveAnnouncement(
+  snap: SnapResult | null,
+  preview: PreviewSegment | undefined,
+  selected: readonly OverlayEntity[],
+): string {
+  if (snap?.kind === 'angle' && preview) {
+    return angleLockAnnouncement(segmentReadout(preview).bearingDeg)
+  }
+  if (snap) {
+    return snapAnnouncement(snap)
+  }
+  return selectionAnnouncement(selected)
+}
+
+// The near-cursor readout pill for the in-progress wall draw: its length and bearing,
+// anchored at the (snapped) segment end and offset to the side so it stays legible.
+function ReadoutChip({
+  preview,
+  viewport,
+  preferences,
+}: {
+  preview: PreviewSegment
+  viewport: Viewport
+  preferences: UnitPreferences
+}): ReactElement {
+  return (
+    <PositionedPill
+      className="plan-overlay__readout"
+      screen={worldToScreen(preview.end, viewport)}
+      text={formatReadout(segmentReadout(preview), preferences)}
+    />
+  )
+}
+
 /**
  * The accessibility overlay layered over the plan Canvas: one keyboard/AT proxy per
  * selectable entity (positioned via worldToScreen), the dimension chips, a focus
- * tooltip, and a polite live region announcing selection and snap changes. The
- * container is pointer-events: none so pointer selection stays on the Canvas
- * hit-test; only the focusable proxies receive keyboard events. Coverage-excluded
- * glue validated by the accessibility end-to-end spec.
+ * tooltip, the in-progress draw readout, and a polite live region announcing selection,
+ * snap, and angle-lock changes. The container is pointer-events: none so pointer
+ * selection stays on the Canvas hit-test; only the focusable proxies receive keyboard
+ * events. Coverage-excluded glue validated by the accessibility and smart-angle-snap
+ * end-to-end specs.
  */
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
-  const { viewport, graph, selectedIds, selection, preferences, snap } = props
+  const { viewport, graph, selectedIds, selection, preferences, snap, preview } = props
   const entities = overlayEntities(graph, selectedIds, preferences)
   const keyboard = useOverlayKeyboard(entities.length, selection)
   const [focused, setFocused] = useState(false)
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
-  const announcement = snap ? snapAnnouncement(snap) : selectionAnnouncement(selected)
+  const announcement = liveAnnouncement(snap, preview, selected)
 
   return (
     <div className="plan-overlay">
@@ -168,6 +210,9 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       />
       <ChipLayer chips={dimensionChips(graph.dimensions, viewport, preferences)} />
       <FocusTooltip entity={focusedEntity} viewport={viewport} visible={focused} />
+      {preview ? (
+        <ReadoutChip preview={preview} viewport={viewport} preferences={preferences} />
+      ) : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
         {announcement}
       </div>

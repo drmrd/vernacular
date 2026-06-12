@@ -61,6 +61,23 @@
   background: rgba(15, 23, 42, 0.95);
 }
 
+/*
+ * The in-progress draw readout (length and bearing). It shares the chip's fill and
+ * tabular figures but sits to the upper right of the snapped segment end, so the moving
+ * cursor never covers it.
+ */
+.plan-overlay__readout {
+  transform: translate(12px, calc(-100% - 8px));
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(33, 37, 41, 0.92);
+  color: #fff;
+  font: 11px sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* The live region is available to assistive technology but visually hidden. */
 .plan-overlay__live {
   position: absolute;
