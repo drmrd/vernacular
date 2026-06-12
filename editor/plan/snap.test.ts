@@ -434,7 +434,8 @@ describe('snapPoint snap preferences gating', () => {
   it('skips a disabled snap kind so it does not snap to a near endpoint', () => {
     // The cursor sits within tolerance of the start endpoint (1000, 1000), which
     // normally wins. With the endpoint kind disabled, that step is skipped and the
-    // snap falls through to the in-range grid node at (1000, 1000).
+    // chain continues to the next enabled step: the cursor is two millimeters off the
+    // wall line, so the edge snap resolves onto it at the cursor's x.
     const wall = wallNode()
     const context: SnapContext = {
       walls: [wall],
@@ -445,7 +446,8 @@ describe('snapPoint snap preferences gating', () => {
 
     const result = snapPoint({ x: 1003, y: 998 }, context)
     expect(result?.kind).not.toBe('endpoint')
-    expect(result).toEqual({ point: { x: 1000, y: 1000 }, kind: 'grid' })
+    expect(result?.kind).toBe('edge')
+    expect(result?.point).toEqual({ x: 1003, y: 1000 })
   })
 
   it('lets a perpendicular snap resolve when the angle kind is disabled by preference', () => {

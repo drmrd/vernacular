@@ -227,21 +227,11 @@ function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
     : { point, kind: 'angle', referenceId: ray.referenceId }
 }
 
-/** Whether `point` lies within `toleranceMm` of either end of `wall`. */
-function isWallCorner(point: Point, wall: WallSceneNode, toleranceMm: number): boolean {
-  return distance(point, wall.start) <= toleranceMm || distance(point, wall.end) <= toleranceMm
-}
-
-/**
- * Snap onto the nearest point along any wall, clamped to its segment ends. A point
- * within tolerance of a corner is dropped: the higher-priority endpoint step owns the
- * catch there, so the on-edge point is redundant and the edge step yields the corner.
- */
+/** Snap onto the nearest point along any wall, clamped to its segment ends. */
 function edgeSnap(cursor: Point, context: SnapContext): Candidate | null {
-  return nearestFeature(cursor, context, (wall) => {
-    const point = nearestPointOnSegment(cursor, wall.start, wall.end)
-    return isWallCorner(point, wall, context.toleranceMm) ? [] : [point]
-  })
+  return nearestFeature(cursor, context, (wall) => [
+    nearestPointOnSegment(cursor, wall.start, wall.end),
+  ])
 }
 
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
