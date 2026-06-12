@@ -139,12 +139,14 @@ function isContainedBy(inner: Room, outer: Room): boolean {
  * Returns `undefined` when no room contains `inner`.
  */
 function immediateContainer(inner: Room, rooms: readonly Room[]): Room | undefined {
-  let container: Room | undefined
-  for (const candidate of rooms) {
-    if (candidate === inner || !isContainedBy(inner, candidate)) continue
-    if (container === undefined || candidate.area < container.area) container = candidate
-  }
-  return container
+  const containers = rooms.filter(
+    (candidate) => candidate !== inner && isContainedBy(inner, candidate),
+  )
+  return containers.reduce<Room | undefined>(
+    (smallest, candidate) =>
+      smallest === undefined || candidate.area < smallest.area ? candidate : smallest,
+    undefined,
+  )
 }
 
 /**
@@ -157,9 +159,12 @@ function assignHoles(rooms: readonly Room[]): Room[] {
   for (const inner of rooms) {
     const container = immediateContainer(inner, rooms)
     if (container === undefined) continue
-    const holes = holesByRoom.get(container) ?? []
-    holes.push(inner.polygon)
-    holesByRoom.set(container, holes)
+    const existing = holesByRoom.get(container)
+    if (existing !== undefined) {
+      existing.push(inner.polygon)
+    } else {
+      holesByRoom.set(container, [inner.polygon])
+    }
   }
   return rooms.map((room) => withHoles(room, holesByRoom.get(room)))
 }
