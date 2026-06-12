@@ -305,6 +305,7 @@ export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } fr
 export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
 export { wallHeight } from './scene/wall-height'
 export { ceilingHeight } from './scene/ceiling-height'
+export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export type {
   AssumedUnit,
