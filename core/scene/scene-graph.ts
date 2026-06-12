@@ -49,6 +49,8 @@ export interface RoomSceneNode {
   clearPolygon: Point[]
   area: number
   name?: string
+  /** Interior void rings in floor-plan space, mirroring the derived room's holes. */
+  holes?: Point[][]
 }
 
 export interface UnderlaySceneNode {
@@ -211,6 +213,9 @@ export function deriveRoomNodesForFloor(
     // Omit the optional name when absent so the no-overrides projection stays
     // identical to slice 1 under exactOptionalPropertyTypes.
     ...(room.name !== undefined && { name: room.name }),
+    // Omit holes for a plain room so its projection stays identical under
+    // exactOptionalPropertyTypes; only a donut or courtyard room carries them.
+    ...(room.holes !== undefined && { holes: room.holes }),
   }))
 }
 

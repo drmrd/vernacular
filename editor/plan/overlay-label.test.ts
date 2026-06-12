@@ -29,7 +29,7 @@ function wall(start: Point, end: Point): WallSceneNode {
   return { id: 'wall:w1', kind: 'wall', floorId: 'g', start, end, thickness: WALL_THICKNESS_MM }
 }
 
-function room(area: number, name?: string): RoomSceneNode {
+function room(area: number, name?: string, holes?: Point[][]): RoomSceneNode {
   const polygon: Point[] = [{ x: 0, y: 0 }]
   return {
     id: 'room:r1',
@@ -39,8 +39,29 @@ function room(area: number, name?: string): RoomSceneNode {
     clearPolygon: polygon,
     area,
     ...(name !== undefined && { name }),
+    ...(holes !== undefined && { holes }),
   }
 }
+
+const ONE_HOLE: Point[][] = [
+  [
+    { x: 1, y: 1 },
+    { x: 2, y: 1 },
+    { x: 2, y: 2 },
+  ],
+]
+const TWO_HOLES: Point[][] = [
+  [
+    { x: 1, y: 1 },
+    { x: 2, y: 1 },
+    { x: 2, y: 2 },
+  ],
+  [
+    { x: 3, y: 3 },
+    { x: 4, y: 3 },
+    { x: 4, y: 4 },
+  ],
+]
 
 function opening(type: string, width: number): OpeningSceneNode {
   return {
@@ -83,6 +104,21 @@ describe('ariaLabel', () => {
   })
 
   it('labels an unnamed room without a name segment', () => {
+    const node: SelectableSceneNode = room(ROOM_AREA_SQ_MM)
+    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Room, 12 m²')
+  })
+
+  it('announces a single interior void on an unnamed room', () => {
+    const node: SelectableSceneNode = room(ROOM_AREA_SQ_MM, undefined, ONE_HOLE)
+    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Room, 12 m², with an interior void')
+  })
+
+  it('pluralizes the clause when a room has more than one interior void', () => {
+    const node: SelectableSceneNode = room(ROOM_AREA_SQ_MM, undefined, TWO_HOLES)
+    expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Room, 12 m², with 2 interior voids')
+  })
+
+  it('omits the void clause for a room with no holes', () => {
     const node: SelectableSceneNode = room(ROOM_AREA_SQ_MM)
     expect(ariaLabel(node, DEFAULT_METRIC_PREFERENCES)).toBe('Room, 12 m²')
   })
