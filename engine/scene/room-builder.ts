@@ -83,6 +83,16 @@ function slabSections(boundary: Point[], thickness: number): SlabSection[] {
   ]
 }
 
+/** A non-indexed buffer geometry from a flat world-position array. */
+function geometryFromPositions(positions: number[]): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
+  )
+  return geometry
+}
+
 /** Adds one material group per section, advancing the running vertex offset. */
 function addSlabGroups(geometry: THREE.BufferGeometry, sections: SlabSection[]): void {
   let runningStart = 0
@@ -102,12 +112,7 @@ function addSlabGroups(geometry: THREE.BufferGeometry, sections: SlabSection[]):
 function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
   const boundary = canonicalOuterLoop(node.clearPolygon)
   const sections = slabSections(boundary, floorSlabThickness())
-  const positions = sections.flatMap((section) => section.positions)
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
-  )
+  const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
   addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
   const slabMaterials = sections.map((section) => materials.material(section.role))
@@ -123,11 +128,7 @@ function buildCeilingMesh(node: RoomSceneNode, materials: MaterialProvider): THR
   const boundary = canonicalOuterLoop(node.clearPolygon)
   const triangles = slabCapTriangles(boundary)
   const positions = slabCapPositions(boundary, triangles, ceilingHeight(node))
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
-  )
+  const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
   return new THREE.Mesh(geometry, materials.material('base'))
 }
