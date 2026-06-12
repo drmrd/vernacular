@@ -1,14 +1,8 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
-import * as THREE from 'three'
-import {
-  frameSceneCamera,
-  type Bounds3,
-  type CameraPose,
-  type Point,
-  type SceneGraph,
-} from '../../core'
-import { BasicLightingProvider, buildScene, createSceneRenderer } from '../../engine'
+import { type CameraPose, type Point, type SceneGraph } from '../../core'
+import { createSceneRenderer } from '../../engine'
+import { buildFramedScene } from './framed-scene'
 
 // Deterministic fixture canvas size, pinned so the committed baseline is pixel-stable
 // across runs and machines. Kept small to keep the baseline PNG lightweight.
@@ -54,23 +48,6 @@ const SHELL_FIXTURE: SceneGraph = {
   stairs: [],
 }
 
-function boundsOf(object: THREE.Object3D): Bounds3 {
-  const box = new THREE.Box3().setFromObject(object)
-  return {
-    min: { x: box.min.x, y: box.min.y, z: box.min.z },
-    max: { x: box.max.x, y: box.max.y, z: box.max.z },
-  }
-}
-
-// Builds the wall shell, frames a camera on its bounds (before lighting is added, so the
-// lights do not perturb the framing), then adds the fixed basic lighting.
-function buildShell(): { root: THREE.Group; pose: CameraPose } {
-  const root = buildScene(SHELL_FIXTURE)
-  const pose = frameSceneCamera(boundsOf(root))
-  new BasicLightingProvider().apply(root)
-  return { root, pose }
-}
-
 // Renders exactly one frame on mount and never again, so the screenshot is deterministic
 // and never races an animation tick (the Canvas runs in `frameloop="never"`).
 function StaticFrame({ target }: { target: CameraPose['target'] }) {
@@ -91,7 +68,7 @@ function StaticFrame({ target }: { target: CameraPose['target'] }) {
  * the App), so a normal page load never reaches it.
  */
 export function SceneHarnessView() {
-  const { root, pose } = useMemo(buildShell, [])
+  const { root, pose } = useMemo(() => buildFramedScene(SHELL_FIXTURE), [])
 
   return (
     <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>

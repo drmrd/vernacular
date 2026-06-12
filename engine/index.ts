@@ -1,5 +1,6 @@
 export type { SceneRoot } from './scene/build-scene'
 export { buildScene } from './scene/build-scene'
+export { sceneBounds } from './scene/scene-bounds'
 export type { LightingProvider } from './lighting/lighting-provider'
 export { BasicLightingProvider } from './lighting/basic-lighting-provider'
 export type { RenderBackend } from './renderer/detect-backend'

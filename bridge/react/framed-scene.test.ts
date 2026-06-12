@@ -70,10 +70,9 @@ describe('buildFramedScene', () => {
 
     const { pose } = buildFramedScene(graph)
 
+    // DEFAULT_CAMERA_POSE carries finite, non-NaN near/far, so this equality also
+    // guards the empty-scene regression: an Infinity-valued bounds would frame to a
+    // NaN pose that could never equal the fixed default.
     expect(pose).toEqual(DEFAULT_CAMERA_POSE)
-    expect(Number.isFinite(pose.near)).toBe(true)
-    expect(Number.isFinite(pose.far)).toBe(true)
-    expect(Number.isNaN(pose.near)).toBe(false)
-    expect(Number.isNaN(pose.far)).toBe(false)
   })
 })
