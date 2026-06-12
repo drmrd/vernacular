@@ -1,6 +1,6 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
-import { type CameraPose, type Point, type SceneGraph } from '../../core'
+import { type CameraPose, type Point, type RoomSceneNode, type SceneGraph } from '../../core'
 import { createSceneRenderer } from '../../engine'
 import { buildFramedScene } from './framed-scene'
 
@@ -20,6 +20,9 @@ const SHELL_THICKNESS = 120
 const SHELL_HEIGHT = 2600
 const SHELL_WIDTH_X = 4000
 const SHELL_DEPTH_Z = 3000
+// Half the 120 mm wall thickness: the clear floor area sits inset from the
+// centerline rectangle by this much, meeting the inner faces of the walls.
+const SHELL_CLEAR_INSET = 60
 
 function shellWall(id: string, start: Point, end: Point) {
   return {
@@ -33,6 +36,28 @@ function shellWall(id: string, start: Point, end: Point) {
   }
 }
 
+// The single room the four walls enclose: its clear-area floor slab and ceiling
+// render alongside the walls so the harness baseline covers the room shell.
+const SHELL_ROOM: RoomSceneNode = {
+  id: 'room:demo',
+  kind: 'room',
+  floorId: 'demo',
+  polygon: [
+    { x: 0, y: 0 },
+    { x: SHELL_WIDTH_X, y: 0 },
+    { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z },
+    { x: 0, y: SHELL_DEPTH_Z },
+  ],
+  clearPolygon: [
+    { x: SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+    { x: SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+  ],
+  area: (SHELL_WIDTH_X - SHELL_THICKNESS) * (SHELL_DEPTH_Z - SHELL_THICKNESS),
+  ceilingHeight: SHELL_HEIGHT,
+}
+
 const SHELL_FIXTURE: SceneGraph = {
   nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
   walls: [
@@ -41,7 +66,7 @@ const SHELL_FIXTURE: SceneGraph = {
     shellWall('wall:north', { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }, { x: 0, y: SHELL_DEPTH_Z }),
     shellWall('wall:west', { x: 0, y: SHELL_DEPTH_Z }, { x: 0, y: 0 }),
   ],
-  rooms: [],
+  rooms: [SHELL_ROOM],
   underlays: [],
   openings: [],
   dimensions: [],
