@@ -415,6 +415,79 @@ describe('snapPoint wall-line intersection snapping', () => {
   })
 })
 
+describe('snapPoint snap preferences gating', () => {
+  it('returns a free cursor when the master snap toggle is off', () => {
+    // The same setup the endpoint suite uses: the cursor sits within tolerance of
+    // the start endpoint (1000, 1000), which normally snaps. With the master off,
+    // every snap kind is suppressed, so the cursor stays free.
+    const wall = wallNode()
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 70,
+      toleranceMm: 50,
+      enabled: false,
+    }
+
+    expect(snapPoint({ x: 1003, y: 998 }, context)).toBeNull()
+  })
+
+  it('skips a disabled snap kind so it does not snap to a near endpoint', () => {
+    // The cursor sits within tolerance of the start endpoint (1000, 1000), which
+    // normally wins. With the endpoint kind disabled, that step is skipped and the
+    // chain continues to the next enabled step: the cursor is two millimeters off the
+    // wall line, so the edge snap resolves onto it at the cursor's x.
+    const wall = wallNode()
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 1000,
+      toleranceMm: 50,
+      disabledKinds: new Set(['endpoint']),
+    }
+
+    const result = snapPoint({ x: 1003, y: 998 }, context)
+    expect(result?.kind).not.toBe('endpoint')
+    expect(result?.kind).toBe('edge')
+    expect(result?.point).toEqual({ x: 1003, y: 1000 })
+  })
+
+  it('lets a perpendicular snap resolve when the angle kind is disabled by preference', () => {
+    // The perpendicular setup, but the default-on angle lock is suppressed via the
+    // disabled-kinds preference rather than the momentary freeAngle modifier. The
+    // perpendicular line through the origin is x = 0; the cursor sits 8 mm right of
+    // it and 2000 mm down it.
+    const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+      disabledKinds: new Set(['angle']),
+    }
+
+    const result = snapPoint({ x: 8, y: 2000 }, context)
+    expect(result?.kind).toBe('perpendicular')
+    expect(result?.point).toEqual({ x: 0, y: 2000 })
+    expect(result?.referenceId).toBe(wall.id)
+  })
+
+  it('snaps exactly as today when neither preference field is present', () => {
+    // Guards that the new optional fields are purely additive: a context that sets
+    // neither enabled nor disabledKinds resolves the endpoint snap unchanged.
+    const wall = wallNode()
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 70,
+      toleranceMm: 50,
+    }
+
+    expect(snapPoint({ x: 1003, y: 998 }, context)).toEqual({
+      point: { x: 1000, y: 1000 },
+      kind: 'endpoint',
+      referenceId: wall.id,
+    })
+  })
+})
+
 describe('snapPoint with nothing in range', () => {
   it('returns null when the grid is disabled, no feature is in range, and no origin is set', () => {
     const wall = wallNode({ start: { x: 9000, y: 9000 }, end: { x: 9500, y: 9000 } })

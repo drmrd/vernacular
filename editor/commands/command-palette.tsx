@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { useViewMode } from '../viewport/view-mode'
+import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import type { CommandContext, EditorCommand } from './command'
 import { createEditorCommands } from './editor-commands'
 import { createViewCommands } from './view-commands'
+import { createSnapCommands } from './snap-commands'
 import { useCommandPalette } from './command-context'
 
 interface CommandPaletteDialogProps {
@@ -75,7 +77,15 @@ export function CommandPalette() {
   const activeFloorId = useActiveFloorId()
   const graph = useSceneGraph()
   const view = useViewMode()
-  const commands = useMemo(() => [...createEditorCommands(), ...createViewCommands(view)], [view])
+  const snapStore = useSnapPreferencesStore()
+  const commands = useMemo(
+    () => [
+      ...createEditorCommands(),
+      ...createViewCommands(view),
+      ...createSnapCommands(snapStore),
+    ],
+    [view, snapStore],
+  )
   if (!isOpen) {
     return null
   }

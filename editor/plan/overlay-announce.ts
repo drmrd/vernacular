@@ -25,3 +25,11 @@ export function snapAnnouncement(snap: SnapResult | null): string {
 export function angleLockAnnouncement(bearingDeg: number): string {
   return `Locked to ${Math.round(bearingDeg)} degrees`
 }
+
+/** Visible status text naming the engaged snap kind, or empty when none is active. */
+export function snapStatusLabel(snap: SnapResult | null): string {
+  if (snap === null) {
+    return ''
+  }
+  return `Snap: ${snap.kind}`
+}

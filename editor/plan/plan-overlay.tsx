@@ -7,7 +7,12 @@ import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
 import { EntityProxy } from './entity-proxy'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
-import { angleLockAnnouncement, selectionAnnouncement, snapAnnouncement } from './overlay-announce'
+import {
+  angleLockAnnouncement,
+  selectionAnnouncement,
+  snapAnnouncement,
+  snapStatusLabel,
+} from './overlay-announce'
 import type { SnapResult } from './snap'
 import { useOverlayKeyboard, type OverlayKeyboard } from './use-overlay-keyboard'
 import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
@@ -197,6 +202,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
   const announcement = liveAnnouncement(snap, preview, selected)
+  const snapStatus = snapStatusLabel(snap)
 
   return (
     <div className="plan-overlay">
@@ -211,6 +217,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       {preview ? (
         <ReadoutChip preview={preview} viewport={viewport} preferences={preferences} />
       ) : null}
+      {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
         {announcement}
       </div>

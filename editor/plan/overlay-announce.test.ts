@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { OverlayEntity } from './overlay-entities'
 import type { SnapResult } from './snap'
-import { angleLockAnnouncement, selectionAnnouncement, snapAnnouncement } from './overlay-announce'
+import {
+  angleLockAnnouncement,
+  selectionAnnouncement,
+  snapAnnouncement,
+  snapStatusLabel,
+} from './overlay-announce'
 
 const ORIGIN = { x: 0, y: 0 }
 const WALL_LABEL = 'Wall, 3000 mm'
@@ -53,5 +58,16 @@ describe('angleLockAnnouncement', () => {
 
   it('rounds the bearing to a whole number', () => {
     expect(angleLockAnnouncement(89.6)).toBe('Locked to 90 degrees')
+  })
+})
+
+describe('snapStatusLabel', () => {
+  it('is empty when nothing is snapping', () => {
+    expect(snapStatusLabel(null)).toBe('')
+  })
+
+  it('names the engaged snap kind for a visible status readout', () => {
+    const snap: SnapResult = { point: ORIGIN, kind: 'endpoint' }
+    expect(snapStatusLabel(snap)).toBe('Snap: endpoint')
   })
 })

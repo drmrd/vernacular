@@ -26,6 +26,10 @@ export interface SnapContext {
   tracePoints?: readonly Point[]
   openVertices?: readonly Point[]
   freeAngle?: boolean
+  /** Master switch. When `false`, snapping is off entirely and `snapPoint` returns null. */
+  enabled?: boolean
+  /** Snap kinds to skip in the chain; a kind in this set never produces a result. */
+  disabledKinds?: ReadonlySet<SnapKind>
 }
 
 export const DEFAULT_SNAP_GRID_MM = 100
@@ -282,8 +286,11 @@ function nearestIntersection(cursor: Point, context: SnapContext): Candidate | n
   return best
 }
 
-function asResult(candidate: Candidate, kind: SnapKind): SnapResult {
-  return { point: candidate.point, kind, referenceId: candidate.referenceId }
+/** Tag a candidate with its kind, passing a null candidate through unchanged. */
+function asResult(candidate: Candidate | null, kind: SnapKind): SnapResult | null {
+  return candidate === null
+    ? null
+    : { point: candidate.point, kind, referenceId: candidate.referenceId }
 }
 
 /** The nearest of the given points within tolerance, or null when none qualifies. */
@@ -313,52 +320,62 @@ function gridSnap(cursor: Point, gridSpacingMm: number): SnapResult | null {
   return { point: { x: round(cursor.x), y: round(cursor.y) }, kind: 'grid' }
 }
 
+/** A snap kind is enabled unless the context lists it among the disabled kinds. */
+function isKindEnabled(context: SnapContext, kind: SnapKind): boolean {
+  return !(context.disabledKinds?.has(kind) ?? false)
+}
+
 /** Wall-independent point-set snaps: the active trace, then open-run corners. */
 function pointSetSnap(cursor: Point, context: SnapContext): SnapResult | null {
   const trace = nearestPointWithin(cursor, context.tracePoints ?? [], context.toleranceMm)
   if (trace !== null) {
     return { point: trace, kind: 'trace' }
   }
-  const openCorner = nearestPointWithin(cursor, context.openVertices ?? [], context.toleranceMm)
-  if (openCorner !== null) {
-    return { point: openCorner, kind: 'endpoint' }
+  const corners = isKindEnabled(context, 'endpoint') ? (context.openVertices ?? []) : []
+  const openCorner = nearestPointWithin(cursor, corners, context.toleranceMm)
+  return openCorner === null ? null : { point: openCorner, kind: 'endpoint' }
+}
+
+/** A snap producer: the chained result for a cursor, or null when it does not engage. */
+type SnapProducer = (cursor: Point, context: SnapContext) => SnapResult | null
+
+/** One ordered snap step: its kind for gating, paired with the result it produces. */
+type SnapStep = readonly [SnapKind, SnapProducer]
+
+/** Map a candidate-producing snap onto a step whose result carries the given kind. */
+function candidateStep(
+  kind: SnapKind,
+  find: (cursor: Point, context: SnapContext) => Candidate | null,
+): SnapStep {
+  return [kind, (cursor, context) => asResult(find(cursor, context), kind)]
+}
+
+/** The wall-geometry and directional snaps in priority order, ending with the grid fallback. */
+const FEATURE_STEPS: readonly SnapStep[] = [
+  candidateStep('endpoint', (cursor, ctx) => nearestFeature(cursor, ctx, (w) => [w.start, w.end])),
+  candidateStep('intersection', nearestIntersection),
+  candidateStep('midpoint', (cursor, ctx) => nearestFeature(cursor, ctx, (w) => [midpointOf(w)])),
+  candidateStep('edge', edgeSnap),
+  ['angle', angleSnap],
+  candidateStep('perpendicular', perpendicularSnap),
+  candidateStep('parallel', parallelSnap),
+  ['grid', (cursor, ctx) => gridSnap(cursor, ctx.gridSpacingMm)],
+]
+
+/** Wall-geometry and directional snaps in priority order, skipping any disabled kind. */
+function featureSnap(cursor: Point, context: SnapContext): SnapResult | null {
+  for (const [kind, produce] of FEATURE_STEPS) {
+    const result = isKindEnabled(context, kind) ? produce(cursor, context) : null
+    if (result !== null) {
+      return result
+    }
   }
   return null
 }
 
-/** Wall-geometry and directional snaps in priority order, with the grid fallback. */
-function featureSnap(cursor: Point, context: SnapContext): SnapResult | null {
-  const endpoint = nearestFeature(cursor, context, (wall) => [wall.start, wall.end])
-  if (endpoint !== null) {
-    return asResult(endpoint, 'endpoint')
-  }
-  const intersection = nearestIntersection(cursor, context)
-  if (intersection !== null) {
-    return asResult(intersection, 'intersection')
-  }
-  const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
-  if (midpoint !== null) {
-    return asResult(midpoint, 'midpoint')
-  }
-  const edge = edgeSnap(cursor, context)
-  if (edge !== null) {
-    return asResult(edge, 'edge')
-  }
-  const angle = angleSnap(cursor, context)
-  if (angle !== null) {
-    return angle
-  }
-  const perpendicular = perpendicularSnap(cursor, context)
-  if (perpendicular !== null) {
-    return asResult(perpendicular, 'perpendicular')
-  }
-  const parallel = parallelSnap(cursor, context)
-  if (parallel !== null) {
-    return asResult(parallel, 'parallel')
-  }
-  return gridSnap(cursor, context.gridSpacingMm)
-}
-
 export function snapPoint(cursor: Point, context: SnapContext): SnapResult | null {
+  if (context.enabled === false) {
+    return null
+  }
   return pointSetSnap(cursor, context) ?? featureSnap(cursor, context)
 }
