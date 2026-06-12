@@ -73,18 +73,41 @@ function slabCapTriangles(boundary: Point[], holeLoops: Point[][]): Triangle[] {
   return THREE.ShapeUtils.triangulateShape(contour, holes) as Triangle[]
 }
 
+/**
+ * The room's horizontal cap triangulation, shared by the floor slab and the
+ * ceiling. `triangles` index into `points` (the outer boundary followed by each
+ * hole loop), so any interior void is already cut out. `boundary` separately
+ * drives the slab's vertical sides.
+ */
+interface RoomCapGeometry {
+  boundary: Point[]
+  points: Point[]
+  triangles: Triangle[]
+}
+
+function roomCapGeometry(node: RoomSceneNode): RoomCapGeometry {
+  const boundary = canonicalOuterLoop(node.clearPolygon)
+  const holeLoops = (node.holes ?? []).map(canonicalHoleLoop)
+  return {
+    boundary,
+    points: [...boundary, ...holeLoops.flat()],
+    triangles: slabCapTriangles(boundary, holeLoops),
+  }
+}
+
 /** The slab's three contiguous sections, in geometry order: top, base, sides. */
-function slabSections(boundary: Point[], holeLoops: Point[][], thickness: number): SlabSection[] {
-  const points = [...boundary, ...holeLoops.flat()]
-  const triangles = slabCapTriangles(boundary, holeLoops)
+function slabSections(cap: RoomCapGeometry, thickness: number): SlabSection[] {
   // The triangulation winds the caps to face down after the orientation-flipping
   // axis map, so the upward (top) cap reverses its winding to face `+Y` while the
   // downward (base) cap keeps the order to face `-Y`.
-  const topTriangles = reverseTriangleWinding(triangles)
+  const topTriangles = reverseTriangleWinding(cap.triangles)
   return [
-    { role: 'top', positions: slabCapPositions(points, topTriangles, FLOOR_DATUM_Y) },
-    { role: 'base', positions: slabCapPositions(points, triangles, FLOOR_DATUM_Y - thickness) },
-    { role: 'exteriorFace', positions: slabSidePositions(boundary, thickness) },
+    { role: 'top', positions: slabCapPositions(cap.points, topTriangles, FLOOR_DATUM_Y) },
+    {
+      role: 'base',
+      positions: slabCapPositions(cap.points, cap.triangles, FLOOR_DATUM_Y - thickness),
+    },
+    { role: 'exteriorFace', positions: slabSidePositions(cap.boundary, thickness) },
   ]
 }
 
@@ -115,9 +138,7 @@ function addSlabGroups(geometry: THREE.BufferGeometry, sections: SlabSection[]):
  * Each section draws its own surface role through a per-section material group.
  */
 function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
-  const boundary = canonicalOuterLoop(node.clearPolygon)
-  const holeLoops = (node.holes ?? []).map(canonicalHoleLoop)
-  const sections = slabSections(boundary, holeLoops, floorSlabThickness())
+  const sections = slabSections(roomCapGeometry(node), floorSlabThickness())
   const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
   addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
@@ -131,11 +152,8 @@ function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.
  * faces world `-Y` (down into the room), and draws the `base` role.
  */
 function buildCeilingMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
-  const boundary = canonicalOuterLoop(node.clearPolygon)
-  const holeLoops = (node.holes ?? []).map(canonicalHoleLoop)
-  const points = [...boundary, ...holeLoops.flat()]
-  const triangles = slabCapTriangles(boundary, holeLoops)
-  const positions = slabCapPositions(points, triangles, ceilingHeight(node))
+  const cap = roomCapGeometry(node)
+  const positions = slabCapPositions(cap.points, cap.triangles, ceilingHeight(node))
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
   return new THREE.Mesh(geometry, materials.material('base'))
