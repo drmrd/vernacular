@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { createEditorSession } from './editor-session'
-import { addFloor, addWall, createEmptyProject, type Project } from '../../core'
+import {
+  addFloor,
+  addWall,
+  assignSurfacePaint,
+  colorFromHex,
+  createEmptyProject,
+  resolveSurfacePaint,
+  type Project,
+} from '../../core'
 
 function emptyProject(): Project {
   return createEmptyProject({
@@ -103,5 +111,17 @@ describe('createEditorSession subscription', () => {
     session.dispatch(addWall(floorId, { x: 0, y: 0 }, { x: 500, y: 0 }))
 
     expect(session.getSceneGraph().walls).toHaveLength(1)
+  })
+
+  it('applies a surface paint assignment dispatched through the session', () => {
+    const session = createEditorSession(emptyProject())
+    const ref = { kind: 'wall-face', wallId: 'w1', side: 'left' } as const
+
+    session.dispatch(assignSurfacePaint(ref, colorFromHex('#9aa583'), 'matte'))
+
+    const treatment = resolveSurfacePaint(session.getProject(), ref)
+    expect(treatment).toBeDefined()
+    expect(treatment?.kind).toBe('solid')
+    expect(treatment?.color.srgbHex).toBe(colorFromHex('#9aa583').srgbHex)
   })
 })

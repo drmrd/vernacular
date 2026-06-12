@@ -35,6 +35,7 @@ import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
+import { useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
@@ -100,7 +101,7 @@ interface PlanLayers {
  * of the per-render hook-result objects. The endpoint drag and the wall tool
  * never preview at once, so a single resolved preview leaf covers both.
  */
-function buildScene(inputs: PlanLayers): PlanScene {
+function buildScene(inputs: PlanLayers, surfacePaint: PlanScene['surfacePaint']): PlanScene {
   const { graph, interaction, dimensionTool, planSelection } = inputs
   const { wallEditing, underlayLayer, openingLayer } = inputs
   return {
@@ -121,6 +122,7 @@ function buildScene(inputs: PlanLayers): PlanScene {
     stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
     ghost: inputs.selectionMove.ghost,
+    surfacePaint,
   }
 }
 
@@ -228,7 +230,8 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
  */
 function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanController {
   const layers = usePlanLayers(canvasRef, traceMode)
-  usePlanRedraw(canvasRef, buildScene(layers))
+  const surfacePaint = useSurfacePaintLayer()
+  usePlanRedraw(canvasRef, buildScene(layers, surfacePaint))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
   return {

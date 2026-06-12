@@ -36,6 +36,9 @@ export interface PlanScene {
   calibration: PreviewSegment | undefined
   // The translated ghost of the selection during a move-drag, empty otherwise.
   ghost: readonly PreviewSegment[]
+  // The per-face treatment lookup and active surface the plan renders as paint
+  // bands and a highlight beneath the wall strokes.
+  surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>
 }
 
 /**
@@ -58,6 +61,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     openings: scene.openings,
     dimensions: scene.dimensions,
     stairs: scene.stairs,
+    surfacePaint: scene.surfacePaint,
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -98,5 +102,6 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
     scene.stairs,
     scene.calibration,
     scene.ghost,
+    scene.surfacePaint,
   ])
 }
