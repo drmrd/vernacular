@@ -4,10 +4,12 @@ import type { DrawPlanOptions } from './draw-plan'
 import {
   snapPoint,
   DEFAULT_SNAP_GRID_MM,
-  SNAP_PIXEL_TOLERANCE,
   type SnapContext,
+  type SnapKind,
   type SnapResult,
 } from './snap'
+import { TOGGLABLE_SNAP_KINDS, type SnapPreferences } from './snap-preferences'
+import { useOptionalSnapPreferences } from './snap-preferences-context'
 import type { Viewport } from './viewport'
 
 interface SnappingInputs {
@@ -38,20 +40,26 @@ export interface Snapping {
   clear: () => void
 }
 
-function buildContext({
-  walls,
-  viewport,
-  origin,
-  tracePoints,
-  openVertices,
-  freeAngle,
-}: SnappingInputs): SnapContext {
+/** The kinds the preferences have turned off, as the set the snap chain skips. */
+function disabledKindsFor(preferences: SnapPreferences): ReadonlySet<SnapKind> {
+  return new Set<SnapKind>(TOGGLABLE_SNAP_KINDS.filter((kind) => !preferences.kinds[kind]))
+}
+
+/**
+ * Build the snap context from the live inputs and the user's snap preferences. The
+ * preference radius (in screen pixels) maps to a varying world tolerance across zoom,
+ * the master flag gates snapping entirely, and a toggled-off kind is skipped.
+ */
+export function buildSnapContext(
+  { walls, viewport, origin, tracePoints, openVertices, freeAngle }: SnappingInputs,
+  preferences: SnapPreferences,
+): SnapContext {
   return {
     walls,
     gridSpacingMm: DEFAULT_SNAP_GRID_MM,
-    // A fixed pixel tolerance maps to a varying world tolerance across zoom:
-    // generous when zoomed out, tight when zoomed in.
-    toleranceMm: SNAP_PIXEL_TOLERANCE / viewport.scale,
+    toleranceMm: preferences.pixelRadius / viewport.scale,
+    enabled: preferences.enabled,
+    disabledKinds: disabledKindsFor(preferences),
     ...(origin ? { origin } : {}),
     ...(tracePoints && tracePoints.length > 0 ? { tracePoints } : {}),
     ...(openVertices && openVertices.length > 0 ? { openVertices } : {}),
@@ -67,14 +75,15 @@ function buildContext({
  */
 export function useSnapping(inputs: SnappingInputs): Snapping {
   const [snap, setSnap] = useState<SnapResult | null>(null)
+  const preferences = useOptionalSnapPreferences()
 
   const resolve = useCallback(
     (cursor: Point): Point => {
-      const result = snapPoint(cursor, buildContext(inputs))
+      const result = snapPoint(cursor, buildSnapContext(inputs, preferences))
       setSnap(result)
       return result ? result.point : cursor
     },
-    [inputs],
+    [inputs, preferences],
   )
 
   const clear = useCallback(() => setSnap(null), [])
