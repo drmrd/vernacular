@@ -38,6 +38,13 @@ export interface WallSceneNode {
   start: Point
   end: Point
   thickness: number
+  /**
+   * Per-wall height in floor-plan units. Nodes from `deriveWallNode` always
+   * carry it, sourced from the host floor's `defaultCeilingHeight`. It is
+   * optional because hand-built `WallSceneNode` literals (chiefly the 2D
+   * editor's fixtures) omit it; `wallHeight` supplies the
+   * `DEFAULT_CEILING_HEIGHT_MM` fallback for those literal-built nodes.
+   */
   height?: number
 }
 
