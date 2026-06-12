@@ -25,22 +25,23 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /scene-visual-regression\.spec\.ts/,
+      testIgnore: /scene-.*\.spec\.ts/,
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testIgnore: /scene-visual-regression\.spec\.ts/,
+      testIgnore: /scene-.*\.spec\.ts/,
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testIgnore: /scene-visual-regression\.spec\.ts/,
+      testIgnore: /scene-.*\.spec\.ts/,
     },
     {
-      // Hardware-GPU runner for the three-dimensional scene visual harness. Uses the
-      // full Chrome for Testing build (channel 'chromium') with the new headless mode,
-      // which carries the GPU stack the stripped-down default headless shell omits, and
+      // Hardware-GPU runner for the three-dimensional scene specs (the visual harness and
+      // the live-preview camera-framing regression, matched by the scene-*.spec.ts name).
+      // Uses the full Chrome for Testing build (channel 'chromium') with the new headless
+      // mode, which carries the GPU stack the stripped-down default headless shell omits, and
       // selects the Apple Metal ANGLE backend so WebGL 2 renders on the real GPU rather
       // than a software rasterizer. The harness forces three's WebGL 2 backend so the
       // committed baseline (scene-empty-webgl.png) is a hardware-WebGL render that never
@@ -49,7 +50,7 @@ export default defineConfig({
       // renders, but the baseline is pinned to the WebGL backend by product decision.
       // See the slice-0 ADR for the durable record of this verification.
       name: 'scene-webgl',
-      testMatch: /scene-visual-regression\.spec\.ts/,
+      testMatch: /scene-.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         channel: 'chromium',
