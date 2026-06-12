@@ -59,7 +59,36 @@ describe('builtin element types', () => {
       expect(entry?.opening).toMatchObject(expected.opening)
     }
 
-    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(3)
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(4)
+  })
+
+  it('marks every opening element type with a rectangular void contour', () => {
+    const openingIds = [
+      'single-swing-door',
+      'double-swing-door',
+      'pocket-door',
+      'bifold-door',
+      'pivot-door',
+      'cased-opening',
+      'double-hung-window',
+      'casement-window',
+    ] as const
+
+    for (const id of openingIds) {
+      const entry = getEntry(builtinElementTypes, id)
+      expect(entry?.category).toBe('opening')
+      expect(entry?.scene3D.voidContour).toBe('rectangular')
+    }
+  })
+
+  it('leaves the wall and stair types without a void contour', () => {
+    const wall = getEntry(builtinElementTypes, 'straight-wall')
+    expect(wall?.category).toBe('wall')
+    expect(wall?.scene3D.voidContour).toBeUndefined()
+
+    const stair = getEntry(builtinElementTypes, 'straight-stair')
+    expect(stair?.category).toBe('stair')
+    expect(stair?.scene3D.voidContour).toBeUndefined()
   })
 })
 
