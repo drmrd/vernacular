@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test'
 // at all (a runner with no usable GPU stack), so it does not vacuously skip everywhere.
 
 test.describe('Three-dimensional scene visual baseline', () => {
-  test('renders the lit empty scene to a stable canvas', async ({ page }) => {
+  test('renders the lit wall shell to a stable canvas', async ({ page }) => {
     await page.goto('/?fixture=scene-harness')
 
     const canvas = page.locator('[data-testid="scene-harness"] canvas')
@@ -34,6 +34,13 @@ test.describe('Three-dimensional scene visual baseline', () => {
       })
       .toBeGreaterThan(0)
 
-    await expect(canvas).toHaveScreenshot('scene-empty-webgl.png')
+    // Pixel-approximate, not pixel-exact: a generous per-pixel threshold and a
+    // tolerant different-pixel ratio absorb graphics-driver and antialiasing
+    // variation on the wall shell, since the deterministic geometry is already
+    // proven by the Node geometry and scene-tree tests (ADR-0061).
+    await expect(canvas).toHaveScreenshot('scene-shell-webgl.png', {
+      threshold: 0.35,
+      maxDiffPixelRatio: 0.05,
+    })
   })
 })

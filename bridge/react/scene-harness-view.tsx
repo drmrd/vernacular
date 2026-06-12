@@ -1,8 +1,14 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { DEFAULT_CAMERA_POSE } from '../../core'
-import { BasicLightingProvider, createSceneRenderer } from '../../engine'
+import {
+  frameSceneCamera,
+  type Bounds3,
+  type CameraPose,
+  type Point,
+  type SceneGraph,
+} from '../../core'
+import { BasicLightingProvider, buildScene, createSceneRenderer } from '../../engine'
 
 // Deterministic fixture canvas size, pinned so the committed baseline is pixel-stable
 // across runs and machines. Kept small to keep the baseline PNG lightweight.
@@ -10,46 +16,91 @@ const HARNESS_WIDTH = 320
 const HARNESS_HEIGHT = 240
 
 // An opaque clear color so the rendered frame is a real, non-transparent render rather
-// than a blank alpha=0 canvas (an empty scene has no geometry to fill the frame).
+// than a blank alpha=0 canvas.
 const HARNESS_BACKGROUND = 0x1b2a3a
+
+// A fixed four-wall room (a 4000 by 3000 mm rectangle, 120 mm walls, 2600 mm tall) so
+// the harness renders the first lit wall shell rather than an empty scene. The ids and
+// dimensions are fixed, so the framed camera and the rendered frame are deterministic.
+const SHELL_THICKNESS = 120
+const SHELL_HEIGHT = 2600
+const SHELL_WIDTH_X = 4000
+const SHELL_DEPTH_Z = 3000
+
+function shellWall(id: string, start: Point, end: Point) {
+  return {
+    id,
+    kind: 'wall' as const,
+    floorId: 'demo',
+    start,
+    end,
+    thickness: SHELL_THICKNESS,
+    height: SHELL_HEIGHT,
+  }
+}
+
+const SHELL_FIXTURE: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [
+    shellWall('wall:south', { x: 0, y: 0 }, { x: SHELL_WIDTH_X, y: 0 }),
+    shellWall('wall:east', { x: SHELL_WIDTH_X, y: 0 }, { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }),
+    shellWall('wall:north', { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }, { x: 0, y: SHELL_DEPTH_Z }),
+    shellWall('wall:west', { x: 0, y: SHELL_DEPTH_Z }, { x: 0, y: 0 }),
+  ],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+}
+
+function boundsOf(object: THREE.Object3D): Bounds3 {
+  const box = new THREE.Box3().setFromObject(object)
+  return {
+    min: { x: box.min.x, y: box.min.y, z: box.min.z },
+    max: { x: box.max.x, y: box.max.y, z: box.max.z },
+  }
+}
+
+// Builds the wall shell, frames a camera on its bounds (before lighting is added, so the
+// lights do not perturb the framing), then adds the fixed basic lighting.
+function buildShell(): { root: THREE.Group; pose: CameraPose } {
+  const root = buildScene(SHELL_FIXTURE)
+  const pose = frameSceneCamera(boundsOf(root))
+  new BasicLightingProvider().apply(root)
+  return { root, pose }
+}
 
 // Renders exactly one frame on mount and never again, so the screenshot is deterministic
 // and never races an animation tick (the Canvas runs in `frameloop="never"`).
-function StaticFrame() {
+function StaticFrame({ target }: { target: CameraPose['target'] }) {
   const { gl, scene, camera } = useThree()
   useLayoutEffect(() => {
-    const { target } = DEFAULT_CAMERA_POSE
     camera.lookAt(target.x, target.y, target.z)
     gl.render(scene, camera)
-  }, [gl, scene, camera])
+  }, [gl, scene, camera, target])
   return null
 }
 
 /**
  * A deterministic, test-only three-dimensional render harness. It boots the same
- * empty-scene-plus-basic-lighting pipeline production uses, but pins the canvas size,
- * uses a fixed opaque background, forces the WebGL 2 backend, and renders a single
- * static frame. The Playwright visual baseline screenshots this canvas. It is mounted
- * only when the `?fixture=scene-harness` query parameter is present (see the App), so
- * a normal page load never reaches it.
+ * scene-plus-basic-lighting pipeline production uses against a fixed wall-shell fixture,
+ * pins the canvas size, uses a fixed opaque background, forces the WebGL 2 backend, and
+ * renders a single static frame. The Playwright visual baseline screenshots this canvas.
+ * It is mounted only when the `?fixture=scene-harness` query parameter is present (see
+ * the App), so a normal page load never reaches it.
  */
 export function SceneHarnessView() {
-  const lighting = useMemo(() => {
-    const group = new THREE.Group()
-    new BasicLightingProvider().apply(group)
-    return group
-  }, [])
-
-  const { position } = DEFAULT_CAMERA_POSE
+  const { root, pose } = useMemo(buildShell, [])
 
   return (
     <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>
       <Canvas
         frameloop="never"
         camera={{
-          position: [position.x, position.y, position.z],
-          near: DEFAULT_CAMERA_POSE.near,
-          far: DEFAULT_CAMERA_POSE.far,
+          position: [pose.position.x, pose.position.y, pose.position.z],
+          near: pose.near,
+          far: pose.far,
         }}
         // Force the WebGL 2 backend so the committed baseline is a hardware-WebGL render
         // that never collides with a future WebGPU baseline.
@@ -61,8 +112,8 @@ export function SceneHarnessView() {
         }
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
-        <primitive object={lighting} />
-        <StaticFrame />
+        <primitive object={root} />
+        <StaticFrame target={pose.target} />
       </Canvas>
     </div>
   )
