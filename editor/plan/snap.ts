@@ -24,6 +24,7 @@ export interface SnapContext {
   toleranceMm: number
   origin?: Point
   tracePoints?: readonly Point[]
+  openVertices?: readonly Point[]
   freeAngle?: boolean
 }
 
@@ -285,8 +286,8 @@ function asResult(candidate: Candidate, kind: SnapKind): SnapResult {
   return { point: candidate.point, kind, referenceId: candidate.referenceId }
 }
 
-/** The nearest underlay trace point within tolerance, or null when none qualifies. */
-function nearestTracePoint(
+/** The nearest of the given points within tolerance, or null when none qualifies. */
+function nearestPointWithin(
   cursor: Point,
   points: readonly Point[],
   toleranceMm: number,
@@ -312,10 +313,15 @@ function gridSnap(cursor: Point, gridSpacingMm: number): SnapResult | null {
   return { point: { x: round(cursor.x), y: round(cursor.y) }, kind: 'grid' }
 }
 
+// eslint-disable-next-line complexity -- one early-return branch per snap kind, in priority order; the dispatch chain grows by one with each kind the tool gains
 export function snapPoint(cursor: Point, context: SnapContext): SnapResult | null {
-  const trace = nearestTracePoint(cursor, context.tracePoints ?? [], context.toleranceMm)
+  const trace = nearestPointWithin(cursor, context.tracePoints ?? [], context.toleranceMm)
   if (trace !== null) {
     return { point: trace, kind: 'trace' }
+  }
+  const openCorner = nearestPointWithin(cursor, context.openVertices ?? [], context.toleranceMm)
+  if (openCorner !== null) {
+    return { point: openCorner, kind: 'endpoint' }
   }
   const endpoint = nearestFeature(cursor, context, (wall) => [wall.start, wall.end])
   if (endpoint !== null) {

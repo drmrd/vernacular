@@ -26,6 +26,11 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
 }
 
+/** The earlier corners the cursor can snap back onto: every corner except the one being drawn from. */
+function openCorners(toolState: WallToolState): readonly Point[] {
+  return toolState.phase === 'drawing' ? toolState.vertices.slice(0, -1) : []
+}
+
 /** Applies a wall-tool click and returns the next wall-tool state; other tools are inert here. */
 function applyPointer(world: Point, context: PointerContext): WallToolState {
   if (context.tool !== 'draw-wall') {
@@ -143,6 +148,7 @@ function useCancelWallOnEscape({
 }
 
 /** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
+// eslint-disable-next-line max-lines-per-function -- one hook wiring the tool state, pointer, snapping inputs, and pointer handlers; each input is irreducible
 export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
   const { session, walls, tool, viewport, tracePoints } = deps
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
@@ -153,6 +159,7 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
     viewport,
     origin: drawingVertex(toolState),
     ...(tracePoints ? { tracePoints } : {}),
+    openVertices: openCorners(toolState),
     freeAngle,
   })
   const recordRawCursor = useReresolveOnFreeAngleToggle({ tool, freeAngle, snapping, setPointer })
