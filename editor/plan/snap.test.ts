@@ -250,6 +250,39 @@ describe('snapPoint on-edge snapping', () => {
   })
 })
 
+describe('snapPoint wall-line intersection snapping', () => {
+  it('snaps to where two wall lines cross, even past the segment ends', () => {
+    // A: line y=1000 over x in [1000,2000]. B: line x=4000 over y in [2000,3000].
+    // The lines cross at (4000,1000), which lies past the end of both segments.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 2000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 4000, y: 2000 }, end: { x: 4000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    const result = snapPoint({ x: 4003, y: 1004 }, context)
+    expect(result?.kind).toBe('intersection')
+    expect(result?.point).toEqual({ x: 4000, y: 1000 })
+  })
+
+  it('prefers an intersection over the on-edge point when they coincide on a wall', () => {
+    // A horizontal line y=1000; B vertical line x=2000 crossing it at (2000,1000),
+    // which also lies on segment A, so the on-edge snap would otherwise fire there.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 5000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 2000, y: 2000 }, end: { x: 2000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2003, y: 1004 }, context)?.kind).toBe('intersection')
+  })
+
+  it('produces no intersection for parallel walls', () => {
+    // Two parallel horizontal walls; the cursor sits clear of both edges.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 5000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 1000, y: 3000 }, end: { x: 5000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 3000, y: 2000 }, context)).toBeNull()
+  })
+})
+
 describe('snapPoint with nothing in range', () => {
   it('returns null when the grid is disabled, no feature is in range, and no origin is set', () => {
     const wall = wallNode({ start: { x: 9000, y: 9000 }, end: { x: 9500, y: 9000 } })
