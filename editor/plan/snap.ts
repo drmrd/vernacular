@@ -313,8 +313,8 @@ function gridSnap(cursor: Point, gridSpacingMm: number): SnapResult | null {
   return { point: { x: round(cursor.x), y: round(cursor.y) }, kind: 'grid' }
 }
 
-// eslint-disable-next-line complexity -- one early-return branch per snap kind, in priority order; the dispatch chain grows by one with each kind the tool gains
-export function snapPoint(cursor: Point, context: SnapContext): SnapResult | null {
+/** Wall-independent point-set snaps: the active trace, then open-run corners. */
+function pointSetSnap(cursor: Point, context: SnapContext): SnapResult | null {
   const trace = nearestPointWithin(cursor, context.tracePoints ?? [], context.toleranceMm)
   if (trace !== null) {
     return { point: trace, kind: 'trace' }
@@ -323,6 +323,11 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   if (openCorner !== null) {
     return { point: openCorner, kind: 'endpoint' }
   }
+  return null
+}
+
+/** Wall-geometry and directional snaps in priority order, with the grid fallback. */
+function featureSnap(cursor: Point, context: SnapContext): SnapResult | null {
   const endpoint = nearestFeature(cursor, context, (wall) => [wall.start, wall.end])
   if (endpoint !== null) {
     return asResult(endpoint, 'endpoint')
@@ -352,4 +357,8 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
     return asResult(parallel, 'parallel')
   }
   return gridSnap(cursor, context.gridSpacingMm)
+}
+
+export function snapPoint(cursor: Point, context: SnapContext): SnapResult | null {
+  return pointSetSnap(cursor, context) ?? featureSnap(cursor, context)
 }
