@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { surfaceKey } from '../../core'
-import { useActiveSurface, useEditorSession } from '../../bridge'
+import { useActiveFloorId, useActiveSurface, useEditorSession } from '../../bridge'
 import type { DrawPlanOptions } from './draw-plan'
 
 /**
@@ -20,4 +20,18 @@ export function useSurfacePaintLayer(): NonNullable<DrawPlanOptions['surfacePain
     }),
     [paint, activeSurface],
   )
+}
+
+/**
+ * The active floor's solid floor-paint color, which tints the room fills, or
+ * undefined when the floor is unpainted. Reads the project paint record directly,
+ * so a paint dispatch (which replaces the record) repaints the fills at once.
+ */
+export function useFloorFillColor(): string | undefined {
+  const { paint } = useEditorSession().getProject()
+  const floorId = useActiveFloorId()
+  if (floorId === null) {
+    return undefined
+  }
+  return paint?.[surfaceKey({ kind: 'floor', floorId })]?.color.srgbHex
 }
