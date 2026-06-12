@@ -1,6 +1,13 @@
 import { distance, type Point, type WallSceneNode } from '../../core'
 
-export type SnapKind = 'endpoint' | 'midpoint' | 'perpendicular' | 'parallel' | 'grid' | 'trace'
+export type SnapKind =
+  | 'endpoint'
+  | 'midpoint'
+  | 'angle'
+  | 'perpendicular'
+  | 'parallel'
+  | 'grid'
+  | 'trace'
 
 export interface SnapResult {
   point: Point
@@ -14,6 +21,7 @@ export interface SnapContext {
   toleranceMm: number
   origin?: Point
   tracePoints?: readonly Point[]
+  freeAngle?: boolean
 }
 
 export const DEFAULT_SNAP_GRID_MM = 100
@@ -104,6 +112,56 @@ function perpendicularSnap(cursor: Point, context: SnapContext): Candidate | nul
   return directionalSnap(cursor, context, (wallDir) => ({ x: -wallDir.y, y: wallDir.x }))
 }
 
+const DEGREES_PER_TURN = 360
+const DEGREES_PER_HALF_TURN = 180
+const ANGLE_STEP_DEG = 45
+const DEG_TO_RAD = Math.PI / DEGREES_PER_HALF_TURN
+
+/** Unit ray directions every 45 degrees off the world axes. */
+function worldDirections(): Vector[] {
+  const directions: Vector[] = []
+  for (let deg = 0; deg < DEGREES_PER_TURN; deg += ANGLE_STEP_DEG) {
+    const radians = deg * DEG_TO_RAD
+    directions.push({ x: Math.cos(radians), y: Math.sin(radians) })
+  }
+  return directions
+}
+
+/** The candidate ray nearest the offset bearing, by largest dot product (a forward projection). */
+function nearestDirection(offset: Vector, directions: readonly Vector[]): Vector | null {
+  let best: Vector | null = null
+  let bestDot = -Infinity
+  for (const direction of directions) {
+    const dot = offset.x * direction.x + offset.y * direction.y
+    if (dot > bestDot) {
+      best = direction
+      bestDot = dot
+    }
+  }
+  return best
+}
+
+/** Lock the drawn direction to the nearest 45-degree ray off the world axes, projecting the cursor onto it. */
+function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
+  const origin = context.origin
+  if (context.freeAngle === true || origin === undefined) {
+    return null
+  }
+  const offset = { x: cursor.x - origin.x, y: cursor.y - origin.y }
+  if (offset.x === 0 && offset.y === 0) {
+    return null
+  }
+  const direction = nearestDirection(offset, worldDirections())
+  if (direction === null) {
+    return null
+  }
+  const along = offset.x * direction.x + offset.y * direction.y
+  return {
+    point: { x: origin.x + along * direction.x, y: origin.y + along * direction.y },
+    kind: 'angle',
+  }
+}
+
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
 function nearestFeature(
   cursor: Point,
@@ -165,6 +223,10 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
+  }
+  const angle = angleSnap(cursor, context)
+  if (angle !== null) {
+    return angle
   }
   const perpendicular = perpendicularSnap(cursor, context)
   if (perpendicular !== null) {
