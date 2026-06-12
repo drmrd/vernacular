@@ -13,7 +13,7 @@
       "title": "switches floors and the canvas changes",
       "status": "required"
     },
-    { "id": "edit-color", "title": "edits a surface color and it applies", "status": "pending" },
+    { "id": "edit-color", "title": "edits a surface color and it applies", "status": "required" },
     {
       "id": "toggle-three-d",
       "title": "toggles between the two- and three-dimensional views",
@@ -27,12 +27,12 @@
     {
       "id": "snap-along-wall",
       "title": "snaps a new wall onto an existing wall",
-      "status": "pending"
+      "status": "required"
     },
     {
       "id": "opening-host-guard",
       "title": "a wall cannot host on an opening",
-      "status": "pending"
+      "status": "required"
     },
     { "id": "donut-room", "title": "derives a room with an interior void", "status": "pending" }
   ]

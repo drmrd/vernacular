@@ -8,21 +8,26 @@ import type { Color } from '../color/color'
  * the painted preview reads the paint store keyed below.
  */
 export type SurfaceRef =
-  | { kind: 'wall-face'; wallId: string; side: 'left' | 'right' }
+  // `region` is the optional face-subdivision seam (ADR-0052); absent means the whole face.
+  | { kind: 'wall-face'; wallId: string; side: 'left' | 'right'; region?: string }
   | { kind: 'floor'; floorId: string }
   | { kind: 'ceiling'; floorId: string }
 
-/** A paint assignment: a color in the three forms plus a FinishRegistry finish id. */
-export interface PaintAssignment {
-  color: Color
-  finishId: string
+/** A surface treatment. Solid color is the only built variant; the discriminated
+ *  `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0052). */
+export type SurfaceTreatment = { kind: 'solid'; color: Color; finishId: string }
+
+export function solidTreatment(color: Color, finishId: string): SurfaceTreatment {
+  return { kind: 'solid', color, finishId }
 }
 
 /** The stable string key the paint store is keyed by. Derivation-independent. */
 export function surfaceKey(ref: SurfaceRef): string {
   switch (ref.kind) {
     case 'wall-face':
-      return `wall-face:${ref.wallId}:${ref.side}`
+      return ref.region === undefined
+        ? `wall-face:${ref.wallId}:${ref.side}`
+        : `wall-face:${ref.wallId}:${ref.side}:${ref.region}`
     case 'floor':
       return `floor:${ref.floorId}`
     case 'ceiling':

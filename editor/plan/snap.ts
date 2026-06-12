@@ -1,6 +1,16 @@
 import { distance, type Point, type WallSceneNode } from '../../core'
+import { DEG_TO_RAD, DEGREES_PER_TURN } from './angles'
 
-export type SnapKind = 'endpoint' | 'midpoint' | 'perpendicular' | 'parallel' | 'grid' | 'trace'
+export type SnapKind =
+  | 'endpoint'
+  | 'intersection'
+  | 'midpoint'
+  | 'edge'
+  | 'angle'
+  | 'perpendicular'
+  | 'parallel'
+  | 'grid'
+  | 'trace'
 
 export interface SnapResult {
   point: Point
@@ -14,6 +24,7 @@ export interface SnapContext {
   toleranceMm: number
   origin?: Point
   tracePoints?: readonly Point[]
+  freeAngle?: boolean
 }
 
 export const DEFAULT_SNAP_GRID_MM = 100
@@ -32,6 +43,19 @@ interface Vector {
 
 function midpointOf(wall: WallSceneNode): Point {
   return { x: (wall.start.x + wall.end.x) / 2, y: (wall.start.y + wall.end.y) / 2 }
+}
+
+/** Nearest point on the segment [a, b] to p, clamped to the segment ends. */
+function nearestPointOnSegment(p: Point, a: Point, b: Point): Point {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSq = dx * dx + dy * dy
+  if (lengthSq === 0) {
+    return a
+  }
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq
+  const clamped = Math.max(0, Math.min(1, t))
+  return { x: a.x + clamped * dx, y: a.y + clamped * dy }
 }
 
 /** Unit direction of a wall, or null for a zero-length wall whose direction is undefined. */
@@ -104,6 +128,107 @@ function perpendicularSnap(cursor: Point, context: SnapContext): Candidate | nul
   return directionalSnap(cursor, context, (wallDir) => ({ x: -wallDir.y, y: wallDir.x }))
 }
 
+const ANGLE_STEP_DEG = 45
+
+/** A candidate angle-lock ray, optionally tagged with the wall it derives from. */
+interface DirectedRay {
+  direction: Vector
+  referenceId?: string
+}
+
+/** Build the eight untagged world-axis rays at 45-degree intervals off the world axes. */
+function buildWorldRays(): DirectedRay[] {
+  const rays: DirectedRay[] = []
+  for (let deg = 0; deg < DEGREES_PER_TURN; deg += ANGLE_STEP_DEG) {
+    const radians = deg * DEG_TO_RAD
+    rays.push({ direction: { x: Math.cos(radians), y: Math.sin(radians) } })
+  }
+  return rays
+}
+
+/** The eight world-axis directions at 45-degree intervals, computed once at load. */
+const WORLD_RAYS: readonly DirectedRay[] = buildWorldRays()
+
+/**
+ * Rays every 45 degrees off the nearest wall's direction, tagged with that wall,
+ * or [] when no wall gives a usable direction.
+ */
+function wallRelativeRays(cursor: Point, context: SnapContext): DirectedRay[] {
+  const reference = nearestWall(cursor, context.walls)
+  if (reference === null) {
+    return []
+  }
+  const wallDir = wallDirection(reference)
+  if (wallDir === null) {
+    return []
+  }
+  const baseRadians = Math.atan2(wallDir.y, wallDir.x)
+  const rays: DirectedRay[] = []
+  for (let step = 0; step < DEGREES_PER_TURN; step += ANGLE_STEP_DEG) {
+    const radians = baseRadians + step * DEG_TO_RAD
+    rays.push({
+      direction: { x: Math.cos(radians), y: Math.sin(radians) },
+      referenceId: reference.id,
+    })
+  }
+  return rays
+}
+
+/**
+ * The candidate ray nearest the offset bearing, by largest dot product, keeping its
+ * reference. Maximizing the dot product finds the nearest bearing over the full circle
+ * (no atan2 needed) because all signed directions are candidates, so the most
+ * forward-aligned ray is the closest in angle. The groups are scanned in sequence
+ * without building a combined array, and together must supply at least one ray.
+ */
+function nearestRay(offset: Vector, ...groups: readonly (readonly DirectedRay[])[]): DirectedRay {
+  let best: DirectedRay | undefined
+  let bestDot = -Infinity
+  for (const group of groups) {
+    for (const ray of group) {
+      const dot = offset.x * ray.direction.x + offset.y * ray.direction.y
+      if (dot > bestDot) {
+        best = ray
+        bestDot = dot
+      }
+    }
+  }
+  if (best === undefined) {
+    throw new Error('nearestRay requires at least one candidate ray')
+  }
+  return best
+}
+
+/**
+ * Lock the drawn direction to the nearest 45-degree ray, projecting the cursor onto
+ * it. Candidates are the world-axis rays and the rays every 45 degrees off the nearest
+ * wall's direction, so a run squares up to the world axes or to an angled wall; a
+ * wall-relative lock carries that wall's `referenceId`.
+ */
+function angleSnap(cursor: Point, context: SnapContext): SnapResult | null {
+  const origin = context.origin
+  if (context.freeAngle || origin === undefined) {
+    return null
+  }
+  const offset = { x: cursor.x - origin.x, y: cursor.y - origin.y }
+  if (offset.x === 0 && offset.y === 0) {
+    return null
+  }
+  const ray = nearestRay(offset, WORLD_RAYS, wallRelativeRays(cursor, context))
+  const along = offset.x * ray.direction.x + offset.y * ray.direction.y
+  const point = { x: origin.x + along * ray.direction.x, y: origin.y + along * ray.direction.y }
+  return ray.referenceId === undefined
+    ? { point, kind: 'angle' }
+    : { point, kind: 'angle', referenceId: ray.referenceId }
+}
+
+/** Snap onto the nearest point along any wall, clamped to its segment ends. */
+function edgeSnap(cursor: Point, context: SnapContext): Candidate | null {
+  return nearestFeature(cursor, context, (wall) => [
+    nearestPointOnSegment(cursor, wall.start, wall.end),
+  ])
+}
+
 /** The nearest in-range point among each wall's feature points, or null when none is within tolerance. */
 function nearestFeature(
   cursor: Point,
@@ -116,6 +241,40 @@ function nearestFeature(
       const distanceMm = distance(cursor, point)
       if (distanceMm <= context.toleranceMm && (best === null || distanceMm < best.distanceMm)) {
         best = { point, referenceId: wall.id, distanceMm }
+      }
+    }
+  }
+  return best
+}
+
+/** Intersection of the infinite lines through walls a and b, or null when parallel. */
+function lineIntersection(a: WallSceneNode, b: WallSceneNode): Point | null {
+  const r = { x: a.end.x - a.start.x, y: a.end.y - a.start.y }
+  const s = { x: b.end.x - b.start.x, y: b.end.y - b.start.y }
+  const denominator = r.x * s.y - r.y * s.x
+  if (denominator === 0) {
+    return null
+  }
+  const offset = { x: b.start.x - a.start.x, y: b.start.y - a.start.y }
+  const t = (offset.x * s.y - offset.y * s.x) / denominator
+  return { x: a.start.x + t * r.x, y: a.start.y + t * r.y }
+}
+
+/** The nearest in-range crossing of two wall lines, or null when none qualifies. */
+function nearestIntersection(cursor: Point, context: SnapContext): Candidate | null {
+  let best: Candidate | null = null
+  const { walls } = context
+  for (const [index, a] of walls.entries()) {
+    for (const b of walls.slice(index + 1)) {
+      const point = lineIntersection(a, b)
+      if (point === null) {
+        continue
+      }
+      const distanceMm = distance(cursor, point)
+      if (distanceMm <= context.toleranceMm && (best === null || distanceMm < best.distanceMm)) {
+        // referenceId is the first wall of the pair; the second is intentionally
+        // not captured (the single-wall reference model the other kinds use).
+        best = { point, referenceId: a.id, distanceMm }
       }
     }
   }
@@ -162,9 +321,21 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   if (endpoint !== null) {
     return asResult(endpoint, 'endpoint')
   }
+  const intersection = nearestIntersection(cursor, context)
+  if (intersection !== null) {
+    return asResult(intersection, 'intersection')
+  }
   const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
+  }
+  const edge = edgeSnap(cursor, context)
+  if (edge !== null) {
+    return asResult(edge, 'edge')
+  }
+  const angle = angleSnap(cursor, context)
+  if (angle !== null) {
+    return angle
   }
   const perpendicular = perpendicularSnap(cursor, context)
   if (perpendicular !== null) {

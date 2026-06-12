@@ -1,3 +1,7 @@
+/* eslint-disable max-lines -- the full snapPoint suite: the along-wall and intersection kinds
+   (ADR-0053) and the angle lock (ADR-0054) reconcile here, so this file exercises every snap kind
+   (endpoint, intersection, midpoint, edge, angle, perpendicular, parallel, grid, trace) against the
+   one resolver under test. The cases are cohesive, not a missing split. */
 import { describe, it, expect } from 'vitest'
 import type { WallSceneNode } from '../../core'
 import { snapPoint, type SnapContext } from './snap'
@@ -24,7 +28,15 @@ function directionalContext(): { wall: WallSceneNode; context: SnapContext } {
   const wall = wallNode({ start: { x: 0, y: 9000 }, end: { x: 4000, y: 9000 } })
   return {
     wall,
-    context: { walls: [wall], gridSpacingMm: 0, toleranceMm: 50, origin: { x: 0, y: 0 } },
+    context: {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+      // Free the angle lock so these tests keep exercising the perpendicular and
+      // parallel kinds; the default-on lock would otherwise pre-empt them.
+      freeAngle: true,
+    },
   }
 }
 
@@ -150,6 +162,101 @@ describe('snapPoint perpendicular snapping', () => {
   })
 })
 
+describe('snapPoint angle snapping', () => {
+  it('locks a near-horizontal drag onto the world 0-degree ray', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    // The origin-to-cursor bearing is about 3 degrees, so the nearest world ray
+    // is 0 degrees and the cursor projects onto the x-axis.
+    expect(snapPoint({ x: 1000, y: 50 }, context)).toEqual({
+      point: { x: 1000, y: 0 },
+      kind: 'angle',
+    })
+  })
+
+  it('locks a near-diagonal drag onto the world 45-degree ray', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    // The bearing is about 42 degrees, so the nearest world ray is 45 degrees.
+    const result = snapPoint({ x: 1000, y: 900 }, context)
+    expect(result?.kind).toBe('angle')
+    expect(result?.point.x).toBeCloseTo(950, 5)
+    expect(result?.point.y).toBeCloseTo(950, 5)
+  })
+
+  it('does not lock before a segment starts', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+    }
+
+    expect(snapPoint({ x: 1000, y: 50 }, context)).toBeNull()
+  })
+
+  it('does not lock when the cursor sits on the origin', () => {
+    const context: SnapContext = {
+      walls: [],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    expect(snapPoint({ x: 0, y: 0 }, context)).toBeNull()
+  })
+
+  it('locks a drawn wall direction relative to the nearest wall', () => {
+    // A wall running at 30 degrees from the origin, so its direction is off the
+    // world axes. The nearest wall-relative ray is its own 30-degree direction.
+    const radPerDeg = Math.PI / 180
+    const wall = wallNode({
+      start: { x: 0, y: 0 },
+      end: { x: 1000 * Math.cos(30 * radPerDeg), y: 1000 * Math.sin(30 * radPerDeg) },
+    })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    // The origin-to-cursor bearing is 33 degrees: nearer the wall's 30-degree ray
+    // than the world 45-degree ray, so the lock squares to the angled wall.
+    const result = snapPoint(
+      { x: 1000 * Math.cos(33 * radPerDeg), y: 1000 * Math.sin(33 * radPerDeg) },
+      context,
+    )
+    expect(result?.kind).toBe('angle')
+    expect(result?.referenceId).toBe(wall.id)
+    const bearing = (Math.atan2(result!.point.y, result!.point.x) * 180) / Math.PI
+    expect(bearing).toBeCloseTo(30, 4)
+  })
+
+  it('prefers an in-range endpoint over the angle lock', () => {
+    // The wall's start endpoint sits at an off-45 bearing (about 17 degrees) from
+    // the origin, and the cursor is within tolerance of that endpoint.
+    const wall = wallNode({ start: { x: 1000, y: 300 }, end: { x: 5000, y: 300 } })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 0, y: 0 },
+    }
+
+    expect(snapPoint({ x: 1002, y: 301 }, context)?.kind).toBe('endpoint')
+  })
+})
+
 describe('snapPoint priority ordering', () => {
   // A short wall so a single cursor can sit within tolerance of an endpoint, the
   // midpoint, and a grid intersection at once.
@@ -204,6 +311,82 @@ describe('snapPoint underlay trace snapping', () => {
   it('does not snap to a trace point when none are supplied', () => {
     const result = snapPoint({ x: 1005, y: 2003 }, { walls: [], gridSpacingMm: 0, toleranceMm: 20 })
     expect(result).toBeNull()
+  })
+})
+
+describe('snapPoint on-edge snapping', () => {
+  // Wall from (1000,1000) to (5000,1000): endpoints at x=1000,5000; midpoint x=3000.
+  it('snaps a cursor near a wall, away from endpoints and midpoint, to the nearest point on it', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2000, y: 1005 }, context)).toEqual({
+      point: { x: 2000, y: 1000 },
+      kind: 'edge',
+      referenceId: wall.id,
+    })
+  })
+
+  it('returns null when the cursor is farther from every wall than the tolerance', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2000, y: 1100 }, context)).toBeNull()
+  })
+
+  it('prefers the midpoint over the on-edge point when the cursor is near the midpoint', () => {
+    const wall = wallNode()
+    const context: SnapContext = { walls: [wall], gridSpacingMm: 0, toleranceMm: 50 }
+
+    // 5 mm above the midpoint (3000,1000); both midpoint and on-edge are in range.
+    expect(snapPoint({ x: 3002, y: 1005 }, context)?.kind).toBe('midpoint')
+  })
+
+  it('prefers the on-edge point over a perpendicular construction line', () => {
+    const wall = wallNode()
+    // Origin sits off the wall; the perpendicular line through it is x = 2000.
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 50,
+      origin: { x: 2000, y: 5000 },
+    }
+
+    // (2002,1005): 2 mm from the perpendicular line x=2000 and 5 mm from the wall.
+    expect(snapPoint({ x: 2002, y: 1005 }, context)?.kind).toBe('edge')
+  })
+})
+
+describe('snapPoint wall-line intersection snapping', () => {
+  it('snaps to where two wall lines cross, even past the segment ends', () => {
+    // A: line y=1000 over x in [1000,2000]. B: line x=4000 over y in [2000,3000].
+    // The lines cross at (4000,1000), which lies past the end of both segments.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 2000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 4000, y: 2000 }, end: { x: 4000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    const result = snapPoint({ x: 4003, y: 1004 }, context)
+    expect(result?.kind).toBe('intersection')
+    expect(result?.point).toEqual({ x: 4000, y: 1000 })
+  })
+
+  it('prefers an intersection over the on-edge point when they coincide on a wall', () => {
+    // A horizontal line y=1000; B vertical line x=2000 crossing it at (2000,1000),
+    // which also lies on segment A, so the on-edge snap would otherwise fire there.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 5000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 2000, y: 2000 }, end: { x: 2000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 2003, y: 1004 }, context)?.kind).toBe('intersection')
+  })
+
+  it('produces no intersection for parallel walls', () => {
+    // Two parallel horizontal walls; the cursor sits clear of both edges.
+    const a = wallNode({ id: 'wall:a', start: { x: 1000, y: 1000 }, end: { x: 5000, y: 1000 } })
+    const b = wallNode({ id: 'wall:b', start: { x: 1000, y: 3000 }, end: { x: 5000, y: 3000 } })
+    const context: SnapContext = { walls: [a, b], gridSpacingMm: 0, toleranceMm: 50 }
+
+    expect(snapPoint({ x: 3000, y: 2000 }, context)).toBeNull()
   })
 })
 

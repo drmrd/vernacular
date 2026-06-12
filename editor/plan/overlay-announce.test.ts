@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { OverlayEntity } from './overlay-entities'
 import type { SnapResult } from './snap'
-import { selectionAnnouncement, snapAnnouncement } from './overlay-announce'
+import { angleLockAnnouncement, selectionAnnouncement, snapAnnouncement } from './overlay-announce'
 
 const ORIGIN = { x: 0, y: 0 }
 const WALL_LABEL = 'Wall, 3000 mm'
@@ -43,5 +43,15 @@ describe('snapAnnouncement', () => {
   it('names a grid snap by its kind', () => {
     const snap: SnapResult = { point: ORIGIN, kind: 'grid' }
     expect(snapAnnouncement(snap)).toBe('Snapped to grid')
+  })
+})
+
+describe('angleLockAnnouncement', () => {
+  it('names the locked bearing in whole degrees', () => {
+    expect(angleLockAnnouncement(45)).toBe('Locked to 45 degrees')
+  })
+
+  it('rounds the bearing to a whole number', () => {
+    expect(angleLockAnnouncement(89.6)).toBe('Locked to 90 degrees')
   })
 })
