@@ -5,8 +5,8 @@ import type { EditorCommand } from './command'
 /** How much one radius command changes the catch radius, in screen pixels. */
 const SNAP_RADIUS_STEP = 2
 
-/** Human-readable names for each running snap kind, used in command labels. */
-const SNAP_KIND_LABELS: Record<TogglableSnapKind, string> = {
+/** Human-readable names for each running snap kind, used in command and panel labels. */
+export const SNAP_KIND_LABELS: Record<TogglableSnapKind, string> = {
   endpoint: 'endpoint',
   intersection: 'intersection',
   midpoint: 'midpoint',
