@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0051-three-dimensional-preview-as-a-view-mode
-title: 'ADR-0051: The three-dimensional preview as a view mode, and feature command sets'
+slug: decisions/ADR-0057-three-dimensional-preview-as-a-view-mode
+title: 'ADR-0057: The three-dimensional preview as a view mode, and feature command sets'
 type: decision
 tags:
   [editor, viewport, view-mode, split-pane, commands, keybindings, three-dimensional, interaction]
@@ -24,7 +24,7 @@ status: current
 updated: 2026-06-11
 ---
 
-# ADR-0051: The three-dimensional preview as a view mode, and feature command sets
+# ADR-0057: The three-dimensional preview as a view mode, and feature command sets
 
 ## Status
 
