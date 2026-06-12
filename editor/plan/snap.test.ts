@@ -255,6 +255,31 @@ describe('snapPoint angle snapping', () => {
 
     expect(snapPoint({ x: 1002, y: 301 }, context)?.kind).toBe('endpoint')
   })
+
+  it('snaps to the nearest open run corner as an endpoint, above the angle lock', () => {
+    const context = {
+      walls: [],
+      gridSpacingMm: 100,
+      toleranceMm: 20,
+      origin: { x: 0, y: 0 },
+      openVertices: [{ x: 500, y: 0 }],
+    }
+
+    const result = snapPoint({ x: 506, y: 5 }, context)
+
+    expect(result).toEqual({ point: { x: 500, y: 0 }, kind: 'endpoint' })
+  })
+
+  it('ignores open corners outside the tolerance', () => {
+    const context = {
+      walls: [],
+      gridSpacingMm: 100,
+      toleranceMm: 20,
+      openVertices: [{ x: 500, y: 0 }],
+    }
+
+    expect(snapPoint({ x: 560, y: 0 }, context)?.kind).not.toBe('endpoint')
+  })
 })
 
 describe('snapPoint priority ordering', () => {
