@@ -11,6 +11,7 @@ export const selectors = {
   redoButton: (page: Page) => page.getByRole('button', { name: 'Redo' }),
   wallProxy: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
   wallProxies: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
+  roomProxies: (page: Page) => page.getByRole('option', { name: /^Room,/ }),
   addFloorButton: (page: Page) => page.getByRole('button', { name: 'Add floor' }),
   floorButton: (page: Page, name: string) => page.getByRole('button', { name }),
   selectTool: (page: Page) => page.getByRole('button', { name: 'Select' }),
@@ -35,6 +36,7 @@ export async function drawWall(
   const canvas = selectors.planCanvas(page)
   await canvas.click({ position: from })
   await canvas.click({ position: to })
+  await page.keyboard.press('Enter')
 }
 
 // Assert the shell reports the given number of walls.

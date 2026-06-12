@@ -23,5 +23,7 @@ test('snaps a new wall onto an existing wall', async ({ page }) => {
 
   // Commit the second wall at the snapped point; the plan now holds two walls.
   await canvas.click({ position: { x: 250, y: 206 } })
+  // Finish the run with Enter so the buffered second wall commits.
+  await page.keyboard.press('Enter')
   await expectWallCount(page, 2)
 })
