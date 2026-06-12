@@ -17,7 +17,10 @@ sourceFiles:
     editor/plan/snap.ts,
     editor/plan/snap-preferences.ts,
     editor/plan/snap-preferences-store.ts,
+    editor/plan/snap-preferences-context.ts,
     editor/plan/use-snapping.ts,
+    editor/plan/snap-panel.tsx,
+    editor/plan/overlay-announce.ts,
     editor/commands/snap-commands.ts,
     editor/shell/editor-shell.tsx,
   ]
@@ -101,12 +104,14 @@ the toggle, so a persistent off and a momentary free are separate controls.
 Each toggle is an `EditorCommand` (ADR-0050) built by a `createSnapCommands`
 factory that closes over the store controls, then merged into the registry at the
 keybinding and palette call sites, the same closure pattern ADR-0057 used for the
-view commands. So a user flips the master, any single kind, or the radius from a
-keybinding or the command palette. The precision panel mounts in a shell panel slot
-and shows the master toggle, a labeled checkbox per kind, and a radius input, each
-wired to the store. The status bar names the snap currently engaging (for example
+view commands. The master toggle carries a keybinding, and every toggle and the two
+radius steps are reachable from the command palette; per-kind keybindings are left
+out rather than spend eight keystrokes on them. The precision panel mounts in a
+shell panel slot in the tool rail and shows the master toggle, a labeled checkbox
+per kind, and a radius input, each wired to the store. A status readout in the
+lower-left of the plan names the snap currently engaging (for example
 `Snap: endpoint`), reading the live snap result, so the effect of a toggle is
-visible while drawing.
+visible while drawing, alongside the existing screen-reader announcement.
 
 ## Why this approach
 
