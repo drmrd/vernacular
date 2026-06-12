@@ -24,8 +24,9 @@ audit exempts. Every green closes with a blue marker before the next red.
   feature command sets are built by a `createXxxCommands(controls)` factory and
   merged at the `KeybindingLayer` and `CommandPalette` call sites in
   `editor/shell/editor-shell.tsx` (see `createViewCommands`).
-- Selection lives in a bridge-owned store under `bridge/selection/`, the model the
-  snap-preferences store mirrors.
+- Selection lives in a bridge-owned store under `bridge/selection/`; the
+  snap-preferences store mirrors its shape but lives in the editor layer, because
+  snapping is plan-local and the editor layer cannot be imported by the bridge.
 - The shell mounts panels through `PanelSlot` with a slot id from
   `editor/shell/shell-panel-slots.ts`.
 
@@ -55,16 +56,17 @@ Red, green, blue. Pure.
 - Blue: keep the gating guards uniform; extract a small `isEnabled(kind)` closure if
   it reads cleaner.
 
-## Cycle 3: the bridge snap-preferences store
+## Cycle 3: the snap-preferences store
 
 Red, green, blue.
 
-- Allowed files: `bridge/snap-preferences/` (new store module plus its test), and
-  `bridge/index.ts` for the export.
+- Allowed files: `editor/plan/snap-preferences-store.ts` (new store plus its test)
+  and the editor-layer context module that exposes the hook and provider.
 - A store holding `SnapPreferences` with `get`, `subscribe`, and mutators that wrap
   the pure helpers, loading from and saving to `localStorage` under a namespaced key,
   defaulting and tolerating a missing or malformed value. Add a `useSnapPreferences`
-  hook and a provider mirroring the selection store.
+  hook and a provider mirroring the shape of the bridge selection store, but in the
+  editor layer.
 - Blue: marker or small tidy.
 
 ## Cycle 4: feed the preferences into the live snap context

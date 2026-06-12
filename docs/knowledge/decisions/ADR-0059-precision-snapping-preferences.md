@@ -2,7 +2,7 @@
 slug: decisions/ADR-0059-precision-snapping-preferences
 title: 'ADR-0059: Precision snapping preferences, running-snap toggles, and the snap panel'
 type: decision
-tags: [editor, snapping, preferences, commands, keybindings, accessibility, bridge]
+tags: [editor, snapping, preferences, commands, keybindings, accessibility, store]
 related:
   [
     decisions/ADR-0033-drawing-snap-model,
@@ -16,8 +16,8 @@ sourceFiles:
     docs/specs/2026-06-10-editor-experience-makeover.md,
     editor/plan/snap.ts,
     editor/plan/snap-preferences.ts,
+    editor/plan/snap-preferences-store.ts,
     editor/plan/use-snapping.ts,
-    bridge/snap-preferences/snap-preferences-store.ts,
     editor/commands/snap-commands.ts,
     editor/shell/editor-shell.tsx,
   ]
@@ -30,7 +30,7 @@ updated: 2026-06-12
 ## Status
 
 Accepted. Implemented across `editor/plan/snap.ts` (per-kind gating), a pure
-`editor/plan/snap-preferences.ts` model, a bridge-owned store, editor toggle
+`editor/plan/snap-preferences.ts` model, an editor-owned store, editor toggle
 commands, a status-bar readout, and a precision panel. Slice 8 of the
 editor-experience makeover. No journey-coverage capability is added; this is a
 power-user surface over snapping that does not change the default drawing
@@ -58,13 +58,16 @@ actions, so the toggles had a natural home there.
 ### Snap preferences are editor-level, not document data
 
 Snap preferences are per-user tool configuration, not part of the drawing. They are
-held in a bridge-owned store and persisted to `localStorage`, the same place a user
-would expect their editor settings to survive a reload. This follows ADR-0020,
-which already keeps selection in the bridge outside the command and undo system:
-snap preferences are editor state of the same kind, so flipping a snap is not an
-undoable document edit and does not travel inside a saved `.building` file. The
-store loads defaults when storage is empty or unavailable, the same defensive
-posture the storage-capability detection takes elsewhere.
+held in an editor-owned store and persisted to `localStorage`, the same place a user
+would expect their editor settings to survive a reload. This follows the principle
+ADR-0020 set for selection: editor state that is not part of the document stays
+outside the command and undo system, so flipping a snap is not an undoable document
+edit and does not travel inside a saved `.building` file. Snapping is a plan-editor
+concern that the three-dimensional view never consults, so the store lives in the
+editor layer rather than the bridge, and it mirrors the shape of the bridge
+selection store without crossing the layer boundary. The store loads defaults when
+storage is empty or unavailable, the same defensive posture the storage-capability
+detection takes elsewhere.
 
 The pure model lives in `editor/plan/snap-preferences.ts`: a `SnapPreferences`
 value of a master `enabled` flag, a per-kind enabled map, and a pixel catch radius,
@@ -109,7 +112,7 @@ visible while drawing.
 
 - **Per-user settings belong to the user, not the file.** Storing snap preferences
   in the document would change a collaborator's snap behavior when they open a
-  shared plan and would make toggling a snap an undoable edit. The bridge store
+  shared plan and would make toggling a snap an undoable edit. The editor store
   keeps them where editor settings belong.
 - **The pure chain stays testable and its order stays intact.** Gating each step by
   a preference is a small guard, not a restructuring, so the planar snap logic keeps
