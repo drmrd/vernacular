@@ -1,4 +1,4 @@
-import { insetPolygon, polygonArea } from '../geometry/polygon'
+import { insetPolygon, pointInPolygon, polygonArea } from '../geometry/polygon'
 import type { Point, RoomOverride, Wall } from '../model/types'
 import { buildWallGraph } from './wall-graph'
 
@@ -22,6 +22,13 @@ export interface Room {
    * freshly derived room; single-sourced with `RoomSceneNode.name` in a later task.
    */
   name?: string
+  /**
+   * Interior void rings, each a closed ring of corner points in floor-plan space,
+   * in the same frame as `polygon`. Present only on a room that contains a
+   * free-standing inner loop (a courtyard, light well, or chimney mass); a room
+   * with no interior void omits the field entirely.
+   */
+  holes?: Point[][]
 }
 
 /**
@@ -111,7 +118,57 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
     const wallIds = sortedUniqueWallIds(face)
     rooms.push({ id: ROOM_ID_PREFIX + roomKey({ wallIds }), polygon, clearPolygon, area, wallIds })
   }
-  return rooms
+  return assignHoles(rooms)
+}
+
+/**
+ * True when every vertex of `inner.polygon` lies inside `outer.polygon` and the two
+ * rooms share no bounding walls. The disjoint-wall guard distinguishes a free-standing
+ * inner loop, which becomes a hole, from a room merely subdivided by a shared wall,
+ * which the face walk already handles correctly.
+ */
+function isContainedBy(inner: Room, outer: Room): boolean {
+  const outerWalls = new Set(outer.wallIds)
+  if (inner.wallIds.some((wallId) => outerWalls.has(wallId))) return false
+  return inner.polygon.every((vertex) => pointInPolygon(vertex, outer.polygon))
+}
+
+/**
+ * The immediate container of `inner`: among all rooms that contain it, the one with
+ * the smallest area, so a nested void is punched once at the level it belongs to.
+ * Returns `undefined` when no room contains `inner`.
+ */
+function immediateContainer(inner: Room, rooms: readonly Room[]): Room | undefined {
+  let container: Room | undefined
+  for (const candidate of rooms) {
+    if (candidate === inner || !isContainedBy(inner, candidate)) continue
+    if (container === undefined || candidate.area < container.area) container = candidate
+  }
+  return container
+}
+
+/**
+ * Add each contained room's `polygon` to its immediate container as a hole, and
+ * reduce that container's `area` by the hole's centerline footprint. Contained rooms
+ * remain their own derived rooms, unchanged. A room with no holes keeps its fields.
+ */
+function assignHoles(rooms: readonly Room[]): Room[] {
+  const holesByRoom = new Map<Room, Point[][]>()
+  for (const inner of rooms) {
+    const container = immediateContainer(inner, rooms)
+    if (container === undefined) continue
+    const holes = holesByRoom.get(container) ?? []
+    holes.push(inner.polygon)
+    holesByRoom.set(container, holes)
+  }
+  return rooms.map((room) => withHoles(room, holesByRoom.get(room)))
+}
+
+/** Attach holes and the void-reduced area to a container; pass others through. */
+function withHoles(room: Room, holes: Point[][] | undefined): Room {
+  if (holes === undefined) return room
+  const voidArea = holes.reduce((sum, hole) => sum + Math.abs(polygonArea(hole)), 0)
+  return { ...room, holes, area: room.area - voidArea }
 }
 
 /** Emit two directed half-edges, one in each direction, for every undirected edge. */
