@@ -146,16 +146,9 @@ const ROOM_HEIGHT = 3000
 const CUSTOM_WIDTH = 2000
 const CUSTOM_HEIGHT = 5000
 const CUSTOM_AREA = CUSTOM_WIDTH * CUSTOM_HEIGHT
-const FLOOR_CEILING_HEIGHT_MM = 2900
-
-function oneRoomFloor(options?: { defaultCeilingHeight?: number }): Floor {
+function oneRoomFloor(): Floor {
   return createFloor('Ground', {
     id: 'g',
-    // Spread the override only when set, so passing nothing keeps the factory
-    // default rather than handing `undefined` to an exactOptionalPropertyTypes field.
-    ...(options?.defaultCeilingHeight !== undefined && {
-      defaultCeilingHeight: options.defaultCeilingHeight,
-    }),
     walls: [
       createWall({ x: 0, y: 0 }, { x: ROOM_WIDTH, y: 0 }),
       createWall({ x: ROOM_WIDTH, y: 0 }, { x: ROOM_WIDTH, y: ROOM_HEIGHT }),
@@ -216,11 +209,6 @@ describe('deriveRoomNodesForFloor with overrides', () => {
 
     expect(roomKey({ wallIds: floor.walls.map((wall) => wall.id) })).toBeDefined()
     expect(soleRoomNode(floor).id).toBe(ROOM_ID_PREFIX + overrideKeyFor(floor))
-  })
-
-  it("carries the host floor's default ceiling height onto the derived room node", () => {
-    const floor = oneRoomFloor({ defaultCeilingHeight: FLOOR_CEILING_HEIGHT_MM })
-    expect(soleRoomNode(floor).ceilingHeight).toBe(FLOOR_CEILING_HEIGHT_MM)
   })
 
   it('sets the room node name from a name override, leaving polygon and area unchanged', () => {

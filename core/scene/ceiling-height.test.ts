@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_CEILING_HEIGHT_MM, type RoomSceneNode } from '../../core'
+import {
+  createFloor,
+  createWall,
+  DEFAULT_CEILING_HEIGHT_MM,
+  deriveRoomNodesForFloor,
+  type RoomSceneNode,
+} from '../../core'
 import { ceilingHeight } from './ceiling-height'
 
 const CEILING_HEIGHT_MM = 2600
+const FLOOR_CEILING_HEIGHT_MM = 2900
+const ROOM_WIDTH = 4000
+const ROOM_HEIGHT = 3000
 
 function roomNode(overrides?: Partial<RoomSceneNode>): RoomSceneNode {
   return {
@@ -37,5 +46,22 @@ describe('ceilingHeight', () => {
     const node = roomNode()
 
     expect(ceilingHeight(node)).toBe(DEFAULT_CEILING_HEIGHT_MM)
+  })
+
+  it("carries the host floor's default ceiling height onto a derived room node", () => {
+    const floor = createFloor('Ground', {
+      id: 'g',
+      defaultCeilingHeight: FLOOR_CEILING_HEIGHT_MM,
+      walls: [
+        createWall({ x: 0, y: 0 }, { x: ROOM_WIDTH, y: 0 }),
+        createWall({ x: ROOM_WIDTH, y: 0 }, { x: ROOM_WIDTH, y: ROOM_HEIGHT }),
+        createWall({ x: ROOM_WIDTH, y: ROOM_HEIGHT }, { x: 0, y: ROOM_HEIGHT }),
+        createWall({ x: 0, y: ROOM_HEIGHT }, { x: 0, y: 0 }),
+      ],
+    })
+
+    const node = deriveRoomNodesForFloor(floor)[0]
+
+    expect(node?.ceilingHeight).toBe(FLOOR_CEILING_HEIGHT_MM)
   })
 })
