@@ -1,6 +1,7 @@
 import { SNAP_KIND_LABELS } from '../commands/snap-commands'
 import { TOGGLABLE_SNAP_KINDS, type TogglableSnapKind } from './snap-preferences'
 import { useSnapPreferences, useSnapPreferencesStore } from './snap-preferences-context'
+import './snap-panel.css'
 
 const MIN_RADIUS = 1
 
