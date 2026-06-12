@@ -743,7 +743,7 @@
         "finishId"
       ],
       "additionalProperties": false,
-      "description": "A surface treatment. Solid color is the only built variant; the discriminated `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0052)."
+      "description": "A surface treatment. Solid color is the only built variant; the discriminated `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0056)."
     },
     "Site": {
       "type": "object",

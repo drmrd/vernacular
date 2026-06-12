@@ -21,7 +21,7 @@ highlight and face subdivision are documented seams.
 **Tech stack:** TypeScript, React (`useSyncExternalStore`), Canvas 2D plan renderer, Vitest,
 Playwright journeys, the ADR-0029 migration framework.
 
-**Spec:** `docs/specs/2026-06-11-surface-paint-selection-and-treatments.md`. **ADR:** ADR-0052.
+**Spec:** `docs/specs/2026-06-11-surface-paint-selection-and-treatments.md`. **ADR:** ADR-0056.
 
 ---
 
@@ -61,7 +61,7 @@ Playwright journeys, the ADR-0029 migration framework.
 
 ```ts
 /** A surface treatment. Solid color is the only built variant; the discriminated `kind`
- *  is the extension seam for future `tiled-image` and `pattern` variants (ADR-0052). */
+ *  is the extension seam for future `tiled-image` and `pattern` variants (ADR-0056). */
 export type SurfaceTreatment = { kind: 'solid'; color: Color; finishId: string }
 
 export function solidTreatment(color: Color, finishId: string): SurfaceTreatment {
@@ -394,7 +394,7 @@ pnpm integration:audit && pnpm build`, plus `node scripts/rgb-audit/...` over th
 
 - **Spec coverage:** surface-selection store (T5), 2D Paint panel scoped to active floor (T6, T7,
   T8), 2D paint rendering on the plan (T9), cross-view highlight via one store + 3D seam (T5 store
-  - ADR-0052 seam; 3D not built), `SurfaceTreatment` union + migration (T1-T3), region seam (T4),
+  - ADR-0056 seam; 3D not built), `SurfaceTreatment` union + migration (T1-T3), region seam (T4),
     journey + audit flip (T10). The 3D pick/highlight, face-subdivision UI, and `tiled-image`/
     `pattern` editors are documented seams (not tasks), per the spec non-goals. `SiteEditor` wiring is
     a separate tracked surface (spec non-goal), not in this plan.

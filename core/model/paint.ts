@@ -8,13 +8,13 @@ import type { Color } from '../color/color'
  * the painted preview reads the paint store keyed below.
  */
 export type SurfaceRef =
-  // `region` is the optional face-subdivision seam (ADR-0052); absent means the whole face.
+  // `region` is the optional face-subdivision seam (ADR-0056); absent means the whole face.
   | { kind: 'wall-face'; wallId: string; side: 'left' | 'right'; region?: string }
   | { kind: 'floor'; floorId: string }
   | { kind: 'ceiling'; floorId: string }
 
 /** A surface treatment. Solid color is the only built variant; the discriminated
- *  `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0052). */
+ *  `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0056). */
 export type SurfaceTreatment = { kind: 'solid'; color: Color; finishId: string }
 
 export function solidTreatment(color: Color, finishId: string): SurfaceTreatment {

@@ -13,7 +13,7 @@ export interface PaintableSurface {
  * whole-face refs (no `region`).
  *
  * The neutral, position-based labels ("Wall 1 (side A)") are the baseline.
- * Room-aware labels are deferred (ADR-0052 / the slice spec).
+ * Room-aware labels are deferred (ADR-0056 / the slice spec).
  */
 export function paintableSurfaces(floor: Floor): PaintableSurface[] {
   const surfaces: PaintableSurface[] = []
