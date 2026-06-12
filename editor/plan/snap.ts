@@ -2,6 +2,7 @@ import { distance, type Point, type WallSceneNode } from '../../core'
 
 export type SnapKind =
   | 'endpoint'
+  | 'intersection'
   | 'midpoint'
   | 'edge'
   | 'perpendicular'
@@ -149,6 +150,38 @@ function nearestFeature(
   return best
 }
 
+/** Intersection of the infinite lines through walls a and b, or null when parallel. */
+function lineIntersection(a: WallSceneNode, b: WallSceneNode): Point | null {
+  const r = { x: a.end.x - a.start.x, y: a.end.y - a.start.y }
+  const s = { x: b.end.x - b.start.x, y: b.end.y - b.start.y }
+  const denominator = r.x * s.y - r.y * s.x
+  if (denominator === 0) {
+    return null
+  }
+  const offset = { x: b.start.x - a.start.x, y: b.start.y - a.start.y }
+  const t = (offset.x * s.y - offset.y * s.x) / denominator
+  return { x: a.start.x + t * r.x, y: a.start.y + t * r.y }
+}
+
+/** The nearest in-range crossing of two wall lines, or null when none qualifies. */
+function nearestIntersection(cursor: Point, context: SnapContext): Candidate | null {
+  let best: Candidate | null = null
+  const { walls } = context
+  for (const [index, a] of walls.entries()) {
+    for (const b of walls.slice(index + 1)) {
+      const point = lineIntersection(a, b)
+      if (point === null) {
+        continue
+      }
+      const distanceMm = distance(cursor, point)
+      if (distanceMm <= context.toleranceMm && (best === null || distanceMm < best.distanceMm)) {
+        best = { point, referenceId: a.id, distanceMm }
+      }
+    }
+  }
+  return best
+}
+
 function asResult(candidate: Candidate, kind: SnapKind): SnapResult {
   return { point: candidate.point, kind, referenceId: candidate.referenceId }
 }
@@ -188,6 +221,10 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   const endpoint = nearestFeature(cursor, context, (wall) => [wall.start, wall.end])
   if (endpoint !== null) {
     return asResult(endpoint, 'endpoint')
+  }
+  const intersection = nearestIntersection(cursor, context)
+  if (intersection !== null) {
+    return asResult(intersection, 'intersection')
   }
   const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
   if (midpoint !== null) {
