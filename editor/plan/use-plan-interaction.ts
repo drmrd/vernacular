@@ -10,6 +10,7 @@ import { screenToWorld, type Viewport } from './viewport'
 import {
   advanceWallTool,
   cancelWallTool,
+  drawingVertex,
   IDLE_WALL_TOOL,
   wallPreviewSegment,
   type WallToolState,
@@ -54,13 +55,6 @@ export interface PlanInteraction {
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerLeave: () => void
-}
-
-/** The corner the next segment draws from while drawing; absent when the tool is idle. */
-function drawingOrigin(toolState: WallToolState): Point | undefined {
-  return toolState.phase === 'drawing'
-    ? toolState.vertices[toolState.vertices.length - 1]
-    : undefined
 }
 
 interface CancelWallOnEscapeDeps {
@@ -157,7 +151,7 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
   const snapping = useSnapping({
     walls,
     viewport,
-    origin: drawingOrigin(toolState),
+    origin: drawingVertex(toolState),
     ...(tracePoints ? { tracePoints } : {}),
     freeAngle,
   })

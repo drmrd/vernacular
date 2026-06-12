@@ -24,26 +24,44 @@ function samePoint(a: Point, b: Point): boolean {
   return a.x === b.x && a.y === b.y
 }
 
+function vertexAt(vertices: readonly Point[], index: number): Point {
+  return vertices[index] as Point
+}
+
 function lastVertex(vertices: readonly Point[]): Point {
-  return vertices[vertices.length - 1] as Point
+  return vertexAt(vertices, vertices.length - 1)
 }
 
 function firstVertex(vertices: readonly Point[]): Point {
-  return vertices[0] as Point
+  return vertexAt(vertices, 0)
 }
 
-// The segments between consecutive corners, optionally closing back to the first.
-function runSegments(vertices: readonly Point[], close: boolean): PreviewSegment[] {
-  const corners = close ? [...vertices, firstVertex(vertices)] : vertices
+/** The corner the next segment draws from while drawing; absent when the tool is idle. */
+export function drawingVertex(state: WallToolState): Point | undefined {
+  return state.phase === 'drawing' ? lastVertex(state.vertices) : undefined
+}
+
+// The segments between consecutive corners along the given path.
+function pathSegments(corners: readonly Point[]): PreviewSegment[] {
   const segments: PreviewSegment[] = []
   for (let index = 0; index + 1 < corners.length; index += 1) {
-    segments.push({ start: corners[index] as Point, end: corners[index + 1] as Point })
+    segments.push({ start: vertexAt(corners, index), end: vertexAt(corners, index + 1) })
   }
   return segments
 }
 
-function segmentCommands(vertices: readonly Point[], floorId: string, close: boolean): Command[] {
-  return runSegments(vertices, close).map((segment) => addWall(floorId, segment.start, segment.end))
+// The segments of an open run, corner to corner.
+function openRunSegments(vertices: readonly Point[]): PreviewSegment[] {
+  return pathSegments(vertices)
+}
+
+// The segments of a run closed back to the first corner.
+function closedRunSegments(vertices: readonly Point[]): PreviewSegment[] {
+  return pathSegments([...vertices, firstVertex(vertices)])
+}
+
+function segmentCommands(segments: readonly PreviewSegment[], floorId: string): Command[] {
+  return segments.map((segment) => addWall(floorId, segment.start, segment.end))
 }
 
 export function advanceWallTool(
@@ -59,7 +77,10 @@ export function advanceWallTool(
     return { state }
   }
   if (vertices.length >= MIN_LOOP_VERTICES && samePoint(point, firstVertex(vertices))) {
-    return { state: IDLE_WALL_TOOL, commands: segmentCommands(vertices, floorId, true) }
+    return {
+      state: IDLE_WALL_TOOL,
+      commands: segmentCommands(closedRunSegments(vertices), floorId),
+    }
   }
   return { state: { phase: 'drawing', vertices: [...vertices, point] } }
 }
@@ -68,7 +89,10 @@ export function finishWallTool(state: WallToolState, floorId: string): WallToolR
   if (state.phase === 'idle' || state.vertices.length < 2) {
     return { state: IDLE_WALL_TOOL }
   }
-  return { state: IDLE_WALL_TOOL, commands: segmentCommands(state.vertices, floorId, false) }
+  return {
+    state: IDLE_WALL_TOOL,
+    commands: segmentCommands(openRunSegments(state.vertices), floorId),
+  }
 }
 
 export function backspaceWallTool(state: WallToolState): WallToolState {
@@ -94,5 +118,5 @@ export function wallPreviewSegment(state: WallToolState, point: Point): PreviewS
 }
 
 export function wallGhostSegments(state: WallToolState): PreviewSegment[] {
-  return state.phase === 'drawing' ? runSegments(state.vertices, false) : []
+  return state.phase === 'drawing' ? openRunSegments(state.vertices) : []
 }
