@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 import {
+  canonicalHoleLoop,
   canonicalOuterLoop,
   ceilingHeight,
   floorSlabThickness,
@@ -30,11 +31,11 @@ function pushWorldPoint(positions: number[], point: Point, height: number): void
 }
 
 /** Positions for one horizontal cap (top or bottom) of the slab prism. */
-function slabCapPositions(boundary: Point[], triangles: Triangle[], height: number): number[] {
+function slabCapPositions(points: Point[], triangles: Triangle[], height: number): number[] {
   const positions: number[] = []
   for (const triangle of triangles) {
     for (const index of triangle) {
-      pushWorldPoint(positions, boundary[index] as Point, height)
+      pushWorldPoint(positions, points[index] as Point, height)
     }
   }
   return positions
@@ -62,23 +63,27 @@ function slabSidePositions(boundary: Point[], thickness: number): number[] {
   return positions
 }
 
-/** Triangulates the slab cap and returns index triples into `boundary`. */
-function slabCapTriangles(boundary: Point[]): Triangle[] {
+/**
+ * Triangulates the slab cap, cutting `holeLoops` out of `boundary`. The index
+ * triples reference the concatenated point array `[...boundary, ...holeLoops.flat()]`.
+ */
+function slabCapTriangles(boundary: Point[], holeLoops: Point[][]): Triangle[] {
   const contour = boundary.map((p) => new THREE.Vector2(p.x, p.y))
-  // No holes this cycle; interior voids (donut and courtyard rooms) are cut later.
-  return THREE.ShapeUtils.triangulateShape(contour, []) as Triangle[]
+  const holes = holeLoops.map((loop) => loop.map((p) => new THREE.Vector2(p.x, p.y)))
+  return THREE.ShapeUtils.triangulateShape(contour, holes) as Triangle[]
 }
 
 /** The slab's three contiguous sections, in geometry order: top, base, sides. */
-function slabSections(boundary: Point[], thickness: number): SlabSection[] {
-  const triangles = slabCapTriangles(boundary)
+function slabSections(boundary: Point[], holeLoops: Point[][], thickness: number): SlabSection[] {
+  const points = [...boundary, ...holeLoops.flat()]
+  const triangles = slabCapTriangles(boundary, holeLoops)
   // The triangulation winds the caps to face down after the orientation-flipping
   // axis map, so the upward (top) cap reverses its winding to face `+Y` while the
   // downward (base) cap keeps the order to face `-Y`.
   const topTriangles = reverseTriangleWinding(triangles)
   return [
-    { role: 'top', positions: slabCapPositions(boundary, topTriangles, FLOOR_DATUM_Y) },
-    { role: 'base', positions: slabCapPositions(boundary, triangles, FLOOR_DATUM_Y - thickness) },
+    { role: 'top', positions: slabCapPositions(points, topTriangles, FLOOR_DATUM_Y) },
+    { role: 'base', positions: slabCapPositions(points, triangles, FLOOR_DATUM_Y - thickness) },
     { role: 'exteriorFace', positions: slabSidePositions(boundary, thickness) },
   ]
 }
@@ -111,7 +116,8 @@ function addSlabGroups(geometry: THREE.BufferGeometry, sections: SlabSection[]):
  */
 function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
   const boundary = canonicalOuterLoop(node.clearPolygon)
-  const sections = slabSections(boundary, floorSlabThickness())
+  const holeLoops = (node.holes ?? []).map(canonicalHoleLoop)
+  const sections = slabSections(boundary, holeLoops, floorSlabThickness())
   const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
   addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
@@ -126,8 +132,10 @@ function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.
  */
 function buildCeilingMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
   const boundary = canonicalOuterLoop(node.clearPolygon)
-  const triangles = slabCapTriangles(boundary)
-  const positions = slabCapPositions(boundary, triangles, ceilingHeight(node))
+  const holeLoops = (node.holes ?? []).map(canonicalHoleLoop)
+  const points = [...boundary, ...holeLoops.flat()]
+  const triangles = slabCapTriangles(boundary, holeLoops)
+  const positions = slabCapPositions(points, triangles, ceilingHeight(node))
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
   return new THREE.Mesh(geometry, materials.material('base'))
