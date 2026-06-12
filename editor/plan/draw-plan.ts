@@ -235,24 +235,30 @@ interface RoomDrawing {
 
 function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDrawing): void {
   const [firstPoint, ...remainingPoints] = room.polygon
-  if (firstPoint === undefined || remainingPoints.length < 2) {
-    return
-  }
-  const start = worldToScreen(firstPoint, drawing.viewport)
+  if (firstPoint === undefined || remainingPoints.length < 2) return
   ctx.fillStyle = drawing.selected ? SELECTED_ROOM_FILL_COLOR : ROOM_FILL_COLOR
   ctx.beginPath()
-  ctx.moveTo(start.x, start.y)
-  for (const point of remainingPoints) {
-    const screenPoint = worldToScreen(point, drawing.viewport)
-    ctx.lineTo(screenPoint.x, screenPoint.y)
+  traceRingPath(ctx, room.polygon, drawing.viewport)
+  // Holes wind opposite the outer ring so the nonzero rule leaves them unpainted.
+  for (const hole of room.holes ?? []) {
+    traceRingPath(ctx, [...hole].reverse(), drawing.viewport)
   }
-  ctx.closePath()
   ctx.fill()
   if (drawing.selected) {
     ctx.strokeStyle = SELECTED_ROOM_STROKE_COLOR
     ctx.lineWidth = SELECTED_ROOM_LINE_WIDTH
     ctx.stroke()
   }
+}
+
+/** Trace one closed ring as a sub-path within the current path. */
+function traceRingPath(ctx: PlanDrawingContext, ring: Point[], viewport: Viewport): void {
+  ring.forEach((point, index) => {
+    const screen = worldToScreen(point, viewport)
+    if (index === 0) ctx.moveTo(screen.x, screen.y)
+    else ctx.lineTo(screen.x, screen.y)
+  })
+  ctx.closePath()
 }
 
 function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
