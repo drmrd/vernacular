@@ -32,6 +32,7 @@ import {
   type CommandContext,
 } from '../commands'
 import { PaintPanel } from '../paint/paint-panel'
+import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
@@ -203,6 +204,13 @@ function PaintInspector() {
   )
 }
 
+// A render-nothing layer that defaults the active paint surface to a selected
+// wall's first face, so clicking a wall on the plan also chooses what to paint.
+function EntitySurfaceBridge() {
+  useEntitySurfaceBridge()
+  return null
+}
+
 // The inspector content: the existing selection inspector, the live paint panel,
 // and the empty surface-paint seam the paint track mounts into later.
 function InspectorPanels() {
@@ -247,6 +255,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                 <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
               ) : null}
               <SurfaceSelectionProvider store={surfaceSelection}>
+                <EntitySurfaceBridge />
                 <AppFrame
                   header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
                   railLabel="Tool rail"
