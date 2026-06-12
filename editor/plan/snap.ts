@@ -175,6 +175,8 @@ function nearestIntersection(cursor: Point, context: SnapContext): Candidate | n
       }
       const distanceMm = distance(cursor, point)
       if (distanceMm <= context.toleranceMm && (best === null || distanceMm < best.distanceMm)) {
+        // referenceId is the first wall of the pair; the second is intentionally
+        // not captured (the single-wall reference model the other kinds use).
         best = { point, referenceId: a.id, distanceMm }
       }
     }
