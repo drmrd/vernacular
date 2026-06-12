@@ -38,9 +38,13 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
 }
 
-/** The earlier corners the cursor can snap back onto: every corner except the one being drawn from. */
-function openCorners(toolState: WallToolState): readonly Point[] {
-  return toolState.phase === 'drawing' ? toolState.vertices.slice(0, -1) : []
+/**
+ * The corners of the active run the cursor can snap back onto, including the corner
+ * being drawn from. Snapping onto the first corner closes the loop; snapping onto the
+ * active (last) corner lets a click there end the run without leaving a sliver.
+ */
+function activeRunCorners(toolState: WallToolState): readonly Point[] {
+  return toolState.phase === 'drawing' ? [...toolState.vertices] : []
 }
 
 function activeFloorId(session: EditorSession): string | undefined {
@@ -83,6 +87,7 @@ export interface PlanInteraction {
 interface WallKeyboardDeps {
   tool: ToolId
   finish: () => void
+  backspace: () => void
   snapping: Snapping
   setToolState: (updater: (state: WallToolState) => WallToolState) => void
   setPointer: (pointer: Point | null) => void
@@ -143,10 +148,11 @@ function useReresolveOnFreeAngleToggle({
   }, [])
 }
 
-/** Escape abandons the run, Enter finishes it, and Backspace removes the last corner. */
+/** Escape abandons the run, Enter ends it, and Backspace undoes the last segment. */
 function useWallKeyboard({
   tool,
   finish,
+  backspace,
   snapping,
   setToolState,
   setPointer,
@@ -164,12 +170,12 @@ function useWallKeyboard({
         finish()
       } else if (event.key === 'Backspace') {
         event.preventDefault()
-        setToolState(backspaceWallTool)
+        backspace()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tool, finish, snapping, setToolState, setPointer])
+  }, [tool, finish, backspace, snapping, setToolState, setPointer])
 }
 
 interface WallSnappingDeps {
@@ -193,7 +199,7 @@ function wallSnappingInputs({
   tracePoints,
   freeAngle,
 }: WallSnappingDeps) {
-  const openVertices = openCorners(toolState)
+  const openVertices = activeRunCorners(toolState)
   return {
     walls,
     viewport,
@@ -232,18 +238,22 @@ function useWallGesture({
   toolStateRef.current = toolState
 
   const finish = useCallback(() => {
-    const floorId = activeFloorId(session)
-    if (floorId === undefined) {
-      return
-    }
-    const result = finishWallTool(toolStateRef.current, floorId)
-    result.commands?.forEach((command) => session.dispatch(command))
-    setToolState(result.state)
+    setToolState((state) => finishWallTool(state).state)
     setPointer(null)
     snapping.clear()
-  }, [session, snapping, setToolState, setPointer])
+  }, [snapping, setToolState, setPointer])
 
-  useWallKeyboard({ tool, finish, snapping, setToolState, setPointer })
+  // Backspace steps the draw-from corner back one and undoes the segment that
+  // corner committed; an anchor-only run (one corner, no segment) just cancels.
+  const backspace = useCallback(() => {
+    const state = toolStateRef.current
+    if (state.phase === 'drawing' && state.vertices.length >= 2) {
+      session.undo()
+    }
+    setToolState((current) => backspaceWallTool(current))
+  }, [session, setToolState])
+
+  useWallKeyboard({ tool, finish, backspace, snapping, setToolState, setPointer })
 
   const onDoubleClick = useCallback(() => {
     if (tool === 'draw-wall') {

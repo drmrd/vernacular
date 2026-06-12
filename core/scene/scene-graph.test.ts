@@ -6,6 +6,7 @@ import {
   createStair,
   createUnderlay,
   createWall,
+  DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_WALL_THICKNESS_MM,
 } from '../model/factories'
 import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
@@ -92,6 +93,7 @@ describe('deriveSceneGraph walls', () => {
       start: { x: 0, y: 0 },
       end: { x: 1000, y: 0 },
       thickness: wall.thickness,
+      height: DEFAULT_CEILING_HEIGHT_MM,
     })
   })
 
@@ -144,7 +146,6 @@ const ROOM_HEIGHT = 3000
 const CUSTOM_WIDTH = 2000
 const CUSTOM_HEIGHT = 5000
 const CUSTOM_AREA = CUSTOM_WIDTH * CUSTOM_HEIGHT
-
 function oneRoomFloor(): Floor {
   return createFloor('Ground', {
     id: 'g',

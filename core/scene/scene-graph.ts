@@ -38,6 +38,14 @@ export interface WallSceneNode {
   start: Point
   end: Point
   thickness: number
+  /**
+   * Per-wall height in floor-plan units. Nodes from `deriveWallNode` always
+   * carry it, sourced from the host floor's `defaultCeilingHeight`. It is
+   * optional because hand-built `WallSceneNode` literals (chiefly the 2D
+   * editor's fixtures) omit it; `wallHeight` supplies the
+   * `DEFAULT_CEILING_HEIGHT_MM` fallback for those literal-built nodes.
+   */
+  height?: number
 }
 
 export interface RoomSceneNode {
@@ -51,6 +59,14 @@ export interface RoomSceneNode {
   name?: string
   /** Interior void rings in floor-plan space, mirroring the derived room's holes. */
   holes?: Point[][]
+  /**
+   * Ceiling height in floor-plan units. Nodes from `deriveRoomNodesForFloor`
+   * always carry it, sourced from the host floor's `defaultCeilingHeight`. It is
+   * optional because hand-built `RoomSceneNode` literals (chiefly fixtures) omit
+   * it; `ceilingHeight` supplies the `DEFAULT_CEILING_HEIGHT_MM` fallback for
+   * those literal-built nodes.
+   */
+  ceilingHeight?: number
 }
 
 export interface UnderlaySceneNode {
@@ -130,6 +146,7 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
     start: wall.start,
     end: wall.end,
     thickness: wall.thickness,
+    height: floor.defaultCeilingHeight,
   }
 }
 
@@ -210,6 +227,7 @@ export function deriveRoomNodesForFloor(
     polygon: room.polygon,
     clearPolygon: room.clearPolygon,
     area: room.area,
+    ceilingHeight: floor.defaultCeilingHeight,
     // Omit the optional name when absent so the no-overrides projection stays
     // identical to slice 1 under exactOptionalPropertyTypes.
     ...(room.name !== undefined && { name: room.name }),

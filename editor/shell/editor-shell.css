@@ -112,6 +112,13 @@
 }
 
 .editor-shell__preview {
+  /*
+   * Fill the viewport pane so the R3F canvas, which measures its parent, gets a
+   * real height instead of collapsing to its content (the captured short-canvas
+   * bug). The pane supplies the height through its flex layout.
+   */
+  height: 100%;
+  min-height: 0;
   font-size: 0.85rem;
   color: var(--color-text-muted);
 }

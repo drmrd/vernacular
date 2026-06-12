@@ -1,8 +1,8 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
-import * as THREE from 'three'
-import { DEFAULT_CAMERA_POSE } from '../../core'
-import { BasicLightingProvider, createSceneRenderer } from '../../engine'
+import { type CameraPose, type Point, type RoomSceneNode, type SceneGraph } from '../../core'
+import { createSceneRenderer } from '../../engine'
+import { buildFramedScene } from './framed-scene'
 
 // Deterministic fixture canvas size, pinned so the committed baseline is pixel-stable
 // across runs and machines. Kept small to keep the baseline PNG lightweight.
@@ -10,46 +10,99 @@ const HARNESS_WIDTH = 320
 const HARNESS_HEIGHT = 240
 
 // An opaque clear color so the rendered frame is a real, non-transparent render rather
-// than a blank alpha=0 canvas (an empty scene has no geometry to fill the frame).
+// than a blank alpha=0 canvas.
 const HARNESS_BACKGROUND = 0x1b2a3a
+
+// A fixed four-wall room (a 4000 by 3000 mm rectangle, 120 mm walls, 2600 mm tall) so
+// the harness renders the first lit wall shell rather than an empty scene. The ids and
+// dimensions are fixed, so the framed camera and the rendered frame are deterministic.
+const SHELL_THICKNESS = 120
+const SHELL_HEIGHT = 2600
+const SHELL_WIDTH_X = 4000
+const SHELL_DEPTH_Z = 3000
+// Half the 120 mm wall thickness: the clear floor area sits inset from the
+// centerline rectangle by this much, meeting the inner faces of the walls.
+const SHELL_CLEAR_INSET = 60
+
+function shellWall(id: string, start: Point, end: Point) {
+  return {
+    id,
+    kind: 'wall' as const,
+    floorId: 'demo',
+    start,
+    end,
+    thickness: SHELL_THICKNESS,
+    height: SHELL_HEIGHT,
+  }
+}
+
+// The single room the four walls enclose: its clear-area floor slab and ceiling
+// render alongside the walls so the harness baseline covers the room shell.
+const SHELL_ROOM: RoomSceneNode = {
+  id: 'room:demo',
+  kind: 'room',
+  floorId: 'demo',
+  polygon: [
+    { x: 0, y: 0 },
+    { x: SHELL_WIDTH_X, y: 0 },
+    { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z },
+    { x: 0, y: SHELL_DEPTH_Z },
+  ],
+  clearPolygon: [
+    { x: SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+    { x: SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+  ],
+  area: (SHELL_WIDTH_X - SHELL_THICKNESS) * (SHELL_DEPTH_Z - SHELL_THICKNESS),
+  ceilingHeight: SHELL_HEIGHT,
+}
+
+const SHELL_FIXTURE: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [
+    shellWall('wall:south', { x: 0, y: 0 }, { x: SHELL_WIDTH_X, y: 0 }),
+    shellWall('wall:east', { x: SHELL_WIDTH_X, y: 0 }, { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }),
+    shellWall('wall:north', { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }, { x: 0, y: SHELL_DEPTH_Z }),
+    shellWall('wall:west', { x: 0, y: SHELL_DEPTH_Z }, { x: 0, y: 0 }),
+  ],
+  rooms: [SHELL_ROOM],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+}
 
 // Renders exactly one frame on mount and never again, so the screenshot is deterministic
 // and never races an animation tick (the Canvas runs in `frameloop="never"`).
-function StaticFrame() {
+function StaticFrame({ target }: { target: CameraPose['target'] }) {
   const { gl, scene, camera } = useThree()
   useLayoutEffect(() => {
-    const { target } = DEFAULT_CAMERA_POSE
     camera.lookAt(target.x, target.y, target.z)
     gl.render(scene, camera)
-  }, [gl, scene, camera])
+  }, [gl, scene, camera, target])
   return null
 }
 
 /**
  * A deterministic, test-only three-dimensional render harness. It boots the same
- * empty-scene-plus-basic-lighting pipeline production uses, but pins the canvas size,
- * uses a fixed opaque background, forces the WebGL 2 backend, and renders a single
- * static frame. The Playwright visual baseline screenshots this canvas. It is mounted
- * only when the `?fixture=scene-harness` query parameter is present (see the App), so
- * a normal page load never reaches it.
+ * scene-plus-basic-lighting pipeline production uses against a fixed wall-shell fixture,
+ * pins the canvas size, uses a fixed opaque background, forces the WebGL 2 backend, and
+ * renders a single static frame. The Playwright visual baseline screenshots this canvas.
+ * It is mounted only when the `?fixture=scene-harness` query parameter is present (see
+ * the App), so a normal page load never reaches it.
  */
 export function SceneHarnessView() {
-  const lighting = useMemo(() => {
-    const group = new THREE.Group()
-    new BasicLightingProvider().apply(group)
-    return group
-  }, [])
-
-  const { position } = DEFAULT_CAMERA_POSE
+  const { root, pose } = useMemo(() => buildFramedScene(SHELL_FIXTURE), [])
 
   return (
     <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>
       <Canvas
         frameloop="never"
         camera={{
-          position: [position.x, position.y, position.z],
-          near: DEFAULT_CAMERA_POSE.near,
-          far: DEFAULT_CAMERA_POSE.far,
+          position: [pose.position.x, pose.position.y, pose.position.z],
+          near: pose.near,
+          far: pose.far,
         }}
         // Force the WebGL 2 backend so the committed baseline is a hardware-WebGL render
         // that never collides with a future WebGPU baseline.
@@ -61,8 +114,8 @@ export function SceneHarnessView() {
         }
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
-        <primitive object={lighting} />
-        <StaticFrame />
+        <primitive object={root} />
+        <StaticFrame target={pose.target} />
       </Canvas>
     </div>
   )

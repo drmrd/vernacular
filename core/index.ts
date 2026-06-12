@@ -278,6 +278,7 @@ export type {
 } from './scene/scene-graph'
 export {
   DIMENSION_NODE_PREFIX,
+  FLOOR_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
@@ -302,6 +303,9 @@ export type { CameraPose } from './scene/camera-framing'
 export { frameSceneCamera, DEFAULT_CAMERA_POSE } from './scene/camera-framing'
 export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
 export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
+export { wallHeight } from './scene/wall-height'
+export { ceilingHeight } from './scene/ceiling-height'
+export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export type {
   AssumedUnit,
