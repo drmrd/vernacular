@@ -211,6 +211,33 @@ describe('snapPoint angle snapping', () => {
     expect(snapPoint({ x: 0, y: 0 }, context)).toBeNull()
   })
 
+  it('locks a drawn wall direction relative to the nearest wall', () => {
+    // A wall running at 30 degrees from the origin, so its direction is off the
+    // world axes. The nearest wall-relative ray is its own 30-degree direction.
+    const radPerDeg = Math.PI / 180
+    const wall = wallNode({
+      start: { x: 0, y: 0 },
+      end: { x: 1000 * Math.cos(30 * radPerDeg), y: 1000 * Math.sin(30 * radPerDeg) },
+    })
+    const context: SnapContext = {
+      walls: [wall],
+      gridSpacingMm: 0,
+      toleranceMm: 1,
+      origin: { x: 0, y: 0 },
+    }
+
+    // The origin-to-cursor bearing is 33 degrees: nearer the wall's 30-degree ray
+    // than the world 45-degree ray, so the lock squares to the angled wall.
+    const result = snapPoint(
+      { x: 1000 * Math.cos(33 * radPerDeg), y: 1000 * Math.sin(33 * radPerDeg) },
+      context,
+    )
+    expect(result?.kind).toBe('angle')
+    expect(result?.referenceId).toBe(wall.id)
+    const bearing = (Math.atan2(result!.point.y, result!.point.x) * 180) / Math.PI
+    expect(bearing).toBeCloseTo(30, 4)
+  })
+
   it('prefers an in-range endpoint over the angle lock', () => {
     // The wall's start endpoint sits at an off-45 bearing (about 17 degrees) from
     // the origin, and the cursor is within tolerance of that endpoint.
