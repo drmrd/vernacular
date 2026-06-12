@@ -8,7 +8,7 @@ Foundation work is complete (build foundation, documentation, engineering norms,
 
 Three larger efforts have merged in full since the parallel-track foundations landed (pull request #48). The Vernacular Floor Plan Format is published: the `.building` package, a CORE JSON Schema generated from the `core/model` types, load-time format preservation, and a conformant fixture corpus (ADR-0047, ADR-0051, ADR-0052). The editor experience makeover wired the built-but-unmounted surfaces into a coherent shell and added the interaction layer the editor lacked: a command registry, palette, keybindings, undo and redo, delete, the wall-drawing and snapping completion, paint wiring, donut and courtyard rooms, and a journey-test acceptance gate that makes "reachable from the assembled editor" an enforced requirement. Surface paint selection and treatments shipped on top of the paint model.
 
-The work in progress is the three-dimensional preview track. It builds the lit shell slice by slice, lives on a local branch, and has not merged yet. The capability tables below carry the slice-level state for every track: what has merged, what is finished locally but unmerged, what is mid-flight, and what is planned or only scoped.
+The work in progress is the three-dimensional preview track. It builds the lit shell slice by slice. The wall shell, the live camera framing, and the per-room floor slabs and ceilings have merged (pull request #76); opening voids are mid-flight. The capability tables below carry the slice-level state for every track: what has merged, what is finished locally but unmerged, what is mid-flight, and what is planned or only scoped.
 
 ## Foundation work
 
@@ -96,18 +96,18 @@ A capability is a user-facing feature; the work items under it are the stories t
 
 Slice numbers follow the foundation spec slice map. The track built slice 1, then moved ahead to the floor and ceiling slabs (slice 4) before the opening slices (2 and 3).
 
-| Story (slice)                                                                                        | ADR            | Status           |
-| ---------------------------------------------------------------------------------------------------- | -------------- | ---------------- |
-| 0. Test harness, conventions, render harness                                                         | ADR-0045 / #48 | merged           |
-| 0b. Live camera framing and framed-scene helper                                                      | --             | complete (local) |
-| 1. Wall shell with junctions (extruded walls, material seam, surface groups, entity ids)             | ADR-0061       | complete (local) |
-| 4. Per-room floor slabs and ceilings                                                                 | ADR-0062       | in progress      |
-| 2. Opening voids (cut contour into host walls)                                                       | --             | scoped           |
-| 3. Opening fill and leaf (panels, sashes, glass; curved-glass seam)                                  | --             | scoped           |
-| 5. Camera navigation (presets, walk mode)                                                            | --             | scoped           |
-| 6. Lighting (color-temperature slider, soft shadows, paint-material stub)                            | --             | scoped           |
-| 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | --             | scoped           |
-| 8. Incremental and dirty updates                                                                     | --             | scoped           |
+| Story (slice)                                                                                        | ADR            | Status      |
+| ---------------------------------------------------------------------------------------------------- | -------------- | ----------- |
+| 0. Test harness, conventions, render harness                                                         | ADR-0045 / #48 | merged      |
+| 0b. Live camera framing and framed-scene helper                                                      | #76            | merged      |
+| 1. Wall shell with junctions (extruded walls, material seam, surface groups, entity ids)             | ADR-0061 / #76 | merged      |
+| 4. Per-room floor slabs and ceilings                                                                 | ADR-0062 / #76 | merged      |
+| 2. Opening voids (cut contour into host walls)                                                       | ADR-0063       | in progress |
+| 3. Opening fill and leaf (panels, sashes, glass; curved-glass seam)                                  | --             | scoped      |
+| 5. Camera navigation (presets, walk mode)                                                            | --             | scoped      |
+| 6. Lighting (color-temperature slider, soft shadows, paint-material stub)                            | --             | scoped      |
+| 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | --             | scoped      |
+| 8. Incremental and dirty updates                                                                     | --             | scoped      |
 
 #### Paint and metadata (merged; painted preview pending)
 
