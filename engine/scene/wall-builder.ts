@@ -1,21 +1,24 @@
 import * as THREE from 'three'
 
 import { wallHeight, type WallSceneNode } from '../../core'
-import type { MaterialProvider } from '../materials/material-provider'
+import { FACE_ROLES, type MaterialProvider } from '../materials/material-provider'
 
 /**
  * Builds the solid box mesh for one wall, in the pinned world-space convention
  * (ADR-0045): plan x maps to world X, plan y maps to world Z, and the vertical
  * axis is world Y. The box spans the wall's length along its direction, rises
  * from world Y = 0 to its height, and is centered across the centerline by half
- * its thickness. A single neutral material covers the shell for now; per-surface
- * material groups arrive in the next cycle.
+ * its thickness. A per-face material array keyed by surface role covers the
+ * shell: BoxGeometry emits one material group per face in the fixed order
+ * +X, -X, +Y, -Y, +Z, -Z (see FACE_ROLES), so the array indexes line up with
+ * each face's drawn role.
  */
 export function buildWallMesh(node: WallSceneNode, materials: MaterialProvider): THREE.Mesh {
   const length = Math.hypot(node.end.x - node.start.x, node.end.y - node.start.y)
   const height = wallHeight(node)
   const geometry = new THREE.BoxGeometry(length, height, node.thickness)
-  const mesh = new THREE.Mesh(geometry, materials.material('interiorFace'))
+  const material = FACE_ROLES.map((role) => materials.material(role))
+  const mesh = new THREE.Mesh(geometry, material)
   const midX = (node.start.x + node.end.x) / 2
   const midPlanY = (node.start.y + node.end.y) / 2
   // BoxGeometry centers its height at the origin, so raise the mesh by half its
