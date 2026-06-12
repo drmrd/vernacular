@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 
-import type { SceneGraph, SceneNode, WallSceneNode } from '../../core'
-import { FLOOR_NODE_PREFIX } from '../../core/scene/scene-graph'
+import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode, type WallSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 

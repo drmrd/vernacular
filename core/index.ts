@@ -278,6 +278,7 @@ export type {
 } from './scene/scene-graph'
 export {
   DIMENSION_NODE_PREFIX,
+  FLOOR_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
