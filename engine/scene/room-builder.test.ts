@@ -14,12 +14,49 @@ const PRECISION_5 = 5
 const FLOOR_DATUM_Y = 0
 const ORIGIN = 0
 
+const HOLE_MIN = 1000
+const HOLE_MAX = 2000
+const HOLE_CENTROID = { x: 1500, z: 1500 }
+const RING_SAMPLE = { x: 500, z: 500 }
+
 const RECTANGLE = [
   { x: ORIGIN, y: ORIGIN },
   { x: ROOM_WIDTH, y: ORIGIN },
   { x: ROOM_WIDTH, y: ROOM_DEPTH },
   { x: ORIGIN, y: ROOM_DEPTH },
 ]
+
+const HOLE = [
+  { x: HOLE_MIN, y: HOLE_MIN },
+  { x: HOLE_MAX, y: HOLE_MIN },
+  { x: HOLE_MAX, y: HOLE_MAX },
+  { x: HOLE_MIN, y: HOLE_MAX },
+]
+
+interface Point2D {
+  x: number
+  z: number
+}
+
+interface Triangle2D {
+  a: Point2D
+  b: Point2D
+  c: Point2D
+}
+
+// Barycentric-style containment via consistent signs of the edge cross products.
+// The cap sample points sit well inside or outside their triangles, so the
+// Float32 geometry precision does not put any of them on an edge.
+function pointInTriangle2D(p: Point2D, triangle: Triangle2D): boolean {
+  const cross = (o: Point2D, u: Point2D, v: Point2D): number =>
+    (u.x - o.x) * (v.z - o.z) - (u.z - o.z) * (v.x - o.x)
+  const d1 = cross(p, triangle.a, triangle.b)
+  const d2 = cross(p, triangle.b, triangle.c)
+  const d3 = cross(p, triangle.c, triangle.a)
+  const hasNegative = d1 < 0 || d2 < 0 || d3 < 0
+  const hasPositive = d1 > 0 || d2 > 0 || d3 > 0
+  return !(hasNegative && hasPositive)
+}
 
 function rectangularRoom(overrides: Partial<RoomSceneNode> = {}): RoomSceneNode {
   return {
@@ -39,6 +76,36 @@ function meshesOf(group: THREE.Object3D): THREE.Mesh[] {
     if (object instanceof THREE.Mesh) meshes.push(object)
   })
   return meshes
+}
+
+// The floor slab is the only surface carrying an upward `top` cap.
+function findFloorSlab(group: THREE.Object3D): THREE.Mesh | undefined {
+  return meshesOf(group).find(
+    (mesh) =>
+      Array.isArray(mesh.material) && mesh.material.some((material) => material.name === 'top'),
+  )
+}
+
+// The slab geometry is non-indexed, so a material group's triangles are the
+// positions in [start, start + count) taken three vertices at a time. A
+// top-cap vertex at world (x, 0, z) maps back to plan point (x, z).
+function topCapTriangles(mesh: THREE.Mesh): Triangle2D[] {
+  const geometry = mesh.geometry as THREE.BufferGeometry
+  const materials = mesh.material as THREE.Material[]
+  const cap = materialGroups(geometry).find((g) => materials[g.materialIndex]?.name === 'top')
+  if (cap === undefined) return []
+
+  const capPoints: Point2D[] = readPositions(geometry)
+    .slice(cap.start, cap.start + cap.count)
+    .map((vertex) => ({ x: vertex.x, z: vertex.z }))
+
+  const triangles: Triangle2D[] = []
+  const verticesPerTriangle = 3
+  for (let i = 0; i + verticesPerTriangle <= capPoints.length; i += verticesPerTriangle) {
+    const [a, b, c] = capPoints.slice(i, i + verticesPerTriangle)
+    if (a !== undefined && b !== undefined && c !== undefined) triangles.push({ a, b, c })
+  }
+  return triangles
 }
 
 describe('buildRoomShell', () => {
@@ -193,5 +260,21 @@ describe('buildRoomShell', () => {
         ? new Set(groups.map((g) => ceilingMaterials[g.materialIndex]?.name))
         : new Set(ceilingMaterials.map((material) => material.name))
     expect([...drawnRoles]).toEqual(['base'])
+  })
+
+  it('cuts an interior void out of the floor slab top cap while covering the surrounding ring', () => {
+    const node = rectangularRoom({ holes: [HOLE] })
+
+    const group = buildRoomShell(node, new NeutralMaterialProvider())
+
+    const slab = findFloorSlab(group)
+    expect(slab).toBeDefined()
+
+    const triangles = topCapTriangles(slab as THREE.Mesh)
+
+    // The void is cut: no cap triangle covers the hole's centroid.
+    expect(triangles.some((t) => pointInTriangle2D(HOLE_CENTROID, t))).toBe(false)
+    // The solid ring around the void stays covered.
+    expect(triangles.some((t) => pointInTriangle2D(RING_SAMPLE, t))).toBe(true)
   })
 })
