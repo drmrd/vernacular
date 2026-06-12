@@ -19,6 +19,8 @@ test.describe('Canvas pan alignment', () => {
     const x0 = box.width * 0.3
     await canvas.click({ position: { x: x0, y: box.height * 0.3 } })
     await canvas.click({ position: { x: x0, y: box.height * 0.6 } })
+    // Finish the run with Enter so the buffered wall commits.
+    await page.keyboard.press('Enter')
 
     // Sanity: the wall was actually drawn.
     await expect(page.getByText('Walls: 1')).toBeVisible()

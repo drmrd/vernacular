@@ -1,17 +1,30 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type PointerEvent,
+  type SetStateAction,
+} from 'react'
 import type { Point } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
-import type { DrawPlanOptions, PreviewSegment } from './draw-plan'
+import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 import {
   advanceWallTool,
+  backspaceWallTool,
   cancelWallTool,
+  drawingVertex,
+  finishWallTool,
   IDLE_WALL_TOOL,
+  wallGhostSegments,
   wallPreviewSegment,
+  type PreviewSegment,
   type WallToolState,
 } from './wall-tool'
 
@@ -25,19 +38,26 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
 }
 
+/** The earlier corners the cursor can snap back onto: every corner except the one being drawn from. */
+function openCorners(toolState: WallToolState): readonly Point[] {
+  return toolState.phase === 'drawing' ? toolState.vertices.slice(0, -1) : []
+}
+
+function activeFloorId(session: EditorSession): string | undefined {
+  return session.getProject().floors[0]?.id
+}
+
 /** Applies a wall-tool click and returns the next wall-tool state; other tools are inert here. */
 function applyPointer(world: Point, context: PointerContext): WallToolState {
   if (context.tool !== 'draw-wall') {
     return context.toolState
   }
-  const floorId = context.session.getProject().floors[0]?.id
+  const floorId = activeFloorId(context.session)
   if (floorId === undefined) {
     return context.toolState
   }
   const result = advanceWallTool(context.toolState, world, floorId)
-  if (result.command) {
-    context.session.dispatch(result.command)
-  }
+  result.commands?.forEach((command) => context.session.dispatch(command))
   return result.state
 }
 
@@ -52,19 +72,17 @@ export interface PlanInteractionDeps {
 
 export interface PlanInteraction {
   preview: PreviewSegment | undefined
+  ghost: PreviewSegment[]
   snap: SnapResult | null
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
   onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
+  onDoubleClick: () => void
   onPointerLeave: () => void
 }
 
-/** The in-progress segment start while drawing; absent when the tool is idle. */
-function drawingOrigin(toolState: WallToolState): Point | undefined {
-  return toolState.phase === 'drawing' ? toolState.start : undefined
-}
-
-interface CancelWallOnEscapeDeps {
+interface WallKeyboardDeps {
   tool: ToolId
+  finish: () => void
   snapping: Snapping
   setToolState: (updater: (state: WallToolState) => WallToolState) => void
   setPointer: (pointer: Point | null) => void
@@ -125,13 +143,14 @@ function useReresolveOnFreeAngleToggle({
   }, [])
 }
 
-/** Abandons an in-progress wall draw when Escape is pressed while the wall tool is active. */
-function useCancelWallOnEscape({
+/** Escape abandons the run, Enter finishes it, and Backspace removes the last corner. */
+function useWallKeyboard({
   tool,
+  finish,
   snapping,
   setToolState,
   setPointer,
-}: CancelWallOnEscapeDeps): void {
+}: WallKeyboardDeps): void {
   useEffect(() => {
     if (tool !== 'draw-wall') {
       return
@@ -141,11 +160,98 @@ function useCancelWallOnEscape({
         setToolState(cancelWallTool)
         setPointer(null)
         snapping.clear()
+      } else if (event.key === 'Enter') {
+        finish()
+      } else if (event.key === 'Backspace') {
+        event.preventDefault()
+        setToolState(backspaceWallTool)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tool, snapping, setToolState, setPointer])
+  }, [tool, finish, snapping, setToolState, setPointer])
+}
+
+interface WallSnappingDeps {
+  walls: DrawPlanOptions['walls']
+  viewport: Viewport
+  toolState: WallToolState
+  tracePoints: readonly Point[] | undefined
+  freeAngle: boolean
+}
+
+/**
+ * Assembles the wall-drawing inputs for `useSnapping`: the draw origin, the
+ * underlay trace points, and the open run's corners. The conditional spreads keep
+ * the object exactOptionalPropertyTypes-safe, only adding the optional candidate
+ * sets when they are present and non-empty.
+ */
+function wallSnappingInputs({
+  walls,
+  viewport,
+  toolState,
+  tracePoints,
+  freeAngle,
+}: WallSnappingDeps) {
+  const openVertices = openCorners(toolState)
+  return {
+    walls,
+    viewport,
+    origin: drawingVertex(toolState),
+    ...(tracePoints ? { tracePoints } : {}),
+    ...(openVertices.length > 0 ? { openVertices } : {}),
+    freeAngle,
+  }
+}
+
+interface WallGestureDeps {
+  session: EditorSession
+  tool: ToolId
+  snapping: Snapping
+  toolState: WallToolState
+  setToolState: Dispatch<SetStateAction<WallToolState>>
+  setPointer: (pointer: Point | null) => void
+}
+
+/**
+ * Owns the finishing gestures of a wall run: it commits the open run (Enter via the
+ * keyboard hook, or a double-click) and clears the cursor and snap indicator. The
+ * latest tool state is read through a ref that is updated every render, so `finish`
+ * reads the current run without listing `toolState` in its deps and without
+ * re-subscribing the keyboard effect on every dropped corner.
+ */
+function useWallGesture({
+  session,
+  tool,
+  snapping,
+  toolState,
+  setToolState,
+  setPointer,
+}: WallGestureDeps): { onDoubleClick: () => void } {
+  const toolStateRef = useRef(toolState)
+  toolStateRef.current = toolState
+
+  const finish = useCallback(() => {
+    const floorId = activeFloorId(session)
+    if (floorId === undefined) {
+      return
+    }
+    const result = finishWallTool(toolStateRef.current, floorId)
+    result.commands?.forEach((command) => session.dispatch(command))
+    setToolState(result.state)
+    setPointer(null)
+    snapping.clear()
+  }, [session, snapping, setToolState, setPointer])
+
+  useWallKeyboard({ tool, finish, snapping, setToolState, setPointer })
+
+  const onDoubleClick = useCallback(() => {
+    if (tool === 'draw-wall') {
+      finish()
+    }
+  }, [tool, finish])
+
+  return { onDoubleClick }
 }
 
 /** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
@@ -154,16 +260,13 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
   const freeAngle = useFreeAngleModifier(tool)
-  const snapping = useSnapping({
-    walls,
-    viewport,
-    origin: drawingOrigin(toolState),
-    ...(tracePoints ? { tracePoints } : {}),
-    freeAngle,
-  })
+  const snapping = useSnapping(
+    wallSnappingInputs({ walls, viewport, toolState, tracePoints, freeAngle }),
+  )
   const recordRawCursor = useReresolveOnFreeAngleToggle({ tool, freeAngle, snapping, setPointer })
 
-  useCancelWallOnEscape({ tool, snapping, setToolState, setPointer })
+  const gesture = { session, tool, snapping, toolState, setToolState, setPointer }
+  const { onDoubleClick } = useWallGesture(gesture)
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
@@ -193,7 +296,8 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
 
   const preview =
     tool === 'draw-wall' && pointer ? wallPreviewSegment(toolState, pointer) : undefined
+  const ghost = tool === 'draw-wall' ? wallGhostSegments(toolState) : []
   const snap = tool === 'draw-wall' ? snapping.snap : null
 
-  return { preview, snap, onPointerDown, onPointerMove, onPointerLeave }
+  return { preview, ghost, snap, onPointerDown, onPointerMove, onDoubleClick, onPointerLeave }
 }

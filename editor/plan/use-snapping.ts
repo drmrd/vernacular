@@ -19,6 +19,9 @@ interface SnappingInputs {
   // Underlay footprint corners the cursor can snap to when trace mode is on;
   // absent or empty when trace mode is off.
   tracePoints?: readonly Point[]
+  // The open run's corners the cursor can snap back onto to close the loop;
+  // absent or empty when not drawing.
+  openVertices?: readonly Point[]
   // When set, the held free-angle modifier suppresses the default angle lock so
   // the cursor draws a free angle.
   freeAngle?: boolean
@@ -40,6 +43,7 @@ function buildContext({
   viewport,
   origin,
   tracePoints,
+  openVertices,
   freeAngle,
 }: SnappingInputs): SnapContext {
   return {
@@ -50,6 +54,7 @@ function buildContext({
     toleranceMm: SNAP_PIXEL_TOLERANCE / viewport.scale,
     ...(origin ? { origin } : {}),
     ...(tracePoints && tracePoints.length > 0 ? { tracePoints } : {}),
+    ...(openVertices && openVertices.length > 0 ? { openVertices } : {}),
     ...(freeAngle ? { freeAngle } : {}),
   }
 }
