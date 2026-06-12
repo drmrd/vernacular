@@ -39,6 +39,11 @@ function slabCapPositions(boundary: Point[], triangles: Triangle[], height: numb
   return positions
 }
 
+/** Reverses each triangle's vertex order, flipping the cap's face direction. */
+function reverseTriangleWinding(triangles: Triangle[]): Triangle[] {
+  return triangles.map((triangle) => [...triangle].reverse() as Triangle)
+}
+
 /** Positions for the vertical sides connecting the top and bottom caps. */
 function slabSidePositions(boundary: Point[], thickness: number): number[] {
   const positions: number[] = []
@@ -66,8 +71,12 @@ function slabCapTriangles(boundary: Point[]): Triangle[] {
 /** The slab's three contiguous sections, in geometry order: top, base, sides. */
 function slabSections(boundary: Point[], thickness: number): SlabSection[] {
   const triangles = slabCapTriangles(boundary)
+  // The triangulation winds the caps to face down after the orientation-flipping
+  // axis map, so the upward (top) cap reverses its winding to face `+Y` while the
+  // downward (base) cap keeps the order to face `-Y`.
+  const topTriangles = reverseTriangleWinding(triangles)
   return [
-    { role: 'top', positions: slabCapPositions(boundary, triangles, FLOOR_DATUM_Y) },
+    { role: 'top', positions: slabCapPositions(boundary, topTriangles, FLOOR_DATUM_Y) },
     { role: 'base', positions: slabCapPositions(boundary, triangles, FLOOR_DATUM_Y - thickness) },
     { role: 'exteriorFace', positions: slabSidePositions(boundary, thickness) },
   ]
