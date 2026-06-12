@@ -1,6 +1,13 @@
 import { distance, type Point, type WallSceneNode } from '../../core'
 
-export type SnapKind = 'endpoint' | 'midpoint' | 'perpendicular' | 'parallel' | 'grid' | 'trace'
+export type SnapKind =
+  | 'endpoint'
+  | 'midpoint'
+  | 'edge'
+  | 'perpendicular'
+  | 'parallel'
+  | 'grid'
+  | 'trace'
 
 export interface SnapResult {
   point: Point
@@ -32,6 +39,19 @@ interface Vector {
 
 function midpointOf(wall: WallSceneNode): Point {
   return { x: (wall.start.x + wall.end.x) / 2, y: (wall.start.y + wall.end.y) / 2 }
+}
+
+/** Nearest point on the segment [a, b] to p, clamped to the segment ends. */
+function nearestPointOnSegment(p: Point, a: Point, b: Point): Point {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSq = dx * dx + dy * dy
+  if (lengthSq === 0) {
+    return a
+  }
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq
+  const clamped = Math.max(0, Math.min(1, t))
+  return { x: a.x + clamped * dx, y: a.y + clamped * dy }
 }
 
 /** Unit direction of a wall, or null for a zero-length wall whose direction is undefined. */
@@ -165,6 +185,12 @@ export function snapPoint(cursor: Point, context: SnapContext): SnapResult | nul
   const midpoint = nearestFeature(cursor, context, (wall) => [midpointOf(wall)])
   if (midpoint !== null) {
     return asResult(midpoint, 'midpoint')
+  }
+  const edge = nearestFeature(cursor, context, (wall) => [
+    nearestPointOnSegment(cursor, wall.start, wall.end),
+  ])
+  if (edge !== null) {
+    return asResult(edge, 'edge')
   }
   const perpendicular = perpendicularSnap(cursor, context)
   if (perpendicular !== null) {
