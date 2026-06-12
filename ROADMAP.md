@@ -4,9 +4,11 @@ Vernacular ships in milestones. Each milestone produces working, testable softwa
 
 ## Current status
 
-Foundation work complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). The MVP path is underway, starting with the two-dimensional plan editor (design specification section 10, Phase 1), delivered as twelve build slices (all now done) plus two finishing slices: 1 (wall topology and room derivation), 2 (units and measurement), 3 (pan, zoom, grid, and rulers), 4 (snapping), 5 (selection and the hit-test index), 6 (wall editing: endpoint move and thickness), 7 (openings: doors and windows), 8 (room naming and labeling, custom-polygon override), 9 (dimensions and thickness-aware area), 10 (clipboard and transforms: copy, paste, delete, move, rotate), 11 (project stores: save, open, recent, and store wiring), and 12 (image underlay with calibration). All twelve build slices are done, and both finishing slices have now landed: slice 13 (minimal underlay asset persistence, which closes the named "zero state loss" acceptance gap) and slice 14 (the DOM overlay with accessibility, a named Phase-1 deliverable). Phase 1 is complete. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones; the three-dimensional preview, the assets and furniture pipeline, and the user-experience foundation start in parallel. See ADR-0041, ADR-0042, ADR-0043, and ADR-0044, and the MVP path section below.
+Foundation work is complete (build foundation, documentation, engineering norms, source skeleton, proof of life, acceptance). Phase 1, the two-dimensional plan editor, is complete and shipped as release 0.2.0; its fourteen slices are detailed in the Phase 1 section below. The rest of the MVP runs as parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones (ADR-0044).
 
-The first wave of parallel-track work has now landed on `main` (pull request #48): the design-system foundation and the application layout shell, the period, style, and room-purpose registries, the three-dimensional render harness, the asset cache and registry, the two-dimensional plan export, multi-floor structure with the stair entity, and paint and metadata (palettes, color and finish, and site metadata). Each track continues from that merged foundation. In parallel, the project file format is being published formally as the Vernacular Floor Plan Format (the format specification and ADR-0047); generating its CORE JSON Schema from the `core/model` types, validating Documents, and shipping conformant fixtures are the next step.
+Three larger efforts have merged in full since the parallel-track foundations landed (pull request #48). The Vernacular Floor Plan Format is published: the `.building` package, a CORE JSON Schema generated from the `core/model` types, load-time format preservation, and a conformant fixture corpus (ADR-0047, ADR-0051, ADR-0052). The editor experience makeover wired the built-but-unmounted surfaces into a coherent shell and added the interaction layer the editor lacked: a command registry, palette, keybindings, undo and redo, delete, the wall-drawing and snapping completion, paint wiring, donut and courtyard rooms, and a journey-test acceptance gate that makes "reachable from the assembled editor" an enforced requirement. Surface paint selection and treatments shipped on top of the paint model.
+
+The work in progress is the three-dimensional preview track. It builds the lit shell slice by slice, lives on a local branch, and has not merged yet. The capability tables below carry the slice-level state for every track: what has merged, what is finished locally but unmerged, what is mid-flight, and what is planned or only scoped.
 
 ## Foundation work
 
@@ -33,17 +35,118 @@ The first wave of parallel-track work has now landed on `main` (pull request #48
 
 Phase 1 (the two-dimensional plan editor) and the project-stores work are done. The remaining MVP work is re-sequenced from a strict phase chain into parallel delivery tracks that converge on the public-alpha, public-beta, and 1.0 milestones (ADR-0044). The re-sequencing is possible because Phase 1 already shipped the decoupling layer (scene-graph derivation, the registry pattern, and the single dispatch boundary): a new entity kind is an additive scene-graph projection that the two-dimensional renderer, the three-dimensional renderer, and the export pipeline each pick up independently, so "what an entity is" is independent of "how each surface draws it."
 
-| Area                                    | Status                                                             |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| Project stores, persistence, migrations | done                                                               |
-| Two-dimensional plan editor             | done                                                               |
-| Three-dimensional preview               | render harness landed; track continues                             |
-| Assets and furniture                    | cache and registry landed; track continues                         |
-| User-experience foundation              | design system and layout shell landed; track continues             |
-| Old-house vocabulary                    | period, style, and room-purpose registries landed; track continues |
-| Structure and multi-floor               | floors and stairs landed; track continues                          |
-| Output and export                       | two-dimensional plan export landed; track continues                |
-| Paint and metadata                      | paint model, palettes, and site metadata landed; track continues   |
+### Capabilities and work items
+
+A capability is a user-facing feature; the work items under it are the stories that build it. Status vocabulary:
+
+- **merged**: on `main`.
+- **complete (local)**: the full red-green-blue cycle is done on a local branch, not yet merged.
+- **in progress**: implementation underway, mid-cycle.
+- **planned**: a dedicated spec or plan exists; implementation has not started.
+- **scoped**: named in an accepted spec or in the ADR-0044 track map, with no dedicated plan and no implementation yet.
+- **not refined**: no decomposition yet, so no stories are listed.
+
+#### Overview
+
+| Capability                      | Refined into                        | Overall status                      |
+| ------------------------------- | ----------------------------------- | ----------------------------------- |
+| Phase 1: two-dimensional editor | 14 slice specs and plans            | merged (0.2.0)                      |
+| Vernacular Floor Plan Format    | format spec, ADR-0047, four plans   | merged                              |
+| Editor experience makeover      | makeover spec, ten slice plans      | merged (one local follow-up)        |
+| Three-dimensional preview       | foundation spec, slice map (0 to 8) | in progress                         |
+| Paint and metadata              | ADR-0048, ADR-0056                  | merged (3D painted preview pending) |
+| Structure and multi-floor       | ADR-0044 track, foundation plan     | foundation merged; rest scoped      |
+| Old-house vocabulary            | ADR-0044 track, ADR-0046            | registries merged; rest scoped      |
+| Assets and furniture            | ADR-0044 track, ADR-0007            | foundation merged; rest scoped      |
+| Output and export               | ADR-0044 track                      | 2D export merged; rest scoped       |
+| User-experience foundation      | ADR-0044 track                      | merged (subsumed by the makeover)   |
+| Beyond 1.0                      | not yet decomposed                  | not refined                         |
+
+#### Vernacular Floor Plan Format (merged)
+
+| Story                                                                                   | ADR / PR            | Status |
+| --------------------------------------------------------------------------------------- | ------------------- | ------ |
+| CORE JSON Schema (`schema/8`), Ajv validator, drift guard, fixtures, extension seam     | ADR-0047 / #50      | merged |
+| File rename `project.json` to `vernacular.json`, `.house.zip` to `.building` (breaking) | #51                 | merged |
+| Format preservation and load-time validation                                            | ADR-0051 / #54      | merged |
+| Corpus-conformant fixture tiers                                                         | ADR-0052 / #62, #63 | merged |
+
+#### Editor experience makeover (merged; one local follow-up)
+
+| Story                                                              | ADR / PR            | Status           |
+| ------------------------------------------------------------------ | ------------------- | ---------------- |
+| Journey-test harness and integration-acceptance gate               | ADR-0049 / #49      | merged           |
+| Drafting-table retheme (light and dark)                            | #52                 | merged           |
+| Shell IA, command registry, palette, keybindings, undo/redo/delete | ADR-0050 / #53      | merged           |
+| Split-pane 2D/3D viewport, view modes, selection sync              | ADR-0057 / #56      | merged           |
+| Per-active-floor rendering and floor switcher                      | #57                 | merged           |
+| Adaptive unit display                                              | #58                 | merged           |
+| Cancel in-progress wall                                            | #59                 | merged           |
+| Edit-wall-endpoint journey                                         | #60                 | merged           |
+| Opening-host guard                                                 | #65                 | merged           |
+| Along-wall and intersection snaps                                  | ADR-0053 / #66      | merged           |
+| Smart angle snap                                                   | ADR-0054 / #67      | merged           |
+| Chained-polyline wall drawing                                      | ADR-0055 / #69      | merged           |
+| Immediate-commit wall drawing (supersedes ADR-0055)                | ADR-0060            | complete (local) |
+| Precision snapping panel and editor preferences                    | ADR-0059 / #73      | merged           |
+| Paint, finish, and site-metadata wiring and polish                 | ADR-0056 / #64, #74 | merged           |
+| Donut and courtyard rooms (hole rings)                             | ADR-0058 / #72      | merged           |
+
+#### Three-dimensional preview (in progress)
+
+Slice numbers follow the foundation spec slice map. The track built slice 1, then moved ahead to the floor and ceiling slabs (slice 4) before the opening slices (2 and 3).
+
+| Story (slice)                                                                                        | ADR            | Status           |
+| ---------------------------------------------------------------------------------------------------- | -------------- | ---------------- |
+| 0. Test harness, conventions, render harness                                                         | ADR-0045 / #48 | merged           |
+| 0b. Live camera framing and framed-scene helper                                                      | --             | complete (local) |
+| 1. Wall shell with junctions (extruded walls, material seam, surface groups, entity ids)             | ADR-0061       | complete (local) |
+| 4. Per-room floor slabs and ceilings                                                                 | ADR-0062       | in progress      |
+| 2. Opening voids (cut contour into host walls)                                                       | --             | scoped           |
+| 3. Opening fill and leaf (panels, sashes, glass; curved-glass seam)                                  | --             | scoped           |
+| 5. Camera navigation (presets, walk mode)                                                            | --             | scoped           |
+| 6. Lighting (color-temperature slider, soft shadows, paint-material stub)                            | --             | scoped           |
+| 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | --             | scoped           |
+| 8. Incremental and dirty updates                                                                     | --             | scoped           |
+
+#### Paint and metadata (merged; painted preview pending)
+
+| Story                                                                  | ADR / PR            | Status                           |
+| ---------------------------------------------------------------------- | ------------------- | -------------------------------- |
+| Paint model, palette registry, color and finish pickers, site metadata | ADR-0048 / #48      | merged                           |
+| Surface paint selection and treatments (and wiring, polish)            | ADR-0056 / #64, #74 | merged                           |
+| Painted 3D preview (paint material on the per-surface groups)          | --                  | scoped (converges on 3D slice 6) |
+
+#### Track features still at foundation
+
+ADR-0044 names the stories for each of these tracks; only the foundation story has been built, so the rest are scoped, not yet individually planned.
+
+| Capability                 | Story (named in ADR-0044)                                             | Status                         |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------ |
+| Structure and multi-floor  | Floor management and multi-floor commands                             | merged (#48)                   |
+| Structure and multi-floor  | Floor switcher UI                                                     | merged (#57)                   |
+| Structure and multi-floor  | Stair entity, 2D symbol, floor-spanning topology                      | scoped                         |
+| Structure and multi-floor  | Per-room ceiling height                                               | scoped                         |
+| Structure and multi-floor  | Stair 3D geometry, cutaway, floor-by-floor 3D                         | scoped (converges on 3D)       |
+| Old-house vocabulary       | Period/style and room-purpose registries                              | merged (#48, ADR-0046)         |
+| Old-house vocabulary       | Surfacing shipped vocabulary, era tagging UI                          | scoped                         |
+| Old-house vocabulary       | Curved 2D openings, trim and feature data, construction profiles (2D) | scoped                         |
+| Old-house vocabulary       | 3D renderings; library era filtering                                  | scoped (convergence)           |
+| Assets and furniture       | Asset cache, registry, resolution                                     | merged (#48, ADR-0007)         |
+| Assets and furniture       | Pack format and CLI (full)                                            | scoped (Phase-0 scaffold only) |
+| Assets and furniture       | Library browser, custom import, placement tool (2D)                   | scoped                         |
+| Assets and furniture       | Furniture in 3D; bundle export with attributions                      | scoped (convergence)           |
+| Output and export          | 2D plan export (SVG) in `core/export/`                                | merged (#48)                   |
+| Output and export          | PDF and PNG (2D) exporters                                            | scoped                         |
+| Output and export          | Standard exporters (`ifcJSON`, DXF)                                   | scoped                         |
+| Output and export          | 3D snapshot export; bundle export                                     | scoped (convergence)           |
+| User-experience foundation | Design tokens, theming, primitives, layout shell                      | merged (#48)                   |
+| User-experience foundation | Drafting-table visual language                                        | merged (#52)                   |
+| User-experience foundation | Empty and loading states, continuous polish                           | ongoing                        |
+
+#### Beyond 1.0 (not refined)
+
+These are named but not yet decomposed, so no stories are listed: DXF import and underlay-based migration; lighting fidelity (solar position, baked global illumination, physically based reflectance); a pathing critic with room-purpose rules; a code-plugin runtime; image-to-3D; and cloud sync.
 
 ### Dependency graph
 
