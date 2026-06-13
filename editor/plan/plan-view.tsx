@@ -187,15 +187,29 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
+  const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const deps = planInteractionDeps({ session, tool, viewport }, graph, traceMode)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
   const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
-  const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
+  const selectionMove = useSelectionMove({
+    session,
+    graph,
+    selectedIds,
+    tool,
+    viewport,
+    preferences,
+  })
   const clipboard = useClipboardStore()
   useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
-  const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
+  const wallEditing = useWallEditing({
+    session,
+    selectedWall,
+    walls: graph.walls,
+    viewport,
+    preferences,
+  })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
@@ -206,7 +220,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
     selectedIds,
     selectedWall,
     viewport,
-    preferences: PREFERENCES_BY_UNITS[session.getProject().meta.units],
+    preferences,
     selection,
     interaction,
     dimensionTool,
@@ -233,6 +247,9 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
+  // The overlay readout pill draws from the move drag or the wall-endpoint drag.
+  // The two never co-occur (only one drag is live), so `??` is merely tidy here.
+  const readout = selectionMove.readout ?? wallEditing.readout
   return {
     cursor: planCursor(layers.tool, controls.panning || planSelection.panning),
     pointerHandlers: composePointerHandlers({
@@ -255,6 +272,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
       preferences: layers.preferences,
       snap: interaction.snap,
       ...(interaction.preview ? { preview: interaction.preview } : {}),
+      ...(readout ? { readout } : {}),
     },
   }
 }

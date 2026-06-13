@@ -3,6 +3,7 @@ import { useState, type FocusEvent, type ReactElement } from 'react'
 import type { SceneGraph, UnitPreferences } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import { dimensionChips, type DimensionChip } from './dimension-chip'
+import type { DragReadout } from './drag-readout'
 import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
 import { EntityProxy } from './entity-proxy'
@@ -27,6 +28,10 @@ export interface PlanOverlayProps {
   // The in-progress wall-draw segment, present only while drawing, which drives the
   // live readout chip and the angle-lock announcement.
   preview?: PreviewSegment
+  // The live drag readout pill (anchor and text), present only while a move-drag
+  // runs. The wall draw and the move drag never co-occur, so this is independent of
+  // the preview-driven readout chip.
+  readout?: DragReadout
 }
 
 interface PillProps {
@@ -167,22 +172,17 @@ function liveAnnouncement(
   return selectionAnnouncement(selected)
 }
 
-interface ReadoutChipProps {
-  preview: PreviewSegment
-  viewport: Viewport
-  preferences: UnitPreferences
+interface ReadoutPillProps {
+  screen: ScreenPoint
+  text: string
 }
 
-// The near-cursor readout pill for the in-progress wall draw: its length and bearing,
-// anchored at the (snapped) segment end and offset to the side so it stays legible.
-function ReadoutChip({ preview, viewport, preferences }: ReadoutChipProps): ReactElement {
-  return (
-    <PositionedPill
-      className="plan-overlay__readout"
-      screen={worldToScreen(preview.end, viewport)}
-      text={formatReadout(segmentReadout(preview), preferences)}
-    />
-  )
+// The near-cursor readout pill, anchored at a screen point. Shared by the in-progress
+// wall draw (its length and bearing at the snapped segment end) and a live drag (its
+// pre-formatted text at the drag's live point); the move drag and wall draw never
+// co-occur, so a single pill class serves both.
+function ReadoutPill({ screen, text }: ReadoutPillProps): ReactElement {
+  return <PositionedPill className="plan-overlay__readout" screen={screen} text={text} />
 }
 
 /**
@@ -195,7 +195,7 @@ function ReadoutChip({ preview, viewport, preferences }: ReadoutChipProps): Reac
  * end-to-end specs.
  */
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
-  const { viewport, graph, selectedIds, selection, preferences, snap, preview } = props
+  const { viewport, graph, selectedIds, selection, preferences, snap, preview, readout } = props
   const entities = overlayEntities(graph, selectedIds, preferences)
   const keyboard = useOverlayKeyboard(entities.length, selection)
   const [focused, setFocused] = useState(false)
@@ -215,7 +215,13 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       <ChipLayer chips={dimensionChips(graph.dimensions, viewport, preferences)} />
       <FocusTooltip entity={focusedEntity} viewport={viewport} visible={focused} />
       {preview ? (
-        <ReadoutChip preview={preview} viewport={viewport} preferences={preferences} />
+        <ReadoutPill
+          screen={worldToScreen(preview.end, viewport)}
+          text={formatReadout(segmentReadout(preview), preferences)}
+        />
+      ) : null}
+      {readout ? (
+        <ReadoutPill screen={worldToScreen(readout.anchor, viewport)} text={readout.text} />
       ) : null}
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">

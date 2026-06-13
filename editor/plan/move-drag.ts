@@ -4,8 +4,10 @@ import {
   type Command,
   type Point,
   type TranslateEntitiesParams,
+  type UnitPreferences,
 } from '../../core'
 import type { PreviewSegment } from './draw-plan'
+import { dragReadout, type DragReadout } from './drag-readout'
 
 export type MoveDragState =
   | { phase: 'idle' }
@@ -33,6 +35,16 @@ export function moveDragGhost(state: MoveDragState, pointer: Point): readonly Pr
     start: translatePoint(segment.start, delta),
     end: translatePoint(segment.end, delta),
   }))
+}
+
+/** The live move drag's readout: the distance chip from the grab origin to the pointer. */
+export function moveDragReadout(
+  state: MoveDragState,
+  pointer: Point,
+  preferences: UnitPreferences,
+): DragReadout | undefined {
+  if (state.phase !== 'dragging') return undefined
+  return dragReadout(state.origin, pointer, preferences)
 }
 
 // eslint-disable-next-line max-params -- the drag state, the release point, the target floor, and the selected ids are the minimal inputs to commit a move
