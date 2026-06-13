@@ -1,11 +1,19 @@
 import * as THREE from 'three'
 
-import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode } from '../../core'
+import {
+  FLOOR_NODE_PREFIX,
+  WALL_NODE_PREFIX,
+  buildWallGraph,
+  type OpeningSceneNode,
+  type SceneGraph,
+  type SceneNode,
+  type WallSceneNode,
+} from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
 import { buildRoomShell } from './room-builder'
-import { buildWallMesh } from './wall-builder'
+import { buildWalls } from './wall-builder'
 
 /** Root group that owns one child group per scene-graph node. */
 export type SceneRoot = THREE.Group
@@ -33,15 +41,44 @@ function buildFloorGroup(
   // Elevation is in millimetres; world units are millimetres throughout (no scale factor).
   group.position.y = node.elevation
   const modelId = node.id.slice(FLOOR_NODE_PREFIX.length)
-  for (const wall of graph.walls) {
-    if (wall.floorId === modelId) {
-      group.add(buildWallMesh(wall, materials))
-    }
-  }
+  const floorWalls = graph.walls.filter((wall) => wall.floorId === modelId)
+  const floorOpenings = graph.openings.filter((opening) => opening.floorId === modelId)
+  group.add(
+    buildWalls({
+      graph: buildFloorWallGraph(floorWalls),
+      walls: floorWalls,
+      openingsByWall: groupOpeningsByHostWall(floorOpenings),
+      materials,
+    }),
+  )
   for (const room of graph.rooms) {
     if (room.floorId === modelId) {
       group.add(buildRoomShell(room, materials))
     }
   }
   return group
+}
+
+/** Builds the planar wall graph for a floor, keying each edge by stripped model id. */
+function buildFloorWallGraph(floorWalls: WallSceneNode[]): ReturnType<typeof buildWallGraph> {
+  return buildWallGraph(
+    floorWalls.map((wall) => ({
+      id: wall.id.slice(WALL_NODE_PREFIX.length),
+      start: wall.start,
+      end: wall.end,
+      thickness: wall.thickness,
+    })),
+  )
+}
+
+/** Groups openings by their host wall id, skipping openings without a host. */
+function groupOpeningsByHostWall(openings: OpeningSceneNode[]): Map<string, OpeningSceneNode[]> {
+  const byHostWall = new Map<string, OpeningSceneNode[]>()
+  for (const opening of openings) {
+    if (opening.hostWallId === undefined) continue
+    const existing = byHostWall.get(opening.hostWallId) ?? []
+    existing.push(opening)
+    byHostWall.set(opening.hostWallId, existing)
+  }
+  return byHostWall
 }

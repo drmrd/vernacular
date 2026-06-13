@@ -1,6 +1,13 @@
 import * as THREE from 'three'
 
-import { wallHeight, type WallSceneNode } from '../../core'
+import {
+  WALL_NODE_PREFIX,
+  wallHeight,
+  type GraphEdge,
+  type OpeningSceneNode,
+  type PlanarGraph,
+  type WallSceneNode,
+} from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
 /**
@@ -47,4 +54,63 @@ export function buildWallMesh(node: WallSceneNode, materials: MaterialProvider):
   mesh.rotation.y = Math.atan2(-(node.end.y - node.start.y), node.end.x - node.start.x)
   mesh.userData.entityId = node.id
   return mesh
+}
+
+/** Inputs for building a floor's walls from its planar graph. */
+export interface WallBuildInput {
+  graph: PlanarGraph
+  walls: WallSceneNode[]
+  openingsByWall: Map<string, OpeningSceneNode[]>
+  materials: MaterialProvider
+}
+
+/**
+ * Builds the wall meshes for one floor from its planar graph. Each graph edge is
+ * a wall segment: a split wall (one {@link WallSceneNode} spanning several edges)
+ * yields one box mesh per edge, all carrying the wall node's entity id. Openings
+ * are ignored in this slice; the void-cut path lands in a later cycle.
+ */
+export function buildWalls(input: WallBuildInput): THREE.Group {
+  const group = new THREE.Group()
+  const wallsByModelId = indexWallsByModelId(input.walls)
+  for (const edge of input.graph.edges) {
+    const mesh = buildEdgeMesh(edge, input, wallsByModelId)
+    if (mesh !== null) group.add(mesh)
+  }
+  return group
+}
+
+/** Indexes wall nodes by their stripped model id (the graph edges' `wallId`). */
+function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode> {
+  const byModelId = new Map<string, WallSceneNode>()
+  for (const wall of walls) {
+    byModelId.set(wall.id.slice(WALL_NODE_PREFIX.length), wall)
+  }
+  return byModelId
+}
+
+/**
+ * Builds the box mesh for one graph edge, reusing {@link buildWallMesh} for the
+ * edge's segment. Returns null when the host wall node or either endpoint is
+ * missing (guarding `noUncheckedIndexedAccess`).
+ */
+function buildEdgeMesh(
+  edge: GraphEdge,
+  input: WallBuildInput,
+  wallsByModelId: Map<string, WallSceneNode>,
+): THREE.Mesh | null {
+  const wall = wallsByModelId.get(edge.wallId)
+  const a = input.graph.vertices[edge.a]
+  const b = input.graph.vertices[edge.b]
+  if (wall === undefined || a === undefined || b === undefined) return null
+  const edgeNode: WallSceneNode = {
+    id: wall.id,
+    kind: 'wall',
+    floorId: wall.floorId,
+    start: a,
+    end: b,
+    thickness: wall.thickness,
+    ...(wall.height !== undefined ? { height: wall.height } : {}),
+  }
+  return buildWallMesh(edgeNode, input.materials)
 }
