@@ -35,6 +35,7 @@ import {
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
+import { usePlanHover, type PlanHover } from './use-plan-hover'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useFloorFillColor, useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
@@ -75,6 +76,7 @@ interface PlanLayers {
   dimensionTool: DimensionTool
   dimensions: readonly DrawableDimension[]
   planSelection: PlanSelection
+  planHover: PlanHover
   selectionMove: SelectionMove
   wallEditing: WallEditing
   controls: ViewportControls
@@ -99,6 +101,7 @@ function buildScene(
     walls: graph.walls,
     rooms: graph.rooms,
     selectedIds: inputs.selectedIds,
+    hoveredId: inputs.planHover.hoveredId,
     // The endpoint drag, the wall tool, and the dimension tool never preview at
     // once (each gated on its own tool), so one resolved preview leaf covers all.
     preview: wallEditing.preview ?? interaction.preview ?? dimensionTool.preview,
@@ -175,6 +178,7 @@ function useActiveFloorGraph(): SceneGraph {
  * consume. The pure decision logic lives in the tested modules; this binds them to
  * the session, selection, active tool, and viewport.
  */
+// eslint-disable-next-line max-lines-per-function -- one resolved hook per line reads clearer than merging unrelated hook calls; none can share a line within print-width.
 function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const session = useEditorSession()
   const graph = useActiveFloorGraph()
@@ -187,8 +191,9 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
-  const clipboard = useClipboardStore()
+  const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
+  const clipboard = useClipboardStore()
   useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
@@ -207,6 +212,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
     dimensionTool,
     dimensions: toDrawableDimensions(graph.dimensions, selectedIds),
     planSelection,
+    planHover,
     selectionMove,
     wallEditing,
     controls,
@@ -239,6 +245,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
       calibration: underlayLayer.calibration,
       selection: planSelection,
       openingPlacement: openingLayer.placement,
+      hover: layers.planHover,
     }),
     overlay: {
       viewport: layers.viewport,

@@ -383,6 +383,104 @@ describe('drawPlan selection overlays', () => {
   })
 })
 
+describe('drawPlan hover preview', () => {
+  const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+
+  // prettier-ignore
+  const swingNode: OpeningSceneNode = {
+    id: 'opening:a', kind: 'opening', floorId: 'g', type: 'single-swing-door',
+    center: { x: 500, y: 0 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+    width: 800, height: 2032, sillHeight: 0, hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+  // prettier-ignore
+  const swingOpening: DrawableOpening = {
+    node: swingNode, symbol: 'door-swing', double: false, selected: false,
+  }
+  // prettier-ignore
+  const dimensionNode: DimensionSceneNode = {
+    id: 'dimension:d1', kind: 'dimension', floorId: 'g',
+    start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, offset: 200, length: 1000,
+  }
+  const dimension: DrawableDimension = { node: dimensionNode, selected: false }
+
+  const styles = (recorder: ReturnType<typeof recordingContext>) =>
+    new Set(recorder.segments.map((segment) => segment.style))
+
+  /** The stroke styles that appear in `withHover` but are absent in `baseline`. */
+  function hoverStyles(
+    baseline: ReturnType<typeof recordingContext>,
+    withHover: ReturnType<typeof recordingContext>,
+  ) {
+    const before = styles(baseline)
+    return [...styles(withHover)].filter((style) => !before.has(style))
+  }
+
+  it('adds a wall hover stroke whose style differs from the default and the selected wall', () => {
+    const without = recordingContext()
+    drawPlan(without.ctx, planOptions())
+    const hovered = recordingContext()
+    drawPlan(hovered.ctx, planOptions({ hoveredId: 'wall:a' }))
+    const selected = recordingContext()
+    drawPlan(selected.ctx, planOptions({ selectedIds: new Set(['wall:a']) }))
+
+    const added = hoverStyles(without, hovered)
+    expect(added).toHaveLength(1)
+    expect(styles(selected)).not.toContain(added[0])
+  })
+
+  it('adds a room hover stroke distinct from the selected-room highlight', () => {
+    const room = rectangleRoom('room:r')
+    const base = { walls: [] as WallSceneNode[], rooms: [room], viewport, width: 800, height: 600 }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
+    const hovered = recordingContext()
+    drawPlan(hovered.ctx, { ...base, selectedIds: new Set<string>(), hoveredId: 'room:r' })
+    const selected = recordingContext()
+    drawPlan(selected.ctx, { ...base, selectedIds: new Set(['room:r']) })
+
+    // An unhovered, unselected room runs no stroke: the hover adds the first one.
+    expect(without.ops).not.toContain('stroke')
+    expect(hovered.ops).toContain('stroke')
+    const added = hoverStyles(without, hovered)
+    expect(added).toHaveLength(1)
+    expect(styles(selected)).not.toContain(added[0])
+  })
+
+  it('adds an opening hover stroke absent from the unhovered plan', () => {
+    const base = { ...planOptions({ openings: [swingOpening] }) }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, base)
+    const hovered = recordingContext()
+    drawPlan(hovered.ctx, { ...base, hoveredId: 'opening:a' })
+
+    expect(hoverStyles(without, hovered).length).toBeGreaterThan(0)
+  })
+
+  it('adds a dimension hover stroke absent from the unhovered plan', () => {
+    const base = { ...planOptions({ dimensions: [dimension] }) }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, base)
+    const hovered = recordingContext()
+    drawPlan(hovered.ctx, { ...base, hoveredId: 'dimension:d1' })
+
+    expect(hoverStyles(without, hovered).length).toBeGreaterThan(0)
+  })
+
+  it('leaves the plan unchanged when hoveredId names no entity in the scene', () => {
+    const without = recordingContext()
+    drawPlan(without.ctx, planOptions())
+    const missing = recordingContext()
+    drawPlan(missing.ctx, planOptions({ hoveredId: 'wall:missing' }))
+
+    // A hover target the scene does not contain adds no stroke: the styles match.
+    expect([...styles(missing)]).toEqual([...styles(without)])
+  })
+})
+
 describe('drawPlan grid and rulers', () => {
   const room = rectangleRoom('room:r')
 

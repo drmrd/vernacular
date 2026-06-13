@@ -18,6 +18,9 @@ export interface PlanScene {
   // though drawPlan accepts rooms as an optional overlay.
   rooms: NonNullable<DrawPlanOptions['rooms']>
   selectedIds: ReadonlySet<string>
+  // The entity highlighted under the resting pointer in Select mode, or undefined
+  // when nothing is hovered.
+  hoveredId: string | undefined
   preview: PreviewSegment | undefined
   snap: SnapResult | null
   marquee: DrawPlanOptions['marquee']
@@ -66,6 +69,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     stairs: scene.stairs,
     surfacePaint: scene.surfacePaint,
     ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
+    ...(scene.hoveredId !== undefined ? { hoveredId: scene.hoveredId } : {}),
     ...(scene.preview ? { preview: scene.preview } : {}),
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
@@ -94,6 +98,7 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
     scene.walls,
     scene.rooms,
     scene.selectedIds,
+    scene.hoveredId,
     scene.preview,
     scene.snap,
     scene.marquee,
