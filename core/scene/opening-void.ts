@@ -1,8 +1,6 @@
 import type { Contour } from './contour'
 import type { OpeningSceneNode } from './scene-graph'
 
-const HALF = 2
-
 /**
  * Authors an opening's void as a rectangular contour in the opening local frame
  * (foundation spec section 3.2): origin at the finished-floor line below the
@@ -13,7 +11,7 @@ const HALF = 2
  * generator; this one emits line segments only.
  */
 export function rectangularVoidContour(node: OpeningSceneNode): Contour {
-  const halfWidth = node.width / HALF
+  const halfWidth = node.width / 2
   const topY = node.sillHeight + node.height
   return {
     start: { x: -halfWidth, y: node.sillHeight },
