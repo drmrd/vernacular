@@ -11,12 +11,10 @@ import {
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
+import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './geometry-utils'
+
 /** The finished-floor datum: the slab's top sits at local world Y = 0. */
 const FLOOR_DATUM_Y = 0
-/** Three position components (x, y, z) per vertex. */
-const COMPONENTS_PER_VERTEX = 3
-
-type Triangle = [number, number, number]
 
 /** One contiguous geometry section paired with the surface role it draws. */
 interface SlabSection {
@@ -39,11 +37,6 @@ function slabCapPositions(points: Point[], triangles: Triangle[], height: number
     }
   }
   return positions
-}
-
-/** Reverses each triangle's vertex order, flipping the cap's face direction. */
-function reverseTriangleWinding(triangles: Triangle[]): Triangle[] {
-  return triangles.map((triangle) => [...triangle].reverse() as Triangle)
 }
 
 /** Positions for the vertical sides connecting the top and bottom caps. */

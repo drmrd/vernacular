@@ -1,6 +1,12 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
-import { type CameraPose, type Point, type RoomSceneNode, type SceneGraph } from '../../core'
+import {
+  type CameraPose,
+  type OpeningSceneNode,
+  type Point,
+  type RoomSceneNode,
+  type SceneGraph,
+} from '../../core'
 import { createSceneRenderer } from '../../engine'
 import { buildFramedScene } from './framed-scene'
 
@@ -58,6 +64,27 @@ const SHELL_ROOM: RoomSceneNode = {
   ceilingHeight: SHELL_HEIGHT,
 }
 
+// A single-swing door centered in the south wall, so the harness baseline shows a
+// real void cut through a wall (head and jambs lined with reveals, open to the
+// floor). `hostWallId` is the south wall's model id (the `wall:` prefix stripped).
+const DOOR_WIDTH = 900
+const DOOR_HEIGHT = 2032
+const SHELL_DOOR: OpeningSceneNode = {
+  id: 'opening:south-door',
+  kind: 'opening',
+  floorId: 'demo',
+  type: 'single-swing-door',
+  hostWallId: 'south',
+  center: { x: SHELL_WIDTH_X / 2, y: 0 },
+  along: { x: 1, y: 0 },
+  normal: { x: 0, y: 1 },
+  width: DOOR_WIDTH,
+  height: DOOR_HEIGHT,
+  sillHeight: 0,
+  hostThickness: SHELL_THICKNESS,
+  orientation: { hinge: 'start', facing: 'positive' },
+}
+
 const SHELL_FIXTURE: SceneGraph = {
   nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
   walls: [
@@ -68,7 +95,7 @@ const SHELL_FIXTURE: SceneGraph = {
   ],
   rooms: [SHELL_ROOM],
   underlays: [],
-  openings: [],
+  openings: [SHELL_DOOR],
   dimensions: [],
   stairs: [],
 }

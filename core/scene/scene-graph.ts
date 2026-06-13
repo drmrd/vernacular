@@ -95,6 +95,13 @@ export interface OpeningSceneNode {
   sillHeight: number
   hostThickness: number
   orientation: OpeningOrientation
+  /**
+   * Id of the wall this opening cuts. Nodes from `deriveOpeningNode` always
+   * carry it, sourced from the opening's host wall. It is optional because
+   * hand-built `OpeningSceneNode` literals (chiefly fixtures) omit it; the
+   * opening-to-edge resolver treats its absence as an opening it cannot place.
+   */
+  hostWallId?: string
 }
 
 export interface DimensionSceneNode {
@@ -178,6 +185,7 @@ export function deriveOpeningNode(
     id: `${OPENING_NODE_PREFIX}${opening.id}`,
     kind: 'opening',
     floorId: floor.id,
+    hostWallId: hostWall.id,
     type: opening.type,
     center: geometry.center,
     along: geometry.along,

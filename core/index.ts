@@ -88,6 +88,7 @@ export type {
   OpeningTypeParameters,
   Plan2DSymbol,
   Scene3DReference,
+  VoidContourKind,
 } from './registries/element-types'
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
 export type { Command, CommandHandler } from './commands/command'
@@ -307,6 +308,7 @@ export { wallHeight } from './scene/wall-height'
 export { ceilingHeight } from './scene/ceiling-height'
 export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
+export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
 export type {
   AssumedUnit,
   DecimalPrecision,
@@ -360,6 +362,8 @@ export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint } from './topology/openings'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
+export type { OpeningPlacement, ResolvedOpeningEdge } from './topology/opening-edge'
+export { resolveOpeningEdge } from './topology/opening-edge'
 export type { Room } from './topology/rooms'
 export { ROOM_ID_PREFIX, applyRoomOverrides, deriveRooms, roomKey } from './topology/rooms'
 export { stairWellPolygon } from './topology/stair-well'

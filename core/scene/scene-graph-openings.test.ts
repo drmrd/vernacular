@@ -48,7 +48,16 @@ describe('deriveOpeningNodesForFloor', () => {
       sillHeight: opening.sillHeight,
       hostThickness: OPENING_HOST_WALL_THICKNESS,
       orientation: opening.orientation,
+      hostWallId: 'w1',
     })
+  })
+
+  it('carries the host wall id so the opening can be resolved to a graph edge', () => {
+    const floor = floorWithHostedOpening()
+
+    const nodes = deriveOpeningNodesForFloor(floor)
+
+    expect(nodes[0]?.hostWallId).toBe('w1')
   })
 
   it('skips an opening whose host wall is absent from the floor', () => {
