@@ -9,7 +9,20 @@
 export function downloadBytes(bytes: Uint8Array, filename: string): void {
   // The DOM BlobPart type rejects a SharedArrayBuffer-backed view; the export
   // bytes are always ArrayBuffer-backed, so narrow to BlobPart at the boundary.
-  const url = URL.createObjectURL(new Blob([bytes as BlobPart]))
+  triggerDownload(new Blob([bytes as BlobPart]), filename)
+}
+
+/**
+ * Trigger a browser download of `text` as `filename` with the given `media`
+ * type via a transient object URL. Text exports (SVG plans) flow through here.
+ */
+export function downloadText(text: string, filename: string, media: string): void {
+  triggerDownload(new Blob([text], { type: media }), filename)
+}
+
+/** Download `blob` as `filename` via a synthetic anchor and a transient object URL. */
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
   try {
     const anchor = document.createElement('a')
     anchor.href = url
