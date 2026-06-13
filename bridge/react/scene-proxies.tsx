@@ -9,6 +9,12 @@ import { entityScreenPositions, type EntityScreenPosition, type SceneRoot } from
 // the live camera and canvas size; coverage-excluded glue, proven by the scene-webgl tier.
 // At rest the projected positions are stable, so it does not churn React; only camera motion
 // triggers an update.
+// An integer-pixel identity for a projected position, so the projector reports up only when
+// a proxy actually moves on screen rather than on every sub-pixel float jitter.
+function positionKey(position: EntityScreenPosition): string {
+  return `${position.id}:${Math.round(position.x)}:${Math.round(position.y)}`
+}
+
 export function SceneProxyProjector({
   root,
   onPositions,
@@ -25,7 +31,7 @@ export function SceneProxyProjector({
       width: size.width,
       height: size.height,
     })
-    const key = positions.map((p) => `${p.id}:${Math.round(p.x)}:${Math.round(p.y)}`).join('|')
+    const key = positions.map(positionKey).join('|')
     if (key !== lastKey.current) {
       lastKey.current = key
       onPositions(positions)

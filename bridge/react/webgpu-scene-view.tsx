@@ -65,11 +65,11 @@ function useColorTemperature() {
 // the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Labels live in the
 // bridge layer because the three-dimensional overlay cannot import the editor layer.
 function entityLabels(graph: SceneGraph): Map<string, string> {
-  const labels = new Map<string, string>()
-  graph.walls.forEach((wall, index) => labels.set(wall.id, `Wall ${index + 1}`))
-  graph.rooms.forEach((room, index) => labels.set(room.id, `Room ${index + 1}`))
-  graph.openings.forEach((opening, index) => labels.set(opening.id, `Opening ${index + 1}`))
-  return labels
+  return new Map<string, string>([
+    ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
+    ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
+    ...graph.openings.map((opening, index) => [opening.id, `Opening ${index + 1}`] as const),
+  ])
 }
 
 // The accessibility proxy state: the live projected screen positions (fed by the in-canvas
@@ -150,13 +150,11 @@ function LiveSceneCanvas({
   )
 }
 
-/**
- * Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation
- * toolbar above it. It is rendered only when WebGPU is available, so it never
- * executes under jsdom; the renderer itself is constructed in the engine layer. The
- * pane subscribes to the live scene graph scoped to the active floor, so it rebuilds
- * and reframes as the plan is edited.
- */
+// Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation toolbar
+// above it and the accessibility proxy overlay beside it. It is rendered only when WebGPU
+// is available, so it never executes under jsdom; the renderer is constructed in the engine
+// layer. The pane subscribes to the live scene graph scoped to the active floor, so it
+// rebuilds and reframes as the plan is edited.
 export function WebGPUSceneView() {
   const rawGraph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
