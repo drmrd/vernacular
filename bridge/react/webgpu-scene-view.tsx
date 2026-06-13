@@ -13,8 +13,9 @@ import { useSceneGraph } from './use-scene-graph'
 // example after a wall is drawn and the scene reframes). Once the user orbits or
 // walks, `active` goes false and the pose stops being applied, so an edit no longer
 // yanks a navigated camera; clearing user control (the reset button) makes `active`
-// true again, which reframes. The live Canvas runs the default continuous
-// frameloop, so only the camera state has to be kept in sync.
+// true again, which reframes. The live Canvas is set to frameloop="always" so
+// interactive camera moves render continuously; only the camera state has to be
+// kept in sync with the pose.
 function FrameCamera({ pose, active }: { pose: CameraPose; active: boolean }) {
   const camera = useThree((state) => state.camera)
   useLayoutEffect(() => {
@@ -28,14 +29,24 @@ function FrameCamera({ pose, active }: { pose: CameraPose; active: boolean }) {
   return null
 }
 
+// The per-view camera navigation state: the active mode and whether the user has
+// taken control of the camera. Session state held in the view layer, never in the
+// model or undo. Reset clears user control, which lets FrameCamera reapply the
+// framed pose through its `active` transition.
+function useSceneNavigation() {
+  const [mode, setMode] = useState<NavMode>('orbit')
+  const [userControlled, setUserControlled] = useState(false)
+  const markUserControlled = useCallback(() => setUserControlled(true), [])
+  const resetView = useCallback(() => setUserControlled(false), [])
+  return { mode, setMode, userControlled, markUserControlled, resetView }
+}
+
 /**
  * Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation
  * toolbar above it. It is rendered only when WebGPU is available, so it never
  * executes under jsdom; the renderer itself is constructed in the engine layer. The
  * pane subscribes to the live scene graph scoped to the active floor, so it rebuilds
- * and reframes as the plan is edited. The camera navigation state (mode and whether
- * the user has taken control) is per-view session state held here, never in the
- * model or undo.
+ * and reframes as the plan is edited.
  */
 export function WebGPUSceneView() {
   const rawGraph = useSceneGraph()
@@ -49,12 +60,7 @@ export function WebGPUSceneView() {
     [rawGraph, activeFloorId],
   )
   const { root, pose } = useMemo(() => buildFramedScene(graph), [graph])
-
-  const [mode, setMode] = useState<NavMode>('orbit')
-  const [userControlled, setUserControlled] = useState(false)
-  const markUserControlled = useCallback(() => setUserControlled(true), [])
-  // Reset clears user control, which lets FrameCamera reapply the framed pose.
-  const resetView = useCallback(() => setUserControlled(false), [])
+  const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

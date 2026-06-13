@@ -28,10 +28,9 @@ export function OrbitCameraControls({ enabled, target, onUserControl }: OrbitCam
   useEffect(() => {
     const controller = createOrbitController(camera, domElement)
     controllerRef.current = controller
-    const markControlled = () => onUserControl()
-    domElement.addEventListener('pointerdown', markControlled)
+    domElement.addEventListener('pointerdown', onUserControl)
     return () => {
-      domElement.removeEventListener('pointerdown', markControlled)
+      domElement.removeEventListener('pointerdown', onUserControl)
       controller.dispose()
       controllerRef.current = null
     }
