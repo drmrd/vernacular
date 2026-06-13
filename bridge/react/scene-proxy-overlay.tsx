@@ -46,7 +46,9 @@ function EntityProxyOption({ proxy, selected, tabIndex, onSelect }: OptionProps)
       aria-selected={selected}
       tabIndex={tabIndex}
       onKeyDown={onKeyDown}
-      style={{ position: 'absolute', left: proxy.x, top: proxy.y, pointerEvents: 'auto' }}
+      // pointer-events none keeps the canvas underneath receiving the pointer pick; the
+      // proxies are the keyboard and screen-reader surface, reached by focus, not the mouse.
+      style={{ position: 'absolute', left: proxy.x, top: proxy.y, pointerEvents: 'none' }}
     >
       {proxy.label}
     </div>
