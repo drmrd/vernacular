@@ -53,4 +53,10 @@ describe('SceneProxyOverlay', () => {
 
     expect(container.querySelector('[role="listbox"]')).toBeNull()
   })
+
+  it('keeps its options transparent to pointer events so the canvas keeps the pick', () => {
+    render(<SceneProxyOverlay proxies={proxies} selectedIds={new Set()} onSelect={vi.fn()} />)
+
+    expect(screen.getByRole('option', { name: 'Wall 1' })).toHaveStyle({ pointerEvents: 'none' })
+  })
 })
