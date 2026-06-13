@@ -29,8 +29,12 @@ async function stableFrame(canvas: Locator): Promise<Buffer> {
   return last
 }
 
-// Opens split view, draws a short open run of walls so the framed scene has geometry
-// to navigate around, and returns the settled 3D canvas locator.
+// Draws a short open run of walls in split view (where the plan is reachable), then
+// switches to the full-width 3D view and returns the settled 3D canvas locator. The
+// full-width canvas is used because the framing helper does not yet adapt to an
+// extreme narrow aspect, so the split view's slim pane can frame the geometry off
+// screen; navigation is exercised against the full-width view where the shell is
+// visible.
 async function drawnSceneCanvas(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Split view' }).click()
 
@@ -41,6 +45,8 @@ async function drawnSceneCanvas(page: Page): Promise<Locator> {
   await plan.click({ position: { x: 320, y: 260 } })
   await page.keyboard.press('Enter')
   await expect(page.getByText(/Walls: \d/)).toBeVisible()
+
+  await page.getByRole('button', { name: '3D view' }).click()
 
   const pane = page.getByRole('region', { name: /3d preview/i })
   const canvas = pane.locator('canvas')
@@ -75,5 +81,30 @@ test.describe('Live three-dimensional navigation', () => {
 
     const after = await stableFrame(canvas)
     expect(after.equals(before)).toBe(false)
+  })
+
+  test('a walk movement key changes the settled frame', async ({ page }) => {
+    await page.goto('/')
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    const canvas = await drawnSceneCanvas(page)
+
+    // Enter walk mode: the camera drops to eye height (a deliberate takeover).
+    await page.getByRole('button', { name: 'Walk' }).click()
+    // The first key event after entering walk settles a one-time WebGPU render
+    // warmup; absorb it with a throwaway press so the baseline is the steady
+    // walking view rather than that one-off settle.
+    await page.keyboard.press('KeyW')
+    const standing = await stableFrame(canvas)
+
+    // Movement keys act whenever walk mode is on; they do not depend on pointer
+    // capture, which is unreliable headless. Hold W to walk forward a clear distance.
+    await page.keyboard.down('KeyW')
+    await page.waitForTimeout(600)
+    await page.keyboard.up('KeyW')
+
+    const walked = await stableFrame(canvas)
+    expect(walked.equals(standing)).toBe(false)
   })
 })
