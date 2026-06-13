@@ -186,7 +186,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const deps = planInteractionDeps({ session, tool, viewport }, graph, traceMode)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
-  const planSelection = usePlanSelection({ graph, selection, tool, viewport })
+  const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
   const clipboard = useClipboardStore()
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
   useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
@@ -228,7 +228,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
   return {
-    cursor: planCursor(layers.tool, controls.panning),
+    cursor: planCursor(layers.tool, controls.panning || planSelection.panning),
     pointerHandlers: composePointerHandlers({
       controls,
       wallEditing,
