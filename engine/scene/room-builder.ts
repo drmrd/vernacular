@@ -130,12 +130,21 @@ function addSlabGroups(geometry: THREE.BufferGeometry, sections: SlabSection[]):
  * vertex passes through `planToWorld`, so the slab shares the walls' axis map.
  * Each section draws its own surface role through a per-section material group.
  */
-function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
+function buildSlabMesh(
+  node: RoomSceneNode,
+  materials: MaterialProvider,
+  floorId: string,
+): THREE.Mesh {
   const sections = slabSections(roomCapGeometry(node), floorSlabThickness())
   const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
   addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
-  const slabMaterials = sections.map((section) => materials.material(section.role))
+  const slabMaterials = sections.map((section) =>
+    materials.material(
+      section.role,
+      section.role === 'top' ? { kind: 'floor', floorId } : undefined,
+    ),
+  )
   return new THREE.Mesh(geometry, slabMaterials)
 }
 
@@ -144,12 +153,16 @@ function buildSlabMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.
  * height. It reuses the slab's cap triangulation in its natural order, which
  * faces world `-Y` (down into the room), and draws the `base` role.
  */
-function buildCeilingMesh(node: RoomSceneNode, materials: MaterialProvider): THREE.Mesh {
+function buildCeilingMesh(
+  node: RoomSceneNode,
+  materials: MaterialProvider,
+  floorId: string,
+): THREE.Mesh {
   const cap = roomCapGeometry(node)
   const positions = slabCapPositions(cap.points, cap.triangles, ceilingHeight(node))
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
-  return new THREE.Mesh(geometry, materials.material('base'))
+  return new THREE.Mesh(geometry, materials.material('base', { kind: 'ceiling', floorId }))
 }
 
 /**
@@ -158,10 +171,11 @@ function buildCeilingMesh(node: RoomSceneNode, materials: MaterialProvider): THR
  * room. The group holds the floor slab mesh and the ceiling plane above it.
  */
 export function buildRoomShell(node: RoomSceneNode, materials: MaterialProvider): THREE.Group {
+  const { floorId } = node
   const group = new THREE.Group()
   group.name = node.id
   group.userData.entityId = node.id
-  group.add(buildSlabMesh(node, materials))
-  group.add(buildCeilingMesh(node, materials))
+  group.add(buildSlabMesh(node, materials, floorId))
+  group.add(buildCeilingMesh(node, materials, floorId))
   return group
 }
