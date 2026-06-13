@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildWallMesh, buildWalls } from './wall-builder'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
+import { PaintMaterialProvider } from '../materials/paint-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
+import { colorFromHex, solidTreatment, surfaceKey } from '../../core'
 import type { OpeningSceneNode, PlanarGraph, Vector3, WallSceneNode } from '../../core'
 
 const THICKNESS = 120
@@ -201,6 +203,27 @@ describe('buildWallMesh', () => {
     const matches = (a: Vector3, b: Vector3): boolean =>
       Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 1e-5
     expect(normals.some((n) => matches(n, opposite))).toBe(true)
+  })
+
+  it('paints the wall long faces from the paint store by side', () => {
+    const hex = '#7744aa'
+    const ref = { kind: 'wall-face', wallId: 'w1', side: 'left' } as const
+    const paint = { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), 'matte') }
+
+    const mesh = buildWallMesh(
+      horizontalWall(),
+      new PaintMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
+    )
+    const materials = mesh.material as THREE.MeshStandardMaterial[]
+    const interiorLongFace = materials[4]
+    const exteriorLongFace = materials[5]
+    expect(interiorLongFace).toBeDefined()
+    expect(exteriorLongFace).toBeDefined()
+    if (interiorLongFace === undefined || exteriorLongFace === undefined) return
+
+    // Index 4 is the +Z interior long face (side 'left'); index 5 is the -Z exterior face.
+    expect(interiorLongFace.color.equals(new THREE.Color(hex))).toBe(true)
+    expect(exteriorLongFace.color.equals(new THREE.Color(hex))).toBe(false)
   })
 })
 
