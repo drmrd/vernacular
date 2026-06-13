@@ -116,7 +116,6 @@ function buildScene(
     stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
     ghost: interaction.ghost.length > 0 ? interaction.ghost : inputs.selectionMove.ghost,
-    readout: inputs.selectionMove.readout,
     surfacePaint,
     roomFillColor,
   }
@@ -242,6 +241,9 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
+  // The overlay readout pill draws from the move drag today. A later slice merges a
+  // second source (wall-endpoint editing) here with `??`; the two never co-occur.
+  const readout = selectionMove.readout
   return {
     cursor: planCursor(layers.tool, controls.panning || planSelection.panning),
     pointerHandlers: composePointerHandlers({
@@ -264,7 +266,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
       preferences: layers.preferences,
       snap: interaction.snap,
       ...(interaction.preview ? { preview: interaction.preview } : {}),
-      ...(selectionMove.readout ? { readout: selectionMove.readout } : {}),
+      ...(readout ? { readout } : {}),
     },
   }
 }
