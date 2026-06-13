@@ -28,6 +28,32 @@ describe('advanceSelectGesture', () => {
     expect(result.marquee).toBeUndefined()
   })
 
+  it('stays pending one millimeter short of the threshold', () => {
+    const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
+
+    const result = advanceSelectGesture(begin, {
+      world: { x: 49, y: 0 },
+      canvas: { x: 30, y: 10 },
+      shift: false,
+    })
+
+    expect(result.state.mode).toBe('pending')
+    expect(result.panDelta).toBeUndefined()
+  })
+
+  it('locks exactly at the threshold (the cutover is inclusive)', () => {
+    const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
+
+    const result = advanceSelectGesture(begin, {
+      world: { x: 50, y: 0 },
+      canvas: { x: 30, y: 10 },
+      shift: false,
+    })
+
+    expect(result.state.mode).toBe('panning')
+    expect(result.panDelta).toEqual({ x: 20, y: 0 })
+  })
+
   it('starts a pan when the threshold is crossed without Shift', () => {
     const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
 
@@ -91,7 +117,7 @@ describe('advanceSelectGesture', () => {
     })
 
     expect(result.state.mode).toBe('panning')
-    expect(result.panDelta).toBeDefined()
+    expect(result.panDelta).toEqual({ x: 40, y: 0 })
     expect(result.marquee).toBeUndefined()
   })
 
@@ -110,7 +136,7 @@ describe('advanceSelectGesture', () => {
     })
 
     expect(result.state.mode).toBe('marquee')
-    expect(result.marquee).toBeDefined()
+    expect(result.marquee).toEqual({ min: { x: 0, y: 0 }, max: { x: 150, y: 20 } })
     expect(result.panDelta).toBeUndefined()
   })
 })

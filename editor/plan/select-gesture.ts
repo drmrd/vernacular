@@ -24,6 +24,8 @@ export interface SelectMoveResult {
 }
 
 export interface SelectEndSample {
+  // The release point. Used only to size a marquee rectangle; a click resolves at
+  // the press origin, so the panning and click outcomes ignore it.
   world: Point
   shift: boolean
 }
@@ -43,7 +45,7 @@ function normalizedBounds(a: Point, b: Point): Bounds {
   }
 }
 
-function draggedPastThreshold(rect: Bounds): boolean {
+function reachedDragThreshold(rect: Bounds): boolean {
   const width = rect.max.x - rect.min.x
   const height = rect.max.y - rect.min.y
   return width >= MARQUEE_DRAG_THRESHOLD_MM || height >= MARQUEE_DRAG_THRESHOLD_MM
@@ -80,7 +82,7 @@ export function advanceSelectGesture(
 ): SelectMoveResult {
   let mode = state.mode
   if (mode === 'pending') {
-    if (!draggedPastThreshold(normalizedBounds(state.originWorld, sample.world))) {
+    if (!reachedDragThreshold(normalizedBounds(state.originWorld, sample.world))) {
       return { state }
     }
     mode = sample.shift ? 'marquee' : 'panning'
