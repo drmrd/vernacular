@@ -309,6 +309,15 @@ export { ceilingHeight } from './scene/ceiling-height'
 export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
+export type { WalkInput, WalkState } from './scene/walk-camera'
+export {
+  MAX_WALK_PITCH_RAD,
+  WALK_EYE_HEIGHT_MM,
+  WALK_LOOK_DISTANCE_MM,
+  WALK_SPEED_MM_PER_S,
+  advanceWalk,
+  walkLookTarget,
+} from './scene/walk-camera'
 export type {
   AssumedUnit,
   DecimalPrecision,

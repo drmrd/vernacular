@@ -12,6 +12,9 @@ const PITCH_LIMIT_EPSILON_RAD = 0.01
 /** Pitch limit, just shy of straight up or down to avoid a degenerate view. */
 export const MAX_WALK_PITCH_RAD = Math.PI / 2 - PITCH_LIMIT_EPSILON_RAD
 
+/** How far ahead of the eye the look target sits, in millimeters. */
+export const WALK_LOOK_DISTANCE_MM = 1000
+
 /** Where the walker is and which way they look. yaw 0 faces -Z. */
 export interface WalkState {
   position: Vector3
@@ -65,5 +68,24 @@ export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: numbe
     position: { x: nextX, y: state.position.y, z: nextZ },
     yaw: state.yaw + input.yawDelta,
     pitch: clampedPitch,
+  }
+}
+
+/**
+ * Returns the point the walker is looking at, one look-distance ahead of the
+ * eye. yaw 0 faces -Z and a positive pitch raises the view toward +Y, so the
+ * look direction is (sin yaw cos pitch, sin pitch, -cos yaw cos pitch). The
+ * direction is scaled by WALK_LOOK_DISTANCE_MM and added to the eye position.
+ */
+export function walkLookTarget(state: WalkState): Vector3 {
+  const cosPitch = Math.cos(state.pitch)
+  const directionX = Math.sin(state.yaw) * cosPitch
+  const directionY = Math.sin(state.pitch)
+  const directionZ = -Math.cos(state.yaw) * cosPitch
+
+  return {
+    x: state.position.x + directionX * WALK_LOOK_DISTANCE_MM,
+    y: state.position.y + directionY * WALK_LOOK_DISTANCE_MM,
+    z: state.position.z + directionZ * WALK_LOOK_DISTANCE_MM,
   }
 }
