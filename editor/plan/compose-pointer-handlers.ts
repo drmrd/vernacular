@@ -55,6 +55,8 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       selection.onPointerDown(event)
     },
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
+      // Runs before the guards: hover self-gates on event.buttons, so the highlight
+      // always updates regardless of which handler below claims the rest of the move.
       hover.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
       if (openingEditing.onPointerMove(event) || selectionMove.onPointerMove(event)) return

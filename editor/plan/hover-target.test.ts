@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { hoverTarget } from './hover-target'
 import { hitTest, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import type {
-  OpeningSceneNode,
-  RoomSceneNode,
-  SceneGraph,
-  WallSceneNode,
-} from '../../core'
+import type { OpeningSceneNode, RoomSceneNode, SceneGraph, WallSceneNode } from '../../core'
 
 const WALL_THICKNESS_MM = 114
 const OPENING_WIDTH_MM = 800

@@ -37,6 +37,8 @@ export function usePlanHover(deps: PlanHoverDeps): PlanHover {
         return
       }
       const world = screenToWorld(eventToCanvas(event, event.currentTarget), deps.viewport)
+      // hoverTarget returns string | null; coerce null to undefined so it matches
+      // hoveredId (string | undefined) and the downstream `!== undefined` spread gate.
       setHoveredId(
         hoverTarget(deps.graph, world, DEFAULT_HIT_TOLERANCE_MM, deps.selectedIds) ?? undefined,
       )

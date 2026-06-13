@@ -178,6 +178,7 @@ function useActiveFloorGraph(): SceneGraph {
  * consume. The pure decision logic lives in the tested modules; this binds them to
  * the session, selection, active tool, and viewport.
  */
+// eslint-disable-next-line max-lines-per-function -- one resolved hook per line reads clearer than merging unrelated hook calls; none can share a line within print-width.
 function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const session = useEditorSession()
   const graph = useActiveFloorGraph()
@@ -192,7 +193,8 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
   const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
-  useSelectionKeyboard({ session, selection, clipboard: useClipboardStore(), selectedIds, tool })
+  const clipboard = useClipboardStore()
+  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
