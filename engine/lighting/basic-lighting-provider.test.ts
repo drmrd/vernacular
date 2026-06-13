@@ -13,4 +13,17 @@ describe('BasicLightingProvider', () => {
     expect(directional).toHaveLength(1)
     expect(hemisphere).toHaveLength(1)
   })
+
+  it('configures the directional sun to cast a shadow with a real shadow map', () => {
+    const scene = new THREE.Scene()
+
+    new BasicLightingProvider().apply(scene)
+
+    const sun = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
+    expect(sun.castShadow).toBe(true)
+    expect(sun.shadow.mapSize.width).toBeGreaterThan(0)
+    expect(sun.shadow.mapSize.height).toBeGreaterThan(0)
+  })
 })

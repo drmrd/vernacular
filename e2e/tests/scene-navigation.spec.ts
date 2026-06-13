@@ -1,65 +1,15 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { drawnSceneCanvas, stableFrame } from './scene-helpers'
 
-// Exercises the live three-dimensional pane's navigation (orbit drag and, later,
-// walk keys). Runs only in the GPU `scene-webgl` Playwright project (the config
-// routes `scene-*.spec.ts` there) and self-skips without WebGPU, because the live
-// pane renders through the WebGPU backend and otherwise shows a fallback message.
+// Exercises the live three-dimensional pane's navigation (orbit drag and walk keys).
+// Runs only in the GPU `scene-webgl` Playwright project (the config routes
+// `scene-*.spec.ts` there) and self-skips without WebGPU, because the live pane renders
+// through the WebGPU backend and otherwise shows a fallback message.
 //
 // The assertion is semantic, not a committed pixel baseline: the live view renders
 // through the non-deterministic WebGPU backend (ADR-0045 explains why a WebGPU pixel
 // baseline is not pinned). Each test settles the canvas to a stable frame, performs a
 // navigation gesture, settles again, and requires the frame to change.
-
-// Polls until the canvas reaches a steady frame (two consecutive identical
-// screenshots), then returns that stable frame. The scene has no animation, so a
-// steady frame is the settled render rather than a mid-init transient.
-async function stableFrame(canvas: Locator): Promise<Buffer> {
-  let last = await canvas.screenshot()
-  await expect
-    .poll(
-      async () => {
-        const next = await canvas.screenshot()
-        const steady = next.equals(last)
-        last = next
-        return steady
-      },
-      { message: 'waiting for the live 3D canvas to reach a stable frame' },
-    )
-    .toBe(true)
-  return last
-}
-
-// Draws a short open run of walls in split view (where the plan is reachable), then
-// switches to the full-width 3D view and returns the settled 3D canvas locator. The
-// full-width canvas is used because the framing helper does not yet adapt to an
-// extreme narrow aspect, so the split view's slim pane can frame the geometry off
-// screen; navigation is exercised against the full-width view where the shell is
-// visible.
-async function drawnSceneCanvas(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'Split view' }).click()
-
-  const plan = page.getByLabel('Floor plan')
-  await expect(plan).toBeVisible()
-  await plan.click({ position: { x: 100, y: 120 } })
-  await plan.click({ position: { x: 320, y: 120 } })
-  await plan.click({ position: { x: 320, y: 260 } })
-  await page.keyboard.press('Enter')
-  await expect(page.getByText(/Walls: \d/)).toBeVisible()
-
-  await page.getByRole('button', { name: '3D view' }).click()
-
-  const pane = page.getByRole('region', { name: /3d preview/i })
-  const canvas = pane.locator('canvas')
-  await expect(canvas).toBeVisible()
-  // React Three Fiber mounts the canvas at the HTML default size, then resizes it to
-  // the real pane box; wait past that so frames are captured at the settled size.
-  await expect
-    .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
-      message: 'waiting for the live 3D canvas to settle past its default size',
-    })
-    .toBeGreaterThan(200)
-  return canvas
-}
 
 test.describe('Live three-dimensional navigation', () => {
   test('orbit drag changes the settled frame', async ({ page }) => {

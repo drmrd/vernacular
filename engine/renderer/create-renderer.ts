@@ -24,12 +24,17 @@ export interface SceneRendererOptions {
 export async function createSceneRenderer(
   options: SceneRendererOptions = {},
 ): Promise<WebGPURenderer> {
-  const { WebGPURenderer: Renderer } = await import('three/webgpu')
+  const { WebGPURenderer: Renderer, PCFSoftShadowMap } = await import('three/webgpu')
   const renderer = new Renderer({
     canvas: options.canvas,
     antialias: options.antialias ?? true,
     forceWebGL: options.forceWebGL ?? false,
   })
+  // Soft shadow maps stay within the feature set both the WebGPU and the WebGL 2 backend
+  // express (foundation spec 5.6); PCF soft filtering softens the directional sun's shadow
+  // edges over the cheaper hard-edged basic map.
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = PCFSoftShadowMap
   await renderer.init()
   return renderer
 }

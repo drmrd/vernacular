@@ -1,6 +1,7 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 import {
+  DEFAULT_COLOR_TEMPERATURE_K,
   type CameraPose,
   type OpeningSceneNode,
   type Point,
@@ -9,6 +10,7 @@ import {
 } from '../../core'
 import { createSceneRenderer } from '../../engine'
 import { buildFramedScene } from './framed-scene'
+import { SceneLighting } from './scene-lighting'
 
 // Deterministic fixture canvas size, pinned so the committed baseline is pixel-stable
 // across runs and machines. Kept small to keep the baseline PNG lightweight.
@@ -119,8 +121,14 @@ function StaticFrame({ target }: { target: CameraPose['target'] }) {
  * It is mounted only when the `?fixture=scene-harness` query parameter is present (see
  * the App), so a normal page load never reaches it.
  */
-export function SceneHarnessView() {
-  const { root, pose } = useMemo(() => buildFramedScene(SHELL_FIXTURE), [])
+export function SceneHarnessView({
+  colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
+}: {
+  // Admits undefined (not just absent) so the App can forward an optional query
+  // parameter under exactOptionalPropertyTypes; the default applies either way.
+  colorTemperatureK?: number | undefined
+} = {}) {
+  const { root, pose, bounds } = useMemo(() => buildFramedScene(SHELL_FIXTURE), [])
 
   return (
     <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>
@@ -142,6 +150,7 @@ export function SceneHarnessView() {
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
         <primitive object={root} />
+        <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
         <StaticFrame target={pose.target} />
       </Canvas>
     </div>

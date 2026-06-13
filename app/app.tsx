@@ -40,9 +40,25 @@ const DEFAULT_PROJECT_ID = 'current'
 // editor chrome in the frame. A normal page load never carries this parameter, so it
 // is a no-op for real users (mirrors the `e2e-storage` hook in src/main.tsx).
 const SCENE_HARNESS_FIXTURE = 'scene-harness'
+// Optional color temperature for the harness, so the visual baseline can capture a warm
+// render alongside the default one (`?fixture=scene-harness&temp=2700`). Out of range or
+// missing values fall back to the harness default; the harness clamps through the
+// kelvin-to-color conversion either way.
+const COLOR_TEMPERATURE_PARAM = 'temp'
+
+function searchParam(name: string): string | null {
+  return new URLSearchParams(globalThis.location?.search ?? '').get(name)
+}
 
 function requestedFixture(): string | null {
-  return new URLSearchParams(globalThis.location?.search ?? '').get('fixture')
+  return searchParam('fixture')
+}
+
+function requestedColorTemperature(): number | undefined {
+  const raw = searchParam(COLOR_TEMPERATURE_PARAM)
+  if (raw === null) return undefined
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 // Resolve the durable {store, assets} pair to boot against. An injected
@@ -78,7 +94,7 @@ export interface AppProps {
 
 export function App(props: AppProps) {
   if (requestedFixture() === SCENE_HARNESS_FIXTURE) {
-    return <SceneHarnessView />
+    return <SceneHarnessView colorTemperatureK={requestedColorTemperature()} />
   }
   return <AppWorkspace {...props} />
 }
