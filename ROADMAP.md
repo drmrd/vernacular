@@ -8,7 +8,7 @@ Foundation work is complete (build foundation, documentation, engineering norms,
 
 Three larger efforts have merged in full since the parallel-track foundations landed (pull request #48). The Vernacular Floor Plan Format is published: the `.building` package, a CORE JSON Schema generated from the `core/model` types, load-time format preservation, and a conformant fixture corpus (ADR-0047, ADR-0051, ADR-0052). The editor experience makeover wired the built-but-unmounted surfaces into a coherent shell and added the interaction layer the editor lacked: a command registry, palette, keybindings, undo and redo, delete, the wall-drawing and snapping completion, paint wiring, donut and courtyard rooms, and a journey-test acceptance gate that makes "reachable from the assembled editor" an enforced requirement. Surface paint selection and treatments shipped on top of the paint model.
 
-The work in progress is the three-dimensional preview track. It builds the lit shell slice by slice. The wall shell, the live camera framing, and the per-room floor slabs and ceilings have merged (pull request #76), opening voids merged via pull request #93, camera navigation (orbit, walk, and reset) merged via pull request #95, lighting with a color-temperature slider and soft shadows merged via pull request #97, and selection sync with a color-blind-safe highlight and a keyboard and screen-reader proxy layer merged via pull requests #99 and #100. The capability tables below carry the slice-level state for every track: what has merged, what is finished locally but unmerged, what is mid-flight, and what is planned or only scoped.
+The work in progress is the three-dimensional preview track. It builds the lit shell slice by slice. The wall shell, the live camera framing, and the per-room floor slabs and ceilings have merged (pull request #76), opening voids merged via pull request #93, camera navigation (orbit, walk, and reset) merged via pull request #95, lighting with a color-temperature slider and soft shadows merged via pull request #97, selection sync with a color-blind-safe highlight and a keyboard and screen-reader proxy layer merged via pull requests #99 and #100, and the painted preview (assigned surface paint on the lit shell) merged via pull requests #102 and #103. The capability tables below carry the slice-level state for every track: what has merged, what is finished locally but unmerged, what is mid-flight, and what is planned or only scoped.
 
 ## Foundation work
 
@@ -48,19 +48,19 @@ A capability is a user-facing feature; the work items under it are the stories t
 
 #### Overview
 
-| Capability                      | Refined into                        | Overall status                      |
-| ------------------------------- | ----------------------------------- | ----------------------------------- |
-| Phase 1: two-dimensional editor | 14 slice specs and plans            | merged (0.2.0)                      |
-| Vernacular Floor Plan Format    | format spec, ADR-0047, four plans   | merged                              |
-| Editor experience makeover      | makeover spec, ten slice plans      | merged (one local follow-up)        |
-| Three-dimensional preview       | foundation spec, slice map (0 to 8) | in progress                         |
-| Paint and metadata              | ADR-0048, ADR-0056                  | merged (3D painted preview pending) |
-| Structure and multi-floor       | ADR-0044 track, foundation plan     | foundation merged; rest scoped      |
-| Old-house vocabulary            | ADR-0044 track, ADR-0046            | registries merged; rest scoped      |
-| Assets and furniture            | ADR-0044 track, ADR-0007            | foundation merged; rest scoped      |
-| Output and export               | ADR-0044 track                      | 2D export merged; rest scoped       |
-| User-experience foundation      | ADR-0044 track                      | merged (subsumed by the makeover)   |
-| Beyond 1.0                      | not yet decomposed                  | not refined                         |
+| Capability                      | Refined into                        | Overall status                    |
+| ------------------------------- | ----------------------------------- | --------------------------------- |
+| Phase 1: two-dimensional editor | 14 slice specs and plans            | merged (0.2.0)                    |
+| Vernacular Floor Plan Format    | format spec, ADR-0047, four plans   | merged                            |
+| Editor experience makeover      | makeover spec, ten slice plans      | merged (one local follow-up)      |
+| Three-dimensional preview       | foundation spec, slice map (0 to 8) | in progress                       |
+| Paint and metadata              | ADR-0048, ADR-0056, ADR-0067        | merged                            |
+| Structure and multi-floor       | ADR-0044 track, foundation plan     | foundation merged; rest scoped    |
+| Old-house vocabulary            | ADR-0044 track, ADR-0046            | registries merged; rest scoped    |
+| Assets and furniture            | ADR-0044 track, ADR-0007            | foundation merged; rest scoped    |
+| Output and export               | ADR-0044 track                      | 2D export merged; rest scoped     |
+| User-experience foundation      | ADR-0044 track                      | merged (subsumed by the makeover) |
+| Beyond 1.0                      | not yet decomposed                  | not refined                       |
 
 #### Vernacular Floor Plan Format (merged)
 
@@ -110,13 +110,13 @@ Slice numbers follow the foundation spec slice map. The track built slice 1, the
 | 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | ADR-0066 / #99, #100 | merged |
 | 8. Incremental and dirty updates                                                                     | --                   | scoped |
 
-#### Paint and metadata (merged; painted preview pending)
+#### Paint and metadata (merged)
 
-| Story                                                                  | ADR / PR            | Status      |
-| ---------------------------------------------------------------------- | ------------------- | ----------- |
-| Paint model, palette registry, color and finish pickers, site metadata | ADR-0048 / #48      | merged      |
-| Surface paint selection and treatments (and wiring, polish)            | ADR-0056 / #64, #74 | merged      |
-| Painted 3D preview (paint material on the per-surface groups)          | ADR-0067            | in progress |
+| Story                                                                  | ADR / PR              | Status |
+| ---------------------------------------------------------------------- | --------------------- | ------ |
+| Paint model, palette registry, color and finish pickers, site metadata | ADR-0048 / #48        | merged |
+| Surface paint selection and treatments (and wiring, polish)            | ADR-0056 / #64, #74   | merged |
+| Painted 3D preview (paint material on the per-surface groups)          | ADR-0067 / #102, #103 | merged |
 
 #### Track features still at foundation
 
