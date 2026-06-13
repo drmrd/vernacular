@@ -10,6 +10,7 @@ export interface ProjectControlsProps {
   onSave?: () => void
   onExportBundle?: () => void
   onExportPlan?: () => void
+  onExportImage?: () => void
   onOpenFolder?: () => void
 }
 
@@ -20,6 +21,7 @@ export function ProjectControls({
   onSave,
   onExportBundle,
   onExportPlan,
+  onExportImage,
   onOpenFolder,
 }: ProjectControlsProps) {
   const hasRecentProjects = recentProjects !== undefined && recentProjects.length > 0
@@ -29,6 +31,7 @@ export function ProjectControls({
       {onSave ? <ProjectAction label="Save" onClick={onSave} /> : null}
       {onExportBundle ? <ProjectAction label="Export bundle" onClick={onExportBundle} /> : null}
       {onExportPlan ? <ProjectAction label="Export plan" onClick={onExportPlan} /> : null}
+      {onExportImage ? <ProjectAction label="Export PNG" onClick={onExportImage} /> : null}
       {onOpenFolder ? <ProjectAction label="Open folder" onClick={onOpenFolder} /> : null}
       {hasRecentProjects && onOpenRecent ? (
         <RecentProjectsList projects={recentProjects} onOpenRecent={onOpenRecent} />
