@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor, selectors } from './support'
+import { gotoEditor, selectors, selectWallTool } from './support'
 
 test('locks a drawn wall to a square angle and frees it with the modifier', async ({ page }) => {
   await gotoEditor(page)
+  await selectWallTool(page)
   const canvas = selectors.planCanvas(page)
 
   // Start a wall, then move toward a near-vertical point. The default lock squares the

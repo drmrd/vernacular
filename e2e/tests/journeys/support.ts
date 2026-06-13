@@ -27,12 +27,19 @@ export async function gotoEditor(page: Page): Promise<void> {
   await expect(selectors.planCanvas(page)).toBeVisible()
 }
 
+// Activate the wall-drawing tool. Drawing is an explicit tool choice now that
+// Select (drag-to-pan) is the default (ADR-0069), so a draw must select it first.
+export async function selectWallTool(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Draw wall' }).click()
+}
+
 // Draw a single straight wall by clicking a start and an end point on the plan.
 export async function drawWall(
   page: Page,
   from: { x: number; y: number },
   to: { x: number; y: number },
 ): Promise<void> {
+  await selectWallTool(page)
   const canvas = selectors.planCanvas(page)
   await canvas.click({ position: from })
   await canvas.click({ position: to })

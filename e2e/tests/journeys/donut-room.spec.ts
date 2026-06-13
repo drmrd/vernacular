@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor, expectWallCount, selectors } from './support'
+import { gotoEditor, expectWallCount, selectors, selectWallTool } from './support'
 
 // A courtyard layout: an outer wall loop with a smaller free-standing loop well
 // inside it. The room that wraps the inner loop is a donut, and its accessible
 // label tells a screen-reader user about the void.
 test('derives a room with an interior void', async ({ page }) => {
   await gotoEditor(page)
+  await selectWallTool(page)
   const canvas = selectors.planCanvas(page)
 
   // Outer loop, closed by clicking back on the first corner.

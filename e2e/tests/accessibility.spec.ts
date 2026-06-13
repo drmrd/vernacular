@@ -14,6 +14,7 @@ test.describe('Home page accessibility', () => {
     await expect(canvas).toBeVisible()
 
     // Draw a wall so the overlay exposes a selectable entity.
+    await page.getByRole('button', { name: 'Draw wall' }).click()
     await canvas.click({ position: { x: 120, y: 200 } })
     await canvas.click({ position: { x: 520, y: 200 } })
     // Finish the run with Enter so the buffered wall commits.

@@ -8,22 +8,25 @@ import { ToolsPanel } from './tools-panel'
 afterEach(cleanup)
 
 describe('ToolsPanel', () => {
-  it('marks the default draw-wall tool active and switches on click', async () => {
+  it('defaults to the Select tool, lists it first, and describes its drag gestures', async () => {
     render(
       <ActiveToolProvider>
         <ToolsPanel />
       </ActiveToolProvider>,
     )
 
-    const drawButton = screen.getByRole('button', { name: /draw wall/i })
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[0]).toHaveAccessibleName(/select/i)
+
     const selectButton = screen.getByRole('button', { name: /select/i })
+    const drawButton = screen.getByRole('button', { name: /draw wall/i })
+    expect(selectButton).toHaveAttribute('aria-pressed', 'true')
+    expect(drawButton).toHaveAttribute('aria-pressed', 'false')
+    expect(selectButton).toHaveAttribute('title', expect.stringMatching(/pan/i))
+
+    await userEvent.click(drawButton)
     expect(drawButton).toHaveAttribute('aria-pressed', 'true')
     expect(selectButton).toHaveAttribute('aria-pressed', 'false')
-
-    await userEvent.click(selectButton)
-
-    expect(drawButton).toHaveAttribute('aria-pressed', 'false')
-    expect(selectButton).toHaveAttribute('aria-pressed', 'true')
   })
 })
 

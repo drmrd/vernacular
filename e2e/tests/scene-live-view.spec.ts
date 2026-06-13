@@ -66,6 +66,7 @@ test.describe('Live three-dimensional preview pane', () => {
     // Draw one wall in the plan pane (visible beside the 3D pane in split view).
     const plan = page.getByLabel('Floor plan')
     await expect(plan).toBeVisible()
+    await page.getByRole('button', { name: 'Draw wall' }).click()
     await plan.click({ position: { x: 100, y: 150 } })
     await plan.click({ position: { x: 300, y: 150 } })
     // Finish the run with Enter so the buffered wall commits.
