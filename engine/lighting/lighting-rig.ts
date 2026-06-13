@@ -1,6 +1,11 @@
 import * as THREE from 'three'
 
-import type { LinearRgb } from '../../core'
+import type { Bounds3, LinearRgb } from '../../core'
+
+import { SUN_DIRECTION } from './basic-lighting-provider'
+
+const SHADOW_DISTANCE_FACTOR = 3
+const MIN_SHADOW_NEAR = 1
 
 /**
  * Operations on a lighting rig already applied to a scene (see BasicLightingProvider).
@@ -30,4 +35,43 @@ export function removeLighting(scene: THREE.Object3D): void {
   for (const light of lights) {
     scene.remove(light)
   }
+}
+
+/**
+ * Positions the sun along its fixed direction outside the scene bounds and sizes its
+ * orthographic shadow camera to cover them, so the shell casts a shadow without wasting
+ * shadow-map resolution. The light direction is preserved.
+ */
+export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | null): void {
+  if (bounds === null) return
+  const sun = scene.children.find((child) => child instanceof THREE.DirectionalLight) as
+    | THREE.DirectionalLight
+    | undefined
+  if (sun === undefined) return
+
+  const center = new THREE.Vector3(
+    (bounds.min.x + bounds.max.x) / 2,
+    (bounds.min.y + bounds.max.y) / 2,
+    (bounds.min.z + bounds.max.z) / 2,
+  )
+  const radius =
+    Math.hypot(
+      bounds.max.x - bounds.min.x,
+      bounds.max.y - bounds.min.y,
+      bounds.max.z - bounds.min.z,
+    ) / 2
+  const distance = radius * SHADOW_DISTANCE_FACTOR
+
+  sun.position.copy(center).addScaledVector(SUN_DIRECTION.clone().normalize(), distance)
+  sun.target.position.copy(center)
+  sun.target.updateMatrixWorld()
+
+  const camera = sun.shadow.camera
+  camera.left = -radius
+  camera.right = radius
+  camera.top = radius
+  camera.bottom = -radius
+  camera.near = Math.max(MIN_SHADOW_NEAR, distance - radius)
+  camera.far = distance + radius
+  camera.updateProjectionMatrix()
 }
