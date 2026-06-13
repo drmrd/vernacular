@@ -7,6 +7,7 @@ import {
   type Point,
   type RoomSceneNode,
   type SceneGraph,
+  type SurfaceTreatment,
 } from '../../core'
 import { createSceneRenderer } from '../../engine'
 import { buildFramedScene } from './framed-scene'
@@ -123,12 +124,14 @@ function StaticFrame({ target }: { target: CameraPose['target'] }) {
  */
 export function SceneHarnessView({
   colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
+  paint = {},
 }: {
   // Admits undefined (not just absent) so the App can forward an optional query
   // parameter under exactOptionalPropertyTypes; the default applies either way.
   colorTemperatureK?: number | undefined
+  paint?: Record<string, SurfaceTreatment> | undefined
 } = {}) {
-  const { root, pose, bounds } = useMemo(() => buildFramedScene(SHELL_FIXTURE), [])
+  const { root, pose, bounds } = useMemo(() => buildFramedScene(SHELL_FIXTURE, paint), [paint])
 
   return (
     <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>

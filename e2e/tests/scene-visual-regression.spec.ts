@@ -56,4 +56,8 @@ test.describe('Three-dimensional scene visual baseline', () => {
   test('renders the warm-lit wall shell to a stable canvas', async ({ page }) => {
     await captureShell(page, '&temp=2700', 'scene-shell-warm-webgl.png')
   })
+
+  test('renders the painted wall shell to a stable canvas', async ({ page }) => {
+    await captureShell(page, '&paint=demo', 'scene-shell-painted-webgl.png')
+  })
 })
