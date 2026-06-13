@@ -23,6 +23,11 @@ export interface Room {
    */
   name?: string
   /**
+   * Ceiling height in millimeters merged in from a stored `RoomOverride`. Absent on a
+   * freshly derived room, where the host floor's `defaultCeilingHeight` applies instead.
+   */
+  ceilingHeight?: number
+  /**
    * Interior void rings, each a closed ring of corner points in floor-plan space,
    * in the same frame as `polygon`. Present only on a room that contains a
    * free-standing inner loop (a courtyard, light well, or chimney mass); a room
@@ -78,6 +83,7 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
   if (override === undefined) return room
   const merged: Room = { ...room }
   if (override.name !== undefined) merged.name = override.name
+  if (override.ceilingHeight !== undefined) merged.ceilingHeight = override.ceilingHeight
   if (override.customPolygon !== undefined) {
     merged.polygon = override.customPolygon
     // Copy so `polygon` and `clearPolygon` are not the same array; a later mutation

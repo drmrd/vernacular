@@ -235,7 +235,7 @@ export function deriveRoomNodesForFloor(
     polygon: room.polygon,
     clearPolygon: room.clearPolygon,
     area: room.area,
-    ceilingHeight: floor.defaultCeilingHeight,
+    ceilingHeight: room.ceilingHeight ?? floor.defaultCeilingHeight,
     // Omit the optional name when absent so the no-overrides projection stays
     // identical to slice 1 under exactOptionalPropertyTypes.
     ...(room.name !== undefined && { name: room.name }),
