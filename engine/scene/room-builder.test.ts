@@ -278,7 +278,9 @@ describe('buildRoomShell', () => {
     // The solid ring around the void stays covered.
     expect(triangles.some((t) => pointInTriangle2D(RING_SAMPLE, t))).toBe(true)
   })
+})
 
+describe('buildRoomShell surface paint', () => {
   it('paints the floor slab top from the paint store', () => {
     const node = rectangularRoom()
     const hex = '#aa5500'
