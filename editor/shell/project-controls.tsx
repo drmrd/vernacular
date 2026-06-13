@@ -9,6 +9,7 @@ export interface ProjectControlsProps {
   onOpenRecent?: (id: string) => void
   onSave?: () => void
   onExportBundle?: () => void
+  onExportPlan?: () => void
   onOpenFolder?: () => void
 }
 
@@ -18,35 +19,34 @@ export function ProjectControls({
   onOpenRecent,
   onSave,
   onExportBundle,
+  onExportPlan,
   onOpenFolder,
 }: ProjectControlsProps) {
   const hasRecentProjects = recentProjects !== undefined && recentProjects.length > 0
   return (
     <nav className="editor-shell__project" aria-label="Project">
-      {onNewProject ? (
-        <button type="button" onClick={onNewProject}>
-          New
-        </button>
-      ) : null}
-      {onSave ? (
-        <button type="button" onClick={onSave}>
-          Save
-        </button>
-      ) : null}
-      {onExportBundle ? (
-        <button type="button" onClick={onExportBundle}>
-          Export bundle
-        </button>
-      ) : null}
-      {onOpenFolder ? (
-        <button type="button" onClick={onOpenFolder}>
-          Open folder
-        </button>
-      ) : null}
+      {onNewProject ? <ProjectAction label="New" onClick={onNewProject} /> : null}
+      {onSave ? <ProjectAction label="Save" onClick={onSave} /> : null}
+      {onExportBundle ? <ProjectAction label="Export bundle" onClick={onExportBundle} /> : null}
+      {onExportPlan ? <ProjectAction label="Export plan" onClick={onExportPlan} /> : null}
+      {onOpenFolder ? <ProjectAction label="Open folder" onClick={onOpenFolder} /> : null}
       {hasRecentProjects && onOpenRecent ? (
         <RecentProjectsList projects={recentProjects} onOpenRecent={onOpenRecent} />
       ) : null}
     </nav>
+  )
+}
+
+interface ProjectActionProps {
+  label: string
+  onClick: () => void
+}
+
+function ProjectAction({ label, onClick }: ProjectActionProps) {
+  return (
+    <button type="button" onClick={onClick}>
+      {label}
+    </button>
   )
 }
 
