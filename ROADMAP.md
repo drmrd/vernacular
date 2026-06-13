@@ -92,6 +92,18 @@ A capability is a user-facing feature; the work items under it are the stories t
 | Paint, finish, and site-metadata wiring and polish                 | ADR-0056 / #64, #74 | merged           |
 | Donut and courtyard rooms (hole rings)                             | ADR-0058 / #72      | merged           |
 
+#### Editor interaction and edit feedback (in progress)
+
+Owner-driven polish to the two-dimensional editing surface, raised as issues #116 through #120.
+
+| Story                                                                | ADR / PR        | Status  |
+| -------------------------------------------------------------------- | --------------- | ------- |
+| Drag-to-pan as the default Select-mode interaction                   | ADR-0070 / #130 | merged  |
+| Select-mode hover preview of the entity under the cursor             | #117            | planned |
+| Live drag previews (ghosts) and cursor-adjacent readouts             | #118            | planned |
+| Openings drag-to-resize handles with extend and snap to the wall end | #119            | planned |
+| Free-angle modifier when editing an existing wall endpoint           | #120            | planned |
+
 #### Three-dimensional preview (in progress)
 
 Slice numbers follow the foundation spec slice map. The track built slice 1, then moved ahead to the floor and ceiling slabs (slice 4) before the opening slices (2 and 3).
