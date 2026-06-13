@@ -4,7 +4,9 @@ import {
   advanceWalk,
   MAX_WALK_PITCH_RAD,
   WALK_EYE_HEIGHT_MM,
+  WALK_LOOK_DISTANCE_MM,
   WALK_SPEED_MM_PER_S,
+  walkLookTarget,
   type WalkInput,
   type WalkState,
 } from './walk-camera'
@@ -101,5 +103,32 @@ describe('advanceWalk look', () => {
     const next = advanceWalk(facingNegativeZ, { ...noInput, pitchDelta: -10 }, noTime)
 
     expect(next.pitch).toBeCloseTo(-MAX_WALK_PITCH_RAD, 5)
+  })
+})
+
+describe('walkLookTarget', () => {
+  it('looks one look-distance straight ahead down -Z at rest', () => {
+    const target = walkLookTarget(facingNegativeZ)
+
+    expect(target.x).toBeCloseTo(facingNegativeZ.position.x, 5)
+    expect(target.y).toBeCloseTo(facingNegativeZ.position.y, 5)
+    expect(target.z).toBeCloseTo(facingNegativeZ.position.z - WALK_LOOK_DISTANCE_MM, 5)
+  })
+
+  it('raises the look target above eye height when pitched up', () => {
+    const lookingUp: WalkState = { ...facingNegativeZ, pitch: 0.3 }
+
+    const target = walkLookTarget(lookingUp)
+
+    expect(target.y).toBeGreaterThan(lookingUp.position.y)
+  })
+
+  it('looks one look-distance toward +X when yawed a quarter turn', () => {
+    const yawedRight: WalkState = { ...facingNegativeZ, yaw: Math.PI / 2 }
+
+    const target = walkLookTarget(yawedRight)
+
+    expect(target.x).toBeCloseTo(yawedRight.position.x + WALK_LOOK_DISTANCE_MM, 5)
+    expect(target.z).toBeCloseTo(yawedRight.position.z, 5)
   })
 })
