@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Contour } from './contour'
 import type { OpeningSceneNode } from './scene-graph'
-import { rectangularVoidContour } from './opening-void'
+import { openingVoidContour, rectangularVoidContour } from './opening-void'
 
 /**
  * Builds a minimal valid OpeningSceneNode literal. Only `width`, `height`, and
@@ -58,5 +58,25 @@ describe('rectangularVoidContour', () => {
     }
 
     expect(rectangularVoidContour(window)).toEqual(expected)
+  })
+})
+
+describe('openingVoidContour', () => {
+  it('resolves a registered opening type to the rectangular void contour', () => {
+    const door: OpeningSceneNode = {
+      ...openingNode({ width: 800, height: 2032, sillHeight: 0 }),
+      type: 'single-swing-door',
+    }
+
+    expect(openingVoidContour(door)).toEqual(rectangularVoidContour(door))
+  })
+
+  it('falls back to the rectangular void contour for an unregistered opening type', () => {
+    const node: OpeningSceneNode = {
+      ...openingNode({ width: 800, height: 2032, sillHeight: 0 }),
+      type: 'no-such-type',
+    }
+
+    expect(openingVoidContour(node)).toEqual(rectangularVoidContour(node))
   })
 })
