@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { TRANSLATE_ENTITIES } from '../../core'
+import { DEFAULT_METRIC_PREFERENCES, TRANSLATE_ENTITIES } from '../../core'
 import type { PreviewSegment } from './draw-plan'
-import { beginMoveDrag, endMoveDrag, IDLE_MOVE_DRAG, moveDragGhost } from './move-drag'
+import { dragReadout } from './drag-readout'
+import {
+  beginMoveDrag,
+  endMoveDrag,
+  IDLE_MOVE_DRAG,
+  moveDragGhost,
+  moveDragReadout,
+} from './move-drag'
 
 const ORIGIN = { x: 100, y: 100 }
 const SEGMENTS: readonly PreviewSegment[] = [{ start: { x: 0, y: 0 }, end: { x: 200, y: 0 } }]
@@ -27,6 +34,23 @@ describe('moveDragGhost', () => {
 
   it('shows no ghost while idle', () => {
     expect(moveDragGhost(IDLE_MOVE_DRAG, { x: 130, y: 100 })).toEqual([])
+  })
+})
+
+describe('moveDragReadout', () => {
+  it('shows no readout while idle', () => {
+    expect(
+      moveDragReadout(IDLE_MOVE_DRAG, { x: 130, y: 100 }, DEFAULT_METRIC_PREFERENCES),
+    ).toBeUndefined()
+  })
+
+  it('reads the grab origin to the live pointer while dragging', () => {
+    const dragging = beginMoveDrag(ORIGIN, SEGMENTS)
+    const pointer = { x: 130, y: 220 }
+
+    expect(moveDragReadout(dragging, pointer, DEFAULT_METRIC_PREFERENCES)).toEqual(
+      dragReadout(ORIGIN, pointer, DEFAULT_METRIC_PREFERENCES),
+    )
   })
 })
 
