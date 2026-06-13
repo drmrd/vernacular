@@ -157,6 +157,8 @@ ADR-0044 names the stories for each of these tracks; only the foundation story h
 | Output and export          | 3D snapshot export; bundle export                                     | scoped (convergence)           |
 | User-experience foundation | Design tokens, theming, primitives, layout shell                      | merged (#48)                   |
 | User-experience foundation | Drafting-table visual language                                        | merged (#52)                   |
+| User-experience foundation | Draughtsman's Restraint: token foundation (spec + plan merged #134)   | open (#132)                    |
+| User-experience foundation | Draughtsman's Restraint: shell chrome                                 | open (#133)                    |
 | User-experience foundation | Empty and loading states, continuous polish                           | ongoing                        |
 
 #### Beyond 1.0 (not refined)
