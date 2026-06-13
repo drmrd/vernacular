@@ -22,6 +22,7 @@ export {
   DEFAULT_METRIC_PREFERENCES,
   lengthFormatOptions,
 } from './preferences'
+export { preferencesForUnits } from './preferences-for-units'
 export { formatArea } from './format-area'
 export { formatAdaptiveLength } from './format-adaptive-length'
 export type { FormatLengthOptions } from './format-length'
