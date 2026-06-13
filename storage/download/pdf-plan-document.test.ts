@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib'
+import { PDFDict, PDFDocument, PDFName } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 
 import { svgPlanToPdf } from './pdf-plan-document'
@@ -33,5 +33,9 @@ describe('svgPlanToPdf', () => {
     const page = doc.getPage(0)
     expect(page.getWidth()).toBeCloseTo(LETTER_LANDSCAPE_WIDTH_PT, PDF_DIMENSION_PRECISION)
     expect(page.getHeight()).toBeCloseTo(LETTER_LANDSCAPE_HEIGHT_PT, PDF_DIMENSION_PRECISION)
+
+    // The rasterized plan is embedded: the page references at least one image XObject.
+    const xObjects = page.node.Resources()?.lookup(PDFName.of('XObject'), PDFDict)
+    expect(xObjects?.keys() ?? []).not.toHaveLength(0)
   })
 })

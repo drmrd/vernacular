@@ -51,5 +51,5 @@ export async function svgPlanToPdf(svg: string, options: SvgPlanToPdfOptions): P
     width: layout.image.width,
     height: layout.image.height,
   })
-  return await doc.save()
+  return doc.save()
 }
