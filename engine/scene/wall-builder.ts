@@ -16,6 +16,8 @@ import {
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
+import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './geometry-utils'
+
 /**
  * The shell role for each of a BoxGeometry's six material groups, in its fixed
  * face order: index 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z. After the
@@ -147,13 +149,9 @@ function edgeWallNode(
   }
 }
 
-/** Three position components (x, y, z) per vertex. */
-const COMPONENTS_PER_VERTEX = 3
 /** Half the centerline thickness lands the face on either wall surface. */
 const SIDE_INTERIOR = 1
 const SIDE_EXTERIOR = -1
-
-type Triangle = [number, number, number]
 
 /** One contiguous geometry section paired with the surface role it draws. */
 interface WallSection {
@@ -224,11 +222,6 @@ function outlineRectangle(frame: EdgeFrame): THREE.Vector2[] {
   ]
 }
 
-/** Reverses each triangle's vertex order, flipping the face direction. */
-function reverseTriangleWinding(triangles: Triangle[]): Triangle[] {
-  return triangles.map((triangle) => [...triangle].reverse() as Triangle)
-}
-
 /**
  * A triangulated elevation outline: the concatenated point list (outline followed
  * by each hole loop) and the triangle index triples into it.
@@ -263,6 +256,7 @@ function outerCapPositions(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vect
   const b = edgeLocalToWorld(frame, to, SIDE_INTERIOR)
   const c = edgeLocalToWorld(frame, to, SIDE_EXTERIOR)
   const d = edgeLocalToWorld(frame, from, SIDE_EXTERIOR)
+  // Quad as two triangles sharing the a-c diagonal: a-b-c then a-c-d.
   return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
 }
 
@@ -281,6 +275,9 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
     { role: 'exteriorFace', positions: longFacePositions(frame, reversed, SIDE_EXTERIOR) },
     { role: 'top', positions: outerCapPositions(frame, topEnd, top) },
     { role: 'base', positions: outerCapPositions(frame, base, baseEnd) },
+    // The two vertical end caps (u = 0 and u = length) share the exterior-face
+    // material but are a section of their own, separate from the exterior long
+    // face above, so both end caps draw in one group.
     {
       role: 'exteriorFace',
       positions: [
@@ -336,6 +333,8 @@ function triangulatedWallOutline(frame: EdgeFrame, openings: EdgeOpening[]): Tri
  * faces lining the cut land in a later cycle. Carries the wall node's entity id.
  */
 function buildOpeningWallMesh(target: OpeningWall, input: WallBuildInput): THREE.Mesh {
+  // buildWalls reaches this only after edgeWallNode validated both endpoints for
+  // the same edge, so the vertices are present.
   const a = input.graph.vertices[target.edge.a] as Point
   const b = input.graph.vertices[target.edge.b] as Point
   const frame = edgeFrame(a, b, target.wall)
