@@ -9,8 +9,11 @@ import {
   downloadBytes,
   downloadText,
   orderRecentProjects,
+  pngPlanFilename,
+  rasterizeSvgToPng,
   recentEntryFor,
   svgPlanFilename,
+  DEFAULT_RASTER_MAX_EDGE,
   type ProjectBackend,
   type ProjectStore,
   type RecentProjectStore,
@@ -73,6 +76,7 @@ export interface ProjectActions {
   onNewProject: () => void
   onExportBundle: () => void
   onExportPlan: () => void
+  onExportImage: () => void
   onOpenFolder?: () => void
 }
 
@@ -83,6 +87,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
     onNewProject: useNewProjectAction(context),
     onExportBundle: useExportBundleAction(context),
     onExportPlan: useExportPlanAction(context),
+    onExportImage: useExportImageAction(context),
     ...useOpenFolderAction(context),
   }
 }
@@ -128,6 +133,17 @@ function useExportPlanAction(context: ProjectActionsContext): () => void {
     const project = session.getProject()
     const { content } = new SvgPlanExporter().export(project)
     downloadText(content, svgPlanFilename(project.meta.name), 'image/svg+xml')
+  }, [session])
+}
+
+function useExportImageAction(context: ProjectActionsContext): () => void {
+  const { session } = context
+  return useCallback(() => {
+    const project = session.getProject()
+    const { content } = new SvgPlanExporter().export(project)
+    void rasterizeSvgToPng(content, DEFAULT_RASTER_MAX_EDGE)
+      .then((png) => downloadBytes(png, pngPlanFilename(project.meta.name)))
+      .catch((error: unknown) => console.error('export PNG failed', error))
   }, [session])
 }
 
