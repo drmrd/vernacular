@@ -57,6 +57,7 @@
     "@react-three/fiber": "9.6.1",
     "ajv": "8.20.0",
     "fflate": "0.8.2",
+    "pdf-lib": "1.17.1",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "three": "0.184.0"

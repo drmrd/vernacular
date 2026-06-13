@@ -10,10 +10,13 @@ import {
   downloadText,
   orderRecentProjects,
   pngPlanFilename,
+  pdfPlanFilename,
   rasterizeSvgToPng,
   recentEntryFor,
   svgPlanFilename,
+  svgPlanToPdf,
   DEFAULT_RASTER_MAX_EDGE,
+  PRINT_RASTER_MAX_EDGE,
   type ProjectBackend,
   type ProjectStore,
   type RecentProjectStore,
@@ -77,6 +80,7 @@ export interface ProjectActions {
   onExportBundle: () => void
   onExportPlan: () => void
   onExportImage: () => void
+  onExportPdf: () => void
   onOpenFolder?: () => void
 }
 
@@ -88,6 +92,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
     onExportBundle: useExportBundleAction(context),
     onExportPlan: useExportPlanAction(context),
     onExportImage: useExportImageAction(context),
+    onExportPdf: useExportPdfAction(context),
     ...useOpenFolderAction(context),
   }
 }
@@ -144,6 +149,17 @@ function useExportImageAction(context: ProjectActionsContext): () => void {
     void rasterizeSvgToPng(content, DEFAULT_RASTER_MAX_EDGE)
       .then((png) => downloadBytes(png, pngPlanFilename(project.meta.name)))
       .catch((error: unknown) => console.error('export PNG failed', error))
+  }, [session])
+}
+
+function useExportPdfAction(context: ProjectActionsContext): () => void {
+  const { session } = context
+  return useCallback(() => {
+    const project = session.getProject()
+    const { content } = new SvgPlanExporter().export(project)
+    void svgPlanToPdf(content, { units: project.meta.units, maxEdge: PRINT_RASTER_MAX_EDGE })
+      .then((pdf) => downloadBytes(pdf, pdfPlanFilename(project.meta.name)))
+      .catch((error: unknown) => console.error('export PDF failed', error))
   }, [session])
 }
 

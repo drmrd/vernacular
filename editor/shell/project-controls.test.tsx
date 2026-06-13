@@ -5,6 +5,7 @@ import { ProjectControls } from './project-controls'
 
 const EXPORT_PLAN_LABEL = 'Export plan'
 const EXPORT_IMAGE_LABEL = 'Export PNG'
+const EXPORT_PDF_LABEL = 'Export PDF'
 
 function projectNav() {
   return screen.getByRole('navigation', { name: 'Project' })
@@ -51,5 +52,26 @@ describe('ProjectControls export image action', () => {
     render(<ProjectControls />)
 
     expect(within(projectNav()).queryByRole('button', { name: EXPORT_IMAGE_LABEL })).toBeNull()
+  })
+})
+
+describe('ProjectControls export PDF action', () => {
+  it('renders an Export PDF button that calls onExportPdf when clicked', async () => {
+    const onExportPdf = vi.fn()
+    const user = userEvent.setup()
+    render(<ProjectControls onExportPdf={onExportPdf} />)
+
+    const exportPdfButton = within(projectNav()).getByRole('button', {
+      name: EXPORT_PDF_LABEL,
+    })
+    await user.click(exportPdfButton)
+
+    expect(onExportPdf).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders no Export PDF button without the callback', () => {
+    render(<ProjectControls />)
+
+    expect(within(projectNav()).queryByRole('button', { name: EXPORT_PDF_LABEL })).toBeNull()
   })
 })
