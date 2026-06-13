@@ -6,6 +6,7 @@ import {
   type EditorSession,
 } from '../../bridge'
 import {
+  ceilingHeight as resolveCeilingHeight,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   DIMENSION_NODE_PREFIX,
@@ -25,6 +26,7 @@ import {
 } from '../../core'
 import { DimensionInspector } from '../plan/dimension-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
+import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
 import { selectedEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
@@ -133,20 +135,34 @@ function WallInspector({ wallNode, preferences, dispatch }: WallInspectorProps) 
 
 interface RoomInspectorProps {
   roomNode: RoomSceneNode
+  preferences: UnitPreferences
   dispatch: (command: unknown) => void
 }
 
-function RoomInspector({ roomNode, dispatch }: RoomInspectorProps) {
+function RoomInspector({ roomNode, preferences, dispatch }: RoomInspectorProps) {
+  const roomKey = roomNode.id.slice(ROOM_ID_PREFIX.length)
+  const height = resolveCeilingHeight(roomNode)
   return (
-    // Key on the node id and name so the editor remounts when the selected room
-    // changes or an undo restores a different name; the editor seeds its input
-    // from the effective name at mount.
-    <RoomNameEditor
-      key={`${roomNode.id}:${roomNode.name ?? ''}`}
-      roomKey={roomNode.id.slice(ROOM_ID_PREFIX.length)}
-      name={roomNode.name ?? ''}
-      dispatch={dispatch}
-    />
+    <>
+      {/* Key on the node id and name so the editor remounts when the selected room
+          changes or an undo restores a different name; the editor seeds its input
+          from the effective name at mount. */}
+      <RoomNameEditor
+        key={`${roomNode.id}:${roomNode.name ?? ''}`}
+        roomKey={roomKey}
+        name={roomNode.name ?? ''}
+        dispatch={dispatch}
+      />
+      {/* Key on the node id and resolved height so the editor remounts when the
+          selected room changes or an undo restores a different height. */}
+      <RoomCeilingHeightEditor
+        key={`${roomNode.id}:ceiling:${height}`}
+        roomKey={roomKey}
+        ceilingHeight={height}
+        dispatch={dispatch}
+        preferences={preferences}
+      />
+    </>
   )
 }
 
@@ -187,7 +203,8 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   }
   const roomNode = singleSelectedRoomNode(selectedIds, graph)
   if (roomNode !== null) {
-    return <RoomInspector roomNode={roomNode} dispatch={dispatch} />
+    const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
+    return <RoomInspector roomNode={roomNode} preferences={preferences} dispatch={dispatch} />
   }
   const project = session.getProject()
   const selectedOpening = singleSelectedOpening(selectedIds, project)
