@@ -20,6 +20,7 @@ import {
   type SelectionStore,
 } from '../../bridge'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
+import { planCursor } from './plan-cursor'
 import type { DrawableDimension } from './draw-dimension'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
@@ -60,20 +61,6 @@ const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
-}
-
-const CROSSHAIR_TOOLS: ReadonlySet<ToolId> = new Set([
-  'draw-wall',
-  'calibrate',
-  'place-opening',
-  'dimension',
-])
-
-function planCursor(tool: ToolId, panning: boolean): string {
-  if (panning) {
-    return 'grabbing'
-  }
-  return CROSSHAIR_TOOLS.has(tool) ? 'crosshair' : 'default'
 }
 
 interface PlanLayers {
