@@ -14,13 +14,16 @@ export function pickEntityId(raycaster: THREE.Raycaster, root: THREE.Object3D): 
   return null
 }
 
+export interface EntityPickAt {
+  raycaster: THREE.Raycaster
+  camera: THREE.Camera
+  root: THREE.Object3D
+  /** The pointer position in normalized device coordinates (each axis in [-1, 1]). */
+  ndc: { x: number; y: number }
+}
+
 /** Sets the raycaster from a camera and a normalized-device-coordinate point, then picks. */
-export function pickEntityIdAt(
-  raycaster: THREE.Raycaster,
-  camera: THREE.Camera,
-  root: THREE.Object3D,
-  ndc: { x: number; y: number },
-): string | null {
+export function pickEntityIdAt({ raycaster, camera, root, ndc }: EntityPickAt): string | null {
   raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera)
   return pickEntityId(raycaster, root)
 }

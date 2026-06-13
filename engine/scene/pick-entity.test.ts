@@ -51,6 +51,6 @@ describe('pickEntityIdAt', () => {
     camera.lookAt(1000, 1200, 0)
     camera.updateMatrixWorld(true)
     const raycaster = new THREE.Raycaster()
-    expect(pickEntityIdAt(raycaster, camera, root, { x: 0, y: 0 })).toBe('wall:w1')
+    expect(pickEntityIdAt({ raycaster, camera, root, ndc: { x: 0, y: 0 } })).toBe('wall:w1')
   })
 })
