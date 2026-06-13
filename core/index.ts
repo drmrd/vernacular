@@ -390,6 +390,12 @@ export type { SvgPlanExportOptions } from './export/svg/svg-plan-exporter'
 export { SvgPlanExporter } from './export/svg/svg-plan-exporter'
 export type { LinearRgb, OkLab, Srgb } from './color/oklab'
 export { linearToSrgb, okLabToSrgb, srgbToLinear, srgbToOkLab } from './color/oklab'
+export {
+  kelvinToLinearRgb,
+  MIN_COLOR_TEMPERATURE_K,
+  MAX_COLOR_TEMPERATURE_K,
+  DEFAULT_COLOR_TEMPERATURE_K,
+} from './color/color-temperature'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export type { Color, NamedColor } from './color/color'
