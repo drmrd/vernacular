@@ -130,7 +130,8 @@ ADR-0044 names the stories for each of these tracks; only the foundation story h
 | Structure and multi-floor  | Per-room ceiling height                                               | merged (#105)                  |
 | Structure and multi-floor  | Stair 3D geometry, cutaway, floor-by-floor 3D                         | scoped (converges on 3D)       |
 | Old-house vocabulary       | Period/style and room-purpose registries                              | merged (#48, ADR-0046)         |
-| Old-house vocabulary       | Surfacing shipped vocabulary, era tagging UI                          | scoped                         |
+| Old-house vocabulary       | Surfacing shipped room-purpose vocabulary (purpose, sub-purpose)      | merged (#107)                  |
+| Old-house vocabulary       | Era tagging UI (period and style overrides)                           | scoped                         |
 | Old-house vocabulary       | Curved 2D openings, trim and feature data, construction profiles (2D) | scoped                         |
 | Old-house vocabulary       | 3D renderings; library era filtering                                  | scoped (convergence)           |
 | Assets and furniture       | Asset cache, registry, resolution                                     | merged (#48, ADR-0007)         |
