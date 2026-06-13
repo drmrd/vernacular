@@ -96,19 +96,19 @@ A capability is a user-facing feature; the work items under it are the stories t
 
 Slice numbers follow the foundation spec slice map. The track built slice 1, then moved ahead to the floor and ceiling slabs (slice 4) before the opening slices (2 and 3).
 
-| Story (slice)                                                                                        | ADR            | Status |
-| ---------------------------------------------------------------------------------------------------- | -------------- | ------ |
-| 0. Test harness, conventions, render harness                                                         | ADR-0045 / #48 | merged |
-| 0b. Live camera framing and framed-scene helper                                                      | #76            | merged |
-| 1. Wall shell with junctions (extruded walls, material seam, surface groups, entity ids)             | ADR-0061 / #76 | merged |
-| 4. Per-room floor slabs and ceilings                                                                 | ADR-0062 / #76 | merged |
-| 2. Opening voids (cut contour into host walls)                                                       | ADR-0063 / #93 | merged |
-| 3. Opening fill and leaf (panels, sashes, glass; curved-glass seam)                                  | --             | scoped |
-| 5. Camera navigation (orbit, pan, zoom, walk, reset)                                                 | ADR-0064 / #95 | merged |
-| 5b. Camera presets (top-down, elevations, from door or window)                                       | --             | scoped |
-| 6. Lighting (color-temperature slider, soft shadows, paint-material stub)                            | ADR-0065 / #97 | merged |
-| 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | --             | scoped |
-| 8. Incremental and dirty updates                                                                     | --             | scoped |
+| Story (slice)                                                                                        | ADR            | Status      |
+| ---------------------------------------------------------------------------------------------------- | -------------- | ----------- |
+| 0. Test harness, conventions, render harness                                                         | ADR-0045 / #48 | merged      |
+| 0b. Live camera framing and framed-scene helper                                                      | #76            | merged      |
+| 1. Wall shell with junctions (extruded walls, material seam, surface groups, entity ids)             | ADR-0061 / #76 | merged      |
+| 4. Per-room floor slabs and ceilings                                                                 | ADR-0062 / #76 | merged      |
+| 2. Opening voids (cut contour into host walls)                                                       | ADR-0063 / #93 | merged      |
+| 3. Opening fill and leaf (panels, sashes, glass; curved-glass seam)                                  | --             | scoped      |
+| 5. Camera navigation (orbit, pan, zoom, walk, reset)                                                 | ADR-0064 / #95 | merged      |
+| 5b. Camera presets (top-down, elevations, from door or window)                                       | --             | scoped      |
+| 6. Lighting (color-temperature slider, soft shadows, paint-material stub)                            | ADR-0065 / #97 | merged      |
+| 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | ADR-0066       | in progress |
+| 8. Incremental and dirty updates                                                                     | --             | scoped      |
 
 #### Paint and metadata (merged; painted preview pending)
 
