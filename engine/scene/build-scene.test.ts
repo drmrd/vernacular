@@ -1,11 +1,51 @@
+import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 import { buildScene } from './build-scene'
 import { findByEntityId } from '../testing'
-import type { RoomSceneNode, SceneGraph } from '../../core'
+import {
+  createEmptyProject,
+  createFloor,
+  createOpening,
+  createWall,
+  deriveSceneGraph,
+  type Floor,
+  type RoomSceneNode,
+  type SceneGraph,
+} from '../../core'
 
 const ROOM_WIDTH_MM = 4000
 const ROOM_DEPTH_MM = 3000
 const ROOM_CEILING_HEIGHT_MM = 2600
+
+const HOST_WALL_LENGTH_MM = 4000
+const HOST_WALL_THICKNESS_MM = 120
+const DOOR_POSITION_MM = 2000
+const DOOR_WIDTH_MM = 900
+
+const hostWall = () =>
+  createWall(
+    { x: 0, y: 0 },
+    { x: HOST_WALL_LENGTH_MM, y: 0 },
+    { id: 'w1', thickness: HOST_WALL_THICKNESS_MM },
+  )
+
+const projectWithFloor = (floor: Floor): SceneGraph => {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+  project.floors = [floor]
+  return deriveSceneGraph(project)
+}
+
+const wallMaterialNames = (root: THREE.Group, entityId: string): (string | undefined)[] => {
+  const mesh = findByEntityId(root, entityId)
+  expect(mesh).toBeInstanceOf(THREE.Mesh)
+  const materials = (mesh as THREE.Mesh).material as THREE.Material[]
+  return materials.map((material) => material.name)
+}
 
 describe('buildScene', () => {
   it('creates one group per scene node carrying its id and elevation', () => {
@@ -113,5 +153,31 @@ describe('buildScene', () => {
     if (floorGroup) {
       expect(findByEntityId(floorGroup, 'room:r1')).not.toBeNull()
     }
+  })
+
+  it('cuts and lines an opening void in its host wall end to end through the derived graph', () => {
+    const door = createOpening({
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      position: DOOR_POSITION_MM,
+      width: DOOR_WIDTH_MM,
+      id: 'o1',
+    })
+    const floor: Floor = {
+      ...createFloor('Ground', { id: 'g', walls: [hostWall()] }),
+      openings: [door],
+    }
+
+    const root = buildScene(projectWithFloor(floor))
+
+    expect(wallMaterialNames(root, 'wall:w1')).toContain('reveal')
+  })
+
+  it('builds an opening-free wall as a plain box without a reveal material group', () => {
+    const floor = createFloor('Ground', { id: 'g', walls: [hostWall()] })
+
+    const root = buildScene(projectWithFloor(floor))
+
+    expect(wallMaterialNames(root, 'wall:w1')).not.toContain('reveal')
   })
 })
