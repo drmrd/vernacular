@@ -7,7 +7,8 @@ const WHITE = 0xffffff
 /** A neutral dark ground bounce for the hemisphere fill. */
 const GROUND_FILL = 0x444444
 /** A fixed default sun direction, raised toward +Y. Exported so the shadow fitter
- *  positions the sun along the same direction relative to the scene bounds. */
+ *  positions the sun along the same direction relative to the scene bounds. Treat it as
+ *  read-only: it is a shared constant, and the fitter normalizes a clone of it once. */
 export const SUN_DIRECTION = new THREE.Vector3(1, 2, 1)
 // Both start at full default intensity and are tuned independently when a solar-aware provider arrives.
 const SUN_INTENSITY = 1

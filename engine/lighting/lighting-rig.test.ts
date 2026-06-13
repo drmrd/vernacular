@@ -56,10 +56,16 @@ describe('fitSunShadowToBounds', () => {
     expect(camera.far).toBeGreaterThanOrEqual(radius * 2)
   })
 
-  it('does nothing for null bounds', () => {
+  it('leaves the sun untouched for null bounds', () => {
     const scene = new THREE.Scene()
     new BasicLightingProvider().apply(scene)
+    const sun = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
+    const positionBefore = sun.position.clone()
 
     expect(() => fitSunShadowToBounds(scene, null)).not.toThrow()
+
+    expect(sun.position.equals(positionBefore)).toBe(true)
   })
 })

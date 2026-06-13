@@ -6,6 +6,8 @@ import { SUN_DIRECTION } from './basic-lighting-provider'
 
 const SHADOW_DISTANCE_FACTOR = 3
 const MIN_SHADOW_NEAR = 1
+/** The sun direction as a unit vector, normalized once so the per-call fitter does not allocate. */
+const SUN_DIRECTION_NORMALIZED = SUN_DIRECTION.clone().normalize()
 
 /**
  * Operations on a lighting rig already applied to a scene (see BasicLightingProvider).
@@ -62,7 +64,7 @@ export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | nu
     ) / 2
   const distance = radius * SHADOW_DISTANCE_FACTOR
 
-  sun.position.copy(center).addScaledVector(SUN_DIRECTION.clone().normalize(), distance)
+  sun.position.copy(center).addScaledVector(SUN_DIRECTION_NORMALIZED, distance)
   sun.target.position.copy(center)
   sun.target.updateMatrixWorld()
 
@@ -71,6 +73,7 @@ export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | nu
   camera.right = radius
   camera.top = radius
   camera.bottom = -radius
+  // Near plane at the sun-facing edge of the bounding sphere, far plane past its far edge.
   camera.near = Math.max(MIN_SHADOW_NEAR, distance - radius)
   camera.far = distance + radius
   camera.updateProjectionMatrix()
