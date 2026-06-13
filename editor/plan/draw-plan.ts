@@ -183,28 +183,28 @@ function drawPlanRulers(
   drawRulers(ctx, options.viewport, size, preferences)
 }
 
-/** Outline the hovered entity in the single hover style, resolving the id across openings, walls, dimensions, and rooms. */
+/** Outline the hovered entity in the single hover style, resolving the id across openings, walls, dimensions, then rooms. */
 function drawHoverHighlight(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const hoveredId = options.hoveredId
   if (hoveredId === undefined) return
-  const wall = options.walls.find((candidate) => candidate.id === hoveredId)
-  if (wall !== undefined) {
-    strokeHoverSegment(ctx, wall, options.viewport)
-    return
-  }
-  const room = options.rooms?.find((candidate) => candidate.id === hoveredId)
-  if (room !== undefined) {
-    strokeHoverRing(ctx, room.polygon, options.viewport)
-    return
-  }
   const opening = options.openings?.find((candidate) => candidate.node.id === hoveredId)
   if (opening !== undefined) {
     strokeHoverRing(ctx, openingCorners(opening.node), options.viewport)
     return
   }
+  const wall = options.walls.find((candidate) => candidate.id === hoveredId)
+  if (wall !== undefined) {
+    strokeHoverSegment(ctx, wall, options.viewport)
+    return
+  }
   const dimension = options.dimensions?.find((candidate) => candidate.node.id === hoveredId)
   if (dimension !== undefined) {
     strokeHoverSegment(ctx, dimension.node, options.viewport)
+    return
+  }
+  const room = options.rooms?.find((candidate) => candidate.id === hoveredId)
+  if (room !== undefined) {
+    strokeHoverRing(ctx, room.polygon, options.viewport)
   }
 }
 
@@ -229,6 +229,7 @@ function strokeHoverSegment(
 function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], viewport: Viewport): void {
   ctx.strokeStyle = HOVER_HIGHLIGHT_COLOR
   ctx.lineWidth = HOVER_HIGHLIGHT_LINE_WIDTH
+  ctx.lineCap = LINE_CAP
   ctx.beginPath()
   traceRingPath(ctx, ring, viewport)
   ctx.stroke()
