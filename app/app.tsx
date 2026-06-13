@@ -46,12 +46,16 @@ const SCENE_HARNESS_FIXTURE = 'scene-harness'
 // kelvin-to-color conversion either way.
 const COLOR_TEMPERATURE_PARAM = 'temp'
 
+function searchParam(name: string): string | null {
+  return new URLSearchParams(globalThis.location?.search ?? '').get(name)
+}
+
 function requestedFixture(): string | null {
-  return new URLSearchParams(globalThis.location?.search ?? '').get('fixture')
+  return searchParam('fixture')
 }
 
 function requestedColorTemperature(): number | undefined {
-  const raw = new URLSearchParams(globalThis.location?.search ?? '').get(COLOR_TEMPERATURE_PARAM)
+  const raw = searchParam(COLOR_TEMPERATURE_PARAM)
   if (raw === null) return undefined
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : undefined

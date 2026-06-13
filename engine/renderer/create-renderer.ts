@@ -30,9 +30,9 @@ export async function createSceneRenderer(
     antialias: options.antialias ?? true,
     forceWebGL: options.forceWebGL ?? false,
   })
-  // Percentage-closer soft shadow maps: a forward-rendering feature both the WebGPU and
-  // the WebGL 2 backend express (foundation spec 5.6). The directional sun casts; the
-  // shell meshes catch (markShadowCasters), and its frustum is fit to the scene bounds.
+  // Soft shadow maps stay within the feature set both the WebGPU and the WebGL 2 backend
+  // express (foundation spec 5.6); PCF soft filtering softens the directional sun's shadow
+  // edges over the cheaper hard-edged basic map.
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
   await renderer.init()
