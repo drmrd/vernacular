@@ -1,9 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-// Shared helpers for the live three-dimensional pane specs (navigation and color
-// temperature). The live view renders through the non-deterministic WebGPU backend
-// (ADR-0045), so these specs assert semantically (a settled frame changes after an
-// action) rather than against a committed pixel baseline.
+// Shared helpers for the live three-dimensional pane specs (navigation, color
+// temperature, selection). The live view renders through the non-deterministic WebGPU
+// backend (ADR-0045), so these specs assert semantically (a settled frame changes after
+// an action) rather than against a committed pixel baseline.
 
 // React Three Fiber mounts the canvas at the HTML default (~150px) height, then resizes
 // it to the real pane box; a settled canvas is past that default.
@@ -28,12 +28,25 @@ export async function stableFrame(canvas: Locator): Promise<Buffer> {
   return last
 }
 
+// Switches to the full-width 3D view and returns the settled canvas. The full-width view
+// is used because the framing helper does not yet adapt to an extreme narrow aspect, so
+// the split view's slim pane can frame the geometry off screen.
+async function settledSceneCanvas(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: '3D view' }).click()
+
+  const pane = page.getByRole('region', { name: /3d preview/i })
+  const canvas = pane.locator('canvas')
+  await expect(canvas).toBeVisible()
+  await expect
+    .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
+      message: 'waiting for the live 3D canvas to settle past its default size',
+    })
+    .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
+  return canvas
+}
+
 // Draws a short open run of walls in split view (where the plan is reachable), then
-// switches to the full-width 3D view and returns the settled 3D canvas locator. The
-// full-width canvas is used because the framing helper does not yet adapt to an
-// extreme narrow aspect, so the split view's slim pane can frame the geometry off
-// screen; navigation is exercised against the full-width view where the shell is
-// visible.
+// returns the settled full-width 3D canvas.
 export async function drawnSceneCanvas(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Split view' }).click()
 
@@ -45,16 +58,24 @@ export async function drawnSceneCanvas(page: Page): Promise<Locator> {
   await page.keyboard.press('Enter')
   await expect(page.getByText(/Walls: \d/)).toBeVisible()
 
-  await page.getByRole('button', { name: '3D view' }).click()
+  return settledSceneCanvas(page)
+}
 
-  const pane = page.getByRole('region', { name: /3d preview/i })
-  const canvas = pane.locator('canvas')
-  await expect(canvas).toBeVisible()
-  // Wait past the default mount size so frames are captured at the settled size.
-  await expect
-    .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
-      message: 'waiting for the live 3D canvas to settle past its default size',
-    })
-    .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
-  return canvas
+// Draws a closed rectangular room in split view (four corners, then back on the first to
+// close the loop), then returns the settled full-width 3D canvas. The closed room derives
+// a floor slab that fills the framed view, so a click at the canvas centre reliably
+// strikes an entity.
+export async function drawnRoomCanvas(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'Split view' }).click()
+
+  const plan = page.getByLabel('Floor plan')
+  await expect(plan).toBeVisible()
+  await plan.click({ position: { x: 100, y: 120 } })
+  await plan.click({ position: { x: 300, y: 120 } })
+  await plan.click({ position: { x: 300, y: 260 } })
+  await plan.click({ position: { x: 100, y: 260 } })
+  await plan.click({ position: { x: 100, y: 120 } }) // back on the first corner closes the loop
+  await expect(page.getByRole('option', { name: /^Room,/ })).toHaveCount(1)
+
+  return settledSceneCanvas(page)
 }
