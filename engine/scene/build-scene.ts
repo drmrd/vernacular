@@ -5,6 +5,7 @@ import {
   WALL_NODE_PREFIX,
   buildWallGraph,
   type OpeningSceneNode,
+  type PlanarGraph,
   type SceneGraph,
   type SceneNode,
   type WallSceneNode,
@@ -60,7 +61,7 @@ function buildFloorGroup(
 }
 
 /** Builds the planar wall graph for a floor, keying each edge by stripped model id. */
-function buildFloorWallGraph(floorWalls: WallSceneNode[]): ReturnType<typeof buildWallGraph> {
+function buildFloorWallGraph(floorWalls: WallSceneNode[]): PlanarGraph {
   return buildWallGraph(
     floorWalls.map((wall) => ({
       id: wall.id.slice(WALL_NODE_PREFIX.length),

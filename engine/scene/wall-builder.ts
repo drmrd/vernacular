@@ -74,8 +74,8 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
   const group = new THREE.Group()
   const wallsByModelId = indexWallsByModelId(input.walls)
   for (const edge of input.graph.edges) {
-    const mesh = buildEdgeMesh(edge, input, wallsByModelId)
-    if (mesh !== null) group.add(mesh)
+    const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
+    if (node !== null) group.add(buildWallMesh(node, input.materials))
   }
   return group
 }
@@ -90,20 +90,21 @@ function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode>
 }
 
 /**
- * Builds the box mesh for one graph edge, reusing {@link buildWallMesh} for the
- * edge's segment. Returns null when the host wall node or either endpoint is
+ * Synthesizes the {@link WallSceneNode} for one graph edge: the edge's segment
+ * carrying its host wall's id, thickness, and height, so {@link buildWallMesh}
+ * builds the box. Returns null when the host wall node or either endpoint is
  * missing (guarding `noUncheckedIndexedAccess`).
  */
-function buildEdgeMesh(
+function edgeWallNode(
   edge: GraphEdge,
-  input: WallBuildInput,
+  vertices: PlanarGraph['vertices'],
   wallsByModelId: Map<string, WallSceneNode>,
-): THREE.Mesh | null {
+): WallSceneNode | null {
   const wall = wallsByModelId.get(edge.wallId)
-  const a = input.graph.vertices[edge.a]
-  const b = input.graph.vertices[edge.b]
+  const a = vertices[edge.a]
+  const b = vertices[edge.b]
   if (wall === undefined || a === undefined || b === undefined) return null
-  const edgeNode: WallSceneNode = {
+  return {
     id: wall.id,
     kind: 'wall',
     floorId: wall.floorId,
@@ -112,5 +113,4 @@ function buildEdgeMesh(
     thickness: wall.thickness,
     ...(wall.height !== undefined ? { height: wall.height } : {}),
   }
-  return buildWallMesh(edgeNode, input.materials)
 }
