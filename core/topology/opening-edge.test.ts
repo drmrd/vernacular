@@ -72,4 +72,18 @@ describe('resolveOpeningEdge', () => {
 
     expect(resolveOpeningEdge(opening, graph)).toBeNull()
   })
+
+  it('returns null when the center projects past every matching edge', () => {
+    const graph: PlanarGraph = {
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 4000, y: 0 },
+      ],
+      edges: [{ a: 0, b: 1, wallId: 'w1' }],
+    }
+    // The host wall id matches, but the center sits beyond the edge end (5000 > 4000).
+    const opening: OpeningInput = { center: { x: 5000, y: 0 }, hostWallId: 'w1' }
+
+    expect(resolveOpeningEdge(opening, graph)).toBeNull()
+  })
 })
