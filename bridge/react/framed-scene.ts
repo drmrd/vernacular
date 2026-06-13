@@ -5,6 +5,7 @@ import {
   type Bounds3,
   type CameraPose,
   type SceneGraph,
+  type SurfaceTreatment,
 } from '../../core'
 import {
   buildScene,
@@ -27,9 +28,13 @@ export interface FramedScene {
  * <SceneLighting> so the color-temperature slider updates them without a rebuild, and
  * keeping the lights out of the build keeps them out of the framed bounds.
  */
-export function buildFramedScene(graph: SceneGraph): FramedScene {
+export function buildFramedScene(
+  graph: SceneGraph,
+  paint: Record<string, SurfaceTreatment> = {},
+): FramedScene {
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
+    paint,
   })
   const root = buildScene(graph, materials)
   markShadowCasters(root)
