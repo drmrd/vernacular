@@ -33,9 +33,10 @@ function axisSign(positive: boolean, negative: boolean): number {
  * horizontal (x, z) plane at the current eye height: yaw 0 faces -Z, so the
  * forward axis is (sin yaw, 0, -cos yaw) and the right axis is (cos yaw, 0,
  * sin yaw). The net direction is normalized and scaled by speed and dt, so a
- * diagonal covers the same total distance as a single key. Look (yaw, pitch)
- * passes through unchanged this cycle; the input deltas are ignored for now.
- * Returns a new state and never mutates the input.
+ * diagonal covers the same total distance as a single key. Look (yaw, pitch) is
+ * not yet updated by input; the deltas are accepted in the interface so callers
+ * stay stable once look control is added. Returns a new state and never mutates
+ * the input.
  */
 export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: number): WalkState {
   const forwardScale = axisSign(input.forward, input.back)
