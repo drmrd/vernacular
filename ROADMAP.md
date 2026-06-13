@@ -139,7 +139,8 @@ ADR-0044 names the stories for each of these tracks; only the foundation story h
 | Assets and furniture       | Library browser, custom import, placement tool (2D)                   | scoped                         |
 | Assets and furniture       | Furniture in 3D; bundle export with attributions                      | scoped (convergence)           |
 | Output and export          | 2D plan export (SVG): `core/export/` exporter and editor download     | merged (#48, #111)             |
-| Output and export          | PDF and PNG (2D) exporters                                            | scoped                         |
+| Output and export          | PNG (image) plan export (canvas rasterization)                        | merged (#113)                  |
+| Output and export          | PDF (document) plan export                                            | scoped                         |
 | Output and export          | Standard exporters (`ifcJSON`, DXF)                                   | scoped                         |
 | Output and export          | 3D snapshot export; bundle export                                     | scoped (convergence)           |
 | User-experience foundation | Design tokens, theming, primitives, layout shell                      | merged (#48)                   |
