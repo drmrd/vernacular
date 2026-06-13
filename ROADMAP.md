@@ -127,7 +127,7 @@ ADR-0044 names the stories for each of these tracks; only the foundation story h
 | Structure and multi-floor  | Floor management and multi-floor commands                             | merged (#48)                   |
 | Structure and multi-floor  | Floor switcher UI                                                     | merged (#57)                   |
 | Structure and multi-floor  | Stair entity, 2D symbol, floor-spanning topology                      | scoped                         |
-| Structure and multi-floor  | Per-room ceiling height                                               | scoped                         |
+| Structure and multi-floor  | Per-room ceiling height                                               | merged (#105)                  |
 | Structure and multi-floor  | Stair 3D geometry, cutaway, floor-by-floor 3D                         | scoped (converges on 3D)       |
 | Old-house vocabulary       | Period/style and room-purpose registries                              | merged (#48, ADR-0046)         |
 | Old-house vocabulary       | Surfacing shipped vocabulary, era tagging UI                          | scoped                         |
