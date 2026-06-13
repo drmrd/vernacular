@@ -3,6 +3,7 @@ import { useState, type FocusEvent, type ReactElement } from 'react'
 import type { SceneGraph, UnitPreferences } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import { dimensionChips, type DimensionChip } from './dimension-chip'
+import type { DragReadout } from './drag-readout'
 import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
 import { EntityProxy } from './entity-proxy'
@@ -27,6 +28,10 @@ export interface PlanOverlayProps {
   // The in-progress wall-draw segment, present only while drawing, which drives the
   // live readout chip and the angle-lock announcement.
   preview?: PreviewSegment
+  // The live drag readout pill (anchor and text), present only while a move-drag
+  // runs. The wall draw and the move drag never co-occur, so this is independent of
+  // the preview-driven readout chip.
+  readout?: DragReadout
 }
 
 interface PillProps {
@@ -185,6 +190,24 @@ function ReadoutChip({ preview, viewport, preferences }: ReadoutChipProps): Reac
   )
 }
 
+// The near-cursor readout pill for a live drag (the move drag here): its pre-formatted
+// text, anchored at the drag's live point. Shares the wall-draw readout class.
+function DragReadoutPill({
+  readout,
+  viewport,
+}: {
+  readout: DragReadout
+  viewport: Viewport
+}): ReactElement {
+  return (
+    <PositionedPill
+      className="plan-overlay__readout"
+      screen={worldToScreen(readout.anchor, viewport)}
+      text={readout.text}
+    />
+  )
+}
+
 /**
  * The accessibility overlay layered over the plan Canvas: one keyboard/AT proxy per
  * selectable entity (positioned via worldToScreen), the dimension chips, a focus
@@ -195,7 +218,7 @@ function ReadoutChip({ preview, viewport, preferences }: ReadoutChipProps): Reac
  * end-to-end specs.
  */
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
-  const { viewport, graph, selectedIds, selection, preferences, snap, preview } = props
+  const { viewport, graph, selectedIds, selection, preferences, snap, preview, readout } = props
   const entities = overlayEntities(graph, selectedIds, preferences)
   const keyboard = useOverlayKeyboard(entities.length, selection)
   const [focused, setFocused] = useState(false)
@@ -217,6 +240,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       {preview ? (
         <ReadoutChip preview={preview} viewport={viewport} preferences={preferences} />
       ) : null}
+      {readout ? <DragReadoutPill readout={readout} viewport={viewport} /> : null}
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
         {announcement}

@@ -1,7 +1,8 @@
 import { useRef, useState, type PointerEvent } from 'react'
-import type { Point, SceneGraph } from '../../core'
+import type { Point, SceneGraph, UnitPreferences } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
+import type { DragReadout } from './drag-readout'
 import type { PreviewSegment } from './draw-plan'
 import { DEFAULT_HIT_TOLERANCE_MM, hitTest } from './hit-test'
 import {
@@ -9,6 +10,7 @@ import {
   endMoveDrag,
   IDLE_MOVE_DRAG,
   moveDragGhost,
+  moveDragReadout,
   type MoveDragState,
 } from './move-drag'
 import { selectedEntityIds, selectionGhostSegments } from './selection-entities'
@@ -23,11 +25,15 @@ interface SelectionMoveDeps {
   selectedIds: ReadonlySet<string>
   tool: ToolId
   viewport: Viewport
+  preferences: UnitPreferences
 }
 
 export interface SelectionMove {
   // The translated ghost of the dragged selection, or empty when no drag is active.
   ghost: readonly PreviewSegment[]
+  // The displacement readout pill anchored at the pointer during a move-drag, or
+  // undefined when no drag is active.
+  readout: DragReadout | undefined
   // Each handler returns true when it consumes the pointer, so the composed
   // handlers can stop before the marquee/click selection runs.
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => boolean
@@ -35,11 +41,12 @@ export interface SelectionMove {
   onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => boolean
 }
 
-// The mutable drag state and the ghost setter, bundled so the handlers stay a
-// single parameter object beside their deps.
+// The mutable drag state, the ghost setter, and the readout setter, bundled so the
+// handlers stay a single parameter object beside their deps.
 interface MoveHandle {
   stateRef: { current: MoveDragState }
   setGhost: (ghost: readonly PreviewSegment[]) => void
+  setReadout: (readout: DragReadout | undefined) => void
 }
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
@@ -63,6 +70,7 @@ function beginDrag(deps: SelectionMoveDeps, handle: MoveHandle, world: Point): b
   }
   handle.stateRef.current = beginMoveDrag(world, segments)
   handle.setGhost(segments)
+  handle.setReadout(moveDragReadout(handle.stateRef.current, world, deps.preferences))
   return true
 }
 
@@ -85,7 +93,9 @@ function pointerMove(
   if (handle.stateRef.current.phase !== 'dragging') {
     return false
   }
-  handle.setGhost(moveDragGhost(handle.stateRef.current, eventToWorld(event, deps.viewport)))
+  const world = eventToWorld(event, deps.viewport)
+  handle.setGhost(moveDragGhost(handle.stateRef.current, world))
+  handle.setReadout(moveDragReadout(handle.stateRef.current, world, deps.preferences))
   return true
 }
 
@@ -100,6 +110,7 @@ function pointerUp(
   }
   handle.stateRef.current = IDLE_MOVE_DRAG
   handle.setGhost([])
+  handle.setReadout(undefined)
   const floorId = deps.session.getProject().floors[0]?.id
   if (floorId === undefined) {
     return true
@@ -126,9 +137,11 @@ function pointerUp(
 export function useSelectionMove(deps: SelectionMoveDeps): SelectionMove {
   const stateRef = useRef<MoveDragState>(IDLE_MOVE_DRAG)
   const [ghost, setGhost] = useState<readonly PreviewSegment[]>([])
-  const handle: MoveHandle = { stateRef, setGhost }
+  const [readout, setReadout] = useState<DragReadout | undefined>(undefined)
+  const handle: MoveHandle = { stateRef, setGhost, setReadout }
   return {
     ghost,
+    readout,
     onPointerDown: (event) => pointerDown(deps, handle, event),
     onPointerMove: (event) => pointerMove(deps, handle, event),
     onPointerUp: (event) => pointerUp(deps, handle, event),

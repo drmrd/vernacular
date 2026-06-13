@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import type { UnitPreferences, WallSceneNode } from '../../core'
+import type { DragReadout } from './drag-readout'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import type { DrawableOpening } from './draw-opening'
@@ -39,6 +40,9 @@ export interface PlanScene {
   calibration: PreviewSegment | undefined
   // The translated ghost of the selection during a move-drag, empty otherwise.
   ghost: readonly PreviewSegment[]
+  // The displacement readout pill shown during a move-drag, or undefined otherwise.
+  // A DOM overlay leaf, so it stays out of the canvas draw options and redraw.
+  readout: DragReadout | undefined
   // The per-face treatment lookup and active surface the plan renders as paint
   // bands and a highlight beneath the wall strokes.
   surfacePaint: NonNullable<DrawPlanOptions['surfacePaint']>
