@@ -3,12 +3,7 @@ import type { DimensionGeometry } from '../../geometry/dimension'
 import { polygonCentroid } from '../../geometry/polygon'
 import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
-import {
-  DEFAULT_METRIC_PREFERENCES,
-  formatArea,
-  formatLength,
-  lengthFormatOptions,
-} from '../../units'
+import { formatArea, formatLength, lengthFormatOptions, preferencesForUnits } from '../../units'
 import { deriveSceneGraph } from '../../scene/scene-graph'
 import type {
   DimensionSceneNode,
@@ -48,7 +43,7 @@ const ARROWHEAD_HALF_ANGLE = Math.PI / ARROWHEAD_HALF_ANGLE_DIVISOR
 export interface SvgPlanExportOptions {
   /** Margin around the content in world millimeters. Default 100. */
   marginMm?: number
-  /** Unit preferences for area and length text. Default DEFAULT_METRIC_PREFERENCES. */
+  /** Unit preferences for area and length text. Defaults to the project's units. */
   preferences?: UnitPreferences
 }
 
@@ -66,7 +61,7 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
     const graph = deriveSceneGraph(project)
     const bounds = planContentBounds(graph)
     const view = createSvgView(bounds, options)
-    const preferences = options?.preferences ?? DEFAULT_METRIC_PREFERENCES
+    const preferences = options?.preferences ?? preferencesForUnits(project.meta.units)
     const context: SvgPlanContext = { view, preferences }
     const body = svgGroup(
       [
