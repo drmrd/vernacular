@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { buildWallMesh } from './wall-builder'
+import { buildWallMesh, buildWalls } from './wall-builder'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
-import type { Vector3, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, PlanarGraph, Vector3, WallSceneNode } from '../../core'
 
 describe('buildWallMesh', () => {
   it('extrudes a wall as a box centered on its centerline with its base on the floor datum', () => {
@@ -119,5 +119,126 @@ describe('buildWallMesh', () => {
     const matches = (a: Vector3, b: Vector3): boolean =>
       Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 1e-5
     expect(normals.some((n) => matches(n, opposite))).toBe(true)
+  })
+})
+
+describe('buildWalls', () => {
+  const THICKNESS = 120
+  const HALF_THICKNESS = THICKNESS / 2
+  const HEIGHT = 2600
+  const FACE_GROUP_COUNT = 6
+
+  const meshesOf = (group: THREE.Group): THREE.Mesh[] =>
+    group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+
+  it('builds a single box for an unsplit wall with no openings', () => {
+    const graph: PlanarGraph = {
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 4000, y: 0 },
+      ],
+      edges: [{ a: 0, b: 1, wallId: 'w1' }],
+    }
+    const walls: WallSceneNode[] = [
+      {
+        id: 'wall:w1',
+        kind: 'wall',
+        floorId: 'demo',
+        start: { x: 0, y: 0 },
+        end: { x: 4000, y: 0 },
+        thickness: THICKNESS,
+        height: HEIGHT,
+      },
+    ]
+    const openingsByWall = new Map<string, OpeningSceneNode[]>()
+
+    const group = buildWalls({
+      graph,
+      walls,
+      openingsByWall,
+      materials: new NeutralMaterialProvider(),
+    })
+
+    expect(group).toBeInstanceOf(THREE.Group)
+    const meshes = meshesOf(group)
+    expect(meshes).toHaveLength(1)
+
+    const mesh = meshes[0]
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    expect(mesh.userData.entityId).toBe('wall:w1')
+
+    const geometry = mesh.geometry as THREE.BufferGeometry
+    expect(materialGroups(geometry)).toHaveLength(FACE_GROUP_COUNT)
+
+    const precision = 3
+    const aabb = new THREE.Box3().setFromObject(mesh)
+    expect(aabb.min.x).toBeCloseTo(0, precision)
+    expect(aabb.max.x).toBeCloseTo(4000, precision)
+    expect(aabb.min.y).toBeCloseTo(0, precision)
+    expect(aabb.max.y).toBeCloseTo(HEIGHT, precision)
+    expect(aabb.min.z).toBeCloseTo(-HALF_THICKNESS, precision)
+    expect(aabb.max.z).toBeCloseTo(HALF_THICKNESS, precision)
+  })
+
+  it('builds one box per edge for a split wall, both carrying the wall node id', () => {
+    const graph: PlanarGraph = {
+      vertices: [
+        { x: 0, y: 0 },
+        { x: 2000, y: 0 },
+        { x: 4000, y: 0 },
+      ],
+      edges: [
+        { a: 0, b: 1, wallId: 'w1' },
+        { a: 1, b: 2, wallId: 'w1' },
+      ],
+    }
+    const walls: WallSceneNode[] = [
+      {
+        id: 'wall:w1',
+        kind: 'wall',
+        floorId: 'demo',
+        start: { x: 0, y: 0 },
+        end: { x: 4000, y: 0 },
+        thickness: THICKNESS,
+        height: HEIGHT,
+      },
+    ]
+    const openingsByWall = new Map<string, OpeningSceneNode[]>()
+
+    const group = buildWalls({
+      graph,
+      walls,
+      openingsByWall,
+      materials: new NeutralMaterialProvider(),
+    })
+
+    const meshes = meshesOf(group)
+    expect(meshes).toHaveLength(2)
+    expect(meshes.every((mesh) => mesh.userData.entityId === 'wall:w1')).toBe(true)
+
+    const precision = 3
+    const spans = meshes
+      .map((mesh) => new THREE.Box3().setFromObject(mesh))
+      .sort((left, right) => left.min.x - right.min.x)
+
+    const [first, second] = spans
+    expect(first).toBeDefined()
+    expect(second).toBeDefined()
+    if (first === undefined || second === undefined) return
+
+    expect(first.min.x).toBeCloseTo(0, precision)
+    expect(first.max.x).toBeCloseTo(2000, precision)
+    expect(first.min.y).toBeCloseTo(0, precision)
+    expect(first.max.y).toBeCloseTo(HEIGHT, precision)
+    expect(first.min.z).toBeCloseTo(-HALF_THICKNESS, precision)
+    expect(first.max.z).toBeCloseTo(HALF_THICKNESS, precision)
+
+    expect(second.min.x).toBeCloseTo(2000, precision)
+    expect(second.max.x).toBeCloseTo(4000, precision)
+    expect(second.min.y).toBeCloseTo(0, precision)
+    expect(second.max.y).toBeCloseTo(HEIGHT, precision)
+    expect(second.min.z).toBeCloseTo(-HALF_THICKNESS, precision)
+    expect(second.max.z).toBeCloseTo(HALF_THICKNESS, precision)
   })
 })
