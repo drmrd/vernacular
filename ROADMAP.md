@@ -112,11 +112,11 @@ Slice numbers follow the foundation spec slice map. The track built slice 1, the
 
 #### Paint and metadata (merged; painted preview pending)
 
-| Story                                                                  | ADR / PR            | Status                           |
-| ---------------------------------------------------------------------- | ------------------- | -------------------------------- |
-| Paint model, palette registry, color and finish pickers, site metadata | ADR-0048 / #48      | merged                           |
-| Surface paint selection and treatments (and wiring, polish)            | ADR-0056 / #64, #74 | merged                           |
-| Painted 3D preview (paint material on the per-surface groups)          | --                  | scoped (converges on 3D slice 6) |
+| Story                                                                  | ADR / PR            | Status      |
+| ---------------------------------------------------------------------- | ------------------- | ----------- |
+| Paint model, palette registry, color and finish pickers, site metadata | ADR-0048 / #48      | merged      |
+| Surface paint selection and treatments (and wiring, polish)            | ADR-0056 / #64, #74 | merged      |
+| Painted 3D preview (paint material on the per-surface groups)          | ADR-0067            | in progress |
 
 #### Track features still at foundation
 

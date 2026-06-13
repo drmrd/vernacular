@@ -26,7 +26,13 @@ import {
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
-import type { Project } from '../core'
+import {
+  colorFromHex,
+  solidTreatment,
+  surfaceKey,
+  type Project,
+  type SurfaceTreatment,
+} from '../core'
 import { createInitialProject } from './create-initial-project'
 import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
 import { resolveProjectStorage } from './resolve-project-store'
@@ -59,6 +65,17 @@ function requestedColorTemperature(): number | undefined {
   if (raw === null) return undefined
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+// A fixed demo paint store for the painted-shell baseline
+// (`?fixture=scene-harness&paint=demo`): the harness room's floor painted a distinct
+// color so the committed baseline shows real paint on a surface.
+const DEMO_FLOOR_HEX = '#cc6633'
+
+function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
+  if (searchParam('paint') !== 'demo') return undefined
+  const floorRef = { kind: 'floor', floorId: 'demo' } as const
+  return { [surfaceKey(floorRef)]: solidTreatment(colorFromHex(DEMO_FLOOR_HEX), 'matte') }
 }
 
 // Resolve the durable {store, assets} pair to boot against. An injected
@@ -94,7 +111,12 @@ export interface AppProps {
 
 export function App(props: AppProps) {
   if (requestedFixture() === SCENE_HARNESS_FIXTURE) {
-    return <SceneHarnessView colorTemperatureK={requestedColorTemperature()} />
+    return (
+      <SceneHarnessView
+        colorTemperatureK={requestedColorTemperature()}
+        paint={requestedHarnessPaint()}
+      />
+    )
   }
   return <AppWorkspace {...props} />
 }

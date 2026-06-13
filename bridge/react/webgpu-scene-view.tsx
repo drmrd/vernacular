@@ -17,6 +17,7 @@ import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
 import { useSelection, useSelectionIds } from './selection-context'
+import { useProjectPaint } from './use-project-paint'
 import { useSceneGraph } from './use-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
 
@@ -166,7 +167,8 @@ export function WebGPUSceneView() {
     () => sceneGraphForFloor(rawGraph, activeFloorId),
     [rawGraph, activeFloorId],
   )
-  const { root, pose, bounds } = useMemo(() => buildFramedScene(graph), [graph])
+  const paint = useProjectPaint()
+  const { root, pose, bounds } = useMemo(() => buildFramedScene(graph, paint), [graph, paint])
   const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
   const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)

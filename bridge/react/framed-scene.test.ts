@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { buildFramedScene } from './framed-scene'
 import { findByEntityId } from '../../engine/testing'
-import { DEFAULT_CAMERA_POSE } from '../../core'
-import type { SceneGraph } from '../../core'
+import { DEFAULT_CAMERA_POSE, colorFromHex, solidTreatment, surfaceKey } from '../../core'
+import type { RoomSceneNode, SceneGraph } from '../../core'
 
 describe('buildFramedScene', () => {
   const wallLength = 2000
@@ -94,5 +94,56 @@ describe('buildFramedScene', () => {
     // guards the empty-scene regression: an Infinity-valued bounds would frame to a
     // NaN pose that could never equal the fixed default.
     expect(pose).toEqual(DEFAULT_CAMERA_POSE)
+  })
+
+  it('paints a room floor from the supplied paint store', () => {
+    const floorId = 'g'
+    const room: RoomSceneNode = {
+      id: 'room:r1',
+      kind: 'room',
+      floorId,
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 2000, y: 0 },
+        { x: 2000, y: 2000 },
+        { x: 0, y: 2000 },
+      ],
+      clearPolygon: [
+        { x: 60, y: 60 },
+        { x: 1940, y: 60 },
+        { x: 1940, y: 1940 },
+        { x: 60, y: 1940 },
+      ],
+      area: 1880 * 1880,
+      ceilingHeight: 2400,
+    }
+    const paintedGraph: SceneGraph = {
+      nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
+      walls: [],
+      rooms: [room],
+      underlays: [],
+      openings: [],
+      dimensions: [],
+      stairs: [],
+    }
+    const hex = '#aa5500'
+    const ref = { kind: 'floor', floorId } as const
+    const paint = { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), 'matte') }
+
+    const { root } = buildFramedScene(paintedGraph, paint)
+
+    let topHex: string | undefined
+    root.traverse((object) => {
+      const mesh = object as unknown as { material?: unknown }
+      if (Array.isArray(mesh.material)) {
+        const top = (mesh.material as { name: string; color: { getHexString(): string } }[]).find(
+          (material) => material.name === 'top',
+        )
+        if (top !== undefined) {
+          topHex = top.color.getHexString()
+        }
+      }
+    })
+    expect(topHex).toBe('aa5500')
   })
 })
