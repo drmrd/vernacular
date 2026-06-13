@@ -1,5 +1,8 @@
-/** A page reserves a margin on every one of its four sides. */
+/** A page reserves a margin on two opposite sides of each axis. */
 const MARGIN_SIDES = 2
+
+/** Leftover space splits into two equal halves to center the image. */
+const HALVES = 2
 
 interface Size {
   width: number
@@ -51,8 +54,8 @@ export function placePlanOnPage(content: Size, page: Size, marginPt: number): Pl
   return {
     page: orientedPage,
     image: {
-      x: (orientedPage.width - imageWidth) / MARGIN_SIDES,
-      y: (orientedPage.height - imageHeight) / MARGIN_SIDES,
+      x: (orientedPage.width - imageWidth) / HALVES,
+      y: (orientedPage.height - imageHeight) / HALVES,
       width: imageWidth,
       height: imageHeight,
     },
