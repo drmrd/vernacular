@@ -224,11 +224,13 @@ function outlineRectangle(frame: EdgeFrame): THREE.Vector2[] {
 
 /**
  * A triangulated elevation outline: the concatenated point list (outline followed
- * by each hole loop) and the triangle index triples into it.
+ * by each hole loop) and the triangle index triples into it. `holeLoops` keeps the
+ * void corner loops so the reveal builder lines the cut without recomputing them.
  */
 interface TriangulatedOutline {
   points: THREE.Vector2[]
   triangles: Triangle[]
+  holeLoops: THREE.Vector2[][]
 }
 
 /**
@@ -260,6 +262,61 @@ function outerCapPositions(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vect
   return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
 }
 
+/** Tolerance for snapping a void edge onto the wall's outer outline boundary. */
+const BOUNDARY_EPSILON = 1e-6
+
+/** Whether both `(u, v)` values sit within `BOUNDARY_EPSILON` of `target`. */
+function bothNear(first: number, second: number, target: number): boolean {
+  return Math.abs(first - target) < BOUNDARY_EPSILON && Math.abs(second - target) < BOUNDARY_EPSILON
+}
+
+/**
+ * Whether the void edge `from -> to` lies on the wall's outer outline boundary:
+ * the base (`v = 0`), the top (`v = height`), or either end (`u = 0`, `u = length`).
+ * Such an edge is the cut meeting an outline edge, not a face to line.
+ */
+function isOuterBoundaryEdge(from: THREE.Vector2, to: THREE.Vector2, frame: EdgeFrame): boolean {
+  return (
+    bothNear(from.y, to.y, 0) ||
+    bothNear(from.y, to.y, frame.height) ||
+    bothNear(from.x, to.x, 0) ||
+    bothNear(from.x, to.x, frame.length)
+  )
+}
+
+/**
+ * World positions for one reveal quad (two triangles) bridging the interior and
+ * exterior faces along the void edge `from -> to`, wound so its normal points
+ * inward toward the void interior (away from the wall material).
+ */
+function revealQuad(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vector2): number[] {
+  const a = edgeLocalToWorld(frame, to, SIDE_INTERIOR)
+  const b = edgeLocalToWorld(frame, from, SIDE_INTERIOR)
+  const c = edgeLocalToWorld(frame, from, SIDE_EXTERIOR)
+  const d = edgeLocalToWorld(frame, to, SIDE_EXTERIOR)
+  // Quad as two triangles sharing the a-c diagonal: a-b-c then a-c-d.
+  return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
+}
+
+/**
+ * World positions for the reveal faces lining every void: a quad spanning the wall
+ * thickness along each void-boundary edge that does not lie on the wall's outer
+ * outline (a door's floor edge sits on `v = 0`, so it is skipped). The closing edge
+ * from the last corner back to the first lines the loop's final side.
+ */
+function revealPositions(frame: EdgeFrame, holeLoops: THREE.Vector2[][]): number[] {
+  const positions: number[] = []
+  for (const loop of holeLoops) {
+    for (let index = 0; index < loop.length; index += 1) {
+      const from = loop[index] as THREE.Vector2
+      const to = loop[(index + 1) % loop.length] as THREE.Vector2
+      if (isOuterBoundaryEdge(from, to, frame)) continue
+      positions.push(...revealQuad(frame, from, to))
+    }
+  }
+  return positions
+}
+
 /** The profile path's contiguous sections, in a fixed geometry order. */
 function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): WallSection[] {
   const top = new THREE.Vector2(0, frame.height)
@@ -269,7 +326,9 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
   const reversed: TriangulatedOutline = {
     points: outline.points,
     triangles: reverseTriangleWinding(outline.triangles),
+    holeLoops: outline.holeLoops,
   }
+  const reveal = revealPositions(frame, outline.holeLoops)
   return [
     { role: 'interiorFace', positions: longFacePositions(frame, outline, SIDE_INTERIOR) },
     { role: 'exteriorFace', positions: longFacePositions(frame, reversed, SIDE_EXTERIOR) },
@@ -285,6 +344,9 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
         ...outerCapPositions(frame, baseEnd, topEnd),
       ],
     },
+    // Reveal faces line the cut. A degenerate outline with no lined edges yields no
+    // section, so the mesh adds no empty reveal material group.
+    ...(reveal.length > 0 ? [{ role: 'reveal' as SurfaceRole, positions: reveal }] : []),
   ]
 }
 
@@ -316,12 +378,13 @@ interface OpeningWall {
 /** Triangulates the wall's elevation outline with each opening's void cut as a hole. */
 function triangulatedWallOutline(frame: EdgeFrame, openings: EdgeOpening[]): TriangulatedOutline {
   const outline = outlineRectangle(frame)
-  const holes = openings.map((entry) =>
+  const holeLoops = openings.map((entry) =>
     voidHoleLoop(openingVoidContour(entry.opening), entry.positionAlongEdge),
   )
   return {
-    points: [...outline, ...holes.flat()],
-    triangles: THREE.ShapeUtils.triangulateShape(outline, holes) as Triangle[],
+    points: [...outline, ...holeLoops.flat()],
+    triangles: THREE.ShapeUtils.triangulateShape(outline, holeLoops) as Triangle[],
+    holeLoops,
   }
 }
 
@@ -329,8 +392,8 @@ function triangulatedWallOutline(frame: EdgeFrame, openings: EdgeOpening[]): Tri
  * Builds the mesh for an edge that hosts openings: the wall's elevation outline
  * with each opening's void (from {@link openingVoidContour}) cut from it as a
  * hole, triangulated through `THREE.ShapeUtils` into two long faces at plus and
- * minus half the thickness, closed by the outer top, base, and end caps. Reveal
- * faces lining the cut land in a later cycle. Carries the wall node's entity id.
+ * minus half the thickness, closed by the outer top, base, and end caps and lined
+ * with reveal faces along the cut. Carries the wall node's entity id.
  */
 function buildOpeningWallMesh(target: OpeningWall, input: WallBuildInput): THREE.Mesh {
   // buildWalls reaches this only after edgeWallNode validated both endpoints for
