@@ -88,6 +88,7 @@ export type {
   OpeningTypeParameters,
   Plan2DSymbol,
   Scene3DReference,
+  VoidContourKind,
 } from './registries/element-types'
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
 export type { Command, CommandHandler } from './commands/command'

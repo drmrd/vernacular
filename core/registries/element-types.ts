@@ -7,9 +7,14 @@ export interface Plan2DSymbol {
   symbol: string
 }
 
+/** The named shape of an opening's wall-cut void. The union is open to further variants (half-round, round-topped, segmental) additively, the way `ContourSegment` is. */
+export type VoidContourKind = 'rectangular'
+
 export interface Scene3DReference {
   /** Identifier of the 3D builder routine or asset-reference key. */
   builder: string
+  /** Names the opening's wall-cut shape (the void), distinct from `builder` (the eventual fill). Non-opening types omit it. */
+  voidContour?: VoidContourKind
 }
 
 export type OpeningFamily =
@@ -36,7 +41,7 @@ export interface ElementType extends RegistryEntry {
   opening?: OpeningTypeParameters
 }
 
-export const ELEMENT_TYPE_REGISTRY_VERSION = 3
+export const ELEMENT_TYPE_REGISTRY_VERSION = 4
 
 export const builtinElementTypes: Registry<ElementType> = createRegistry(
   ELEMENT_TYPE_REGISTRY_VERSION,
@@ -51,7 +56,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'single-swing-door',
       category: 'opening',
       plan2D: { symbol: 'door-swing' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'swing',
         defaultWidth: 813,
@@ -63,7 +68,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'double-swing-door',
       category: 'opening',
       plan2D: { symbol: 'door-swing' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'swing',
         double: true,
@@ -79,7 +84,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'french-door',
       category: 'opening',
       plan2D: { symbol: 'door-swing' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'swing',
         double: true,
@@ -92,7 +97,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'dutch-door',
       category: 'opening',
       plan2D: { symbol: 'door-swing' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'swing',
         defaultWidth: 813,
@@ -104,7 +109,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'pocket-door',
       category: 'opening',
       plan2D: { symbol: 'door-slide' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'slide',
         defaultWidth: 813,
@@ -116,7 +121,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'bypass-door',
       category: 'opening',
       plan2D: { symbol: 'door-slide' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'slide',
         defaultWidth: 1524,
@@ -128,7 +133,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'sliding-glass-door',
       category: 'opening',
       plan2D: { symbol: 'door-slide' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'slide',
         defaultWidth: 1829,
@@ -140,7 +145,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'barn-door',
       category: 'opening',
       plan2D: { symbol: 'door-slide' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'slide',
         defaultWidth: 965,
@@ -152,7 +157,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'bifold-door',
       category: 'opening',
       plan2D: { symbol: 'door-fold' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'fold',
         defaultWidth: 813,
@@ -164,7 +169,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'pivot-door',
       category: 'opening',
       plan2D: { symbol: 'door-pivot' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'pivot',
         defaultWidth: 914,
@@ -176,7 +181,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'cased-opening',
       category: 'opening',
       plan2D: { symbol: 'cased-opening' },
-      scene3D: { builder: 'door-frame' },
+      scene3D: { builder: 'door-frame', voidContour: 'rectangular' },
       opening: {
         family: 'cased',
         defaultWidth: 914,
@@ -188,7 +193,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'double-hung-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-fixed',
         defaultWidth: 900,
@@ -203,7 +208,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'single-hung-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-fixed',
         defaultWidth: 900,
@@ -215,7 +220,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'sliding-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-fixed',
         defaultWidth: 1200,
@@ -227,7 +232,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'picture-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-fixed',
         defaultWidth: 1500,
@@ -239,7 +244,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'casement-window',
       category: 'opening',
       plan2D: { symbol: 'window-crank' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-crank',
         defaultWidth: 600,
@@ -251,7 +256,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'awning-window',
       category: 'opening',
       plan2D: { symbol: 'window-crank' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-crank',
         defaultWidth: 900,
@@ -263,7 +268,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'hopper-window',
       category: 'opening',
       plan2D: { symbol: 'window-crank' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-crank',
         defaultWidth: 900,
@@ -275,7 +280,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'transom-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-fixed',
         defaultWidth: 900,
@@ -287,7 +292,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'sidelight-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular' },
       opening: {
         family: 'window-fixed',
         defaultWidth: 300,
