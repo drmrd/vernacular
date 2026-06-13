@@ -71,11 +71,26 @@ function requestedColorTemperature(): number | undefined {
 // (`?fixture=scene-harness&paint=demo`): the harness room's floor painted a distinct
 // color so the committed baseline shows real paint on a surface.
 const DEMO_FLOOR_HEX = '#cc6633'
+const DEMO_WALL_HEX = '#3f7f5f'
+// The harness room's four walls (model ids, the scene `wall:` prefix stripped). South
+// hosts the door (an opening wall), so painting all four exercises both wall mesh paths.
+const DEMO_WALL_IDS = ['south', 'east', 'north', 'west']
 
 function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
   if (searchParam('paint') !== 'demo') return undefined
-  const floorRef = { kind: 'floor', floorId: 'demo' } as const
-  return { [surfaceKey(floorRef)]: solidTreatment(colorFromHex(DEMO_FLOOR_HEX), 'matte') }
+  const store: Record<string, SurfaceTreatment> = {
+    [surfaceKey({ kind: 'floor', floorId: 'demo' })]: solidTreatment(
+      colorFromHex(DEMO_FLOOR_HEX),
+      'matte',
+    ),
+  }
+  for (const wallId of DEMO_WALL_IDS) {
+    store[surfaceKey({ kind: 'wall-face', wallId, side: 'right' })] = solidTreatment(
+      colorFromHex(DEMO_WALL_HEX),
+      'matte',
+    )
+  }
+  return store
 }
 
 // Resolve the durable {store, assets} pair to boot against. An injected

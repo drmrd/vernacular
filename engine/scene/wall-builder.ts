@@ -12,11 +12,29 @@ import {
   type OpeningSceneNode,
   type PlanarGraph,
   type Point,
+  type SurfaceRef,
   type WallSceneNode,
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
 import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './geometry-utils'
+
+// Box long faces: index 4 is the +Z interior face, 5 the -Z exterior (see FACE_ROLES).
+// Opening sections: index 0 is the interior long face, 1 the exterior (see openingWallSections).
+const BOX_INTERIOR_FACE_INDEX = 4
+const BOX_EXTERIOR_FACE_INDEX = 5
+
+/** The paint surface ref for the wall's long face at `index` (the interior face is side
+ *  'left', the exterior 'right'), or undefined for a non-long face (end cap, top, base, reveal). */
+function longFaceRefAt(
+  wallId: string,
+  index: number,
+  [interior, exterior]: readonly [number, number],
+): SurfaceRef | undefined {
+  if (index === interior) return { kind: 'wall-face', wallId, side: 'left' }
+  if (index === exterior) return { kind: 'wall-face', wallId, side: 'right' }
+  return undefined
+}
 
 /**
  * The shell role for each of a BoxGeometry's six material groups, in its fixed
@@ -50,7 +68,13 @@ export function buildWallMesh(node: WallSceneNode, materials: MaterialProvider):
   const length = Math.hypot(node.end.x - node.start.x, node.end.y - node.start.y)
   const height = wallHeight(node)
   const geometry = new THREE.BoxGeometry(length, height, node.thickness)
-  const material = FACE_ROLES.map((role) => materials.material(role))
+  const wallId = node.id.slice(WALL_NODE_PREFIX.length)
+  const material = FACE_ROLES.map((role, index) =>
+    materials.material(
+      role,
+      longFaceRefAt(wallId, index, [BOX_INTERIOR_FACE_INDEX, BOX_EXTERIOR_FACE_INDEX]),
+    ),
+  )
   const mesh = new THREE.Mesh(geometry, material)
   const midX = (node.start.x + node.end.x) / 2
   const midPlanY = (node.start.y + node.end.y) / 2
@@ -420,7 +444,10 @@ function buildOpeningWallMesh(target: OpeningWall, input: WallBuildInput): THREE
   const outline = triangulatedWallOutline(frame, target.openings)
   const sections = openingWallSections(frame, outline)
   const geometry = geometryFromSections(sections)
-  const materials = sections.map((section) => input.materials.material(section.role))
+  const wallId = target.wall.id.slice(WALL_NODE_PREFIX.length)
+  const materials = sections.map((section, index) =>
+    input.materials.material(section.role, longFaceRefAt(wallId, index, [0, 1])),
+  )
   const mesh = new THREE.Mesh(geometry, materials)
   mesh.userData.entityId = target.wall.id
   return mesh
