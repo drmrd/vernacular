@@ -1,20 +1,10 @@
 import * as THREE from 'three'
 
+import { entityIdOf } from './entity-id'
+
 /** A high-luminance outline that reads by contrast, not hue (color-blind-safe), drawn
  *  over the scene so a selected entity is visible even when occluded. */
 const OUTLINE_COLOR = 0xffffff
-
-function entityIdOf(object: THREE.Object3D): string | null {
-  let current: THREE.Object3D | null = object
-  while (current !== null) {
-    const id = current.userData.entityId
-    if (typeof id === 'string') {
-      return id
-    }
-    current = current.parent
-  }
-  return null
-}
 
 /** The group that holds the selection outline, added once to the persistent scene. */
 export function createSelectionOutlineGroup(): THREE.Group {

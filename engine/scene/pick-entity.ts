@@ -1,16 +1,6 @@
 import * as THREE from 'three'
 
-function entityIdOf(object: THREE.Object3D): string | null {
-  let current: THREE.Object3D | null = object
-  while (current !== null) {
-    const id = current.userData.entityId
-    if (typeof id === 'string') {
-      return id
-    }
-    current = current.parent
-  }
-  return null
-}
+import { entityIdOf } from './entity-id'
 
 /** The entity id of the nearest object a ray strikes, read from userData.entityId on the
  *  hit or its nearest ancestor that carries one; null when the ray strikes nothing. */
