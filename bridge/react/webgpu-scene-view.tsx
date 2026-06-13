@@ -1,6 +1,6 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
-import { sceneGraphForFloor, type CameraPose } from '../../core'
+import { sceneGraphForFloor, DEFAULT_COLOR_TEMPERATURE_K, type CameraPose } from '../../core'
 import { createSceneRenderer } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { buildFramedScene } from './framed-scene'
@@ -42,6 +42,30 @@ function useSceneNavigation() {
   return { mode, setMode, userControlled, markUserControlled, resetView }
 }
 
+function useColorTemperature() {
+  const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
+  return { colorTemperatureK, setColorTemperatureK }
+}
+
+// Wraps the navigation toolbar so WebGPUSceneView stays within the function-length
+// limit while still threading the camera mode, reset, and color-temperature controls.
+// The color-temperature state is local to the toolbar until later wiring drives the
+// scene lighting from it.
+type SceneNavigation = ReturnType<typeof useSceneNavigation>
+
+function SceneNavigationToolbar({ navigation }: { navigation: SceneNavigation }) {
+  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+  return (
+    <SceneNavToolbar
+      mode={navigation.mode}
+      onModeChange={navigation.setMode}
+      onReset={navigation.resetView}
+      colorTemperatureK={colorTemperatureK}
+      onColorTemperatureChange={setColorTemperatureK}
+    />
+  )
+}
+
 /**
  * Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation
  * toolbar above it. It is rendered only when WebGPU is available, so it never
@@ -61,11 +85,12 @@ export function WebGPUSceneView() {
     [rawGraph, activeFloorId],
   )
   const { root, pose } = useMemo(() => buildFramedScene(graph), [graph])
-  const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
+  const navigation = useSceneNavigation()
+  const { mode, userControlled, markUserControlled } = navigation
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <SceneNavToolbar mode={mode} onModeChange={setMode} onReset={resetView} />
+      <SceneNavigationToolbar navigation={navigation} />
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         <Canvas
           // Render every frame so interactive camera moves (orbit drag, walk) show
