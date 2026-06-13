@@ -13,6 +13,7 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
+import { openingCorners } from './opening-geometry'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
@@ -62,6 +63,8 @@ export interface DrawPlanOptions {
   snap?: SnapResult
   marquee?: Bounds
   endpointHandles?: WallSceneNode
+  /** The id of the single entity to highlight as a hover preview, or absent for none. */
+  hoveredId?: string
   roomLabels?: RoomLabelOptions
   underlays?: readonly DrawableUnderlay[]
   openings?: readonly DrawableOpening[]
@@ -82,6 +85,8 @@ const SELECTED_ROOM_LINE_WIDTH = 2
 const WALL_COLOR = '#222222'
 const SELECTED_WALL_COLOR = '#1a7fd4'
 const PREVIEW_COLOR = '#5b9bd5'
+const HOVER_HIGHLIGHT_COLOR = '#62b0ff'
+const HOVER_HIGHLIGHT_LINE_WIDTH = 3
 const MIN_WALL_PIXELS = 1
 const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
@@ -163,6 +168,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawCalibration(ctx, options.calibration, options.viewport)
   // The move-drag ghost sits above the plan but below the rulers, like the preview.
   drawGhost(ctx, options.ghost, options.viewport)
+  // The hover cue paints on top of every entity layer but beneath the ruler chrome.
+  drawHoverHighlight(ctx, options)
   if (options.rulers) drawPlanRulers(ctx, options, size)
 }
 
@@ -174,6 +181,57 @@ function drawPlanRulers(
 ): void {
   const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
   drawRulers(ctx, options.viewport, size, preferences)
+}
+
+/** Outline the hovered entity in the single hover style, resolving the id across openings, walls, dimensions, and rooms. */
+function drawHoverHighlight(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const hoveredId = options.hoveredId
+  if (hoveredId === undefined) return
+  const wall = options.walls.find((candidate) => candidate.id === hoveredId)
+  if (wall !== undefined) {
+    strokeHoverSegment(ctx, wall, options.viewport)
+    return
+  }
+  const room = options.rooms?.find((candidate) => candidate.id === hoveredId)
+  if (room !== undefined) {
+    strokeHoverRing(ctx, room.polygon, options.viewport)
+    return
+  }
+  const opening = options.openings?.find((candidate) => candidate.node.id === hoveredId)
+  if (opening !== undefined) {
+    strokeHoverRing(ctx, openingCorners(opening.node), options.viewport)
+    return
+  }
+  const dimension = options.dimensions?.find((candidate) => candidate.node.id === hoveredId)
+  if (dimension !== undefined) {
+    strokeHoverSegment(ctx, dimension.node, options.viewport)
+  }
+}
+
+/** Stroke a single hover-colored segment between a segment's two world endpoints. */
+function strokeHoverSegment(
+  ctx: PlanDrawingContext,
+  segment: PreviewSegment,
+  viewport: Viewport,
+): void {
+  const from = worldToScreen(segment.start, viewport)
+  const to = worldToScreen(segment.end, viewport)
+  ctx.strokeStyle = HOVER_HIGHLIGHT_COLOR
+  ctx.lineWidth = HOVER_HIGHLIGHT_LINE_WIDTH
+  ctx.lineCap = LINE_CAP
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+}
+
+/** Stroke a single hover-colored outline of a closed ring. */
+function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], viewport: Viewport): void {
+  ctx.strokeStyle = HOVER_HIGHLIGHT_COLOR
+  ctx.lineWidth = HOVER_HIGHLIGHT_LINE_WIDTH
+  ctx.beginPath()
+  traceRingPath(ctx, ring, viewport)
+  ctx.stroke()
 }
 
 /** Paint each opening's plan symbol over the wall stroke it breaks. */
