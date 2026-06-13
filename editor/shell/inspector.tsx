@@ -30,6 +30,7 @@ import { OpeningInspector } from '../plan/opening-inspector'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
 import { RoomPurposeEditor } from '../plan/room-purpose-editor'
+import { RoomSubPurposeEditor } from '../plan/room-sub-purpose-editor'
 import { selectedEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
 import { singleSelectedDimension } from '../plan/selected-dimension'
@@ -144,6 +145,7 @@ interface RoomInspectorProps {
 function RoomInspector({ roomNode, project, dispatch }: RoomInspectorProps) {
   const roomKey = roomNode.id.slice(ROOM_ID_PREFIX.length)
   const purpose: RoomPurposeId | undefined = project.roomOverrides?.[roomKey]?.purpose
+  const subPurpose = project.roomOverrides?.[roomKey]?.subPurpose
   const preferences = PREFERENCES_BY_UNITS[project.meta.units]
   const height = resolveCeilingHeight(roomNode)
   return (
@@ -167,6 +169,15 @@ function RoomInspector({ roomNode, project, dispatch }: RoomInspectorProps) {
         preferences={preferences}
       />
       <RoomPurposeEditor roomKey={roomKey} purpose={purpose} dispatch={dispatch} />
+      {/* Key on the node id and sub-purpose so the editor remounts when the
+          selected room changes or an undo restores a different value; the editor
+          seeds its input from the sub-purpose at mount. */}
+      <RoomSubPurposeEditor
+        key={`${roomNode.id}:sub:${subPurpose ?? ''}`}
+        roomKey={roomKey}
+        subPurpose={subPurpose}
+        dispatch={dispatch}
+      />
     </>
   )
 }
