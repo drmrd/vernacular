@@ -58,4 +58,13 @@ export { svgPlanFilename } from './download/svg-plan-filename'
 export { pngPlanFilename } from './download/png-plan-filename'
 export { rasterTargetSize } from './download/raster-target-size'
 export { rasterizeSvgToPng, DEFAULT_RASTER_MAX_EDGE } from './download/rasterize-svg'
+export { pdfPlanFilename } from './download/pdf-plan-filename'
+export { pdfPageSize } from './download/pdf-page'
+export { placePlanOnPage } from './download/pdf-plan-layout'
+export {
+  svgPlanToPdf,
+  PRINT_RASTER_MAX_EDGE,
+  PDF_DEFAULT_MARGIN_PT,
+} from './download/pdf-plan-document'
+export type { SvgPlanToPdfOptions } from './download/pdf-plan-document'
 export { downloadBytes, downloadText } from './download/download-blob'
