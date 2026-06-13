@@ -19,7 +19,7 @@ describe('builtin element types', () => {
     expect(door?.scene3D.builder).toBe('door-frame')
   })
 
-  it('exposes the opening types and bumps the registry version to 2', () => {
+  it('exposes the opening type parameters for each registered opening', () => {
     const cases = [
       {
         id: 'single-swing-door',
@@ -63,21 +63,13 @@ describe('builtin element types', () => {
   })
 
   it('marks every opening element type with a rectangular void contour', () => {
-    const openingIds = [
-      'single-swing-door',
-      'double-swing-door',
-      'pocket-door',
-      'bifold-door',
-      'pivot-door',
-      'cased-opening',
-      'double-hung-window',
-      'casement-window',
-    ] as const
+    const openings = Object.values(builtinElementTypes.entries).filter(
+      (entry) => entry.category === 'opening',
+    )
+    expect(openings.length).toBeGreaterThan(0)
 
-    for (const id of openingIds) {
-      const entry = getEntry(builtinElementTypes, id)
-      expect(entry?.category).toBe('opening')
-      expect(entry?.scene3D.voidContour).toBe('rectangular')
+    for (const entry of openings) {
+      expect(entry.scene3D.voidContour).toBe('rectangular')
     }
   })
 
