@@ -31,6 +31,7 @@ import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
 import { RoomPeriodEditor } from '../plan/room-period-editor'
 import { RoomPurposeEditor } from '../plan/room-purpose-editor'
+import { RoomStyleEditor } from '../plan/room-style-editor'
 import { RoomSubPurposeEditor } from '../plan/room-sub-purpose-editor'
 import { selectedEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
@@ -159,6 +160,7 @@ function RoomMetadataEditors({ roomKey, override, dispatch }: RoomMetadataEditor
         dispatch={dispatch}
       />
       <RoomPeriodEditor roomKey={roomKey} period={override?.periodOverride} dispatch={dispatch} />
+      <RoomStyleEditor roomKey={roomKey} style={override?.styleOverride} dispatch={dispatch} />
     </>
   )
 }
