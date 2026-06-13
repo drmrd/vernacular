@@ -5,6 +5,10 @@ import { expect, type Locator, type Page } from '@playwright/test'
 // (ADR-0045), so these specs assert semantically (a settled frame changes after an
 // action) rather than against a committed pixel baseline.
 
+// React Three Fiber mounts the canvas at the HTML default (~150px) height, then resizes
+// it to the real pane box; a settled canvas is past that default.
+const SETTLED_CANVAS_MIN_HEIGHT = 200
+
 // Polls until the canvas reaches a steady frame (two consecutive identical
 // screenshots), then returns that stable frame. The scene has no animation, so a
 // steady frame is the settled render rather than a mid-init transient.
@@ -46,12 +50,11 @@ export async function drawnSceneCanvas(page: Page): Promise<Locator> {
   const pane = page.getByRole('region', { name: /3d preview/i })
   const canvas = pane.locator('canvas')
   await expect(canvas).toBeVisible()
-  // React Three Fiber mounts the canvas at the HTML default size, then resizes it to
-  // the real pane box; wait past that so frames are captured at the settled size.
+  // Wait past the default mount size so frames are captured at the settled size.
   await expect
     .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
       message: 'waiting for the live 3D canvas to settle past its default size',
     })
-    .toBeGreaterThan(200)
+    .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
   return canvas
 }

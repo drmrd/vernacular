@@ -24,12 +24,17 @@ export interface SceneRendererOptions {
 export async function createSceneRenderer(
   options: SceneRendererOptions = {},
 ): Promise<WebGPURenderer> {
-  const { WebGPURenderer: Renderer } = await import('three/webgpu')
+  const { WebGPURenderer: Renderer, PCFSoftShadowMap } = await import('three/webgpu')
   const renderer = new Renderer({
     canvas: options.canvas,
     antialias: options.antialias ?? true,
     forceWebGL: options.forceWebGL ?? false,
   })
+  // Percentage-closer soft shadow maps: a forward-rendering feature both the WebGPU and
+  // the WebGL 2 backend express (foundation spec 5.6). The directional sun casts; the
+  // shell meshes catch (markShadowCasters), and its frustum is fit to the scene bounds.
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = PCFSoftShadowMap
   await renderer.init()
   return renderer
 }

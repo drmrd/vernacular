@@ -1,10 +1,16 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
-import { sceneGraphForFloor, DEFAULT_COLOR_TEMPERATURE_K, type CameraPose } from '../../core'
+import {
+  sceneGraphForFloor,
+  DEFAULT_COLOR_TEMPERATURE_K,
+  type Bounds3,
+  type CameraPose,
+} from '../../core'
 import { createSceneRenderer, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
+import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { useSceneGraph } from './use-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
@@ -53,21 +59,26 @@ function useColorTemperature() {
 interface LiveSceneCanvasProps {
   root: SceneRoot
   pose: CameraPose
+  bounds: Bounds3 | null
   mode: NavMode
   userControlled: boolean
   onUserControl: () => void
+  colorTemperatureK: number
 }
 
 // The interactive React Three Fiber canvas: the keyed scene primitive, the framed
-// camera, and the orbit and walk controls. Extracted from WebGPUSceneView so each
-// function stays within the length limit. frameloop="always" renders every frame so
-// interactive camera moves show continuously, not only when React remounts the scene.
+// camera, the lighting, and the orbit and walk controls. Extracted from WebGPUSceneView
+// so each function stays within the length limit. frameloop="always" renders every frame
+// so interactive camera moves and color-temperature changes show continuously, not only
+// when React remounts the scene.
 function LiveSceneCanvas({
   root,
   pose,
+  bounds,
   mode,
   userControlled,
   onUserControl,
+  colorTemperatureK,
 }: LiveSceneCanvasProps) {
   return (
     <Canvas
@@ -88,6 +99,7 @@ function LiveSceneCanvas({
           React Three Fiber does not re-attach a <primitive> when its object prop
           changes in place, only when the element remounts. */}
       <primitive key={root.uuid} object={root} />
+      <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
       <FrameCamera pose={pose} active={!userControlled} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
@@ -117,7 +129,7 @@ export function WebGPUSceneView() {
     () => sceneGraphForFloor(rawGraph, activeFloorId),
     [rawGraph, activeFloorId],
   )
-  const { root, pose } = useMemo(() => buildFramedScene(graph), [graph])
+  const { root, pose, bounds } = useMemo(() => buildFramedScene(graph), [graph])
   const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
   const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
 
@@ -134,9 +146,11 @@ export function WebGPUSceneView() {
         <LiveSceneCanvas
           root={root}
           pose={pose}
+          bounds={bounds}
           mode={mode}
           userControlled={userControlled}
           onUserControl={markUserControlled}
+          colorTemperatureK={colorTemperatureK}
         />
       </div>
     </div>
