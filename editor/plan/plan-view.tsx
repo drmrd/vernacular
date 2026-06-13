@@ -203,7 +203,13 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   })
   const clipboard = useClipboardStore()
   useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
-  const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
+  const wallEditing = useWallEditing({
+    session,
+    selectedWall,
+    walls: graph.walls,
+    viewport,
+    preferences,
+  })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
@@ -241,9 +247,9 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
-  // The overlay readout pill draws from the move drag today. A later slice merges a
-  // second source (wall-endpoint editing) here with `??`; the two never co-occur.
-  const readout = selectionMove.readout
+  // The overlay readout pill draws from the move drag or the wall-endpoint drag.
+  // The two never co-occur (only one drag is live), so `??` is merely tidy here.
+  const readout = selectionMove.readout ?? wallEditing.readout
   return {
     cursor: planCursor(layers.tool, controls.panning || planSelection.panning),
     pointerHandlers: composePointerHandlers({

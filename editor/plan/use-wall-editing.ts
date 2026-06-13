@@ -11,10 +11,12 @@ import {
   moveWallEndpoint,
   WALL_NODE_PREFIX,
   type Point,
+  type UnitPreferences,
   type WallEnd,
   type WallSceneNode,
 } from '../../core'
 import type { EditorSession } from '../../bridge'
+import { dragReadout, type DragReadout } from './drag-readout'
 import type { DrawPlanOptions, PreviewSegment } from './draw-plan'
 import { pickWallEndpoint } from './wall-editing'
 import { useSnapping, type Snapping } from './use-snapping'
@@ -35,11 +37,15 @@ interface WallEditingDeps {
   selectedWall: WallSceneNode | null
   walls: DrawPlanOptions['walls']
   viewport: Viewport
+  preferences: UnitPreferences
 }
 
 export interface WallEditing {
   // The live wall preview while one endpoint is dragged, or undefined otherwise.
   preview: PreviewSegment | undefined
+  // The reshaped wall's length-and-bearing readout pill anchored at the dragged
+  // endpoint while a drag is live, or undefined otherwise.
+  readout: DragReadout | undefined
   // Returns true when the pointer-down grabbed a handle and started a drag, so
   // the composition can give the drag priority over the marquee/click selection.
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => boolean
@@ -171,6 +177,7 @@ export function useWallEditing({
   selectedWall,
   walls,
   viewport,
+  preferences,
 }: WallEditingDeps): WallEditing {
   const drag = useRef<DragState | null>(null)
   const [preview, setPreview] = useState<PreviewSegment | undefined>(undefined)
@@ -180,6 +187,7 @@ export function useWallEditing({
   const onPointerDown = useGrabHandler(selectedWall, control)
   const onPointerMove = useDragMoveHandler(control)
   const onPointerUp = useReleaseHandler(session, control)
+  const readout = preview ? dragReadout(preview.start, preview.end, preferences) : undefined
 
-  return { preview, onPointerDown, onPointerMove, onPointerUp }
+  return { preview, readout, onPointerDown, onPointerMove, onPointerUp }
 }
