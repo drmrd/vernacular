@@ -99,7 +99,7 @@ Owner-driven polish to the two-dimensional editing surface, raised as issues #11
 | Story                                                                | ADR / PR        | Status  |
 | -------------------------------------------------------------------- | --------------- | ------- |
 | Drag-to-pan as the default Select-mode interaction                   | ADR-0070 / #130 | merged  |
-| Select-mode hover preview of the entity under the cursor             | #117            | planned |
+| Select-mode hover preview of the entity under the cursor             | ADR-0071 / #135 | merged  |
 | Live drag previews (ghosts) and cursor-adjacent readouts             | #118            | planned |
 | Openings drag-to-resize handles with extend and snap to the wall end | #119            | planned |
 | Free-angle modifier when editing an existing wall endpoint           | #120            | planned |
