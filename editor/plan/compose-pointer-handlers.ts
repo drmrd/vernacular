@@ -2,6 +2,7 @@ import type { PointerEvent } from 'react'
 import type { DimensionTool } from './use-dimension-tool'
 import type { OpeningEditing } from './use-opening-editing'
 import type { OpeningPlacement } from './use-opening-placement'
+import type { PlanHover } from './use-plan-hover'
 import type { PlanInteraction } from './use-plan-interaction'
 import type { PlanSelection } from './use-plan-selection'
 import type { PlanUnderlayLayer } from './use-underlay'
@@ -27,6 +28,7 @@ export interface PointerSources {
   calibration: PlanUnderlayLayer['calibration']
   selection: PlanSelection
   openingPlacement: OpeningPlacement
+  hover: PlanHover
 }
 
 /**
@@ -41,7 +43,7 @@ export interface PointerSources {
  */
 export function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
   const { controls, wallEditing, openingEditing, selectionMove, interaction } = sources
-  const { dimensionTool, calibration, selection, openingPlacement } = sources
+  const { dimensionTool, calibration, selection, openingPlacement, hover } = sources
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
       if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
@@ -53,6 +55,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       selection.onPointerDown(event)
     },
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
+      hover.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
       if (openingEditing.onPointerMove(event) || selectionMove.onPointerMove(event)) return
       calibration.onPointerMove(event)
@@ -73,6 +76,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       interaction.onPointerLeave()
       dimensionTool.onPointerLeave()
       calibration.onPointerLeave()
+      hover.onPointerLeave()
     },
   }
 }

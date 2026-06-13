@@ -35,6 +35,7 @@ import {
 import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
+import { usePlanHover, type PlanHover } from './use-plan-hover'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useFloorFillColor, useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
@@ -75,6 +76,7 @@ interface PlanLayers {
   dimensionTool: DimensionTool
   dimensions: readonly DrawableDimension[]
   planSelection: PlanSelection
+  planHover: PlanHover
   selectionMove: SelectionMove
   wallEditing: WallEditing
   controls: ViewportControls
@@ -99,6 +101,7 @@ function buildScene(
     walls: graph.walls,
     rooms: graph.rooms,
     selectedIds: inputs.selectedIds,
+    hoveredId: inputs.planHover.hoveredId,
     // The endpoint drag, the wall tool, and the dimension tool never preview at
     // once (each gated on its own tool), so one resolved preview leaf covers all.
     preview: wallEditing.preview ?? interaction.preview ?? dimensionTool.preview,
@@ -187,9 +190,9 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
-  const clipboard = useClipboardStore()
+  const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({ session, graph, selectedIds, tool, viewport })
-  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
+  useSelectionKeyboard({ session, selection, clipboard: useClipboardStore(), selectedIds, tool })
   const wallEditing = useWallEditing({ session, selectedWall, walls: graph.walls, viewport })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
@@ -207,6 +210,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
     dimensionTool,
     dimensions: toDrawableDimensions(graph.dimensions, selectedIds),
     planSelection,
+    planHover,
     selectionMove,
     wallEditing,
     controls,
@@ -239,6 +243,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
       calibration: underlayLayer.calibration,
       selection: planSelection,
       openingPlacement: openingLayer.placement,
+      hover: layers.planHover,
     }),
     overlay: {
       viewport: layers.viewport,
