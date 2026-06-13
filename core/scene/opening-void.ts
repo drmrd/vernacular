@@ -1,3 +1,5 @@
+import { builtinElementTypes, type ElementType } from '../registries/element-types'
+import { getEntry, type Registry } from '../registries/registry'
 import type { Contour } from './contour'
 import type { OpeningSceneNode } from './scene-graph'
 
@@ -21,5 +23,26 @@ export function rectangularVoidContour(node: OpeningSceneNode): Contour {
       { kind: 'line', to: { x: halfWidth, y: node.sillHeight } },
       { kind: 'line', to: { x: -halfWidth, y: node.sillHeight } },
     ],
+  }
+}
+
+/**
+ * Resolves an opening's wall-cut void contour from its element type (foundation
+ * spec section 3.1): this is the void-shape resolver seam. The geometry comes
+ * from the element type's `scene3D.voidContour`, so adding a new shape is a new
+ * `case` here, not a change in the wall builder that calls this. A node whose
+ * type is missing from the registry, or whose type omits a `voidContour`, falls
+ * back to a rectangle so a misconfigured registry still cuts a plausible void.
+ */
+export function openingVoidContour(
+  node: OpeningSceneNode,
+  elementTypes: Registry<ElementType> = builtinElementTypes,
+): Contour {
+  const entry = getEntry(elementTypes, node.type)
+  switch (entry?.scene3D.voidContour) {
+    case 'rectangular':
+      return rectangularVoidContour(node)
+    default:
+      return rectangularVoidContour(node)
   }
 }
