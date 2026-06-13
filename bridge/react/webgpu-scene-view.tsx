@@ -7,6 +7,7 @@ import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { useSceneGraph } from './use-scene-graph'
+import { WalkCameraControls } from './walk-camera-controls'
 
 // Applies the framed camera pose to the live canvas camera while the user has not
 // taken control of the camera, and re-applies it whenever the pose changes (for
@@ -93,6 +94,7 @@ export function WebGPUSceneView() {
             target={pose.target}
             onUserControl={markUserControlled}
           />
+          <WalkCameraControls enabled={mode === 'walk'} onUserControl={markUserControlled} />
         </Canvas>
       </div>
     </div>
