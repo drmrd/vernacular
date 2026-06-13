@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { drawWall, expectWallCount, gotoEditor, selectors } from './support'
+import { drawWall, expectWallCount, gotoEditor, selectors, selectWallTool } from './support'
 
 // A plain primary-button drag on empty canvas in Select mode pans the view (ADR-0069),
 // and Shift-drag still draws the selection marquee. The pan is verified the same 1:1 way
@@ -62,4 +62,29 @@ test('a Shift-drag still draws a marquee that selects', async ({ page }) => {
   await page.keyboard.up('Shift')
 
   await expect(page.getByRole('textbox', { name: /thickness/i })).toBeVisible()
+})
+
+test('a spacebar pan keeps an in-progress wall run intact', async ({ page }) => {
+  await gotoEditor(page)
+  await selectWallTool(page)
+  const box = await canvasBox(page)
+  const canvas = selectors.planCanvas(page)
+
+  // Start a wall run with one vertex; do not finish it.
+  await canvas.click({ position: { x: box.width * 0.25, y: box.height * 0.3 } })
+
+  // Spring-loaded pan: hold the spacebar, drag the view, release. The pan takes the
+  // pointer before the wall tool and never touches the run, so the run survives.
+  await page.keyboard.down('Space')
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.6, { steps: 10 })
+  await page.mouse.up()
+  await page.keyboard.up('Space')
+
+  // Placing the second vertex commits the segment (immediate-commit), which proves the
+  // run continued through the pan rather than resetting to an empty tool.
+  await canvas.click({ position: { x: box.width * 0.55, y: box.height * 0.55 } })
+  await page.keyboard.press('Enter')
+  await expectWallCount(page, 1)
 })
