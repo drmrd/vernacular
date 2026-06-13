@@ -1,7 +1,7 @@
 import { Canvas, useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { sceneGraphForFloor, DEFAULT_COLOR_TEMPERATURE_K, type CameraPose } from '../../core'
-import { createSceneRenderer } from '../../engine'
+import { createSceneRenderer, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
@@ -42,27 +42,60 @@ function useSceneNavigation() {
   return { mode, setMode, userControlled, markUserControlled, resetView }
 }
 
+// Per-view color-temperature session state, held in the view component (foundation
+// section 5.3), never in the model or undo. It feeds the toolbar slider and, once
+// wired, the scene lighting.
 function useColorTemperature() {
   const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
   return { colorTemperatureK, setColorTemperatureK }
 }
 
-// Wraps the navigation toolbar so WebGPUSceneView stays within the function-length
-// limit while still threading the camera mode, reset, and color-temperature controls.
-// The color-temperature state is local to the toolbar until later wiring drives the
-// scene lighting from it.
-type SceneNavigation = ReturnType<typeof useSceneNavigation>
+interface LiveSceneCanvasProps {
+  root: SceneRoot
+  pose: CameraPose
+  mode: NavMode
+  userControlled: boolean
+  onUserControl: () => void
+}
 
-function SceneNavigationToolbar({ navigation }: { navigation: SceneNavigation }) {
-  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+// The interactive React Three Fiber canvas: the keyed scene primitive, the framed
+// camera, and the orbit and walk controls. Extracted from WebGPUSceneView so each
+// function stays within the length limit. frameloop="always" renders every frame so
+// interactive camera moves show continuously, not only when React remounts the scene.
+function LiveSceneCanvas({
+  root,
+  pose,
+  mode,
+  userControlled,
+  onUserControl,
+}: LiveSceneCanvasProps) {
   return (
-    <SceneNavToolbar
-      mode={navigation.mode}
-      onModeChange={navigation.setMode}
-      onReset={navigation.resetView}
-      colorTemperatureK={colorTemperatureK}
-      onColorTemperatureChange={setColorTemperatureK}
-    />
+    <Canvas
+      frameloop="always"
+      camera={{
+        position: [pose.position.x, pose.position.y, pose.position.z],
+        near: pose.near,
+        far: pose.far,
+      }}
+      // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
+      // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
+      // path), so narrowing the cast away from OffscreenCanvas is safe.
+      gl={(defaultProps) =>
+        createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
+      }
+    >
+      {/* Key the primitive on the rebuilt group so a new scene replaces the old one:
+          React Three Fiber does not re-attach a <primitive> when its object prop
+          changes in place, only when the element remounts. */}
+      <primitive key={root.uuid} object={root} />
+      <FrameCamera pose={pose} active={!userControlled} />
+      <OrbitCameraControls
+        enabled={mode === 'orbit'}
+        target={pose.target}
+        onUserControl={onUserControl}
+      />
+      <WalkCameraControls enabled={mode === 'walk'} onUserControl={onUserControl} />
+    </Canvas>
   )
 }
 
@@ -85,42 +118,26 @@ export function WebGPUSceneView() {
     [rawGraph, activeFloorId],
   )
   const { root, pose } = useMemo(() => buildFramedScene(graph), [graph])
-  const navigation = useSceneNavigation()
-  const { mode, userControlled, markUserControlled } = navigation
+  const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
+  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <SceneNavigationToolbar navigation={navigation} />
+      <SceneNavToolbar
+        mode={mode}
+        onModeChange={setMode}
+        onReset={resetView}
+        colorTemperatureK={colorTemperatureK}
+        onColorTemperatureChange={setColorTemperatureK}
+      />
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <Canvas
-          // Render every frame so interactive camera moves (orbit drag, walk) show
-          // continuously, not only when React remounts the scene. The deterministic
-          // harness stays frameloop="never"; this live pane is interactive.
-          frameloop="always"
-          camera={{
-            position: [pose.position.x, pose.position.y, pose.position.z],
-            near: pose.near,
-            far: pose.far,
-          }}
-          // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
-          // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
-          // path), so narrowing the cast away from OffscreenCanvas is safe.
-          gl={(defaultProps) =>
-            createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
-          }
-        >
-          {/* Key the primitive on the rebuilt group so a new scene replaces the old one:
-              React Three Fiber does not re-attach a <primitive> when its object prop
-              changes in place, only when the element remounts. */}
-          <primitive key={root.uuid} object={root} />
-          <FrameCamera pose={pose} active={!userControlled} />
-          <OrbitCameraControls
-            enabled={mode === 'orbit'}
-            target={pose.target}
-            onUserControl={markUserControlled}
-          />
-          <WalkCameraControls enabled={mode === 'walk'} onUserControl={markUserControlled} />
-        </Canvas>
+        <LiveSceneCanvas
+          root={root}
+          pose={pose}
+          mode={mode}
+          userControlled={userControlled}
+          onUserControl={markUserControlled}
+        />
       </div>
     </div>
   )
