@@ -16,6 +16,7 @@ test.describe('Canvas pan alignment', () => {
     }
 
     // Draw a vertical wall by two clicks sharing the same displayed x.
+    await page.getByRole('button', { name: 'Draw wall' }).click()
     const x0 = box.width * 0.3
     await canvas.click({ position: { x: x0, y: box.height * 0.3 } })
     await canvas.click({ position: { x: x0, y: box.height * 0.6 } })

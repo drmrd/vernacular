@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor, expectWallCount, selectors } from './support'
+import { gotoEditor, expectWallCount, selectors, selectWallTool } from './support'
 
 test('draws a chained polyline and closes it into a room', async ({ page }) => {
   await gotoEditor(page)
+  await selectWallTool(page)
   const canvas = selectors.planCanvas(page)
 
   await canvas.click({ position: { x: 160, y: 160 } }) // first corner
@@ -21,6 +22,7 @@ test('finishes an open run with a double-click and extends it from an endpoint',
   page,
 }) => {
   await gotoEditor(page)
+  await selectWallTool(page)
   const canvas = selectors.planCanvas(page)
 
   await canvas.click({ position: { x: 160, y: 200 } })
