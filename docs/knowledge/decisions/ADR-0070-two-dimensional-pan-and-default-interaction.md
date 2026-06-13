@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0069-two-dimensional-pan-and-default-interaction
-title: 'ADR-0069: Drag-to-pan is the default two-dimensional interaction'
+slug: decisions/ADR-0070-two-dimensional-pan-and-default-interaction
+title: 'ADR-0070: Drag-to-pan is the default two-dimensional interaction'
 type: decision
 tags:
   [
@@ -35,7 +35,7 @@ status: current
 updated: 2026-06-13
 ---
 
-# ADR-0069: Drag-to-pan is the default two-dimensional interaction
+# ADR-0070: Drag-to-pan is the default two-dimensional interaction
 
 ## Status
 

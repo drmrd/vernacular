@@ -2,7 +2,7 @@
 
 Status: accepted
 Issue: #116
-Related ADR: ADR-0069
+Related ADR: ADR-0070
 
 ## Why
 
