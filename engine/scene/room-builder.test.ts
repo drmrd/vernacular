@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildRoomShell } from './room-builder'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
+import { PaintMaterialProvider } from '../materials/paint-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
-import { floorSlabThickness } from '../../core'
+import { colorFromHex, floorSlabThickness, solidTreatment, surfaceKey } from '../../core'
 import type { RoomSceneNode, Vector3 } from '../../core'
 
 const ROOM_WIDTH = 4000
@@ -276,5 +277,42 @@ describe('buildRoomShell', () => {
     expect(triangles.some((t) => pointInTriangle2D(HOLE_CENTROID, t))).toBe(false)
     // The solid ring around the void stays covered.
     expect(triangles.some((t) => pointInTriangle2D(RING_SAMPLE, t))).toBe(true)
+  })
+
+  it('paints the floor slab top from the paint store', () => {
+    const node = rectangularRoom()
+    const hex = '#aa5500'
+    const ref = { kind: 'floor', floorId: node.floorId } as const
+    const paint = { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), 'matte') }
+
+    const group = buildRoomShell(
+      node,
+      new PaintMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
+    )
+
+    const slab = findFloorSlab(group) as THREE.Mesh
+    const top = (slab.material as THREE.Material[]).find(
+      (material) => material.name === 'top',
+    ) as THREE.MeshStandardMaterial
+    expect(top.color.equals(new THREE.Color(hex))).toBe(true)
+  })
+
+  it('paints the ceiling from the paint store', () => {
+    const node = rectangularRoom({ ceilingHeight: CEILING_HEIGHT })
+    const hex = '#225588'
+    const ref = { kind: 'ceiling', floorId: node.floorId } as const
+    const paint = { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), 'matte') }
+
+    const group = buildRoomShell(
+      node,
+      new PaintMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
+    )
+
+    const ceiling = meshesOf(group).find(
+      (mesh) => !Array.isArray(mesh.material) && (mesh.material as THREE.Material).name === 'base',
+    ) as THREE.Mesh
+    expect(
+      (ceiling.material as THREE.MeshStandardMaterial).color.equals(new THREE.Color(hex)),
+    ).toBe(true)
   })
 })
