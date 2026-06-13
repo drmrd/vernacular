@@ -350,6 +350,7 @@ export {
   millimetersToInches,
   millimetersToMeters,
   parseLength,
+  preferencesForUnits,
   roundToDecimalPlaces,
   roundToNearestFraction,
 } from './units'
