@@ -6,6 +6,12 @@ export const WALK_EYE_HEIGHT_MM = 1700
 /** Walking speed, in millimeters per second. */
 export const WALK_SPEED_MM_PER_S = 3000
 
+/** Small angular margin that keeps the pitch limit shy of straight up or down. */
+const PITCH_LIMIT_EPSILON_RAD = 0.01
+
+/** Pitch limit, just shy of straight up or down to avoid a degenerate view. */
+export const MAX_WALK_PITCH_RAD = Math.PI / 2 - PITCH_LIMIT_EPSILON_RAD
+
 /** Where the walker is and which way they look. yaw 0 faces -Z. */
 export interface WalkState {
   position: Vector3
@@ -33,10 +39,9 @@ function axisSign(positive: boolean, negative: boolean): number {
  * horizontal (x, z) plane at the current eye height: yaw 0 faces -Z, so the
  * forward axis is (sin yaw, 0, -cos yaw) and the right axis is (cos yaw, 0,
  * sin yaw). The net direction is normalized and scaled by speed and dt, so a
- * diagonal covers the same total distance as a single key. Look (yaw, pitch) is
- * not yet updated by input; the deltas are accepted in the interface so callers
- * stay stable once look control is added. Returns a new state and never mutates
- * the input.
+ * diagonal covers the same total distance as a single key. Yaw advances by the
+ * input yaw delta, and pitch advances by the input pitch delta clamped to
+ * +/-MAX_WALK_PITCH_RAD. Returns a new state and never mutates the input.
  */
 export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: number): WalkState {
   const forwardScale = axisSign(input.forward, input.back)
@@ -53,9 +58,12 @@ export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: numbe
     nextZ += directionZ * step
   }
 
+  const pitch = state.pitch + input.pitchDelta
+  const clampedPitch = Math.max(-MAX_WALK_PITCH_RAD, Math.min(MAX_WALK_PITCH_RAD, pitch))
+
   return {
     position: { x: nextX, y: state.position.y, z: nextZ },
-    yaw: state.yaw,
-    pitch: state.pitch,
+    yaw: state.yaw + input.yawDelta,
+    pitch: clampedPitch,
   }
 }
