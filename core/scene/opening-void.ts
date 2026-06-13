@@ -40,8 +40,10 @@ export function openingVoidContour(
 ): Contour {
   const entry = getEntry(elementTypes, node.type)
   switch (entry?.scene3D.voidContour) {
-    case 'rectangular':
-      return rectangularVoidContour(node)
+    // Add a `case` per VoidContourKind as new void shapes land (foundation spec
+    // 3.1). The default cuts a rectangle for the current kind and for any
+    // missing or unrecognized kind, so a misconfigured registry still cuts a
+    // plausible void.
     default:
       return rectangularVoidContour(node)
   }
