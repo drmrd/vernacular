@@ -12,6 +12,7 @@ import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
+import { SceneSelection } from './scene-selection'
 import { useSceneGraph } from './use-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
 
@@ -100,6 +101,7 @@ function LiveSceneCanvas({
           changes in place, only when the element remounts. */}
       <primitive key={root.uuid} object={root} />
       <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
+      <SceneSelection root={root} />
       <FrameCamera pose={pose} active={!userControlled} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
