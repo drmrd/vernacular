@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { SvgPlanExporter } from '../core'
 import { commitProject, createEditorSession, type EditorSession } from '../bridge'
 import {
   DirectoryHandleStore,
@@ -6,8 +7,10 @@ import {
   ZipBundleProjectStore,
   bundleFilename,
   downloadBytes,
+  downloadText,
   orderRecentProjects,
   recentEntryFor,
+  svgPlanFilename,
   type ProjectBackend,
   type ProjectStore,
   type RecentProjectStore,
@@ -69,6 +72,7 @@ export interface ProjectActions {
   onOpenRecent: (id: string) => void
   onNewProject: () => void
   onExportBundle: () => void
+  onExportPlan: () => void
   onOpenFolder?: () => void
 }
 
@@ -78,6 +82,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
     onOpenRecent: useOpenRecentAction(context),
     onNewProject: useNewProjectAction(context),
     onExportBundle: useExportBundleAction(context),
+    onExportPlan: useExportPlanAction(context),
     ...useOpenFolderAction(context),
   }
 }
@@ -115,6 +120,15 @@ function useExportBundleAction(context: ProjectActionsContext): () => void {
       .then((bytes) => downloadBytes(bytes, bundleFilename(project.meta.name)))
       .catch((error: unknown) => console.error('export bundle failed', error))
   }, [session, projectId])
+}
+
+function useExportPlanAction(context: ProjectActionsContext): () => void {
+  const { session } = context
+  return useCallback(() => {
+    const project = session.getProject()
+    const { content } = new SvgPlanExporter().export(project)
+    downloadText(content, svgPlanFilename(project.meta.name), 'image/svg+xml')
+  }, [session])
 }
 
 function useNewProjectAction(context: ProjectActionsContext): () => void {

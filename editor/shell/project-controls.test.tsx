@@ -1,0 +1,33 @@
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { render, screen, within, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ProjectControls } from './project-controls'
+
+const EXPORT_PLAN_LABEL = 'Export plan'
+
+function projectNav() {
+  return screen.getByRole('navigation', { name: 'Project' })
+}
+
+afterEach(cleanup)
+
+describe('ProjectControls export plan action', () => {
+  it('renders an Export plan button that calls onExportPlan when clicked', async () => {
+    const onExportPlan = vi.fn()
+    const user = userEvent.setup()
+    render(<ProjectControls onExportPlan={onExportPlan} />)
+
+    const exportPlanButton = within(projectNav()).getByRole('button', {
+      name: EXPORT_PLAN_LABEL,
+    })
+    await user.click(exportPlanButton)
+
+    expect(onExportPlan).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders no Export plan button without the callback', () => {
+    render(<ProjectControls />)
+
+    expect(within(projectNav()).queryByRole('button', { name: EXPORT_PLAN_LABEL })).toBeNull()
+  })
+})

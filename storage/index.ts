@@ -54,4 +54,5 @@ export type { ProjectStoreBackend, SelectProjectStoreOptions } from './select-pr
 export { orderRecentProjects, recentEntryFor } from './recent/recent-projects'
 export type { RecentEntryInput } from './recent/recent-projects'
 export { bundleFilename } from './zip/bundle-filename'
-export { downloadBytes } from './download/download-blob'
+export { svgPlanFilename } from './download/svg-plan-filename'
+export { downloadBytes, downloadText } from './download/download-blob'
