@@ -38,7 +38,8 @@ function emptyWalkInput(): WalkInput {
 function seedWalkState(camera: WalkCamera): WalkState {
   camera.updateWorldMatrix(true, false)
   const e = camera.matrixWorld.elements
-  // The forward axis is matrix-world columns 8..10; default to facing -Z if absent.
+  // The forward axis is elements [8, 9, 10] of the column-major matrixWorld (the
+  // third column's XYZ), negated; default to facing -Z if any element is absent.
   const fx = e[8] ?? 0
   const fy = e[9] ?? 0
   const fz = e[10] ?? -1
@@ -65,6 +66,8 @@ interface WalkSession {
 // that removes the listeners, releases capture, and clears held input.
 function startWalk({ camera, domElement, state, input, onUserControl }: WalkSession): () => void {
   state.current = seedWalkState(camera)
+  // Mark user-controlled immediately so FrameCamera stops reapplying the framed pose
+  // and the walk controller owns the camera from the first frame.
   onUserControl()
   const onKeyDown = (event: KeyboardEvent) => {
     const flag = MOVEMENT_KEYS.get(event.code)
