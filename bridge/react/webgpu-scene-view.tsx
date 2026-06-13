@@ -5,14 +5,18 @@ import {
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
+  type SceneGraph,
 } from '../../core'
-import { createSceneRenderer, type SceneRoot } from '../../engine'
+import { createSceneRenderer, type EntityScreenPosition, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
+import { SceneProxyOverlay } from './scene-proxy-overlay'
+import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
+import { useSelection, useSelectionIds } from './selection-context'
 import { useSceneGraph } from './use-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
 
@@ -57,6 +61,36 @@ function useColorTemperature() {
   return { colorTemperatureK, setColorTemperatureK }
 }
 
+// A short, stable label per selectable entity for the accessibility proxies, derived from
+// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Labels live in the
+// bridge layer because the three-dimensional overlay cannot import the editor layer.
+function entityLabels(graph: SceneGraph): Map<string, string> {
+  const labels = new Map<string, string>()
+  graph.walls.forEach((wall, index) => labels.set(wall.id, `Wall ${index + 1}`))
+  graph.rooms.forEach((room, index) => labels.set(room.id, `Room ${index + 1}`))
+  graph.openings.forEach((opening, index) => labels.set(opening.id, `Opening ${index + 1}`))
+  return labels
+}
+
+// The accessibility proxy state: the live projected screen positions (fed by the in-canvas
+// projector), joined with entity labels, plus the shared selection the proxies read and
+// write. The positions are session view state, like the camera and color temperature.
+function useSceneProxies(graph: SceneGraph) {
+  const [positions, setPositions] = useState<EntityScreenPosition[]>([])
+  const selection = useSelection()
+  const selectedIds = useSelectionIds()
+  const labels = useMemo(() => entityLabels(graph), [graph])
+  const proxies = useMemo(
+    () => positions.map((p) => ({ id: p.id, x: p.x, y: p.y, label: labels.get(p.id) ?? p.id })),
+    [positions, labels],
+  )
+  const onSelect = useCallback(
+    (id: string, additive: boolean) => (additive ? selection.toggle(id) : selection.select(id)),
+    [selection],
+  )
+  return { proxies, selectedIds, onSelect, setPositions }
+}
+
 interface LiveSceneCanvasProps {
   root: SceneRoot
   pose: CameraPose
@@ -65,6 +99,7 @@ interface LiveSceneCanvasProps {
   userControlled: boolean
   onUserControl: () => void
   colorTemperatureK: number
+  onProxyPositions: (positions: EntityScreenPosition[]) => void
 }
 
 // The interactive React Three Fiber canvas: the keyed scene primitive, the framed
@@ -80,6 +115,7 @@ function LiveSceneCanvas({
   userControlled,
   onUserControl,
   colorTemperatureK,
+  onProxyPositions,
 }: LiveSceneCanvasProps) {
   return (
     <Canvas
@@ -102,6 +138,7 @@ function LiveSceneCanvas({
       <primitive key={root.uuid} object={root} />
       <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
       <SceneSelection root={root} />
+      <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera pose={pose} active={!userControlled} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
@@ -134,6 +171,7 @@ export function WebGPUSceneView() {
   const { root, pose, bounds } = useMemo(() => buildFramedScene(graph), [graph])
   const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
   const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+  const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -153,7 +191,9 @@ export function WebGPUSceneView() {
           userControlled={userControlled}
           onUserControl={markUserControlled}
           colorTemperatureK={colorTemperatureK}
+          onProxyPositions={setPositions}
         />
+        <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </div>
     </div>
   )
