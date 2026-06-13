@@ -5,6 +5,9 @@ import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
 import type { OpeningSceneNode, PlanarGraph, Vector3, WallSceneNode } from '../../core'
 
+const meshesOf = (group: THREE.Group): THREE.Mesh[] =>
+  group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
+
 describe('buildWallMesh', () => {
   it('extrudes a wall as a box centered on its centerline with its base on the floor datum', () => {
     const wallLength = 2000
@@ -128,9 +131,6 @@ describe('buildWalls', () => {
   const HEIGHT = 2600
   const FACE_GROUP_COUNT = 6
 
-  const meshesOf = (group: THREE.Group): THREE.Mesh[] =>
-    group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
-
   it('builds a single box for an unsplit wall with no openings', () => {
     const graph: PlanarGraph = {
       vertices: [
@@ -240,5 +240,114 @@ describe('buildWalls', () => {
     expect(second.max.y).toBeCloseTo(HEIGHT, precision)
     expect(second.min.z).toBeCloseTo(-HALF_THICKNESS, precision)
     expect(second.max.z).toBeCloseTo(HALF_THICKNESS, precision)
+  })
+})
+
+describe('buildWalls opening voids', () => {
+  const THICKNESS = 120
+  const HEIGHT = 2600
+  const WALL_LENGTH = 4000
+  const VOID_WIDTH = 900
+  const VOID_HEIGHT = 2032
+  const WALL_FACE_AREA = WALL_LENGTH * HEIGHT // 10_400_000
+  const VOID_AREA = VOID_WIDTH * VOID_HEIGHT // 1_828_800
+  const CUT_FACE_AREA = WALL_FACE_AREA - VOID_AREA // 8_571_200
+  const TRIANGLE_STRIDE = 9 // 3 vertices x 3 (x, y, z) components
+
+  // Sum of the drawn triangle areas in a flat [x, y, z, ...] array, taking
+  // vertices three at a time. Each triangle's area is half the magnitude of the
+  // cross-product of its two edge vectors out of the first vertex.
+  const triangleAreaSum = (positions: ArrayLike<number>): number => {
+    let total = 0
+    for (let i = 0; i + TRIANGLE_STRIDE <= positions.length; i += TRIANGLE_STRIDE) {
+      const at = (vertex: number, axis: number): number => positions[i + vertex * 3 + axis] ?? 0
+      const [ax, ay, az] = [at(1, 0) - at(0, 0), at(1, 1) - at(0, 1), at(1, 2) - at(0, 2)]
+      const [bx, by, bz] = [at(2, 0) - at(0, 0), at(2, 1) - at(0, 1), at(2, 2) - at(0, 2)]
+      total += 0.5 * Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx)
+    }
+    return total
+  }
+
+  // A material group's `start`/`count` index the index buffer when the geometry
+  // is indexed, and the position attribute directly when it is not. Resolve the
+  // group's drawn triangle vertices either way before measuring their area.
+  const interiorFaceArea = (mesh: THREE.Mesh): number => {
+    const geometry = mesh.geometry as THREE.BufferGeometry
+    const materials = mesh.material as THREE.Material[]
+    const group = materialGroups(geometry).find(
+      (g) => materials[g.materialIndex]?.name === 'interiorFace',
+    )
+    expect(group).toBeDefined()
+    if (group === undefined) return Number.NaN
+    const positions = readPositions(geometry)
+    const index = readIndex(geometry)
+    const drawn =
+      index.length > 0
+        ? index.slice(group.start, group.start + group.count).map((vi) => positions[vi])
+        : positions.slice(group.start, group.start + group.count)
+    return triangleAreaSum(drawn.flatMap((v) => (v ? [v.x, v.y, v.z] : [])))
+  }
+
+  const horizontalWallGraph = (): PlanarGraph => ({
+    vertices: [
+      { x: 0, y: 0 },
+      { x: WALL_LENGTH, y: 0 },
+    ],
+    edges: [{ a: 0, b: 1, wallId: 'w1' }],
+  })
+
+  const horizontalWall = (): WallSceneNode => ({
+    id: 'wall:w1',
+    kind: 'wall',
+    floorId: 'demo',
+    start: { x: 0, y: 0 },
+    end: { x: WALL_LENGTH, y: 0 },
+    thickness: THICKNESS,
+    height: HEIGHT,
+  })
+
+  it('cuts the opening void out of the wall long faces', () => {
+    const opening: OpeningSceneNode = {
+      id: 'opening:o1',
+      kind: 'opening',
+      floorId: 'demo',
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      center: { x: 2000, y: 0 },
+      along: { x: 1, y: 0 },
+      normal: { x: 0, y: 1 },
+      width: VOID_WIDTH,
+      height: VOID_HEIGHT,
+      sillHeight: 0,
+      hostThickness: THICKNESS,
+      orientation: { hinge: 'start', facing: 'positive' },
+    }
+
+    const group = buildWalls({
+      graph: horizontalWallGraph(),
+      walls: [horizontalWall()],
+      openingsByWall: new Map<string, OpeningSceneNode[]>([['w1', [opening]]]),
+      materials: new NeutralMaterialProvider(),
+    })
+
+    const mesh = meshesOf(group).find((m) => m.userData.entityId === 'wall:w1')
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    const area = interiorFaceArea(mesh)
+    const tolerance = 10
+    expect(Math.abs(area - CUT_FACE_AREA)).toBeLessThan(tolerance)
+  })
+
+  it('leaves the long faces solid when the wall has no openings', () => {
+    const group = buildWalls({
+      graph: horizontalWallGraph(),
+      walls: [horizontalWall()],
+      openingsByWall: new Map<string, OpeningSceneNode[]>(),
+      materials: new NeutralMaterialProvider(),
+    })
+    const mesh = meshesOf(group).find((m) => m.userData.entityId === 'wall:w1')
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    expect(Math.abs(interiorFaceArea(mesh) - WALL_FACE_AREA)).toBeLessThan(10)
   })
 })
