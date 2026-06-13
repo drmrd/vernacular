@@ -249,17 +249,30 @@ function longFacePositions(frame: EdgeFrame, outline: TriangulatedOutline, side:
   return positions
 }
 
+/** A quad's four world corners, ordered around its perimeter. */
+type QuadCorners = [THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3]
+
 /**
- * World positions for one outer cap quad (two triangles) bridging the interior
- * and exterior faces along the outline edge `from -> to`, wound to face outward.
+ * The two-triangle quad as a flat position array, from four world corners ordered
+ * around the perimeter: triangles `a-b-c` and `a-c-d`, sharing the `a-c` diagonal.
+ * The corner order the caller passes sets the winding (and so the face normal).
+ */
+function thicknessSpanningQuad(corners: QuadCorners): number[] {
+  const [a, b, c, d] = corners
+  return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
+}
+
+/**
+ * World positions for one outer cap quad bridging the interior and exterior faces
+ * along the outline edge `from -> to`, wound to face outward.
  */
 function outerCapPositions(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vector2): number[] {
-  const a = edgeLocalToWorld(frame, from, SIDE_INTERIOR)
-  const b = edgeLocalToWorld(frame, to, SIDE_INTERIOR)
-  const c = edgeLocalToWorld(frame, to, SIDE_EXTERIOR)
-  const d = edgeLocalToWorld(frame, from, SIDE_EXTERIOR)
-  // Quad as two triangles sharing the a-c diagonal: a-b-c then a-c-d.
-  return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
+  return thicknessSpanningQuad([
+    edgeLocalToWorld(frame, from, SIDE_INTERIOR),
+    edgeLocalToWorld(frame, to, SIDE_INTERIOR),
+    edgeLocalToWorld(frame, to, SIDE_EXTERIOR),
+    edgeLocalToWorld(frame, from, SIDE_EXTERIOR),
+  ])
 }
 
 /** Tolerance for snapping a void edge onto the wall's outer outline boundary. */
@@ -290,12 +303,14 @@ function isOuterBoundaryEdge(from: THREE.Vector2, to: THREE.Vector2, frame: Edge
  * inward toward the void interior (away from the wall material).
  */
 function revealQuad(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vector2): number[] {
-  const a = edgeLocalToWorld(frame, to, SIDE_INTERIOR)
-  const b = edgeLocalToWorld(frame, from, SIDE_INTERIOR)
-  const c = edgeLocalToWorld(frame, from, SIDE_EXTERIOR)
-  const d = edgeLocalToWorld(frame, to, SIDE_EXTERIOR)
-  // Quad as two triangles sharing the a-c diagonal: a-b-c then a-c-d.
-  return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
+  // The `to -> from` corner order (vs the outer cap's `from -> to`) reverses the
+  // winding so the reveal normal points inward toward the void.
+  return thicknessSpanningQuad([
+    edgeLocalToWorld(frame, to, SIDE_INTERIOR),
+    edgeLocalToWorld(frame, from, SIDE_INTERIOR),
+    edgeLocalToWorld(frame, from, SIDE_EXTERIOR),
+    edgeLocalToWorld(frame, to, SIDE_EXTERIOR),
+  ])
 }
 
 /**
@@ -328,8 +343,7 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
     triangles: reverseTriangleWinding(outline.triangles),
     holeLoops: outline.holeLoops,
   }
-  const reveal = revealPositions(frame, outline.holeLoops)
-  return [
+  const sections: WallSection[] = [
     { role: 'interiorFace', positions: longFacePositions(frame, outline, SIDE_INTERIOR) },
     { role: 'exteriorFace', positions: longFacePositions(frame, reversed, SIDE_EXTERIOR) },
     { role: 'top', positions: outerCapPositions(frame, topEnd, top) },
@@ -344,10 +358,12 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
         ...outerCapPositions(frame, baseEnd, topEnd),
       ],
     },
-    // Reveal faces line the cut. A degenerate outline with no lined edges yields no
-    // section, so the mesh adds no empty reveal material group.
-    ...(reveal.length > 0 ? [{ role: 'reveal' as SurfaceRole, positions: reveal }] : []),
   ]
+  // Reveal faces line the cut. A degenerate outline with no lined edges adds no
+  // section, so the mesh carries no empty reveal material group.
+  const reveal = revealPositions(frame, outline.holeLoops)
+  if (reveal.length > 0) sections.push({ role: 'reveal', positions: reveal })
+  return sections
 }
 
 /** A non-indexed buffer geometry with one material group per wall section. */
