@@ -1,14 +1,7 @@
-/** Stem used when a project name yields an empty slug. */
-const FALLBACK_STEM = 'project'
+import { filenameSlug } from '../download/filename-slug'
 
 /** The fixed suffix every exported bundle filename ends in. */
 const BUNDLE_SUFFIX = '.building'
-
-/** Any run of characters outside the safe set, replaced by a single hyphen. */
-const UNSAFE_RUN = /[^a-z0-9]+/g
-
-/** Leading and trailing hyphens left after replacement, trimmed away. */
-const EDGE_HYPHENS = /^-+|-+$/g
 
 /**
  * A safe `.building` download filename derived from a project name: lowercased,
@@ -17,7 +10,5 @@ const EDGE_HYPHENS = /^-+|-+$/g
  * `.building`.
  */
 export function bundleFilename(projectName: string): string {
-  const slug = projectName.toLowerCase().replace(UNSAFE_RUN, '-').replace(EDGE_HYPHENS, '')
-  const stem = slug.length > 0 ? slug : FALLBACK_STEM
-  return stem + BUNDLE_SUFFIX
+  return filenameSlug(projectName) + BUNDLE_SUFFIX
 }
