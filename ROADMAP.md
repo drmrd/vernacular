@@ -135,7 +135,8 @@ Owner-driven follow-ups on the three-dimensional preview and on floor management
 | Discoverable camera move and rotate controls                               | --              | planned |
 | Surface legibility (edges so a wall reads against the floor and neighbors) | ADR-0078 / #153 | merged  |
 | Floor management (name on create, ordering, default names, inline rename)  | --              | planned |
-| Wall drawn on a non-ground floor stays on that floor                       | --              | planned |
+| Wall drawn on a non-ground floor stays on that floor                       | #156            | merged  |
+| Other tools (dimensions, underlay, paste, move) honor the active floor     | #157            | planned |
 
 #### Paint and metadata (merged)
 
