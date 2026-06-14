@@ -114,6 +114,36 @@ const SHELL_FIXTURE: SceneGraph = {
   stairs: [],
 }
 
+// A second fixture that exercises the generalized junction geometry (ADR-0080): a
+// through-wall with a partition teeing into its middle (a T-junction, which
+// buildWallGraph splits at the tee), whose far end is a three-way apex where two bay
+// walls fan out at an acute angle. The baseline confirms these busier junctions read
+// as one solid with opaque tops and no spikes, which the four-corner shell does not
+// cover. Walls only (no rooms or openings), so the frame is the junction geometry.
+const JUNCTION_APEX: Point = { x: 2000, y: 2000 }
+const JUNCTION_FIXTURE: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [
+    // Through-wall; the partition's foot at (2000, 0) splits it into a T-junction.
+    shellWall('wall:through', { x: 0, y: 0 }, { x: 4000, y: 0 }),
+    shellWall('wall:partition', { x: 2000, y: 0 }, JUNCTION_APEX),
+    // Two bay walls fan from the apex at an acute included angle: a three-way junction.
+    shellWall('wall:bay-left', JUNCTION_APEX, { x: 1500, y: 4000 }),
+    shellWall('wall:bay-right', JUNCTION_APEX, { x: 2500, y: 4000 }),
+  ],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+}
+
+/** The harness fixtures, selected by the `scene` prop / `?scene=` query parameter. */
+const HARNESS_FIXTURES = { shell: SHELL_FIXTURE, junctions: JUNCTION_FIXTURE } as const
+
+/** Which harness fixture to render; defaults to the wall-shell room. */
+export type HarnessScene = keyof typeof HARNESS_FIXTURES
+
 // Fits the camera to the bounds for the pinned canvas size, then renders exactly one
 // frame on mount and never again, so the screenshot is deterministic and never races
 // an animation tick (the Canvas runs in `frameloop="never"`). Fitting here (rather
@@ -139,13 +169,16 @@ function StaticFrame({ bounds }: { bounds: Bounds3 | null }) {
 export function SceneHarnessView({
   colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
   paint = {},
+  scene = 'shell',
 }: {
   // Admits undefined (not just absent) so the App can forward an optional query
   // parameter under exactOptionalPropertyTypes; the default applies either way.
   colorTemperatureK?: number | undefined
   paint?: Record<string, SurfaceTreatment> | undefined
+  scene?: HarnessScene | undefined
 } = {}) {
-  const { root, pose, bounds } = useMemo(() => buildFramedScene(SHELL_FIXTURE, paint), [paint])
+  const fixture = HARNESS_FIXTURES[scene]
+  const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
 
   return (
     <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>

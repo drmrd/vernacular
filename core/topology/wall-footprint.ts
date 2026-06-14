@@ -11,7 +11,7 @@ import type { GraphEdge, PlanarGraph } from './wall-graph'
  * `aMinus` and `bMinus` on its `-normal` (exterior) side, where the normal is the
  * left-hand normal of the edge direction `a -> b`. A square end's corners are the
  * endpoint offset by half the wall thickness to each side; a mitered end's corners
- * are where this edge's face lines cross its neighbor's at a two-way corner.
+ * are where this edge's face lines cross its neighbor's in the junction fan.
  */
 export interface WallFootprint {
   /** `+normal` side corner at endpoint `a`. */
@@ -24,45 +24,31 @@ export interface WallFootprint {
   bMinus: Point
 }
 
-/** The two corners of one wall end, on the `+normal` and `-normal` sides. */
-interface EndCorners {
-  plus: Point
-  minus: Point
-}
-
-/** One wall end: where it sits, which way the wall runs, and the edge's normal. */
-interface EdgeEnd {
-  vertexIndex: number
-  point: Point
-  far: Point
+/**
+ * One edge as seen from a junction vertex: its outgoing unit direction from the
+ * vertex, its half-thickness, whether the vertex is the edge's `a` end, the edge's
+ * global `+normal`, and the edge's index into the footprint result.
+ */
+interface Spoke {
+  edgeIndex: number
+  atA: boolean
+  out: Point
+  half: number
   normal: Point
-  half: number
 }
 
-/** The neighbor a two-way corner miters against: its far point and half-thickness. */
-interface Neighbor {
-  far: Point
-  half: number
+/** The open ground between a spoke and its counter-clockwise neighbor at a vertex. */
+interface Wedge {
+  vertex: Point
+  spoke: Spoke
+  neighbor: Spoke
 }
 
-/** One wall's face line at the shared vertex: its direction and half-thickness. */
-interface WallRay {
-  direction: Point
-  half: number
-}
-
-/** The two walls meeting at a corner, as a directed pair: out along this edge,
- *  in along the neighbor. */
-interface MiterRays {
-  out: WallRay
-  incoming: WallRay
-}
-
-/** Per-call lookups shared across every edge's footprint. */
-interface FootprintContext {
+/** Per-call lookups shared while resolving every junction fan into footprints. */
+interface FanContext {
   graph: PlanarGraph
   thicknessByEdge: number[]
-  incidence: Map<number, number[]>
+  result: WallFootprint[]
 }
 
 /**
@@ -74,122 +60,141 @@ export const MITER_LIMIT = 4
 
 /**
  * The plan-space footprint of every edge in a floor's wall graph, in the graph's
- * edge order. `thicknessByEdge[i]` is the thickness of the wall on edge `i`. An
- * end where exactly two edges meet is mitered to the corner; a free end, a busier
- * junction (three or more incident edges), or a collinear continuation is squared.
+ * edge order. `thicknessByEdge[i]` is the thickness of the wall on edge `i`. Each
+ * junction vertex is resolved as a fan of its incident edges, sharing one miter
+ * point per wedge between angular neighbors so the walls tile the joint at any
+ * incidence; a free end, a collinear continuation, and an over-limit acute wedge
+ * fall back to each wall's own square face-offset point.
  */
 export function wallFootprints(graph: PlanarGraph, thicknessByEdge: number[]): WallFootprint[] {
-  const context: FootprintContext = { graph, thicknessByEdge, incidence: vertexIncidence(graph) }
-  return graph.edges.map((_edge, index) => edgeFootprint(context, index))
-}
-
-/** The footprint of one edge, each end squared or mitered. */
-function edgeFootprint(context: FootprintContext, edgeIndex: number): WallFootprint {
-  const edge = context.graph.edges[edgeIndex] as GraphEdge
-  const a = context.graph.vertices[edge.a] as Point
-  const b = context.graph.vertices[edge.b] as Point
-  const normal = leftNormal(a, b)
-  const half = (context.thicknessByEdge[edgeIndex] ?? 0) / 2
-  const aEnd = endCorners(context, edgeIndex, {
-    vertexIndex: edge.a,
-    point: a,
-    far: b,
-    normal,
-    half,
-  })
-  const bEnd = endCorners(context, edgeIndex, {
-    vertexIndex: edge.b,
-    point: b,
-    far: a,
-    normal,
-    half,
-  })
-  return { aPlus: aEnd.plus, aMinus: aEnd.minus, bPlus: bEnd.plus, bMinus: bEnd.minus }
-}
-
-/** The corners of one end: the miter at a two-way corner, otherwise a square cap. */
-function endCorners(context: FootprintContext, edgeIndex: number, end: EdgeEnd): EndCorners {
-  const neighbor = neighborAt(context, edgeIndex, end.vertexIndex)
-  if (neighbor !== null) {
-    const mitered = miterCorners(end, neighbor)
-    if (mitered !== null) return mitered
-  }
-  return squareCorners(end)
-}
-
-/** The square cap: the end offset by half the thickness to each side. */
-function squareCorners(end: EdgeEnd): EndCorners {
-  return {
-    plus: shift(end.point, end.normal, end.half),
-    minus: shift(end.point, end.normal, -end.half),
-  }
-}
-
-/**
- * The two miter corners, or null when the walls are parallel (collinear) so their
- * face lines never cross. The corner is read from a directed walk that comes in
- * along the neighbor to the shared vertex and goes out along this edge; the walk's
- * left and right miters map to this edge's `+normal` / `-normal` sides by the sign
- * of the outgoing direction's left perpendicular against the edge normal.
- */
-function miterCorners(end: EdgeEnd, neighbor: Neighbor): EndCorners | null {
-  const rays: MiterRays = {
-    out: { direction: unit(subtract(end.far, end.point)), half: end.half },
-    incoming: { direction: unit(subtract(end.point, neighbor.far)), half: neighbor.half },
-  }
-  const left = faceCrossing(end.point, rays, 1)
-  const right = faceCrossing(end.point, rays, -1)
-  if (left === null || right === null) return null
-  if (overMiterLimit(end, left) || overMiterLimit(end, right)) return null
-  return dot(leftPerp(rays.out.direction), end.normal) > 0
-    ? { plus: left, minus: right }
-    : { plus: right, minus: left }
-}
-
-/** Whether a miter corner reaches past the miter limit from the shared vertex. */
-function overMiterLimit(end: EdgeEnd, corner: Point): boolean {
-  return distance(end.point, corner) > MITER_LIMIT * end.half
-}
-
-/**
- * The crossing of this edge's and the neighbor's face lines on one side: `side` is
- * `+1` for each wall's left face line and `-1` for its right, each offset from the
- * shared vertex by that wall's own half-thickness so the joint is correct for
- * different thicknesses.
- */
-function faceCrossing(vertex: Point, rays: MiterRays, side: number): Point | null {
-  return lineIntersection(
-    shift(vertex, leftPerp(rays.out.direction), side * rays.out.half),
-    rays.out.direction,
-    shift(vertex, leftPerp(rays.incoming.direction), side * rays.incoming.half),
-    rays.incoming.direction,
+  const result = graph.edges.map((edge, index) =>
+    squareFootprint(graph, edge, thicknessByEdge[index] ?? 0),
   )
+  const context: FanContext = { graph, thicknessByEdge, result }
+  for (const [vertexIndex, edgeIndexes] of vertexIncidence(graph)) {
+    resolveVertex(context, vertexIndex, edgeIndexes)
+  }
+  return result
 }
 
-/** The neighbor at a vertex with exactly two incident edges, else null. */
-function neighborAt(
-  context: FootprintContext,
-  edgeIndex: number,
-  vertexIndex: number,
-): Neighbor | null {
-  const incident = context.incidence.get(vertexIndex) ?? []
-  if (incident.length !== 2) return null
-  const otherIndex = incident[0] === edgeIndex ? incident[1] : incident[0]
-  if (otherIndex === undefined) return null
-  const other = context.graph.edges[otherIndex]
-  if (other === undefined) return null
-  const far = context.graph.vertices[other.a === vertexIndex ? other.b : other.a]
-  if (far === undefined) return null
-  return { far, half: (context.thicknessByEdge[otherIndex] ?? 0) / 2 }
+/** The square footprint: each endpoint offset by half the thickness to both sides. */
+function squareFootprint(graph: PlanarGraph, edge: GraphEdge, thickness: number): WallFootprint {
+  const a = graph.vertices[edge.a] as Point
+  const b = graph.vertices[edge.b] as Point
+  const normal = leftNormal(a, b)
+  const half = thickness / 2
+  return {
+    aPlus: shift(a, normal, half),
+    aMinus: shift(a, normal, -half),
+    bPlus: shift(b, normal, half),
+    bMinus: shift(b, normal, -half),
+  }
+}
+
+/**
+ * Resolve one vertex's fan, writing each incident edge's corners at the vertex into
+ * `context.result`. A vertex with fewer than two incident edges keeps its square
+ * default. The spokes are sorted counter-clockwise so each pairs with its neighbor.
+ */
+function resolveVertex(context: FanContext, vertexIndex: number, edgeIndexes: number[]): void {
+  if (edgeIndexes.length < 2) return
+  const vertex = context.graph.vertices[vertexIndex] as Point
+  const spokes = buildSpokes(context, vertexIndex, edgeIndexes)
+  spokes.sort((left, right) => spokeAngle(left) - spokeAngle(right))
+  for (const [index, spoke] of spokes.entries()) {
+    const neighbor = spokes[(index + 1) % spokes.length] as Spoke
+    resolveWedge(context.result, { vertex, spoke, neighbor })
+  }
+}
+
+/** The counter-clockwise angle of a spoke's outgoing direction. */
+function spokeAngle(spoke: Spoke): number {
+  return Math.atan2(spoke.out.y, spoke.out.x)
+}
+
+/** The spokes of a vertex: one per incident edge, leaving the vertex outward. */
+function buildSpokes(context: FanContext, vertexIndex: number, edgeIndexes: number[]): Spoke[] {
+  const vertex = context.graph.vertices[vertexIndex] as Point
+  return edgeIndexes.map((edgeIndex) => {
+    const edge = context.graph.edges[edgeIndex] as GraphEdge
+    const atA = edge.a === vertexIndex
+    const far = context.graph.vertices[atA ? edge.b : edge.a] as Point
+    // `a` and `b` are the edge's canonical endpoints, fixing the global `leftNormal(a, b)`
+    // direction; `vertex`/`far` are the same two points ordered from this junction outward.
+    const a = context.graph.vertices[edge.a] as Point
+    const b = context.graph.vertices[edge.b] as Point
+    return {
+      edgeIndex,
+      atA,
+      out: unit(subtract(far, vertex)),
+      half: (context.thicknessByEdge[edgeIndex] ?? 0) / 2,
+      normal: leftNormal(a, b),
+    }
+  })
+}
+
+/**
+ * Resolve a wedge: the shared miter point of its two bordering face lines, or each
+ * wall's own face-offset point when the faces are parallel (collinear) or the miter
+ * runs past the limit. The miter is the crossing of the counter-clockwise spoke's
+ * `+leftPerp` face and the clockwise neighbor's `-leftPerp` face.
+ */
+function resolveWedge(result: WallFootprint[], wedge: Wedge): void {
+  const spokeSide = leftPerp(wedge.spoke.out)
+  const neighborSide = leftPerp(wedge.neighbor.out)
+  const spokeFace = shift(wedge.vertex, spokeSide, wedge.spoke.half)
+  const neighborFace = shift(wedge.vertex, neighborSide, -wedge.neighbor.half)
+  const miter = lineIntersection(spokeFace, wedge.spoke.out, neighborFace, wedge.neighbor.out)
+  const shared = sharedMiterPoint(wedge, miter)
+  assignCorner(result, wedge.spoke, {
+    sideDir: spokeSide,
+    point: shared ?? spokeFace,
+  })
+  assignCorner(result, wedge.neighbor, {
+    sideDir: negate(neighborSide),
+    point: shared ?? neighborFace,
+  })
+}
+
+/** The wedge's shared miter point when it is non-null and within the miter limit, else null. */
+function sharedMiterPoint(wedge: Wedge, miter: Point | null): Point | null {
+  if (miter === null) return null
+  const limit = MITER_LIMIT * Math.min(wedge.spoke.half, wedge.neighbor.half)
+  if (distance(wedge.vertex, miter) > limit) return null
+  return miter
+}
+
+/** A corner to write: the side direction that selects `+normal`/`-normal`, and its point. */
+interface CornerTarget {
+  sideDir: Point
+  point: Point
+}
+
+/** Write `target.point` to the spoke's corner on the side `target.sideDir` selects. */
+function assignCorner(result: WallFootprint[], spoke: Spoke, target: CornerTarget): void {
+  const footprint = result[spoke.edgeIndex] as WallFootprint
+  const isPlus = dot(target.sideDir, spoke.normal) > 0
+  if (spoke.atA) {
+    if (isPlus) footprint.aPlus = target.point
+    else footprint.aMinus = target.point
+    return
+  }
+  if (isPlus) footprint.bPlus = target.point
+  else footprint.bMinus = target.point
+}
+
+/** The opposite direction. */
+function negate(vector: Point): Point {
+  return { x: -vector.x, y: -vector.y }
 }
 
 /** Maps each graph vertex to the indices of the edges incident to it. */
 function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   const incidence = new Map<number, number[]>()
-  graph.edges.forEach((edge, index) => {
+  for (const [index, edge] of graph.edges.entries()) {
     pushIncident(incidence, edge.a, index)
     pushIncident(incidence, edge.b, index)
-  })
+  }
   return incidence
 }
 
