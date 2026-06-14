@@ -586,7 +586,7 @@ describe('drawEndpointHandles', () => {
       thickness: 114,
     }
 
-    drawEndpointHandles(recorder.ctx, editedWall, viewport)
+    drawEndpointHandles(recorder.ctx, editedWall, planOptions({ viewport }))
 
     const start = worldToScreen(editedWall.start, viewport)
     const end = worldToScreen(editedWall.end, viewport)
@@ -660,7 +660,10 @@ describe('drawGrid', () => {
   it('strokes vertical and horizontal grid lines spanning the canvas in one color', () => {
     const recorder = recordingContext()
 
-    drawGrid(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
+    drawGrid(
+      recorder.ctx,
+      planOptions({ viewport: { scale: 0.1, offset: { x: 0, y: 0 } }, width: 100, height: 100 }),
+    )
 
     // 6 verticals + 6 horizontals at 200 mm spacing across a 100 px (1000 mm) canvas
     expect(recorder.segments).toHaveLength(12)
@@ -678,7 +681,10 @@ describe('drawRulers', () => {
   it('fills the top and left ruler bands and draws unit-formatted tick labels', () => {
     const recorder = recordingContext()
 
-    drawRulers(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
+    drawRulers(
+      recorder.ctx,
+      planOptions({ viewport: { scale: 0.1, offset: { x: 0, y: 0 } }, width: 100, height: 100 }),
+    )
 
     // a band along the top and a band along the left
     expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)

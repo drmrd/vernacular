@@ -21,7 +21,7 @@ import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import type { SnapResult } from './snap'
-import { worldToScreen, type Viewport, type ViewportSize } from './viewport'
+import { worldToScreen, type Viewport } from './viewport'
 
 export { drawRulers } from './ruler'
 
@@ -107,16 +107,16 @@ const LABEL_TEXT_ALIGN = 'center' as const
 const LABEL_TEXT_BASELINE = 'middle' as const
 const LABEL_LINE_HEIGHT = 14
 
-// eslint-disable-next-line max-params -- ctx, viewport, and size are the draw seam plus the grid color.
-export function drawGrid(
-  ctx: PlanDrawingContext,
-  viewport: Viewport,
-  size: ViewportSize,
-  color: string = DEFAULT_PLAN_PALETTE.grid,
-): void {
-  ctx.strokeStyle = color
+// The canvas palette for this draw, from the options or the warm default.
+function paletteOf(options: DrawPlanOptions): PlanPalette {
+  return options.palette ?? DEFAULT_PLAN_PALETTE
+}
+
+export function drawGrid(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const size = { width: options.width, height: options.height }
+  ctx.strokeStyle = paletteOf(options).grid
   ctx.lineWidth = GRID_LINE_WIDTH
-  for (const line of visibleGridLines(viewport, size).lines) {
+  for (const line of visibleGridLines(options.viewport, size).lines) {
     ctx.beginPath()
     if (line.orientation === 'vertical') {
       ctx.moveTo(line.screen, 0)
@@ -150,21 +150,18 @@ export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, viewport: Vie
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
-  const size = { width: options.width, height: options.height }
-  const palette = options.palette ?? DEFAULT_PLAN_PALETTE
   // Underlays paint first so they sit beneath the grid and the plan.
   drawUnderlays(ctx, options.underlays, options.viewport)
-  if (options.grid) drawGrid(ctx, options.viewport, size, palette.grid)
-  drawRooms(ctx, options, palette)
+  if (options.grid) drawGrid(ctx, options)
+  drawRooms(ctx, options)
   // Stairs sit on top of the floor fills but below the wall strokes, like a room.
   drawStairs(ctx, options)
   // Surface paint bands sit beneath the wall strokes so the ink reads over them.
   drawSurfacePaintLayer(ctx, options)
-  drawWalls(ctx, options, palette)
+  drawWalls(ctx, options)
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options)
-  if (options.endpointHandles)
-    drawEndpointHandles(ctx, options.endpointHandles, options.viewport, palette.selection)
+  if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options)
   if (options.openingResizeHandles)
     drawOpeningResizeHandles(ctx, options.openingResizeHandles, options.viewport)
   if (options.preview) drawPreview(ctx, options.preview, options.viewport)
@@ -179,23 +176,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawGhost(ctx, options.ghost, options.viewport)
   // The hover cue paints on top of every entity layer but beneath the ruler chrome.
   drawHoverHighlight(ctx, options)
-  if (options.rulers) drawPlanRulers(ctx, options, size, palette)
-}
-
-/** Paint the ruler chrome in the project's units so it agrees with the DOM overlay. */
-// eslint-disable-next-line max-params -- ctx, options, and size are the draw seam plus the resolved palette.
-function drawPlanRulers(
-  ctx: PlanDrawingContext,
-  options: DrawPlanOptions,
-  size: ViewportSize,
-  palette: PlanPalette,
-): void {
-  const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
-  drawRulers(ctx, options.viewport, size, preferences, {
-    band: palette.rulerBand,
-    tick: palette.rulerTick,
-    text: palette.rulerText,
-  })
+  if (options.rulers) drawRulers(ctx, options)
 }
 
 /** Outline the hovered entity in the single hover style, resolving the id across openings, walls, dimensions, then rooms. */
@@ -258,7 +239,8 @@ function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
 }
 
 /** Fill each room first so the wall strokes render on top of the floor tint. */
-function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions, palette: PlanPalette): void {
+function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const palette = paletteOf(options)
   for (const room of options.rooms ?? []) {
     drawRoom(ctx, room, {
       viewport: options.viewport,
@@ -278,9 +260,9 @@ function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
 }
 
 /** Stroke each wall over the floor fills, stair footprints, and surface-paint bands. */
-function drawWalls(ctx: PlanDrawingContext, options: DrawPlanOptions, palette: PlanPalette): void {
+function drawWalls(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   for (const wall of options.walls) {
-    drawWall(ctx, wall, options, palette)
+    drawWall(ctx, wall, options)
   }
 }
 
@@ -352,13 +334,8 @@ function traceRingPath(ctx: PlanDrawingContext, ring: Point[], viewport: Viewpor
   ctx.closePath()
 }
 
-// eslint-disable-next-line max-params -- ctx, wall, and options are the draw inputs plus the resolved palette.
-function drawWall(
-  ctx: PlanDrawingContext,
-  wall: WallSceneNode,
-  options: DrawPlanOptions,
-  palette: PlanPalette,
-): void {
+function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
+  const palette = paletteOf(options)
   const from = worldToScreen(wall.start, options.viewport)
   const to = worldToScreen(wall.end, options.viewport)
   ctx.lineCap = LINE_CAP
@@ -395,15 +372,14 @@ function drawStartMarker(ctx: PlanDrawingContext, center: Point): void {
 }
 
 /** Paint a handle marker at the wall's start and end screen positions so they track pan and zoom. */
-// eslint-disable-next-line max-params -- ctx, wall, and viewport are the draw seam plus the handle color.
 export function drawEndpointHandles(
   ctx: PlanDrawingContext,
   wall: WallSceneNode,
-  viewport: Viewport,
-  color: string = DEFAULT_PLAN_PALETTE.selection,
+  options: DrawPlanOptions,
 ): void {
-  drawEndpointHandle(ctx, worldToScreen(wall.start, viewport), color)
-  drawEndpointHandle(ctx, worldToScreen(wall.end, viewport), color)
+  const color = paletteOf(options).selection
+  drawEndpointHandle(ctx, worldToScreen(wall.start, options.viewport), color)
+  drawEndpointHandle(ctx, worldToScreen(wall.end, options.viewport), color)
 }
 
 /** Paint a handle marker at the opening's two jamb screen positions so they track pan and zoom. */
