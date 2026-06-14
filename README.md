@@ -8,14 +8,18 @@ Edwardian, Craftsman, Mid-Century, and earlier.
 > Status: early development (Phase 0). Not yet usable as a floor planner.
 > See [`docs/specs/2026-06-01-vernacular-design.md`](docs/specs/2026-06-01-vernacular-design.md)
 > for the design specification and [`docs/plans/`](docs/plans/) for in-progress
-> implementation plans. The current phase and what's next are in
-> [`ROADMAP.md`](ROADMAP.md).
+> implementation plans. The current work and what's next are tracked on the
+> [delivery roadmap board](https://github.com/users/drmrd/projects/3); the
+> strategy and track model are in
+> [`docs/delivery-strategy.md`](docs/delivery-strategy.md).
 
 ## Documentation map
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): one-page overview of the six-layer
   codebase and where to find things.
-- [`ROADMAP.md`](ROADMAP.md): phase-by-phase plan.
+- [`docs/delivery-strategy.md`](docs/delivery-strategy.md): delivery strategy and
+  track model. Live per-item status is on the
+  [delivery roadmap board](https://github.com/users/drmrd/projects/3).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): contribution workflow, dev setup,
   conventions.
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md): community standards.

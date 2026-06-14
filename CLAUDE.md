@@ -119,11 +119,12 @@ The pack-validator and migration-author agents land alongside the pack tooling.
 - Touch a test file from the `implementer` agent role; touch implementation source from the `test-author` agent role.
 - Use cryptic internal identifiers (such as milestone codes) in branch names, commit messages, or persisted document text.
 - Refer to other floor-planner products or other commercial tools by name.
+- Recreate a committed roadmap file, or open a roadmap-status pull request. Delivery status is tracked GitHub-native (issues, the Projects v2 board, and milestones); only the durable strategy narrative is committed, in `docs/delivery-strategy.md`. Update issue and board status on GitHub rather than in the repository.
 
 ## Pointers
 
 - Design specification: `docs/specs/2026-06-01-vernacular-design.md`.
 - Architecture overview: `ARCHITECTURE.md`.
-- Roadmap: `ROADMAP.md`.
+- Delivery roadmap (GitHub-native): the [Projects board](https://github.com/users/drmrd/projects/3), the `public-alpha`, `public-beta`, and `1.0` milestones, and issues. Narrative and rationale: `docs/delivery-strategy.md`.
 - Contributing: `CONTRIBUTING.md`.
 - Rules and Clean Code: `.claude/rules.md`.
