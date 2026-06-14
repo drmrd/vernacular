@@ -11,6 +11,10 @@ describe('resolvePlanPalette', () => {
       ['--color-canvas-ruler-tick', '#eee555'],
       ['--color-canvas-ruler-text', '#fff666'],
       ['--color-canvas-selection', '#999777'],
+      ['--color-canvas-hover', '#888aaa'],
+      ['--color-canvas-preview', '#777bbb'],
+      ['--color-canvas-selection-fill', '#666ccc'],
+      ['--color-canvas-marquee-fill', 'rgba(1, 2, 3, 0.1)'],
     ])
 
     const palette = resolvePlanPalette((name) => vars.get(name) ?? '')
@@ -23,6 +27,10 @@ describe('resolvePlanPalette', () => {
       rulerTick: '#eee555',
       rulerText: '#fff666',
       selection: '#999777',
+      hover: '#888aaa',
+      preview: '#777bbb',
+      selectionFill: '#666ccc',
+      marqueeFill: 'rgba(1, 2, 3, 0.1)',
     })
   })
 

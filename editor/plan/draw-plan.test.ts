@@ -424,12 +424,14 @@ describe('drawPlan selection overlays', () => {
     const min = worldToScreen(marquee.min, viewport)
     const max = worldToScreen(marquee.max, viewport)
     expect(without.fillRects).toHaveLength(0)
-    expect(withMarquee.fillRects).toContainEqual({
-      x: min.x,
-      y: min.y,
-      w: max.x - min.x,
-      h: max.y - min.y,
-    })
+    expect(withMarquee.fillRects).toContainEqual(
+      expect.objectContaining({
+        x: min.x,
+        y: min.y,
+        w: max.x - min.x,
+        h: max.y - min.y,
+      }),
+    )
   })
 })
 
@@ -647,12 +649,14 @@ describe('drawMarquee', () => {
 
     const min = worldToScreen(rect.min, viewport)
     const max = worldToScreen(rect.max, viewport)
-    expect(recorder.fillRects).toContainEqual({
-      x: min.x,
-      y: min.y,
-      w: max.x - min.x,
-      h: max.y - min.y,
-    })
+    expect(recorder.fillRects).toContainEqual(
+      expect.objectContaining({
+        x: min.x,
+        y: min.y,
+        w: max.x - min.x,
+        h: max.y - min.y,
+      }),
+    )
   })
 })
 
@@ -752,6 +756,10 @@ describe('drawPlan palette', () => {
     rulerTick: '#505050',
     rulerText: '#606060',
     selection: '#707070',
+    hover: '#808080',
+    preview: '#909090',
+    selectionFill: '#a0a0a0',
+    marqueeFill: 'rgba(11, 22, 33, 0.12)',
   }
 
   it('draws the grid, the room fill, and a selected wall in the palette colors', () => {
@@ -779,6 +787,52 @@ describe('drawPlan palette', () => {
     drawPlan(recorder.ctx, planOptions({ palette }))
 
     expect(recorder.segments.map((segment) => segment.style)).toContain('#202020')
+  })
+
+  it('fills a selected room in the palette selection-fill color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        selectedIds: new Set(['room:r']),
+      }),
+    )
+
+    expect(recorder.fills).toContain('#a0a0a0')
+  })
+
+  it('draws the wall preview line and its start marker in the palette preview color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({ palette, preview: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } } }),
+    )
+
+    const previewSegment = recorder.segments[recorder.segments.length - 1]
+    expect(previewSegment?.style).toBe('#909090')
+    expect(recorder.arcs.some((arc) => arc.fillStyle === '#909090')).toBe(true)
+  })
+
+  it('draws the hover highlight in the palette hover color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ palette, hoveredId: 'wall:a' }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#808080')).toBe(true)
+  })
+
+  it('strokes the marquee in the selection color and fills it in the marquee-fill color', () => {
+    const recorder = recordingContext()
+    const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
+
+    drawPlan(recorder.ctx, planOptions({ palette, marquee }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
+    expect(recorder.fillRects.some((rect) => rect.style === 'rgba(11, 22, 33, 0.12)')).toBe(true)
   })
 })
 
