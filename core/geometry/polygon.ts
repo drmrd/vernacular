@@ -156,3 +156,16 @@ export function insetPolygon(polygon: Point[], edgeOffsets: number[]): Point[] {
     return intersectLines(previous, current) ?? current.point
   })
 }
+
+/**
+ * Outward mirror of `insetPolygon`: each edge `i` is shifted outward by
+ * `edgeOffsets[i]`, tracing for a room the outer wall faces rather than the
+ * inner ones. Equivalent to insetting by the negated offsets, so it inherits the
+ * same winding normalization and best-effort behavior on degenerate corners.
+ */
+export function outsetPolygon(polygon: Point[], edgeOffsets: number[]): Point[] {
+  return insetPolygon(
+    polygon,
+    edgeOffsets.map((offset) => -offset),
+  )
+}
