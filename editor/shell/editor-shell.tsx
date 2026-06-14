@@ -11,7 +11,7 @@ import {
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
-import { addFloor, setUnits, type Project } from '../../core'
+import { addFloor, builtinPeriods, setUnits, type Project } from '../../core'
 import { Button } from '../design-system'
 import {
   CommandBar,
@@ -39,6 +39,7 @@ import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-co
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
 import { Inspector } from './inspector'
+import { ProjectIdentity } from './project-identity'
 import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
@@ -171,12 +172,32 @@ function floorSummaries(project: Project): { id: string; name: string }[] {
   return project.floors.map((floor) => ({ id: floor.id, name: floor.name }))
 }
 
-// The tool rail content: the existing tools nav plus the live floor switcher. It
-// subscribes to the scene graph so the floor list refreshes on add/remove floor,
-// and to the active-floor hooks so the switcher reflects the active floor (both
-// hoisted here to honor the hooks rule).
+// The italic period subtitle for the rail project block: the era's display name
+// and its approximate range, drawn from the period registry.
+function railPeriodLabel(period: string): string | undefined {
+  const entry = builtinPeriods.entries[period]
+  if (entry === undefined) {
+    return undefined
+  }
+  const name = entry.displayName?.['en-US'] ?? period
+  return entry.approximateRange ? `${name}, ${entry.approximateRange}` : name
+}
+
+// The tool rail content: the project identity block above the drawing and editing
+// tools. It subscribes to the scene graph so the block refreshes on project edits.
 function ToolRail() {
-  return <ToolsNav />
+  const session = useEditorSession()
+  useSceneGraph()
+  const project = session.getProject()
+  return (
+    <>
+      <ProjectIdentity
+        name={project.meta.name}
+        periodLabel={railPeriodLabel(project.meta.period)}
+      />
+      <ToolsNav />
+    </>
+  )
 }
 
 function EditorStatusBar() {
