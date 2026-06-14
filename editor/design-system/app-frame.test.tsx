@@ -97,6 +97,29 @@ describe('AppFrame collapse', () => {
   })
 })
 
+describe('AppFrame statusBar', () => {
+  it('renders the optional statusBar slot spanning the full width', () => {
+    render(
+      <AppFrame
+        header={<div>header</div>}
+        rail={<div>rail</div>}
+        railLabel="Rail"
+        main={<div>main</div>}
+        mainLabel="Main"
+        inspector={<div>inspector</div>}
+        inspectorLabel="Inspector"
+        statusBar={<div data-testid="status">status content</div>}
+      />,
+    )
+    expect(screen.getByTestId('status')).toBeInTheDocument()
+  })
+
+  it('renders without a status bar when the prop is omitted', () => {
+    renderFrame()
+    expect(screen.queryByRole('contentinfo')).toBeNull()
+  })
+})
+
 describe('AppFrame resize', () => {
   it('exposes a keyboard-operable vertical separator for the rail', async () => {
     const user = userEvent.setup()

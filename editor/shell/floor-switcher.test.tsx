@@ -35,4 +35,21 @@ describe('FloorSwitcher', () => {
     expect(onSelectFloor).toHaveBeenCalledTimes(1)
     expect(onSelectFloor).toHaveBeenCalledWith('f2')
   })
+
+  it('applies the active-tab class to the active floor button', () => {
+    render(
+      <FloorSwitcher
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /Ground/ })).toHaveClass(
+      'floor-switcher__tab--active',
+    )
+    expect(screen.getByRole('button', { name: /Upper/ })).not.toHaveClass(
+      'floor-switcher__tab--active',
+    )
+  })
 })
