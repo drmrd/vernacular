@@ -1,0 +1,28 @@
+import { test, expect } from '@playwright/test'
+import { fileURLToPath } from 'node:url'
+
+import { gotoEditor, selectors } from './support'
+
+const underlayFixture = fileURLToPath(new URL('../../fixtures/underlay.png', import.meta.url))
+
+test('draws the active non-ground floor reference image on the plan canvas', async ({ page }) => {
+  await gotoEditor(page)
+  await selectors.addFloorButton(page).click()
+  await selectors.floorButton(page, 'New Floor').click()
+
+  const snapshot = (): Promise<string> =>
+    selectors.planCanvas(page).evaluate((c) => (c as HTMLCanvasElement).toDataURL())
+  const beforeLoad = await snapshot()
+
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: 'Load image' }).click()
+  await (await chooser).setFiles(underlayFixture)
+
+  // The image now belongs to the active (new) floor's model.
+  await expect(page.getByRole('group', { name: 'Underlay 1' })).toBeVisible()
+
+  // The active floor's reference image must draw on the plan canvas, so it changes.
+  // While the underlay layer resolves the first floor, a non-ground floor's image is
+  // filtered out and the canvas never changes.
+  await expect.poll(snapshot).not.toBe(beforeLoad)
+})
