@@ -32,4 +32,17 @@ describe('StatusBar', () => {
     await user.click(screen.getByRole('button', { name: /Upper/ }))
     expect(onSelectFloor).toHaveBeenCalledWith('f2')
   })
+
+  it('renders the units slot content', () => {
+    render(
+      <StatusBar
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+        units={<span>unit toggle</span>}
+      />,
+    )
+    expect(screen.getByText('unit toggle')).toBeInTheDocument()
+  })
 })
