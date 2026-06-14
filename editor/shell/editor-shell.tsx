@@ -152,10 +152,6 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
             Export
           </Button>
         ) : null}
-        <UnitToggle
-          units={session.getProject().meta.units}
-          onChange={(units) => session.dispatch(setUnits(units))}
-        />
         <ProjectControls {...projectControls} />
         <CommandBar />
       </div>
@@ -212,6 +208,12 @@ function EditorStatusBar() {
       onSelectFloor={setActiveFloorId}
       onAddFloor={() => session.dispatch(addFloor('New Floor'))}
       snap={<SnapStatus />}
+      units={
+        <UnitToggle
+          units={session.getProject().meta.units}
+          onChange={(units) => session.dispatch(setUnits(units))}
+        />
+      }
     />
   )
 }
