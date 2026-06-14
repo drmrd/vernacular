@@ -3,6 +3,7 @@ import type { OpeningSceneNode, UnitPreferences, WallSceneNode } from '../../cor
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import type { DrawableOpening } from './draw-opening'
+import type { PlanPalette } from './plan-palette'
 import type { DrawableUnderlay } from './draw-underlay'
 import type { SnapResult } from './snap'
 import type { Viewport } from './viewport'
@@ -50,11 +51,12 @@ export interface PlanScene {
 }
 
 /**
- * Assembles the drawPlan options from the flattened scene leaves. Optional
- * overlays (preview, snap, marquee, endpoint handles, calibration) are spread in
- * only when present so an absent one stays off under exactOptionalPropertyTypes.
+ * Assembles the drawPlan options from the flattened scene leaves and the resolved
+ * canvas palette. Optional overlays (preview, snap, marquee, endpoint handles,
+ * calibration) are spread in only when present so an absent one stays off under
+ * exactOptionalPropertyTypes.
  */
-function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
+export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPlanOptions {
   return {
     walls: scene.walls,
     rooms: scene.rooms,
@@ -64,6 +66,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     selectedIds: scene.selectedIds,
     grid: true,
     rulers: true,
+    palette,
     roomLabels: { preferences: scene.preferences },
     underlays: scene.underlays,
     openings: scene.openings,
@@ -88,8 +91,8 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
  * object, which would rasterize on every render; the scene members are listed
  * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
  */
-export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
-  const options = buildDrawOptions(scene)
+export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: PlanPalette): void {
+  const options = buildDrawOptions(scene, palette)
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx) {
@@ -117,5 +120,6 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
     scene.ghost,
     scene.surfacePaint,
     scene.roomFillColor,
+    palette,
   ])
 }

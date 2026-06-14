@@ -19,8 +19,10 @@ import {
   type ClipboardStore,
   type SelectionStore,
 } from '../../bridge'
+import { useTheme } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { planCursor } from './plan-cursor'
+import { resolvePlanPalette, type PlanPalette } from './plan-palette'
 import type { DrawableDimension } from './draw-dimension'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
@@ -237,6 +239,24 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
 }
 
 /**
+ * Resolves the canvas palette from the design-system tokens on the document root.
+ * A canvas cannot read CSS custom properties, so the shell reads them once and
+ * threads them into drawPlan. Re-resolved whenever the resolved theme changes, so a
+ * theme switch repaints the canvas in the new palette.
+ */
+function usePlanPalette(): PlanPalette {
+  const { resolved } = useTheme()
+  return useMemo(
+    () =>
+      resolvePlanPalette((name) =>
+        getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `resolved` is the repaint signal; the resolver reads the live tokens off the document root rather than `resolved` itself.
+    [resolved],
+  )
+}
+
+/**
  * Composes the resolved plan layers into the redraw, the canvas cursor, and the
  * pointer handlers. Coverage-excluded glue validated by the wall-drawing
  * end-to-end spec, since jsdom has no 2D Canvas.
@@ -245,7 +265,8 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   const layers = usePlanLayers(canvasRef, traceMode)
   const surfacePaint = useSurfacePaintLayer()
   const roomFillColor = useFloorFillColor()
-  usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor))
+  const palette = usePlanPalette()
+  usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor), palette)
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
   // The overlay readout pill draws from the move drag, the wall-endpoint drag, or
