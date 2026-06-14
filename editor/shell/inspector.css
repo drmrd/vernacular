@@ -60,3 +60,11 @@
   font-size: 0.65rem;
   font-weight: 600;
 }
+
+.inspector__empty {
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
