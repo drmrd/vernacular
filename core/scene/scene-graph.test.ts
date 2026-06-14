@@ -10,7 +10,7 @@ import {
   DEFAULT_WALL_THICKNESS_MM,
 } from '../model/factories'
 import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
-import { ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
+import { deriveRooms, ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
   deriveRoomNodesForFloor,
   deriveSceneGraph,
@@ -202,6 +202,15 @@ describe('deriveRoomNodesForFloor with overrides', () => {
     ]) {
       expect(node.clearPolygon).toContainEqual(corner)
     }
+  })
+
+  it('copies the outer (gross) polygon onto the room node', () => {
+    const floor = oneRoomFloor()
+    // The exact outset geometry is asserted in the topology tests; here the node
+    // need only carry the derived room's own outer boundary.
+    const [room] = deriveRooms(floor.walls)
+
+    expect(soleRoomNode(floor).outerPolygon).toEqual(room?.outerPolygon)
   })
 
   it('keys correctly: the override key matches the derived room id', () => {

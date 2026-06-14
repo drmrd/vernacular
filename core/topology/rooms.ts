@@ -1,4 +1,4 @@
-import { insetPolygon, pointInPolygon, polygonArea } from '../geometry/polygon'
+import { insetPolygon, outsetPolygon, pointInPolygon, polygonArea } from '../geometry/polygon'
 import type { Point, RoomOverride, Wall } from '../model/types'
 import { buildWallGraph } from './wall-graph'
 
@@ -13,6 +13,12 @@ export interface Room {
    * the thickness-aware clear floor area boundary, in floor-plan space.
    */
   clearPolygon: Point[]
+  /**
+   * The mirror of `clearPolygon`: the centerline `polygon` offset outward by each
+   * bounding wall's half-thickness, tracing the outer wall faces (the gross-area
+   * boundary), in floor-plan space.
+   */
+  outerPolygon: Point[]
   /** Clear (thickness-aware) floor area, in squared millimeters. */
   area: number
   /** Sorted, unique ids of the walls that enclose the room. */
@@ -89,6 +95,9 @@ function mergeOverride(room: Room, override: RoomOverride | undefined): Room {
     // Copy so `polygon` and `clearPolygon` are not the same array; a later mutation
     // of one must not silently alter the other.
     merged.clearPolygon = [...override.customPolygon]
+    // A custom polygon has no per-edge thickness, so the outer boundary mirrors the
+    // clear one: a fresh copy of the custom polygon, for the same reason.
+    merged.outerPolygon = [...override.customPolygon]
     merged.area = Math.abs(polygonArea(override.customPolygon))
   }
   return merged
@@ -120,9 +129,17 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
     const { polygon, edgeOffsets } = faceBoundary(face, graph.vertices, thicknessByWallId)
     if (polygonArea(polygon) <= MIN_ROOM_AREA) continue
     const clearPolygon = insetPolygon(polygon, edgeOffsets)
+    const outerPolygon = outsetPolygon(polygon, edgeOffsets)
     const area = Math.abs(polygonArea(clearPolygon))
     const wallIds = sortedUniqueWallIds(face)
-    rooms.push({ id: ROOM_ID_PREFIX + roomKey({ wallIds }), polygon, clearPolygon, area, wallIds })
+    rooms.push({
+      id: ROOM_ID_PREFIX + roomKey({ wallIds }),
+      polygon,
+      clearPolygon,
+      outerPolygon,
+      area,
+      wallIds,
+    })
   }
   return assignHoles(rooms)
 }
