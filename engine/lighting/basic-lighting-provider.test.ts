@@ -47,6 +47,8 @@ describe('BasicLightingProvider', () => {
     const litFacing = (normal: THREE.Vector3): number => Math.max(0, direction.dot(normal))
     const towardPlusX = litFacing(new THREE.Vector3(1, 0, 0))
     const towardPlusZ = litFacing(new THREE.Vector3(0, 0, 1))
+    // The +X face receives ~0.44 and the +Z face ~0.15 of the normalized sun, so the
+    // gap clears 0.1 comfortably; a symmetric azimuth would make it exactly 0.
     expect(Math.abs(towardPlusX - towardPlusZ)).toBeGreaterThan(0.1)
   })
 
