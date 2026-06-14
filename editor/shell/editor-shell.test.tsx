@@ -65,6 +65,15 @@ describe('EditorShell', () => {
     expect(screen.getByLabelText(/floor plan/i)).toBeInTheDocument()
   })
 
+  it('shows the My Projects breadcrumb segment', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
+    expect(within(breadcrumb).getByText(/my projects/i)).toBeInTheDocument()
+  })
+
   it('reveals the 3D preview when the 3D view mode is selected', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
@@ -157,7 +166,7 @@ describe('EditorShell', () => {
     expect(screen.getByText(/tool: select/i)).toBeInTheDocument()
   })
 
-  it('invokes the new, save, and export handlers when their buttons are clicked', async () => {
+  it('invokes the new, save, and export handlers when their controls are used', async () => {
     vi.stubGlobal('navigator', {})
     const onNewProject = vi.fn()
     const onSave = vi.fn()
@@ -166,8 +175,10 @@ describe('EditorShell', () => {
 
     renderShell({ onNewProject, onSave, onExportBundle })
 
+    // New lives in the project menu near the wordmark; Save stays a visible action.
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('menuitem', { name: /new project/i }))
     const project = screen.getByRole('navigation', { name: /project/i })
-    await user.click(within(project).getByRole('button', { name: /^new$/i }))
     await user.click(within(project).getByRole('button', { name: /^save$/i }))
     await user.click(screen.getByRole('button', { name: /^export$/i }))
     await user.click(screen.getByRole('menuitem', { name: /bundle/i }))
