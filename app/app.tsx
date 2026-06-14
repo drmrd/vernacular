@@ -5,6 +5,7 @@ import {
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
+  type HarnessScene,
   createActiveFloorStore,
   createEditorSession,
   createSelectionStore,
@@ -76,6 +77,13 @@ const DEMO_WALL_HEX = '#3f7f5f'
 // hosts the door (an opening wall), so painting all four exercises both wall mesh paths.
 const DEMO_WALL_IDS = ['south', 'east', 'north', 'west']
 
+// Selects the harness fixture (`?fixture=scene-harness&scene=junctions`); the default
+// renders the wall-shell room, and `junctions` renders the T-junction and acute-bay
+// fixture for the junction-geometry baseline (ADR-0080).
+function requestedHarnessScene(): HarnessScene | undefined {
+  return searchParam('scene') === 'junctions' ? 'junctions' : undefined
+}
+
 function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
   if (searchParam('paint') !== 'demo') return undefined
   const store: Record<string, SurfaceTreatment> = {
@@ -130,6 +138,7 @@ export function App(props: AppProps) {
       <SceneHarnessView
         colorTemperatureK={requestedColorTemperature()}
         paint={requestedHarnessPaint()}
+        scene={requestedHarnessScene()}
       />
     )
   }

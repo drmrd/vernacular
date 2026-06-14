@@ -60,4 +60,11 @@ test.describe('Three-dimensional scene visual baseline', () => {
   test('renders the painted wall shell to a stable canvas', async ({ page }) => {
     await captureShell(page, '&paint=demo', 'scene-shell-painted-webgl.png')
   })
+
+  // The junction fixture (ADR-0080) renders a T-junction and an acute three-way bay,
+  // the busier junctions the four-corner shell does not exercise. The baseline confirms
+  // they read as one solid with opaque tops and no spikes.
+  test('renders the mitered T-junction and acute bay to a stable canvas', async ({ page }) => {
+    await captureShell(page, '&scene=junctions', 'scene-junctions-webgl.png')
+  })
 })

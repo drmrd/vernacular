@@ -42,7 +42,7 @@ export { useSceneGraph } from './react/use-scene-graph'
 export type { UseAutosaveOptions } from './react/use-autosave'
 export { useAutosave } from './react/use-autosave'
 export { SceneCanvas } from './react/scene-canvas'
-export { SceneHarnessView } from './react/scene-harness-view'
+export { SceneHarnessView, type HarnessScene } from './react/scene-harness-view'
 export type { SurfaceSelectionStore } from './selection/surface-selection-store'
 export { createSurfaceSelectionStore } from './selection/surface-selection-store'
 export {
