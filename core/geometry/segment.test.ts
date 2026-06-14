@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointOnSegment, segmentIntersection } from './segment'
+import { lineIntersection, pointOnSegment, segmentIntersection } from './segment'
 
 describe('segmentIntersection', () => {
   it('returns the crossing point of two segments that intersect', () => {
@@ -17,6 +17,26 @@ describe('segmentIntersection', () => {
   it('returns null for disjoint segments whose extents do not touch', () => {
     expect(
       segmentIntersection({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }),
+    ).toBeNull()
+  })
+})
+
+describe('lineIntersection', () => {
+  it('returns the crossing of two infinite lines that meet beyond their anchor points', () => {
+    expect(
+      lineIntersection({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 5, y: -3 }, { x: 0, y: 1 }),
+    ).toEqual({ x: 5, y: 0 })
+  })
+
+  it('returns null for parallel lines that never meet', () => {
+    expect(
+      lineIntersection({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 2 }, { x: 1, y: 0 }),
+    ).toBeNull()
+  })
+
+  it('returns null for collinear lines', () => {
+    expect(
+      lineIntersection({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 9, y: 0 }, { x: 2, y: 0 }),
     ).toBeNull()
   })
 })
