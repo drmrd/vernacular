@@ -48,6 +48,17 @@
   --color-surface-active: var(--vellum-200);
   --color-indicator: var(--brass-500);
 
+  /* Canvas role tokens. The 2D plan canvas cannot read CSS variables directly, so the
+     PlanPalette resolver reads these and threads them into drawPlan. Warm light-theme
+     values; dark equivalents land with the dark-canvas pass. */
+  --color-canvas-grid: #e5dcc6;
+  --color-canvas-wall: #2f2615;
+  --color-canvas-room-fill: #fbf7ef;
+  --color-canvas-ruler-band: #f4efe4;
+  --color-canvas-ruler-tick: #d9cdb4;
+  --color-canvas-ruler-text: #6e5a3c;
+  --color-canvas-selection: #b08646;
+
   /* Spacing scale (rem). */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
