@@ -8,19 +8,57 @@
 
 .editor-shell__toolbar {
   display: flex;
-  align-items: baseline;
-  gap: 1.5rem;
+  align-items: center;
+  gap: var(--space-2);
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 0.5rem;
 }
 
-.editor-shell__toolbar h1 {
+.editor-shell__wordmark {
   margin: 0;
-  font-size: 1.25rem;
+  font-family: var(--font-family-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
-.editor-shell__toolbar p {
-  margin: 0;
+.editor-shell__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.editor-shell__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
+}
+
+.editor-shell__icon-btn:hover {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.editor-shell__icon-btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.editor-shell__save-status {
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
   color: var(--color-text-muted);
 }
 
@@ -78,7 +116,6 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: auto;
 }
 
 .editor-shell__recent {

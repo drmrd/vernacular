@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ArrowClockwise, ArrowCounterClockwise } from '@phosphor-icons/react'
 import {
   SceneCanvas,
   createSurfaceSelectionStore,
@@ -16,10 +17,10 @@ import {
   addFloor,
   paintableSurfaces,
   resolveSurfacePaint,
-  sceneGraphForFloor,
   setUnits,
   type Project,
 } from '../../core'
+import { Button } from '../design-system'
 import {
   CommandBar,
   CommandPalette,
@@ -111,22 +112,43 @@ interface ShellHeaderProps {
   projectControls: ProjectControlsProps
 }
 
-// The toolbar content. It renders a plain container, NOT a <header role="banner">,
-// because AppFrame's own <header> provides the single banner landmark.
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
-  const graph = sceneGraphForFloor(useSceneGraph(), useActiveFloorId())
   const session = useEditorSession()
   return (
     <div className="editor-shell__toolbar">
-      <h1>Vernacular</h1>
-      <p aria-live="polite">Walls: {graph.walls.length}</p>
-      <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
-      <UnitToggle
-        units={session.getProject().meta.units}
-        onChange={(units) => session.dispatch(setUnits(units))}
-      />
-      <ProjectControls {...projectControls} />
-      <CommandBar />
+      <h1 className="editor-shell__wordmark">Vernacular</h1>
+      <div className="editor-shell__toolbar-actions">
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Undo"
+          onClick={() => session.undo()}
+        >
+          <ArrowCounterClockwise size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Redo"
+          onClick={() => session.redo()}
+        >
+          <ArrowClockwise size={16} aria-hidden="true" />
+        </button>
+        {projectControls.onExportBundle ? (
+          <Button variant="primary" onClick={projectControls.onExportBundle}>
+            Export
+          </Button>
+        ) : null}
+        <UnitToggle
+          units={session.getProject().meta.units}
+          onChange={(units) => session.dispatch(setUnits(units))}
+        />
+        <ProjectControls {...projectControls} />
+        <CommandBar />
+      </div>
+      <span role="status" className="editor-shell__save-status">
+        {SAVE_STATUS_LABELS[saveStatus]}
+      </span>
     </div>
   )
 }
