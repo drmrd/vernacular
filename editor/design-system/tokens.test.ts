@@ -59,6 +59,14 @@ describe('drafting-table palette', () => {
     expect(tokensCss).not.toContain('#1e293b') // old slate-900
   })
 
+  it('includes brass-600 as the primary button-fill primitive', () => {
+    expect(tokensCss).toContain('#8b692a')
+  })
+
+  it('assigns the light-mode accent-strong token to the brass-600 primitive', () => {
+    expect(tokensCss).toMatch(/--color-accent-strong:\s*var\(--brass-600\)/)
+  })
+
   it('paints the light canvas on warm vellum rather than white', () => {
     expect(tokensCss).toMatch(/--color-surface:\s*var\(--vellum-100\)/)
   })

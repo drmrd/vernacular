@@ -61,8 +61,8 @@ describe.each(['light', 'dark'] as const)('drafting-table %s contrast', (theme) 
     expect(ratio('--color-text', '--color-surface-raised')).toBeGreaterThanOrEqual(AA_NORMAL)
   })
 
-  it('keeps the strong accent usable as text on the surface', () => {
-    expect(ratio('--color-accent-strong', '--color-surface')).toBeGreaterThanOrEqual(AA_NORMAL)
+  it('keeps the primary button fill distinct from the surface', () => {
+    expect(ratio('--color-accent-strong', '--color-surface')).toBeGreaterThanOrEqual(AA_UI)
   })
 
   it('keeps on-accent label text readable on the strong accent fill', () => {
