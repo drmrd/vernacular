@@ -7,14 +7,20 @@ import {
   reconcileSelectionOutline,
   type SceneRoot,
 } from '../../engine'
+import { isClick, type PointerPoint } from './pointer-click'
 import { useSelection, useSelectionIds } from './selection-context'
 
-// A pointer press picks the entity under the cursor and writes the shared bridge
-// selection (so the plan reflects it); a modifier press toggles it, and a press on empty
-// space clears. The selection outline overlay is reconciled whenever the selection or the
-// geometry changes, and lives on the persistent render scene, not the keyed geometry
-// group. Coverage-excluded glue, proven by the scene-webgl tier; the pick and outline
-// logic are unit-tested in the engine.
+// A pointer click selects the entity under the cursor and writes the shared bridge
+// selection (so the plan reflects it); a modifier click toggles it, and a click on empty
+// space clears. Selection commits on pointer release, and only when the press and release
+// land within the click tolerance, so a drag to orbit or pan the camera does not select
+// whatever sat under the press. The selection outline overlay is reconciled whenever the
+// selection or the geometry changes, and lives on the persistent render scene, not the
+// keyed geometry group. Coverage-excluded glue, proven by the scene-webgl tier; the pick,
+// the click discriminator, and the outline logic are unit-tested.
+
+// A drag of more than a few pixels is a camera move, not a selection click.
+const CLICK_TOLERANCE_PX = 6
 export function SceneSelection({ root }: { root: SceneRoot }) {
   const camera = useThree((state) => state.camera)
   const raycaster = useThree((state) => state.raycaster)
@@ -36,7 +42,18 @@ export function SceneSelection({ root }: { root: SceneRoot }) {
   }, [root, selectedIds, outlineGroup])
 
   useEffect(() => {
+    let pressedAt: PointerPoint | null = null
+
     function onPointerDown(event: PointerEvent) {
+      pressedAt = { x: event.clientX, y: event.clientY }
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      const down = pressedAt
+      pressedAt = null
+      if (down === null) return
+      if (!isClick(down, { x: event.clientX, y: event.clientY }, CLICK_TOLERANCE_PX)) return
+
       const rect = domElement.getBoundingClientRect()
       const ndc = {
         x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -52,8 +69,13 @@ export function SceneSelection({ root }: { root: SceneRoot }) {
         selection.select(id)
       }
     }
+
     domElement.addEventListener('pointerdown', onPointerDown)
-    return () => domElement.removeEventListener('pointerdown', onPointerDown)
+    domElement.addEventListener('pointerup', onPointerUp)
+    return () => {
+      domElement.removeEventListener('pointerdown', onPointerDown)
+      domElement.removeEventListener('pointerup', onPointerUp)
+    }
   }, [domElement, camera, raycaster, root, selection])
 
   return null
