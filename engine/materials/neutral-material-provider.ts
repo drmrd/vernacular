@@ -1,9 +1,7 @@
 import * as THREE from 'three'
 
 import type { MaterialProvider, SurfaceRole } from './material-provider'
-
-/** A light warm gray shared by every surface role until painting assigns real colors. */
-const NEUTRAL_COLOR = 0xd8d4cc
+import { roleMaterialParameters } from './role-appearance'
 
 /**
  * MVP material provider: every role currently gets the same neutral appearance.
@@ -18,7 +16,7 @@ export class NeutralMaterialProvider implements MaterialProvider {
     if (cached) {
       return cached
     }
-    const created = new THREE.MeshStandardMaterial({ color: NEUTRAL_COLOR, name: role })
+    const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
     this.materials.set(role, created)
     return created
   }
