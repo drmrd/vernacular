@@ -2,15 +2,41 @@ import type { Icon } from '@phosphor-icons/react'
 import {
   Buildings,
   CursorClick,
+  Door,
   Flame,
+  FrameCorners,
   Hand,
   Minus,
   Ruler,
   Stairs,
   Tag,
 } from '@phosphor-icons/react'
+import { builtinElementTypes, type OpeningFamily } from '../../core'
 import { useActiveTool, type ToolId } from './active-tool-context'
+import { useOpeningTool } from '../plan/opening-tool-context'
 import './tools-panel.css'
+
+const WINDOW_FAMILIES: ReadonlySet<OpeningFamily> = new Set(['window-fixed', 'window-crank'])
+
+function openingEntries() {
+  return Object.values(builtinElementTypes.entries).filter((t) => t.category === 'opening')
+}
+
+function isWindowPlacementType(id: string): boolean {
+  const type = builtinElementTypes.entries[id]
+  const family = type?.opening?.family
+  return family !== undefined && WINDOW_FAMILIES.has(family as OpeningFamily)
+}
+
+const DEFAULT_DOOR_TYPE: string =
+  openingEntries().find(
+    (t) => t.opening !== undefined && !WINDOW_FAMILIES.has(t.opening.family as OpeningFamily),
+  )?.id ?? 'single-swing-door'
+
+const DEFAULT_WINDOW_TYPE: string =
+  openingEntries().find(
+    (t) => t.opening !== undefined && WINDOW_FAMILIES.has(t.opening.family as OpeningFamily),
+  )?.id ?? 'window-fixed'
 
 interface ChipProps {
   toolId?: ToolId
@@ -37,6 +63,38 @@ function Chip({ toolId, label, disabled, icon }: ChipProps) {
   )
 }
 
+interface OpeningChipProps {
+  kind: 'door' | 'window'
+  icon: Icon
+  label: string
+}
+
+function OpeningChip({ kind, icon, label }: OpeningChipProps) {
+  const { tool, setTool } = useActiveTool()
+  const { placementType, setPlacementType } = useOpeningTool()
+  const defaultType = kind === 'door' ? DEFAULT_DOOR_TYPE : DEFAULT_WINDOW_TYPE
+  const isWindow = isWindowPlacementType(placementType)
+  const isActive = tool === 'place-opening' && (kind === 'window' ? isWindow : !isWindow)
+  const IconComponent = icon
+
+  function handleClick() {
+    setTool('place-opening')
+    setPlacementType(defaultType)
+  }
+
+  return (
+    <button
+      type="button"
+      className={`tools-panel__chip${isActive ? ' tools-panel__chip--active' : ''}`}
+      aria-pressed={isActive}
+      onClick={handleClick}
+    >
+      <IconComponent size={16} aria-hidden="true" />
+      {label}
+    </button>
+  )
+}
+
 export function ToolsPanel() {
   return (
     <div className="tools-panel">
@@ -50,7 +108,8 @@ export function ToolsPanel() {
         <span className="tools-panel__section-label">Draw</span>
         <div className="tools-panel__grid">
           <Chip toolId="draw-wall" label="Wall" icon={Minus} />
-          <Chip toolId="place-opening" label="Opening" />
+          <OpeningChip kind="door" icon={Door} label="Door" />
+          <OpeningChip kind="window" icon={FrameCorners} label="Window" />
         </div>
       </section>
 
