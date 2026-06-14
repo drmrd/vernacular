@@ -46,8 +46,10 @@ function shellWall(id: string, start: Point, end: Point) {
   }
 }
 
-// The single room the four walls enclose: its clear-area floor slab and ceiling
-// render alongside the walls so the harness baseline covers the room shell.
+// The single room the four walls enclose: its floor slab and ceiling render
+// alongside the walls so the harness baseline covers the room shell. The slab
+// reaches the walls' outer faces (`outerPolygon`, ADR-0076) while the ceiling
+// stays over the clear interior (`clearPolygon`).
 const SHELL_ROOM: RoomSceneNode = {
   id: 'room:demo',
   kind: 'room',
@@ -63,6 +65,14 @@ const SHELL_ROOM: RoomSceneNode = {
     { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
     { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
     { x: SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+  ],
+  // The centerline rectangle grown outward by the same half-thickness, so the slab
+  // meets the outer faces of the walls rather than their inner faces.
+  outerPolygon: [
+    { x: -SHELL_CLEAR_INSET, y: -SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X + SHELL_CLEAR_INSET, y: -SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X + SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z + SHELL_CLEAR_INSET },
+    { x: -SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z + SHELL_CLEAR_INSET },
   ],
   area: (SHELL_WIDTH_X - SHELL_THICKNESS) * (SHELL_DEPTH_Z - SHELL_THICKNESS),
   ceilingHeight: SHELL_HEIGHT,
