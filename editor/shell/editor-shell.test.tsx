@@ -233,7 +233,7 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('lays out the shell in the application frame with empty sibling panel slots', () => {
+  it('lays out the shell regions without a global paint slot', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
@@ -241,9 +241,10 @@ describe('EditorShell', () => {
     expect(screen.getByRole('complementary', { name: /tool rail/i })).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
 
-    // The always-on global paint list is gone; the inspector swaps by selection.
+    // The always-on global paint list is gone; the inspector swaps by selection,
+    // so neither the paint-picker nor the paint-inspector slot mounts.
     expect(document.querySelector(`[data-slot-id="${PAINT_PICKER_SLOT}"]`)).toBeNull()
-    expect(document.querySelector(`[data-slot-id="${PAINT_INSPECTOR_SLOT}"]`)).not.toBeNull()
+    expect(document.querySelector(`[data-slot-id="${PAINT_INSPECTOR_SLOT}"]`)).toBeNull()
 
     expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /floors/i })).toBeInTheDocument()

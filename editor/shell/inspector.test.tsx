@@ -68,6 +68,15 @@ describe('Inspector', () => {
     expect(screen.getByText('2 selected')).toBeInTheDocument()
   })
 
+  it('shows no placeholder entity text when multiple entities are selected', () => {
+    const { selection } = renderInspector()
+    act(() => {
+      selection.setSelection(['wall:w1', 'wall:w2'])
+    })
+    expect(screen.queryByText(/wall selected/i)).toBeNull()
+    expect(screen.queryByText(/nothing selected/i)).toBeNull()
+  })
+
   it('shows a Wall component title in EB Garamond when a wall is selected', () => {
     const { selection } = renderInspector()
     act(() => {
