@@ -34,8 +34,8 @@ primary Export action.
 The specific decisions within this language:
 
 **Color.** `--color-accent` moves from ink-800 (#2c3e57) to brass-500 (#b08646) in
-light mode, matching dark mode. A new primitive `--brass-600: #9a7038` is added for
-primary button backgrounds (clears WCAG AA 4.5:1 against vellum-50). Two new semantic
+light mode, matching dark mode. A new primitive `--brass-600: #8b692a` is added for
+primary button backgrounds; vellum-50 label text on this fill clears WCAG AA 4.5:1 at 4.72:1. Two new semantic
 tokens are added: `--color-surface-active` (vellum-200, the active tool chip background)
 and `--color-indicator` (brass-500, the 2px left-border active state marker).
 `--color-focus-ring` stays at ink-900 because brass at 2.8:1 against vellum-100 does
