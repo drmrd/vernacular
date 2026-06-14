@@ -109,4 +109,23 @@ describe('wallFootprints', () => {
     expect(west?.bPlus).toEqual({ x: 1000, y: 50 })
     expect(west?.bMinus).toEqual({ x: 1000, y: -50 })
   })
+
+  it('squares an end where the miter would spike past the limit', () => {
+    // Two walls leave the shared origin in nearly the same direction (a ~6 degree
+    // wedge), so the true miter point sits roughly 1000mm out, far past the limit.
+    // The shared end falls back to a square cap rather than draw a long spike.
+    const graph = buildWallGraph([
+      { id: 'a', start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, thickness: 100 },
+      { id: 'b', start: { x: 0, y: 0 }, end: { x: 1000, y: 100 }, thickness: 100 },
+    ])
+
+    const footprints = wallFootprints(
+      graph,
+      graph.edges.map(() => 100),
+    )
+    const a = footprints[graph.edges.findIndex((edge) => edge.wallId === 'a')]
+
+    expect(a?.aPlus).toEqual({ x: 0, y: 50 })
+    expect(a?.aMinus).toEqual({ x: 0, y: -50 })
+  })
 })
