@@ -79,12 +79,12 @@ interface RoomCapGeometry {
 }
 
 function roomCapGeometry(boundary: Point[], holes?: Point[][]): RoomCapGeometry {
-  const outerBoundary = canonicalOuterLoop(boundary)
+  const canonicalBoundary = canonicalOuterLoop(boundary)
   const holeLoops = (holes ?? []).map(canonicalHoleLoop)
   return {
-    boundary: outerBoundary,
-    points: [...outerBoundary, ...holeLoops.flat()],
-    triangles: slabCapTriangles(outerBoundary, holeLoops),
+    boundary: canonicalBoundary,
+    points: [...canonicalBoundary, ...holeLoops.flat()],
+    triangles: slabCapTriangles(canonicalBoundary, holeLoops),
   }
 }
 
@@ -161,6 +161,7 @@ function buildCeilingMesh(
   materials: MaterialProvider,
   floorId: string,
 ): THREE.Mesh {
+  // The ceiling bounds the clear interior, not the full slab footprint that now reaches the wall outer faces.
   const cap = roomCapGeometry(node.clearPolygon, node.holes)
   const positions = slabCapPositions(cap.points, cap.triangles, ceilingHeight(node))
   const geometry = geometryFromPositions(positions)
