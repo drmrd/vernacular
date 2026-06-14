@@ -133,52 +133,6 @@ describe('drawPlan', () => {
     expect(withHandles.ops.lastIndexOf('stroke')).toBeLessThan(withHandles.ops.lastIndexOf('arc'))
   })
 
-  it('paints the opening resize handles when the option is set and omits them otherwise', () => {
-    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
-    // prettier-ignore
-    const resizedOpening: OpeningSceneNode = {
-      id: 'opening:r', kind: 'opening', floorId: 'g', type: 'single-swing-door',
-      center: { x: 4000, y: 2000 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
-      width: 900, height: 2032, sillHeight: 0, hostThickness: 100,
-      orientation: { hinge: 'start', facing: 'positive' },
-    }
-    const base = { walls: [wall], viewport, width: 800, height: 600 }
-
-    const without = recordingContext()
-    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
-
-    const withHandles = recordingContext()
-    drawPlan(withHandles.ctx, {
-      ...base,
-      selectedIds: new Set<string>(),
-      openingResizeHandles: resizedOpening,
-    })
-
-    // The two jambs sit on the wall centerline, half a width to either side of
-    // the opening's center along its along-vector, projected to screen space.
-    const halfWidth = resizedOpening.width / 2
-    const startJamb = {
-      x: resizedOpening.center.x - resizedOpening.along.x * halfWidth,
-      y: resizedOpening.center.y - resizedOpening.along.y * halfWidth,
-    }
-    const endJamb = {
-      x: resizedOpening.center.x + resizedOpening.along.x * halfWidth,
-      y: resizedOpening.center.y + resizedOpening.along.y * halfWidth,
-    }
-    const start = worldToScreen(startJamb, viewport)
-    const end = worldToScreen(endJamb, viewport)
-
-    expect(without.arcs).toHaveLength(0)
-    expect(withHandles.arcs).toHaveLength(2)
-    expect(withHandles.arcs.map((handle) => ({ x: handle.x, y: handle.y }))).toEqual(
-      expect.arrayContaining([
-        { x: start.x, y: start.y },
-        { x: end.x, y: end.y },
-      ]),
-    )
-    expect(withHandles.ops.lastIndexOf('stroke')).toBeLessThan(withHandles.ops.lastIndexOf('arc'))
-  })
-
   it('fills each room polygon beneath the wall strokes', () => {
     const recorder = recordingContext()
 
@@ -225,6 +179,54 @@ describe('drawPlan', () => {
     // The void is cut from the same fill: the room is still painted with one fill,
     // not a separate fill per ring.
     expect(recorder.ops.filter((op) => op === 'fill')).toHaveLength(1)
+  })
+})
+
+describe('drawPlan opening resize handles', () => {
+  it('paints the opening resize handles when the option is set and omits them otherwise', () => {
+    const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } }
+    // prettier-ignore
+    const resizedOpening: OpeningSceneNode = {
+      id: 'opening:r', kind: 'opening', floorId: 'g', type: 'single-swing-door',
+      center: { x: 4000, y: 2000 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+      width: 900, height: 2032, sillHeight: 0, hostThickness: 100,
+      orientation: { hinge: 'start', facing: 'positive' },
+    }
+    const base = { walls: [wall], viewport, width: 800, height: 600 }
+
+    const without = recordingContext()
+    drawPlan(without.ctx, { ...base, selectedIds: new Set<string>() })
+
+    const withHandles = recordingContext()
+    drawPlan(withHandles.ctx, {
+      ...base,
+      selectedIds: new Set<string>(),
+      openingResizeHandles: resizedOpening,
+    })
+
+    // The two jambs sit on the wall centerline, half a width to either side of
+    // the opening's center along its along-vector, projected to screen space.
+    const halfWidth = resizedOpening.width / 2
+    const startJamb = {
+      x: resizedOpening.center.x - resizedOpening.along.x * halfWidth,
+      y: resizedOpening.center.y - resizedOpening.along.y * halfWidth,
+    }
+    const endJamb = {
+      x: resizedOpening.center.x + resizedOpening.along.x * halfWidth,
+      y: resizedOpening.center.y + resizedOpening.along.y * halfWidth,
+    }
+    const start = worldToScreen(startJamb, viewport)
+    const end = worldToScreen(endJamb, viewport)
+
+    expect(without.arcs).toHaveLength(0)
+    expect(withHandles.arcs).toHaveLength(2)
+    expect(withHandles.arcs.map((handle) => ({ x: handle.x, y: handle.y }))).toEqual(
+      expect.arrayContaining([
+        { x: start.x, y: start.y },
+        { x: end.x, y: end.y },
+      ]),
+    )
+    expect(withHandles.ops.lastIndexOf('stroke')).toBeLessThan(withHandles.ops.lastIndexOf('arc'))
   })
 })
 
