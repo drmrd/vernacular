@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 
+import { edgeLines } from './edge-lines'
 import { entityIdOf } from './entity-id'
 
 /** A high-luminance outline that reads by contrast, not hue (color-blind-safe), drawn
@@ -39,9 +40,8 @@ export function reconcileSelectionOutline(
     if (id === null || !selectedIds.has(id)) {
       return
     }
-    const edges = new THREE.EdgesGeometry(object.geometry)
     const material = new THREE.LineBasicMaterial({ color: OUTLINE_COLOR, depthTest: false })
-    const line = new THREE.LineSegments(edges, material)
+    const line = edgeLines(object.geometry, material)
     line.renderOrder = 1
     line.applyMatrix4(object.matrixWorld)
     group.add(line)
