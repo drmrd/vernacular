@@ -1,0 +1,33 @@
+.inspector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.inspector__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.inspector__title {
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+}
+
+.inspector__count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-surface-active);
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+  font-size: 0.68rem;
+}

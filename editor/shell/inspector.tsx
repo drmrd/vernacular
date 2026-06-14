@@ -25,6 +25,7 @@ import {
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
+import './inspector.css'
 import { DimensionInspector } from '../plan/dimension-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
@@ -308,8 +309,13 @@ export function Inspector() {
   // The underlay panel lists the active floor's underlays, falling back to the
   // first floor. The panel renders nothing for the rows when the floor has none.
   const floor = activeFloor(session.getProject(), activeFloorId)
+  const count = selectedIds.size
   return (
-    <>
+    <div className="inspector">
+      <div className="inspector__header">
+        <h2 className="inspector__title">Properties</h2>
+        {count > 0 ? <span className="inspector__count-badge">{count} selected</span> : null}
+      </div>
       <SelectionInspector
         session={session}
         graph={graph}
@@ -326,6 +332,6 @@ export function Inspector() {
           onCalibrate={underlay.startCalibration}
         />
       ) : null}
-    </>
+    </div>
   )
 }
