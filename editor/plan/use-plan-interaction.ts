@@ -33,6 +33,7 @@ interface PointerContext {
   session: EditorSession
   tool: ToolId
   toolState: WallToolState
+  activeFloorId: string | null
 }
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
@@ -48,8 +49,10 @@ function activeRunCorners(toolState: WallToolState): readonly Point[] {
   return toolState.phase === 'drawing' ? [...toolState.vertices] : []
 }
 
-function activeFloorId(session: EditorSession): string | undefined {
-  return session.getProject().floors[0]?.id
+/** The floor a new wall lands on: the active floor, falling back to the first floor
+ *  when none is active yet (a single-floor project before any switch). */
+function drawFloorId(context: PointerContext): string | undefined {
+  return context.activeFloorId ?? context.session.getProject().floors[0]?.id
 }
 
 /** Applies a wall-tool click and returns the next wall-tool state; other tools are inert here. */
@@ -57,7 +60,7 @@ function applyPointer(world: Point, context: PointerContext): WallToolState {
   if (context.tool !== 'draw-wall') {
     return context.toolState
   }
-  const floorId = activeFloorId(context.session)
+  const floorId = drawFloorId(context)
   if (floorId === undefined) {
     return context.toolState
   }
@@ -71,6 +74,8 @@ export interface PlanInteractionDeps {
   walls: DrawPlanOptions['walls']
   tool: ToolId
   viewport: Viewport
+  // The floor a new wall is drawn on (the active floor); null before any floor is selected.
+  activeFloorId: string | null
   // Underlay footprint corners to snap to in trace mode; absent when off.
   tracePoints?: readonly Point[]
 }
@@ -253,7 +258,7 @@ function useWallGesture({
 
 /** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
 export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
-  const { session, walls, tool, viewport, tracePoints } = deps
+  const { session, walls, tool, viewport, tracePoints, activeFloorId } = deps
   const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
   const freeAngle = useFreeAngleModifier(tool)
@@ -268,9 +273,9 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       const world = snapping.resolve(eventToWorld(event, viewport))
-      setToolState(applyPointer(world, { session, tool, toolState }))
+      setToolState(applyPointer(world, { session, tool, toolState, activeFloorId }))
     },
-    [session, tool, toolState, viewport, snapping],
+    [session, tool, toolState, viewport, snapping, activeFloorId],
   )
 
   // Track the cursor only while the wall tool is active; this drives the live
