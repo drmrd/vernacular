@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -165,6 +166,30 @@ function useReleaseHandler(
 }
 
 /**
+ * Tracks the Alt (Option on a Mac) key as the held free-angle modifier while a wall is
+ * selected for editing. Holding it suppresses the default angle lock so a dragged endpoint
+ * follows the cursor to a free angle; releasing it restores the lock. Reset to false when
+ * no wall is selected. Mirrors `useFreeAngleModifier`; a later refactor can dedup the two.
+ */
+function useHeldAltKey(active: boolean): boolean {
+  const [held, setHeld] = useState(false)
+  useEffect(() => {
+    if (!active) {
+      setHeld(false)
+      return
+    }
+    const update = (event: KeyboardEvent) => setHeld(event.altKey)
+    window.addEventListener('keydown', update)
+    window.addEventListener('keyup', update)
+    return () => {
+      window.removeEventListener('keydown', update)
+      window.removeEventListener('keyup', update)
+    }
+  }, [active])
+  return held
+}
+
+/**
  * The endpoint-drag lifecycle for the single selected wall under the select
  * tool: a pointer-down on a handle grabs that endpoint, motion snaps the moving
  * cursor (reusing the slice-4 snapping with the fixed endpoint as the origin)
@@ -182,7 +207,8 @@ export function useWallEditing({
   const drag = useRef<DragState | null>(null)
   const [preview, setPreview] = useState<PreviewSegment | undefined>(undefined)
   const origin = drag.current ? anchorEndpoint(drag.current.wall, drag.current.end) : undefined
-  const snapping = useSnapping({ walls, viewport, origin })
+  const freeAngle = useHeldAltKey(selectedWall !== null)
+  const snapping = useSnapping({ walls, viewport, origin, freeAngle })
   const control: DragControl = { drag, setPreview, snapping, viewport }
   const onPointerDown = useGrabHandler(selectedWall, control)
   const onPointerMove = useDragMoveHandler(control)
