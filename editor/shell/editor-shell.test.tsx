@@ -93,6 +93,28 @@ describe('EditorShell', () => {
     expect(screen.queryAllByRole('button', { name: /redo/i }).length).toBeGreaterThan(0)
   })
 
+  it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByRole('button', { name: /grid/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dimensions/i })).toBeInTheDocument()
+  })
+
+  it('toggles the Grid button aria-pressed on click', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(gridBtn)
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('no longer shows the dev wall-count paragraph in the toolbar', () => {
     vi.stubGlobal('navigator', {})
 
