@@ -228,35 +228,12 @@ describe('EditorShell', () => {
     expect(screen.getByRole('complementary', { name: /tool rail/i })).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
 
-    const slotIds = [PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT]
-    for (const slotId of slotIds) {
-      expect(document.querySelector(`[data-slot-id="${slotId}"]`)).not.toBeNull()
-    }
+    // The always-on global paint list is gone; the inspector swaps by selection.
+    expect(document.querySelector(`[data-slot-id="${PAINT_PICKER_SLOT}"]`)).toBeNull()
+    expect(document.querySelector(`[data-slot-id="${PAINT_INSPECTOR_SLOT}"]`)).not.toBeNull()
 
     expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /floors/i })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: /inspector/i })).toBeInTheDocument()
-  })
-})
-
-describe('EditorShell paint panel', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
-  })
-
-  it('mounts the Paint panel and binds the picker to a chosen surface', async () => {
-    vi.stubGlobal('navigator', {})
-    const user = userEvent.setup()
-
-    renderShell()
-
-    expect(screen.getByRole('button', { name: 'Floor' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ceiling' })).toBeInTheDocument()
-    expect(screen.queryByRole('searchbox')).toBeNull()
-
-    await user.click(screen.getByRole('button', { name: 'Floor' }))
-
-    expect(screen.getByRole('searchbox')).toBeInTheDocument()
   })
 })
