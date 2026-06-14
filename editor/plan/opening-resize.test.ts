@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pickOpeningResizeHandle } from './opening-resize'
+import { pickOpeningResizeHandle, openingResizeEdge, snapJambToWallEnd } from './opening-resize'
 import type { OpeningSceneNode, Point } from '../../core'
 
 const GRAB_TOLERANCE_MM = 200
@@ -77,5 +77,113 @@ describe('pickOpeningResizeHandle', () => {
     const farFromBoth: Point = { x: 1000, y: 1500 }
 
     expect(pickOpeningResizeHandle(WIDE_OPENING, farFromBoth, GRAB_TOLERANCE_MM)).toBeNull()
+  })
+})
+
+// The opening used across the resize cases below: centered at 1000 mm along a
+// 3000 mm wall with width 900, so its jambs sit at start = 550, end = 1450.
+const OPENING_POSITION_MM = 1000
+const OPENING_WIDTH_MM = 900
+const WALL_LENGTH_MM = 3000
+// Minimum opening width: the dragged jamb may never cross the fixed jamb closer
+// than this.
+const MIN_OPENING_WIDTH_MM = 50
+
+describe('openingResizeEdge', () => {
+  it('grows the opening when the end jamb is dragged away from the fixed start jamb', () => {
+    // Fixed start jamb = 550; dragging the end jamb out to 1600 yields
+    // width 1600 - 550 = 1050 and center (1600 + 550) / 2 = 1075.
+    expect(
+      openingResizeEdge({
+        edge: 'end',
+        draggedJambPosition: 1600,
+        width: OPENING_WIDTH_MM,
+        position: OPENING_POSITION_MM,
+        wallLength: WALL_LENGTH_MM,
+        minWidth: MIN_OPENING_WIDTH_MM,
+      }),
+    ).toEqual({ width: 1050, position: 1075 })
+  })
+
+  it('shrinks the opening when the end jamb is dragged toward the fixed start jamb', () => {
+    // Fixed start jamb = 550; dragging the end jamb in to 1200 yields
+    // width 1200 - 550 = 650 and center (1200 + 550) / 2 = 875.
+    expect(
+      openingResizeEdge({
+        edge: 'end',
+        draggedJambPosition: 1200,
+        width: OPENING_WIDTH_MM,
+        position: OPENING_POSITION_MM,
+        wallLength: WALL_LENGTH_MM,
+        minWidth: MIN_OPENING_WIDTH_MM,
+      }),
+    ).toEqual({ width: 650, position: 875 })
+  })
+
+  it('grows the opening when the start jamb is dragged away from the fixed end jamb', () => {
+    // Fixed end jamb = 1450; dragging the start jamb out to 700 yields
+    // width 1450 - 700 = 750 and center (700 + 1450) / 2 = 1075.
+    expect(
+      openingResizeEdge({
+        edge: 'start',
+        draggedJambPosition: 700,
+        width: OPENING_WIDTH_MM,
+        position: OPENING_POSITION_MM,
+        wallLength: WALL_LENGTH_MM,
+        minWidth: MIN_OPENING_WIDTH_MM,
+      }),
+    ).toEqual({ width: 750, position: 1075 })
+  })
+
+  it('clamps the dragged jamb to the minimum width rather than crossing the fixed jamb', () => {
+    // Fixed start jamb = 550; dragging the end jamb to 500 would fall below it,
+    // so the end jamb is floored at 550 + minWidth = 600, giving width 50 and
+    // center (600 + 550) / 2 = 575.
+    expect(
+      openingResizeEdge({
+        edge: 'end',
+        draggedJambPosition: 500,
+        width: OPENING_WIDTH_MM,
+        position: OPENING_POSITION_MM,
+        wallLength: WALL_LENGTH_MM,
+        minWidth: MIN_OPENING_WIDTH_MM,
+      }),
+    ).toEqual({ width: 50, position: 575 })
+  })
+
+  it('clamps the dragged jamb to the wall end when dragged past it', () => {
+    // Fixed start jamb = 550; dragging the end jamb to 3500 is clamped to the
+    // wall length 3000, giving width 3000 - 550 = 2450 and center
+    // (3000 + 550) / 2 = 1775.
+    expect(
+      openingResizeEdge({
+        edge: 'end',
+        draggedJambPosition: 3500,
+        width: OPENING_WIDTH_MM,
+        position: OPENING_POSITION_MM,
+        wallLength: WALL_LENGTH_MM,
+        minWidth: MIN_OPENING_WIDTH_MM,
+      }),
+    ).toEqual({ width: 2450, position: 1775 })
+  })
+})
+
+// How close to a wall end a jamb must be before it snaps onto the end.
+const SNAP_TOLERANCE_MM = 50
+
+describe('snapJambToWallEnd', () => {
+  it('snaps to 0 when the jamb is within tolerance of the wall start', () => {
+    // 30 is within 50 mm of 0.
+    expect(snapJambToWallEnd(30, WALL_LENGTH_MM, SNAP_TOLERANCE_MM)).toBe(0)
+  })
+
+  it('snaps to the wall length when the jamb is within tolerance of the wall end', () => {
+    // 2980 is within 50 mm of 3000.
+    expect(snapJambToWallEnd(2980, WALL_LENGTH_MM, SNAP_TOLERANCE_MM)).toBe(WALL_LENGTH_MM)
+  })
+
+  it('leaves the jamb unchanged when it is far from both wall ends', () => {
+    // 1500 is more than 50 mm from both 0 and 3000.
+    expect(snapJambToWallEnd(1500, WALL_LENGTH_MM, SNAP_TOLERANCE_MM)).toBe(1500)
   })
 })
