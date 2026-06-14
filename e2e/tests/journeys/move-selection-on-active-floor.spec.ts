@@ -1,14 +1,6 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
-import { drawWall, expectWallCount, gotoEditor, selectors } from './support'
-
-async function canvasBox(page: Page) {
-  const box = await selectors.planCanvas(page).boundingBox()
-  if (box === null) {
-    throw new Error('plan canvas has no bounding box')
-  }
-  return box
-}
+import { canvasBox, drawWall, expectWallCount, gotoEditor, selectors } from './support'
 
 test('moves a selected wall on the active non-ground floor', async ({ page }) => {
   await gotoEditor(page)

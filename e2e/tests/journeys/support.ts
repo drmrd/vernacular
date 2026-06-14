@@ -29,6 +29,16 @@ export async function gotoEditor(page: Page): Promise<void> {
   await expect(selectors.planCanvas(page)).toBeVisible()
 }
 
+// The plan canvas bounding box, or a thrown error when it has none, so drags and
+// clicks can resolve their screen coordinates against it.
+export async function canvasBox(page: Page) {
+  const box = await selectors.planCanvas(page).boundingBox()
+  if (box === null) {
+    throw new Error('plan canvas has no bounding box')
+  }
+  return box
+}
+
 // Activate the wall-drawing tool. Drawing is an explicit tool choice now that
 // Select (drag-to-pan) is the default (ADR-0069), so a draw must select it first.
 export async function selectWallTool(page: Page): Promise<void> {

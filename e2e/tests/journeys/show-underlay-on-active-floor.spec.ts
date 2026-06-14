@@ -22,7 +22,7 @@ test('draws the active non-ground floor reference image on the plan canvas', asy
   await expect(page.getByRole('group', { name: 'Underlay 1' })).toBeVisible()
 
   // The active floor's reference image must draw on the plan canvas, so it changes.
-  // While the underlay layer resolves the first floor, a non-ground floor's image is
-  // filtered out and the canvas never changes.
+  // Failing would mean the underlay layer still resolves the first floor, leaving a
+  // non-ground floor's image filtered out and the canvas unchanged.
   await expect.poll(snapshot).not.toBe(beforeLoad)
 })
