@@ -44,4 +44,69 @@ describe('wallFootprints', () => {
       bMinus: { x: 1050, y: -50 },
     })
   })
+
+  it('joins walls of different thickness on each wall own face lines', () => {
+    // Wall A is 200 thick, wall B is 100 thick. A's faces sit at +/-100 and B's at
+    // +/-50, so the shared corner lands where A's -normal face line (y = -100) meets
+    // B's outer face line (x = 1050), and where A's +normal face (y = 100) meets B's
+    // inner face (x = 950).
+    const graph = buildWallGraph([
+      { id: 'a', start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, thickness: 200 },
+      { id: 'b', start: { x: 1000, y: 0 }, end: { x: 1000, y: 1000 }, thickness: 100 },
+    ])
+
+    const footprints = wallFootprints(
+      graph,
+      graph.edges.map((edge) => (edge.wallId === 'a' ? 200 : 100)),
+    )
+    const a = footprints[graph.edges.findIndex((edge) => edge.wallId === 'a')]
+
+    expect(a).toEqual({
+      aPlus: { x: 0, y: 100 },
+      aMinus: { x: 0, y: -100 },
+      bPlus: { x: 950, y: 100 },
+      bMinus: { x: 1050, y: -100 },
+    })
+  })
+
+  it('squares ends at a junction where three or more edges meet', () => {
+    // A wall tees into the middle of a longer wall. buildWallGraph splits the long
+    // wall at the tee, so the shared vertex carries three incident edges and the
+    // stub keeps a square end there (the busy junction stays an overlapping solid).
+    const graph = buildWallGraph([
+      { id: 'through', start: { x: 0, y: 0 }, end: { x: 2000, y: 0 }, thickness: 100 },
+      { id: 'stub', start: { x: 1000, y: 0 }, end: { x: 1000, y: 1000 }, thickness: 100 },
+    ])
+
+    const footprints = wallFootprints(
+      graph,
+      graph.edges.map(() => 100),
+    )
+    const stub = footprints[graph.edges.findIndex((edge) => edge.wallId === 'stub')]
+
+    expect(stub).toEqual({
+      aPlus: { x: 950, y: 0 },
+      aMinus: { x: 1050, y: 0 },
+      bPlus: { x: 950, y: 1000 },
+      bMinus: { x: 1050, y: 1000 },
+    })
+  })
+
+  it('squares a collinear continuation where two walls run straight through', () => {
+    // Two walls in a straight line share a vertex (incidence two) but have no corner
+    // to cut: their face lines are parallel, so the shared end stays square.
+    const graph = buildWallGraph([
+      { id: 'west', start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, thickness: 100 },
+      { id: 'east', start: { x: 1000, y: 0 }, end: { x: 2000, y: 0 }, thickness: 100 },
+    ])
+
+    const footprints = wallFootprints(
+      graph,
+      graph.edges.map(() => 100),
+    )
+    const west = footprints[graph.edges.findIndex((edge) => edge.wallId === 'west')]
+
+    expect(west?.bPlus).toEqual({ x: 1000, y: 50 })
+    expect(west?.bMinus).toEqual({ x: 1000, y: -50 })
+  })
 })
