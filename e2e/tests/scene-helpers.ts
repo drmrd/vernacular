@@ -28,9 +28,9 @@ export async function stableFrame(canvas: Locator): Promise<Buffer> {
   return last
 }
 
-// Switches to the full-width 3D view and returns the settled canvas. The full-width view
-// is used because the framing helper does not yet adapt to an extreme narrow aspect, so
-// the split view's slim pane can frame the geometry off screen.
+// Switches to the full-width 3D view and returns the settled canvas. The full-width
+// view gives the largest, most stable canvas to measure; the framing now adapts to the
+// pane aspect ratio (ADR-0075), so the slim split pane also frames the model on screen.
 async function settledSceneCanvas(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: '3D view' }).click()
 

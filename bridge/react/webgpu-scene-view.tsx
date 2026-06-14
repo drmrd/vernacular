@@ -42,8 +42,8 @@ function FrameCamera({ bounds, active }: { bounds: Bounds3 | null; active: boole
 
 // The per-view camera navigation state: the active mode and whether the user has
 // taken control of the camera. Session state held in the view layer, never in the
-// model or undo. Reset clears user control, which lets FrameCamera reapply the
-// framed pose through its `active` transition.
+// model or undo. Reset clears user control, which lets FrameCamera refit the model
+// to the viewport through its `active` transition.
 function useSceneNavigation() {
   const [mode, setMode] = useState<NavMode>('orbit')
   const [userControlled, setUserControlled] = useState(false)

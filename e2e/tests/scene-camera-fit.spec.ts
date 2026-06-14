@@ -41,6 +41,11 @@ test.describe('Three-dimensional preview camera fit', () => {
       }
     }
 
+    // Guard against a vacuous pass: with no measurable proxies the spread below
+    // would be Infinity (Math.max of an empty list), which would clear the threshold
+    // without measuring anything.
+    expect(xs.length).toBeGreaterThan(1)
+
     // The diagonal of the proxy-centers bounding box, as a fraction of the canvas
     // height, is a stable proxy for how large the model is drawn.
     const spread = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
