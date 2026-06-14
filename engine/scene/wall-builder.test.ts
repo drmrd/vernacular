@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { buildWallMesh, buildWallPrism, buildWalls } from './wall-builder'
+import { buildWalls } from './wall-builder'
+import { buildWallMesh, buildWallPrism } from './wall-prism'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { PaintMaterialProvider } from '../materials/paint-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'

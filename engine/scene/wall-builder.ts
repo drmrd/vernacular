@@ -13,12 +13,18 @@ import {
   type PlanarGraph,
   type Point,
   type SurfaceRef,
-  type WallFootprint,
   type WallSceneNode,
 } from '../../core'
-import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
+import type { MaterialProvider } from '../materials/material-provider'
 
-import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './geometry-utils'
+import {
+  geometryFromSections,
+  reverseTriangleWinding,
+  thicknessSpanningQuad,
+  type Triangle,
+  type WallSection,
+} from './geometry-utils'
+import { buildWallMesh, wallFaceRef } from './wall-prism'
 
 /** The paint surface ref for the wall's long face at `index` (the interior face is side
  *  'left', the exterior 'right'), or undefined for a non-long face (end cap, top, base, reveal). */
@@ -30,125 +36,6 @@ function longFaceRefAt(
   if (index === interior) return wallFaceRef(wallId, 'left')
   if (index === exterior) return wallFaceRef(wallId, 'right')
   return undefined
-}
-
-/** The paint surface ref for one named side of a wall's long face. */
-function wallFaceRef(wallId: string, side: 'left' | 'right'): SurfaceRef {
-  return { kind: 'wall-face', wallId, side }
-}
-
-/**
- * Builds the solid mesh for one wall from a square footprint: a prism with both
- * ends squared, which is the box the wall shell drew before junctions were
- * mitered. The square footprint comes from the centerline offset half the
- * thickness to each side; the prism builder places it in world space.
- */
-export function buildWallMesh(node: WallSceneNode, materials: MaterialProvider): THREE.Mesh {
-  return buildWallPrism(node, squareFootprint(node), materials)
-}
-
-/**
- * Builds the solid prism mesh for one wall from its plan-space footprint, in the
- * pinned world-space convention (ADR-0045): plan x maps to world X, plan y maps
- * to world Z, and the vertical axis is world Y. The footprint's four corners give
- * the two long faces (one per side) and the two end caps (square or along a miter
- * line); the prism rises from world Y = 0 to the wall height and is capped top and
- * base. The six sections carry the shell roles in the box's group order (the two
- * end caps, top, base, then the interior and exterior long faces), so a square
- * footprint reproduces the box and the paint refs land on the two long faces.
- */
-export function buildWallPrism(
-  node: WallSceneNode,
-  footprint: WallFootprint,
-  materials: MaterialProvider,
-): THREE.Mesh {
-  const sections = prismSections(
-    footprint,
-    wallHeight(node),
-    node.id.slice(WALL_NODE_PREFIX.length),
-  )
-  const geometry = geometryFromSections(sections)
-  const material = sections.map((section) => materials.material(section.role, section.ref))
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.userData.entityId = node.id
-  return mesh
-}
-
-/** The square footprint of a free-standing wall: its centerline offset half the
- *  thickness to each side, both ends squared. */
-function squareFootprint(node: WallSceneNode): WallFootprint {
-  const normal = leftUnitNormal(node.start, node.end)
-  const half = node.thickness / 2
-  return {
-    aPlus: shiftPoint(node.start, normal, half),
-    aMinus: shiftPoint(node.start, normal, -half),
-    bPlus: shiftPoint(node.end, normal, half),
-    bMinus: shiftPoint(node.end, normal, -half),
-  }
-}
-
-/**
- * The six wall-prism sections in the box's group order: the two end caps and the
- * top and base (all role-only), then the `+normal` interior long face (paint side
- * 'left') and the `-normal` exterior long face (paint side 'right'). Each face is
- * wound so its normal points outward.
- */
-function prismSections(footprint: WallFootprint, height: number, wallId: string): WallSection[] {
-  const { aPlus, aMinus, bPlus, bMinus } = footprint
-  return [
-    { role: 'exteriorFace', positions: faceQuad(aMinus, aPlus, height) },
-    { role: 'exteriorFace', positions: faceQuad(bPlus, bMinus, height) },
-    { role: 'top', positions: capQuad([aMinus, aPlus, bPlus, bMinus], height) },
-    { role: 'base', positions: capQuad([aPlus, aMinus, bMinus, bPlus], 0) },
-    {
-      role: 'interiorFace',
-      positions: faceQuad(aPlus, bPlus, height),
-      ref: wallFaceRef(wallId, 'left'),
-    },
-    {
-      role: 'exteriorFace',
-      positions: faceQuad(bMinus, aMinus, height),
-      ref: wallFaceRef(wallId, 'right'),
-    },
-  ]
-}
-
-/** A vertical face quad from `from` to `to`, rising from the base to `height`. */
-function faceQuad(from: Point, to: Point, height: number): number[] {
-  return thicknessSpanningQuad([
-    cornerWorld(from, 0),
-    cornerWorld(to, 0),
-    cornerWorld(to, height),
-    cornerWorld(from, height),
-  ])
-}
-
-/** A flat cap quad: the four footprint corners placed at one height. */
-function capQuad(corners: [Point, Point, Point, Point], height: number): number[] {
-  const [first, second, third, fourth] = corners
-  return thicknessSpanningQuad([
-    cornerWorld(first, height),
-    cornerWorld(second, height),
-    cornerWorld(third, height),
-    cornerWorld(fourth, height),
-  ])
-}
-
-/** A plan-space corner at `height` as a world-space point through `planToWorld`. */
-function cornerWorld(plan: Point, height: number): THREE.Vector3 {
-  const world = planToWorld(plan, height)
-  return new THREE.Vector3(world.x, world.y, world.z)
-}
-
-/** Unit left-hand normal of the direction `a -> b`. */
-function leftUnitNormal(a: Point, b: Point): Point {
-  const length = distance(a, b)
-  return { x: -(b.y - a.y) / length, y: (b.x - a.x) / length }
-}
-
-/** `point` shifted by `offset` along the unit `direction`. */
-function shiftPoint(point: Point, direction: Point, offset: number): Point {
-  return { x: point.x + direction.x * offset, y: point.y + direction.y * offset }
 }
 
 /** Inputs for building a floor's walls from its planar graph. */
@@ -163,7 +50,7 @@ export interface WallBuildInput {
  * Builds the wall meshes for one floor from its planar graph. Each graph edge is
  * a wall segment: a split wall (one {@link WallSceneNode} spanning several edges)
  * yields one mesh per edge, all carrying the wall node's entity id. An edge with
- * no openings takes the solid box path; an edge that hosts one or more openings
+ * no openings takes the solid prism path; an edge that hosts one or more openings
  * takes the profile path, cutting each opening's void out of the long faces.
  */
 export function buildWalls(input: WallBuildInput): THREE.Group {
@@ -213,7 +100,7 @@ function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode>
 /**
  * Synthesizes the {@link WallSceneNode} for one graph edge: the edge's segment
  * carrying its host wall's id, thickness, and height, so {@link buildWallMesh}
- * builds the box. Returns null when the host wall node or either endpoint is
+ * builds the prism. Returns null when the host wall node or either endpoint is
  * missing (guarding `noUncheckedIndexedAccess`).
  */
 function edgeWallNode(
@@ -239,14 +126,6 @@ function edgeWallNode(
 /** Half the centerline thickness lands the face on either wall surface. */
 const SIDE_INTERIOR = 1
 const SIDE_EXTERIOR = -1
-
-/** One contiguous geometry section: the surface role it draws, its world positions,
- *  and an optional paint surface ref (set for the two long faces). */
-interface WallSection {
-  role: SurfaceRole
-  positions: number[]
-  ref?: SurfaceRef
-}
 
 /**
  * The edge-local frame the profile path works in: distance along the edge (`u`,
@@ -336,19 +215,6 @@ function longFacePositions(frame: EdgeFrame, outline: TriangulatedOutline, side:
     }
   }
   return positions
-}
-
-/** A quad's four world corners, ordered around its perimeter. */
-type QuadCorners = [THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3]
-
-/**
- * The two-triangle quad as a flat position array, from four world corners ordered
- * around the perimeter: triangles `a-b-c` and `a-c-d`, sharing the `a-c` diagonal.
- * The corner order the caller passes sets the winding (and so the face normal).
- */
-function thicknessSpanningQuad(corners: QuadCorners): number[] {
-  const [a, b, c, d] = corners
-  return [a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, d.x, d.y, d.z]
 }
 
 /**
@@ -453,24 +319,6 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
   const reveal = revealPositions(frame, outline.holeLoops)
   if (reveal.length > 0) sections.push({ role: 'reveal', positions: reveal })
   return sections
-}
-
-/** A non-indexed buffer geometry with one material group per wall section. */
-function geometryFromSections(sections: WallSection[]): THREE.BufferGeometry {
-  const geometry = new THREE.BufferGeometry()
-  const positions = sections.flatMap((section) => section.positions)
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
-  )
-  let runningStart = 0
-  sections.forEach((section, materialIndex) => {
-    const vertexCount = section.positions.length / COMPONENTS_PER_VERTEX
-    geometry.addGroup(runningStart, vertexCount, materialIndex)
-    runningStart += vertexCount
-  })
-  geometry.computeVertexNormals()
-  return geometry
 }
 
 /** An edge paired with its host wall node and the openings cut into it. */
