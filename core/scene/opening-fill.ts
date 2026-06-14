@@ -56,8 +56,8 @@ export function openingFill(
     }
     case 'window-sash':
       return windowSashParts(node)
-    // The double-door split lands in a later cycle, a new branch here, leaving the
-    // seam visible.
+    // A further fill kind (a glazed door, a curved sash) is a new case here, the
+    // way a new void shape is a new case in openingVoidContour.
     default:
       return []
   }
