@@ -6,6 +6,7 @@ import {
   openingVoidContour,
   planToWorld,
   resolveOpeningEdge,
+  wallFootprints,
   wallHeight,
   type Contour,
   type GraphEdge,
@@ -13,6 +14,7 @@ import {
   type PlanarGraph,
   type Point,
   type SurfaceRef,
+  type WallFootprint,
   type WallSceneNode,
 } from '../../core'
 import type { MaterialProvider } from '../materials/material-provider'
@@ -24,7 +26,7 @@ import {
   type Triangle,
   type WallSection,
 } from './geometry-utils'
-import { buildWallMesh, wallFaceRef } from './wall-prism'
+import { buildWallPrism, wallFaceRef } from './wall-prism'
 
 /** The paint surface ref for the wall's long face at `index` (the interior face is side
  *  'left', the exterior 'right'), or undefined for a non-long face (end cap, top, base, reveal). */
@@ -56,16 +58,20 @@ export interface WallBuildInput {
 export function buildWalls(input: WallBuildInput): THREE.Group {
   const group = new THREE.Group()
   const wallsByModelId = indexWallsByModelId(input.walls)
-  for (const edge of input.graph.edges) {
+  const footprints = wallFootprints(
+    input.graph,
+    input.graph.edges.map((edge) => wallsByModelId.get(edge.wallId)?.thickness ?? 0),
+  )
+  input.graph.edges.forEach((edge, index) => {
     const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
-    if (node === null) continue
+    if (node === null) return
     const openings = openingsOnEdge(edge, input)
     if (openings.length === 0) {
-      group.add(buildWallMesh(node, input.materials))
+      group.add(buildWallPrism(node, footprints[index] as WallFootprint, input.materials))
     } else {
       group.add(buildOpeningWallMesh({ edge, wall: node, openings }, input))
     }
-  }
+  })
   return group
 }
 
@@ -99,9 +105,9 @@ function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode>
 
 /**
  * Synthesizes the {@link WallSceneNode} for one graph edge: the edge's segment
- * carrying its host wall's id, thickness, and height, so {@link buildWallMesh}
- * builds the prism. Returns null when the host wall node or either endpoint is
- * missing (guarding `noUncheckedIndexedAccess`).
+ * carrying its host wall's id, thickness, and height, so {@link buildWallPrism}
+ * builds the prism from the edge's footprint. Returns null when the host wall node
+ * or either endpoint is missing (guarding `noUncheckedIndexedAccess`).
  */
 function edgeWallNode(
   edge: GraphEdge,
