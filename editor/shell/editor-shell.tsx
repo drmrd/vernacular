@@ -246,12 +246,6 @@ function EntitySurfaceBridge() {
   return null
 }
 
-// The inspector content: the selection-driven inspector, which hosts contextual paint
-// per selection. There is no global surface-paint panel.
-function InspectorPanels() {
-  return <Inspector />
-}
-
 export interface EditorShellProps extends ProjectControlsProps {
   saveStatus: AutosaveStatus
   recovery?: { onRestore: () => void; onDiscard: () => void }
@@ -293,7 +287,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                     mainLabel="Viewport"
                     main={<ViewportArea />}
                     inspectorLabel="Inspector"
-                    inspector={<InspectorPanels />}
+                    inspector={<Inspector />}
                     statusBar={<EditorStatusBar />}
                   />
                 </SurfaceSelectionProvider>
