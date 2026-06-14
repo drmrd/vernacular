@@ -146,7 +146,8 @@ describe('EditorShell', () => {
     const project = screen.getByRole('navigation', { name: /project/i })
     await user.click(within(project).getByRole('button', { name: /^new$/i }))
     await user.click(within(project).getByRole('button', { name: /^save$/i }))
-    await user.click(within(project).getByRole('button', { name: /export bundle/i }))
+    await user.click(screen.getByRole('button', { name: /^export$/i }))
+    await user.click(screen.getByRole('menuitem', { name: /bundle/i }))
 
     expect(onNewProject).toHaveBeenCalledTimes(1)
     expect(onSave).toHaveBeenCalledTimes(1)
