@@ -25,6 +25,7 @@ export function FloorSwitcher({
           <li key={floor.id}>
             <button
               type="button"
+              className={floor.id === activeFloorId ? 'floor-switcher__tab--active' : undefined}
               aria-pressed={floor.id === activeFloorId}
               onClick={() => onSelectFloor(floor.id)}
             >

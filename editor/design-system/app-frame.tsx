@@ -13,6 +13,7 @@ export interface AppFrameProps {
   mainLabel: string
   inspector: ReactNode
   inspectorLabel: string
+  statusBar?: ReactNode
 }
 
 const RAIL_BOUNDS = { initial: 11, min: 8, max: 20 }
@@ -97,6 +98,7 @@ export function AppFrame({
   mainLabel,
   inspector,
   inspectorLabel,
+  statusBar,
 }: AppFrameProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const breakpoint = useBreakpoint(frameRef)
@@ -114,6 +116,9 @@ export function AppFrame({
       <CollapsiblePane area="inspector" label={inspectorLabel}>
         {inspector}
       </CollapsiblePane>
+      {statusBar !== undefined ? (
+        <footer className="ds-app-frame__status-bar">{statusBar}</footer>
+      ) : null}
     </div>
   )
 }

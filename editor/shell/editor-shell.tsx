@@ -48,15 +48,10 @@ import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
-import { FloorSwitcher } from './floor-switcher'
 import { Inspector } from './inspector'
+import { StatusBar } from './status-bar'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import {
-  FLOOR_SWITCHER_SLOT,
-  PAINT_PICKER_SLOT,
-  PAINT_INSPECTOR_SLOT,
-  SNAP_PANEL_SLOT,
-} from './shell-panel-slots'
+import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT, SNAP_PANEL_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -190,25 +185,28 @@ function floorSummaries(project: Project): { id: string; name: string }[] {
 // and to the active-floor hooks so the switcher reflects the active floor (both
 // hoisted here to honor the hooks rule).
 function ToolRail() {
+  return (
+    <>
+      <ToolsNav />
+      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
+        <SnapPanel />
+      </PanelSlot>
+    </>
+  )
+}
+
+function EditorStatusBar() {
   const session = useEditorSession()
   const activeFloorId = useActiveFloorId()
   const setActiveFloorId = useSetActiveFloorId()
   useSceneGraph()
   return (
-    <>
-      <ToolsNav />
-      <PanelSlot slotId={FLOOR_SWITCHER_SLOT} label="Floors">
-        <FloorSwitcher
-          floors={floorSummaries(session.getProject())}
-          activeFloorId={activeFloorId}
-          onSelectFloor={setActiveFloorId}
-          onAddFloor={() => session.dispatch(addFloor('New Floor'))}
-        />
-      </PanelSlot>
-      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
-        <SnapPanel />
-      </PanelSlot>
-    </>
+    <StatusBar
+      floors={floorSummaries(session.getProject())}
+      activeFloorId={activeFloorId}
+      onSelectFloor={setActiveFloorId}
+      onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+    />
   )
 }
 
@@ -315,6 +313,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                     main={<ViewportArea />}
                     inspectorLabel="Inspector"
                     inspector={<InspectorPanels />}
+                    statusBar={<EditorStatusBar />}
                   />
                 </SurfaceSelectionProvider>
               </OpeningToolProvider>

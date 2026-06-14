@@ -1,10 +1,11 @@
 .ds-app-frame {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   grid-template-areas:
     'header header header'
-    'rail main inspector';
+    'rail main inspector'
+    'statusbar statusbar statusbar';
   gap: var(--space-3);
   box-sizing: border-box;
   min-height: 100vh;
@@ -33,6 +34,10 @@
   display: flex;
   flex-direction: column;
   width: var(--ds-inspector-size, 15rem);
+}
+
+.ds-app-frame__status-bar {
+  grid-area: statusbar;
 }
 
 /* Medium: drop the rail; keep the header strip and the inspector. */
