@@ -183,13 +183,14 @@ function useActiveFloorGraph(): SceneGraph {
 function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const session = useEditorSession()
   const graph = useActiveFloorGraph()
+  const activeFloorId = useActiveFloorId()
   const selection = useSelection()
   const { tool } = useActiveTool()
   const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
-  const deps = planInteractionDeps({ session, tool, viewport }, graph, traceMode)
+  const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceMode)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
