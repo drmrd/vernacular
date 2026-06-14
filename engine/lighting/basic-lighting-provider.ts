@@ -10,9 +10,12 @@ const GROUND_FILL = 0x444444
  *  positions the sun along the same direction relative to the scene bounds. Treat it as
  *  read-only: it is a shared constant, and the fitter normalizes a clone of it once. */
 export const SUN_DIRECTION = new THREE.Vector3(1, 2, 1)
-// Both start at full default intensity and are tuned independently when a solar-aware provider arrives.
-const SUN_INTENSITY = 1
-const FILL_INTENSITY = 1
+// A key-dominant rig (ADR-0079): the sun runs brighter than the hemisphere fill so it
+// sets the value of the faces it reaches, while the fill only keeps the unlit faces off
+// black. An equal fill washed faces at different angles to the same value. A solar-aware
+// provider can tune these independently later.
+const SUN_INTENSITY = 1.6
+const FILL_INTENSITY = 0.5
 /** A 2048px square shadow map: enough resolution for the shell without a large GPU cost. */
 const SHADOW_MAP_SIZE = 2048
 /** A small negative depth bias to keep large flat faces (the floor) from self-shadowing into acne. */
