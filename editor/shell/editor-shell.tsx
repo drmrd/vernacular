@@ -13,7 +13,6 @@ import {
 } from '../../bridge'
 import { addFloor, builtinPeriods, setUnits, type Project } from '../../core'
 import {
-  CommandBar,
   CommandPalette,
   CommandPaletteProvider,
   createEditorCommands,
@@ -154,7 +153,6 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           onExportPdf={projectControls.onExportPdf}
         />
         <ProjectControls {...projectControls} />
-        <CommandBar />
       </div>
       <span role="status" className="editor-shell__save-status">
         {SAVE_STATUS_LABELS[saveStatus]}
