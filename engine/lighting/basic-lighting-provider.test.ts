@@ -31,6 +31,25 @@ describe('BasicLightingProvider', () => {
     expect(sun.intensity).toBeGreaterThan(fill.intensity)
   })
 
+  it('aims the sun so two perpendicular walls receive different direct light', () => {
+    const scene = new THREE.Scene()
+
+    new BasicLightingProvider().apply(scene)
+
+    const sun = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
+    // The direct light a vertical face receives is the Lambert term of the sun's
+    // direction against the face normal. A symmetric azimuth (equal horizontal
+    // components) lights the two perpendicular exterior walls equally, so they cannot
+    // separate by value; an asymmetric azimuth gives them different direct light (ADR-0079).
+    const direction = sun.position.clone().normalize()
+    const litFacing = (normal: THREE.Vector3): number => Math.max(0, direction.dot(normal))
+    const towardPlusX = litFacing(new THREE.Vector3(1, 0, 0))
+    const towardPlusZ = litFacing(new THREE.Vector3(0, 0, 1))
+    expect(Math.abs(towardPlusX - towardPlusZ)).toBeGreaterThan(0.1)
+  })
+
   it('configures the directional sun to cast a shadow with a real shadow map', () => {
     const scene = new THREE.Scene()
 
