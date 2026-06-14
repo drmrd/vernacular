@@ -3,6 +3,7 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ActiveToolProvider } from './active-tool-provider'
 import { useActiveTool } from './active-tool-context'
+import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { ToolsPanel } from './tools-panel'
 
 afterEach(cleanup)
@@ -87,6 +88,52 @@ describe('ToolsPanel', () => {
     await user.click(screen.getByRole('button', { name: /pan/i }))
 
     expect(selectChip).not.toHaveClass('tools-panel__chip--active')
+  })
+
+  it('renders Door and Window chips in the DRAW section (no standalone Opening chip)', () => {
+    render(
+      <ActiveToolProvider>
+        <OpeningToolProvider>
+          <ToolsPanel />
+        </OpeningToolProvider>
+      </ActiveToolProvider>,
+    )
+
+    expect(screen.getByRole('button', { name: /door/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /window/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^opening$/i })).toBeNull()
+  })
+
+  it('pressing Door activates place-opening with a door type', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider>
+        <OpeningToolProvider>
+          <ToolsPanel />
+        </OpeningToolProvider>
+      </ActiveToolProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /door/i }))
+
+    expect(screen.getByRole('button', { name: /door/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /window/i })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('pressing Window activates place-opening with a window type', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider>
+        <OpeningToolProvider>
+          <ToolsPanel />
+        </OpeningToolProvider>
+      </ActiveToolProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /window/i }))
+
+    expect(screen.getByRole('button', { name: /window/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /door/i })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
