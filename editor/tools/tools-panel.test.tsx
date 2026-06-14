@@ -60,6 +60,17 @@ describe('ToolsPanel', () => {
     expect(screen.getByRole('button', { name: /select/i })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('renders a Phosphor icon SVG inside the Select chip', () => {
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    const selectChip = screen.getByRole('button', { name: /select/i })
+    expect(selectChip.querySelector('svg')).not.toBeNull()
+  })
+
   it('applies the surface-active class to the pressed chip, not the accent-strong class', async () => {
     const user = userEvent.setup()
     render(
