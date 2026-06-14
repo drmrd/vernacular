@@ -44,6 +44,8 @@
   --color-accent-strong: var(--ink-900);
   --color-on-accent: var(--vellum-50);
   --color-focus-ring: var(--ink-900);
+  --color-surface-active: var(--vellum-200);
+  --color-indicator: var(--brass-500);
 
   /* Spacing scale (rem). */
   --space-1: 0.25rem;
