@@ -120,4 +120,50 @@ describe('buildWallPrism', () => {
     expect(maxAxisOfRole(mesh, 'interiorFace', 'x')).toBeCloseTo(WALL_LENGTH - 600, PRECISION)
     expect(maxAxisOfRole(mesh, 'exteriorFace', 'x')).toBeCloseTo(WALL_LENGTH, PRECISION)
   })
+
+  it('omits the caps for a self-intersecting footprint so the top is never see-through', () => {
+    // The long faces cross into a bowtie with zero net signed area: aPlus/bPlus
+    // and aMinus/bMinus trade sides between the two ends. A fixed-order winding
+    // would fold the top cap into two opposite-facing triangles (a see-through
+    // top); section 3.4 says a footprint whose area is within an epsilon of zero
+    // contributes no cap at all.
+    const node = horizontalWall({ thickness: 100, height: 2400 })
+    const footprint: WallFootprint = {
+      aPlus: { x: 0, y: 50 },
+      aMinus: { x: 0, y: -50 },
+      bPlus: { x: 1000, y: -50 },
+      bMinus: { x: 1000, y: 50 },
+    }
+
+    const mesh = buildWallPrism(node, footprint, new NeutralMaterialProvider())
+    const geometry = mesh.geometry as THREE.BufferGeometry
+    const materials = mesh.material as THREE.Material[]
+    const groups = materialGroups(geometry)
+
+    expect(groups.find((g) => materials[g.materialIndex]?.name === 'top')).toBeUndefined()
+    expect(groups.find((g) => materials[g.materialIndex]?.name === 'base')).toBeUndefined()
+  })
+
+  it('omits the caps for a degenerate footprint collapsed to a point', () => {
+    // All four corners coincide, so the footprint has zero area and its caps
+    // would triangulate to zero-length normals. Section 3.4 winds caps from the
+    // footprint's signed area and drops them when that area is within epsilon of
+    // zero.
+    const node = horizontalWall({ thickness: 100, height: 2400 })
+    const point = { x: 500, y: 0 }
+    const footprint: WallFootprint = {
+      aPlus: { ...point },
+      aMinus: { ...point },
+      bPlus: { ...point },
+      bMinus: { ...point },
+    }
+
+    const mesh = buildWallPrism(node, footprint, new NeutralMaterialProvider())
+    const geometry = mesh.geometry as THREE.BufferGeometry
+    const materials = mesh.material as THREE.Material[]
+    const groups = materialGroups(geometry)
+
+    expect(groups.find((g) => materials[g.materialIndex]?.name === 'top')).toBeUndefined()
+    expect(groups.find((g) => materials[g.materialIndex]?.name === 'base')).toBeUndefined()
+  })
 })
