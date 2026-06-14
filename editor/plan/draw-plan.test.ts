@@ -10,6 +10,7 @@ import {
   drawRulers,
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
+import type { PlanPalette } from './plan-palette'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
@@ -733,6 +734,45 @@ describe('drawRoomLabel', () => {
     expect(fillTexts).toHaveLength(1)
     expect(fillTexts[0]?.x).toBe(centroid.x)
     expect(fillTexts[0]?.y).toBe(centroid.y)
+  })
+})
+
+describe('drawPlan palette', () => {
+  const palette: PlanPalette = {
+    grid: '#101010',
+    wall: '#202020',
+    roomFill: '#303030',
+    rulerBand: '#404040',
+    rulerTick: '#505050',
+    rulerText: '#606060',
+    selection: '#707070',
+  }
+
+  it('draws the grid, the room fill, and a selected wall in the palette colors', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        selectedIds: new Set(['wall:a']),
+        grid: true,
+      }),
+    )
+
+    const strokeStyles = new Set(recorder.segments.map((segment) => segment.style))
+    expect(strokeStyles).toContain('#101010') // grid lines
+    expect(strokeStyles).toContain('#707070') // the selected wall
+    expect(recorder.fills).toContain('#303030') // the room fill
+  })
+
+  it('draws an unselected wall in the palette wall color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ palette }))
+
+    expect(recorder.segments.map((segment) => segment.style)).toContain('#202020')
   })
 })
 
