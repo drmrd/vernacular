@@ -29,7 +29,6 @@ export function ToolsPanel() {
       <section className="tools-panel__section">
         <span className="tools-panel__section-label">Select</span>
         <Chip toolId="select" label="Select" />
-        {/* pan: canvas layer does not yet distinguish pan from select -- follow-up wiring needed */}
         <Chip toolId="pan" label="Pan" />
       </section>
 
@@ -37,7 +36,6 @@ export function ToolsPanel() {
         <span className="tools-panel__section-label">Draw</span>
         <div className="tools-panel__grid">
           <Chip toolId="draw-wall" label="Wall" />
-          {/* Door and Window chips replace this placeholder in Cycle 3 */}
           <Chip toolId="place-opening" label="Opening" />
         </div>
       </section>
