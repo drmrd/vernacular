@@ -81,4 +81,10 @@ describe('drafting-table type and elevation tokens', () => {
     expect(tokensCss).toMatch(/--font-family-heading:[^;]*serif/)
     expect(tokensCss).toMatch(/--font-family-mono:[^;]*monospace/)
   })
+
+  it('registers the surface-active and indicator semantic tokens', () => {
+    const names = tokenList.map((t) => t.name)
+    expect(names).toContain('--color-surface-active')
+    expect(names).toContain('--color-indicator')
+  })
 })
