@@ -1,3 +1,4 @@
+import { lineIntersection } from '../geometry/segment'
 import type { Point } from '../model/types'
 
 import type { GraphEdge, PlanarGraph } from './wall-graph'
@@ -7,7 +8,8 @@ import type { GraphEdge, PlanarGraph } from './wall-graph'
  * each endpoint. `aPlus` and `bPlus` sit on the edge's `+normal` (interior) side,
  * `aMinus` and `bMinus` on its `-normal` (exterior) side, where the normal is the
  * left-hand normal of the edge direction `a -> b`. A square end's corners are the
- * endpoint offset by half the wall thickness to each side.
+ * endpoint offset by half the wall thickness to each side; a mitered end's corners
+ * are where this edge's face lines cross its neighbor's at a two-way corner.
  */
 export interface WallFootprint {
   /** `+normal` side corner at endpoint `a`. */
@@ -20,37 +22,192 @@ export interface WallFootprint {
   bMinus: Point
 }
 
-/**
- * The plan-space footprint of every edge in a floor's wall graph, in the graph's
- * edge order. `thicknessByEdge[i]` is the thickness of the wall on edge `i`. Each
- * end is squared: its corners are the endpoint offset by half the thickness along
- * the edge's left-hand normal.
- */
-export function wallFootprints(graph: PlanarGraph, thicknessByEdge: number[]): WallFootprint[] {
-  return graph.edges.map((edge, index) => edgeFootprint(graph, edge, thicknessByEdge[index] ?? 0))
+/** The two corners of one wall end, on the `+normal` and `-normal` sides. */
+interface EndCorners {
+  plus: Point
+  minus: Point
 }
 
-/** The footprint of one edge with both ends squared. */
-function edgeFootprint(graph: PlanarGraph, edge: GraphEdge, thickness: number): WallFootprint {
-  const a = graph.vertices[edge.a] as Point
-  const b = graph.vertices[edge.b] as Point
+/** One wall end: where it sits, which way the wall runs, and the edge's normal. */
+interface EdgeEnd {
+  vertexIndex: number
+  point: Point
+  far: Point
+  normal: Point
+  half: number
+}
+
+/** The neighbor a two-way corner miters against: its far point and half-thickness. */
+interface Neighbor {
+  far: Point
+  half: number
+}
+
+/** Per-call lookups shared across every edge's footprint. */
+interface FootprintContext {
+  graph: PlanarGraph
+  thicknessByEdge: number[]
+  incidence: Map<number, number[]>
+}
+
+/**
+ * The plan-space footprint of every edge in a floor's wall graph, in the graph's
+ * edge order. `thicknessByEdge[i]` is the thickness of the wall on edge `i`. An
+ * end where exactly two edges meet is mitered to the corner; a free end, a busier
+ * junction (three or more incident edges), or a collinear continuation is squared.
+ */
+export function wallFootprints(graph: PlanarGraph, thicknessByEdge: number[]): WallFootprint[] {
+  const context: FootprintContext = { graph, thicknessByEdge, incidence: vertexIncidence(graph) }
+  return graph.edges.map((_edge, index) => edgeFootprint(context, index))
+}
+
+/** The footprint of one edge, each end squared or mitered. */
+function edgeFootprint(context: FootprintContext, edgeIndex: number): WallFootprint {
+  const edge = context.graph.edges[edgeIndex] as GraphEdge
+  const a = context.graph.vertices[edge.a] as Point
+  const b = context.graph.vertices[edge.b] as Point
   const normal = leftNormal(a, b)
-  const half = thickness / 2
-  return {
-    aPlus: shift(a, normal, half),
-    aMinus: shift(a, normal, -half),
-    bPlus: shift(b, normal, half),
-    bMinus: shift(b, normal, -half),
+  const half = (context.thicknessByEdge[edgeIndex] ?? 0) / 2
+  const aEnd = endCorners(context, edgeIndex, {
+    vertexIndex: edge.a,
+    point: a,
+    far: b,
+    normal,
+    half,
+  })
+  const bEnd = endCorners(context, edgeIndex, {
+    vertexIndex: edge.b,
+    point: b,
+    far: a,
+    normal,
+    half,
+  })
+  return { aPlus: aEnd.plus, aMinus: aEnd.minus, bPlus: bEnd.plus, bMinus: bEnd.minus }
+}
+
+/** The corners of one end: the miter at a two-way corner, otherwise a square cap. */
+function endCorners(context: FootprintContext, edgeIndex: number, end: EdgeEnd): EndCorners {
+  const neighbor = neighborAt(context, edgeIndex, end.vertexIndex)
+  if (neighbor !== null) {
+    const mitered = miterCorners(end, neighbor)
+    if (mitered !== null) return mitered
   }
+  return squareCorners(end)
+}
+
+/** The square cap: the end offset by half the thickness to each side. */
+function squareCorners(end: EdgeEnd): EndCorners {
+  return {
+    plus: shift(end.point, end.normal, end.half),
+    minus: shift(end.point, end.normal, -end.half),
+  }
+}
+
+/**
+ * The two miter corners, or null when the walls are parallel (collinear) so their
+ * face lines never cross. The corner is read from a directed walk that comes in
+ * along the neighbor to the shared vertex and goes out along this edge; the walk's
+ * left and right miters map to this edge's `+normal` / `-normal` sides by the sign
+ * of the outgoing direction's left perpendicular against the edge normal.
+ */
+function miterCorners(end: EdgeEnd, neighbor: Neighbor): EndCorners | null {
+  const out = unit(subtract(end.far, end.point))
+  const incoming = unit(subtract(end.point, neighbor.far))
+  const left = faceCrossing(end.point, out, end.half, incoming, neighbor.half, 1)
+  const right = faceCrossing(end.point, out, end.half, incoming, neighbor.half, -1)
+  if (left === null || right === null) return null
+  return dot(leftPerp(out), end.normal) > 0
+    ? { plus: left, minus: right }
+    : { plus: right, minus: left }
+}
+
+/**
+ * The crossing of this edge's and the neighbor's face lines on one side: `side` is
+ * `+1` for each wall's left face line and `-1` for its right, each offset from the
+ * shared vertex by that wall's own half-thickness so the joint is correct for
+ * different thicknesses.
+ */
+// eslint-disable-next-line max-params -- the shared vertex plus both walls' direction and half-thickness, and the side, are the corner's inputs
+function faceCrossing(
+  vertex: Point,
+  out: Point,
+  outHalf: number,
+  incoming: Point,
+  inHalf: number,
+  side: number,
+): Point | null {
+  return lineIntersection(
+    shift(vertex, leftPerp(out), side * outHalf),
+    out,
+    shift(vertex, leftPerp(incoming), side * inHalf),
+    incoming,
+  )
+}
+
+/** The neighbor at a vertex with exactly two incident edges, else null. */
+function neighborAt(
+  context: FootprintContext,
+  edgeIndex: number,
+  vertexIndex: number,
+): Neighbor | null {
+  const incident = context.incidence.get(vertexIndex) ?? []
+  if (incident.length !== 2) return null
+  const otherIndex = incident[0] === edgeIndex ? incident[1] : incident[0]
+  if (otherIndex === undefined) return null
+  const other = context.graph.edges[otherIndex]
+  if (other === undefined) return null
+  const far = context.graph.vertices[other.a === vertexIndex ? other.b : other.a]
+  if (far === undefined) return null
+  return { far, half: (context.thicknessByEdge[otherIndex] ?? 0) / 2 }
+}
+
+/** Maps each graph vertex to the indices of the edges incident to it. */
+function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
+  const incidence = new Map<number, number[]>()
+  graph.edges.forEach((edge, index) => {
+    pushIncident(incidence, edge.a, index)
+    pushIncident(incidence, edge.b, index)
+  })
+  return incidence
+}
+
+function pushIncident(
+  incidence: Map<number, number[]>,
+  vertexIndex: number,
+  edgeIndex: number,
+): void {
+  const list = incidence.get(vertexIndex) ?? []
+  list.push(edgeIndex)
+  incidence.set(vertexIndex, list)
 }
 
 /** Unit left-hand normal of the direction `a -> b`. */
 function leftNormal(a: Point, b: Point): Point {
-  const length = Math.hypot(b.x - a.x, b.y - a.y)
-  return { x: -(b.y - a.y) / length, y: (b.x - a.x) / length }
+  return leftPerp(unit(subtract(b, a)))
 }
 
-/** `point` shifted by `distance` along the unit `direction`. */
+/** `from - to`, component-wise. */
+function subtract(from: Point, to: Point): Point {
+  return { x: from.x - to.x, y: from.y - to.y }
+}
+
+/** `vector` scaled to unit length. */
+function unit(vector: Point): Point {
+  const length = Math.hypot(vector.x, vector.y)
+  return { x: vector.x / length, y: vector.y / length }
+}
+
+/** The left-hand perpendicular of `vector`. */
+function leftPerp(vector: Point): Point {
+  return { x: -vector.y, y: vector.x }
+}
+
+/** The dot product of `a` and `b`. */
+function dot(a: Point, b: Point): number {
+  return a.x * b.x + a.y * b.y
+}
+
+/** `point` shifted by `distance` along `direction`. */
 function shift(point: Point, direction: Point, distance: number): Point {
   return { x: point.x + direction.x * distance, y: point.y + direction.y * distance }
 }
