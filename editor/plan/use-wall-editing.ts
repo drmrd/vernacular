@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -19,6 +20,7 @@ import type { EditorSession } from '../../bridge'
 import { dragReadout, type DragReadout } from './drag-readout'
 import type { DrawPlanOptions, PreviewSegment } from './draw-plan'
 import { pickWallEndpoint } from './wall-editing'
+import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
@@ -93,6 +95,9 @@ function dispatchMove(session: EditorSession, drag: DragState, snapped: Point): 
 
 interface DragControl {
   drag: RefObject<DragState | null>
+  // The last raw (pre-snap) world cursor recorded by the move handler, so a
+  // modifier toggle with the pointer held still can re-resolve in place.
+  lastRawCursor: RefObject<Point | null>
   setPreview: Dispatch<SetStateAction<PreviewSegment | undefined>>
   snapping: Snapping
   viewport: Viewport
@@ -128,17 +133,19 @@ function useGrabHandler(
 function useDragMoveHandler(
   control: DragControl,
 ): (event: PointerEvent<HTMLCanvasElement>) => boolean {
-  const { drag, setPreview, snapping, viewport } = control
+  const { drag, lastRawCursor, setPreview, snapping, viewport } = control
   return useCallback(
     (event: PointerEvent<HTMLCanvasElement>): boolean => {
       const active = drag.current
       if (active === null) {
         return false
       }
-      setPreview(previewFor(active, snapping.resolve(eventToWorld(event, viewport))))
+      const raw = eventToWorld(event, viewport)
+      lastRawCursor.current = raw
+      setPreview(previewFor(active, snapping.resolve(raw)))
       return true
     },
-    [drag, setPreview, snapping, viewport],
+    [drag, lastRawCursor, setPreview, snapping, viewport],
   )
 }
 
@@ -147,11 +154,12 @@ function useReleaseHandler(
   session: EditorSession,
   control: DragControl,
 ): (event: PointerEvent<HTMLCanvasElement>) => void {
-  const { drag, setPreview, snapping, viewport } = control
+  const { drag, lastRawCursor, setPreview, snapping, viewport } = control
   return useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       const active = drag.current
       drag.current = null
+      lastRawCursor.current = null
       setPreview(undefined)
       snapping.clear()
       if (active === null) {
@@ -160,8 +168,24 @@ function useReleaseHandler(
       event.currentTarget.releasePointerCapture(event.pointerId)
       dispatchMove(session, active, snapping.resolve(eventToWorld(event, viewport)))
     },
-    [session, drag, setPreview, snapping, viewport],
+    [session, drag, lastRawCursor, setPreview, snapping, viewport],
   )
+}
+
+/**
+ * Re-resolves and repaints the live endpoint preview when the free-angle modifier
+ * toggles with the pointer held still, so pressing or releasing Alt settles onto (or
+ * off of) the free angle in place. Mirrors the wall tool's free-angle re-resolve.
+ */
+function useReresolvePreviewOnFreeAngleToggle(control: DragControl, freeAngle: boolean): void {
+  const { drag, lastRawCursor, setPreview, snapping } = control
+  useEffect(() => {
+    const active = drag.current
+    if (active !== null && lastRawCursor.current !== null) {
+      setPreview(previewFor(active, snapping.resolve(lastRawCursor.current)))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the effect callback is recreated each render, so snapping and setPreview are always current; depend only on the modifier toggle
+  }, [freeAngle])
 }
 
 /**
@@ -180,13 +204,17 @@ export function useWallEditing({
   preferences,
 }: WallEditingDeps): WallEditing {
   const drag = useRef<DragState | null>(null)
+  const lastRawCursor = useRef<Point | null>(null)
   const [preview, setPreview] = useState<PreviewSegment | undefined>(undefined)
   const origin = drag.current ? anchorEndpoint(drag.current.wall, drag.current.end) : undefined
-  const snapping = useSnapping({ walls, viewport, origin })
-  const control: DragControl = { drag, setPreview, snapping, viewport }
+  const wallSelected = selectedWall !== null
+  const freeAngle = useHeldAltKey(wallSelected)
+  const snapping = useSnapping({ walls, viewport, origin, freeAngle })
+  const control: DragControl = { drag, lastRawCursor, setPreview, snapping, viewport }
   const onPointerDown = useGrabHandler(selectedWall, control)
   const onPointerMove = useDragMoveHandler(control)
   const onPointerUp = useReleaseHandler(session, control)
+  useReresolvePreviewOnFreeAngleToggle(control, freeAngle)
   const readout = preview ? dragReadout(preview.start, preview.end, preferences) : undefined
 
   return { preview, readout, onPointerDown, onPointerMove, onPointerUp }

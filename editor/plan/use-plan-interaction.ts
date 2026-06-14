@@ -12,6 +12,7 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
+import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
@@ -99,21 +100,7 @@ interface WallKeyboardDeps {
  * free angle; releasing it restores the lock. Reset to false whenever the tool changes.
  */
 function useFreeAngleModifier(tool: ToolId): boolean {
-  const [free, setFree] = useState(false)
-  useEffect(() => {
-    if (tool !== 'draw-wall') {
-      setFree(false)
-      return
-    }
-    const update = (event: KeyboardEvent) => setFree(event.altKey)
-    window.addEventListener('keydown', update)
-    window.addEventListener('keyup', update)
-    return () => {
-      window.removeEventListener('keydown', update)
-      window.removeEventListener('keyup', update)
-    }
-  }, [tool])
-  return free
+  return useHeldAltKey(tool === 'draw-wall')
 }
 
 interface FreeAngleResolveDeps {
