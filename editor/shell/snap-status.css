@@ -1,0 +1,39 @@
+.snap-status {
+  position: relative;
+  display: inline-flex;
+}
+
+.snap-status__indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.snap-status__marker {
+  color: var(--color-accent-strong);
+}
+
+.snap-status__indicator:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.snap-status__popover {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 10;
+  min-width: 12rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-overlay);
+}

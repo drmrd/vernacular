@@ -28,7 +28,6 @@ import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { PlanView } from '../plan/plan-view'
-import { SnapPanel } from '../plan/snap-panel'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
@@ -40,9 +39,10 @@ import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-co
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
 import { Inspector } from './inspector'
+import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import { PAINT_INSPECTOR_SLOT, SNAP_PANEL_SLOT } from './shell-panel-slots'
+import { PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -176,14 +176,7 @@ function floorSummaries(project: Project): { id: string; name: string }[] {
 // and to the active-floor hooks so the switcher reflects the active floor (both
 // hoisted here to honor the hooks rule).
 function ToolRail() {
-  return (
-    <>
-      <ToolsNav />
-      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
-        <SnapPanel />
-      </PanelSlot>
-    </>
-  )
+  return <ToolsNav />
 }
 
 function EditorStatusBar() {
@@ -197,6 +190,7 @@ function EditorStatusBar() {
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
       onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+      snap={<SnapStatus />}
     />
   )
 }
