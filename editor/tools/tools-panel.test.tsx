@@ -9,16 +9,20 @@ afterEach(cleanup)
 
 describe('ToolsPanel', () => {
   it('renders four labeled rail sections', () => {
-    render(
+    const { container } = render(
       <ActiveToolProvider>
         <ToolsPanel />
       </ActiveToolProvider>,
     )
 
-    expect(screen.getByText(/^select$/i)).toBeInTheDocument()
-    expect(screen.getByText(/^draw$/i)).toBeInTheDocument()
-    expect(screen.getByText(/^period$/i)).toBeInTheDocument()
-    expect(screen.getByText(/^annotate$/i)).toBeInTheDocument()
+    const labels = Array.from(container.querySelectorAll('.tools-panel__section-label')).map(
+      (el) => el.textContent?.toLowerCase() ?? '',
+    )
+
+    expect(labels).toContain('select')
+    expect(labels).toContain('draw')
+    expect(labels).toContain('period')
+    expect(labels).toContain('annotate')
   })
 
   it('includes a Pan chip in the SELECT section', () => {
