@@ -174,7 +174,7 @@ describe('OpeningInspector', () => {
     const user = userEvent.setup()
     renderInspector(dispatch, 'imperial')
 
-    const chip = screen.getAllByRole('button', { name: /1\/4/i })[0]
+    const chip = screen.getAllByRole('button', { name: /1\/4/i })[0]!
     await user.click(chip)
 
     expect(dispatch).toHaveBeenCalledTimes(1)
