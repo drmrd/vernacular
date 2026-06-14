@@ -233,6 +233,46 @@ describe('deriveRooms thickness-aware clear area', () => {
   })
 })
 
+describe('deriveRooms outer (gross) boundary', () => {
+  it('outsets the outer polygon by each wall half-thickness for a uniform-thickness room', () => {
+    const walls = centerlineRectangleWalls([200, 200, 200, 200])
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
+    expectCornerSet(room.outerPolygon, [
+      { x: -100, y: -100 },
+      { x: 2100, y: -100 },
+      { x: 2100, y: 1100 },
+      { x: -100, y: 1100 },
+    ])
+  })
+
+  it('outsets each outer-polygon edge by its own wall half-thickness', () => {
+    const walls = centerlineRectangleWalls([400, 200, 200, 200])
+
+    const rooms = deriveRooms(walls)
+
+    expect(rooms).toHaveLength(1)
+
+    const room = rooms[0]
+    if (room === undefined) {
+      throw new Error('expected exactly one room')
+    }
+    expectCornerSet(room.outerPolygon, [
+      { x: -100, y: -200 },
+      { x: 2100, y: -200 },
+      { x: 2100, y: 1100 },
+      { x: -100, y: 1100 },
+    ])
+  })
+})
+
 const CUSTOM_POLYGON: Point[] = [
   { x: 0, y: 0 },
   { x: 2000, y: 0 },
@@ -292,6 +332,15 @@ describe('applyRoomOverrides', () => {
 
     expect(merged.clearPolygon).toEqual(CUSTOM_POLYGON)
     expect(merged.area).toBe(Math.abs(polygonArea(CUSTOM_POLYGON)))
+  })
+
+  it('sets the outer polygon to the custom polygon for a custom-polygon override', () => {
+    const room = deriveRectangleRoom()
+    const overrides = { [roomKey(room)]: { customPolygon: CUSTOM_POLYGON } }
+
+    const merged = appliedRectangleRoom(overrides)
+
+    expect(merged.outerPolygon).toEqual(CUSTOM_POLYGON)
   })
 
   it('returns a room with no matching override unchanged', () => {
