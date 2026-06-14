@@ -2,8 +2,9 @@ import * as THREE from 'three'
 
 import {
   WALL_NODE_PREFIX,
-  distance,
+  leftNormal,
   planToWorld,
+  shift,
   wallHeight,
   type Point,
   type SurfaceRef,
@@ -59,13 +60,13 @@ export function buildWallPrism(
 /** The square footprint of a free-standing wall: its centerline offset half the
  *  thickness to each side, both ends squared. */
 function squareFootprint(node: WallSceneNode): WallFootprint {
-  const normal = leftUnitNormal(node.start, node.end)
+  const normal = leftNormal(node.start, node.end)
   const half = node.thickness / 2
   return {
-    aPlus: shiftPoint(node.start, normal, half),
-    aMinus: shiftPoint(node.start, normal, -half),
-    bPlus: shiftPoint(node.end, normal, half),
-    bMinus: shiftPoint(node.end, normal, -half),
+    aPlus: shift(node.start, normal, half),
+    aMinus: shift(node.start, normal, -half),
+    bPlus: shift(node.end, normal, half),
+    bMinus: shift(node.end, normal, -half),
   }
 }
 
@@ -120,15 +121,4 @@ function capQuad(corners: [Point, Point, Point, Point], height: number): number[
 function cornerWorld(plan: Point, height: number): THREE.Vector3 {
   const world = planToWorld(plan, height)
   return new THREE.Vector3(world.x, world.y, world.z)
-}
-
-/** Unit left-hand normal of the direction `a -> b`. */
-function leftUnitNormal(a: Point, b: Point): Point {
-  const length = distance(a, b)
-  return { x: -(b.y - a.y) / length, y: (b.x - a.x) / length }
-}
-
-/** `point` shifted by `offset` along the unit `direction`. */
-function shiftPoint(point: Point, direction: Point, offset: number): Point {
-  return { x: point.x + direction.x * offset, y: point.y + direction.y * offset }
 }

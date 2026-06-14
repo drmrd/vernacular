@@ -1,5 +1,6 @@
 import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
+import { dot, leftNormal, leftPerp, shift, subtract, unit } from '../geometry/vector'
 import type { Point } from '../model/types'
 
 import type { GraphEdge, PlanarGraph } from './wall-graph'
@@ -192,6 +193,7 @@ function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   return incidence
 }
 
+/** Records `edgeIndex` against the vertex it touches, building the incidence map. */
 function pushIncident(
   incidence: Map<number, number[]>,
   vertexIndex: number,
@@ -200,35 +202,4 @@ function pushIncident(
   const list = incidence.get(vertexIndex) ?? []
   list.push(edgeIndex)
   incidence.set(vertexIndex, list)
-}
-
-/** Unit left-hand normal of the direction `a -> b`. */
-function leftNormal(a: Point, b: Point): Point {
-  return leftPerp(unit(subtract(b, a)))
-}
-
-/** `from - to`, component-wise. */
-function subtract(from: Point, to: Point): Point {
-  return { x: from.x - to.x, y: from.y - to.y }
-}
-
-/** `vector` scaled to unit length. */
-function unit(vector: Point): Point {
-  const length = Math.hypot(vector.x, vector.y)
-  return { x: vector.x / length, y: vector.y / length }
-}
-
-/** The left-hand perpendicular of `vector`. */
-function leftPerp(vector: Point): Point {
-  return { x: -vector.y, y: vector.x }
-}
-
-/** The dot product of `a` and `b`. */
-function dot(a: Point, b: Point): number {
-  return a.x * b.x + a.y * b.y
-}
-
-/** `point` shifted by `distance` along `direction`. */
-function shift(point: Point, direction: Point, distance: number): Point {
-  return { x: point.x + direction.x * distance, y: point.y + direction.y * distance }
 }
