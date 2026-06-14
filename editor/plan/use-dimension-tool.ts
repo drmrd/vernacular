@@ -20,6 +20,13 @@ interface DimensionPointerContext {
   session: EditorSession
   tool: ToolId
   toolState: DimensionToolState
+  activeFloorId: string | null
+}
+
+/** The floor a new dimension lands on: the active floor, falling back to the first
+ *  floor when none is active yet (a single-floor project before any switch). */
+function dimensionFloorId(context: DimensionPointerContext): string | undefined {
+  return context.activeFloorId ?? context.session.getProject().floors[0]?.id
 }
 
 /** Applies a dimension-tool click and returns the next state; other tools are inert here. */
@@ -27,7 +34,7 @@ function applyPointer(world: Point, context: DimensionPointerContext): Dimension
   if (context.tool !== 'dimension') {
     return context.toolState
   }
-  const floorId = context.session.getProject().floors[0]?.id
+  const floorId = dimensionFloorId(context)
   if (floorId === undefined) {
     return context.toolState
   }
@@ -42,6 +49,9 @@ export interface DimensionToolDeps {
   session: EditorSession
   tool: ToolId
   viewport: Viewport
+  // The floor a new dimension is measured on (the active floor); null before any
+  // floor is selected.
+  activeFloorId: string | null
 }
 
 export interface DimensionTool {
@@ -52,16 +62,21 @@ export interface DimensionTool {
 }
 
 /** Translates pointer events into dimension-tool actions and the live measuring preview. */
-export function useDimensionTool({ session, tool, viewport }: DimensionToolDeps): DimensionTool {
+export function useDimensionTool({
+  session,
+  tool,
+  viewport,
+  activeFloorId,
+}: DimensionToolDeps): DimensionTool {
   const [toolState, setToolState] = useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       const world = eventToWorld(event, viewport)
-      setToolState(applyPointer(world, { session, tool, toolState }))
+      setToolState(applyPointer(world, { session, tool, toolState, activeFloorId }))
     },
-    [session, tool, toolState, viewport],
+    [session, tool, toolState, viewport, activeFloorId],
   )
 
   // Track the cursor only while the dimension tool is active; this drives the

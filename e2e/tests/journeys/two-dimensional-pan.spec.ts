@@ -1,19 +1,18 @@
 import { test, expect } from '@playwright/test'
-import { drawWall, expectWallCount, gotoEditor, selectors, selectWallTool } from './support'
+import {
+  canvasBox,
+  drawWall,
+  expectWallCount,
+  gotoEditor,
+  selectors,
+  selectWallTool,
+} from './support'
 
 // A plain primary-button drag on empty canvas in Select mode pans the view (ADR-0069),
 // and Shift-drag still draws the selection marquee. The pan is verified the same 1:1 way
 // as the middle-mouse pan (canvas-pan-alignment): pan a vertical wall sideways, then click
 // where it landed. The middle-mouse path is covered separately; this proves the primary
 // drag in the default Select tool.
-
-async function canvasBox(page: import('@playwright/test').Page) {
-  const box = await selectors.planCanvas(page).boundingBox()
-  if (box === null) {
-    throw new Error('plan canvas has no bounding box')
-  }
-  return box
-}
 
 test('a plain primary drag pans the view in Select mode', async ({ page }) => {
   await gotoEditor(page)

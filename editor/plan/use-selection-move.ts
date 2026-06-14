@@ -26,6 +26,14 @@ interface SelectionMoveDeps {
   tool: ToolId
   viewport: Viewport
   preferences: UnitPreferences
+  // The floor a move commits to (the active floor); null before any floor is selected.
+  activeFloorId: string | null
+}
+
+// The floor a move commits to: the active floor, falling back to the first floor
+// when none is active yet (a single-floor project before any switch).
+function moveFloorId(deps: SelectionMoveDeps): string | undefined {
+  return deps.activeFloorId ?? deps.session.getProject().floors[0]?.id
 }
 
 export interface SelectionMove {
@@ -111,7 +119,7 @@ function pointerUp(
   handle.stateRef.current = IDLE_MOVE_DRAG
   handle.setGhost([])
   handle.setReadout(undefined)
-  const floorId = deps.session.getProject().floors[0]?.id
+  const floorId = moveFloorId(deps)
   if (floorId === undefined) {
     return true
   }

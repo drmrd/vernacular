@@ -13,6 +13,7 @@ export const selectors = {
   wallProxy: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
   wallProxies: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
   roomProxies: (page: Page) => page.getByRole('option', { name: /^Room,/ }),
+  dimensionProxies: (page: Page) => page.getByRole('option', { name: /^Dimension,/ }),
   addFloorButton: (page: Page) => page.getByRole('button', { name: 'Add floor' }),
   floorButton: (page: Page, name: string) => page.getByRole('button', { name }),
   selectTool: (page: Page) => page.getByRole('button', { name: 'Select' }),
@@ -26,6 +27,16 @@ export const selectors = {
 export async function gotoEditor(page: Page): Promise<void> {
   await page.goto('/')
   await expect(selectors.planCanvas(page)).toBeVisible()
+}
+
+// The plan canvas bounding box, or a thrown error when it has none, so drags and
+// clicks can resolve their screen coordinates against it.
+export async function canvasBox(page: Page) {
+  const box = await selectors.planCanvas(page).boundingBox()
+  if (box === null) {
+    throw new Error('plan canvas has no bounding box')
+  }
+  return box
 }
 
 // Activate the wall-drawing tool. Drawing is an explicit tool choice now that

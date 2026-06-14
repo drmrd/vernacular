@@ -34,6 +34,14 @@ interface SelectionKeyboardContext {
   selection: SelectionStore
   clipboard: ClipboardStore
   selectedIds: ReadonlySet<string>
+  activeFloorId: string | null
+}
+
+// The floor the keyboard actions target: the active floor, falling back to the
+// first floor when none is active yet (a single-floor project before any switch).
+function activeFloor(ctx: SelectionKeyboardContext): Floor | undefined {
+  const project = ctx.session.getProject()
+  return project.floors.find((floor) => floor.id === ctx.activeFloorId) ?? project.floors[0]
 }
 
 // The arrow keys nudge in world space (y increases upward), or null for any other key.
@@ -136,7 +144,7 @@ function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): voi
   if (isTextEntry(event.target)) {
     return
   }
-  const floor = ctx.session.getProject().floors[0]
+  const floor = activeFloor(ctx)
   if (floor === undefined) {
     return
   }
@@ -156,6 +164,9 @@ interface SelectionKeyboardDeps {
   clipboard: ClipboardStore
   selectedIds: ReadonlySet<string>
   tool: ToolId
+  // The floor the keyboard actions target (the active floor); null before any
+  // floor is selected.
+  activeFloorId: string | null
 }
 
 /**
@@ -165,12 +176,18 @@ interface SelectionKeyboardDeps {
  * ignored while a form control is focused so inspector typing is untouched.
  */
 export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
-  const { session, selection, clipboard, selectedIds, tool } = deps
+  const { session, selection, clipboard, selectedIds, tool, activeFloorId } = deps
   useEffect(() => {
     if (tool !== 'select') {
       return undefined
     }
-    const ctx: SelectionKeyboardContext = { session, selection, clipboard, selectedIds }
+    const ctx: SelectionKeyboardContext = {
+      session,
+      selection,
+      clipboard,
+      selectedIds,
+      activeFloorId,
+    }
     const listener = (event: KeyboardEvent): void => {
       handleKeyDown(event, ctx)
     }
@@ -178,5 +195,5 @@ export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
     return () => {
       window.removeEventListener('keydown', listener)
     }
-  }, [session, selection, clipboard, selectedIds, tool])
+  }, [session, selection, clipboard, selectedIds, tool, activeFloorId])
 }
