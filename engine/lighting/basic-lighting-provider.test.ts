@@ -14,6 +14,23 @@ describe('BasicLightingProvider', () => {
     expect(hemisphere).toHaveLength(1)
   })
 
+  it('makes the rig key dominant: the sun is brighter than the hemisphere fill', () => {
+    const scene = new THREE.Scene()
+
+    new BasicLightingProvider().apply(scene)
+
+    const sun = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
+    const fill = scene.children.find(
+      (child) => child instanceof THREE.HemisphereLight,
+    ) as THREE.HemisphereLight
+    // A key-dominant rig lets the sun set the value of the faces it reaches while the
+    // fill only keeps the unlit faces off black, so faces at different angles separate
+    // in value instead of washing flat under an equal fill (ADR-0079).
+    expect(sun.intensity).toBeGreaterThan(fill.intensity)
+  })
+
   it('configures the directional sun to cast a shadow with a real shadow map', () => {
     const scene = new THREE.Scene()
 
