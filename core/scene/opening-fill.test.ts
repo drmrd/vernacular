@@ -22,12 +22,13 @@ describe('openingFill', () => {
 
     const parts = openingFill(doorNode)
 
-    expect(parts).toHaveLength(1)
-
-    const [leaf] = parts
-    expect(leaf.role).toBe('leaf')
-    expect(leaf.thickness).toBe(DOOR_LEAF_THICKNESS_MM)
-    expect(leaf.along).toEqual({ min: -450 + LEAF_REVEAL_GAP_MM, max: 450 - LEAF_REVEAL_GAP_MM })
-    expect(leaf.up).toEqual({ min: LEAF_REVEAL_GAP_MM, max: 2032 - LEAF_REVEAL_GAP_MM })
+    expect(parts).toEqual([
+      {
+        role: 'leaf',
+        along: { min: -450 + LEAF_REVEAL_GAP_MM, max: 450 - LEAF_REVEAL_GAP_MM },
+        up: { min: LEAF_REVEAL_GAP_MM, max: 2032 - LEAF_REVEAL_GAP_MM },
+        thickness: DOOR_LEAF_THICKNESS_MM,
+      },
+    ])
   })
 })
