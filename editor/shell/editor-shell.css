@@ -73,6 +73,12 @@
   outline-offset: 1px;
 }
 
+.editor-shell__icon-btn[aria-pressed='true'] {
+  background: var(--color-surface-active);
+  border-color: var(--color-indicator);
+  color: var(--color-text);
+}
+
 .editor-shell__save-status {
   font-family: var(--font-family-ui);
   font-size: 0.75rem;

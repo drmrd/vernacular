@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ArrowClockwise, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { ArrowClockwise, ArrowCounterClockwise, GridFour, Ruler } from '@phosphor-icons/react'
 import {
   SceneCanvas,
   createSurfaceSelectionStore,
@@ -45,6 +45,7 @@ import { UnderlayProvider } from '../plan/use-underlay'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
+import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
 import { FloorSwitcher } from './floor-switcher'
@@ -114,6 +115,7 @@ interface ShellHeaderProps {
 
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const session = useEditorSession()
+  const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
   return (
     <div className="editor-shell__toolbar">
       <h1 className="editor-shell__wordmark">Vernacular</h1>
@@ -122,6 +124,26 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         <span className="editor-shell__breadcrumb-active">{session.getProject().meta.name}</span>
       </nav>
       <div className="editor-shell__toolbar-actions">
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Grid"
+          aria-pressed={showGrid}
+          onClick={toggleGrid}
+          title="Grid (G)"
+        >
+          <GridFour size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Dimensions"
+          aria-pressed={showDimensions}
+          onClick={toggleDimensions}
+          title="Dimensions (D)"
+        >
+          <Ruler size={16} aria-hidden="true" />
+        </button>
         <button
           type="button"
           className="editor-shell__icon-btn"
@@ -273,27 +295,31 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
     <CommandPaletteProvider>
       <SnapPreferencesProvider store={snapPreferences}>
         <ViewModeProvider>
-          <UnderlayProvider>
-            <OpeningToolProvider>
-              <KeybindingLayer />
-              <CommandPalette />
-              {recovery ? (
-                <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-              ) : null}
-              <SurfaceSelectionProvider store={surfaceSelection}>
-                <EntitySurfaceBridge />
-                <AppFrame
-                  header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
-                  railLabel="Tool rail"
-                  rail={<ToolRail />}
-                  mainLabel="Viewport"
-                  main={<ViewportArea />}
-                  inspectorLabel="Inspector"
-                  inspector={<InspectorPanels />}
-                />
-              </SurfaceSelectionProvider>
-            </OpeningToolProvider>
-          </UnderlayProvider>
+          <ViewOverlayProvider>
+            <UnderlayProvider>
+              <OpeningToolProvider>
+                <KeybindingLayer />
+                <CommandPalette />
+                {recovery ? (
+                  <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+                ) : null}
+                <SurfaceSelectionProvider store={surfaceSelection}>
+                  <EntitySurfaceBridge />
+                  <AppFrame
+                    header={
+                      <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
+                    }
+                    railLabel="Tool rail"
+                    rail={<ToolRail />}
+                    mainLabel="Viewport"
+                    main={<ViewportArea />}
+                    inspectorLabel="Inspector"
+                    inspector={<InspectorPanels />}
+                  />
+                </SurfaceSelectionProvider>
+              </OpeningToolProvider>
+            </UnderlayProvider>
+          </ViewOverlayProvider>
         </ViewModeProvider>
       </SnapPreferencesProvider>
     </CommandPaletteProvider>
