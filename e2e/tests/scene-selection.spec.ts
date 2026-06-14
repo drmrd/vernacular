@@ -27,4 +27,29 @@ test.describe('Live three-dimensional selection', () => {
     const after = await stableFrame(canvas)
     expect(after.equals(before)).toBe(false)
   })
+
+  test('dragging to orbit the camera does not select the entity under the press', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    const canvas = await drawnRoomCanvas(page)
+    const selectionStatus = page.getByRole('region', { name: /3d preview/i }).getByRole('status')
+    await expect(selectionStatus).toHaveText('No entity selected')
+
+    // Press on the entity at the canvas centre, then drag well past the click tolerance to
+    // orbit the camera, and release. Selection must stay empty: the drag is a camera move,
+    // not a click on the entity under the press.
+    const box = await canvas.boundingBox()
+    if (box === null) throw new Error('the 3D canvas has no bounding box')
+    const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+    await page.mouse.move(centre.x, centre.y)
+    await page.mouse.down()
+    await page.mouse.move(centre.x + 90, centre.y - 50, { steps: 8 })
+    await page.mouse.up()
+
+    await expect(selectionStatus).toHaveText('No entity selected')
+  })
 })
