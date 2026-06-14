@@ -10,7 +10,7 @@ import {
   DEFAULT_WALL_THICKNESS_MM,
 } from '../model/factories'
 import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
-import { ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
+import { deriveRooms, ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
   deriveRoomNodesForFloor,
   deriveSceneGraph,
@@ -206,26 +206,11 @@ describe('deriveRoomNodesForFloor with overrides', () => {
 
   it('copies the outer (gross) polygon onto the room node', () => {
     const floor = oneRoomFloor()
-    const outset = DEFAULT_WALL_THICKNESS_MM / 2
+    // The exact outset geometry is asserted in the topology tests; here the node
+    // need only carry the derived room's own outer boundary.
+    const [room] = deriveRooms(floor.walls)
 
-    const node = soleRoomNode(floor)
-
-    expect(node.outerPolygon).toHaveLength(4)
-    // outsetPolygon accumulates sub-nanometer float noise, so round before the
-    // exact-corner match; the precise outset geometry is asserted in the topology
-    // tests (core/topology/rooms.test.ts).
-    const roundedCorners = (node.outerPolygon ?? []).map((corner) => ({
-      x: Math.round(corner.x),
-      y: Math.round(corner.y),
-    }))
-    for (const corner of [
-      { x: -outset, y: -outset },
-      { x: ROOM_WIDTH + outset, y: -outset },
-      { x: ROOM_WIDTH + outset, y: ROOM_HEIGHT + outset },
-      { x: -outset, y: ROOM_HEIGHT + outset },
-    ]) {
-      expect(roundedCorners).toContainEqual(corner)
-    }
+    expect(soleRoomNode(floor).outerPolygon).toEqual(room?.outerPolygon)
   })
 
   it('keys correctly: the override key matches the derived room id', () => {

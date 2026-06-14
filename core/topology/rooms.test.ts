@@ -52,9 +52,12 @@ function rectangleEdgesWithIds(): Wall[] {
 }
 
 function onlyRoom(walls: Wall[]): { id: string; wallIds: string[] } {
-  const rooms = deriveRooms(walls)
-  const room = rooms[0]
-  if (room === undefined || rooms.length !== 1) {
+  return soleDerivedRoom(walls)
+}
+
+function soleDerivedRoom(walls: Wall[]): Room {
+  const [room, ...rest] = deriveRooms(walls)
+  if (room === undefined || rest.length > 0) {
     throw new Error('expected exactly one derived room')
   }
   return room
@@ -69,14 +72,7 @@ describe('deriveRooms', () => {
       createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
     ]
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expect(room.polygon).toHaveLength(4)
 
     const expectedCorners: Point[] = [
@@ -96,14 +92,7 @@ describe('deriveRooms', () => {
       createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }),
     ]
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expect(room.area).toBe((4000 - DEFAULT_WALL_THICKNESS_MM) * (3000 - DEFAULT_WALL_THICKNESS_MM))
   })
 
@@ -116,14 +105,7 @@ describe('deriveRooms', () => {
       createWall({ x: 4000, y: 0 }, { x: 3000, y: 1000 }),
     ]
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expect(room.polygon).toHaveLength(4)
     expect(room.area).toBe((4000 - DEFAULT_WALL_THICKNESS_MM) * (3000 - DEFAULT_WALL_THICKNESS_MM))
   })
@@ -195,14 +177,7 @@ describe('deriveRooms thickness-aware clear area', () => {
   it('insets the clear polygon by each wall half-thickness for a uniform-thickness room', () => {
     const walls = centerlineRectangleWalls([200, 200, 200, 200])
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expectCornerSet(room.clearPolygon, [
       { x: 100, y: 100 },
       { x: 1900, y: 100 },
@@ -215,14 +190,7 @@ describe('deriveRooms thickness-aware clear area', () => {
   it('insets each clear-polygon edge by its own wall half-thickness', () => {
     const walls = centerlineRectangleWalls([400, 200, 200, 200])
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expectCornerSet(room.clearPolygon, [
       { x: 100, y: 200 },
       { x: 1900, y: 200 },
@@ -237,14 +205,7 @@ describe('deriveRooms outer (gross) boundary', () => {
   it('outsets the outer polygon by each wall half-thickness for a uniform-thickness room', () => {
     const walls = centerlineRectangleWalls([200, 200, 200, 200])
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expectCornerSet(room.outerPolygon, [
       { x: -100, y: -100 },
       { x: 2100, y: -100 },
@@ -256,14 +217,7 @@ describe('deriveRooms outer (gross) boundary', () => {
   it('outsets each outer-polygon edge by its own wall half-thickness', () => {
     const walls = centerlineRectangleWalls([400, 200, 200, 200])
 
-    const rooms = deriveRooms(walls)
-
-    expect(rooms).toHaveLength(1)
-
-    const room = rooms[0]
-    if (room === undefined) {
-      throw new Error('expected exactly one room')
-    }
+    const room = soleDerivedRoom(walls)
     expectCornerSet(room.outerPolygon, [
       { x: -100, y: -200 },
       { x: 2100, y: -200 },
