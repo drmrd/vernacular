@@ -21,6 +21,7 @@ import { useSelection, useSelectionIds } from './selection-context'
 
 // A drag of more than a few pixels is a camera move, not a selection click.
 const CLICK_TOLERANCE_PX = 6
+
 export function SceneSelection({ root }: { root: SceneRoot }) {
   const camera = useThree((state) => state.camera)
   const raycaster = useThree((state) => state.raycaster)
