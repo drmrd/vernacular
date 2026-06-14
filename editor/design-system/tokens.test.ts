@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 import { tokens, tokenList } from './tokens'
 
 const tokensCss = readFileSync(resolve(process.cwd(), 'editor/design-system/tokens.css'), 'utf8')
+const indexHtml = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
 
 describe('design tokens', () => {
   it('exposes a non-empty list of named tokens', () => {
@@ -59,6 +60,14 @@ describe('drafting-table palette', () => {
     expect(tokensCss).not.toContain('#1e293b') // old slate-900
   })
 
+  it('includes brass-600 as the primary button-fill primitive', () => {
+    expect(tokensCss).toContain('#8b692a')
+  })
+
+  it('assigns the light-mode accent-strong token to the brass-600 primitive', () => {
+    expect(tokensCss).toMatch(/--color-accent-strong:\s*var\(--brass-600\)/)
+  })
+
   it('paints the light canvas on warm vellum rather than white', () => {
     expect(tokensCss).toMatch(/--color-surface:\s*var\(--vellum-100\)/)
   })
@@ -80,5 +89,31 @@ describe('drafting-table type and elevation tokens', () => {
   it('gives the heading a serif stack and the readout a monospace stack', () => {
     expect(tokensCss).toMatch(/--font-family-heading:[^;]*serif/)
     expect(tokensCss).toMatch(/--font-family-mono:[^;]*monospace/)
+  })
+
+  it('registers the surface-active and indicator semantic tokens', () => {
+    const names = tokenList.map((t) => t.name)
+    expect(names).toContain('--color-surface-active')
+    expect(names).toContain('--color-indicator')
+  })
+
+  it('leads the heading stack with EB Garamond for cross-platform serif consistency', () => {
+    expect(tokensCss).toMatch(/--font-family-heading:\s*'EB Garamond'/)
+  })
+
+  it('leads the ui stack with Inter for cross-platform sans consistency', () => {
+    expect(tokensCss).toMatch(/--font-family-ui:\s*'Inter'/)
+  })
+})
+
+describe('Google Fonts loading', () => {
+  it('preconnects to fonts.googleapis.com and fonts.gstatic.com', () => {
+    expect(indexHtml).toContain('https://fonts.googleapis.com')
+    expect(indexHtml).toContain('https://fonts.gstatic.com')
+  })
+
+  it('loads EB Garamond and Inter', () => {
+    expect(indexHtml).toContain('EB+Garamond')
+    expect(indexHtml).toContain('family=Inter')
   })
 })

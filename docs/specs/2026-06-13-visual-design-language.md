@@ -53,9 +53,9 @@ Primitive ramp (unchanged):
 
   --brass-500:  #b08646   accent: canvas annotations, active indicator,
                            period tags, primary actions
-  --brass-600:  #9a7038   NEW: stronger accent for hover states and
-                           primary button background (clears WCAG AA
-                           4.5:1 against vellum-50)
+  --brass-600:  #8b692a   NEW: stronger accent for hover states and
+                           primary button background (vellum-50 label
+                           text clears WCAG AA 4.5:1 at 4.72:1)
   --brass-300:  #c8b78f   active-state icon fill, subtle highlight
 ```
 
@@ -287,7 +287,7 @@ the existing `@media (prefers-reduced-motion)` rule.
 
 The following changes to `editor/design-system/tokens.css` are required:
 
-1. Add `--brass-600: #9a7038` to the primitive ramp.
+1. Add `--brass-600: #8b692a` to the primitive ramp.
 2. In the light-mode `:root` block:
    - Change `--color-accent` from `var(--ink-800)` to `var(--brass-500)`.
    - Change `--color-accent-strong` from `var(--ink-900)` to `var(--brass-600)`.
@@ -303,7 +303,7 @@ The typed token registry in `editor/design-system/tokens.ts` gains entries for
 
 The existing palette-contrast test in `editor/design-system/palette-contrast.test.ts`
 must be updated to assert the new accent and accent-strong assignments and verify that
-brass-600 on vellum-50 clears WCAG AA 4.5:1.
+vellum-50 label text on brass-600 (#8b692a) clears WCAG AA 4.5:1 at 4.72:1.
 
 ## Storybook documentation
 

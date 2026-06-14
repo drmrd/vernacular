@@ -17,6 +17,8 @@ export const tokens = {
   colorAccentStrong: token('--color-accent-strong'),
   colorOnAccent: token('--color-on-accent'),
   colorFocusRing: token('--color-focus-ring'),
+  colorSurfaceActive: token('--color-surface-active'),
+  colorIndicator: token('--color-indicator'),
   space1: token('--space-1'),
   space2: token('--space-2'),
   space3: token('--space-3'),

@@ -30,6 +30,7 @@
   /* Material accents: used in the design-system showcase; semantic consumers
      follow in surface-finish work. */
   --brass-500: #b08646;
+  --brass-600: #8b692a;
   --brass-300: #c8b78f;
   --clay-500: #9c5f4a;
   --sage-500: #7a8b6f;
@@ -40,10 +41,12 @@
   --color-surface: var(--vellum-100);
   --color-surface-raised: var(--vellum-50);
   --color-border: var(--vellum-300);
-  --color-accent: var(--ink-800);
-  --color-accent-strong: var(--ink-900);
+  --color-accent: var(--brass-500);
+  --color-accent-strong: var(--brass-600);
   --color-on-accent: var(--vellum-50);
   --color-focus-ring: var(--ink-900);
+  --color-surface-active: var(--vellum-200);
+  --color-indicator: var(--brass-500);
 
   /* Spacing scale (rem). */
   --space-1: 0.25rem;
@@ -60,8 +63,9 @@
   --font-size-sm: 0.85rem;
   --font-size-md: 1rem;
   --font-size-lg: 1.25rem;
-  --font-family-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-family-heading: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --font-family-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-heading:
+    'EB Garamond', 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
   /* Elevation. */
