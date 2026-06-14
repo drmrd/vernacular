@@ -180,4 +180,34 @@ describe('buildScene', () => {
 
     expect(wallMaterialNames(root, 'wall:w1')).not.toContain('reveal')
   })
+
+  it('adds an edge line to each structural mesh while keeping its entity id', () => {
+    const graph: SceneGraph = {
+      nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
+      walls: [
+        {
+          id: 'wall:w1',
+          kind: 'wall',
+          floorId: 'g',
+          start: { x: 0, y: 0 },
+          end: { x: 1000, y: 0 },
+          thickness: 100,
+          height: 2400,
+        },
+      ],
+      rooms: [],
+      underlays: [],
+      openings: [],
+      dimensions: [],
+      stairs: [],
+    }
+
+    const wall = findByEntityId(buildScene(graph), 'wall:w1')
+    expect(wall).toBeInstanceOf(THREE.Mesh)
+    const edges = (wall as THREE.Mesh).children.filter(
+      (child): child is THREE.LineSegments => child instanceof THREE.LineSegments,
+    )
+    expect(edges).toHaveLength(1)
+    expect((wall as THREE.Mesh).userData.entityId).toBe('wall:w1')
+  })
 })
