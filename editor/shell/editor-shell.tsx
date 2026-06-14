@@ -117,6 +117,10 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   return (
     <div className="editor-shell__toolbar">
       <h1 className="editor-shell__wordmark">Vernacular</h1>
+      <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
+        <span className="editor-shell__breadcrumb-sep">/</span>
+        <span className="editor-shell__breadcrumb-active">{session.getProject().meta.name}</span>
+      </nav>
       <div className="editor-shell__toolbar-actions">
         <button
           type="button"
