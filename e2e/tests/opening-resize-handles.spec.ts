@@ -5,14 +5,24 @@ import { gotoEditor, drawWall, expectWallCount, selectors } from './journeys/sup
 // to travel toward the wall's far end. Fractions of the canvas box, no raw pixels.
 const WALL_START = { x: 0.25, y: 0.35 }
 const WALL_END = { x: 0.7, y: 0.35 }
+const WALL_SPAN_FRACTION = WALL_END.x - WALL_START.x
 
-// A deliberate rightward drag of the end jamb, in screen pixels. The exact amount is
-// incidental; it only needs to widen the opening clearly while staying on the wall.
-const WIDEN_OFFSET = 140
+// The plan never auto-fits (fit is bound to the 'f' key only), so a freshly drawn
+// wall keeps the editor's default scale. These mirror the app's stable defaults
+// (editor/plan/viewport DEFAULT_PLAN_SCALE, plan-scene PLAN_WIDTH, and core
+// DEFAULT_OPENING_WIDTH_MM) so the spec can place the jamb handle deterministically
+// without reading internal geometry.
+const PLAN_BACKING_PX_PER_MM = 0.08
+const PLAN_BACKING_WIDTH_PX = 800
+const DEFAULT_OPENING_WIDTH_MM = 813
 
-// Opening proxies read through their accessible label, which ends in "wide" (e.g.
-// "Single Swing Door, 81.3 cm wide"), so they are distinct from the wall and room
-// proxies the overlay also renders.
+// A deliberate rightward drag of the end jamb, as a fraction of the canvas width. The
+// exact amount is incidental; it only needs to widen the opening clearly while staying
+// short of the wall's far end.
+const WIDEN_FRACTION = 0.08
+
+// Opening proxies read through their accessible label, which ends in "wide", so they
+// are distinct from the wall and room proxies the overlay also renders.
 const openingProxy = (page: Page) => page.getByRole('option', { name: / wide$/ })
 
 test.describe('Opening resize handles', () => {
@@ -45,22 +55,24 @@ test.describe('Opening resize handles', () => {
     if (proxyBefore === null) {
       throw new Error('Opening proxy has no bounding box')
     }
-    await page.mouse.click(
-      proxyBefore.x + proxyBefore.width / 2,
-      proxyBefore.y + proxyBefore.height / 2,
-    )
+    // The proxy is an 8px box whose top-left sits on the opening's center anchor.
+    const center = { x: proxyBefore.x, y: proxyBefore.y }
+    await page.mouse.click(center.x + proxyBefore.width / 2, center.y + proxyBefore.height / 2)
     const labelBefore = await openingProxy(page).getAttribute('aria-label')
 
+    // Convert the opening's half-width from millimeters to client pixels along the wall.
+    // The wall world length follows from the fixed scale; the wall's client span gives
+    // the world-to-client ratio, which stays correct even if the canvas is stretched.
+    const wallWorldMm = (WALL_SPAN_FRACTION * PLAN_BACKING_WIDTH_PX) / PLAN_BACKING_PX_PER_MM
+    const worldToClientPx = (box.width * WALL_SPAN_FRACTION) / wallWorldMm
+    const jambOffsetX = (DEFAULT_OPENING_WIDTH_MM / 2) * worldToClientPx
     // The end jamb sits at the right edge of the footprint on the wall centerline.
-    const endJamb = {
-      x: proxyBefore.x + proxyBefore.width,
-      y: proxyBefore.y + proxyBefore.height / 2,
-    }
+    const endJamb = { x: center.x + jambOffsetX, y: center.y }
 
     // Press the end-jamb handle and drag it to the right without releasing.
     await page.mouse.move(endJamb.x, endJamb.y)
     await page.mouse.down()
-    await page.mouse.move(endJamb.x + WIDEN_OFFSET, endJamb.y, { steps: 10 })
+    await page.mouse.move(endJamb.x + box.width * WIDEN_FRACTION, endJamb.y, { steps: 10 })
 
     // While the drag is live, the width readout pill sits near the handle and reads a
     // number. We pin the behavior, not the value: it is visible and carries a digit.

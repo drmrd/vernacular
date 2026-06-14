@@ -1,6 +1,10 @@
 import { distance } from '../geometry/point'
 import type { Opening, Point, Wall } from '../model/types'
 
+// The narrowest an opening may be dragged before its jambs would cross. A drag floor,
+// not a building code: it keeps a jamb-resize from collapsing the opening to zero width.
+export const MIN_OPENING_WIDTH_MM = 50
+
 /** Resolved plan geometry of an opening against its host wall. */
 export interface OpeningGeometry {
   /** Center point of the opening, on the host wall centerline. */

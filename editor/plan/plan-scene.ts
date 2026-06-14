@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react'
-import type { UnitPreferences, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, UnitPreferences, WallSceneNode } from '../../core'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import type { DrawableOpening } from './draw-opening'
@@ -27,6 +27,8 @@ export interface PlanScene {
   // The single selected wall under the select tool whose endpoint handles paint,
   // or null when no wall is editable.
   endpointHandles: WallSceneNode | null
+  // The single selected opening whose jamb resize handles paint, or null when none is.
+  openingResizeHandles: OpeningSceneNode | null
   viewport: Viewport
   // The active unit preferences that format the room-label area text.
   preferences: UnitPreferences
@@ -74,6 +76,7 @@ function buildDrawOptions(scene: PlanScene): DrawPlanOptions {
     ...(scene.snap ? { snap: scene.snap } : {}),
     ...(scene.marquee ? { marquee: scene.marquee } : {}),
     ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
+    ...(scene.openingResizeHandles ? { openingResizeHandles: scene.openingResizeHandles } : {}),
     ...(scene.calibration ? { calibration: scene.calibration } : {}),
     ...(scene.ghost.length > 0 ? { ghost: scene.ghost } : {}),
   }
@@ -103,6 +106,7 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene): void {
     scene.snap,
     scene.marquee,
     scene.endpointHandles,
+    scene.openingResizeHandles,
     scene.viewport,
     scene.preferences,
     scene.underlays,

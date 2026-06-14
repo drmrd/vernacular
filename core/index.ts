@@ -195,6 +195,7 @@ export type {
   OpeningOrientationAxis,
   PlaceOpeningParams,
   RemoveOpeningParams,
+  ResizeOpeningEdgeParams,
   ResizeOpeningParams,
 } from './commands/handlers/opening-commands'
 export {
@@ -203,12 +204,14 @@ export {
   PLACE_OPENING,
   REMOVE_OPENING,
   RESIZE_OPENING,
+  RESIZE_OPENING_EDGE,
   flipOpening,
   moveOpening,
   placeOpening,
   registerOpeningCommands,
   removeOpening,
   resizeOpening,
+  resizeOpeningEdge,
 } from './commands/handlers/opening-commands'
 export type {
   AddDimensionParams,
@@ -369,7 +372,7 @@ export { dimensionGeometry, dimensionLength } from './geometry/dimension'
 export { insetPolygon, pointInPolygon, polygonArea, polygonCentroid } from './geometry/polygon'
 export { pointOnSegment, segmentIntersection } from './geometry/segment'
 export type { OpeningGeometry } from './topology/openings'
-export { deriveOpeningGeometry, openingFootprint } from './topology/openings'
+export { deriveOpeningGeometry, openingFootprint, MIN_OPENING_WIDTH_MM } from './topology/openings'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { OpeningPlacement, ResolvedOpeningEdge } from './topology/opening-edge'
