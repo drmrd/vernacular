@@ -8,25 +8,70 @@ import { ToolsPanel } from './tools-panel'
 afterEach(cleanup)
 
 describe('ToolsPanel', () => {
-  it('defaults to the Select tool, lists it first, and describes its drag gestures', async () => {
+  it('renders four labeled rail sections', () => {
     render(
       <ActiveToolProvider>
         <ToolsPanel />
       </ActiveToolProvider>,
     )
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons[0]).toHaveAccessibleName(/select/i)
+    expect(screen.getByText(/^select$/i)).toBeInTheDocument()
+    expect(screen.getByText(/^draw$/i)).toBeInTheDocument()
+    expect(screen.getByText(/^period$/i)).toBeInTheDocument()
+    expect(screen.getByText(/^annotate$/i)).toBeInTheDocument()
+  })
 
-    const selectButton = screen.getByRole('button', { name: /select/i })
-    const drawButton = screen.getByRole('button', { name: /draw wall/i })
-    expect(selectButton).toHaveAttribute('aria-pressed', 'true')
-    expect(drawButton).toHaveAttribute('aria-pressed', 'false')
-    expect(selectButton).toHaveAttribute('title', expect.stringMatching(/pan/i))
+  it('includes a Pan chip in the SELECT section', () => {
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
 
-    await userEvent.click(drawButton)
-    expect(drawButton).toHaveAttribute('aria-pressed', 'true')
-    expect(selectButton).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /pan/i })).toBeInTheDocument()
+  })
+
+  it('defaults to the Select tool active', () => {
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    expect(screen.getByRole('button', { name: /select/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /pan/i })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('marks the active tool chip pressed and all others unpressed', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /pan/i }))
+
+    expect(screen.getByRole('button', { name: /pan/i })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: /select/i })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('applies the surface-active class to the pressed chip, not the accent-strong class', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    const selectChip = screen.getByRole('button', { name: /select/i })
+
+    expect(selectChip).toHaveClass('tools-panel__chip--active')
+    expect(selectChip).not.toHaveClass('tools-panel__chip--accent')
+
+    await user.click(screen.getByRole('button', { name: /pan/i }))
+
+    expect(selectChip).not.toHaveClass('tools-panel__chip--active')
   })
 })
 
