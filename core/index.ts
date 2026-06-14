@@ -376,7 +376,7 @@ export { deriveOpeningGeometry, openingFootprint, MIN_OPENING_WIDTH_MM } from '.
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
 export { DEFAULT_JUNCTION_TOLERANCE_MM, buildWallGraph } from './topology/wall-graph'
 export type { WallFootprint } from './topology/wall-footprint'
-export { wallFootprints } from './topology/wall-footprint'
+export { MITER_LIMIT, wallFootprints } from './topology/wall-footprint'
 export type { OpeningPlacement, ResolvedOpeningEdge } from './topology/opening-edge'
 export { resolveOpeningEdge } from './topology/opening-edge'
 export type { Room } from './topology/rooms'

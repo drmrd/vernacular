@@ -1,3 +1,4 @@
+import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
 import type { Point } from '../model/types'
 
@@ -62,6 +63,13 @@ interface FootprintContext {
   thicknessByEdge: number[]
   incidence: Map<number, number[]>
 }
+
+/**
+ * A miter that would reach past this multiple of the wall's half-thickness comes
+ * from a corner too acute to cut cleanly, so the end falls back to a square cap
+ * rather than draw a long spike.
+ */
+export const MITER_LIMIT = 4
 
 /**
  * The plan-space footprint of every edge in a floor's wall graph, in the graph's
@@ -131,9 +139,15 @@ function miterCorners(end: EdgeEnd, neighbor: Neighbor): EndCorners | null {
   const left = faceCrossing(end.point, rays, 1)
   const right = faceCrossing(end.point, rays, -1)
   if (left === null || right === null) return null
+  if (overMiterLimit(end, left) || overMiterLimit(end, right)) return null
   return dot(leftPerp(rays.out.direction), end.normal) > 0
     ? { plus: left, minus: right }
     : { plus: right, minus: left }
+}
+
+/** Whether a miter corner reaches past the miter limit from the shared vertex. */
+function overMiterLimit(end: EdgeEnd, corner: Point): boolean {
+  return distance(end.point, corner) > MITER_LIMIT * end.half
 }
 
 /**
