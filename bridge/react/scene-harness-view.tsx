@@ -2,7 +2,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
-  type CameraPose,
+  type Bounds3,
   type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
@@ -10,6 +10,7 @@ import {
   type SurfaceTreatment,
 } from '../../core'
 import { createSceneRenderer } from '../../engine'
+import { fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { SceneLighting } from './scene-lighting'
 
@@ -103,14 +104,17 @@ const SHELL_FIXTURE: SceneGraph = {
   stairs: [],
 }
 
-// Renders exactly one frame on mount and never again, so the screenshot is deterministic
-// and never races an animation tick (the Canvas runs in `frameloop="never"`).
-function StaticFrame({ target }: { target: CameraPose['target'] }) {
-  const { gl, scene, camera } = useThree()
+// Fits the camera to the bounds for the pinned canvas size, then renders exactly one
+// frame on mount and never again, so the screenshot is deterministic and never races
+// an animation tick (the Canvas runs in `frameloop="never"`). Fitting here (rather
+// than only at scene build) frames the model to the harness aspect ratio and field
+// of view, matching the live preview (ADR-0075).
+function StaticFrame({ bounds }: { bounds: Bounds3 | null }) {
+  const { gl, scene, camera, size } = useThree()
   useLayoutEffect(() => {
-    camera.lookAt(target.x, target.y, target.z)
+    fitCameraToBounds(camera, bounds, size)
     gl.render(scene, camera)
-  }, [gl, scene, camera, target])
+  }, [gl, scene, camera, bounds, size])
   return null
 }
 
@@ -154,7 +158,7 @@ export function SceneHarnessView({
         <color attach="background" args={[HARNESS_BACKGROUND]} />
         <primitive object={root} />
         <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
-        <StaticFrame target={pose.target} />
+        <StaticFrame bounds={bounds} />
       </Canvas>
     </div>
   )

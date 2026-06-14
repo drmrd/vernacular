@@ -9,6 +9,7 @@ import {
 } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
+import { fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
@@ -21,24 +22,21 @@ import { useProjectPaint } from './use-project-paint'
 import { useSceneGraph } from './use-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
 
-// Applies the framed camera pose to the live canvas camera while the user has not
-// taken control of the camera, and re-applies it whenever the pose changes (for
-// example after a wall is drawn and the scene reframes). Once the user orbits or
-// walks, `active` goes false and the pose stops being applied, so an edit no longer
-// yanks a navigated camera; clearing user control (the reset button) makes `active`
-// true again, which reframes. The live Canvas is set to frameloop="always" so
-// interactive camera moves render continuously; only the camera state has to be
-// kept in sync with the pose.
-function FrameCamera({ pose, active }: { pose: CameraPose; active: boolean }) {
+// Frames the camera on the scene bounds, fitting the model to the live canvas
+// aspect ratio and field of view (ADR-0075), while the user has not taken control
+// of the camera. It reruns when the canvas size changes, so a pane resize or a move
+// between full and split view refits the model instead of leaving a stale frame.
+// Once the user orbits or walks, `active` goes false and the fit stops being
+// applied, so an edit no longer yanks a navigated camera; clearing user control
+// (the reset button) makes `active` true again, which reframes. The live Canvas is
+// set to frameloop="always" so interactive camera moves render continuously.
+function FrameCamera({ bounds, active }: { bounds: Bounds3 | null; active: boolean }) {
   const camera = useThree((state) => state.camera)
+  const size = useThree((state) => state.size)
   useLayoutEffect(() => {
     if (!active) return
-    camera.position.set(pose.position.x, pose.position.y, pose.position.z)
-    camera.near = pose.near
-    camera.far = pose.far
-    camera.lookAt(pose.target.x, pose.target.y, pose.target.z)
-    camera.updateProjectionMatrix()
-  }, [camera, pose, active])
+    fitCameraToBounds(camera, bounds, size)
+  }, [camera, bounds, active, size])
   return null
 }
 
@@ -140,7 +138,7 @@ function LiveSceneCanvas({
       <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
       <SceneSelection root={root} />
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
-      <FrameCamera pose={pose} active={!userControlled} />
+      <FrameCamera bounds={bounds} active={!userControlled} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
         target={pose.target}
