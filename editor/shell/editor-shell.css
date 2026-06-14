@@ -183,6 +183,15 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * The positioned wrapper for the plan canvas so the canvas reference control (the
+ * trace-underlay loader) anchors to the canvas corner. It sizes to the fixed plan
+ * stage inside it.
+ */
+.editor-shell__plan-area {
+  position: relative;
+}
+
 .plan-view {
   outline: 1px solid var(--color-border);
   /*

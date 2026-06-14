@@ -25,6 +25,7 @@ import {
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
+import { CanvasReferenceControl } from '../plan/canvas-reference-control'
 import { PlanView } from '../plan/plan-view'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
@@ -224,7 +225,12 @@ function EditorStatusBar() {
 function ViewportArea() {
   return (
     <ViewModeViewport
-      plan={<PlanView />}
+      plan={
+        <div className="editor-shell__plan-area">
+          <PlanView />
+          <CanvasReferenceControl />
+        </div>
+      }
       preview={
         <section className="editor-shell__preview" aria-label="3D preview">
           <SceneCanvas />
