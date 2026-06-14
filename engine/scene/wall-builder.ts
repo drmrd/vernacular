@@ -13,16 +13,12 @@ import {
   type PlanarGraph,
   type Point,
   type SurfaceRef,
+  type WallFootprint,
   type WallSceneNode,
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
 import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './geometry-utils'
-
-// Box long faces: index 4 is the +Z interior face, 5 the -Z exterior (see FACE_ROLES).
-// Opening sections: index 0 is the interior long face, 1 the exterior (see openingWallSections).
-const BOX_INTERIOR_FACE_INDEX = 4
-const BOX_EXTERIOR_FACE_INDEX = 5
 
 /** The paint surface ref for the wall's long face at `index` (the interior face is side
  *  'left', the exterior 'right'), or undefined for a non-long face (end cap, top, base, reveal). */
@@ -31,61 +27,128 @@ function longFaceRefAt(
   index: number,
   [interior, exterior]: readonly [number, number],
 ): SurfaceRef | undefined {
-  if (index === interior) return { kind: 'wall-face', wallId, side: 'left' }
-  if (index === exterior) return { kind: 'wall-face', wallId, side: 'right' }
+  if (index === interior) return wallFaceRef(wallId, 'left')
+  if (index === exterior) return wallFaceRef(wallId, 'right')
   return undefined
 }
 
-/**
- * The shell role for each of a BoxGeometry's six material groups, in its fixed
- * face order: index 0 = +X, 1 = -X, 2 = +Y, 3 = -Y, 4 = +Z, 5 = -Z. After the
- * wall builder's world-Y rotation, +Y is the upward face, -Y the downward face,
- * +Z and -Z are the two long faces along the wall, and +X / -X are the end caps.
- * A single wall has no room context to distinguish its two long faces, so the
- * interior/exterior split is a consistent convention; every role renders the
- * same in this slice.
- */
-const FACE_ROLES: SurfaceRole[] = [
-  'exteriorFace', // +X end cap
-  'exteriorFace', // -X end cap
-  'top', // +Y upward face
-  'base', // -Y downward face
-  'interiorFace', // +Z long face
-  'exteriorFace', // -Z long face
-]
+/** The paint surface ref for one named side of a wall's long face. */
+function wallFaceRef(wallId: string, side: 'left' | 'right'): SurfaceRef {
+  return { kind: 'wall-face', wallId, side }
+}
 
 /**
- * Builds the solid box mesh for one wall, in the pinned world-space convention
- * (ADR-0045): plan x maps to world X, plan y maps to world Z, and the vertical
- * axis is world Y. The box spans the wall's length along its direction, rises
- * from world Y = 0 to its height, and is centered across the centerline by half
- * its thickness. A per-face material array keyed by surface role covers the
- * shell: BoxGeometry emits one material group per face in the fixed order
- * +X, -X, +Y, -Y, +Z, -Z (see FACE_ROLES), so the array indexes line up with
- * each face's drawn role.
+ * Builds the solid mesh for one wall from a square footprint: a prism with both
+ * ends squared, which is the box the wall shell drew before junctions were
+ * mitered. The square footprint comes from the centerline offset half the
+ * thickness to each side; the prism builder places it in world space.
  */
 export function buildWallMesh(node: WallSceneNode, materials: MaterialProvider): THREE.Mesh {
-  const length = Math.hypot(node.end.x - node.start.x, node.end.y - node.start.y)
-  const height = wallHeight(node)
-  const geometry = new THREE.BoxGeometry(length, height, node.thickness)
-  const wallId = node.id.slice(WALL_NODE_PREFIX.length)
-  const material = FACE_ROLES.map((role, index) =>
-    materials.material(
-      role,
-      longFaceRefAt(wallId, index, [BOX_INTERIOR_FACE_INDEX, BOX_EXTERIOR_FACE_INDEX]),
-    ),
+  return buildWallPrism(node, squareFootprint(node), materials)
+}
+
+/**
+ * Builds the solid prism mesh for one wall from its plan-space footprint, in the
+ * pinned world-space convention (ADR-0045): plan x maps to world X, plan y maps
+ * to world Z, and the vertical axis is world Y. The footprint's four corners give
+ * the two long faces (one per side) and the two end caps (square or along a miter
+ * line); the prism rises from world Y = 0 to the wall height and is capped top and
+ * base. The six sections carry the shell roles in the box's group order (the two
+ * end caps, top, base, then the interior and exterior long faces), so a square
+ * footprint reproduces the box and the paint refs land on the two long faces.
+ */
+export function buildWallPrism(
+  node: WallSceneNode,
+  footprint: WallFootprint,
+  materials: MaterialProvider,
+): THREE.Mesh {
+  const sections = prismSections(
+    footprint,
+    wallHeight(node),
+    node.id.slice(WALL_NODE_PREFIX.length),
   )
+  const geometry = geometryFromSections(sections)
+  const material = sections.map((section) => materials.material(section.role, section.ref))
   const mesh = new THREE.Mesh(geometry, material)
-  const midX = (node.start.x + node.end.x) / 2
-  const midPlanY = (node.start.y + node.end.y) / 2
-  // BoxGeometry centers its height at the origin, so raise the mesh by half its
-  // height to land the base on the floor datum (Y = 0).
-  mesh.position.set(midX, height / 2, midPlanY)
-  // Negate the plan-y delta: plan y is down-positive, while it maps to the
-  // right-handed world Z, so the wall's heading flips sense in world space.
-  mesh.rotation.y = Math.atan2(-(node.end.y - node.start.y), node.end.x - node.start.x)
   mesh.userData.entityId = node.id
   return mesh
+}
+
+/** The square footprint of a free-standing wall: its centerline offset half the
+ *  thickness to each side, both ends squared. */
+function squareFootprint(node: WallSceneNode): WallFootprint {
+  const normal = leftUnitNormal(node.start, node.end)
+  const half = node.thickness / 2
+  return {
+    aPlus: shiftPoint(node.start, normal, half),
+    aMinus: shiftPoint(node.start, normal, -half),
+    bPlus: shiftPoint(node.end, normal, half),
+    bMinus: shiftPoint(node.end, normal, -half),
+  }
+}
+
+/**
+ * The six wall-prism sections in the box's group order: the two end caps and the
+ * top and base (all role-only), then the `+normal` interior long face (paint side
+ * 'left') and the `-normal` exterior long face (paint side 'right'). Each face is
+ * wound so its normal points outward.
+ */
+function prismSections(footprint: WallFootprint, height: number, wallId: string): WallSection[] {
+  const { aPlus, aMinus, bPlus, bMinus } = footprint
+  return [
+    { role: 'exteriorFace', positions: faceQuad(aMinus, aPlus, height) },
+    { role: 'exteriorFace', positions: faceQuad(bPlus, bMinus, height) },
+    { role: 'top', positions: capQuad([aMinus, aPlus, bPlus, bMinus], height) },
+    { role: 'base', positions: capQuad([aPlus, aMinus, bMinus, bPlus], 0) },
+    {
+      role: 'interiorFace',
+      positions: faceQuad(aPlus, bPlus, height),
+      ref: wallFaceRef(wallId, 'left'),
+    },
+    {
+      role: 'exteriorFace',
+      positions: faceQuad(bMinus, aMinus, height),
+      ref: wallFaceRef(wallId, 'right'),
+    },
+  ]
+}
+
+/** A vertical face quad from `from` to `to`, rising from the base to `height`. */
+function faceQuad(from: Point, to: Point, height: number): number[] {
+  return thicknessSpanningQuad([
+    cornerWorld(from, 0),
+    cornerWorld(to, 0),
+    cornerWorld(to, height),
+    cornerWorld(from, height),
+  ])
+}
+
+/** A flat cap quad: the four footprint corners placed at one height. */
+function capQuad(corners: [Point, Point, Point, Point], height: number): number[] {
+  const [first, second, third, fourth] = corners
+  return thicknessSpanningQuad([
+    cornerWorld(first, height),
+    cornerWorld(second, height),
+    cornerWorld(third, height),
+    cornerWorld(fourth, height),
+  ])
+}
+
+/** A plan-space corner at `height` as a world-space point through `planToWorld`. */
+function cornerWorld(plan: Point, height: number): THREE.Vector3 {
+  const world = planToWorld(plan, height)
+  return new THREE.Vector3(world.x, world.y, world.z)
+}
+
+/** Unit left-hand normal of the direction `a -> b`. */
+function leftUnitNormal(a: Point, b: Point): Point {
+  const length = distance(a, b)
+  return { x: -(b.y - a.y) / length, y: (b.x - a.x) / length }
+}
+
+/** `point` shifted by `offset` along the unit `direction`. */
+function shiftPoint(point: Point, direction: Point, offset: number): Point {
+  return { x: point.x + direction.x * offset, y: point.y + direction.y * offset }
 }
 
 /** Inputs for building a floor's walls from its planar graph. */
@@ -177,10 +240,12 @@ function edgeWallNode(
 const SIDE_INTERIOR = 1
 const SIDE_EXTERIOR = -1
 
-/** One contiguous geometry section paired with the surface role it draws. */
+/** One contiguous geometry section: the surface role it draws, its world positions,
+ *  and an optional paint surface ref (set for the two long faces). */
 interface WallSection {
   role: SurfaceRole
   positions: number[]
+  ref?: SurfaceRef
 }
 
 /**
