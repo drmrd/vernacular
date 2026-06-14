@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pickOpeningResizeHandle, openingResizeEdge, snapJambToWallEnd } from './opening-resize'
+import { pickOpeningResizeHandle, computeOpeningResize, snapJambToWallEnd } from './opening-resize'
 import type { OpeningSceneNode, Point } from '../../core'
 
 const GRAB_TOLERANCE_MM = 200
@@ -89,12 +89,12 @@ const WALL_LENGTH_MM = 3000
 // than this.
 const MIN_OPENING_WIDTH_MM = 50
 
-describe('openingResizeEdge', () => {
+describe('computeOpeningResize', () => {
   it('grows the opening when the end jamb is dragged away from the fixed start jamb', () => {
     // Fixed start jamb = 550; dragging the end jamb out to 1600 yields
     // width 1600 - 550 = 1050 and center (1600 + 550) / 2 = 1075.
     expect(
-      openingResizeEdge({
+      computeOpeningResize({
         edge: 'end',
         draggedJambPosition: 1600,
         width: OPENING_WIDTH_MM,
@@ -109,7 +109,7 @@ describe('openingResizeEdge', () => {
     // Fixed start jamb = 550; dragging the end jamb in to 1200 yields
     // width 1200 - 550 = 650 and center (1200 + 550) / 2 = 875.
     expect(
-      openingResizeEdge({
+      computeOpeningResize({
         edge: 'end',
         draggedJambPosition: 1200,
         width: OPENING_WIDTH_MM,
@@ -124,7 +124,7 @@ describe('openingResizeEdge', () => {
     // Fixed end jamb = 1450; dragging the start jamb out to 700 yields
     // width 1450 - 700 = 750 and center (700 + 1450) / 2 = 1075.
     expect(
-      openingResizeEdge({
+      computeOpeningResize({
         edge: 'start',
         draggedJambPosition: 700,
         width: OPENING_WIDTH_MM,
@@ -140,7 +140,7 @@ describe('openingResizeEdge', () => {
     // so the end jamb is floored at 550 + minWidth = 600, giving width 50 and
     // center (600 + 550) / 2 = 575.
     expect(
-      openingResizeEdge({
+      computeOpeningResize({
         edge: 'end',
         draggedJambPosition: 500,
         width: OPENING_WIDTH_MM,
@@ -156,7 +156,7 @@ describe('openingResizeEdge', () => {
     // wall length 3000, giving width 3000 - 550 = 2450 and center
     // (3000 + 550) / 2 = 1775.
     expect(
-      openingResizeEdge({
+      computeOpeningResize({
         edge: 'end',
         draggedJambPosition: 3500,
         width: OPENING_WIDTH_MM,
@@ -165,6 +165,21 @@ describe('openingResizeEdge', () => {
         minWidth: MIN_OPENING_WIDTH_MM,
       }),
     ).toEqual({ width: 2450, position: 1775 })
+  })
+
+  it('clamps the dragged start jamb to the wall start when dragged past it', () => {
+    // Fixed end jamb = 1450; dragging the start jamb to -200 is clamped to the
+    // wall start 0, giving width 1450 - 0 = 1450 and center (0 + 1450) / 2 = 725.
+    expect(
+      computeOpeningResize({
+        edge: 'start',
+        draggedJambPosition: -200,
+        width: OPENING_WIDTH_MM,
+        position: OPENING_POSITION_MM,
+        wallLength: WALL_LENGTH_MM,
+        minWidth: MIN_OPENING_WIDTH_MM,
+      }),
+    ).toEqual({ width: 1450, position: 725 })
   })
 })
 

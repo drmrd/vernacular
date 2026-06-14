@@ -28,7 +28,7 @@ export function pickOpeningResizeHandle(
   return endIsNearer ? 'end' : 'start'
 }
 
-export interface OpeningResizeEdgeInput {
+export interface OpeningResizeInput {
   edge: OpeningResizeEdge
   draggedJambPosition: number
   width: number
@@ -37,11 +37,14 @@ export interface OpeningResizeEdgeInput {
   minWidth: number
 }
 
-/** New width and center after dragging one jamb, clamped to the wall and the minimum width. */
-export function openingResizeEdge(input: OpeningResizeEdgeInput): {
+/** The opening's width and center along the wall after a jamb-drag resize. */
+export interface OpeningResize {
   width: number
   position: number
-} {
+}
+
+/** New width and center after dragging one jamb, clamped to the wall and the minimum width. */
+export function computeOpeningResize(input: OpeningResizeInput): OpeningResize {
   const halfWidth = input.width / 2
   const draggingStart = input.edge === 'start'
   const fixedJamb = draggingStart ? input.position + halfWidth : input.position - halfWidth
