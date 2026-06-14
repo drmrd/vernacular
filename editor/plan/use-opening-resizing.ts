@@ -10,7 +10,6 @@ import {
 import {
   distance,
   MIN_OPENING_WIDTH_MM,
-  OPENING_NODE_PREFIX,
   WALL_NODE_PREFIX,
   resizeOpeningEdge,
   type OpeningSceneNode,
@@ -21,7 +20,7 @@ import {
 } from '../../core'
 import type { EditorSession } from '../../bridge'
 import { lengthReadout, type DragReadout } from './drag-readout'
-import { projectPointOntoWall } from './opening-geometry'
+import { projectPointOntoWall, rawOpeningId } from './opening-geometry'
 import {
   computeOpeningResize,
   pickOpeningResizeHandle,
@@ -61,11 +60,6 @@ export interface OpeningResizing {
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
-}
-
-// The raw opening id (without the scene-node namespace) the resize command takes.
-function rawOpeningId(node: OpeningSceneNode): string {
-  return node.id.slice(OPENING_NODE_PREFIX.length)
 }
 
 // The opening's host wall in the scene graph (its full start-to-end span), matched by

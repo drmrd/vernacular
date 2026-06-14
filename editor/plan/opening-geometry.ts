@@ -1,4 +1,15 @@
-import { distance, openingFootprint, type OpeningSceneNode, type Point } from '../../core'
+import {
+  distance,
+  openingFootprint,
+  OPENING_NODE_PREFIX,
+  type OpeningSceneNode,
+  type Point,
+} from '../../core'
+
+/** The raw opening id (without the scene-node namespace) the opening commands take. */
+export function rawOpeningId(node: OpeningSceneNode): string {
+  return node.id.slice(OPENING_NODE_PREFIX.length)
+}
 
 /** The four footprint corners of an opening scene node (width along the wall by host thickness across). */
 export function openingCorners(node: OpeningSceneNode): Point[] {

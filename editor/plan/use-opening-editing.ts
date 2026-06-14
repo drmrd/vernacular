@@ -1,7 +1,6 @@
 import { useCallback, useRef, type PointerEvent } from 'react'
 import {
   moveOpening,
-  OPENING_NODE_PREFIX,
   pointInPolygon,
   type Opening,
   type OpeningSceneNode,
@@ -11,7 +10,7 @@ import {
   type Wall,
 } from '../../core'
 import type { EditorSession } from '../../bridge'
-import { openingCorners } from './opening-geometry'
+import { openingCorners, rawOpeningId } from './opening-geometry'
 import { openingDragPosition } from './opening-drag'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
@@ -37,11 +36,6 @@ export interface OpeningEditing {
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
-}
-
-// The raw opening id (without the scene-node namespace) the move command takes.
-function rawOpeningId(node: OpeningSceneNode): string {
-  return node.id.slice(OPENING_NODE_PREFIX.length)
 }
 
 // Resolve the dragged opening's host wall from the project so the release can
