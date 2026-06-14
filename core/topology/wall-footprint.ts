@@ -43,6 +43,19 @@ interface Neighbor {
   half: number
 }
 
+/** One wall's face line at the shared vertex: its direction and half-thickness. */
+interface WallRay {
+  direction: Point
+  half: number
+}
+
+/** The two walls meeting at a corner, as a directed pair: out along this edge,
+ *  in along the neighbor. */
+interface MiterRays {
+  out: WallRay
+  incoming: WallRay
+}
+
 /** Per-call lookups shared across every edge's footprint. */
 interface FootprintContext {
   graph: PlanarGraph
@@ -111,12 +124,14 @@ function squareCorners(end: EdgeEnd): EndCorners {
  * of the outgoing direction's left perpendicular against the edge normal.
  */
 function miterCorners(end: EdgeEnd, neighbor: Neighbor): EndCorners | null {
-  const out = unit(subtract(end.far, end.point))
-  const incoming = unit(subtract(end.point, neighbor.far))
-  const left = faceCrossing(end.point, out, end.half, incoming, neighbor.half, 1)
-  const right = faceCrossing(end.point, out, end.half, incoming, neighbor.half, -1)
+  const rays: MiterRays = {
+    out: { direction: unit(subtract(end.far, end.point)), half: end.half },
+    incoming: { direction: unit(subtract(end.point, neighbor.far)), half: neighbor.half },
+  }
+  const left = faceCrossing(end.point, rays, 1)
+  const right = faceCrossing(end.point, rays, -1)
   if (left === null || right === null) return null
-  return dot(leftPerp(out), end.normal) > 0
+  return dot(leftPerp(rays.out.direction), end.normal) > 0
     ? { plus: left, minus: right }
     : { plus: right, minus: left }
 }
@@ -127,20 +142,12 @@ function miterCorners(end: EdgeEnd, neighbor: Neighbor): EndCorners | null {
  * shared vertex by that wall's own half-thickness so the joint is correct for
  * different thicknesses.
  */
-// eslint-disable-next-line max-params -- the shared vertex plus both walls' direction and half-thickness, and the side, are the corner's inputs
-function faceCrossing(
-  vertex: Point,
-  out: Point,
-  outHalf: number,
-  incoming: Point,
-  inHalf: number,
-  side: number,
-): Point | null {
+function faceCrossing(vertex: Point, rays: MiterRays, side: number): Point | null {
   return lineIntersection(
-    shift(vertex, leftPerp(out), side * outHalf),
-    out,
-    shift(vertex, leftPerp(incoming), side * inHalf),
-    incoming,
+    shift(vertex, leftPerp(rays.out.direction), side * rays.out.half),
+    rays.out.direction,
+    shift(vertex, leftPerp(rays.incoming.direction), side * rays.incoming.half),
+    rays.incoming.direction,
   )
 }
 
