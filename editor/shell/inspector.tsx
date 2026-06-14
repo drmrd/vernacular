@@ -294,6 +294,17 @@ function TransformPanel({ session, selectedIds }: TransformPanelProps) {
   )
 }
 
+function componentTitleFor(selectedIds: ReadonlySet<string>, graph: SceneGraph): string | null {
+  if (selectedIds.size !== 1) return null
+  const [id] = selectedIds
+  if (id === undefined) return null
+  if (id.startsWith(WALL_NODE_PREFIX) || graph.walls.some((w) => w.id === id)) return 'Wall'
+  if (id.startsWith(ROOM_ID_PREFIX) || graph.rooms.some((r) => r.id === id)) return 'Room'
+  if (id.startsWith(DIMENSION_NODE_PREFIX)) return 'Dimension'
+  if (id.startsWith(OPENING_NODE_PREFIX)) return 'Opening'
+  return null
+}
+
 export function Inspector() {
   const session = useEditorSession()
   const graph = useSceneGraph()
@@ -310,12 +321,14 @@ export function Inspector() {
   // first floor. The panel renders nothing for the rows when the floor has none.
   const floor = activeFloor(session.getProject(), activeFloorId)
   const count = selectedIds.size
+  const title = componentTitleFor(selectedIds, graph)
   return (
     <div className="inspector">
       <div className="inspector__header">
         <h2 className="inspector__title">Properties</h2>
         {count > 0 ? <span className="inspector__count-badge">{count} selected</span> : null}
       </div>
+      {title !== null ? <h3 className="inspector__component-title">{title}</h3> : null}
       <SelectionInspector
         session={session}
         graph={graph}
