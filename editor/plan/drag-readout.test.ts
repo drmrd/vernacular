@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_IMPERIAL_PREFERENCES, DEFAULT_METRIC_PREFERENCES, type Point } from '../../core'
+import {
+  DEFAULT_IMPERIAL_PREFERENCES,
+  DEFAULT_METRIC_PREFERENCES,
+  formatAdaptiveLength,
+  type Point,
+} from '../../core'
 import { segmentReadout, formatReadout } from './draw-readout'
-import { dragReadout } from './drag-readout'
+import { dragReadout, lengthReadout } from './drag-readout'
 
 describe('dragReadout', () => {
   it('anchors the readout at the live point of the drag', () => {
@@ -26,6 +31,30 @@ describe('dragReadout', () => {
 
     expect(dragReadout(from, to, DEFAULT_IMPERIAL_PREFERENCES).text).toBe(
       formatReadout(segmentReadout({ start: from, end: to }), DEFAULT_IMPERIAL_PREFERENCES),
+    )
+  })
+})
+
+describe('lengthReadout', () => {
+  it('anchors the readout at the given point', () => {
+    const anchor: Point = { x: 320, y: 480 }
+
+    expect(lengthReadout(anchor, 900, DEFAULT_METRIC_PREFERENCES).anchor).toEqual(anchor)
+  })
+
+  it('reads the length in the adaptive length format with no bearing', () => {
+    const anchor: Point = { x: 0, y: 0 }
+
+    expect(lengthReadout(anchor, 900, DEFAULT_METRIC_PREFERENCES).text).toBe(
+      formatAdaptiveLength(900, DEFAULT_METRIC_PREFERENCES),
+    )
+  })
+
+  it('reflects a different length and unit preference', () => {
+    const anchor: Point = { x: 1500, y: 2500 }
+
+    expect(lengthReadout(anchor, 2438, DEFAULT_IMPERIAL_PREFERENCES).text).toBe(
+      formatAdaptiveLength(2438, DEFAULT_IMPERIAL_PREFERENCES),
     )
   })
 })

@@ -3,12 +3,14 @@ import {
   placeOpening,
   moveOpening,
   resizeOpening,
+  resizeOpeningEdge,
   flipOpening,
   removeOpening,
   registerOpeningCommands,
   PLACE_OPENING,
   MOVE_OPENING,
   RESIZE_OPENING,
+  RESIZE_OPENING_EDGE,
   FLIP_OPENING,
   REMOVE_OPENING,
 } from './opening-commands'
@@ -21,6 +23,8 @@ import type { Opening, Project } from '../../model/types'
 const HOST_WALL_ID = 'wall-1'
 const NEW_POSITION = 1500
 const NEW_DIMENSIONS: OpeningDimensions = { width: 1626, height: 2100, sillHeight: 300 }
+const NEW_EDGE_WIDTH = 1626
+const NEW_EDGE_POSITION = 1500
 
 function newOpening(position = 1000): Opening {
   return createOpening({ type: 'single-swing-door', hostWallId: HOST_WALL_ID, position })
@@ -171,6 +175,68 @@ describe('resizeOpening', () => {
 
   it('carries a stable command type', () => {
     expect(resizeOpening('g', 'opening-1', NEW_DIMENSIONS).type).toBe(RESIZE_OPENING)
+  })
+})
+
+describe('resizeOpeningEdge', () => {
+  it('sets the target opening width and position to the new values', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newOpening()
+    dispatcher.dispatch(placeOpening('g', target))
+
+    dispatcher.dispatch(resizeOpeningEdge('g', target.id, NEW_EDGE_WIDTH, NEW_EDGE_POSITION))
+
+    const resized = project.floors[0]?.openings[0]
+    expect(resized?.width).toBe(NEW_EDGE_WIDTH)
+    expect(resized?.position).toBe(NEW_EDGE_POSITION)
+  })
+
+  it('preserves the opening height and sill height', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newOpening()
+    const originalHeight = target.height
+    const originalSillHeight = target.sillHeight
+    dispatcher.dispatch(placeOpening('g', target))
+
+    dispatcher.dispatch(resizeOpeningEdge('g', target.id, NEW_EDGE_WIDTH, NEW_EDGE_POSITION))
+
+    const resized = project.floors[0]?.openings[0]
+    expect(resized?.height).toBe(originalHeight)
+    expect(resized?.sillHeight).toBe(originalSillHeight)
+  })
+
+  it('leaves the sibling floor reference-equal', () => {
+    const project = projectWithTwoFloors()
+    const sibling = project.floors[1]
+    const dispatcher = dispatcherFor(project)
+    const target = newOpening()
+    dispatcher.dispatch(placeOpening('g', target))
+
+    dispatcher.dispatch(resizeOpeningEdge('g', target.id, NEW_EDGE_WIDTH, NEW_EDGE_POSITION))
+
+    expect(project.floors[1]).toBe(sibling)
+  })
+
+  it('restores the previous width and position on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newOpening()
+    const originalWidth = target.width
+    const originalPosition = target.position
+    dispatcher.dispatch(placeOpening('g', target))
+
+    dispatcher.dispatch(resizeOpeningEdge('g', target.id, NEW_EDGE_WIDTH, NEW_EDGE_POSITION))
+    dispatcher.undo()
+
+    const restored = project.floors[0]?.openings[0]
+    expect(restored?.width).toBe(originalWidth)
+    expect(restored?.position).toBe(originalPosition)
+  })
+
+  it('carries a stable command type', () => {
+    expect(resizeOpeningEdge('g', 'x', 900, 1000).type).toBe(RESIZE_OPENING_EDGE)
   })
 })
 

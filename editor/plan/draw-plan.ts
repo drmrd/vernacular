@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- the cohesive plan-drawing seam: one small routine per drawable layer (rooms, walls, openings, dimensions, stairs, underlays, handles). Splitting it would scatter the PlanDrawingContext seam this module defines. */
 import {
   DEFAULT_METRIC_PREFERENCES,
+  type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
   type StairSceneNode,
@@ -13,7 +14,7 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
-import { openingCorners } from './opening-geometry'
+import { openingCorners, openingJambs } from './opening-geometry'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
@@ -63,6 +64,8 @@ export interface DrawPlanOptions {
   snap?: SnapResult
   marquee?: Bounds
   endpointHandles?: WallSceneNode
+  /** The opening whose two jamb resize handles paint over the wall, or absent for none. */
+  openingResizeHandles?: OpeningSceneNode
   /** The id of the single entity to highlight as a hover preview, or absent for none. */
   hoveredId?: string
   roomLabels?: RoomLabelOptions
@@ -158,6 +161,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options)
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options.viewport)
+  if (options.openingResizeHandles)
+    drawOpeningResizeHandles(ctx, options.openingResizeHandles, options.viewport)
   if (options.preview) drawPreview(ctx, options.preview, options.viewport)
   if (options.snap) drawSnapIndicator(ctx, options.snap, options.viewport)
   if (options.marquee) drawMarquee(ctx, options.marquee, options.viewport)
@@ -375,6 +380,17 @@ export function drawEndpointHandles(
 ): void {
   drawEndpointHandle(ctx, worldToScreen(wall.start, viewport))
   drawEndpointHandle(ctx, worldToScreen(wall.end, viewport))
+}
+
+/** Paint a handle marker at the opening's two jamb screen positions so they track pan and zoom. */
+export function drawOpeningResizeHandles(
+  ctx: PlanDrawingContext,
+  opening: OpeningSceneNode,
+  viewport: Viewport,
+): void {
+  const { start, end } = openingJambs(opening)
+  drawEndpointHandle(ctx, worldToScreen(start, viewport))
+  drawEndpointHandle(ctx, worldToScreen(end, viewport))
 }
 
 function drawEndpointHandle(ctx: PlanDrawingContext, center: Point): void {

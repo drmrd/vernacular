@@ -108,6 +108,7 @@ function buildScene(
     snap: interaction.snap,
     marquee: planSelection.marquee,
     endpointHandles: inputs.selectedWall,
+    openingResizeHandles: openingLayer.selectedOpening,
     viewport: inputs.viewport,
     preferences: inputs.preferences,
     underlays: underlayLayer.underlays,
@@ -213,7 +214,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
-  const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds })
+  const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds, preferences })
   return {
     graph,
     tool,
@@ -247,14 +248,15 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor))
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
-  // The overlay readout pill draws from the move drag or the wall-endpoint drag.
-  // The two never co-occur (only one drag is live), so `??` is merely tidy here.
-  const readout = selectionMove.readout ?? wallEditing.readout
+  // The overlay readout pill draws from the move drag, the wall-endpoint drag, or
+  // the opening jamb resize. Only one drag is ever live, so `??` is merely tidy here.
+  const readout = selectionMove.readout ?? wallEditing.readout ?? openingLayer.resizing.readout
   return {
     cursor: planCursor(layers.tool, controls.panning || planSelection.panning),
     pointerHandlers: composePointerHandlers({
       controls,
       wallEditing,
+      openingResizing: openingLayer.resizing,
       openingEditing: openingLayer.editing,
       selectionMove,
       interaction,

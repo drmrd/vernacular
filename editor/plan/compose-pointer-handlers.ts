@@ -2,6 +2,7 @@ import type { PointerEvent } from 'react'
 import type { DimensionTool } from './use-dimension-tool'
 import type { OpeningEditing } from './use-opening-editing'
 import type { OpeningPlacement } from './use-opening-placement'
+import type { OpeningResizing } from './use-opening-resizing'
 import type { PlanHover } from './use-plan-hover'
 import type { PlanInteraction } from './use-plan-interaction'
 import type { PlanSelection } from './use-plan-selection'
@@ -21,6 +22,7 @@ export interface ComposedPointerHandlers {
 export interface PointerSources {
   controls: ViewportControls
   wallEditing: WallEditing
+  openingResizing: OpeningResizing
   openingEditing: OpeningEditing
   selectionMove: SelectionMove
   interaction: PlanInteraction
@@ -31,23 +33,39 @@ export interface PointerSources {
   hover: PlanHover
 }
 
+// The opening layer's two select-tool grabs, in priority order: a jamb resize beats a footprint move.
+function openingPointerDown(
+  sources: PointerSources,
+  event: PointerEvent<HTMLCanvasElement>,
+): boolean {
+  return sources.openingResizing.onPointerDown(event) || sources.openingEditing.onPointerDown(event)
+}
+
+function openingPointerMove(
+  sources: PointerSources,
+  event: PointerEvent<HTMLCanvasElement>,
+): boolean {
+  return sources.openingResizing.onPointerMove(event) || sources.openingEditing.onPointerMove(event)
+}
+
 /**
- * A pan gesture takes top priority. Next, an endpoint-drag grab, an opening
- * footprint grab, or a press on the already-selected entities (all only possible
- * under the select tool) consumes the pointer so it does not also start a marquee
- * or click selection; the selection move-drag sits just beneath the endpoint and
- * opening drags and above the marquee. The calibration interaction runs next but
- * is inert unless the calibrate tool is active. Otherwise the wall tool, the
- * place-opening tool, and the select-tool selection all see the pointer, each
- * inert under the others' tool.
+ * A pan gesture takes top priority. Next, an endpoint-drag grab, an opening jamb
+ * resize grab, an opening footprint grab, or a press on the already-selected
+ * entities (all only possible under the select tool) consumes the pointer so it
+ * does not also start a marquee or click selection; the resize grab sits above the
+ * footprint grab so a press on a jamb handle resizes rather than moves, and the
+ * selection move-drag sits beneath them and above the marquee. The calibration
+ * interaction runs next but is inert unless the calibrate tool is active. Otherwise
+ * the wall tool, the place-opening tool, and the select-tool selection all see the
+ * pointer, each inert under the others' tool.
  */
 export function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
-  const { controls, wallEditing, openingEditing, selectionMove, interaction } = sources
-  const { dimensionTool, calibration, selection, openingPlacement, hover } = sources
+  const { controls, wallEditing, openingResizing, openingEditing, selectionMove } = sources
+  const { interaction, dimensionTool, calibration, selection, openingPlacement, hover } = sources
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
       if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
-      if (openingEditing.onPointerDown(event) || selectionMove.onPointerDown(event)) return
+      if (openingPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
       calibration.onPointerDown(event)
       interaction.onPointerDown(event)
       dimensionTool.onPointerDown(event)
@@ -59,7 +77,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       // always updates regardless of which handler below claims the rest of the move.
       hover.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
-      if (openingEditing.onPointerMove(event) || selectionMove.onPointerMove(event)) return
+      if (openingPointerMove(sources, event) || selectionMove.onPointerMove(event)) return
       calibration.onPointerMove(event)
       interaction.onPointerMove(event)
       dimensionTool.onPointerMove(event)
@@ -68,6 +86,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
     onPointerUp: (event: PointerEvent<HTMLCanvasElement>) => {
       controls.onPanPointerUp(event)
       wallEditing.onPointerUp(event)
+      openingResizing.onPointerUp(event)
       openingEditing.onPointerUp(event)
       if (selectionMove.onPointerUp(event)) return
       selection.onPointerUp(event)
