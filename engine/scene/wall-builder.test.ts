@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { buildWallMesh, buildWalls } from './wall-builder'
+import { buildWallMesh, buildWallPrism, buildWalls } from './wall-builder'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { PaintMaterialProvider } from '../materials/paint-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
 import { colorFromHex, solidTreatment, surfaceKey } from '../../core'
-import type { OpeningSceneNode, PlanarGraph, Vector3, WallSceneNode } from '../../core'
+import type {
+  OpeningSceneNode,
+  PlanarGraph,
+  Vector3,
+  WallFootprint,
+  WallSceneNode,
+} from '../../core'
 
 const THICKNESS = 120
 const HALF_THICKNESS = THICKNESS / 2
@@ -56,6 +62,26 @@ const roleArea = (mesh: THREE.Mesh, role: string): number => {
       : positions.slice(group.start, group.start + group.count)
   return triangleAreaSum(drawn.flatMap((v) => (v ? [v.x, v.y, v.z] : [])))
 }
+
+// The drawn vertices of every material group carrying the named role.
+const roleDrawnPoints = (mesh: THREE.Mesh, role: string): Vector3[] => {
+  const geometry = mesh.geometry as THREE.BufferGeometry
+  const materials = mesh.material as THREE.Material[]
+  const positions = readPositions(geometry)
+  const index = readIndex(geometry)
+  return materialGroups(geometry)
+    .filter((group) => materials[group.materialIndex]?.name === role)
+    .flatMap((group) =>
+      index.length > 0
+        ? index.slice(group.start, group.start + group.count).map((vi) => positions[vi])
+        : positions.slice(group.start, group.start + group.count),
+    )
+    .filter((point): point is Vector3 => point !== undefined)
+}
+
+// The largest value on one axis among a role's drawn vertices.
+const maxAxisOfRole = (mesh: THREE.Mesh, role: string, axis: 'x' | 'y' | 'z'): number =>
+  Math.max(...roleDrawnPoints(mesh, role).map((point) => point[axis]))
 
 // The set of surface roles drawn by a mesh's material groups.
 const drawnRolesOf = (mesh: THREE.Mesh): Set<string | undefined> => {
@@ -224,6 +250,27 @@ describe('buildWallMesh', () => {
     // Index 4 is the +Z interior long face (side 'left'); index 5 is the -Z exterior face.
     expect(interiorLongFace.color.equals(new THREE.Color(hex))).toBe(true)
     expect(exteriorLongFace.color.equals(new THREE.Color(hex))).toBe(false)
+  })
+})
+
+describe('buildWallPrism', () => {
+  it('slants a mitered end so each long face reaches its own footprint corner', () => {
+    // The b-end is mitered: its +normal (interior) corner is pulled inward to
+    // x = WALL_LENGTH - 600 while its -normal (exterior) corner stays at the full
+    // length. The interior long face should reach only its corner; the exterior
+    // long face should still reach the full length.
+    const footprint: WallFootprint = {
+      aPlus: { x: 0, y: HALF_THICKNESS },
+      aMinus: { x: 0, y: -HALF_THICKNESS },
+      bPlus: { x: WALL_LENGTH - 600, y: HALF_THICKNESS },
+      bMinus: { x: WALL_LENGTH, y: -HALF_THICKNESS },
+    }
+
+    const mesh = buildWallPrism(horizontalWall(), footprint, new NeutralMaterialProvider())
+
+    expect(mesh.userData.entityId).toBe('wall:w1')
+    expect(maxAxisOfRole(mesh, 'interiorFace', 'x')).toBeCloseTo(WALL_LENGTH - 600, PRECISION)
+    expect(maxAxisOfRole(mesh, 'exteriorFace', 'x')).toBeCloseTo(WALL_LENGTH, PRECISION)
   })
 })
 
