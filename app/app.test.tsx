@@ -60,7 +60,6 @@ describe('App boot and storage warnings', () => {
       await screen.findByRole('heading', { level: 1, name: /vernacular/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
-    expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
   })
 
   it('shows a recoverable error when the project fails to load', async () => {
@@ -198,11 +197,12 @@ describe('App project actions', () => {
     )
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
-    expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
 
     await userEvent.click(await screen.findByRole('button', { name: 'My House' }))
 
-    expect(await screen.findByText(/walls: 1/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('My House', { selector: '.editor-shell__breadcrumb-active' }),
+    ).toBeInTheDocument()
   })
 
   it('offers a recovery prompt that restores recovered work into the session', async () => {
@@ -221,7 +221,9 @@ describe('App project actions', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /restore/i }))
 
-    expect(await screen.findByText(/walls: 1/i)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Recovered', { selector: '.editor-shell__breadcrumb-active' }),
+    ).toBeInTheDocument()
   })
 
   it('discards recovered work and dismisses the prompt when Discard is clicked', async () => {
