@@ -760,6 +760,8 @@ describe('drawPlan palette', () => {
     preview: '#909090',
     selectionFill: '#a0a0a0',
     marqueeFill: 'rgba(11, 22, 33, 0.12)',
+    ghost: 'rgba(12, 34, 56, 0.5)',
+    label: '#b0b0b0',
   }
 
   it('draws the grid, the room fill, and a selected wall in the palette colors', () => {
@@ -892,6 +894,57 @@ describe('drawPlan palette', () => {
     drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
 
     expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
+
+  // prettier-ignore
+  const stairNode: StairSceneNode = {
+    id: 'stair:s1', kind: 'stair', floorId: 'f1', wellFloorId: 'f2', runType: 'straight',
+    position: { x: 0, y: 0 }, width: 1000, length: 3000, rotation: 0,
+  }
+
+  it('strokes the move-drag ghost in the palette ghost color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({ palette, ghost: [{ start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } }] }),
+    )
+
+    expect(recorder.segments.some((segment) => segment.style === 'rgba(12, 34, 56, 0.5)')).toBe(
+      true,
+    )
+  })
+
+  it('draws stair ink in the palette wall color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], stairs: [stairNode] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
+
+  it('fills the room label text in the palette label color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        roomLabels: { preferences: DEFAULT_METRIC_PREFERENCES },
+      }),
+    )
+
+    expect(recorder.texts.some((entry) => entry.style === '#b0b0b0')).toBe(true)
+  })
+
+  it('fills the dimension length text in the palette label color', () => {
+    const recorder = recordingContext()
+    const dimension: DrawableDimension = { node: dimensionNode, selected: false }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
+
+    expect(recorder.texts.some((entry) => entry.style === '#b0b0b0')).toBe(true)
   })
 })
 

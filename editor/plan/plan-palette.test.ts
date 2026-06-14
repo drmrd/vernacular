@@ -15,6 +15,8 @@ describe('resolvePlanPalette', () => {
       ['--color-canvas-preview', '#777bbb'],
       ['--color-canvas-selection-fill', '#666ccc'],
       ['--color-canvas-marquee-fill', 'rgba(1, 2, 3, 0.1)'],
+      ['--color-canvas-ghost', 'rgba(4, 5, 6, 0.5)'],
+      ['--color-canvas-label', '#555eee'],
     ])
 
     const palette = resolvePlanPalette((name) => vars.get(name) ?? '')
@@ -31,6 +33,8 @@ describe('resolvePlanPalette', () => {
       preview: '#777bbb',
       selectionFill: '#666ccc',
       marqueeFill: 'rgba(1, 2, 3, 0.1)',
+      ghost: 'rgba(4, 5, 6, 0.5)',
+      label: '#555eee',
     })
   })
 
