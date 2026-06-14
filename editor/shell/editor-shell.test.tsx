@@ -11,7 +11,7 @@ import {
   createEditorSession,
   createSelectionStore,
 } from '../../bridge'
-import { createEmptyProject, createFloor, createWall, type Project } from '../../core'
+import { createEmptyProject, createFloor, type Project } from '../../core'
 import { FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 
 function projectWithFloor(): Project {
@@ -35,41 +35,6 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
         <ActiveFloorProvider store={activeFloor}>
           <ActiveToolProvider>
             <EditorShell saveStatus="idle" {...props} />
-          </ActiveToolProvider>
-        </ActiveFloorProvider>
-      </SelectionProvider>
-    </EditorSessionProvider>,
-  )
-  return { session, selection }
-}
-
-function twoFloorProject(): Project {
-  const project = createEmptyProject({
-    name: 'Test',
-    units: 'imperial',
-    period: 'modern',
-    appVersion: '0.0.0',
-  })
-  project.floors = [
-    createFloor('Ground', {
-      id: 'g',
-      walls: [createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })],
-    }),
-    createFloor('Upper', { id: 'u' }),
-  ]
-  return project
-}
-
-function renderShellWithProject(project: Project, initialFloorId: string) {
-  const session = createEditorSession(project)
-  const selection = createSelectionStore()
-  const activeFloor = createActiveFloorStore(initialFloorId)
-  render(
-    <EditorSessionProvider session={session}>
-      <SelectionProvider store={selection}>
-        <ActiveFloorProvider store={activeFloor}>
-          <ActiveToolProvider>
-            <EditorShell saveStatus="idle" />
           </ActiveToolProvider>
         </ActiveFloorProvider>
       </SelectionProvider>
@@ -110,13 +75,30 @@ describe('EditorShell', () => {
     expect(screen.getByRole('region', { name: /3d preview/i })).toBeInTheDocument()
   })
 
-  it('shows a live wall count and the empty selection state', () => {
+  it('renders a primary Export button in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell({ onExportBundle: vi.fn() })
+
+    const exportBtn = screen.getByRole('button', { name: /^export$/i })
+    expect(exportBtn).toHaveClass('ds-button--primary')
+  })
+
+  it('renders Undo and Redo buttons in the toolbar', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
 
-    expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
-    expect(screen.getByText(/no selection/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /undo/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /redo/i })).toBeInTheDocument()
+  })
+
+  it('no longer shows the dev wall-count paragraph in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.queryByText(/walls:/i)).toBeNull()
   })
 
   it('shows the selected state in the inspector', () => {
@@ -253,27 +235,5 @@ describe('EditorShell paint panel', () => {
     await user.click(screen.getByRole('button', { name: 'Floor' }))
 
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
-  })
-})
-
-describe('EditorShell header wall count', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
-  })
-
-  it("shows the active floor's wall count and updates on floor switch", async () => {
-    vi.stubGlobal('navigator', {})
-    const user = userEvent.setup()
-
-    renderShellWithProject(twoFloorProject(), 'g')
-
-    expect(screen.getByText(/walls: 1/i)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Upper' }))
-    expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Ground' }))
-    expect(screen.getByText(/walls: 1/i)).toBeInTheDocument()
   })
 })
