@@ -18,16 +18,13 @@ interface MenuItem {
   onSelect: () => void
 }
 
-// The project menu anchored near the wordmark. It collapses New, Open folder, and the
-// recent projects into one dropdown, rendering only the entries whose handler is wired
-// and nothing at all when none are.
-export function ProjectMenu({
+// Build the menu entries from the wired handlers, in display order.
+function projectMenuItems({
   onNewProject,
   onOpenFolder,
   onOpenRecent,
   recentProjects,
-}: ProjectMenuProps) {
-  const [open, setOpen] = useState(false)
+}: ProjectMenuProps): MenuItem[] {
   const items: MenuItem[] = []
   if (onNewProject) {
     items.push({ label: 'New project', onSelect: onNewProject })
@@ -40,6 +37,15 @@ export function ProjectMenu({
       items.push({ label: project.name, onSelect: () => onOpenRecent(project.id) })
     }
   }
+  return items
+}
+
+// The project menu anchored near the wordmark. It collapses New, Open folder, and the
+// recent projects into one dropdown, rendering only the entries whose handler is wired
+// and nothing at all when none are.
+export function ProjectMenu(props: ProjectMenuProps) {
+  const [open, setOpen] = useState(false)
+  const items = projectMenuItems(props)
   if (items.length === 0) {
     return null
   }

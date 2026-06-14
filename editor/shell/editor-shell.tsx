@@ -118,6 +118,17 @@ interface ShellHeaderProps {
   projectControls: ProjectControlsProps
 }
 
+function Breadcrumb({ projectName }: { projectName: string }) {
+  return (
+    <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
+      <span className="editor-shell__breadcrumb-sep">/</span>
+      <span className="editor-shell__breadcrumb-crumb">My Projects</span>
+      <span className="editor-shell__breadcrumb-sep">/</span>
+      <span className="editor-shell__breadcrumb-active">{projectName}</span>
+    </nav>
+  )
+}
+
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const session = useEditorSession()
   const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
@@ -130,12 +141,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         onOpenRecent={projectControls.onOpenRecent}
         recentProjects={projectControls.recentProjects}
       />
-      <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
-        <span className="editor-shell__breadcrumb-sep">/</span>
-        <span className="editor-shell__breadcrumb-crumb">My Projects</span>
-        <span className="editor-shell__breadcrumb-sep">/</span>
-        <span className="editor-shell__breadcrumb-active">{session.getProject().meta.name}</span>
-      </nav>
+      <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
         <button
           type="button"
