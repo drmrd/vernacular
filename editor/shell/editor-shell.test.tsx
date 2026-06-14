@@ -149,6 +149,14 @@ describe('EditorShell', () => {
     expect(screen.getByText('1 selected')).toBeInTheDocument()
   })
 
+  it('shows the active tool in the status bar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByText(/tool: select/i)).toBeInTheDocument()
+  })
+
   it('invokes the new, save, and export handlers when their buttons are clicked', async () => {
     vi.stubGlobal('navigator', {})
     const onNewProject = vi.fn()

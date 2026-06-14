@@ -36,6 +36,18 @@ describe('FloorSwitcher', () => {
     expect(onSelectFloor).toHaveBeenCalledWith('f2')
   })
 
+  it('renders Add floor as a design-system button', () => {
+    render(
+      <FloorSwitcher
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /add floor/i })).toHaveClass('ds-button')
+  })
+
   it('applies the active-tab class to the active floor button', () => {
     render(
       <FloorSwitcher
