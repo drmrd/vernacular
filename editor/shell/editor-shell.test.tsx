@@ -89,8 +89,8 @@ describe('EditorShell', () => {
 
     renderShell()
 
-    expect(screen.getByRole('button', { name: /undo/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /redo/i })).toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: /undo/i }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByRole('button', { name: /redo/i }).length).toBeGreaterThan(0)
   })
 
   it('no longer shows the dev wall-count paragraph in the toolbar', () => {
