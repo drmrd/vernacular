@@ -114,6 +114,41 @@ const resizeOpeningHandler: CommandHandler<Project, ResizeOpeningParams> = {
   },
 }
 
+export const RESIZE_OPENING_EDGE = 'floor/resize-opening-edge'
+
+export interface ResizeOpeningEdgeParams {
+  floorId: string
+  openingId: string
+  width: number
+  position: number
+}
+
+// eslint-disable-next-line max-params -- floor, opening, the new width, and the new position is the natural signature for dragging one opening edge
+export function resizeOpeningEdge(
+  floorId: string,
+  openingId: string,
+  width: number,
+  position: number,
+): Command<ResizeOpeningEdgeParams> {
+  return {
+    type: RESIZE_OPENING_EDGE,
+    params: { floorId, openingId, width, position },
+    description: 'Resize opening',
+  }
+}
+
+const resizeOpeningEdgeHandler: CommandHandler<Project, ResizeOpeningEdgeParams> = {
+  apply(state, params) {
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetOpening(floor, params.openingId, (opening) => ({
+        ...opening,
+        width: params.width,
+        position: params.position,
+      })),
+    )
+  },
+}
+
 export const FLIP_OPENING = 'floor/flip-opening'
 
 export interface FlipOpeningParams {
@@ -194,6 +229,7 @@ export function registerOpeningCommands(
     .register(PLACE_OPENING, placeOpeningHandler)
     .register(MOVE_OPENING, moveOpeningHandler)
     .register(RESIZE_OPENING, resizeOpeningHandler)
+    .register(RESIZE_OPENING_EDGE, resizeOpeningEdgeHandler)
     .register(FLIP_OPENING, flipOpeningHandler)
     .register(REMOVE_OPENING, removeOpeningHandler)
 }
