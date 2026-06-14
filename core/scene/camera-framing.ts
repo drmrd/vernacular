@@ -10,6 +10,27 @@ export interface CameraPose {
 const NEAR_FRACTION = 0.01
 const FAR_MULTIPLE = 4
 const DEFAULT_DIAGONAL = 10000
+/** Backs the camera off ~10% beyond the exact fit so the model has a thin border
+ *  rather than touching the frustum edge. Kept small so the model still fills the
+ *  pane (a larger margin would leave it tiny). */
+const FRAME_MARGIN = 1.1
+
+/** The viewport shape the camera must fit the model into. */
+export interface CameraViewport {
+  aspect: number
+  fovRadians: number
+  margin?: number
+}
+
+/** Distance from a sphere of `radius` so it fits the perspective frustum, limited
+ *  by the narrower of the vertical and horizontal half-angles. */
+function fitDistance(radius: number, viewport: CameraViewport): number {
+  const halfVertical = viewport.fovRadians / 2
+  const halfHorizontal = Math.atan(Math.tan(halfVertical) * viewport.aspect)
+  const limitingHalfAngle = Math.min(halfVertical, halfHorizontal)
+  const margin = viewport.margin ?? FRAME_MARGIN
+  return (radius / Math.sin(limitingHalfAngle)) * margin
+}
 
 /** Fixed framing for an empty or degenerate scene: centered at the origin with
  *  a valid (non-NaN) near and far derived from a default diagonal. */
@@ -26,7 +47,7 @@ export const DEFAULT_CAMERA_POSE: CameraPose = {
  * ten-meter house with hundred-millimeter walls does not z-fight. An empty
  * (null) or zero-size scene returns the fixed default pose (foundation spec 2.3).
  */
-export function frameSceneCamera(bounds: Bounds3 | null): CameraPose {
+export function frameSceneCamera(bounds: Bounds3 | null, viewport?: CameraViewport): CameraPose {
   if (bounds === null) return DEFAULT_CAMERA_POSE
   const size = {
     x: bounds.max.x - bounds.min.x,
@@ -40,14 +61,26 @@ export function frameSceneCamera(bounds: Bounds3 | null): CameraPose {
     y: (bounds.min.y + bounds.max.y) / 2,
     z: (bounds.min.z + bounds.max.z) / 2,
   }
+  const offset = cameraOffset(diagonal, viewport)
   return {
     target,
     position: {
-      x: target.x + diagonal,
-      y: target.y + diagonal,
-      z: target.z + diagonal,
+      x: target.x + offset,
+      y: target.y + offset,
+      z: target.z + offset,
     },
     near: diagonal * NEAR_FRACTION,
     far: diagonal * FAR_MULTIPLE,
   }
+}
+
+/** The per-axis distance from the target along the (1, 1, 1) view direction.
+ *  Without a viewport this keeps the loose `diagonal` placement; with one it fits
+ *  the bounding sphere to the frustum. Dividing by the length of the (1, 1, 1)
+ *  direction spreads `distance` equally across the three axes. */
+function cameraOffset(diagonal: number, viewport?: CameraViewport): number {
+  if (viewport === undefined) return diagonal
+  const radius = diagonal / 2
+  const distance = fitDistance(radius, viewport)
+  return distance / Math.hypot(1, 1, 1)
 }
