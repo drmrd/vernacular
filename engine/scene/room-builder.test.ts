@@ -280,6 +280,70 @@ describe('buildRoomShell', () => {
   })
 })
 
+describe('buildRoomShell floor slab under the walls', () => {
+  const OUTSET = 100
+  const OUTER = [
+    { x: ORIGIN - OUTSET, y: ORIGIN - OUTSET },
+    { x: ROOM_WIDTH + OUTSET, y: ORIGIN - OUTSET },
+    { x: ROOM_WIDTH + OUTSET, y: ROOM_DEPTH + OUTSET },
+    { x: ORIGIN - OUTSET, y: ROOM_DEPTH + OUTSET },
+  ]
+
+  it('builds the floor slab out to the outer polygon when present', () => {
+    const node = rectangularRoom({ outerPolygon: OUTER })
+
+    const group = buildRoomShell(node, new NeutralMaterialProvider())
+
+    const slab = findFloorSlab(group)
+    expect(slab).toBeDefined()
+
+    const aabb = new THREE.Box3().setFromObject(slab as THREE.Mesh)
+    // The slab footprint reaches the outer rectangle at the wall outer faces.
+    expect(aabb.min.x).toBeCloseTo(ORIGIN - OUTSET, PRECISION)
+    expect(aabb.max.x).toBeCloseTo(ROOM_WIDTH + OUTSET, PRECISION)
+    expect(aabb.min.z).toBeCloseTo(ORIGIN - OUTSET, PRECISION)
+    expect(aabb.max.z).toBeCloseTo(ROOM_DEPTH + OUTSET, PRECISION)
+    // Widening the footprint does not move either cap in Y.
+    expect(aabb.max.y).toBeCloseTo(FLOOR_DATUM_Y, PRECISION)
+    expect(aabb.min.y).toBeCloseTo(-floorSlabThickness(), PRECISION)
+  })
+
+  it('keeps the ceiling over the clear polygon even when the slab extends outward', () => {
+    const node = rectangularRoom({ outerPolygon: OUTER, ceilingHeight: CEILING_HEIGHT })
+
+    const group = buildRoomShell(node, new NeutralMaterialProvider())
+
+    // The ceiling is the only surface lifted up to the ceiling height.
+    const ceiling = meshesOf(group).find((mesh) => {
+      const box = new THREE.Box3().setFromObject(mesh)
+      return Math.abs(box.min.y - CEILING_HEIGHT) < 1
+    })
+    expect(ceiling).toBeDefined()
+
+    const ceilingBox = new THREE.Box3().setFromObject(ceiling as THREE.Mesh)
+    // The ceiling spans the clear polygon, not the wider outer one.
+    expect(ceilingBox.min.x).toBeCloseTo(ORIGIN, PRECISION)
+    expect(ceilingBox.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
+    expect(ceilingBox.min.z).toBeCloseTo(ORIGIN, PRECISION)
+    expect(ceilingBox.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+  })
+
+  it('falls back to the clear polygon for the slab when no outer polygon is given', () => {
+    const node = rectangularRoom()
+
+    const group = buildRoomShell(node, new NeutralMaterialProvider())
+
+    const slab = findFloorSlab(group)
+    expect(slab).toBeDefined()
+
+    const aabb = new THREE.Box3().setFromObject(slab as THREE.Mesh)
+    expect(aabb.min.x).toBeCloseTo(ORIGIN, PRECISION)
+    expect(aabb.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
+    expect(aabb.min.z).toBeCloseTo(ORIGIN, PRECISION)
+    expect(aabb.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+  })
+})
+
 describe('buildRoomShell surface paint', () => {
   it('paints the floor slab top from the paint store', () => {
     const node = rectangularRoom()
