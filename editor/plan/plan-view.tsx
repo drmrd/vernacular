@@ -215,7 +215,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
-  const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport })
+  const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport, activeFloorId })
   const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds, preferences })
   return {
     graph,

@@ -315,6 +315,9 @@ export interface PlanUnderlayLayerDeps {
   graph: SceneGraph
   tool: ToolId
   viewport: Viewport
+  // The floor whose underlays are shown (the active floor); null before any floor
+  // is selected.
+  activeFloorId: string | null
 }
 
 export interface PlanUnderlayLayer {
@@ -328,10 +331,10 @@ export interface PlanUnderlayLayer {
  * Keeps the underlay layer's session/graph plumbing out of the canvas glue.
  */
 export function usePlanUnderlayLayer(deps: PlanUnderlayLayerDeps): PlanUnderlayLayer {
-  const { session, graph, tool, viewport } = deps
+  const { session, graph, tool, viewport, activeFloorId } = deps
   const underlay = useUnderlay()
   const project = session.getProject()
-  const floorId = project.floors[0]?.id
+  const floorId = activeFloorId ?? project.floors[0]?.id
   // resolveDrawablesFrom returns the shared empty array when the floor has no
   // drawable underlays, so this stays referentially stable across renders in the
   // common no-underlay case and the plan redraw skips them.
