@@ -5,7 +5,7 @@ import { gotoEditor, selectWallTool, selectors } from './support'
 // the bound color picker. Picking a palette color dispatches the assignment, and the
 // finish picker then appears (it renders only once the surface has a solid
 // treatment), proving the edit applied end to end.
-test('edits a wall face color via the contextual finish section', async ({ page }) => {
+test('edits a surface color and it applies', async ({ page }) => {
   await gotoEditor(page)
 
   // Draw a wall so there is a surface to paint.
