@@ -22,10 +22,6 @@ export interface CameraViewport {
   margin?: number
 }
 
-/** The (1, 1, 1) view direction spans three axes, so the normalized direction
- *  carries `1 / sqrt(AXIS_COUNT)` on each. */
-const AXIS_COUNT = 3
-
 /** Distance from a sphere of `radius` so it fits the perspective frustum, limited
  *  by the narrower of the vertical and horizontal half-angles. */
 function fitDistance(radius: number, viewport: CameraViewport): number {
@@ -80,11 +76,11 @@ export function frameSceneCamera(bounds: Bounds3 | null, viewport?: CameraViewpo
 
 /** The per-axis distance from the target along the (1, 1, 1) view direction.
  *  Without a viewport this keeps the loose `diagonal` placement; with one it fits
- *  the bounding sphere to the frustum. The direction is normalized (1, 1, 1), so
- *  each axis carries `distance / sqrt(3)`. */
+ *  the bounding sphere to the frustum. Dividing by the length of the (1, 1, 1)
+ *  direction spreads `distance` equally across the three axes. */
 function cameraOffset(diagonal: number, viewport?: CameraViewport): number {
   if (viewport === undefined) return diagonal
   const radius = diagonal / 2
   const distance = fitDistance(radius, viewport)
-  return distance / Math.sqrt(AXIS_COUNT)
+  return distance / Math.hypot(1, 1, 1)
 }

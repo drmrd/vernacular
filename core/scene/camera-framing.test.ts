@@ -1,32 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import type { Bounds3, Vector3 } from './vector3'
-import { frameSceneCamera, DEFAULT_CAMERA_POSE } from './camera-framing'
+import type { Bounds3 } from './vector3'
+import { frameSceneCamera, DEFAULT_CAMERA_POSE, type CameraPose } from './camera-framing'
 
 const houseBounds: Bounds3 = {
   min: { x: 0, y: 0, z: 0 },
   max: { x: 10000, y: 2700, z: 8000 },
 }
-
-interface CameraPose {
-  position: Vector3
-  target: Vector3
-  near: number
-  far: number
-}
-
-interface Viewport {
-  aspect: number
-  fovRadians: number
-  margin?: number
-}
-
-// The intended public signature gains an optional viewport argument. Until the
-// implementation accepts it, project the existing export onto the target
-// contract so the new behavior can be exercised.
-const frameWithViewport = frameSceneCamera as unknown as (
-  bounds: Bounds3 | null,
-  viewport?: Viewport,
-) => CameraPose
 
 const FOV_RADIANS = (75 * Math.PI) / 180
 const WIDE_ASPECT = 2.0
@@ -92,7 +71,7 @@ describe('frameSceneCamera', () => {
 
 describe('frameSceneCamera with a viewport', () => {
   it('fits the bounding sphere inside both frustum half-angles for a wide aspect', () => {
-    const pose = frameWithViewport(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
+    const pose = frameSceneCamera(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
     const angularRadius = angularRadiusOf(pose, houseBounds)
     const halfV = FOV_RADIANS / 2
     const halfH = halfHorizontalAngle(FOV_RADIANS, WIDE_ASPECT)
@@ -101,7 +80,7 @@ describe('frameSceneCamera with a viewport', () => {
   })
 
   it('fits the bounding sphere inside both frustum half-angles for a narrow aspect', () => {
-    const pose = frameWithViewport(houseBounds, { aspect: NARROW_ASPECT, fovRadians: FOV_RADIANS })
+    const pose = frameSceneCamera(houseBounds, { aspect: NARROW_ASPECT, fovRadians: FOV_RADIANS })
     const angularRadius = angularRadiusOf(pose, houseBounds)
     const halfV = FOV_RADIANS / 2
     const halfH = halfHorizontalAngle(FOV_RADIANS, NARROW_ASPECT)
@@ -110,7 +89,7 @@ describe('frameSceneCamera with a viewport', () => {
   })
 
   it('fills most of the limiting half-angle so the model is not tiny', () => {
-    const pose = frameWithViewport(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
+    const pose = frameSceneCamera(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
     const angularRadius = angularRadiusOf(pose, houseBounds)
     const halfV = FOV_RADIANS / 2
     const halfH = halfHorizontalAngle(FOV_RADIANS, WIDE_ASPECT)
@@ -118,11 +97,11 @@ describe('frameSceneCamera with a viewport', () => {
   })
 
   it('pushes the camera farther back for a narrower aspect than for a wide one', () => {
-    const widePose = frameWithViewport(houseBounds, {
+    const widePose = frameSceneCamera(houseBounds, {
       aspect: WIDE_ASPECT,
       fovRadians: FOV_RADIANS,
     })
-    const narrowPose = frameWithViewport(houseBounds, {
+    const narrowPose = frameSceneCamera(houseBounds, {
       aspect: NARROW_ASPECT,
       fovRadians: FOV_RADIANS,
     })
@@ -130,12 +109,12 @@ describe('frameSceneCamera with a viewport', () => {
   })
 
   it('still targets the center of the bounds when a viewport is supplied', () => {
-    const pose = frameWithViewport(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
+    const pose = frameSceneCamera(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
     expect(pose.target).toEqual({ x: 5000, y: 1350, z: 4000 })
   })
 
   it('keeps valid near and far planes when a viewport is supplied', () => {
-    const pose = frameWithViewport(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
+    const pose = frameSceneCamera(houseBounds, { aspect: WIDE_ASPECT, fovRadians: FOV_RADIANS })
     expect(pose.near).toBeGreaterThan(0)
     expect(pose.far).toBeGreaterThan(pose.near)
   })
