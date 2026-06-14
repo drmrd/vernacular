@@ -63,10 +63,10 @@
   opacity: 0;
 }
 
-/* The checked segment uses the strong accent so white text clears WCAG AA (4.5:1). */
+/* The checked segment uses the strong accent; on-accent text clears WCAG AA (4.5:1). */
 .unit-toggle__option:has(input:checked) {
   background: var(--color-accent-strong);
-  color: var(--color-surface);
+  color: var(--color-on-accent);
 }
 
 .unit-toggle__option:has(input:focus-visible) {
@@ -141,11 +141,11 @@
   cursor: pointer;
 }
 
-/* Darker than the wall-selection accent so white label text clears WCAG AA (4.5:1). */
+/* Active tool uses accent-strong fill; on-accent text clears WCAG AA (4.5:1). */
 .tools-panel button[aria-pressed='true'] {
   border-color: var(--color-accent-strong);
   background: var(--color-accent-strong);
-  color: var(--color-surface);
+  color: var(--color-on-accent);
 }
 
 .plan-view {
