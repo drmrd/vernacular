@@ -306,6 +306,53 @@ describe('buildWalls', () => {
     expectBoxSpan(first, { x: [0, SPLIT_X], y: [0, HEIGHT], z: FULL_THICKNESS_SPAN })
     expectBoxSpan(second, { x: [SPLIT_X, WALL_LENGTH], y: [0, HEIGHT], z: FULL_THICKNESS_SPAN })
   })
+
+  it('miters the shared corner of two plain walls meeting at a right angle', () => {
+    // An L: wall A runs east, wall B turns north from A's far end. Their shared
+    // corner (WALL_LENGTH, 0) carries two incident edges, so A's b-end miters: its
+    // interior (+normal) face pulls in to the inner corner and its exterior
+    // (-normal) face reaches out to the outer corner.
+    const wallA = horizontalWall({ id: 'wall:a' })
+    const wallB: WallSceneNode = {
+      id: 'wall:b',
+      kind: 'wall',
+      floorId: 'demo',
+      start: { x: WALL_LENGTH, y: 0 },
+      end: { x: WALL_LENGTH, y: WALL_LENGTH },
+      thickness: THICKNESS,
+      height: HEIGHT,
+    }
+    const graph: PlanarGraph = {
+      vertices: [
+        { x: 0, y: 0 },
+        { x: WALL_LENGTH, y: 0 },
+        { x: WALL_LENGTH, y: WALL_LENGTH },
+      ],
+      edges: [
+        { a: 0, b: 1, wallId: 'a' },
+        { a: 1, b: 2, wallId: 'b' },
+      ],
+    }
+
+    const group = buildWalls({
+      graph,
+      walls: [wallA, wallB],
+      openingsByWall: new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+    const meshA = meshesOf(group).find((mesh) => mesh.userData.entityId === 'wall:a')
+    expect(meshA).toBeDefined()
+    if (meshA === undefined) return
+
+    expect(maxAxisOfRole(meshA, 'interiorFace', 'x')).toBeCloseTo(
+      WALL_LENGTH - HALF_THICKNESS,
+      PRECISION,
+    )
+    expect(maxAxisOfRole(meshA, 'exteriorFace', 'x')).toBeCloseTo(
+      WALL_LENGTH + HALF_THICKNESS,
+      PRECISION,
+    )
+  })
 })
 
 describe('buildWalls opening voids', () => {
