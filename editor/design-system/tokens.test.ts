@@ -95,4 +95,12 @@ describe('drafting-table type and elevation tokens', () => {
     expect(names).toContain('--color-surface-active')
     expect(names).toContain('--color-indicator')
   })
+
+  it('leads the heading stack with EB Garamond for cross-platform serif consistency', () => {
+    expect(tokensCss).toMatch(/--font-family-heading:\s*'EB Garamond'/)
+  })
+
+  it('leads the ui stack with Inter for cross-platform sans consistency', () => {
+    expect(tokensCss).toMatch(/--font-family-ui:\s*'Inter'/)
+  })
 })
