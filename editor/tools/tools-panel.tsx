@@ -1,28 +1,63 @@
 import { useActiveTool, type ToolId } from './active-tool-context'
+import './tools-panel.css'
 
-const TOOLS: ReadonlyArray<{ id: ToolId; label: string; title?: string }> = [
-  { id: 'select', label: 'Select', title: 'Select. Drag to pan, Shift-drag to marquee.' },
-  { id: 'draw-wall', label: 'Draw wall' },
-  { id: 'place-opening', label: 'Opening' },
-  { id: 'dimension', label: 'Dimension' },
-]
+interface ChipProps {
+  toolId?: ToolId
+  label: string
+  disabled?: boolean
+}
+
+function Chip({ toolId, label, disabled }: ChipProps) {
+  const { tool, setTool } = useActiveTool()
+  const isActive = toolId !== undefined && tool === toolId
+  return (
+    <button
+      type="button"
+      className={`tools-panel__chip${isActive ? ' tools-panel__chip--active' : ''}`}
+      aria-pressed={toolId !== undefined ? isActive : undefined}
+      disabled={disabled}
+      onClick={toolId !== undefined ? () => setTool(toolId) : undefined}
+    >
+      {label}
+    </button>
+  )
+}
 
 export function ToolsPanel() {
-  const { tool, setTool } = useActiveTool()
   return (
-    <ul className="tools-panel">
-      {TOOLS.map((entry) => (
-        <li key={entry.id}>
-          <button
-            type="button"
-            aria-pressed={tool === entry.id}
-            title={entry.title}
-            onClick={() => setTool(entry.id)}
-          >
-            {entry.label}
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="tools-panel">
+      <section className="tools-panel__section">
+        <span className="tools-panel__section-label">Select</span>
+        <Chip toolId="select" label="Select" />
+        {/* pan: canvas layer does not yet distinguish pan from select -- follow-up wiring needed */}
+        <Chip toolId="pan" label="Pan" />
+      </section>
+
+      <section className="tools-panel__section">
+        <span className="tools-panel__section-label">Draw</span>
+        <div className="tools-panel__grid">
+          <Chip toolId="draw-wall" label="Wall" />
+          {/* Door and Window chips replace this placeholder in Cycle 3 */}
+          <Chip toolId="place-opening" label="Opening" />
+        </div>
+      </section>
+
+      <section className="tools-panel__section">
+        <span className="tools-panel__section-label">Period</span>
+        <div className="tools-panel__grid">
+          <Chip label="Fireplace" disabled />
+          <Chip label="Chimney" disabled />
+          <Chip label="Stairs" disabled />
+        </div>
+      </section>
+
+      <section className="tools-panel__section">
+        <span className="tools-panel__section-label">Annotate</span>
+        <div className="tools-panel__grid">
+          <Chip toolId="dimension" label="Dimension" />
+          <Chip label="Label" disabled />
+        </div>
+      </section>
+    </div>
   )
 }

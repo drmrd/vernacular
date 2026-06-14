@@ -123,31 +123,6 @@
   color: var(--color-text-muted);
 }
 
-.tools-panel {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.tools-panel button {
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.3rem;
-  background: var(--color-surface-raised);
-  cursor: pointer;
-}
-
-/* Active tool uses accent-strong fill; on-accent text clears WCAG AA (4.5:1). */
-.tools-panel button[aria-pressed='true'] {
-  border-color: var(--color-accent-strong);
-  background: var(--color-accent-strong);
-  color: var(--color-on-accent);
-}
-
 .plan-view {
   outline: 1px solid var(--color-border);
   /*
