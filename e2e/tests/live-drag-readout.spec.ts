@@ -37,7 +37,7 @@ test.describe('Live move-drag readout', () => {
       { x: box.width * WALL_START.x, y: box.height * WALL_START.y },
       { x: box.width * WALL_END.x, y: box.height * WALL_END.y },
     )
-    await expect(selectors.wallCount(page, 1)).toBeVisible()
+    await expect(selectors.wallProxies(page)).toHaveCount(1)
 
     // The editor's default tool is Select; make it active explicitly the same way the
     // other interaction specs do, so the click below selects rather than draws.
@@ -95,7 +95,7 @@ test.describe('Live wall-endpoint readout', () => {
       { x: box.width * WALL_START.x, y: box.height * WALL_START.y },
       { x: box.width * WALL_END.x, y: box.height * WALL_END.y },
     )
-    await expect(selectors.wallCount(page, 1)).toBeVisible()
+    await expect(selectors.wallProxies(page)).toHaveCount(1)
 
     // The editor's default tool is Select; make it active explicitly the same way the
     // other interaction specs do, so the click below selects rather than draws.

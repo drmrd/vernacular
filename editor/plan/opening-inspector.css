@@ -1,0 +1,38 @@
+.opening-inspector__fraction-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+
+.opening-inspector__fraction-chip {
+  padding: 1px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
+}
+
+.opening-inspector__fraction-chip:hover {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.opening-inspector__fraction-chip--active {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+  border-color: var(--color-indicator);
+}
+
+.opening-inspector__fraction-chip:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}

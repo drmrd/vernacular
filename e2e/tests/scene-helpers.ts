@@ -52,12 +52,12 @@ export async function drawnSceneCanvas(page: Page): Promise<Locator> {
 
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
-  await page.getByRole('button', { name: 'Draw wall' }).click()
+  await page.getByRole('button', { name: 'Wall', exact: true }).click()
   await plan.click({ position: { x: 100, y: 120 } })
   await plan.click({ position: { x: 320, y: 120 } })
   await plan.click({ position: { x: 320, y: 260 } })
   await page.keyboard.press('Enter')
-  await expect(page.getByText(/Walls: \d/)).toBeVisible()
+  await expect(page.getByRole('option', { name: /^Wall,/ }).first()).toBeVisible()
 
   return settledSceneCanvas(page)
 }
@@ -71,7 +71,7 @@ export async function drawnRoomCanvas(page: Page): Promise<Locator> {
 
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
-  await page.getByRole('button', { name: 'Draw wall' }).click()
+  await page.getByRole('button', { name: 'Wall', exact: true }).click()
   await plan.click({ position: { x: 100, y: 120 } })
   await plan.click({ position: { x: 300, y: 120 } })
   await plan.click({ position: { x: 300, y: 260 } })

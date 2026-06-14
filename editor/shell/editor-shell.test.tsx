@@ -11,8 +11,8 @@ import {
   createEditorSession,
   createSelectionStore,
 } from '../../bridge'
-import { createEmptyProject, createFloor, createWall, type Project } from '../../core'
-import { FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
+import { createEmptyProject, createFloor, type Project } from '../../core'
+import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 
 function projectWithFloor(): Project {
   const project = createEmptyProject({
@@ -35,41 +35,6 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
         <ActiveFloorProvider store={activeFloor}>
           <ActiveToolProvider>
             <EditorShell saveStatus="idle" {...props} />
-          </ActiveToolProvider>
-        </ActiveFloorProvider>
-      </SelectionProvider>
-    </EditorSessionProvider>,
-  )
-  return { session, selection }
-}
-
-function twoFloorProject(): Project {
-  const project = createEmptyProject({
-    name: 'Test',
-    units: 'imperial',
-    period: 'modern',
-    appVersion: '0.0.0',
-  })
-  project.floors = [
-    createFloor('Ground', {
-      id: 'g',
-      walls: [createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }, { id: 'w1' })],
-    }),
-    createFloor('Upper', { id: 'u' }),
-  ]
-  return project
-}
-
-function renderShellWithProject(project: Project, initialFloorId: string) {
-  const session = createEditorSession(project)
-  const selection = createSelectionStore()
-  const activeFloor = createActiveFloorStore(initialFloorId)
-  render(
-    <EditorSessionProvider session={session}>
-      <SelectionProvider store={selection}>
-        <ActiveFloorProvider store={activeFloor}>
-          <ActiveToolProvider>
-            <EditorShell saveStatus="idle" />
           </ActiveToolProvider>
         </ActiveFloorProvider>
       </SelectionProvider>
@@ -110,13 +75,52 @@ describe('EditorShell', () => {
     expect(screen.getByRole('region', { name: /3d preview/i })).toBeInTheDocument()
   })
 
-  it('shows a live wall count and the empty selection state', () => {
+  it('renders a primary Export button in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell({ onExportBundle: vi.fn() })
+
+    const exportBtn = screen.getByRole('button', { name: /^export$/i })
+    expect(exportBtn).toHaveClass('ds-button--primary')
+  })
+
+  it('renders Undo and Redo buttons in the toolbar', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
 
-    expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
-    expect(screen.getByText(/no selection/i)).toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: /undo/i }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByRole('button', { name: /redo/i }).length).toBeGreaterThan(0)
+  })
+
+  it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByRole('button', { name: /grid/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dimensions/i })).toBeInTheDocument()
+  })
+
+  it('toggles the Grid button aria-pressed on click', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(gridBtn)
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('no longer shows the dev wall-count paragraph in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.queryByText(/walls:/i)).toBeNull()
   })
 
   it('shows the selected state in the inspector', () => {
@@ -224,12 +228,13 @@ describe('EditorShell', () => {
     expect(screen.getByRole('complementary', { name: /tool rail/i })).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
 
-    const slotIds = [FLOOR_SWITCHER_SLOT, PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT]
+    const slotIds = [PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT]
     for (const slotId of slotIds) {
       expect(document.querySelector(`[data-slot-id="${slotId}"]`)).not.toBeNull()
     }
 
     expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: /floors/i })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: /inspector/i })).toBeInTheDocument()
   })
 })
@@ -253,27 +258,5 @@ describe('EditorShell paint panel', () => {
     await user.click(screen.getByRole('button', { name: 'Floor' }))
 
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
-  })
-})
-
-describe('EditorShell header wall count', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
-  })
-
-  it("shows the active floor's wall count and updates on floor switch", async () => {
-    vi.stubGlobal('navigator', {})
-    const user = userEvent.setup()
-
-    renderShellWithProject(twoFloorProject(), 'g')
-
-    expect(screen.getByText(/walls: 1/i)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Upper' }))
-    expect(screen.getByText(/walls: 0/i)).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Ground' }))
-    expect(screen.getByText(/walls: 1/i)).toBeInTheDocument()
   })
 })

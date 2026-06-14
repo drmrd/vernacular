@@ -1,0 +1,73 @@
+.tools-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+}
+
+.tools-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tools-panel__section-label {
+  padding: var(--space-2) 0 var(--space-1);
+  font-family: var(--font-family-ui);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+}
+
+/* Two-column grid for sections with multiple tools. */
+.tools-panel__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+}
+
+.tools-panel__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 4px var(--space-2);
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
+}
+
+.tools-panel__chip:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.tools-panel__chip--active {
+  background: var(--color-surface-active);
+  border-left-color: var(--color-indicator);
+  color: var(--color-text);
+}
+
+.tools-panel__chip--active:hover {
+  background: var(--color-surface-active);
+}
+
+.tools-panel__chip:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.tools-panel__chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

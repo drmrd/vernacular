@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ArrowClockwise, ArrowCounterClockwise, GridFour, Ruler } from '@phosphor-icons/react'
 import {
   SceneCanvas,
   createSurfaceSelectionStore,
@@ -16,10 +17,10 @@ import {
   addFloor,
   paintableSurfaces,
   resolveSurfacePaint,
-  sceneGraphForFloor,
   setUnits,
   type Project,
 } from '../../core'
+import { Button } from '../design-system'
 import {
   CommandBar,
   CommandPalette,
@@ -44,17 +45,13 @@ import { UnderlayProvider } from '../plan/use-underlay'
 import { useActiveTool } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
+import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
-import { FloorSwitcher } from './floor-switcher'
 import { Inspector } from './inspector'
+import { StatusBar } from './status-bar'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import {
-  FLOOR_SWITCHER_SLOT,
-  PAINT_PICKER_SLOT,
-  PAINT_INSPECTOR_SLOT,
-  SNAP_PANEL_SLOT,
-} from './shell-panel-slots'
+import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT, SNAP_PANEL_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -111,22 +108,68 @@ interface ShellHeaderProps {
   projectControls: ProjectControlsProps
 }
 
-// The toolbar content. It renders a plain container, NOT a <header role="banner">,
-// because AppFrame's own <header> provides the single banner landmark.
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
-  const graph = sceneGraphForFloor(useSceneGraph(), useActiveFloorId())
   const session = useEditorSession()
+  const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
   return (
     <div className="editor-shell__toolbar">
-      <h1>Vernacular</h1>
-      <p aria-live="polite">Walls: {graph.walls.length}</p>
-      <p role="status">{SAVE_STATUS_LABELS[saveStatus]}</p>
-      <UnitToggle
-        units={session.getProject().meta.units}
-        onChange={(units) => session.dispatch(setUnits(units))}
-      />
-      <ProjectControls {...projectControls} />
-      <CommandBar />
+      <h1 className="editor-shell__wordmark">Vernacular</h1>
+      <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
+        <span className="editor-shell__breadcrumb-sep">/</span>
+        <span className="editor-shell__breadcrumb-active">{session.getProject().meta.name}</span>
+      </nav>
+      <div className="editor-shell__toolbar-actions">
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Grid"
+          aria-pressed={showGrid}
+          onClick={toggleGrid}
+          title="Grid (G)"
+        >
+          <GridFour size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Dimensions"
+          aria-pressed={showDimensions}
+          onClick={toggleDimensions}
+          title="Dimensions (D)"
+        >
+          <Ruler size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Undo"
+          onClick={() => session.undo()}
+        >
+          <ArrowCounterClockwise size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="editor-shell__icon-btn"
+          aria-label="Redo"
+          onClick={() => session.redo()}
+        >
+          <ArrowClockwise size={16} aria-hidden="true" />
+        </button>
+        {projectControls.onExportBundle ? (
+          <Button variant="primary" onClick={projectControls.onExportBundle}>
+            Export
+          </Button>
+        ) : null}
+        <UnitToggle
+          units={session.getProject().meta.units}
+          onChange={(units) => session.dispatch(setUnits(units))}
+        />
+        <ProjectControls {...projectControls} />
+        <CommandBar />
+      </div>
+      <span role="status" className="editor-shell__save-status">
+        {SAVE_STATUS_LABELS[saveStatus]}
+      </span>
     </div>
   )
 }
@@ -142,25 +185,28 @@ function floorSummaries(project: Project): { id: string; name: string }[] {
 // and to the active-floor hooks so the switcher reflects the active floor (both
 // hoisted here to honor the hooks rule).
 function ToolRail() {
+  return (
+    <>
+      <ToolsNav />
+      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
+        <SnapPanel />
+      </PanelSlot>
+    </>
+  )
+}
+
+function EditorStatusBar() {
   const session = useEditorSession()
   const activeFloorId = useActiveFloorId()
   const setActiveFloorId = useSetActiveFloorId()
   useSceneGraph()
   return (
-    <>
-      <ToolsNav />
-      <PanelSlot slotId={FLOOR_SWITCHER_SLOT} label="Floors">
-        <FloorSwitcher
-          floors={floorSummaries(session.getProject())}
-          activeFloorId={activeFloorId}
-          onSelectFloor={setActiveFloorId}
-          onAddFloor={() => session.dispatch(addFloor('New Floor'))}
-        />
-      </PanelSlot>
-      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
-        <SnapPanel />
-      </PanelSlot>
-    </>
+    <StatusBar
+      floors={floorSummaries(session.getProject())}
+      activeFloorId={activeFloorId}
+      onSelectFloor={setActiveFloorId}
+      onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+    />
   )
 }
 
@@ -247,27 +293,32 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
     <CommandPaletteProvider>
       <SnapPreferencesProvider store={snapPreferences}>
         <ViewModeProvider>
-          <UnderlayProvider>
-            <OpeningToolProvider>
-              <KeybindingLayer />
-              <CommandPalette />
-              {recovery ? (
-                <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-              ) : null}
-              <SurfaceSelectionProvider store={surfaceSelection}>
-                <EntitySurfaceBridge />
-                <AppFrame
-                  header={<ShellHeader saveStatus={saveStatus} projectControls={projectControls} />}
-                  railLabel="Tool rail"
-                  rail={<ToolRail />}
-                  mainLabel="Viewport"
-                  main={<ViewportArea />}
-                  inspectorLabel="Inspector"
-                  inspector={<InspectorPanels />}
-                />
-              </SurfaceSelectionProvider>
-            </OpeningToolProvider>
-          </UnderlayProvider>
+          <ViewOverlayProvider>
+            <UnderlayProvider>
+              <OpeningToolProvider>
+                <KeybindingLayer />
+                <CommandPalette />
+                {recovery ? (
+                  <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+                ) : null}
+                <SurfaceSelectionProvider store={surfaceSelection}>
+                  <EntitySurfaceBridge />
+                  <AppFrame
+                    header={
+                      <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
+                    }
+                    railLabel="Tool rail"
+                    rail={<ToolRail />}
+                    mainLabel="Viewport"
+                    main={<ViewportArea />}
+                    inspectorLabel="Inspector"
+                    inspector={<InspectorPanels />}
+                    statusBar={<EditorStatusBar />}
+                  />
+                </SurfaceSelectionProvider>
+              </OpeningToolProvider>
+            </UnderlayProvider>
+          </ViewOverlayProvider>
         </ViewModeProvider>
       </SnapPreferencesProvider>
     </CommandPaletteProvider>

@@ -16,7 +16,7 @@ test.describe('Canvas pan alignment', () => {
     }
 
     // Draw a vertical wall by two clicks sharing the same displayed x.
-    await page.getByRole('button', { name: 'Draw wall' }).click()
+    await page.getByRole('button', { name: 'Wall', exact: true }).click()
     const x0 = box.width * 0.3
     await canvas.click({ position: { x: x0, y: box.height * 0.3 } })
     await canvas.click({ position: { x: x0, y: box.height * 0.6 } })
@@ -24,7 +24,7 @@ test.describe('Canvas pan alignment', () => {
     await page.keyboard.press('Enter')
 
     // Sanity: the wall was actually drawn.
-    await expect(page.getByText('Walls: 1')).toBeVisible()
+    await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
 
     // Middle-mouse-button drag pan to the right by PAN CSS pixels.
     const PAN = box.width * 0.25
