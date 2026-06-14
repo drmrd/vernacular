@@ -59,7 +59,7 @@ describe('builtin element types', () => {
       expect(entry?.opening).toMatchObject(expected.opening)
     }
 
-    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(4)
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(5)
   })
 
   it('marks every opening element type with a rectangular void contour', () => {
@@ -71,6 +71,23 @@ describe('builtin element types', () => {
     for (const entry of openings) {
       expect(entry.scene3D.voidContour).toBe('rectangular')
     }
+  })
+
+  it('names the three-dimensional fill kind for each opening family', () => {
+    for (const id of ['single-swing-door', 'double-swing-door', 'pocket-door'] as const) {
+      expect(getEntry(builtinElementTypes, id)?.scene3D.fill).toBe('door-leaf')
+    }
+
+    for (const id of ['double-hung-window', 'casement-window'] as const) {
+      expect(getEntry(builtinElementTypes, id)?.scene3D.fill).toBe('window-sash')
+    }
+
+    expect(getEntry(builtinElementTypes, 'cased-opening')?.scene3D.fill).toBeUndefined()
+  })
+
+  it('leaves the wall and stair types without a fill kind', () => {
+    expect(getEntry(builtinElementTypes, 'straight-wall')?.scene3D.fill).toBeUndefined()
+    expect(getEntry(builtinElementTypes, 'straight-stair')?.scene3D.fill).toBeUndefined()
   })
 
   it('leaves the wall and stair types without a void contour', () => {
