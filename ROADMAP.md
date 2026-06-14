@@ -131,7 +131,7 @@ Owner-driven follow-ups on the three-dimensional preview and on floor management
 | Camera fit so the preview model fills the pane (aspect and field of view) | ADR-0075 / #146 | merged  |
 | Mitered wall junctions (remove the box-per-wall notches)                  | --              | planned |
 | Near-wall transparency for walls between the camera and the interior      | --              | planned |
-| Extend the floor slab under the walls to the outer wall faces             | --              | planned |
+| Extend the floor slab under the walls to the outer wall faces             | ADR-0076 / #149 | merged  |
 | Discoverable camera move and rotate controls                              | --              | planned |
 | Floor management (name on create, ordering, default names, inline rename) | --              | planned |
 | Wall drawn on a non-ground floor stays on that floor                      | --              | planned |
