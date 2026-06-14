@@ -13,7 +13,6 @@ import {
   type OpeningSceneNode,
   type PlanarGraph,
   type Point,
-  type SurfaceRef,
   type WallFootprint,
   type WallSceneNode,
 } from '../../core'
@@ -27,18 +26,6 @@ import {
   type WallSection,
 } from './geometry-utils'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
-
-/** The paint surface ref for the wall's long face at `index` (the interior face is side
- *  'left', the exterior 'right'), or undefined for a non-long face (end cap, top, base, reveal). */
-function longFaceRefAt(
-  wallId: string,
-  index: number,
-  [interior, exterior]: readonly [number, number],
-): SurfaceRef | undefined {
-  if (index === interior) return wallFaceRef(wallId, 'left')
-  if (index === exterior) return wallFaceRef(wallId, 'right')
-  return undefined
-}
 
 /** Inputs for building a floor's walls from its planar graph. */
 export interface WallBuildInput {
@@ -293,8 +280,14 @@ function revealPositions(frame: EdgeFrame, holeLoops: THREE.Vector2[][]): number
   return positions
 }
 
-/** The profile path's contiguous sections, in a fixed geometry order. */
-function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): WallSection[] {
+/** The profile path's contiguous sections, in a fixed geometry order. The two long
+ *  faces carry the wall's paint refs (interior side 'left', exterior side 'right'),
+ *  matching the prism path; the caps and reveal carry no ref. */
+function openingWallSections(
+  frame: EdgeFrame,
+  outline: TriangulatedOutline,
+  wallId: string,
+): WallSection[] {
   const top = new THREE.Vector2(0, frame.height)
   const topEnd = new THREE.Vector2(frame.length, frame.height)
   const baseEnd = new THREE.Vector2(frame.length, 0)
@@ -305,8 +298,16 @@ function openingWallSections(frame: EdgeFrame, outline: TriangulatedOutline): Wa
     holeLoops: outline.holeLoops,
   }
   const sections: WallSection[] = [
-    { role: 'interiorFace', positions: longFacePositions(frame, outline, SIDE_INTERIOR) },
-    { role: 'exteriorFace', positions: longFacePositions(frame, reversed, SIDE_EXTERIOR) },
+    {
+      role: 'interiorFace',
+      positions: longFacePositions(frame, outline, SIDE_INTERIOR),
+      ref: wallFaceRef(wallId, 'left'),
+    },
+    {
+      role: 'exteriorFace',
+      positions: longFacePositions(frame, reversed, SIDE_EXTERIOR),
+      ref: wallFaceRef(wallId, 'right'),
+    },
     { role: 'top', positions: outerCapPositions(frame, topEnd, top) },
     { role: 'base', positions: outerCapPositions(frame, base, baseEnd) },
     // The two vertical end caps (u = 0 and u = length) share the exterior-face
@@ -361,12 +362,10 @@ function buildOpeningWallMesh(target: OpeningWall, input: WallBuildInput): THREE
   const b = input.graph.vertices[target.edge.b] as Point
   const frame = edgeFrame(a, b, target.wall)
   const outline = triangulatedWallOutline(frame, target.openings)
-  const sections = openingWallSections(frame, outline)
-  const geometry = geometryFromSections(sections)
   const wallId = target.wall.id.slice(WALL_NODE_PREFIX.length)
-  const materials = sections.map((section, index) =>
-    input.materials.material(section.role, longFaceRefAt(wallId, index, [0, 1])),
-  )
+  const sections = openingWallSections(frame, outline, wallId)
+  const geometry = geometryFromSections(sections)
+  const materials = sections.map((section) => input.materials.material(section.role, section.ref))
   const mesh = new THREE.Mesh(geometry, materials)
   mesh.userData.entityId = target.wall.id
   return mesh
