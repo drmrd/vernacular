@@ -14,24 +14,49 @@ export interface SelectionTransformPanelProps {
   dispatch: (command: Command) => void
 }
 
-export function SelectionTransformPanel({
-  floorId,
-  entityIds,
-  center,
-  dispatch,
-}: SelectionTransformPanelProps): ReactElement {
+// The free-angle entry. Parses its own degrees and rotates through the callback;
+// a blank or non-numeric entry rotates nothing.
+function AngleForm({ onRotate }: { onRotate: (radians: number) => void }): ReactElement {
   const [angle, setAngle] = useState('')
-
-  function rotateBy(radians: number): void {
-    dispatch(rotateEntities(floorId, [...entityIds], center, radians))
-  }
 
   function applyAngle(): void {
     const degrees = Number.parseFloat(angle)
     if (!Number.isFinite(degrees)) {
       return
     }
-    rotateBy(degrees * DEGREES_TO_RADIANS)
+    onRotate(degrees * DEGREES_TO_RADIANS)
+  }
+
+  return (
+    <form
+      className="selection-transform-panel__angle"
+      onSubmit={(event) => {
+        event.preventDefault()
+        applyAngle()
+      }}
+    >
+      <label className="selection-transform-panel__angle-label">
+        Angle
+        <input
+          className="selection-transform-panel__angle-input"
+          type="number"
+          value={angle}
+          onChange={(event) => setAngle(event.target.value)}
+        />
+      </label>
+      <Button type="submit">Apply</Button>
+    </form>
+  )
+}
+
+export function SelectionTransformPanel({
+  floorId,
+  entityIds,
+  center,
+  dispatch,
+}: SelectionTransformPanelProps): ReactElement {
+  function rotateBy(radians: number): void {
+    dispatch(rotateEntities(floorId, [...entityIds], center, radians))
   }
 
   return (
@@ -40,24 +65,7 @@ export function SelectionTransformPanel({
         <Button onClick={() => rotateBy(QUARTER_TURN)}>Rotate counter-clockwise</Button>
         <Button onClick={() => rotateBy(-QUARTER_TURN)}>Rotate clockwise</Button>
       </div>
-      <form
-        className="selection-transform-panel__angle"
-        onSubmit={(event) => {
-          event.preventDefault()
-          applyAngle()
-        }}
-      >
-        <label className="selection-transform-panel__angle-label">
-          Angle
-          <input
-            className="selection-transform-panel__angle-input"
-            type="number"
-            value={angle}
-            onChange={(event) => setAngle(event.target.value)}
-          />
-        </label>
-        <Button type="submit">Apply</Button>
-      </form>
+      <AngleForm onRotate={rotateBy} />
     </div>
   )
 }
