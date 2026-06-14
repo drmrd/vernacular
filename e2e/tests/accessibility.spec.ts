@@ -14,12 +14,12 @@ test.describe('Home page accessibility', () => {
     await expect(canvas).toBeVisible()
 
     // Draw a wall so the overlay exposes a selectable entity.
-    await page.getByRole('button', { name: 'Draw wall' }).click()
+    await page.getByRole('button', { name: 'Wall', exact: true }).click()
     await canvas.click({ position: { x: 120, y: 200 } })
     await canvas.click({ position: { x: 520, y: 200 } })
     // Finish the run with Enter so the buffered wall commits.
     await page.keyboard.press('Enter')
-    await expect(page.getByText('Walls: 1')).toBeVisible()
+    await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
 
     // The wall is reachable as a keyboard-focusable option whose accessible name is
     // the unit-aware label: "Wall, <length>" formatted in the project's units.

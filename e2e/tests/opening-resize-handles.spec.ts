@@ -43,8 +43,8 @@ test.describe('Opening resize handles', () => {
     await drawWall(page, wallStart, wallEnd)
     await expectWallCount(page, 1)
 
-    // Place a single opening near the middle of the wall via the opening tool.
-    await selectors.tool(page, 'Opening').click()
+    // Place a single opening near the middle of the wall via the door chip.
+    await page.getByRole('button', { name: 'Door', exact: true }).click()
     await canvas.click({ position: { x: (wallStart.x + wallEnd.x) / 2, y: wallStart.y } })
     await expect(openingProxy(page)).toHaveCount(1)
 

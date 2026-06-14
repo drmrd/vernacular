@@ -11,8 +11,9 @@ test('a wall cannot host on an opening', async ({ page }) => {
   await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
   await expectWallCount(page, 1)
 
-  // The opening tool hosts on a wall: clicking on the wall places one opening.
-  await selectors.tool(page, 'Opening').click()
+  // The door chip arms opening placement, which hosts on a wall: clicking on the
+  // wall places one opening.
+  await page.getByRole('button', { name: 'Door', exact: true }).click()
   await selectors.planCanvas(page).click({ position: { x: 320, y: 200 } })
   await expect(openingProxies(page)).toHaveCount(1)
 

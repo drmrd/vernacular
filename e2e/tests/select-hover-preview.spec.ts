@@ -29,7 +29,7 @@ test.describe('Select-mode hover preview', () => {
       { x: box.width * WALL_START.x, y: box.height * WALL_START.y },
       { x: box.width * WALL_END.x, y: box.height * WALL_END.y },
     )
-    await expect(selectors.wallCount(page, 1)).toBeVisible()
+    await expect(selectors.wallProxies(page)).toHaveCount(1)
 
     // Switch to Select mode. The pointer now rests on the Select button, off the
     // canvas, so the canvas shows its at-rest image with nothing hovered.

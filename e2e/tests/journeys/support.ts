@@ -4,11 +4,12 @@ import { expect, type Page } from '@playwright/test'
 // makeover slice restyles the shell only this module changes, not each spec.
 export const selectors = {
   planCanvas: (page: Page) => page.getByLabel('Floor plan'),
-  wallCount: (page: Page, count: number) => page.getByText(`Walls: ${count}`),
   savedStatus: (page: Page) => page.getByText('All changes saved'),
   tool: (page: Page, name: string) => page.getByRole('button', { name }),
-  undoButton: (page: Page) => page.getByRole('button', { name: 'Undo' }),
-  redoButton: (page: Page) => page.getByRole('button', { name: 'Redo' }),
+  // The top bar renders icon undo/redo buttons and the command bar renders its own,
+  // so two buttons share each name; the toolbar icon button is the first in the DOM.
+  undoButton: (page: Page) => page.getByRole('button', { name: 'Undo' }).first(),
+  redoButton: (page: Page) => page.getByRole('button', { name: 'Redo' }).first(),
   wallProxy: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
   wallProxies: (page: Page) => page.getByRole('option', { name: /^Wall,/ }),
   roomProxies: (page: Page) => page.getByRole('option', { name: /^Room,/ }),
@@ -30,7 +31,7 @@ export async function gotoEditor(page: Page): Promise<void> {
 // Activate the wall-drawing tool. Drawing is an explicit tool choice now that
 // Select (drag-to-pan) is the default (ADR-0069), so a draw must select it first.
 export async function selectWallTool(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Draw wall' }).click()
+  await page.getByRole('button', { name: 'Wall', exact: true }).click()
 }
 
 // Draw a single straight wall by clicking a start and an end point on the plan.
@@ -46,7 +47,9 @@ export async function drawWall(
   await page.keyboard.press('Enter')
 }
 
-// Assert the shell reports the given number of walls.
+// Assert the plan exposes the given number of walls. The wall count is observed
+// through the accessibility entity proxies (one "Wall, <length>" option per wall),
+// the durable observable now that the debug wall-count readout is gone.
 export async function expectWallCount(page: Page, count: number): Promise<void> {
-  await expect(selectors.wallCount(page, count)).toBeVisible()
+  await expect(selectors.wallProxies(page)).toHaveCount(count)
 }

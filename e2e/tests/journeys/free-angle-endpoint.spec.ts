@@ -39,7 +39,7 @@ test('frees a dragged wall endpoint from the angle lock with the modifier', asyn
     { x: box.width * WALL_A.x, y: box.height * WALL_A.y },
     { x: box.width * WALL_B.x, y: box.height * WALL_B.y },
   )
-  await expect(selectors.wallCount(page, 1)).toBeVisible()
+  await expect(selectors.wallProxies(page)).toHaveCount(1)
 
   await selectors.selectTool(page).click()
   await selectWall(page)
@@ -98,7 +98,7 @@ test('re-resolves a paused endpoint drag when the modifier toggles in place', as
     { x: box.width * WALL_A.x, y: box.height * WALL_A.y },
     { x: box.width * WALL_B.x, y: box.height * WALL_B.y },
   )
-  await expect(selectors.wallCount(page, 1)).toBeVisible()
+  await expect(selectors.wallProxies(page)).toHaveCount(1)
   await selectors.selectTool(page).click()
   await selectWall(page)
 
