@@ -14,7 +14,7 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
-import { openingCorners } from './opening-geometry'
+import { openingCorners, openingJambs } from './opening-geometry'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
@@ -388,12 +388,9 @@ export function drawOpeningResizeHandles(
   opening: OpeningSceneNode,
   viewport: Viewport,
 ): void {
-  const halfWidth = opening.width / 2
-  const { center, along } = opening
-  const startJamb = { x: center.x - along.x * halfWidth, y: center.y - along.y * halfWidth }
-  const endJamb = { x: center.x + along.x * halfWidth, y: center.y + along.y * halfWidth }
-  drawEndpointHandle(ctx, worldToScreen(startJamb, viewport))
-  drawEndpointHandle(ctx, worldToScreen(endJamb, viewport))
+  const { start, end } = openingJambs(opening)
+  drawEndpointHandle(ctx, worldToScreen(start, viewport))
+  drawEndpointHandle(ctx, worldToScreen(end, viewport))
 }
 
 function drawEndpointHandle(ctx: PlanDrawingContext, center: Point): void {

@@ -1,4 +1,5 @@
 import { distance, type Point, type OpeningSceneNode } from '../../core'
+import { openingJambs } from './opening-geometry'
 
 export type OpeningResizeEdge = 'start' | 'end'
 
@@ -8,17 +9,9 @@ export function pickOpeningResizeHandle(
   point: Point,
   toleranceMm: number,
 ): OpeningResizeEdge | null {
-  const halfWidth = opening.width / 2
-  const startJamb: Point = {
-    x: opening.center.x - opening.along.x * halfWidth,
-    y: opening.center.y - opening.along.y * halfWidth,
-  }
-  const endJamb: Point = {
-    x: opening.center.x + opening.along.x * halfWidth,
-    y: opening.center.y + opening.along.y * halfWidth,
-  }
-  const distanceToStart = distance(point, startJamb)
-  const distanceToEnd = distance(point, endJamb)
+  const { start, end } = openingJambs(opening)
+  const distanceToStart = distance(point, start)
+  const distanceToEnd = distance(point, end)
   if (distanceToStart > toleranceMm && distanceToEnd > toleranceMm) {
     return null
   }
