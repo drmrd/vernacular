@@ -12,6 +12,7 @@ import {
   createSelectionStore,
 } from '../../bridge'
 import { createEmptyProject, createFloor, type Project } from '../../core'
+import { ThemeProvider } from '../design-system'
 import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 
 function projectWithFloor(): Project {
@@ -30,15 +31,17 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore(session.getProject().floors[0]?.id ?? null)
   render(
-    <EditorSessionProvider session={session}>
-      <SelectionProvider store={selection}>
-        <ActiveFloorProvider store={activeFloor}>
-          <ActiveToolProvider>
-            <EditorShell saveStatus="idle" {...props} />
-          </ActiveToolProvider>
-        </ActiveFloorProvider>
-      </SelectionProvider>
-    </EditorSessionProvider>,
+    <ThemeProvider>
+      <EditorSessionProvider session={session}>
+        <SelectionProvider store={selection}>
+          <ActiveFloorProvider store={activeFloor}>
+            <ActiveToolProvider>
+              <EditorShell saveStatus="idle" {...props} />
+            </ActiveToolProvider>
+          </ActiveFloorProvider>
+        </SelectionProvider>
+      </EditorSessionProvider>
+    </ThemeProvider>,
   )
   return { session, selection }
 }
@@ -92,6 +95,14 @@ describe('EditorShell', () => {
     expect(screen.queryAllByRole('button', { name: /undo/i })).toHaveLength(1)
     expect(screen.queryAllByRole('button', { name: /redo/i })).toHaveLength(1)
     expect(screen.queryByRole('button', { name: /command palette/i })).toBeNull()
+  })
+
+  it('renders a theme toggle in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByRole('radio', { name: /system/i })).toBeInTheDocument()
   })
 
   it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
