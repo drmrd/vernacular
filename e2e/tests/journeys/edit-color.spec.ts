@@ -1,22 +1,32 @@
 import { test, expect } from '@playwright/test'
-import { gotoEditor } from './support'
+import { gotoEditor, selectWallTool, selectors } from './support'
 
-// The Paint panel lists the active floor's paintable surfaces (each wall's two
-// faces, plus the floor and ceiling). Choosing a surface binds the color picker
-// to it; picking a palette color dispatches the assignment, and the surface row's
-// swatch reflects the stored paint, proving the edit applied end to end.
+// Paint is contextual: selecting a wall reveals its finish section (Face A/B) with
+// the bound color picker. Picking a palette color dispatches the assignment, and the
+// finish picker then appears (it renders only once the surface has a solid
+// treatment), proving the edit applied end to end.
 test('edits a surface color and it applies', async ({ page }) => {
   await gotoEditor(page)
 
-  // The wall-less starting floor always exposes a Floor surface to paint.
-  const floorSurface = page.getByRole('button', { name: 'Floor', exact: true })
-  await expect(floorSurface).toHaveAttribute('data-paint', 'none')
+  // Draw a wall so there is a surface to paint.
+  await selectWallTool(page)
+  const canvas = selectors.planCanvas(page)
+  await canvas.click({ position: { x: 120, y: 200 } })
+  await canvas.click({ position: { x: 520, y: 200 } })
+  await page.keyboard.press('Enter')
 
-  // Selecting the surface reveals the bound color picker.
-  await floorSurface.click()
-  await expect(page.getByRole('searchbox', { name: /search colors/i })).toBeVisible()
+  // Select the wall through its accessibility proxy.
+  await selectors.selectTool(page).click()
+  const proxy = page.getByRole('option', { name: /^Wall,/ })
+  await proxy.focus()
+  await page.keyboard.press('Enter')
+  await expect(proxy).toHaveAttribute('aria-selected', 'true')
 
-  // Pick a bundled palette color; the swatch updates to the chosen color.
+  // The contextual finish section appears for the selected wall.
+  await expect(page.getByRole('group', { name: /wall face/i })).toBeVisible()
+
+  // Picking a bundled palette color assigns a solid treatment, revealing the finish
+  // picker radios.
   await page.getByRole('button', { name: 'Sage Green' }).click()
-  await expect(floorSurface).toHaveAttribute('data-paint', '#9aa583')
+  await expect(page.getByRole('radio').first()).toBeVisible()
 })

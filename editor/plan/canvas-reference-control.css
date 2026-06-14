@@ -1,0 +1,25 @@
+.canvas-reference-control {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 5;
+  /* Click-through: the container never blocks drawing on the canvas beneath it. The
+     interactive controls below opt back into pointer events. */
+  pointer-events: none;
+  max-width: 12rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-raised);
+  font-family: var(--font-family-ui);
+  font-size: 0.8rem;
+  color: var(--color-text);
+}
+
+.canvas-reference-control button,
+.canvas-reference-control input,
+.canvas-reference-control label,
+.canvas-reference-control a {
+  pointer-events: auto;
+}

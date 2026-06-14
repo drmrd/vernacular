@@ -5,24 +5,14 @@ import {
   createSurfaceSelectionStore,
   SurfaceSelectionProvider,
   useActiveFloorId,
-  useActiveSurface,
   useEditorSession,
   useSceneGraph,
   useSelection,
   useSetActiveFloorId,
-  useSurfaceSelection,
   type AutosaveStatus,
 } from '../../bridge'
+import { addFloor, builtinPeriods, setUnits, type Project } from '../../core'
 import {
-  addFloor,
-  paintableSurfaces,
-  resolveSurfacePaint,
-  setUnits,
-  type Project,
-} from '../../core'
-import { Button } from '../design-system'
-import {
-  CommandBar,
   CommandPalette,
   CommandPaletteProvider,
   createEditorCommands,
@@ -32,12 +22,11 @@ import {
   useKeybindings,
   type CommandContext,
 } from '../commands'
-import { PaintPanel } from '../paint/paint-panel'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
+import { CanvasReferenceControl } from '../plan/canvas-reference-control'
 import { PlanView } from '../plan/plan-view'
-import { SnapPanel } from '../plan/snap-panel'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
@@ -48,10 +37,14 @@ import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
+import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
+import { ProjectIdentity } from './project-identity'
+import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
+import { ThemeToggle } from './theme-toggle'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT, SNAP_PANEL_SLOT } from './shell-panel-slots'
+import { PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -155,17 +148,14 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         >
           <ArrowClockwise size={16} aria-hidden="true" />
         </button>
-        {projectControls.onExportBundle ? (
-          <Button variant="primary" onClick={projectControls.onExportBundle}>
-            Export
-          </Button>
-        ) : null}
-        <UnitToggle
-          units={session.getProject().meta.units}
-          onChange={(units) => session.dispatch(setUnits(units))}
+        <ThemeToggle />
+        <ExportMenu
+          onExportBundle={projectControls.onExportBundle}
+          onExportPlan={projectControls.onExportPlan}
+          onExportImage={projectControls.onExportImage}
+          onExportPdf={projectControls.onExportPdf}
         />
         <ProjectControls {...projectControls} />
-        <CommandBar />
       </div>
       <span role="status" className="editor-shell__save-status">
         {SAVE_STATUS_LABELS[saveStatus]}
@@ -180,17 +170,30 @@ function floorSummaries(project: Project): { id: string; name: string }[] {
   return project.floors.map((floor) => ({ id: floor.id, name: floor.name }))
 }
 
-// The tool rail content: the existing tools nav plus the live floor switcher. It
-// subscribes to the scene graph so the floor list refreshes on add/remove floor,
-// and to the active-floor hooks so the switcher reflects the active floor (both
-// hoisted here to honor the hooks rule).
+// The italic period subtitle for the rail project block: the era's display name
+// and its approximate range, drawn from the period registry.
+function railPeriodLabel(period: string): string | undefined {
+  const entry = builtinPeriods.entries[period]
+  if (entry === undefined) {
+    return undefined
+  }
+  const name = entry.displayName?.['en-US'] ?? period
+  return entry.approximateRange ? `${name}, ${entry.approximateRange}` : name
+}
+
+// The tool rail content: the project identity block above the drawing and editing
+// tools. It subscribes to the scene graph so the block refreshes on project edits.
 function ToolRail() {
+  const session = useEditorSession()
+  useSceneGraph()
+  const project = session.getProject()
   return (
     <>
+      <ProjectIdentity
+        name={project.meta.name}
+        periodLabel={railPeriodLabel(project.meta.period)}
+      />
       <ToolsNav />
-      <PanelSlot slotId={SNAP_PANEL_SLOT} label="Snapping">
-        <SnapPanel />
-      </PanelSlot>
     </>
   )
 }
@@ -206,6 +209,13 @@ function EditorStatusBar() {
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
       onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+      snap={<SnapStatus />}
+      units={
+        <UnitToggle
+          units={session.getProject().meta.units}
+          onChange={(units) => session.dispatch(setUnits(units))}
+        />
+      }
     />
   )
 }
@@ -215,37 +225,17 @@ function EditorStatusBar() {
 function ViewportArea() {
   return (
     <ViewModeViewport
-      plan={<PlanView />}
+      plan={
+        <div className="editor-shell__plan-area">
+          <PlanView />
+          <CanvasReferenceControl />
+        </div>
+      }
       preview={
         <section className="editor-shell__preview" aria-label="3D preview">
           <SceneCanvas />
         </section>
       }
-    />
-  )
-}
-
-// The paint inspector content: the paint panel for the active floor's surfaces,
-// kept live by subscribing to the scene graph (the session re-derives the graph
-// on every dispatch, paint included).
-function PaintInspector() {
-  const session = useEditorSession()
-  const activeFloorId = useActiveFloorId()
-  const surfaceSelection = useSurfaceSelection()
-  const activeSurface = useActiveSurface()
-  useSceneGraph()
-  const project = session.getProject()
-  const floor =
-    project.floors.find((candidate) => candidate.id === activeFloorId) ?? project.floors[0]
-  const surfaces = floor ? paintableSurfaces(floor) : []
-  return (
-    <PaintPanel
-      surfaces={surfaces}
-      activeSurface={activeSurface}
-      treatmentFor={(ref) => resolveSurfacePaint(project, ref)}
-      recent={[]}
-      onSelectSurface={surfaceSelection.select}
-      dispatch={session.dispatch}
     />
   )
 }
@@ -257,15 +247,12 @@ function EntitySurfaceBridge() {
   return null
 }
 
-// The inspector content: the existing selection inspector, the live paint panel,
-// and the empty surface-paint seam the paint track mounts into later.
+// The inspector content: the selection-driven inspector (which now hosts contextual
+// paint per selection) and the empty surface-paint seam the paint track mounts into.
 function InspectorPanels() {
   return (
     <>
       <Inspector />
-      <PanelSlot slotId={PAINT_PICKER_SLOT} label="Paint">
-        <PaintInspector />
-      </PanelSlot>
       <PanelSlot slotId={PAINT_INSPECTOR_SLOT} label="Surface paint" emptyTitle="Surface paint" />
     </>
   )

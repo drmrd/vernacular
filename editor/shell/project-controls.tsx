@@ -20,10 +20,6 @@ export function ProjectControls({
   onNewProject,
   onOpenRecent,
   onSave,
-  onExportBundle,
-  onExportPlan,
-  onExportImage,
-  onExportPdf,
   onOpenFolder,
 }: ProjectControlsProps) {
   const hasRecentProjects = recentProjects !== undefined && recentProjects.length > 0
@@ -31,10 +27,6 @@ export function ProjectControls({
     <nav className="editor-shell__project" aria-label="Project">
       <ProjectAction label="New" onClick={onNewProject} />
       <ProjectAction label="Save" onClick={onSave} />
-      <ProjectAction label="Export bundle" onClick={onExportBundle} />
-      <ProjectAction label="Export plan" onClick={onExportPlan} />
-      <ProjectAction label="Export PNG" onClick={onExportImage} />
-      <ProjectAction label="Export PDF" onClick={onExportPdf} />
       <ProjectAction label="Open folder" onClick={onOpenFolder} />
       {hasRecentProjects && onOpenRecent ? (
         <RecentProjectsList projects={recentProjects} onOpenRecent={onOpenRecent} />

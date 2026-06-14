@@ -23,12 +23,11 @@ test.describe('Export bundle download', () => {
 
     await expect(page.getByLabel('Floor plan')).toBeVisible()
 
-    const exportButton = page
-      .getByRole('navigation', { name: 'Project' })
-      .getByRole('button', { name: 'Export bundle' })
-    await expect(exportButton).toBeVisible()
+    await page.getByRole('button', { name: /^export$/i }).click()
+    const exportItem = page.getByRole('menuitem', { name: 'Project bundle' })
+    await expect(exportItem).toBeVisible()
 
-    const [download] = await Promise.all([page.waitForEvent('download'), exportButton.click()])
+    const [download] = await Promise.all([page.waitForEvent('download'), exportItem.click()])
 
     expect(download.suggestedFilename()).toBe(EXPECTED_FILENAME)
   })

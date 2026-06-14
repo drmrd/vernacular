@@ -12,6 +12,7 @@ import {
   createSelectionStore,
 } from '../../bridge'
 import { createEmptyProject, createFloor, type Project } from '../../core'
+import { ThemeProvider } from '../design-system'
 import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 
 function projectWithFloor(): Project {
@@ -30,15 +31,17 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore(session.getProject().floors[0]?.id ?? null)
   render(
-    <EditorSessionProvider session={session}>
-      <SelectionProvider store={selection}>
-        <ActiveFloorProvider store={activeFloor}>
-          <ActiveToolProvider>
-            <EditorShell saveStatus="idle" {...props} />
-          </ActiveToolProvider>
-        </ActiveFloorProvider>
-      </SelectionProvider>
-    </EditorSessionProvider>,
+    <ThemeProvider>
+      <EditorSessionProvider session={session}>
+        <SelectionProvider store={selection}>
+          <ActiveFloorProvider store={activeFloor}>
+            <ActiveToolProvider>
+              <EditorShell saveStatus="idle" {...props} />
+            </ActiveToolProvider>
+          </ActiveFloorProvider>
+        </SelectionProvider>
+      </EditorSessionProvider>
+    </ThemeProvider>,
   )
   return { session, selection }
 }
@@ -84,13 +87,22 @@ describe('EditorShell', () => {
     expect(exportBtn).toHaveClass('ds-button--primary')
   })
 
-  it('renders Undo and Redo buttons in the toolbar', () => {
+  it('renders single Undo and Redo buttons and no command-palette button in the toolbar', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
 
-    expect(screen.queryAllByRole('button', { name: /undo/i }).length).toBeGreaterThan(0)
-    expect(screen.queryAllByRole('button', { name: /redo/i }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByRole('button', { name: /undo/i })).toHaveLength(1)
+    expect(screen.queryAllByRole('button', { name: /redo/i })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /command palette/i })).toBeNull()
+  })
+
+  it('renders a theme toggle in the toolbar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByRole('radio', { name: /system/i })).toBeInTheDocument()
   })
 
   it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
@@ -146,7 +158,8 @@ describe('EditorShell', () => {
     const project = screen.getByRole('navigation', { name: /project/i })
     await user.click(within(project).getByRole('button', { name: /^new$/i }))
     await user.click(within(project).getByRole('button', { name: /^save$/i }))
-    await user.click(within(project).getByRole('button', { name: /export bundle/i }))
+    await user.click(screen.getByRole('button', { name: /^export$/i }))
+    await user.click(screen.getByRole('menuitem', { name: /bundle/i }))
 
     expect(onNewProject).toHaveBeenCalledTimes(1)
     expect(onSave).toHaveBeenCalledTimes(1)
@@ -228,35 +241,12 @@ describe('EditorShell', () => {
     expect(screen.getByRole('complementary', { name: /tool rail/i })).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
 
-    const slotIds = [PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT]
-    for (const slotId of slotIds) {
-      expect(document.querySelector(`[data-slot-id="${slotId}"]`)).not.toBeNull()
-    }
+    // The always-on global paint list is gone; the inspector swaps by selection.
+    expect(document.querySelector(`[data-slot-id="${PAINT_PICKER_SLOT}"]`)).toBeNull()
+    expect(document.querySelector(`[data-slot-id="${PAINT_INSPECTOR_SLOT}"]`)).not.toBeNull()
 
     expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /floors/i })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: /inspector/i })).toBeInTheDocument()
-  })
-})
-
-describe('EditorShell paint panel', () => {
-  afterEach(() => {
-    cleanup()
-    vi.unstubAllGlobals()
-  })
-
-  it('mounts the Paint panel and binds the picker to a chosen surface', async () => {
-    vi.stubGlobal('navigator', {})
-    const user = userEvent.setup()
-
-    renderShell()
-
-    expect(screen.getByRole('button', { name: 'Floor' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ceiling' })).toBeInTheDocument()
-    expect(screen.queryByRole('searchbox')).toBeNull()
-
-    await user.click(screen.getByRole('button', { name: 'Floor' }))
-
-    expect(screen.getByRole('searchbox')).toBeInTheDocument()
   })
 })

@@ -12,6 +12,7 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
+  resolveSurfacePaint,
   ROOM_ID_PREFIX,
   selectionCenter,
   WALL_NODE_PREFIX,
@@ -38,8 +39,8 @@ import { RoomSubPurposeEditor } from '../plan/room-sub-purpose-editor'
 import { selectedEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
 import { singleSelectedDimension } from '../plan/selected-dimension'
-import { UnderlayPanel } from '../plan/underlay-panel'
-import { useUnderlay } from '../plan/use-underlay'
+import { RoomFinishSection } from '../plan/room-finish-section'
+import { WallFinishSection } from '../plan/wall-finish-section'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 
 // A project-level unit-preferences store is later work; this slice picks the
@@ -257,11 +258,31 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const wallNode = singleSelectedWallNode(selectedIds, graph)
   if (wallNode !== null) {
     const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
-    return <WallInspector wallNode={wallNode} preferences={preferences} dispatch={dispatch} />
+    return (
+      <>
+        <WallInspector wallNode={wallNode} preferences={preferences} dispatch={dispatch} />
+        <WallFinishSection
+          wallId={wallNode.id.slice(WALL_NODE_PREFIX.length)}
+          treatmentFor={(ref) => resolveSurfacePaint(session.getProject(), ref)}
+          recent={[]}
+          dispatch={dispatch}
+        />
+      </>
+    )
   }
   const roomNode = singleSelectedRoomNode(selectedIds, graph)
   if (roomNode !== null) {
-    return <RoomInspector roomNode={roomNode} project={session.getProject()} dispatch={dispatch} />
+    return (
+      <>
+        <RoomInspector roomNode={roomNode} project={session.getProject()} dispatch={dispatch} />
+        <RoomFinishSection
+          floorId={roomNode.floorId}
+          treatmentFor={(ref) => resolveSurfacePaint(session.getProject(), ref)}
+          recent={[]}
+          dispatch={dispatch}
+        />
+      </>
+    )
   }
   const project = session.getProject()
   const selectedOpening = singleSelectedOpening(selectedIds, project)
@@ -288,7 +309,11 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
       />
     )
   }
-  return <p>{selectedIds.size > 0 ? 'Wall selected' : 'No selection'}</p>
+  return (
+    <p className="inspector__empty">
+      {selectedIds.size > 0 ? 'Wall selected' : 'Nothing selected. Pick an element to edit it.'}
+    </p>
+  )
 }
 
 interface TransformPanelProps {
@@ -331,17 +356,12 @@ export function Inspector() {
   const session = useEditorSession()
   const graph = useSceneGraph()
   const selectedIds = useSelectionIds()
-  const activeFloorId = useActiveFloorId()
-  const underlay = useUnderlay()
   // The editors' dispatch prop is intentionally loose (`unknown`) so the inline
   // editors drive their unit tests without the command types; each only ever
   // dispatches a valid command, so forwarding it to the session is sound.
   const dispatch = (command: unknown): void => {
     session.dispatch(command as Command)
   }
-  // The underlay panel lists the active floor's underlays, falling back to the
-  // first floor. The panel renders nothing for the rows when the floor has none.
-  const floor = activeFloor(session.getProject(), activeFloorId)
   const count = selectedIds.size
   const title = componentTitleFor(selectedIds, graph)
   return (
@@ -358,15 +378,6 @@ export function Inspector() {
         dispatch={dispatch}
       />
       <TransformPanel session={session} selectedIds={selectedIds} />
-      {floor ? (
-        <UnderlayPanel
-          floorId={floor.id}
-          underlays={floor.underlays}
-          dispatch={dispatch}
-          onLoadImage={underlay.loadImage}
-          onCalibrate={underlay.startCalibration}
-        />
-      ) : null}
     </div>
   )
 }

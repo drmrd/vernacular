@@ -44,7 +44,12 @@ describe('Inspector', () => {
 
   it('shows no selection count badge when nothing is selected', () => {
     renderInspector()
-    expect(screen.queryByText(/selected/i)).toBeNull()
+    expect(screen.queryByText(/\d+ selected/i)).toBeNull()
+  })
+
+  it('shows a quiet hint when nothing is selected', () => {
+    renderInspector()
+    expect(screen.getByText(/nothing selected/i)).toBeInTheDocument()
   })
 
   it('shows a "1 selected" badge when one entity is selected', () => {

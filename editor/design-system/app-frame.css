@@ -1,14 +1,16 @@
 .ds-app-frame {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
     'header header header'
     'rail main inspector'
     'statusbar statusbar statusbar';
   gap: var(--space-3);
   box-sizing: border-box;
-  min-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   padding: var(--space-3);
   background: var(--color-surface);
   color: var(--color-text);
@@ -22,18 +24,32 @@
   grid-area: rail;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   width: var(--ds-rail-size, 11rem);
 }
 .ds-app-frame__main {
   grid-area: main;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .ds-app-frame__inspector {
   grid-area: inspector;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   width: var(--ds-inspector-size, 15rem);
+}
+
+/* The pane body owns the internal scroll so the frame itself never scrolls and the
+   header and status bar stay pinned. */
+.ds-app-frame__pane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ds-app-frame__status-bar {
