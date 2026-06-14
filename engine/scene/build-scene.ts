@@ -13,6 +13,7 @@ import {
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
+import { addEdgeOverlay } from './edge-overlay'
 import { buildRoomShell } from './room-builder'
 import { buildWalls } from './wall-builder'
 
@@ -28,6 +29,9 @@ export function buildScene(
   for (const node of graph.nodes) {
     root.add(buildFloorGroup(node, graph, materials))
   }
+  // Draw a dark edge line along every surface so a wall reads against the floor
+  // and its neighbors whatever the lighting and paint are (ADR-0078).
+  addEdgeOverlay(root)
   return root
 }
 
