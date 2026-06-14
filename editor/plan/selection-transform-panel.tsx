@@ -1,5 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { rotateEntities, type Command, type Point } from '../../core'
+import { Button } from '../design-system'
+import './selection-transform-panel.css'
 
 const QUARTER_TURN = Math.PI / 2
 const STRAIGHT_ANGLE_DEGREES = 180
@@ -33,24 +35,28 @@ export function SelectionTransformPanel({
   }
 
   return (
-    <div>
-      <button type="button" onClick={() => rotateBy(QUARTER_TURN)}>
-        Rotate counter-clockwise
-      </button>
-      <button type="button" onClick={() => rotateBy(-QUARTER_TURN)}>
-        Rotate clockwise
-      </button>
+    <div className="selection-transform-panel">
+      <div className="selection-transform-panel__rotations">
+        <Button onClick={() => rotateBy(QUARTER_TURN)}>Rotate counter-clockwise</Button>
+        <Button onClick={() => rotateBy(-QUARTER_TURN)}>Rotate clockwise</Button>
+      </div>
       <form
+        className="selection-transform-panel__angle"
         onSubmit={(event) => {
           event.preventDefault()
           applyAngle()
         }}
       >
-        <label>
+        <label className="selection-transform-panel__angle-label">
           Angle
-          <input type="number" value={angle} onChange={(event) => setAngle(event.target.value)} />
+          <input
+            className="selection-transform-panel__angle-input"
+            type="number"
+            value={angle}
+            onChange={(event) => setAngle(event.target.value)}
+          />
         </label>
-        <button type="submit">Apply</button>
+        <Button type="submit">Apply</Button>
       </form>
     </div>
   )
