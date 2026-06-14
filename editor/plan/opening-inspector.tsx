@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent, type ReactElement } from 'react'
+import './opening-inspector.css'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -14,6 +15,19 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
+
+const INCH_IN_MM = 25.4
+
+const FRACTION_CHIPS = [
+  { label: '1/16"', deltaMm: INCH_IN_MM / 16 },
+  { label: '1/8"', deltaMm: INCH_IN_MM / 8 },
+  { label: '1/4"', deltaMm: INCH_IN_MM / 4 },
+  { label: '3/8"', deltaMm: (3 * INCH_IN_MM) / 8 },
+  { label: '1/2"', deltaMm: INCH_IN_MM / 2 },
+  { label: '5/8"', deltaMm: (5 * INCH_IN_MM) / 8 },
+  { label: '3/4"', deltaMm: (3 * INCH_IN_MM) / 4 },
+  { label: '7/8"', deltaMm: (7 * INCH_IN_MM) / 8 },
+] as const
 
 // A bare number entered for a metric project means millimetres; for an imperial
 // project it means feet. This is the active system's assume-unit, so a number
@@ -78,6 +92,36 @@ function LengthField({
   )
 }
 
+interface FractionChipsProps {
+  dimensionLabel: string
+  onNudge: (deltaMm: number) => void
+}
+
+function FractionChips({ dimensionLabel, onNudge }: FractionChipsProps): ReactElement {
+  const [activeLabel, setActiveLabel] = useState<string | null>(null)
+  return (
+    <ul
+      className="opening-inspector__fraction-chips"
+      aria-label={`Fraction chips for ${dimensionLabel}`}
+    >
+      {FRACTION_CHIPS.map(({ label, deltaMm }) => (
+        <li key={label}>
+          <button
+            type="button"
+            className={`opening-inspector__fraction-chip${activeLabel === label ? ' opening-inspector__fraction-chip--active' : ''}`}
+            onClick={() => {
+              setActiveLabel(label)
+              onNudge(deltaMm)
+            }}
+          >
+            {label}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export interface OpeningInspectorProps {
   floorId: string
   opening: Opening
@@ -111,6 +155,7 @@ interface DimensionFieldsProps {
   opening: Opening
   preferences: UnitPreferences
   assumeUnit: AssumedUnit
+  units: UnitSystem
   onResize: (dimensions: OpeningDimensions) => void
 }
 
@@ -118,21 +163,29 @@ function DimensionFields({
   opening,
   preferences,
   assumeUnit,
+  units,
   onResize,
 }: DimensionFieldsProps): ReactElement {
   const current = openingDimensions(opening)
   return (
     <>
       {DIMENSION_DESCRIPTORS.map(({ key, label }) => (
-        <LengthField
-          key={key}
-          inputId={`opening-${kebabCase(key)}-${opening.id}`}
-          label={label}
-          valueMm={current[key]}
-          preferences={preferences}
-          assumeUnit={assumeUnit}
-          onCommitMm={(value) => onResize({ ...current, [key]: value })}
-        />
+        <div key={key}>
+          <LengthField
+            inputId={`opening-${kebabCase(key)}-${opening.id}`}
+            label={label}
+            valueMm={current[key]}
+            preferences={preferences}
+            assumeUnit={assumeUnit}
+            onCommitMm={(value) => onResize({ ...current, [key]: value })}
+          />
+          {units === 'imperial' ? (
+            <FractionChips
+              dimensionLabel={label}
+              onNudge={(delta) => onResize({ ...current, [key]: current[key] + delta })}
+            />
+          ) : null}
+        </div>
       ))}
     </>
   )
@@ -175,6 +228,7 @@ export function OpeningInspector({
         opening={opening}
         preferences={preferences}
         assumeUnit={assumeUnit}
+        units={units}
         onResize={(dimensions) => dispatch(resizeOpening(floorId, opening.id, dimensions))}
       />
       <OpeningControls floorId={floorId} openingId={opening.id} dispatch={dispatch} />

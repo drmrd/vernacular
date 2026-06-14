@@ -39,3 +39,24 @@
   font-family: var(--font-family-ui);
   font-size: 0.68rem;
 }
+
+.inspector__period-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.inspector__period-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-family: var(--font-family-ui);
+  font-size: 0.65rem;
+  font-weight: 600;
+}

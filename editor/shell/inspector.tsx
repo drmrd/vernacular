@@ -6,6 +6,7 @@ import {
   type EditorSession,
 } from '../../bridge'
 import {
+  builtinPeriods,
   ceilingHeight as resolveCeilingHeight,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -139,6 +140,21 @@ function WallInspector({ wallNode, preferences, dispatch }: WallInspectorProps) 
   )
 }
 
+interface PeriodTagsProps {
+  periodName: string | undefined
+  styleName: string | undefined
+}
+
+export function PeriodTags({ periodName, styleName }: PeriodTagsProps) {
+  if (periodName === undefined && styleName === undefined) return null
+  return (
+    <ul className="inspector__period-tags">
+      {periodName !== undefined ? <li className="inspector__period-tag">{periodName}</li> : null}
+      {styleName !== undefined ? <li className="inspector__period-tag">{styleName}</li> : null}
+    </ul>
+  )
+}
+
 interface RoomMetadataEditorsProps {
   roomKey: string
   override: RoomOverride | undefined
@@ -177,8 +193,14 @@ function RoomInspector({ roomNode, project, dispatch }: RoomInspectorProps) {
   const override = project.roomOverrides?.[roomKey]
   const preferences = PREFERENCES_BY_UNITS[project.meta.units]
   const height = resolveCeilingHeight(roomNode)
+  const periodEntry = override?.periodOverride
+    ? builtinPeriods.entries[override.periodOverride]
+    : undefined
+  const periodName = periodEntry?.displayName?.['en-US']
+  const styleName = override?.styleOverride ? String(override.styleOverride) : undefined
   return (
     <>
+      <PeriodTags periodName={periodName} styleName={styleName} />
       {/* Key on the node id and name so the editor remounts when the selected room
           changes or an undo restores a different name; the editor seeds its input
           from the effective name at mount. */}
