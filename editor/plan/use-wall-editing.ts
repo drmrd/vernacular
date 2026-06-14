@@ -177,7 +177,7 @@ function useReleaseHandler(
  * toggles with the pointer held still, so pressing or releasing Alt settles onto (or
  * off of) the free angle in place. Mirrors the wall tool's free-angle re-resolve.
  */
-function useReresolveEndpointOnFreeAngleToggle(control: DragControl, freeAngle: boolean): void {
+function useReresolvePreviewOnFreeAngleToggle(control: DragControl, freeAngle: boolean): void {
   const { drag, lastRawCursor, setPreview, snapping } = control
   useEffect(() => {
     const active = drag.current
@@ -214,7 +214,7 @@ export function useWallEditing({
   const onPointerDown = useGrabHandler(selectedWall, control)
   const onPointerMove = useDragMoveHandler(control)
   const onPointerUp = useReleaseHandler(session, control)
-  useReresolveEndpointOnFreeAngleToggle(control, freeAngle)
+  useReresolvePreviewOnFreeAngleToggle(control, freeAngle)
   const readout = preview ? dragReadout(preview.start, preview.end, preferences) : undefined
 
   return { preview, readout, onPointerDown, onPointerMove, onPointerUp }
