@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Point } from '../model/types'
+import type { GraphEdge } from './wall-graph'
 import { buildWallGraph } from './wall-graph'
 import { wallFootprints } from './wall-footprint'
 
@@ -69,27 +71,62 @@ describe('wallFootprints', () => {
     })
   })
 
-  it('squares ends at a junction where three or more edges meet', () => {
-    // A wall tees into the middle of a longer wall. buildWallGraph splits the long
-    // wall at the tee, so the shared vertex carries three incident edges and the
-    // stub keeps a square end there (the busy junction stays an overlapping solid).
+  it('miters a T-junction onto the through-wall face', () => {
+    // A partition tees into the middle of a through-wall. buildWallGraph splits the
+    // through-wall at the tee into a left half (b is the shared vertex) and a right
+    // half (a is the shared vertex), so the shared vertex (1000,0) carries three
+    // incident edges. Resolving the fan, the partition's shared end miters onto the
+    // through-wall near face (y = 50) instead of squaring at the centerline (y = 0),
+    // the near face splits around the partition, and the back face runs straight
+    // through at y = -50 (the collinear fallback of the two through-wall halves).
     const graph = buildWallGraph([
       { id: 'through', start: { x: 0, y: 0 }, end: { x: 2000, y: 0 }, thickness: 100 },
-      { id: 'stub', start: { x: 1000, y: 0 }, end: { x: 1000, y: 1000 }, thickness: 100 },
+      { id: 'partition', start: { x: 1000, y: 0 }, end: { x: 1000, y: 1000 }, thickness: 100 },
     ])
 
     const footprints = wallFootprints(
       graph,
       graph.edges.map(() => 100),
     )
-    const stub = footprints[graph.edges.findIndex((edge) => edge.wallId === 'stub')]
+    const sharedAt = (point: Point) => (edge: GraphEdge) => {
+      const a = graph.vertices[edge.a]
+      const b = graph.vertices[edge.b]
+      return (a?.x === point.x && a?.y === point.y) || (b?.x === point.x && b?.y === point.y)
+    }
+    const partition = footprints[graph.edges.findIndex((edge) => edge.wallId === 'partition')]
+    const throughLeft =
+      footprints[
+        graph.edges.findIndex(
+          (edge) =>
+            edge.wallId === 'through' &&
+            graph.vertices[edge.b]?.x === 1000 &&
+            graph.vertices[edge.b]?.y === 0,
+        )
+      ]
+    const throughRight =
+      footprints[
+        graph.edges.findIndex(
+          (edge) =>
+            edge.wallId === 'through' &&
+            graph.vertices[edge.a]?.x === 1000 &&
+            graph.vertices[edge.a]?.y === 0,
+        )
+      ]
+    // Pin the helper down to the shared vertex so an accidental swap is caught.
+    expect(graph.edges.filter(sharedAt({ x: 1000, y: 0 })).length).toBe(3)
 
-    expect(stub).toEqual({
-      aPlus: { x: 950, y: 0 },
-      aMinus: { x: 1050, y: 0 },
-      bPlus: { x: 950, y: 1000 },
-      bMinus: { x: 1050, y: 1000 },
-    })
+    // The partition's shared end miters onto the through-wall near face (y = 50):
+    expect(partition?.aPlus).toEqual({ x: 950, y: 50 })
+    expect(partition?.aMinus).toEqual({ x: 1050, y: 50 })
+    // The partition's free far end stays square:
+    expect(partition?.bPlus).toEqual({ x: 950, y: 1000 })
+    expect(partition?.bMinus).toEqual({ x: 1050, y: 1000 })
+    // The through-wall near face splits around the partition:
+    expect(throughLeft?.bPlus).toEqual({ x: 950, y: 50 })
+    expect(throughRight?.aPlus).toEqual({ x: 1050, y: 50 })
+    // The through-wall back face runs straight at y = -50 (collinear continuation):
+    expect(throughLeft?.bMinus).toEqual({ x: 1000, y: -50 })
+    expect(throughRight?.aMinus).toEqual({ x: 1000, y: -50 })
   })
 
   it('squares a collinear continuation where two walls run straight through', () => {
