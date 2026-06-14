@@ -31,7 +31,7 @@ import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
-import { useActiveTool } from '../tools/active-tool-context'
+import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
@@ -52,6 +52,23 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   pending: 'Saving...',
   saved: 'All changes saved',
   error: 'Save failed',
+}
+
+function toolLabel(tool: ToolId): string {
+  switch (tool) {
+    case 'select':
+      return 'Select'
+    case 'pan':
+      return 'Pan'
+    case 'draw-wall':
+      return 'Wall'
+    case 'place-opening':
+      return 'Opening'
+    case 'dimension':
+      return 'Dimension'
+    case 'calibrate':
+      return 'Calibrate'
+  }
 }
 
 // The tools nav: the tool buttons, plus the opening-type chooser surfaced only
@@ -201,6 +218,7 @@ function EditorStatusBar() {
   const session = useEditorSession()
   const activeFloorId = useActiveFloorId()
   const setActiveFloorId = useSetActiveFloorId()
+  const { tool } = useActiveTool()
   useSceneGraph()
   return (
     <StatusBar
@@ -208,6 +226,7 @@ function EditorStatusBar() {
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
       onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+      tool={`Tool: ${toolLabel(tool)}`}
       snap={<SnapStatus />}
       units={
         <UnitToggle
