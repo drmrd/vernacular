@@ -126,15 +126,16 @@ Slice numbers follow the foundation spec slice map. The track built slice 1, the
 
 Owner-driven follow-ups on the three-dimensional preview and on floor management, raised as issues #121 through #127.
 
-| Story                                                                     | ADR / PR        | Status  |
-| ------------------------------------------------------------------------- | --------------- | ------- |
-| Camera fit so the preview model fills the pane (aspect and field of view) | ADR-0075 / #146 | merged  |
-| Mitered wall junctions (remove the box-per-wall notches)                  | --              | planned |
-| Near-wall transparency for walls between the camera and the interior      | --              | planned |
-| Extend the floor slab under the walls to the outer wall faces             | ADR-0076 / #149 | merged  |
-| Discoverable camera move and rotate controls                              | --              | planned |
-| Floor management (name on create, ordering, default names, inline rename) | --              | planned |
-| Wall drawn on a non-ground floor stays on that floor                      | --              | planned |
+| Story                                                                      | ADR / PR        | Status  |
+| -------------------------------------------------------------------------- | --------------- | ------- |
+| Camera fit so the preview model fills the pane (aspect and field of view)  | ADR-0075 / #146 | merged  |
+| Mitered wall junctions (remove the box-per-wall notches)                   | ADR-0077 / #151 | merged  |
+| Near-wall transparency for walls between the camera and the interior       | --              | planned |
+| Extend the floor slab under the walls to the outer wall faces              | ADR-0076 / #149 | merged  |
+| Discoverable camera move and rotate controls                               | --              | planned |
+| Surface legibility (edges so a wall reads against the floor and neighbors) | --              | planned |
+| Floor management (name on create, ordering, default names, inline rename)  | --              | planned |
+| Wall drawn on a non-ground floor stays on that floor                       | --              | planned |
 
 #### Paint and metadata (merged)
 
