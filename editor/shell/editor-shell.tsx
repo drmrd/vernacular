@@ -41,6 +41,7 @@ import { Inspector } from './inspector'
 import { ProjectIdentity } from './project-identity'
 import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
+import { ThemeToggle } from './theme-toggle'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
@@ -146,6 +147,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         >
           <ArrowClockwise size={16} aria-hidden="true" />
         </button>
+        <ThemeToggle />
         <ExportMenu
           onExportBundle={projectControls.onExportBundle}
           onExportPlan={projectControls.onExportPlan}

@@ -1,0 +1,47 @@
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.theme-toggle__legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.theme-toggle__option {
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* Hide the native radio dot but keep it in the accessibility tree and focusable. */
+.theme-toggle__option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.theme-toggle__option:has(input:checked) {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.theme-toggle__option:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
