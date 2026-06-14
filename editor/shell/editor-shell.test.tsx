@@ -84,13 +84,14 @@ describe('EditorShell', () => {
     expect(exportBtn).toHaveClass('ds-button--primary')
   })
 
-  it('renders Undo and Redo buttons in the toolbar', () => {
+  it('renders single Undo and Redo buttons and no command-palette button in the toolbar', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
 
-    expect(screen.queryAllByRole('button', { name: /undo/i }).length).toBeGreaterThan(0)
-    expect(screen.queryAllByRole('button', { name: /redo/i }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByRole('button', { name: /undo/i })).toHaveLength(1)
+    expect(screen.queryAllByRole('button', { name: /redo/i })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /command palette/i })).toBeNull()
   })
 
   it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
