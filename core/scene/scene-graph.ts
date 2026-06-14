@@ -55,6 +55,14 @@ export interface RoomSceneNode {
   polygon: Point[]
   /** The thickness-aware clear-area polygon from the derived room. */
   clearPolygon: Point[]
+  /**
+   * The boundary at the bounding walls' outer faces (the gross-area boundary):
+   * the mirror of `clearPolygon`, sourced from the derived room's
+   * `outerPolygon`. It is optional because hand-built `RoomSceneNode` literals
+   * (chiefly fixtures) omit it; the floor-slab builder supplies a
+   * `clearPolygon` fallback for those literal-built nodes.
+   */
+  outerPolygon?: Point[]
   area: number
   name?: string
   /** Interior void rings in floor-plan space, mirroring the derived room's holes. */
@@ -234,6 +242,7 @@ export function deriveRoomNodesForFloor(
     floorId: floor.id,
     polygon: room.polygon,
     clearPolygon: room.clearPolygon,
+    outerPolygon: room.outerPolygon,
     area: room.area,
     ceilingHeight: room.ceilingHeight ?? floor.defaultCeilingHeight,
     // Omit the optional name when absent so the no-overrides projection stays
