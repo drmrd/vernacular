@@ -192,7 +192,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceMode)
   const interaction = usePlanInteraction(deps)
-  const dimensionTool = useDimensionTool({ session, tool, viewport })
+  const dimensionTool = useDimensionTool({ session, tool, viewport, activeFloorId })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
   const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({
