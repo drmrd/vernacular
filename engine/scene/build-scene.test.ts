@@ -180,7 +180,9 @@ describe('buildScene', () => {
 
     expect(wallMaterialNames(root, 'wall:w1')).not.toContain('reveal')
   })
+})
 
+describe('buildScene surface edges', () => {
   it('adds an edge line to each structural mesh while keeping its entity id', () => {
     const graph: SceneGraph = {
       nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
