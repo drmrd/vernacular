@@ -312,6 +312,16 @@ export { ceilingHeight } from './scene/ceiling-height'
 export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
+export {
+  openingFill,
+  LEAF_REVEAL_GAP_MM,
+  DOOR_LEAF_THICKNESS_MM,
+  SASH_FRAME_WIDTH_MM,
+  SASH_FRAME_THICKNESS_MM,
+  GLASS_THICKNESS_MM,
+} from './scene/opening-fill'
+export type { OpeningFillPart, OpeningFillRole, OpeningFillExtent } from './scene/opening-fill'
+export type { OpeningFillKind } from './registries/element-types'
 export type { WalkInput, WalkState } from './scene/walk-camera'
 export {
   MAX_WALK_PITCH_RAD,
