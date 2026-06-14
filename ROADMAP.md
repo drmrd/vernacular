@@ -122,6 +122,20 @@ Slice numbers follow the foundation spec slice map. The track built slice 1, the
 | 7. Selection sync and 3D accessibility (raycast, DOM proxies, aria-live, color-blind-safe highlight) | ADR-0066 / #99, #100 | merged |
 | 8. Incremental and dirty updates                                                                     | --                   | scoped |
 
+#### Three-dimensional preview and floor-management polish (in progress)
+
+Owner-driven follow-ups on the three-dimensional preview and on floor management, raised as issues #121 through #127.
+
+| Story                                                                     | ADR / PR        | Status  |
+| ------------------------------------------------------------------------- | --------------- | ------- |
+| Camera fit so the preview model fills the pane (aspect and field of view) | ADR-0075 / #146 | merged  |
+| Mitered wall junctions (remove the box-per-wall notches)                  | --              | planned |
+| Near-wall transparency for walls between the camera and the interior      | --              | planned |
+| Extend the floor slab under the walls to the outer wall faces             | --              | planned |
+| Discoverable camera move and rotate controls                              | --              | planned |
+| Floor management (name on create, ordering, default names, inline rename) | --              | planned |
+| Wall drawn on a non-ground floor stays on that floor                      | --              | planned |
+
 #### Paint and metadata (merged)
 
 | Story                                                                  | ADR / PR              | Status |
