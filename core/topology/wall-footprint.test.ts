@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
+import { distance } from '../geometry/point'
+import { segmentIntersection } from '../geometry/segment'
 import type { Point } from '../model/types'
 import type { GraphEdge } from './wall-graph'
 import { buildWallGraph } from './wall-graph'
-import { wallFootprints } from './wall-footprint'
+import { MITER_LIMIT, wallFootprints } from './wall-footprint'
 
 describe('wallFootprints', () => {
   it('squares both ends of a free-standing wall', () => {
@@ -164,5 +166,57 @@ describe('wallFootprints', () => {
 
     expect(a?.aPlus).toEqual({ x: 0, y: 50 })
     expect(a?.aMinus).toEqual({ x: 0, y: -50 })
+  })
+
+  it('keeps multi-way and acute junction footprints simple and spike-free', () => {
+    // A cross plus an acute spur: four walls all leave the origin (incidence 4),
+    // mixing right-angle wedges (E/N/W) with an acute one (the spur sits ~5.7
+    // degrees above E). This is failure mode 3 (multi-way + acute), where the old
+    // resolver radiated spikes and threw disconnected geometry. The generalized
+    // fan must clamp every over-limit wedge so no corner shoots past the miter
+    // limit, and must leave each footprint a simple quad.
+    const half = 50
+    const origin: Point = { x: 0, y: 0 }
+    const graph = buildWallGraph([
+      { id: 'east', start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, thickness: 100 },
+      { id: 'north', start: { x: 0, y: 0 }, end: { x: 0, y: 1000 }, thickness: 100 },
+      { id: 'west', start: { x: 0, y: 0 }, end: { x: -1000, y: 0 }, thickness: 100 },
+      { id: 'spur', start: { x: 0, y: 0 }, end: { x: 1000, y: 100 }, thickness: 100 },
+    ])
+
+    // The four walls meet at one merged vertex, so the origin carries incidence 4.
+    const atOrigin = (edge: GraphEdge) =>
+      (graph.vertices[edge.a]?.x === 0 && graph.vertices[edge.a]?.y === 0) ||
+      (graph.vertices[edge.b]?.x === 0 && graph.vertices[edge.b]?.y === 0)
+    expect(graph.edges.filter(atOrigin).length).toBe(4)
+
+    const footprints = wallFootprints(
+      graph,
+      graph.edges.map(() => 100),
+    )
+
+    for (const [index, footprint] of footprints.entries()) {
+      const edge = graph.edges[index]
+      if (edge === undefined) continue
+      // The origin is each wall's `a` end here, but read the graph to be sure.
+      const originIsA = graph.vertices[edge.a]?.x === 0 && graph.vertices[edge.a]?.y === 0
+      const sharedCorners = originIsA
+        ? [footprint.aPlus, footprint.aMinus]
+        : [footprint.bPlus, footprint.bMinus]
+
+      // No spike: both corners at the shared origin stay within the clamp radius.
+      for (const corner of sharedCorners) {
+        expect(distance(origin, corner)).toBeLessThanOrEqual(MITER_LIMIT * half)
+      }
+
+      // No self-intersection: the footprint quad is simple. The two long sides do
+      // not cross, and the two end caps do not cross.
+      expect(
+        segmentIntersection(footprint.aPlus, footprint.bPlus, footprint.aMinus, footprint.bMinus),
+      ).toBeNull()
+      expect(
+        segmentIntersection(footprint.aPlus, footprint.aMinus, footprint.bPlus, footprint.bMinus),
+      ).toBeNull()
+    }
   })
 })
