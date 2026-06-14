@@ -47,12 +47,15 @@ function buildOpening(): Opening {
   })
 }
 
-function renderInspector(dispatch: (command: unknown) => void) {
+function renderInspector(
+  dispatch: (command: unknown) => void,
+  units: 'metric' | 'imperial' = UNITS,
+) {
   render(
     <OpeningInspector
       floorId={FLOOR_ID}
       opening={buildOpening()}
-      units={UNITS}
+      units={units}
       dispatch={dispatch as never}
     />,
   )
@@ -151,5 +154,29 @@ describe('OpeningInspector', () => {
     expect(command.type).toBe(REMOVE_OPENING)
     expect(command.params.floorId).toBe(FLOOR_ID)
     expect(command.params.openingId).toBe(OPENING_ID)
+  })
+
+  it('shows fractional-inch chip rows for each dimension field in imperial mode', () => {
+    renderInspector(vi.fn(), 'imperial')
+
+    const rows = screen.getAllByRole('list', { name: /fraction chips for/i })
+    expect(rows.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('does not show fraction chips in metric mode', () => {
+    renderInspector(vi.fn(), 'metric')
+
+    expect(screen.queryByRole('list', { name: /fraction chips for/i })).toBeNull()
+  })
+
+  it('clicking a fraction chip dispatches a resize command', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch, 'imperial')
+
+    const chip = screen.getAllByRole('button', { name: /1\/4/i })[0]
+    await user.click(chip)
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
   })
 })

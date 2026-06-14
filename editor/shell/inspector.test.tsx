@@ -9,7 +9,7 @@ import {
   createActiveFloorStore,
 } from '../../bridge'
 import { createEmptyProject, createFloor } from '../../core'
-import { Inspector } from './inspector'
+import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
 
@@ -84,5 +84,29 @@ describe('Inspector', () => {
       selection.setSelection(['wall:w1', 'wall:w2'])
     })
     expect(screen.queryByRole('heading', { level: 3 })).toBeNull()
+  })
+
+  it('shows no period tags when no room with overrides is selected', () => {
+    renderInspector()
+    expect(screen.queryByRole('listitem')).toBeNull()
+  })
+})
+
+describe('PeriodTags', () => {
+  it('shows a period tag chip when periodName is provided', () => {
+    render(<PeriodTags periodName="Victorian" styleName={undefined} />)
+    expect(screen.getByText('Victorian')).toBeInTheDocument()
+    expect(screen.getByText('Victorian')).toHaveClass('inspector__period-tag')
+  })
+
+  it('shows both a period and a style chip when both are provided', () => {
+    render(<PeriodTags periodName="Victorian" styleName="Queen Anne" />)
+    expect(screen.getByText('Victorian')).toBeInTheDocument()
+    expect(screen.getByText('Queen Anne')).toBeInTheDocument()
+  })
+
+  it('renders nothing when both periodName and styleName are undefined', () => {
+    const { container } = render(<PeriodTags periodName={undefined} styleName={undefined} />)
+    expect(container.firstChild).toBeNull()
   })
 })
