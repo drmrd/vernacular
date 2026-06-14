@@ -119,6 +119,8 @@ function buildSpokes(context: FanContext, vertexIndex: number, edgeIndexes: numb
     const edge = context.graph.edges[edgeIndex] as GraphEdge
     const atA = edge.a === vertexIndex
     const far = context.graph.vertices[atA ? edge.b : edge.a] as Point
+    // `a` and `b` are the edge's canonical endpoints, fixing the global `leftNormal(a, b)`
+    // direction; `vertex`/`far` are the same two points ordered from this junction outward.
     const a = context.graph.vertices[edge.a] as Point
     const b = context.graph.vertices[edge.b] as Point
     return {
@@ -143,22 +145,23 @@ function resolveWedge(result: WallFootprint[], wedge: Wedge): void {
   const spokeFace = shift(wedge.vertex, spokeSide, wedge.spoke.half)
   const neighborFace = shift(wedge.vertex, neighborSide, -wedge.neighbor.half)
   const miter = lineIntersection(spokeFace, wedge.spoke.out, neighborFace, wedge.neighbor.out)
-  const shared = sharesMiter(wedge, miter)
+  const shared = sharedMiterPoint(wedge, miter)
   assignCorner(result, wedge.spoke, {
     sideDir: spokeSide,
-    point: shared ? (miter as Point) : spokeFace,
+    point: shared ?? spokeFace,
   })
   assignCorner(result, wedge.neighbor, {
     sideDir: negate(neighborSide),
-    point: shared ? (miter as Point) : neighborFace,
+    point: shared ?? neighborFace,
   })
 }
 
-/** Whether the two walls of a wedge share its miter point (within the miter limit). */
-function sharesMiter(wedge: Wedge, miter: Point | null): boolean {
-  if (miter === null) return false
+/** The wedge's shared miter point when it is non-null and within the miter limit, else null. */
+function sharedMiterPoint(wedge: Wedge, miter: Point | null): Point | null {
+  if (miter === null) return null
   const limit = MITER_LIMIT * Math.min(wedge.spoke.half, wedge.neighbor.half)
-  return distance(wedge.vertex, miter) <= limit
+  if (distance(wedge.vertex, miter) > limit) return null
+  return miter
 }
 
 /** A corner to write: the side direction that selects `+normal`/`-normal`, and its point. */
@@ -188,10 +191,10 @@ function negate(vector: Point): Point {
 /** Maps each graph vertex to the indices of the edges incident to it. */
 function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   const incidence = new Map<number, number[]>()
-  graph.edges.forEach((edge, index) => {
+  for (const [index, edge] of graph.edges.entries()) {
     pushIncident(incidence, edge.a, index)
     pushIncident(incidence, edge.b, index)
-  })
+  }
   return incidence
 }
 
