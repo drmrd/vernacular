@@ -212,7 +212,9 @@ describe('buildWallMesh', () => {
     const roleNormal = (role: string): Vector3 | undefined => {
       const group = groups.find((g) => materials[g.materialIndex]?.name === role)
       if (group === undefined) return undefined
-      const vertexIndex = index[group.start]
+      // The prism geometry is non-indexed, so the group start indexes the normal
+      // attribute directly; an indexed geometry would resolve through the index.
+      const vertexIndex = index.length > 0 ? index[group.start] : group.start
       return vertexIndex === undefined ? undefined : normals[vertexIndex]
     }
 
