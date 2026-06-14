@@ -834,6 +834,65 @@ describe('drawPlan palette', () => {
     expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
     expect(recorder.fillRects.some((rect) => rect.style === 'rgba(11, 22, 33, 0.12)')).toBe(true)
   })
+
+  // prettier-ignore
+  const swingNode: OpeningSceneNode = {
+    id: 'opening:a', kind: 'opening', floorId: 'g', type: 'single-swing-door',
+    center: { x: 500, y: 0 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+    width: 800, height: 2032, sillHeight: 0, hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+  // prettier-ignore
+  const dimensionNode: DimensionSceneNode = {
+    id: 'dimension:d1', kind: 'dimension', floorId: 'g',
+    start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, offset: 200, length: 1000,
+  }
+
+  it('highlights a selected opening in the palette selection color', () => {
+    const recorder = recordingContext()
+    const opening: DrawableOpening = {
+      node: swingNode,
+      symbol: 'door-swing',
+      double: false,
+      selected: true,
+    }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], openings: [opening] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
+  })
+
+  it('draws opening symbol ink in the palette wall color', () => {
+    const recorder = recordingContext()
+    const opening: DrawableOpening = {
+      node: swingNode,
+      symbol: 'door-swing',
+      double: false,
+      selected: false,
+    }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], openings: [opening] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
+
+  it('highlights a selected dimension in the palette selection color', () => {
+    const recorder = recordingContext()
+    const dimension: DrawableDimension = { node: dimensionNode, selected: true }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
+  })
+
+  it('draws dimension ink in the palette wall color', () => {
+    const recorder = recordingContext()
+    const dimension: DrawableDimension = { node: dimensionNode, selected: false }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
 })
 
 describe('drawPlan floor fill tint', () => {
