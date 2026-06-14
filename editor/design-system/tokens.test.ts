@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 import { tokens, tokenList } from './tokens'
 
 const tokensCss = readFileSync(resolve(process.cwd(), 'editor/design-system/tokens.css'), 'utf8')
+const indexHtml = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8')
 
 describe('design tokens', () => {
   it('exposes a non-empty list of named tokens', () => {
@@ -102,5 +103,17 @@ describe('drafting-table type and elevation tokens', () => {
 
   it('leads the ui stack with Inter for cross-platform sans consistency', () => {
     expect(tokensCss).toMatch(/--font-family-ui:\s*'Inter'/)
+  })
+})
+
+describe('Google Fonts loading', () => {
+  it('preconnects to fonts.googleapis.com and fonts.gstatic.com', () => {
+    expect(indexHtml).toContain('https://fonts.googleapis.com')
+    expect(indexHtml).toContain('https://fonts.gstatic.com')
+  })
+
+  it('loads EB Garamond and Inter', () => {
+    expect(indexHtml).toContain('EB+Garamond')
+    expect(indexHtml).toContain('family=Inter')
   })
 })
