@@ -35,6 +35,28 @@ export function segmentIntersection(a1: Point, a2: Point, b1: Point, b2: Point):
 }
 
 /**
+ * Intersection point of the two infinite lines through `pointA` with direction
+ * `dirA` and through `pointB` with direction `dirB`, or null when the directions
+ * are parallel (so the lines are parallel or collinear). Unlike
+ * {@link segmentIntersection} this does not clamp to a segment: the miter builder
+ * needs the crossing of two offset face lines, which can lie beyond either wall's
+ * span.
+ */
+// eslint-disable-next-line max-params -- two point/direction pairs is the conventional line-line form
+export function lineIntersection(
+  pointA: Point,
+  dirA: Point,
+  pointB: Point,
+  dirB: Point,
+): Point | null {
+  const denominator = dirA.x * dirB.y - dirA.y * dirB.x
+  if (Math.abs(denominator) < PARALLEL_EPSILON) return null
+
+  const t = ((pointB.x - pointA.x) * dirB.y - (pointB.y - pointA.y) * dirB.x) / denominator
+  return { x: pointA.x + t * dirA.x, y: pointA.y + t * dirA.y }
+}
+
+/**
  * True when p lies on the closed segment [a, b] within tolerance world units,
  * including the interior. Projects p onto the segment, clamps the projection
  * parameter to [0, 1], and tests the distance from p to that closest point. A
