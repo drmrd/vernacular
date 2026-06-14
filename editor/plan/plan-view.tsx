@@ -204,7 +204,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
     preferences,
   })
   const clipboard = useClipboardStore()
-  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool })
+  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool, activeFloorId })
   const wallEditing = useWallEditing({
     session,
     selectedWall,
