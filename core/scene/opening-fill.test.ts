@@ -31,4 +31,37 @@ describe('openingFill', () => {
       },
     ])
   })
+
+  it('fills a double door with two leaves splitting the inset width at the opening center', () => {
+    const doubleDoorNode: OpeningSceneNode = {
+      id: 'opening-2',
+      kind: 'opening',
+      floorId: 'floor-1',
+      type: 'double-swing-door',
+      center: { x: 1000, y: 0 },
+      along: { x: 1, y: 0 },
+      normal: { x: 0, y: 1 },
+      width: 1626,
+      height: 2032,
+      sillHeight: 0,
+      hostThickness: 120,
+      orientation: { hinge: 'start', facing: 'positive' },
+      hostWallId: 'south',
+    }
+
+    expect(openingFill(doubleDoorNode)).toEqual([
+      {
+        role: 'leaf',
+        along: { min: -813 + LEAF_REVEAL_GAP_MM, max: 0 },
+        up: { min: LEAF_REVEAL_GAP_MM, max: 2032 - LEAF_REVEAL_GAP_MM },
+        thickness: DOOR_LEAF_THICKNESS_MM,
+      },
+      {
+        role: 'leaf',
+        along: { min: 0, max: 813 - LEAF_REVEAL_GAP_MM },
+        up: { min: LEAF_REVEAL_GAP_MM, max: 2032 - LEAF_REVEAL_GAP_MM },
+        thickness: DOOR_LEAF_THICKNESS_MM,
+      },
+    ])
+  })
 })
