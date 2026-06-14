@@ -50,8 +50,10 @@ export function openingFill(
 ): OpeningFillPart[] {
   const entry = getEntry(elementTypes, node.type)
   switch (entry?.scene3D.fill) {
-    case 'door-leaf':
-      return doorLeafParts(node)
+    case 'door-leaf': {
+      const double = entry.opening?.double ?? false
+      return doorLeafParts(node, double)
+    }
     // 'window-sash' (the sash frame and glass) and the double-door split land in
     // later cycles, each a new branch here, leaving the seam visible.
     default:
@@ -59,18 +61,27 @@ export function openingFill(
   }
 }
 
-/** One door leaf filling the opening rectangle, inset by the reveal gap on all sides. */
-function doorLeafParts(node: OpeningSceneNode): OpeningFillPart[] {
+/**
+ * Door leaves filling the opening rectangle, inset by the reveal gap on all sides.
+ * A double door splits into two leaves meeting at the center; a single door is one
+ * leaf spanning the full inset width.
+ */
+function doorLeafParts(node: OpeningSceneNode, double: boolean): OpeningFillPart[] {
   const halfWidth = node.width / 2
-  return [
-    {
-      role: 'leaf',
-      along: { min: -halfWidth + LEAF_REVEAL_GAP_MM, max: halfWidth - LEAF_REVEAL_GAP_MM },
-      up: {
-        min: node.sillHeight + LEAF_REVEAL_GAP_MM,
-        max: node.sillHeight + node.height - LEAF_REVEAL_GAP_MM,
-      },
-      thickness: DOOR_LEAF_THICKNESS_MM,
-    },
-  ]
+  const leftEdge = -halfWidth + LEAF_REVEAL_GAP_MM
+  const rightEdge = halfWidth - LEAF_REVEAL_GAP_MM
+  const up: OpeningFillExtent = {
+    min: node.sillHeight + LEAF_REVEAL_GAP_MM,
+    max: node.sillHeight + node.height - LEAF_REVEAL_GAP_MM,
+  }
+  const leaf = (along: OpeningFillExtent): OpeningFillPart => ({
+    role: 'leaf',
+    along,
+    up,
+    thickness: DOOR_LEAF_THICKNESS_MM,
+  })
+  if (double) {
+    return [leaf({ min: leftEdge, max: 0 }), leaf({ min: 0, max: rightEdge })]
+  }
+  return [leaf({ min: leftEdge, max: rightEdge })]
 }
