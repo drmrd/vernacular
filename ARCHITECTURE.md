@@ -46,14 +46,14 @@ Hard invariants:
 
 ## Where to find things
 
-| Topic                             | Where to look                                |
-| --------------------------------- | -------------------------------------------- |
-| Full design rationale             | `docs/specs/2026-06-01-vernacular-design.md` |
-| Per-phase implementation plans    | `docs/plans/`                                |
-| Current roadmap                   | [`ROADMAP.md`](ROADMAP.md)                   |
-| Contributing                      | [`CONTRIBUTING.md`](CONTRIBUTING.md)         |
-| License and required attributions | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE)     |
-| Architecture decision records     | `docs/knowledge/decisions/`                  |
+| Topic                             | Where to look                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Full design rationale             | `docs/specs/2026-06-01-vernacular-design.md`                                                                 |
+| Per-phase implementation plans    | `docs/plans/`                                                                                                |
+| Delivery strategy and roadmap     | [`docs/delivery-strategy.md`](docs/delivery-strategy.md), [board](https://github.com/users/drmrd/projects/3) |
+| Contributing                      | [`CONTRIBUTING.md`](CONTRIBUTING.md)                                                                         |
+| License and required attributions | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE)                                                                     |
+| Architecture decision records     | `docs/knowledge/decisions/`                                                                                  |
 
 ## Subagents and slash commands
 
@@ -76,6 +76,7 @@ derivation in `core/`, through the durable project stores in `storage/`,
 the Canvas plan renderer and accessible DOM overlay in `editor/`, and the
 command-dispatch boundary in `bridge/`. The `engine/` Three.js layer holds
 the scene-renderer skeleton. The remaining MVP work proceeds as the parallel
-delivery tracks recorded in ADR-0044 and ROADMAP.md, beginning with the
-three-dimensional preview, the assets and furniture pipeline, and the
-user-experience foundation.
+delivery tracks recorded in ADR-0044 and `docs/delivery-strategy.md`, beginning
+with the three-dimensional preview, the assets and furniture pipeline, and the
+user-experience foundation. Live per-item status is on the
+[delivery roadmap board](https://github.com/users/drmrd/projects/3).

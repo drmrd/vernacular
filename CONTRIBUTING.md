@@ -14,8 +14,10 @@ and code contributions are all welcome.
 - The authoritative design lives at
   [`docs/specs/2026-06-01-vernacular-design.md`](docs/specs/2026-06-01-vernacular-design.md).
   Skim the table of contents at least.
-- The current phase and what is coming next are in
-  [`ROADMAP.md`](ROADMAP.md).
+- The current work and what is coming next are tracked on the
+  [delivery roadmap board](https://github.com/users/drmrd/projects/3); the
+  strategy and track model are in
+  [`docs/delivery-strategy.md`](docs/delivery-strategy.md).
 - All contributors are expected to follow the
   [Code of Conduct](CODE_OF_CONDUCT.md).
 - Security concerns go through the disclosure path in
