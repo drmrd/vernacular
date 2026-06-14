@@ -6,13 +6,17 @@ import type { LightingProvider } from './lighting-provider'
 const WHITE = 0xffffff
 /** A neutral dark ground bounce for the hemisphere fill. */
 const GROUND_FILL = 0x444444
-/** A fixed default sun direction, raised toward +Y with an asymmetric azimuth (its X and
- *  Z components differ). The asymmetry turns the two perpendicular exterior walls toward
- *  the sun by different amounts, so they separate in value rather than reading equally lit
- *  (ADR-0079); the large +Y keeps it a high daytime key. Exported so the shadow fitter
- *  positions the sun along the same direction relative to the scene bounds. Treat it as
- *  read-only: it is a shared constant, and the fitter normalizes a clone of it once. */
-export const SUN_DIRECTION = new THREE.Vector3(1, 2, 0.35)
+// The sun direction's components. The vertical reach dominates so it reads as a high
+// daytime key, and the two horizontal reaches differ (X reaches further than Z) so the
+// asymmetric azimuth turns the two perpendicular exterior walls toward the sun by
+// different amounts; they then separate in value rather than reading equally lit (ADR-0079).
+const SUN_REACH_X = 1
+const SUN_REACH_UP = 2
+const SUN_REACH_Z = 0.35
+/** A fixed default sun direction. Exported so the shadow fitter positions the sun along
+ *  the same direction relative to the scene bounds. Treat it as read-only: it is a shared
+ *  constant, and the fitter normalizes a clone of it once. */
+export const SUN_DIRECTION = new THREE.Vector3(SUN_REACH_X, SUN_REACH_UP, SUN_REACH_Z)
 // A key-dominant rig (ADR-0079): the sun runs brighter than the hemisphere fill so it
 // sets the value of the faces it reaches, while the fill only keeps the unlit faces off
 // black. An equal fill washed faces at different angles to the same value. A solar-aware
