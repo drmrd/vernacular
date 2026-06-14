@@ -12,7 +12,6 @@ import {
   type AutosaveStatus,
 } from '../../bridge'
 import { addFloor, builtinPeriods, setUnits, type Project } from '../../core'
-import { Button } from '../design-system'
 import {
   CommandBar,
   CommandPalette,
@@ -38,6 +37,7 @@ import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, PanelSlot } from '../design-system'
+import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
 import { ProjectIdentity } from './project-identity'
 import { SnapStatus } from './snap-status'
@@ -147,11 +147,12 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         >
           <ArrowClockwise size={16} aria-hidden="true" />
         </button>
-        {projectControls.onExportBundle ? (
-          <Button variant="primary" onClick={projectControls.onExportBundle}>
-            Export
-          </Button>
-        ) : null}
+        <ExportMenu
+          onExportBundle={projectControls.onExportBundle}
+          onExportPlan={projectControls.onExportPlan}
+          onExportImage={projectControls.onExportImage}
+          onExportPdf={projectControls.onExportPdf}
+        />
         <ProjectControls {...projectControls} />
         <CommandBar />
       </div>
