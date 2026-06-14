@@ -78,13 +78,13 @@ interface RoomCapGeometry {
   triangles: Triangle[]
 }
 
-function roomCapGeometry(node: RoomSceneNode): RoomCapGeometry {
-  const boundary = canonicalOuterLoop(node.clearPolygon)
-  const holeLoops = (node.holes ?? []).map(canonicalHoleLoop)
+function roomCapGeometry(boundary: Point[], holes?: Point[][]): RoomCapGeometry {
+  const outerBoundary = canonicalOuterLoop(boundary)
+  const holeLoops = (holes ?? []).map(canonicalHoleLoop)
   return {
-    boundary,
-    points: [...boundary, ...holeLoops.flat()],
-    triangles: slabCapTriangles(boundary, holeLoops),
+    boundary: outerBoundary,
+    points: [...outerBoundary, ...holeLoops.flat()],
+    triangles: slabCapTriangles(outerBoundary, holeLoops),
   }
 }
 
@@ -135,7 +135,10 @@ function buildSlabMesh(
   materials: MaterialProvider,
   floorId: string,
 ): THREE.Mesh {
-  const sections = slabSections(roomCapGeometry(node), floorSlabThickness())
+  const sections = slabSections(
+    roomCapGeometry(node.outerPolygon ?? node.clearPolygon, node.holes),
+    floorSlabThickness(),
+  )
   const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
   addSlabGroups(geometry, sections)
   geometry.computeVertexNormals()
@@ -158,7 +161,7 @@ function buildCeilingMesh(
   materials: MaterialProvider,
   floorId: string,
 ): THREE.Mesh {
-  const cap = roomCapGeometry(node)
+  const cap = roomCapGeometry(node.clearPolygon, node.holes)
   const positions = slabCapPositions(cap.points, cap.triangles, ceilingHeight(node))
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
