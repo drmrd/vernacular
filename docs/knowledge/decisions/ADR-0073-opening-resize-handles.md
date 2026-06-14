@@ -88,22 +88,27 @@ The handle the user pulls is the edge that moves, and the far edge is the anchor
 
 ### One atomic command, one undo step
 
-Resizing from a jamb dispatches a new `resizeOpeningEdge(floorId, openingId, edge,
-newJambPosition)` command. The handler reads the opening's fixed jamb (the jamb
-opposite `edge`), computes the new width as the distance from the fixed jamb to the
-dragged jamb and the new center as their midpoint, clamps both, and writes the
-single opening. Because width and position change together, dispatching the
-existing `resizeOpening` and `moveOpening` as two commands would record two undo
-steps for one gesture, so a dedicated atomic command is the right grain. The
-`Opening` model is unchanged; the command is a new way to compute the same
+Resizing from a jamb dispatches a new `resizeOpeningEdge(floorId, openingId, width,
+position)` command that sets the opening's width and center together in a single
+undoable step. The resize hook computes that width and position from the dragged
+jamb with the shared pure `computeOpeningResize`, which holds the opposite jamb
+fixed, takes the new width as the distance from the fixed jamb to the dragged jamb
+and the new center as their midpoint, floors the width at a minimum, and keeps the
+dragged jamb on the wall. The command applies those values the way `moveOpening`
+applies a view-computed position and `resizeOpening` applies view-computed
+dimensions, and `deriveOpeningGeometry` stays the authoritative clamp that keeps
+any opening on its host wall. Because width and position change together,
+dispatching the existing `resizeOpening` and `moveOpening` as two commands would
+record two undo steps for one gesture, so a dedicated atomic command is the right
+grain. The `Opening` model is unchanged; the command writes the same
 width-and-position fields, not a new field.
 
-### Geometry clamped in pure core, snapped to the wall end
+### Geometry clamped in a pure helper, snapped to the wall end
 
-The new width and center are computed by a pure module so the rules are tested
+The new width and center are computed by a pure helper so the rules are tested
 without a pointer. The dragged jamb cannot cross the fixed jamb: the width is
-floored at a minimum opening width, introduced as a single named constant. The
-dragged jamb cannot leave the wall: it is clamped to the wall span. When the
+floored at a minimum opening width, introduced as a single named constant in core.
+The dragged jamb cannot leave the wall: it is clamped to the wall span. When the
 dragged jamb falls within the handle's grab tolerance of the host wall's near end,
 it snaps to that end so the opening sits flush against the corner. The snap is a
 focused jamb-to-wall-end check using the host wall's endpoints, not the full snap
@@ -133,7 +138,8 @@ and dispatches `resizeOpeningEdge` on release. It composes into the pointer
 handlers above the opening footprint drag, so a press on a jamb handle resizes and
 a press inside the footprint clear of the handles still moves. Like the wall and
 opening editing hooks it is coverage-excluded glue, proven end-to-end, with the
-decisions living in the pure picker, the pure geometry, and the command handler.
+decisions living in the pure picker and the pure resize geometry, and the command
+left a thin atomic setter.
 
 ## Consequences
 
