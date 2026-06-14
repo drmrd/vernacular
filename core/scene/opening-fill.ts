@@ -54,8 +54,10 @@ export function openingFill(
       const double = entry.opening?.double ?? false
       return doorLeafParts(node, double)
     }
-    // 'window-sash' (the sash frame and glass) and the double-door split land in
-    // later cycles, each a new branch here, leaving the seam visible.
+    case 'window-sash':
+      return windowSashParts(node)
+    // The double-door split lands in a later cycle, a new branch here, leaving the
+    // seam visible.
     default:
       return []
   }
@@ -84,4 +86,35 @@ function doorLeafParts(node: OpeningSceneNode, double: boolean): OpeningFillPart
     return [leaf({ min: leftEdge, max: 0 }), leaf({ min: 0, max: rightEdge })]
   }
   return [leaf({ min: leftEdge, max: rightEdge })]
+}
+
+/**
+ * A sash window filling the opening rectangle: a perimeter frame of four sash bars
+ * (head, sill, and two jambs) ringing one glass pane inset by the frame width.
+ */
+function windowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
+  const halfWidth = node.width / 2
+  const sill = node.sillHeight
+  const top = node.sillHeight + node.height
+  const fw = SASH_FRAME_WIDTH_MM
+  const innerUp: OpeningFillExtent = { min: sill + fw, max: top - fw }
+  const bar = (along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPart => ({
+    role: 'leaf',
+    along,
+    up,
+    thickness: SASH_FRAME_THICKNESS_MM,
+  })
+  const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
+  return [
+    bar(span, { min: top - fw, max: top }),
+    bar(span, { min: sill, max: sill + fw }),
+    bar({ min: -halfWidth, max: -halfWidth + fw }, innerUp),
+    bar({ min: halfWidth - fw, max: halfWidth }, innerUp),
+    {
+      role: 'glass',
+      along: { min: -halfWidth + fw, max: halfWidth - fw },
+      up: innerUp,
+      thickness: GLASS_THICKNESS_MM,
+    },
+  ]
 }
