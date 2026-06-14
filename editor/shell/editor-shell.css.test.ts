@@ -20,4 +20,14 @@ describe('editor-shell.css', () => {
     expect(css).toContain('var(--color-border)')
     expect(css).toContain('var(--color-text')
   })
+
+  it('uses --color-on-accent not --color-surface for text on accent-strong fills', () => {
+    // brass-600 (--color-accent-strong) gives only 4.41:1 against vellum-100
+    // (--color-surface), which falls short of WCAG AA 4.5:1 for normal text.
+    // Any rule that sets background: --color-accent-strong must pair it with
+    // color: --color-on-accent (vellum-50, 4.72:1) not --color-surface.
+    expect(css).not.toMatch(
+      /background:\s*var\(--color-accent-strong\)[^}]*\bcolor:\s*var\(--color-surface\)/,
+    )
+  })
 })
