@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -22,7 +22,7 @@ import {
 import { useTheme } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { planCursor } from './plan-cursor'
-import { resolvePlanPalette, type PlanPalette } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, resolvePlanPalette, type PlanPalette } from './plan-palette'
 import type { DrawableDimension } from './draw-dimension'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
@@ -246,16 +246,22 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
  * threads them into drawPlan. Re-resolved whenever the resolved theme changes, so a
  * theme switch repaints the canvas in the new palette.
  */
-function usePlanPalette(): PlanPalette {
+function usePlanPalette(canvasRef: CanvasRef): PlanPalette {
   const { resolved } = useTheme()
-  return useMemo(
-    () =>
-      resolvePlanPalette((name) =>
-        getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `resolved` is the repaint signal; the resolver reads the live tokens off the document root rather than `resolved` itself.
-    [resolved],
-  )
+  const [palette, setPalette] = useState<PlanPalette>(DEFAULT_PLAN_PALETTE)
+  useEffect(() => {
+    // Read from the canvas element, which sits inside the design-system theme wrapper,
+    // so the resolver picks up the active theme's tokens. data-theme lives on that
+    // wrapper, not the document root, so reading the document root would always return
+    // the light palette. Fall back to the document root before the canvas mounts.
+    const readRoot = canvasRef.current ?? document.documentElement
+    // `resolved` is listed as the repaint signal so a theme switch re-resolves the
+    // palette; the resolver reads the live tokens off the themed canvas element.
+    setPalette(
+      resolvePlanPalette((name) => getComputedStyle(readRoot).getPropertyValue(name).trim()),
+    )
+  }, [resolved, canvasRef])
+  return palette
 }
 
 /**
@@ -267,7 +273,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   const layers = usePlanLayers(canvasRef, traceMode)
   const surfacePaint = useSurfacePaintLayer()
   const roomFillColor = useFloorFillColor()
-  const palette = usePlanPalette()
+  const palette = usePlanPalette(canvasRef)
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor), palette)
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
