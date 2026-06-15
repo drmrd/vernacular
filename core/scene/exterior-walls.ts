@@ -80,6 +80,7 @@ export function exteriorWalls(
     }
     const rawId = rawWallId(wall.id)
     const openingIds = openings
+      // An opening with no hostWallId never equals a raw wall id, so it joins no wall.
       .filter((opening) => opening.hostWallId === rawId)
       .map((opening) => opening.id)
     return [{ wallId: wall.id, outwardNormal, openingIds }]
