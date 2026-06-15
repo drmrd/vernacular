@@ -1,5 +1,5 @@
 import { Canvas, useThree } from '@react-three/fiber'
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   cameraPresetPose,
   doorwayPose,
@@ -12,6 +12,7 @@ import {
 } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
+import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
@@ -239,6 +240,41 @@ function LiveSceneCanvas({
   )
 }
 
+// Tracks whether a pointer drag is underway on the preview pane so the cursor can switch
+// between grab and grabbing. Native canvas pointer events bubble to the pane wrapper, so
+// an orbit or look drag flips this; pointer up or leaving the pane clears it.
+function useDragging() {
+  const [dragging, setDragging] = useState(false)
+  const start = useCallback(() => setDragging(true), [])
+  const stop = useCallback(() => setDragging(false), [])
+  return {
+    dragging,
+    paneHandlers: { onPointerDown: start, onPointerUp: stop, onPointerLeave: stop },
+  }
+}
+
+// The interactive preview pane: it wraps the canvas and overlay (passed as children), shows
+// the grab/grabbing cursor that signals the canvas is draggable, and overlays the per-mode
+// controls hint. The hint is inert to pointer events, so it never blocks a drag.
+function ScenePaneShell({ mode, children }: { mode: NavMode; children: ReactNode }) {
+  const { dragging, paneHandlers } = useDragging()
+  return (
+    <div
+      className="scene-camera-pane"
+      style={{
+        position: 'relative',
+        flex: 1,
+        minHeight: 0,
+        cursor: dragging ? 'grabbing' : 'grab',
+      }}
+      {...paneHandlers}
+    >
+      {children}
+      <CameraControlsHint mode={mode} />
+    </div>
+  )
+}
+
 // Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation toolbar
 // above it and the accessibility proxy overlay beside it. It is rendered only when WebGPU
 // is available, so it never executes under jsdom; the renderer is constructed in the engine
@@ -281,7 +317,7 @@ export function WebGPUSceneView() {
         onPreset={applyPreset}
         canDoorway={doorwayOpening !== null}
       />
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+      <ScenePaneShell mode={mode}>
         <LiveSceneCanvas
           root={root}
           pose={pose}
@@ -295,7 +331,7 @@ export function WebGPUSceneView() {
           presetRequest={presetRequest}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
-      </div>
+      </ScenePaneShell>
     </div>
   )
 }
