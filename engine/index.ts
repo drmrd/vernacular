@@ -8,6 +8,12 @@ export { pickEntityId, pickEntityIdAt } from './scene/pick-entity'
 export type { EntityScreenPosition } from './scene/entity-screen-positions'
 export { entityScreenPositions } from './scene/entity-screen-positions'
 export { createSelectionOutlineGroup, reconcileSelectionOutline } from './scene/selection-outline'
+export type { NearWallTarget } from './scene/near-wall-transparency'
+export {
+  cameraFacesWallOutside,
+  prepareNearWallTransparency,
+  updateNearWallTransparency,
+} from './scene/near-wall-transparency'
 export type { LightingProvider } from './lighting/lighting-provider'
 export { BasicLightingProvider } from './lighting/basic-lighting-provider'
 export { setLightingColor, removeLighting, fitSunShadowToBounds } from './lighting/lighting-rig'
