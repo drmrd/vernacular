@@ -65,6 +65,15 @@ describe('EditorShell', () => {
     expect(screen.getByLabelText(/floor plan/i)).toBeInTheDocument()
   })
 
+  it('renders the brand mark beside the wordmark', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    const banner = screen.getByRole('banner')
+    expect(within(banner).getByRole('img', { name: /vernacular/i })).toBeInTheDocument()
+  })
+
   it('shows the My Projects breadcrumb segment', () => {
     vi.stubGlobal('navigator', {})
 
@@ -121,6 +130,19 @@ describe('EditorShell', () => {
 
     expect(screen.getByRole('button', { name: /grid/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /dimensions/i })).toBeInTheDocument()
+  })
+
+  it('shows visible text labels on the Grid and Dimensions toggles', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(
+      within(screen.getByRole('button', { name: /grid/i })).getByText('Grid'),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('button', { name: /dimensions/i })).getByText('Dimensions'),
+    ).toBeInTheDocument()
   })
 
   it('toggles the Grid button aria-pressed on click', async () => {

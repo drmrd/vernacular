@@ -37,6 +37,7 @@ import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame } from '../design-system'
+import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
 import { ProjectIdentity } from './project-identity'
@@ -134,7 +135,10 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
   return (
     <div className="editor-shell__toolbar">
-      <h1 className="editor-shell__wordmark">Vernacular</h1>
+      <div className="editor-shell__brand">
+        <BrandMark />
+        <h1 className="editor-shell__wordmark">Vernacular</h1>
+      </div>
       <ProjectMenu
         onNewProject={projectControls.onNewProject}
         onOpenFolder={projectControls.onOpenFolder}
@@ -145,23 +149,23 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       <div className="editor-shell__toolbar-actions">
         <button
           type="button"
-          className="editor-shell__icon-btn"
-          aria-label="Grid"
+          className="editor-shell__icon-btn editor-shell__icon-btn--labeled"
           aria-pressed={showGrid}
           onClick={toggleGrid}
           title="Grid (G)"
         >
           <GridFour size={16} aria-hidden="true" />
+          <span>Grid</span>
         </button>
         <button
           type="button"
-          className="editor-shell__icon-btn"
-          aria-label="Dimensions"
+          className="editor-shell__icon-btn editor-shell__icon-btn--labeled"
           aria-pressed={showDimensions}
           onClick={toggleDimensions}
           title="Dimensions (D)"
         >
           <Ruler size={16} aria-hidden="true" />
+          <span>Dimensions</span>
         </button>
         <button
           type="button"

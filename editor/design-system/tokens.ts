@@ -12,6 +12,7 @@ export const tokens = {
   colorTextMuted: token('--color-text-muted'),
   colorSurface: token('--color-surface'),
   colorSurfaceRaised: token('--color-surface-raised'),
+  colorSurfacePanel: token('--color-surface-panel'),
   colorBorder: token('--color-border'),
   colorAccent: token('--color-accent'),
   colorAccentStrong: token('--color-accent-strong'),
