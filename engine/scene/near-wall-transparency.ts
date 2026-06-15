@@ -5,18 +5,33 @@ import type { ExteriorWall } from '../../core'
 /** Opacity of a wall the camera looks at from outside, so the interior reads through it. */
 const FADED_OPACITY = 0.1
 
-/** Full opacity of a wall the camera is inside of. */
-const OPAQUE = 1
-
 /** A horizontal point and outward normal in world space (plan y maps to world Z). */
 interface WorldXZ {
   x: number
   z: number
 }
 
+/** A material paired with the appearance it had before any fade, so the fade can be reversed. */
+interface FadeMaterial {
+  material: THREE.Material
+  baseline: { transparent: boolean; opacity: number; depthWrite: boolean }
+}
+
+/** Captures a freshly cloned material's transparency, opacity, and depth-write as its restore baseline. */
+function fadeMaterial(material: THREE.Material): FadeMaterial {
+  return {
+    material,
+    baseline: {
+      transparent: material.transparent,
+      opacity: material.opacity,
+      depthWrite: material.depthWrite,
+    },
+  }
+}
+
 /** An exterior wall's own materials plus the world geometry that decides its fade. */
 export interface NearWallTarget {
-  materials: THREE.Material[]
+  materials: FadeMaterial[]
   point: WorldXZ
   outwardNormal: WorldXZ
 }
@@ -61,19 +76,19 @@ function meshMaterials(mesh: THREE.Mesh): THREE.Material[] {
 }
 
 /** Replaces a mesh's materials with private clones (single stays single) and returns them. */
-function privatizeMeshMaterials(mesh: THREE.Mesh): THREE.Material[] {
+function privatizeMeshMaterials(mesh: THREE.Mesh): FadeMaterial[] {
   const cloned = meshMaterials(mesh).map((material) => material.clone())
   mesh.material = Array.isArray(mesh.material) ? cloned : (cloned[0] as THREE.Material)
-  return cloned
+  return cloned.map(fadeMaterial)
 }
 
 /** Clones the materials of every mesh under the object carrying `entityId`, or none if absent. */
-function cloneEntityMaterials(root: THREE.Object3D, entityId: string): THREE.Material[] {
+function cloneEntityMaterials(root: THREE.Object3D, entityId: string): FadeMaterial[] {
   const anchor = findNodeBy(root, (node) => node.userData.entityId === entityId)
   if (anchor === null) {
     return []
   }
-  const cloned: THREE.Material[] = []
+  const cloned: FadeMaterial[] = []
   anchor.traverse((descendant) => {
     if (descendant instanceof THREE.Mesh) {
       cloned.push(...privatizeMeshMaterials(descendant))
@@ -123,10 +138,10 @@ export function updateNearWallTransparency(
 ): void {
   for (const target of targets) {
     const faded = cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
-    for (const material of target.materials) {
-      material.transparent = faded
-      material.opacity = faded ? FADED_OPACITY : OPAQUE
-      material.depthWrite = !faded
+    for (const { material, baseline } of target.materials) {
+      material.transparent = faded ? true : baseline.transparent
+      material.opacity = faded ? FADED_OPACITY : baseline.opacity
+      material.depthWrite = faded ? false : baseline.depthWrite
     }
   }
 }
