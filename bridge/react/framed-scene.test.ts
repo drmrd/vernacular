@@ -1,8 +1,116 @@
 import { describe, it, expect } from 'vitest'
 import { buildFramedScene } from './framed-scene'
 import { findByEntityId } from '../../engine/testing'
+import { updateNearWallTransparency } from '../../engine'
 import { DEFAULT_CAMERA_POSE, colorFromHex, solidTreatment, surfaceKey } from '../../core'
 import type { RoomSceneNode, SceneGraph } from '../../core'
+
+// A square room whose south wall hosts a double-hung window. The wall scene-node
+// ids carry the `wall:` prefix; the window's hostWallId is the raw id ('s'), the
+// real convention a derived graph produces.
+function squareRoomWithSouthWindow(ceiling: number): SceneGraph {
+  const span = 4000
+  const thickness = 200
+  return {
+    nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
+    walls: [
+      {
+        id: 'wall:s',
+        kind: 'wall',
+        floorId: 'g',
+        start: { x: 0, y: 0 },
+        end: { x: span, y: 0 },
+        thickness,
+        height: ceiling,
+      },
+      {
+        id: 'wall:e',
+        kind: 'wall',
+        floorId: 'g',
+        start: { x: span, y: 0 },
+        end: { x: span, y: span },
+        thickness,
+        height: ceiling,
+      },
+      {
+        id: 'wall:n',
+        kind: 'wall',
+        floorId: 'g',
+        start: { x: span, y: span },
+        end: { x: 0, y: span },
+        thickness,
+        height: ceiling,
+      },
+      {
+        id: 'wall:w',
+        kind: 'wall',
+        floorId: 'g',
+        start: { x: 0, y: span },
+        end: { x: 0, y: 0 },
+        thickness,
+        height: ceiling,
+      },
+    ],
+    rooms: [
+      {
+        id: 'room:r',
+        kind: 'room',
+        floorId: 'g',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: span, y: 0 },
+          { x: span, y: span },
+          { x: 0, y: span },
+        ],
+        clearPolygon: [
+          { x: 0, y: 0 },
+          { x: span, y: 0 },
+          { x: span, y: span },
+          { x: 0, y: span },
+        ],
+        area: span * span,
+        ceilingHeight: ceiling,
+      },
+    ],
+    underlays: [],
+    openings: [
+      {
+        id: 'opening:window',
+        kind: 'opening',
+        floorId: 'g',
+        type: 'double-hung-window',
+        center: { x: 2000, y: 0 },
+        along: { x: 1, y: 0 },
+        normal: { x: 0, y: 1 },
+        width: 900,
+        height: 1200,
+        sillHeight: 900,
+        hostThickness: thickness,
+        orientation: { hinge: 'start', facing: 'positive' },
+        hostWallId: 's',
+      },
+    ],
+    dimensions: [],
+    stairs: [],
+  }
+}
+
+// Reads the opacity of the 'glass' material under a built opening group,
+// structurally so the bridge test does not import three.
+function glassOpacityOf(group: unknown): number | undefined {
+  let opacity: number | undefined
+  ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
+    const mesh = object as { material?: { name?: string; opacity?: number } }
+    if (
+      mesh.material !== undefined &&
+      !Array.isArray(mesh.material) &&
+      mesh.material.name === 'glass'
+    ) {
+      opacity = mesh.material.opacity
+    }
+  })
+  return opacity
+}
 
 describe('buildFramedScene', () => {
   const wallLength = 2000
@@ -94,6 +202,91 @@ describe('buildFramedScene', () => {
     // guards the empty-scene regression: an Infinity-valued bounds would frame to a
     // NaN pose that could never equal the fixed default.
     expect(pose).toEqual(DEFAULT_CAMERA_POSE)
+  })
+
+  it('prepares the exterior walls of a room for near-wall transparency', () => {
+    const roomGraph: SceneGraph = {
+      nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
+      walls: [
+        {
+          id: 'wall:s',
+          kind: 'wall',
+          floorId: 'g',
+          start: { x: 0, y: 0 },
+          end: { x: 4000, y: 0 },
+          thickness: 200,
+          height,
+        },
+        {
+          id: 'wall:e',
+          kind: 'wall',
+          floorId: 'g',
+          start: { x: 4000, y: 0 },
+          end: { x: 4000, y: 4000 },
+          thickness: 200,
+          height,
+        },
+        {
+          id: 'wall:n',
+          kind: 'wall',
+          floorId: 'g',
+          start: { x: 4000, y: 4000 },
+          end: { x: 0, y: 4000 },
+          thickness: 200,
+          height,
+        },
+        {
+          id: 'wall:w',
+          kind: 'wall',
+          floorId: 'g',
+          start: { x: 0, y: 4000 },
+          end: { x: 0, y: 0 },
+          thickness: 200,
+          height,
+        },
+      ],
+      rooms: [
+        {
+          id: 'room:r',
+          kind: 'room',
+          floorId: 'g',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 4000, y: 0 },
+            { x: 4000, y: 4000 },
+            { x: 0, y: 4000 },
+          ],
+          clearPolygon: [
+            { x: 0, y: 0 },
+            { x: 4000, y: 0 },
+            { x: 4000, y: 4000 },
+            { x: 0, y: 4000 },
+          ],
+          area: 4000 * 4000,
+          ceilingHeight: height,
+        },
+      ],
+      underlays: [],
+      openings: [],
+      dimensions: [],
+      stairs: [],
+    }
+
+    // All four walls of the single room are exterior, so the build prepares one
+    // near-wall-transparency target per wall.
+    expect(buildFramedScene(roomGraph).nearWallTargets).toHaveLength(4)
+  })
+
+  it('folds an opening on an exterior wall into its wall fade target', () => {
+    const fadedOpacity = 0.1
+    const { root, nearWallTargets } = buildFramedScene(squareRoomWithSouthWindow(height))
+
+    // Camera outside the south wall (world z < 0): it fades, and its window with it.
+    updateNearWallTransparency(nearWallTargets, { x: 2000, z: -3000 })
+
+    const group = findByEntityId(root, 'opening:window')
+    expect(group).not.toBeNull()
+    expect(glassOpacityOf(group)).toBe(fadedOpacity)
   })
 
   it('paints a room floor from the supplied paint store', () => {

@@ -1,15 +1,6 @@
 import * as THREE from 'three'
 
-import {
-  FLOOR_NODE_PREFIX,
-  WALL_NODE_PREFIX,
-  buildWallGraph,
-  type OpeningSceneNode,
-  type PlanarGraph,
-  type SceneGraph,
-  type SceneNode,
-  type WallSceneNode,
-} from '../../core'
+import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
@@ -17,6 +8,7 @@ import { addEdgeOverlay } from './edge-overlay'
 import { buildOpeningFill } from './opening-fill-builder'
 import { buildRoomShell } from './room-builder'
 import { buildWalls } from './wall-builder'
+import { buildFloorWallGraph, groupOpeningsByHostWall } from './wall-scene-helpers'
 
 /** Root group that owns one child group per scene-graph node. */
 export type SceneRoot = THREE.Group
@@ -66,28 +58,4 @@ function buildFloorGroup(
     group.add(buildOpeningFill(opening, materials))
   }
   return group
-}
-
-/** Builds the planar wall graph for a floor, keying each edge by stripped model id. */
-function buildFloorWallGraph(floorWalls: WallSceneNode[]): PlanarGraph {
-  return buildWallGraph(
-    floorWalls.map((wall) => ({
-      id: wall.id.slice(WALL_NODE_PREFIX.length),
-      start: wall.start,
-      end: wall.end,
-      thickness: wall.thickness,
-    })),
-  )
-}
-
-/** Groups openings by their host wall id, skipping openings without a host. */
-function groupOpeningsByHostWall(openings: OpeningSceneNode[]): Map<string, OpeningSceneNode[]> {
-  const byHostWall = new Map<string, OpeningSceneNode[]>()
-  for (const opening of openings) {
-    if (opening.hostWallId === undefined) continue
-    const existing = byHostWall.get(opening.hostWallId) ?? []
-    existing.push(opening)
-    byHostWall.set(opening.hostWallId, existing)
-  }
-  return byHostWall
 }

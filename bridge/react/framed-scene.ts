@@ -1,4 +1,5 @@
 import {
+  exteriorWalls,
   frameSceneCamera,
   kelvinToLinearRgb,
   DEFAULT_COLOR_TEMPERATURE_K,
@@ -10,8 +11,10 @@ import {
 import {
   buildScene,
   markShadowCasters,
+  prepareNearWallTransparency,
   PaintMaterialProvider,
   sceneBounds,
+  type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
 
@@ -19,6 +22,7 @@ export interface FramedScene {
   root: SceneRoot
   pose: CameraPose
   bounds: Bounds3 | null
+  nearWallTargets: NearWallTarget[]
 }
 
 /**
@@ -38,7 +42,11 @@ export function buildFramedScene(
   })
   const root = buildScene(graph, materials)
   markShadowCasters(root)
+  const nearWallTargets = prepareNearWallTransparency(
+    root,
+    exteriorWalls(graph.walls, graph.rooms, graph.openings),
+  )
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
-  return { root, pose, bounds }
+  return { root, pose, bounds, nearWallTargets }
 }
