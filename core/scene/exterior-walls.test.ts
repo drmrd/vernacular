@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Point } from '../model/types'
 import { exteriorWalls, type ExteriorWall } from './exterior-walls'
-import type { RoomSceneNode, WallSceneNode } from './scene-graph'
+import type { OpeningSceneNode, RoomSceneNode, WallSceneNode } from './scene-graph'
 
 const FLOOR_ID = 'g'
 const WALL_THICKNESS = 200
@@ -72,5 +72,40 @@ describe('exteriorWalls', () => {
     const result: ExteriorWall[] = exteriorWalls([partition], [roomA, roomB])
 
     expect(result.map((exterior) => exterior.wallId)).not.toContain('wall:partition')
+  })
+
+  function opening(id: string, hostWallId?: string): OpeningSceneNode {
+    return {
+      id,
+      kind: 'opening',
+      floorId: FLOOR_ID,
+      type: 'single-swing-door',
+      center: point(2000, 0),
+      along: point(1, 0),
+      normal: point(0, 1),
+      width: 900,
+      height: 2032,
+      sillHeight: 0,
+      hostThickness: WALL_THICKNESS,
+      orientation: { hinge: 'start', facing: 'positive' },
+      ...(hostWallId === undefined ? {} : { hostWallId }),
+    }
+  }
+
+  it('groups each exterior wall with the ids of the openings hosted on it', () => {
+    const rooms = [room('room:r1', SQUARE)]
+    const walls = [
+      wall('wall:bottom', point(0, 0), point(4000, 0)),
+      wall('wall:right', point(4000, 0), point(4000, 4000)),
+    ]
+    // hostWallId is the raw wall id (the wall node id with its `wall:` prefix stripped).
+    const openings = [opening('opening:door', 'bottom'), opening('opening:no-host')]
+
+    const result = exteriorWalls(walls, rooms, openings)
+
+    const bottom = result.find((exterior) => exterior.wallId === 'wall:bottom')
+    const right = result.find((exterior) => exterior.wallId === 'wall:right')
+    expect(bottom?.openingIds).toEqual(['opening:door'])
+    expect(right?.openingIds).toEqual([])
   })
 })
