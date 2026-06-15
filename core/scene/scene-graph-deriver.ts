@@ -20,13 +20,18 @@ import type {
 type RoomOverrides = Readonly<Record<string, RoomOverride>> | undefined
 
 /**
- * Cached room nodes plus the `roomOverrides` reference they were built from. A
- * room override (a name or custom polygon) changes the room nodes without
- * changing the floor reference, so keying the room cache on the floor alone
- * would serve stale nodes after an override edit.
+ * Cached room nodes plus the inputs they were built from. The room cache is
+ * keyed on `floor.walls`, not the floor, so an edit that yields a new `Floor`
+ * but keeps the same walls array (such as an opening edit) reuses the rooms.
+ * Two inputs are not captured by the walls key and so are compared explicitly:
+ * the `roomOverrides` reference (a name or custom polygon changes the nodes
+ * without changing the walls) and `defaultCeilingHeight` (the ceiling-height
+ * command spreads the floor and keeps the same walls array, so the ceiling
+ * fallback must be compared to avoid serving stale heights).
  */
 interface CachedRoomNodes {
   overrides: RoomOverrides
+  defaultCeilingHeight: number
   nodes: RoomSceneNode[]
 }
 
@@ -77,21 +82,28 @@ function openingNodesFor(
 }
 
 /**
- * Derives a floor's room nodes, reusing the cached nodes while both the source
- * `Floor` reference and the `overrides` reference are unchanged. A room override
- * edit replaces the overrides reference without changing the floor reference, so
- * the cache compares the overrides too. Module-scope so the deriver closure
- * stays under its line cap, like `openingNodesFor`.
+ * Derives a floor's room nodes, reusing the cached nodes while the floor's walls
+ * array, the `overrides` reference, and `defaultCeilingHeight` are all unchanged.
+ * Keying on `floor.walls` lets an edit that yields a new floor with the same
+ * walls (an opening edit) reuse the rooms, while an override edit or a ceiling
+ * height change still rebuilds them. Module-scope so the deriver closure stays
+ * under its line cap, like `openingNodesFor`.
  */
 function roomNodesFor(
-  roomCache: WeakMap<Floor, CachedRoomNodes>,
+  roomCache: WeakMap<readonly Wall[], CachedRoomNodes>,
   floor: Floor,
   overrides: RoomOverrides,
 ): RoomSceneNode[] {
-  const cached = roomCache.get(floor)
-  if (cached !== undefined && cached.overrides === overrides) return cached.nodes
+  const cached = roomCache.get(floor.walls)
+  if (
+    cached !== undefined &&
+    cached.overrides === overrides &&
+    cached.defaultCeilingHeight === floor.defaultCeilingHeight
+  ) {
+    return cached.nodes
+  }
   const nodes = deriveRoomNodesForFloor(floor, overrides)
-  roomCache.set(floor, { overrides, nodes })
+  roomCache.set(floor.walls, { overrides, defaultCeilingHeight: floor.defaultCeilingHeight, nodes })
   return nodes
 }
 
@@ -107,7 +119,7 @@ function roomNodesFor(
 export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const floorCache = new WeakMap<Floor, SceneNode>()
   const wallCache = new WeakMap<Wall, WallSceneNode>()
-  const roomCache = new WeakMap<Floor, CachedRoomNodes>()
+  const roomCache = new WeakMap<readonly Wall[], CachedRoomNodes>()
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
 
