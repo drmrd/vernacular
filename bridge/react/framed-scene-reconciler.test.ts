@@ -75,4 +75,38 @@ describe('createFramedSceneReconciler', () => {
 
     expect(second).not.toBe(first)
   })
+
+  it('reuses a floor built earlier after switching to another floor and back', () => {
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const ground = groundFloorNode()
+    const upper: SceneNode = { id: 'floor:u', kind: 'floor', name: 'Upper', elevation: 2700 }
+
+    const groundFirst = reconciler.reconcile(floorGraph(ground), paint)
+    const upperBuild = reconciler.reconcile(floorGraph(upper), paint)
+    // Switch back to the unchanged ground floor (same node reference).
+    const groundAgain = reconciler.reconcile(floorGraph(ground), paint)
+
+    expect(upperBuild).not.toBe(groundFirst)
+    expect(groundAgain).toBe(groundFirst)
+  })
+
+  it('builds an empty graph without throwing and returns a finite pose', () => {
+    const reconciler = createFramedSceneReconciler()
+    const empty: SceneGraph = {
+      nodes: [],
+      walls: [],
+      rooms: [],
+      underlays: [],
+      openings: [],
+      dimensions: [],
+      stairs: [],
+    }
+
+    const framed = reconciler.reconcile(empty, emptyPaint())
+
+    expect(framed.root).toBeDefined()
+    expect(Number.isFinite(framed.pose.near)).toBe(true)
+    expect(Number.isFinite(framed.pose.far)).toBe(true)
+  })
 })
