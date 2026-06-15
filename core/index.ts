@@ -299,6 +299,8 @@ export {
   deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene/scene-graph'
+export type { ExteriorWall } from './scene/exterior-walls'
+export { exteriorWalls } from './scene/exterior-walls'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
 export { sceneGraphForFloor } from './scene/scene-graph-for-floor'
 export type { Vector3, Bounds3 } from './scene/vector3'
