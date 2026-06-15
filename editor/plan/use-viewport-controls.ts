@@ -9,7 +9,7 @@ import {
   type SetStateAction,
 } from 'react'
 import type { DrawPlanOptions } from './draw-plan'
-import { computeFitViewport, contentBounds } from './fit'
+import { computeFitViewport, contentBounds, planContentPoints } from './fit'
 import {
   panBy,
   wheelZoomFactor,
@@ -196,11 +196,7 @@ export function useFitToContent(
       if (event.key !== FIT_TO_CONTENT_KEY || isEditableTarget(event.target)) {
         return
       }
-      const points = [
-        ...walls.flatMap((wall) => [wall.start, wall.end]),
-        ...rooms.flatMap((room) => room.polygon),
-      ]
-      const bounds = contentBounds(points)
+      const bounds = contentBounds(planContentPoints(walls, rooms))
       if (bounds) {
         setViewport(computeFitViewport(bounds, size))
       }

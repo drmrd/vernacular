@@ -35,6 +35,17 @@ export function computeFitViewport(
   }
 }
 
+/** Every point that bounds a floor's drawn content: the wall endpoints and the room polygons. */
+export function planContentPoints(
+  walls: readonly { start: Point; end: Point }[],
+  rooms: readonly { polygon: readonly Point[] }[],
+): Point[] {
+  return [
+    ...walls.flatMap((wall) => [wall.start, wall.end]),
+    ...rooms.flatMap((room) => room.polygon),
+  ]
+}
+
 /** The bounding size of the drawn plan in world millimeters. */
 export interface PlanExtent {
   width: number
@@ -50,10 +61,7 @@ export function planExtent(
   walls: readonly { start: Point; end: Point }[],
   rooms: readonly { polygon: readonly Point[] }[],
 ): PlanExtent | null {
-  const bounds = contentBounds([
-    ...walls.flatMap((wall) => [wall.start, wall.end]),
-    ...rooms.flatMap((room) => room.polygon),
-  ])
+  const bounds = contentBounds(planContentPoints(walls, rooms))
   if (bounds === null) {
     return null
   }
