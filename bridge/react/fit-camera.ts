@@ -1,4 +1,4 @@
-import { frameSceneCamera, type Bounds3 } from '../../core'
+import { frameSceneCamera, type Bounds3, type CameraPose } from '../../core'
 
 /** The renderer's default perspective field of view, used when a camera does
  *  not expose its own `fov`. */
@@ -15,10 +15,31 @@ const DEGREES_TO_RADIANS = Math.PI / 180
 export interface FittableCamera {
   fov?: number | undefined
   position: { set(x: number, y: number, z: number): void }
+  up?: { set(x: number, y: number, z: number): void }
   near: number
   far: number
   lookAt(x: number, y: number, z: number): void
   updateProjectionMatrix(): void
+}
+
+/** The renderer's default world up direction (+Y), used when a pose does not
+ *  specify its own up vector. */
+const WORLD_UP = { x: 0, y: 1, z: 0 }
+
+/**
+ * Snaps the camera to an explicit {@link CameraPose}: position, near/far clip
+ * planes, up vector, and look-at target. Sets the up vector before `lookAt`
+ * because three derives the camera orientation from up. A pose without an `up`
+ * resets the camera to world up (+Y).
+ */
+export function applyCameraPose(camera: FittableCamera, pose: CameraPose): void {
+  const up = pose.up ?? WORLD_UP
+  camera.position.set(pose.position.x, pose.position.y, pose.position.z)
+  camera.near = pose.near
+  camera.far = pose.far
+  camera.up?.set(up.x, up.y, up.z)
+  camera.lookAt(pose.target.x, pose.target.y, pose.target.z)
+  camera.updateProjectionMatrix()
 }
 
 /**
@@ -36,9 +57,5 @@ export function fitCameraToBounds(
     aspect: size.width / size.height,
     fovRadians: (camera.fov ?? DEFAULT_FOV_DEGREES) * DEGREES_TO_RADIANS,
   })
-  camera.position.set(pose.position.x, pose.position.y, pose.position.z)
-  camera.near = pose.near
-  camera.far = pose.far
-  camera.lookAt(pose.target.x, pose.target.y, pose.target.z)
-  camera.updateProjectionMatrix()
+  applyCameraPose(camera, pose)
 }
