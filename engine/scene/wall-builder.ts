@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import {
   WALL_NODE_PREFIX,
   distance,
+  junctionFills,
   openingVoidContour,
   planToWorld,
   resolveOpeningEdge,
@@ -10,6 +11,7 @@ import {
   wallHeight,
   type Contour,
   type GraphEdge,
+  type JunctionFill,
   type OpeningSceneNode,
   type PlanarGraph,
   type Point,
@@ -25,6 +27,7 @@ import {
   type Triangle,
   type WallSection,
 } from './geometry-utils'
+import { buildJunctionFill } from './junction-fill-builder'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
 
 /** Inputs for building a floor's walls from its planar graph. */
@@ -45,10 +48,10 @@ export interface WallBuildInput {
 export function buildWalls(input: WallBuildInput): THREE.Group {
   const group = new THREE.Group()
   const wallsByModelId = indexWallsByModelId(input.walls)
-  const footprints = wallFootprints(
-    input.graph,
-    input.graph.edges.map((edge) => wallsByModelId.get(edge.wallId)?.thickness ?? 0),
+  const thicknessByEdge = input.graph.edges.map(
+    (edge) => wallsByModelId.get(edge.wallId)?.thickness ?? 0,
   )
+  const footprints = wallFootprints(input.graph, thicknessByEdge)
   input.graph.edges.forEach((edge, index) => {
     const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
     if (node === null) return
@@ -59,7 +62,45 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
       group.add(buildOpeningWallMesh({ edge, wall: node, openings }, input))
     }
   })
+  for (const mesh of buildJunctionFills(input, thicknessByEdge, wallsByModelId)) {
+    group.add(mesh)
+  }
   return group
+}
+
+/**
+ * One junction-fill mesh per junction where three or more walls meet, each rising
+ * to the tallest wall incident to that junction. A fill whose incident walls all
+ * resolve to no wall node is skipped (no height to rise to).
+ */
+function buildJunctionFills(
+  input: WallBuildInput,
+  thicknessByEdge: number[],
+  wallsByModelId: Map<string, WallSceneNode>,
+): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = []
+  for (const fill of junctionFills(input.graph, thicknessByEdge)) {
+    const height = fillHeight(fill, input.graph, wallsByModelId)
+    if (height === null) continue
+    meshes.push(buildJunctionFill(fill, height, input.materials))
+  }
+  return meshes
+}
+
+/**
+ * The height a junction fill rises to: the maximum height over the walls incident
+ * to the junction. Returns null when no incident edge resolves to a wall node.
+ */
+function fillHeight(
+  fill: JunctionFill,
+  graph: PlanarGraph,
+  wallsByModelId: Map<string, WallSceneNode>,
+): number | null {
+  const heights = fill.edgeIndexes
+    .map((edgeIndex) => wallsByModelId.get(graph.edges[edgeIndex]?.wallId ?? ''))
+    .filter((node): node is WallSceneNode => node !== undefined)
+    .map(wallHeight)
+  return heights.length === 0 ? null : Math.max(...heights)
 }
 
 /** An opening that resolves to a given edge, paired with its distance along it. */
