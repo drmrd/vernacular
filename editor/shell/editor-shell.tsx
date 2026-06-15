@@ -149,23 +149,23 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       <div className="editor-shell__toolbar-actions">
         <button
           type="button"
-          className="editor-shell__icon-btn"
-          aria-label="Grid"
+          className="editor-shell__icon-btn editor-shell__icon-btn--labeled"
           aria-pressed={showGrid}
           onClick={toggleGrid}
           title="Grid (G)"
         >
           <GridFour size={16} aria-hidden="true" />
+          <span>Grid</span>
         </button>
         <button
           type="button"
-          className="editor-shell__icon-btn"
-          aria-label="Dimensions"
+          className="editor-shell__icon-btn editor-shell__icon-btn--labeled"
           aria-pressed={showDimensions}
           onClick={toggleDimensions}
           title="Dimensions (D)"
         >
           <Ruler size={16} aria-hidden="true" />
+          <span>Dimensions</span>
         </button>
         <button
           type="button"

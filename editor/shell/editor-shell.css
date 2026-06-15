@@ -95,6 +95,16 @@
   color: var(--color-text);
 }
 
+/* The labeled variant relaxes the square icon button to fit an icon and a text
+   label, reusing the base hover, focus, and pressed styling. */
+.editor-shell__icon-btn--labeled {
+  width: auto;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
+}
+
 .editor-shell__save-status {
   font-family: var(--font-family-ui);
   font-size: 0.75rem;
