@@ -20,7 +20,7 @@ import {
 import { useActiveFloorId } from './active-floor-context'
 import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
-import { buildFramedScene } from './framed-scene'
+import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -310,8 +310,11 @@ export function WebGPUSceneView() {
     [rawGraph, activeFloorId],
   )
   const paint = useProjectPaint()
+  // One reconciler for the life of the view; it reuses an unchanged floor's built
+  // scene instead of rebuilding on every edit (foundation spec 5.5).
+  const reconcilerRef = useRef(createFramedSceneReconciler())
   const { root, pose, bounds, nearWallTargets } = useMemo(
-    () => buildFramedScene(graph, paint),
+    () => reconcilerRef.current.reconcile(graph, paint),
     [graph, paint],
   )
   const {
