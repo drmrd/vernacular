@@ -3,6 +3,7 @@ import { drawPlan } from './draw-plan'
 import { recordingContext, sampleWall as wall } from './draw-plan-test-fixtures'
 import type { DrawableUnderlay, UnderlayImage } from './draw-underlay'
 import { DEFAULT_PLAN_SCALE } from './viewport'
+import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { UnderlaySceneNode } from '../../core'
 
 /** A minimal valid `drawPlan` options object that tests override per case. */
@@ -20,8 +21,8 @@ function planOptions(overrides: Partial<Parameters<typeof drawPlan>[1]> = {}) {
 describe('drawPlan underlays and calibration', () => {
   // The wall stroke uses this color while unselected, so any segment whose style
   // differs from it (and is not the selected color) must be the calibration line.
-  const WALL_COLOR = '#222222'
-  const SELECTED_WALL_COLOR = '#1a7fd4'
+  const WALL_COLOR = DEFAULT_PLAN_PALETTE.wall
+  const SELECTED_WALL_COLOR = DEFAULT_PLAN_PALETTE.selection
 
   function drawable(overrides: Partial<UnderlaySceneNode> = {}): DrawableUnderlay {
     const node: UnderlaySceneNode = {

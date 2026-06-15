@@ -10,7 +10,7 @@ import {
   drawRulers,
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
-import type { PlanPalette } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
@@ -235,7 +235,7 @@ describe('drawPlan ghost', () => {
   // The wall stroke uses this color while unselected, so a ghost segment painted
   // in a distinct preview style is identifiable apart from the wall (mirroring how
   // the preview/calibration tests distinguish overlay strokes from wall strokes).
-  const WALL_COLOR = '#222222'
+  const WALL_COLOR = DEFAULT_PLAN_PALETTE.wall
   const viewport = { scale: DEFAULT_PLAN_SCALE }
 
   it('strokes each ghost segment between its projected screen endpoints after the walls', () => {
@@ -789,6 +789,6 @@ describe('drawPlan floor fill tint', () => {
   it('uses the default room fill when no floor paint is set', () => {
     const recorder = recordingContext()
     drawPlan(recorder.ctx, planOptions({ rooms: [rectangleRoom('room:r')] }))
-    expect(recorder.fills).toContain('#eef2f6')
+    expect(recorder.fills).toContain(DEFAULT_PLAN_PALETTE.roomFill)
   })
 })
