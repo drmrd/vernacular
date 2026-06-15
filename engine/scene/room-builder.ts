@@ -46,12 +46,12 @@ function slabSidePositions(boundary: Point[], thickness: number): number[] {
   for (let i = 0; i < boundary.length; i += 1) {
     const start = boundary[i] as Point
     const end = boundary[(i + 1) % boundary.length] as Point
-    pushWorldPoint(positions, start, FLOOR_DATUM_Y)
+    pushWorldPoint(positions, end, bottomY)
     pushWorldPoint(positions, end, FLOOR_DATUM_Y)
+    pushWorldPoint(positions, start, FLOOR_DATUM_Y)
+    pushWorldPoint(positions, start, bottomY)
     pushWorldPoint(positions, end, bottomY)
     pushWorldPoint(positions, start, FLOOR_DATUM_Y)
-    pushWorldPoint(positions, end, bottomY)
-    pushWorldPoint(positions, start, bottomY)
   }
   return positions
 }
