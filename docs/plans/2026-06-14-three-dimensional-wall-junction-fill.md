@@ -312,8 +312,8 @@ Run: `pnpm exec vitest run engine/scene/wall-builder.test.ts`
       array already built for `wallFootprints`; lift it to a `const`). For each fill,
       `height = Math.max(...fill.edgeIndexes.map(ei => wallHeight(node for edge ei)))`
       where the node is `wallsByModelId.get(graph.edges[ei].wallId)` (skip a fill whose
-      edges have no node, mirroring `edgeWallNode`'s null guard); `group.add(
-  buildJunctionFill(fill, height, input.materials))`.
+      edges have no node, mirroring `edgeWallNode`'s null guard); then
+      `group.add(buildJunctionFill(fill, height, input.materials))`.
 
 - [ ] **Step 4:** run, expect PASS, and the wall-builder suite green.
 
