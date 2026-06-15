@@ -1,6 +1,15 @@
 import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
-import { dot, leftNormal, leftPerp, shift, subtract, unit } from '../geometry/vector'
+import {
+  directionAngle,
+  dot,
+  leftNormal,
+  leftPerp,
+  negate,
+  shift,
+  subtract,
+  unit,
+} from '../geometry/vector'
 import type { Point } from '../model/types'
 
 import type { GraphEdge, PlanarGraph } from './wall-graph'
@@ -100,16 +109,11 @@ function resolveVertex(context: FanContext, vertexIndex: number, edgeIndexes: nu
   if (edgeIndexes.length < 2) return
   const vertex = context.graph.vertices[vertexIndex] as Point
   const spokes = buildSpokes(context, vertexIndex, edgeIndexes)
-  spokes.sort((left, right) => spokeAngle(left) - spokeAngle(right))
+  spokes.sort((left, right) => directionAngle(left.out) - directionAngle(right.out))
   for (const [index, spoke] of spokes.entries()) {
     const neighbor = spokes[(index + 1) % spokes.length] as Spoke
     resolveWedge(context.result, { vertex, spoke, neighbor })
   }
-}
-
-/** The counter-clockwise angle of a spoke's outgoing direction. */
-function spokeAngle(spoke: Spoke): number {
-  return Math.atan2(spoke.out.y, spoke.out.x)
 }
 
 /** The spokes of a vertex: one per incident edge, leaving the vertex outward. */
@@ -181,11 +185,6 @@ function assignCorner(result: WallFootprint[], spoke: Spoke, target: CornerTarge
   }
   if (isPlus) footprint.bPlus = target.point
   else footprint.bMinus = target.point
-}
-
-/** The opposite direction. */
-function negate(vector: Point): Point {
-  return { x: -vector.x, y: -vector.y }
 }
 
 /** Maps each graph vertex to the indices of the edges incident to it. */

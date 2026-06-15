@@ -1,4 +1,12 @@
-import { dot, leftNormal, leftPerp, subtract, unit } from '../geometry/vector'
+import {
+  directionAngle,
+  dot,
+  leftNormal,
+  leftPerp,
+  negate,
+  subtract,
+  unit,
+} from '../geometry/vector'
 import type { Point } from '../model/types'
 import { signedArea } from '../scene/winding'
 
@@ -70,7 +78,7 @@ interface FillContext {
  */
 function corePolygon(context: FillContext, vertexIndex: number, edgeIndexes: number[]): Point[] {
   const spokes = edgeIndexes.map((edgeIndex) => spokeAt(context.graph, edgeIndex, vertexIndex))
-  spokes.sort((left, right) => spokeAngle(left) - spokeAngle(right))
+  spokes.sort((left, right) => directionAngle(left.out) - directionAngle(right.out))
   const ring: Point[] = []
   for (const spoke of spokes) {
     const footprint = context.footprints[spoke.edgeIndex] as WallFootprint
@@ -90,11 +98,6 @@ function spokeAt(graph: PlanarGraph, edgeIndex: number, vertexIndex: number): Sp
   const a = graph.vertices[edge.a] as Point
   const b = graph.vertices[edge.b] as Point
   return { edgeIndex, atA, out: unit(subtract(far, vertex)), normal: leftNormal(a, b) }
-}
-
-/** The counter-clockwise angle of a spoke's outgoing direction. */
-function spokeAngle(spoke: Spoke): number {
-  return Math.atan2(spoke.out.y, spoke.out.x)
 }
 
 /**
@@ -126,9 +129,4 @@ function dedupeAdjacent(points: Point[]): Point[] {
 /** Whether two points are the same footprint corner, within epsilon. */
 function samePoint(a: Point, b: Point): boolean {
   return Math.abs(a.x - b.x) < CORNER_EPSILON && Math.abs(a.y - b.y) < CORNER_EPSILON
-}
-
-/** The opposite direction. */
-function negate(vector: Point): Point {
-  return { x: -vector.x, y: -vector.y }
 }
