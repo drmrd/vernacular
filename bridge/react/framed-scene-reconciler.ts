@@ -91,14 +91,38 @@ function subgroupMap<Node extends { id: string }>(
   )
 }
 
-/** The wall and hosted-opening nodes a wall sub-group is built from. */
-function wallInputs(
-  entities: FloorEntities,
-): Pick<CachedFloorBuild, 'wallNodes' | 'wallOpeningNodes'> {
-  return {
-    wallNodes: entities.walls,
-    wallOpeningNodes: entities.openings.filter((opening) => opening.hostWallId !== undefined),
+/** Whether two arrays hold the same elements in the same order by reference. */
+function sameRefs<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a.length === b.length && a.every((item, index) => item === b[index])
+}
+
+/** The wall and hosted-opening nodes a wall sub-group is built from, and the prior build. */
+interface WallBuildInput {
+  entities: FloorEntities
+  wallOpeningNodes: OpeningSceneNode[]
+  materials: PaintMaterials
+  prev: CachedFloorBuild | undefined
+}
+
+/**
+ * Reuses the cached wall sub-group when every wall node and every hosted-opening node is
+ * unchanged by reference, else rebuilds it. The wall sub-group is the floor's non-local unit
+ * (junctions span walls), so it rebuilds whole when any of its inputs changes.
+ */
+function reuseOrBuildWall({
+  entities,
+  wallOpeningNodes,
+  materials,
+  prev,
+}: WallBuildInput): WallBuild {
+  if (
+    prev !== undefined &&
+    sameRefs(entities.walls, prev.wallNodes) &&
+    sameRefs(wallOpeningNodes, prev.wallOpeningNodes)
+  ) {
+    return prev.wall
   }
+  return buildWallSubgroup({ ...entities, materials })
 }
 
 /** Reuses a cached room sub-group when its derived node is unchanged in value, else rebuilds. */
@@ -140,7 +164,8 @@ function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput):
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
   })
-  const wall = buildWallSubgroup({ ...entities, materials })
+  const wallOpeningNodes = entities.openings.filter((opening) => opening.hostWallId !== undefined)
+  const wall = reuseOrBuildWall({ entities, wallOpeningNodes, materials, prev })
   const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, materials, prev))
   const openings = subgroupMap(entities.openings, (node) =>
     reuseOrBuildOpening(node, materials, prev),
@@ -149,7 +174,8 @@ function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput):
     ...[...rooms.values()].map((build) => build.group),
     ...[...openings.values()].map((build) => build.group),
   ])
-  return { floorNode, paint, wall, ...wallInputs(entities), rooms, openings, framed }
+  const wallNodes = entities.walls
+  return { floorNode, paint, wall, wallNodes, wallOpeningNodes, rooms, openings, framed }
 }
 
 /**
