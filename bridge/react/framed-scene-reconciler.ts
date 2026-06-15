@@ -21,6 +21,9 @@ import {
   type SceneRoot,
 } from '../../engine'
 import { buildFramedScene, type FramedScene } from './framed-scene'
+import { roomSceneNodeEqual } from './room-scene-node-equal'
+
+type PaintMaterials = InstanceType<typeof PaintMaterialProvider>
 
 export interface FramedSceneReconciler {
   reconcile(graph: SceneGraph, paint?: Record<string, SurfaceTreatment>): FramedScene
@@ -98,18 +101,36 @@ function wallInputs(
   }
 }
 
-/** Builds every sub-group of a floor afresh and frames it into a cached build. */
-function buildFloorBuild(
-  floorNode: SceneNode,
-  entities: FloorEntities,
-  paint: Record<string, SurfaceTreatment>,
-): CachedFloorBuild {
+/** Reuses a cached room sub-group when its derived node is unchanged in value, else rebuilds. */
+function reuseOrBuildRoom(
+  node: RoomSceneNode,
+  materials: PaintMaterials,
+  prev: CachedFloorBuild | undefined,
+): SceneRoot {
+  const cached = prev?.rooms.get(node.id)
+  if (cached !== undefined && roomSceneNodeEqual(cached.node, node)) return cached.group
+  return buildRoomSubgroup(node, materials)
+}
+
+/** The inputs a single floor build is computed from, including the prior build to reuse. */
+interface FloorBuildInput {
+  floorNode: SceneNode
+  entities: FloorEntities
+  paint: Record<string, SurfaceTreatment>
+  prev: CachedFloorBuild | undefined
+}
+
+/**
+ * Builds a floor's sub-groups and frames it into a cached build. Rooms whose derived node is
+ * unchanged in value reuse their prior sub-group; changed rooms, walls, and openings rebuild.
+ */
+function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput): CachedFloorBuild {
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
   })
   const wall = buildWallSubgroup({ ...entities, materials })
-  const rooms = subgroupMap(entities.rooms, (node) => buildRoomSubgroup(node, materials))
+  const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, materials, prev))
   const openings = subgroupMap(entities.openings, (node) => buildOpeningSubgroup(node, materials))
   const framed = frameFloor(floorNode, wall, [
     ...[...rooms.values()].map((build) => build.group),
@@ -142,7 +163,11 @@ export function createFramedSceneReconciler(): FramedSceneReconciler {
       if (cached !== undefined && cached.floorNode === floorNode && cached.paint === paint) {
         return cached.framed
       }
-      const build = buildFloorBuild(floorNode, floorEntities(graph, floorNode), paint)
+      // A paint edit changes the paint reference, so prev is undefined and the floor rebuilds
+      // whole; otherwise the prior build's unchanged room sub-groups are reused.
+      const prev = cached !== undefined && cached.paint === paint ? cached : undefined
+      const entities = floorEntities(graph, floorNode)
+      const build = buildFloorBuild({ floorNode, entities, paint, prev })
       buildsByFloorId.set(floorNode.id, build)
       return build.framed
     },
