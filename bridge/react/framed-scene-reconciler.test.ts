@@ -53,4 +53,15 @@ describe('createFramedSceneReconciler', () => {
 
     expect(second).toBe(first)
   })
+
+  it('rebuilds when the floor node reference changes', () => {
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+
+    const first = reconciler.reconcile(floorGraph(groundFloorNode()), paint)
+    // An edit replaces the floor with a new object carrying the same id.
+    const second = reconciler.reconcile(floorGraph(groundFloorNode()), paint)
+
+    expect(second).not.toBe(first)
+  })
 })
