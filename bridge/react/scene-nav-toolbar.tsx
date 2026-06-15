@@ -47,9 +47,10 @@ function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps)
 
 /**
  * Navigation chrome for the three-dimensional scene view. It exposes a toggle between
- * the orbit and walk camera modes and a control that returns the camera to its framed
- * starting view. The active mode is reflected through `aria-pressed` so assistive
- * technology announces which way the camera currently moves.
+ * the orbit and walk camera modes, a control that returns the camera to its framed
+ * starting view, and a group of camera presets (a top-down view, the four elevations,
+ * and a view from a doorway). The active mode is reflected through `aria-pressed` so
+ * assistive technology announces which way the camera currently moves.
  */
 export function SceneNavToolbar({
   mode,
