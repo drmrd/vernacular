@@ -1,5 +1,11 @@
 export type { SceneRoot } from './scene/build-scene'
 export { buildScene } from './scene/build-scene'
+export {
+  assembleFloorRoot,
+  buildOpeningSubgroup,
+  buildRoomSubgroup,
+  buildWallSubgroup,
+} from './scene/floor-subgroups'
 export { sceneBounds } from './scene/scene-bounds'
 export { markShadowCasters } from './scene/shadow-casters'
 export type { OrbitController } from './scene/orbit-controls'
