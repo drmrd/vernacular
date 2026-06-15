@@ -9,6 +9,11 @@ export type PresetChoice = CameraPreset | 'doorway'
 
 const COLOR_TEMPERATURE_STEP_K = 100
 
+const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
+  { label: 'Orbit', mode: 'orbit' },
+  { label: 'Walk', mode: 'walk' },
+]
+
 const PRESET_VIEW_BUTTONS: ReadonlyArray<{ label: string; preset: CameraPreset }> = [
   { label: 'Top down', preset: 'top' },
   { label: 'North', preset: 'north' },
@@ -25,6 +30,30 @@ interface SceneNavToolbarProps {
   onColorTemperatureChange: (kelvin: number) => void
   onPreset?: (preset: PresetChoice) => void
   canDoorway?: boolean
+}
+
+interface ModeToggleProps {
+  mode: NavMode
+  onModeChange: (mode: NavMode) => void
+}
+
+/** The orbit/walk camera modes as a segmented toggle; the active mode is pressed. */
+function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
+  return (
+    <div role="group" aria-label="Camera mode" className="scene-nav-toolbar__modes">
+      {NAV_MODE_BUTTONS.map(({ label, mode: buttonMode }) => (
+        <button
+          key={buttonMode}
+          type="button"
+          className="scene-nav-toolbar__mode"
+          aria-pressed={mode === buttonMode}
+          onClick={() => onModeChange(buttonMode)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 interface CameraPresetButtonsProps {
@@ -75,24 +104,7 @@ export function SceneNavToolbar({
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <div role="group" aria-label="Camera mode" className="scene-nav-toolbar__modes">
-        <button
-          type="button"
-          className="scene-nav-toolbar__mode"
-          aria-pressed={mode === 'orbit'}
-          onClick={() => onModeChange('orbit')}
-        >
-          Orbit
-        </button>
-        <button
-          type="button"
-          className="scene-nav-toolbar__mode"
-          aria-pressed={mode === 'walk'}
-          onClick={() => onModeChange('walk')}
-        >
-          Walk
-        </button>
-      </div>
+      <ModeToggle mode={mode} onModeChange={onModeChange} />
       <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
         Reset view
       </button>
