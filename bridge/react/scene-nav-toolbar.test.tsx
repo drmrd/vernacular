@@ -214,3 +214,55 @@ describe('SceneNavToolbar camera presets', () => {
     expect(screen.getByRole('button', { name: 'Doorway' })).toBeEnabled()
   })
 })
+
+describe('SceneNavToolbar styling hooks', () => {
+  it('groups the orbit and walk modes into a labeled segmented toggle', () => {
+    render(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={6500}
+        onColorTemperatureChange={vi.fn()}
+      />,
+    )
+
+    const modes = screen.getByRole('group', { name: /camera mode/i })
+    expect(modes).toHaveClass('scene-nav-toolbar__modes')
+    expect(modes).toContainElement(screen.getByRole('button', { name: 'Orbit' }))
+    expect(modes).toContainElement(screen.getByRole('button', { name: 'Walk' }))
+  })
+
+  it('styles the mode buttons as segments of the toggle', () => {
+    render(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={6500}
+        onColorTemperatureChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Orbit' })).toHaveClass('scene-nav-toolbar__mode')
+    expect(screen.getByRole('button', { name: 'Walk' })).toHaveClass('scene-nav-toolbar__mode')
+  })
+
+  it('styles the reset control and the preset buttons as toolbar buttons', () => {
+    render(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={6500}
+        onColorTemperatureChange={vi.fn()}
+        onPreset={vi.fn()}
+        canDoorway
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Reset view' })).toHaveClass('scene-nav-toolbar__btn')
+    expect(screen.getByRole('button', { name: 'Top down' })).toHaveClass('scene-nav-toolbar__btn')
+    expect(screen.getByRole('button', { name: 'Doorway' })).toHaveClass('scene-nav-toolbar__btn')
+  })
+})
