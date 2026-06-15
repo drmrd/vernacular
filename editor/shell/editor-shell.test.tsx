@@ -143,7 +143,10 @@ describe('EditorShell', () => {
       selection.select('wall:a')
     })
 
-    expect(screen.getByText(/wall selected/i)).toBeInTheDocument()
+    // The selection surfaces as the Wall component title and the count badge, not a
+    // placeholder body string.
+    expect(screen.getByRole('heading', { level: 3, name: /wall/i })).toBeInTheDocument()
+    expect(screen.getByText('1 selected')).toBeInTheDocument()
   })
 
   it('invokes the new, save, and export handlers when their buttons are clicked', async () => {
