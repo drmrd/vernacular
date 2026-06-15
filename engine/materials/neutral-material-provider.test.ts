@@ -3,7 +3,14 @@ import * as THREE from 'three'
 import { NeutralMaterialProvider } from './neutral-material-provider'
 import type { SurfaceRole } from './material-provider'
 
-const NAMED_ROLES: SurfaceRole[] = ['interiorFace', 'exteriorFace', 'reveal', 'top', 'base']
+const NAMED_ROLES: SurfaceRole[] = [
+  'interiorFace',
+  'exteriorFace',
+  'reveal',
+  'top',
+  'base',
+  'junction',
+]
 
 describe('NeutralMaterialProvider', () => {
   it('names each surface role material after its role', () => {

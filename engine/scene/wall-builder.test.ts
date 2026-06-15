@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
+import { buildWallGraph } from '../../core'
 import type { PlanarGraph, WallSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { materialGroups } from '../testing'
@@ -21,6 +22,7 @@ import {
   WALL_FACE_AREA,
   WALL_LENGTH,
   centeredOpening,
+  drawnRolesOf,
   expectBoxSpan,
   horizontalWall,
   maxAxisOfRole,
@@ -155,5 +157,130 @@ describe('buildWalls opening reveals', () => {
     // A raised sill is lined too: (2 * width + 2 * height) * thickness.
     const expectedReveal = (2 * windowWidth + 2 * windowHeight) * THICKNESS // 504_000
     expect(Math.abs(roleArea(mesh, 'reveal') - expectedReveal)).toBeLessThan(AREA_TOLERANCE)
+  })
+})
+
+describe('buildWalls junction fills', () => {
+  const TALLER_HEIGHT = HEIGHT + 400
+
+  // A perpendicular T: a through wall east-west and a partition turning north from
+  // its midpoint. buildWallGraph splits the through wall at (2000, 0), so that
+  // vertex carries three incident edges: a three-way junction.
+  const teeGraph = (): PlanarGraph =>
+    buildWallGraph([
+      { id: 'through', start: { x: 0, y: 0 }, end: { x: 4000, y: 0 }, thickness: THICKNESS },
+      { id: 'part', start: { x: 2000, y: 0 }, end: { x: 2000, y: 2000 }, thickness: THICKNESS },
+    ])
+
+  const junctionFills = (group: THREE.Group): THREE.Mesh[] =>
+    meshesOf(group).filter((mesh) => drawnRolesOf(mesh).has('junction'))
+
+  it('adds one junction fill at a T-junction, carrying no entity id', () => {
+    const walls: WallSceneNode[] = [
+      horizontalWall({
+        id: 'wall:through',
+        start: { x: 0, y: 0 },
+        end: { x: 4000, y: 0 },
+        thickness: THICKNESS,
+        height: HEIGHT,
+      }),
+      horizontalWall({
+        id: 'wall:part',
+        start: { x: 2000, y: 0 },
+        end: { x: 2000, y: 2000 },
+        thickness: THICKNESS,
+        height: HEIGHT,
+      }),
+    ]
+
+    const group = buildWalls({
+      graph: teeGraph(),
+      walls,
+      openingsByWall: new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+
+    const fills = junctionFills(group)
+    expect(fills).toHaveLength(1)
+    const fill = fills[0]
+    expect(fill).toBeDefined()
+    if (fill === undefined) return
+    expect(fill.userData.entityId).toBeUndefined()
+
+    const wallMeshes = meshesOf(group).filter((mesh) => !drawnRolesOf(mesh).has('junction'))
+    expect(wallMeshes.length).toBeGreaterThan(0)
+    expect(wallMeshes.every((mesh) => String(mesh.userData.entityId).startsWith('wall:'))).toBe(
+      true,
+    )
+  })
+
+  it('raises the junction fill to the tallest incident wall height', () => {
+    const walls: WallSceneNode[] = [
+      horizontalWall({
+        id: 'wall:through',
+        start: { x: 0, y: 0 },
+        end: { x: 4000, y: 0 },
+        thickness: THICKNESS,
+        height: HEIGHT,
+      }),
+      horizontalWall({
+        id: 'wall:part',
+        start: { x: 2000, y: 0 },
+        end: { x: 2000, y: 2000 },
+        thickness: THICKNESS,
+        height: TALLER_HEIGHT,
+      }),
+    ]
+
+    const group = buildWalls({
+      graph: teeGraph(),
+      walls,
+      openingsByWall: new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+
+    const fills = junctionFills(group)
+    expect(fills).toHaveLength(1)
+    const fill = fills[0]
+    expect(fill).toBeDefined()
+    if (fill === undefined) return
+
+    expect(new THREE.Box3().setFromObject(fill).max.y).toBeCloseTo(TALLER_HEIGHT, PRECISION)
+  })
+
+  it('adds no junction fill to a room of only two-way corners', () => {
+    const corners = [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 3000 },
+      { x: 0, y: 3000 },
+    ]
+    const loopWalls = corners.map((start, index) => ({
+      id: `r${index}`,
+      start,
+      end: corners[(index + 1) % corners.length] ?? start,
+      thickness: THICKNESS,
+    }))
+    const walls: WallSceneNode[] = loopWalls.map((wall) =>
+      horizontalWall({
+        id: `wall:${wall.id}`,
+        start: wall.start,
+        end: wall.end,
+        thickness: THICKNESS,
+        height: HEIGHT,
+      }),
+    )
+
+    const group = buildWalls({
+      graph: buildWallGraph(loopWalls),
+      walls,
+      openingsByWall: new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+
+    expect(junctionFills(group)).toHaveLength(0)
+    const meshes = meshesOf(group)
+    expect(meshes.length).toBeGreaterThan(0)
+    expect(meshes.every((mesh) => String(mesh.userData.entityId).startsWith('wall:'))).toBe(true)
   })
 })

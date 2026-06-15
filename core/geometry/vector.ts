@@ -16,9 +16,19 @@ export function unit(vector: Point): Point {
   return { x: vector.x / length, y: vector.y / length }
 }
 
+/** The opposite direction of `vector`. */
+export function negate(vector: Point): Point {
+  return { x: -vector.x, y: -vector.y }
+}
+
 /** The left-hand perpendicular of `vector`. */
 export function leftPerp(vector: Point): Point {
   return { x: -vector.y, y: vector.x }
+}
+
+/** The counter-clockwise angle of a 2-D `direction`. */
+export function directionAngle(direction: Point): number {
+  return Math.atan2(direction.y, direction.x)
 }
 
 /** The unit left-hand normal of the direction `a -> b`. */
