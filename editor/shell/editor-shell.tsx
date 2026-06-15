@@ -44,6 +44,7 @@ import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { ThemeToggle } from './theme-toggle'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
+import { ProjectMenu } from './project-menu'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -123,7 +124,15 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   return (
     <div className="editor-shell__toolbar">
       <h1 className="editor-shell__wordmark">Vernacular</h1>
+      <ProjectMenu
+        onNewProject={projectControls.onNewProject}
+        onOpenFolder={projectControls.onOpenFolder}
+        onOpenRecent={projectControls.onOpenRecent}
+        recentProjects={projectControls.recentProjects}
+      />
       <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
+        <span className="editor-shell__breadcrumb-sep">/</span>
+        <span className="editor-shell__breadcrumb-crumb">My Projects</span>
         <span className="editor-shell__breadcrumb-sep">/</span>
         <span className="editor-shell__breadcrumb-active">{session.getProject().meta.name}</span>
       </nav>
@@ -171,7 +180,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           onExportImage={projectControls.onExportImage}
           onExportPdf={projectControls.onExportPdf}
         />
-        <ProjectControls {...projectControls} />
+        {projectControls.onSave ? <ProjectControls onSave={projectControls.onSave} /> : null}
       </div>
       <span role="status" className="editor-shell__save-status">
         {SAVE_STATUS_LABELS[saveStatus]}
