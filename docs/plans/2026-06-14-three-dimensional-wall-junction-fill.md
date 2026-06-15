@@ -27,7 +27,7 @@ wall-prism, opening, or two-dimensional-plan change. See the spec and ADR-0082.
 ## File structure
 
 - Add `core/topology/junction-fill.ts`: `JunctionFill` (`{ polygon: Point[]; edgeIndexes:
-  number[] }`) and `junctionFills(graph, thicknessByEdge): JunctionFill[]`. Calls
+number[] }`) and `junctionFills(graph, thicknessByEdge): JunctionFill[]`. Calls
   `wallFootprints` for the resolved corners; derives the per-vertex CCW spoke order and
   reads each spoke's two corners to build the core polygon.
 - Add `core/topology/junction-fill.test.ts`.
@@ -37,7 +37,7 @@ wall-prism, opening, or two-dimensional-plan change. See the spec and ADR-0082.
 - Modify `engine/materials/neutral-material-provider.test.ts` and
   `engine/materials/paint-material-provider.test.ts`: cover the `'junction'` role.
 - Add `engine/scene/junction-fill-builder.ts`: `buildJunctionFill(fill, height,
-  materials): THREE.Mesh`, a polygon prism from `Y = 0` to `height`, modeled on the room
+materials): THREE.Mesh`, a polygon prism from `Y = 0` to `height`, modeled on the room
   slab prism in `room-builder.ts`.
 - Add `engine/scene/junction-fill-builder.test.ts`.
 - Modify `engine/scene/wall-builder.ts`: compute `junctionFills` and add one fill mesh
@@ -51,7 +51,7 @@ wall-prism, opening, or two-dimensional-plan change. See the spec and ADR-0082.
 
 - An edge's `+normal` is `leftNormal(a, b)` of its `a -> b` direction; `aPlus`/`bPlus`
   sit on `+normal`, `aMinus`/`bMinus` on `-normal`. `wallFootprints(graph,
-  thicknessByEdge)` returns one footprint per edge in graph edge order.
+thicknessByEdge)` returns one footprint per edge in graph edge order.
 - `planToWorld(point, height) = { x: point.x, y: height, z: point.y }`.
 - `signedArea(loop)` (core barrel), `lineIntersection`, `leftPerp`, `shift`, `unit`,
   `subtract`, `dot`, `distance` (core/geometry). `MITER_LIMIT` is exported from
@@ -96,23 +96,30 @@ const graph = buildWallGraph([
   { id: 'through', start: { x: 0, y: 0 }, end: { x: 2000, y: 0 } },
   { id: 'part', start: { x: 1000, y: 0 }, end: { x: 1000, y: 1000 } },
 ])
-const fills = junctionFills(graph, graph.edges.map(() => 100))
+const fills = junctionFills(
+  graph,
+  graph.edges.map(() => 100),
+)
 
 // One fill, at the T-junction only (the three free ends get none):
 expect(fills).toHaveLength(1)
 const [fill] = fills
 // The core triangle, compared as an unordered set so winding does not matter:
 expect(sortPoints(fill.polygon)).toEqual(
-  sortPoints([{ x: 1050, y: 50 }, { x: 950, y: 50 }, { x: 1000, y: -50 }]),
+  sortPoints([
+    { x: 1050, y: 50 },
+    { x: 950, y: 50 },
+    { x: 1000, y: -50 },
+  ]),
 )
 expect(Math.abs(signedArea(fill.polygon))).toBeGreaterThan(1)
 // It cites the three incident edges (the two through halves + the partition):
 expect(fill.edgeIndexes).toHaveLength(3)
 ```
 
-  Add a free-standing wall (`junctionFills` returns `[]`) and a clean right-angle
-  two-way L corner (two walls sharing one vertex, `junctionFills` returns `[]`: a
-  two-way corner gets no fill). `sortPoints` is a local helper sorting by `x` then `y`.
+Add a free-standing wall (`junctionFills` returns `[]`) and a clean right-angle
+two-way L corner (two walls sharing one vertex, `junctionFills` returns `[]`: a
+two-way corner gets no fill). `sortPoints` is a local helper sorting by `x` then `y`.
 
 - [ ] **Step 2:** run, expect FAIL (module absent).
 
@@ -158,12 +165,12 @@ dedupeAdjacent(points):  // drop a point equal (within epsilon) to the one befor
 const AREA_EPSILON = 1 // mm^2; a junction whose core collapses to a line gets no fill
 ```
 
-  Notes: `vertexIncidence`, `spokeAt`'s spoke fields, and `leftPerp` mirror
-  `wall-footprint.ts`. The corner read inverts `assignCorner`: a spoke's corner toward
-  its counter-clockwise (next) wedge is on `+leftPerp(out)`, toward its clockwise
-  (previous) wedge on `-leftPerp(out)`. Reading both per spoke and walking the fan gives
-  the core polygon; a shared miter appears twice (this spoke's next, the neighbor's
-  previous) and `dedupeAdjacent` collapses it.
+Notes: `vertexIncidence`, `spokeAt`'s spoke fields, and `leftPerp` mirror
+`wall-footprint.ts`. The corner read inverts `assignCorner`: a spoke's corner toward
+its counter-clockwise (next) wedge is on `+leftPerp(out)`, toward its clockwise
+(previous) wedge on `-leftPerp(out)`. Reading both per spoke and walking the fan gives
+the core polygon; a shared miter appears twice (this spoke's next, the neighbor's
+previous) and `dedupeAdjacent` collapses it.
 
 - [ ] **Step 4:** run, expect PASS.
 
@@ -306,7 +313,7 @@ Run: `pnpm exec vitest run engine/scene/wall-builder.test.ts`
       `height = Math.max(...fill.edgeIndexes.map(ei => wallHeight(node for edge ei)))`
       where the node is `wallsByModelId.get(graph.edges[ei].wallId)` (skip a fill whose
       edges have no node, mirroring `edgeWallNode`'s null guard); `group.add(
-      buildJunctionFill(fill, height, input.materials))`.
+  buildJunctionFill(fill, height, input.materials))`.
 
 - [ ] **Step 4:** run, expect PASS, and the wall-builder suite green.
 
@@ -357,7 +364,7 @@ the worktree.
   spec 4). Openings need no task: the opening path is untouched and the fill reads the
   same footprint corners (spec 3.5).
 - Type consistency: `JunctionFill` fields `polygon`/`edgeIndexes`, `junctionFills(graph,
-  thicknessByEdge)`, `wallFootprints`, `signedArea`, `wallHeight`, `planToWorld`,
+thicknessByEdge)`, `wallFootprints`, `signedArea`, `wallHeight`, `planToWorld`,
   `buildJunctionFill(fill, height, materials)`, `SurfaceRole` plus `'junction'` used as
   defined.
 - Scope guard: the fill is built only at incidence >= 3 with core area > epsilon, so
