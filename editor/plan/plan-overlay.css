@@ -93,6 +93,26 @@
 }
 
 /*
+ * The north compass in the upper-right of the plan stage: a brass orientation mark
+ * (the draughtsman's accent reserved for canvas annotations). Its color flows to the
+ * SVG fills, strokes, and the "N" label through currentColor on this wrapper.
+ */
+.plan-overlay__compass {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  color: var(--color-accent);
+  pointer-events: none;
+}
+
+.plan-overlay__compass-label {
+  font-family: var(--font-family-ui);
+  font-size: 10px;
+  font-weight: 600;
+  fill: currentColor;
+}
+
+/*
  * The scale bar in the lower-right of the plan stage: a brass tick bar (a baseline
  * with end ticks turning up) over its labeled distance. Brass is the draughtsman's
  * accent reserved for canvas annotations. The width is set inline from the rounded

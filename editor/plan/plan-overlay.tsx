@@ -15,6 +15,7 @@ import {
   snapStatusLabel,
 } from './overlay-announce'
 import type { SnapResult } from './snap'
+import { Compass } from './compass'
 import { scaleBar } from './scale-bar'
 import { useOverlayKeyboard, type OverlayKeyboard } from './use-overlay-keyboard'
 import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
@@ -247,6 +248,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       {readout ? (
         <ReadoutPill screen={worldToScreen(readout.anchor, viewport)} text={readout.text} />
       ) : null}
+      <Compass />
       <ScaleBar viewport={viewport} preferences={preferences} />
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
