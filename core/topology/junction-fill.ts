@@ -1,3 +1,4 @@
+import { lineIntersection } from '../geometry/segment'
 import {
   directionAngle,
   dot,
@@ -72,20 +73,56 @@ interface FillContext {
 }
 
 /**
- * The uncovered core ring around a junction vertex: walk its incident spokes in
- * counter-clockwise fan order and read each spoke's two near-edge corners, then drop
- * the duplicate points where adjacent walls share a miter.
+ * The uncovered core ring around a junction vertex: sort its incident spokes in
+ * counter-clockwise fan order, read each wall's near edge (cap) at the vertex, then
+ * cross each adjacent pair of cap lines. For a clean wedge this crossing is the walls'
+ * shared miter; for an acute wedge where the walls overlap it is the near-vertex
+ * crossing, so the ring stays simple with one vertex per incident wall.
  */
 function corePolygon(context: FillContext, vertexIndex: number, edgeIndexes: number[]): Point[] {
   const spokes = edgeIndexes.map((edgeIndex) => spokeAt(context.graph, edgeIndex, vertexIndex))
   spokes.sort((left, right) => directionAngle(left.out) - directionAngle(right.out))
-  const ring: Point[] = []
-  for (const spoke of spokes) {
-    const footprint = context.footprints[spoke.edgeIndex] as WallFootprint
-    ring.push(cornerOf(footprint, spoke, negate(leftPerp(spoke.out))))
-    ring.push(cornerOf(footprint, spoke, leftPerp(spoke.out)))
+  const caps = spokes.map((spoke) =>
+    wallCap(context.footprints[spoke.edgeIndex] as WallFootprint, spoke),
+  )
+  const polygon = caps.map((cap, index) =>
+    capCrossing(cap, caps[(index + 1) % caps.length] as WallCap),
+  )
+  return dedupeAdjacent(polygon)
+}
+
+/** A wall's near edge at a junction vertex: its `+leftPerp` and `-leftPerp` footprint corners. */
+interface WallCap {
+  plus: Point
+  minus: Point
+}
+
+/** Read a wall's near edge at the vertex from its footprint corners on each side. */
+function wallCap(footprint: WallFootprint, spoke: Spoke): WallCap {
+  return {
+    plus: cornerOf(footprint, spoke, leftPerp(spoke.out)),
+    minus: cornerOf(footprint, spoke, negate(leftPerp(spoke.out))),
   }
-  return dedupeAdjacent(ring)
+}
+
+/**
+ * Where two angularly-adjacent walls' cap lines cross: the shared miter for a clean
+ * wedge, the near-vertex crossing for an acute wedge. When the cap lines are parallel
+ * (no crossing) fall back to the midpoint of the two corners bounding the wedge.
+ */
+function capCrossing(a: WallCap, b: WallCap): Point {
+  const crossing = lineIntersection(
+    a.plus,
+    subtract(a.minus, a.plus),
+    b.plus,
+    subtract(b.minus, b.plus),
+  )
+  return crossing ?? midpoint(a.plus, b.minus)
+}
+
+/** The midpoint of `p` and `q`. */
+function midpoint(p: Point, q: Point): Point {
+  return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }
 }
 
 /** Build one spoke: the edge's outgoing direction from the vertex and its global normal. */
