@@ -152,12 +152,12 @@ describe('buildWallSubgroup', () => {
     const rooms = [closedRoom()]
     const openings: OpeningSceneNode[] = []
 
-    const { group, nearWallTargets } = buildWallSubgroup(
+    const { group, nearWallTargets } = buildWallSubgroup({
       walls,
       rooms,
       openings,
-      new NeutralMaterialProvider(),
-    )
+      materials: new NeutralMaterialProvider(),
+    })
 
     expect(group).toBeInstanceOf(THREE.Group)
 
