@@ -5,6 +5,7 @@ import { createFramedSceneReconciler } from './framed-scene-reconciler'
 const WALL_LENGTH_MM = 2000
 const WALL_THICKNESS_MM = 120
 const WALL_HEIGHT_MM = 2400
+const UPPER_FLOOR_ELEVATION_MM = 2700
 
 // A one-floor, one-wall graph wrapping the given floor node, mimicking the
 // active-floor-scoped graph the preview feeds the reconciler. Passing the same
@@ -80,7 +81,12 @@ describe('createFramedSceneReconciler', () => {
     const reconciler = createFramedSceneReconciler()
     const paint = emptyPaint()
     const ground = groundFloorNode()
-    const upper: SceneNode = { id: 'floor:u', kind: 'floor', name: 'Upper', elevation: 2700 }
+    const upper: SceneNode = {
+      id: 'floor:u',
+      kind: 'floor',
+      name: 'Upper',
+      elevation: UPPER_FLOOR_ELEVATION_MM,
+    }
 
     const groundFirst = reconciler.reconcile(floorGraph(ground), paint)
     const upperBuild = reconciler.reconcile(floorGraph(upper), paint)

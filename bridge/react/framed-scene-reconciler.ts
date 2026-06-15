@@ -24,6 +24,8 @@ export function createFramedSceneReconciler(): FramedSceneReconciler {
   return {
     reconcile(graph, paint = {}) {
       const floorNode = graph.nodes[0]
+      // No active floor (a transient empty graph): build a throwaway scene without
+      // caching, since there is no floor id to key it by.
       if (floorNode === undefined) {
         return buildFramedScene(graph, paint)
       }
