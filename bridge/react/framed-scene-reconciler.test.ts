@@ -10,6 +10,7 @@ import type {
   Wall,
 } from '../../core'
 import {
+  OPENING_NODE_PREFIX,
   createEmptyProject,
   createFloor,
   createOpening,
@@ -151,6 +152,8 @@ const LEFT_WALL_ID = 'wall-left'
 const RIGHT_WALL_ID = 'wall-right'
 const PARTITION_WALL_ID = 'wall-partition'
 const DOOR_OPENING_ID = 'opening-door'
+const BOTTOM_DOOR_OPENING_ID = 'opening-door-bottom'
+const TOP_DOOR_OPENING_ID = 'opening-door-top'
 
 // A rectangle split by a partition wall at PARTITION_X_MM into a left cell and a
 // right cell, so the floor derives exactly two rooms. The right wall sits at
@@ -199,9 +202,9 @@ function singleRoomWalls(): Wall[] {
   ]
 }
 
-function doorOn(hostWallId: string, width: number): Opening {
+function doorOn(hostWallId: string, width: number, id = DOOR_OPENING_ID): Opening {
   return createOpening({
-    id: DOOR_OPENING_ID,
+    id,
     type: 'single-swing-door',
     hostWallId,
     position: DOOR_POSITION_MM,
@@ -309,5 +312,48 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
     const second = reconciler.reconcile(secondGraph, paint)
 
     expect(findByEntityId(second.root, roomId)).toBe(roomFirstGroup)
+  })
+
+  it('reuses an unchanged opening group when another opening is edited', () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+
+    const walls = singleRoomWalls()
+    // Two doors on two different walls, with distinct ids: the bottom door is the
+    // one we edit; the top door is preserved by reference across the edit.
+    const editedDoor = doorOn(BOTTOM_WALL_ID, DOOR_WIDTH_MM, BOTTOM_DOOR_OPENING_ID)
+    const preservedDoor = doorOn(TOP_WALL_ID, DOOR_WIDTH_MM, TOP_DOOR_OPENING_ID)
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls }),
+      openings: [editedDoor, preservedDoor],
+    }
+    const firstGraph = activeFloorGraph(derive, projectWith(floor))
+    const first = reconciler.reconcile(firstGraph, paint)
+
+    const editedOpeningEntityId = `${OPENING_NODE_PREFIX}${BOTTOM_DOOR_OPENING_ID}`
+    const preservedOpeningEntityId = `${OPENING_NODE_PREFIX}${TOP_DOOR_OPENING_ID}`
+    // Capture both opening groups before the second reconcile: a reused group
+    // reparents into the new root, which removes it from this one.
+    const editedFirstGroup = findByEntityId(first.root, editedOpeningEntityId)
+    const preservedFirstGroup = findByEntityId(first.root, preservedOpeningEntityId)
+    expect(editedFirstGroup).not.toBeNull()
+    expect(preservedFirstGroup).not.toBeNull()
+
+    // Edit only the bottom door (a wider leaf, a fresh Opening object) while keeping
+    // the preserved door as the exact same object reference, so its derived
+    // OpeningSceneNode reference is unchanged and its group should be reused.
+    const editedFloor: Floor = {
+      ...floor,
+      openings: [
+        doorOn(BOTTOM_WALL_ID, WIDENED_DOOR_WIDTH_MM, BOTTOM_DOOR_OPENING_ID),
+        preservedDoor,
+      ],
+    }
+    const secondGraph = activeFloorGraph(derive, projectWith(editedFloor))
+    const second = reconciler.reconcile(secondGraph, paint)
+
+    expect(findByEntityId(second.root, editedOpeningEntityId)).not.toBe(editedFirstGroup)
+    expect(findByEntityId(second.root, preservedOpeningEntityId)).toBe(preservedFirstGroup)
   })
 })
