@@ -37,6 +37,7 @@ import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame } from '../design-system'
+import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
 import { ProjectIdentity } from './project-identity'
@@ -134,7 +135,10 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
   return (
     <div className="editor-shell__toolbar">
-      <h1 className="editor-shell__wordmark">Vernacular</h1>
+      <div className="editor-shell__brand">
+        <BrandMark />
+        <h1 className="editor-shell__wordmark">Vernacular</h1>
+      </div>
       <ProjectMenu
         onNewProject={projectControls.onNewProject}
         onOpenFolder={projectControls.onOpenFolder}

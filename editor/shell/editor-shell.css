@@ -14,6 +14,18 @@
   padding-bottom: 0.5rem;
 }
 
+.editor-shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.editor-shell__brand-mark {
+  display: block;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
 .editor-shell__wordmark {
   margin: 0;
   font-family: var(--font-family-ui);
