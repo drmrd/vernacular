@@ -215,4 +215,14 @@ describe('doorwayPose', () => {
   it('returns the fixed default pose for an empty scene (null bounds)', () => {
     expect(doorwayPose(outwardDoor, null)).toEqual(DEFAULT_CAMERA_POSE)
   })
+
+  it('returns the fixed default pose for degenerate (zero-size) bounds', () => {
+    const degenerate: Bounds3 = { min: { x: 1, y: 1, z: 1 }, max: { x: 1, y: 1, z: 1 } }
+    expect(doorwayPose(outwardDoor, degenerate)).toEqual(DEFAULT_CAMERA_POSE)
+  })
+
+  it('returns the fixed default pose when the wall normal has zero length', () => {
+    const facelessDoor = makeDoor({ x: 0, y: 0 })
+    expect(doorwayPose(facelessDoor, houseBounds)).toEqual(DEFAULT_CAMERA_POSE)
+  })
 })
