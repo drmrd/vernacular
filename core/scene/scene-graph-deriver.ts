@@ -77,6 +77,25 @@ function openingNodesFor(
 }
 
 /**
+ * Derives a floor's room nodes, reusing the cached nodes while both the source
+ * `Floor` reference and the `overrides` reference are unchanged. A room override
+ * edit replaces the overrides reference without changing the floor reference, so
+ * the cache compares the overrides too. Module-scope so the deriver closure
+ * stays under its line cap, like `openingNodesFor`.
+ */
+function roomNodesFor(
+  roomCache: WeakMap<Floor, CachedRoomNodes>,
+  floor: Floor,
+  overrides: RoomOverrides,
+): RoomSceneNode[] {
+  const cached = roomCache.get(floor)
+  if (cached !== undefined && cached.overrides === overrides) return cached.nodes
+  const nodes = deriveRoomNodesForFloor(floor, overrides)
+  roomCache.set(floor, { overrides, nodes })
+  return nodes
+}
+
+/**
  * Builds a stateful deriver that memoizes each floor's and wall's scene node by
  * the source object's reference. This is the entity-keyed dirty tracking from
  * the design specification, sections 6.1 and 6.10: re-deriving reuses cached
@@ -99,18 +118,10 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const stairNodesFor = (project: Project) =>
     memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project))
 
-  const roomNodesFor = (floor: Floor, overrides: RoomOverrides): RoomSceneNode[] => {
-    const cached = roomCache.get(floor)
-    if (cached !== undefined && cached.overrides === overrides) return cached.nodes
-    const nodes = deriveRoomNodesForFloor(floor, overrides)
-    roomCache.set(floor, { overrides, nodes })
-    return nodes
-  }
-
   return (project) => ({
     nodes: project.floors.map(floorNodeFor),
     walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
-    rooms: project.floors.flatMap((floor) => roomNodesFor(floor, project.roomOverrides)),
+    rooms: project.floors.flatMap((floor) => roomNodesFor(roomCache, floor, project.roomOverrides)),
     underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
     openings: project.floors.flatMap((floor) => openingNodesFor(openingCache, floor)),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
