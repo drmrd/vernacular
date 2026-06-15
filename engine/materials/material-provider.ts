@@ -11,6 +11,8 @@ export type SurfaceRole =
   | 'base'
   | 'leaf'
   | 'glass'
+  // The neutral role for the wall-junction fill's faces.
+  | 'junction'
 
 /**
  * Supplies the material for each surface role. The MVP provider returns a single
