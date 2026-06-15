@@ -99,6 +99,28 @@ const SHELL_DOOR: OpeningSceneNode = {
   orientation: { hinge: 'start', facing: 'positive' },
 }
 
+// A double-hung window centered in the east wall, so the harness baseline shows a
+// sash frame and a semi-transparent glass pane (the room reading through it). The
+// east wall runs along +y, so `along` is {0, 1} and the wall normal is across it.
+const WINDOW_WIDTH = 1000
+const WINDOW_HEIGHT = 1200
+const WINDOW_SILL = 900
+const SHELL_WINDOW: OpeningSceneNode = {
+  id: 'opening:east-window',
+  kind: 'opening',
+  floorId: 'demo',
+  type: 'double-hung-window',
+  hostWallId: 'east',
+  center: { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z / 2 },
+  along: { x: 0, y: 1 },
+  normal: { x: 1, y: 0 },
+  width: WINDOW_WIDTH,
+  height: WINDOW_HEIGHT,
+  sillHeight: WINDOW_SILL,
+  hostThickness: SHELL_THICKNESS,
+  orientation: { hinge: 'start', facing: 'positive' },
+}
+
 const SHELL_FIXTURE: SceneGraph = {
   nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
   walls: [
@@ -109,7 +131,7 @@ const SHELL_FIXTURE: SceneGraph = {
   ],
   rooms: [SHELL_ROOM],
   underlays: [],
-  openings: [SHELL_DOOR],
+  openings: [SHELL_DOOR, SHELL_WINDOW],
   dimensions: [],
   stairs: [],
 }
