@@ -1,8 +1,32 @@
+import type { CSSProperties } from 'react'
 import type { NavMode } from './scene-nav-toolbar'
 
 const HINT_LINES_BY_MODE: Record<NavMode, readonly string[]> = {
   orbit: ['Drag to orbit', 'Right-drag to pan', 'Scroll to zoom'],
   walk: ['Drag to look', 'W A S D to move'],
+}
+
+// A subtle caption anchored in the bottom-left corner of the pane, out of the canvas
+// layout flow (absolute) so it does not shrink the height-measuring canvas, and inert to
+// pointer events so it never blocks a drag. It reads the design tokens that cascade from
+// the editor shell it renders inside.
+const HINT_STYLE: CSSProperties = {
+  position: 'absolute',
+  left: '0.75rem',
+  bottom: '0.75rem',
+  margin: 0,
+  padding: '0.35rem 0.6rem',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.1rem',
+  listStyle: 'none',
+  fontSize: '0.72rem',
+  color: 'var(--color-text-muted)',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: '0.3rem',
+  pointerEvents: 'none',
+  userSelect: 'none',
 }
 
 /**
@@ -25,7 +49,7 @@ export function CameraControlsHint({ mode }: { mode: NavMode }) {
       role="group"
       aria-label="Camera controls"
       className="camera-controls-hint"
-      style={{ pointerEvents: 'none' }}
+      style={HINT_STYLE}
     >
       {cameraControlsHint(mode).map((line) => (
         <li key={line}>{line}</li>
