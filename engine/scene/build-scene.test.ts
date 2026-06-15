@@ -180,7 +180,9 @@ describe('buildScene', () => {
 
     expect(wallMaterialNames(root, 'wall:w1')).not.toContain('reveal')
   })
+})
 
+describe('buildScene opening fill', () => {
   it('parents an opening fill group under its floor group carrying the opening entity id', () => {
     const door = createOpening({
       type: 'single-swing-door',
