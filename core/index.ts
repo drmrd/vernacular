@@ -311,7 +311,7 @@ export {
   DEFAULT_CAMERA_POSE,
 } from './scene/camera-framing'
 export type { CameraPreset } from './scene/camera-presets'
-export { cameraPresetPose } from './scene/camera-presets'
+export { cameraPresetPose, doorwayPose } from './scene/camera-presets'
 export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
 export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
 export { wallHeight } from './scene/wall-height'
