@@ -62,11 +62,11 @@ export async function drawnSceneCanvas(page: Page): Promise<Locator> {
   return settledSceneCanvas(page)
 }
 
-// Draws a closed rectangular room in split view (four corners, then back on the first to
-// close the loop), then returns the settled full-width 3D canvas. The closed room derives
-// a floor slab that fills the framed view, so a click at the canvas centre reliably
-// strikes an entity.
-export async function drawnRoomCanvas(page: Page): Promise<Locator> {
+// Switches to split view and draws a closed rectangular room (four corners, then back on
+// the first to close the loop), returning the plan locator for any further drawing. The
+// closed room derives a floor slab that fills the framed view, so a click at the canvas
+// centre reliably strikes an entity.
+async function drawClosedRectangularRoom(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Split view' }).click()
 
   const plan = page.getByLabel('Floor plan')
@@ -79,26 +79,21 @@ export async function drawnRoomCanvas(page: Page): Promise<Locator> {
   await plan.click({ position: { x: 100, y: 120 } }) // back on the first corner closes the loop
   await expect(page.getByRole('option', { name: /^Room,/ })).toHaveCount(1)
 
+  return plan
+}
+
+// Draws a closed rectangular room, then returns the settled full-width 3D canvas.
+export async function drawnRoomCanvas(page: Page): Promise<Locator> {
+  await drawClosedRectangularRoom(page)
   return settledSceneCanvas(page)
 }
 
-// Draws the same closed rectangular room as drawnRoomCanvas, then places one door on the
-// top wall before switching to 3D. Opening proxies read through an accessible label that
-// ends in "wide" (e.g. "Single Swing Door, 900 mm wide"), so a single such option confirms
-// the door landed. Returns the settled full-width 3D canvas with the opening in the model.
+// Draws a closed rectangular room, then places one door on the top wall before switching
+// to 3D. Opening proxies read through an accessible label that ends in "wide" (e.g.
+// "Single Swing Door, 900 mm wide"), so a single such option confirms the door landed.
+// Returns the settled full-width 3D canvas with the opening in the model.
 export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'Split view' }).click()
-
-  const plan = page.getByLabel('Floor plan')
-  await expect(plan).toBeVisible()
-  await page.getByRole('button', { name: 'Wall', exact: true }).click()
-  await plan.click({ position: { x: 100, y: 120 } })
-  await plan.click({ position: { x: 300, y: 120 } })
-  await plan.click({ position: { x: 300, y: 260 } })
-  await plan.click({ position: { x: 100, y: 260 } })
-  await plan.click({ position: { x: 100, y: 120 } }) // back on the first corner closes the loop
-  await expect(page.getByRole('option', { name: /^Room,/ })).toHaveCount(1)
-
+  const plan = await drawClosedRectangularRoom(page)
   // Arm opening placement, then host one door on the midpoint of the top wall.
   await page.getByRole('button', { name: 'Door', exact: true }).click()
   await plan.click({ position: { x: 200, y: 120 } })

@@ -13,7 +13,7 @@ import { drawnRoomCanvas, drawnRoomWithDoorCanvas, stableFrame } from './scene-h
 // again, and requires the frame to change.
 
 test.describe('Live three-dimensional camera presets', () => {
-  test('a camera preset moves the live camera', async ({ page }) => {
+  test('the top-down preset moves the live camera', async ({ page }) => {
     await page.goto('/')
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')

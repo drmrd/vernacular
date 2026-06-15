@@ -27,6 +27,16 @@ export interface FittableCamera {
 const WORLD_UP = { x: 0, y: 1, z: 0 }
 
 /**
+ * Converts a camera's field of view to radians, falling back to the renderer's
+ * {@link DEFAULT_FOV_DEGREES} when the camera does not expose its own `fov`.
+ * Shared by the live preview and the preset poses so both read field of view the
+ * same way.
+ */
+export function fovToRadians(camera: FittableCamera): number {
+  return (camera.fov ?? DEFAULT_FOV_DEGREES) * DEGREES_TO_RADIANS
+}
+
+/**
  * Snaps the camera to an explicit {@link CameraPose}: position, near/far clip
  * planes, up vector, and look-at target. Sets the up vector before `lookAt`
  * because three derives the camera orientation from up. A pose without an `up`
@@ -55,7 +65,7 @@ export function fitCameraToBounds(
 ): void {
   const pose = frameSceneCamera(bounds, {
     aspect: size.width / size.height,
-    fovRadians: (camera.fov ?? DEFAULT_FOV_DEGREES) * DEGREES_TO_RADIANS,
+    fovRadians: fovToRadians(camera),
   })
   applyCameraPose(camera, pose)
 }

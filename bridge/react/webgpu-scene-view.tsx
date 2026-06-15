@@ -12,7 +12,7 @@ import {
 } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
-import { applyCameraPose, fitCameraToBounds, type FittableCamera } from './fit-camera'
+import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
@@ -50,10 +50,6 @@ interface PresetRequest {
   nonce: number
 }
 
-const PRESET_DEFAULT_FOV_DEGREES = 75
-// eslint-disable-next-line no-magic-numbers -- 180 is the half-turn in degrees, an inherent unit conversion
-const PRESET_DEGREES_TO_RADIANS = Math.PI / 180
-
 // The live inputs a preset pose needs, captured in a ref so PresetCamera reads the
 // latest without the effect re-firing on every change.
 interface PresetView {
@@ -71,7 +67,7 @@ function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | 
     return view.opening === null ? null : doorwayPose(view.opening, view.bounds)
   }
   const aspect = view.size.width / view.size.height
-  const fovRadians = (view.camera.fov ?? PRESET_DEFAULT_FOV_DEGREES) * PRESET_DEGREES_TO_RADIANS
+  const fovRadians = fovToRadians(view.camera)
   return cameraPresetPose(request.preset, view.bounds, { aspect, fovRadians })
 }
 
@@ -108,6 +104,9 @@ function useSceneNavigation() {
   const [userControlled, setUserControlled] = useState(false)
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
+  // Reset leaves the last presetRequest in place on purpose: a stale request cannot
+  // re-fire because PresetCamera's effect depends on the request's identity, which does
+  // not change on reset.
   const resetView = useCallback(() => setUserControlled(false), [])
   // Applying a preset takes camera control (so the framing does not override it) and
   // bumps the nonce so PresetCamera reapplies even when the same preset is re-picked.
