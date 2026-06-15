@@ -34,7 +34,7 @@ import {
   type PlanInteraction,
   type PlanInteractionDeps,
 } from './use-plan-interaction'
-import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
+import { useUnderlay, usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanHover, type PlanHover } from './use-plan-hover'
@@ -311,7 +311,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [traceMode, setTraceMode] = useState(false)
+  const { traceMode } = useUnderlay()
   const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceMode)
 
   // The stage is a positioned wrapper sized to the Canvas so the absolutely
@@ -332,14 +332,6 @@ export function PlanView() {
         onDoubleClick={pointerHandlers.onDoubleClick}
         onPointerLeave={pointerHandlers.onPointerLeave}
       />
-      <label className="plan-trace-toggle">
-        <input
-          type="checkbox"
-          checked={traceMode}
-          onChange={(event) => setTraceMode(event.target.checked)}
-        />{' '}
-        Trace underlay
-      </label>
       <PlanOverlay {...overlay} />
     </div>
   )

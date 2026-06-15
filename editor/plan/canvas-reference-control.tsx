@@ -28,6 +28,14 @@ export function CanvasReferenceControl() {
         onLoadImage={underlay.loadImage}
         onCalibrate={underlay.startCalibration}
       />
+      <label className="canvas-reference-control__trace">
+        <input
+          type="checkbox"
+          checked={underlay.traceMode}
+          onChange={(event) => underlay.setTraceMode(event.target.checked)}
+        />{' '}
+        Trace underlay
+      </label>
     </div>
   )
 }
