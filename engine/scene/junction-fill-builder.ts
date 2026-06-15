@@ -1,18 +1,17 @@
 import * as THREE from 'three'
 
 import { type JunctionFill, type Point, planToWorld } from '../../core'
-import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
+import type { MaterialProvider } from '../materials/material-provider'
 
-import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './geometry-utils'
+import {
+  geometryFromSections,
+  reverseTriangleWinding,
+  type Triangle,
+  type WallSection,
+} from './geometry-utils'
 
 /** The datum the junction fill rises from: its base sits at world Y = 0. */
 const FILL_BASE_Y = 0
-
-/** One contiguous geometry section paired with the surface role it draws. */
-interface FillSection {
-  role: SurfaceRole
-  positions: number[]
-}
 
 /** Pushes a plan polygon point, at the given world height, as a world position. */
 function pushWorldPoint(positions: number[], point: Point, height: number): void {
@@ -54,7 +53,7 @@ function sidePositions(polygon: Point[], height: number): number[] {
 }
 
 /** The fill's three contiguous sections, in geometry order: top, base, sides. */
-function fillSections(polygon: Point[], height: number): FillSection[] {
+function fillSections(polygon: Point[], height: number): WallSection[] {
   const triangles = capTriangles(polygon)
   // The triangulation winds the caps to face down after the orientation-flipping
   // axis map, so the upward (top) cap reverses its winding to face `+Y` while the
@@ -65,26 +64,6 @@ function fillSections(polygon: Point[], height: number): FillSection[] {
     { role: 'base', positions: capPositions(polygon, triangles, FILL_BASE_Y) },
     { role: 'junction', positions: sidePositions(polygon, height) },
   ]
-}
-
-/** A non-indexed buffer geometry from a flat world-position array. */
-function geometryFromPositions(positions: number[]): THREE.BufferGeometry {
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(positions, COMPONENTS_PER_VERTEX),
-  )
-  return geometry
-}
-
-/** Adds one material group per section, advancing the running vertex offset. */
-function addFillGroups(geometry: THREE.BufferGeometry, sections: FillSection[]): void {
-  let runningStart = 0
-  sections.forEach((section, materialIndex) => {
-    const vertexCount = section.positions.length / COMPONENTS_PER_VERTEX
-    geometry.addGroup(runningStart, vertexCount, materialIndex)
-    runningStart += vertexCount
-  })
 }
 
 /**
@@ -101,9 +80,7 @@ export function buildJunctionFill(
   materials: MaterialProvider,
 ): THREE.Mesh {
   const sections = fillSections(fill.polygon, height)
-  const geometry = geometryFromPositions(sections.flatMap((section) => section.positions))
-  addFillGroups(geometry, sections)
-  geometry.computeVertexNormals()
+  const geometry = geometryFromSections(sections)
   const fillMaterials = sections.map((section) => materials.material(section.role))
   return new THREE.Mesh(geometry, fillMaterials)
 }
