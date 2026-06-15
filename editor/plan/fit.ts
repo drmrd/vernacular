@@ -35,6 +35,31 @@ export function computeFitViewport(
   }
 }
 
+/** The bounding size of the drawn plan in world millimeters. */
+export interface PlanExtent {
+  width: number
+  height: number
+}
+
+/**
+ * The overall width and height of everything drawn on a floor: the wall endpoints
+ * and the room polygons. Returns null when nothing is drawn, so a caller can drop
+ * the readout on an empty plan rather than reporting a zero size.
+ */
+export function planExtent(
+  walls: readonly { start: Point; end: Point }[],
+  rooms: readonly { polygon: readonly Point[] }[],
+): PlanExtent | null {
+  const bounds = contentBounds([
+    ...walls.flatMap((wall) => [wall.start, wall.end]),
+    ...rooms.flatMap((room) => room.polygon),
+  ])
+  if (bounds === null) {
+    return null
+  }
+  return { width: bounds.max.x - bounds.min.x, height: bounds.max.y - bounds.min.y }
+}
+
 export function contentBounds(points: readonly Point[]): Bounds | null {
   const [first, ...rest] = points
   if (first === undefined) {

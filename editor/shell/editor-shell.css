@@ -16,6 +16,14 @@
   border-radius: var(--radius-md);
 }
 
+/* The rail content fills the pane body as a column so the overall-dimensions note
+   can settle against the bottom edge like a drawing's title block. */
+.editor-shell__rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 .editor-shell__brand {
   display: inline-flex;
   align-items: center;
