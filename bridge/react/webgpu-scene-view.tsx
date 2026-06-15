@@ -1,4 +1,4 @@
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   cameraPresetPose,
@@ -10,7 +10,13 @@ import {
   type OpeningSceneNode,
   type SceneGraph,
 } from '../../core'
-import { createSceneRenderer, type EntityScreenPosition, type SceneRoot } from '../../engine'
+import {
+  createSceneRenderer,
+  updateNearWallTransparency,
+  type EntityScreenPosition,
+  type NearWallTarget,
+  type SceneRoot,
+} from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
@@ -176,6 +182,15 @@ function useDoorwayOpening(
   }, [openings, selectedIds])
 }
 
+// Fades the prepared exterior walls each frame from the live camera, so a wall the
+// camera is outside of turns transparent and the interior shows through it (issue #122).
+// It reads the live camera through useFrame rather than reframing, so it never moves the
+// camera; it only sets material opacity.
+function NearWallFade({ targets }: { targets: NearWallTarget[] }) {
+  useFrame(({ camera }) => updateNearWallTransparency(targets, camera.position))
+  return null
+}
+
 interface LiveSceneCanvasProps {
   root: SceneRoot
   pose: CameraPose
@@ -187,6 +202,7 @@ interface LiveSceneCanvasProps {
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   opening: OpeningSceneNode | null
   presetRequest: PresetRequest | null
+  nearWallTargets: NearWallTarget[]
 }
 
 // The interactive React Three Fiber canvas: the keyed scene primitive, the framed
@@ -205,6 +221,7 @@ function LiveSceneCanvas({
   onProxyPositions,
   opening,
   presetRequest,
+  nearWallTargets,
 }: LiveSceneCanvasProps) {
   return (
     <Canvas
@@ -230,6 +247,7 @@ function LiveSceneCanvas({
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
+      <NearWallFade targets={nearWallTargets} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
         target={pose.target}
@@ -292,7 +310,10 @@ export function WebGPUSceneView() {
     [rawGraph, activeFloorId],
   )
   const paint = useProjectPaint()
-  const { root, pose, bounds } = useMemo(() => buildFramedScene(graph, paint), [graph, paint])
+  const { root, pose, bounds, nearWallTargets } = useMemo(
+    () => buildFramedScene(graph, paint),
+    [graph, paint],
+  )
   const {
     mode,
     setMode,
@@ -329,6 +350,7 @@ export function WebGPUSceneView() {
           onProxyPositions={setPositions}
           opening={doorwayOpening}
           presetRequest={presetRequest}
+          nearWallTargets={nearWallTargets}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
