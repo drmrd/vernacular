@@ -55,34 +55,35 @@ export function cameraPresetPose(
   }
 }
 
-/** The unit world-horizontal direction of `opening`'s wall normal, flipped to
- *  point from `position` toward the interior `center` (a zero-length normal is
- *  treated as unit). */
-function inwardNormal(
-  opening: OpeningSceneNode,
+/** A unit world-horizontal direction flipped to point from `position` toward the
+ *  interior `center`. */
+function towardInterior(
+  unit: { x: number; z: number },
   position: Vector3,
   center: Vector3,
 ): { x: number; z: number } {
-  const length = Math.hypot(opening.normal.x, opening.normal.y) || 1
-  const nx = opening.normal.x / length
-  const nz = opening.normal.y / length
-  const towardCenter = nx * (center.x - position.x) + nz * (center.z - position.z)
+  const towardCenter = unit.x * (center.x - position.x) + unit.z * (center.z - position.z)
   const sign = towardCenter < 0 ? -1 : 1
-  return { x: nx * sign, z: nz * sign }
+  return { x: unit.x * sign, z: unit.z * sign }
 }
 
 /**
  * Derives the camera pose for standing in `opening` and looking into the model.
  * The camera sits at the opening center raised to its vertical middle and looks
  * horizontally along the wall normal toward the bounds interior. An empty (null)
- * scene returns the fixed default pose.
+ * or zero-size scene, or an opening with a zero-length wall normal, returns the
+ * fixed default pose.
  */
 export function doorwayPose(opening: OpeningSceneNode, bounds: Bounds3 | null): CameraPose {
   if (bounds === null) return DEFAULT_CAMERA_POSE
   const { center, diagonal } = centerAndDiagonal(bounds)
+  if (diagonal === 0) return DEFAULT_CAMERA_POSE
+  const length = Math.hypot(opening.normal.x, opening.normal.y)
+  if (length === 0) return DEFAULT_CAMERA_POSE
   const eye = opening.sillHeight + opening.height / 2
   const position = planToWorld(opening.center, eye)
-  const inward = inwardNormal(opening, position, center)
+  const unit = { x: opening.normal.x / length, z: opening.normal.y / length }
+  const inward = towardInterior(unit, position, center)
   return {
     position,
     target: { x: position.x + inward.x, y: position.y, z: position.z + inward.z },
