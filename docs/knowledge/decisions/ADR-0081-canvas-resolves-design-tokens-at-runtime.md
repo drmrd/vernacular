@@ -14,7 +14,7 @@ sourceFiles:
     editor/plan/draw-plan.ts,
   ]
 status: current
-updated: 2026-06-14
+updated: 2026-06-15
 ---
 
 # ADR-0081: The 2D plan canvas resolves design tokens at runtime
@@ -40,9 +40,11 @@ yet the single source for canvas color, and a future dark canvas had no path to 
 ## Decision
 
 The shell resolves a `PlanPalette` from the `--color-canvas-*` tokens at runtime and threads
-it into the draw pipeline. `PlanView` reads the tokens once with
-`getComputedStyle(document.documentElement)`, wrapped in `resolvePlanPalette`, and memoizes
-the result on the resolved theme so a theme change re-resolves and repaints. The palette
+it into the draw pipeline. `PlanView` reads the tokens with `getComputedStyle` on the canvas
+element, wrapped in `resolvePlanPalette`, and re-resolves whenever the resolved theme changes
+so a theme switch repaints. The canvas element is read rather than the document root because
+`data-theme` sits on the design-system wrapper the canvas descends from, so the canvas sees
+the active theme's `--color-canvas-*` values. The palette
 flows through `usePlanRedraw` into `buildDrawOptions` and on to `drawPlan`, which already
 draws from `options.palette`. `DEFAULT_PLAN_PALETTE` supplies warm fallbacks for any token
 that reads empty, which covers server render and the test environment.
@@ -56,14 +58,14 @@ reason the rest of `PlanView` is, since jsdom has no 2D canvas.
 
 - `tokens.css` is the single source for canvas color. The draw routines hold no color
   literals, so a canvas color change is a token edit rather than a code edit.
-- A theme switch re-resolves the palette because the memo depends on the resolved theme, so
-  the canvas can follow the theme once dark values exist.
-- The token read uses `document.documentElement`, where the `:root` light values live. The
-  `data-theme` attribute currently sits on the design-system wrapper element rather than the
-  document root, so a dark canvas needs its `--color-canvas-*` overrides reachable from the
-  document root (promote the theme attribute, or override the canvas tokens under a
-  `prefers-color-scheme` media query at `:root`), or the read root moves to the themed
-  element. The dark-canvas pass settles that placement.
+- A theme switch re-resolves the palette because the effect depends on the resolved theme, so
+  the canvas follows the theme into the now-present dark palette.
+- The token read uses the canvas element, which descends from the design-system wrapper that
+  carries `data-theme`, so the canvas resolves the active theme's `--color-canvas-*` values. An
+  earlier cycle read `document.documentElement`, which only exposes the `:root` light values;
+  the dark-canvas pass moved the read root to the themed canvas element and added the dark
+  `--color-canvas-*` overrides under `[data-theme='dark']`, so the canvas renders a cool-ink
+  dark palette that matches the chrome.
 - A token that reads empty falls back to the warm default rather than painting a blank color,
   so the canvas degrades to the light palette instead of failing.
 

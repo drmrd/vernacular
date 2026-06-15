@@ -8,6 +8,7 @@ import {
   wheelZoomFactor,
   axisProjection,
   axisSamples,
+  zoomPercent,
   DEFAULT_PLAN_SCALE,
   MIN_PLAN_SCALE,
   MAX_PLAN_SCALE,
@@ -152,5 +153,23 @@ describe('axisSamples', () => {
     const samples = axisSamples({ scale: 0.1, translate: -50 }, 100, 500)
 
     expect(samples.map((sample) => sample.worldValue)).toEqual([500, 1000, 1500])
+  })
+})
+
+describe('zoomPercent', () => {
+  it('reads the default scale as 100 percent', () => {
+    expect(zoomPercent(DEFAULT_PLAN_SCALE)).toBe(100)
+  })
+
+  it('doubles the percent when the scale doubles', () => {
+    expect(zoomPercent(DEFAULT_PLAN_SCALE * 2)).toBe(200)
+  })
+
+  it('halves the percent when the scale halves', () => {
+    expect(zoomPercent(DEFAULT_PLAN_SCALE / 2)).toBe(50)
+  })
+
+  it('rounds to the nearest whole percent', () => {
+    expect(zoomPercent(DEFAULT_PLAN_SCALE * 1.333)).toBe(133)
   })
 })

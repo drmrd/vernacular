@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { contentBounds, computeFitViewport } from './fit'
+import { contentBounds, computeFitViewport, planExtent } from './fit'
 import { worldToScreen } from './viewport'
 
 describe('contentBounds', () => {
@@ -41,5 +41,29 @@ describe('computeFitViewport', () => {
 
     expect(viewport.scale).toBeGreaterThan(0)
     expect(viewport.scale).toBeLessThanOrEqual(4)
+  })
+})
+
+describe('planExtent', () => {
+  it('returns null when nothing is drawn', () => {
+    expect(planExtent([], [])).toBeNull()
+  })
+
+  it('measures the bounding width and height across walls and rooms', () => {
+    const walls = [{ start: { x: 0, y: 0 }, end: { x: 5000, y: 0 } }]
+    const rooms = [
+      {
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 4000, y: 0 },
+          { x: 4000, y: 3000 },
+          { x: 0, y: 3000 },
+        ],
+      },
+    ]
+
+    // The wall reaches further right than the room (5000 vs 4000) while the room
+    // reaches further down than the wall (3000 vs 0), so the extent spans both.
+    expect(planExtent(walls, rooms)).toEqual({ width: 5000, height: 3000 })
   })
 })

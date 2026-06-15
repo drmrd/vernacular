@@ -93,6 +93,65 @@
 }
 
 /*
+ * The brass annotation cluster in the lower-right of the plan stage: the north
+ * compass stacked over the scale bar, a title-block grouping kept clear of the
+ * upper-right reference control and the transient lower-left snap status.
+ */
+.plan-overlay__annotations {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+/*
+ * The north compass: a brass orientation mark (the draughtsman's accent reserved for
+ * canvas annotations). Its color flows to the SVG fills, strokes, and the "N" label
+ * through currentColor on this wrapper.
+ */
+.plan-overlay__compass {
+  color: var(--color-accent);
+}
+
+.plan-overlay__compass-label {
+  font-family: var(--font-family-ui);
+  font-size: 10px;
+  font-weight: 600;
+  fill: currentColor;
+}
+
+/*
+ * The scale bar: a brass tick bar (a baseline with end ticks turning up) over its
+ * labeled distance. Brass is the draughtsman's accent reserved for canvas
+ * annotations. The width is set inline from the rounded distance; the label uses
+ * tabular figures so it stays steady as the zoom changes.
+ */
+.plan-overlay__scale-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.plan-overlay__scale-bar-track {
+  box-sizing: border-box;
+  height: 5px;
+  border: 0 solid var(--color-accent);
+  border-width: 0 2px 2px 2px;
+}
+
+.plan-overlay__scale-bar-label {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+/*
  * The engaged-snap status readout: a persistent chip in the lower-left of the plan
  * stage naming the snap that is currently catching, the visible counterpart to the
  * screen-reader snap announcement in the live region.

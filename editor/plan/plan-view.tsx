@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -22,7 +22,7 @@ import {
 import { useTheme } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { planCursor } from './plan-cursor'
-import { resolvePlanPalette, type PlanPalette } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, resolvePlanPalette, type PlanPalette } from './plan-palette'
 import type { DrawableDimension } from './draw-dimension'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
@@ -34,7 +34,7 @@ import {
   type PlanInteraction,
   type PlanInteractionDeps,
 } from './use-plan-interaction'
-import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
+import { useUnderlay, usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
 import { underlayTracePoints } from './underlay-trace-points'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanHover, type PlanHover } from './use-plan-hover'
@@ -44,6 +44,7 @@ import { useSelectionKeyboard } from './use-selection-keyboard'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
+  eventToCanvas,
   useFitToContent,
   useViewportControls,
   type ViewportControls,
@@ -55,7 +56,9 @@ import {
   type CanvasRef,
   type PlanScene,
 } from './plan-scene'
-import { DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
+import { screenToWorld, type Viewport } from './viewport'
+import { useViewport } from './viewport-context'
+import { useReportPointer } from './pointer-readout'
 
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 
@@ -188,7 +191,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const activeFloorId = useActiveFloorId()
   const selection = useSelection()
   const { tool } = useActiveTool()
-  const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
+  const { viewport, setViewport } = useViewport()
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
@@ -246,16 +249,22 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
  * threads them into drawPlan. Re-resolved whenever the resolved theme changes, so a
  * theme switch repaints the canvas in the new palette.
  */
-function usePlanPalette(): PlanPalette {
+function usePlanPalette(canvasRef: CanvasRef): PlanPalette {
   const { resolved } = useTheme()
-  return useMemo(
-    () =>
-      resolvePlanPalette((name) =>
-        getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `resolved` is the repaint signal; the resolver reads the live tokens off the document root rather than `resolved` itself.
-    [resolved],
-  )
+  const [palette, setPalette] = useState<PlanPalette>(DEFAULT_PLAN_PALETTE)
+  useEffect(() => {
+    // Read from the canvas element, which sits inside the design-system theme wrapper,
+    // so the resolver picks up the active theme's tokens. data-theme lives on that
+    // wrapper, not the document root, so reading the document root would always return
+    // the light palette. Fall back to the document root before the canvas mounts.
+    const readRoot = canvasRef.current ?? document.documentElement
+    // `resolved` is listed as the repaint signal so a theme switch re-resolves the
+    // palette; the resolver reads the live tokens off the themed canvas element.
+    setPalette(
+      resolvePlanPalette((name) => getComputedStyle(readRoot).getPropertyValue(name).trim()),
+    )
+  }, [resolved, canvasRef])
+  return palette
 }
 
 /**
@@ -267,7 +276,7 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
   const layers = usePlanLayers(canvasRef, traceMode)
   const surfacePaint = useSurfacePaintLayer()
   const roomFillColor = useFloorFillColor()
-  const palette = usePlanPalette()
+  const palette = usePlanPalette(canvasRef)
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor), palette)
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
   const { underlayLayer, openingLayer, selectionMove } = layers
@@ -311,12 +320,14 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [traceMode, setTraceMode] = useState(false)
+  const { traceMode } = useUnderlay()
   const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceMode)
+  const reportPointer = useReportPointer()
 
   // The stage is a positioned wrapper sized to the Canvas so the absolutely
-  // positioned overlay (inset: 0) registers exactly over it. The canvas element,
-  // its aria-label, and its pointer handlers are unchanged from before the overlay.
+  // positioned overlay (inset: 0) registers exactly over it. The pointer-move and
+  // -leave handlers also report the cursor's world point to the status-bar readout
+  // before delegating to the tool handlers, which are otherwise unchanged.
   return (
     <div className="plan-stage" style={{ width: PLAN_WIDTH, height: PLAN_HEIGHT }}>
       <canvas
@@ -327,19 +338,17 @@ export function PlanView() {
         className="plan-view"
         style={{ touchAction: 'none', cursor }}
         onPointerDown={pointerHandlers.onPointerDown}
-        onPointerMove={pointerHandlers.onPointerMove}
+        onPointerMove={(event) => {
+          reportPointer(screenToWorld(eventToCanvas(event, event.currentTarget), overlay.viewport))
+          pointerHandlers.onPointerMove(event)
+        }}
         onPointerUp={pointerHandlers.onPointerUp}
         onDoubleClick={pointerHandlers.onDoubleClick}
-        onPointerLeave={pointerHandlers.onPointerLeave}
+        onPointerLeave={() => {
+          reportPointer(null)
+          pointerHandlers.onPointerLeave()
+        }}
       />
-      <label className="plan-trace-toggle">
-        <input
-          type="checkbox"
-          checked={traceMode}
-          onChange={(event) => setTraceMode(event.target.checked)}
-        />{' '}
-        Trace underlay
-      </label>
       <PlanOverlay {...overlay} />
     </div>
   )

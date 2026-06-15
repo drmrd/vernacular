@@ -23,3 +23,9 @@
 .canvas-reference-control a {
   pointer-events: auto;
 }
+
+/* The trace toggle sits under the loader as part of the same underlay control group. */
+.canvas-reference-control__trace {
+  display: block;
+  margin-top: var(--space-2);
+}

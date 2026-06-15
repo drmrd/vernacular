@@ -15,8 +15,14 @@ import {
   snapStatusLabel,
 } from './overlay-announce'
 import type { SnapResult } from './snap'
+import { Compass } from './compass'
+import { scaleBar } from './scale-bar'
 import { useOverlayKeyboard, type OverlayKeyboard } from './use-overlay-keyboard'
 import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
+
+// The width the scale bar reaches toward before rounding down to a nice round
+// distance; a bar near this many pixels reads clearly without crowding the corner.
+const SCALE_BAR_TARGET_PX = 80
 
 export interface PlanOverlayProps {
   viewport: Viewport
@@ -185,6 +191,25 @@ function ReadoutPill({ screen, text }: ReadoutPillProps): ReactElement {
   return <PositionedPill className="plan-overlay__readout" screen={screen} text={text} />
 }
 
+// The brass scale bar in the lower-right of the plan stage: a tick bar whose width
+// is a nice round distance at the current zoom, with that distance labeled beneath.
+// It re-measures on every viewport change, so the labeled length tracks the zoom.
+function ScaleBar({
+  viewport,
+  preferences,
+}: {
+  viewport: Viewport
+  preferences: UnitPreferences
+}): ReactElement {
+  const segment = scaleBar(viewport.scale, preferences, SCALE_BAR_TARGET_PX)
+  return (
+    <div className="plan-overlay__scale-bar" aria-hidden="true">
+      <span className="plan-overlay__scale-bar-track" style={{ width: segment.lengthPx }} />
+      <span className="plan-overlay__scale-bar-label">{segment.label}</span>
+    </div>
+  )
+}
+
 /**
  * The accessibility overlay layered over the plan Canvas: one keyboard/AT proxy per
  * selectable entity (positioned via worldToScreen), the dimension chips, a focus
@@ -223,6 +248,10 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       {readout ? (
         <ReadoutPill screen={worldToScreen(readout.anchor, viewport)} text={readout.text} />
       ) : null}
+      <div className="plan-overlay__annotations">
+        <Compass />
+        <ScaleBar viewport={viewport} preferences={preferences} />
+      </div>
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
         {announcement}

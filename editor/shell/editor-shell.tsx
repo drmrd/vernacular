@@ -11,7 +11,15 @@ import {
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
-import { addFloor, builtinPeriods, setUnits, type Project } from '../../core'
+import {
+  addFloor,
+  builtinPeriods,
+  formatAdaptiveLength,
+  preferencesForUnits,
+  sceneGraphForFloor,
+  setUnits,
+  type Project,
+} from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -26,11 +34,14 @@ import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { CanvasReferenceControl } from '../plan/canvas-reference-control'
+import { planExtent } from '../plan/fit'
 import { PlanView } from '../plan/plan-view'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
+import { ViewportProvider } from '../plan/viewport-context'
+import { PointerReadoutProvider } from '../plan/pointer-readout'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
@@ -40,10 +51,13 @@ import { AppFrame } from '../design-system'
 import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
+import { OverallDimensions } from './overall-dimensions'
 import { ProjectIdentity } from './project-identity'
 import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
+import { CoordsReadout } from './coords-readout'
 import { ThemeToggle } from './theme-toggle'
+import { ZoomControl } from './zoom-control'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
 import { UnitToggle } from './unit-toggle'
@@ -167,6 +181,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           <Ruler size={16} aria-hidden="true" />
           <span>Dimensions</span>
         </button>
+        <ZoomControl />
         <button
           type="button"
           className="editor-shell__icon-btn"
@@ -220,16 +235,30 @@ function railPeriodLabel(period: string): string | undefined {
 // tools. It subscribes to the scene graph so the block refreshes on project edits.
 function ToolRail() {
   const session = useEditorSession()
-  useSceneGraph()
+  const fullGraph = useSceneGraph()
+  const floorId = useActiveFloorId()
   const project = session.getProject()
+  // Narrow to the active floor so the readout measures the same content the canvas
+  // draws, not every floor stacked together.
+  const graph = sceneGraphForFloor(fullGraph, floorId)
+  const extent = planExtent(graph.walls, graph.rooms)
+  const preferences = preferencesForUnits(project.meta.units)
+  const overall =
+    extent === null
+      ? null
+      : {
+          width: formatAdaptiveLength(extent.width, preferences),
+          height: formatAdaptiveLength(extent.height, preferences),
+        }
   return (
-    <>
+    <div className="editor-shell__rail">
       <ProjectIdentity
         name={project.meta.name}
         periodLabel={railPeriodLabel(project.meta.period)}
       />
       <ToolsNav />
-    </>
+      <OverallDimensions extent={overall} />
+    </div>
   )
 }
 
@@ -246,6 +275,7 @@ function EditorStatusBar() {
       onSelectFloor={setActiveFloorId}
       onAddFloor={() => session.dispatch(addFloor('New Floor'))}
       tool={`Tool: ${toolLabel(tool)}`}
+      coords={<CoordsReadout />}
       snap={<SnapStatus />}
       units={
         <UnitToggle
@@ -307,30 +337,37 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
       <SnapPreferencesProvider store={snapPreferences}>
         <ViewModeProvider>
           <ViewOverlayProvider>
-            <UnderlayProvider>
-              <OpeningToolProvider>
-                <KeybindingLayer />
-                <CommandPalette />
-                {recovery ? (
-                  <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-                ) : null}
-                <SurfaceSelectionProvider store={surfaceSelection}>
-                  <EntitySurfaceBridge />
-                  <AppFrame
-                    header={
-                      <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
-                    }
-                    railLabel="Tool rail"
-                    rail={<ToolRail />}
-                    mainLabel="Viewport"
-                    main={<ViewportArea />}
-                    inspectorLabel="Inspector"
-                    inspector={<Inspector />}
-                    statusBar={<EditorStatusBar />}
-                  />
-                </SurfaceSelectionProvider>
-              </OpeningToolProvider>
-            </UnderlayProvider>
+            <ViewportProvider>
+              <PointerReadoutProvider>
+                <UnderlayProvider>
+                  <OpeningToolProvider>
+                    <KeybindingLayer />
+                    <CommandPalette />
+                    {recovery ? (
+                      <RecoveryPrompt
+                        onRestore={recovery.onRestore}
+                        onDiscard={recovery.onDiscard}
+                      />
+                    ) : null}
+                    <SurfaceSelectionProvider store={surfaceSelection}>
+                      <EntitySurfaceBridge />
+                      <AppFrame
+                        header={
+                          <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
+                        }
+                        railLabel="Tool rail"
+                        rail={<ToolRail />}
+                        mainLabel="Viewport"
+                        main={<ViewportArea />}
+                        inspectorLabel="Inspector"
+                        inspector={<Inspector />}
+                        statusBar={<EditorStatusBar />}
+                      />
+                    </SurfaceSelectionProvider>
+                  </OpeningToolProvider>
+                </UnderlayProvider>
+              </PointerReadoutProvider>
+            </ViewportProvider>
           </ViewOverlayProvider>
         </ViewModeProvider>
       </SnapPreferencesProvider>

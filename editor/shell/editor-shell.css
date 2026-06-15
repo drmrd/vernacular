@@ -16,6 +16,14 @@
   border-radius: var(--radius-md);
 }
 
+/* The rail content fills the pane body as a column so the overall-dimensions note
+   can settle against the bottom edge like a drawing's title block. */
+.editor-shell__rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 .editor-shell__brand {
   display: inline-flex;
   align-items: center;
@@ -105,6 +113,43 @@
   padding: 0 var(--space-2);
   font-family: var(--font-family-ui);
   font-size: 0.75rem;
+}
+
+/* The zoom control groups zoom-out / percent / zoom-in / fit as one segmented unit
+   among the header actions. */
+.editor-shell__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The percent readout doubles as a reset-to-100% button; tabular figures and a fixed
+   min-width keep it from shifting as the digit count changes. */
+.editor-shell__zoom-percent {
+  height: 28px;
+  min-width: 4ch;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
+}
+
+.editor-shell__zoom-percent:hover {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.editor-shell__zoom-percent:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
 }
 
 .editor-shell__save-status {

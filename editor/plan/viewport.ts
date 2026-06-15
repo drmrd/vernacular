@@ -45,6 +45,11 @@ export function clampScale(scale: number): number {
   return Math.min(MAX_PLAN_SCALE, Math.max(MIN_PLAN_SCALE, scale))
 }
 
+/** The viewport scale as a whole-number percentage of the default scale, so the initial view reads 100%. */
+export function zoomPercent(scale: number): number {
+  return Math.round((scale / DEFAULT_PLAN_SCALE) * 100)
+}
+
 /** How sharply wheel deltas translate into zoom. Tuned so a typical notched scroll feels gradual. */
 const ZOOM_WHEEL_SENSITIVITY = 0.0015
 
