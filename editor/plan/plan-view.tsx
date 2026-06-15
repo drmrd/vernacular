@@ -44,6 +44,7 @@ import { useSelectionKeyboard } from './use-selection-keyboard'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
+  eventToCanvas,
   useFitToContent,
   useViewportControls,
   type ViewportControls,
@@ -55,8 +56,9 @@ import {
   type CanvasRef,
   type PlanScene,
 } from './plan-scene'
-import { type Viewport } from './viewport'
+import { screenToWorld, type Viewport } from './viewport'
 import { useViewport } from './viewport-context'
+import { useReportPointer } from './pointer-readout'
 
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 
@@ -320,10 +322,12 @@ export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { traceMode } = useUnderlay()
   const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceMode)
+  const reportPointer = useReportPointer()
 
   // The stage is a positioned wrapper sized to the Canvas so the absolutely
-  // positioned overlay (inset: 0) registers exactly over it. The canvas element,
-  // its aria-label, and its pointer handlers are unchanged from before the overlay.
+  // positioned overlay (inset: 0) registers exactly over it. The pointer-move and
+  // -leave handlers also report the cursor's world point to the status-bar readout
+  // before delegating to the tool handlers, which are otherwise unchanged.
   return (
     <div className="plan-stage" style={{ width: PLAN_WIDTH, height: PLAN_HEIGHT }}>
       <canvas
@@ -334,10 +338,16 @@ export function PlanView() {
         className="plan-view"
         style={{ touchAction: 'none', cursor }}
         onPointerDown={pointerHandlers.onPointerDown}
-        onPointerMove={pointerHandlers.onPointerMove}
+        onPointerMove={(event) => {
+          reportPointer(screenToWorld(eventToCanvas(event, event.currentTarget), overlay.viewport))
+          pointerHandlers.onPointerMove(event)
+        }}
         onPointerUp={pointerHandlers.onPointerUp}
         onDoubleClick={pointerHandlers.onDoubleClick}
-        onPointerLeave={pointerHandlers.onPointerLeave}
+        onPointerLeave={() => {
+          reportPointer(null)
+          pointerHandlers.onPointerLeave()
+        }}
       />
       <PlanOverlay {...overlay} />
     </div>

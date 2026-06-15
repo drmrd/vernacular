@@ -10,6 +10,7 @@ export interface StatusBarProps {
   tool?: ReactNode
   snap?: ReactNode
   units?: ReactNode
+  coords?: ReactNode
 }
 
 export function StatusBar({
@@ -20,6 +21,7 @@ export function StatusBar({
   tool,
   snap,
   units,
+  coords,
 }: StatusBarProps): ReactElement {
   return (
     <div className="status-bar">
@@ -30,7 +32,7 @@ export function StatusBar({
         onAddFloor={onAddFloor}
       />
       <span className="status-bar__tool">{tool}</span>
-      <span className="status-bar__coords" />
+      <span className="status-bar__coords">{coords}</span>
       <span className="status-bar__snap">{snap}</span>
       <span className="status-bar__units">{units}</span>
     </div>
