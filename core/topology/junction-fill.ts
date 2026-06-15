@@ -1,3 +1,4 @@
+import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
 import {
   directionAngle,
@@ -147,11 +148,6 @@ function capCrossing(a: WallCap, b: WallCap): Point {
 /** The midpoint of `p` and `q`. */
 function midpoint(p: Point, q: Point): Point {
   return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }
-}
-
-/** The Euclidean distance between `p` and `q`. */
-function distance(p: Point, q: Point): number {
-  return Math.hypot(q.x - p.x, q.y - p.y)
 }
 
 /** Build one spoke: the edge's outgoing direction from the vertex and its global normal. */
