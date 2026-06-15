@@ -80,22 +80,58 @@ function cornerToWorld(node: OpeningSceneNode, extents: BoxExtents, bits: Corner
  *  leaf and glass materials render DoubleSide. */
 type Quad = readonly [CornerBits, CornerBits, CornerBits, CornerBits]
 
-/** A corner from its three axis bits, for the readable face table below. */
-function bits(along: 0 | 1, up: 0 | 1, across: 0 | 1): CornerBits {
+/** A corner from its three axis bits, for the named face tables below. */
+function cornerBits(along: 0 | 1, up: 0 | 1, across: 0 | 1): CornerBits {
   return { along, up, across }
 }
 
-/** The six faces of the box, each named by the axis face it lies on. */
+// The six faces of the box, each named for the axis and polarity it lies on. A
+// face lists its four corners; winding is irrelevant (leaf and glass render
+// DoubleSide), so the corner order only has to enclose the face.
+const ALONG_MIN_FACE: Quad = [
+  cornerBits(0, 0, 0),
+  cornerBits(0, 0, 1),
+  cornerBits(0, 1, 1),
+  cornerBits(0, 1, 0),
+]
+const ALONG_MAX_FACE: Quad = [
+  cornerBits(1, 0, 0),
+  cornerBits(1, 1, 0),
+  cornerBits(1, 1, 1),
+  cornerBits(1, 0, 1),
+]
+const UP_MIN_FACE: Quad = [
+  cornerBits(0, 0, 0),
+  cornerBits(1, 0, 0),
+  cornerBits(1, 0, 1),
+  cornerBits(0, 0, 1),
+]
+const UP_MAX_FACE: Quad = [
+  cornerBits(0, 1, 0),
+  cornerBits(0, 1, 1),
+  cornerBits(1, 1, 1),
+  cornerBits(1, 1, 0),
+]
+const ACROSS_MIN_FACE: Quad = [
+  cornerBits(0, 0, 0),
+  cornerBits(0, 1, 0),
+  cornerBits(1, 1, 0),
+  cornerBits(1, 0, 0),
+]
+const ACROSS_MAX_FACE: Quad = [
+  cornerBits(0, 0, 1),
+  cornerBits(1, 0, 1),
+  cornerBits(1, 1, 1),
+  cornerBits(0, 1, 1),
+]
+
 const BOX_FACES: ReadonlyArray<Quad> = [
-  // along = min and along = max faces
-  [bits(0, 0, 0), bits(0, 0, 1), bits(0, 1, 1), bits(0, 1, 0)],
-  [bits(1, 0, 0), bits(1, 1, 0), bits(1, 1, 1), bits(1, 0, 1)],
-  // up = min and up = max faces
-  [bits(0, 0, 0), bits(1, 0, 0), bits(1, 0, 1), bits(0, 0, 1)],
-  [bits(0, 1, 0), bits(0, 1, 1), bits(1, 1, 1), bits(1, 1, 0)],
-  // across = min and across = max faces
-  [bits(0, 0, 0), bits(0, 1, 0), bits(1, 1, 0), bits(1, 0, 0)],
-  [bits(0, 0, 1), bits(1, 0, 1), bits(1, 1, 1), bits(0, 1, 1)],
+  ALONG_MIN_FACE,
+  ALONG_MAX_FACE,
+  UP_MIN_FACE,
+  UP_MAX_FACE,
+  ACROSS_MIN_FACE,
+  ACROSS_MAX_FACE,
 ]
 
 /** The two extents of one fill-part box, centered on the wall centerline across. */
@@ -113,6 +149,7 @@ function boxPositions(node: OpeningSceneNode, part: OpeningFillPart): number[] {
   const extents = boxExtents(part)
   const positions: number[] = []
   for (const [p, q, r, s] of BOX_FACES) {
+    // Two triangles split the quad on the p->r diagonal: (p, q, r) and (p, r, s).
     for (const corner of [p, q, r, p, r, s]) {
       const world = cornerToWorld(node, extents, corner)
       positions.push(world.x, world.y, world.z)
