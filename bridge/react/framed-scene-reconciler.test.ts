@@ -64,4 +64,15 @@ describe('createFramedSceneReconciler', () => {
 
     expect(second).not.toBe(first)
   })
+
+  it('rebuilds when the paint reference changes', () => {
+    const reconciler = createFramedSceneReconciler()
+    const node = groundFloorNode()
+
+    const first = reconciler.reconcile(floorGraph(node), emptyPaint())
+    // Same unchanged floor node, but a new paint set: materials may differ, so rebuild.
+    const second = reconciler.reconcile(floorGraph(node), emptyPaint())
+
+    expect(second).not.toBe(first)
+  })
 })
