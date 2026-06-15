@@ -303,8 +303,15 @@ export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
 export { sceneGraphForFloor } from './scene/scene-graph-for-floor'
 export type { Vector3, Bounds3 } from './scene/vector3'
 export { planToWorld } from './scene/plan-to-world'
-export type { CameraPose } from './scene/camera-framing'
-export { frameSceneCamera, DEFAULT_CAMERA_POSE } from './scene/camera-framing'
+export type { CameraPose, CameraViewport } from './scene/camera-framing'
+export {
+  cameraDepthRange,
+  cameraFitDistance,
+  frameSceneCamera,
+  DEFAULT_CAMERA_POSE,
+} from './scene/camera-framing'
+export type { CameraPreset } from './scene/camera-presets'
+export { cameraPresetPose, doorwayPose } from './scene/camera-presets'
 export { signedArea, loopWorldNormal, canonicalOuterLoop, canonicalHoleLoop } from './scene/winding'
 export { wallVerticalSpan, floorSlabVerticalSpan } from './scene/vertical-datum'
 export { wallHeight } from './scene/wall-height'

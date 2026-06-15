@@ -1,19 +1,22 @@
 import { Canvas, useThree } from '@react-three/fiber'
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
+  cameraPresetPose,
+  doorwayPose,
   sceneGraphForFloor,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
+  type OpeningSceneNode,
   type SceneGraph,
 } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition, type SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
-import { fitCameraToBounds } from './fit-camera'
+import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
-import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
+import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
@@ -40,6 +43,58 @@ function FrameCamera({ bounds, active }: { bounds: Bounds3 | null; active: boole
   return null
 }
 
+// A request to snap the camera to a named preset. The nonce changes on every request
+// so re-selecting the same preset re-applies it.
+interface PresetRequest {
+  preset: PresetChoice
+  nonce: number
+}
+
+// The live inputs a preset pose needs, captured in a ref so PresetCamera reads the
+// latest without the effect re-firing on every change.
+interface PresetView {
+  bounds: Bounds3 | null
+  opening: OpeningSceneNode | null
+  size: { width: number; height: number }
+  camera: FittableCamera
+}
+
+// Derives the pose for a preset request: the doorway view needs the resolved opening
+// (none means no pose), and the axis-aligned views fit the live viewport.
+function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | null {
+  if (view.bounds === null) return null
+  if (request.preset === 'doorway') {
+    return view.opening === null ? null : doorwayPose(view.opening, view.bounds)
+  }
+  const aspect = view.size.width / view.size.height
+  const fovRadians = fovToRadians(view.camera)
+  return cameraPresetPose(request.preset, view.bounds, { aspect, fovRadians })
+}
+
+// Snaps the live camera to a preset whenever a new request arrives. It reads the
+// latest bounds, opening, size, and camera from a ref so the effect fires only on a
+// new request, not on a resize (a resize must not yank the camera onto a preset).
+function PresetCamera({
+  request,
+  bounds,
+  opening,
+}: {
+  request: PresetRequest | null
+  bounds: Bounds3 | null
+  opening: OpeningSceneNode | null
+}) {
+  const camera = useThree((state) => state.camera)
+  const size = useThree((state) => state.size)
+  const latest = useRef<PresetView>({ camera, size, bounds, opening })
+  latest.current = { camera, size, bounds, opening }
+  useLayoutEffect(() => {
+    if (request === null) return
+    const pose = poseForRequest(request, latest.current)
+    if (pose !== null) applyCameraPose(latest.current.camera, pose)
+  }, [request])
+  return null
+}
+
 // The per-view camera navigation state: the active mode and whether the user has
 // taken control of the camera. Session state held in the view layer, never in the
 // model or undo. Reset clears user control, which lets FrameCamera refit the model
@@ -47,9 +102,27 @@ function FrameCamera({ bounds, active }: { bounds: Bounds3 | null; active: boole
 function useSceneNavigation() {
   const [mode, setMode] = useState<NavMode>('orbit')
   const [userControlled, setUserControlled] = useState(false)
+  const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
+  // Reset leaves the last presetRequest in place on purpose: a stale request cannot
+  // re-fire because PresetCamera's effect depends on the request's identity, which does
+  // not change on reset.
   const resetView = useCallback(() => setUserControlled(false), [])
-  return { mode, setMode, userControlled, markUserControlled, resetView }
+  // Applying a preset takes camera control (so the framing does not override it) and
+  // bumps the nonce so PresetCamera reapplies even when the same preset is re-picked.
+  const applyPreset = useCallback((preset: PresetChoice) => {
+    setUserControlled(true)
+    setPresetRequest((previous) => ({ preset, nonce: (previous?.nonce ?? 0) + 1 }))
+  }, [])
+  return {
+    mode,
+    setMode,
+    userControlled,
+    markUserControlled,
+    resetView,
+    presetRequest,
+    applyPreset,
+  }
 }
 
 // Per-view color-temperature session state, held in the view component (foundation
@@ -90,6 +163,18 @@ function useSceneProxies(graph: SceneGraph) {
   return { proxies, selectedIds, onSelect, setPositions }
 }
 
+// Resolves the opening the doorway preset frames: the selected one when an opening is
+// selected, otherwise the first opening on the active floor (none disables the control).
+function useDoorwayOpening(
+  openings: OpeningSceneNode[],
+  selectedIds: ReadonlySet<string>,
+): OpeningSceneNode | null {
+  return useMemo(() => {
+    const selected = openings.find((entry) => selectedIds.has(entry.id))
+    return selected ?? openings[0] ?? null
+  }, [openings, selectedIds])
+}
+
 interface LiveSceneCanvasProps {
   root: SceneRoot
   pose: CameraPose
@@ -99,6 +184,8 @@ interface LiveSceneCanvasProps {
   onUserControl: () => void
   colorTemperatureK: number
   onProxyPositions: (positions: EntityScreenPosition[]) => void
+  opening: OpeningSceneNode | null
+  presetRequest: PresetRequest | null
 }
 
 // The interactive React Three Fiber canvas: the keyed scene primitive, the framed
@@ -115,6 +202,8 @@ function LiveSceneCanvas({
   onUserControl,
   colorTemperatureK,
   onProxyPositions,
+  opening,
+  presetRequest,
 }: LiveSceneCanvasProps) {
   return (
     <Canvas
@@ -139,6 +228,7 @@ function LiveSceneCanvas({
       <SceneSelection root={root} />
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
+      <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
         target={pose.target}
@@ -167,9 +257,18 @@ export function WebGPUSceneView() {
   )
   const paint = useProjectPaint()
   const { root, pose, bounds } = useMemo(() => buildFramedScene(graph, paint), [graph, paint])
-  const { mode, setMode, userControlled, markUserControlled, resetView } = useSceneNavigation()
+  const {
+    mode,
+    setMode,
+    userControlled,
+    markUserControlled,
+    resetView,
+    presetRequest,
+    applyPreset,
+  } = useSceneNavigation()
   const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
+  const doorwayOpening = useDoorwayOpening(graph.openings, selectedIds)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -179,6 +278,8 @@ export function WebGPUSceneView() {
         onReset={resetView}
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={setColorTemperatureK}
+        onPreset={applyPreset}
+        canDoorway={doorwayOpening !== null}
       />
       <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
         <LiveSceneCanvas
@@ -190,6 +291,8 @@ export function WebGPUSceneView() {
           onUserControl={markUserControlled}
           colorTemperatureK={colorTemperatureK}
           onProxyPositions={setPositions}
+          opening={doorwayOpening}
+          presetRequest={presetRequest}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </div>
