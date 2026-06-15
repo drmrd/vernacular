@@ -112,6 +112,17 @@ function reuseOrBuildRoom(
   return buildRoomSubgroup(node, materials)
 }
 
+/** Reuses a cached opening sub-group when its derived node reference is unchanged, else rebuilds. */
+function reuseOrBuildOpening(
+  node: OpeningSceneNode,
+  materials: PaintMaterials,
+  prev: CachedFloorBuild | undefined,
+): SceneRoot {
+  const cached = prev?.openings.get(node.id)
+  if (cached !== undefined && cached.node === node) return cached.group
+  return buildOpeningSubgroup(node, materials)
+}
+
 /** The inputs a single floor build is computed from, including the prior build to reuse. */
 interface FloorBuildInput {
   floorNode: SceneNode
@@ -131,7 +142,9 @@ function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput):
   })
   const wall = buildWallSubgroup({ ...entities, materials })
   const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, materials, prev))
-  const openings = subgroupMap(entities.openings, (node) => buildOpeningSubgroup(node, materials))
+  const openings = subgroupMap(entities.openings, (node) =>
+    reuseOrBuildOpening(node, materials, prev),
+  )
   const framed = frameFloor(floorNode, wall, [
     ...[...rooms.values()].map((build) => build.group),
     ...[...openings.values()].map((build) => build.group),
