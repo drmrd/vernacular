@@ -20,6 +20,15 @@ describe('PaintMaterialProvider', () => {
     expect(provider.material('top')).toBe(provider.material('top'))
   })
 
+  it('leaves the junction role neutral when no paint is configured', () => {
+    const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR })
+
+    const material = provider.material('junction')
+
+    expect(material).toBeInstanceOf(THREE.MeshStandardMaterial)
+    expect(material.name).toBe('junction')
+  })
+
   it('renders glass transparent without writing depth when no paint is configured', () => {
     const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR })
 
