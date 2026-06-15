@@ -55,6 +55,7 @@ import { ProjectIdentity } from './project-identity'
 import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { ThemeToggle } from './theme-toggle'
+import { ZoomControl } from './zoom-control'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
 import { UnitToggle } from './unit-toggle'
@@ -178,6 +179,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           <Ruler size={16} aria-hidden="true" />
           <span>Dimensions</span>
         </button>
+        <ZoomControl />
         <button
           type="button"
           className="editor-shell__icon-btn"
