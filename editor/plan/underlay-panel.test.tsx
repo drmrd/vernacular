@@ -144,4 +144,11 @@ describe('UnderlayPanel', () => {
 
     expect(onLoadImage).toHaveBeenCalledTimes(1)
   })
+
+  it('renders its action controls as design-system buttons', () => {
+    renderPanel([newUnderlay()])
+    for (const name of [/load image/i, /calibrate/i, /remove/i]) {
+      expect(screen.getByRole('button', { name })).toHaveClass('ds-button')
+    }
+  })
 })

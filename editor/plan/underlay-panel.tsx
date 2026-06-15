@@ -4,6 +4,7 @@ import {
   setUnderlayVisibility,
   type Underlay,
 } from '../../core'
+import { Button } from '../design-system'
 
 const OPACITY_MIN = 0
 const OPACITY_MAX = 1
@@ -51,12 +52,8 @@ function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: Underl
           onChange={() => dispatch(setUnderlayVisibility(floorId, underlay.id, !underlay.visible))}
         />
       </label>
-      <button type="button" onClick={() => onCalibrate(underlay.id)}>
-        Calibrate
-      </button>
-      <button type="button" onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>
-        Remove
-      </button>
+      <Button onClick={() => onCalibrate(underlay.id)}>Calibrate</Button>
+      <Button onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>Remove</Button>
     </fieldset>
   )
 }
@@ -70,9 +67,7 @@ export function UnderlayPanel({
 }: UnderlayPanelProps) {
   return (
     <div>
-      <button type="button" onClick={onLoadImage}>
-        Load image
-      </button>
+      <Button onClick={onLoadImage}>Load image</Button>
       {underlays.map((underlay, index) => (
         <UnderlayRow
           key={underlay.id}

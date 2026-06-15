@@ -198,7 +198,8 @@ describe('App project actions', () => {
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
 
-    await userEvent.click(await screen.findByRole('button', { name: 'My House' }))
+    await userEvent.click(await screen.findByRole('button', { name: /project menu/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'My House' }))
 
     expect(
       await screen.findByText('My House', { selector: '.editor-shell__breadcrumb-active' }),

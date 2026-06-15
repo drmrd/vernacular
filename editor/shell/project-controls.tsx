@@ -1,3 +1,5 @@
+import { Button } from '../design-system'
+
 interface RecentProject {
   id: string
   name: string
@@ -44,11 +46,7 @@ function ProjectAction({ label, onClick }: ProjectActionProps) {
   if (!onClick) {
     return null
   }
-  return (
-    <button type="button" onClick={onClick}>
-      {label}
-    </button>
-  )
+  return <Button onClick={onClick}>{label}</Button>
 }
 
 interface RecentProjectsListProps {
@@ -79,12 +77,8 @@ export function RecoveryPrompt({ onRestore, onDiscard }: RecoveryPromptProps) {
   return (
     <div className="editor-shell__recovery" role="alert">
       <p>Unsaved changes were recovered.</p>
-      <button type="button" onClick={onRestore}>
-        Restore
-      </button>
-      <button type="button" onClick={onDiscard}>
-        Discard
-      </button>
+      <Button onClick={onRestore}>Restore</Button>
+      <Button onClick={onDiscard}>Discard</Button>
     </div>
   )
 }

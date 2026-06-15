@@ -7,6 +7,7 @@ export interface StatusBarProps {
   activeFloorId: string | null
   onSelectFloor: (id: string) => void
   onAddFloor: () => void
+  tool?: ReactNode
   snap?: ReactNode
   units?: ReactNode
 }
@@ -16,6 +17,7 @@ export function StatusBar({
   activeFloorId,
   onSelectFloor,
   onAddFloor,
+  tool,
   snap,
   units,
 }: StatusBarProps): ReactElement {
@@ -27,7 +29,7 @@ export function StatusBar({
         onSelectFloor={onSelectFloor}
         onAddFloor={onAddFloor}
       />
-      <span className="status-bar__tool" />
+      <span className="status-bar__tool">{tool}</span>
       <span className="status-bar__coords" />
       <span className="status-bar__snap">{snap}</span>
       <span className="status-bar__units">{units}</span>

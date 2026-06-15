@@ -1,0 +1,46 @@
+/*
+ * The status-bar floor switcher: horizontal tabs with no list markers. The active
+ * tab carries umber-900 text and a 2px brass bottom border per the realignment spec;
+ * inactive tabs read in the muted tone. The Add-floor affordance is a design-system
+ * button rendered alongside the tabs.
+ */
+
+.floor-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.floor-switcher__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.floor-switcher__tab {
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.floor-switcher__tab:hover {
+  color: var(--color-text);
+}
+
+.floor-switcher__tab--active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-indicator);
+}
+
+.floor-switcher__tab:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}

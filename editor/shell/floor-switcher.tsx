@@ -1,4 +1,6 @@
 import type { ReactElement } from 'react'
+import { Button } from '../design-system'
+import './floor-switcher.css'
 
 export interface FloorSummary {
   id: string
@@ -19,24 +21,25 @@ export function FloorSwitcher({
   onAddFloor,
 }: FloorSwitcherProps): ReactElement {
   return (
-    <nav aria-label="Floors">
-      <ul>
-        {floors.map((floor) => (
-          <li key={floor.id}>
-            <button
-              type="button"
-              className={floor.id === activeFloorId ? 'floor-switcher__tab--active' : undefined}
-              aria-pressed={floor.id === activeFloorId}
-              onClick={() => onSelectFloor(floor.id)}
-            >
-              {floor.name}
-            </button>
-          </li>
-        ))}
+    <nav className="floor-switcher" aria-label="Floors">
+      <ul className="floor-switcher__tabs">
+        {floors.map((floor) => {
+          const isActive = floor.id === activeFloorId
+          return (
+            <li key={floor.id}>
+              <button
+                type="button"
+                className={`floor-switcher__tab${isActive ? ' floor-switcher__tab--active' : ''}`}
+                aria-pressed={isActive}
+                onClick={() => onSelectFloor(floor.id)}
+              >
+                {floor.name}
+              </button>
+            </li>
+          )
+        })}
       </ul>
-      <button type="button" onClick={onAddFloor}>
-        Add floor
-      </button>
+      <Button onClick={onAddFloor}>Add floor</Button>
     </nav>
   )
 }

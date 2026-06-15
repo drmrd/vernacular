@@ -39,6 +39,10 @@
   color: var(--color-text);
 }
 
+.editor-shell__breadcrumb-crumb {
+  color: var(--color-text-muted);
+}
+
 .editor-shell__toolbar-actions {
   display: flex;
   align-items: center;

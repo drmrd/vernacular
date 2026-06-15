@@ -31,12 +31,12 @@ import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
-import { useActiveTool } from '../tools/active-tool-context'
+import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame, PanelSlot } from '../design-system'
+import { AppFrame } from '../design-system'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
 import { ProjectIdentity } from './project-identity'
@@ -44,7 +44,7 @@ import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { ThemeToggle } from './theme-toggle'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import { PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
+import { ProjectMenu } from './project-menu'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -53,6 +53,23 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   pending: 'Saving...',
   saved: 'All changes saved',
   error: 'Save failed',
+}
+
+function toolLabel(tool: ToolId): string {
+  switch (tool) {
+    case 'select':
+      return 'Select'
+    case 'pan':
+      return 'Pan'
+    case 'draw-wall':
+      return 'Wall'
+    case 'place-opening':
+      return 'Opening'
+    case 'dimension':
+      return 'Dimension'
+    case 'calibrate':
+      return 'Calibrate'
+  }
 }
 
 // The tools nav: the tool buttons, plus the opening-type chooser surfaced only
@@ -101,16 +118,30 @@ interface ShellHeaderProps {
   projectControls: ProjectControlsProps
 }
 
+function Breadcrumb({ projectName }: { projectName: string }) {
+  return (
+    <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
+      <span className="editor-shell__breadcrumb-sep">/</span>
+      <span className="editor-shell__breadcrumb-crumb">My Projects</span>
+      <span className="editor-shell__breadcrumb-sep">/</span>
+      <span className="editor-shell__breadcrumb-active">{projectName}</span>
+    </nav>
+  )
+}
+
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const session = useEditorSession()
   const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
   return (
     <div className="editor-shell__toolbar">
       <h1 className="editor-shell__wordmark">Vernacular</h1>
-      <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
-        <span className="editor-shell__breadcrumb-sep">/</span>
-        <span className="editor-shell__breadcrumb-active">{session.getProject().meta.name}</span>
-      </nav>
+      <ProjectMenu
+        onNewProject={projectControls.onNewProject}
+        onOpenFolder={projectControls.onOpenFolder}
+        onOpenRecent={projectControls.onOpenRecent}
+        recentProjects={projectControls.recentProjects}
+      />
+      <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
         <button
           type="button"
@@ -155,7 +186,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           onExportImage={projectControls.onExportImage}
           onExportPdf={projectControls.onExportPdf}
         />
-        <ProjectControls {...projectControls} />
+        {projectControls.onSave ? <ProjectControls onSave={projectControls.onSave} /> : null}
       </div>
       <span role="status" className="editor-shell__save-status">
         {SAVE_STATUS_LABELS[saveStatus]}
@@ -202,6 +233,7 @@ function EditorStatusBar() {
   const session = useEditorSession()
   const activeFloorId = useActiveFloorId()
   const setActiveFloorId = useSetActiveFloorId()
+  const { tool } = useActiveTool()
   useSceneGraph()
   return (
     <StatusBar
@@ -209,6 +241,7 @@ function EditorStatusBar() {
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
       onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+      tool={`Tool: ${toolLabel(tool)}`}
       snap={<SnapStatus />}
       units={
         <UnitToggle
@@ -245,17 +278,6 @@ function ViewportArea() {
 function EntitySurfaceBridge() {
   useEntitySurfaceBridge()
   return null
-}
-
-// The inspector content: the selection-driven inspector (which now hosts contextual
-// paint per selection) and the empty surface-paint seam the paint track mounts into.
-function InspectorPanels() {
-  return (
-    <>
-      <Inspector />
-      <PanelSlot slotId={PAINT_INSPECTOR_SLOT} label="Surface paint" emptyTitle="Surface paint" />
-    </>
-  )
 }
 
 export interface EditorShellProps extends ProjectControlsProps {
@@ -299,7 +321,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                     mainLabel="Viewport"
                     main={<ViewportArea />}
                     inspectorLabel="Inspector"
-                    inspector={<InspectorPanels />}
+                    inspector={<Inspector />}
                     statusBar={<EditorStatusBar />}
                   />
                 </SurfaceSelectionProvider>

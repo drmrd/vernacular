@@ -7,8 +7,36 @@
 }
 
 .view-mode-viewport__toolbar {
-  display: flex;
-  gap: var(--space-2);
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.view-mode-viewport__tab {
+  padding: 0.15rem 0.7rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.view-mode-viewport__tab:hover {
+  color: var(--color-text);
+}
+
+.view-mode-viewport__tab--active {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.view-mode-viewport__tab:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
 }
 
 .view-mode-viewport__body {

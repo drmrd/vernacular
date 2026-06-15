@@ -309,11 +309,10 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
       />
     )
   }
-  return (
-    <p className="inspector__empty">
-      {selectedIds.size > 0 ? 'Wall selected' : 'Nothing selected. Pick an element to edit it.'}
-    </p>
-  )
+  if (selectedIds.size > 0) {
+    return null
+  }
+  return <p className="inspector__empty">Nothing selected. Pick an element to edit it.</p>
 }
 
 interface TransformPanelProps {

@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from 'react'
-import { Button, usePaneResize } from '../design-system'
+import { usePaneResize } from '../design-system'
 import { useViewMode, type ViewControls } from './view-mode'
 import { VIEW_MODES, VIEW_MODE_LABELS } from './view-mode-labels'
 import './view-mode-viewport.css'
@@ -12,11 +12,20 @@ const SPLIT_MAX = 80
 function ModeToolbar({ mode, setMode }: ViewControls) {
   return (
     <div className="view-mode-viewport__toolbar" role="toolbar" aria-label="View mode">
-      {VIEW_MODES.map((value) => (
-        <Button key={value} aria-pressed={mode === value} onClick={() => setMode(value)}>
-          {VIEW_MODE_LABELS[value]}
-        </Button>
-      ))}
+      {VIEW_MODES.map((value) => {
+        const isActive = mode === value
+        return (
+          <button
+            key={value}
+            type="button"
+            className={`view-mode-viewport__tab${isActive ? ' view-mode-viewport__tab--active' : ''}`}
+            aria-pressed={isActive}
+            onClick={() => setMode(value)}
+          >
+            {VIEW_MODE_LABELS[value]}
+          </button>
+        )
+      })}
     </div>
   )
 }

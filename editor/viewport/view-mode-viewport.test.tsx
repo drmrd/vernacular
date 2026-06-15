@@ -32,6 +32,17 @@ describe('ViewModeViewport', () => {
     expect(screen.getByRole('button', { name: '3D view' })).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('marks the active mode tab with an active class', () => {
+    renderViewport()
+
+    expect(screen.getByRole('button', { name: 'Plan view' })).toHaveClass(
+      'view-mode-viewport__tab--active',
+    )
+    expect(screen.getByRole('button', { name: 'Split view' })).not.toHaveClass(
+      'view-mode-viewport__tab--active',
+    )
+  })
+
   it('shows only the plan in plan mode', () => {
     renderViewport()
 

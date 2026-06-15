@@ -33,6 +33,19 @@ describe('StatusBar', () => {
     expect(onSelectFloor).toHaveBeenCalledWith('f2')
   })
 
+  it('renders the tool slot content', () => {
+    render(
+      <StatusBar
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+        tool={<span>Tool: Select</span>}
+      />,
+    )
+    expect(screen.getByText('Tool: Select')).toBeInTheDocument()
+  })
+
   it('renders the units slot content', () => {
     render(
       <StatusBar

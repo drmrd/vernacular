@@ -65,6 +65,15 @@ describe('EditorShell', () => {
     expect(screen.getByLabelText(/floor plan/i)).toBeInTheDocument()
   })
 
+  it('shows the My Projects breadcrumb segment', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
+    expect(within(breadcrumb).getByText(/my projects/i)).toBeInTheDocument()
+  })
+
   it('reveals the 3D preview when the 3D view mode is selected', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
@@ -143,10 +152,21 @@ describe('EditorShell', () => {
       selection.select('wall:a')
     })
 
-    expect(screen.getByText(/wall selected/i)).toBeInTheDocument()
+    // The selection surfaces as the Wall component title and the count badge, not a
+    // placeholder body string.
+    expect(screen.getByRole('heading', { level: 3, name: /wall/i })).toBeInTheDocument()
+    expect(screen.getByText('1 selected')).toBeInTheDocument()
   })
 
-  it('invokes the new, save, and export handlers when their buttons are clicked', async () => {
+  it('shows the active tool in the status bar', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(screen.getByText(/tool: select/i)).toBeInTheDocument()
+  })
+
+  it('invokes the new, save, and export handlers when their controls are used', async () => {
     vi.stubGlobal('navigator', {})
     const onNewProject = vi.fn()
     const onSave = vi.fn()
@@ -155,8 +175,10 @@ describe('EditorShell', () => {
 
     renderShell({ onNewProject, onSave, onExportBundle })
 
+    // New lives in the project menu near the wordmark; Save stays a visible action.
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('menuitem', { name: /new project/i }))
     const project = screen.getByRole('navigation', { name: /project/i })
-    await user.click(within(project).getByRole('button', { name: /^new$/i }))
     await user.click(within(project).getByRole('button', { name: /^save$/i }))
     await user.click(screen.getByRole('button', { name: /^export$/i }))
     await user.click(screen.getByRole('menuitem', { name: /bundle/i }))
@@ -166,20 +188,20 @@ describe('EditorShell', () => {
     expect(onExportBundle).toHaveBeenCalledTimes(1)
   })
 
-  it('invokes the open-folder handler when its button is clicked', async () => {
+  it('invokes the open-folder handler from the project menu', async () => {
     vi.stubGlobal('navigator', {})
     const onOpenFolder = vi.fn()
     const user = userEvent.setup()
 
     renderShell({ onOpenFolder })
 
-    const project = screen.getByRole('navigation', { name: /project/i })
-    await user.click(within(project).getByRole('button', { name: /open folder/i }))
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('menuitem', { name: /open folder/i }))
 
     expect(onOpenFolder).toHaveBeenCalledTimes(1)
   })
 
-  it('opens a recent project by its id when its control is clicked', async () => {
+  it('opens a recent project by its id from the project menu', async () => {
     vi.stubGlobal('navigator', {})
     const onOpenRecent = vi.fn()
     const user = userEvent.setup()
@@ -192,8 +214,9 @@ describe('EditorShell', () => {
       onOpenRecent,
     })
 
-    expect(screen.getByRole('button', { name: /alpha/i })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /beta/i }))
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    expect(screen.getByRole('menuitem', { name: /alpha/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: /beta/i }))
 
     expect(onOpenRecent).toHaveBeenCalledTimes(1)
     expect(onOpenRecent).toHaveBeenCalledWith('b')
@@ -233,7 +256,7 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('lays out the shell in the application frame with empty sibling panel slots', () => {
+  it('lays out the shell regions without a global paint slot', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
@@ -241,9 +264,10 @@ describe('EditorShell', () => {
     expect(screen.getByRole('complementary', { name: /tool rail/i })).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
 
-    // The always-on global paint list is gone; the inspector swaps by selection.
+    // The always-on global paint list is gone; the inspector swaps by selection,
+    // so neither the paint-picker nor the paint-inspector slot mounts.
     expect(document.querySelector(`[data-slot-id="${PAINT_PICKER_SLOT}"]`)).toBeNull()
-    expect(document.querySelector(`[data-slot-id="${PAINT_INSPECTOR_SLOT}"]`)).not.toBeNull()
+    expect(document.querySelector(`[data-slot-id="${PAINT_INSPECTOR_SLOT}"]`)).toBeNull()
 
     expect(screen.getByRole('navigation', { name: /tools/i })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: /floors/i })).toBeInTheDocument()

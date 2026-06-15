@@ -65,7 +65,7 @@ retained.
 
 ### 3. Top bar
 
-Left to right: wordmark (EB Garamond), breadcrumb (`My Projects / <Project>`), zoom
+Left to right: wordmark (Inter, see ADR-0076), breadcrumb (`My Projects / <Project>`), zoom
 control (minus, percentage, plus), Grid and Dimensions toggles, Undo and Redo icon
 buttons, a brass `Export` dropdown, a neutral `Save`, and the save-status text.
 
