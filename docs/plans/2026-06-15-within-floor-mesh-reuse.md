@@ -97,22 +97,22 @@ const openingNodesFor = (floor: Floor): OpeningSceneNode[] =>
   })
 ```
 
-  Change the returned `openings` field from
-  `project.floors.flatMap(deriveOpeningNodesForFloor)` to
-  `project.floors.flatMap(openingNodesFor)`. Add `Opening` to the `model/types`
-  import and `deriveOpeningNode` to the `scene-graph` import; drop the now-unused
-  `deriveOpeningNodesForFloor` import.
+Change the returned `openings` field from
+`project.floors.flatMap(deriveOpeningNodesForFloor)` to
+`project.floors.flatMap(openingNodesFor)`. Add `Opening` to the `model/types`
+import and `deriveOpeningNode` to the `scene-graph` import; drop the now-unused
+`deriveOpeningNodesForFloor` import.
 
-  Run: `pnpm exec vitest run core/scene/scene-graph-deriver.test.ts` Expected: PASS.
+Run: `pnpm exec vitest run core/scene/scene-graph-deriver.test.ts` Expected: PASS.
 
 - [ ] **Step 3 (BLUE):** clean-code-review then refactor. Keep `openingNodeFor`
-  explicit (it needs host-wall invalidation, so it cannot use the plain
-  `memoizeByRef`). Confirm `deriveOpeningNodesForFloor` is still exported for the pure
-  projection and any direct callers; only the deriver stops using it. Commit the
-  marker (empty if no change).
+      explicit (it needs host-wall invalidation, so it cannot use the plain
+      `memoizeByRef`). Confirm `deriveOpeningNodesForFloor` is still exported for the pure
+      projection and any direct callers; only the deriver stops using it. Commit the
+      marker (empty if no change).
 
 - [ ] **Step 4:** full check chain for the touched layer:
-  `pnpm typecheck && pnpm lint && pnpm exec vitest run core/`
+      `pnpm typecheck && pnpm lint && pnpm exec vitest run core/`
 
 ---
 
@@ -167,10 +167,10 @@ const roomNodesFor = (floor: Floor, overrides: RoomOverrides): RoomSceneNode[] =
 }
 ```
 
-  Run: `pnpm exec vitest run core/scene/scene-graph-deriver.test.ts` Expected: PASS.
+Run: `pnpm exec vitest run core/scene/scene-graph-deriver.test.ts` Expected: PASS.
 
 - [ ] **Step 3 (BLUE):** clean-code-review then refactor. Update the `CachedRoomNodes`
-  doc comment to state the walls-array key and the ceiling-height guard. Commit marker.
+      doc comment to state the walls-array key and the ceiling-height guard. Commit marker.
 
 - [ ] **Step 4:** `pnpm typecheck && pnpm lint && pnpm exec vitest run core/`
 
@@ -193,7 +193,10 @@ Signatures:
 ```ts
 // engine/scene/floor-subgroups.ts
 export function buildRoomSubgroup(node: RoomSceneNode, materials: MaterialProvider): THREE.Group
-export function buildOpeningSubgroup(node: OpeningSceneNode, materials: MaterialProvider): THREE.Group
+export function buildOpeningSubgroup(
+  node: OpeningSceneNode,
+  materials: MaterialProvider,
+): THREE.Group
 export function buildWallSubgroup(
   floorWalls: WallSceneNode[],
   floorRooms: RoomSceneNode[],
@@ -229,31 +232,31 @@ node (the existing `buildFloorGroup` logic), adds the sub-groups, and returns a 
   Expected: FAIL (module does not exist).
 
 - [ ] **Step 2 (GREEN, implementer):** create `floor-subgroups.ts`. Add an optional
-  `material?: THREE.LineBasicMaterial` parameter to `addEdgeOverlay` so sub-groups can
-  share one line material; default keeps the current single-material behavior. Export
-  the four functions from `engine/index.ts`.
+      `material?: THREE.LineBasicMaterial` parameter to `addEdgeOverlay` so sub-groups can
+      share one line material; default keeps the current single-material behavior. Export
+      the four functions from `engine/index.ts`.
 
   Run: `pnpm exec vitest run engine/scene/floor-subgroups.test.ts` Expected: PASS.
 
 - [ ] **Step 3 (RED, test-author):** characterization test in
-  `floor-subgroups.test.ts` or `build-scene` tests: a `buildScene(graph)` for a
-  one-room, one-opening floor produces the same mesh count and the same number of edge
-  `LineSegments` as before the refactor (guard against double overlay or a missing
-  one). If an existing build-scene test already pins this, reuse it.
+      `floor-subgroups.test.ts` or `build-scene` tests: a `buildScene(graph)` for a
+      one-room, one-opening floor produces the same mesh count and the same number of edge
+      `LineSegments` as before the refactor (guard against double overlay or a missing
+      one). If an existing build-scene test already pins this, reuse it.
 
   Run the relevant build-scene test. Expected: PASS today (it pins current behavior);
   it must stay green through Step 4.
 
 - [ ] **Step 4 (GREEN, implementer):** refactor `build-scene.ts`: `buildFloorGroup`
-  builds its children through `buildWallSubgroup`/`buildRoomSubgroup`/
-  `buildOpeningSubgroup` and returns the assembled floor group; remove the
-  `addEdgeOverlay(root)` call from `buildScene` (the sub-groups self-decorate). Keep
-  `buildScene` returning the same root shape.
+      builds its children through `buildWallSubgroup`/`buildRoomSubgroup`/
+      `buildOpeningSubgroup` and returns the assembled floor group; remove the
+      `addEdgeOverlay(root)` call from `buildScene` (the sub-groups self-decorate). Keep
+      `buildScene` returning the same root shape.
 
   Run: `pnpm exec vitest run engine/` Expected: PASS (structure unchanged).
 
 - [ ] **Step 5 (BLUE):** clean-code-review then refactor. Watch the engine line caps
-  (max-lines-per-function 40). Commit marker.
+      (max-lines-per-function 40). Commit marker.
 
 - [ ] **Step 6:** `pnpm typecheck && pnpm lint && pnpm exec vitest run engine/`
 
@@ -268,17 +271,17 @@ reconciler's full-rebuild path and the empty/active build are one path, and the 
 sub-group is the single owner of `nearWallTargets`.
 
 - [ ] **Step 1 (RED, test-author):** a `framed-scene` test: for a one-floor graph with
-  an exterior room, `buildFramedScene(graph, paint).nearWallTargets` has the same
-  length as `prepareNearWallTransparency` over the exterior walls (pins that the wall
-  sub-group supplies the targets), and `.root`, `.bounds`, `.pose` are still produced.
-  Run: expected PASS today if it matches current output; it pins behavior for Step 2.
+      an exterior room, `buildFramedScene(graph, paint).nearWallTargets` has the same
+      length as `prepareNearWallTransparency` over the exterior walls (pins that the wall
+      sub-group supplies the targets), and `.root`, `.bounds`, `.pose` are still produced.
+      Run: expected PASS today if it matches current output; it pins behavior for Step 2.
 
 - [ ] **Step 2 (GREEN, implementer):** refactor `buildFramedScene` so it builds the
-  active floor through `buildWallSubgroup`/`buildRoomSubgroup`/`buildOpeningSubgroup`
-  + `assembleFloorRoot` (handling the empty-graph no-floor case as today: an empty
-  root, empty `nearWallTargets`), reads `nearWallTargets` from the wall sub-group, and
-  keeps computing `bounds` via `sceneBounds` and `pose` via `frameSceneCamera`. The
-  `FramedScene` shape is unchanged.
+      active floor through `buildWallSubgroup`/`buildRoomSubgroup`/`buildOpeningSubgroup`
+  - `assembleFloorRoot` (handling the empty-graph no-floor case as today: an empty
+    root, empty `nearWallTargets`), reads `nearWallTargets` from the wall sub-group, and
+    keeps computing `bounds` via `sceneBounds` and `pose` via `frameSceneCamera`. The
+    `FramedScene` shape is unchanged.
 
   Run: `pnpm exec vitest run bridge/ engine/` Expected: PASS.
 
@@ -306,15 +309,15 @@ Compare `id`, `area`, `name`, `ceilingHeight`, and deep-equal `polygon`,
 for holes). Equal values in different array instances compare equal.
 
 - [ ] **Step 1 (RED, test-author):** tests: equal-content nodes with distinct array
-  instances compare equal; a difference in any of polygon, clearPolygon, outerPolygon,
-  holes, area, name, or ceilingHeight compares unequal; an absent vs present optional
-  (name, holes, outerPolygon) compares unequal.
-  Run: `pnpm exec vitest run bridge/react/room-scene-node-equal.test.ts`
-  Expected: FAIL (module missing).
+      instances compare equal; a difference in any of polygon, clearPolygon, outerPolygon,
+      holes, area, name, or ceilingHeight compares unequal; an absent vs present optional
+      (name, holes, outerPolygon) compares unequal.
+      Run: `pnpm exec vitest run bridge/react/room-scene-node-equal.test.ts`
+      Expected: FAIL (module missing).
 
 - [ ] **Step 2 (GREEN, implementer):** implement the equality. A small local
-  point-array and ring-array deep compare; no new dependency.
-  Run: expected PASS.
+      point-array and ring-array deep compare; no new dependency.
+      Run: expected PASS.
 
 - [ ] **Step 3 (BLUE):** review then refactor. Commit marker.
 
@@ -345,6 +348,7 @@ interface CachedFloorBuild {
 ```
 
 Reconcile logic:
+
 - No active floor (`graph.nodes[0]` undefined): build through `buildFramedScene`, no
   cache (unchanged from today).
 - Cached, same `floorNode` reference and same `paint` reference: return `cached.framed`
@@ -358,18 +362,18 @@ Reconcile logic:
   `framed = { root, pose, bounds, nearWallTargets: wall.nearWallTargets }`.
 
 - [ ] **Step 1 (RED, test-author):** keep the existing five reconciler tests; add a
-  characterization test: after a floor-node edit, `reconcile` returns a new `FramedScene`
-  whose `pose` and `bounds` deep-equal a fresh `buildFramedScene(graph, paint)` for the
-  same edited graph. Run: expected FAIL only if the assembled pose/bounds drift; it pins
-  parity.
+      characterization test: after a floor-node edit, `reconcile` returns a new `FramedScene`
+      whose `pose` and `bounds` deep-equal a fresh `buildFramedScene(graph, paint)` for the
+      same edited graph. Run: expected FAIL only if the assembled pose/bounds drift; it pins
+      parity.
 
 - [ ] **Step 2 (GREEN, implementer):** restructure the reconciler to the cache shape
-  above, building all sub-groups on a miss and assembling. The five existing tests and
-  the new parity test pass. Run: `pnpm exec vitest run bridge/`.
+      above, building all sub-groups on a miss and assembling. The five existing tests and
+      the new parity test pass. Run: `pnpm exec vitest run bridge/`.
 
 - [ ] **Step 3 (BLUE):** review then refactor. Watch line caps; extract a
-  `buildFloorBuild(graph, floorNode, materials)` helper if the closure grows. Commit
-  marker.
+      `buildFloorBuild(graph, floorNode, materials)` helper if the closure grows. Commit
+      marker.
 
 ---
 
@@ -381,16 +385,16 @@ On a floor edit with unchanged paint, reuse a cached room group when the new roo
 is `roomSceneNodeEqual` to the node it was built from; otherwise rebuild that room.
 
 - [ ] **Step 1 (RED, test-author):** in the reconciler test, drive the reconciler with
-  real derived graphs from `createSceneGraphDeriver()` so the reuse signals are real
-  (build a two-room floor; reconcile; then an edit that reshapes one room; reconcile
-  again). Assert: the unchanged room's `THREE.Group` is the same instance across the two
-  builds (`root` traversal by room entity id), and the reshaped room's group is a new
-  instance. Also: an opening-only edit (rooms unchanged) reuses every room group.
-  Run: expected FAIL (C2 rebuilds all rooms).
+      real derived graphs from `createSceneGraphDeriver()` so the reuse signals are real
+      (build a two-room floor; reconcile; then an edit that reshapes one room; reconcile
+      again). Assert: the unchanged room's `THREE.Group` is the same instance across the two
+      builds (`root` traversal by room entity id), and the reshaped room's group is a new
+      instance. Also: an opening-only edit (rooms unchanged) reuses every room group.
+      Run: expected FAIL (C2 rebuilds all rooms).
 
 - [ ] **Step 2 (GREEN, implementer):** add the per-room reuse: for each new room node,
-  if a cached entry exists and `roomSceneNodeEqual(newNode, cached.node)`, reuse
-  `cached.group`; else `buildRoomSubgroup(newNode, materials)`. Run: expected PASS.
+      if a cached entry exists and `roomSceneNodeEqual(newNode, cached.node)`, reuse
+      `cached.group`; else `buildRoomSubgroup(newNode, materials)`. Run: expected PASS.
 
 - [ ] **Step 3 (BLUE):** review then refactor. Commit marker.
 
@@ -401,12 +405,12 @@ is `roomSceneNodeEqual` to the node it was built from; otherwise rebuild that ro
 **Files:** Modify `bridge/react/framed-scene-reconciler.ts` and its test.
 
 - [ ] **Step 1 (RED, test-author):** with real derived graphs, place two openings;
-  reconcile; edit one opening; reconcile. Assert the edited opening's group is a new
-  instance and the other opening's group is reused (same instance). Run: expected FAIL.
+      reconcile; edit one opening; reconcile. Assert the edited opening's group is a new
+      instance and the other opening's group is reused (same instance). Run: expected FAIL.
 
 - [ ] **Step 2 (GREEN, implementer):** reuse a cached opening group when its
-  `OpeningSceneNode` reference is unchanged (the A1 memo makes this stable); else
-  `buildOpeningSubgroup`. Run: expected PASS.
+      `OpeningSceneNode` reference is unchanged (the A1 memo makes this stable); else
+      `buildOpeningSubgroup`. Run: expected PASS.
 
 - [ ] **Step 3 (BLUE):** review then refactor. Commit marker.
 
@@ -421,18 +425,18 @@ every wall node reference and every wall-hosted opening node reference is unchan
 otherwise rebuild it whole.
 
 - [ ] **Step 1 (RED, test-author):** with real derived graphs, make an edit that leaves
-  every wall and opening untouched but replaces the floor node, for example a dimension
-  edit or a room-override (name) edit. Assert: the wall `THREE.Group` and the
-  `framed.nearWallTargets` are reused (same instances) across the two builds. With a
-  room-override name edit, also assert the renamed room's group rebuilt (value differs)
-  while the wall group was reused. Run: expected FAIL (C2 to C4 rebuild walls every time).
+      every wall and opening untouched but replaces the floor node, for example a dimension
+      edit or a room-override (name) edit. Assert: the wall `THREE.Group` and the
+      `framed.nearWallTargets` are reused (same instances) across the two builds. With a
+      room-override name edit, also assert the renamed room's group rebuilt (value differs)
+      while the wall group was reused. Run: expected FAIL (C2 to C4 rebuild walls every time).
 
 - [ ] **Step 2 (GREEN, implementer):** reuse `cached.wall` when
-  `sameRefs(newWallNodes, cached.wallNodes)` and
-  `sameRefs(newWallOpeningNodes, cached.wallOpeningNodes)` (length plus element
-  reference equality, order-stable since the deriver preserves order); else
-  `buildWallSubgroup(...)`. `wallOpeningNodes` are the floor's openings whose
-  `hostWallId` is set. Run: expected PASS.
+      `sameRefs(newWallNodes, cached.wallNodes)` and
+      `sameRefs(newWallOpeningNodes, cached.wallOpeningNodes)` (length plus element
+      reference equality, order-stable since the deriver preserves order); else
+      `buildWallSubgroup(...)`. `wallOpeningNodes` are the floor's openings whose
+      `hostWallId` is set. Run: expected PASS.
 
 - [ ] **Step 3 (BLUE):** review then refactor. Extract `sameRefs`. Commit marker.
 
@@ -446,9 +450,9 @@ otherwise rebuild it whole.
 an elevation change is honored even when every sub-group is reused. Pin it.
 
 - [ ] **Step 1 (RED, test-author):** reconcile a floor; then a floor-node edit that only
-  changes `elevation` (sub-groups all reusable). Assert the reused sub-groups are the
-  same instances and the assembled floor group's `position.y` equals the new elevation.
-  Run: expected PASS if C2's assembly already reads elevation; if it regressed, FAIL.
+      changes `elevation` (sub-groups all reusable). Assert the reused sub-groups are the
+      same instances and the assembled floor group's `position.y` equals the new elevation.
+      Run: expected PASS if C2's assembly already reads elevation; if it regressed, FAIL.
 
 - [ ] **Step 2 (GREEN, implementer):** only if needed. Run: expected PASS.
 
@@ -461,23 +465,23 @@ an elevation change is honored even when every sub-group is reused. Pin it.
 ### Task D1: ADR-0089
 
 - [ ] Write `docs/knowledge/decisions/ADR-0089-within-floor-mesh-reuse.md`: the
-  decision (two deriver refinements plus a sub-floor reconciler), the reuse tiers, and
-  the reasoned departure of comparing derived rooms by value in the bridge while the
-  core deriver stays reference-only. Relate it to ADR-0018, ADR-0061, ADR-0088. Run the
-  humanizer pass on the prose (Rule 17). Commit `docs: ADR-0089 within-floor mesh reuse`.
+      decision (two deriver refinements plus a sub-floor reconciler), the reuse tiers, and
+      the reasoned departure of comparing derived rooms by value in the bridge while the
+      core deriver stays reference-only. Relate it to ADR-0018, ADR-0061, ADR-0088. Run the
+      humanizer pass on the prose (Rule 17). Commit `docs: ADR-0089 within-floor mesh reuse`.
 
 ### Task D2: full gate
 
 - [ ] Run the full chain in the worktree:
-  `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`
+      `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`
 - [ ] Run `rgb:audit` against `origin/main..HEAD`; confirm every cycle is
-  test then feat then refactor.
+      test then feat then refactor.
 - [ ] Run the end-to-end suite (chromium + scene-webgl). Confirm the committed scene
-  baselines are unchanged (behavior-preserving), so no `--update-snapshots`. The
-  pre-existing darwin home baseline drift is not mine and stays untouched.
+      baselines are unchanged (behavior-preserving), so no `--update-snapshots`. The
+      pre-existing darwin home baseline drift is not mine and stays untouched.
 - [ ] Fast-forward the integration branch:
-  `git branch -f integration/three-dimensional-preview feat/within-floor-mesh-reuse`,
-  then remove the worktree.
+      `git branch -f integration/three-dimensional-preview feat/within-floor-mesh-reuse`,
+      then remove the worktree.
 
 ---
 

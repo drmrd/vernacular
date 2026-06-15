@@ -100,12 +100,12 @@ one kind of node that cannot use it.
 
 ## Reuse semantics
 
-| Edit | Wall group | Rooms | Openings |
-| --- | --- | --- | --- |
-| Resize or move one opening | rebuilt (its void changed) | all reused | the edited one rebuilt, the rest reused |
-| Move or reshape one wall | rebuilt | the adjacent rooms rebuilt, the rest reused | the openings on that wall rebuilt, the rest reused |
-| Edit off the shown floor, or switch back to it | all reused (floor reference unchanged, the floor-level reuse from the prior slice) | | |
-| Any paint edit | the whole floor rebuilt (the prior slice's behavior, retained) | | |
+| Edit                                           | Wall group                                                                         | Rooms                                       | Openings                                           |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------- |
+| Resize or move one opening                     | rebuilt (its void changed)                                                         | all reused                                  | the edited one rebuilt, the rest reused            |
+| Move or reshape one wall                       | rebuilt                                                                            | the adjacent rooms rebuilt, the rest reused | the openings on that wall rebuilt, the rest reused |
+| Edit off the shown floor, or switch back to it | all reused (floor reference unchanged, the floor-level reuse from the prior slice) |                                             |                                                    |
+| Any paint edit                                 | the whole floor rebuilt (the prior slice's behavior, retained)                     |                                             |                                                    |
 
 ## Scope
 
