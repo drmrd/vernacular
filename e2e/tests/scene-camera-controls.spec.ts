@@ -34,4 +34,30 @@ test.describe('Discoverable three-dimensional camera controls', () => {
       .evaluate((el) => getComputedStyle(el).cursor)
     expect(cursor).toBe('grab')
   })
+
+  test('the pane cursor returns to grab after an orbit drag', async ({ page }) => {
+    await page.goto('/')
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    const canvas = await settledSceneCanvas(page)
+    const pane = page.locator('.scene-camera-pane')
+    const paneCursor = () => pane.evaluate((el) => getComputedStyle(el).cursor)
+
+    const box = await canvas.boundingBox()
+    if (box === null) throw new Error('the 3D canvas has no bounding box')
+    const centerX = box.x + box.width / 2
+    const centerY = box.y + box.height / 2
+
+    // Pressing on the canvas starts an orbit drag, so the pane shows the grabbing cursor.
+    await page.mouse.move(centerX, centerY)
+    await page.mouse.down()
+    await page.mouse.move(centerX + 60, centerY + 30, { steps: 6 })
+    expect(await paneCursor()).toBe('grabbing')
+
+    // Releasing the drag must clear the grabbing cursor back to grab, even though the orbit
+    // controls capture the pointer on the canvas so the release does not bubble to the pane.
+    await page.mouse.up()
+    await expect.poll(paneCursor).toBe('grab')
+  })
 })
