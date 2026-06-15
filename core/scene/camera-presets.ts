@@ -2,6 +2,7 @@ import {
   DEFAULT_CAMERA_POSE,
   cameraDepthRange,
   cameraFitDistance,
+  centerAndDiagonal,
   type CameraPose,
   type CameraViewport,
 } from './camera-framing'
@@ -33,18 +34,8 @@ export function cameraPresetPose(
   viewport?: CameraViewport,
 ): CameraPose {
   if (bounds === null) return DEFAULT_CAMERA_POSE
-  const size = {
-    x: bounds.max.x - bounds.min.x,
-    y: bounds.max.y - bounds.min.y,
-    z: bounds.max.z - bounds.min.z,
-  }
-  const diagonal = Math.hypot(size.x, size.y, size.z)
+  const { center, diagonal } = centerAndDiagonal(bounds)
   if (diagonal === 0) return DEFAULT_CAMERA_POSE
-  const center: Vector3 = {
-    x: (bounds.min.x + bounds.max.x) / 2,
-    y: (bounds.min.y + bounds.max.y) / 2,
-    z: (bounds.min.z + bounds.max.z) / 2,
-  }
   const { dir, up } = PRESET_VIEW[preset]
   const distance = cameraFitDistance(diagonal, viewport)
   return {

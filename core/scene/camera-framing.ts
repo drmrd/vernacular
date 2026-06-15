@@ -5,6 +5,9 @@ export interface CameraPose {
   target: Vector3
   near: number
   far: number
+  /** Camera up vector. Absent means the renderer's default world +Y, which keeps
+   *  existing poses (and `frameSceneCamera`) upright. A consumer applying this pose
+   *  to a live camera must set the camera's up from `pose.up ?? worldUpY`. */
   up?: Vector3
 }
 
@@ -42,6 +45,22 @@ export const DEFAULT_CAMERA_POSE: CameraPose = {
   far: DEFAULT_DIAGONAL * FAR_MULTIPLE,
 }
 
+/** The center point of `bounds` and the length of its diagonal. A zero diagonal
+ *  marks an empty or degenerate scene; callers fall back to the default pose. */
+export function centerAndDiagonal(bounds: Bounds3): { center: Vector3; diagonal: number } {
+  const center: Vector3 = {
+    x: (bounds.min.x + bounds.max.x) / 2,
+    y: (bounds.min.y + bounds.max.y) / 2,
+    z: (bounds.min.z + bounds.max.z) / 2,
+  }
+  const diagonal = Math.hypot(
+    bounds.max.x - bounds.min.x,
+    bounds.max.y - bounds.min.y,
+    bounds.max.z - bounds.min.z,
+  )
+  return { center, diagonal }
+}
+
 /**
  * Derives a camera pose framing the given world bounds. `near` is a small
  * fraction of the bounds diagonal and `far` a few multiples of it, so a
@@ -50,18 +69,8 @@ export const DEFAULT_CAMERA_POSE: CameraPose = {
  */
 export function frameSceneCamera(bounds: Bounds3 | null, viewport?: CameraViewport): CameraPose {
   if (bounds === null) return DEFAULT_CAMERA_POSE
-  const size = {
-    x: bounds.max.x - bounds.min.x,
-    y: bounds.max.y - bounds.min.y,
-    z: bounds.max.z - bounds.min.z,
-  }
-  const diagonal = Math.hypot(size.x, size.y, size.z)
+  const { center: target, diagonal } = centerAndDiagonal(bounds)
   if (diagonal === 0) return DEFAULT_CAMERA_POSE
-  const target: Vector3 = {
-    x: (bounds.min.x + bounds.max.x) / 2,
-    y: (bounds.min.y + bounds.max.y) / 2,
-    z: (bounds.min.z + bounds.max.z) / 2,
-  }
   const offset = cameraOffset(diagonal, viewport)
   return {
     target,
