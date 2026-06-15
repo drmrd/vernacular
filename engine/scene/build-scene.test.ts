@@ -182,6 +182,37 @@ describe('buildScene', () => {
   })
 })
 
+describe('buildScene opening fill', () => {
+  it('parents an opening fill group under its floor group carrying the opening entity id', () => {
+    const door = createOpening({
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      position: DOOR_POSITION_MM,
+      width: DOOR_WIDTH_MM,
+      id: 'o1',
+    })
+    const floor: Floor = {
+      ...createFloor('Ground', { id: 'g', walls: [hostWall()] }),
+      openings: [door],
+    }
+    const graph = projectWithFloor(floor)
+
+    const root = buildScene(graph)
+
+    const floorGroup = root.children.at(0)
+    expect(floorGroup).toBeDefined()
+    if (!floorGroup) return
+
+    const opening = graph.openings.at(0)
+    expect(opening).toBeDefined()
+    if (!opening) return
+
+    const fill = floorGroup.children.find((child) => child.userData.entityId === opening.id)
+    expect(fill).toBeDefined()
+    expect(fill?.children.length ?? 0).toBeGreaterThan(0)
+  })
+})
+
 describe('buildScene surface edges', () => {
   it('adds an edge line to each structural mesh while keeping its entity id', () => {
     const graph: SceneGraph = {

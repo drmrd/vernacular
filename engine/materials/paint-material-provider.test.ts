@@ -20,6 +20,15 @@ describe('PaintMaterialProvider', () => {
     expect(provider.material('top')).toBe(provider.material('top'))
   })
 
+  it('renders glass transparent without writing depth when no paint is configured', () => {
+    const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR })
+
+    const glass = provider.material('glass') as THREE.MeshStandardMaterial
+
+    expect(glass.transparent).toBe(true)
+    expect(glass.depthWrite).toBe(false)
+  })
+
   it('carries the light color it was constructed with', () => {
     const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR })
     expect(provider.lightColor).toEqual(LIGHT_COLOR)

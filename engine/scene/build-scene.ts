@@ -14,6 +14,7 @@ import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
 import { addEdgeOverlay } from './edge-overlay'
+import { buildOpeningFill } from './opening-fill-builder'
 import { buildRoomShell } from './room-builder'
 import { buildWalls } from './wall-builder'
 
@@ -60,6 +61,9 @@ function buildFloorGroup(
     if (room.floorId === modelId) {
       group.add(buildRoomShell(room, materials))
     }
+  }
+  for (const opening of floorOpenings) {
+    group.add(buildOpeningFill(opening, materials))
   }
   return group
 }

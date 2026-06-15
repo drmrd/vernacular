@@ -3,7 +3,14 @@ import type * as THREE from 'three'
 import type { SurfaceRef } from '../../core'
 
 /** A nameable surface of the wall shell that later painting can key on by role. */
-export type SurfaceRole = 'interiorFace' | 'exteriorFace' | 'reveal' | 'top' | 'base'
+export type SurfaceRole =
+  | 'interiorFace'
+  | 'exteriorFace'
+  | 'reveal'
+  | 'top'
+  | 'base'
+  | 'leaf'
+  | 'glass'
 
 /**
  * Supplies the material for each surface role. The MVP provider returns a single

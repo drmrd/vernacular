@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildScene } from './build-scene'
 import { pickEntityId, pickEntityIdAt } from './pick-entity'
-import type { SceneGraph } from '../../core'
+import type { OpeningSceneNode, SceneGraph } from '../../core'
 
 const graph: SceneGraph = {
   nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
@@ -31,6 +31,30 @@ describe('pickEntityId', () => {
     const raycaster = new THREE.Raycaster()
     raycaster.set(new THREE.Vector3(1000, 1200, 1000), new THREE.Vector3(0, 0, -1))
     expect(pickEntityId(raycaster, root)).toBe('wall:w1')
+  })
+
+  it("returns the opening's id when a ray strikes a door's leaf, not the host wall", () => {
+    const doorOpening: OpeningSceneNode = {
+      id: 'opening:door1',
+      kind: 'opening',
+      floorId: 'g',
+      type: 'single-swing-door',
+      center: { x: 1000, y: 0 },
+      along: { x: 1, y: 0 },
+      normal: { x: 0, y: 1 },
+      width: 900,
+      height: 2032,
+      sillHeight: 0,
+      hostThickness: 120,
+      orientation: { hinge: 'start', facing: 'positive' },
+      hostWallId: 'w1',
+    }
+    const graphWithDoor: SceneGraph = { ...graph, openings: [doorOpening] }
+    const root = buildScene(graphWithDoor)
+    root.updateMatrixWorld(true)
+    const raycaster = new THREE.Raycaster()
+    raycaster.set(new THREE.Vector3(1000, 1000, 1000), new THREE.Vector3(0, 0, -1))
+    expect(pickEntityId(raycaster, root)).toBe('opening:door1')
   })
 
   it('returns null when the ray strikes nothing', () => {

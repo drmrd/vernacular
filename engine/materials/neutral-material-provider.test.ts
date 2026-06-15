@@ -21,4 +21,20 @@ describe('NeutralMaterialProvider', () => {
 
     expect(provider.material('interiorFace')).toBe(provider.material('interiorFace'))
   })
+
+  it('renders glass semi-transparent and the door leaf opaque, both double-sided', () => {
+    const provider = new NeutralMaterialProvider()
+
+    const glass = provider.material('glass') as THREE.MeshStandardMaterial
+    expect(glass.name).toBe('glass')
+    expect(glass.transparent).toBe(true)
+    expect(glass.opacity).toBeLessThan(1)
+    expect(glass.depthWrite).toBe(false)
+    expect(glass.side).toBe(THREE.DoubleSide)
+
+    const leaf = provider.material('leaf') as THREE.MeshStandardMaterial
+    expect(leaf.name).toBe('leaf')
+    expect(leaf.transparent).toBe(false)
+    expect(leaf.side).toBe(THREE.DoubleSide)
+  })
 })

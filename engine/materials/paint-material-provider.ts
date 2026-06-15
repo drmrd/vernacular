@@ -2,9 +2,7 @@ import * as THREE from 'three'
 
 import { surfaceKey, type LinearRgb, type SurfaceRef, type SurfaceTreatment } from '../../core'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
-
-/** A light warm gray shared by every surface role until a surface carries real paint. */
-const NEUTRAL_COLOR = 0xd8d4cc
+import { roleMaterialParameters } from './role-appearance'
 
 export interface PaintMaterialOptions {
   lightColor: LinearRgb
@@ -63,7 +61,7 @@ export class PaintMaterialProvider implements MaterialProvider {
     if (cached) {
       return cached
     }
-    const created = new THREE.MeshStandardMaterial({ color: NEUTRAL_COLOR, name: role })
+    const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
     this.neutralByRole.set(role, created)
     return created
   }
