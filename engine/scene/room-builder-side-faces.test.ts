@@ -58,7 +58,7 @@ function sideFaceOutwardness(mesh: THREE.Mesh, interior: Point2D): number[] {
   if (side === undefined) return []
   const points = readPositions(geometry).slice(side.start, side.start + side.count)
   const normals = readNormals(geometry).slice(side.start, side.start + side.count)
-  return Array.from({ length: Math.floor(points.length / VERTICES_PER_TRIANGLE) }, (_unused, t) => {
+  return Array.from({ length: Math.floor(points.length / VERTICES_PER_TRIANGLE) }, (_, t) => {
     const base = t * VERTICES_PER_TRIANGLE
     const [a, b, c] = points.slice(base, base + VERTICES_PER_TRIANGLE) as [
       Vector3,
