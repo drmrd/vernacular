@@ -715,6 +715,7 @@ describe('drawRoomLabel', () => {
     drawRoomLabel(recorder.ctx, room({ name: 'Parlor' }), {
       viewport: VIEWPORT,
       preferences: DEFAULT_METRIC_PREFERENCES,
+      label: DEFAULT_PLAN_PALETTE.label,
     })
 
     const centroid = worldToScreen(CENTROID_WORLD, VIEWPORT)
@@ -737,6 +738,7 @@ describe('drawRoomLabel', () => {
     drawRoomLabel(recorder.ctx, room(), {
       viewport: VIEWPORT,
       preferences: DEFAULT_METRIC_PREFERENCES,
+      label: DEFAULT_PLAN_PALETTE.label,
     })
 
     const centroid = worldToScreen(CENTROID_WORLD, VIEWPORT)
