@@ -40,6 +40,7 @@ import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
+import { ViewportProvider } from '../plan/viewport-context'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
@@ -331,30 +332,32 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
       <SnapPreferencesProvider store={snapPreferences}>
         <ViewModeProvider>
           <ViewOverlayProvider>
-            <UnderlayProvider>
-              <OpeningToolProvider>
-                <KeybindingLayer />
-                <CommandPalette />
-                {recovery ? (
-                  <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
-                ) : null}
-                <SurfaceSelectionProvider store={surfaceSelection}>
-                  <EntitySurfaceBridge />
-                  <AppFrame
-                    header={
-                      <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
-                    }
-                    railLabel="Tool rail"
-                    rail={<ToolRail />}
-                    mainLabel="Viewport"
-                    main={<ViewportArea />}
-                    inspectorLabel="Inspector"
-                    inspector={<Inspector />}
-                    statusBar={<EditorStatusBar />}
-                  />
-                </SurfaceSelectionProvider>
-              </OpeningToolProvider>
-            </UnderlayProvider>
+            <ViewportProvider>
+              <UnderlayProvider>
+                <OpeningToolProvider>
+                  <KeybindingLayer />
+                  <CommandPalette />
+                  {recovery ? (
+                    <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+                  ) : null}
+                  <SurfaceSelectionProvider store={surfaceSelection}>
+                    <EntitySurfaceBridge />
+                    <AppFrame
+                      header={
+                        <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
+                      }
+                      railLabel="Tool rail"
+                      rail={<ToolRail />}
+                      mainLabel="Viewport"
+                      main={<ViewportArea />}
+                      inspectorLabel="Inspector"
+                      inspector={<Inspector />}
+                      statusBar={<EditorStatusBar />}
+                    />
+                  </SurfaceSelectionProvider>
+                </OpeningToolProvider>
+              </UnderlayProvider>
+            </ViewportProvider>
           </ViewOverlayProvider>
         </ViewModeProvider>
       </SnapPreferencesProvider>

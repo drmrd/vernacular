@@ -55,7 +55,8 @@ import {
   type CanvasRef,
   type PlanScene,
 } from './plan-scene'
-import { DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
+import { type Viewport } from './viewport'
+import { useViewport } from './viewport-context'
 
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 
@@ -188,7 +189,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const activeFloorId = useActiveFloorId()
   const selection = useSelection()
   const { tool } = useActiveTool()
-  const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
+  const { viewport, setViewport } = useViewport()
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
