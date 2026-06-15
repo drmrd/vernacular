@@ -91,33 +91,44 @@ function corePolygon(context: FillContext, vertexIndex: number, edgeIndexes: num
   return dedupeAdjacent(polygon)
 }
 
-/** A wall's near edge at a junction vertex: its `+leftPerp` and `-leftPerp` footprint corners. */
+/**
+ * A wall's near edge at a junction vertex: the footprint corners on the spoke's
+ * counter-clockwise (`+leftPerp(spoke.out)`) and clockwise (`-leftPerp(spoke.out)`) sides.
+ */
 interface WallCap {
-  plus: Point
-  minus: Point
+  ccwCorner: Point
+  cwCorner: Point
 }
 
 /** Read a wall's near edge at the vertex from its footprint corners on each side. */
 function wallCap(footprint: WallFootprint, spoke: Spoke): WallCap {
   return {
-    plus: cornerOf(footprint, spoke, leftPerp(spoke.out)),
-    minus: cornerOf(footprint, spoke, negate(leftPerp(spoke.out))),
+    ccwCorner: cornerOf(footprint, spoke, leftPerp(spoke.out)),
+    cwCorner: cornerOf(footprint, spoke, negate(leftPerp(spoke.out))),
   }
 }
 
 /**
- * Where two angularly-adjacent walls' cap lines cross: the shared miter for a clean
- * wedge, the near-vertex crossing for an acute wedge. When the cap lines are parallel
- * (no crossing) fall back to the midpoint of the two corners bounding the wedge.
+ * Where the cap lines of two angularly-adjacent spokes cross, with `a` the
+ * counter-clockwise-earlier spoke and `b` its counter-clockwise neighbor: the shared
+ * miter for a clean wedge, the near-vertex crossing for an acute overlapping wedge.
+ * A very wide wedge between two nearly-collinear walls (close to 180 degrees) yields a
+ * crossing far from the vertex; that case is not guarded here and is deferred to a
+ * follow-up that tightens it. The common wedges (clean miters and acute overlaps) cross
+ * near the vertex.
+ *
+ * If the two cap lines are parallel (collinear walls, no crossing), fall back to the
+ * midpoint of the two corners that bound this wedge: `a`'s counter-clockwise-side corner
+ * and `b`'s clockwise-side corner.
  */
 function capCrossing(a: WallCap, b: WallCap): Point {
   const crossing = lineIntersection(
-    a.plus,
-    subtract(a.minus, a.plus),
-    b.plus,
-    subtract(b.minus, b.plus),
+    a.ccwCorner,
+    subtract(a.cwCorner, a.ccwCorner),
+    b.ccwCorner,
+    subtract(b.cwCorner, b.ccwCorner),
   )
-  return crossing ?? midpoint(a.plus, b.minus)
+  return crossing ?? midpoint(a.ccwCorner, b.cwCorner)
 }
 
 /** The midpoint of `p` and `q`. */
