@@ -189,7 +189,7 @@ function negate(vector: Point): Point {
 }
 
 /** Maps each graph vertex to the indices of the edges incident to it. */
-function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
+export function vertexIncidence(graph: PlanarGraph): Map<number, number[]> {
   const incidence = new Map<number, number[]>()
   for (const [index, edge] of graph.edges.entries()) {
     pushIncident(incidence, edge.a, index)
