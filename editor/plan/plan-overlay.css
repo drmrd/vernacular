@@ -93,16 +93,28 @@
 }
 
 /*
- * The north compass in the upper-right of the plan stage: a brass orientation mark
- * (the draughtsman's accent reserved for canvas annotations). Its color flows to the
- * SVG fills, strokes, and the "N" label through currentColor on this wrapper.
+ * The brass annotation cluster in the lower-right of the plan stage: the north
+ * compass stacked over the scale bar, a title-block grouping kept clear of the
+ * upper-right reference control and the transient lower-left snap status.
  */
-.plan-overlay__compass {
+.plan-overlay__annotations {
   position: absolute;
   right: 12px;
-  top: 10px;
-  color: var(--color-accent);
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
   pointer-events: none;
+}
+
+/*
+ * The north compass: a brass orientation mark (the draughtsman's accent reserved for
+ * canvas annotations). Its color flows to the SVG fills, strokes, and the "N" label
+ * through currentColor on this wrapper.
+ */
+.plan-overlay__compass {
+  color: var(--color-accent);
 }
 
 .plan-overlay__compass-label {
@@ -113,20 +125,16 @@
 }
 
 /*
- * The scale bar in the lower-right of the plan stage: a brass tick bar (a baseline
- * with end ticks turning up) over its labeled distance. Brass is the draughtsman's
- * accent reserved for canvas annotations. The width is set inline from the rounded
- * distance; the label uses tabular figures so it stays steady as the zoom changes.
+ * The scale bar: a brass tick bar (a baseline with end ticks turning up) over its
+ * labeled distance. Brass is the draughtsman's accent reserved for canvas
+ * annotations. The width is set inline from the rounded distance; the label uses
+ * tabular figures so it stays steady as the zoom changes.
  */
 .plan-overlay__scale-bar {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  pointer-events: none;
 }
 
 .plan-overlay__scale-bar-track {

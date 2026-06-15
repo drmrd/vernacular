@@ -248,8 +248,10 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       {readout ? (
         <ReadoutPill screen={worldToScreen(readout.anchor, viewport)} text={readout.text} />
       ) : null}
-      <Compass />
-      <ScaleBar viewport={viewport} preferences={preferences} />
+      <div className="plan-overlay__annotations">
+        <Compass />
+        <ScaleBar viewport={viewport} preferences={preferences} />
+      </div>
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
         {announcement}
