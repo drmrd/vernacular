@@ -1,6 +1,8 @@
 import { MIN_COLOR_TEMPERATURE_K, MAX_COLOR_TEMPERATURE_K } from '../../core'
 import type { CameraPreset } from '../../core'
 
+import './scene-nav-toolbar.css'
+
 export type NavMode = 'orbit' | 'walk'
 
 export type PresetChoice = CameraPreset | 'doorway'
@@ -34,11 +36,21 @@ function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps)
   return (
     <div role="group" aria-label="Camera presets" className="scene-nav-toolbar__presets">
       {PRESET_VIEW_BUTTONS.map(({ label, preset }) => (
-        <button key={preset} type="button" onClick={() => onPreset?.(preset)}>
+        <button
+          key={preset}
+          type="button"
+          className="scene-nav-toolbar__btn"
+          onClick={() => onPreset?.(preset)}
+        >
           {label}
         </button>
       ))}
-      <button type="button" disabled={!canDoorway} onClick={() => onPreset?.('doorway')}>
+      <button
+        type="button"
+        className="scene-nav-toolbar__btn"
+        disabled={!canDoorway}
+        onClick={() => onPreset?.('doorway')}
+      >
         Doorway
       </button>
     </div>
@@ -63,13 +75,25 @@ export function SceneNavToolbar({
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <button type="button" aria-pressed={mode === 'orbit'} onClick={() => onModeChange('orbit')}>
-        Orbit
-      </button>
-      <button type="button" aria-pressed={mode === 'walk'} onClick={() => onModeChange('walk')}>
-        Walk
-      </button>
-      <button type="button" onClick={onReset}>
+      <div role="group" aria-label="Camera mode" className="scene-nav-toolbar__modes">
+        <button
+          type="button"
+          className="scene-nav-toolbar__mode"
+          aria-pressed={mode === 'orbit'}
+          onClick={() => onModeChange('orbit')}
+        >
+          Orbit
+        </button>
+        <button
+          type="button"
+          className="scene-nav-toolbar__mode"
+          aria-pressed={mode === 'walk'}
+          onClick={() => onModeChange('walk')}
+        >
+          Walk
+        </button>
+      </div>
+      <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
         Reset view
       </button>
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />

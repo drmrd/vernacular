@@ -1,0 +1,114 @@
+/*
+ * Navigation chrome for the three-dimensional scene view. The toolbar matches the
+ * 2D editor shell: a band seated on the panel surface with a hairline border, an
+ * orbit/walk segmented toggle whose active segment carries the brass indicator,
+ * reset and camera-preset buttons styled like the shell's icon buttons, and a
+ * mostly-native color-temperature slider. Every color is a semantic design-system
+ * token, read off the cascade from the editor shell this renders inside.
+ */
+
+.scene-nav-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-surface-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* The orbit and walk modes read as one segmented control: two abutting pills inside
+   a single bordered frame, like the unit toggle in the 2D shell. */
+.scene-nav-toolbar__modes {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.scene-nav-toolbar__mode {
+  padding: 0.15rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
+}
+
+.scene-nav-toolbar__mode:hover {
+  color: var(--color-text);
+}
+
+/* The active mode is marked by the brass indicator, matching the pressed state of
+   the 2D shell's icon buttons. The transparent baseline border keeps the segment
+   the same size whether or not it carries the indicator. */
+.scene-nav-toolbar__mode[aria-pressed='true'] {
+  background: var(--color-surface-active);
+  border-color: var(--color-indicator);
+  color: var(--color-text);
+}
+
+.scene-nav-toolbar__mode:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+/* The camera presets sit as one wrapping cluster of buttons. */
+.scene-nav-toolbar__presets {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Reset and the camera presets share the shell's labeled icon-button styling:
+   transparent until hovered, then seated on the active surface. */
+.scene-nav-toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-family-ui);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
+}
+
+.scene-nav-toolbar__btn:hover:not(:disabled) {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.scene-nav-toolbar__btn:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.scene-nav-toolbar__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The color-temperature control keeps the native range input; only its label
+   typography and spacing are set so it reads as part of the toolbar. */
+.scene-nav-toolbar__temperature {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
