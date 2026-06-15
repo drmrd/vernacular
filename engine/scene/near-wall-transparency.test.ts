@@ -73,6 +73,40 @@ const wallMaterials = (root: THREE.Group, entityId: string): THREE.Material[] =>
   return (mesh as THREE.Mesh).material as THREE.Material[]
 }
 
+const door = (): SceneGraph['openings'][number] => ({
+  id: 'opening:door',
+  kind: 'opening',
+  floorId: 'g',
+  type: 'single-swing-door',
+  center: { x: 2000, y: 0 },
+  along: { x: 1, y: 0 },
+  normal: { x: 0, y: 1 },
+  width: 900,
+  height: 2032,
+  sillHeight: 0,
+  hostThickness: WALL_THICKNESS_MM,
+  orientation: { hinge: 'start', facing: 'positive' },
+  hostWallId: 'bottom',
+})
+
+/** The single-material mesh under the opening group whose material has `name`. */
+const openingMesh = (root: THREE.Group, entityId: string, name: string): THREE.Mesh => {
+  const group = findByEntityId(root, entityId)
+  expect(group).not.toBeNull()
+  let found: THREE.Mesh | undefined
+  ;(group as THREE.Object3D).traverse((object) => {
+    if (
+      object instanceof THREE.Mesh &&
+      !Array.isArray(object.material) &&
+      object.material.name === name
+    ) {
+      found = object
+    }
+  })
+  expect(found).toBeDefined()
+  return found as THREE.Mesh
+}
+
 describe('cameraFacesWallOutside', () => {
   it('is true on the outward-normal side of the wall point and false on the other', () => {
     const point = { x: 0, z: 0 }
@@ -125,5 +159,22 @@ describe('updateNearWallTransparency', () => {
     for (const material of wallMaterials(root, 'wall:top')) {
       expect(material.opacity).toBe(OPAQUE)
     }
+  })
+
+  it('fades a hosted opening with its wall and keeps the opening mesh material single', () => {
+    const graph = rectangularRoomGraph()
+    graph.openings = [door()]
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms, graph.openings),
+    )
+
+    // Camera outside the bottom wall (world z=0, outward normal world (0,0,-1)).
+    updateNearWallTransparency(targets, { x: 2000, z: -3000 })
+
+    const leaf = openingMesh(root, 'opening:door', 'leaf')
+    expect(Array.isArray(leaf.material)).toBe(false)
+    expect((leaf.material as THREE.Material).opacity).toBe(FADED_OPACITY)
   })
 })
