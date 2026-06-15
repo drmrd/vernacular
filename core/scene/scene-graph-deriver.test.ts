@@ -22,6 +22,19 @@ function projectWith(floors: Floor[]): Project {
   return project
 }
 
+/** A closed rectangular wall loop that derives a single room. */
+function enclosedRoomFloor(): Floor {
+  return createFloor('Ground', {
+    id: 'g',
+    walls: [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'w-south' }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }, { id: 'w-east' }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }, { id: 'w-north' }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }, { id: 'w-west' }),
+    ],
+  })
+}
+
 describe('createSceneGraphDeriver', () => {
   it('reuses node references for unchanged floors', () => {
     const ground = createFloor('Ground', { id: 'g' })
@@ -98,20 +111,8 @@ describe('createSceneGraphDeriver walls', () => {
 })
 
 describe('createSceneGraphDeriver rooms', () => {
-  function rectangleFloor(): Floor {
-    return createFloor('Ground', {
-      id: 'g',
-      walls: [
-        createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'w-south' }),
-        createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }, { id: 'w-east' }),
-        createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }, { id: 'w-north' }),
-        createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }, { id: 'w-west' }),
-      ],
-    })
-  }
-
   it('reuses room node references for an unchanged floor', () => {
-    const floor = rectangleFloor()
+    const floor = enclosedRoomFloor()
     const derive = createSceneGraphDeriver()
 
     const first = derive(projectWith([floor]))
@@ -126,7 +127,7 @@ describe('createSceneGraphDeriver rooms', () => {
   })
 
   it('rebuilds room nodes when the floor object reference changes', () => {
-    const floor = rectangleFloor()
+    const floor = enclosedRoomFloor()
     const derive = createSceneGraphDeriver()
 
     const first = derive(projectWith([floor]))
@@ -144,18 +145,6 @@ describe('createSceneGraphDeriver rooms', () => {
 })
 
 describe('createSceneGraphDeriver rooms with overrides', () => {
-  function rectangleFloor(): Floor {
-    return createFloor('Ground', {
-      id: 'g',
-      walls: [
-        createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'w-south' }),
-        createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }, { id: 'w-east' }),
-        createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }, { id: 'w-north' }),
-        createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }, { id: 'w-west' }),
-      ],
-    })
-  }
-
   function projectWithOverrides(floors: Floor[], roomOverrides: Project['roomOverrides']): Project {
     return { ...projectWith(floors), roomOverrides }
   }
@@ -171,7 +160,7 @@ describe('createSceneGraphDeriver rooms with overrides', () => {
   }
 
   it('reuses room nodes when the floor and undefined overrides are unchanged', () => {
-    const floor = rectangleFloor()
+    const floor = enclosedRoomFloor()
     const project = projectWith([floor])
     const derive = createSceneGraphDeriver()
 
@@ -182,7 +171,7 @@ describe('createSceneGraphDeriver rooms with overrides', () => {
   })
 
   it('rebuilds room nodes carrying the new name when roomOverrides change', () => {
-    const floor = rectangleFloor()
+    const floor = enclosedRoomFloor()
     const derive = createSceneGraphDeriver()
 
     const first = derive(projectWith([floor]))
@@ -194,7 +183,7 @@ describe('createSceneGraphDeriver rooms with overrides', () => {
   })
 
   it('keeps wall node references when only roomOverrides change', () => {
-    const floor = rectangleFloor()
+    const floor = enclosedRoomFloor()
     const derive = createSceneGraphDeriver()
 
     const first = derive(projectWith([floor]))
@@ -303,5 +292,71 @@ describe('createSceneGraphDeriver openings', () => {
 
     expect(openingNode(second, 'o1')).toBe(openingNode(first, 'o1'))
     expect(openingNode(second, 'o2')).not.toBe(openingNode(first, 'o2'))
+  })
+})
+
+describe('createSceneGraphDeriver room reuse keyed on the floor walls', () => {
+  const TALLER_CEILING = 3200
+
+  function onlyRoom(graph: ReturnType<ReturnType<typeof createSceneGraphDeriver>>) {
+    const room = graph.rooms[0]
+    if (room === undefined) throw new Error('expected a derived room')
+    return room
+  }
+
+  it('reuses room nodes when an edit keeps the floor walls', () => {
+    const floor = enclosedRoomFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    // A new Floor object that keeps the same walls array, as an opening or rename
+    // edit does. Rooms derive from the wall topology, so they must survive it.
+    const edited: Floor = { ...floor, name: 'Parlor floor' }
+    expect(edited.walls).toBe(floor.walls)
+    const second = derive(projectWith([edited]))
+
+    expect(onlyRoom(second)).toBe(onlyRoom(first))
+  })
+
+  it('rebuilds room nodes when a wall changes', () => {
+    const floor = enclosedRoomFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    const movedSouth = { ...floor.walls[0]!, end: { x: 5000, y: 0 } }
+    const moved: Floor = { ...floor, walls: [movedSouth, ...floor.walls.slice(1)] }
+    const second = derive(projectWith([moved]))
+
+    expect(onlyRoom(second)).not.toBe(onlyRoom(first))
+  })
+
+  it('rebuilds room nodes when the floor default ceiling height changes', () => {
+    const floor = enclosedRoomFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    // The ceiling-height command keeps the same walls array, so the rooms must
+    // still rebuild to carry the new fallback.
+    const raised: Floor = { ...floor, defaultCeilingHeight: TALLER_CEILING }
+    expect(raised.walls).toBe(floor.walls)
+    const second = derive(projectWith([raised]))
+
+    expect(onlyRoom(second)).not.toBe(onlyRoom(first))
+    expect(onlyRoom(second).ceilingHeight).toBe(TALLER_CEILING)
+  })
+
+  it('rebuilds room nodes when room overrides change', () => {
+    const floor = enclosedRoomFloor()
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floor]))
+    const roomKey = onlyRoom(first).id.slice(ROOM_ID_PREFIX.length)
+    const named: Project = {
+      ...projectWith([floor]),
+      roomOverrides: { [roomKey]: { name: 'Parlor' } },
+    }
+    const second = derive(named)
+
+    expect(onlyRoom(second)).not.toBe(onlyRoom(first))
   })
 })
