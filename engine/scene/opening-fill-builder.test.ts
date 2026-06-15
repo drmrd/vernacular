@@ -33,8 +33,30 @@ function singleSwingDoor(): OpeningSceneNode {
   }
 }
 
+function doubleHungWindow(): OpeningSceneNode {
+  return {
+    id: 'opening:test-window',
+    kind: 'opening',
+    floorId: 'floor-1',
+    type: 'double-hung-window',
+    center: { x: 1000, y: 0 },
+    along: { x: 1, y: 0 },
+    normal: { x: 0, y: 1 },
+    width: 900,
+    height: 1200,
+    sillHeight: 900,
+    hostThickness: 120,
+    orientation: { hinge: 'start', facing: 'positive' },
+    hostWallId: 'south',
+  }
+}
+
 function meshesOf(group: THREE.Group): THREE.Mesh[] {
   return group.children.filter((child): child is THREE.Mesh => (child as THREE.Mesh).isMesh)
+}
+
+function materialNameOf(mesh: THREE.Mesh): string {
+  return (mesh.material as THREE.Material).name
 }
 
 describe('buildOpeningFill', () => {
@@ -58,5 +80,20 @@ describe('buildOpeningFill', () => {
     expect(box.max.y).toBeCloseTo(LEAF_MAX_Y, PRECISION)
     expect(box.min.z).toBeCloseTo(LEAF_MIN_Z, PRECISION)
     expect(box.max.z).toBeCloseTo(LEAF_MAX_Z, PRECISION)
+  })
+
+  it('builds four leaf sash bars and one transparent glass pane for a window', () => {
+    const group = buildOpeningFill(doubleHungWindow(), new NeutralMaterialProvider())
+
+    const meshes = meshesOf(group)
+    const materialNames = meshes.map(materialNameOf)
+
+    expect(materialNames.filter((name) => name === 'leaf')).toHaveLength(4)
+    expect(materialNames.filter((name) => name === 'glass')).toHaveLength(1)
+
+    const glass = meshes.find((mesh) => materialNameOf(mesh) === 'glass')
+    expect(glass).toBeDefined()
+    if (glass === undefined) return
+    expect((glass.material as THREE.Material).transparent).toBe(true)
   })
 })
