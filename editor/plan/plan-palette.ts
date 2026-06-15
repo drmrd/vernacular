@@ -19,6 +19,10 @@ export interface PlanPalette {
   selectionFill: string
   /** The translucent fill of the drag-select marquee; its outline uses `selection`. */
   marqueeFill: string
+  /** The translucent move-drag ghost overlay; a faint warm brass. */
+  ghost: string
+  /** Room name/area and dimension length text; a warm umber. */
+  label: string
 }
 
 // Warm light-theme fallbacks, used when a token reads empty (tests, server render).
@@ -35,6 +39,8 @@ export const DEFAULT_PLAN_PALETTE: PlanPalette = {
   preview: '#8b692a',
   selectionFill: '#e8dac4',
   marqueeFill: 'rgba(176, 134, 70, 0.12)',
+  ghost: 'rgba(139, 105, 42, 0.5)',
+  label: '#4a3c26',
 }
 
 const CANVAS_TOKENS: Record<keyof PlanPalette, string> = {
@@ -49,6 +55,8 @@ const CANVAS_TOKENS: Record<keyof PlanPalette, string> = {
   preview: '--color-canvas-preview',
   selectionFill: '--color-canvas-selection-fill',
   marqueeFill: '--color-canvas-marquee-fill',
+  ghost: '--color-canvas-ghost',
+  label: '--color-canvas-label',
 }
 
 /**
@@ -73,5 +81,7 @@ export function resolvePlanPalette(readVar: (name: string) => string): PlanPalet
     preview: resolve('preview'),
     selectionFill: resolve('selectionFill'),
     marqueeFill: resolve('marqueeFill'),
+    ghost: resolve('ghost'),
+    label: resolve('label'),
   }
 }

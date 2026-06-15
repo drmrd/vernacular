@@ -25,7 +25,6 @@ const ARROWHEAD_HALF_ANGLE_DIVISOR = 8
 // The half-angle of the arrowhead vee, in radians (Math.PI / 8 = 22.5 degrees).
 const ARROWHEAD_HALF_ANGLE_RADIANS = Math.PI / ARROWHEAD_HALF_ANGLE_DIVISOR
 // The measured-length text styling mirrors the room label.
-const TEXT_COLOR = '#37414d'
 const TEXT_FONT = '12px sans-serif'
 const TEXT_ALIGN = 'center' as const
 const TEXT_BASELINE = 'middle' as const
@@ -38,6 +37,8 @@ interface DimensionPainter {
   ink: string
   /** The highlight stroke for a selected dimension, from the palette selection color. */
   selection: string
+  /** The measured-length text color, from the palette label color. */
+  label: string
 }
 
 function strokeScreenSegment(painter: DimensionPainter, from: ScreenPoint, to: ScreenPoint): void {
@@ -92,7 +93,7 @@ interface DimensionLabel {
 
 function fillLengthText(painter: DimensionPainter, label: DimensionLabel): void {
   painter.ctx.font = TEXT_FONT
-  painter.ctx.fillStyle = TEXT_COLOR
+  painter.ctx.fillStyle = painter.label
   painter.ctx.textAlign = TEXT_ALIGN
   painter.ctx.textBaseline = TEXT_BASELINE
   painter.ctx.fillText(
@@ -118,6 +119,7 @@ export function drawDimension(
     viewport: render.viewport,
     ink: render.palette.wall,
     selection: render.palette.selection,
+    label: render.palette.label,
   }
   const node = dimension.node
   const geometry = dimensionGeometry(node.start, node.end, node.offset)

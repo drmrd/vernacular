@@ -1,9 +1,8 @@
 import type { Point } from '../../core'
 import type { PlanDrawingContext, PreviewSegment } from './draw-plan'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
-// Translucent gray-blue so the ghost reads as a faint overlay distinct from walls and the preview.
-const GHOST_STROKE_COLOR = 'rgba(91, 155, 213, 0.5)'
 const GHOST_LINE_WIDTH = 2
 const GHOST_LINE_CAP = 'round' as const
 
@@ -11,21 +10,26 @@ const GHOST_LINE_CAP = 'round' as const
 export function drawGhost(
   ctx: PlanDrawingContext,
   ghost: readonly PreviewSegment[] | undefined,
-  viewport: Viewport,
+  render: { viewport: Viewport; palette: PlanPalette },
 ): void {
+  const color = render.palette.ghost
   for (const segment of ghost ?? []) {
-    const start = worldToScreen(segment.start, viewport)
-    const end = worldToScreen(segment.end, viewport)
-    strokeGhostSegment(ctx, start, end)
+    const start = worldToScreen(segment.start, render.viewport)
+    const end = worldToScreen(segment.end, render.viewport)
+    strokeGhostSegment(ctx, { start, end }, color)
   }
 }
 
-function strokeGhostSegment(ctx: PlanDrawingContext, start: Point, end: Point): void {
+function strokeGhostSegment(
+  ctx: PlanDrawingContext,
+  segment: { start: Point; end: Point },
+  color: string,
+): void {
   ctx.lineCap = GHOST_LINE_CAP
   ctx.lineWidth = GHOST_LINE_WIDTH
-  ctx.strokeStyle = GHOST_STROKE_COLOR
+  ctx.strokeStyle = color
   ctx.beginPath()
-  ctx.moveTo(start.x, start.y)
-  ctx.lineTo(end.x, end.y)
+  ctx.moveTo(segment.start.x, segment.start.y)
+  ctx.lineTo(segment.end.x, segment.end.y)
   ctx.stroke()
 }

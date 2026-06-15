@@ -96,7 +96,6 @@ const SNAP_MARKER_RADIUS_PX = 5
 const SNAP_MARKER_LINE_WIDTH = 2
 const ENDPOINT_HANDLE_RADIUS_PX = 5
 const MARQUEE_LINE_WIDTH = 1
-const LABEL_COLOR = '#37414d'
 const LABEL_FONT = '12px sans-serif'
 const LABEL_TEXT_ALIGN = 'center' as const
 const LABEL_TEXT_BASELINE = 'middle' as const
@@ -169,7 +168,7 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   // Calibration sits above the plan but below the rulers.
   drawCalibration(ctx, options.calibration, options.viewport)
   // The move-drag ghost sits above the plan but below the rulers, like the preview.
-  drawGhost(ctx, options.ghost, options.viewport)
+  drawGhost(ctx, options.ghost, { viewport: options.viewport, palette: paletteOf(options) })
   // The hover cue paints on top of every entity layer but beneath the ruler chrome.
   drawHoverHighlight(ctx, options)
   if (options.rulers) drawRulers(ctx, options)
@@ -252,8 +251,9 @@ function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
 
 /** Paint each stair's footprint over the floor fills but beneath the wall strokes. */
 function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const palette = paletteOf(options)
   for (const stair of options.stairs ?? []) {
-    drawStair(ctx, stair, options.viewport)
+    drawStair(ctx, stair, { viewport: options.viewport, palette })
   }
 }
 
@@ -284,10 +284,12 @@ function drawDimensions(ctx: PlanDrawingContext, options: DrawPlanOptions): void
 function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const roomLabels = options.roomLabels
   if (roomLabels === undefined) return
+  const palette = paletteOf(options)
   for (const room of options.rooms ?? []) {
     drawRoomLabel(ctx, room, {
       viewport: options.viewport,
       preferences: roomLabels.preferences,
+      label: palette.label,
     })
   }
 }
@@ -416,12 +418,12 @@ function drawEndpointHandle(
 export function drawRoomLabel(
   ctx: PlanDrawingContext,
   room: RoomSceneNode,
-  options: { viewport: Viewport; preferences: UnitPreferences },
+  options: { viewport: Viewport; preferences: UnitPreferences; label: string },
 ): void {
   const content = roomLabelContent(room, { preferences: options.preferences })
   const anchor = worldToScreen(content.anchor, options.viewport)
   ctx.font = LABEL_FONT
-  ctx.fillStyle = LABEL_COLOR
+  ctx.fillStyle = options.label
   ctx.textAlign = LABEL_TEXT_ALIGN
   ctx.textBaseline = LABEL_TEXT_BASELINE
   if (content.name === undefined) {

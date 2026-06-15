@@ -62,6 +62,8 @@
   --color-canvas-preview: #8b692a;
   --color-canvas-selection-fill: #e8dac4;
   --color-canvas-marquee-fill: rgba(176, 134, 70, 0.12);
+  --color-canvas-ghost: rgba(139, 105, 42, 0.5);
+  --color-canvas-label: #4a3c26;
 
   /* Spacing scale (rem). */
   --space-1: 0.25rem;

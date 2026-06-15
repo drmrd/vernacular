@@ -1,9 +1,8 @@
 import { rotatePoint, type Point, type StairSceneNode } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
-// The dark stroke for the stair footprint, treads, and direction arrow, matching the wall ink.
-const STAIR_INK_COLOR = '#222222'
 const STAIR_INK_WIDTH = 1
 // The number of evenly spaced tread lines drawn across a straight run.
 const TREAD_COUNT = 8
@@ -12,10 +11,12 @@ const ARROW_HEAD_HALF_WIDTH_FRACTION = 0.2
 // The arrowhead barbs reach back this fraction of the run length from the arrow tip.
 const ARROW_HEAD_LENGTH_FRACTION = 0.12
 
-/** Drawing context and viewport bundled for the helper routines; keeps helper signatures within the three-parameter limit. */
+/** Drawing context, viewport, and the resolved ink bundled for the helper routines; keeps helper signatures within the three-parameter limit. */
 interface StairPainter {
   ctx: PlanDrawingContext
   viewport: Viewport
+  /** The drawing ink for the footprint, treads, and direction arrow, from the palette wall color. */
+  ink: string
 }
 
 /** Offset `stair.position` by `acrossMm` along +x and `alongMm` along +y, then rotate the result about the stair position by `stair.rotation`. */
@@ -49,7 +50,7 @@ function strokeSegment(painter: StairPainter, from: Point, to: Point): void {
 }
 
 function setInk(painter: StairPainter): void {
-  painter.ctx.strokeStyle = STAIR_INK_COLOR
+  painter.ctx.strokeStyle = painter.ink
   painter.ctx.lineWidth = STAIR_INK_WIDTH
 }
 
@@ -102,9 +103,9 @@ function drawDirectionArrow(painter: StairPainter, stair: StairSceneNode): void 
 export function drawStair(
   ctx: PlanDrawingContext,
   stair: StairSceneNode,
-  viewport: Viewport,
+  render: { viewport: Viewport; palette: PlanPalette },
 ): void {
-  const painter: StairPainter = { ctx, viewport }
+  const painter: StairPainter = { ctx, viewport: render.viewport, ink: render.palette.wall }
   drawFootprint(painter, footprintCorners(stair))
   if (stair.runType === 'straight') {
     drawTreads(painter, stair)
