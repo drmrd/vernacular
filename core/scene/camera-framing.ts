@@ -5,6 +5,7 @@ export interface CameraPose {
   target: Vector3
   near: number
   far: number
+  up?: Vector3
 }
 
 const NEAR_FRACTION = 0.01
@@ -69,9 +70,22 @@ export function frameSceneCamera(bounds: Bounds3 | null, viewport?: CameraViewpo
       y: target.y + offset,
       z: target.z + offset,
     },
-    near: diagonal * NEAR_FRACTION,
-    far: diagonal * FAR_MULTIPLE,
+    ...cameraDepthRange(diagonal),
   }
+}
+
+/** Distance to place the camera so a sphere spanning `diagonal` fits the frame.
+ *  Without a viewport this keeps the loose `diagonal` placement; with one it fits
+ *  the bounding sphere (radius `diagonal / 2`) to the frustum. */
+export function cameraFitDistance(diagonal: number, viewport?: CameraViewport): number {
+  if (viewport === undefined) return diagonal
+  return fitDistance(diagonal / 2, viewport)
+}
+
+/** Near and far planes derived from a bounds diagonal: a small fraction in front
+ *  and a few multiples behind, so thin walls in a large model do not z-fight. */
+export function cameraDepthRange(diagonal: number): { near: number; far: number } {
+  return { near: diagonal * NEAR_FRACTION, far: diagonal * FAR_MULTIPLE }
 }
 
 /** The per-axis distance from the target along the (1, 1, 1) view direction.
@@ -80,7 +94,5 @@ export function frameSceneCamera(bounds: Bounds3 | null, viewport?: CameraViewpo
  *  direction spreads `distance` equally across the three axes. */
 function cameraOffset(diagonal: number, viewport?: CameraViewport): number {
   if (viewport === undefined) return diagonal
-  const radius = diagonal / 2
-  const distance = fitDistance(radius, viewport)
-  return distance / Math.hypot(1, 1, 1)
+  return cameraFitDistance(diagonal, viewport) / Math.hypot(1, 1, 1)
 }
