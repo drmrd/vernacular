@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
 import { recordingContext } from './draw-plan-test-fixtures'
+import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { Viewport } from './viewport'
 import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode } from '../../core'
 
@@ -9,6 +10,7 @@ import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode } from '../../core'
 const VIEWPORT: Viewport = { scale: 0.05, offset: { x: 31, y: 47 } }
 
 const PREFERENCES = DEFAULT_METRIC_PREFERENCES
+const RENDER = { viewport: VIEWPORT, palette: DEFAULT_PLAN_PALETTE, preferences: PREFERENCES }
 
 // A horizontal one-meter dimension offset 200 mm perpendicular to its measured
 // segment, so the dimension line, two extension lines, and two arrowheads are
@@ -52,7 +54,7 @@ describe('drawDimension', () => {
   it('fills the formatted measured length as label text', () => {
     const recorder = recordingContext()
 
-    drawDimension(recorder.ctx, drawable(), VIEWPORT, PREFERENCES)
+    drawDimension(recorder.ctx, drawable(), RENDER)
 
     // A metre-scale dimension reads in metres with two decimals under the
     // adaptive metric rule: 1000 mm renders as "1.00 m", not "1000 mm".
@@ -64,7 +66,7 @@ describe('drawDimension', () => {
   it('strokes the dimension line, extension lines, and arrowheads', () => {
     const recorder = recordingContext()
 
-    drawDimension(recorder.ctx, drawable(), VIEWPORT, PREFERENCES)
+    drawDimension(recorder.ctx, drawable(), RENDER)
 
     // The dimension line, the two extension lines, and the two arrowhead vees
     // each produce stroked path output, so several path ops accumulate.
@@ -77,8 +79,8 @@ describe('drawDimension', () => {
     const plainRecorder = recordingContext()
     const selectedRecorder = recordingContext()
 
-    drawDimension(plainRecorder.ctx, drawable({ selected: false }), VIEWPORT, PREFERENCES)
-    drawDimension(selectedRecorder.ctx, drawable({ selected: true }), VIEWPORT, PREFERENCES)
+    drawDimension(plainRecorder.ctx, drawable({ selected: false }), RENDER)
+    drawDimension(selectedRecorder.ctx, drawable({ selected: true }), RENDER)
 
     expect(countOp(selectedRecorder.ops, 'stroke')).toBeGreaterThan(
       countOp(plainRecorder.ops, 'stroke'),
