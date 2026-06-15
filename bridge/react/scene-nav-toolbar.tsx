@@ -1,11 +1,18 @@
 import { MIN_COLOR_TEMPERATURE_K, MAX_COLOR_TEMPERATURE_K } from '../../core'
 import type { CameraPreset } from '../../core'
 
+import './scene-nav-toolbar.css'
+
 export type NavMode = 'orbit' | 'walk'
 
 export type PresetChoice = CameraPreset | 'doorway'
 
 const COLOR_TEMPERATURE_STEP_K = 100
+
+const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
+  { label: 'Orbit', mode: 'orbit' },
+  { label: 'Walk', mode: 'walk' },
+]
 
 const PRESET_VIEW_BUTTONS: ReadonlyArray<{ label: string; preset: CameraPreset }> = [
   { label: 'Top down', preset: 'top' },
@@ -25,6 +32,30 @@ interface SceneNavToolbarProps {
   canDoorway?: boolean
 }
 
+interface ModeToggleProps {
+  mode: NavMode
+  onModeChange: (mode: NavMode) => void
+}
+
+/** The orbit/walk camera modes as a segmented toggle; the active mode is pressed. */
+function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
+  return (
+    <div role="group" aria-label="Camera mode" className="scene-nav-toolbar__modes">
+      {NAV_MODE_BUTTONS.map(({ label, mode: buttonMode }) => (
+        <button
+          key={buttonMode}
+          type="button"
+          className="scene-nav-toolbar__mode"
+          aria-pressed={mode === buttonMode}
+          onClick={() => onModeChange(buttonMode)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface CameraPresetButtonsProps {
   onPreset: ((preset: PresetChoice) => void) | undefined
   canDoorway: boolean | undefined
@@ -34,11 +65,21 @@ function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps)
   return (
     <div role="group" aria-label="Camera presets" className="scene-nav-toolbar__presets">
       {PRESET_VIEW_BUTTONS.map(({ label, preset }) => (
-        <button key={preset} type="button" onClick={() => onPreset?.(preset)}>
+        <button
+          key={preset}
+          type="button"
+          className="scene-nav-toolbar__btn"
+          onClick={() => onPreset?.(preset)}
+        >
           {label}
         </button>
       ))}
-      <button type="button" disabled={!canDoorway} onClick={() => onPreset?.('doorway')}>
+      <button
+        type="button"
+        className="scene-nav-toolbar__btn"
+        disabled={!canDoorway}
+        onClick={() => onPreset?.('doorway')}
+      >
         Doorway
       </button>
     </div>
@@ -63,13 +104,8 @@ export function SceneNavToolbar({
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <button type="button" aria-pressed={mode === 'orbit'} onClick={() => onModeChange('orbit')}>
-        Orbit
-      </button>
-      <button type="button" aria-pressed={mode === 'walk'} onClick={() => onModeChange('walk')}>
-        Walk
-      </button>
-      <button type="button" onClick={onReset}>
+      <ModeToggle mode={mode} onModeChange={onModeChange} />
+      <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
         Reset view
       </button>
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
