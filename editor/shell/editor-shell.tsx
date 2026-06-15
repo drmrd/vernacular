@@ -36,7 +36,7 @@ import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame, PanelSlot } from '../design-system'
+import { AppFrame } from '../design-system'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
 import { ProjectIdentity } from './project-identity'
@@ -44,7 +44,6 @@ import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { ThemeToggle } from './theme-toggle'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
-import { PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -247,15 +246,10 @@ function EntitySurfaceBridge() {
   return null
 }
 
-// The inspector content: the selection-driven inspector (which now hosts contextual
-// paint per selection) and the empty surface-paint seam the paint track mounts into.
+// The inspector content: the selection-driven inspector, which hosts contextual paint
+// per selection. There is no global surface-paint panel.
 function InspectorPanels() {
-  return (
-    <>
-      <Inspector />
-      <PanelSlot slotId={PAINT_INSPECTOR_SLOT} label="Surface paint" emptyTitle="Surface paint" />
-    </>
-  )
+  return <Inspector />
 }
 
 export interface EditorShellProps extends ProjectControlsProps {
