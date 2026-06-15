@@ -132,6 +132,19 @@ describe('EditorShell', () => {
     expect(screen.getByRole('button', { name: /dimensions/i })).toBeInTheDocument()
   })
 
+  it('shows visible text labels on the Grid and Dimensions toggles', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    expect(
+      within(screen.getByRole('button', { name: /grid/i })).getByText('Grid'),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('button', { name: /dimensions/i })).getByText('Dimensions'),
+    ).toBeInTheDocument()
+  })
+
   it('toggles the Grid button aria-pressed on click', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
