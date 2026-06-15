@@ -58,4 +58,17 @@ describe('StatusBar', () => {
     )
     expect(screen.getByText('unit toggle')).toBeInTheDocument()
   })
+
+  it('renders the coords slot content', () => {
+    render(
+      <StatusBar
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+        coords={<span>3 ft, 4 ft</span>}
+      />,
+    )
+    expect(screen.getByText('3 ft, 4 ft')).toBeInTheDocument()
+  })
 })
