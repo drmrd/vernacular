@@ -16,6 +16,10 @@ export const RULER_MIN_LABEL_GAP_PX = 60
 const RULER_FONT = '10px sans-serif'
 const RULER_LABEL_INSET_PX = 2
 
+// Minor ticks (every grid line) hang short from the inner edge; major ticks (the
+// labeled spacing) span the full band, so the scale reads at a glance.
+const RULER_MINOR_TICK_PX = 6
+
 export interface RulerTick {
   worldValue: number
   screen: number
@@ -74,6 +78,21 @@ function drawRulerTicks(
   preferences: UnitPreferences,
 ): void {
   const isHorizontal = axis.orientation === 'horizontal'
+  const minorStart = RULER_THICKNESS_PX - RULER_MINOR_TICK_PX
+  // Minor ticks mark every grid line as short marks hanging from the inner (grid) edge.
+  const projection = axisProjection(viewport, axis.orientation)
+  for (const sample of axisSamples(projection, axis.lengthPx, gridSpacingMm(viewport.scale))) {
+    ctx.beginPath()
+    if (isHorizontal) {
+      ctx.moveTo(sample.screen, minorStart)
+      ctx.lineTo(sample.screen, RULER_THICKNESS_PX)
+    } else {
+      ctx.moveTo(minorStart, sample.screen)
+      ctx.lineTo(RULER_THICKNESS_PX, sample.screen)
+    }
+    ctx.stroke()
+  }
+  // Major ticks at the labeled spacing span the full band and carry the unit label.
   for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation, preferences)) {
     ctx.beginPath()
     if (isHorizontal) {
