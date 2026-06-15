@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { CornersOut, MagnifyingGlassMinus, MagnifyingGlassPlus } from '@phosphor-icons/react'
 import { sceneGraphForFloor } from '../../core'
 import { useActiveFloorId, useSceneGraph } from '../../bridge'
@@ -12,6 +12,23 @@ const ZOOM_STEP = 1.25
 // Button zooms have no cursor, so they pivot about the canvas center.
 const CENTER = { x: PLAN_WIDTH / 2, y: PLAN_HEIGHT / 2 }
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
+
+// One square icon button in the zoom group, sharing the header icon-button styling.
+function ZoomButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button type="button" className="editor-shell__icon-btn" aria-label={label} onClick={onClick}>
+      {children}
+    </button>
+  )
+}
 
 /**
  * The header zoom control: zoom out, a live percent readout (click to reset to 100%),
@@ -45,14 +62,9 @@ export function ZoomControl() {
 
   return (
     <div className="editor-shell__zoom" role="group" aria-label="Zoom">
-      <button
-        type="button"
-        className="editor-shell__icon-btn"
-        aria-label="Zoom out"
-        onClick={() => zoomBy(1 / ZOOM_STEP)}
-      >
+      <ZoomButton label="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)}>
         <MagnifyingGlassMinus size={16} aria-hidden="true" />
-      </button>
+      </ZoomButton>
       <button
         type="button"
         className="editor-shell__zoom-percent"
@@ -61,22 +73,12 @@ export function ZoomControl() {
       >
         {zoomPercent(viewport.scale)}%
       </button>
-      <button
-        type="button"
-        className="editor-shell__icon-btn"
-        aria-label="Zoom in"
-        onClick={() => zoomBy(ZOOM_STEP)}
-      >
+      <ZoomButton label="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
         <MagnifyingGlassPlus size={16} aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        className="editor-shell__icon-btn"
-        aria-label="Fit to content"
-        onClick={fitToContent}
-      >
+      </ZoomButton>
+      <ZoomButton label="Fit to content" onClick={fitToContent}>
         <CornersOut size={16} aria-hidden="true" />
-      </button>
+      </ZoomButton>
     </div>
   )
 }
