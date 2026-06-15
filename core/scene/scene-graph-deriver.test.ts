@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, createStair, createWall } from '../model/factories'
-import type { Floor, Project } from '../model/types'
+import {
+  createEmptyProject,
+  createFloor,
+  createOpening,
+  createStair,
+  createWall,
+} from '../model/factories'
+import type { Floor, Opening, Project, Wall } from '../model/types'
 import { ROOM_ID_PREFIX } from '../topology/rooms'
+import { OPENING_NODE_PREFIX } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
 
 function projectWith(floors: Floor[]): Project {
@@ -195,5 +202,106 @@ describe('createSceneGraphDeriver rooms with overrides', () => {
     const second = derive(named)
 
     expect(second.walls[0]).toBe(first.walls[0])
+  })
+})
+
+describe('createSceneGraphDeriver openings', () => {
+  const HOST_WALL_LENGTH = 4000
+  const HOST_WALL_THICKNESS = 114
+  const THICKER_WALL = 200
+  const FIRST_OPENING_POSITION = 1000
+  const SECOND_OPENING_POSITION = 3000
+  const OPENING_WIDTH = 800
+  const WIDER_OPENING = 900
+
+  function southWall(): Wall {
+    return createWall(
+      { x: 0, y: 0 },
+      { x: HOST_WALL_LENGTH, y: 0 },
+      { id: 'w-south', thickness: HOST_WALL_THICKNESS },
+    )
+  }
+
+  function eastWall(): Wall {
+    return createWall(
+      { x: HOST_WALL_LENGTH, y: 0 },
+      { x: HOST_WALL_LENGTH, y: HOST_WALL_LENGTH },
+      { id: 'w-east', thickness: HOST_WALL_THICKNESS },
+    )
+  }
+
+  function doorOn(wallId: string, position: number, id: string): Opening {
+    return createOpening({
+      type: 'single-swing-door',
+      hostWallId: wallId,
+      position,
+      width: OPENING_WIDTH,
+      id,
+    })
+  }
+
+  function floorWith(walls: Wall[], openings: Opening[]): Floor {
+    return { ...createFloor('Ground', { id: 'g', walls }), openings }
+  }
+
+  function openingNode(graph: ReturnType<ReturnType<typeof createSceneGraphDeriver>>, id: string) {
+    const node = graph.openings.find((candidate) => candidate.id === `${OPENING_NODE_PREFIX}${id}`)
+    if (node === undefined) throw new Error(`expected an opening node for ${id}`)
+    return node
+  }
+
+  it('reuses an opening node when the opening and its host wall are unchanged', () => {
+    const wall = southWall()
+    const opening = doorOn('w-south', FIRST_OPENING_POSITION, 'o1')
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floorWith([wall], [opening])]))
+    // An unrelated edit: a brand-new floor object that keeps the same wall and
+    // opening object references the assertion reads.
+    const editedFloor: Floor = { ...floorWith([wall], [opening]), elevation: 250 }
+    const second = derive(projectWith([editedFloor]))
+
+    expect(openingNode(second, 'o1')).toBe(openingNode(first, 'o1'))
+  })
+
+  it('rebuilds an opening node when the opening object is replaced', () => {
+    const wall = southWall()
+    const opening = doorOn('w-south', FIRST_OPENING_POSITION, 'o1')
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floorWith([wall], [opening])]))
+    const widened = { ...opening, width: WIDER_OPENING }
+    const second = derive(projectWith([floorWith([wall], [widened])]))
+
+    expect(openingNode(second, 'o1')).not.toBe(openingNode(first, 'o1'))
+    expect(openingNode(second, 'o1').width).toBe(WIDER_OPENING)
+  })
+
+  it('rebuilds an opening node when its host wall moves but the opening is unchanged', () => {
+    const wall = southWall()
+    const opening = doorOn('w-south', FIRST_OPENING_POSITION, 'o1')
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floorWith([wall], [opening])]))
+    const thickerWall = { ...wall, thickness: THICKER_WALL }
+    const second = derive(projectWith([floorWith([thickerWall], [opening])]))
+
+    expect(openingNode(second, 'o1')).not.toBe(openingNode(first, 'o1'))
+    expect(openingNode(second, 'o1').hostThickness).toBe(THICKER_WALL)
+  })
+
+  it('keeps an untouched opening node while a sibling opening is edited', () => {
+    const south = southWall()
+    const east = eastWall()
+    const kept = doorOn('w-south', FIRST_OPENING_POSITION, 'o1')
+    const edited = doorOn('w-east', SECOND_OPENING_POSITION, 'o2')
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floorWith([south, east], [kept, edited])]))
+    const widenedSibling = { ...edited, width: WIDER_OPENING }
+    const second = derive(projectWith([floorWith([south, east], [kept, widenedSibling])]))
+
+    expect(openingNode(second, 'o1')).toBe(openingNode(first, 'o1'))
+    expect(openingNode(second, 'o2')).not.toBe(openingNode(first, 'o2'))
   })
 })
