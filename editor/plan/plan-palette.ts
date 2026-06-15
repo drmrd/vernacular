@@ -11,6 +11,14 @@ export interface PlanPalette {
   rulerTick: string
   rulerText: string
   selection: string
+  /** The transient hover outline; a lighter brass so it reads as subordinate to selection. */
+  hover: string
+  /** The in-progress wall-draw guide line and its start marker; a darker brass "ink". */
+  preview: string
+  /** The fill wash of a selected room, beneath the brass selection outline. */
+  selectionFill: string
+  /** The translucent fill of the drag-select marquee; its outline uses `selection`. */
+  marqueeFill: string
 }
 
 // Warm light-theme fallbacks, used when a token reads empty (tests, server render).
@@ -23,6 +31,10 @@ export const DEFAULT_PLAN_PALETTE: PlanPalette = {
   rulerTick: '#d9cdb4',
   rulerText: '#6e5a3c',
   selection: '#b08646',
+  hover: '#c8b78f',
+  preview: '#8b692a',
+  selectionFill: '#e8dac4',
+  marqueeFill: 'rgba(176, 134, 70, 0.12)',
 }
 
 const CANVAS_TOKENS: Record<keyof PlanPalette, string> = {
@@ -33,6 +45,10 @@ const CANVAS_TOKENS: Record<keyof PlanPalette, string> = {
   rulerTick: '--color-canvas-ruler-tick',
   rulerText: '--color-canvas-ruler-text',
   selection: '--color-canvas-selection',
+  hover: '--color-canvas-hover',
+  preview: '--color-canvas-preview',
+  selectionFill: '--color-canvas-selection-fill',
+  marqueeFill: '--color-canvas-marquee-fill',
 }
 
 /**
@@ -53,5 +69,9 @@ export function resolvePlanPalette(readVar: (name: string) => string): PlanPalet
     rulerTick: resolve('rulerTick'),
     rulerText: resolve('rulerText'),
     selection: resolve('selection'),
+    hover: resolve('hover'),
+    preview: resolve('preview'),
+    selectionFill: resolve('selectionFill'),
+    marqueeFill: resolve('marqueeFill'),
   }
 }

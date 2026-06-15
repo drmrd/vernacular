@@ -83,10 +83,7 @@ export interface DrawPlanOptions {
   palette?: PlanPalette
 }
 
-const SELECTED_ROOM_FILL_COLOR = '#dbeafe'
 const SELECTED_ROOM_LINE_WIDTH = 2
-const PREVIEW_COLOR = '#5b9bd5'
-const HOVER_HIGHLIGHT_COLOR = '#62b0ff'
 const HOVER_HIGHLIGHT_LINE_WIDTH = 3
 const MIN_WALL_PIXELS = 1
 const PREVIEW_LINE_WIDTH = 2
@@ -98,8 +95,6 @@ const SNAP_MARKER_COLOR = '#f08c00'
 const SNAP_MARKER_RADIUS_PX = 5
 const SNAP_MARKER_LINE_WIDTH = 2
 const ENDPOINT_HANDLE_RADIUS_PX = 5
-const MARQUEE_FILL_COLOR = 'rgba(26, 127, 212, 0.12)'
-const MARQUEE_STROKE_COLOR = '#1a7fd4'
 const MARQUEE_LINE_WIDTH = 1
 const LABEL_COLOR = '#37414d'
 const LABEL_FONT = '12px sans-serif'
@@ -130,14 +125,15 @@ export function drawGrid(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
 }
 
 /** Paints the rubber-band marquee at its screen position so it tracks pan and zoom. */
-export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, viewport: Viewport): void {
-  const min = worldToScreen(rect.min, viewport)
-  const max = worldToScreen(rect.max, viewport)
+export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, options: DrawPlanOptions): void {
+  const palette = paletteOf(options)
+  const min = worldToScreen(rect.min, options.viewport)
+  const max = worldToScreen(rect.max, options.viewport)
   const width = max.x - min.x
   const height = max.y - min.y
-  ctx.fillStyle = MARQUEE_FILL_COLOR
+  ctx.fillStyle = palette.marqueeFill
   ctx.fillRect(min.x, min.y, width, height)
-  ctx.strokeStyle = MARQUEE_STROKE_COLOR
+  ctx.strokeStyle = palette.selection
   ctx.lineWidth = MARQUEE_LINE_WIDTH
   ctx.beginPath()
   ctx.moveTo(min.x, min.y)
@@ -164,9 +160,9 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options)
   if (options.openingResizeHandles)
     drawOpeningResizeHandles(ctx, options.openingResizeHandles, options.viewport)
-  if (options.preview) drawPreview(ctx, options.preview, options.viewport)
+  if (options.preview) drawPreview(ctx, options.preview, options)
   if (options.snap) drawSnapIndicator(ctx, options.snap, options.viewport)
-  if (options.marquee) drawMarquee(ctx, options.marquee, options.viewport)
+  if (options.marquee) drawMarquee(ctx, options.marquee, options)
   drawRoomLabels(ctx, options)
   // Dimensions are annotation overlays above the plan but below the ruler chrome.
   drawDimensions(ctx, options)
@@ -185,22 +181,22 @@ function drawHoverHighlight(ctx: PlanDrawingContext, options: DrawPlanOptions): 
   if (hoveredId === undefined) return
   const opening = options.openings?.find((candidate) => candidate.node.id === hoveredId)
   if (opening !== undefined) {
-    strokeHoverRing(ctx, openingCorners(opening.node), options.viewport)
+    strokeHoverRing(ctx, openingCorners(opening.node), options)
     return
   }
   const wall = options.walls.find((candidate) => candidate.id === hoveredId)
   if (wall !== undefined) {
-    strokeHoverSegment(ctx, wall, options.viewport)
+    strokeHoverSegment(ctx, wall, options)
     return
   }
   const dimension = options.dimensions?.find((candidate) => candidate.node.id === hoveredId)
   if (dimension !== undefined) {
-    strokeHoverSegment(ctx, dimension.node, options.viewport)
+    strokeHoverSegment(ctx, dimension.node, options)
     return
   }
   const room = options.rooms?.find((candidate) => candidate.id === hoveredId)
   if (room !== undefined) {
-    strokeHoverRing(ctx, room.polygon, options.viewport)
+    strokeHoverRing(ctx, room.polygon, options)
   }
 }
 
@@ -208,11 +204,11 @@ function drawHoverHighlight(ctx: PlanDrawingContext, options: DrawPlanOptions): 
 function strokeHoverSegment(
   ctx: PlanDrawingContext,
   segment: PreviewSegment,
-  viewport: Viewport,
+  options: DrawPlanOptions,
 ): void {
-  const from = worldToScreen(segment.start, viewport)
-  const to = worldToScreen(segment.end, viewport)
-  ctx.strokeStyle = HOVER_HIGHLIGHT_COLOR
+  const from = worldToScreen(segment.start, options.viewport)
+  const to = worldToScreen(segment.end, options.viewport)
+  ctx.strokeStyle = paletteOf(options).hover
   ctx.lineWidth = HOVER_HIGHLIGHT_LINE_WIDTH
   ctx.lineCap = LINE_CAP
   ctx.beginPath()
@@ -222,12 +218,12 @@ function strokeHoverSegment(
 }
 
 /** Stroke a single hover-colored outline of a closed ring. */
-function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], viewport: Viewport): void {
-  ctx.strokeStyle = HOVER_HIGHLIGHT_COLOR
+function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], options: DrawPlanOptions): void {
+  ctx.strokeStyle = paletteOf(options).hover
   ctx.lineWidth = HOVER_HIGHLIGHT_LINE_WIDTH
   ctx.lineCap = LINE_CAP
   ctx.beginPath()
-  traceRingPath(ctx, ring, viewport)
+  traceRingPath(ctx, ring, options.viewport)
   ctx.stroke()
 }
 
@@ -247,6 +243,7 @@ function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
       selected: options.selectedIds.has(room.id),
       roomFill: palette.roomFill,
       selection: palette.selection,
+      selectionFill: palette.selectionFill,
       ...(options.roomFillColor !== undefined && { fillColor: options.roomFillColor }),
     })
   }
@@ -300,6 +297,8 @@ interface RoomDrawing {
   roomFill: string
   /** The selection color for the selected-room outline. */
   selection: string
+  /** The fill wash for a selected room, from the palette. */
+  selectionFill: string
   /** The floor paint tint for an unselected room, or undefined for the default fill. */
   fillColor?: string
 }
@@ -307,9 +306,7 @@ interface RoomDrawing {
 function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDrawing): void {
   const [firstPoint, ...remainingPoints] = room.polygon
   if (firstPoint === undefined || remainingPoints.length < 2) return
-  ctx.fillStyle = drawing.selected
-    ? SELECTED_ROOM_FILL_COLOR
-    : (drawing.fillColor ?? drawing.roomFill)
+  ctx.fillStyle = drawing.selected ? drawing.selectionFill : (drawing.fillColor ?? drawing.roomFill)
   ctx.beginPath()
   traceRingPath(ctx, room.polygon, drawing.viewport)
   // Holes wind opposite the outer ring so the nonzero rule leaves them unpainted.
@@ -347,25 +344,34 @@ function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPla
   ctx.stroke()
 }
 
-function drawPreview(ctx: PlanDrawingContext, preview: PreviewSegment, viewport: Viewport): void {
-  const start = worldToScreen(preview.start, viewport)
-  const end = worldToScreen(preview.end, viewport)
-  drawPreviewLine(ctx, start, end)
-  drawStartMarker(ctx, start)
+function drawPreview(
+  ctx: PlanDrawingContext,
+  preview: PreviewSegment,
+  options: DrawPlanOptions,
+): void {
+  const color = paletteOf(options).preview
+  const start = worldToScreen(preview.start, options.viewport)
+  const end = worldToScreen(preview.end, options.viewport)
+  drawPreviewLine(ctx, { start, end }, color)
+  drawStartMarker(ctx, start, color)
 }
 
-function drawPreviewLine(ctx: PlanDrawingContext, start: Point, end: Point): void {
+function drawPreviewLine(
+  ctx: PlanDrawingContext,
+  segment: { start: Point; end: Point },
+  color: string,
+): void {
   ctx.lineCap = LINE_CAP
   ctx.lineWidth = PREVIEW_LINE_WIDTH
-  ctx.strokeStyle = PREVIEW_COLOR
+  ctx.strokeStyle = color
   ctx.beginPath()
-  ctx.moveTo(start.x, start.y)
-  ctx.lineTo(end.x, end.y)
+  ctx.moveTo(segment.start.x, segment.start.y)
+  ctx.lineTo(segment.end.x, segment.end.y)
   ctx.stroke()
 }
 
-function drawStartMarker(ctx: PlanDrawingContext, center: Point): void {
-  ctx.fillStyle = PREVIEW_COLOR
+function drawStartMarker(ctx: PlanDrawingContext, center: Point, color: string): void {
+  ctx.fillStyle = color
   ctx.beginPath()
   ctx.arc(center.x, center.y, START_MARKER_RADIUS, 0, FULL_CIRCLE)
   ctx.fill()

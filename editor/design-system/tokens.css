@@ -58,6 +58,10 @@
   --color-canvas-ruler-tick: #d9cdb4;
   --color-canvas-ruler-text: #6e5a3c;
   --color-canvas-selection: #b08646;
+  --color-canvas-hover: #c8b78f;
+  --color-canvas-preview: #8b692a;
+  --color-canvas-selection-fill: #e8dac4;
+  --color-canvas-marquee-fill: rgba(176, 134, 70, 0.12);
 
   /* Spacing scale (rem). */
   --space-1: 0.25rem;
