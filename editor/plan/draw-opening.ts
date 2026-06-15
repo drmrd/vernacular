@@ -1,6 +1,7 @@
 import { type OpeningSceneNode, type Point } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { openingCorners } from './opening-geometry'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 /** A scene-graph opening node paired with the render decisions resolved from its element type and the selection. */
@@ -14,10 +15,6 @@ export interface DrawableOpening {
 
 // The provisional gap fill that breaks the wall stroke; the slice documents this as a background-color gap.
 const OPENING_GAP_COLOR = '#ffffff'
-// The dark stroke for jamb caps and family leaves, matching the wall ink.
-const OPENING_INK_COLOR = '#222222'
-// The highlight stroke for a selected opening, matching the wall/room selection blue.
-const OPENING_SELECTION_COLOR = '#1a7fd4'
 const OPENING_INK_WIDTH = 1
 const OPENING_SELECTION_WIDTH = 2
 // The pivot dot radius in screen pixels.
@@ -29,10 +26,14 @@ const PANEL_OFFSET_FRACTION = 0.25
 const CRANK_TICK_FRACTION = 0.3
 const HALF = 0.5
 
-/** The seam plus the viewport, the two collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
+/** The seam plus the viewport and resolved palette colors, the collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
 interface OpeningPainter {
   ctx: PlanDrawingContext
   viewport: Viewport
+  /** The drawing ink for jamb caps and family symbols, from the palette wall color. */
+  ink: string
+  /** The highlight stroke for a selected opening, from the palette selection color. */
+  selection: string
 }
 
 function add(a: Point, b: Point): Point {
@@ -125,7 +126,7 @@ function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void 
   tracePolygon(painter, openingCorners(node))
   painter.ctx.fill()
 
-  painter.ctx.strokeStyle = OPENING_INK_COLOR
+  painter.ctx.strokeStyle = painter.ink
   painter.ctx.lineWidth = OPENING_INK_WIDTH
   const across = scale(node.normal, node.hostThickness * HALF)
   for (const jamb of [hingeJamb(node), otherJamb(node)]) {
@@ -134,7 +135,7 @@ function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void 
 }
 
 function setInk(painter: OpeningPainter): void {
-  painter.ctx.strokeStyle = OPENING_INK_COLOR
+  painter.ctx.strokeStyle = painter.ink
   painter.ctx.lineWidth = OPENING_INK_WIDTH
 }
 
@@ -193,7 +194,7 @@ function drawDoorPivot(painter: OpeningPainter, opening: DrawableOpening): void 
   strokeSegment(painter, hinge, open)
   // A filled pivot dot at the hinge.
   const dot = worldToScreen(hinge, painter.viewport)
-  painter.ctx.fillStyle = OPENING_INK_COLOR
+  painter.ctx.fillStyle = painter.ink
   painter.ctx.beginPath()
   painter.ctx.arc(dot.x, dot.y, PIVOT_DOT_RADIUS_PX, 0, FULL_CIRCLE)
   painter.ctx.fill()
@@ -258,7 +259,7 @@ function familyRoutine(symbol: string): FamilyRoutine | undefined {
 }
 
 function drawSelectionHighlight(painter: OpeningPainter, node: OpeningSceneNode): void {
-  painter.ctx.strokeStyle = OPENING_SELECTION_COLOR
+  painter.ctx.strokeStyle = painter.selection
   painter.ctx.lineWidth = OPENING_SELECTION_WIDTH
   tracePolygon(painter, openingCorners(node))
   painter.ctx.stroke()
@@ -268,9 +269,14 @@ function drawSelectionHighlight(painter: OpeningPainter, node: OpeningSceneNode)
 export function drawOpening(
   ctx: PlanDrawingContext,
   opening: DrawableOpening,
-  viewport: Viewport,
+  render: { viewport: Viewport; palette: PlanPalette },
 ): void {
-  const painter: OpeningPainter = { ctx, viewport }
+  const painter: OpeningPainter = {
+    ctx,
+    viewport: render.viewport,
+    ink: render.palette.wall,
+    selection: render.palette.selection,
+  }
   drawGapAndJambs(painter, opening.node)
   const routine = familyRoutine(opening.symbol)
   if (routine !== undefined) {

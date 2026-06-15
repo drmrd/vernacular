@@ -229,8 +229,9 @@ function strokeHoverRing(ctx: PlanDrawingContext, ring: Point[], options: DrawPl
 
 /** Paint each opening's plan symbol over the wall stroke it breaks. */
 function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const palette = paletteOf(options)
   for (const opening of options.openings ?? []) {
-    drawOpening(ctx, opening, options.viewport)
+    drawOpening(ctx, opening, { viewport: options.viewport, palette })
   }
 }
 
@@ -273,8 +274,9 @@ function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions
 /** Paint each dimension as an annotation overlay above the plan. */
 function drawDimensions(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
+  const palette = paletteOf(options)
   for (const dimension of options.dimensions ?? []) {
-    drawDimension(ctx, dimension, options.viewport, preferences)
+    drawDimension(ctx, dimension, { viewport: options.viewport, palette, preferences })
   }
 }
 
