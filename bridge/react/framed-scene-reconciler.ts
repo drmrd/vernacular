@@ -1,4 +1,4 @@
-import type { SceneGraph, SurfaceTreatment } from '../../core'
+import type { SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
 import { buildFramedScene, type FramedScene } from './framed-scene'
 
 export interface FramedSceneReconciler {
@@ -6,21 +6,22 @@ export interface FramedSceneReconciler {
 }
 
 /**
- * Caches a single built FramedScene keyed by the active floor's id so that a repeated
- * reconcile of the same floor returns the same FramedScene reference without rebuilding.
+ * Caches a single built FramedScene keyed by the active floor node object so that a repeated
+ * reconcile of the same floor node returns the same FramedScene reference without rebuilding.
+ * A new floor node object (even with the same id) replaces the cached build.
  */
 export function createFramedSceneReconciler(): FramedSceneReconciler {
-  let cachedFloorId: string | undefined
+  let cachedFloorNode: SceneNode | undefined
   let cachedScene: FramedScene | undefined
 
   return {
     reconcile(graph, paint = {}) {
-      const floorId = graph.nodes[0]?.id
-      if (cachedScene !== undefined && cachedFloorId === floorId) {
+      const floorNode = graph.nodes[0]
+      if (cachedScene !== undefined && cachedFloorNode === floorNode) {
         return cachedScene
       }
       cachedScene = buildFramedScene(graph, paint)
-      cachedFloorId = floorId
+      cachedFloorNode = floorNode
       return cachedScene
     },
   }
