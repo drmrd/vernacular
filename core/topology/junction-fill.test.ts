@@ -106,6 +106,42 @@ describe('junctionFills', () => {
     expect(isSimplePolygon(fill.polygon)).toBe(true)
   })
 
+  it('keeps the fill bounded when a near-parallel wedge meets at a three-way junction', () => {
+    // Three walls leave the junction at the origin. The first two are nearly
+    // collinear: one runs out to (1000,0) and the other to (1000,60), so the
+    // wedge between them is only a few degrees wide. Their near-edge cap lines
+    // run nearly parallel and, left unclamped, cross far from the vertex, which
+    // would push that fill corner into a long spike. The third wall to
+    // (-300,800) is well separated, so the junction core has area and a fill is
+    // produced. Every corner of the fill must hug the junction core instead of
+    // running away.
+    const junctionVertex: Point = { x: 0, y: 0 }
+    // Generous: well above the clamped corners (a few wall thicknesses) yet far
+    // below the unclamped near-parallel runaway crossing (~845 from the vertex).
+    const maxCornerDistanceFromVertex = 400
+
+    const graph = buildWallGraph([
+      { id: 'one', start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, thickness: 100 },
+      { id: 'two', start: { x: 0, y: 0 }, end: { x: 1000, y: 60 }, thickness: 100 },
+      { id: 'three', start: { x: 0, y: 0 }, end: { x: -300, y: 800 }, thickness: 100 },
+    ])
+
+    const fills: JunctionFill[] = junctionFills(
+      graph,
+      graph.edges.map(() => 100),
+    )
+
+    // The fill for the origin junction cites all three incident edges.
+    const fill = fills.find((candidate) => candidate.edgeIndexes.length === 3)
+    expect(fill).toBeDefined()
+    const junctionFill = fill as JunctionFill
+
+    // No corner escapes into a spike: every corner stays at the junction core.
+    for (const corner of junctionFill.polygon) {
+      expect(distance(corner, junctionVertex)).toBeLessThan(maxCornerDistanceFromVertex)
+    }
+  })
+
   it('gives a free-standing wall no fill', () => {
     // A single wall has only two free ends (incidence one each), so no junction
     // and nothing to fill.

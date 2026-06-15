@@ -1,3 +1,4 @@
+import { distance } from '../geometry/point'
 import { lineIntersection } from '../geometry/segment'
 import {
   directionAngle,
@@ -47,6 +48,14 @@ const AREA_EPSILON = 1
 
 /** Two points this close together count as the same footprint corner. */
 const CORNER_EPSILON = 1e-6
+
+/**
+ * How many bounding-corner spans a cap crossing may stray from its midpoint fallback
+ * before it counts as the near-parallel runaway and is clamped back to that midpoint.
+ * Clean miters, tees, and acute bays cross within a fraction of a span of the midpoint;
+ * the near-parallel runaway lands many spans away, so this sits comfortably between them.
+ */
+const MAX_CROSSING_SPANS = 4
 
 /**
  * The plan-view fill polygon for every junction where three or more walls meet whose
@@ -112,23 +121,28 @@ function wallCap(footprint: WallFootprint, spoke: Spoke): WallCap {
  * Where the cap lines of two angularly-adjacent spokes cross, with `a` the
  * counter-clockwise-earlier spoke and `b` its counter-clockwise neighbor: the shared
  * miter for a clean wedge, the near-vertex crossing for an acute overlapping wedge.
- * A very wide wedge between two nearly-collinear walls (close to 180 degrees) yields a
- * crossing far from the vertex; that case is not guarded here and is deferred to a
- * follow-up that tightens it. The common wedges (clean miters and acute overlaps) cross
- * near the vertex.
  *
- * If the two cap lines are parallel (collinear walls, no crossing), fall back to the
- * midpoint of the two corners that bound this wedge: `a`'s counter-clockwise-side corner
- * and `b`'s clockwise-side corner.
+ * The crossing falls back to the midpoint of the two corners that bound this wedge
+ * (`a`'s counter-clockwise-side corner and `b`'s clockwise-side corner) in two cases:
+ * when the cap lines are exactly parallel (collinear walls, no crossing), and when they
+ * are near-parallel (a very wide wedge between two nearly-collinear walls, close to 180
+ * degrees) so the crossing runs away far from the vertex. The runaway is detected by the
+ * crossing landing more than {@link MAX_CROSSING_SPANS} bounding-corner spans from that
+ * midpoint, which clamps it back inside the junction. Clean miters and acute overlaps
+ * cross near the vertex and well within the bound, so they keep their exact corners.
  */
 function capCrossing(a: WallCap, b: WallCap): Point {
+  const fallback = midpoint(a.ccwCorner, b.cwCorner)
   const crossing = lineIntersection(
     a.ccwCorner,
     subtract(a.cwCorner, a.ccwCorner),
     b.ccwCorner,
     subtract(b.cwCorner, b.ccwCorner),
   )
-  return crossing ?? midpoint(a.ccwCorner, b.cwCorner)
+  if (crossing === null) return fallback
+  const span = distance(a.ccwCorner, b.cwCorner)
+  if (distance(crossing, fallback) > span * MAX_CROSSING_SPANS) return fallback
+  return crossing
 }
 
 /** The midpoint of `p` and `q`. */
