@@ -85,6 +85,7 @@ const emptyPaint = (): Record<string, SurfaceTreatment> => ({})
 ## Task 1: Reuse a floor's build when nothing changed
 
 **Files:**
+
 - Create: `bridge/react/framed-scene-reconciler.ts`
 - Test: `bridge/react/framed-scene-reconciler.test.ts`
 
@@ -164,6 +165,7 @@ git commit --allow-empty -m "refactor: no reconciler reuse cleanup needed"
 ## Task 2: Rebuild when the floor node changes
 
 **Files:**
+
 - Modify: `bridge/react/framed-scene-reconciler.ts`
 - Test: `bridge/react/framed-scene-reconciler.test.ts`
 
@@ -230,6 +232,7 @@ git commit --allow-empty -m "refactor: no rebuild-on-edit cleanup needed"
 ## Task 3: Rebuild when the paint changes
 
 **Files:**
+
 - Modify: `bridge/react/framed-scene-reconciler.ts`
 - Test: `bridge/react/framed-scene-reconciler.test.ts`
 
@@ -259,7 +262,11 @@ Add the paint reference to the cache entry and require it to match on a hit:
 
 ```ts
 let cached:
-  | { floorNode: SceneGraph['nodes'][number]; paint: Record<string, SurfaceTreatment>; framed: FramedScene }
+  | {
+      floorNode: SceneGraph['nodes'][number]
+      paint: Record<string, SurfaceTreatment>
+      framed: FramedScene
+    }
   | undefined
 return {
   reconcile(graph, paint = {}) {
@@ -297,6 +304,7 @@ git commit --allow-empty -m "refactor: no rebuild-on-paint cleanup needed"
 ## Task 4: Reuse a previously-built floor after switching away and back
 
 **Files:**
+
 - Modify: `bridge/react/framed-scene-reconciler.ts`
 - Test: `bridge/react/framed-scene-reconciler.test.ts`
 
@@ -331,7 +339,11 @@ Hold a build per floor id in a `Map` so an earlier floor's build survives buildi
 ```ts
 const cache = new Map<
   string,
-  { floorNode: SceneGraph['nodes'][number]; paint: Record<string, SurfaceTreatment>; framed: FramedScene }
+  {
+    floorNode: SceneGraph['nodes'][number]
+    paint: Record<string, SurfaceTreatment>
+    framed: FramedScene
+  }
 >()
 return {
   reconcile(graph, paint = {}) {
@@ -370,6 +382,7 @@ git commit --allow-empty -m "refactor: no switch-back cleanup needed"
 ## Task 5: Build without caching when no floor is active
 
 **Files:**
+
 - Modify: `bridge/react/framed-scene-reconciler.ts`
 - Test: `bridge/react/framed-scene-reconciler.test.ts`
 
@@ -461,6 +474,7 @@ git commit -m "refactor: name the reconciler cache-entry type and document the s
 ## Task 6: Wire the reconciler into the live preview
 
 **Files:**
+
 - Modify: `bridge/react/webgpu-scene-view.tsx`
 
 This component is coverage-excluded glue, so it has no unit test. The change is behavior-preserving and is verified by typecheck, lint, and the existing end-to-end suite (the rendered scene is unchanged). Commit it as a `refactor` because it swaps internals behind the same consumer contract without changing behavior.
@@ -523,6 +537,7 @@ git commit -m "refactor: build the preview through the framed-scene reconciler"
 ## Task 7: Architecture decision record
 
 **Files:**
+
 - Create: `docs/knowledge/decisions/ADR-0088-three-dimensional-incremental-scene-updates.md`
 
 - [ ] **Step 1: Write ADR-0088**
