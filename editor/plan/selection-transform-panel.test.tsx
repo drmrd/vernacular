@@ -95,4 +95,19 @@ describe('SelectionTransformPanel', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
   })
+
+  it('renders its rotate and apply controls as neutral design-system buttons', () => {
+    renderPanel(vi.fn())
+
+    const names = [
+      /counter-?clockwise|rotate left/i,
+      /(?<!counter-?)clockwise|rotate right/i,
+      /apply|rotate by|^rotate$/i,
+    ]
+    for (const name of names) {
+      const button = screen.getByRole('button', { name })
+      expect(button).toHaveClass('ds-button')
+      expect(button).toHaveClass('ds-button--neutral')
+    }
+  })
 })

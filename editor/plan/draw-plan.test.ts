@@ -10,6 +10,7 @@ import {
   drawRulers,
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
+import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
@@ -234,7 +235,7 @@ describe('drawPlan ghost', () => {
   // The wall stroke uses this color while unselected, so a ghost segment painted
   // in a distinct preview style is identifiable apart from the wall (mirroring how
   // the preview/calibration tests distinguish overlay strokes from wall strokes).
-  const WALL_COLOR = '#222222'
+  const WALL_COLOR = DEFAULT_PLAN_PALETTE.wall
   const viewport = { scale: DEFAULT_PLAN_SCALE }
 
   it('strokes each ghost segment between its projected screen endpoints after the walls', () => {
@@ -423,12 +424,14 @@ describe('drawPlan selection overlays', () => {
     const min = worldToScreen(marquee.min, viewport)
     const max = worldToScreen(marquee.max, viewport)
     expect(without.fillRects).toHaveLength(0)
-    expect(withMarquee.fillRects).toContainEqual({
-      x: min.x,
-      y: min.y,
-      w: max.x - min.x,
-      h: max.y - min.y,
-    })
+    expect(withMarquee.fillRects).toContainEqual(
+      expect.objectContaining({
+        x: min.x,
+        y: min.y,
+        w: max.x - min.x,
+        h: max.y - min.y,
+      }),
+    )
   })
 })
 
@@ -585,7 +588,7 @@ describe('drawEndpointHandles', () => {
       thickness: 114,
     }
 
-    drawEndpointHandles(recorder.ctx, editedWall, viewport)
+    drawEndpointHandles(recorder.ctx, editedWall, planOptions({ viewport }))
 
     const start = worldToScreen(editedWall.start, viewport)
     const end = worldToScreen(editedWall.end, viewport)
@@ -642,16 +645,18 @@ describe('drawMarquee', () => {
     const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 10, y: 20 } }
     const rect: Bounds = { min: { x: 1000, y: 2000 }, max: { x: 5000, y: 6000 } }
 
-    drawMarquee(recorder.ctx, rect, viewport)
+    drawMarquee(recorder.ctx, rect, planOptions({ viewport }))
 
     const min = worldToScreen(rect.min, viewport)
     const max = worldToScreen(rect.max, viewport)
-    expect(recorder.fillRects).toContainEqual({
-      x: min.x,
-      y: min.y,
-      w: max.x - min.x,
-      h: max.y - min.y,
-    })
+    expect(recorder.fillRects).toContainEqual(
+      expect.objectContaining({
+        x: min.x,
+        y: min.y,
+        w: max.x - min.x,
+        h: max.y - min.y,
+      }),
+    )
   })
 })
 
@@ -659,7 +664,10 @@ describe('drawGrid', () => {
   it('strokes vertical and horizontal grid lines spanning the canvas in one color', () => {
     const recorder = recordingContext()
 
-    drawGrid(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
+    drawGrid(
+      recorder.ctx,
+      planOptions({ viewport: { scale: 0.1, offset: { x: 0, y: 0 } }, width: 100, height: 100 }),
+    )
 
     // 6 verticals + 6 horizontals at 200 mm spacing across a 100 px (1000 mm) canvas
     expect(recorder.segments).toHaveLength(12)
@@ -677,7 +685,10 @@ describe('drawRulers', () => {
   it('fills the top and left ruler bands and draws unit-formatted tick labels', () => {
     const recorder = recordingContext()
 
-    drawRulers(recorder.ctx, { scale: 0.1, offset: { x: 0, y: 0 } }, { width: 100, height: 100 })
+    drawRulers(
+      recorder.ctx,
+      planOptions({ viewport: { scale: 0.1, offset: { x: 0, y: 0 } }, width: 100, height: 100 }),
+    )
 
     // a band along the top and a band along the left
     expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)
@@ -704,6 +715,7 @@ describe('drawRoomLabel', () => {
     drawRoomLabel(recorder.ctx, room({ name: 'Parlor' }), {
       viewport: VIEWPORT,
       preferences: DEFAULT_METRIC_PREFERENCES,
+      label: DEFAULT_PLAN_PALETTE.label,
     })
 
     const centroid = worldToScreen(CENTROID_WORLD, VIEWPORT)
@@ -726,6 +738,7 @@ describe('drawRoomLabel', () => {
     drawRoomLabel(recorder.ctx, room(), {
       viewport: VIEWPORT,
       preferences: DEFAULT_METRIC_PREFERENCES,
+      label: DEFAULT_PLAN_PALETTE.label,
     })
 
     const centroid = worldToScreen(CENTROID_WORLD, VIEWPORT)
@@ -733,6 +746,207 @@ describe('drawRoomLabel', () => {
     expect(fillTexts).toHaveLength(1)
     expect(fillTexts[0]?.x).toBe(centroid.x)
     expect(fillTexts[0]?.y).toBe(centroid.y)
+  })
+})
+
+describe('drawPlan palette', () => {
+  const palette: PlanPalette = {
+    grid: '#101010',
+    wall: '#202020',
+    roomFill: '#303030',
+    rulerBand: '#404040',
+    rulerTick: '#505050',
+    rulerText: '#606060',
+    selection: '#707070',
+    hover: '#808080',
+    preview: '#909090',
+    selectionFill: '#a0a0a0',
+    marqueeFill: 'rgba(11, 22, 33, 0.12)',
+    ghost: 'rgba(12, 34, 56, 0.5)',
+    label: '#b0b0b0',
+  }
+
+  it('draws the grid, the room fill, and a selected wall in the palette colors', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        selectedIds: new Set(['wall:a']),
+        grid: true,
+      }),
+    )
+
+    const strokeStyles = new Set(recorder.segments.map((segment) => segment.style))
+    expect(strokeStyles).toContain('#101010') // grid lines
+    expect(strokeStyles).toContain('#707070') // the selected wall
+    expect(recorder.fills).toContain('#303030') // the room fill
+  })
+
+  it('draws an unselected wall in the palette wall color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ palette }))
+
+    expect(recorder.segments.map((segment) => segment.style)).toContain('#202020')
+  })
+
+  it('fills a selected room in the palette selection-fill color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        selectedIds: new Set(['room:r']),
+      }),
+    )
+
+    expect(recorder.fills).toContain('#a0a0a0')
+  })
+
+  it('draws the wall preview line and its start marker in the palette preview color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({ palette, preview: { start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } } }),
+    )
+
+    const previewSegment = recorder.segments[recorder.segments.length - 1]
+    expect(previewSegment?.style).toBe('#909090')
+    expect(recorder.arcs.some((arc) => arc.fillStyle === '#909090')).toBe(true)
+  })
+
+  it('draws the hover highlight in the palette hover color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ palette, hoveredId: 'wall:a' }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#808080')).toBe(true)
+  })
+
+  it('strokes the marquee in the selection color and fills it in the marquee-fill color', () => {
+    const recorder = recordingContext()
+    const marquee: Bounds = { min: { x: 1000, y: 1000 }, max: { x: 5000, y: 5000 } }
+
+    drawPlan(recorder.ctx, planOptions({ palette, marquee }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
+    expect(recorder.fillRects.some((rect) => rect.style === 'rgba(11, 22, 33, 0.12)')).toBe(true)
+  })
+
+  // prettier-ignore
+  const swingNode: OpeningSceneNode = {
+    id: 'opening:a', kind: 'opening', floorId: 'g', type: 'single-swing-door',
+    center: { x: 500, y: 0 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+    width: 800, height: 2032, sillHeight: 0, hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' },
+  }
+  // prettier-ignore
+  const dimensionNode: DimensionSceneNode = {
+    id: 'dimension:d1', kind: 'dimension', floorId: 'g',
+    start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, offset: 200, length: 1000,
+  }
+
+  it('highlights a selected opening in the palette selection color', () => {
+    const recorder = recordingContext()
+    const opening: DrawableOpening = {
+      node: swingNode,
+      symbol: 'door-swing',
+      double: false,
+      selected: true,
+    }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], openings: [opening] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
+  })
+
+  it('draws opening symbol ink in the palette wall color', () => {
+    const recorder = recordingContext()
+    const opening: DrawableOpening = {
+      node: swingNode,
+      symbol: 'door-swing',
+      double: false,
+      selected: false,
+    }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], openings: [opening] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
+
+  it('highlights a selected dimension in the palette selection color', () => {
+    const recorder = recordingContext()
+    const dimension: DrawableDimension = { node: dimensionNode, selected: true }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#707070')).toBe(true)
+  })
+
+  it('draws dimension ink in the palette wall color', () => {
+    const recorder = recordingContext()
+    const dimension: DrawableDimension = { node: dimensionNode, selected: false }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
+
+  // prettier-ignore
+  const stairNode: StairSceneNode = {
+    id: 'stair:s1', kind: 'stair', floorId: 'f1', wellFloorId: 'f2', runType: 'straight',
+    position: { x: 0, y: 0 }, width: 1000, length: 3000, rotation: 0,
+  }
+
+  it('strokes the move-drag ghost in the palette ghost color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({ palette, ghost: [{ start: { x: 0, y: 0 }, end: { x: 1000, y: 0 } }] }),
+    )
+
+    expect(recorder.segments.some((segment) => segment.style === 'rgba(12, 34, 56, 0.5)')).toBe(
+      true,
+    )
+  })
+
+  it('draws stair ink in the palette wall color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], stairs: [stairNode] }))
+
+    expect(recorder.segments.some((segment) => segment.style === '#202020')).toBe(true)
+  })
+
+  it('fills the room label text in the palette label color', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        roomLabels: { preferences: DEFAULT_METRIC_PREFERENCES },
+      }),
+    )
+
+    expect(recorder.texts.some((entry) => entry.style === '#b0b0b0')).toBe(true)
+  })
+
+  it('fills the dimension length text in the palette label color', () => {
+    const recorder = recordingContext()
+    const dimension: DrawableDimension = { node: dimensionNode, selected: false }
+
+    drawPlan(recorder.ctx, planOptions({ palette, walls: [], dimensions: [dimension] }))
+
+    expect(recorder.texts.some((entry) => entry.style === '#b0b0b0')).toBe(true)
   })
 })
 
@@ -749,6 +963,6 @@ describe('drawPlan floor fill tint', () => {
   it('uses the default room fill when no floor paint is set', () => {
     const recorder = recordingContext()
     drawPlan(recorder.ctx, planOptions({ rooms: [rectangleRoom('room:r')] }))
-    expect(recorder.fills).toContain('#eef2f6')
+    expect(recorder.fills).toContain(DEFAULT_PLAN_PALETTE.roomFill)
   })
 })

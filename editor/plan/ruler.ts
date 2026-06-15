@@ -4,17 +4,15 @@ import {
   lengthFormatOptions,
   type UnitPreferences,
 } from '../../core'
-import type { PlanDrawingContext } from './draw-plan'
+import type { DrawPlanOptions, PlanDrawingContext } from './draw-plan'
 import { gridSpacingMm } from './grid'
-import { axisProjection, axisSamples, type Viewport, type ViewportSize } from './viewport'
+import { axisProjection, axisSamples, type Viewport } from './viewport'
+import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 
 export const RULER_THICKNESS_PX = 20
 
 export const RULER_MIN_LABEL_GAP_PX = 60
 
-const RULER_BAND_COLOR = '#f5f7fa'
-const RULER_TICK_COLOR = '#c2c8d0'
-const RULER_TEXT_COLOR = '#5a6470'
 const RULER_FONT = '10px sans-serif'
 const RULER_LABEL_INSET_PX = 2
 
@@ -47,25 +45,23 @@ export function rulerTicks(
   )
 }
 
-// eslint-disable-next-line max-params -- ctx, viewport, and size are the draw seam plus the unit preferences threaded down to the tick labels.
-export function drawRulers(
-  ctx: PlanDrawingContext,
-  viewport: Viewport,
-  size: ViewportSize,
-  preferences: UnitPreferences = DEFAULT_METRIC_PREFERENCES,
-): void {
-  ctx.fillStyle = RULER_BAND_COLOR
+export function drawRulers(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
+  const palette = options.palette ?? DEFAULT_PLAN_PALETTE
+  const size = { width: options.width, height: options.height }
+  ctx.fillStyle = palette.rulerBand
   ctx.fillRect(0, 0, size.width, RULER_THICKNESS_PX)
   ctx.fillRect(0, 0, RULER_THICKNESS_PX, size.height)
   // Both axes render with shared tick/text styles set once here; drawRulerTicks
   // relies on this state (strokeStyle, fillStyle, font, textAlign, textBaseline)
   // and never resets it per tick or per axis.
-  ctx.strokeStyle = RULER_TICK_COLOR
-  ctx.fillStyle = RULER_TEXT_COLOR
+  ctx.strokeStyle = palette.rulerTick
+  ctx.fillStyle = palette.rulerText
   ctx.font = RULER_FONT
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
 
+  const viewport = options.viewport
   drawRulerTicks(ctx, viewport, { orientation: 'horizontal', lengthPx: size.width }, preferences)
   drawRulerTicks(ctx, viewport, { orientation: 'vertical', lengthPx: size.height }, preferences)
 }

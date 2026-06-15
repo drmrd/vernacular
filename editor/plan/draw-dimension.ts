@@ -7,6 +7,7 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { midpoint } from './geometry'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport, type ScreenPoint } from './viewport'
 
 /** A dimension scene node paired with the render decisions resolved from the selection. */
@@ -15,10 +16,6 @@ export interface DrawableDimension {
   selected: boolean
 }
 
-// The dark ink for the dimension line, arrowheads, and extension lines.
-const DIMENSION_INK_COLOR = '#222222'
-// The highlight stroke for a selected dimension, matching the wall/room/opening selection blue.
-const DIMENSION_SELECTION_COLOR = '#1a7fd4'
 const DIMENSION_INK_WIDTH = 1
 const DIMENSION_SELECTION_WIDTH = 2
 // Each arrowhead vee reaches this many screen pixels back from the line tip.
@@ -28,15 +25,20 @@ const ARROWHEAD_HALF_ANGLE_DIVISOR = 8
 // The half-angle of the arrowhead vee, in radians (Math.PI / 8 = 22.5 degrees).
 const ARROWHEAD_HALF_ANGLE_RADIANS = Math.PI / ARROWHEAD_HALF_ANGLE_DIVISOR
 // The measured-length text styling mirrors the room label.
-const TEXT_COLOR = '#37414d'
 const TEXT_FONT = '12px sans-serif'
 const TEXT_ALIGN = 'center' as const
 const TEXT_BASELINE = 'middle' as const
 
-/** The seam plus the viewport, the two collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
+/** The seam plus the viewport and resolved palette colors, the collaborators every routine threads through, bundled so helpers stay within the parameter limit. */
 interface DimensionPainter {
   ctx: PlanDrawingContext
   viewport: Viewport
+  /** The drawing ink for the dimension line, arrowheads, and extension lines, from the palette wall color. */
+  ink: string
+  /** The highlight stroke for a selected dimension, from the palette selection color. */
+  selection: string
+  /** The measured-length text color, from the palette label color. */
+  label: string
 }
 
 function strokeScreenSegment(painter: DimensionPainter, from: ScreenPoint, to: ScreenPoint): void {
@@ -91,7 +93,7 @@ interface DimensionLabel {
 
 function fillLengthText(painter: DimensionPainter, label: DimensionLabel): void {
   painter.ctx.font = TEXT_FONT
-  painter.ctx.fillStyle = TEXT_COLOR
+  painter.ctx.fillStyle = painter.label
   painter.ctx.textAlign = TEXT_ALIGN
   painter.ctx.textBaseline = TEXT_BASELINE
   painter.ctx.fillText(
@@ -102,23 +104,27 @@ function fillLengthText(painter: DimensionPainter, label: DimensionLabel): void 
 }
 
 function setInk(painter: DimensionPainter): void {
-  painter.ctx.strokeStyle = DIMENSION_INK_COLOR
+  painter.ctx.strokeStyle = painter.ink
   painter.ctx.lineWidth = DIMENSION_INK_WIDTH
 }
 
 /** Paint one dimension in screen space: the offset dimension line, an arrowhead at each end, the two extension lines, and the measured-length text at the line midpoint, plus a selection highlight when selected. */
-// eslint-disable-next-line max-params -- the public seam mirrors drawOpening plus the unit preferences the length text needs.
 export function drawDimension(
   ctx: PlanDrawingContext,
   dimension: DrawableDimension,
-  viewport: Viewport,
-  preferences: UnitPreferences,
+  render: { viewport: Viewport; palette: PlanPalette; preferences: UnitPreferences },
 ): void {
-  const painter: DimensionPainter = { ctx, viewport }
+  const painter: DimensionPainter = {
+    ctx,
+    viewport: render.viewport,
+    ink: render.palette.wall,
+    selection: render.palette.selection,
+    label: render.palette.label,
+  }
   const node = dimension.node
   const geometry = dimensionGeometry(node.start, node.end, node.offset)
-  const lineStart = worldToScreen(geometry.lineStart, viewport)
-  const lineEnd = worldToScreen(geometry.lineEnd, viewport)
+  const lineStart = worldToScreen(geometry.lineStart, render.viewport)
+  const lineEnd = worldToScreen(geometry.lineEnd, render.viewport)
 
   setInk(painter)
   strokeScreenSegment(painter, lineStart, lineEnd)
@@ -130,11 +136,11 @@ export function drawDimension(
   strokeArrowhead(painter, lineEnd, { x: -direction.x, y: -direction.y })
 
   const labelMidpoint: ScreenPoint = midpoint(lineStart, lineEnd)
-  fillLengthText(painter, { node, midpoint: labelMidpoint, preferences })
+  fillLengthText(painter, { node, midpoint: labelMidpoint, preferences: render.preferences })
 
   if (dimension.selected) {
     // Only the dimension line highlights on selection; the extension lines and arrowheads stay ink color, since the line is the primary visual selection target.
-    painter.ctx.strokeStyle = DIMENSION_SELECTION_COLOR
+    painter.ctx.strokeStyle = painter.selection
     painter.ctx.lineWidth = DIMENSION_SELECTION_WIDTH
     strokeScreenSegment(painter, lineStart, lineEnd)
   }

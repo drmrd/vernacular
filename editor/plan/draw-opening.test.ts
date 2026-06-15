@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { recordingContext } from './draw-plan-test-fixtures'
+import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { Viewport } from './viewport'
 import type { OpeningSceneNode } from '../../core'
 
 // A non-trivial scale and pan so the projection is observable rather than an
 // identity map, mirroring the underlay draw test.
 const VIEWPORT: Viewport = { scale: 0.05, offset: { x: 31, y: 47 } }
+const RENDER = { viewport: VIEWPORT, palette: DEFAULT_PLAN_PALETTE }
 
 // A horizontal opening: center off the origin, leaf running along +x, the
 // host-wall left-hand normal pointing +y, a residential door width, and a
@@ -55,7 +57,7 @@ describe('drawOpening', () => {
   it('breaks the host wall by filling the opening footprint and stroking the jamb caps', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-swing'), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
 
     // The gap is painted: at least one fill (the footprint in the background
     // color) so the wall stroke is broken, plus strokes for the jamb caps.
@@ -66,7 +68,7 @@ describe('drawOpening', () => {
   it('draws a single swing leaf with exactly one arc for a single door', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-swing', { double: false }), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('door-swing', { double: false }), RENDER)
 
     expect(recorder.arcs).toHaveLength(1)
   })
@@ -74,7 +76,7 @@ describe('drawOpening', () => {
   it('draws two mirrored swing leaves with exactly two arcs for a double door', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-swing', { double: true }), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('door-swing', { double: true }), RENDER)
 
     expect(recorder.arcs).toHaveLength(2)
   })
@@ -82,7 +84,7 @@ describe('drawOpening', () => {
   it('draws a sliding door as a panel and track with no arcs', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-slide'), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('door-slide'), RENDER)
 
     expect(recorder.arcs).toHaveLength(0)
     // The panel and the track are line segments parallel to the wall.
@@ -92,7 +94,7 @@ describe('drawOpening', () => {
   it('draws a folding door as a multi-segment zigzag with no arcs', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-fold'), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('door-fold'), RENDER)
 
     expect(recorder.arcs).toHaveLength(0)
     // A bifold leaf is at least two segments beyond the gap jamb caps.
@@ -102,7 +104,7 @@ describe('drawOpening', () => {
   it('draws a pivot door with at least one arc', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-pivot'), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('door-pivot'), RENDER)
 
     expect(recorder.arcs.length).toBeGreaterThanOrEqual(1)
   })
@@ -110,7 +112,7 @@ describe('drawOpening', () => {
   it('draws a cased opening as the gap only, with no arcs', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('cased-opening'), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('cased-opening'), RENDER)
 
     // The gap-only symbol: jamb caps and the footprint fill, no swing arc.
     expect(recorder.arcs).toHaveLength(0)
@@ -119,7 +121,7 @@ describe('drawOpening', () => {
   it('draws a fixed window as a glazing line across the gap, with no arcs', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('window-fixed'), VIEWPORT)
+    drawOpening(recorder.ctx, drawable('window-fixed'), RENDER)
 
     expect(recorder.arcs).toHaveLength(0)
     // At least one line segment spans the opening as the glazing line.
@@ -130,8 +132,8 @@ describe('drawOpening', () => {
     const fixedRecorder = recordingContext()
     const crankRecorder = recordingContext()
 
-    drawOpening(fixedRecorder.ctx, drawable('window-fixed'), VIEWPORT)
-    drawOpening(crankRecorder.ctx, drawable('window-crank'), VIEWPORT)
+    drawOpening(fixedRecorder.ctx, drawable('window-fixed'), RENDER)
+    drawOpening(crankRecorder.ctx, drawable('window-crank'), RENDER)
 
     expect(crankRecorder.arcs).toHaveLength(0)
     // The crank window is the fixed-window glazing plus an opening-direction
@@ -145,8 +147,8 @@ describe('drawOpening', () => {
     const plainRecorder = recordingContext()
     const selectedRecorder = recordingContext()
 
-    drawOpening(plainRecorder.ctx, drawable('door-swing', { selected: false }), VIEWPORT)
-    drawOpening(selectedRecorder.ctx, drawable('door-swing', { selected: true }), VIEWPORT)
+    drawOpening(plainRecorder.ctx, drawable('door-swing', { selected: false }), RENDER)
+    drawOpening(selectedRecorder.ctx, drawable('door-swing', { selected: true }), RENDER)
 
     expect(countOp(selectedRecorder.ops, 'stroke')).toBeGreaterThan(
       countOp(plainRecorder.ops, 'stroke'),

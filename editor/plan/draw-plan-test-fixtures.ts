@@ -17,8 +17,8 @@ interface DrawnArc {
 interface RecorderState {
   segments: DrawnSegment[]
   arcs: DrawnArc[]
-  texts: { text: string; x: number; y: number }[]
-  fillRects: { x: number; y: number; w: number; h: number }[]
+  texts: { text: string; x: number; y: number; style: string }[]
+  fillRects: { x: number; y: number; w: number; h: number; style: string }[]
   images: { dx: number; dy: number; dWidth: number; dHeight: number; alpha: number }[]
   fills: string[]
   ops: string[]
@@ -76,12 +76,12 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
     },
     fillText: (text, x, y) => {
       state.ops.push('fillText')
-      state.texts.push({ text, x, y })
+      state.texts.push({ text, x, y, style: String(ctx.fillStyle) })
     },
     // eslint-disable-next-line max-params -- mirrors the four-argument CanvasRenderingContext2D.fillRect signature the fake records
     fillRect: (x, y, w, h) => {
       state.ops.push('fillRect')
-      state.fillRects.push({ x, y, w, h })
+      state.fillRects.push({ x, y, w, h, style: String(ctx.fillStyle) })
     },
     // eslint-disable-next-line max-params -- mirrors the five-argument CanvasRenderingContext2D.drawImage signature, recording the four destination parameters
     drawImage: (_image, dx, dy, dWidth, dHeight) => {
