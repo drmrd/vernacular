@@ -42,7 +42,10 @@ export function buildFramedScene(
   })
   const root = buildScene(graph, materials)
   markShadowCasters(root)
-  const nearWallTargets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+  const nearWallTargets = prepareNearWallTransparency(
+    root,
+    exteriorWalls(graph.walls, graph.rooms, graph.openings),
+  )
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
   return { root, pose, bounds, nearWallTargets }
