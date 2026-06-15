@@ -16,6 +16,7 @@ const WALL_HEIGHT_MM = 2400
 
 const FADED_OPACITY = 0.1
 const OPAQUE = 1
+const GLASS_OPACITY = 0.3
 
 /** The four corners of the square room's clear polygon, counter-clockwise. */
 const roomSquare = [
@@ -84,6 +85,22 @@ const door = (): SceneGraph['openings'][number] => ({
   width: 900,
   height: 2032,
   sillHeight: 0,
+  hostThickness: WALL_THICKNESS_MM,
+  orientation: { hinge: 'start', facing: 'positive' },
+  hostWallId: 'bottom',
+})
+
+const windowOpening = (): SceneGraph['openings'][number] => ({
+  id: 'opening:window',
+  kind: 'opening',
+  floorId: 'g',
+  type: 'double-hung-window',
+  center: { x: 2000, y: 0 },
+  along: { x: 1, y: 0 },
+  normal: { x: 0, y: 1 },
+  width: 900,
+  height: 1200,
+  sillHeight: 900,
   hostThickness: WALL_THICKNESS_MM,
   orientation: { hinge: 'start', facing: 'positive' },
   hostWallId: 'bottom',
@@ -176,5 +193,24 @@ describe('updateNearWallTransparency', () => {
     const leaf = openingMesh(root, 'opening:door', 'leaf')
     expect(Array.isArray(leaf.material)).toBe(false)
     expect((leaf.material as THREE.Material).opacity).toBe(FADED_OPACITY)
+  })
+
+  it('restores a window glass pane to translucent after its wall fades and returns', () => {
+    const graph = rectangularRoomGraph()
+    graph.openings = [windowOpening()]
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms, graph.openings),
+    )
+    const glass = openingMesh(root, 'opening:window', 'glass').material as THREE.Material
+
+    updateNearWallTransparency(targets, { x: 2000, z: -3000 }) // outside: fade
+    expect(glass.opacity).toBe(FADED_OPACITY)
+
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 }) // inside: restore
+    expect(glass.opacity).toBe(GLASS_OPACITY)
+    expect(glass.transparent).toBe(true)
+    expect(glass.depthWrite).toBe(false)
   })
 })
