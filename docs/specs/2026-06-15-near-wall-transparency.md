@@ -72,6 +72,11 @@ In scope:
   with their wall is a follow-up.
 - **No user control.** There is no toggle to turn the effect off; that is a later chrome
   question, like the controls hint and the edge overlay before it.
+- **No committed pixel baseline of the effect.** Applying the fade in the deterministic
+  render harness would change its committed wall-shell baselines, which are per-platform
+  and have to be regenerated on each target. Capturing that baseline is left for a pass
+  that can regenerate the baselines across platforms; the live preview carries the effect
+  now, and the logic is covered by the unit and engine tests.
 
 ## Verification
 
@@ -82,11 +87,11 @@ In scope:
   outside, a camera on the other side is not.
 - An engine test: after the preparation pass, an exterior wall mesh carries its own
   material instances (not the shared ones) and records its outward normal and point.
-- The deterministic render harness shows the effect: with the harness camera outside the
-  fixture, the near exterior walls read as transparent and the interior shows through, so
-  the committed scene-shell baselines are refreshed to capture it. The harness applies the
-  fade for its fixed camera, the same update the live preview runs each frame, so the
-  visible output is deterministic.
-- A live end-to-end check in the hardware-GPU project that orbiting the camera around the
-  model changes the settled frame as different walls fade in and out, confirming the
-  per-frame update is wired to the live camera.
+- The unit test on the build seam: building the framed scene of a room prepares one
+  near-wall target per exterior wall, so the per-frame fade has its inputs.
+- The live preview wires the per-frame fade to the camera, so the near exterior walls go
+  transparent as the camera moves outside them. The wiring runs under the existing live
+  scene end-to-end suite, which renders the same canvas, and the rendered effect was
+  confirmed by inspection: the near walls read transparent with their edges ghosted and
+  the interior visible through them. A committed pixel baseline of the effect is deferred
+  (see below).

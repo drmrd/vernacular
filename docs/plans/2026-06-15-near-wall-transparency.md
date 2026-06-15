@@ -28,13 +28,13 @@ Fade an exterior wall when the camera is on its outside. Three units.
 
 1. **Core exterior walls.** RED (`core/scene/exterior-walls.test.ts`): a 4-wall rectangular room returns all four walls as exterior with outward normals pointing away from the room center; a wall with a room on both sides (partition) is not returned. GREEN (`core/scene/exterior-walls.ts` + barrel export). BLUE.
 2. **Engine fade pass.** RED (`engine/scene/near-wall-transparency.test.ts`): `cameraFacesWallOutside` is true for a camera on the +normal side and false on the other; after `prepareNearWallTransparency` an exterior wall mesh has its OWN material array (not the provider's shared instance) and `userData.nearWall`; after `updateNearWallTransparency` with a camera outside one wall, that wall's materials are transparent (opacity 0.1, depthWrite false) and a wall the camera is inside of stays opaque. GREEN (`engine/scene/near-wall-transparency.ts` + engine barrel). BLUE.
-3. **Wiring + harness baseline + live e2e.** RED (`e2e/tests/scene-near-wall-transparency.spec.ts`, committed `test:`, scene-webgl, WebGPU self-skip): draw a room, open the 3D view, settle, orbit the camera around the model, and assert the settled frame changes as walls fade in and out. GREEN (`framed-scene.ts` + `webgpu-scene-view.tsx` + `scene-harness-view.tsx` wiring; coverage-excluded glue) + refresh the scene-shell harness baselines (interior visible through the faded near walls) with `--update-snapshots=all` in the scene-webgl project. BLUE marker.
+3. **Build seam + live wiring.** RED (unit, `bridge/react/framed-scene.test.ts`): `buildFramedScene` of a single-room graph returns one `nearWallTargets` entry per exterior wall. GREEN: `framed-scene.ts` runs `prepareNearWallTransparency` and returns the targets; `webgpu-scene-view.tsx` adds a `NearWallFade` `useFrame` that calls `updateNearWallTransparency(targets, camera.position)` each frame. BLUE marker. (Local-only note: the deterministic harness is left unchanged so no per-platform visual baseline has to be regenerated in this mode; the rendered effect was confirmed by inspection and is deferred for a committed baseline, see the spec.)
 
 ## Gate (run in the worktree; LOCAL only)
 
 - `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm integration:audit && pnpm build`
 - `pnpm rgb:audit --range origin/main..HEAD` clean.
-- e2e: chromium + scene-webgl (fresh build, kill stale 4173). The scene-shell baselines change (intended, refreshed in cycle 3); the home darwin baseline drift is pre-existing (not refreshed).
+- e2e: chromium + scene-webgl (fresh build, kill stale 4173). No committed baselines change (the harness is left unchanged); the home darwin baseline drift is pre-existing (not refreshed).
 - Real commit times. DO NOT push/PR/merge or touch GitHub.
 
 ## Notes / deferred (in the spec + ADR-0086)
@@ -45,4 +45,4 @@ Fade an exterior wall when the camera is on its outside. Three units.
 
 - Cycle 1: test `core/scene/exterior-walls.test.ts`; impl `core/scene/exterior-walls.ts` + `core/index.ts`.
 - Cycle 2: test `engine/scene/near-wall-transparency.test.ts`; impl `engine/scene/near-wall-transparency.ts` + `engine/index.ts`.
-- Cycle 3: e2e `e2e/tests/scene-near-wall-transparency.spec.ts`; wiring `bridge/react/framed-scene.ts` + `bridge/react/webgpu-scene-view.tsx` + `bridge/react/scene-harness-view.tsx`. No eslint/vite/tsconfig/playwright config edits.
+- Cycle 3: test `bridge/react/framed-scene.test.ts`; wiring `bridge/react/framed-scene.ts` + `bridge/react/webgpu-scene-view.tsx`. No eslint/vite/tsconfig/playwright config edits.

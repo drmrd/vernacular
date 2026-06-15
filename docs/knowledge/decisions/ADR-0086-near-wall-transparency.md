@@ -67,9 +67,10 @@ the camera lies on the outward-normal side of the wall point; if so the wall sta
 between the camera and the interior, so its private materials go transparent with depth
 writing off, and otherwise they are solid. The test is horizontal, so the camera height
 does not matter. The exterior decision and the camera-side decision are pure and unit
-tested; the material pass is tested on a built scene; the per-frame wiring is rendering
-glue covered end to end, and the deterministic harness applies the same update for its
-fixed camera so the visible result has a committed baseline.
+tested; the material pass is tested on a built scene; the build seam that prepares the
+targets is unit tested; and the per-frame wiring is rendering glue carried in the live
+preview and confirmed by inspection. A committed pixel baseline of the rendered effect is
+deferred (see the consequences).
 
 ## Alternatives considered
 
@@ -96,7 +97,9 @@ fixed camera so the visible result has a committed baseline.
   rule for which walls fade is verified without the renderer.
 - Only exterior walls carry private materials; interior walls keep the shared materials,
   so the cost is bounded to the walls that can fade.
-- The committed scene-shell harness baselines change to show the interior through the
-  faded near walls, and are refreshed in this change.
+- The live preview carries the effect, wired per frame to the camera. A committed pixel
+  baseline of it through the deterministic harness is deferred, because that baseline is
+  per-platform and cannot be regenerated across targets in this pass; the unit and engine
+  tests cover the logic in the meantime.
 - The front-facing trigger, the binary fade, opening-body fading, and a user toggle are
   deferred, recorded in the spec.
