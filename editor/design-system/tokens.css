@@ -40,6 +40,8 @@
   --color-text-muted: var(--umber-500);
   --color-surface: var(--vellum-100);
   --color-surface-raised: var(--vellum-50);
+  /* Panels sit a step deeper than the canvas; raised surfaces sit lightest. */
+  --color-surface-panel: var(--vellum-200);
   --color-border: var(--vellum-300);
   --color-accent: var(--brass-500);
   --color-accent-strong: var(--brass-600);
@@ -98,6 +100,7 @@
   --color-text-muted: var(--brass-300);
   --color-surface: var(--ink-950);
   --color-surface-raised: var(--ink-900);
+  --color-surface-panel: var(--ink-900);
   --color-border: var(--ink-600);
   --color-accent: var(--brass-500);
   --color-accent-strong: var(--brass-300);
@@ -111,6 +114,7 @@
     --color-text-muted: var(--brass-300);
     --color-surface: var(--ink-950);
     --color-surface-raised: var(--ink-900);
+    --color-surface-panel: var(--ink-900);
     --color-border: var(--ink-600);
     --color-accent: var(--brass-500);
     --color-accent-strong: var(--brass-300);

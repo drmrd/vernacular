@@ -27,6 +27,9 @@
   min-height: 0;
   overflow: hidden;
   width: var(--ds-rail-size, 11rem);
+  background: var(--color-surface-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 .ds-app-frame__main {
   grid-area: main;
@@ -42,6 +45,9 @@
   display: flex;
   flex-direction: column;
   width: var(--ds-inspector-size, 15rem);
+  background: var(--color-surface-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 /* The pane body owns the internal scroll so the frame itself never scrolls and the
