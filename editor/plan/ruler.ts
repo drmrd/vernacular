@@ -82,31 +82,35 @@ function drawRulerTicks(
   // Minor ticks mark every grid line as short marks hanging from the inner (grid) edge.
   const projection = axisProjection(viewport, axis.orientation)
   for (const sample of axisSamples(projection, axis.lengthPx, gridSpacingMm(viewport.scale))) {
-    ctx.beginPath()
-    if (isHorizontal) {
-      ctx.moveTo(sample.screen, minorStart)
-      ctx.lineTo(sample.screen, RULER_THICKNESS_PX)
-    } else {
-      ctx.moveTo(minorStart, sample.screen)
-      ctx.lineTo(RULER_THICKNESS_PX, sample.screen)
-    }
-    ctx.stroke()
+    strokeTick(ctx, isHorizontal, sample.screen, minorStart)
   }
   // Major ticks at the labeled spacing span the full band and carry the unit label.
   for (const tick of rulerTicks(viewport, axis.lengthPx, axis.orientation, preferences)) {
-    ctx.beginPath()
-    if (isHorizontal) {
-      ctx.moveTo(tick.screen, 0)
-      ctx.lineTo(tick.screen, RULER_THICKNESS_PX)
-    } else {
-      ctx.moveTo(0, tick.screen)
-      ctx.lineTo(RULER_THICKNESS_PX, tick.screen)
-    }
-    ctx.stroke()
+    strokeTick(ctx, isHorizontal, tick.screen, 0)
     if (isHorizontal) {
       ctx.fillText(tick.label, tick.screen + RULER_LABEL_INSET_PX, RULER_LABEL_INSET_PX)
     } else {
       ctx.fillText(tick.label, RULER_LABEL_INSET_PX, tick.screen + RULER_LABEL_INSET_PX)
     }
   }
+}
+
+// Strokes one ruler tick: a line at `screen` running from `near` across to the inner
+// (grid) edge. Horizontal-axis ticks run vertically; vertical-axis ticks run across.
+// eslint-disable-next-line max-params -- ctx, the axis flag, the tick position, and its near extent are each distinct tick geometry.
+function strokeTick(
+  ctx: PlanDrawingContext,
+  isHorizontal: boolean,
+  screen: number,
+  near: number,
+): void {
+  ctx.beginPath()
+  if (isHorizontal) {
+    ctx.moveTo(screen, near)
+    ctx.lineTo(screen, RULER_THICKNESS_PX)
+  } else {
+    ctx.moveTo(near, screen)
+    ctx.lineTo(RULER_THICKNESS_PX, screen)
+  }
+  ctx.stroke()
 }
