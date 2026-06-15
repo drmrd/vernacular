@@ -11,6 +11,7 @@ import {
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
+import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
@@ -695,6 +696,31 @@ describe('drawRulers', () => {
     // the origin label appears as text when in view at offset 0, formatted in the
     // metric default unit system
     expect(recorder.texts.map((entry) => entry.text)).toContain('0 mm')
+  })
+
+  it('draws short minor ticks at each grid line and full-height major ticks at the labels', () => {
+    const recorder = recordingContext()
+
+    drawRulers(
+      recorder.ctx,
+      planOptions({ viewport: { scale: 0.1, offset: { x: 0, y: 0 } }, width: 100, height: 100 }),
+    )
+
+    // Top-band ticks are vertical segments (constant x) within the ruler band.
+    const topTicks = recorder.segments.filter(
+      (segment) =>
+        segment.from[0] === segment.to[0] &&
+        segment.from[1] <= RULER_THICKNESS_PX &&
+        segment.to[1] <= RULER_THICKNESS_PX,
+    )
+    const lengths = topTicks.map((segment) => Math.abs(segment.to[1] - segment.from[1]))
+    const major = lengths.filter((length) => length === RULER_THICKNESS_PX)
+    const minor = lengths.filter((length) => length > 0 && length < RULER_THICKNESS_PX)
+
+    // Labels sit at the coarser spacing; the per-grid-line minor ticks are finer, so
+    // they outnumber the full-height major ticks.
+    expect(major.length).toBeGreaterThan(0)
+    expect(minor.length).toBeGreaterThan(major.length)
   })
 })
 
