@@ -32,15 +32,15 @@ South = +Z, North = -Z. Y is up.
 - `export type CameraPreset = 'top' | 'north' | 'south' | 'east' | 'west'`
 - Module table `PRESET_VIEW: Record<CameraPreset, { dir: Vector3; up: Vector3 }>` where `dir`
   is the unit center-to-camera direction:
-  - `top`:   dir `(0, 1, 0)`,  up `(0, 0, -1)`
+  - `top`: dir `(0, 1, 0)`, up `(0, 0, -1)`
   - `north`: dir `(0, 0, -1)`, up `(0, 1, 0)`
-  - `south`: dir `(0, 0, 1)`,  up `(0, 1, 0)`
-  - `east`:  dir `(1, 0, 0)`,  up `(0, 1, 0)`
-  - `west`:  dir `(-1, 0, 0)`, up `(0, 1, 0)`
+  - `south`: dir `(0, 0, 1)`, up `(0, 1, 0)`
+  - `east`: dir `(1, 0, 0)`, up `(0, 1, 0)`
+  - `west`: dir `(-1, 0, 0)`, up `(0, 1, 0)`
 - `export function cameraPresetPose(preset: CameraPreset, bounds: Bounds3 | null, viewport?: CameraViewport): CameraPose`
   - `bounds === null` or zero diagonal -> `DEFAULT_CAMERA_POSE`.
   - center = bounds midpoint; diagonal = hypot of bounds size; `distance = cameraFitDistance(diagonal, viewport)`.
-  - position = center + dir * distance; target = center; `{ near, far } = cameraDepthRange(diagonal)`; up = table up.
+  - position = center + dir \* distance; target = center; `{ near, far } = cameraDepthRange(diagonal)`; up = table up.
 - `export function doorwayPose(opening: OpeningSceneNode, bounds: Bounds3 | null, viewport?: CameraViewport): CameraPose`
   - `bounds === null` -> `DEFAULT_CAMERA_POSE`.
   - eye = `opening.sillHeight + opening.height * 0.5`; position = `planToWorld(opening.center, eye)`.
