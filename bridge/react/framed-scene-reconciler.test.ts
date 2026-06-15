@@ -11,6 +11,7 @@ import type {
 } from '../../core'
 import {
   OPENING_NODE_PREFIX,
+  WALL_NODE_PREFIX,
   createEmptyProject,
   createFloor,
   createOpening,
@@ -355,5 +356,37 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
 
     expect(findByEntityId(second.root, editedOpeningEntityId)).not.toBe(editedFirstGroup)
     expect(findByEntityId(second.root, preservedOpeningEntityId)).toBe(preservedFirstGroup)
+  })
+
+  it('reuses the wall group and near-wall targets when an edit touches no wall or opening', () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+
+    const walls = singleRoomWalls()
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls }),
+      openings: [doorOn(BOTTOM_WALL_ID, DOOR_WIDTH_MM)],
+    }
+    const first = reconciler.reconcile(activeFloorGraph(derive, projectWith(floor)), paint)
+
+    // Capture a wall mesh from the first build before editing: reusing the wall
+    // group reparents it into the new root, which removes it from this one.
+    // nearWallTargets is a plain array on the FramedScene and is not reparented.
+    const wallMeshFirst = findByEntityId(first.root, WALL_NODE_PREFIX + BOTTOM_WALL_ID)
+    expect(wallMeshFirst).not.toBeNull()
+
+    // Rename the floor: a new Floor object that keeps the same walls and openings
+    // arrays (and their element references), so no wall and no opening changes.
+    const editedFloor: Floor = { ...floor, name: 'Renamed' }
+    const second = reconciler.reconcile(activeFloorGraph(derive, projectWith(editedFloor)), paint)
+
+    // The rename produces a new floor node, so the reconciler takes its rebuild
+    // path rather than the unchanged-floor fast path.
+    expect(second).not.toBe(first)
+    // The whole wall sub-group (and therefore its meshes) is reused, as is the
+    // wall-owned nearWallTargets array.
+    expect(findByEntityId(second.root, WALL_NODE_PREFIX + BOTTOM_WALL_ID)).toBe(wallMeshFirst)
+    expect(second.nearWallTargets).toBe(first.nearWallTargets)
   })
 })
