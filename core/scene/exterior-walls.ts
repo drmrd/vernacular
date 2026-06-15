@@ -1,7 +1,12 @@
 import { pointInPolygon } from '../geometry/polygon'
 import { leftNormal } from '../geometry/vector'
 import type { Point } from '../model/types'
-import type { RoomSceneNode, WallSceneNode } from './scene-graph'
+import {
+  WALL_NODE_PREFIX,
+  type OpeningSceneNode,
+  type RoomSceneNode,
+  type WallSceneNode,
+} from './scene-graph'
 
 /** A small outward nudge past a wall face, so a sample point clears the face. */
 const FACE_SAMPLE_EPS = 1
@@ -16,6 +21,8 @@ const HALF = 2
 export interface ExteriorWall {
   wallId: string
   outwardNormal: Point
+  /** Ids of openings hosted on this wall (its `hostWallId` matches the raw wall id). */
+  openingIds: readonly string[]
 }
 
 /** A plan-space sample point just past one face of the wall. */
@@ -48,14 +55,33 @@ function outwardNormalOf(wall: WallSceneNode, rooms: RoomSceneNode[]): Point | n
   return minusInside ? normal : { x: -normal.x, y: -normal.y }
 }
 
+/** The raw wall id behind a wall scene-node id, matching an opening's hostWallId. */
+function rawWallId(wallNodeId: string): string {
+  return wallNodeId.startsWith(WALL_NODE_PREFIX)
+    ? wallNodeId.slice(WALL_NODE_PREFIX.length)
+    : wallNodeId
+}
+
 /**
  * The exterior walls among `walls`, paired with the unit outward normal of
- * each. Walls with a room on both faces (interior partitions) or on neither
- * (free-standing) are omitted. Output preserves input order.
+ * each and the ids of openings hosted on the wall. Walls with a room on both
+ * faces (interior partitions) or on neither (free-standing) are omitted. Output
+ * preserves input order.
  */
-export function exteriorWalls(walls: WallSceneNode[], rooms: RoomSceneNode[]): ExteriorWall[] {
+export function exteriorWalls(
+  walls: WallSceneNode[],
+  rooms: RoomSceneNode[],
+  openings: OpeningSceneNode[] = [],
+): ExteriorWall[] {
   return walls.flatMap((wall) => {
     const outwardNormal = outwardNormalOf(wall, rooms)
-    return outwardNormal ? [{ wallId: wall.id, outwardNormal }] : []
+    if (outwardNormal === null) {
+      return []
+    }
+    const rawId = rawWallId(wall.id)
+    const openingIds = openings
+      .filter((opening) => opening.hostWallId === rawId)
+      .map((opening) => opening.id)
+    return [{ wallId: wall.id, outwardNormal, openingIds }]
   })
 }
