@@ -188,20 +188,20 @@ describe('EditorShell', () => {
     expect(onExportBundle).toHaveBeenCalledTimes(1)
   })
 
-  it('invokes the open-folder handler when its button is clicked', async () => {
+  it('invokes the open-folder handler from the project menu', async () => {
     vi.stubGlobal('navigator', {})
     const onOpenFolder = vi.fn()
     const user = userEvent.setup()
 
     renderShell({ onOpenFolder })
 
-    const project = screen.getByRole('navigation', { name: /project/i })
-    await user.click(within(project).getByRole('button', { name: /open folder/i }))
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('menuitem', { name: /open folder/i }))
 
     expect(onOpenFolder).toHaveBeenCalledTimes(1)
   })
 
-  it('opens a recent project by its id when its control is clicked', async () => {
+  it('opens a recent project by its id from the project menu', async () => {
     vi.stubGlobal('navigator', {})
     const onOpenRecent = vi.fn()
     const user = userEvent.setup()
@@ -214,8 +214,9 @@ describe('EditorShell', () => {
       onOpenRecent,
     })
 
-    expect(screen.getByRole('button', { name: /alpha/i })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /beta/i }))
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    expect(screen.getByRole('menuitem', { name: /alpha/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: /beta/i }))
 
     expect(onOpenRecent).toHaveBeenCalledTimes(1)
     expect(onOpenRecent).toHaveBeenCalledWith('b')
