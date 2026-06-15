@@ -645,7 +645,7 @@ describe('drawMarquee', () => {
     const viewport = { scale: DEFAULT_PLAN_SCALE, offset: { x: 10, y: 20 } }
     const rect: Bounds = { min: { x: 1000, y: 2000 }, max: { x: 5000, y: 6000 } }
 
-    drawMarquee(recorder.ctx, rect, viewport)
+    drawMarquee(recorder.ctx, rect, planOptions({ viewport }))
 
     const min = worldToScreen(rect.min, viewport)
     const max = worldToScreen(rect.max, viewport)
