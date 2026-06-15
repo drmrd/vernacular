@@ -80,12 +80,14 @@ incident walls around the vertex and their near edges bound a polygon enclosing 
 vertex. That polygon is the junction's uncovered core, and it is exactly what the fill
 fills.
 
-The polygon is read from the same resolved corners the walls stop at, so its edges lie
-on the wall near edges. The fill and the walls therefore share those edges and only
-those edges: the fill abuts each wall along its near edge and overlaps none of it. That
-is what keeps the fill from z-fighting the walls. A fill is built from the corners the
-walls already committed to, never from a fresh independent miter, so there is one
-source of truth for where a corner sits.
+Each wall's near edge is one edge of that polygon, and the polygon's vertices are where
+each pair of angularly-adjacent walls' near edges cross. The polygon is read from the
+same resolved corners the walls stop at, so its edges lie on the wall near edges. The
+fill and the walls therefore share those edges and only those edges: the fill abuts each
+wall along its near edge and overlaps none of it. That is what keeps the fill from
+z-fighting the walls. A fill is built from the corners the walls already committed to,
+never from a fresh independent miter, so there is one source of truth for where a corner
+sits.
 
 ### 3.2 When a junction gets a fill
 
@@ -96,20 +98,22 @@ ADR-0080's square clamp (the two squared ends overlap solid across the vertex). 
 two-way cases already join with no uncovered core, so a two-way corner gets no fill and
 the existing miters and clamps are untouched and cannot z-fight.
 
-At a junction of three or more walls, reading the core polygon's vertices in fan order
-walks each wedge around the vertex: a wedge the two bordering walls miter contributes
-that one shared miter point, and a wedge too acute to miter contributes the two walls'
-own clamped corners with the chamfer edge between them. Connecting these around the
-vertex gives the core polygon. A fill is emitted only where that polygon's area is
-beyond a small epsilon, the same kind of degenerate guard the wall prism uses to drop a
-zero-area cap, so a junction whose walls happen to leave no real core (three nearly
-collinear edges, for example) contributes no fill.
+At a junction of three or more walls, each wall contributes one edge of the core polygon
+(its near edge), and each polygon vertex is where two angularly-adjacent walls' near
+edges cross. Two walls that miter cleanly share that corner, so their near edges cross
+there at the shared miter point; two walls across an acute wedge overlap near the vertex,
+so their near edges cross close to it, which closes the core off at the overlap rather
+than spanning two separate clamped corners. Walking the incident walls in fan order and
+crossing each near edge with the next gives one vertex per wall, so the core comes out a
+simple polygon. A fill is emitted only where that polygon's area is beyond a small
+epsilon, the same kind of degenerate guard the wall prism uses to drop a zero-area cap,
+so a junction whose walls leave no real core contributes none.
 
 Scoping the fill to three-or-more-way junctions is deliberate. A multi-way junction's
-core polygon is read off the per-wedge miter and clamp points and is a simple polygon
-enclosing the vertex. A two-way corner has no such core: a clean one collapses to a
-line, and an acute one would read as overlapping clamps rather than a fillable gap.
-Closing the sharpest two-way corner is a later refinement (section 5).
+near edges enclose a real core that the crossing construction reads as a simple polygon.
+A two-way corner has no such core: a clean one collapses to a line, and an acute one
+reads as overlapping clamps rather than a fillable gap. Closing the sharpest two-way
+corner is a later refinement (section 5).
 
 ### 3.3 The fill is extruded floor to ceiling at the tallest incident wall
 
@@ -162,10 +166,11 @@ slices set out:
 - The fill pass on a perpendicular T-junction: one fill polygon whose corners are the
   same points the three walls' footprints stop at, enclosing the vertex, with area and
   no self-intersection.
-- The fill pass on an acute three-way bay: one fill polygon enclosing the apex, whose
-  corners match the incident walls' resolved corners (the two obtuse wedges contribute
-  miter points and the acute wedge its two clamped corners), with area and no
-  self-intersection.
+- The fill pass on an acute three-way bay: one simple triangle enclosing the apex, where
+  the two obtuse wedges cross at their shared miter points and the acute wedge crosses
+  near the apex (the two bay walls overlap there), with area and no self-intersection.
+  Three walls give three vertices, so an acute wedge reads as one crossing, not two
+  separate corners.
 - The fill pass on the cases that get no fill: a free end, a clean right-angle two-way
   corner, an acute two-way corner, and a collinear split each emit nothing, since they
   are two-way or lower or leave no real core. These pin that the fill appears only where
@@ -180,7 +185,7 @@ slices set out:
 The second tier is the pixel-approximate visual render in the `scene-webgl` Playwright
 project, as ADR-0061 set out. The existing junction fixture already renders a T-junction
 and an acute three-way bay (`?fixture=scene-harness&scene=junctions`); its baseline is
-refreshed so the acute notch and the bay's core read as filled solid. The shell-room
+refreshed so the T-junction's core and the bay's core read as filled solid. The shell-room
 baseline confirms a four-corner room, whose corners are clean two-way miters, is
 unchanged and gains no fill. The harness self-skips where a WebGL 2 context cannot be
 created, so this tier stays outside the gating chromium tree.
@@ -191,6 +196,12 @@ created, so this tier stays outside the gating chromium tree.
   miter where the angle allows, and overlapping square clamps where it is too acute.
   Both already join solid, so this slice fills only three-or-more-way junctions; a bevel
   that reshapes the sharpest two-way corner is a later refinement.
+- Bounding the fill at a very acute multi-way wedge. Where two walls in a junction meet
+  at a very sharp angle (well under the miter limit), their near edges run nearly
+  parallel and cross far from the vertex, which would push the fill out along the walls'
+  overlap. The common junctions (tees and bays at ordinary angles) cross near the vertex
+  and read correctly; clamping the far crossing to the vertex for the sharpest multi-way
+  wedge is a follow-up.
 - A stepped corner post that follows each incident wall's height where the walls
   differ. This slice takes the tallest incident wall's height for a flat-topped post.
 - Rounded or curved corner fills. The fill chamfers straight across an over-limit wedge

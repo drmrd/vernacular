@@ -58,9 +58,16 @@ material and identity it carries, and what stays deferred.
 
 A fill is the polygon a junction's incident walls leave uncovered: walk the incident
 walls around the vertex and their near edges (the line between each wall's two corners
-at the vertex) bound a polygon enclosing the vertex. A pure pass in `core`
+at the vertex) bound a polygon enclosing the vertex. Each wall contributes one edge (its
+near edge), and each polygon vertex is where two angularly-adjacent walls' near edges
+cross: the shared miter where two walls miter cleanly, and a crossing near the vertex
+where two walls overlap across an acute wedge. A pure pass in `core`
 (`junctionFills(graph, thicknessByEdge)`) reads the same resolved corners ADR-0080's
 footprint pass stops the walls at, and returns that polygon per junction in plan space.
+Building the vertices from cap-line crossings, rather than pushing each wall's two
+corners directly, is what keeps the polygon simple: at an acute wedge the two walls'
+clamped corners cross over, so emitting them as separate vertices self-intersects, while
+the single crossing closes the core off cleanly at the overlap.
 
 Reading the corners the walls already committed to, rather than computing a fresh
 independent miter, is what keeps the fill from z-fighting: the fill's edges lie on the
@@ -81,13 +88,15 @@ ends overlap solid across the vertex. Both two-way cases already join with no un
 core, so neither gets a fill, and the existing miters and clamps cannot z-fight.
 
 Scoping to three-or-more-way junctions is deliberate, not just a degenerate-area
-accident. A multi-way junction's core polygon is read from the per-wedge miter points
-(where two walls miter) and clamp-point pairs (where a wedge is too acute), and is a
-simple polygon enclosing the vertex, including the perpendicular tee, whose three ends
-cut back to a shared corner and leave a triangular core. A two-way corner has no such
-core: a clean one collapses to a line with no area, and an acute one would read as a
-self-intersecting bowtie of overlapping clamps rather than a fillable gap. Closing the
-sharpest two-way corner is deferred.
+accident. A multi-way junction's near edges enclose a real core that the crossing
+construction reads as a simple polygon of one vertex per wall, including the
+perpendicular tee, whose three ends cut back to a shared corner and leave a triangular
+core. A two-way corner has no such core: a clean one collapses to a line with no area,
+and an acute one would read as a self-intersecting bowtie of overlapping clamps rather
+than a fillable gap. Closing the sharpest two-way corner is deferred, as is bounding the
+fill at a very acute multi-way wedge, where the two near edges run nearly parallel and
+cross far from the vertex; the ordinary tees and bays cross near the vertex and read
+correctly.
 
 ### Extrude floor to ceiling at the tallest incident wall
 
