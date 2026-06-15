@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import type { Bounds3 } from './vector3'
+import type { OpeningSceneNode } from './scene-graph'
+import { planToWorld } from './plan-to-world'
 import {
   frameSceneCamera,
   DEFAULT_CAMERA_POSE,
   type CameraPose,
   type CameraViewport,
 } from './camera-framing'
-import { cameraPresetPose } from './camera-presets'
+import { cameraPresetPose, doorwayPose } from './camera-presets'
 
 const houseBounds: Bounds3 = {
   min: { x: 0, y: 0, z: 0 },
@@ -131,4 +133,86 @@ describe('cameraPresetPose elevations', () => {
       })
     })
   }
+})
+
+describe('doorwayPose', () => {
+  const HORIZONTAL_TOLERANCE = 1e-6
+
+  function makeDoor(normal: { x: number; y: number }): OpeningSceneNode {
+    return {
+      id: 'door-north',
+      kind: 'opening',
+      floorId: 'floor-1',
+      type: 'door',
+      center: { x: 2000, y: 0 },
+      along: { x: 1, y: 0 },
+      normal,
+      width: 900,
+      height: 2032,
+      sillHeight: 0,
+      hostThickness: 150,
+      orientation: { hinge: 'start', facing: 'positive' },
+    }
+  }
+
+  function lookVector(pose: CameraPose) {
+    return {
+      x: pose.target.x - pose.position.x,
+      y: pose.target.y - pose.position.y,
+      z: pose.target.z - pose.position.z,
+    }
+  }
+
+  function towardCenter(pose: CameraPose) {
+    return {
+      x: CENTER.x - pose.position.x,
+      y: CENTER.y - pose.position.y,
+      z: CENTER.z - pose.position.z,
+    }
+  }
+
+  function dot(a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) {
+    return a.x * b.x + a.y * b.y + a.z * b.z
+  }
+
+  const outwardDoor = makeDoor({ x: 0, y: -1 })
+  const eye = outwardDoor.sillHeight + outwardDoor.height / 2
+
+  it('stands at the opening center raised to the vertical middle of the opening', () => {
+    const pose = doorwayPose(outwardDoor, houseBounds)
+    expect(pose.position).toEqual(planToWorld(outwardDoor.center, eye))
+    expect(pose.position).toEqual({ x: 2000, y: 1016, z: 0 })
+  })
+
+  it('looks horizontally so the eye holds its height across the opening', () => {
+    const pose = doorwayPose(outwardDoor, houseBounds)
+    expect(Math.abs(pose.target.y - pose.position.y)).toBeLessThan(HORIZONTAL_TOLERANCE)
+  })
+
+  it('looks toward the interior even when the raw normal points away from it', () => {
+    const pose = doorwayPose(outwardDoor, houseBounds)
+    expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
+  })
+
+  it('looks toward the interior when the raw normal already points toward it', () => {
+    const inwardDoor = makeDoor({ x: 0, y: 1 })
+    const pose = doorwayPose(inwardDoor, houseBounds)
+    expect(dot(lookVector(pose), towardCenter(pose))).toBeGreaterThan(0)
+  })
+
+  it('keeps the up vector pointing toward world +Y', () => {
+    const pose = doorwayPose(outwardDoor, houseBounds)
+    expect(pose.up).toEqual({ x: 0, y: 1, z: 0 })
+  })
+
+  it('derives near and far from the bounds diagonal, matching the framed view', () => {
+    const pose = doorwayPose(outwardDoor, houseBounds)
+    const framed = frameSceneCamera(houseBounds)
+    expect(pose.near).toBe(framed.near)
+    expect(pose.far).toBe(framed.far)
+  })
+
+  it('returns the fixed default pose for an empty scene (null bounds)', () => {
+    expect(doorwayPose(outwardDoor, null)).toEqual(DEFAULT_CAMERA_POSE)
+  })
 })
