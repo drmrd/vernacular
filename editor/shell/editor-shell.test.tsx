@@ -65,6 +65,15 @@ describe('EditorShell', () => {
     expect(screen.getByLabelText(/floor plan/i)).toBeInTheDocument()
   })
 
+  it('renders the brand mark beside the wordmark', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    const banner = screen.getByRole('banner')
+    expect(within(banner).getByRole('img', { name: /vernacular/i })).toBeInTheDocument()
+  })
+
   it('shows the My Projects breadcrumb segment', () => {
     vi.stubGlobal('navigator', {})
 
