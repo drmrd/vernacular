@@ -68,3 +68,4 @@ export {
 } from './download/pdf-plan-document'
 export type { SvgPlanToPdfOptions } from './download/pdf-plan-document'
 export { downloadBytes, downloadText } from './download/download-blob'
+export { importProjectFile, UnsupportedProjectFileError } from './import/import-project-file'
