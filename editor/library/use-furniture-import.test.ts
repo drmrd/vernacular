@@ -4,7 +4,7 @@ import type { LibraryItem, UserLibraryIndex } from '../../storage'
 import { DEFAULT_FURNITURE_FOOTPRINT_MM } from '../../core'
 import { isGlb, importFurnitureGlb } from './use-furniture-import'
 
-function glbBytes(): Uint8Array {
+function glbBytes() {
   return Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 0, 0, 0, 9, 9, 9)
 }
 
