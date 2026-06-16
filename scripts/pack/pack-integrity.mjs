@@ -15,7 +15,9 @@
  */
 
 const ASSET_DIR = 'assets'
+const THUMBNAIL_DIR = 'thumbnails'
 const ASSET_EXTENSION = '.glb'
+const THUMBNAIL_EXTENSION = '.webp'
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 
 /**
@@ -50,6 +52,23 @@ async function checkAssetHashes(assets, reader, errors) {
 }
 
 /**
+ * Confirm each asset has a thumbnail file in the pack.
+ * @param {object[]} assets
+ * @param {PackReader} reader
+ * @param {string[]} errors
+ * @returns {Promise<void>}
+ */
+async function checkThumbnails(assets, reader, errors) {
+  for (const asset of assets) {
+    if (!SHA256_PATTERN.test(asset.contentHash)) continue
+    const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
+    if (!(await reader.exists(file))) {
+      errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+    }
+  }
+}
+
+/**
  * Verify a pack's on-disk files against its manifest.
  * @param {object} manifest
  * @param {PackReader} reader
@@ -58,5 +77,6 @@ async function checkAssetHashes(assets, reader, errors) {
 export async function checkPackIntegrity(manifest, reader) {
   const errors = []
   await checkAssetHashes(manifestAssets(manifest), reader, errors)
+  await checkThumbnails(manifestAssets(manifest), reader, errors)
   return { errors }
 }
