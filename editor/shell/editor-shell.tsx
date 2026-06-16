@@ -60,6 +60,8 @@ import { ThemeToggle } from './theme-toggle'
 import { ZoomControl } from './zoom-control'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
+import { ImportAlert } from './import-alert'
+import { ImportDropTarget } from './import-drop-target'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
 
@@ -155,6 +157,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       </div>
       <ProjectMenu
         onNewProject={projectControls.onNewProject}
+        onOpenFile={projectControls.onOpenFile}
         onOpenFolder={projectControls.onOpenFolder}
         onOpenRecent={projectControls.onOpenRecent}
         recentProjects={projectControls.recentProjects}
@@ -288,22 +291,29 @@ function EditorStatusBar() {
 }
 
 // The central area: the view-mode viewport, which shows the 2D plan view and/or
-// the 3D preview region depending on the active view mode.
-function ViewportArea() {
+// the 3D preview region depending on the active view mode. A drop target wraps it
+// so a project file dragged onto the plan loads as the active project.
+function ViewportArea({
+  onImportDroppedFile,
+}: {
+  onImportDroppedFile?: ((file: File) => void) | undefined
+}) {
   return (
-    <ViewModeViewport
-      plan={
-        <div className="editor-shell__plan-area">
-          <PlanView />
-          <CanvasReferenceControl />
-        </div>
-      }
-      preview={
-        <section className="editor-shell__preview" aria-label="3D preview">
-          <SceneCanvas />
-        </section>
-      }
-    />
+    <ImportDropTarget onImportDroppedFile={onImportDroppedFile}>
+      <ViewModeViewport
+        plan={
+          <div className="editor-shell__plan-area">
+            <PlanView />
+            <CanvasReferenceControl />
+          </div>
+        }
+        preview={
+          <section className="editor-shell__preview" aria-label="3D preview">
+            <SceneCanvas />
+          </section>
+        }
+      />
+    </ImportDropTarget>
   )
 }
 
@@ -349,6 +359,13 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                         onDiscard={recovery.onDiscard}
                       />
                     ) : null}
+                    <ImportAlert
+                      status={projectControls.importStatus ?? null}
+                      // Spread onDismiss only when present: the optional prop rejects an explicit undefined.
+                      {...(projectControls.onDismissImportStatus
+                        ? { onDismiss: projectControls.onDismissImportStatus }
+                        : {})}
+                    />
                     <SurfaceSelectionProvider store={surfaceSelection}>
                       <EntitySurfaceBridge />
                       <AppFrame
@@ -358,7 +375,9 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                         railLabel="Tool rail"
                         rail={<ToolRail />}
                         mainLabel="Viewport"
-                        main={<ViewportArea />}
+                        main={
+                          <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
+                        }
                         inspectorLabel="Inspector"
                         inspector={<Inspector />}
                         statusBar={<EditorStatusBar />}

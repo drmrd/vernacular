@@ -20,6 +20,15 @@ describe('ProjectMenu', () => {
     expect(onNewProject).toHaveBeenCalledTimes(1)
   })
 
+  it('opens the menu and calls Open file from its item', async () => {
+    const user = userEvent.setup()
+    const onOpenFile = vi.fn()
+    render(<ProjectMenu onNewProject={vi.fn()} onOpenFile={onOpenFile} />)
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('menuitem', { name: /open file/i }))
+    expect(onOpenFile).toHaveBeenCalledOnce()
+  })
+
   it('lists recent projects as menu items and opens the chosen one', async () => {
     const user = userEvent.setup()
     const onOpenRecent = vi.fn()
