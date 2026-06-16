@@ -5,6 +5,7 @@ import { createEditorSession } from '../bridge'
 import { createEmptyProject } from '../core'
 import { serializeProjectJson } from '../storage/folder/project-json'
 import {
+  InMemoryAssetCache,
   InMemoryProjectStore,
   InMemoryRecentProjectStore,
   type StorageCapabilities,
@@ -46,6 +47,7 @@ describe('useProjectActions import action', () => {
     const context: ProjectActionsContext = {
       session: createEditorSession(project),
       store,
+      assets: new InMemoryAssetCache(),
       projectId: 'current',
       snapshots: undefined,
       recentProjects,
@@ -74,6 +76,7 @@ describe('useProjectActions import action', () => {
     const context: ProjectActionsContext = {
       session: createEditorSession(sampleProject()),
       store: new InMemoryProjectStore(),
+      assets: new InMemoryAssetCache(),
       projectId: 'current',
       snapshots: undefined,
       recentProjects: new InMemoryRecentProjectStore(),
@@ -114,6 +117,7 @@ describe('useProjectActions import action', () => {
     const context: ProjectActionsContext = {
       session: createEditorSession(sampleProject()),
       store: new InMemoryProjectStore(),
+      assets: new InMemoryAssetCache(),
       projectId: 'current',
       snapshots: undefined,
       recentProjects: new InMemoryRecentProjectStore(),
