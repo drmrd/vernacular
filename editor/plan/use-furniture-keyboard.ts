@@ -1,17 +1,9 @@
 import { useEffect } from 'react'
 import type { ToolId } from '../tools/active-tool-context'
+import { isTextEntry } from './keyboard-guard'
 
 // The key that rotates the placement ghost while placing furniture.
 const ROTATE_KEY = 'r'
-
-// A keystroke is ignored while the user is typing in a form control so editing a
-// name, thickness, or angle never rotates the placement ghost.
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
-}
 
 export interface FurnitureKeyboardDeps {
   tool: ToolId
@@ -21,8 +13,7 @@ export interface FurnitureKeyboardDeps {
 /**
  * Binds the R key on the window to rotate the placement ghost while the
  * place-furniture tool is active. Inert under any other tool and while a form
- * control is focused, mirroring use-selection-keyboard. Coverage-excluded glue
- * beyond the unit test.
+ * control is focused, mirroring use-selection-keyboard.
  */
 export function useFurnitureKeyboard(deps: FurnitureKeyboardDeps): void {
   const { tool, rotateArmed } = deps

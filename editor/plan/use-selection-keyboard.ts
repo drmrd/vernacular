@@ -20,6 +20,7 @@ import {
   type SelectionStore,
 } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
+import { isTextEntry } from './keyboard-guard'
 import { selectedEntityIds } from './selection-entities'
 
 // A plain arrow nudge moves by a grid step; holding shift moves by a coarse step.
@@ -58,15 +59,6 @@ function nudgeDelta(key: string, step: number): Point | null {
     default:
       return null
   }
-}
-
-// A keystroke is ignored while the user is typing in a form control so editing a
-// name, thickness, or angle never deletes or nudges the selection.
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 }
 
 // The namespaced scene-node ids of the pasted entities, so the paste selects its copies.
