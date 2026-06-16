@@ -1,7 +1,5 @@
 import { type FurnitureFootprint, type Point } from '../../core'
 
-const FULL_TURN_DEGREES = 360
-
 export interface FurnitureGhost {
   position: Point
   rotation: number
@@ -16,6 +14,8 @@ export function furnitureGhostAt(
 ): FurnitureGhost {
   return { position: point, rotation, footprint }
 }
+
+const FULL_TURN_DEGREES = 360
 
 /** Coarse rotation step (degrees) applied by the R key during placement. */
 export const FURNITURE_ROTATION_STEP_DEGREES = 15
