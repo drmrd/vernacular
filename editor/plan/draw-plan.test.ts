@@ -14,9 +14,10 @@ import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
+import type { DrawableFurniture } from './draw-furniture'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Bounds } from './fit'
-import { DEFAULT_METRIC_PREFERENCES } from '../../core'
+import { DEFAULT_METRIC_PREFERENCES, createFurnitureInstance } from '../../core'
 import type {
   DimensionSceneNode,
   OpeningSceneNode,
@@ -354,6 +355,42 @@ describe('drawPlan dimensions', () => {
     // That label lands after a wall stroke: the wall is painted, then dimensioned.
     expect(withDimension.ops.indexOf('fillText')).toBeGreaterThan(
       withDimension.ops.indexOf('stroke'),
+    )
+  })
+})
+
+describe('drawPlan furniture', () => {
+  // A single armchair-sized footprint placed half a meter into the plan. The
+  // furniture painter fills the piece's label as text, so the call carrying a
+  // piece records more fillText calls than the otherwise-identical wall-only
+  // call, and that label lands after the wall.
+  const PIECE_X = 500
+  const PIECE_Y = 0
+  const PIECE_WIDTH = 600
+  const PIECE_DEPTH = 600
+  const instance = createFurnitureInstance({
+    assetRef: { scope: 'user', contentHash: 'h' },
+    position: { x: PIECE_X, y: PIECE_Y },
+    footprint: { width: PIECE_WIDTH, depth: PIECE_DEPTH },
+    name: 'Armchair',
+  })
+  const drawable: DrawableFurniture = { instance, selected: false }
+  const countText = (ops: readonly string[]) => ops.filter((op) => op === 'fillText').length
+
+  it('renders each provided piece after the walls, adding the footprint label the wall-only plan lacks', () => {
+    const without = recordingContext()
+    drawPlan(without.ctx, planOptions())
+    const withFurniture = recordingContext()
+    drawPlan(withFurniture.ctx, planOptions({ furniture: [drawable] }))
+
+    // The furniture routine fills the piece's label, so the call carrying a
+    // piece records strictly more fillText calls than the wall-only call.
+    expect(countText(withFurniture.ops)).toBeGreaterThan(countText(without.ops))
+    // The painted label carries the piece's name.
+    expect(withFurniture.texts.map((entry) => entry.text)).toContain('Armchair')
+    // That label lands after a wall stroke: the wall is painted, then furnished.
+    expect(withFurniture.ops.indexOf('fillText')).toBeGreaterThan(
+      withFurniture.ops.indexOf('stroke'),
     )
   })
 })
