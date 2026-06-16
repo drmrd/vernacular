@@ -20,3 +20,16 @@
 .library-panel__empty {
   margin: 0;
 }
+
+.library-panel__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+}
+
+.library-panel__sources,
+.library-panel__eras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1, 0.25rem);
+}
