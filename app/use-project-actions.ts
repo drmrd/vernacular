@@ -23,6 +23,7 @@ import {
   type StorageCapabilities,
 } from '../storage'
 import { createInitialProject } from './create-initial-project'
+import { useOpenFileAction } from './use-open-file-action'
 import type { SnapshotsPort } from './app'
 
 export interface RecentEntry {
@@ -43,12 +44,12 @@ export interface Recovery {
  * and records nothing on boot. The clean mapping is finalized when the create-time
  * backend chooser lands (see the plan's Open questions on backend memory).
  */
-function defaultStoreBackend(capabilities: StorageCapabilities): ProjectBackend | null {
+export function defaultStoreBackend(capabilities: StorageCapabilities): ProjectBackend | null {
   return capabilities.opfs ? 'opfs' : null
 }
 
 /** Record an opened-or-saved project under the given backend, ignoring failures. */
-function recordRecent(
+export function recordRecent(
   recentProjects: RecentProjectStore,
   input: { id: string; name: string; backend: ProjectBackend },
 ): void {
@@ -82,6 +83,8 @@ export interface ProjectActions {
   onExportImage: () => void
   onExportPdf: () => void
   onOpenFolder?: () => void
+  onImportDroppedFile?: (file: File) => void
+  onOpenFile?: () => void
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {
@@ -94,6 +97,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
     onExportImage: useExportImageAction(context),
     onExportPdf: useExportPdfAction(context),
     ...useOpenFolderAction(context),
+    ...useOpenFileAction(context),
   }
 }
 
