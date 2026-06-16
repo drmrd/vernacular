@@ -171,6 +171,8 @@ export function validatePackManifest(manifest) {
   ) {
     errors.push('version must be valid SemVer (for example 1.0.0)')
   }
+  validateRequiredStringArray(source, 'eras', errors)
+  validateRequiredStringArray(source, 'categories', errors)
   validateAssets(source.assets, errors)
   return { valid: errors.length === 0, errors }
 }
