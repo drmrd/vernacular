@@ -140,6 +140,20 @@ async function checkRequiredFiles(reader, errors) {
 }
 
 /**
+ * Confirm the pack directory name matches the packId and version.
+ * @param {object} manifest
+ * @param {PackReader} reader
+ * @param {string[]} errors
+ * @returns {void}
+ */
+function checkDirName(manifest, reader, errors) {
+  const expected = `${manifest.packId}-${manifest.version}`
+  if (reader.dirName !== expected) {
+    errors.push(`pack directory name "${reader.dirName}" does not match expected "${expected}"`)
+  }
+}
+
+/**
  * Verify a pack's on-disk files against its manifest.
  * @param {object} manifest
  * @param {PackReader} reader
@@ -151,5 +165,6 @@ export async function checkPackIntegrity(manifest, reader) {
   await checkThumbnails(manifestAssets(manifest), reader, errors)
   await checkOrphans(manifestAssets(manifest), reader, errors)
   await checkRequiredFiles(reader, errors)
+  checkDirName(manifest, reader, errors)
   return { errors }
 }
