@@ -86,7 +86,7 @@ describe('runPackCli failures', () => {
     const code = await runPackCli(['build', 'packs/broken'], cliDeps)
 
     expect(code).toBe(1)
-    expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Invalid pack manifest'))
+    expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Invalid pack'))
   })
 
   it('returns exit code 1 and surfaces on-disk integrity errors', async () => {
