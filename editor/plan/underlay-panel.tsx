@@ -57,20 +57,3 @@ export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }:
     </fieldset>
   )
 }
-
-export function UnderlayPanel({ floorId, underlays, dispatch, onCalibrate }: UnderlayPanelProps) {
-  return (
-    <div>
-      {underlays.map((underlay, index) => (
-        <UnderlayRow
-          key={underlay.id}
-          floorId={floorId}
-          underlay={underlay}
-          label={`Underlay ${index + 1}`}
-          dispatch={dispatch}
-          onCalibrate={onCalibrate}
-        />
-      ))}
-    </div>
-  )
-}
