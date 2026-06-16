@@ -7,6 +7,7 @@ import type { PlanHover } from './use-plan-hover'
 import type { PlanInteraction } from './use-plan-interaction'
 import type { PlanSelection } from './use-plan-selection'
 import type { PlanUnderlayLayer } from './use-underlay'
+import type { FurniturePlacementHandlers } from './use-furniture-layer'
 import type { SelectionMove } from './use-selection-move'
 import type { ViewportControls } from './use-viewport-controls'
 import type { WallEditing } from './use-wall-editing'
@@ -30,6 +31,7 @@ export interface PointerSources {
   calibration: PlanUnderlayLayer['calibration']
   selection: PlanSelection
   openingPlacement: OpeningPlacement
+  furniturePlacement: FurniturePlacementHandlers
   hover: PlanHover
 }
 
@@ -48,6 +50,26 @@ function openingPointerMove(
   return sources.openingResizing.onPointerMove(event) || sources.openingEditing.onPointerMove(event)
 }
 
+// The pointer-down chain: a pan or endpoint/opening/move grab consumes the press;
+// otherwise calibration, the wall/dimension tools, the place-opening and
+// place-furniture tools, and the selection each see it, every one inert under the
+// others' tool.
+function composedPointerDown(
+  sources: PointerSources,
+  event: PointerEvent<HTMLCanvasElement>,
+): void {
+  const { controls, wallEditing, selectionMove, calibration, interaction } = sources
+  const { dimensionTool, openingPlacement, furniturePlacement, selection } = sources
+  if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
+  if (openingPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
+  calibration.onPointerDown(event)
+  interaction.onPointerDown(event)
+  dimensionTool.onPointerDown(event)
+  openingPlacement.onPointerDown(event)
+  furniturePlacement.onPointerDown(event)
+  selection.onPointerDown(event)
+}
+
 /**
  * A pan gesture takes top priority. Next, an endpoint-drag grab, an opening jamb
  * resize grab, an opening footprint grab, or a press on the already-selected
@@ -56,26 +78,20 @@ function openingPointerMove(
  * footprint grab so a press on a jamb handle resizes rather than moves, and the
  * selection move-drag sits beneath them and above the marquee. The calibration
  * interaction runs next but is inert unless the calibrate tool is active. Otherwise
- * the wall tool, the place-opening tool, and the select-tool selection all see the
- * pointer, each inert under the others' tool.
+ * the wall tool, the place-opening tool, the place-furniture tool, and the
+ * select-tool selection all see the pointer, each inert under the others' tool.
  */
 export function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
   const { controls, wallEditing, openingResizing, openingEditing, selectionMove } = sources
-  const { interaction, dimensionTool, calibration, selection, openingPlacement, hover } = sources
+  const { interaction, dimensionTool, calibration, selection, furniturePlacement, hover } = sources
   return {
-    onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
-      if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
-      if (openingPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
-      calibration.onPointerDown(event)
-      interaction.onPointerDown(event)
-      dimensionTool.onPointerDown(event)
-      openingPlacement.onPointerDown(event)
-      selection.onPointerDown(event)
-    },
+    onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => composedPointerDown(sources, event),
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
       // Runs before the guards: hover self-gates on event.buttons, so the highlight
       // always updates regardless of which handler below claims the rest of the move.
       hover.onPointerMove(event)
+      // The placement ghost tracks the cursor; it self-gates on the place-furniture tool.
+      furniturePlacement.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
       if (openingPointerMove(sources, event) || selectionMove.onPointerMove(event)) return
       calibration.onPointerMove(event)

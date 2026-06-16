@@ -27,6 +27,7 @@ import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
 import { composePointerHandlers, type ComposedPointerHandlers } from './compose-pointer-handlers'
 import { useDimensionTool, type DimensionTool } from './use-dimension-tool'
+import { useFurnitureLayer, type FurnitureLayer } from './use-furniture-layer'
 import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
 import {
   usePlanInteraction,
@@ -88,6 +89,7 @@ interface PlanLayers {
   controls: ViewportControls
   underlayLayer: PlanUnderlayLayer
   openingLayer: OpeningLayer
+  furnitureLayer: FurnitureLayer
 }
 
 /**
@@ -102,7 +104,7 @@ function buildScene(
   roomFillColor: string | undefined,
 ): PlanScene {
   const { graph, interaction, dimensionTool, planSelection } = inputs
-  const { wallEditing, underlayLayer, openingLayer } = inputs
+  const { wallEditing, underlayLayer, openingLayer, furnitureLayer } = inputs
   return {
     walls: graph.walls,
     rooms: graph.rooms,
@@ -119,6 +121,7 @@ function buildScene(
     preferences: inputs.preferences,
     underlays: underlayLayer.underlays,
     openings: openingLayer.drawables,
+    furniture: furnitureLayer.drawables,
     dimensions: inputs.dimensions,
     stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
@@ -212,6 +215,16 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport, activeFloorId })
   const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds, preferences })
+  const furniture =
+    session.getProject().floors.find((floor) => floor.id === activeFloorId)?.furniture ?? []
+  const furnitureLayer = useFurnitureLayer({
+    session,
+    tool,
+    viewport,
+    activeFloorId,
+    furniture,
+    selectedIds,
+  })
   return {
     graph,
     tool,
@@ -230,6 +243,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     controls,
     underlayLayer,
     openingLayer,
+    furnitureLayer,
   }
 }
 
@@ -286,6 +300,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       calibration: underlayLayer.calibration,
       selection: planSelection,
       openingPlacement: openingLayer.placement,
+      furniturePlacement: layers.furnitureLayer.placement,
       hover: layers.planHover,
     }),
     overlay: {

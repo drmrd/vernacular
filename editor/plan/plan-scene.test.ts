@@ -21,6 +21,7 @@ function emptyScene(): PlanScene {
     preferences: DEFAULT_METRIC_PREFERENCES,
     underlays: [],
     openings: [],
+    furniture: [],
     dimensions: [],
     stairs: [],
     calibration: undefined,

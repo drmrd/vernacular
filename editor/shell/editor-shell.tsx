@@ -31,6 +31,8 @@ import {
   type CommandContext,
 } from '../commands'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
+import { LibraryLauncherPanel } from '../library/library-launcher-panel'
+import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { UnderlayMenuPanel } from '../plan/underlay-menu-panel'
@@ -245,6 +247,7 @@ function ToolRail() {
       />
       <ToolsNav />
       <OverallDimensions extent={overall} />
+      <LibraryLauncherPanel />
       <UnderlayMenuPanel />
     </div>
   )
@@ -335,38 +338,45 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
               <PointerReadoutProvider>
                 <UnderlayProvider>
                   <OpeningToolProvider>
-                    <KeybindingLayer />
-                    <CommandPalette />
-                    {recovery ? (
-                      <RecoveryPrompt
-                        onRestore={recovery.onRestore}
-                        onDiscard={recovery.onDiscard}
+                    <FurniturePlacementProvider>
+                      <KeybindingLayer />
+                      <CommandPalette />
+                      {recovery ? (
+                        <RecoveryPrompt
+                          onRestore={recovery.onRestore}
+                          onDiscard={recovery.onDiscard}
+                        />
+                      ) : null}
+                      <ImportAlert
+                        status={projectControls.importStatus ?? null}
+                        // Spread onDismiss only when present: the optional prop rejects an explicit undefined.
+                        {...(projectControls.onDismissImportStatus
+                          ? { onDismiss: projectControls.onDismissImportStatus }
+                          : {})}
                       />
-                    ) : null}
-                    <ImportAlert
-                      status={projectControls.importStatus ?? null}
-                      // Spread onDismiss only when present: the optional prop rejects an explicit undefined.
-                      {...(projectControls.onDismissImportStatus
-                        ? { onDismiss: projectControls.onDismissImportStatus }
-                        : {})}
-                    />
-                    <SurfaceSelectionProvider store={surfaceSelection}>
-                      <EntitySurfaceBridge />
-                      <AppFrame
-                        header={
-                          <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
-                        }
-                        railLabel="Tool rail"
-                        rail={<ToolRail />}
-                        mainLabel="Viewport"
-                        main={
-                          <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
-                        }
-                        inspectorLabel="Inspector"
-                        inspector={<Inspector />}
-                        statusBar={<EditorStatusBar />}
-                      />
-                    </SurfaceSelectionProvider>
+                      <SurfaceSelectionProvider store={surfaceSelection}>
+                        <EntitySurfaceBridge />
+                        <AppFrame
+                          header={
+                            <ShellHeader
+                              saveStatus={saveStatus}
+                              projectControls={projectControls}
+                            />
+                          }
+                          railLabel="Tool rail"
+                          rail={<ToolRail />}
+                          mainLabel="Viewport"
+                          main={
+                            <ViewportArea
+                              onImportDroppedFile={projectControls.onImportDroppedFile}
+                            />
+                          }
+                          inspectorLabel="Inspector"
+                          inspector={<Inspector />}
+                          statusBar={<EditorStatusBar />}
+                        />
+                      </SurfaceSelectionProvider>
+                    </FurniturePlacementProvider>
                   </OpeningToolProvider>
                 </UnderlayProvider>
               </PointerReadoutProvider>
