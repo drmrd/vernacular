@@ -89,6 +89,18 @@ describe('checkPackIntegrity', () => {
     const result = await checkPackIntegrity(manifestWith(), reader)
     expect(result.errors.some((m) => m.includes('not valid WebP'))).toBe(true)
   })
+
+  it('flags files in assets and thumbnails that the manifest does not reference', async () => {
+    const reader = fakeReader({
+      dirs: {
+        assets: [`${HASH}.glb`, 'orphan.glb'],
+        thumbnails: [`${HASH}.webp`, 'stray.webp'],
+      },
+    })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.some((m) => m.includes('orphan.glb'))).toBe(true)
+    expect(result.errors.some((m) => m.includes('stray.webp'))).toBe(true)
+  })
 })
 
 describe('isWebp', () => {
