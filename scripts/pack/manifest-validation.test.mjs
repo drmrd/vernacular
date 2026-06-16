@@ -202,6 +202,26 @@ describe('validatePackManifest asset sourceUrl', () => {
   })
 })
 
+describe('validatePackManifest pack-level eras and categories', () => {
+  it('rejects a manifest with no pack-level eras', () => {
+    const manifest = { ...validManifest() }
+    delete manifest.eras
+    const result = validatePackManifest(manifest)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('eras'))).toBe(true)
+  })
+
+  it('rejects a manifest with no pack-level categories', () => {
+    const manifest = { ...validManifest() }
+    delete manifest.categories
+    const result = validatePackManifest(manifest)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('categories'))).toBe(true)
+  })
+})
+
 describe('validatePackManifest dimensions', () => {
   it('requires a dimensions object on each asset', () => {
     const asset = { ...validAsset() }
