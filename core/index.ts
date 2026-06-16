@@ -69,6 +69,8 @@ export {
   orderScopesByPrecedence,
   resolvedAsset,
 } from './assets/asset-resolution'
+export type { AssetKind, PackValidationResult } from './assets/pack-manifest'
+export { ASSET_KINDS, validatePackManifest } from './assets/pack-manifest'
 export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
