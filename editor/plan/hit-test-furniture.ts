@@ -12,7 +12,6 @@ export function hitTestFurniture(
 ): string | null {
   let hitId: string | null = null
   for (const instance of furniture) {
-    // Iterate forward so a later (more recently placed) item wins on overlap.
     if (pointInPolygon(point, furnitureSymbol(instance).corners)) {
       hitId = instance.id
     }
