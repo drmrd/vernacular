@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { RECOGNIZED_LICENSES, isShareAlike, recognize } from './license-policy.mjs'
+import {
+  RECOGNIZED_LICENSES,
+  isNoRedistribution,
+  isShareAlike,
+  recognize,
+} from './license-policy.mjs'
 
 describe('recognize', () => {
   it('accepts every curated open license', () => {
@@ -29,6 +34,20 @@ describe('isShareAlike', () => {
   it('does not flag licenses without share-alike terms', () => {
     for (const id of ['CC-BY-4.0', 'MIT', 'CC0-1.0']) {
       expect(isShareAlike(id)).toBe(false)
+    }
+  })
+})
+
+describe('isNoRedistribution', () => {
+  it('flags non-redistributable licenses', () => {
+    for (const id of ['CC-BY-NC-4.0', 'CC-BY-ND-4.0']) {
+      expect(isNoRedistribution(id)).toBe(true)
+    }
+  })
+
+  it('does not flag redistribution-friendly licenses', () => {
+    for (const id of ['CC0-1.0', 'CC-BY-SA-4.0']) {
+      expect(isNoRedistribution(id)).toBe(false)
     }
   })
 })
