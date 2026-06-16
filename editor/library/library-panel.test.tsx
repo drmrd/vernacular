@@ -95,3 +95,68 @@ describe('LibraryPanel', () => {
     expect(screen.queryByRole('button', { name: PACK_ITEM_NAME })).toBeNull()
   })
 })
+
+const EAMES_NAME = 'Eames chair'
+const OAK_NAME = 'Oak table'
+
+function packAndUserRegistry(): AssetRegistry {
+  const packItem = libraryItem({
+    name: EAMES_NAME,
+    eras: ['mid-century'],
+    reference: { scope: PACK_SCOPE, contentHash: 'p1' },
+  })
+  const userItem = libraryItem({
+    name: OAK_NAME,
+    eras: ['victorian'],
+    reference: { scope: 'user', contentHash: 'u1' },
+  })
+  return registryOf([packItem], [userItem])
+}
+
+async function renderBothLoaded(): Promise<void> {
+  renderPanel(packAndUserRegistry())
+  await screen.findByRole('button', { name: EAMES_NAME })
+  await screen.findByRole('button', { name: OAK_NAME })
+}
+
+describe('LibraryPanel filtering', () => {
+  it('filters items by a case-insensitive name search', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.type(screen.getByRole('searchbox', { name: /search furniture/i }), 'chair')
+
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
+  })
+
+  it('shows only user-scoped items when the source toggle is set to Yours', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'Yours' }))
+
+    expect(screen.queryByRole('button', { name: EAMES_NAME })).toBeNull()
+    expect(screen.getByRole('button', { name: OAK_NAME })).toBeInTheDocument()
+  })
+
+  it('shows only pack-scoped items when the source toggle is set to Sample', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'Sample' }))
+
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
+  })
+
+  it('narrows the grid to items in the chosen era when an era chip is activated', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'mid-century' }))
+
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
+  })
+})
