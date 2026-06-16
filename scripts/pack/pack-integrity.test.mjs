@@ -63,4 +63,11 @@ describe('checkPackIntegrity', () => {
     const result = await checkPackIntegrity(manifestWith(), fakeReader())
     expect(result).toEqual({ errors: [] })
   })
+
+  it('flags an asset whose bytes hash to a different digest than declared', async () => {
+    const reader = fakeReader({ hashes: { [ASSET_FILE]: 'b'.repeat(64) } })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.length).toBeGreaterThanOrEqual(1)
+    expect(result.errors.some((m) => m.includes('content hash'))).toBe(true)
+  })
 })
