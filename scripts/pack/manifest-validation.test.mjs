@@ -86,6 +86,15 @@ describe('validatePackManifest assets', () => {
 
     expect(result).toEqual({ valid: true, errors: [] })
   })
+
+  it('requires attribution on each asset', () => {
+    const asset = { ...validAsset() }
+    delete asset.attribution
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('attribution'))).toBe(true)
+  })
 })
 
 describe('validatePackManifest dimensions', () => {
