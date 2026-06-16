@@ -70,4 +70,10 @@ describe('checkPackIntegrity', () => {
     expect(result.errors.length).toBeGreaterThanOrEqual(1)
     expect(result.errors.some((m) => m.includes('content hash'))).toBe(true)
   })
+
+  it('flags an asset whose declared file is missing from the pack', async () => {
+    const reader = fakeReader({ files: { [ASSET_FILE]: false } })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.some((m) => m.includes('asset file missing'))).toBe(true)
+  })
 })
