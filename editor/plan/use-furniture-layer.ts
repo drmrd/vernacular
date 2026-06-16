@@ -6,6 +6,7 @@ import type { ToolId } from '../tools/active-tool-context'
 import type { DrawableFurniture } from './draw-furniture'
 import { toDrawableFurniture } from './drawable-furniture'
 import { useFurniturePlacement } from './furniture-placement-context'
+import { useFurnitureKeyboard } from './use-furniture-keyboard'
 import { usePlaceFurniture } from './use-furniture-placement'
 import { furnitureGhostAt } from './place-furniture'
 import { eventToCanvas } from './use-viewport-controls'
@@ -67,9 +68,10 @@ function ghostDrawable({ armed, rotation, cursor, tool }: GhostInputs): Drawable
  */
 export function useFurnitureLayer(deps: FurnitureLayerDeps): FurnitureLayer {
   const { session, tool, viewport, activeFloorId, furniture, selectedIds } = deps
-  const { armed, rotation } = useFurniturePlacement()
+  const { armed, rotation, rotateArmed } = useFurniturePlacement()
   const [cursor, setCursor] = useState<Point | null>(null)
   const placement = usePlaceFurniture({ session, tool, viewport, activeFloorId, armed, rotation })
+  useFurnitureKeyboard({ tool, rotateArmed })
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (tool !== 'place-furniture' || armed === null) {
