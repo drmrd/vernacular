@@ -46,4 +46,9 @@ describe('SnapPanel', () => {
     fireEvent.change(screen.getByLabelText('Catch radius'), { target: { value: '20' } })
     expect(store.getPreferences().pixelRadius).toBe(20)
   })
+
+  it('offers an underlay-corners checkbox that is unchecked by default', () => {
+    renderPanel()
+    expect(screen.getByRole('checkbox', { name: 'Underlay corners' })).not.toBeChecked()
+  })
 })

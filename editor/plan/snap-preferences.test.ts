@@ -5,6 +5,7 @@ import {
   isSnapKindEnabled,
   setSnapEnabled,
   setSnapPixelRadius,
+  TOGGLABLE_SNAP_KINDS,
   toggleSnapKind,
   type SnapPreferences,
   type TogglableSnapKind,
@@ -33,8 +34,13 @@ describe('default snap preferences', () => {
     }
   })
 
-  it('does not treat the draw-aid trace as a togglable running kind', () => {
-    expect(DEFAULT_SNAP_PREFERENCES.kinds).not.toHaveProperty('trace')
+  it('offers the underlay-corner trace as a togglable snap source', () => {
+    expect(TOGGLABLE_SNAP_KINDS).toContain('trace')
+  })
+
+  it('leaves underlay-corner snapping off by default while its siblings stay on', () => {
+    expect(DEFAULT_SNAP_PREFERENCES.kinds.trace).toBe(false)
+    expect(DEFAULT_SNAP_PREFERENCES.kinds.endpoint).toBe(true)
   })
 
   it('defaults the catch radius to the current pixel tolerance', () => {
