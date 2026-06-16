@@ -5,6 +5,8 @@
 // manifest object and returns a result. When the in-app pack loader lands (phase 3)
 // this schema graduates to core/ as shared TypeScript.
 
+import { licenseProblems } from './license-policy.mjs'
+
 /** @typedef {{ valid: boolean, errors: string[] }} PackValidationResult */
 
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
@@ -128,7 +130,9 @@ function validateAsset(asset, index, errors) {
     errors.push(`${label}.contentHash must be a sha256 hex digest`)
   }
   validateRequiredString(source, 'name', errors, `${label}.name`)
-  validateRequiredString(source, 'license', errors, `${label}.license`)
+  if (validateRequiredString(source, 'license', errors, `${label}.license`)) {
+    errors.push(...licenseProblems(String(source.license)))
+  }
   validateRequiredString(source, 'attribution', errors, `${label}.attribution`)
   validateRequiredStringArray(source, 'eras', errors, `${label}.eras`)
   validateRequiredStringArray(source, 'categories', errors, `${label}.categories`)
@@ -163,7 +167,9 @@ export function validatePackManifest(manifest) {
   const errors = []
   const source = /** @type {Record<string, unknown>} */ (manifest)
   validateRequiredString(source, 'packId', errors)
-  validateRequiredString(source, 'license', errors)
+  if (validateRequiredString(source, 'license', errors)) {
+    errors.push(...licenseProblems(String(source.license)))
+  }
   validateRequiredString(source, 'attribution', errors)
   if (
     validateRequiredString(source, 'version', errors) &&
