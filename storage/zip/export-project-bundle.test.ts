@@ -92,7 +92,7 @@ describe('exportProjectBundle', () => {
 
     expect(await reopened.assetCache().get(FURNITURE_HASH)).toEqual(GLB_BYTES)
     const loaded = await reopened.load('current')
-    expect(loaded.floors[0].furniture[0].assetRef.contentHash).toBe(FURNITURE_HASH)
+    expect(loaded.floors[0]?.furniture[0]?.assetRef.contentHash).toBe(FURNITURE_HASH)
   })
 
   it('omits asset bytes from a plain bundle that was not built with exportProjectBundle', async () => {
