@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { createEmptyProject } from '../../core'
 import { serializeProjectJson } from '../folder/project-json'
 import { ZipBundleProjectStore } from '../zip/zip-bundle-project-store'
-import { importProjectFile } from './import-project-file'
+import { importProjectFile, UnsupportedProjectFileError } from './import-project-file'
 
 function sampleProject() {
   return createEmptyProject({
@@ -43,5 +43,20 @@ describe('importProjectFile', () => {
     const loaded = await importProjectFile('plan.json', bytes, 'p1')
 
     expect(loaded.meta.name).toBe(project.meta.name)
+  })
+
+  it('rejects an unknown extension with an error naming the file', async () => {
+    await expect(importProjectFile('notes.txt', new Uint8Array(), 'p1')).rejects.toBeInstanceOf(
+      UnsupportedProjectFileError,
+    )
+    await expect(importProjectFile('notes.txt', new Uint8Array(), 'p1')).rejects.toThrow(
+      /notes\.txt/,
+    )
+  })
+
+  it('rejects invalid JSON bytes under a .json name', async () => {
+    await expect(
+      importProjectFile('broken.json', new TextEncoder().encode('{not json'), 'p1'),
+    ).rejects.toThrow()
   })
 })
