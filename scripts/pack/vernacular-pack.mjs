@@ -10,9 +10,9 @@ import { access, readFile, readdir, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { validatePackManifest } from './manifest-validation.mjs'
+import { validatePackManifest } from '../../core/assets/pack-manifest.ts'
 import { checkPackIntegrity } from './pack-integrity.mjs'
-import { isShareAlike, shareAlikeWarning } from './license-policy.mjs'
+import { isShareAlike, shareAlikeWarning } from '../../core/assets/license-policy.ts'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
