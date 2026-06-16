@@ -101,6 +101,20 @@ describe('checkPackIntegrity', () => {
     expect(result.errors.some((m) => m.includes('orphan.glb'))).toBe(true)
     expect(result.errors.some((m) => m.includes('stray.webp'))).toBe(true)
   })
+
+  it('flags a pack missing its NOTICE file', async () => {
+    const reader = fakeReader({ files: { NOTICE: false } })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.some((m) => m.includes('NOTICE'))).toBe(true)
+  })
+
+  it('checks each required pack file by name', async () => {
+    for (const name of ['LICENSE', 'NOTICE', 'CHANGELOG.md']) {
+      const reader = fakeReader({ files: { [name]: false } })
+      const result = await checkPackIntegrity(manifestWith(), reader)
+      expect(result.errors.some((m) => m.includes(name))).toBe(true)
+    }
+  })
 })
 
 describe('isWebp', () => {
