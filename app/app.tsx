@@ -334,6 +334,7 @@ function EditorWorkspace(props: EditorWorkspaceProps) {
                   saveStatus={saveStatus}
                   recentProjects={recentEntries}
                   {...actions}
+                  onDismissImportStatus={actions.dismissImportStatus}
                   // Spread recovery only when present: the optional prop rejects an explicit undefined.
                   {...(recovery ? { recovery } : {})}
                 />
