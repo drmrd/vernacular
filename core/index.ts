@@ -221,6 +221,29 @@ export {
   resizeOpeningEdge,
 } from './commands/handlers/opening-commands'
 export type {
+  MoveFurnitureParams,
+  PlaceFurnitureParams,
+  RemoveFurnitureParams,
+  ResizeFurnitureParams,
+  RotateFurnitureParams,
+  SetFurnitureNameParams,
+} from './commands/handlers/furniture-commands'
+export {
+  MOVE_FURNITURE,
+  PLACE_FURNITURE,
+  REMOVE_FURNITURE,
+  RESIZE_FURNITURE,
+  ROTATE_FURNITURE,
+  SET_FURNITURE_NAME,
+  moveFurniture,
+  placeFurniture,
+  registerFurnitureCommands,
+  removeFurniture,
+  resizeFurniture,
+  rotateFurniture,
+  setFurnitureName,
+} from './commands/handlers/furniture-commands'
+export type {
   AddDimensionParams,
   RemoveDimensionParams,
 } from './commands/handlers/dimension-commands'
