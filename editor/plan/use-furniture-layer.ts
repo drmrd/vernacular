@@ -6,9 +6,11 @@ import type { ToolId } from '../tools/active-tool-context'
 import type { DrawableFurniture } from './draw-furniture'
 import { toDrawableFurniture } from './drawable-furniture'
 import { useFurniturePlacement } from './furniture-placement-context'
+import { useFurnitureEditing, type FurnitureEditing } from './use-furniture-editing'
 import { useFurnitureKeyboard } from './use-furniture-keyboard'
 import { usePlaceFurniture } from './use-furniture-placement'
 import { furnitureGhostAt } from './place-furniture'
+import { singleSelectedFurniture } from './selected-furniture'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -33,6 +35,8 @@ export interface FurnitureLayer {
   // The placed furniture drawables plus the live placement ghost, when armed.
   drawables: readonly DrawableFurniture[]
   placement: FurniturePlacementHandlers
+  // The footprint-drag move of the single selected furniture under the select tool.
+  editing: FurnitureEditing
 }
 
 interface GhostInputs {
@@ -72,6 +76,8 @@ export function useFurnitureLayer(deps: FurnitureLayerDeps): FurnitureLayer {
   const [cursor, setCursor] = useState<Point | null>(null)
   const placement = usePlaceFurniture({ session, tool, viewport, activeFloorId, armed, rotation })
   useFurnitureKeyboard({ tool, rotateArmed })
+  const selectedFurniture = singleSelectedFurniture(tool, selectedIds, furniture)
+  const editing = useFurnitureEditing({ session, selectedFurniture, activeFloorId, viewport })
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (tool !== 'place-furniture' || armed === null) {
@@ -84,5 +90,9 @@ export function useFurnitureLayer(deps: FurnitureLayerDeps): FurnitureLayer {
   const placed = toDrawableFurniture(furniture, selectedIds)
   const ghost = ghostDrawable({ armed, rotation, cursor, tool })
   const drawables = ghost === null ? placed : [...placed, ghost]
-  return { drawables, placement: { onPointerDown: placement.onPointerDown, onPointerMove } }
+  return {
+    drawables,
+    placement: { onPointerDown: placement.onPointerDown, onPointerMove },
+    editing,
+  }
 }

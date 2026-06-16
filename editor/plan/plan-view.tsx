@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- the cohesive plan-editing controller seam: it resolves every plan hook (pan/zoom, wall, opening, furniture, selection, underlay) and flattens them into the scene and pointer handlers in one place. Splitting the controller across files would scatter the single binding point this module defines. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
@@ -188,10 +189,19 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
+  const furniture =
+    session.getProject().floors.find((floor) => floor.id === activeFloorId)?.furniture ?? []
   const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceEnabled)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport, activeFloorId })
-  const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
+  const planSelection = usePlanSelection({
+    graph,
+    furniture,
+    selection,
+    tool,
+    viewport,
+    setViewport,
+  })
   const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({
     session,
@@ -203,7 +213,15 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     activeFloorId,
   })
   const clipboard = useClipboardStore()
-  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool, activeFloorId })
+  useSelectionKeyboard({
+    session,
+    selection,
+    clipboard,
+    selectedIds,
+    tool,
+    activeFloorId,
+    furniture,
+  })
   const wallEditing = useWallEditing({
     session,
     selectedWall,
@@ -215,8 +233,6 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport, activeFloorId })
   const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds, preferences })
-  const furniture =
-    session.getProject().floors.find((floor) => floor.id === activeFloorId)?.furniture ?? []
   const furnitureLayer = useFurnitureLayer({
     session,
     tool,
@@ -294,6 +310,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       wallEditing,
       openingResizing: openingLayer.resizing,
       openingEditing: openingLayer.editing,
+      furnitureEditing: layers.furnitureLayer.editing,
       selectionMove,
       interaction,
       dimensionTool,

@@ -6,9 +6,11 @@ import {
   instantiateClipboard,
   OPENING_NODE_PREFIX,
   pasteEntities,
+  removeFurniture,
   translateEntities,
   WALL_NODE_PREFIX,
   type Floor,
+  type FurnitureInstance,
   type InstantiatedEntities,
   type Point,
 } from '../../core'
@@ -36,6 +38,9 @@ interface SelectionKeyboardContext {
   clipboard: ClipboardStore
   selectedIds: ReadonlySet<string>
   activeFloorId: string | null
+  // The active floor's furniture, so a Delete can remove selected pieces; furniture
+  // is not in the scene graph, so the generic deleteEntities never reaches it.
+  furniture: readonly FurnitureInstance[]
 }
 
 // The floor the keyboard actions target: the active floor, falling back to the
@@ -132,6 +137,21 @@ function handleEditKey({ event, ctx, floor, ids }: KeyAction): void {
   }
 }
 
+// The ids of the selected furniture pieces, found by intersecting the raw
+// selection with the floor's furniture (furniture carries raw, unprefixed ids).
+function selectedFurnitureIds(ctx: SelectionKeyboardContext): string[] {
+  return ctx.furniture.filter((item) => ctx.selectedIds.has(item.id)).map((item) => item.id)
+}
+
+// Remove each selected furniture piece and drop those ids from the selection,
+// leaving any selected graph entities for the generic delete to handle.
+function deleteFurniture(ctx: SelectionKeyboardContext, floorId: string, ids: string[]): void {
+  for (const id of ids) {
+    ctx.session.dispatch(removeFurniture(floorId, id))
+  }
+  ctx.selection.setSelection([...ctx.selectedIds].filter((id) => !ids.includes(id)))
+}
+
 function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): void {
   if (isTextEntry(event.target)) {
     return
@@ -144,6 +164,11 @@ function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): voi
   if (event.metaKey || event.ctrlKey) {
     handleClipboardKey(action)
     return
+  }
+  const furnitureIds = selectedFurnitureIds(ctx)
+  if ((event.key === 'Delete' || event.key === 'Backspace') && furnitureIds.length > 0) {
+    event.preventDefault()
+    deleteFurniture(ctx, floor.id, furnitureIds)
   }
   if (action.ids.length > 0) {
     handleEditKey(action)
@@ -159,16 +184,19 @@ interface SelectionKeyboardDeps {
   // The floor the keyboard actions target (the active floor); null before any
   // floor is selected.
   activeFloorId: string | null
+  // The active floor's furniture, so a Delete can remove selected pieces.
+  furniture: readonly FurnitureInstance[]
 }
 
 /**
  * Binds the select-tool editing keystrokes to the window: Delete and Backspace
- * delete the selection, the arrow keys nudge it, and the platform copy, cut, and
- * paste shortcuts drive the clipboard. Inert under any tool but `select`, and
- * ignored while a form control is focused so inspector typing is untouched.
+ * delete the selected graph entities and furniture, the arrow keys nudge the graph
+ * entities, and the platform copy, cut, and paste shortcuts drive the clipboard.
+ * Inert under any tool but `select`, and ignored while a form control is focused so
+ * inspector typing is untouched.
  */
 export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
-  const { session, selection, clipboard, selectedIds, tool, activeFloorId } = deps
+  const { session, selection, clipboard, selectedIds, tool, activeFloorId, furniture } = deps
   useEffect(() => {
     if (tool !== 'select') {
       return undefined
@@ -179,6 +207,7 @@ export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
       clipboard,
       selectedIds,
       activeFloorId,
+      furniture,
     }
     const listener = (event: KeyboardEvent): void => {
       handleKeyDown(event, ctx)
@@ -187,5 +216,5 @@ export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
     return () => {
       window.removeEventListener('keydown', listener)
     }
-  }, [session, selection, clipboard, selectedIds, tool, activeFloorId])
+  }, [session, selection, clipboard, selectedIds, tool, activeFloorId, furniture])
 }
