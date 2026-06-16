@@ -6,8 +6,9 @@
 // performs the same validation and reports a summary; content-hash verification,
 // thumbnail baking, and publishing are deferred to phase 3.
 
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { access, readFile, readdir, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from './manifest-validation.mjs'
 import { checkPackIntegrity } from './pack-integrity.mjs'
@@ -138,9 +139,52 @@ export async function runPackCli(argv, deps) {
 }
 
 /** Read <packDir>/manifest.json from disk. */
-async function readManifestFromDisk(packDir) {
+export async function readManifestFromDisk(packDir) {
   const raw = await readFile(join(packDir, 'manifest.json'), 'utf8')
   return JSON.parse(raw)
+}
+
+/**
+ * A {@link PackReader} backed by the real filesystem under `packDir`.
+ * @param {string} packDir
+ * @returns {import('./pack-integrity.mjs').PackReader}
+ */
+export function createNodePackReader(packDir) {
+  return {
+    dirName: basename(packDir),
+    listDir: async (rel) => {
+      try {
+        return await readdir(join(packDir, rel))
+      } catch {
+        return []
+      }
+    },
+    exists: async (rel) => {
+      try {
+        await access(join(packDir, rel))
+        return true
+      } catch {
+        return false
+      }
+    },
+    sha256: async (rel) =>
+      createHash('sha256')
+        .update(await readFile(join(packDir, rel)))
+        .digest('hex'),
+    readBytes: async (rel, length) =>
+      new Uint8Array((await readFile(join(packDir, rel))).subarray(0, length)),
+  }
+}
+
+/**
+ * Write a build report to a sibling of `packDir`, outside the immutable pack content.
+ * @param {string} packDir
+ * @param {object} report
+ * @returns {Promise<void>}
+ */
+export async function writeReportToDisk(packDir, report) {
+  const target = join(dirname(packDir), `${basename(packDir)}-build-report.json`)
+  await writeFile(target, `${JSON.stringify(report, null, 2)}\n`)
 }
 
 // Run only when invoked directly (node scripts/pack/vernacular-pack.mjs ...),
@@ -152,11 +196,8 @@ const isDirectInvocation =
 if (isDirectInvocation) {
   runPackCli(process.argv.slice(2), {
     readManifest: readManifestFromDisk,
-    // Cycle 4.5 wires the real node adapters.
-    createReader: () => {
-      throw new Error('not implemented')
-    },
-    writeReport: async () => {},
+    createReader: createNodePackReader,
+    writeReport: writeReportToDisk,
     log: (message) => console.log(message),
     error: (message) => console.error(message),
   })
