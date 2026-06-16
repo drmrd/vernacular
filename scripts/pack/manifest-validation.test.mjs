@@ -173,6 +173,35 @@ describe('validatePackManifest asset categories', () => {
   })
 })
 
+describe('validatePackManifest asset sourceUrl', () => {
+  it('accepts an asset with no sourceUrl', () => {
+    const result = validatePackManifest({ ...validManifest(), assets: [validAsset()] })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('accepts an asset whose sourceUrl is an http(s) URL', () => {
+    const asset = { ...validAsset(), sourceUrl: 'https://example.org/chair' }
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('rejects an asset whose sourceUrl is not a valid URL', () => {
+    const invalidCases = [
+      { ...validAsset(), sourceUrl: 'not a url' },
+      { ...validAsset(), sourceUrl: 42 },
+    ]
+
+    for (const asset of invalidCases) {
+      const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((message) => message.includes('sourceUrl'))).toBe(true)
+    }
+  })
+})
+
 describe('validatePackManifest dimensions', () => {
   it('requires a dimensions object on each asset', () => {
     const asset = { ...validAsset() }
