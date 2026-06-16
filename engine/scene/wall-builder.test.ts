@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
 import { buildWallGraph } from '../../core'
-import type { PlanarGraph, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, PlanarGraph, Point, WallSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import { materialGroups } from '../testing'
 
@@ -108,6 +108,70 @@ describe('buildWalls', () => {
       WALL_LENGTH + HALF_THICKNESS,
       PRECISION,
     )
+  })
+})
+
+describe('buildWalls miters opening walls at a corner', () => {
+  // An L at the shared vertex (WALL_LENGTH, 0): wall A runs east from the origin
+  // and wall B turns away from A's far end toward `bEnd`. The shared corner
+  // carries two incident edges, so A's b-end miters. `bEnd` sets the turn angle.
+  // The opening (hostWallId 'a', map key 'a') makes A an opening wall.
+  const cornerMeshA = (bEnd: Point, openings: OpeningSceneNode[] = []): THREE.Mesh => {
+    const wallA = horizontalWall({ id: 'wall:a' })
+    const wallB = horizontalWall({ id: 'wall:b', start: { x: WALL_LENGTH, y: 0 }, end: bEnd })
+    const group = buildWalls({
+      graph: {
+        vertices: [{ x: 0, y: 0 }, { x: WALL_LENGTH, y: 0 }, bEnd],
+        edges: [
+          { a: 0, b: 1, wallId: 'a' },
+          { a: 1, b: 2, wallId: 'b' },
+        ],
+      },
+      walls: [wallA, wallB],
+      openingsByWall:
+        openings.length > 0 ? new Map<string, OpeningSceneNode[]>([['a', openings]]) : new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+    const mesh = meshesOf(group).find((m) => m.userData.entityId === 'wall:a')
+    expect(mesh).toBeDefined()
+    return mesh as THREE.Mesh
+  }
+
+  const openingOnA = (): OpeningSceneNode[] => [centeredOpening({ hostWallId: 'a' })]
+
+  it('miters an opening wall the same as a plain wall at an oblique corner', () => {
+    // Wall B turns away at a non-right angle, leaving an oblique seam at the
+    // corner. The opening wall must miter its end identically to the plain wall;
+    // today it squares the end and the faces stop short of the mitered extents.
+    const obliqueEnd: Point = { x: WALL_LENGTH + 1000, y: 1000 }
+    const plain = cornerMeshA(obliqueEnd)
+    const open = cornerMeshA(obliqueEnd, openingOnA())
+
+    for (const role of ['interiorFace', 'exteriorFace'] as const) {
+      expect(maxAxisOfRole(open, role, 'x')).toBeCloseTo(maxAxisOfRole(plain, role, 'x'), PRECISION)
+    }
+  })
+
+  it('miters an opening wall to the inner and outer corner at a right angle', () => {
+    const open = cornerMeshA({ x: WALL_LENGTH, y: WALL_LENGTH }, openingOnA())
+
+    expect(maxAxisOfRole(open, 'interiorFace', 'x')).toBeCloseTo(
+      WALL_LENGTH - HALF_THICKNESS,
+      PRECISION,
+    )
+    expect(maxAxisOfRole(open, 'exteriorFace', 'x')).toBeCloseTo(
+      WALL_LENGTH + HALF_THICKNESS,
+      PRECISION,
+    )
+  })
+
+  it('leaves the free ends of a lone opening wall square', () => {
+    const mesh = singleWallMesh([centeredOpening()])
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+
+    expect(maxAxisOfRole(mesh, 'interiorFace', 'x')).toBeCloseTo(WALL_LENGTH, PRECISION)
+    expect(maxAxisOfRole(mesh, 'exteriorFace', 'x')).toBeCloseTo(WALL_LENGTH, PRECISION)
   })
 })
 
