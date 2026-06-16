@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { Underlay } from '../../core'
 import { UnderlayMenu } from './underlay-menu'
 
 const FLOOR_ID = 'ground'
@@ -107,5 +108,30 @@ describe('UnderlayMenu', () => {
 
     expect(onLoadImage).toHaveBeenCalledTimes(1)
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it("renders a row per underlay whose Calibrate button reports the underlay's id", async () => {
+    const user = userEvent.setup()
+    const underlay = { id: 'u1', opacity: 0.5, visible: true } as Underlay
+    const onCalibrate = vi.fn()
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[underlay]}
+        dispatch={vi.fn()}
+        onLoadImage={vi.fn()}
+        onCalibrate={onCalibrate}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /underlay/i }))
+
+    expect(screen.getByRole('slider')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /visible/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /calibrate/i }))
+
+    expect(onCalibrate).toHaveBeenCalledWith('u1')
   })
 })
