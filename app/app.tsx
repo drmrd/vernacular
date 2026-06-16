@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ActiveFloorProvider,
-  AssetCacheProvider,
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
@@ -14,6 +13,8 @@ import {
   type EditorSession,
 } from '../bridge'
 import { ActiveToolProvider, EditorShell } from '../editor'
+import { AssetProviders } from './asset-providers'
+import { createAssetLibrary } from './create-asset-library-registry'
 import { ThemeProvider } from '../editor/design-system'
 import {
   InMemoryAssetCache,
@@ -322,11 +323,13 @@ function EditorWorkspace(props: EditorWorkspaceProps) {
     onSession,
   })
   const actions = useProjectActions({ ...props, recentEntries })
+  // The asset library (starter pack + user imports), assembled once per content cache.
+  const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
 
   return (
     <ThemeProvider>
       <EditorSessionProvider session={session}>
-        <AssetCacheProvider assets={assets}>
+        <AssetProviders assets={assets} library={assetLibrary}>
           <SelectionProvider store={selection}>
             <ActiveFloorProvider store={activeFloorStore}>
               <ActiveToolProvider>
@@ -341,7 +344,7 @@ function EditorWorkspace(props: EditorWorkspaceProps) {
               </ActiveToolProvider>
             </ActiveFloorProvider>
           </SelectionProvider>
-        </AssetCacheProvider>
+        </AssetProviders>
       </EditorSessionProvider>
     </ThemeProvider>
   )
