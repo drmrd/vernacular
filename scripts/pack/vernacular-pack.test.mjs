@@ -166,4 +166,21 @@ describe('runPackCli build', () => {
     expect(report.assets).toEqual([{ name: 'Chair', contentHash: hash }])
     expect(report.licenses.distinct).toContain('CC0-1.0')
   })
+
+  it('build writes a FAIL report and exits 1 for an invalid pack', async () => {
+    const cliDeps = deps(validManifestWithAsset())
+    const hash = 'a'.repeat(64)
+    cliDeps.createReader = vi.fn(() =>
+      packReader({ hashes: { [`assets/${hash}.glb`]: 'b'.repeat(64) } }),
+    )
+
+    const code = await runPackCli(['build', 'packs/x'], cliDeps)
+
+    expect(code).toBe(1)
+    expect(cliDeps.writeReport).toHaveBeenCalledTimes(1)
+    const [, report] = cliDeps.writeReport.mock.calls[0]
+    expect(report.status).toBe('FAIL')
+    expect(report.errors.length).toBeGreaterThan(0)
+    expect(cliDeps.error).toHaveBeenCalled()
+  })
 })
