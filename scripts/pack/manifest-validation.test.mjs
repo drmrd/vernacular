@@ -136,6 +136,43 @@ describe('validatePackManifest asset eras', () => {
   })
 })
 
+describe('validatePackManifest asset categories', () => {
+  function assetWithCategories(categories) {
+    return { ...validAsset(), categories }
+  }
+
+  function assetWithoutCategories() {
+    const asset = { ...validAsset(), categories: ['seating'] }
+    delete asset.categories
+    return asset
+  }
+
+  it('rejects an asset whose categories is missing, empty, or not a string array', () => {
+    const invalidCases = [
+      assetWithoutCategories(),
+      assetWithCategories([]),
+      assetWithCategories(['']),
+      assetWithCategories('seating'),
+    ]
+
+    for (const asset of invalidCases) {
+      const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((message) => message.includes('categories'))).toBe(true)
+    }
+  })
+
+  it('accepts an asset with a non-empty categories list', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [assetWithCategories(['seating'])],
+    })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+})
+
 describe('validatePackManifest dimensions', () => {
   it('requires a dimensions object on each asset', () => {
     const asset = { ...validAsset() }
