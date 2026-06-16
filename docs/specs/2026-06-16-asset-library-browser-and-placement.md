@@ -56,12 +56,28 @@ stays identical: the same fields, the same license outcomes, the same errors.
 ### 2. Furniture instance in the document model
 
 Add a `FurnitureInstance` to `core/`: a content-addressed `assetRef`, a plan
-position in millimeters, a rotation in degrees, a footprint of width and depth in
-millimeters used to draw the 2D symbol and the placement ghost, an optional
-display name, and a reserved `customizations` field for the parametric hook the
-specification keeps open (section 4.11). It carries an id like the other
-entities. A floor gains a `furniture: FurnitureInstance[]` array, shaped like its
-existing `walls`, `openings`, and `dimensions`.
+position in millimeters, a rotation in degrees, an `elevationZ` height above the
+floor in millimeters, a footprint of width and depth in millimeters used to draw
+the 2D symbol and the placement ghost, an optional display name, and a reserved
+`customizations` field for the parametric hook the specification keeps open
+(section 4.11). It carries an id like the other entities. A floor gains a
+`furniture: FurnitureInstance[]` array, shaped like its existing `walls`,
+`openings`, and `dimensions`.
+
+The rotation is a free angle, not a snapped one. Vernacular homes are rarely
+square, and a planner for them has to let a piece sit at any angle, the same way
+wall endpoints already take free angles. The data model stores the exact degrees;
+the tool and the Inspector give a person both a fast way to spin a piece and an
+exact way to type an angle (slice 6).
+
+`elevationZ` defaults to 0, a piece on the floor. It is in the schema now even
+though the 2D plan does not use it, because the next things a person places are
+wall cabinets, shelves, and pendants that hang above the floor, and a placed-onto
+schema is the wrong place to discover a missing field. A piece's intrinsic height
+comes from its asset dimensions (the manifest carries width, depth, and height);
+a per-instance height override, when one is needed, rides the reserved
+`customizations` field rather than its own column, so it needs no further
+migration.
 
 This is a schema change, so it bumps `CURRENT_SCHEMA_VERSION` and adds a forward
 migration that gives every existing floor an empty `furniture` array. The
@@ -71,27 +87,37 @@ change is documented in an ADR rather than by editing the design specification.
 
 ### 3. Asset sources and the registry
 
-Introduce the `AssetSource` provider interface from section 4.1 and the
-`AssetRegistry` that aggregates sources. The registry is what the browser and the
-placement tool talk to. It lists the assets available across its sources as
-`LibraryItem` summaries (reference, name, kind, categories, eras, footprint, and
-an optional thumbnail reference) and resolves an asset's bytes or thumbnail
-through the precedence already encoded in `core/assets/`.
+The `AssetSource` interface and the `AssetRegistry` already exist in
+`storage/assets/` from the asset-cache track, and they were written for this
+moment: the source today carries only `id` and `read`, with a note that "the
+wider source surface (manifest, thumbnail, write, delete) lands with the library
+browser and custom-import slices," and the registry already resolves a reference
+through the section 4.2 precedence with a missing-asset placeholder hook. This
+slice widens that source surface and adds a listing the browser can render,
+rather than starting fresh.
+
+Widen `AssetSource` with the manifest, thumbnail, and listing surface the browser
+needs, and add a registry listing that gathers `LibraryItem` summaries across
+sources (reference, name, kind, categories, eras, footprint, and an optional
+thumbnail reference). Resolution stays the registry's existing precedence walk.
 
 Two sources at MVP:
 
 - A `PackSource` that reads the #173 pack format: a manifest validated by the
   graduated schema, asset bytes under `assets/<hash>.glb`, and thumbnails under
-  `thumbnails/<hash>.webp`. A small starter pack ships with the application build
-  so the browser has content on first run and works offline (section 4.10). The
-  starter pack reuses the format and shape of the `vernacular-starter` fixture
-  from #173.
+  `thumbnails/<hash>.webp`. A small starter pack ships as static files in the
+  build output, not inlined into the JavaScript bundle. The `PackSource` fetches
+  its manifest and files and the content-addressed cache holds them, so the
+  bundle stays lean. The service worker precaches the starter pack manifest and
+  thumbnails so the browser has content on first run and offline (section 4.10).
+  The starter pack reuses the format and shape of the `vernacular-starter`
+  fixture from #173.
 - A `UserSource` backed by the asset cache and a metadata index, holding the
   models a person imports.
 
-The aggregating registry, resolution with fallback, and the missing-asset
-placeholder are runtime concerns that belong here, the part #173 deliberately
-left out of the build tool.
+Pack-version fallback and the missing-asset placeholder are the registry
+behaviors the asset-cache track left for a later slice, the runtime part #173
+deliberately kept out of the build tool.
 
 ### 4. The library browser
 
@@ -121,45 +147,87 @@ placeholder thumbnail for the same reason: baking a thumbnail from a model needs
 a headless render step the specification places in a later phase, the same
 deferral #173 made for pack thumbnails.
 
+Imported models carry no reliable origin or scale: one model's origin sits at its
+center, another's a meter off the mesh, and units range from meters to arbitrary.
+Normalizing that, re-centering the origin to the footprint and confirming the
+physical scale, needs the model geometry, which only the #175 loader reads. This
+slice does not parse geometry at all. Reading a bounding box from the glTF
+position accessors without applying the node transform hierarchy gives a
+confident wrong answer more often than a useful one, so an editable footprint
+default is the honest bridge until the loader lands. Scale correction is a
+property of the asset, not of a single placement, so it will live on the user
+library record (which is plain stored data, not the migrated document schema) and
+costs no migration to add in #175.
+
+Because asset references are content-addressed and a project saves as a
+`.building` bundle that holds its assets at `assets/<hash>` (ADR-0042, the path
+underlay rasters already take), a custom model does not bloat the project JSON;
+the JSON holds the reference and the bytes live beside it. The one wiring this
+slice owns is promotion: when a user-scoped model is placed and the project is
+saved, its bytes copy into the project scope so the downloaded bundle is
+self-contained and opens on another machine without the original import.
+
 ### 6. The 2D placement tool
 
 A `place-furniture` tool arms when you pick a thumbnail. A ghost footprint at the
 asset's dimensions follows the cursor over the plan and respects the existing
-snapping. A key rotates the ghost in fixed increments. A click drops a
-`FurnitureInstance` through a `placeFurniture` command, and the tool stays armed
-so you can place several in a row. Escape cancels.
+snapping, the grid and vertex snaps the wall and opening tools already use. The
+`R` key spins the ghost in coarse steps for quick squaring-up, and the Inspector
+takes an exact angle for a piece that has to sit at, say, 42 degrees against an
+out-of-square wall. A click drops a `FurnitureInstance` through a `placeFurniture`
+command, and the tool stays armed so you can place several in a row. Escape
+cancels.
 
 A placed instance is an ordinary entity from then on. It draws in the 2D plan as
 a footprint rectangle at its position and rotation with its name as a label, and
 it joins selection, movement, deletion, and undo through the same paths walls and
-openings already use. Rendering the asset's actual geometry in the 3D preview is
-#175; this piece shows the footprint and the thumbnail.
+openings already use. The Inspector edits its angle, footprint, and name.
+Rendering the asset's actual geometry in the 3D preview is #175; this piece shows
+the footprint and the thumbnail.
+
+Snapping a piece flush against a wall and rotating it to match that wall's run is
+a natural next step, and so is warning when two pieces overlap. Both read the
+wall vectors and the other instances rather than just the cursor, and neither is
+needed to place furniture, so they are fast-follow candidates rather than MVP.
+Forced collision avoidance is deliberately out: a planner should let a person put
+a rug under a table.
 
 ## Scope
 
 - Move the manifest schema, the `ASSET_KINDS` enumeration, and the license policy
   to `core/` as TypeScript; repoint the `vernacular-pack` CLI at the graduated
   module; keep its behavior and tests green.
-- Add `FurnitureInstance` and `Floor.furniture[]` to the model, with factories, a
-  `CURRENT_SCHEMA_VERSION` bump, a forward migration, and an ADR.
-- Add the `AssetSource` interface, a `PackSource`, a `UserSource`, and the
-  aggregating `AssetRegistry` with listing and resolution; expose the registry to
-  React through a bridge context.
-- Ship a small bundled starter pack and read it through the `PackSource`.
+- Add `FurnitureInstance` (with `elevationZ` defaulting to 0) and
+  `Floor.furniture[]` to the model, with factories, a `CURRENT_SCHEMA_VERSION`
+  bump, a forward migration, and an ADR.
+- Widen the existing `storage/assets/` `AssetSource` with the manifest, thumbnail,
+  and listing surface; add a `PackSource` and a `UserSource`; add a registry
+  listing of `LibraryItem` summaries; expose the registry to React through a
+  bridge context. The existing precedence resolution stays.
+- Ship a small starter pack as static build files, read it through the
+  `PackSource`, and precache it in the service worker for offline first run.
 - Add the library browser panel and its tool-rail launcher, with search, source
   toggle, category and era filters, the thumbnail grid, and the import entry,
   meeting the accessibility bar.
 - Add custom GLB import: signature check, hashing, cache storage, and a persisted
-  user metadata index.
+  user metadata index; promote a placed user asset into the project scope on save
+  so the `.building` bundle is self-contained.
 - Add the `place-furniture` tool, the `placeFurniture` command, the 2D footprint
-  symbol, and selection, movement, deletion, and undo for placed furniture.
+  symbol, the Inspector editors for angle, footprint, and name, and selection,
+  movement, deletion, and undo for placed furniture.
 
 ## Deferred, by design
 
 - Rendering furniture geometry in the 3D preview. That is #175, with the model
   loader that also yields true footprints and a path to real thumbnails.
+- Normalizing imported model origin and scale (re-centering to the footprint,
+  confirming physical units). Needs the #175 loader's geometry; an editable
+  footprint default bridges until then, and asset scale correction lands on the
+  user library record without a migration.
 - Baking thumbnails from models. Needs a headless renderer and a heavy
   dependency, a later phase per the specification.
+- Snapping a piece flush to a wall, rotating it to the wall's run, and warning on
+  overlap. Fast-follow once placement is in; forced collision avoidance stays out.
 - Installing packs by URL with consent (section 4.6) and fetching packs from a
   remote source. MVP bundles one starter pack.
 - LRU cache eviction and quota handling under pressure (section 4.10).
@@ -178,6 +246,9 @@ openings already use. Rendering the asset's actual geometry in the 3D preview is
   missing-asset placeholder, over injected sources with no real filesystem.
 - Import tests cover a valid GLB stored under its hash and surfaced in the user
   source, and a non-GLB file rejected at the signature check.
+- A serialization test places an imported model, saves to a `.building` bundle,
+  and reopens it from the bundle bytes alone with the asset resolving, confirming
+  the model travels with the project rather than living only in the local import.
 - Placement tests cover arming from a thumbnail, the ghost following the cursor,
   rotation, a drop that adds a `FurnitureInstance` through the command, and the
   instance taking part in selection, movement, deletion, and undo.
