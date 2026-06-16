@@ -47,6 +47,20 @@ export function isShareAlike(licenseId) {
 }
 
 /**
+ * A pack-wide warning when a share-alike license is mixed with other distinct
+ * licenses, so redistribution must preserve the share-alike terms.
+ * @param {string[]} licenseIds
+ * @returns {string | null}
+ */
+export function shareAlikeWarning(licenseIds) {
+  const distinct = [...new Set(licenseIds)]
+  if (distinct.some(isShareAlike) && distinct.length > 1) {
+    return 'pack mixes a share-alike license with other licenses; redistribution must preserve the share-alike terms'
+  }
+  return null
+}
+
+/**
  * Licenses that conflict with an openly redistributable, modifiable pack
  * (NonCommercial / NoDerivatives). They cannot ship in an open pack.
  * @typedef {'CC-BY-NC-4.0'|'CC-BY-NC-3.0'|'CC-BY-NC-SA-4.0'|'CC-BY-ND-4.0'|'CC-BY-ND-3.0'|'CC-BY-NC-ND-4.0'} NonRedistributableLicense
