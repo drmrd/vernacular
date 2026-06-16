@@ -3,10 +3,12 @@ import * as THREE from 'three'
 import {
   WALL_NODE_PREFIX,
   distance,
+  dot,
   junctionFills,
   openingVoidContour,
   planToWorld,
   resolveOpeningEdge,
+  subtract,
   wallFootprints,
   wallHeight,
   type Contour,
@@ -56,10 +58,11 @@ export function buildWalls(input: WallBuildInput): THREE.Group {
     const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
     if (node === null) return
     const openings = openingsOnEdge(edge, input)
+    const footprint = footprints[index] as WallFootprint
     if (openings.length === 0) {
-      group.add(buildWallPrism(node, footprints[index] as WallFootprint, input.materials))
+      group.add(buildWallPrism(node, footprint, input.materials))
     } else {
-      group.add(buildOpeningWallMesh({ edge, wall: node, openings }, input))
+      group.add(buildOpeningWallMesh({ edge, wall: node, openings, footprint }, input))
     }
   })
   for (const mesh of buildJunctionFills(input, thicknessByEdge, wallsByModelId)) {
@@ -165,6 +168,8 @@ const SIDE_EXTERIOR = -1
  * The edge-local frame the profile path works in: distance along the edge (`u`,
  * from vertex `a`) by height (`v`). `along` and `normal` are the unit axes, and
  * `normal` is the left-hand normal of `along` (matching `core/topology/openings`).
+ * `footprint` is the edge's mitered ground plan, so the outer boundary follows the
+ * miter rather than squaring its ends.
  */
 interface EdgeFrame {
   a: Point
@@ -173,10 +178,11 @@ interface EdgeFrame {
   length: number
   height: number
   thickness: number
+  footprint: WallFootprint
 }
 
-/** Derives the edge-local frame for an edge segment's wall node. */
-function edgeFrame(a: Point, b: Point, wall: WallSceneNode): EdgeFrame {
+/** Derives the edge-local frame for an edge segment's wall node and footprint. */
+function edgeFrame(a: Point, b: Point, target: OpeningWall): EdgeFrame {
   const length = distance(a, b)
   const along: Point = { x: (b.x - a.x) / length, y: (b.y - a.y) / length }
   return {
@@ -184,21 +190,37 @@ function edgeFrame(a: Point, b: Point, wall: WallSceneNode): EdgeFrame {
     along,
     normal: { x: -along.y, y: along.x },
     length,
-    height: wallHeight(wall),
-    thickness: wall.thickness,
+    height: wallHeight(target.wall),
+    thickness: target.wall.thickness,
+    footprint: target.footprint,
   }
+}
+
+/**
+ * The along distance for an outline point, remapping only the outer-boundary end
+ * columns to the mitered footprint. A point at `u = 0` takes the `a`-end miter for
+ * its side (interior/`+normal` -> `aPlus`, exterior/`-normal` -> `aMinus`); a point
+ * at `u = length` takes the `b`-end miter; interior void corners keep their `u`. The
+ * mitered corner sits on the same face line, so only its along distance shifts.
+ */
+function mappedAlong(frame: EdgeFrame, u: number, side: number): number {
+  if (u !== 0 && u !== frame.length) return u
+  const corner = frame.footprint[`${u === 0 ? 'a' : 'b'}${side > 0 ? 'Plus' : 'Minus'}`]
+  return dot(subtract(corner, frame.a), frame.along)
 }
 
 /**
  * Maps an edge-local `(u, v)` point onto one wall face: `side` is `+1` for the
  * `+normal` face and `-1` for the `-normal` face, each half the thickness off the
- * centerline. Every vertex routes through `planToWorld`, sharing the axis map.
+ * centerline. The outer-boundary end columns follow the mitered footprint via
+ * {@link mappedAlong}. Every vertex routes through `planToWorld`, sharing the axis map.
  */
 function edgeLocalToWorld(frame: EdgeFrame, uv: THREE.Vector2, side: number): THREE.Vector3 {
   const halfThickness = (side * frame.thickness) / 2
+  const u = mappedAlong(frame, uv.x, side)
   const plan: Point = {
-    x: frame.a.x + frame.along.x * uv.x + frame.normal.x * halfThickness,
-    y: frame.a.y + frame.along.y * uv.x + frame.normal.y * halfThickness,
+    x: frame.a.x + frame.along.x * u + frame.normal.x * halfThickness,
+    y: frame.a.y + frame.along.y * u + frame.normal.y * halfThickness,
   }
   const world = planToWorld(plan, uv.y)
   return new THREE.Vector3(world.x, world.y, world.z)
@@ -369,11 +391,12 @@ function openingWallSections(
   return sections
 }
 
-/** An edge paired with its host wall node and the openings cut into it. */
+/** An edge paired with its host wall node, the openings cut into it, and its footprint. */
 interface OpeningWall {
   edge: GraphEdge
   wall: WallSceneNode
   openings: EdgeOpening[]
+  footprint: WallFootprint
 }
 
 /** Triangulates the wall's elevation outline with each opening's void cut as a hole. */
@@ -401,7 +424,7 @@ function buildOpeningWallMesh(target: OpeningWall, input: WallBuildInput): THREE
   // the same edge, so the vertices are present.
   const a = input.graph.vertices[target.edge.a] as Point
   const b = input.graph.vertices[target.edge.b] as Point
-  const frame = edgeFrame(a, b, target.wall)
+  const frame = edgeFrame(a, b, target)
   const outline = triangulatedWallOutline(frame, target.openings)
   const wallId = target.wall.id.slice(WALL_NODE_PREFIX.length)
   const sections = openingWallSections(frame, outline, wallId)
