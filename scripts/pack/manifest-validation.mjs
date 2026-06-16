@@ -94,6 +94,7 @@ function validateAsset(asset, index, errors) {
   }
   validateRequiredString(source, 'name', errors, `${label}.name`)
   validateRequiredString(source, 'license', errors, `${label}.license`)
+  validateRequiredString(source, 'attribution', errors, `${label}.attribution`)
   if (!ASSET_KINDS.includes(source.kind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
