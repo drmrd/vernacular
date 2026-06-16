@@ -42,7 +42,8 @@ import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
 import { ViewportProvider } from '../plan/viewport-context'
 import { PointerReadoutProvider } from '../plan/pointer-readout'
-import { useActiveTool, type ToolId } from '../tools/active-tool-context'
+import { useActiveTool } from '../tools/active-tool-context'
+import { toolLabel } from '../tools/tool-label'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
@@ -70,23 +71,6 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   pending: 'Saving...',
   saved: 'All changes saved',
   error: 'Save failed',
-}
-
-function toolLabel(tool: ToolId): string {
-  switch (tool) {
-    case 'select':
-      return 'Select'
-    case 'pan':
-      return 'Pan'
-    case 'draw-wall':
-      return 'Wall'
-    case 'place-opening':
-      return 'Opening'
-    case 'dimension':
-      return 'Dimension'
-    case 'calibrate':
-      return 'Calibrate'
-  }
 }
 
 // The tools nav: the tool buttons, plus the opening-type chooser surfaced only
