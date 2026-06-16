@@ -10,6 +10,8 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from './manifest-validation.mjs'
+import { checkPackIntegrity } from './pack-integrity.mjs'
+import { shareAlikeWarning } from './license-policy.mjs'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
@@ -20,9 +22,66 @@ const USAGE = 'Usage: vernacular-pack <validate|build> <packDir>'
 /**
  * @typedef {object} PackCliDeps
  * @property {(packDir: string) => Promise<unknown>} readManifest
+ * @property {(packDir: string) => import('./pack-integrity.mjs').PackReader} createReader
+ * @property {(packDir: string, report: object) => Promise<void>} writeReport
  * @property {(message: string) => void} log
  * @property {(message: string) => void} error
  */
+
+/**
+ * Whether a manifest is shaped well enough to read its on-disk files.
+ * @param {unknown} manifest
+ * @returns {boolean}
+ */
+function isReadableManifest(manifest) {
+  return manifest != null && typeof manifest === 'object' && Array.isArray(manifest.assets)
+}
+
+/**
+ * The license strings declared by a pack and its assets.
+ * @param {object} manifest
+ * @returns {string[]}
+ */
+function collectLicenses(manifest) {
+  const licenses = []
+  if (typeof manifest.license === 'string') licenses.push(manifest.license)
+  for (const asset of Array.isArray(manifest.assets) ? manifest.assets : []) {
+    if (typeof asset.license === 'string') licenses.push(asset.license)
+  }
+  return licenses
+}
+
+/**
+ * Combine manifest-shape, on-disk integrity, and license review for a pack.
+ * @param {unknown} manifest
+ * @param {import('./pack-integrity.mjs').PackReader} reader
+ * @returns {Promise<{ errors: string[], warnings: string[] }>}
+ */
+async function reviewPack(manifest, reader) {
+  const manifestResult = validatePackManifest(manifest)
+  const integrity = isReadableManifest(manifest)
+    ? await checkPackIntegrity(manifest, reader)
+    : { errors: [] }
+  const warning = shareAlikeWarning(collectLicenses(manifest))
+  return {
+    errors: [...manifestResult.errors, ...integrity.errors],
+    warnings: warning ? [warning] : [],
+  }
+}
+
+/**
+ * Report each review error against the pack directory.
+ * @param {PackCliDeps} deps
+ * @param {string} packDir
+ * @param {string[]} errors
+ * @returns {void}
+ */
+function reportErrors(deps, packDir, errors) {
+  deps.error(`Invalid pack ${packDir}:`)
+  for (const message of errors) {
+    deps.error(`  - ${message}`)
+  }
+}
 
 /**
  * @param {readonly string[]} argv arguments after the node binary and script path
@@ -42,15 +101,12 @@ export async function runPackCli(argv, deps) {
     deps.error(`Could not read manifest in ${packDir}: ${String(cause)}`)
     return EXIT_INVALID
   }
-  const result = validatePackManifest(manifest)
-  if (!result.valid) {
-    deps.error(`Invalid pack manifest in ${packDir}:`)
-    for (const message of result.errors) {
-      deps.error(`  - ${message}`)
-    }
+  const review = await reviewPack(manifest, deps.createReader(packDir))
+  if (review.errors.length > 0) {
+    reportErrors(deps, packDir, review.errors)
     return EXIT_INVALID
   }
-  deps.log(`${command}: ${packDir} manifest is valid`)
+  deps.log(`${command}: ${packDir} is a valid pack`)
   return EXIT_OK
 }
 
@@ -69,6 +125,11 @@ const isDirectInvocation =
 if (isDirectInvocation) {
   runPackCli(process.argv.slice(2), {
     readManifest: readManifestFromDisk,
+    // Cycle 4.5 wires the real node adapters.
+    createReader: () => {
+      throw new Error('not implemented')
+    },
+    writeReport: async () => {},
     log: (message) => console.log(message),
     error: (message) => console.error(message),
   })
