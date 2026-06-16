@@ -44,4 +44,16 @@ describe('ImportDropTarget', () => {
 
     expect(onImport).toHaveBeenCalledWith(buildingFile)
   })
+
+  it('fills its container so the wrapped viewport keeps full height', () => {
+    render(
+      <ImportDropTarget onImportDroppedFile={vi.fn()}>
+        <div>canvas</div>
+      </ImportDropTarget>,
+    )
+    expect(screen.getByTestId('import-drop-target')).toHaveStyle({
+      width: '100%',
+      height: '100%',
+    })
+  })
 })
