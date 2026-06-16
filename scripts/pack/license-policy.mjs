@@ -68,3 +68,19 @@ export const NON_REDISTRIBUTABLE_LICENSES = Object.freeze([
 export function isNoRedistribution(licenseId) {
   return NON_REDISTRIBUTABLE_LICENSES.includes(licenseId)
 }
+
+/**
+ * Hard license errors for one identifier: a no-redistribution license cannot ship
+ * in an open pack, and an unrecognized license is not on the curated allowlist.
+ * @param {string} licenseId
+ * @returns {string[]}
+ */
+export function licenseProblems(licenseId) {
+  if (isNoRedistribution(licenseId)) {
+    return [`license "${licenseId}" forbids redistribution and cannot ship in an open pack`]
+  }
+  if (!recognize(licenseId)) {
+    return [`license "${licenseId}" is not a recognized open license`]
+  }
+  return []
+}
