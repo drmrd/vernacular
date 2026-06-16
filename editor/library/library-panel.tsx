@@ -1,8 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { formatAssetReference } from '../../core'
-import type { LibraryItem } from '../../storage'
-import type { AssetRegistry } from '../../storage'
+import type { AssetRegistry, LibraryItem } from '../../storage'
 import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
 import './library-panel.css'
