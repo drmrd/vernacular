@@ -14,14 +14,45 @@
  * @property {(rel: string, length: number) => Promise<Uint8Array>} readBytes
  */
 
+const ASSET_DIR = 'assets'
+const ASSET_EXTENSION = '.glb'
+const SHA256_PATTERN = /^[0-9a-f]{64}$/
+
+/**
+ * The asset entries declared by a manifest, or [] when none are present.
+ * @param {object} manifest
+ * @returns {object[]}
+ */
+function manifestAssets(manifest) {
+  return Array.isArray(manifest?.assets) ? manifest.assets : []
+}
+
+/**
+ * Confirm each asset's file bytes hash to its declared content hash.
+ * @param {object[]} assets
+ * @param {PackReader} reader
+ * @param {string[]} errors
+ * @returns {Promise<void>}
+ */
+async function checkAssetHashes(assets, reader, errors) {
+  for (const asset of assets) {
+    if (!SHA256_PATTERN.test(asset.contentHash)) continue
+    const file = `${ASSET_DIR}/${asset.contentHash}${ASSET_EXTENSION}`
+    const digest = await reader.sha256(file)
+    if (digest !== asset.contentHash) {
+      errors.push(`asset ${asset.contentHash}: content hash does not match the file bytes`)
+    }
+  }
+}
+
 /**
  * Verify a pack's on-disk files against its manifest.
- * @param {object} _manifest
- * @param {PackReader} _reader
+ * @param {object} manifest
+ * @param {PackReader} reader
  * @returns {Promise<{ errors: string[] }>}
  */
-export async function checkPackIntegrity(_manifest, _reader) {
+export async function checkPackIntegrity(manifest, reader) {
   const errors = []
-  // Specific integrity checks are added as their behaviors are specified.
+  await checkAssetHashes(manifestAssets(manifest), reader, errors)
   return { errors }
 }
