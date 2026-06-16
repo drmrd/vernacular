@@ -1,13 +1,11 @@
 import { rotatePoint, type FurnitureInstance, type Point } from '../../core'
-import { DEGREES_PER_HALF_TURN } from './angles'
+import { DEG_TO_RAD } from './angles'
 import type { PlanDrawingContext } from './draw-plan'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 // Footprint half-extents split the full width and depth about the center.
 const HALF_DIVISOR = 2
-// Degrees to radians for the free-angle instance rotation.
-const RADIANS_PER_DEGREE = Math.PI / DEGREES_PER_HALF_TURN
 const FURNITURE_INK_WIDTH = 1
 const FURNITURE_SELECTION_WIDTH = 2
 const FURNITURE_LABEL_FONT = '12px sans-serif'
@@ -42,7 +40,7 @@ export function furnitureSymbol(instance: FurnitureInstance): FurnitureSymbol {
     { x: position.x + halfWidth, y: position.y + halfDepth },
     { x: position.x - halfWidth, y: position.y + halfDepth },
   ]
-  const radians = rotation * RADIANS_PER_DEGREE
+  const radians = rotation * DEG_TO_RAD
   return {
     corners: local.map((corner) => rotatePoint(corner, position, radians)),
     label: instanceLabel(instance),
