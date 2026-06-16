@@ -27,6 +27,8 @@ export const ASSET_KINDS = Object.freeze([
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 
+const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
+
 // A generous 100 m ceiling (in millimeters) that still catches unit mistakes such
 // as meters entered as millimeters.
 const MAX_DIMENSION_MM = 100_000
@@ -62,6 +64,22 @@ function validateRequiredStringArray(source, key, errors, label = key) {
     value.every((entry) => typeof entry === 'string' && entry.trim() !== '')
   if (!isNonEmptyStringArray) {
     errors.push(`${label} must be a non-empty array of strings`)
+  }
+}
+
+/**
+ * @param {Record<string, unknown>} source
+ * @param {string} key
+ * @param {string[]} errors
+ * @param {string} [label]
+ */
+function validateOptionalUrl(source, key, errors, label = key) {
+  const value = source[key]
+  if (value === undefined) {
+    return
+  }
+  if (typeof value !== 'string' || !URL_PREFIX_PATTERN.test(value)) {
+    errors.push(`${label} must be an http(s) URL`)
   }
 }
 
@@ -114,6 +132,7 @@ function validateAsset(asset, index, errors) {
   validateRequiredString(source, 'attribution', errors, `${label}.attribution`)
   validateRequiredStringArray(source, 'eras', errors, `${label}.eras`)
   validateRequiredStringArray(source, 'categories', errors, `${label}.categories`)
+  validateOptionalUrl(source, 'sourceUrl', errors, `${label}.sourceUrl`)
   if (!ASSET_KINDS.includes(source.kind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
