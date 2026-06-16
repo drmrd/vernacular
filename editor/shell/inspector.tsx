@@ -18,6 +18,7 @@ import {
   WALL_NODE_PREFIX,
   type Command,
   type DimensionSceneNode,
+  type FurnitureInstance,
   type Opening,
   type Project,
   type RoomOverride,
@@ -29,6 +30,7 @@ import {
 } from '../../core'
 import './inspector.css'
 import { DimensionInspector } from '../plan/dimension-inspector'
+import { FurnitureInspector } from '../plan/furniture-inspector'
 import { OpeningInspector } from '../plan/opening-inspector'
 import { RoomCeilingHeightEditor } from '../plan/room-ceiling-height-editor'
 import { RoomNameEditor } from '../plan/room-name-editor'
@@ -114,6 +116,37 @@ function singleSelectedOpening(
     const opening = floor.openings.find((candidate) => candidate.id === rawId)
     if (opening !== undefined) {
       return { floorId: floor.id, opening }
+    }
+  }
+  return null
+}
+
+interface SelectedFurniture {
+  floorId: string
+  furniture: FurnitureInstance
+}
+
+/**
+ * The single selected furniture and its floor, or null. Furniture is not in the
+ * scene graph, so it carries a raw (unprefixed) id in the selection; a single id
+ * is matched against each floor's furniture. Mutually exclusive with a single
+ * selected wall, room, opening, or dimension (those ids are prefixed scene nodes).
+ */
+function singleSelectedFurniture(
+  selectedIds: ReadonlySet<string>,
+  project: Readonly<Project>,
+): SelectedFurniture | null {
+  if (selectedIds.size !== 1) {
+    return null
+  }
+  const [onlyId] = selectedIds
+  if (onlyId === undefined) {
+    return null
+  }
+  for (const floor of project.floors) {
+    const furniture = floor.furniture.find((candidate) => candidate.id === onlyId)
+    if (furniture !== undefined) {
+      return { floorId: floor.id, furniture }
     }
   }
   return null
@@ -309,6 +342,21 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
       />
     )
   }
+  const selectedFurniture = singleSelectedFurniture(selectedIds, project)
+  if (selectedFurniture !== null) {
+    const { furniture } = selectedFurniture
+    return (
+      // Key on the furniture's editable values so the inspector remounts when the
+      // selection changes or an undo restores different ones; its fields seed at mount.
+      <FurnitureInspector
+        key={`${furniture.id}:${furniture.rotation}:${furniture.footprint.width}:${furniture.footprint.depth}:${furniture.name ?? ''}`}
+        floorId={selectedFurniture.floorId}
+        furniture={furniture}
+        units={project.meta.units}
+        dispatch={session.dispatch}
+      />
+    )
+  }
   if (selectedIds.size > 0) {
     return null
   }
@@ -340,7 +388,11 @@ function TransformPanel({ session, selectedIds }: TransformPanelProps) {
   )
 }
 
-function componentTitleFor(selectedIds: ReadonlySet<string>, graph: SceneGraph): string | null {
+function componentTitleFor(
+  selectedIds: ReadonlySet<string>,
+  graph: SceneGraph,
+  project: Readonly<Project>,
+): string | null {
   if (selectedIds.size !== 1) return null
   const [id] = selectedIds
   if (id === undefined) return null
@@ -348,6 +400,8 @@ function componentTitleFor(selectedIds: ReadonlySet<string>, graph: SceneGraph):
   if (id.startsWith(ROOM_ID_PREFIX) || graph.rooms.some((r) => r.id === id)) return 'Room'
   if (id.startsWith(DIMENSION_NODE_PREFIX)) return 'Dimension'
   if (id.startsWith(OPENING_NODE_PREFIX)) return 'Opening'
+  if (project.floors.some((floor) => floor.furniture.some((item) => item.id === id)))
+    return 'Furniture'
   return null
 }
 
@@ -362,7 +416,7 @@ export function Inspector() {
     session.dispatch(command as Command)
   }
   const count = selectedIds.size
-  const title = componentTitleFor(selectedIds, graph)
+  const title = componentTitleFor(selectedIds, graph, session.getProject())
   return (
     <div className="inspector">
       <div className="inspector__header">
