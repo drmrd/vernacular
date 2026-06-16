@@ -8,6 +8,7 @@ related:
     decisions/ADR-0007-content-addressed-assets,
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0001-six-layer-architecture,
+    decisions/ADR-0091-pack-integrity-and-build-pipeline,
   ]
 sourceFiles:
   [
@@ -22,7 +23,7 @@ sourceFiles:
     .claude/agents/pack-validator.md,
   ]
 status: current
-updated: 2026-06-03
+updated: 2026-06-16
 ---
 
 # ADR-0024: Pack manifest validation in scripts, graduating to core later
@@ -106,6 +107,12 @@ and simply calls the relocated validator. At that point `build` grows the real
 pipeline: hashing files to confirm manifest `contentHash` claims match reality
 (ADR-0007), baking thumbnails, and producing a publishable, immutable
 versioned pack.
+
+The on-disk integrity and build-report half of that pipeline has since landed,
+recorded in ADR-0091: content-hash verification, thumbnail presence and signature
+checks, orphan detection, required-file and directory-name checks, a curated
+license policy, and a `build-report.json`. The schema graduation to `core/` and
+thumbnail baking remain the open items above.
 
 ## Consequences
 
