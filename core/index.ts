@@ -7,6 +7,8 @@ export type {
   Dimension,
   Extensions,
   Floor,
+  FurnitureFootprint,
+  FurnitureInstance,
   Opening,
   OpeningOrientation,
   PeriodId,
@@ -31,6 +33,7 @@ export type {
 export type {
   NewDimensionOptions,
   NewFloorOptions,
+  NewFurnitureOptions,
   NewOpeningOptions,
   NewProjectOptions,
   NewStairOptions,
@@ -40,6 +43,7 @@ export type {
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_FURNITURE_FOOTPRINT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_STAIR_LENGTH_MM,
@@ -49,6 +53,7 @@ export {
   createDimension,
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createStair,
   createUnderlay,
