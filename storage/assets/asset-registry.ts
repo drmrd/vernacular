@@ -1,4 +1,5 @@
 import {
+  SCOPE_PRECEDENCE,
   missingAsset,
   orderScopesByPrecedence,
   resolvedAsset,
@@ -7,7 +8,7 @@ import {
   type AssetResolution,
   type ScopeKind,
 } from '../../core'
-import type { AssetSource } from './asset-source'
+import type { AssetSource, LibraryItem } from './asset-source'
 
 /** Options that adjust how the registry degrades when an asset is missing. */
 export interface AssetRegistryOptions {
@@ -43,6 +44,18 @@ export class AssetRegistry {
       }
     }
     return this.notResolved(reference)
+  }
+
+  async list(): Promise<LibraryItem[]> {
+    const items: LibraryItem[] = []
+    for (const kind of SCOPE_PRECEDENCE) {
+      for (const scoped of this.sources) {
+        if (scoped.kind !== kind) continue
+        const listed = (await scoped.source.list?.()) ?? []
+        items.push(...listed)
+      }
+    }
+    return items
   }
 
   private availableKinds(): ScopeKind[] {
