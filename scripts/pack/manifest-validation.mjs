@@ -49,6 +49,23 @@ function validateRequiredString(source, key, errors, label = key) {
 }
 
 /**
+ * @param {Record<string, unknown>} source
+ * @param {string} key
+ * @param {string[]} errors
+ * @param {string} [label]
+ */
+function validateRequiredStringArray(source, key, errors, label = key) {
+  const value = source[key]
+  const isNonEmptyStringArray =
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => typeof entry === 'string' && entry.trim() !== '')
+  if (!isNonEmptyStringArray) {
+    errors.push(`${label} must be a non-empty array of strings`)
+  }
+}
+
+/**
  * @param {unknown} dimensions
  * @param {string} label
  * @param {string[]} errors
@@ -95,6 +112,7 @@ function validateAsset(asset, index, errors) {
   validateRequiredString(source, 'name', errors, `${label}.name`)
   validateRequiredString(source, 'license', errors, `${label}.license`)
   validateRequiredString(source, 'attribution', errors, `${label}.attribution`)
+  validateRequiredStringArray(source, 'eras', errors, `${label}.eras`)
   if (!ASSET_KINDS.includes(source.kind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
