@@ -23,8 +23,10 @@ import {
   type StorageCapabilities,
 } from '../storage'
 import { createInitialProject } from './create-initial-project'
-import { useOpenFileAction } from './use-open-file-action'
+import { useOpenFileAction, type ImportStatus } from './use-open-file-action'
 import type { SnapshotsPort } from './app'
+
+export type { ImportStatus }
 
 export interface RecentEntry {
   id: string
@@ -85,6 +87,8 @@ export interface ProjectActions {
   onOpenFolder?: () => void
   onImportDroppedFile?: (file: File) => void
   onOpenFile?: () => void
+  importStatus?: ImportStatus | null
+  dismissImportStatus?: () => void
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {

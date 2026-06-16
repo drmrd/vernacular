@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { commitProject, createEditorSession } from '../bridge'
 import { importProjectFile } from '../storage'
 import { validateLoadedProject } from './validate-loaded-project'
@@ -7,6 +7,15 @@ import {
   recordRecent,
   type ProjectActionsContext,
 } from './use-project-actions'
+
+export interface ImportStatus {
+  fileName: string
+  reason: string
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
 // Reads the file's bytes through a FileReader, which both browsers and the jsdom
 // test File implement (jsdom's Blob exposes no async byte readers).
@@ -38,18 +47,26 @@ function openFilePicker(onFile: (file: File) => void): void {
 export function useOpenFileAction(context: ProjectActionsContext): {
   onImportDroppedFile: (file: File) => Promise<void>
   onOpenFile: () => void
+  importStatus: ImportStatus | null
+  dismissImportStatus: () => void
 } {
   const { store, projectId, recentProjects, capabilities, onSession } = context
   const backend = defaultStoreBackend(capabilities)
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null)
   const importAndActivate = useCallback(
     async (file: File) => {
-      const bytes = await readFileBytes(file)
-      const project = await importProjectFile(file.name, bytes, projectId)
-      validateLoadedProject(project)
-      onSession(createEditorSession(project))
-      await commitProject({ store, projectId, project })
-      if (backend !== null) {
-        recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
+      try {
+        const bytes = await readFileBytes(file)
+        const project = await importProjectFile(file.name, bytes, projectId)
+        validateLoadedProject(project)
+        onSession(createEditorSession(project))
+        await commitProject({ store, projectId, project })
+        if (backend !== null) {
+          recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
+        }
+        setImportStatus(null)
+      } catch (error) {
+        setImportStatus({ fileName: file.name, reason: errorMessage(error) })
       }
     },
     [store, projectId, recentProjects, backend, onSession],
@@ -57,5 +74,7 @@ export function useOpenFileAction(context: ProjectActionsContext): {
   return {
     onImportDroppedFile: importAndActivate,
     onOpenFile: () => openFilePicker(importAndActivate),
+    importStatus,
+    dismissImportStatus: () => setImportStatus(null),
   }
 }
