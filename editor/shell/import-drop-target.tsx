@@ -30,6 +30,7 @@ export function ImportDropTarget({ onImportDroppedFile, children }: ImportDropTa
     <div
       data-testid="import-drop-target"
       className="import-drop-target"
+      style={{ width: '100%', height: '100%' }}
       onDragOver={(event) => event.preventDefault()}
       onDragEnter={(event) => carriesFiles(event) && setDragging(true)}
       onDragLeave={(event) => carriesFiles(event) && setDragging(false)}
