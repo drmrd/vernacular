@@ -266,6 +266,24 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('button', { name: /discard/i })).toBeNull()
   })
 
+  it('shows the open-file menu item, the import alert, and a viewport drop target', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell({
+      onNewProject: vi.fn(),
+      onOpenFile: vi.fn(),
+      onImportDroppedFile: vi.fn(),
+      importStatus: { fileName: 'x.building', reason: 'corrupt' },
+    })
+
+    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    expect(screen.getByRole('menuitem', { name: /open file/i })).toBeInTheDocument()
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/x\.building/)
+    expect(screen.getByTestId('import-drop-target')).toBeInTheDocument()
+  })
+
   it('hides project controls, the recent list, and the recovery prompt when no handlers are provided', () => {
     vi.stubGlobal('navigator', {})
 
