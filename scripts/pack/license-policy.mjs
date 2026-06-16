@@ -29,3 +29,19 @@ export const RECOGNIZED_LICENSES = Object.freeze([
 export function recognize(licenseId) {
   return RECOGNIZED_LICENSES.includes(licenseId)
 }
+
+/**
+ * Share-alike licenses: redistribution-friendly but viral, so redistribution
+ * must preserve their terms. Warned about when mixed with other licenses.
+ * @typedef {'CC-BY-SA-4.0'|'CC-BY-SA-3.0'} ShareAlikeLicense
+ */
+export const SHARE_ALIKE_LICENSES = Object.freeze(['CC-BY-SA-4.0', 'CC-BY-SA-3.0'])
+
+/**
+ * Whether a license identifier carries share-alike terms.
+ * @param {string} licenseId
+ * @returns {boolean}
+ */
+export function isShareAlike(licenseId) {
+  return SHARE_ALIKE_LICENSES.includes(licenseId)
+}
