@@ -252,6 +252,28 @@ export interface Stair {
   extensions?: Extensions
 }
 
+export interface FurnitureFootprint {
+  /** Width of the furniture item in millimeters (the dimension along the x axis of the item's local frame). */
+  width: number // mm
+  /** Depth of the furniture item in millimeters (the dimension along the y axis of the item's local frame). */
+  depth: number // mm
+}
+
+export interface FurnitureInstance {
+  id: string
+  assetRef: AssetReference
+  /** Plan position in world millimeters. */
+  position: Point // plan coordinates, mm
+  /** Rotation in degrees; free angle, not snapped. */
+  rotation: number // degrees, free angle (not snapped)
+  /** Elevation above the finished floor in millimeters; 0 places the item on the floor. */
+  elevationZ: number // mm above the floor; 0 sits on the floor
+  footprint: FurnitureFootprint
+  name?: string
+  /** Reserved for future per-instance customization data; see the design spec. */
+  customizations?: Record<string, unknown>
+}
+
 export interface Project {
   meta: ProjectMeta
   floors: Floor[]

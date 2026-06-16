@@ -4,6 +4,8 @@ import type { AssetReference } from './asset-reference'
 import type {
   Dimension,
   Floor,
+  FurnitureFootprint,
+  FurnitureInstance,
   Opening,
   OpeningOrientation,
   PeriodId,
@@ -212,5 +214,38 @@ export function createStair(options: NewStairOptions): Stair {
     length: options.length ?? DEFAULT_STAIR_LENGTH_MM,
     rotation: options.rotation ?? 0,
     connection: options.connection,
+  }
+}
+
+// A nominal square footprint for furniture items without a specific footprint:
+// 600 mm is a common seat depth for sofas, chairs, and dining chairs, and
+// works as a neutral starting size. Mirror the DEFAULT_WALL_THICKNESS_MM
+// approach of naming the scalar so no-magic-numbers never fires.
+const DEFAULT_FURNITURE_DIMENSION_MM = 600
+
+export const DEFAULT_FURNITURE_FOOTPRINT_MM: FurnitureFootprint = {
+  width: DEFAULT_FURNITURE_DIMENSION_MM,
+  depth: DEFAULT_FURNITURE_DIMENSION_MM,
+}
+
+export interface NewFurnitureOptions {
+  assetRef: AssetReference
+  position: Point
+  footprint: FurnitureFootprint
+  rotation?: number
+  elevationZ?: number
+  name?: string
+  id?: string
+}
+
+export function createFurnitureInstance(options: NewFurnitureOptions): FurnitureInstance {
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    assetRef: options.assetRef,
+    position: options.position,
+    rotation: options.rotation ?? 0,
+    elevationZ: options.elevationZ ?? 0,
+    footprint: options.footprint,
+    ...(options.name !== undefined ? { name: options.name } : {}),
   }
 }
