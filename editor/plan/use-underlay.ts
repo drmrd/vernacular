@@ -56,10 +56,6 @@ export interface UnderlayContextValue {
   setCalibrationToolState: (state: CalibrationToolState) => void
   /** Pair each underlay scene node on the floor with its cached bitmap; skip nodes whose bitmap is not yet decoded. */
   resolveDrawables: (graph: SceneGraph, floorId: string | undefined) => DrawableUnderlay[]
-  /** Whether the wall tool snaps to the visible underlays' footprint corners. */
-  traceMode: boolean
-  /** Toggle underlay tracing for the wall tool. */
-  setTraceMode: (on: boolean) => void
 }
 
 const NO_DRAWABLES: DrawableUnderlay[] = []
@@ -74,8 +70,6 @@ const FALLBACK_VALUE: UnderlayContextValue = {
   calibrationToolState: IDLE_CALIBRATION_TOOL,
   setCalibrationToolState: () => {},
   resolveDrawables: () => NO_DRAWABLES,
-  traceMode: false,
-  setTraceMode: () => {},
 }
 
 const UnderlayContext = createContext<UnderlayContextValue | null>(null)
@@ -155,7 +149,6 @@ export function UnderlayProvider({ children }: UnderlayProviderProps) {
   const cache = cacheRef.current
 
   const loadImage = useLoadImage(session, cache, assets)
-  const [traceMode, setTraceMode] = useState(false)
   const arming = useCalibrationArming(activeTool)
   const decodeTick = useResolveUnderlaysOnOpen(graph, assets, cache)
   const resolveDrawables = useCallback(
@@ -172,8 +165,8 @@ export function UnderlayProvider({ children }: UnderlayProviderProps) {
   // so spreading it keeps the value referentially stable across renders that do
   // not change arming, the loaded image, or the resolver.
   const value = useMemo<UnderlayContextValue>(
-    () => ({ loadImage, ...arming, resolveDrawables, traceMode, setTraceMode }),
-    [loadImage, arming, resolveDrawables, traceMode],
+    () => ({ loadImage, ...arming, resolveDrawables }),
+    [loadImage, arming, resolveDrawables],
   )
 
   return createElement(UnderlayContext.Provider, { value }, children)
