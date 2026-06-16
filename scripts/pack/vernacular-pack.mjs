@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validatePackManifest } from './manifest-validation.mjs'
 import { checkPackIntegrity } from './pack-integrity.mjs'
-import { shareAlikeWarning } from './license-policy.mjs'
+import { isShareAlike, shareAlikeWarning } from './license-policy.mjs'
 
 const EXIT_OK = 0
 const EXIT_INVALID = 1
@@ -70,6 +70,27 @@ async function reviewPack(manifest, reader) {
 }
 
 /**
+ * Build a build report from a manifest and its review outcome.
+ * @param {object} manifest
+ * @param {{ errors: string[], warnings: string[] }} review
+ * @returns {object}
+ */
+function buildReport(manifest, review) {
+  const assets = (Array.isArray(manifest?.assets) ? manifest.assets : []).map((asset) => ({
+    name: asset.name,
+    contentHash: asset.contentHash,
+  }))
+  const licenses = collectLicenses(manifest)
+  return {
+    status: review.errors.length === 0 ? 'PASS' : 'FAIL',
+    assets,
+    licenses: { distinct: [...new Set(licenses)], shareAlike: licenses.some(isShareAlike) },
+    warnings: review.warnings,
+    errors: review.errors,
+  }
+}
+
+/**
  * Report each review error against the pack directory.
  * @param {PackCliDeps} deps
  * @param {string} packDir
@@ -104,6 +125,9 @@ export async function runPackCli(argv, deps) {
   const review = await reviewPack(manifest, deps.createReader(packDir))
   for (const warning of review.warnings) {
     deps.log(`warning: ${warning}`)
+  }
+  if (command === 'build') {
+    await deps.writeReport(packDir, buildReport(manifest, review))
   }
   if (review.errors.length > 0) {
     reportErrors(deps, packDir, review.errors)
