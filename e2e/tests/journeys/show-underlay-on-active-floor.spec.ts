@@ -14,11 +14,15 @@ test('draws the active non-ground floor reference image on the plan canvas', asy
     selectors.planCanvas(page).evaluate((c) => (c as HTMLCanvasElement).toDataURL())
   const beforeLoad = await snapshot()
 
+  // The underlay controls live in a launcher pinned to the tool rail; open it to load.
+  await page.getByRole('button', { name: 'Underlay' }).click()
   const chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Load image' }).click()
+  await page.getByRole('menuitem', { name: 'Load image' }).click()
   await (await chooser).setFiles(underlayFixture)
 
-  // The image now belongs to the active (new) floor's model.
+  // The image now belongs to the active (new) floor's model. Selecting Load image
+  // closes the flyout, so reopen the launcher to see the row.
+  await page.getByRole('button', { name: 'Underlay' }).click()
   await expect(page.getByRole('group', { name: 'Underlay 1' })).toBeVisible()
 
   // The active floor's reference image must draw on the plan canvas, so it changes.

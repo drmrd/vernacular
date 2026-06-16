@@ -33,7 +33,7 @@ import {
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
-import { CanvasReferenceControl } from '../plan/canvas-reference-control'
+import { UnderlayMenuPanel } from '../plan/underlay-menu-panel'
 import { planExtent } from '../plan/fit'
 import { PlanView } from '../plan/plan-view'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
@@ -261,6 +261,7 @@ function ToolRail() {
       />
       <ToolsNav />
       <OverallDimensions extent={overall} />
+      <UnderlayMenuPanel />
     </div>
   )
 }
@@ -304,7 +305,6 @@ function ViewportArea({
         plan={
           <div className="editor-shell__plan-area">
             <PlanView />
-            <CanvasReferenceControl />
           </div>
         }
         preview={

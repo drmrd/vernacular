@@ -24,10 +24,10 @@ describe('buildSnapContext', () => {
     expect(context.toleranceMm).toBe(24)
   })
 
-  it('passes the master flag through and disables nothing by default', () => {
+  it('passes the master flag through and disables underlay-corner tracing by default', () => {
     const context = buildSnapContext(baseInputs, DEFAULT_SNAP_PREFERENCES)
     expect(context.enabled).toBe(true)
-    expect([...(context.disabledKinds ?? [])]).toEqual([])
+    expect([...(context.disabledKinds ?? [])]).toEqual(['trace'])
   })
 
   it('turns the master off when the preference is off', () => {

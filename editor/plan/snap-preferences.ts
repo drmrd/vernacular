@@ -1,14 +1,14 @@
 import { SNAP_PIXEL_TOLERANCE, type SnapKind } from './snap'
 
 /**
- * The running snap kinds a user can turn on and off. `trace` is excluded: it is a
- * draw aid for the in-progress run, not a standing running snap, so it is never a toggle.
+ * The running snap kinds a user can turn on and off, including `trace` (underlay
+ * corners), which is off by default.
  */
-export type TogglableSnapKind = Exclude<SnapKind, 'trace'>
+export type TogglableSnapKind = SnapKind
 
 /**
- * The eight running snap kinds in chain order, the single source of truth from which
- * the per-kind preferences map is built so the two cannot drift apart.
+ * The running snap kinds in chain order, the single source of truth from which the
+ * per-kind preferences map is built so the two cannot drift apart.
  */
 export const TOGGLABLE_SNAP_KINDS: readonly TogglableSnapKind[] = [
   'endpoint',
@@ -19,6 +19,7 @@ export const TOGGLABLE_SNAP_KINDS: readonly TogglableSnapKind[] = [
   'perpendicular',
   'parallel',
   'grid',
+  'trace',
 ]
 
 /** The smallest catch radius the preferences allow, so it never collapses to zero or negative. */
@@ -44,12 +45,13 @@ function everyKind(value: boolean): Record<TogglableSnapKind, boolean> {
 }
 
 /**
- * The defaults that preserve today's behavior exactly: the master on, every running
- * kind on, and the radius at the current pixel tolerance.
+ * The defaults: the master on, every running kind on except underlay-corner `trace`
+ * snapping (off so it never surprises a user who has not opted in), and the radius at
+ * the current pixel tolerance.
  */
 export const DEFAULT_SNAP_PREFERENCES: SnapPreferences = {
   enabled: true,
-  kinds: everyKind(true),
+  kinds: { ...everyKind(true), trace: false },
   pixelRadius: SNAP_PIXEL_TOLERANCE,
 }
 

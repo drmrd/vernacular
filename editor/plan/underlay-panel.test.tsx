@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, within, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   REMOVE_UNDERLAY,
@@ -12,7 +12,7 @@ import {
   type SetUnderlayVisibilityParams,
   type Underlay,
 } from '../../core'
-import { UnderlayPanel } from './underlay-panel'
+import { UnderlayRow } from './underlay-panel'
 
 // A known floor and a single underlay built from the factory so it carries a
 // real id, opacity 1, and visible true. Fixed values keep the dispatched
@@ -21,6 +21,7 @@ const FLOOR_ID = 'g'
 const IMAGE: AssetReference = { scope: 'project', contentHash: 'deadbeef' }
 const UNDERLAY_WIDTH = 1024
 const UNDERLAY_HEIGHT = 768
+const ROW_LABEL = 'Plan scan'
 
 // A new opacity entered through the opacity control. Distinct from the
 // factory default (1) so the dispatched value is unambiguous.
@@ -32,24 +33,22 @@ function newUnderlay(): Underlay {
 
 interface RenderResult {
   dispatch: ReturnType<typeof vi.fn>
-  onLoadImage: ReturnType<typeof vi.fn>
   onCalibrate: ReturnType<typeof vi.fn>
 }
 
-function renderPanel(underlays: readonly Underlay[]): RenderResult {
+function renderRow(underlay: Underlay): RenderResult {
   const dispatch = vi.fn()
-  const onLoadImage = vi.fn()
   const onCalibrate = vi.fn()
   render(
-    <UnderlayPanel
+    <UnderlayRow
       floorId={FLOOR_ID}
-      underlays={underlays}
+      underlay={underlay}
+      label={ROW_LABEL}
       dispatch={dispatch}
-      onLoadImage={onLoadImage}
       onCalibrate={onCalibrate}
     />,
   )
-  return { dispatch, onLoadImage, onCalibrate }
+  return { dispatch, onCalibrate }
 }
 
 function lastCommand<P>(dispatch: ReturnType<typeof vi.fn>): Command<P> {
@@ -58,27 +57,19 @@ function lastCommand<P>(dispatch: ReturnType<typeof vi.fn>): Command<P> {
 
 afterEach(cleanup)
 
-describe('UnderlayPanel', () => {
-  it('lists one control group per underlay with its opacity, visibility, calibrate, and remove controls', () => {
-    const first = newUnderlay()
-    const second = newUnderlay()
-    renderPanel([first, second])
+describe('UnderlayRow', () => {
+  it('shows opacity, visibility, calibrate, and remove controls', () => {
+    renderRow(newUnderlay())
 
-    const groups = screen.getAllByRole('group')
-    expect(groups).toHaveLength(2)
-
-    for (const group of groups) {
-      const scoped = within(group)
-      expect(scoped.getByLabelText(/opacity/i)).toBeInTheDocument()
-      expect(scoped.getByRole('checkbox', { name: /visible/i })).toBeInTheDocument()
-      expect(scoped.getByRole('button', { name: /calibrate/i })).toBeInTheDocument()
-      expect(scoped.getByRole('button', { name: /remove/i })).toBeInTheDocument()
-    }
+    expect(screen.getByLabelText(/opacity/i)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /visible/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /calibrate/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument()
   })
 
   it('dispatches exactly one setUnderlayOpacity when the opacity control changes to a new value', () => {
     const underlay = newUnderlay()
-    const { dispatch } = renderPanel([underlay])
+    const { dispatch } = renderRow(underlay)
 
     const opacity = screen.getByLabelText(/opacity/i)
     fireEvent.change(opacity, { target: { value: String(NEW_OPACITY) } })
@@ -95,7 +86,7 @@ describe('UnderlayPanel', () => {
   it('dispatches exactly one setUnderlayVisibility with the flipped visibility when the visibility control is toggled', async () => {
     const underlay = newUnderlay()
     const user = userEvent.setup()
-    const { dispatch } = renderPanel([underlay])
+    const { dispatch } = renderRow(underlay)
 
     // The factory underlay starts visible; toggling flips it to hidden.
     await user.click(screen.getByRole('checkbox', { name: /visible/i }))
@@ -112,7 +103,7 @@ describe('UnderlayPanel', () => {
   it('dispatches exactly one removeUnderlay when the remove control is pressed', async () => {
     const underlay = newUnderlay()
     const user = userEvent.setup()
-    const { dispatch } = renderPanel([underlay])
+    const { dispatch } = renderRow(underlay)
 
     await user.click(screen.getByRole('button', { name: /remove/i }))
 
@@ -127,7 +118,7 @@ describe('UnderlayPanel', () => {
   it('invokes onCalibrate with the underlay id and dispatches nothing when Calibrate is pressed', async () => {
     const underlay = newUnderlay()
     const user = userEvent.setup()
-    const { dispatch, onCalibrate } = renderPanel([underlay])
+    const { dispatch, onCalibrate } = renderRow(underlay)
 
     await user.click(screen.getByRole('button', { name: /calibrate/i }))
 
@@ -136,18 +127,9 @@ describe('UnderlayPanel', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
-  it('invokes onLoadImage when the load-image control is pressed', async () => {
-    const user = userEvent.setup()
-    const { onLoadImage } = renderPanel([])
-
-    await user.click(screen.getByRole('button', { name: /load image/i }))
-
-    expect(onLoadImage).toHaveBeenCalledTimes(1)
-  })
-
   it('renders its action controls as design-system buttons', () => {
-    renderPanel([newUnderlay()])
-    for (const name of [/load image/i, /calibrate/i, /remove/i]) {
+    renderRow(newUnderlay())
+    for (const name of [/calibrate/i, /remove/i]) {
       expect(screen.getByRole('button', { name })).toHaveClass('ds-button')
     }
   })

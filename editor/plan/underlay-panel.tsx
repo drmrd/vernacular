@@ -18,7 +18,7 @@ export interface UnderlayPanelProps {
   onCalibrate: (underlayId: string) => void
 }
 
-interface UnderlayRowProps {
+export interface UnderlayRowProps {
   floorId: string
   underlay: Underlay
   label: string
@@ -26,7 +26,7 @@ interface UnderlayRowProps {
   onCalibrate: (underlayId: string) => void
 }
 
-function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: UnderlayRowProps) {
+export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: UnderlayRowProps) {
   const opacityInputId = `underlay-opacity-${underlay.id}`
 
   return (
@@ -55,29 +55,5 @@ function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: Underl
       <Button onClick={() => onCalibrate(underlay.id)}>Calibrate</Button>
       <Button onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>Remove</Button>
     </fieldset>
-  )
-}
-
-export function UnderlayPanel({
-  floorId,
-  underlays,
-  dispatch,
-  onLoadImage,
-  onCalibrate,
-}: UnderlayPanelProps) {
-  return (
-    <div>
-      <Button onClick={onLoadImage}>Load image</Button>
-      {underlays.map((underlay, index) => (
-        <UnderlayRow
-          key={underlay.id}
-          floorId={floorId}
-          underlay={underlay}
-          label={`Underlay ${index + 1}`}
-          dispatch={dispatch}
-          onCalibrate={onCalibrate}
-        />
-      ))}
-    </div>
   )
 }

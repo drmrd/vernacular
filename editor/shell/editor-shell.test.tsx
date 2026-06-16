@@ -296,6 +296,18 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  it('no longer anchors the underlay controls to the plan canvas', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    // The underlay controls moved off the canvas into the tool-rail launcher, so
+    // the canvas-anchored Trace underlay checkbox and the always-visible Load
+    // image button are gone from the shell.
+    expect(screen.queryByRole('checkbox', { name: /trace underlay/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /load image/i })).toBeNull()
+  })
+
   it('lays out the shell regions without a global paint slot', () => {
     vi.stubGlobal('navigator', {})
 

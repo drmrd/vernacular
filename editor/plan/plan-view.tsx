@@ -3,7 +3,6 @@ import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   sceneGraphForFloor,
-  type Point,
   type SceneGraph,
   type UnitPreferences,
   type UnitSystem,
@@ -34,8 +33,10 @@ import {
   type PlanInteraction,
   type PlanInteractionDeps,
 } from './use-plan-interaction'
-import { useUnderlay, usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
-import { underlayTracePoints } from './underlay-trace-points'
+import { usePlanUnderlayLayer, type PlanUnderlayLayer } from './use-underlay'
+import { floorUnderlayTracePoints } from './underlay-trace-points'
+import { useSnapPreferences } from './snap-preferences-context'
+import { isSnapKindEnabled } from './snap-preferences'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanHover, type PlanHover } from './use-plan-hover'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
@@ -134,17 +135,6 @@ interface PlanController {
 }
 
 /**
- * The visible underlays' footprint corners that the wall tool can snap to in
- * trace mode, or undefined when trace mode is off so snapping is byte-for-byte
- * unchanged.
- */
-function floorTracePoints(graph: SceneGraph, traceMode: boolean): readonly Point[] | undefined {
-  return traceMode
-    ? graph.underlays.filter((underlay) => underlay.visible).flatMap(underlayTracePoints)
-    : undefined
-}
-
-/**
  * Builds the wall-tool interaction deps, spreading trace points in only when
  * trace mode produced some so the field stays absent under
  * exactOptionalPropertyTypes when off.
@@ -152,9 +142,9 @@ function floorTracePoints(graph: SceneGraph, traceMode: boolean): readonly Point
 function planInteractionDeps(
   base: Omit<PlanInteractionDeps, 'walls' | 'tracePoints'>,
   graph: SceneGraph,
-  traceMode: boolean,
+  traceEnabled: boolean,
 ): PlanInteractionDeps {
-  const tracePoints = floorTracePoints(graph, traceMode)
+  const tracePoints = floorUnderlayTracePoints(graph, traceEnabled)
   return { ...base, walls: graph.walls, ...(tracePoints ? { tracePoints } : {}) }
 }
 
@@ -185,7 +175,7 @@ function useActiveFloorGraph(): SceneGraph {
  * the session, selection, active tool, and viewport.
  */
 // eslint-disable-next-line max-lines-per-function -- one resolved hook per line reads clearer than merging unrelated hook calls; none can share a line within print-width.
-function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
+function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers {
   const session = useEditorSession()
   const graph = useActiveFloorGraph()
   const activeFloorId = useActiveFloorId()
@@ -195,7 +185,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceMode: boolean): PlanLayers {
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
-  const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceMode)
+  const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceEnabled)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport, activeFloorId })
   const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
@@ -272,8 +262,8 @@ function usePlanPalette(canvasRef: CanvasRef): PlanPalette {
  * pointer handlers. Coverage-excluded glue validated by the wall-drawing
  * end-to-end spec, since jsdom has no 2D Canvas.
  */
-function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanController {
-  const layers = usePlanLayers(canvasRef, traceMode)
+function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanController {
+  const layers = usePlanLayers(canvasRef, traceEnabled)
   const surfacePaint = useSurfacePaintLayer()
   const roomFillColor = useFloorFillColor()
   const palette = usePlanPalette(canvasRef)
@@ -320,8 +310,9 @@ function usePlanController(canvasRef: CanvasRef, traceMode: boolean): PlanContro
  */
 export function PlanView() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { traceMode } = useUnderlay()
-  const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceMode)
+  const prefs = useSnapPreferences()
+  const traceEnabled = prefs.enabled && isSnapKindEnabled(prefs, 'trace')
+  const { cursor, pointerHandlers, overlay } = usePlanController(canvasRef, traceEnabled)
   const reportPointer = useReportPointer()
 
   // The stage is a positioned wrapper sized to the Canvas so the absolutely
