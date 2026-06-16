@@ -203,4 +203,39 @@ describe('migrateProject', () => {
     expect((migrated as unknown as { trail: string[] }).trail).toEqual([])
     expect(migrated.meta.registryVersions.finishes).toBe(2)
   })
+
+  it('backfills an empty furniture array on each floor when migrating a version-9 document to the current version', () => {
+    const documentV9 = {
+      meta: {
+        name: 'P',
+        units: 'imperial',
+        period: 'victorian',
+        schemaVersion: 9,
+        appVersion: '0.1.0',
+        registryVersions: {},
+      },
+      floors: [
+        {
+          id: 'f1',
+          name: 'Ground',
+          elevation: 0,
+          defaultCeilingHeight: 2438,
+          walls: [],
+          underlays: [],
+          openings: [],
+          dimensions: [],
+        },
+      ],
+      stairs: [],
+    }
+
+    const migrated = migrateProject(documentV9 as unknown as ProjectShape, {
+      targetVersion: CURRENT_SCHEMA_VERSION,
+    })
+
+    expect(migrated.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(
+      (migrated as unknown as { floors: { furniture: unknown[] }[] }).floors[0].furniture,
+    ).toEqual([])
+  })
 })

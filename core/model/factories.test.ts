@@ -95,6 +95,18 @@ describe('createFloor dimensions', () => {
   })
 })
 
+describe('CURRENT_SCHEMA_VERSION', () => {
+  it('is 10', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBe(10)
+  })
+})
+
+describe('createFloor furniture', () => {
+  it('initializes a floor with an empty furniture array', () => {
+    expect(createFloor('Ground').furniture).toEqual([])
+  })
+})
+
 describe('createDimension', () => {
   it('mints a dimension with a fresh id, the given endpoints, and a zero offset', () => {
     const dimension = createDimension({ start: { x: 0, y: 0 }, end: { x: 300, y: 400 } })
