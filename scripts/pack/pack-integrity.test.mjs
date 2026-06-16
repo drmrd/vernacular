@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkPackIntegrity } from './pack-integrity.mjs'
+import { checkPackIntegrity, isWebp } from './pack-integrity.mjs'
 
 const HASH = 'a'.repeat(64)
 const ASSET_FILE = `assets/${HASH}.glb`
@@ -81,5 +81,26 @@ describe('checkPackIntegrity', () => {
     const reader = fakeReader({ files: { [THUMBNAIL_FILE]: false } })
     const result = await checkPackIntegrity(manifestWith(), reader)
     expect(result.errors.some((m) => m.includes('thumbnail missing'))).toBe(true)
+  })
+
+  it('flags a present thumbnail whose bytes are not a valid WebP signature', async () => {
+    const notWebp = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+    const reader = fakeReader({ bytes: { [THUMBNAIL_FILE]: notWebp } })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.some((m) => m.includes('not valid WebP'))).toBe(true)
+  })
+})
+
+describe('isWebp', () => {
+  it('accepts a RIFF....WEBP signature of at least 12 bytes', () => {
+    expect(isWebp(WEBP_BYTES)).toBe(true)
+  })
+
+  it('rejects 12 bytes that do not carry the RIFF/WEBP signature', () => {
+    expect(isWebp(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]))).toBe(false)
+  })
+
+  it('rejects input shorter than the 12-byte header', () => {
+    expect(isWebp(new Uint8Array([0x52, 0x49, 0x46, 0x46]))).toBe(false)
   })
 })
