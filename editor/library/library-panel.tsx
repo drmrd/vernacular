@@ -4,6 +4,15 @@ import { formatAssetReference } from '../../core'
 import type { AssetRegistry, LibraryItem } from '../../storage'
 import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
+import {
+  DEFAULT_FILTERS,
+  distinctEras,
+  nextEra,
+  visibleLibraryItems,
+  type LibraryFilters,
+  type SourceFilter,
+} from './library-filter'
+
 import './library-panel.css'
 
 export interface LibraryPanelProps {
@@ -30,65 +39,6 @@ function useLibraryItems(registry: AssetRegistry): LibraryItem[] | null {
 }
 
 const EMPTY_MESSAGE = 'No furniture to show yet. Import a model to add your own.'
-
-type SourceFilter = 'all' | 'sample' | 'yours'
-
-interface LibraryFilters {
-  query: string
-  source: SourceFilter
-  era: string | null
-}
-
-const EMPTY_QUERY = ''
-const NO_ERA = null
-const DEFAULT_FILTERS: LibraryFilters = {
-  query: EMPTY_QUERY,
-  source: 'all',
-  era: NO_ERA,
-}
-
-// The distinct eras across the loaded items, de-duplicated and sorted, so the
-// era chips read in a stable order.
-function distinctEras(items: LibraryItem[]): string[] {
-  const eras = new Set<string>()
-  for (const item of items) {
-    for (const era of item.eras) {
-      eras.add(era)
-    }
-  }
-  return [...eras].sort()
-}
-
-function matchesQuery(item: LibraryItem, query: string): boolean {
-  return item.name.toLowerCase().includes(query.toLowerCase())
-}
-
-function matchesSource(item: LibraryItem, source: SourceFilter): boolean {
-  if (source === 'all') {
-    return true
-  }
-  if (source === 'sample') {
-    return item.reference.scope.startsWith('pack:')
-  }
-  return item.reference.scope === 'user'
-}
-
-function matchesEra(item: LibraryItem, era: string | null): boolean {
-  if (era === NO_ERA) {
-    return true
-  }
-  return item.eras.includes(era)
-}
-
-// Keep only the items satisfying every active filter (search AND source AND era).
-function visibleLibraryItems(items: LibraryItem[], filters: LibraryFilters): LibraryItem[] {
-  return items.filter(
-    (item) =>
-      matchesQuery(item, filters.query) &&
-      matchesSource(item, filters.source) &&
-      matchesEra(item, filters.era),
-  )
-}
 
 interface LibraryGridProps {
   items: LibraryItem[]
@@ -140,13 +90,6 @@ function SourceToggle({ filters, setFilters }: LibraryControlsProps): ReactEleme
       ))}
     </div>
   )
-}
-
-function nextEra(active: string | null, clicked: string): string | null {
-  if (active === clicked) {
-    return NO_ERA
-  }
-  return clicked
 }
 
 function EraChips({ filters, eras, setFilters }: LibraryControlsProps): ReactElement {
