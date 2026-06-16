@@ -51,4 +51,12 @@ describe('SnapPanel', () => {
     renderPanel()
     expect(screen.getByRole('checkbox', { name: 'Underlay corners' })).not.toBeChecked()
   })
+
+  it('describes underlay-corner snapping with a tooltip on the control', () => {
+    renderPanel()
+    const control = screen.getByRole('checkbox', { name: 'Underlay corners' })
+    const tooltip = control.closest('[title]')
+    expect(tooltip).not.toBeNull()
+    expect(tooltip?.getAttribute('title')).toMatch(/underlay|corner/i)
+  })
 })
