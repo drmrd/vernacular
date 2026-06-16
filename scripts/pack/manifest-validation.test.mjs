@@ -46,6 +46,8 @@ function validAsset() {
     kind: 'furniture',
     license: 'CC0-1.0',
     attribution: 'Vernacular project',
+    eras: ['mid-century'],
+    categories: ['seating'],
     dimensions: { width: 500, depth: 520, height: 800 },
   }
 }
@@ -94,6 +96,43 @@ describe('validatePackManifest assets', () => {
 
     expect(result.valid).toBe(false)
     expect(result.errors.some((message) => message.includes('attribution'))).toBe(true)
+  })
+})
+
+describe('validatePackManifest asset eras', () => {
+  function assetWithEras(eras) {
+    return { ...validAsset(), eras }
+  }
+
+  function assetWithoutEras() {
+    const asset = { ...validAsset(), eras: ['mid-century'] }
+    delete asset.eras
+    return asset
+  }
+
+  it('rejects an asset whose eras is missing, empty, or not a string array', () => {
+    const invalidCases = [
+      assetWithoutEras(),
+      assetWithEras([]),
+      assetWithEras(['']),
+      assetWithEras('mid-century'),
+    ]
+
+    for (const asset of invalidCases) {
+      const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((message) => message.includes('eras'))).toBe(true)
+    }
+  })
+
+  it('accepts an asset with a non-empty eras list', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [assetWithEras(['mid-century'])],
+    })
+
+    expect(result).toEqual({ valid: true, errors: [] })
   })
 })
 
