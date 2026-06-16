@@ -38,6 +38,10 @@ async function checkAssetHashes(assets, reader, errors) {
   for (const asset of assets) {
     if (!SHA256_PATTERN.test(asset.contentHash)) continue
     const file = `${ASSET_DIR}/${asset.contentHash}${ASSET_EXTENSION}`
+    if (!(await reader.exists(file))) {
+      errors.push(`asset ${asset.contentHash}: asset file missing`)
+      continue
+    }
     const digest = await reader.sha256(file)
     if (digest !== asset.contentHash) {
       errors.push(`asset ${asset.contentHash}: content hash does not match the file bytes`)
