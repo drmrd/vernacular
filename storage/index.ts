@@ -7,6 +7,8 @@ export { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from './directory-asset-c
 export type { AssetSource, LibraryItem } from './assets/asset-source'
 export { InMemoryAssetSource } from './assets/in-memory-asset-source'
 export { CacheAssetSource } from './assets/cache-asset-source'
+export { PackSource } from './assets/pack-source'
+export type { PackReader } from './assets/pack-source'
 export { AssetRegistry } from './assets/asset-registry'
 export type { ScopedAssetSource, AssetRegistryOptions } from './assets/asset-registry'
 export type { ProjectStorage } from './project-storage'
