@@ -203,7 +203,9 @@ describe('migrateProject', () => {
     expect((migrated as unknown as { trail: string[] }).trail).toEqual([])
     expect(migrated.meta.registryVersions.finishes).toBe(2)
   })
+})
 
+describe('migrateProject furniture backfill', () => {
   it('backfills an empty furniture array on each floor when migrating a version-9 document to the current version', () => {
     const documentV9 = {
       meta: {

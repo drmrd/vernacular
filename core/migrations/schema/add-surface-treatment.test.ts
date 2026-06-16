@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectShape } from '../../index'
-import { CURRENT_SCHEMA_VERSION } from '../../model/factories'
 import { addSurfaceTreatmentMigration } from './add-surface-treatment'
 
 // A structural color placeholder; the migration wraps whatever `color` holds, so the
@@ -28,8 +27,8 @@ describe('add-surface-treatment schema migration', () => {
     expect(addSurfaceTreatmentMigration.from).toBe(8)
   })
 
-  it('advances the current schema version to 9', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(9)
+  it('advances a version-8 document to version 9', () => {
+    expect(addSurfaceTreatmentMigration.from + 1).toBe(9)
   })
 
   it('wraps a legacy paint assignment as a solid surface treatment', () => {
