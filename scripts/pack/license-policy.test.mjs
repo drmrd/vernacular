@@ -3,6 +3,7 @@ import {
   RECOGNIZED_LICENSES,
   isNoRedistribution,
   isShareAlike,
+  licenseProblems,
   recognize,
 } from './license-policy.mjs'
 
@@ -49,5 +50,23 @@ describe('isNoRedistribution', () => {
     for (const id of ['CC0-1.0', 'CC-BY-SA-4.0']) {
       expect(isNoRedistribution(id)).toBe(false)
     }
+  })
+})
+
+describe('licenseProblems', () => {
+  it('reports no problems for a recognized open license', () => {
+    expect(licenseProblems('CC0-1.0')).toEqual([])
+  })
+
+  it('reports one problem for an unrecognized license', () => {
+    const problems = licenseProblems('Weird-1.0')
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('not a recognized')
+  })
+
+  it('reports one problem for a no-redistribution license', () => {
+    const problems = licenseProblems('CC-BY-NC-4.0')
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('forbids redistribution')
   })
 })
