@@ -45,3 +45,26 @@ export const SHARE_ALIKE_LICENSES = Object.freeze(['CC-BY-SA-4.0', 'CC-BY-SA-3.0
 export function isShareAlike(licenseId) {
   return SHARE_ALIKE_LICENSES.includes(licenseId)
 }
+
+/**
+ * Licenses that conflict with an openly redistributable, modifiable pack
+ * (NonCommercial / NoDerivatives). They cannot ship in an open pack.
+ * @typedef {'CC-BY-NC-4.0'|'CC-BY-NC-3.0'|'CC-BY-NC-SA-4.0'|'CC-BY-ND-4.0'|'CC-BY-ND-3.0'|'CC-BY-NC-ND-4.0'} NonRedistributableLicense
+ */
+export const NON_REDISTRIBUTABLE_LICENSES = Object.freeze([
+  'CC-BY-NC-4.0',
+  'CC-BY-NC-3.0',
+  'CC-BY-NC-SA-4.0',
+  'CC-BY-ND-4.0',
+  'CC-BY-ND-3.0',
+  'CC-BY-NC-ND-4.0',
+])
+
+/**
+ * Whether a license identifier forbids redistribution in an open pack.
+ * @param {string} licenseId
+ * @returns {boolean}
+ */
+export function isNoRedistribution(licenseId) {
+  return NON_REDISTRIBUTABLE_LICENSES.includes(licenseId)
+}
