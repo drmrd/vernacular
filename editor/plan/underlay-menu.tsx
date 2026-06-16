@@ -37,7 +37,7 @@ function useDismissOnOutside(
 // A low-prominence launcher for the underlay controls, pinned to the tool rail.
 // The trigger carries an "Underlay" label and the standard dropdown a11y
 // attributes; clicking it opens a flyout with the underlay actions.
-export const UnderlayMenu: FC<UnderlayPanelProps> = () => {
+export const UnderlayMenu: FC<UnderlayPanelProps> = ({ onLoadImage }) => {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   useDismissOnOutside(open, rootRef, () => setOpen(false))
@@ -55,7 +55,14 @@ export const UnderlayMenu: FC<UnderlayPanelProps> = () => {
       {open ? (
         <ul className="underlay-menu__list" role="menu">
           <li role="none">
-            <button type="button" role="menuitem">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onLoadImage()
+                setOpen(false)
+              }}
+            >
               Load image
             </button>
           </li>
