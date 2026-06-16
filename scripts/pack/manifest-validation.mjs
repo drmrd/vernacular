@@ -113,6 +113,7 @@ function validateAsset(asset, index, errors) {
   validateRequiredString(source, 'license', errors, `${label}.license`)
   validateRequiredString(source, 'attribution', errors, `${label}.attribution`)
   validateRequiredStringArray(source, 'eras', errors, `${label}.eras`)
+  validateRequiredStringArray(source, 'categories', errors, `${label}.categories`)
   if (!ASSET_KINDS.includes(source.kind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
