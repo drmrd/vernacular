@@ -5,6 +5,11 @@ import './snap-panel.css'
 
 const MIN_RADIUS = 1
 
+/** Per-kind tooltips that explain what a snap source does; absent kinds show no tooltip. */
+const SNAP_KIND_TOOLTIPS: Partial<Record<TogglableSnapKind, string>> = {
+  trace: "Snap the wall tool to the four corners of a visible underlay's footprint",
+}
+
 function titleCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
@@ -17,7 +22,7 @@ interface SnapKindToggleProps {
 
 function SnapKindToggle({ kind, checked, onToggle }: SnapKindToggleProps) {
   return (
-    <label className="snap-panel__kind">
+    <label className="snap-panel__kind" title={SNAP_KIND_TOOLTIPS[kind]}>
       <input type="checkbox" checked={checked} onChange={onToggle} />
       {titleCase(SNAP_KIND_LABELS[kind])}
     </label>
