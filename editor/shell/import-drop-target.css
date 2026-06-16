@@ -1,0 +1,21 @@
+.import-drop-target {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.import-drop-target__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--color-focus-ring);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+  font-size: 1rem;
+}
