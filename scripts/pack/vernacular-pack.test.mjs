@@ -7,6 +7,8 @@ function validManifest() {
     version: '1.0.0',
     license: 'CC0-1.0',
     attribution: 'Vernacular project',
+    eras: ['mid-century'],
+    categories: ['seating'],
     assets: [],
   }
 }
