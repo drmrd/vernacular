@@ -133,4 +133,19 @@ describe('runPackCli failures', () => {
     expect(await runPackCli(['validate'], cliDeps)).toBe(2)
     expect(cliDeps.error).toHaveBeenCalledWith(expect.stringContaining('Usage'))
   })
+
+  it('warns about a share-alike license mix without failing', async () => {
+    const manifest = validManifestWithAsset()
+    manifest.assets[0].license = 'CC-BY-SA-4.0' // pack license stays CC0-1.0
+    const cliDeps = deps(manifest)
+    const hash = 'a'.repeat(64)
+    // Clean reader so the only finding is the (non-blocking) share-alike warning.
+    cliDeps.createReader = vi.fn(() => packReader({ hashes: { [`assets/${hash}.glb`]: hash } }))
+
+    const code = await runPackCli(['validate', 'packs/x'], cliDeps)
+
+    expect(code).toBe(0)
+    expect(cliDeps.log).toHaveBeenCalledWith(expect.stringContaining('share-alike'))
+    expect(cliDeps.error).not.toHaveBeenCalled()
+  })
 })
