@@ -289,6 +289,7 @@ function rebuildFloor(floor: Floor, { periodOverride, styleOverride }: FloorOver
     underlays: floor.underlays,
     openings: floor.openings,
     dimensions: floor.dimensions,
+    furniture: floor.furniture,
   }
   if (periodOverride !== undefined) {
     next.periodOverride = periodOverride

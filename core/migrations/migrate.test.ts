@@ -237,7 +237,7 @@ describe('migrateProject furniture backfill', () => {
 
     expect(migrated.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     expect(
-      (migrated as unknown as { floors: { furniture: unknown[] }[] }).floors[0].furniture,
+      (migrated as unknown as { floors: { furniture: unknown[] }[] }).floors[0]?.furniture,
     ).toEqual([])
   })
 })
