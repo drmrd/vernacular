@@ -87,4 +87,25 @@ describe('UnderlayMenu', () => {
     expect(screen.queryByRole('menuitem', { name: /load image/i })).not.toBeInTheDocument()
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
+
+  it('invokes onLoadImage once and closes the flyout when Load image is clicked', async () => {
+    const user = userEvent.setup()
+    const onLoadImage = vi.fn()
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[]}
+        dispatch={vi.fn()}
+        onLoadImage={onLoadImage}
+        onCalibrate={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: /underlay/i })
+    await user.click(trigger)
+    await user.click(screen.getByRole('menuitem', { name: /load image/i }))
+
+    expect(onLoadImage).toHaveBeenCalledTimes(1)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
 })
