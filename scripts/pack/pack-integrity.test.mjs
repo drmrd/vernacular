@@ -76,4 +76,10 @@ describe('checkPackIntegrity', () => {
     const result = await checkPackIntegrity(manifestWith(), reader)
     expect(result.errors.some((m) => m.includes('asset file missing'))).toBe(true)
   })
+
+  it('flags an asset whose thumbnail is missing from the pack', async () => {
+    const reader = fakeReader({ files: { [THUMBNAIL_FILE]: false } })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.some((m) => m.includes('thumbnail missing'))).toBe(true)
+  })
 })
