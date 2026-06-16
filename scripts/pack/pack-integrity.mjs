@@ -18,6 +18,7 @@ const ASSET_DIR = 'assets'
 const THUMBNAIL_DIR = 'thumbnails'
 const ASSET_EXTENSION = '.glb'
 const THUMBNAIL_EXTENSION = '.webp'
+const REQUIRED_FILES = ['LICENSE', 'NOTICE', 'CHANGELOG.md']
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const WEBP_HEADER_LENGTH = 12
 const RIFF_SIGNATURE = [0x52, 0x49, 0x46, 0x46]
@@ -125,6 +126,20 @@ async function checkOrphans(assets, reader, errors) {
 }
 
 /**
+ * Confirm each required pack file is present.
+ * @param {PackReader} reader
+ * @param {string[]} errors
+ * @returns {Promise<void>}
+ */
+async function checkRequiredFiles(reader, errors) {
+  for (const name of REQUIRED_FILES) {
+    if (!(await reader.exists(name))) {
+      errors.push(`${name}: required pack file missing`)
+    }
+  }
+}
+
+/**
  * Verify a pack's on-disk files against its manifest.
  * @param {object} manifest
  * @param {PackReader} reader
@@ -135,5 +150,6 @@ export async function checkPackIntegrity(manifest, reader) {
   await checkAssetHashes(manifestAssets(manifest), reader, errors)
   await checkThumbnails(manifestAssets(manifest), reader, errors)
   await checkOrphans(manifestAssets(manifest), reader, errors)
+  await checkRequiredFiles(reader, errors)
   return { errors }
 }
