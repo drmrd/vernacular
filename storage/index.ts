@@ -20,6 +20,7 @@ export {
   IndexedDbProjectStore,
   createDefaultProjectStore,
 } from './indexeddb/indexeddb-project-store'
+export { IndexedDbUserLibraryIndex } from './indexeddb/indexeddb-user-library-index'
 export {
   probeStorageCapabilities,
   isStorageDegraded,
