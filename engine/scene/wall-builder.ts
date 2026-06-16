@@ -181,7 +181,8 @@ interface EdgeFrame {
   footprint: WallFootprint
 }
 
-/** Derives the edge-local frame for an edge segment's wall node and footprint. */
+/** Derives the edge-local frame for the edge segment `a -> b` the `target` carries,
+ *  reading its height, thickness, and mitered footprint. */
 function edgeFrame(a: Point, b: Point, target: OpeningWall): EdgeFrame {
   const length = distance(a, b)
   const along: Point = { x: (b.x - a.x) / length, y: (b.y - a.y) / length }
@@ -196,17 +197,25 @@ function edgeFrame(a: Point, b: Point, target: OpeningWall): EdgeFrame {
   }
 }
 
+/** The named end (`a`/`b`) corner of `footprint` on the requested side. */
+function footprintCorner(footprint: WallFootprint, atA: boolean, plusSide: boolean): Point {
+  if (atA) return plusSide ? footprint.aPlus : footprint.aMinus
+  return plusSide ? footprint.bPlus : footprint.bMinus
+}
+
 /**
  * The along distance for an outline point, remapping only the outer-boundary end
  * columns to the mitered footprint. A point at `u = 0` takes the `a`-end miter for
  * its side (interior/`+normal` -> `aPlus`, exterior/`-normal` -> `aMinus`); a point
  * at `u = length` takes the `b`-end miter; interior void corners keep their `u`. The
  * mitered corner sits on the same face line, so only its along distance shifts.
+ *
+ * Void corners are always strictly interior (0 < u < length), so only the outer
+ * outline's end columns reach u = 0 or u = length and need the miter remap.
  */
 function mappedAlong(frame: EdgeFrame, u: number, side: number): number {
   if (u !== 0 && u !== frame.length) return u
-  const corner = frame.footprint[`${u === 0 ? 'a' : 'b'}${side > 0 ? 'Plus' : 'Minus'}`]
-  return dot(subtract(corner, frame.a), frame.along)
+  return dot(subtract(footprintCorner(frame.footprint, u === 0, side > 0), frame.a), frame.along)
 }
 
 /**
@@ -236,8 +245,11 @@ function voidHoleLoop(contour: Contour, positionAlongEdge: number): THREE.Vector
   return corners.map((point) => new THREE.Vector2(positionAlongEdge + point.x, point.y))
 }
 
+/** The outer elevation rectangle's corners, `[base, baseEnd, topEnd, top]`. */
+type ElevationCorners = [THREE.Vector2, THREE.Vector2, THREE.Vector2, THREE.Vector2]
+
 /** The outer elevation rectangle `[0, length] x [0, height]` in edge-local space. */
-function outlineRectangle(frame: EdgeFrame): THREE.Vector2[] {
+function outlineRectangle(frame: EdgeFrame): ElevationCorners {
   return [
     new THREE.Vector2(0, 0),
     new THREE.Vector2(frame.length, 0),
@@ -351,14 +363,10 @@ function openingWallSections(
   outline: TriangulatedOutline,
   wallId: string,
 ): WallSection[] {
-  const top = new THREE.Vector2(0, frame.height)
-  const topEnd = new THREE.Vector2(frame.length, frame.height)
-  const baseEnd = new THREE.Vector2(frame.length, 0)
-  const base = new THREE.Vector2(0, 0)
+  const [base, baseEnd, topEnd, top] = outlineRectangle(frame)
   const reversed: TriangulatedOutline = {
-    points: outline.points,
+    ...outline,
     triangles: reverseTriangleWinding(outline.triangles),
-    holeLoops: outline.holeLoops,
   }
   const sections: WallSection[] = [
     {
