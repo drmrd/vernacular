@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runPackCli } from './vernacular-pack.mjs'
+import {
+  runPackCli,
+  readManifestFromDisk,
+  createNodePackReader,
+  writeReportToDisk,
+} from './vernacular-pack.mjs'
 
 function validManifest() {
   return {
@@ -182,5 +187,19 @@ describe('runPackCli build', () => {
     expect(report.status).toBe('FAIL')
     expect(report.errors.length).toBeGreaterThan(0)
     expect(cliDeps.error).toHaveBeenCalled()
+  })
+})
+
+describe('node adapters', () => {
+  it('exposes the node-backed adapters', () => {
+    expect(typeof readManifestFromDisk).toBe('function')
+    expect(typeof createNodePackReader).toBe('function')
+    expect(typeof writeReportToDisk).toBe('function')
+  })
+
+  it('derives the reader dirName from the pack directory basename', () => {
+    expect(createNodePackReader('packs/vernacular-starter-1.0.0').dirName).toBe(
+      'vernacular-starter-1.0.0',
+    )
   })
 })
