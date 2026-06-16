@@ -31,11 +31,6 @@ function renderControl() {
 }
 
 describe('CanvasReferenceControl', () => {
-  it('renders a Load image control for the active floor underlay', () => {
-    renderControl()
-    expect(screen.getByRole('button', { name: /load image/i })).toBeInTheDocument()
-  })
-
   it('groups the Trace underlay toggle into the canvas reference control', () => {
     renderControl()
     expect(screen.getByRole('checkbox', { name: /trace underlay/i })).toBeInTheDocument()

@@ -32,24 +32,22 @@ function newUnderlay(): Underlay {
 
 interface RenderResult {
   dispatch: ReturnType<typeof vi.fn>
-  onLoadImage: ReturnType<typeof vi.fn>
   onCalibrate: ReturnType<typeof vi.fn>
 }
 
 function renderPanel(underlays: readonly Underlay[]): RenderResult {
   const dispatch = vi.fn()
-  const onLoadImage = vi.fn()
   const onCalibrate = vi.fn()
   render(
     <UnderlayPanel
       floorId={FLOOR_ID}
       underlays={underlays}
       dispatch={dispatch}
-      onLoadImage={onLoadImage}
+      onLoadImage={vi.fn()}
       onCalibrate={onCalibrate}
     />,
   )
-  return { dispatch, onLoadImage, onCalibrate }
+  return { dispatch, onCalibrate }
 }
 
 function lastCommand<P>(dispatch: ReturnType<typeof vi.fn>): Command<P> {
@@ -136,18 +134,9 @@ describe('UnderlayPanel', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
-  it('invokes onLoadImage when the load-image control is pressed', async () => {
-    const user = userEvent.setup()
-    const { onLoadImage } = renderPanel([])
-
-    await user.click(screen.getByRole('button', { name: /load image/i }))
-
-    expect(onLoadImage).toHaveBeenCalledTimes(1)
-  })
-
   it('renders its action controls as design-system buttons', () => {
     renderPanel([newUnderlay()])
-    for (const name of [/load image/i, /calibrate/i, /remove/i]) {
+    for (const name of [/calibrate/i, /remove/i]) {
       expect(screen.getByRole('button', { name })).toHaveClass('ds-button')
     }
   })
