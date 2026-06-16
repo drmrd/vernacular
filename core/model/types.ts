@@ -170,6 +170,8 @@ export interface Floor {
   underlays: Underlay[]
   openings: Opening[]
   dimensions: Dimension[]
+  /** Placed furniture and other movable objects on this floor. */
+  furniture: FurnitureInstance[]
   /** Third-party extension data; see {@link Extensions}. */
   extensions?: Extensions
 }

@@ -58,6 +58,7 @@ export function deriveUnderlayFixture(meta, calibration) {
         underlays: [underlay],
         openings: [],
         dimensions: [],
+        furniture: [],
       },
     ],
     stairs: [],

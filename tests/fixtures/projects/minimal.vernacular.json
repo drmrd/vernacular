@@ -16,7 +16,8 @@
       "walls": [],
       "underlays": [],
       "openings": [],
-      "dimensions": []
+      "dimensions": [],
+      "furniture": []
     }
   ],
   "stairs": []

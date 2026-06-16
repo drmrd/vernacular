@@ -16,44 +16,86 @@
       "walls": [
         {
           "id": "w-south",
-          "start": { "x": 0, "y": 0 },
-          "end": { "x": 25197, "y": 0 },
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 25197,
+            "y": 0
+          },
           "thickness": 254
         },
         {
           "id": "w-east",
-          "start": { "x": 25197, "y": 0 },
-          "end": { "x": 25197, "y": 9347 },
+          "start": {
+            "x": 25197,
+            "y": 0
+          },
+          "end": {
+            "x": 25197,
+            "y": 9347
+          },
           "thickness": 254
         },
         {
           "id": "w-north",
-          "start": { "x": 25197, "y": 9347 },
-          "end": { "x": 0, "y": 9347 },
+          "start": {
+            "x": 25197,
+            "y": 9347
+          },
+          "end": {
+            "x": 0,
+            "y": 9347
+          },
           "thickness": 254
         },
         {
           "id": "w-west",
-          "start": { "x": 0, "y": 9347 },
-          "end": { "x": 0, "y": 0 },
+          "start": {
+            "x": 0,
+            "y": 9347
+          },
+          "end": {
+            "x": 0,
+            "y": 0
+          },
           "thickness": 254
         },
         {
           "id": "w-porch-divider",
-          "start": { "x": 11278, "y": 0 },
-          "end": { "x": 11278, "y": 9347 },
+          "start": {
+            "x": 11278,
+            "y": 0
+          },
+          "end": {
+            "x": 11278,
+            "y": 9347
+          },
           "thickness": 152
         },
         {
           "id": "w-bedroom-divider",
-          "start": { "x": 15063, "y": 0 },
-          "end": { "x": 15063, "y": 9347 },
+          "start": {
+            "x": 15063,
+            "y": 0
+          },
+          "end": {
+            "x": 15063,
+            "y": 9347
+          },
           "thickness": 152
         },
         {
           "id": "w-end-divider",
-          "start": { "x": 18847, "y": 0 },
-          "end": { "x": 18847, "y": 9347 },
+          "start": {
+            "x": 18847,
+            "y": 0
+          },
+          "end": {
+            "x": 18847,
+            "y": 9347
+          },
           "thickness": 152
         }
       ],
@@ -67,7 +109,10 @@
           "width": 813,
           "height": 2032,
           "sillHeight": 0,
-          "orientation": { "hinge": "start", "facing": "positive" }
+          "orientation": {
+            "hinge": "start",
+            "facing": "positive"
+          }
         },
         {
           "id": "door-bedrooms",
@@ -77,29 +122,51 @@
           "width": 813,
           "height": 2032,
           "sillHeight": 0,
-          "orientation": { "hinge": "start", "facing": "negative" }
+          "orientation": {
+            "hinge": "start",
+            "facing": "negative"
+          }
         }
       ],
       "dimensions": [
         {
           "id": "dim-overall-length",
-          "start": { "x": 0, "y": 0 },
-          "end": { "x": 25197, "y": 0 },
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 25197,
+            "y": 0
+          },
           "offset": -914
         },
         {
           "id": "dim-overall-depth",
-          "start": { "x": 0, "y": 0 },
-          "end": { "x": 0, "y": 9347 },
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 0,
+            "y": 9347
+          },
           "offset": -914
         }
-      ]
+      ],
+      "furniture": []
     }
   ],
   "stairs": [],
   "roomOverrides": {
-    "w-porch-divider|w-south|w-west|w-north": { "name": "Sun Porch" },
-    "w-bedroom-divider|w-north|w-porch-divider|w-south": { "name": "Bedroom" },
-    "w-bedroom-divider|w-end-divider|w-north|w-south": { "name": "Bedroom" }
+    "w-porch-divider|w-south|w-west|w-north": {
+      "name": "Sun Porch"
+    },
+    "w-bedroom-divider|w-north|w-porch-divider|w-south": {
+      "name": "Bedroom"
+    },
+    "w-bedroom-divider|w-end-divider|w-north|w-south": {
+      "name": "Bedroom"
+    }
   }
 }

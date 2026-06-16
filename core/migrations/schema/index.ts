@@ -1,5 +1,6 @@
 import type { SchemaMigration } from '../types'
 import { addFloorDimensionsMigration } from './add-floor-dimensions'
+import { addFloorFurnitureMigration } from './add-floor-furniture'
 import { addFloorOpeningsMigration } from './add-floor-openings'
 import { addPalettesPaintAndSiteMigration } from './add-palettes-paint-and-site'
 import { addPeriodAndStyleMigration } from './add-period-and-style'
@@ -17,4 +18,5 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addUnderlayKindMigration,
   addPalettesPaintAndSiteMigration,
   addSurfaceTreatmentMigration,
+  addFloorFurnitureMigration,
 ]
