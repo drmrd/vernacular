@@ -103,6 +103,28 @@ async function checkThumbnails(assets, reader, errors) {
 }
 
 /**
+ * Flag files in a directory that no manifest asset references.
+ * @param {object[]} assets
+ * @param {PackReader} reader
+ * @param {string[]} errors
+ * @returns {Promise<void>}
+ */
+async function checkOrphans(assets, reader, errors) {
+  const referencedAssets = new Set(assets.map((a) => `${a.contentHash}${ASSET_EXTENSION}`))
+  const referencedThumbnails = new Set(assets.map((a) => `${a.contentHash}${THUMBNAIL_EXTENSION}`))
+  for (const name of await reader.listDir(ASSET_DIR)) {
+    if (!referencedAssets.has(name)) {
+      errors.push(`${ASSET_DIR}/${name}: orphan file not referenced by the manifest`)
+    }
+  }
+  for (const name of await reader.listDir(THUMBNAIL_DIR)) {
+    if (!referencedThumbnails.has(name)) {
+      errors.push(`${THUMBNAIL_DIR}/${name}: orphan file not referenced by the manifest`)
+    }
+  }
+}
+
+/**
  * Verify a pack's on-disk files against its manifest.
  * @param {object} manifest
  * @param {PackReader} reader
@@ -112,5 +134,6 @@ export async function checkPackIntegrity(manifest, reader) {
   const errors = []
   await checkAssetHashes(manifestAssets(manifest), reader, errors)
   await checkThumbnails(manifestAssets(manifest), reader, errors)
+  await checkOrphans(manifestAssets(manifest), reader, errors)
   return { errors }
 }
