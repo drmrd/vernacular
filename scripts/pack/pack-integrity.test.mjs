@@ -115,6 +115,12 @@ describe('checkPackIntegrity', () => {
       expect(result.errors.some((m) => m.includes(name))).toBe(true)
     }
   })
+
+  it('flags a pack directory whose name does not match the packId and version', async () => {
+    const reader = fakeReader({ dirName: 'wrong-name' })
+    const result = await checkPackIntegrity(manifestWith(), reader)
+    expect(result.errors.some((m) => m.includes('vernacular-starter-1.0.0'))).toBe(true)
+  })
 })
 
 describe('isWebp', () => {
