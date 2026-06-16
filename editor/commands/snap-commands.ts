@@ -15,6 +15,7 @@ export const SNAP_KIND_LABELS: Record<TogglableSnapKind, string> = {
   perpendicular: 'perpendicular',
   parallel: 'parallel',
   grid: 'grid',
+  trace: 'underlay corners',
 }
 
 function masterCommand(store: SnapPreferencesStore): EditorCommand {
