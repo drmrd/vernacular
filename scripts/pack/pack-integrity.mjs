@@ -19,6 +19,35 @@ const THUMBNAIL_DIR = 'thumbnails'
 const ASSET_EXTENSION = '.glb'
 const THUMBNAIL_EXTENSION = '.webp'
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
+const WEBP_HEADER_LENGTH = 12
+const RIFF_SIGNATURE = [0x52, 0x49, 0x46, 0x46]
+const WEBP_SIGNATURE = [0x57, 0x45, 0x42, 0x50]
+const WEBP_TAG_OFFSET = 8
+
+/**
+ * Whether the bytes at the given offset match the signature.
+ * @param {Uint8Array} bytes
+ * @param {number} offset
+ * @param {number[]} signature
+ * @returns {boolean}
+ */
+function matchesAt(bytes, offset, signature) {
+  return signature.every((b, i) => bytes[offset + i] === b)
+}
+
+/**
+ * Whether the bytes carry the RIFF....WEBP signature in at least 12 bytes.
+ * @param {Uint8Array} bytes
+ * @returns {boolean}
+ */
+export function isWebp(bytes) {
+  return (
+    bytes != null &&
+    bytes.length >= WEBP_HEADER_LENGTH &&
+    matchesAt(bytes, 0, RIFF_SIGNATURE) &&
+    matchesAt(bytes, WEBP_TAG_OFFSET, WEBP_SIGNATURE)
+  )
+}
 
 /**
  * The asset entries declared by a manifest, or [] when none are present.
@@ -64,6 +93,11 @@ async function checkThumbnails(assets, reader, errors) {
     const file = `${THUMBNAIL_DIR}/${asset.contentHash}${THUMBNAIL_EXTENSION}`
     if (!(await reader.exists(file))) {
       errors.push(`asset ${asset.contentHash}: thumbnail missing`)
+      continue
+    }
+    const bytes = await reader.readBytes(file, WEBP_HEADER_LENGTH)
+    if (!isWebp(bytes)) {
+      errors.push(`asset ${asset.contentHash}: thumbnail is not valid WebP`)
     }
   }
 }
