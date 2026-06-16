@@ -222,6 +222,41 @@ describe('validatePackManifest pack-level eras and categories', () => {
   })
 })
 
+describe('validatePackManifest license policy', () => {
+  it('rejects an unrecognized asset license via the policy', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [{ ...validAsset(), license: 'Weird-1.0' }],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('not a recognized'))).toBe(true)
+  })
+
+  it('rejects a no-redistribution asset license via the policy', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [{ ...validAsset(), license: 'CC-BY-NC-4.0' }],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('forbids redistribution'))).toBe(true)
+  })
+
+  it('rejects an unrecognized pack-level license via the policy', () => {
+    const result = validatePackManifest({ ...validManifest(), license: 'Weird-1.0' })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('not a recognized'))).toBe(true)
+  })
+
+  it('accepts a recognized license at the pack and asset level', () => {
+    const result = validatePackManifest({ ...validManifest(), assets: [validAsset()] })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+})
+
 describe('validatePackManifest dimensions', () => {
   it('requires a dimensions object on each asset', () => {
     const asset = { ...validAsset() }
