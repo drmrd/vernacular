@@ -9,6 +9,7 @@ import {
   type WallSceneNode,
 } from '../../core'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
+import { drawFurniture, type DrawableFurniture } from './draw-furniture'
 import { drawGhost } from './draw-ghost'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
@@ -72,6 +73,8 @@ export interface DrawPlanOptions {
   roomLabels?: RoomLabelOptions
   underlays?: readonly DrawableUnderlay[]
   openings?: readonly DrawableOpening[]
+  /** Placed furniture pieces drawn above the walls. */
+  furniture?: readonly DrawableFurniture[]
   stairs?: readonly StairSceneNode[]
   dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
@@ -156,6 +159,8 @@ export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): voi
   drawWalls(ctx, options)
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options)
+  // Furniture sits above the wall/opening layer but below the interaction overlays.
+  drawFurnitureLayer(ctx, options)
   if (options.endpointHandles) drawEndpointHandles(ctx, options.endpointHandles, options)
   if (options.openingResizeHandles)
     drawOpeningResizeHandles(ctx, options.openingResizeHandles, options.viewport)
@@ -231,6 +236,14 @@ function drawOpenings(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const palette = paletteOf(options)
   for (const opening of options.openings ?? []) {
     drawOpening(ctx, opening, { viewport: options.viewport, palette })
+  }
+}
+
+/** Paint each placed furniture piece above the wall and opening layer. */
+function drawFurnitureLayer(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
+  const palette = paletteOf(options)
+  for (const piece of options.furniture ?? []) {
+    drawFurniture(ctx, piece, { viewport: options.viewport, palette })
   }
 }
 
