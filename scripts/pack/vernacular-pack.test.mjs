@@ -149,3 +149,21 @@ describe('runPackCli failures', () => {
     expect(cliDeps.error).not.toHaveBeenCalled()
   })
 })
+
+describe('runPackCli build', () => {
+  it('build writes a PASS report for a valid pack', async () => {
+    const cliDeps = deps(validManifestWithAsset())
+    const hash = 'a'.repeat(64)
+    cliDeps.createReader = vi.fn(() => packReader({ hashes: { [`assets/${hash}.glb`]: hash } }))
+
+    const code = await runPackCli(['build', 'packs/x'], cliDeps)
+
+    expect(code).toBe(0)
+    expect(cliDeps.writeReport).toHaveBeenCalledTimes(1)
+    const [reportDir, report] = cliDeps.writeReport.mock.calls[0]
+    expect(reportDir).toBe('packs/x')
+    expect(report.status).toBe('PASS')
+    expect(report.assets).toEqual([{ name: 'Chair', contentHash: hash }])
+    expect(report.licenses.distinct).toContain('CC0-1.0')
+  })
+})
