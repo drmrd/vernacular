@@ -102,6 +102,9 @@ export async function runPackCli(argv, deps) {
     return EXIT_INVALID
   }
   const review = await reviewPack(manifest, deps.createReader(packDir))
+  for (const warning of review.warnings) {
+    deps.log(`warning: ${warning}`)
+  }
   if (review.errors.length > 0) {
     reportErrors(deps, packDir, review.errors)
     return EXIT_INVALID
