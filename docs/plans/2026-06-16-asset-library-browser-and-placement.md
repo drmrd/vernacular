@@ -21,43 +21,43 @@
 
 ## File structure
 
-| File | Responsibility | Status |
-| --- | --- | --- |
-| `.nvmrc`, `package.json` (engines) | Bump Node to 22 LTS (`>= 22.18.0`). | Modify |
-| `core/assets/license-policy.ts` (+ `.test.ts`) | Graduated curated open-license policy. Runtime-self-contained (type-only cross-imports). | Create |
-| `core/assets/pack-manifest.ts` (+ `.test.ts`) | Graduated `AssetKind`, `ASSET_KINDS`, `validatePackManifest`. Runtime-self-contained. | Create |
-| `scripts/pack/license-policy.mjs`, `scripts/pack/manifest-validation.mjs` | Replaced by thin re-exports of the `core/` `.ts` (or removed and importers repointed). | Modify/Delete |
-| `scripts/pack/vernacular-pack.mjs`, `scripts/pack/pack-integrity.mjs` | Import the schema/policy from `core/assets/*.ts`. | Modify |
-| `core/model/types.ts` | Add `FurnitureInstance`; add `furniture: FurnitureInstance[]` to `Floor`. | Modify |
-| `core/model/factories.ts` | Add `createFurnitureInstance`; `createFloor` seeds `furniture: []`; bump `CURRENT_SCHEMA_VERSION` to 10. | Modify |
-| `core/migrations/schema/add-floor-furniture.ts` (+ `.test.ts`) | `v9 -> v10` backfill of `furniture: []`. | Create |
-| `core/migrations/schema/index.ts` | Register `addFloorFurnitureMigration`. | Modify |
-| `core/commands/handlers/furniture-commands.ts` (+ `.test.ts`) | Place/move/rotate/resize/remove furniture commands + `registerFurnitureCommands`. | Create |
-| `core/commands/*` (assembly) | Call `registerFurnitureCommands` alongside `registerOpeningCommands` (grep the call site). | Modify |
-| `core/index.ts` | Export the new model type, factory, commands, and asset-library types. | Modify |
-| `storage/assets/asset-source.ts` | Widen with `LibraryItem`, optional `list`, `readThumbnail`. | Modify |
-| `storage/assets/asset-registry.ts` | Add `list()` aggregation across sources. | Modify |
-| `storage/assets/pack-source.ts` (+ `.test.ts`) | Read a pack (manifest + files) into `LibraryItem`s and bytes. | Create |
-| `storage/assets/user-source.ts` (+ `.test.ts`) | User imports over the cache + a metadata index; `put`, `list`, `read`. | Create |
-| `storage/library-store.ts` | Extend the user metadata index contract (persisted entries). | Modify |
-| `storage/indexeddb/*` | Persist the user library index. | Modify/Create |
-| `public/packs/vernacular-starter-1.0.0/` | Bundled starter pack static files (manifest, asset, thumbnail). | Create |
-| `storage/service-worker/shell-cache.ts` | Precache the starter pack manifest + thumbnail. | Modify |
-| `bridge/react/asset-registry-context.ts` (+ `.test.tsx`) | Provide the `AssetRegistry` to React. | Create |
-| `editor/library/library-panel.tsx` (+ `.test.tsx`, `.css`) | Left-docked browser: search, source toggle, filters, grid, import, empty state. | Create |
-| `editor/library/library-launcher.tsx` (+ `.test.tsx`) | Tool-rail Furniture launcher. | Create |
-| `editor/library/use-furniture-import.ts` (+ `.test.ts`) | GLB signature check + hash + cache + index. | Create |
-| `editor/plan/place-furniture.ts` (+ `.test.ts`) | Ghost geometry + drop, mirroring `place-opening.ts`. | Create |
-| `editor/plan/draw-furniture.ts` (+ `.test.ts`) | Footprint symbol + label render. | Create |
-| `editor/plan/use-furniture-placement.ts` | Tool interaction, mirroring `use-opening-placement.ts`. | Create |
-| `editor/plan/furniture-inspector.tsx` (+ `.test.tsx`) | Angle, footprint, and name editors. | Create |
-| `editor/tools/active-tool-context.ts` | Add `'place-furniture'` to `ToolId`. | Modify |
-| `editor/shell/editor-shell.tsx` | Add the library launcher to `ToolRail`; `toolLabel` case. | Modify |
-| selection wiring (`editor/plan/selection-entities.ts`, `hit-test.ts`, `move-drag.ts`, `overlay-entities.ts`) | Make furniture a selectable, movable, deletable, announced entity. | Modify |
-| `docs/knowledge/decisions/ADR-0092-furniture-instance-model.md` | Furniture model + `v10` migration. | Create |
-| `docs/knowledge/decisions/ADR-0093-in-app-asset-library.md` | Graduation to `core/`, sources/registry, Node bump, starter pack. | Create |
-| `docs/knowledge/decisions/ADR-0024-*.md` | Status note: graduated by ADR-0093. | Modify |
-| `e2e/tests/journeys/place-furniture.spec.ts` | Open library, place a starter piece, see it, axe-clean. | Create |
+| File                                                                                                         | Responsibility                                                                                           | Status        |
+| ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ------------- |
+| `.nvmrc`, `package.json` (engines)                                                                           | Bump Node to 22 LTS (`>= 22.18.0`).                                                                      | Modify        |
+| `core/assets/license-policy.ts` (+ `.test.ts`)                                                               | Graduated curated open-license policy. Runtime-self-contained (type-only cross-imports).                 | Create        |
+| `core/assets/pack-manifest.ts` (+ `.test.ts`)                                                                | Graduated `AssetKind`, `ASSET_KINDS`, `validatePackManifest`. Runtime-self-contained.                    | Create        |
+| `scripts/pack/license-policy.mjs`, `scripts/pack/manifest-validation.mjs`                                    | Replaced by thin re-exports of the `core/` `.ts` (or removed and importers repointed).                   | Modify/Delete |
+| `scripts/pack/vernacular-pack.mjs`, `scripts/pack/pack-integrity.mjs`                                        | Import the schema/policy from `core/assets/*.ts`.                                                        | Modify        |
+| `core/model/types.ts`                                                                                        | Add `FurnitureInstance`; add `furniture: FurnitureInstance[]` to `Floor`.                                | Modify        |
+| `core/model/factories.ts`                                                                                    | Add `createFurnitureInstance`; `createFloor` seeds `furniture: []`; bump `CURRENT_SCHEMA_VERSION` to 10. | Modify        |
+| `core/migrations/schema/add-floor-furniture.ts` (+ `.test.ts`)                                               | `v9 -> v10` backfill of `furniture: []`.                                                                 | Create        |
+| `core/migrations/schema/index.ts`                                                                            | Register `addFloorFurnitureMigration`.                                                                   | Modify        |
+| `core/commands/handlers/furniture-commands.ts` (+ `.test.ts`)                                                | Place/move/rotate/resize/remove furniture commands + `registerFurnitureCommands`.                        | Create        |
+| `core/commands/*` (assembly)                                                                                 | Call `registerFurnitureCommands` alongside `registerOpeningCommands` (grep the call site).               | Modify        |
+| `core/index.ts`                                                                                              | Export the new model type, factory, commands, and asset-library types.                                   | Modify        |
+| `storage/assets/asset-source.ts`                                                                             | Widen with `LibraryItem`, optional `list`, `readThumbnail`.                                              | Modify        |
+| `storage/assets/asset-registry.ts`                                                                           | Add `list()` aggregation across sources.                                                                 | Modify        |
+| `storage/assets/pack-source.ts` (+ `.test.ts`)                                                               | Read a pack (manifest + files) into `LibraryItem`s and bytes.                                            | Create        |
+| `storage/assets/user-source.ts` (+ `.test.ts`)                                                               | User imports over the cache + a metadata index; `put`, `list`, `read`.                                   | Create        |
+| `storage/library-store.ts`                                                                                   | Extend the user metadata index contract (persisted entries).                                             | Modify        |
+| `storage/indexeddb/*`                                                                                        | Persist the user library index.                                                                          | Modify/Create |
+| `public/packs/vernacular-starter-1.0.0/`                                                                     | Bundled starter pack static files (manifest, asset, thumbnail).                                          | Create        |
+| `storage/service-worker/shell-cache.ts`                                                                      | Precache the starter pack manifest + thumbnail.                                                          | Modify        |
+| `bridge/react/asset-registry-context.ts` (+ `.test.tsx`)                                                     | Provide the `AssetRegistry` to React.                                                                    | Create        |
+| `editor/library/library-panel.tsx` (+ `.test.tsx`, `.css`)                                                   | Left-docked browser: search, source toggle, filters, grid, import, empty state.                          | Create        |
+| `editor/library/library-launcher.tsx` (+ `.test.tsx`)                                                        | Tool-rail Furniture launcher.                                                                            | Create        |
+| `editor/library/use-furniture-import.ts` (+ `.test.ts`)                                                      | GLB signature check + hash + cache + index.                                                              | Create        |
+| `editor/plan/place-furniture.ts` (+ `.test.ts`)                                                              | Ghost geometry + drop, mirroring `place-opening.ts`.                                                     | Create        |
+| `editor/plan/draw-furniture.ts` (+ `.test.ts`)                                                               | Footprint symbol + label render.                                                                         | Create        |
+| `editor/plan/use-furniture-placement.ts`                                                                     | Tool interaction, mirroring `use-opening-placement.ts`.                                                  | Create        |
+| `editor/plan/furniture-inspector.tsx` (+ `.test.tsx`)                                                        | Angle, footprint, and name editors.                                                                      | Create        |
+| `editor/tools/active-tool-context.ts`                                                                        | Add `'place-furniture'` to `ToolId`.                                                                     | Modify        |
+| `editor/shell/editor-shell.tsx`                                                                              | Add the library launcher to `ToolRail`; `toolLabel` case.                                                | Modify        |
+| selection wiring (`editor/plan/selection-entities.ts`, `hit-test.ts`, `move-drag.ts`, `overlay-entities.ts`) | Make furniture a selectable, movable, deletable, announced entity.                                       | Modify        |
+| `docs/knowledge/decisions/ADR-0092-furniture-instance-model.md`                                              | Furniture model + `v10` migration.                                                                       | Create        |
+| `docs/knowledge/decisions/ADR-0093-in-app-asset-library.md`                                                  | Graduation to `core/`, sources/registry, Node bump, starter pack.                                        | Create        |
+| `docs/knowledge/decisions/ADR-0024-*.md`                                                                     | Status note: graduated by ADR-0093.                                                                      | Modify        |
+| `e2e/tests/journeys/place-furniture.spec.ts`                                                                 | Open library, place a starter piece, see it, axe-clean.                                                  | Create        |
 
 ## Module contracts (target signatures)
 
@@ -80,10 +80,20 @@ export function shareAlikeWarning(licenseIds: readonly string[]): string | null
 
 // pack-manifest.ts
 export type AssetKind =
-  | 'furniture' | 'architectural-element' | 'trim-profile' | 'stair-component'
-  | 'material' | 'texture' | 'underlay-image' | 'palette' | 'preview-only'
+  | 'furniture'
+  | 'architectural-element'
+  | 'trim-profile'
+  | 'stair-component'
+  | 'material'
+  | 'texture'
+  | 'underlay-image'
+  | 'palette'
+  | 'preview-only'
 export const ASSET_KINDS: readonly AssetKind[]
-export interface PackValidationResult { valid: boolean; errors: string[] }
+export interface PackValidationResult {
+  valid: boolean
+  errors: string[]
+}
 export function validatePackManifest(manifest: unknown): PackValidationResult
 ```
 
@@ -135,26 +145,64 @@ Mirrors `opening-commands.ts` (a `mapTargetFurniture` helper, `Command`/`Command
 
 ```ts
 export const PLACE_FURNITURE = 'floor/place-furniture'
-export interface PlaceFurnitureParams { floorId: string; furniture: FurnitureInstance }
-export function placeFurniture(floorId: string, furniture: FurnitureInstance): Command<PlaceFurnitureParams>
+export interface PlaceFurnitureParams {
+  floorId: string
+  furniture: FurnitureInstance
+}
+export function placeFurniture(
+  floorId: string,
+  furniture: FurnitureInstance,
+): Command<PlaceFurnitureParams>
 
 export const MOVE_FURNITURE = 'floor/move-furniture'
-export interface MoveFurnitureParams { floorId: string; furnitureId: string; position: Point }
-export function moveFurniture(floorId: string, furnitureId: string, position: Point): Command<MoveFurnitureParams>
+export interface MoveFurnitureParams {
+  floorId: string
+  furnitureId: string
+  position: Point
+}
+export function moveFurniture(
+  floorId: string,
+  furnitureId: string,
+  position: Point,
+): Command<MoveFurnitureParams>
 
 export const ROTATE_FURNITURE = 'floor/rotate-furniture'
-export interface RotateFurnitureParams { floorId: string; furnitureId: string; rotation: number }
-export function rotateFurniture(floorId: string, furnitureId: string, rotation: number): Command<RotateFurnitureParams>
+export interface RotateFurnitureParams {
+  floorId: string
+  furnitureId: string
+  rotation: number
+}
+export function rotateFurniture(
+  floorId: string,
+  furnitureId: string,
+  rotation: number,
+): Command<RotateFurnitureParams>
 
 export const RESIZE_FURNITURE = 'floor/resize-furniture'
-export interface ResizeFurnitureParams { floorId: string; furnitureId: string; footprint: FurnitureFootprint }
-export function resizeFurniture(floorId: string, furnitureId: string, footprint: FurnitureFootprint): Command<ResizeFurnitureParams>
+export interface ResizeFurnitureParams {
+  floorId: string
+  furnitureId: string
+  footprint: FurnitureFootprint
+}
+export function resizeFurniture(
+  floorId: string,
+  furnitureId: string,
+  footprint: FurnitureFootprint,
+): Command<ResizeFurnitureParams>
 
 export const REMOVE_FURNITURE = 'floor/remove-furniture'
-export interface RemoveFurnitureParams { floorId: string; furnitureId: string }
-export function removeFurniture(floorId: string, furnitureId: string): Command<RemoveFurnitureParams>
+export interface RemoveFurnitureParams {
+  floorId: string
+  furnitureId: string
+}
+export function removeFurniture(
+  floorId: string,
+  furnitureId: string,
+): Command<RemoveFurnitureParams>
 
-export function registerFurnitureCommands(registry: CommandRegistry<Project>): CommandRegistry<Project>
+export function registerFurnitureCommands(
+  registry: CommandRegistry<Project>,
+): CommandRegistry<Project>
 ```
 
 (A rename uses a `name` edit; fold it into `RESIZE`/a dedicated `RENAME_FURNITURE` only if the Inspector name editor needs its own command. Prefer one `setFurnitureName` command for clarity.)
@@ -188,8 +236,8 @@ export interface AssetSource {
 ```ts
 // A reader seam so the source is unit-tested without fetch/fs.
 export interface PackReader {
-  manifest(): Promise<unknown>          // parsed manifest.json
-  readAsset(contentHash: string): Promise<Uint8Array | undefined>     // assets/<hash>.glb
+  manifest(): Promise<unknown> // parsed manifest.json
+  readAsset(contentHash: string): Promise<Uint8Array | undefined> // assets/<hash>.glb
   readThumbnail(contentHash: string): Promise<Uint8Array | undefined> // thumbnails/<hash>.webp
 }
 export class PackSource implements AssetSource {
@@ -211,8 +259,16 @@ export class UserSource implements AssetSource {
 
 ```ts
 // Mirrors place-opening.ts: pure geometry for the ghost + the drop.
-export interface FurnitureGhost { position: Point; rotation: number; footprint: FurnitureFootprint }
-export function furnitureGhostAt(point: Point, rotation: number, footprint: FurnitureFootprint): FurnitureGhost
+export interface FurnitureGhost {
+  position: Point
+  rotation: number
+  footprint: FurnitureFootprint
+}
+export function furnitureGhostAt(
+  point: Point,
+  rotation: number,
+  footprint: FurnitureFootprint,
+): FurnitureGhost
 export const FURNITURE_ROTATION_STEP_DEGREES = 15 // coarse step for the R key
 export function rotatedBy(rotation: number, deltaDegrees: number): number // normalized to [0, 360)
 ```
