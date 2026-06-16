@@ -143,13 +143,21 @@ function selectedFurnitureIds(ctx: SelectionKeyboardContext): string[] {
   return ctx.furniture.filter((item) => ctx.selectedIds.has(item.id)).map((item) => item.id)
 }
 
-// Remove each selected furniture piece and drop those ids from the selection,
-// leaving any selected graph entities for the generic delete to handle.
-function deleteFurniture(ctx: SelectionKeyboardContext, floorId: string, ids: string[]): void {
+// Remove each selected furniture piece from the model.
+function removeSelectedFurniture(
+  ctx: SelectionKeyboardContext,
+  floorId: string,
+  ids: string[],
+): void {
   for (const id of ids) {
     ctx.session.dispatch(removeFurniture(floorId, id))
   }
-  ctx.selection.setSelection([...ctx.selectedIds].filter((id) => !ids.includes(id)))
+}
+
+// Drop the removed furniture ids from the selection, keeping anything else.
+function deselectFurniture(ctx: SelectionKeyboardContext, ids: string[]): void {
+  const removed = new Set(ids)
+  ctx.selection.setSelection([...ctx.selectedIds].filter((id) => !removed.has(id)))
 }
 
 function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): void {
@@ -168,7 +176,12 @@ function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): voi
   const furnitureIds = selectedFurnitureIds(ctx)
   if ((event.key === 'Delete' || event.key === 'Backspace') && furnitureIds.length > 0) {
     event.preventDefault()
-    deleteFurniture(ctx, floor.id, furnitureIds)
+    removeSelectedFurniture(ctx, floor.id, furnitureIds)
+    // When graph entities are also selected, the generic delete below clears the
+    // whole selection; otherwise drop just the removed furniture ids here.
+    if (action.ids.length === 0) {
+      deselectFurniture(ctx, furnitureIds)
+    }
   }
   if (action.ids.length > 0) {
     handleEditKey(action)

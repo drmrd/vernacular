@@ -95,6 +95,7 @@ function composedPointerDown(
 export function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
   const { controls, wallEditing, openingResizing, openingEditing, selectionMove } = sources
   const { interaction, dimensionTool, calibration, selection, furniturePlacement, hover } = sources
+  const { furnitureEditing } = sources
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => composedPointerDown(sources, event),
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
@@ -115,7 +116,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       wallEditing.onPointerUp(event)
       openingResizing.onPointerUp(event)
       openingEditing.onPointerUp(event)
-      sources.furnitureEditing.onPointerUp(event)
+      furnitureEditing.onPointerUp(event)
       if (selectionMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },
