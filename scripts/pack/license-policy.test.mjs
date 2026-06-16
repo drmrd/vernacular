@@ -5,6 +5,7 @@ import {
   isShareAlike,
   licenseProblems,
   recognize,
+  shareAlikeWarning,
 } from './license-policy.mjs'
 
 describe('recognize', () => {
@@ -68,5 +69,21 @@ describe('licenseProblems', () => {
     const problems = licenseProblems('CC-BY-NC-4.0')
     expect(problems).toHaveLength(1)
     expect(problems[0]).toContain('forbids redistribution')
+  })
+})
+
+describe('shareAlikeWarning', () => {
+  it('warns when a share-alike license mixes with a different license', () => {
+    const warning = shareAlikeWarning(['CC-BY-SA-4.0', 'CC0-1.0'])
+    expect(typeof warning).toBe('string')
+    expect(warning).toContain('share-alike')
+  })
+
+  it('does not warn when no share-alike license is present', () => {
+    expect(shareAlikeWarning(['CC0-1.0', 'MIT'])).toBeNull()
+  })
+
+  it('does not warn when only a single distinct share-alike license is used', () => {
+    expect(shareAlikeWarning(['CC-BY-SA-4.0', 'CC-BY-SA-4.0'])).toBeNull()
   })
 })
