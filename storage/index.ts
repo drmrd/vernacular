@@ -41,6 +41,7 @@ export { FolderProjectStore, ProjectFileNotFoundError } from './folder/folder-pr
 export type { FolderProjectStoreOptions } from './folder/folder-project-store'
 export { OpfsProjectStore, createOpfsProjectStore } from './opfs/opfs-project-store'
 export { ZipBundleProjectStore } from './zip/zip-bundle-project-store'
+export { collectReferencedAssets, exportProjectBundle } from './zip/export-project-bundle'
 export { FileSystemFolderProjectStore } from './filesystem/file-system-folder-project-store'
 export { DirectoryHandleStore } from './filesystem/directory-handle-store'
 export { SnapshotStore } from './snapshots/snapshot-store'
