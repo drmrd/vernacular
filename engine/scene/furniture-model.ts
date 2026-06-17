@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import type { FurnitureSceneNode, Point } from '../../core'
+import { FURNITURE_NODE_PREFIX } from '../../core'
 import { parseGltfBytes } from '../loaders/gltf-loader'
+import { markShadowCasters } from './shadow-casters'
 
 /** Parses GLB bytes into a Three.js object, rejecting on any loader error. */
 export function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Object3D> {
@@ -52,4 +54,18 @@ export function normalizeModelIntoBox(
   outer.rotation.y = -rotationRadians
   outer.position.set(footprintCenter.x, node.elevationZ, footprintCenter.y)
   return outer
+}
+
+/** Wraps a normalized model as a furniture sub-group that selects like the box it replaces. */
+export function buildFurnitureModelGroup(
+  model: THREE.Object3D,
+  node: FurnitureSceneNode,
+): THREE.Group {
+  const placed = normalizeModelIntoBox(model, node)
+  const group = new THREE.Group()
+  if (placed !== null) group.add(placed)
+  group.name = node.id
+  group.userData.entityId = node.id.slice(FURNITURE_NODE_PREFIX.length)
+  markShadowCasters(group)
+  return group
 }
