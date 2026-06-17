@@ -184,7 +184,7 @@ const SHELL_FURNITURE: FurnitureSceneNode = {
   }),
   elevationZ: 0,
   height: FURNITURE_BOX_HEIGHT,
-  assetRef: { scope: 'project', contentHash: 'demo-piece' },
+  assetRef: { scope: 'project', contentHash: 'harness-only' },
 }
 const FURNITURE_FIXTURE: SceneGraph = {
   ...SHELL_FIXTURE,
