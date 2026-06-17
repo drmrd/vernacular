@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type {
   Floor,
+  FurnitureInstance,
   Opening,
   Project,
   RoomSceneNode,
@@ -13,6 +14,7 @@ import {
   WALL_NODE_PREFIX,
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createSceneGraphDeriver,
   createWall,
@@ -41,6 +43,15 @@ const PARTITION_WALL_ID = 'wall-partition'
 const DOOR_OPENING_ID = 'opening-door'
 const BOTTOM_DOOR_OPENING_ID = 'opening-door-bottom'
 const TOP_DOOR_OPENING_ID = 'opening-door-top'
+
+const EDITED_FURNITURE_ID = 'furniture-edited'
+const PRESERVED_FURNITURE_ID = 'furniture-preserved'
+const CHAIR_DIMENSION_MM = 500
+const CHAIR_HEIGHT_MM = 900
+const EDITED_CHAIR_X_MM = 1000
+const EDITED_CHAIR_MOVED_X_MM = 1500
+const PRESERVED_CHAIR_X_MM = 2500
+const CHAIR_Y_MM = 1000
 
 // A rectangle split by a partition wall at PARTITION_X_MM into a left cell and a
 // right cell, so the floor derives exactly two rooms. The right wall sits at
@@ -96,6 +107,16 @@ function doorOn(hostWallId: string, width: number, id = DOOR_OPENING_ID): Openin
     hostWallId,
     position: DOOR_POSITION_MM,
     width,
+  })
+}
+
+function chairAt(x: number, id: string): FurnitureInstance {
+  return createFurnitureInstance({
+    id,
+    assetRef: { scope: 'user', contentHash: 'c' },
+    position: { x, y: CHAIR_Y_MM },
+    footprint: { width: CHAIR_DIMENSION_MM, depth: CHAIR_DIMENSION_MM },
+    height: CHAIR_HEIGHT_MM,
   })
 }
 
@@ -242,6 +263,47 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
 
     expect(findByEntityId(second.root, editedOpeningEntityId)).not.toBe(editedFirstGroup)
     expect(findByEntityId(second.root, preservedOpeningEntityId)).toBe(preservedFirstGroup)
+  })
+
+  it('reuses an unchanged furniture box group when another furniture piece is edited', () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+
+    const walls = singleRoomWalls()
+    // Two chairs with distinct ids: the edited chair is the one we move; the
+    // preserved chair is kept by reference across the edit.
+    const editedChair = chairAt(EDITED_CHAIR_X_MM, EDITED_FURNITURE_ID)
+    const preservedChair = chairAt(PRESERVED_CHAIR_X_MM, PRESERVED_FURNITURE_ID)
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls }),
+      furniture: [editedChair, preservedChair],
+    }
+    const firstGraph = activeFloorGraph(derive, projectWith(floor))
+    const first = reconciler.reconcile(firstGraph, paint)
+
+    // The furniture box group carries the raw instance id (no prefix) on its
+    // userData.entityId. Capture both groups before the second reconcile: a reused
+    // group reparents into the new root, which removes it from this one.
+    const editedFirstGroup = findByEntityId(first.root, editedChair.id)
+    const preservedFirstGroup = findByEntityId(first.root, preservedChair.id)
+    expect(editedFirstGroup).not.toBeNull()
+    expect(preservedFirstGroup).not.toBeNull()
+
+    // Edit only the edited chair (a fresh FurnitureInstance at a new position carrying
+    // the same id) while keeping the preserved chair as the exact same object
+    // reference, so its derived FurnitureSceneNode reference is unchanged and its box
+    // group should be reused.
+    const editedReplacement = chairAt(EDITED_CHAIR_MOVED_X_MM, EDITED_FURNITURE_ID)
+    const editedFloor: Floor = {
+      ...floor,
+      furniture: [editedReplacement, preservedChair],
+    }
+    const secondGraph = activeFloorGraph(derive, projectWith(editedFloor))
+    const second = reconciler.reconcile(secondGraph, paint)
+
+    expect(findByEntityId(second.root, editedChair.id)).not.toBe(editedFirstGroup)
+    expect(findByEntityId(second.root, preservedChair.id)).toBe(preservedFirstGroup)
   })
 
   it('reuses the wall group and near-wall targets when an edit touches no wall or opening', () => {
