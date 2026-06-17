@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
 import { normalizeModelIntoBox, parseFurnitureModel } from './furniture-model'
+
+const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fixtures/cube.glb')
 
 function nodeFor({
   width,
@@ -57,10 +61,13 @@ describe('normalizeModelIntoBox', () => {
 })
 
 describe('parseFurnitureModel', () => {
-  it('parses a GLB into an object and rejects a garbage buffer', async () => {
-    const bytes = new Uint8Array(readFileSync('e2e/fixtures/cube.glb'))
+  it('resolves to a THREE.Object3D when given a valid GLB', async () => {
+    const bytes = new Uint8Array(readFileSync(CUBE_GLB))
     const model = await parseFurnitureModel(bytes)
     expect(model).toBeInstanceOf(THREE.Object3D)
+  })
+
+  it('rejects when given bytes that are not a valid GLB', async () => {
     await expect(parseFurnitureModel(new Uint8Array([1, 2, 3, 4]))).rejects.toBeTruthy()
   })
 })
