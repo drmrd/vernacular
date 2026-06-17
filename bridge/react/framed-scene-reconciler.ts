@@ -3,6 +3,7 @@ import {
   FLOOR_NODE_PREFIX,
   frameSceneCamera,
   kelvinToLinearRgb,
+  type FurnitureSceneNode,
   type OpeningSceneNode,
   type RoomSceneNode,
   type SceneGraph,
@@ -12,6 +13,7 @@ import {
 } from '../../core'
 import {
   assembleFloorRoot,
+  buildFurnitureSubgroup,
   buildOpeningSubgroup,
   buildRoomSubgroup,
   buildWallSubgroup,
@@ -55,6 +57,7 @@ interface CachedFloorBuild {
   wallOpeningNodes: OpeningSceneNode[]
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>
+  furniture: Map<string, SubgroupBuild<FurnitureSceneNode>>
   framed: FramedScene
 }
 
@@ -62,6 +65,7 @@ interface FloorEntities {
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
   openings: OpeningSceneNode[]
+  furniture: FurnitureSceneNode[]
 }
 
 /** Narrows a scene graph's entity arrays to the active floor's model id. */
@@ -71,6 +75,7 @@ function floorEntities(graph: SceneGraph, floorNode: SceneNode): FloorEntities {
     walls: graph.walls.filter((wall) => wall.floorId === modelId),
     rooms: graph.rooms.filter((room) => room.floorId === modelId),
     openings: graph.openings.filter((opening) => opening.floorId === modelId),
+    furniture: graph.furniture.filter((item) => item.floorId === modelId),
   }
 }
 
@@ -147,6 +152,30 @@ function reuseOrBuildOpening(
   return buildOpeningSubgroup(node, materials)
 }
 
+/** Reuses a cached furniture box sub-group when its derived node reference is unchanged, else rebuilds. */
+function reuseOrBuildFurniture(
+  node: FurnitureSceneNode,
+  materials: PaintMaterials,
+  prev: CachedFloorBuild | undefined,
+): SceneRoot {
+  const cached = prev?.furniture.get(node.id)
+  if (cached !== undefined && cached.node === node) return cached.group
+  return buildFurnitureSubgroup(node, materials)
+}
+
+/** Flattens the per-entity sub-group maps into the ordered group list a floor root is assembled from. */
+function collectSubgroupGroups(
+  rooms: Map<string, SubgroupBuild<RoomSceneNode>>,
+  openings: Map<string, SubgroupBuild<OpeningSceneNode>>,
+  furniture: Map<string, SubgroupBuild<FurnitureSceneNode>>,
+): SceneRoot[] {
+  return [
+    ...[...rooms.values()].map((build) => build.group),
+    ...[...openings.values()].map((build) => build.group),
+    ...[...furniture.values()].map((build) => build.group),
+  ]
+}
+
 /** The inputs a single floor build is computed from, including the prior build to reuse. */
 interface FloorBuildInput {
   floorNode: SceneNode
@@ -170,12 +199,12 @@ function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput):
   const openings = subgroupMap(entities.openings, (node) =>
     reuseOrBuildOpening(node, materials, prev),
   )
-  const framed = frameFloor(floorNode, wall, [
-    ...[...rooms.values()].map((build) => build.group),
-    ...[...openings.values()].map((build) => build.group),
-  ])
+  const furniture = subgroupMap(entities.furniture, (node) =>
+    reuseOrBuildFurniture(node, materials, prev),
+  )
+  const framed = frameFloor(floorNode, wall, collectSubgroupGroups(rooms, openings, furniture))
   const wallNodes = entities.walls
-  return { floorNode, paint, wall, wallNodes, wallOpeningNodes, rooms, openings, framed }
+  return { floorNode, paint, wall, wallNodes, wallOpeningNodes, rooms, openings, furniture, framed }
 }
 
 /**
