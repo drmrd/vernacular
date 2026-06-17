@@ -138,6 +138,11 @@ function maxPolygonX(room: RoomSceneNode): number {
   return Math.max(...room.polygon.map((point) => point.x))
 }
 
+/* eslint-disable-next-line max-lines-per-function --
+ * One reuse/rebuild scenario per within-floor entity kind (rooms, walls, openings,
+ * furniture). The block grows by one `it` per node kind the reconciler reuses, so the
+ * per-function cap is the wrong tool for this aggregate behavior suite.
+ */
 describe('createFramedSceneReconciler within-floor reuse', () => {
   it('reuses an unchanged room group when a wall edit reshapes only another room', () => {
     const derive = createSceneGraphDeriver()
