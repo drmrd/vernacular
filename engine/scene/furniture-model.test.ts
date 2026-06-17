@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
-import { normalizeModelIntoBox } from './furniture-model'
+import { normalizeModelIntoBox, parseFurnitureModel } from './furniture-model'
 
 function nodeFor({
   width,
@@ -45,5 +46,21 @@ describe('normalizeModelIntoBox', () => {
     expect(center.x).toBeCloseTo(0, 0)
     expect(center.z).toBeCloseTo(0, 0)
     expect(box.min.y).toBeCloseTo(500, 0) // bottom-anchored to elevationZ
+  })
+
+  it('returns null when the model has no geometry', () => {
+    const empty = new THREE.Group()
+    expect(
+      normalizeModelIntoBox(empty, nodeFor({ width: 1000, depth: 1000, height: 1000 })),
+    ).toBeNull()
+  })
+})
+
+describe('parseFurnitureModel', () => {
+  it('parses a GLB into an object and rejects a garbage buffer', async () => {
+    const bytes = new Uint8Array(readFileSync('e2e/fixtures/cube.glb'))
+    const model = await parseFurnitureModel(bytes)
+    expect(model).toBeInstanceOf(THREE.Object3D)
+    await expect(parseFurnitureModel(new Uint8Array([1, 2, 3, 4]))).rejects.toBeTruthy()
   })
 })
