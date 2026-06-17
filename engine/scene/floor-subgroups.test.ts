@@ -2,11 +2,17 @@ import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { exteriorWalls } from '../../core'
+import {
+  createFloor,
+  createFurnitureInstance,
+  deriveFurnitureNode,
+  exteriorWalls,
+} from '../../core'
 import type { OpeningSceneNode, RoomSceneNode, SceneNode, WallSceneNode } from '../../core'
 
 import {
   assembleFloorRoot,
+  buildFurnitureSubgroup,
   buildOpeningSubgroup,
   buildRoomSubgroup,
   buildWallSubgroup,
@@ -143,6 +149,32 @@ describe('buildOpeningSubgroup', () => {
     expect(edgeLinesOf(group).length).toBeGreaterThan(0)
 
     expect(meshes.every((mesh) => mesh.castShadow === true)).toBe(true)
+  })
+})
+
+describe('buildFurnitureSubgroup', () => {
+  it('returns a self-decorated furniture group with a box mesh, an edge overlay, and shadow-casting meshes', () => {
+    const furnitureNode = deriveFurnitureNode(
+      createFloor('Ground'),
+      createFurnitureInstance({
+        assetRef: { scope: 'user', contentHash: 'abc' },
+        position: { x: 1000, y: 1000 },
+        footprint: { width: 1200, depth: 600 },
+        height: 750,
+      }),
+    )
+
+    const group = buildFurnitureSubgroup(furnitureNode, new NeutralMaterialProvider())
+
+    expect(group).toBeInstanceOf(THREE.Group)
+
+    const meshes = meshesOf(group)
+    expect(meshes.length).toBeGreaterThan(0)
+    expect(meshes.every((mesh) => mesh.geometry instanceof THREE.BufferGeometry)).toBe(true)
+
+    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+
+    expect(meshes.some((mesh) => mesh.castShadow === true)).toBe(true)
   })
 })
 

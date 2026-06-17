@@ -5,6 +5,7 @@ import { findByEntityId } from '../testing'
 import {
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createWall,
   deriveSceneGraph,
@@ -218,6 +219,23 @@ describe('buildScene opening fill', () => {
     const fill = floorGroup.children.find((child) => child.userData.entityId === opening.id)
     expect(fill).toBeDefined()
     expect(fill?.children.length ?? 0).toBeGreaterThan(0)
+  })
+})
+
+describe('buildScene furniture', () => {
+  it('parents a placed furniture massing under its floor group carrying the raw instance id', () => {
+    const instance = createFurnitureInstance({
+      assetRef: { scope: 'user', contentHash: 'abc' },
+      position: { x: 1000, y: 1000 },
+      footprint: { width: 1200, depth: 600 },
+      height: 750,
+      id: 'sofa-1',
+    })
+    const floor: Floor = { ...createFloor('Ground', { id: 'g', walls: [] }), furniture: [instance] }
+
+    const root = buildScene(projectWithFloor(floor))
+
+    expect(findByEntityId(root, instance.id)).not.toBeNull()
   })
 })
 
