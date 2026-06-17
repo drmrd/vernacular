@@ -3,7 +3,17 @@ import { describe, expect, it } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
 import { normalizeModelIntoBox } from './furniture-model'
 
-function nodeFor(width: number, depth: number, height: number, elevationZ = 0) {
+function nodeFor({
+  width,
+  depth,
+  height,
+  elevationZ = 0,
+}: {
+  width: number
+  depth: number
+  height: number
+  elevationZ?: number
+}) {
   return {
     id: 'furniture:x',
     kind: 'furniture' as const,
@@ -22,7 +32,7 @@ describe('normalizeModelIntoBox', () => {
     const parent = new THREE.Group()
     parent.position.set(50, 50, 50)
     parent.add(inner)
-    const node = nodeFor(2000, 2000, 4000, 0) // target taller and wider than the model
+    const node = nodeFor({ width: 2000, depth: 2000, height: 4000, elevationZ: 500 }) // target taller and wider than the model
 
     const placed = normalizeModelIntoBox(parent, node)!
     const box = new THREE.Box3().setFromObject(placed)
@@ -34,6 +44,6 @@ describe('normalizeModelIntoBox', () => {
     const center = box.getCenter(new THREE.Vector3())
     expect(center.x).toBeCloseTo(0, 0)
     expect(center.z).toBeCloseTo(0, 0)
-    expect(box.min.y).toBeCloseTo(0, 0) // bottom-anchored to elevationZ
+    expect(box.min.y).toBeCloseTo(500, 0) // bottom-anchored to elevationZ
   })
 })
