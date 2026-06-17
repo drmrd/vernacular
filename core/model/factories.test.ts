@@ -3,6 +3,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_FURNITURE_FOOTPRINT_MM,
+  DEFAULT_FURNITURE_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_STAIR_WIDTH_MM,
@@ -96,8 +97,8 @@ describe('createFloor dimensions', () => {
 })
 
 describe('CURRENT_SCHEMA_VERSION', () => {
-  it('is 10', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(10)
+  it('is 11', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBe(11)
   })
 })
 
@@ -288,6 +289,23 @@ describe('createFurnitureInstance', () => {
     expect(result.footprint).toEqual(footprint)
     expect(result.rotation).toBe(0)
     expect(result.elevationZ).toBe(0)
+  })
+
+  it('defaults the height to DEFAULT_FURNITURE_HEIGHT_MM when no height is given', () => {
+    const result: FurnitureInstance = createFurnitureInstance({ assetRef, position, footprint })
+
+    expect(result.height).toBe(DEFAULT_FURNITURE_HEIGHT_MM)
+  })
+
+  it('carries through an explicit height', () => {
+    const result: FurnitureInstance = createFurnitureInstance({
+      assetRef,
+      position,
+      footprint,
+      height: 420,
+    })
+
+    expect(result.height).toBe(420)
   })
 
   it('omits the name field entirely when no name is given', () => {
