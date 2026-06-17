@@ -1,4 +1,5 @@
 import { dimensionLength } from '../geometry/dimension'
+import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
 import type {
   Dimension,
@@ -147,6 +148,8 @@ export interface FurnitureSceneNode {
   elevationZ: number
   /** Box rises to elevationZ + height, mm. */
   height: number
+  /** Content-addressed reference to this piece's asset, for the model loader. */
+  assetRef: AssetReference
 }
 
 export interface SceneGraph {
@@ -253,6 +256,7 @@ export function deriveFurnitureNode(floor: Floor, item: FurnitureInstance): Furn
     footprintCorners: furnitureFootprintCorners(item.position, item.rotation, item.footprint),
     elevationZ: item.elevationZ,
     height: item.height,
+    assetRef: item.assetRef,
   }
 }
 
