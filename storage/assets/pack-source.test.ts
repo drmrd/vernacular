@@ -47,6 +47,7 @@ const EXPECTED_ITEM: LibraryItem = {
   categories: ['seating'],
   eras: ['mid-century'],
   footprint: { width: 500, depth: 520 },
+  height: 800,
   thumbnail: { scope: PACK_ID, contentHash: ZERO_HASH },
 }
 
@@ -55,6 +56,12 @@ describe('PackSource', () => {
     const source = new PackSource(fakeReader(VALID_MANIFEST))
     const items = await source.list()
     expect(items).toEqual([EXPECTED_ITEM])
+  })
+
+  it('sets each listed item height from the manifest asset dimensions', async () => {
+    const source = new PackSource(fakeReader(VALID_MANIFEST))
+    const items = await source.list()
+    expect(items[0]?.height).toBe(800)
   })
 
   it('returns an empty list for an invalid manifest without throwing', async () => {

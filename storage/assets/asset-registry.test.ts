@@ -136,6 +136,7 @@ describe('AssetRegistry listing', () => {
     categories: ['seating'],
     eras: [],
     footprint: { width: 600, depth: 600 },
+    height: 750,
   }
 
   const packItem: LibraryItem = {
@@ -145,6 +146,7 @@ describe('AssetRegistry listing', () => {
     categories: ['seating'],
     eras: ['mid-century'],
     footprint: { width: 500, depth: 520 },
+    height: 750,
   }
 
   it('returns user items before pack items regardless of source registration order', async () => {
