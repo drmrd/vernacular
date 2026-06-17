@@ -62,6 +62,7 @@ export {
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
+export { furnitureFootprintCorners } from './model/furniture-footprint'
 export type {
   AssetFootprint,
   AssetResolution,
