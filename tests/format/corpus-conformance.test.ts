@@ -7,8 +7,8 @@ import {
   type ExtensionSchemaRegistry,
   type Floor,
 } from '../../core'
+import { deriveRooms, roomKey } from '../../core'
 import { SCHEMA_VERSION } from '../../scripts/schema/build-schema.mjs'
-import { deriveRooms, roomKey } from '../../core/topology/rooms'
 
 const schemaPath = resolve('schema', String(SCHEMA_VERSION), 'vernacular.schema.json')
 const schema = JSON.parse(readFileSync(schemaPath, 'utf8'))
