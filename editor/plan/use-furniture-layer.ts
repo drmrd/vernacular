@@ -58,6 +58,7 @@ function ghostDrawable({ armed, rotation, cursor, tool }: GhostInputs): Drawable
     position: ghost.position,
     rotation: ghost.rotation,
     footprint: ghost.footprint,
+    height: armed.height,
     ...(armed.name !== '' ? { name: armed.name } : {}),
   })
   return { instance, selected: false }

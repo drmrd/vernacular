@@ -1,7 +1,9 @@
 import { dimensionLength } from '../geometry/dimension'
+import { furnitureFootprintCorners } from '../model/furniture-footprint'
 import type {
   Dimension,
   Floor,
+  FurnitureInstance,
   Opening,
   OpeningOrientation,
   Point,
@@ -23,6 +25,7 @@ export const UNDERLAY_NODE_PREFIX = 'underlay:'
 export const OPENING_NODE_PREFIX = 'opening:'
 export const DIMENSION_NODE_PREFIX = 'dimension:'
 export const STAIR_NODE_PREFIX = 'stair:'
+export const FURNITURE_NODE_PREFIX = 'furniture:'
 
 export interface SceneNode {
   id: string
@@ -134,6 +137,18 @@ export interface StairSceneNode {
   wellFloorId: string
 }
 
+export interface FurnitureSceneNode {
+  id: string
+  kind: 'furniture'
+  floorId: string
+  /** Plan-space mm corners from furnitureFootprintCorners(position, rotation, footprint). */
+  footprintCorners: [Point, Point, Point, Point]
+  /** Box base, mm above the floor. */
+  elevationZ: number
+  /** Box rises to elevationZ + height, mm. */
+  height: number
+}
+
 export interface SceneGraph {
   nodes: SceneNode[]
   walls: WallSceneNode[]
@@ -142,6 +157,7 @@ export interface SceneGraph {
   openings: OpeningSceneNode[]
   dimensions: DimensionSceneNode[]
   stairs: StairSceneNode[]
+  furniture: FurnitureSceneNode[]
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -229,6 +245,21 @@ export function deriveDimensionNodesForFloor(floor: Floor): DimensionSceneNode[]
   return floor.dimensions.map((dimension) => deriveDimensionNode(floor, dimension))
 }
 
+export function deriveFurnitureNode(floor: Floor, item: FurnitureInstance): FurnitureSceneNode {
+  return {
+    id: `${FURNITURE_NODE_PREFIX}${item.id}`,
+    kind: 'furniture',
+    floorId: floor.id,
+    footprintCorners: furnitureFootprintCorners(item.position, item.rotation, item.footprint),
+    elevationZ: item.elevationZ,
+    height: item.height,
+  }
+}
+
+export function deriveFurnitureNodesForFloor(floor: Floor): FurnitureSceneNode[] {
+  return floor.furniture.map((item) => deriveFurnitureNode(floor, item))
+}
+
 export function deriveRoomNodesForFloor(
   floor: Floor,
   overrides?: Readonly<Record<string, RoomOverride>>,
@@ -280,5 +311,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     openings: project.floors.flatMap(deriveOpeningNodesForFloor),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: deriveStairNodes(project),
+    furniture: project.floors.flatMap(deriveFurnitureNodesForFloor),
   }
 }

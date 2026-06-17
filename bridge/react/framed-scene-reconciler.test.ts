@@ -30,6 +30,7 @@ function floorGraph(floorNode: SceneNode): SceneGraph {
     openings: [],
     dimensions: [],
     stairs: [],
+    furniture: [],
   }
 }
 
@@ -107,6 +108,7 @@ describe('createFramedSceneReconciler', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const framed = reconciler.reconcile(empty, emptyPaint())

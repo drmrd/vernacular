@@ -60,6 +60,7 @@ export class PackSource implements AssetSource {
       categories: asset.categories,
       eras: asset.eras,
       footprint: { width: asset.dimensions.width, depth: asset.dimensions.depth },
+      height: asset.dimensions.height,
       thumbnail: { scope: this.scope, contentHash: asset.contentHash },
     }
   }

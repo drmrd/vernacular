@@ -65,6 +65,7 @@ const rectangularRoomGraph = (): SceneGraph => ({
   openings: [],
   dimensions: [],
   stairs: [],
+  furniture: [],
 })
 
 /** The material array of the wall mesh carrying `entityId` under `root`. */

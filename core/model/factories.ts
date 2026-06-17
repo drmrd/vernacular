@@ -31,8 +31,9 @@ import type {
 // top-level `palettes`, `paint`, and `site` fields (all absent-by-default, so the
 // migration is a structural pass-through); v9 generalizes a paint assignment into a
 // SurfaceTreatment union, wrapping each legacy assignment as a solid treatment;
-// v10 adds the per-floor `furniture` array (an absent-by-default backfill migration).
-export const CURRENT_SCHEMA_VERSION = 10
+// v10 adds the per-floor `furniture` array (an absent-by-default backfill migration);
+// v11 adds a per-furniture `height` field (an absent-by-default backfill migration).
+export const CURRENT_SCHEMA_VERSION = 11
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -230,12 +231,18 @@ export const DEFAULT_FURNITURE_FOOTPRINT_MM: FurnitureFootprint = {
   depth: DEFAULT_FURNITURE_DIMENSION_MM,
 }
 
+// A neutral standing height in millimeters for a furniture piece whose asset declares
+// no height; mirrors the named-scalar approach of DEFAULT_FURNITURE_DIMENSION_MM so
+// no-magic-numbers never fires.
+export const DEFAULT_FURNITURE_HEIGHT_MM = 750
+
 export interface NewFurnitureOptions {
   assetRef: AssetReference
   position: Point
   footprint: FurnitureFootprint
   rotation?: number
   elevationZ?: number
+  height?: number
   name?: string
   id?: string
 }
@@ -248,6 +255,7 @@ export function createFurnitureInstance(options: NewFurnitureOptions): Furniture
     rotation: options.rotation ?? 0,
     elevationZ: options.elevationZ ?? 0,
     footprint: options.footprint,
+    height: options.height ?? DEFAULT_FURNITURE_HEIGHT_MM,
     ...(options.name !== undefined ? { name: options.name } : {}),
   }
 }

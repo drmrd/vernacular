@@ -1,14 +1,24 @@
 import {
   deriveDimensionNodesForFloor,
   deriveFloorNode,
+  deriveFurnitureNode,
   deriveOpeningNode,
   deriveRoomNodesForFloor,
   deriveStairNodes,
   deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene-graph'
-import type { Floor, Opening, Project, RoomOverride, Stair, Wall } from '../model/types'
 import type {
+  Floor,
+  FurnitureInstance,
+  Opening,
+  Project,
+  RoomOverride,
+  Stair,
+  Wall,
+} from '../model/types'
+import type {
+  FurnitureSceneNode,
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
@@ -122,6 +132,7 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
   const roomCache = new WeakMap<readonly Wall[], CachedRoomNodes>()
   const stairCache = new WeakMap<readonly Stair[], StairSceneNode[]>()
   const openingCache = new WeakMap<Opening, CachedOpeningNode>()
+  const furnitureCache = new WeakMap<FurnitureInstance, FurnitureSceneNode>()
 
   const floorNodeFor = (floor: Floor) =>
     memoizeByRef(floorCache, floor, () => deriveFloorNode(floor))
@@ -129,6 +140,10 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     memoizeByRef(wallCache, wall, () => deriveWallNode(floor, wall))
   const stairNodesFor = (project: Project) =>
     memoizeByRef(stairCache, project.stairs, () => deriveStairNodes(project))
+  const furnitureNodesFor = (floor: Floor): FurnitureSceneNode[] =>
+    floor.furniture.map((item) =>
+      memoizeByRef(furnitureCache, item, () => deriveFurnitureNode(floor, item)),
+    )
 
   return (project) => ({
     nodes: project.floors.map(floorNodeFor),
@@ -138,5 +153,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     openings: project.floors.flatMap((floor) => openingNodesFor(openingCache, floor)),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: stairNodesFor(project),
+    furniture: project.floors.flatMap(furnitureNodesFor),
   })
 }

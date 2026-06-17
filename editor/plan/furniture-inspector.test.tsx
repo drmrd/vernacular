@@ -4,12 +4,14 @@ import userEvent from '@testing-library/user-event'
 import {
   RESIZE_FURNITURE,
   ROTATE_FURNITURE,
+  SET_FURNITURE_HEIGHT,
   SET_FURNITURE_NAME,
   createFurnitureInstance,
   parseLength,
   type Command,
   type ResizeFurnitureParams,
   type RotateFurnitureParams,
+  type SetFurnitureHeightParams,
 } from '../../core'
 import { FurnitureInspector } from './furniture-inspector'
 
@@ -20,6 +22,7 @@ const FLOOR_ID = 'floor-1'
 const FURNITURE_ID = 'f1'
 const WIDTH_MM = 600
 const DEPTH_MM = 400
+const HEIGHT_MM = 750
 const UNITS = 'metric' as const
 const METRIC_ASSUMED_UNIT = 'mm' as const
 
@@ -34,6 +37,10 @@ const NEW_DEPTH_ENTRY = '500'
 const EXPECTED_NEW_DEPTH_MM = parseLength(NEW_DEPTH_ENTRY, {
   assumeUnit: METRIC_ASSUMED_UNIT,
 })
+const NEW_HEIGHT_ENTRY = '900'
+const EXPECTED_NEW_HEIGHT_MM = parseLength(NEW_HEIGHT_ENTRY, {
+  assumeUnit: METRIC_ASSUMED_UNIT,
+})
 
 function buildFurniture() {
   return createFurnitureInstance({
@@ -41,6 +48,7 @@ function buildFurniture() {
     assetRef: { scope: 'user', contentHash: 'h' },
     position: { x: 0, y: 0 },
     footprint: { width: WIDTH_MM, depth: DEPTH_MM },
+    height: HEIGHT_MM,
     rotation: 0,
     name: 'Chair',
   })
@@ -137,6 +145,31 @@ describe('FurnitureInspector', () => {
       floorId: FLOOR_ID,
       furnitureId: FURNITURE_ID,
       footprint: { width: WIDTH_MM, depth: EXPECTED_NEW_DEPTH_MM },
+    })
+  })
+
+  it('shows the furniture instance height in the Height field', () => {
+    renderInspector(vi.fn())
+
+    const heightInput = screen.getByLabelText('Height') as HTMLInputElement
+    expect(parseLength(heightInput.value, { assumeUnit: METRIC_ASSUMED_UNIT })).toBe(HEIGHT_MM)
+  })
+
+  it('dispatches setFurnitureHeight with the parsed height when the height is committed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    const heightInput = screen.getByLabelText('Height')
+    await user.clear(heightInput)
+    await user.type(heightInput, `${NEW_HEIGHT_ENTRY}{Enter}`)
+
+    const command = commandOfType<SetFurnitureHeightParams>(dispatch, SET_FURNITURE_HEIGHT)
+    expect(command).toBeDefined()
+    expect(command?.params).toEqual({
+      floorId: FLOOR_ID,
+      furnitureId: FURNITURE_ID,
+      height: EXPECTED_NEW_HEIGHT_MM,
     })
   })
 })

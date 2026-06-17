@@ -5,6 +5,7 @@ import { findByEntityId } from '../testing'
 import {
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createWall,
   deriveSceneGraph,
@@ -47,6 +48,11 @@ const wallMaterialNames = (root: THREE.Group, entityId: string): (string | undef
   return materials.map((material) => material.name)
 }
 
+/* eslint-disable-next-line max-lines-per-function --
+ * A flat suite of buildScene cases, one `it` per scene-node kind. Each case owns
+ * a self-contained SceneGraph literal (now seeding the required `furniture`
+ * array), so the describe body length tracks the number of node kinds rather than
+ * any single hard-to-read function. */
 describe('buildScene', () => {
   it('creates one group per scene node carrying its id and elevation', () => {
     const graph: SceneGraph = {
@@ -60,6 +66,7 @@ describe('buildScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const root = buildScene(graph)
@@ -101,6 +108,7 @@ describe('buildScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const root = buildScene(graph)
@@ -141,6 +149,7 @@ describe('buildScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const root = buildScene(graph)
@@ -213,6 +222,23 @@ describe('buildScene opening fill', () => {
   })
 })
 
+describe('buildScene furniture', () => {
+  it('parents a placed furniture massing under its floor group carrying the raw instance id', () => {
+    const instance = createFurnitureInstance({
+      assetRef: { scope: 'user', contentHash: 'abc' },
+      position: { x: 1000, y: 1000 },
+      footprint: { width: 1200, depth: 600 },
+      height: 750,
+      id: 'sofa-1',
+    })
+    const floor: Floor = { ...createFloor('Ground', { id: 'g', walls: [] }), furniture: [instance] }
+
+    const root = buildScene(projectWithFloor(floor))
+
+    expect(findByEntityId(root, instance.id)).not.toBeNull()
+  })
+})
+
 describe('buildScene surface edges', () => {
   it('adds an edge line to each structural mesh while keeping its entity id', () => {
     const graph: SceneGraph = {
@@ -233,6 +259,7 @@ describe('buildScene surface edges', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const wall = findByEntityId(buildScene(graph), 'wall:w1')

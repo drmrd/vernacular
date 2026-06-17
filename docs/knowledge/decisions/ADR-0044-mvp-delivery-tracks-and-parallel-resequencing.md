@@ -59,6 +59,10 @@ of export, the addition of a user-experience track, and the open-standard
 interoperability posture). Every named deliverable in section 10 still ships; this
 ADR changes how the work is grouped and ordered, not the deliverable set.
 
+Update (2026-06-17): the furniture-in-3D step on the assets and furniture track
+shipped as solid massing boxes; see [[ADR-0094-furniture-massing-in-3d]]. Loading
+real furniture model geometry is tracked separately as a follow-up on the same track.
+
 ## Context
 
 The Phase-1 two-dimensional plan editor is complete (twelve build slices plus the

@@ -150,6 +150,37 @@ const resizeFurnitureHandler: CommandHandler<Project, ResizeFurnitureParams> = {
   },
 }
 
+export const SET_FURNITURE_HEIGHT = 'floor/set-furniture-height'
+
+export interface SetFurnitureHeightParams {
+  floorId: string
+  furnitureId: string
+  height: number
+}
+
+export function setFurnitureHeight(
+  floorId: string,
+  furnitureId: string,
+  height: number,
+): Command<SetFurnitureHeightParams> {
+  return {
+    type: SET_FURNITURE_HEIGHT,
+    params: { floorId, furnitureId, height },
+    description: 'Set furniture height',
+  }
+}
+
+const setFurnitureHeightHandler: CommandHandler<Project, SetFurnitureHeightParams> = {
+  apply(state, params) {
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetFurniture(floor, params.furnitureId, (furniture) => ({
+        ...furniture,
+        height: params.height,
+      })),
+    )
+  },
+}
+
 export const SET_FURNITURE_NAME = 'floor/set-furniture-name'
 
 export interface SetFurnitureNameParams {
@@ -215,6 +246,7 @@ export function registerFurnitureCommands(
     .register(MOVE_FURNITURE, moveFurnitureHandler)
     .register(ROTATE_FURNITURE, rotateFurnitureHandler)
     .register(RESIZE_FURNITURE, resizeFurnitureHandler)
+    .register(SET_FURNITURE_HEIGHT, setFurnitureHeightHandler)
     .register(SET_FURNITURE_NAME, setFurnitureNameHandler)
     .register(REMOVE_FURNITURE, removeFurnitureHandler)
 }

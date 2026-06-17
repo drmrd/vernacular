@@ -45,6 +45,7 @@ export function usePlaceFurniture(deps: FurniturePlacementDeps): FurniturePlacem
         assetRef: armed.reference,
         position,
         footprint: armed.footprint,
+        height: armed.height,
         rotation,
         ...(armed.name !== '' ? { name: armed.name } : {}),
       })

@@ -1,0 +1,888 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "$ref": "#/definitions/ProjectMeta"
+    },
+    "floors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Floor"
+      }
+    },
+    "stairs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Stair"
+      },
+      "description": "Floor-spanning stairs. A sibling of `floors` because each stair connects two floors; see the design specification, sections 3.1 and 3.2."
+    },
+    "roomOverrides": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/RoomOverride"
+      },
+      "description": "Per-room user metadata keyed by `roomKey(room)`. A sibling of `meta` and `floors` so an undoable command can reassign it whole (the inverse-capture proxy records only the root's own top-level keys). Absent means no overrides."
+    },
+    "palettes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ProjectPalette"
+      },
+      "description": "Project-local, user-editable palettes (design spec 3.1). Absent means none."
+    },
+    "paint": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/SurfaceTreatment"
+      },
+      "description": "Surface paint assignments keyed by surfaceKey(ref). Absent means none."
+    },
+    "site": {
+      "$ref": "#/definitions/Site",
+      "description": "Optional site metadata (design spec 3.1). Absent means none."
+    },
+    "extensions": {
+      "$ref": "#/definitions/Extensions",
+      "description": "Third-party extension data; see  {@link  Extensions } ."
+    }
+  },
+  "required": [
+    "meta",
+    "floors",
+    "stairs"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "ProjectMeta": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "units": {
+          "$ref": "#/definitions/UnitSystem"
+        },
+        "period": {
+          "$ref": "#/definitions/PeriodId",
+          "description": "The project's default chronological period; floors and rooms can override."
+        },
+        "style": {
+          "$ref": "#/definitions/StyleTag",
+          "description": "The project's default architectural style; floors and rooms can override."
+        },
+        "schemaVersion": {
+          "$ref": "#/definitions/SchemaVersion"
+        },
+        "appVersion": {
+          "type": "string"
+        },
+        "registryVersions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Per-registry version the project was last saved against, keyed by registry name (for example \"elementTypes\" or \"finishes\"). Drives registry-aware migration. See the design specification, section 3.4."
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "name",
+        "units",
+        "period",
+        "schemaVersion",
+        "appVersion",
+        "registryVersions"
+      ],
+      "additionalProperties": false
+    },
+    "UnitSystem": {
+      "type": "string",
+      "enum": [
+        "imperial",
+        "metric"
+      ]
+    },
+    "PeriodId": {
+      "type": "string",
+      "description": "References an entry in the PeriodRegistry. Validated at the registry boundary, not by this alias."
+    },
+    "StyleTag": {
+      "type": "object",
+      "properties": {
+        "styleId": {
+          "$ref": "#/definitions/StyleId"
+        },
+        "vernacular": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "styleId"
+      ],
+      "additionalProperties": false,
+      "description": "A style tag: a StyleRegistry id, optionally marked as the vernacular variant of an academic style. The `vernacular` modifier is meaningful only when the referenced Style entry declares `hasVernacularVariant`; it is ignored on entries that are themselves vernacular forms."
+    },
+    "StyleId": {
+      "type": "string",
+      "description": "References an entry in the StyleRegistry. Validated at the registry boundary, not by this alias."
+    },
+    "SchemaVersion": {
+      "type": "number",
+      "description": "Monotonically increasing project-schema version; drives the migration chain."
+    },
+    "Extensions": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "Third-party extension data. Keys are reverse-DNS namespaces (for example \"com.example.solar\"); values are arbitrary JSON owned by that namespace. The CORE schema validates this as an open object so namespaced data never breaks CORE validation. See docs/specs/2026-06-10-vernacular-floor-plan-format.md, section 6.3."
+    },
+    "Floor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "elevation": {
+          "type": "number",
+          "description": "Elevation of the finished floor surface, in millimeters."
+        },
+        "defaultCeilingHeight": {
+          "type": "number",
+          "description": "Default ceiling height for rooms on this floor, in millimeters."
+        },
+        "periodOverride": {
+          "$ref": "#/definitions/PeriodId",
+          "description": "Explicit period override; absent means inherit the project period."
+        },
+        "styleOverride": {
+          "$ref": "#/definitions/StyleTag",
+          "description": "Explicit style override; absent means inherit the project style."
+        },
+        "walls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Wall"
+          }
+        },
+        "underlays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Underlay"
+          }
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Opening"
+          }
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Dimension"
+          }
+        },
+        "furniture": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FurnitureInstance"
+          },
+          "description": "Placed furniture and other movable objects on this floor."
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "elevation",
+        "defaultCeilingHeight",
+        "walls",
+        "underlays",
+        "openings",
+        "dimensions",
+        "furniture"
+      ],
+      "additionalProperties": false
+    },
+    "Wall": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/definitions/Point"
+        },
+        "end": {
+          "$ref": "#/definitions/Point"
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Wall thickness in millimeters."
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "start",
+        "end",
+        "thickness"
+      ],
+      "additionalProperties": false
+    },
+    "Point": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false,
+      "description": "A point in floor-plan space, in millimeters. x increases rightward, y increases upward."
+    },
+    "Underlay": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/definitions/UnderlaySource",
+          "description": "Discriminated reference to the underlay's source content (content-addressed, ADR-0007)."
+        },
+        "width": {
+          "type": "number",
+          "description": "Source content dimensions in pixels."
+        },
+        "height": {
+          "type": "number"
+        },
+        "placement": {
+          "$ref": "#/definitions/UnderlayPlacement"
+        },
+        "opacity": {
+          "type": "number",
+          "description": "0 (transparent) to 1 (opaque)."
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "width",
+        "height",
+        "placement",
+        "opacity",
+        "visible"
+      ],
+      "additionalProperties": false
+    },
+    "UnderlaySource": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "raster"
+            },
+            "image": {
+              "$ref": "#/definitions/AssetReference"
+            }
+          },
+          "required": [
+            "kind",
+            "image"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "document"
+            },
+            "document": {
+              "$ref": "#/definitions/AssetReference"
+            },
+            "page": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "document",
+            "page"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "scene"
+            },
+            "scene": {
+              "$ref": "#/definitions/AssetReference"
+            }
+          },
+          "required": [
+            "kind",
+            "scene"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "Reference + per-kind data for an underlay's source content (content-addressed, ADR-0007)."
+    },
+    "AssetReference": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "#/definitions/AssetScope"
+        },
+        "contentHash": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "contentHash"
+      ],
+      "additionalProperties": false,
+      "description": "Content-addressed reference to an external asset. See ADR-0007."
+    },
+    "AssetScope": {
+      "type": "string"
+    },
+    "UnderlayPlacement": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "$ref": "#/definitions/Point",
+          "description": "World position (millimeters) of the underlay's pixel origin (top-left)."
+        },
+        "millimetersPerPixel": {
+          "type": "number",
+          "description": "World millimeters per source image pixel; the calibrated scale."
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation in radians about `offset`. Positive values rotate clockwise on screen, matching the image's downward-y pixel axes; 0 for an axis-aligned underlay."
+        }
+      },
+      "required": [
+        "offset",
+        "millimetersPerPixel",
+        "rotation"
+      ],
+      "additionalProperties": false
+    },
+    "Opening": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "ElementType id, category 'opening'."
+        },
+        "hostWallId": {
+          "type": "string"
+        },
+        "position": {
+          "type": "number",
+          "description": "Millimeters from the host wall start to the opening center, along the wall."
+        },
+        "width": {
+          "type": "number",
+          "description": "Opening width in millimeters."
+        },
+        "height": {
+          "type": "number",
+          "description": "Opening height in millimeters."
+        },
+        "sillHeight": {
+          "type": "number",
+          "description": "Height of the sill above the finished floor, in millimeters."
+        },
+        "orientation": {
+          "$ref": "#/definitions/OpeningOrientation"
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "hostWallId",
+        "position",
+        "width",
+        "height",
+        "sillHeight",
+        "orientation"
+      ],
+      "additionalProperties": false
+    },
+    "OpeningOrientation": {
+      "type": "object",
+      "properties": {
+        "hinge": {
+          "$ref": "#/definitions/WallEnd",
+          "description": "Which jamb anchors the leaf, as the host-wall end nearer it."
+        },
+        "facing": {
+          "type": "string",
+          "enum": [
+            "positive",
+            "negative"
+          ],
+          "description": "Sign of the wall's left-hand normal the leaf opens toward."
+        }
+      },
+      "required": [
+        "hinge",
+        "facing"
+      ],
+      "additionalProperties": false
+    },
+    "WallEnd": {
+      "type": "string",
+      "enum": [
+        "start",
+        "end"
+      ],
+      "description": "One end of a wall: its start point or its end point."
+    },
+    "Dimension": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/definitions/Point",
+          "description": "First measured point, in world millimeters."
+        },
+        "end": {
+          "$ref": "#/definitions/Point",
+          "description": "Second measured point, in world millimeters."
+        },
+        "offset": {
+          "type": "number",
+          "description": "Perpendicular offset of the dimension line from the measured segment, in millimeters. 0 places the dimension line on the segment."
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "start",
+        "end",
+        "offset"
+      ],
+      "additionalProperties": false
+    },
+    "FurnitureInstance": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "assetRef": {
+          "$ref": "#/definitions/AssetReference"
+        },
+        "position": {
+          "$ref": "#/definitions/Point",
+          "description": "Plan position in world millimeters."
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation in degrees; free angle, not snapped."
+        },
+        "elevationZ": {
+          "type": "number",
+          "description": "Elevation above the finished floor in millimeters; 0 places the item on the floor."
+        },
+        "footprint": {
+          "$ref": "#/definitions/FurnitureFootprint"
+        },
+        "height": {
+          "type": "number",
+          "description": "Vertical extent of the furniture massing in millimeters; the 3D box rises from elevationZ to elevationZ + height."
+        },
+        "name": {
+          "type": "string"
+        },
+        "customizations": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Reserved for future per-instance customization data; see the design spec."
+        }
+      },
+      "required": [
+        "id",
+        "assetRef",
+        "position",
+        "rotation",
+        "elevationZ",
+        "footprint",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "FurnitureFootprint": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "description": "Width of the furniture item in millimeters (the dimension along the x axis of the item's local frame)."
+        },
+        "depth": {
+          "type": "number",
+          "description": "Depth of the furniture item in millimeters (the dimension along the y axis of the item's local frame)."
+        }
+      },
+      "required": [
+        "width",
+        "depth"
+      ],
+      "additionalProperties": false
+    },
+    "Stair": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "runType": {
+          "$ref": "#/definitions/StairRunType"
+        },
+        "position": {
+          "$ref": "#/definitions/Point",
+          "description": "Plan position of the stair origin, in world millimeters."
+        },
+        "width": {
+          "type": "number",
+          "description": "Run width in millimeters."
+        },
+        "length": {
+          "type": "number",
+          "description": "Run length (plan footprint) in millimeters."
+        },
+        "rotation": {
+          "type": "number",
+          "description": "Rotation in radians about `position`."
+        },
+        "connection": {
+          "$ref": "#/definitions/StairConnection"
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "runType",
+        "position",
+        "width",
+        "length",
+        "rotation",
+        "connection"
+      ],
+      "additionalProperties": false,
+      "description": "A stair joining two floors. Stairs live in a top-level, floor-spanning array rather than on a single floor because they connect two floors; see the design specification, sections 3.1 and 3.2."
+    },
+    "StairRunType": {
+      "type": "string",
+      "enum": [
+        "straight",
+        "l-turn",
+        "u-turn",
+        "winder",
+        "spiral"
+      ],
+      "description": "How a stair run is shaped in plan; see the design specification, sections 3.1 and 3.2."
+    },
+    "StairConnection": {
+      "type": "object",
+      "properties": {
+        "fromFloorId": {
+          "type": "string"
+        },
+        "toFloorId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fromFloorId",
+        "toFloorId"
+      ],
+      "additionalProperties": false,
+      "description": "The pair of floors a stair joins. The run rises from `fromFloorId` to `toFloorId`; the type does not enforce any elevation ordering, so keeping the direction sensible is the caller's responsibility."
+    },
+    "RoomOverride": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "User-entered display name for the room; absent means geometry only (no name)."
+        },
+        "customPolygon": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Point"
+          },
+          "description": "Replacement boundary for cases where wall topology cannot infer a room (porch, L-shaped sub-zone)."
+        },
+        "purpose": {
+          "$ref": "#/definitions/RoomPurposeId",
+          "description": "Primary room purpose, a RoomPurposeRegistry id. Absent means untagged."
+        },
+        "subPurpose": {
+          "type": "string",
+          "description": "Optional finer-grained free-text purpose label (for example \"Silver Pantry\"). Never required."
+        },
+        "periodOverride": {
+          "$ref": "#/definitions/PeriodId",
+          "description": "Explicit period override; absent means inherit the floor or project period."
+        },
+        "styleOverride": {
+          "$ref": "#/definitions/StyleTag",
+          "description": "Explicit style override; absent means inherit the floor or project style."
+        },
+        "ceilingHeight": {
+          "type": "number",
+          "description": "Explicit ceiling-height override in millimeters; absent means inherit the floor default."
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "additionalProperties": false,
+      "description": "User-supplied metadata for a derived room, stored separately from geometry. Held in `Project.roomOverrides`, keyed by `roomKey(room)` (the sorted bounding-wall-id string the room derivation encodes in `Room.id`). An absent map means no overrides.\n\nThe old-house architectural vocabulary fields (`purpose`, `subPurpose`, `periodOverride`, `styleOverride`) live here, each optional, alongside the room name and custom polygon."
+    },
+    "RoomPurposeId": {
+      "type": "string",
+      "description": "References an entry in the RoomPurposeRegistry. Validated at the registry boundary, not by this alias."
+    },
+    "ProjectPalette": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "periods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PeriodId"
+          },
+          "description": "Optional chronological-period tags, referencing the PeriodRegistry (ADR-0046)."
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NamedColor"
+          }
+        },
+        "extensions": {
+          "$ref": "#/definitions/Extensions",
+          "description": "Third-party extension data; see  {@link  Extensions } ."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "colors"
+      ],
+      "additionalProperties": false,
+      "description": "A project-local, user-editable palette (design spec 3.1: palettes[] is project-local; the read-only bundled palettes live in the PaletteRegistry)."
+    },
+    "NamedColor": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "color": {
+          "$ref": "#/definitions/Color"
+        }
+      },
+      "required": [
+        "name",
+        "color"
+      ],
+      "additionalProperties": false,
+      "description": "A color with a required accessible name (design spec 7.4: every chip carries its name). It lives here, beside Color, so both the palette registry and the project-local palette model import it from one home and the import direction stays core/registries and core/model both depending on core/color."
+    },
+    "Color": {
+      "type": "object",
+      "properties": {
+        "oklab": {
+          "$ref": "#/definitions/OkLab"
+        },
+        "srgbHex": {
+          "type": "string"
+        },
+        "originalSpec": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "oklab",
+        "srgbHex"
+      ],
+      "additionalProperties": false,
+      "description": "A stored color in the three forms the design specification (section 7.4) requires: OKLab (canonical, used for all math), sRGB hex (display and serialization), and an optional originalSpec source identifier (for example a descriptive source color code the user records). The triple is always consistent because it is only built through the constructors below."
+    },
+    "OkLab": {
+      "type": "object",
+      "properties": {
+        "L": {
+          "type": "number"
+        },
+        "a": {
+          "type": "number"
+        },
+        "b": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "L",
+        "a",
+        "b"
+      ],
+      "additionalProperties": false,
+      "description": "A color in the OKLab perceptual space: L lightness (0..1), a and b chroma axes."
+    },
+    "SurfaceTreatment": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "solid"
+        },
+        "color": {
+          "$ref": "#/definitions/Color"
+        },
+        "finishId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "color",
+        "finishId"
+      ],
+      "additionalProperties": false,
+      "description": "A surface treatment. Solid color is the only built variant; the discriminated `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0056)."
+    },
+    "Site": {
+      "type": "object",
+      "properties": {
+        "latLong": {
+          "$ref": "#/definitions/LatLong"
+        },
+        "northBearing": {
+          "type": "number",
+          "description": "Angle from plan-up to true north, in radians (matching UnderlayPlacement.rotation)."
+        },
+        "obstructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Obstruction"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "description": "Optional project site metadata (design spec 3.1)."
+    },
+    "LatLong": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "latitude",
+        "longitude"
+      ],
+      "additionalProperties": false,
+      "description": "A geographic location in decimal degrees."
+    },
+    "Obstruction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "footprint": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Point"
+          },
+          "description": "Footprint polygon in the plan frame, in world millimeters."
+        },
+        "height": {
+          "type": "number",
+          "description": "Massing height in millimeters."
+        }
+      },
+      "required": [
+        "id",
+        "footprint",
+        "height"
+      ],
+      "additionalProperties": false,
+      "description": "A top-down massing footprint of a nearby structure or tree, with a height. A non-rendering placeholder (design spec 3.1 and Phase 6); the Phase-8 solar lighting provider would later consume these for obstruction shadows."
+    }
+  },
+  "$id": "https://drmrd.github.io/vernacular/schema/11/vernacular.schema.json",
+  "title": "Vernacular Floor Plan Format Document"
+}

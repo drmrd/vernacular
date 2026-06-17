@@ -22,6 +22,7 @@ function libraryItem(overrides: Partial<LibraryItem> = {}): LibraryItem {
     categories: ['seating'],
     eras: ['mid-century'],
     footprint: { width: FOOTPRINT_WIDTH_MM, depth: FOOTPRINT_DEPTH_MM },
+    height: 750,
     ...overrides,
   }
 }

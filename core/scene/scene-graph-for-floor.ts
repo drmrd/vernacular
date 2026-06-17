@@ -8,6 +8,7 @@ const emptyGraph = (): SceneGraph => ({
   openings: [],
   dimensions: [],
   stairs: [],
+  furniture: [],
 })
 
 const onFloor =
@@ -32,5 +33,6 @@ export function sceneGraphForFloor(graph: SceneGraph, floorId: string | null): S
     openings: graph.openings.filter(onFloor(floorId)),
     dimensions: graph.dimensions.filter(onFloor(floorId)),
     stairs: graph.stairs.filter(onFloor(floorId)),
+    furniture: graph.furniture.filter(onFloor(floorId)),
   }
 }

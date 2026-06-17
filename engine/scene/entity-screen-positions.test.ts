@@ -24,6 +24,7 @@ const graph: SceneGraph = {
   openings: [],
   dimensions: [],
   stairs: [],
+  furniture: [],
 }
 
 function aimedCamera(target: THREE.Vector3): THREE.PerspectiveCamera {

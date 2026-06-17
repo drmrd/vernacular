@@ -14,6 +14,7 @@ const chair: LibraryItem = {
   categories: [],
   eras: [],
   footprint: { width: 600, depth: 600 },
+  height: 750,
 }
 
 function Probe() {

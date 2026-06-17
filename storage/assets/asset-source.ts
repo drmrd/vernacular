@@ -13,6 +13,8 @@ export interface LibraryItem {
   categories: string[]
   eras: string[]
   footprint: FurnitureFootprint
+  /** Declared height of the item in millimeters; defaults the placed instance's massing height. */
+  height: number
   thumbnail?: AssetReference
 }
 

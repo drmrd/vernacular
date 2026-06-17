@@ -1,7 +1,13 @@
+/* eslint-disable max-lines --
+ * One describe block per memoized entity kind (floors, stairs, walls, rooms,
+ * openings, furniture). The suite grows by one reuse/rebuild block per node kind
+ * the deriver memoizes, so the size cap is the wrong tool for this aggregate file.
+ */
 import { describe, expect, it } from 'vitest'
 import {
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createStair,
   createWall,
@@ -292,6 +298,46 @@ describe('createSceneGraphDeriver openings', () => {
 
     expect(openingNode(second, 'o1')).toBe(openingNode(first, 'o1'))
     expect(openingNode(second, 'o2')).not.toBe(openingNode(first, 'o2'))
+  })
+})
+
+describe('createSceneGraphDeriver furniture', () => {
+  const SOFA_IMAGE = { scope: 'project', contentHash: 'sofac0de' } as const
+
+  function sofa(): ReturnType<typeof createFurnitureInstance> {
+    return createFurnitureInstance({
+      id: 'sofa-1',
+      assetRef: SOFA_IMAGE,
+      position: { x: 1500, y: 900 },
+      footprint: { width: 2000, depth: 900 },
+      rotation: 30,
+      elevationZ: 50,
+      height: 800,
+    })
+  }
+
+  function floorWithFurniture(instance: ReturnType<typeof createFurnitureInstance>): Floor {
+    return { ...createFloor('Ground', { walls: [] }), furniture: [instance] }
+  }
+
+  it('reuses a furniture node while its source instance is unchanged', () => {
+    const floor = floorWithFurniture(sofa())
+    const project = projectWith([floor])
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(project)
+    const second = derive(project)
+
+    expect(second.furniture[0]).toBe(first.furniture[0])
+  })
+
+  it('rebuilds the furniture node when the instance is replaced', () => {
+    const derive = createSceneGraphDeriver()
+
+    const first = derive(projectWith([floorWithFurniture(sofa())]))
+    const second = derive(projectWith([floorWithFurniture(sofa())]))
+
+    expect(second.furniture[0]).not.toBe(first.furniture[0])
   })
 })
 

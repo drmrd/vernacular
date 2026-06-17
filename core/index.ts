@@ -44,6 +44,7 @@ export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_FURNITURE_FOOTPRINT_MM,
+  DEFAULT_FURNITURE_HEIGHT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_STAIR_LENGTH_MM,
@@ -61,6 +62,7 @@ export {
 } from './model/factories'
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
+export { furnitureFootprintCorners } from './model/furniture-footprint'
 export type {
   AssetFootprint,
   AssetResolution,
@@ -226,6 +228,7 @@ export type {
   RemoveFurnitureParams,
   ResizeFurnitureParams,
   RotateFurnitureParams,
+  SetFurnitureHeightParams,
   SetFurnitureNameParams,
 } from './commands/handlers/furniture-commands'
 export {
@@ -234,6 +237,7 @@ export {
   REMOVE_FURNITURE,
   RESIZE_FURNITURE,
   ROTATE_FURNITURE,
+  SET_FURNITURE_HEIGHT,
   SET_FURNITURE_NAME,
   moveFurniture,
   placeFurniture,
@@ -241,6 +245,7 @@ export {
   removeFurniture,
   resizeFurniture,
   rotateFurniture,
+  setFurnitureHeight,
   setFurnitureName,
 } from './commands/handlers/furniture-commands'
 export type {
@@ -302,6 +307,7 @@ export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type {
   DimensionSceneNode,
+  FurnitureSceneNode,
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
@@ -313,6 +319,7 @@ export type {
 export {
   DIMENSION_NODE_PREFIX,
   FLOOR_NODE_PREFIX,
+  FURNITURE_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
@@ -320,6 +327,8 @@ export {
   deriveDimensionNode,
   deriveDimensionNodesForFloor,
   deriveFloorNode,
+  deriveFurnitureNode,
+  deriveFurnitureNodesForFloor,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,

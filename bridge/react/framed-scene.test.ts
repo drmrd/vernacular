@@ -1,3 +1,7 @@
+/* eslint-disable max-lines --
+ * A behavior-organized suite whose cases each own a self-contained SceneGraph
+ * literal (now seeding the required `furniture` array). The file length tracks
+ * the number of framed-scene cases, not any single hard-to-read unit. */
 import { describe, it, expect } from 'vitest'
 import { buildFramedScene } from './framed-scene'
 import { findByEntityId } from '../../engine/testing'
@@ -92,6 +96,7 @@ function squareRoomWithSouthWindow(ceiling: number): SceneGraph {
     ],
     dimensions: [],
     stairs: [],
+    furniture: [],
   }
 }
 
@@ -134,6 +139,7 @@ describe('buildFramedScene', () => {
     openings: [],
     dimensions: [],
     stairs: [],
+    furniture: [],
   }
 
   it('frames the camera on the world bounds of a scene that has walls', () => {
@@ -194,6 +200,7 @@ describe('buildFramedScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const { pose } = buildFramedScene(graph)
@@ -270,6 +277,7 @@ describe('buildFramedScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     // All four walls of the single room are exterior, so the build prepares one
@@ -318,6 +326,7 @@ describe('buildFramedScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
     const hex = '#aa5500'
     const ref = { kind: 'floor', floorId } as const

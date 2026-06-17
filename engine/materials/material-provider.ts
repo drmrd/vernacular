@@ -13,6 +13,8 @@ export type SurfaceRole =
   | 'glass'
   // The neutral role for the wall-junction fill's faces.
   | 'junction'
+  // The neutral role for a furniture massing box.
+  | 'furniture'
 
 /**
  * Supplies the material for each surface role. The MVP provider returns a single
