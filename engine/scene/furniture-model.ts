@@ -1,15 +1,12 @@
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { FurnitureSceneNode, Point } from '../../core'
+import { parseGltfBytes } from '../loaders/gltf-loader'
 
 /** Parses GLB bytes into a Three.js object, rejecting on any loader error. */
 export function parseFurnitureModel(bytes: Uint8Array): Promise<THREE.Object3D> {
-  const loader = new GLTFLoader()
   const buffer = new ArrayBuffer(bytes.byteLength)
   new Uint8Array(buffer).set(bytes)
-  return new Promise((resolve, reject) => {
-    loader.parse(buffer, '', (gltf) => resolve(gltf.scene), reject)
-  })
+  return parseGltfBytes(buffer)
 }
 
 function edgeLength(a: Point, b: Point): number {
