@@ -4,6 +4,7 @@ import {
   moveFurniture,
   rotateFurniture,
   resizeFurniture,
+  setFurnitureHeight,
   setFurnitureName,
   removeFurniture,
   registerFurnitureCommands,
@@ -11,6 +12,7 @@ import {
   MOVE_FURNITURE,
   ROTATE_FURNITURE,
   RESIZE_FURNITURE,
+  SET_FURNITURE_HEIGHT,
   SET_FURNITURE_NAME,
   REMOVE_FURNITURE,
 } from './furniture-commands'
@@ -216,6 +218,52 @@ describe('resizeFurniture', () => {
     dispatcher.undo()
 
     expect(project.floors[0]?.furniture[0]?.footprint).toEqual(originalFootprint)
+  })
+})
+
+describe('setFurnitureHeight', () => {
+  const NEW_HEIGHT = 1200
+
+  it('carries a stable command type', () => {
+    expect(SET_FURNITURE_HEIGHT).toBe('floor/set-furniture-height')
+    expect(setFurnitureHeight('g', 'fu-1', NEW_HEIGHT).type).toBe(SET_FURNITURE_HEIGHT)
+  })
+
+  it('sets the height on the target instance', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const instance = furnitureFixture()
+    dispatcher.dispatch(placeFurniture('g', instance))
+
+    dispatcher.dispatch(setFurnitureHeight('g', instance.id, NEW_HEIGHT))
+
+    expect(project.floors[0]?.furniture[0]?.height).toBe(NEW_HEIGHT)
+  })
+
+  it('leaves a sibling instance reference-equal', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = furnitureFixture('fu-1')
+    const sibling = furnitureFixture('fu-2')
+    dispatcher.dispatch(placeFurniture('g', target))
+    dispatcher.dispatch(placeFurniture('g', sibling))
+
+    dispatcher.dispatch(setFurnitureHeight('g', target.id, NEW_HEIGHT))
+
+    expect(project.floors[0]?.furniture[1]).toBe(sibling)
+  })
+
+  it('restores the previous height on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const instance = furnitureFixture()
+    const originalHeight = instance.height
+    dispatcher.dispatch(placeFurniture('g', instance))
+
+    dispatcher.dispatch(setFurnitureHeight('g', instance.id, NEW_HEIGHT))
+    dispatcher.undo()
+
+    expect(project.floors[0]?.furniture[0]?.height).toBe(originalHeight)
   })
 })
 
