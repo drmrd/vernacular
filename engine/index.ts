@@ -1,5 +1,6 @@
 export type { SceneRoot } from './scene/build-scene'
 export { buildScene } from './scene/build-scene'
+export { buildFurnitureMassing } from './scene/furniture-builder'
 export {
   assembleFloorRoot,
   buildOpeningSubgroup,
