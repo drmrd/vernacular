@@ -11,6 +11,8 @@ export interface UserLibraryIndex {
 export interface UserAssetMeta {
   name: string
   footprint: { width: number; depth: number }
+  /** Declared height in millimeters; defaults to DEFAULT_FURNITURE_HEIGHT_MM when an import has no parsed geometry. */
+  height?: number
   kind: AssetKind
   eras: string[]
   categories: string[]
@@ -39,7 +41,8 @@ export class UserSource implements AssetSource {
   }
 
   async list(): Promise<LibraryItem[]> {
-    return this.index.list()
+    const items = await this.index.list()
+    return items.map((item) => ({ ...item, height: item.height ?? DEFAULT_FURNITURE_HEIGHT_MM }))
   }
 
   async put(bytes: Uint8Array, meta: UserAssetMeta): Promise<LibraryItem> {
@@ -52,7 +55,7 @@ export class UserSource implements AssetSource {
       categories: meta.categories,
       eras: meta.eras,
       footprint: meta.footprint,
-      height: DEFAULT_FURNITURE_HEIGHT_MM,
+      height: meta.height ?? DEFAULT_FURNITURE_HEIGHT_MM,
     }
     await this.index.add(item)
     return item
