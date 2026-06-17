@@ -339,6 +339,14 @@ describe('createSceneGraphDeriver furniture', () => {
 
     expect(second.furniture[0]).not.toBe(first.furniture[0])
   })
+
+  it('carries the source instance assetRef onto the derived furniture node', () => {
+    const derive = createSceneGraphDeriver()
+
+    const derived = derive(projectWith([floorWithFurniture(sofa())]))
+
+    expect(derived.furniture[0]?.assetRef).toEqual(SOFA_IMAGE)
+  })
 })
 
 describe('createSceneGraphDeriver room reuse keyed on the floor walls', () => {
