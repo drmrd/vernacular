@@ -5,6 +5,8 @@
 // manifest object and returns a result. When the in-app pack loader lands (phase 3)
 // this schema graduates to core/ as shared TypeScript.
 
+import { licenseProblems } from './license-policy.mjs'
+
 /** @typedef {{ valid: boolean, errors: string[] }} PackValidationResult */
 
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
@@ -27,6 +29,8 @@ export const ASSET_KINDS = Object.freeze([
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 
+const URL_PREFIX_PATTERN = /^https?:\/\/\S+$/
+
 // A generous 100 m ceiling (in millimeters) that still catches unit mistakes such
 // as meters entered as millimeters.
 const MAX_DIMENSION_MM = 100_000
@@ -46,6 +50,39 @@ function validateRequiredString(source, key, errors, label = key) {
     return false
   }
   return true
+}
+
+/**
+ * @param {Record<string, unknown>} source
+ * @param {string} key
+ * @param {string[]} errors
+ * @param {string} [label]
+ */
+function validateRequiredStringArray(source, key, errors, label = key) {
+  const value = source[key]
+  const isNonEmptyStringArray =
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => typeof entry === 'string' && entry.trim() !== '')
+  if (!isNonEmptyStringArray) {
+    errors.push(`${label} must be a non-empty array of strings`)
+  }
+}
+
+/**
+ * @param {Record<string, unknown>} source
+ * @param {string} key
+ * @param {string[]} errors
+ * @param {string} [label]
+ */
+function validateOptionalUrl(source, key, errors, label = key) {
+  const value = source[key]
+  if (value === undefined) {
+    return
+  }
+  if (typeof value !== 'string' || !URL_PREFIX_PATTERN.test(value)) {
+    errors.push(`${label} must be an http(s) URL`)
+  }
 }
 
 /**
@@ -93,7 +130,13 @@ function validateAsset(asset, index, errors) {
     errors.push(`${label}.contentHash must be a sha256 hex digest`)
   }
   validateRequiredString(source, 'name', errors, `${label}.name`)
-  validateRequiredString(source, 'license', errors, `${label}.license`)
+  if (validateRequiredString(source, 'license', errors, `${label}.license`)) {
+    errors.push(...licenseProblems(String(source.license)))
+  }
+  validateRequiredString(source, 'attribution', errors, `${label}.attribution`)
+  validateRequiredStringArray(source, 'eras', errors, `${label}.eras`)
+  validateRequiredStringArray(source, 'categories', errors, `${label}.categories`)
+  validateOptionalUrl(source, 'sourceUrl', errors, `${label}.sourceUrl`)
   if (!ASSET_KINDS.includes(source.kind)) {
     errors.push(`${label}.kind must be one of: ${ASSET_KINDS.join(', ')}`)
   }
@@ -124,7 +167,9 @@ export function validatePackManifest(manifest) {
   const errors = []
   const source = /** @type {Record<string, unknown>} */ (manifest)
   validateRequiredString(source, 'packId', errors)
-  validateRequiredString(source, 'license', errors)
+  if (validateRequiredString(source, 'license', errors)) {
+    errors.push(...licenseProblems(String(source.license)))
+  }
   validateRequiredString(source, 'attribution', errors)
   if (
     validateRequiredString(source, 'version', errors) &&
@@ -132,6 +177,8 @@ export function validatePackManifest(manifest) {
   ) {
     errors.push('version must be valid SemVer (for example 1.0.0)')
   }
+  validateRequiredStringArray(source, 'eras', errors)
+  validateRequiredStringArray(source, 'categories', errors)
   validateAssets(source.assets, errors)
   return { valid: errors.length === 0, errors }
 }

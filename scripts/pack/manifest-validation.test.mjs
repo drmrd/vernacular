@@ -46,6 +46,8 @@ function validAsset() {
     kind: 'furniture',
     license: 'CC0-1.0',
     attribution: 'Vernacular project',
+    eras: ['mid-century'],
+    categories: ['seating'],
     dimensions: { width: 500, depth: 520, height: 800 },
   }
 }
@@ -82,6 +84,173 @@ describe('validatePackManifest assets', () => {
   })
 
   it('accepts a well-formed asset', () => {
+    const result = validatePackManifest({ ...validManifest(), assets: [validAsset()] })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('requires attribution on each asset', () => {
+    const asset = { ...validAsset() }
+    delete asset.attribution
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('attribution'))).toBe(true)
+  })
+})
+
+describe('validatePackManifest asset eras', () => {
+  function assetWithEras(eras) {
+    return { ...validAsset(), eras }
+  }
+
+  function assetWithoutEras() {
+    const asset = { ...validAsset(), eras: ['mid-century'] }
+    delete asset.eras
+    return asset
+  }
+
+  it('rejects an asset whose eras is missing, empty, or not a string array', () => {
+    const invalidCases = [
+      assetWithoutEras(),
+      assetWithEras([]),
+      assetWithEras(['']),
+      assetWithEras('mid-century'),
+    ]
+
+    for (const asset of invalidCases) {
+      const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((message) => message.includes('eras'))).toBe(true)
+    }
+  })
+
+  it('accepts an asset with a non-empty eras list', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [assetWithEras(['mid-century'])],
+    })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+})
+
+describe('validatePackManifest asset categories', () => {
+  function assetWithCategories(categories) {
+    return { ...validAsset(), categories }
+  }
+
+  function assetWithoutCategories() {
+    const asset = { ...validAsset(), categories: ['seating'] }
+    delete asset.categories
+    return asset
+  }
+
+  it('rejects an asset whose categories is missing, empty, or not a string array', () => {
+    const invalidCases = [
+      assetWithoutCategories(),
+      assetWithCategories([]),
+      assetWithCategories(['']),
+      assetWithCategories('seating'),
+    ]
+
+    for (const asset of invalidCases) {
+      const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((message) => message.includes('categories'))).toBe(true)
+    }
+  })
+
+  it('accepts an asset with a non-empty categories list', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [assetWithCategories(['seating'])],
+    })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+})
+
+describe('validatePackManifest asset sourceUrl', () => {
+  it('accepts an asset with no sourceUrl', () => {
+    const result = validatePackManifest({ ...validManifest(), assets: [validAsset()] })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('accepts an asset whose sourceUrl is an http(s) URL', () => {
+    const asset = { ...validAsset(), sourceUrl: 'https://example.org/chair' }
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('rejects an asset whose sourceUrl is not a valid URL', () => {
+    const invalidCases = [
+      { ...validAsset(), sourceUrl: 'not a url' },
+      { ...validAsset(), sourceUrl: 42 },
+    ]
+
+    for (const asset of invalidCases) {
+      const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.some((message) => message.includes('sourceUrl'))).toBe(true)
+    }
+  })
+})
+
+describe('validatePackManifest pack-level eras and categories', () => {
+  it('rejects a manifest with no pack-level eras', () => {
+    const manifest = { ...validManifest() }
+    delete manifest.eras
+    const result = validatePackManifest(manifest)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('eras'))).toBe(true)
+  })
+
+  it('rejects a manifest with no pack-level categories', () => {
+    const manifest = { ...validManifest() }
+    delete manifest.categories
+    const result = validatePackManifest(manifest)
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('categories'))).toBe(true)
+  })
+})
+
+describe('validatePackManifest license policy', () => {
+  it('rejects an unrecognized asset license via the policy', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [{ ...validAsset(), license: 'Weird-1.0' }],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('not a recognized'))).toBe(true)
+  })
+
+  it('rejects a no-redistribution asset license via the policy', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [{ ...validAsset(), license: 'CC-BY-NC-4.0' }],
+    })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('forbids redistribution'))).toBe(true)
+  })
+
+  it('rejects an unrecognized pack-level license via the policy', () => {
+    const result = validatePackManifest({ ...validManifest(), license: 'Weird-1.0' })
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((message) => message.includes('not a recognized'))).toBe(true)
+  })
+
+  it('accepts a recognized license at the pack and asset level', () => {
     const result = validatePackManifest({ ...validManifest(), assets: [validAsset()] })
 
     expect(result).toEqual({ valid: true, errors: [] })
