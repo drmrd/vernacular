@@ -307,6 +307,7 @@ export type { CapturedInverse } from './commands/inverse-capture'
 export { captureInverse } from './commands/inverse-capture'
 export type {
   DimensionSceneNode,
+  FurnitureSceneNode,
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
@@ -318,6 +319,7 @@ export type {
 export {
   DIMENSION_NODE_PREFIX,
   FLOOR_NODE_PREFIX,
+  FURNITURE_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   STAIR_NODE_PREFIX,
   UNDERLAY_NODE_PREFIX,
@@ -325,6 +327,8 @@ export {
   deriveDimensionNode,
   deriveDimensionNodesForFloor,
   deriveFloorNode,
+  deriveFurnitureNode,
+  deriveFurnitureNodesForFloor,
   deriveOpeningNode,
   deriveOpeningNodesForFloor,
   deriveRoomNodesForFloor,

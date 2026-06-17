@@ -134,6 +134,7 @@ const SHELL_FIXTURE: SceneGraph = {
   openings: [SHELL_DOOR, SHELL_WINDOW],
   dimensions: [],
   stairs: [],
+  furniture: [],
 }
 
 // A second fixture that exercises the generalized junction geometry (ADR-0080): a
@@ -158,6 +159,7 @@ const JUNCTION_FIXTURE: SceneGraph = {
   openings: [],
   dimensions: [],
   stairs: [],
+  furniture: [],
 }
 
 /** The harness fixtures, selected by the `scene` prop / `?scene=` query parameter. */

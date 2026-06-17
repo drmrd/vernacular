@@ -1,6 +1,7 @@
 import {
   deriveDimensionNodesForFloor,
   deriveFloorNode,
+  deriveFurnitureNodesForFloor,
   deriveOpeningNode,
   deriveRoomNodesForFloor,
   deriveStairNodes,
@@ -138,5 +139,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     openings: project.floors.flatMap((floor) => openingNodesFor(openingCache, floor)),
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: stairNodesFor(project),
+    furniture: project.floors.flatMap(deriveFurnitureNodesForFloor),
   })
 }
