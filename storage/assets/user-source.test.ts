@@ -3,6 +3,7 @@ import { UserSource } from './user-source'
 import type { UserLibraryIndex } from './user-source'
 import type { LibraryItem } from './asset-source'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
+import { DEFAULT_FURNITURE_HEIGHT_MM } from '../../core'
 
 function makeIndex(): UserLibraryIndex {
   const items: LibraryItem[] = []
@@ -72,5 +73,39 @@ describe('UserSource', () => {
     const result = await source.read('not-a-real-hash')
 
     expect(result).toBeUndefined()
+  })
+
+  it('put carries the meta height onto the returned item', async () => {
+    const source = new UserSource(new InMemoryAssetCache(), makeIndex())
+    const item = await source.put(SAMPLE_BYTES, { ...SAMPLE_META, height: 815 })
+
+    expect(item.height).toBe(815)
+  })
+
+  it('put defaults a missing meta height to the furniture default', async () => {
+    const source = new UserSource(new InMemoryAssetCache(), makeIndex())
+    const item = await source.put(SAMPLE_BYTES, SAMPLE_META)
+
+    expect(item.height).toBe(DEFAULT_FURNITURE_HEIGHT_MM)
+  })
+
+  it('list defaults a legacy stored entry with no height to the furniture default', async () => {
+    const legacy = {
+      reference: { scope: 'user', contentHash: 'h' },
+      name: 'Legacy',
+      kind: 'furniture',
+      categories: [],
+      eras: [],
+      footprint: { width: 600, depth: 600 },
+    } as unknown as LibraryItem
+    const index: UserLibraryIndex = {
+      list: async () => [legacy],
+      add: async () => {},
+    }
+    const source = new UserSource(new InMemoryAssetCache(), index)
+
+    const listed = await source.list()
+
+    expect(listed[0]?.height).toBe(DEFAULT_FURNITURE_HEIGHT_MM)
   })
 })
