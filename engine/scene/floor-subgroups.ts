@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import {
   exteriorWalls,
+  type FurnitureSceneNode,
   type OpeningSceneNode,
   type RoomSceneNode,
   type SceneNode,
@@ -10,6 +11,7 @@ import {
 import type { MaterialProvider } from '../materials/material-provider'
 
 import { addEdgeOverlay } from './edge-overlay'
+import { buildFurnitureMassing } from './furniture-builder'
 import { buildOpeningFill } from './opening-fill-builder'
 import { prepareNearWallTransparency, type NearWallTarget } from './near-wall-transparency'
 import { buildRoomShell } from './room-builder'
@@ -39,6 +41,17 @@ export function buildOpeningSubgroup(
   materials: MaterialProvider,
 ): THREE.Group {
   const group = buildOpeningFill(node, materials)
+  addEdgeOverlay(group)
+  markShadowCasters(group)
+  return group
+}
+
+/** Builds one furniture instance's self-contained sub-group: box, edge overlay, shadow flags. */
+export function buildFurnitureSubgroup(
+  node: FurnitureSceneNode,
+  materials: MaterialProvider,
+): THREE.Group {
+  const group = buildFurnitureMassing(node, materials)
   addEdgeOverlay(group)
   markShadowCasters(group)
   return group

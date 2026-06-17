@@ -5,6 +5,7 @@ import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
 import { addEdgeOverlay } from './edge-overlay'
+import { buildFurnitureMassing } from './furniture-builder'
 import { buildOpeningFill } from './opening-fill-builder'
 import { buildRoomShell } from './room-builder'
 import { buildWalls } from './wall-builder'
@@ -56,6 +57,10 @@ function buildFloorGroup(
   }
   for (const opening of floorOpenings) {
     group.add(buildOpeningFill(opening, materials))
+  }
+  const floorFurniture = graph.furniture.filter((item) => item.floorId === modelId)
+  for (const furniture of floorFurniture) {
+    group.add(buildFurnitureMassing(furniture, materials))
   }
   return group
 }
