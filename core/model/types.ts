@@ -271,6 +271,8 @@ export interface FurnitureInstance {
   /** Elevation above the finished floor in millimeters; 0 places the item on the floor. */
   elevationZ: number // mm above the floor; 0 sits on the floor
   footprint: FurnitureFootprint
+  /** Vertical extent of the furniture massing in millimeters; the 3D box rises from elevationZ to elevationZ + height. */
+  height: number // mm
   name?: string
   /** Reserved for future per-instance customization data; see the design spec. */
   customizations?: Record<string, unknown>
