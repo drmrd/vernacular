@@ -56,7 +56,11 @@ export function normalizeModelIntoBox(
   return outer
 }
 
-/** Wraps a normalized model as a furniture sub-group that selects like the box it replaces. */
+/**
+ * Wraps a normalized model as a furniture sub-group that selects like the box it replaces.
+ * Returns a group with no child when the model has no usable geometry (normalizeModelIntoBox
+ * returned null), so the caller can decide to fall back to the box.
+ */
 export function buildFurnitureModelGroup(
   model: THREE.Object3D,
   node: FurnitureSceneNode,
