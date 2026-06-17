@@ -227,6 +227,7 @@ export type {
   RemoveFurnitureParams,
   ResizeFurnitureParams,
   RotateFurnitureParams,
+  SetFurnitureHeightParams,
   SetFurnitureNameParams,
 } from './commands/handlers/furniture-commands'
 export {
@@ -235,6 +236,7 @@ export {
   REMOVE_FURNITURE,
   RESIZE_FURNITURE,
   ROTATE_FURNITURE,
+  SET_FURNITURE_HEIGHT,
   SET_FURNITURE_NAME,
   moveFurniture,
   placeFurniture,
@@ -242,6 +244,7 @@ export {
   removeFurniture,
   resizeFurniture,
   rotateFurniture,
+  setFurnitureHeight,
   setFurnitureName,
 } from './commands/handlers/furniture-commands'
 export type {
