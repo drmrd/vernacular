@@ -136,6 +136,7 @@ function scene(
     openings: extras.openings ?? [],
     dimensions: extras.dimensions ?? [],
     stairs: [],
+    furniture: [],
   }
 }
 

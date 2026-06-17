@@ -22,6 +22,7 @@ const graph: SceneGraph = {
   openings: [],
   dimensions: [],
   stairs: [],
+  furniture: [],
 }
 
 function lineCount(group: THREE.Group): number {

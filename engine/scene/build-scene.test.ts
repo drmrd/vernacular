@@ -47,6 +47,11 @@ const wallMaterialNames = (root: THREE.Group, entityId: string): (string | undef
   return materials.map((material) => material.name)
 }
 
+/* eslint-disable-next-line max-lines-per-function --
+ * A flat suite of buildScene cases, one `it` per scene-node kind. Each case owns
+ * a self-contained SceneGraph literal (now seeding the required `furniture`
+ * array), so the describe body length tracks the number of node kinds rather than
+ * any single hard-to-read function. */
 describe('buildScene', () => {
   it('creates one group per scene node carrying its id and elevation', () => {
     const graph: SceneGraph = {
@@ -60,6 +65,7 @@ describe('buildScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const root = buildScene(graph)
@@ -101,6 +107,7 @@ describe('buildScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const root = buildScene(graph)
@@ -141,6 +148,7 @@ describe('buildScene', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const root = buildScene(graph)
@@ -233,6 +241,7 @@ describe('buildScene surface edges', () => {
       openings: [],
       dimensions: [],
       stairs: [],
+      furniture: [],
     }
 
     const wall = findByEntityId(buildScene(graph), 'wall:w1')

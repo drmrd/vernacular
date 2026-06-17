@@ -1,8 +1,15 @@
+/* eslint-disable max-lines --
+ * One describe block per scene-graph entity kind (floors, stairs, walls, rooms,
+ * underlays, furniture). The suite grows by one block per new node kind, and the
+ * per-file line cap is not a meaningful constraint on a behavior-organized
+ * projection test that already covers six entity kinds. */
 import { describe, expect, it } from 'vitest'
+import { FURNITURE_NODE_PREFIX, furnitureFootprintCorners } from '../../core'
 import type { AssetReference } from '../model/asset-reference'
 import {
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createStair,
   createUnderlay,
   createWall,
@@ -350,5 +357,45 @@ describe('deriveSceneGraph underlays', () => {
     expect(graph.underlays).toEqual([])
     expect(graph.walls).toHaveLength(1)
     expect(graph.walls[0]).toMatchObject({ id: 'wall:w1', kind: 'wall', floorId: 'g' })
+  })
+})
+
+const FURNITURE_IMAGE: AssetReference = { scope: 'project', contentHash: 'sofac0de' }
+
+describe('deriveSceneGraph furniture', () => {
+  it('projects each placed furniture instance into a namespaced furniture node carrying its floor id, footprint corners, elevation, and height', () => {
+    const instance = createFurnitureInstance({
+      id: 'sofa-1',
+      assetRef: FURNITURE_IMAGE,
+      position: { x: 1500, y: 900 },
+      footprint: { width: 2000, depth: 900 },
+      rotation: 30,
+      elevationZ: 50,
+      height: 800,
+    })
+    const floor: Floor = { ...createFloor('Ground', { id: 'g' }), furniture: [instance] }
+    const project = createEmptyProject({
+      name: 'House',
+      units: 'metric',
+      period: 'victorian',
+      appVersion: '0.1.0',
+    })
+    project.floors = [floor]
+
+    const graph = deriveSceneGraph(project)
+
+    expect(graph.furniture).toHaveLength(1)
+    expect(graph.furniture[0]).toEqual({
+      id: FURNITURE_NODE_PREFIX + instance.id,
+      kind: 'furniture',
+      floorId: 'g',
+      footprintCorners: furnitureFootprintCorners(
+        instance.position,
+        instance.rotation,
+        instance.footprint,
+      ),
+      elevationZ: instance.elevationZ,
+      height: instance.height,
+    })
   })
 })
