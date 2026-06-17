@@ -1,3 +1,8 @@
+/* eslint-disable max-lines --
+ * One describe block per memoized entity kind (floors, stairs, walls, rooms,
+ * openings, furniture). The suite grows by one reuse/rebuild block per node kind
+ * the deriver memoizes, so the size cap is the wrong tool for this aggregate file.
+ */
 import { describe, expect, it } from 'vitest'
 import {
   createEmptyProject,
