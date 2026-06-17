@@ -230,6 +230,11 @@ export const DEFAULT_FURNITURE_FOOTPRINT_MM: FurnitureFootprint = {
   depth: DEFAULT_FURNITURE_DIMENSION_MM,
 }
 
+// A neutral standing height in millimeters for a furniture piece whose asset declares
+// no height; mirrors the named-scalar approach of DEFAULT_FURNITURE_DIMENSION_MM so
+// no-magic-numbers never fires.
+export const DEFAULT_FURNITURE_HEIGHT_MM = 750
+
 export interface NewFurnitureOptions {
   assetRef: AssetReference
   position: Point
