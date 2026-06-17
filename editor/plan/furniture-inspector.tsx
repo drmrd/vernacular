@@ -4,6 +4,7 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   resizeFurniture,
   rotateFurniture,
+  setFurnitureHeight,
   setFurnitureName,
   type AssumedUnit,
   type Command,
@@ -159,6 +160,14 @@ export function FurnitureInspector({
         preferences={preferences}
         assumeUnit={assumeUnit}
         onResize={(footprint) => dispatch(resizeFurniture(floorId, furniture.id, footprint))}
+      />
+      <LengthField
+        inputId={`furniture-height-${furniture.id}`}
+        label="Height"
+        valueMm={furniture.height}
+        preferences={preferences}
+        assumeUnit={assumeUnit}
+        onCommitMm={(mm) => dispatch(setFurnitureHeight(floorId, furniture.id, mm))}
       />
     </div>
   )
