@@ -2,7 +2,9 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  furnitureFootprintCorners,
   type Bounds3,
+  type FurnitureSceneNode,
   type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
@@ -162,8 +164,38 @@ const JUNCTION_FIXTURE: SceneGraph = {
   furniture: [],
 }
 
+// A third fixture that places one furniture massing box in the middle of the wall
+// shell, so the baseline confirms a placed piece renders as a solid neutral prism
+// standing on the floor at its footprint and height (the massing model, ADR-0094).
+// A 1200 by 600 mm footprint, 1500 mm tall (a cabinet, chosen tall enough to read
+// clearly against the neutral floor), centered in the 4000 by 3000 mm room at
+// elevation 0. The corners come from the same helper the scene graph derives with.
+const FURNITURE_WIDTH = 1200
+const FURNITURE_DEPTH = 600
+const FURNITURE_BOX_HEIGHT = 1500
+const FURNITURE_CENTER: Point = { x: SHELL_WIDTH_X / 2, y: SHELL_DEPTH_Z / 2 }
+const SHELL_FURNITURE: FurnitureSceneNode = {
+  id: 'furniture:demo-piece',
+  kind: 'furniture',
+  floorId: 'demo',
+  footprintCorners: furnitureFootprintCorners(FURNITURE_CENTER, 0, {
+    width: FURNITURE_WIDTH,
+    depth: FURNITURE_DEPTH,
+  }),
+  elevationZ: 0,
+  height: FURNITURE_BOX_HEIGHT,
+}
+const FURNITURE_FIXTURE: SceneGraph = {
+  ...SHELL_FIXTURE,
+  furniture: [SHELL_FURNITURE],
+}
+
 /** The harness fixtures, selected by the `scene` prop / `?scene=` query parameter. */
-const HARNESS_FIXTURES = { shell: SHELL_FIXTURE, junctions: JUNCTION_FIXTURE } as const
+const HARNESS_FIXTURES = {
+  shell: SHELL_FIXTURE,
+  junctions: JUNCTION_FIXTURE,
+  furniture: FURNITURE_FIXTURE,
+} as const
 
 /** Which harness fixture to render; defaults to the wall-shell room. */
 export type HarnessScene = keyof typeof HARNESS_FIXTURES

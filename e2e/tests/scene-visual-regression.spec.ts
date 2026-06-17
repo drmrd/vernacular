@@ -67,4 +67,11 @@ test.describe('Three-dimensional scene visual baseline', () => {
   test('renders the mitered T-junction and acute bay to a stable canvas', async ({ page }) => {
     await captureShell(page, '&scene=junctions', 'scene-junctions-webgl.png')
   })
+
+  // The furniture fixture (ADR-0094) places one massing box in the room, so the baseline
+  // confirms a placed piece renders as a solid neutral prism standing at its footprint and
+  // height, the shell does not otherwise exercise furniture geometry.
+  test('renders a furniture massing box in the room to a stable canvas', async ({ page }) => {
+    await captureShell(page, '&scene=furniture', 'scene-furniture-webgl.png')
+  })
 })
