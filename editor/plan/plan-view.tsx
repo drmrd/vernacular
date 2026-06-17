@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- the cohesive plan-editing controller seam: it resolves every plan hook (pan/zoom, wall, opening, furniture, selection, underlay) and flattens them into the scene and pointer handlers in one place. Splitting the controller across files would scatter the single binding point this module defines. */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
@@ -27,6 +28,7 @@ import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
 import { composePointerHandlers, type ComposedPointerHandlers } from './compose-pointer-handlers'
 import { useDimensionTool, type DimensionTool } from './use-dimension-tool'
+import { useFurnitureLayer, type FurnitureLayer } from './use-furniture-layer'
 import { useOpeningLayer, type OpeningLayer } from './use-opening-layer'
 import {
   usePlanInteraction,
@@ -88,6 +90,7 @@ interface PlanLayers {
   controls: ViewportControls
   underlayLayer: PlanUnderlayLayer
   openingLayer: OpeningLayer
+  furnitureLayer: FurnitureLayer
 }
 
 /**
@@ -102,7 +105,7 @@ function buildScene(
   roomFillColor: string | undefined,
 ): PlanScene {
   const { graph, interaction, dimensionTool, planSelection } = inputs
-  const { wallEditing, underlayLayer, openingLayer } = inputs
+  const { wallEditing, underlayLayer, openingLayer, furnitureLayer } = inputs
   return {
     walls: graph.walls,
     rooms: graph.rooms,
@@ -119,6 +122,7 @@ function buildScene(
     preferences: inputs.preferences,
     underlays: underlayLayer.underlays,
     openings: openingLayer.drawables,
+    furniture: furnitureLayer.drawables,
     dimensions: inputs.dimensions,
     stairs: graph.stairs,
     calibration: underlayLayer.calibration.calibration,
@@ -185,10 +189,19 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
+  const furniture =
+    session.getProject().floors.find((floor) => floor.id === activeFloorId)?.furniture ?? []
   const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceEnabled)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport, activeFloorId })
-  const planSelection = usePlanSelection({ graph, selection, tool, viewport, setViewport })
+  const planSelection = usePlanSelection({
+    graph,
+    furniture,
+    selection,
+    tool,
+    viewport,
+    setViewport,
+  })
   const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({
     session,
@@ -200,7 +213,15 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     activeFloorId,
   })
   const clipboard = useClipboardStore()
-  useSelectionKeyboard({ session, selection, clipboard, selectedIds, tool, activeFloorId })
+  useSelectionKeyboard({
+    session,
+    selection,
+    clipboard,
+    selectedIds,
+    tool,
+    activeFloorId,
+    furniture,
+  })
   const wallEditing = useWallEditing({
     session,
     selectedWall,
@@ -212,6 +233,14 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport, activeFloorId })
   const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds, preferences })
+  const furnitureLayer = useFurnitureLayer({
+    session,
+    tool,
+    viewport,
+    activeFloorId,
+    furniture,
+    selectedIds,
+  })
   return {
     graph,
     tool,
@@ -230,6 +259,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     controls,
     underlayLayer,
     openingLayer,
+    furnitureLayer,
   }
 }
 
@@ -280,12 +310,14 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       wallEditing,
       openingResizing: openingLayer.resizing,
       openingEditing: openingLayer.editing,
+      furnitureEditing: layers.furnitureLayer.editing,
       selectionMove,
       interaction,
       dimensionTool,
       calibration: underlayLayer.calibration,
       selection: planSelection,
       openingPlacement: openingLayer.placement,
+      furniturePlacement: layers.furnitureLayer.placement,
       hover: layers.planHover,
     }),
     overlay: {

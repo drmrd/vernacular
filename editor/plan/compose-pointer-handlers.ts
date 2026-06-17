@@ -7,6 +7,8 @@ import type { PlanHover } from './use-plan-hover'
 import type { PlanInteraction } from './use-plan-interaction'
 import type { PlanSelection } from './use-plan-selection'
 import type { PlanUnderlayLayer } from './use-underlay'
+import type { FurnitureEditing } from './use-furniture-editing'
+import type { FurniturePlacementHandlers } from './use-furniture-layer'
 import type { SelectionMove } from './use-selection-move'
 import type { ViewportControls } from './use-viewport-controls'
 import type { WallEditing } from './use-wall-editing'
@@ -24,28 +26,59 @@ export interface PointerSources {
   wallEditing: WallEditing
   openingResizing: OpeningResizing
   openingEditing: OpeningEditing
+  furnitureEditing: FurnitureEditing
   selectionMove: SelectionMove
   interaction: PlanInteraction
   dimensionTool: DimensionTool
   calibration: PlanUnderlayLayer['calibration']
   selection: PlanSelection
   openingPlacement: OpeningPlacement
+  furniturePlacement: FurniturePlacementHandlers
   hover: PlanHover
 }
 
-// The opening layer's two select-tool grabs, in priority order: a jamb resize beats a footprint move.
-function openingPointerDown(
+// The select-tool footprint grabs, in priority order: an opening jamb resize beats
+// an opening move, and either beats a furniture move.
+function entityPointerDown(
   sources: PointerSources,
   event: PointerEvent<HTMLCanvasElement>,
 ): boolean {
-  return sources.openingResizing.onPointerDown(event) || sources.openingEditing.onPointerDown(event)
+  return (
+    sources.openingResizing.onPointerDown(event) ||
+    sources.openingEditing.onPointerDown(event) ||
+    sources.furnitureEditing.onPointerDown(event)
+  )
 }
 
-function openingPointerMove(
+function entityPointerMove(
   sources: PointerSources,
   event: PointerEvent<HTMLCanvasElement>,
 ): boolean {
-  return sources.openingResizing.onPointerMove(event) || sources.openingEditing.onPointerMove(event)
+  return (
+    sources.openingResizing.onPointerMove(event) ||
+    sources.openingEditing.onPointerMove(event) ||
+    sources.furnitureEditing.onPointerMove(event)
+  )
+}
+
+// The pointer-down chain: a pan or endpoint/opening/move grab consumes the press;
+// otherwise calibration, the wall/dimension tools, the place-opening and
+// place-furniture tools, and the selection each see it, every one inert under the
+// others' tool.
+function composedPointerDown(
+  sources: PointerSources,
+  event: PointerEvent<HTMLCanvasElement>,
+): void {
+  const { controls, wallEditing, selectionMove, calibration, interaction } = sources
+  const { dimensionTool, openingPlacement, furniturePlacement, selection } = sources
+  if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
+  if (entityPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
+  calibration.onPointerDown(event)
+  interaction.onPointerDown(event)
+  dimensionTool.onPointerDown(event)
+  openingPlacement.onPointerDown(event)
+  furniturePlacement.onPointerDown(event)
+  selection.onPointerDown(event)
 }
 
 /**
@@ -56,28 +89,23 @@ function openingPointerMove(
  * footprint grab so a press on a jamb handle resizes rather than moves, and the
  * selection move-drag sits beneath them and above the marquee. The calibration
  * interaction runs next but is inert unless the calibrate tool is active. Otherwise
- * the wall tool, the place-opening tool, and the select-tool selection all see the
- * pointer, each inert under the others' tool.
+ * the wall tool, the place-opening tool, the place-furniture tool, and the
+ * select-tool selection all see the pointer, each inert under the others' tool.
  */
 export function composePointerHandlers(sources: PointerSources): ComposedPointerHandlers {
   const { controls, wallEditing, openingResizing, openingEditing, selectionMove } = sources
-  const { interaction, dimensionTool, calibration, selection, openingPlacement, hover } = sources
+  const { interaction, dimensionTool, calibration, selection, furniturePlacement, hover } = sources
+  const { furnitureEditing } = sources
   return {
-    onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => {
-      if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
-      if (openingPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
-      calibration.onPointerDown(event)
-      interaction.onPointerDown(event)
-      dimensionTool.onPointerDown(event)
-      openingPlacement.onPointerDown(event)
-      selection.onPointerDown(event)
-    },
+    onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => composedPointerDown(sources, event),
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
       // Runs before the guards: hover self-gates on event.buttons, so the highlight
       // always updates regardless of which handler below claims the rest of the move.
       hover.onPointerMove(event)
+      // The placement ghost tracks the cursor; it self-gates on the place-furniture tool.
+      furniturePlacement.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
-      if (openingPointerMove(sources, event) || selectionMove.onPointerMove(event)) return
+      if (entityPointerMove(sources, event) || selectionMove.onPointerMove(event)) return
       calibration.onPointerMove(event)
       interaction.onPointerMove(event)
       dimensionTool.onPointerMove(event)
@@ -88,6 +116,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       wallEditing.onPointerUp(event)
       openingResizing.onPointerUp(event)
       openingEditing.onPointerUp(event)
+      furnitureEditing.onPointerUp(event)
       if (selectionMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },

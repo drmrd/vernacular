@@ -4,6 +4,8 @@ import type { AssetReference } from './asset-reference'
 import type {
   Dimension,
   Floor,
+  FurnitureFootprint,
+  FurnitureInstance,
   Opening,
   OpeningOrientation,
   PeriodId,
@@ -28,8 +30,9 @@ import type {
 // `source`, wrapping the existing image in a raster source; v8 adds the optional
 // top-level `palettes`, `paint`, and `site` fields (all absent-by-default, so the
 // migration is a structural pass-through); v9 generalizes a paint assignment into a
-// SurfaceTreatment union, wrapping each legacy assignment as a solid treatment.
-export const CURRENT_SCHEMA_VERSION = 9
+// SurfaceTreatment union, wrapping each legacy assignment as a solid treatment;
+// v10 adds the per-floor `furniture` array (an absent-by-default backfill migration).
+export const CURRENT_SCHEMA_VERSION = 10
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -94,6 +97,7 @@ export function createFloor(name: string, options: NewFloorOptions = {}): Floor 
     underlays: [],
     openings: [],
     dimensions: [],
+    furniture: [],
   }
 }
 
@@ -212,5 +216,38 @@ export function createStair(options: NewStairOptions): Stair {
     length: options.length ?? DEFAULT_STAIR_LENGTH_MM,
     rotation: options.rotation ?? 0,
     connection: options.connection,
+  }
+}
+
+// A nominal square footprint for furniture items without a specific footprint:
+// 600 mm is a common seat depth for sofas, chairs, and dining chairs, and
+// works as a neutral starting size. Mirror the DEFAULT_WALL_THICKNESS_MM
+// approach of naming the scalar so no-magic-numbers never fires.
+const DEFAULT_FURNITURE_DIMENSION_MM = 600
+
+export const DEFAULT_FURNITURE_FOOTPRINT_MM: FurnitureFootprint = {
+  width: DEFAULT_FURNITURE_DIMENSION_MM,
+  depth: DEFAULT_FURNITURE_DIMENSION_MM,
+}
+
+export interface NewFurnitureOptions {
+  assetRef: AssetReference
+  position: Point
+  footprint: FurnitureFootprint
+  rotation?: number
+  elevationZ?: number
+  name?: string
+  id?: string
+}
+
+export function createFurnitureInstance(options: NewFurnitureOptions): FurnitureInstance {
+  return {
+    id: options.id ?? globalThis.crypto.randomUUID(),
+    assetRef: options.assetRef,
+    position: options.position,
+    rotation: options.rotation ?? 0,
+    elevationZ: options.elevationZ ?? 0,
+    footprint: options.footprint,
+    ...(options.name !== undefined ? { name: options.name } : {}),
   }
 }

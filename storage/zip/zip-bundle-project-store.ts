@@ -5,6 +5,8 @@ import { FolderProjectStore, PROJECT_FILE } from '../folder/folder-project-store
 import { parseProjectJson, readProjectName } from '../folder/project-json'
 import { ProjectNotFoundError, type ProjectStore, type ProjectSummary } from '../project-store'
 import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
+import type { AssetCache } from '../asset-cache'
+import { DirectoryAssetCache } from '../directory-asset-cache'
 
 /** Collect every file path stored under a directory, descending into subdirectories. */
 async function collectFilePaths(directory: DirectoryPort, prefix: string): Promise<string[]> {
@@ -77,6 +79,10 @@ export class ZipBundleProjectStore implements ProjectStore {
     for (const path of await collectFilePaths(this.directory, '')) {
       await this.directory.removeFile(path)
     }
+  }
+
+  assetCache(): AssetCache {
+    return new DirectoryAssetCache(this.directory)
   }
 
   async exportBundle(): Promise<Uint8Array> {

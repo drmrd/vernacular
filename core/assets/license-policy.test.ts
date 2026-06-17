@@ -6,7 +6,7 @@ import {
   licenseProblems,
   recognize,
   shareAlikeWarning,
-} from './license-policy.mjs'
+} from './license-policy'
 
 describe('recognize', () => {
   it('accepts every curated open license', () => {

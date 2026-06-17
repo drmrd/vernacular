@@ -7,6 +7,8 @@ export type {
   Dimension,
   Extensions,
   Floor,
+  FurnitureFootprint,
+  FurnitureInstance,
   Opening,
   OpeningOrientation,
   PeriodId,
@@ -31,6 +33,7 @@ export type {
 export type {
   NewDimensionOptions,
   NewFloorOptions,
+  NewFurnitureOptions,
   NewOpeningOptions,
   NewProjectOptions,
   NewStairOptions,
@@ -40,6 +43,7 @@ export type {
 export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_FURNITURE_FOOTPRINT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_STAIR_LENGTH_MM,
@@ -49,6 +53,7 @@ export {
   createDimension,
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createStair,
   createUnderlay,
@@ -69,6 +74,8 @@ export {
   orderScopesByPrecedence,
   resolvedAsset,
 } from './assets/asset-resolution'
+export type { AssetKind, PackValidationResult } from './assets/pack-manifest'
+export { ASSET_KINDS, validatePackManifest } from './assets/pack-manifest'
 export type { Registry, RegistryEntry } from './registries/registry'
 export { createRegistry, getEntry, mergeRegistries } from './registries/registry'
 export type { Finish } from './registries/finishes'
@@ -213,6 +220,29 @@ export {
   resizeOpening,
   resizeOpeningEdge,
 } from './commands/handlers/opening-commands'
+export type {
+  MoveFurnitureParams,
+  PlaceFurnitureParams,
+  RemoveFurnitureParams,
+  ResizeFurnitureParams,
+  RotateFurnitureParams,
+  SetFurnitureNameParams,
+} from './commands/handlers/furniture-commands'
+export {
+  MOVE_FURNITURE,
+  PLACE_FURNITURE,
+  REMOVE_FURNITURE,
+  RESIZE_FURNITURE,
+  ROTATE_FURNITURE,
+  SET_FURNITURE_NAME,
+  moveFurniture,
+  placeFurniture,
+  registerFurnitureCommands,
+  removeFurniture,
+  resizeFurniture,
+  rotateFurniture,
+  setFurnitureName,
+} from './commands/handlers/furniture-commands'
 export type {
   AddDimensionParams,
   RemoveDimensionParams,

@@ -1,11 +1,9 @@
-import { useState, type KeyboardEvent, type ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import './opening-inspector.css'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   flipOpening,
-  formatAdaptiveLength,
-  parseLength,
   removeOpening,
   resizeOpening,
   type AssumedUnit,
@@ -15,6 +13,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
+import { LengthField } from './length-field'
 
 const INCH_IN_MM = 25.4
 
@@ -42,54 +41,6 @@ const ASSUME_UNIT_BY_SYSTEM: Record<UnitSystem, AssumedUnit> = {
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
   imperial: DEFAULT_IMPERIAL_PREFERENCES,
-}
-
-interface LengthFieldProps {
-  inputId: string
-  label: string
-  valueMm: number
-  preferences: UnitPreferences
-  assumeUnit: AssumedUnit
-  onCommitMm: (mm: number) => void
-}
-
-function LengthField({
-  inputId,
-  label,
-  valueMm,
-  preferences,
-  assumeUnit,
-  onCommitMm,
-}: LengthFieldProps): ReactElement {
-  const formatted = formatAdaptiveLength(valueMm, preferences)
-  const [text, setText] = useState(formatted)
-
-  function commit(): void {
-    try {
-      onCommitMm(parseLength(text, { assumeUnit }))
-    } catch {
-      // An unparseable entry dispatches nothing; the input keeps its invalid text.
-    }
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter') {
-      commit()
-    }
-  }
-
-  return (
-    <div>
-      <label htmlFor={inputId}>{label}</label>
-      <input
-        id={inputId}
-        type="text"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={handleKeyDown}
-      />
-    </div>
-  )
 }
 
 interface FractionChipsProps {

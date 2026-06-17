@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from 'react'
 import type { OpeningSceneNode, UnitPreferences, WallSceneNode } from '../../core'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
+import type { DrawableFurniture } from './draw-furniture'
 import type { DrawableOpening } from './draw-opening'
 import type { PlanPalette } from './plan-palette'
 import type { DrawableUnderlay } from './draw-underlay'
@@ -35,6 +36,8 @@ export interface PlanScene {
   preferences: UnitPreferences
   underlays: readonly DrawableUnderlay[]
   openings: readonly DrawableOpening[]
+  // Placed furniture pieces plus the live placement ghost, drawn above the walls.
+  furniture: readonly DrawableFurniture[]
   dimensions: readonly DrawableDimension[]
   // Stairs drawn over the room fills and beneath the wall strokes.
   stairs: NonNullable<DrawPlanOptions['stairs']>
@@ -70,6 +73,7 @@ export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPl
     roomLabels: { preferences: scene.preferences },
     underlays: scene.underlays,
     openings: scene.openings,
+    furniture: scene.furniture,
     dimensions: scene.dimensions,
     stairs: scene.stairs,
     surfacePaint: scene.surfacePaint,
@@ -114,6 +118,7 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: P
     scene.preferences,
     scene.underlays,
     scene.openings,
+    scene.furniture,
     scene.dimensions,
     scene.stairs,
     scene.calibration,

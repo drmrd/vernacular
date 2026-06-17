@@ -3,6 +3,7 @@ import type { AssetReference } from '../../core'
 import { missingAsset } from '../../core'
 import { AssetRegistry } from './asset-registry'
 import { InMemoryAssetSource } from './in-memory-asset-source'
+import type { AssetSource, LibraryItem } from './asset-source'
 
 const HASH = 'abc123'
 const BYTES = Uint8Array.of(1, 1, 1)
@@ -124,5 +125,73 @@ describe('AssetRegistry missing-asset placeholder', () => {
     if (resolution.outcome === 'missing') {
       expect(resolution.footprint).toEqual(footprint)
     }
+  })
+})
+
+describe('AssetRegistry listing', () => {
+  const userItem: LibraryItem = {
+    reference: { scope: 'user', contentHash: 'u1' },
+    name: 'My Chair',
+    kind: 'furniture',
+    categories: ['seating'],
+    eras: [],
+    footprint: { width: 600, depth: 600 },
+  }
+
+  const packItem: LibraryItem = {
+    reference: { scope: 'pack:vernacular-starter@1.0.0', contentHash: 'p1' },
+    name: 'Starter Chair',
+    kind: 'furniture',
+    categories: ['seating'],
+    eras: ['mid-century'],
+    footprint: { width: 500, depth: 520 },
+  }
+
+  it('returns user items before pack items regardless of source registration order', async () => {
+    const packSource: AssetSource = {
+      id: 'pack:vernacular-starter@1.0.0',
+      read: async () => undefined,
+      list: async () => [packItem],
+    }
+    const userSource: AssetSource = {
+      id: 'user',
+      read: async () => undefined,
+      list: async () => [userItem],
+    }
+    const registry = new AssetRegistry([
+      { kind: 'pack', source: packSource },
+      { kind: 'user', source: userSource },
+    ])
+
+    const items = await registry.list()
+
+    expect(items).toEqual([userItem, packItem])
+  })
+
+  it('silently skips a source with no list method and returns the remaining items', async () => {
+    const packSource: AssetSource = {
+      id: 'pack:vernacular-starter@1.0.0',
+      read: async () => undefined,
+      list: async () => [packItem],
+    }
+    const userSource: AssetSource = {
+      id: 'user',
+      read: async () => undefined,
+      list: async () => [userItem],
+    }
+    const projectSource: AssetSource = {
+      id: 'project',
+      read: async () => undefined,
+    }
+    const registry = new AssetRegistry([
+      { kind: 'pack', source: packSource },
+      { kind: 'user', source: userSource },
+      { kind: 'project', source: projectSource },
+    ])
+
+    const items = await registry.list()
+
+    expect(items).toHaveLength(2)
+    expect(items).toEqual([userItem, packItem])
   })
 })

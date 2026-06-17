@@ -31,6 +31,8 @@ import {
   type CommandContext,
 } from '../commands'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
+import { LibraryLauncherPanel } from '../library/library-launcher-panel'
+import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
 import { UnderlayMenuPanel } from '../plan/underlay-menu-panel'
@@ -42,7 +44,8 @@ import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
 import { ViewportProvider } from '../plan/viewport-context'
 import { PointerReadoutProvider } from '../plan/pointer-readout'
-import { useActiveTool, type ToolId } from '../tools/active-tool-context'
+import { useActiveTool } from '../tools/active-tool-context'
+import { toolLabel } from '../tools/tool-label'
 import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
@@ -70,23 +73,6 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   pending: 'Saving...',
   saved: 'All changes saved',
   error: 'Save failed',
-}
-
-function toolLabel(tool: ToolId): string {
-  switch (tool) {
-    case 'select':
-      return 'Select'
-    case 'pan':
-      return 'Pan'
-    case 'draw-wall':
-      return 'Wall'
-    case 'place-opening':
-      return 'Opening'
-    case 'dimension':
-      return 'Dimension'
-    case 'calibrate':
-      return 'Calibrate'
-  }
 }
 
 // The tools nav: the tool buttons, plus the opening-type chooser surfaced only
@@ -261,6 +247,7 @@ function ToolRail() {
       />
       <ToolsNav />
       <OverallDimensions extent={overall} />
+      <LibraryLauncherPanel />
       <UnderlayMenuPanel />
     </div>
   )
@@ -351,38 +338,45 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
               <PointerReadoutProvider>
                 <UnderlayProvider>
                   <OpeningToolProvider>
-                    <KeybindingLayer />
-                    <CommandPalette />
-                    {recovery ? (
-                      <RecoveryPrompt
-                        onRestore={recovery.onRestore}
-                        onDiscard={recovery.onDiscard}
+                    <FurniturePlacementProvider>
+                      <KeybindingLayer />
+                      <CommandPalette />
+                      {recovery ? (
+                        <RecoveryPrompt
+                          onRestore={recovery.onRestore}
+                          onDiscard={recovery.onDiscard}
+                        />
+                      ) : null}
+                      <ImportAlert
+                        status={projectControls.importStatus ?? null}
+                        // Spread onDismiss only when present: the optional prop rejects an explicit undefined.
+                        {...(projectControls.onDismissImportStatus
+                          ? { onDismiss: projectControls.onDismissImportStatus }
+                          : {})}
                       />
-                    ) : null}
-                    <ImportAlert
-                      status={projectControls.importStatus ?? null}
-                      // Spread onDismiss only when present: the optional prop rejects an explicit undefined.
-                      {...(projectControls.onDismissImportStatus
-                        ? { onDismiss: projectControls.onDismissImportStatus }
-                        : {})}
-                    />
-                    <SurfaceSelectionProvider store={surfaceSelection}>
-                      <EntitySurfaceBridge />
-                      <AppFrame
-                        header={
-                          <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
-                        }
-                        railLabel="Tool rail"
-                        rail={<ToolRail />}
-                        mainLabel="Viewport"
-                        main={
-                          <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
-                        }
-                        inspectorLabel="Inspector"
-                        inspector={<Inspector />}
-                        statusBar={<EditorStatusBar />}
-                      />
-                    </SurfaceSelectionProvider>
+                      <SurfaceSelectionProvider store={surfaceSelection}>
+                        <EntitySurfaceBridge />
+                        <AppFrame
+                          header={
+                            <ShellHeader
+                              saveStatus={saveStatus}
+                              projectControls={projectControls}
+                            />
+                          }
+                          railLabel="Tool rail"
+                          rail={<ToolRail />}
+                          mainLabel="Viewport"
+                          main={
+                            <ViewportArea
+                              onImportDroppedFile={projectControls.onImportDroppedFile}
+                            />
+                          }
+                          inspectorLabel="Inspector"
+                          inspector={<Inspector />}
+                          statusBar={<EditorStatusBar />}
+                        />
+                      </SurfaceSelectionProvider>
+                    </FurniturePlacementProvider>
                   </OpeningToolProvider>
                 </UnderlayProvider>
               </PointerReadoutProvider>

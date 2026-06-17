@@ -9,6 +9,7 @@ related:
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0091-pack-integrity-and-build-pipeline,
+    decisions/ADR-0093-in-app-asset-library,
   ]
 sourceFiles:
   [
@@ -111,8 +112,14 @@ versioned pack.
 The on-disk integrity and build-report half of that pipeline has since landed,
 recorded in ADR-0091: content-hash verification, thumbnail presence and signature
 checks, orphan detection, required-file and directory-name checks, a curated
-license policy, and a `build-report.json`. The schema graduation to `core/` and
-thumbnail baking remain the open items above.
+license policy, and a `build-report.json`.
+
+The schema graduation has now landed too, recorded in ADR-0093. When the in-app
+asset library (#174) became the first runtime consumer, the manifest schema, asset
+kinds, and license policy moved to `core/assets/` as shared TypeScript, and the CLI
+was repointed at the same definition; the toolchain moved to Node 22 so plain `node`
+loads the TypeScript through native type stripping. Thumbnail baking remains the one
+open item above.
 
 ## Consequences
 

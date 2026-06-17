@@ -4,9 +4,14 @@ export type { LibraryItemSummary, LibraryStore } from './library-store'
 export type { AssetCache } from './asset-cache'
 export { InMemoryAssetCache } from './in-memory-asset-cache'
 export { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from './directory-asset-cache'
-export type { AssetSource } from './assets/asset-source'
+export type { AssetSource, LibraryItem } from './assets/asset-source'
 export { InMemoryAssetSource } from './assets/in-memory-asset-source'
 export { CacheAssetSource } from './assets/cache-asset-source'
+export { PackSource } from './assets/pack-source'
+export type { PackReader } from './assets/pack-source'
+export { createFetchPackReader } from './assets/fetch-pack-reader'
+export { UserSource } from './assets/user-source'
+export type { UserLibraryIndex, UserAssetMeta } from './assets/user-source'
 export { AssetRegistry } from './assets/asset-registry'
 export type { ScopedAssetSource, AssetRegistryOptions } from './assets/asset-registry'
 export type { ProjectStorage } from './project-storage'
@@ -16,6 +21,7 @@ export {
   IndexedDbProjectStore,
   createDefaultProjectStore,
 } from './indexeddb/indexeddb-project-store'
+export { IndexedDbUserLibraryIndex } from './indexeddb/indexeddb-user-library-index'
 export {
   probeStorageCapabilities,
   isStorageDegraded,
@@ -35,6 +41,7 @@ export { FolderProjectStore, ProjectFileNotFoundError } from './folder/folder-pr
 export type { FolderProjectStoreOptions } from './folder/folder-project-store'
 export { OpfsProjectStore, createOpfsProjectStore } from './opfs/opfs-project-store'
 export { ZipBundleProjectStore } from './zip/zip-bundle-project-store'
+export { collectReferencedAssets, exportProjectBundle } from './zip/export-project-bundle'
 export { FileSystemFolderProjectStore } from './filesystem/file-system-folder-project-store'
 export { DirectoryHandleStore } from './filesystem/directory-handle-store'
 export { SnapshotStore } from './snapshots/snapshot-store'

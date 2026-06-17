@@ -1,9 +1,10 @@
 import { useRef, useState, type Dispatch, type PointerEvent, type SetStateAction } from 'react'
-import type { Point, SceneGraph } from '../../core'
+import type { FurnitureInstance, Point, SceneGraph } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { Bounds } from './fit'
 import { hitTest, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
+import { hitTestFurniture } from './hit-test-furniture'
 import { entitiesInRect } from './marquee'
 import {
   advanceSelectGesture,
@@ -19,6 +20,8 @@ const PRIMARY_BUTTON = 0
 
 interface PlanSelectionDeps {
   graph: SceneGraph
+  // The active floor's placed furniture, hit-tested above the graph entities.
+  furniture: readonly FurnitureInstance[]
   selection: SelectionStore
   tool: ToolId
   viewport: Viewport
@@ -43,9 +46,14 @@ interface GestureHandle {
   setPanning: (panning: boolean) => void
 }
 
-/** A bare click selects, toggles (with shift), or clears the selection. */
+/**
+ * A bare click selects, toggles (with shift), or clears the selection. Furniture
+ * is hit-tested first because it paints above the walls and openings, so a click
+ * on a piece selects it rather than the entity beneath.
+ */
 function applyClick(deps: PlanSelectionDeps, world: Point, shift: boolean): void {
-  const hit = hitTest(deps.graph, world, DEFAULT_HIT_TOLERANCE_MM)
+  const hit =
+    hitTestFurniture(deps.furniture, world) ?? hitTest(deps.graph, world, DEFAULT_HIT_TOLERANCE_MM)
   if (hit === null) {
     if (!shift) {
       deps.selection.clear()

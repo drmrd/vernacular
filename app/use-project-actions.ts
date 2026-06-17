@@ -4,7 +4,7 @@ import { commitProject, createEditorSession, type EditorSession } from '../bridg
 import {
   DirectoryHandleStore,
   FileSystemFolderProjectStore,
-  ZipBundleProjectStore,
+  exportProjectBundle,
   bundleFilename,
   downloadBytes,
   downloadText,
@@ -17,6 +17,7 @@ import {
   svgPlanToPdf,
   DEFAULT_RASTER_MAX_EDGE,
   PRINT_RASTER_MAX_EDGE,
+  type AssetCache,
   type ProjectBackend,
   type ProjectStore,
   type RecentProjectStore,
@@ -68,6 +69,7 @@ export function recordRecent(
 export interface ProjectActionsContext {
   session: EditorSession
   store: ProjectStore
+  assets: AssetCache
   projectId: string
   snapshots: SnapshotsPort | undefined
   recentProjects: RecentProjectStore
@@ -128,16 +130,13 @@ function useSaveAction(context: ProjectActionsContext): () => void {
 }
 
 function useExportBundleAction(context: ProjectActionsContext): () => void {
-  const { session, projectId } = context
+  const { session, projectId, assets } = context
   return useCallback(() => {
     const project = session.getProject()
-    const bundle = new ZipBundleProjectStore(projectId)
-    void bundle
-      .save(projectId, project)
-      .then(() => bundle.exportBundle())
+    void exportProjectBundle(projectId, project, assets)
       .then((bytes) => downloadBytes(bytes, bundleFilename(project.meta.name)))
       .catch((error: unknown) => console.error('export bundle failed', error))
-  }, [session, projectId])
+  }, [session, projectId, assets])
 }
 
 function useExportPlanAction(context: ProjectActionsContext): () => void {

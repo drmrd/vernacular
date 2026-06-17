@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
+  DEFAULT_FURNITURE_FOOTPRINT_MM,
   DEFAULT_OPENING_HEIGHT_MM,
   DEFAULT_OPENING_WIDTH_MM,
   DEFAULT_STAIR_WIDTH_MM,
@@ -10,12 +11,14 @@ import {
   createDimension,
   createEmptyProject,
   createFloor,
+  createFurnitureInstance,
   createOpening,
   createStair,
   createUnderlay,
   createWall,
 } from './factories'
 import type { AssetReference } from './asset-reference'
+import type { FurnitureFootprint, FurnitureInstance } from './types'
 
 describe('createEmptyProject', () => {
   it('creates a project with no floors and the current schema version', () => {
@@ -89,6 +92,18 @@ describe('createFloor openings', () => {
 describe('createFloor dimensions', () => {
   it('initializes a floor with an empty dimensions array', () => {
     expect(createFloor('Ground', {}).dimensions).toEqual([])
+  })
+})
+
+describe('CURRENT_SCHEMA_VERSION', () => {
+  it('is 10', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBe(10)
+  })
+})
+
+describe('createFloor furniture', () => {
+  it('initializes a floor with an empty furniture array', () => {
+    expect(createFloor('Ground').furniture).toEqual([])
   })
 })
 
@@ -247,5 +262,60 @@ describe('createUnderlay', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     )
     expect(first.id).not.toBe(second.id)
+  })
+})
+
+describe('DEFAULT_FURNITURE_FOOTPRINT_MM', () => {
+  it('is 600 mm wide and 600 mm deep', () => {
+    const footprint: FurnitureFootprint = DEFAULT_FURNITURE_FOOTPRINT_MM
+
+    expect(footprint).toEqual({ width: 600, depth: 600 })
+  })
+})
+
+describe('createFurnitureInstance', () => {
+  const assetRef: AssetReference = { scope: 'user', contentHash: 'abc123' }
+  const position = { x: 100, y: 200 }
+  const footprint: FurnitureFootprint = { width: 500, depth: 520 }
+
+  it('generates a non-empty id and applies default rotation and elevationZ when only required options are given', () => {
+    const result: FurnitureInstance = createFurnitureInstance({ assetRef, position, footprint })
+
+    expect(result.id).toEqual(expect.any(String))
+    expect(result.id.length).toBeGreaterThan(0)
+    expect(result.assetRef).toEqual(assetRef)
+    expect(result.position).toEqual(position)
+    expect(result.footprint).toEqual(footprint)
+    expect(result.rotation).toBe(0)
+    expect(result.elevationZ).toBe(0)
+  })
+
+  it('omits the name field entirely when no name is given', () => {
+    const result: FurnitureInstance = createFurnitureInstance({ assetRef, position, footprint })
+
+    expect('name' in result).toBe(false)
+  })
+
+  it('omits the customizations field entirely when none are given', () => {
+    const result: FurnitureInstance = createFurnitureInstance({ assetRef, position, footprint })
+
+    expect('customizations' in result).toBe(false)
+  })
+
+  it('carries through an explicit id, rotation, elevationZ, and name', () => {
+    const result: FurnitureInstance = createFurnitureInstance({
+      assetRef,
+      position,
+      footprint,
+      rotation: 90,
+      elevationZ: 300,
+      name: 'Reading chair',
+      id: 'fixed-id',
+    })
+
+    expect(result.id).toBe('fixed-id')
+    expect(result.rotation).toBe(90)
+    expect(result.elevationZ).toBe(300)
+    expect(result.name).toBe('Reading chair')
   })
 })
