@@ -98,7 +98,7 @@
   ],
   "stairs": [],
   "roomOverrides": {
-    "w-porch-divider|w-south|w-west|w-north": { "name": "Sun Porch" },
+    "w-north|w-porch-divider|w-south|w-west": { "name": "Sun Porch" },
     "w-bedroom-divider|w-north|w-porch-divider|w-south": { "name": "Bedroom" },
     "w-bedroom-divider|w-end-divider|w-north|w-south": { "name": "Bedroom" }
   }

@@ -66,7 +66,7 @@ const DEFAULT_WALL_THICKNESS = 0
  * (sorted, unique), so re-derivation and different insertion order yield the same key.
  */
 export function roomKey(room: Pick<Room, 'wallIds'>): string {
-  return room.wallIds.join('-')
+  return [...room.wallIds].sort().join('|')
 }
 
 /**

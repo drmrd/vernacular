@@ -351,4 +351,41 @@ describe('roomKey', () => {
 
     expect(roomKey(onlyRoom(reordered))).toBe(roomKey(onlyRoom(walls)))
   })
+
+  it('joins wall IDs using the | separator', () => {
+    const room = { wallIds: ['w-east', 'w-north'] }
+    // Note: inherently relies on sorting, 'w-east' comes before 'w-north'
+    expect(roomKey(room)).toBe('w-east|w-north')
+  })
+
+  it('sorts wall IDs alphabetically to guarantee deterministic keys', () => {
+    const roomA = { wallIds: ['w-west', 'w-south', 'w-east', 'w-north'] }
+    const roomB = { wallIds: ['w-north', 'w-east', 'w-south', 'w-west'] }
+
+    const expectedKey = 'w-east|w-north|w-south|w-west'
+
+    expect(roomKey(roomA)).toBe(expectedKey)
+    expect(roomKey(roomB)).toBe(expectedKey)
+  })
+
+  it('does not mutate the original wallIds array', () => {
+    const originalWalls = ['w-west', 'w-east']
+    const room = { wallIds: originalWalls }
+
+    roomKey(room)
+
+    // If we didn't use the spread operator [...room.wallIds].sort(),
+    // the array would have been mutated to ['w-east', 'w-west']
+    expect(originalWalls).toEqual(['w-west', 'w-east'])
+  })
+
+  it('handles rooms with a single wall', () => {
+    const room = { wallIds: ['w-circular-wall'] }
+    expect(roomKey(room)).toBe('w-circular-wall')
+  })
+
+  it('handles gracefully if a room has zero walls', () => {
+    const room = { wallIds: [] }
+    expect(roomKey(room)).toBe('')
+  })
 })

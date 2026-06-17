@@ -5,8 +5,10 @@ import {
   createDocumentValidator,
   createStrictValidator,
   type ExtensionSchemaRegistry,
+  type Floor,
 } from '../../core'
 import { SCHEMA_VERSION } from '../../scripts/schema/build-schema.mjs'
+import { deriveRooms, roomKey } from '../../core/topology/rooms'
 
 const schemaPath = resolve('schema', String(SCHEMA_VERSION), 'vernacular.schema.json')
 const schema = JSON.parse(readFileSync(schemaPath, 'utf8'))
@@ -139,3 +141,25 @@ describe('VFPF corpus conformance gate (Strict profile)', () => {
   })
 })
 /* eslint-enable @typescript-eslint/naming-convention */
+
+describe('VFPF corpus topology integrity', () => {
+  it.each(corpusFixtures)('binds all roomOverrides keys to derived rooms in %s', (fixtureName) => {
+    const document = JSON.parse(readFileSync(resolve(corpusDir, fixtureName), 'utf8'))
+
+    // If the fixture doesn't use roomOverrides, there's nothing to test
+    if (!document.roomOverrides || Object.keys(document.roomOverrides).length === 0) {
+      return
+    }
+
+    const actualDerivedRooms = (document.floors || []).flatMap((floor: Floor) =>
+      deriveRooms(floor.walls || []),
+    )
+    const validRoomKeys = new Set(actualDerivedRooms.map(roomKey))
+
+    const overrideKeys = Object.keys(document.roomOverrides)
+    const orphanKeys = overrideKeys.filter((key) => !validRoomKeys.has(key))
+
+    const errorMessage = `corpus fixture ${fixtureName} contains orphan roomOverrides keys: ${orphanKeys.join(', ')}. Valid keys for this fixture are: ${Array.from(validRoomKeys).join(', ')}`
+    expect(orphanKeys, errorMessage).toEqual([])
+  })
+})
