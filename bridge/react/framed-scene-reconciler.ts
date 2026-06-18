@@ -201,13 +201,24 @@ interface FurnitureBuildInput {
   models: FurnitureModelLookup
 }
 
+/**
+ * Whether a lookup entry yields a ready model. The single source of "this entry builds a mesh":
+ * both the cache key (builtReady) and the mesh-vs-box build branch derive from it, and as a type
+ * guard it narrows entry.template so the build can clone it without a separate undefined check.
+ */
+function providesReadyModel(
+  entry: ReturnType<FurnitureModelLookup['get']>,
+): entry is { status: 'ready'; template: FurnitureModel } {
+  return entry?.status === 'ready' && entry.template !== undefined
+}
+
 /** Builds a furniture sub-group from the real model when one is ready, else the massing box. */
 function buildFurnitureGroup(
   node: FurnitureSceneNode,
   materials: PaintMaterials,
   entry: ReturnType<FurnitureModelLookup['get']>,
 ): SceneRoot {
-  if (entry?.status === 'ready' && entry.template !== undefined) {
+  if (providesReadyModel(entry)) {
     return buildFurnitureModelGroup(entry.template.clone(true), node)
   }
   return buildFurnitureSubgroup(node, materials)
@@ -225,7 +236,7 @@ function reuseOrBuildFurniture({
   models,
 }: FurnitureBuildInput): FurnitureSubgroupBuild {
   const entry = models.get(node.assetRef.contentHash)
-  const builtReady = entry?.status === 'ready' && entry.template !== undefined
+  const builtReady = providesReadyModel(entry)
   const cached = prev?.furniture.get(node.id)
   if (cached !== undefined && cached.node === node && cached.builtReady === builtReady) {
     return cached
@@ -233,7 +244,10 @@ function reuseOrBuildFurniture({
   return { node, group: buildFurnitureGroup(node, materials, entry), builtReady }
 }
 
-/** Flattens the per-entity sub-group maps into the ordered group list a floor root is assembled from. */
+/**
+ * Flattens the per-entity sub-group maps into the ordered group list a floor root is assembled
+ * from: rooms first, then openings, then furniture.
+ */
 function collectSubgroupGroups(
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>,
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>,
