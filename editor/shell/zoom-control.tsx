@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react'
 import { CornersOut, MagnifyingGlassMinus, MagnifyingGlassPlus } from '@phosphor-icons/react'
 import { sceneGraphForFloor } from '../../core'
 import { useActiveFloorId, useSceneGraph } from '../../bridge'
@@ -13,23 +13,6 @@ const ZOOM_STEP = 1.25
 // Button zooms have no cursor, so they pivot about the canvas center.
 const CENTER = { x: PLAN_WIDTH / 2, y: PLAN_HEIGHT / 2 }
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
-
-// One square icon button in the zoom group, sharing the design-system icon-button styling.
-function ZoomButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <IconButton aria-label={label} onClick={onClick}>
-      {children}
-    </IconButton>
-  )
-}
 
 /**
  * The header zoom control: zoom out, a live percent readout (click to reset to 100%),
@@ -63,18 +46,23 @@ export function ZoomControl() {
 
   return (
     <div className="editor-shell__zoom" role="group" aria-label="Zoom">
-      <ZoomButton label="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)}>
+      <IconButton aria-label="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)}>
         <MagnifyingGlassMinus size={16} aria-hidden="true" />
-      </ZoomButton>
-      <IconButton labeled aria-label="Reset zoom to 100%" onClick={resetZoom}>
+      </IconButton>
+      <IconButton
+        labeled
+        className="ds-icon-button--readout"
+        aria-label="Reset zoom to 100%"
+        onClick={resetZoom}
+      >
         {zoomPercent(viewport.scale)}%
       </IconButton>
-      <ZoomButton label="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
+      <IconButton aria-label="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
         <MagnifyingGlassPlus size={16} aria-hidden="true" />
-      </ZoomButton>
-      <ZoomButton label="Fit to content" onClick={fitToContent}>
+      </IconButton>
+      <IconButton aria-label="Fit to content" onClick={fitToContent}>
         <CornersOut size={16} aria-hidden="true" />
-      </ZoomButton>
+      </IconButton>
     </div>
   )
 }

@@ -12,6 +12,9 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
   cursor: pointer;
+  transition:
+    background var(--motion-duration),
+    color var(--motion-duration);
 }
 
 .ds-icon-button:hover {
@@ -40,11 +43,19 @@
 /* The labeled affordance relaxes the square icon shape to fit an icon and a text
    label, or a text-only readout like the zoom percent. It reuses the base hover,
    focus, and pressed states above. Tabular figures and a min-width keep the
-   numeric readout from shifting as its digit count changes. */
+   numeric readout from shifting as its digit count changes. The compact label
+   text matches the retired shell idiom (xs is the nearest token to its 0.75rem). */
 .ds-icon-button--labeled {
   width: auto;
   min-width: 4ch;
   gap: var(--space-1);
   padding: 0 var(--space-2);
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
+}
+
+/* A text-only readout (the zoom percent) needs no room for an icon, so it keeps the
+   tighter horizontal padding the retired zoom-percent rule used. */
+.ds-icon-button--readout {
+  padding: 0 var(--space-1);
 }
