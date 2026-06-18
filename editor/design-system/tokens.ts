@@ -25,6 +25,8 @@ export const tokens = {
   space3: token('--space-3'),
   space4: token('--space-4'),
   space5: token('--space-5'),
+  space6: token('--space-6'),
+  space7: token('--space-7'),
   radiusSm: token('--radius-sm'),
   radiusMd: token('--radius-md'),
   fontSizeSm: token('--font-size-sm'),
