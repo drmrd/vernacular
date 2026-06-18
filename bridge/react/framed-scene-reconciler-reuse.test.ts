@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import type {
   Floor,
@@ -20,8 +23,11 @@ import {
   createWall,
   sceneGraphForFloor,
 } from '../../core'
+import { parseFurnitureModel } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+
+const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fixtures/cube.glb')
 
 const emptyPaint = (): Record<string, SurfaceTreatment> => ({})
 
@@ -341,5 +347,35 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
     // wall-owned nearWallTargets array.
     expect(findByEntityId(second.root, WALL_NODE_PREFIX + BOTTOM_WALL_ID)).toBe(wallMeshFirst)
     expect(second.nearWallTargets).toBe(first.nearWallTargets)
+  })
+})
+
+describe('createFramedSceneReconciler furniture model', () => {
+  it('builds a mesh sub-group for a ready model and a box otherwise', async () => {
+    const derive = createSceneGraphDeriver()
+    const chair = chairAt(0, 'chair-1')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chair],
+    }
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const node = graph.furniture[0]
+    if (node === undefined) throw new Error('expected one furniture node')
+    const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
+    const models = {
+      get: (hash: string) =>
+        hash === node.assetRef.contentHash ? { status: 'ready' as const, template } : undefined,
+    }
+
+    const meshBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint(), models)
+    const boxBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint())
+
+    const meshGroup = findByEntityId(meshBuild.root, chair.id)
+    const boxGroup = findByEntityId(boxBuild.root, chair.id)
+    expect(meshGroup).not.toBeNull()
+    expect(boxGroup).not.toBeNull()
+    // The massing box carries an edge overlay (LineSegments); the real-model sub-group does not.
+    expect(meshGroup?.getObjectByProperty('isLineSegments', true)).toBeUndefined()
+    expect(boxGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
   })
 })
