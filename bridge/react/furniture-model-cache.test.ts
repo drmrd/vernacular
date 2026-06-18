@@ -59,4 +59,33 @@ describe('createFurnitureModelCache', () => {
     expect(cache.get('good')?.status).toBe('ready')
     expect(warn).toHaveBeenCalled()
   })
+
+  it('caps concurrent parses', async () => {
+    const gates: Array<() => void> = []
+    let active = 0
+    let maxActive = 0
+    const cache = createFurnitureModelCache({
+      resolve: async () => new Uint8Array([1]),
+      parse: () =>
+        new Promise((resolve) => {
+          active += 1
+          maxActive = Math.max(maxActive, active)
+          gates.push(() => {
+            active -= 1
+            resolve({ tag: 'model' })
+          })
+        }),
+      dispose: () => {},
+      maxConcurrent: 2,
+    })
+    for (const hash of ['a', 'b', 'c', 'd']) cache.request({ scope: 'user', contentHash: hash })
+    await flushMicrotasks()
+    expect(maxActive).toBe(2)
+    while (gates.length > 0) {
+      const gate = gates.shift()
+      if (gate) gate()
+      await flushMicrotasks()
+    }
+    expect(cache.get('d')?.status).toBe('ready')
+  })
 })
