@@ -11,10 +11,10 @@ function stubCapableStorage() {
 }
 
 interface SnapshotsFake {
-  writeSnapshot: Mock<[Project], Promise<void>>
-  prune: Mock<[], Promise<void>>
-  isRecoverable: Mock<[], Promise<boolean>>
-  restore: Mock<[], Promise<Project | undefined>>
+  writeSnapshot: Mock<(project: Project) => Promise<void>>
+  prune: Mock<() => Promise<void>>
+  isRecoverable: Mock<() => Promise<boolean>>
+  restore: Mock<() => Promise<Project | undefined>>
 }
 
 // A SnapshotStore-shaped stand-in: the four methods the app depends on, each a spy.
@@ -24,10 +24,10 @@ function makeSnapshots(
   const recoverable = overrides.isRecoverable ?? false
   const restored = overrides.restore
   return {
-    writeSnapshot: vi.fn<[Project], Promise<void>>(async () => {}),
-    prune: vi.fn<[], Promise<void>>(async () => {}),
-    isRecoverable: vi.fn<[], Promise<boolean>>(async () => recoverable),
-    restore: vi.fn<[], Promise<Project | undefined>>(async () => restored),
+    writeSnapshot: vi.fn<(project: Project) => Promise<void>>(async () => {}),
+    prune: vi.fn<() => Promise<void>>(async () => {}),
+    isRecoverable: vi.fn<() => Promise<boolean>>(async () => recoverable),
+    restore: vi.fn<() => Promise<Project | undefined>>(async () => restored),
   }
 }
 
