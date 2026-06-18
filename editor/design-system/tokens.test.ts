@@ -82,6 +82,18 @@ describe('extended type scale', () => {
   })
 })
 
+describe('dead system-theme block', () => {
+  it('drops the unreachable data-theme="system" selector', () => {
+    expect(tokensCss).not.toContain("data-theme='system'")
+    expect(tokensCss).not.toContain('data-theme="system"')
+  })
+
+  it('keeps the real dark-theme assignments', () => {
+    expect(tokensCss).toContain("[data-theme='dark']")
+    expect(tokensCss).toMatch(/\[data-theme='dark'\][^}]*--color-surface:\s*var\(--ink-950\)/)
+  })
+})
+
 describe('drafting-table palette', () => {
   it('introduces the drafting-table primitive ramp', () => {
     expect(tokensCss).toContain('#f4efe4') // vellum canvas
