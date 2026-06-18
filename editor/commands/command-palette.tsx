@@ -63,7 +63,7 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
         onChange={(event) => setQuery(event.target.value)}
       />
       {filtered.map((command) => (
-        <Button key={command.id} type="button" onClick={() => runCommand(command)}>
+        <Button key={command.id} onClick={() => runCommand(command)}>
           {command.label}
         </Button>
       ))}
