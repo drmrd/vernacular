@@ -88,4 +88,27 @@ describe('createFurnitureModelCache', () => {
     }
     expect(cache.get('d')?.status).toBe('ready')
   })
+
+  it('evicts and disposes an unreferenced template past the cap', async () => {
+    const disposed: Array<{ tag: string }> = []
+    const t1 = { tag: 'a' }
+    const t2 = { tag: 'b' }
+    const templates = [t1, t2]
+    const cache = createFurnitureModelCache({
+      resolve: async () => new Uint8Array([1]),
+      parse: async () => templates.shift() ?? t2,
+      dispose: (model) => {
+        disposed.push(model)
+      },
+      maxTemplates: 1,
+    })
+    cache.request({ scope: 'user', contentHash: 'a' })
+    await flushMicrotasks()
+    cache.request({ scope: 'user', contentHash: 'b' })
+    await flushMicrotasks()
+    cache.markLiveHashes(['b'])
+    expect(disposed).toContain(t1)
+    expect(cache.get('a')).toBeUndefined()
+    expect(cache.get('b')?.status).toBe('ready')
+  })
 })
