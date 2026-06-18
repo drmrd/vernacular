@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from 'react'
 
+import { Button } from '../design-system'
 import type { LibraryItem } from '../../storage'
 
 import { LibraryPanel } from './library-panel'
@@ -19,14 +20,13 @@ export function LibraryLauncher(props: LibraryLauncherProps): ReactElement {
   const [open, setOpen] = useState(false)
   return (
     <div className="library-launcher">
-      <button
-        type="button"
+      <Button
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         Furniture
-      </button>
+      </Button>
       {open ? <LibraryPanel onPick={onPick} onImport={onImport} /> : null}
     </div>
   )
