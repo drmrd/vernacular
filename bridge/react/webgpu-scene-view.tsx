@@ -21,6 +21,7 @@ import { useActiveFloorId } from './active-floor-context'
 import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { FurnitureModelSignals } from './furniture-model-signals'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -359,6 +360,7 @@ export function WebGPUSceneView() {
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
+      <FurnitureModelSignals root={root} version={models.version} />
     </div>
   )
 }
