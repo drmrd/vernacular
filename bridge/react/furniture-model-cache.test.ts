@@ -23,4 +23,21 @@ describe('createFurnitureModelCache', () => {
     expect(cache.get('h1')).toEqual({ status: 'ready', template })
     expect(changes).toBe(1)
   })
+
+  it('deduplicates concurrent requests for the same hash', async () => {
+    let resolves = 0
+    const cache = createFurnitureModelCache({
+      resolve: async () => {
+        resolves += 1
+        return new Uint8Array([1])
+      },
+      parse: async () => ({ tag: 'model' }),
+      dispose: () => {},
+    })
+    const ref = { scope: 'user', contentHash: 'h1' } as const
+    cache.request(ref)
+    cache.request(ref)
+    await flushMicrotasks()
+    expect(resolves).toBe(1)
+  })
 })
