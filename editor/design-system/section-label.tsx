@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import './section-label.css'
 
-export interface SectionLabelProps extends HTMLAttributes<HTMLElement> {
+export interface SectionLabelProps extends HTMLAttributes<HTMLSpanElement> {
   children: ReactNode
 }
 
