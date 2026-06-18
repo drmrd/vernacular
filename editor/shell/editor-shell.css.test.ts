@@ -30,4 +30,13 @@ describe('editor-shell.css', () => {
       /background:\s*var\(--color-accent-strong\)[^}]*\bcolor:\s*var\(--color-surface\)/,
     )
   })
+
+  it('no longer defines the retired icon-button and zoom-percent idiom selectors', () => {
+    // The header icon buttons and the zoom control route through the design-system
+    // IconButton primitive, so the hand-rolled idiom selectors move out of the shell
+    // CSS. The .editor-shell__zoom group wrapper may remain.
+    expect(css).not.toMatch(/\.editor-shell__icon-btn\b/)
+    expect(css).not.toMatch(/\.editor-shell__icon-btn--labeled\b/)
+    expect(css).not.toMatch(/\.editor-shell__zoom-percent\b/)
+  })
 })
