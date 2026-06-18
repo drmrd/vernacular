@@ -111,4 +111,31 @@ describe('createFurnitureModelCache', () => {
     expect(cache.get('a')).toBeUndefined()
     expect(cache.get('b')?.status).toBe('ready')
   })
+
+  it('drops a late completion after dispose and frees templates', async () => {
+    let release: (model: { tag: string }) => void = () => {}
+    const t = { tag: 'x' }
+    const disposed: Array<{ tag: string }> = []
+    const cache = createFurnitureModelCache({
+      resolve: async () => new Uint8Array([1]),
+      parse: () =>
+        new Promise((resolve) => {
+          release = resolve
+        }),
+      dispose: (model) => {
+        disposed.push(model)
+      },
+    })
+    let changesAfterDispose = 0
+    cache.request({ scope: 'user', contentHash: 'h' })
+    await flushMicrotasks()
+    cache.onChange(() => {
+      changesAfterDispose += 1
+    })
+    cache.dispose()
+    release(t) // late parse completion, arrives after dispose
+    await flushMicrotasks()
+    expect(cache.get('h')?.status).not.toBe('ready')
+    expect(changesAfterDispose).toBe(0)
+  })
 })
