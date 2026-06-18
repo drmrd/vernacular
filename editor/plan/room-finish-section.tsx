@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
 import './finish-section.css'
@@ -37,19 +38,12 @@ export function RoomFinishSection({
   return (
     <section className="finish-section">
       <h3 className="finish-section__label">Finish</h3>
-      <div className="finish-section__faces" role="group" aria-label="Room surface">
-        {SURFACES.map((surface) => (
-          <button
-            key={surface.kind}
-            type="button"
-            className={`finish-section__chip${kind === surface.kind ? ' finish-section__chip--active' : ''}`}
-            aria-pressed={kind === surface.kind}
-            onClick={() => setKind(surface.kind)}
-          >
-            {surface.label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label="Room surface"
+        options={SURFACES.map((surface) => ({ value: surface.kind, label: surface.label }))}
+        value={kind}
+        onSelect={(value) => setKind(value as 'floor' | 'ceiling')}
+      />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker

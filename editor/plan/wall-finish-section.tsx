@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
 import './finish-section.css'
@@ -35,19 +36,12 @@ export function WallFinishSection({
   return (
     <section className="finish-section">
       <h3 className="finish-section__label">Finish</h3>
-      <div className="finish-section__faces" role="group" aria-label="Wall face">
-        {FACES.map((face) => (
-          <button
-            key={face.side}
-            type="button"
-            className={`finish-section__chip${side === face.side ? ' finish-section__chip--active' : ''}`}
-            aria-pressed={side === face.side}
-            onClick={() => setSide(face.side)}
-          >
-            {face.label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label="Wall face"
+        options={FACES.map((face) => ({ value: face.side, label: face.label }))}
+        value={side}
+        onSelect={(value) => setSide(value as 'left' | 'right')}
+      />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker
