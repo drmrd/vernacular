@@ -15,18 +15,33 @@ function renderToggle() {
 }
 
 describe('ThemeToggle', () => {
-  it('offers light, dark, and system options', () => {
+  it('routes Light, Dark, and System through the segmented option vocabulary', () => {
     renderToggle()
-    expect(screen.getByRole('radio', { name: /light/i })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /dark/i })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /system/i })).toBeInTheDocument()
+    for (const name of [/^light$/i, /^dark$/i, /^system$/i]) {
+      expect(screen.getByRole('button', { name })).toHaveClass('ds-segmented__option')
+    }
+  })
+
+  it('exposes an accessible group named Theme', () => {
+    renderToggle()
+    expect(screen.getByRole('group', { name: /theme/i })).toBeInTheDocument()
+  })
+
+  it('marks the active choice option as pressed and active', () => {
+    renderToggle()
+    const light = screen.getByRole('button', { name: /^light$/i })
+    const dark = screen.getByRole('button', { name: /^dark$/i })
+    expect(light).toHaveClass('is-active')
+    expect(light).toHaveAttribute('aria-pressed', 'true')
+    expect(dark).not.toHaveClass('is-active')
+    expect(dark).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('switches the resolved theme when an option is chosen', async () => {
     const user = userEvent.setup()
     const { container } = renderToggle()
     expect(container.querySelector('[data-theme="light"]')).not.toBeNull()
-    await user.click(screen.getByRole('radio', { name: /^dark$/i }))
+    await user.click(screen.getByRole('button', { name: /^dark$/i }))
     expect(container.querySelector('[data-theme="dark"]')).not.toBeNull()
   })
 })

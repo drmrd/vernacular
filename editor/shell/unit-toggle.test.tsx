@@ -6,35 +6,48 @@ import { UnitToggle } from './unit-toggle'
 afterEach(cleanup)
 
 describe('UnitToggle', () => {
-  it('renders a Units radiogroup with Metric and Imperial options', () => {
+  it('routes Metric and Imperial through the segmented option vocabulary', () => {
     render(<UnitToggle units="metric" onChange={vi.fn()} />)
 
-    const group = screen.getByRole('radiogroup', { name: 'Units' })
-    expect(group).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Metric' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Imperial' })).toBeInTheDocument()
-    expect(screen.getAllByRole('radio')).toHaveLength(2)
+    const metric = screen.getByRole('button', { name: 'Metric' })
+    const imperial = screen.getByRole('button', { name: 'Imperial' })
+    expect(metric).toHaveClass('ds-segmented__option')
+    expect(imperial).toHaveClass('ds-segmented__option')
   })
 
-  it('checks the Metric option when units is metric', () => {
+  it('exposes an accessible group named Units', () => {
     render(<UnitToggle units="metric" onChange={vi.fn()} />)
 
-    expect(screen.getByRole('radio', { name: 'Metric' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Imperial' })).not.toBeChecked()
+    expect(screen.getByRole('group', { name: /units/i })).toBeInTheDocument()
   })
 
-  it('checks the Imperial option when units is imperial', () => {
+  it('marks the Metric option active when units is metric', () => {
+    render(<UnitToggle units="metric" onChange={vi.fn()} />)
+
+    const metric = screen.getByRole('button', { name: 'Metric' })
+    const imperial = screen.getByRole('button', { name: 'Imperial' })
+    expect(metric).toHaveClass('is-active')
+    expect(metric).toHaveAttribute('aria-pressed', 'true')
+    expect(imperial).not.toHaveClass('is-active')
+    expect(imperial).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('marks the Imperial option active when units is imperial', () => {
     render(<UnitToggle units="imperial" onChange={vi.fn()} />)
 
-    expect(screen.getByRole('radio', { name: 'Imperial' })).toBeChecked()
-    expect(screen.getByRole('radio', { name: 'Metric' })).not.toBeChecked()
+    const metric = screen.getByRole('button', { name: 'Metric' })
+    const imperial = screen.getByRole('button', { name: 'Imperial' })
+    expect(imperial).toHaveClass('is-active')
+    expect(imperial).toHaveAttribute('aria-pressed', 'true')
+    expect(metric).not.toHaveClass('is-active')
+    expect(metric).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('reports an imperial change when the Imperial option is clicked from metric', async () => {
     const onChange = vi.fn()
     render(<UnitToggle units="metric" onChange={onChange} />)
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Imperial' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Imperial' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith('imperial')
@@ -44,7 +57,7 @@ describe('UnitToggle', () => {
     const onChange = vi.fn()
     render(<UnitToggle units="imperial" onChange={onChange} />)
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Metric' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Metric' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith('metric')
