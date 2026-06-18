@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { formatAssetReference } from '../../core'
-import { Button, Segmented } from '../design-system'
+import { Button, Segmented, type SegmentedOption } from '../design-system'
 import type { AssetRegistry, LibraryItem } from '../../storage'
 import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
@@ -63,11 +63,11 @@ function LibraryGrid({ items, onPick }: LibraryGridProps): ReactElement {
   )
 }
 
-const SOURCE_OPTIONS: ReadonlyArray<{ value: SourceFilter; label: string }> = [
+const SOURCE_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'sample', label: 'Sample' },
   { value: 'yours', label: 'Yours' },
-]
+] satisfies SegmentedOption[]
 
 // The era segmented control always carries a default-active option that maps to
 // the unfiltered (no-era) state, so exactly one option stays selected even when
@@ -84,7 +84,8 @@ interface LibraryControlsProps {
 function SourceToggle({ filters, setFilters }: LibraryControlsProps): ReactElement {
   return (
     <Segmented
-      options={SOURCE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+      label="Source"
+      options={SOURCE_OPTIONS}
       value={filters.source}
       onSelect={(value) => setFilters({ ...filters, source: value as SourceFilter })}
     />
@@ -98,6 +99,7 @@ function EraChips({ filters, eras, setFilters }: LibraryControlsProps): ReactEle
   ]
   return (
     <Segmented
+      label="Era"
       options={options}
       value={filters.era ?? ALL_ERAS_VALUE}
       onSelect={(value) => setFilters({ ...filters, era: value === ALL_ERAS_VALUE ? null : value })}
