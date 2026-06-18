@@ -17,13 +17,23 @@ interface RoomFinishSectionProps {
 // Floor and ceiling are floor-level surfaces in the model, so all rooms on a floor
 // share them; selecting a room is the natural place to reach the floor it sits on.
 function surfaceRef(kind: 'floor' | 'ceiling', floorId: string): SurfaceRef {
-  return kind === 'floor' ? { kind: 'floor', floorId } : { kind: 'ceiling', floorId }
+  return { kind, floorId }
 }
 
 const SURFACES = [
   { kind: 'floor', label: 'Floor' },
   { kind: 'ceiling', label: 'Ceiling' },
 ] as const
+
+const SURFACE_OPTIONS = SURFACES.map((surface) => ({
+  value: surface.kind,
+  label: surface.label,
+}))
+const SURFACE_KINDS = SURFACES.map((surface) => surface.kind)
+
+function isSurfaceKind(value: string): value is 'floor' | 'ceiling' {
+  return (SURFACE_KINDS as readonly string[]).includes(value)
+}
 
 export function RoomFinishSection({
   floorId,
@@ -40,9 +50,11 @@ export function RoomFinishSection({
       <h3 className="finish-section__label">Finish</h3>
       <Segmented
         label="Room surface"
-        options={SURFACES.map((surface) => ({ value: surface.kind, label: surface.label }))}
+        options={SURFACE_OPTIONS}
         value={kind}
-        onSelect={(value) => setKind(value as 'floor' | 'ceiling')}
+        onSelect={(value) => {
+          if (isSurfaceKind(value)) setKind(value)
+        }}
       />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (

@@ -23,6 +23,13 @@ const FACES = [
   { side: 'right', label: 'B' },
 ] as const
 
+const FACE_OPTIONS = FACES.map((face) => ({ value: face.side, label: face.label }))
+const FACE_SIDES = FACES.map((face) => face.side)
+
+function isFaceSide(value: string): value is 'left' | 'right' {
+  return (FACE_SIDES as readonly string[]).includes(value)
+}
+
 export function WallFinishSection({
   wallId,
   treatmentFor,
@@ -38,9 +45,11 @@ export function WallFinishSection({
       <h3 className="finish-section__label">Finish</h3>
       <Segmented
         label="Wall face"
-        options={FACES.map((face) => ({ value: face.side, label: face.label }))}
+        options={FACE_OPTIONS}
         value={side}
-        onSelect={(value) => setSide(value as 'left' | 'right')}
+        onSelect={(value) => {
+          if (isFaceSide(value)) setSide(value)
+        }}
       />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
