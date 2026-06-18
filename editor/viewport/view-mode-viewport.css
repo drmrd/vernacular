@@ -6,8 +6,9 @@
   height: 100%;
 }
 
-.view-mode-viewport__toolbar {
-  display: inline-flex;
+/* The mode toolbar is the Segmented control itself; keep it from stretching
+   across the column-flex viewport so it reads as a left-aligned pill. */
+.view-mode-viewport > .ds-segmented {
   align-self: flex-start;
 }
 

@@ -14,16 +14,20 @@ const VIEW_MODE_OPTIONS = VIEW_MODES.map((value) => ({
   label: VIEW_MODE_LABELS[value],
 }))
 
+function isViewMode(value: string): value is ViewMode {
+  return (VIEW_MODES as readonly string[]).includes(value)
+}
+
 function ModeToolbar({ mode, setMode }: ViewControls) {
   return (
-    <div className="view-mode-viewport__toolbar">
-      <Segmented
-        label="View mode"
-        options={VIEW_MODE_OPTIONS}
-        value={mode}
-        onSelect={(value) => setMode(value as ViewMode)}
-      />
-    </div>
+    <Segmented
+      label="View mode"
+      options={VIEW_MODE_OPTIONS}
+      value={mode}
+      onSelect={(value) => {
+        if (isViewMode(value)) setMode(value)
+      }}
+    />
   )
 }
 

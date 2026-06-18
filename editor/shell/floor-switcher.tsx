@@ -25,6 +25,7 @@ export function FloorSwitcher({
       <Segmented
         label="Floors"
         options={floors.map((floor) => ({ value: floor.id, label: floor.name }))}
+        /* '' is the "no floor selected" sentinel: it matches no floor id, so no option reads active. */
         value={activeFloorId ?? ''}
         onSelect={onSelectFloor}
       />
