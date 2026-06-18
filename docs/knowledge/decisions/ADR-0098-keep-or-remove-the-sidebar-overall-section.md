@@ -4,10 +4,7 @@ title: 'ADR-0098: Keep or remove the sidebar Overall section'
 type: decision
 tags: [editor, left-rail, ux, title-block, design-system]
 related:
-  [
-    decisions/ADR-0068-pdf-export,
-    decisions/ADR-0069-visual-design-language-draughtsmans-restraint,
-  ]
+  [decisions/ADR-0068-pdf-export, decisions/ADR-0069-visual-design-language-draughtsmans-restraint]
 sourceFiles:
   [
     editor/shell/overall-dimensions.tsx,
