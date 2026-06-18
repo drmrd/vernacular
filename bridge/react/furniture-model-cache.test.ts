@@ -118,7 +118,7 @@ describe('createFurnitureModelCache', () => {
     const disposed: Array<{ tag: string }> = []
     const cache = createFurnitureModelCache({
       resolve: async () => new Uint8Array([1]),
-      parse: () =>
+      parse: (): Promise<{ tag: string }> =>
         new Promise((resolve) => {
           release = resolve
         }),
