@@ -86,20 +86,6 @@
   color: var(--color-text-muted);
 }
 
-/* A labelled segmented control: a caption beside the metric/imperial option group. */
-.unit-toggle {
-  display: inline-flex;
-  align-items: center;
-  align-self: center;
-  gap: 0.4rem;
-  margin: 0;
-}
-
-.unit-toggle__label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
 .editor-shell__project {
   display: flex;
   align-items: center;

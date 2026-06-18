@@ -20,16 +20,13 @@ function isUnitSystem(value: string): value is UnitSystem {
 
 export function UnitToggle({ units, onChange }: UnitToggleProps): ReactElement {
   return (
-    <div className="unit-toggle">
-      <span className="unit-toggle__label">Units</span>
-      <Segmented
-        label="Units"
-        options={UNIT_OPTIONS.map((option) => ({ ...option }))}
-        value={units}
-        onSelect={(value) => {
-          if (isUnitSystem(value)) onChange(value)
-        }}
-      />
-    </div>
+    <Segmented
+      label="Units"
+      options={[...UNIT_OPTIONS]}
+      value={units}
+      onSelect={(value) => {
+        if (isUnitSystem(value)) onChange(value)
+      }}
+    />
   )
 }

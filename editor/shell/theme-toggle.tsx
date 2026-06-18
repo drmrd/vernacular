@@ -1,14 +1,12 @@
 import { Segmented, useTheme, type ThemeChoice } from '../design-system'
-import './theme-toggle.css'
 
-const CHOICES: { value: ThemeChoice; label: string }[] = [
+const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
   { value: 'system', label: 'System' },
 ]
 
-const THEME_OPTIONS = CHOICES.map((choice) => ({ value: choice.value, label: choice.label }))
-const THEME_CHOICES = CHOICES.map((choice) => choice.value)
+const THEME_CHOICES = THEME_OPTIONS.map((option) => option.value)
 
 function isThemeChoice(value: string): value is ThemeChoice {
   return (THEME_CHOICES as readonly string[]).includes(value)
@@ -20,16 +18,13 @@ function isThemeChoice(value: string): value is ThemeChoice {
 export function ThemeToggle() {
   const { choice, setChoice } = useTheme()
   return (
-    <div className="theme-toggle">
-      <span className="theme-toggle__label">Theme</span>
-      <Segmented
-        label="Theme"
-        options={THEME_OPTIONS}
-        value={choice}
-        onSelect={(value) => {
-          if (isThemeChoice(value)) setChoice(value)
-        }}
-      />
-    </div>
+    <Segmented
+      label="Theme"
+      options={THEME_OPTIONS}
+      value={choice}
+      onSelect={(value) => {
+        if (isThemeChoice(value)) setChoice(value)
+      }}
+    />
   )
 }
