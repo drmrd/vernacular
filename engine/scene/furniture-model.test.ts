@@ -101,4 +101,15 @@ describe('disposeObject', () => {
     expect(geomSpy).toHaveBeenCalled()
     expect(matSpy).toHaveBeenCalled()
   })
+
+  it('disposes textures attached to a material', () => {
+    const texture = new THREE.Texture()
+    const material = new THREE.MeshStandardMaterial()
+    material.map = texture
+    const texSpy = vi.spyOn(texture, 'dispose')
+    const root = new THREE.Group()
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material))
+    disposeObject(root)
+    expect(texSpy).toHaveBeenCalled()
+  })
 })
