@@ -30,10 +30,15 @@ export function createFurnitureModelCache<TModel>(
   }
 
   async function load(ref: AssetReference): Promise<void> {
-    const bytes = await deps.resolve(ref)
-    if (bytes === undefined) return
-    const template = await deps.parse(bytes)
-    entries.set(ref.contentHash, { status: 'ready', template })
+    try {
+      const bytes = await deps.resolve(ref)
+      if (bytes === undefined) throw new Error(`No bytes resolved for ${ref.contentHash}`)
+      const template = await deps.parse(bytes)
+      entries.set(ref.contentHash, { status: 'ready', template })
+    } catch (error) {
+      entries.set(ref.contentHash, { status: 'failed' })
+      console.warn(`Failed to load furniture model ${ref.contentHash}`, error)
+    }
     notify()
   }
 
