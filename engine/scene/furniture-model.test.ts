@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as THREE from 'three'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { furnitureFootprintCorners } from '../../core'
 import {
   buildFurnitureModelGroup,
+  disposeObject,
   normalizeModelIntoBox,
   parseFurnitureModel,
 } from './furniture-model'
@@ -85,5 +86,19 @@ describe('buildFurnitureModelGroup', () => {
     expect(group.userData.entityId).toBe('x') // raw id, the 'furniture:' prefix stripped
     expect(group.getObjectByProperty('isMesh', true)).toBeInstanceOf(THREE.Mesh)
     expect(group.getObjectByProperty('isLineSegments', true)).toBeUndefined() // no box edge overlay on the real mesh
+  })
+})
+
+describe('disposeObject', () => {
+  it('disposes geometries and materials across the tree', () => {
+    const geometry = new THREE.BoxGeometry(1, 1, 1)
+    const material = new THREE.MeshStandardMaterial()
+    const geomSpy = vi.spyOn(geometry, 'dispose')
+    const matSpy = vi.spyOn(material, 'dispose')
+    const root = new THREE.Group()
+    root.add(new THREE.Mesh(geometry, material))
+    disposeObject(root)
+    expect(geomSpy).toHaveBeenCalled()
+    expect(matSpy).toHaveBeenCalled()
   })
 })
