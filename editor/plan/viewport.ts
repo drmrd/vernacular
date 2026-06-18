@@ -26,11 +26,13 @@ export interface Viewport {
 const ORIGIN: ScreenPoint = { x: 0, y: 0 }
 const offsetOf = (viewport: Viewport): ScreenPoint => viewport.offset ?? ORIGIN
 
+/** Project a world point to screen pixels. World y increases upward (the file's y-up convention) while screen y increases downward, so the vertical axis is negated. */
 export function worldToScreen(point: Point, viewport: Viewport): ScreenPoint {
   const offset = offsetOf(viewport)
   return { x: point.x * viewport.scale + offset.x, y: -point.y * viewport.scale + offset.y }
 }
 
+/** Inverse of `worldToScreen`. Recovers world coordinates from a screen pixel, undoing the vertical y-up negation. */
 export function screenToWorld(screen: ScreenPoint, viewport: Viewport): Point {
   const offset = offsetOf(viewport)
   return { x: (screen.x - offset.x) / viewport.scale, y: (offset.y - screen.y) / viewport.scale }
@@ -69,13 +71,18 @@ export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: nu
   }
 }
 
-/** The one-dimensional affine map `screen = world * scale + translate` for a single axis. */
+/** The one-dimensional affine map `screen = world * scale + translate` for a single axis, as consumed by `axisSamples`. For the horizontal axis this matches `worldToScreen`; the vertical axis does not yet apply the y-up sign flip that `worldToScreen` uses (see `axisProjection`). */
 export interface AxisProjection {
   scale: number
   translate: number
 }
 
-/** Reduce a viewport to the affine projection of one axis: horizontal uses the x offset, vertical the y. */
+/**
+ * Reduce a viewport to the affine projection of one axis: horizontal uses the x offset, vertical the y.
+ *
+ * Note: the vertical case still returns the positive viewport scale, so it does not yet mirror the y-up
+ * negation in `worldToScreen`. Aligning the vertical sign is deferred to a follow-up that also migrates its test.
+ */
 export function axisProjection(
   viewport: Viewport,
   orientation: 'horizontal' | 'vertical',
