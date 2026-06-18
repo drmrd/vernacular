@@ -83,11 +83,7 @@ describe('buildFurnitureModelGroup', () => {
     const group = buildFurnitureModelGroup(model, node)
     expect(group.name).toBe(node.id)
     expect(group.userData.entityId).toBe('x') // raw id, the 'furniture:' prefix stripped
-    expect(group.getObjectByProperty('isMesh', true)).toBeTruthy()
-    let lineSegments = 0
-    group.traverse((o) => {
-      if ((o as THREE.LineSegments).isLineSegments) lineSegments += 1
-    })
-    expect(lineSegments).toBe(0) // no box edge overlay on the real mesh
+    expect(group.getObjectByProperty('isMesh', true)).toBeInstanceOf(THREE.Mesh)
+    expect(group.getObjectByProperty('isLineSegments', true)).toBeUndefined() // no box edge overlay on the real mesh
   })
 })
