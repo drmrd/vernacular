@@ -16,21 +16,19 @@ function edgeLength(a: Point, b: Point): number {
 }
 
 function toMaterialArray(material: THREE.Material | THREE.Material[]): THREE.Material[] {
-  if (Array.isArray(material)) return material
-  return material ? [material] : []
+  return Array.isArray(material) ? material : [material]
 }
 
 /** Frees the geometries, materials, and textures of an object tree. */
 export function disposeObject(object: THREE.Object3D): void {
   object.traverse((child) => {
-    const mesh = child as THREE.Mesh
-    mesh.geometry?.dispose?.()
-    const materials = toMaterialArray(mesh.material)
-    for (const entry of materials) {
-      for (const value of Object.values(entry)) {
+    if (!(child instanceof THREE.Mesh)) return
+    child.geometry.dispose()
+    for (const material of toMaterialArray(child.material)) {
+      for (const value of Object.values(material)) {
         if (value instanceof THREE.Texture) value.dispose()
       }
-      entry.dispose()
+      material.dispose()
     }
   })
 }
