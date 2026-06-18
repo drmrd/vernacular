@@ -8,7 +8,7 @@ export interface ModelEntry<TModel> {
 }
 
 export interface ModelCacheDeps<TModel> {
-  resolve: (ref: AssetReference) => Promise<Uint8Array | undefined>
+  resolve: (ref: AssetReference, signal: AbortSignal) => Promise<Uint8Array | undefined>
   parse: (bytes: Uint8Array) => Promise<TModel>
   dispose: (model: TModel) => void
   maxConcurrent?: number
@@ -20,6 +20,7 @@ export interface FurnitureModelCache<TModel> {
   get(contentHash: string): ModelEntry<TModel> | undefined
   onChange(listener: () => void): () => void
   markLiveHashes(hashes: Iterable<string>): void
+  dispose(): void
 }
 
 const DEFAULT_MAX_CONCURRENT = 4
@@ -34,6 +35,8 @@ interface CacheState<TModel> {
   maxConcurrent: number
   liveHashes: Set<string>
   maxTemplates: number
+  disposed: boolean
+  abortController: AbortController
 }
 
 function notify<TModel>(state: CacheState<TModel>): void {
@@ -52,19 +55,25 @@ function settleFailed<TModel>(
 
 async function runLoad<TModel>(state: CacheState<TModel>, ref: AssetReference): Promise<void> {
   try {
-    const bytes = await state.deps.resolve(ref)
+    const bytes = await state.deps.resolve(ref, state.abortController.signal)
+    if (state.disposed) return
     if (bytes === undefined) {
       settleFailed(state, ref, new Error(`No bytes resolved for ${ref.contentHash}`))
       return
     }
     const template = await state.deps.parse(bytes)
+    if (state.disposed) {
+      state.deps.dispose(template)
+      return
+    }
     state.entries.set(ref.contentHash, { status: 'ready', template })
     notify(state)
   } catch (error) {
+    if (state.disposed) return
     settleFailed(state, ref, error)
   } finally {
     state.inFlight -= 1
-    pump(state)
+    if (!state.disposed) pump(state)
   }
 }
 
@@ -106,6 +115,16 @@ function evict<TModel>(state: CacheState<TModel>): void {
   }
 }
 
+function disposeCache<TModel>(state: CacheState<TModel>): void {
+  state.disposed = true
+  state.abortController.abort()
+  state.listeners.clear()
+  for (const entry of state.entries.values()) {
+    if (entry.status === 'ready' && entry.template !== undefined) state.deps.dispose(entry.template)
+  }
+  state.entries.clear()
+}
+
 export function createFurnitureModelCache<TModel>(
   deps: ModelCacheDeps<TModel>,
 ): FurnitureModelCache<TModel> {
@@ -118,9 +137,12 @@ export function createFurnitureModelCache<TModel>(
     maxConcurrent: deps.maxConcurrent ?? DEFAULT_MAX_CONCURRENT,
     liveHashes: new Set(),
     maxTemplates: deps.maxTemplates ?? DEFAULT_MAX_TEMPLATES,
+    disposed: false,
+    abortController: new AbortController(),
   }
   return {
     request(ref) {
+      if (state.disposed) return
       if (state.entries.has(ref.contentHash)) return
       state.entries.set(ref.contentHash, { status: 'loading' })
       state.queue.push(ref)
@@ -138,6 +160,9 @@ export function createFurnitureModelCache<TModel>(
     markLiveHashes(hashes) {
       state.liveHashes = new Set(hashes)
       evict(state)
+    },
+    dispose() {
+      disposeCache(state)
     },
   }
 }
