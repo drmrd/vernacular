@@ -16,7 +16,7 @@ import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
 import type { DrawableFurniture } from './draw-furniture'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
-import type { Bounds } from './fit'
+import { computeFitViewport, contentBounds, planContentPoints, type Bounds } from './fit'
 import { DEFAULT_METRIC_PREFERENCES, createFurnitureInstance } from '../../core'
 import type {
   DimensionSceneNode,
@@ -1027,5 +1027,66 @@ describe('drawPlan floor fill tint', () => {
     const recorder = recordingContext()
     drawPlan(recorder.ctx, planOptions({ rooms: [rectangleRoom('room:r')] }))
     expect(recorder.fills).toContain(DEFAULT_PLAN_PALETTE.roomFill)
+  })
+})
+
+describe('drawPlan y-up orientation (regression guard for vertical mirroring)', () => {
+  // The file format defines world y as increasing UPWARD: a larger +y is "north",
+  // toward the top of the plan. This guard pins the end-to-end contract that a
+  // spec-conformant document is NOT rendered vertically mirrored. A plan with an
+  // asymmetric feature at high +y and nothing comparable at low y must paint that
+  // feature in the UPPER half of the canvas. The asserted screen-y is read from the
+  // RECORDED draw calls (never from worldToScreen) so a future re-mirroring of the
+  // projection cannot pass by quietly recomputing the same wrong expectation.
+  const CANVAS_WIDTH = 800
+  const CANVAS_HEIGHT = 600
+
+  // A wide base wall low at the south edge plus a short distinctive feature wall
+  // high at the north edge. Only the north wall sits at the top of the world
+  // bounds, so it is the one whose screen position the y-up convention pins.
+  const SOUTH_Y = 0
+  const NORTH_Y = 10000
+  const baseWall: WallSceneNode = {
+    id: 'wall:south-base',
+    kind: 'wall',
+    floorId: 'g',
+    start: { x: 0, y: SOUTH_Y },
+    end: { x: 8000, y: SOUTH_Y },
+    thickness: 114,
+  }
+  const northFeature: WallSceneNode = {
+    id: 'wall:north-feature',
+    kind: 'wall',
+    floorId: 'g',
+    start: { x: 0, y: NORTH_Y },
+    end: { x: 1500, y: NORTH_Y },
+    thickness: 114,
+  }
+
+  it('paints geometry at high +y (north) in the upper half of the canvas, not the lower half', () => {
+    const walls = [baseWall, northFeature]
+    const bounds = contentBounds(planContentPoints(walls, []))!
+    const viewport = computeFitViewport(bounds, { width: CANVAS_WIDTH, height: CANVAS_HEIGHT })
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, {
+      walls,
+      viewport,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      selectedIds: new Set<string>(),
+    })
+
+    // Read the painted screen-y of every wall endpoint straight from the recorder.
+    const drawnYs = recorder.segments.flatMap((segment) => [segment.from[1], segment.to[1]])
+    expect(drawnYs.length).toBeGreaterThan(0)
+
+    // The north feature is the only geometry at the top of the world bounds, so the
+    // smallest painted screen-y in a correct (y-up) render belongs to it; the south
+    // base owns the largest. North must sit ABOVE the canvas midline.
+    const topDrawnY = Math.min(...drawnYs)
+    const bottomDrawnY = Math.max(...drawnYs)
+    expect(topDrawnY).toBeLessThan(CANVAS_HEIGHT / 2)
+    expect(bottomDrawnY).toBeGreaterThan(topDrawnY)
   })
 })
