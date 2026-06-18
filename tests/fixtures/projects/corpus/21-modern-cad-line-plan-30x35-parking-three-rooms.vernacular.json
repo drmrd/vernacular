@@ -302,11 +302,8 @@
     "w-left-vertical|w-parking-kit-divider|w-south|w-west": {
       "name": "KIT"
     },
-    "w-hall-left|w-hall-r3-top|w-left-vertical|w-r3-hall-right|w-r3-top": {
+    "w-hall-left|w-hall-r3-top|w-left-vertical|w-r3-top": {
       "name": "HALL"
-    },
-    "w-r3-hall-right|w-r3-top|w-right-vertical|w-south": {
-      "name": "R3"
     },
     "w-east|w-north|w-r1-b-divider|w-right-vertical": {
       "name": "R1"

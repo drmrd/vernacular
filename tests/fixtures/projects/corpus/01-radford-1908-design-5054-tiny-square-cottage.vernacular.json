@@ -183,10 +183,10 @@
   ],
   "stairs": [],
   "roomOverrides": {
-    "w-front-rear-divider|w-east|w-south|w-west": {
+    "w-closet-south|w-closet-west|w-east|w-front-rear-divider|w-south|w-west": {
       "name": "Living Room"
     },
-    "w-front-rear-divider|w-kitchen-bedroom-divider|w-north|w-west": {
+    "w-front-rear-divider|w-kitchen-bedroom-divider|w-north|w-pantry-east|w-pantry-south|w-west": {
       "name": "Kitchen"
     },
     "w-east|w-front-rear-divider|w-kitchen-bedroom-divider|w-north": {

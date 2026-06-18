@@ -51,10 +51,6 @@ function rectangleEdgesWithIds(): Wall[] {
   })
 }
 
-function onlyRoom(walls: Wall[]): { id: string; wallIds: string[] } {
-  return soleDerivedRoom(walls)
-}
-
 function soleDerivedRoom(walls: Wall[]): Room {
   const [room, ...rest] = deriveRooms(walls)
   if (room === undefined || rest.length > 0) {
@@ -236,14 +232,10 @@ const CUSTOM_POLYGON: Point[] = [
 
 const RECTANGLE_NAME = 'Parlor'
 const STALE_OVERRIDE_KEY = 'wall-absent-a|wall-absent-b'
+const FOUR_WALL_OVERRIDE_KEY = 'w-east|w-north|w-south|w-west'
 
 function deriveRectangleRoom(): Room {
-  const rooms = deriveRooms(rectangleEdgesWithIds())
-  const room = rooms[0]
-  if (room === undefined || rooms.length !== 1) {
-    throw new Error('expected exactly one derived room')
-  }
-  return room
+  return soleDerivedRoom(rectangleEdgesWithIds())
 }
 
 function appliedRectangleRoom(overrides: Record<string, RoomOverride> | undefined): Room {
@@ -327,11 +319,29 @@ describe('applyRoomOverrides', () => {
     expect(merged).toHaveLength(1)
     expect(merged[0]?.name).toBeUndefined()
   })
+
+  it('binds a pipe-joined override key onto the room derived from those four walls', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'w-south' }),
+      createWall({ x: 4000, y: 0 }, { x: 4000, y: 3000 }, { id: 'w-east' }),
+      createWall({ x: 4000, y: 3000 }, { x: 0, y: 3000 }, { id: 'w-north' }),
+      createWall({ x: 0, y: 3000 }, { x: 0, y: 0 }, { id: 'w-west' }),
+    ]
+    const rooms = deriveRooms(walls)
+    expect(rooms.map(roomKey)).toEqual([FOUR_WALL_OVERRIDE_KEY])
+
+    const overrides = { [FOUR_WALL_OVERRIDE_KEY]: { name: 'Living Room' } }
+    expect(applyRoomOverrides(rooms, overrides)[0]?.name).toBe('Living Room')
+  })
 })
 
 describe('roomKey', () => {
+  it('joins the bounding-wall ids with the pipe separator', () => {
+    expect(roomKey({ wallIds: ['w-a', 'w-b'] })).toBe('w-a|w-b')
+  })
+
   it('equals the room id with the room: prefix stripped', () => {
-    const room = onlyRoom(rectangleEdgesWithIds())
+    const room = soleDerivedRoom(rectangleEdgesWithIds())
 
     expect(room.id).toBe(ROOM_ID_PREFIX + roomKey(room))
   })
@@ -339,8 +349,8 @@ describe('roomKey', () => {
   it('is stable across two derivations of the same walls', () => {
     const walls = rectangleEdgesWithIds()
 
-    const firstKey = roomKey(onlyRoom(walls))
-    const secondKey = roomKey(onlyRoom(walls))
+    const firstKey = roomKey(soleDerivedRoom(walls))
+    const secondKey = roomKey(soleDerivedRoom(walls))
 
     expect(firstKey).toBe(secondKey)
   })
@@ -349,6 +359,6 @@ describe('roomKey', () => {
     const walls = rectangleEdgesWithIds()
     const reordered = [...walls].reverse()
 
-    expect(roomKey(onlyRoom(reordered))).toBe(roomKey(onlyRoom(walls)))
+    expect(roomKey(soleDerivedRoom(reordered))).toBe(roomKey(soleDerivedRoom(walls)))
   })
 })
