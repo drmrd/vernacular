@@ -18,25 +18,19 @@
   box-shadow: var(--elevation-overlay);
 }
 
-.export-menu__item {
-  display: block;
+/* Each export entry keeps the full-width, left-aligned, transparent list-row look
+   of the retired idiom on top of the design-system button. */
+.export-menu__row {
   width: 100%;
+  justify-content: flex-start;
   padding: var(--space-1) var(--space-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text);
-  font-family: var(--font-family-ui);
   font-size: 0.85rem;
   text-align: left;
-  cursor: pointer;
 }
 
-.export-menu__item:hover {
+.export-menu__row:hover {
   background: var(--color-surface-active);
-}
-
-.export-menu__item:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
 }
