@@ -39,6 +39,21 @@ interface CacheState<TModel> {
   abortController: AbortController
 }
 
+function createState<TModel>(deps: ModelCacheDeps<TModel>): CacheState<TModel> {
+  return {
+    deps,
+    entries: new Map(),
+    listeners: new Set(),
+    queue: [],
+    inFlight: 0,
+    maxConcurrent: deps.maxConcurrent ?? DEFAULT_MAX_CONCURRENT,
+    liveHashes: new Set(),
+    maxTemplates: deps.maxTemplates ?? DEFAULT_MAX_TEMPLATES,
+    disposed: false,
+    abortController: new AbortController(),
+  }
+}
+
 function notify<TModel>(state: CacheState<TModel>): void {
   for (const listener of state.listeners) listener()
 }
@@ -63,6 +78,7 @@ async function runLoad<TModel>(state: CacheState<TModel>, ref: AssetReference): 
     }
     const template = await state.deps.parse(bytes)
     if (state.disposed) {
+      // dispose the orphan template so its GPU resources do not leak
       state.deps.dispose(template)
       return
     }
@@ -123,23 +139,13 @@ function disposeCache<TModel>(state: CacheState<TModel>): void {
     if (entry.status === 'ready' && entry.template !== undefined) state.deps.dispose(entry.template)
   }
   state.entries.clear()
+  state.queue.length = 0
 }
 
 export function createFurnitureModelCache<TModel>(
   deps: ModelCacheDeps<TModel>,
 ): FurnitureModelCache<TModel> {
-  const state: CacheState<TModel> = {
-    deps,
-    entries: new Map(),
-    listeners: new Set(),
-    queue: [],
-    inFlight: 0,
-    maxConcurrent: deps.maxConcurrent ?? DEFAULT_MAX_CONCURRENT,
-    liveHashes: new Set(),
-    maxTemplates: deps.maxTemplates ?? DEFAULT_MAX_TEMPLATES,
-    disposed: false,
-    abortController: new AbortController(),
-  }
+  const state = createState(deps)
   return {
     request(ref) {
       if (state.disposed) return
