@@ -39,6 +39,7 @@ export function createFurnitureModelCache<TModel>(
 
   return {
     request(ref) {
+      if (entries.has(ref.contentHash)) return
       entries.set(ref.contentHash, { status: 'loading' })
       void load(ref)
     },
