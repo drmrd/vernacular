@@ -12,15 +12,18 @@ export interface ModelCacheDeps<TModel> {
   parse: (bytes: Uint8Array) => Promise<TModel>
   dispose: (model: TModel) => void
   maxConcurrent?: number
+  maxTemplates?: number
 }
 
 export interface FurnitureModelCache<TModel> {
   request(ref: AssetReference): void
   get(contentHash: string): ModelEntry<TModel> | undefined
   onChange(listener: () => void): () => void
+  markLiveHashes(hashes: Iterable<string>): void
 }
 
 const DEFAULT_MAX_CONCURRENT = 4
+const DEFAULT_MAX_TEMPLATES = 128
 
 interface CacheState<TModel> {
   deps: ModelCacheDeps<TModel>
@@ -29,6 +32,8 @@ interface CacheState<TModel> {
   queue: AssetReference[]
   inFlight: number
   maxConcurrent: number
+  liveHashes: Set<string>
+  maxTemplates: number
 }
 
 function notify<TModel>(state: CacheState<TModel>): void {
@@ -72,6 +77,33 @@ function pump<TModel>(state: CacheState<TModel>): void {
   }
 }
 
+function countReady<TModel>(state: CacheState<TModel>): number {
+  let count = 0
+  for (const entry of state.entries.values()) {
+    if (entry.status === 'ready') count += 1
+  }
+  return count
+}
+
+function oldestEvictable<TModel>(state: CacheState<TModel>): string | undefined {
+  for (const [hash, entry] of state.entries) {
+    if (entry.status === 'ready' && !state.liveHashes.has(hash)) return hash
+  }
+  return undefined
+}
+
+function evict<TModel>(state: CacheState<TModel>): void {
+  let readyCount = countReady(state)
+  while (readyCount > state.maxTemplates) {
+    const victim = oldestEvictable(state)
+    if (victim === undefined) break
+    const entry = state.entries.get(victim)
+    if (entry?.template !== undefined) state.deps.dispose(entry.template)
+    state.entries.delete(victim)
+    readyCount -= 1
+  }
+}
+
 export function createFurnitureModelCache<TModel>(
   deps: ModelCacheDeps<TModel>,
 ): FurnitureModelCache<TModel> {
@@ -82,6 +114,8 @@ export function createFurnitureModelCache<TModel>(
     queue: [],
     inFlight: 0,
     maxConcurrent: deps.maxConcurrent ?? DEFAULT_MAX_CONCURRENT,
+    liveHashes: new Set(),
+    maxTemplates: deps.maxTemplates ?? DEFAULT_MAX_TEMPLATES,
   }
   return {
     request(ref) {
@@ -98,6 +132,10 @@ export function createFurnitureModelCache<TModel>(
       return () => {
         state.listeners.delete(listener)
       }
+    },
+    markLiveHashes(hashes) {
+      state.liveHashes = new Set(hashes)
+      evict(state)
     },
   }
 }
