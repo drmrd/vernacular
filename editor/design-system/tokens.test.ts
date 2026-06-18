@@ -46,6 +46,24 @@ describe('design tokens', () => {
   })
 })
 
+describe('extended spacing scale', () => {
+  it('registers --space-6 and --space-7 in the token registry', () => {
+    const names = tokenList.map((entry) => entry.name)
+    expect(names).toContain('--space-6')
+    expect(names).toContain('--space-7')
+  })
+
+  it('declares --space-6 and --space-7 in tokens.css', () => {
+    expect(tokensCss).toContain('--space-6:')
+    expect(tokensCss).toContain('--space-7:')
+  })
+
+  it('exposes var() accessors for the new spacing tokens', () => {
+    expect(tokens.space6.variable).toBe('var(--space-6)')
+    expect(tokens.space7.variable).toBe('var(--space-7)')
+  })
+})
+
 describe('drafting-table palette', () => {
   it('introduces the drafting-table primitive ramp', () => {
     expect(tokensCss).toContain('#f4efe4') // vellum canvas
