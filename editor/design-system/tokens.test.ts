@@ -64,6 +64,24 @@ describe('extended spacing scale', () => {
   })
 })
 
+describe('extended type scale', () => {
+  it('registers --font-size-xs and --font-size-xl in the token registry', () => {
+    const names = tokenList.map((entry) => entry.name)
+    expect(names).toContain('--font-size-xs')
+    expect(names).toContain('--font-size-xl')
+  })
+
+  it('declares --font-size-xs and --font-size-xl in tokens.css', () => {
+    expect(tokensCss).toContain('--font-size-xs:')
+    expect(tokensCss).toContain('--font-size-xl:')
+  })
+
+  it('exposes var() accessors for the new type-scale tokens', () => {
+    expect(tokens.fontSizeXs.variable).toBe('var(--font-size-xs)')
+    expect(tokens.fontSizeXl.variable).toBe('var(--font-size-xl)')
+  })
+})
+
 describe('drafting-table palette', () => {
   it('introduces the drafting-table primitive ramp', () => {
     expect(tokensCss).toContain('#f4efe4') // vellum canvas
