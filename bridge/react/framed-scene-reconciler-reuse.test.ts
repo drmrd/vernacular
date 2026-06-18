@@ -401,22 +401,19 @@ describe('createFramedSceneReconciler furniture model', () => {
     const nodeA = graph.furniture.find((node) => node.id === `${FURNITURE_NODE_PREFIX}${chairA.id}`)
     if (nodeA === undefined) throw new Error('expected chair A to derive a furniture node')
     const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
-    let ready = false
-    const models = {
+    const noModels = { get: () => undefined }
+    const aReadyModels = {
       get: (hash: string) =>
-        ready && hash === nodeA.assetRef.contentHash
-          ? { status: 'ready' as const, template }
-          : undefined,
+        hash === nodeA.assetRef.contentHash ? { status: 'ready' as const, template } : undefined,
     }
 
-    const first = reconciler.reconcile(graph, paint, models)
+    const first = reconciler.reconcile(graph, paint, noModels)
     const aFirst = findByEntityId(first.root, chairA.id)
     const bFirst = findByEntityId(first.root, chairB.id)
     expect(aFirst).not.toBeNull()
     expect(bFirst).not.toBeNull()
 
-    ready = true
-    const second = reconciler.reconcile(graph, paint, models)
+    const second = reconciler.reconcile(graph, paint, aReadyModels)
     expect(findByEntityId(second.root, chairA.id)).not.toBe(aFirst) // A rebuilt as a mesh
     expect(findByEntityId(second.root, chairB.id)).toBe(bFirst) // B reused by identity
   })
