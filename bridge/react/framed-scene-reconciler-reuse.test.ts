@@ -1,3 +1,8 @@
+/* eslint-disable max-lines --
+ * This file is an aggregate reconciler reuse/rebuild suite: one scenario per within-floor
+ * entity kind plus the furniture-model build/swap cases, all sharing a single set of fixture
+ * helpers. The behaviors belong together, so the per-file line cap is the wrong tool here.
+ */
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -13,6 +18,7 @@ import type {
   Wall,
 } from '../../core'
 import {
+  FURNITURE_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   WALL_NODE_PREFIX,
   createEmptyProject,
@@ -116,10 +122,10 @@ function doorOn(hostWallId: string, width: number, id = DOOR_OPENING_ID): Openin
   })
 }
 
-function chairAt(x: number, id: string): FurnitureInstance {
+function chairAt(x: number, id: string, contentHash = 'c'): FurnitureInstance {
   return createFurnitureInstance({
     id,
-    assetRef: { scope: 'user', contentHash: 'c' },
+    assetRef: { scope: 'user', contentHash },
     position: { x, y: CHAIR_Y_MM },
     footprint: { width: CHAIR_DIMENSION_MM, depth: CHAIR_DIMENSION_MM },
     height: CHAIR_HEIGHT_MM,
@@ -377,5 +383,41 @@ describe('createFramedSceneReconciler furniture model', () => {
     // The massing box carries an edge overlay (LineSegments); the real-model sub-group does not.
     expect(meshGroup?.getObjectByProperty('isLineSegments', true)).toBeUndefined()
     expect(boxGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
+  })
+
+  it('rebuilds only the piece whose model became ready', async () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const chairA = chairAt(EDITED_CHAIR_X_MM, 'chair-a', 'hash-a')
+    const chairB = chairAt(PRESERVED_CHAIR_X_MM, 'chair-b', 'hash-b')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chairA, chairB],
+    }
+    // Build the graph ONCE and reuse it (same node refs) across both reconciles, so the only
+    // thing that changes between calls is the model readiness.
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const nodeA = graph.furniture.find((node) => node.id === `${FURNITURE_NODE_PREFIX}${chairA.id}`)
+    if (nodeA === undefined) throw new Error('expected chair A to derive a furniture node')
+    const template = await parseFurnitureModel(new Uint8Array(readFileSync(CUBE_GLB)))
+    let ready = false
+    const models = {
+      get: (hash: string) =>
+        ready && hash === nodeA.assetRef.contentHash
+          ? { status: 'ready' as const, template }
+          : undefined,
+    }
+
+    const first = reconciler.reconcile(graph, paint, models)
+    const aFirst = findByEntityId(first.root, chairA.id)
+    const bFirst = findByEntityId(first.root, chairB.id)
+    expect(aFirst).not.toBeNull()
+    expect(bFirst).not.toBeNull()
+
+    ready = true
+    const second = reconciler.reconcile(graph, paint, models)
+    expect(findByEntityId(second.root, chairA.id)).not.toBe(aFirst) // A rebuilt as a mesh
+    expect(findByEntityId(second.root, chairB.id)).toBe(bFirst) // B reused by identity
   })
 })
