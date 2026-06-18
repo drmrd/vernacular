@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
 
 import { createFurnitureModelCache } from './furniture-model-cache'
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('createFurnitureModelCache', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('loads a model to ready and notifies', async () => {
     const template = { tag: 'sofa-model' }
     const cache = createFurnitureModelCache({
@@ -54,6 +58,5 @@ describe('createFurnitureModelCache', () => {
     expect(cache.get('bad')?.status).toBe('failed')
     expect(cache.get('good')?.status).toBe('ready')
     expect(warn).toHaveBeenCalled()
-    warn.mockRestore()
   })
 })
