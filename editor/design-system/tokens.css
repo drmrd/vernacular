@@ -123,30 +123,6 @@
   --color-canvas-ghost: rgba(200, 183, 143, 0.45);
 }
 
-@media (prefers-color-scheme: dark) {
-  [data-theme='system'] {
-    --color-text: var(--vellum-50);
-    --color-text-muted: var(--brass-300);
-    --color-surface: var(--ink-950);
-    --color-surface-raised: var(--ink-900);
-    --color-surface-panel: var(--ink-900);
-    --color-border: var(--ink-600);
-    --color-accent: var(--brass-500);
-    --color-accent-strong: var(--brass-300);
-    --color-on-accent: var(--umber-900);
-    --color-focus-ring: var(--brass-500);
-    --color-canvas-grid: var(--ink-800);
-    --color-canvas-wall: var(--vellum-100);
-    --color-canvas-room-fill: var(--ink-900);
-    --color-canvas-ruler-band: var(--ink-900);
-    --color-canvas-ruler-tick: var(--ink-600);
-    --color-canvas-ruler-text: var(--brass-300);
-    --color-canvas-label: var(--vellum-200);
-    --color-canvas-selection-fill: rgba(176, 134, 70, 0.22);
-    --color-canvas-ghost: rgba(200, 183, 143, 0.45);
-  }
-}
-
 @media (prefers-contrast: more) {
   :root {
     --color-border: var(--umber-700);
