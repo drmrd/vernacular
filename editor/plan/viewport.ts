@@ -28,12 +28,12 @@ const offsetOf = (viewport: Viewport): ScreenPoint => viewport.offset ?? ORIGIN
 
 export function worldToScreen(point: Point, viewport: Viewport): ScreenPoint {
   const offset = offsetOf(viewport)
-  return { x: point.x * viewport.scale + offset.x, y: point.y * viewport.scale + offset.y }
+  return { x: point.x * viewport.scale + offset.x, y: -point.y * viewport.scale + offset.y }
 }
 
 export function screenToWorld(screen: ScreenPoint, viewport: Viewport): Point {
   const offset = offsetOf(viewport)
-  return { x: (screen.x - offset.x) / viewport.scale, y: (screen.y - offset.y) / viewport.scale }
+  return { x: (screen.x - offset.x) / viewport.scale, y: (offset.y - screen.y) / viewport.scale }
 }
 
 export function panBy(viewport: Viewport, deltaPx: ScreenPoint): Viewport {
@@ -65,7 +65,7 @@ export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: nu
   const worldUnder = screenToWorld(cursor, viewport)
   return {
     scale,
-    offset: { x: cursor.x - worldUnder.x * scale, y: cursor.y - worldUnder.y * scale },
+    offset: { x: cursor.x - worldUnder.x * scale, y: cursor.y + worldUnder.y * scale },
   }
 }
 
