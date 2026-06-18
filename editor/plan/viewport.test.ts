@@ -15,10 +15,10 @@ import {
 } from './viewport'
 
 describe('viewport projection', () => {
-  it('scales world millimeters to screen pixels', () => {
+  it('inverts y so a positive world y maps to a negative screen y, leaving x unchanged', () => {
     const viewport = { scale: 0.1 }
 
-    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 100, y: 200 })
+    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 100, y: -200 })
   })
 
   it('round-trips screen back to world', () => {
@@ -37,7 +37,7 @@ describe('viewport pan offset', () => {
   it('translates the scaled world point by the screen-pixel offset', () => {
     const viewport = { scale: 0.1, offset: { x: 30, y: -20 } }
 
-    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 130, y: 180 })
+    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 130, y: -220 })
   })
 
   it('round-trips screen back to world under pan and zoom', () => {
