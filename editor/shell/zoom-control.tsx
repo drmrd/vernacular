@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { CornersOut, MagnifyingGlassMinus, MagnifyingGlassPlus } from '@phosphor-icons/react'
 import { sceneGraphForFloor } from '../../core'
 import { useActiveFloorId, useSceneGraph } from '../../bridge'
+import { IconButton } from '../design-system'
 import { computeFitViewport, contentBounds } from '../plan/fit'
 import { PLAN_HEIGHT, PLAN_WIDTH } from '../plan/plan-scene'
 import { useViewport } from '../plan/viewport-context'
@@ -13,7 +14,7 @@ const ZOOM_STEP = 1.25
 const CENTER = { x: PLAN_WIDTH / 2, y: PLAN_HEIGHT / 2 }
 const PLAN_SIZE = { width: PLAN_WIDTH, height: PLAN_HEIGHT }
 
-// One square icon button in the zoom group, sharing the header icon-button styling.
+// One square icon button in the zoom group, sharing the design-system icon-button styling.
 function ZoomButton({
   label,
   onClick,
@@ -24,9 +25,9 @@ function ZoomButton({
   children: ReactNode
 }) {
   return (
-    <button type="button" className="editor-shell__icon-btn" aria-label={label} onClick={onClick}>
+    <IconButton aria-label={label} onClick={onClick}>
       {children}
-    </button>
+    </IconButton>
   )
 }
 
@@ -65,14 +66,9 @@ export function ZoomControl() {
       <ZoomButton label="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)}>
         <MagnifyingGlassMinus size={16} aria-hidden="true" />
       </ZoomButton>
-      <button
-        type="button"
-        className="editor-shell__zoom-percent"
-        aria-label="Reset zoom to 100%"
-        onClick={resetZoom}
-      >
+      <IconButton labeled aria-label="Reset zoom to 100%" onClick={resetZoom}>
         {zoomPercent(viewport.scale)}%
-      </button>
+      </IconButton>
       <ZoomButton label="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
         <MagnifyingGlassPlus size={16} aria-hidden="true" />
       </ZoomButton>

@@ -50,7 +50,7 @@ import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame } from '../design-system'
+import { AppFrame, IconButton } from '../design-system'
 import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
@@ -150,43 +150,26 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       />
       <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
-        <button
-          type="button"
-          className="editor-shell__icon-btn editor-shell__icon-btn--labeled"
-          aria-pressed={showGrid}
-          onClick={toggleGrid}
-          title="Grid (G)"
-        >
+        <IconButton labeled aria-pressed={showGrid} onClick={toggleGrid} title="Grid (G)">
           <GridFour size={16} aria-hidden="true" />
           <span>Grid</span>
-        </button>
-        <button
-          type="button"
-          className="editor-shell__icon-btn editor-shell__icon-btn--labeled"
+        </IconButton>
+        <IconButton
+          labeled
           aria-pressed={showDimensions}
           onClick={toggleDimensions}
           title="Dimensions (D)"
         >
           <Ruler size={16} aria-hidden="true" />
           <span>Dimensions</span>
-        </button>
+        </IconButton>
         <ZoomControl />
-        <button
-          type="button"
-          className="editor-shell__icon-btn"
-          aria-label="Undo"
-          onClick={() => session.undo()}
-        >
+        <IconButton aria-label="Undo" onClick={() => session.undo()}>
           <ArrowCounterClockwise size={16} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="editor-shell__icon-btn"
-          aria-label="Redo"
-          onClick={() => session.redo()}
-        >
+        </IconButton>
+        <IconButton aria-label="Redo" onClick={() => session.redo()}>
           <ArrowClockwise size={16} aria-hidden="true" />
-        </button>
+        </IconButton>
         <ThemeToggle />
         <ExportMenu
           onExportBundle={projectControls.onExportBundle}
