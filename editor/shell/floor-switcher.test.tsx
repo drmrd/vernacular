@@ -48,7 +48,25 @@ describe('FloorSwitcher', () => {
     expect(screen.getByRole('button', { name: /add floor/i })).toHaveClass('ds-button')
   })
 
-  it('applies the active-tab class to the active floor button', () => {
+  it('still fires onAddFloor when the Add floor button is clicked', async () => {
+    const onAddFloor = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <FloorSwitcher
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={onAddFloor}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /add floor/i }))
+
+    expect(onAddFloor).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
     render(
       <FloorSwitcher
         floors={floors}
@@ -57,11 +75,17 @@ describe('FloorSwitcher', () => {
         onAddFloor={vi.fn()}
       />,
     )
-    expect(screen.getByRole('button', { name: /Ground/ })).toHaveClass(
-      'floor-switcher__tab--active',
-    )
-    expect(screen.getByRole('button', { name: /Upper/ })).not.toHaveClass(
-      'floor-switcher__tab--active',
-    )
+
+    const ground = screen.getByRole('button', { name: /Ground/ })
+    const upper = screen.getByRole('button', { name: /Upper/ })
+
+    for (const tab of [ground, upper]) {
+      expect(tab).toHaveClass('ds-segmented__option')
+      expect(tab).not.toHaveClass('floor-switcher__tab')
+    }
+
+    expect(ground).toHaveClass('is-active')
+    expect(ground).toHaveAttribute('aria-pressed', 'true')
+    expect(upper).not.toHaveClass('is-active')
   })
 })
