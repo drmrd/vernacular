@@ -29,17 +29,25 @@ export function createFurnitureModelCache<TModel>(
     for (const listener of listeners) listener()
   }
 
+  function settleFailed(ref: AssetReference, reason: unknown): void {
+    entries.set(ref.contentHash, { status: 'failed' })
+    console.warn(`Failed to load furniture model ${ref.contentHash}`, reason)
+    notify()
+  }
+
   async function load(ref: AssetReference): Promise<void> {
     try {
       const bytes = await deps.resolve(ref)
-      if (bytes === undefined) throw new Error(`No bytes resolved for ${ref.contentHash}`)
+      if (bytes === undefined) {
+        settleFailed(ref, new Error(`No bytes resolved for ${ref.contentHash}`))
+        return
+      }
       const template = await deps.parse(bytes)
       entries.set(ref.contentHash, { status: 'ready', template })
+      notify()
     } catch (error) {
-      entries.set(ref.contentHash, { status: 'failed' })
-      console.warn(`Failed to load furniture model ${ref.contentHash}`, error)
+      settleFailed(ref, error)
     }
-    notify()
   }
 
   return {
@@ -48,14 +56,10 @@ export function createFurnitureModelCache<TModel>(
       entries.set(ref.contentHash, { status: 'loading' })
       void load(ref)
     },
-    get(contentHash) {
-      return entries.get(contentHash)
-    },
+    get: (contentHash) => entries.get(contentHash),
     onChange(listener) {
       listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
+      return () => listeners.delete(listener)
     },
   }
 }
