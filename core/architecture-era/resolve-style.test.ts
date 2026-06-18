@@ -4,7 +4,7 @@ import { resolveStyle } from './resolve-style'
 import { createEmptyProject, createFloor } from '../model/factories'
 import type { Project } from '../model/types'
 
-const ROOM_KEY = 'wall-a-wall-b'
+const ROOM_KEY = 'wall-a|wall-b'
 
 function project(): Project {
   const base = createEmptyProject({

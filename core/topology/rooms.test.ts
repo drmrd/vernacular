@@ -330,6 +330,10 @@ describe('applyRoomOverrides', () => {
 })
 
 describe('roomKey', () => {
+  it('joins the bounding-wall ids with the pipe separator', () => {
+    expect(roomKey({ wallIds: ['w-a', 'w-b'] })).toBe('w-a|w-b')
+  })
+
   it('equals the room id with the room: prefix stripped', () => {
     const room = onlyRoom(rectangleEdgesWithIds())
 
