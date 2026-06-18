@@ -38,8 +38,8 @@ describe('rulerTicks', () => {
       DEFAULT_METRIC_PREFERENCES,
     )
 
-    // visible world y is [500, 1000]; the only multiple of 600 in range is 600
-    expect(ticks.map((tick) => tick.worldValue)).toEqual([600])
+    // visible world y is [-1000, -500]; the only multiple of 600 in range is -600
+    expect(ticks.map((tick) => tick.worldValue)).toEqual([-600])
   })
 
   it('keeps adjacent label screen positions at least the minimum gap apart across zoom levels', () => {

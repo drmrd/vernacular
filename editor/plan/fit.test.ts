@@ -34,6 +34,16 @@ describe('computeFitViewport', () => {
     expect(center.y).toBeCloseTo(300, 6)
   })
 
+  it('orients the fitted content y-up so the world top sits at the top of the canvas', () => {
+    const bounds = { min: { x: 0, y: 0 }, max: { x: 4000, y: 3000 } }
+
+    const vp = computeFitViewport(bounds, { width: 800, height: 600 }, 24)
+
+    // The world max-y corner (the top of the content) must land at a smaller
+    // screen y than the world min-y corner (the bottom of the content).
+    expect(worldToScreen({ x: 0, y: 3000 }, vp).y).toBeLessThan(worldToScreen({ x: 0, y: 0 }, vp).y)
+  })
+
   it('keeps the scale within the zoom limits for a degenerate single-point bounds', () => {
     const bounds = { min: { x: 100, y: 100 }, max: { x: 100, y: 100 } }
 

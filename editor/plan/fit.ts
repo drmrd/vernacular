@@ -31,7 +31,7 @@ export function computeFitViewport(
   // Fitting always centers the content, so we always materialize a concrete `offset`; the optional `Viewport.offset` no-pan sentinel never applies to a fit viewport.
   return {
     scale,
-    offset: { x: size.width / 2 - centerX * scale, y: size.height / 2 - centerY * scale },
+    offset: { x: size.width / 2 - centerX * scale, y: size.height / 2 + centerY * scale },
   }
 }
 

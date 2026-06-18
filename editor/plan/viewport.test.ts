@@ -15,10 +15,10 @@ import {
 } from './viewport'
 
 describe('viewport projection', () => {
-  it('scales world millimeters to screen pixels', () => {
+  it('inverts y so a positive world y maps to a negative screen y, leaving x unchanged', () => {
     const viewport = { scale: 0.1 }
 
-    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 100, y: 200 })
+    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 100, y: -200 })
   })
 
   it('round-trips screen back to world', () => {
@@ -37,7 +37,7 @@ describe('viewport pan offset', () => {
   it('translates the scaled world point by the screen-pixel offset', () => {
     const viewport = { scale: 0.1, offset: { x: 30, y: -20 } }
 
-    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 130, y: 180 })
+    expect(worldToScreen({ x: 1000, y: 2000 }, viewport)).toEqual({ x: 130, y: -220 })
   })
 
   it('round-trips screen back to world under pan and zoom', () => {
@@ -133,10 +133,24 @@ describe('axisProjection', () => {
     expect(axisProjection(viewport, 'horizontal')).toEqual({ scale: 0.1, translate: 30 })
   })
 
-  it('reads the vertical axis as the viewport scale and y-offset', () => {
+  it('negates the vertical axis scale so it follows the y-up flip, keeping the y-offset', () => {
     const viewport = { scale: 0.1, offset: { x: 30, y: -20 } }
 
-    expect(axisProjection(viewport, 'vertical')).toEqual({ scale: 0.1, translate: -20 })
+    expect(axisProjection(viewport, 'vertical')).toEqual({ scale: -0.1, translate: -20 })
+  })
+
+  it('projects vertical samples so screen pixels decrease as world y increases', () => {
+    const viewport = { scale: 0.1, offset: { x: 0, y: 0 } }
+
+    const projection = axisProjection(viewport, 'vertical')
+    const samples = axisSamples(projection, 100, 200)
+    const worldValues = samples.map((sample) => sample.worldValue)
+    const screens = samples.map((sample) => sample.screen)
+
+    expect(worldValues).toEqual([...worldValues].sort((a, b) => a - b))
+    for (let index = 1; index < screens.length; index += 1) {
+      expect(screens[index]!).toBeLessThan(screens[index - 1]!)
+    }
   })
 })
 
