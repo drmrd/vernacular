@@ -71,7 +71,7 @@ export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: nu
   }
 }
 
-/** The one-dimensional affine map `screen = world * scale + translate` for a single axis, as consumed by `axisSamples`. For the horizontal axis this matches `worldToScreen`; the vertical axis does not yet apply the y-up sign flip that `worldToScreen` uses (see `axisProjection`). */
+/** The one-dimensional affine map `screen = world * scale + translate` for a single axis, as consumed by `axisSamples`. The horizontal axis uses the positive viewport scale; the vertical axis negates it to mirror the y-up sign flip in `worldToScreen` (see `axisProjection`). */
 export interface AxisProjection {
   scale: number
   translate: number
@@ -80,17 +80,18 @@ export interface AxisProjection {
 /**
  * Reduce a viewport to the affine projection of one axis: horizontal uses the x offset, vertical the y.
  *
- * Note: the vertical case still returns the positive viewport scale, so it does not yet mirror the y-up
- * negation in `worldToScreen`. Aligning the vertical sign is deferred to a follow-up that also migrates its test.
+ * The vertical case negates the viewport scale so it mirrors the y-up negation in `worldToScreen`:
+ * world y increases upward while screen y increases downward.
  */
 export function axisProjection(
   viewport: Viewport,
   orientation: 'horizontal' | 'vertical',
 ): AxisProjection {
   const offset = offsetOf(viewport)
+  const horizontal = orientation === 'horizontal'
   return {
-    scale: viewport.scale,
-    translate: orientation === 'horizontal' ? offset.x : offset.y,
+    scale: horizontal ? viewport.scale : -viewport.scale,
+    translate: horizontal ? offset.x : offset.y,
   }
 }
 
