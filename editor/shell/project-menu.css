@@ -14,6 +14,14 @@
   font-size: 0.75rem;
 }
 
+/* The retired trigger stayed borderless on hover and only shifted its text from
+   muted to default; keep the background transparent so the icon button base
+   hover surface does not leak in. */
+.project-menu__trigger-shape:hover {
+  background: transparent;
+  color: var(--color-text);
+}
+
 .project-menu__list {
   position: absolute;
   top: calc(100% + var(--space-1));
@@ -38,8 +46,7 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 0.85rem;
-  text-align: left;
+  font-size: var(--font-size-sm);
 }
 
 .project-menu__row:hover {

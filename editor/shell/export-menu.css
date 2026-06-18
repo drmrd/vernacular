@@ -27,8 +27,7 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 0.85rem;
-  text-align: left;
+  font-size: var(--font-size-sm);
 }
 
 .export-menu__row:hover {
