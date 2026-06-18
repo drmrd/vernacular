@@ -13,6 +13,7 @@ import {
 } from '../../core'
 import {
   assembleFloorRoot,
+  buildFurnitureModelGroup,
   buildFurnitureSubgroup,
   buildOpeningSubgroup,
   buildRoomSubgroup,
@@ -27,8 +28,22 @@ import { roomSceneNodeEqual } from './room-scene-node-equal'
 
 type PaintMaterials = InstanceType<typeof PaintMaterialProvider>
 
+type FurnitureModel = Parameters<typeof buildFurnitureModelGroup>[0]
+
+export interface FurnitureModelLookup {
+  get(
+    contentHash: string,
+  ): { status: 'loading' | 'ready' | 'failed'; template?: FurnitureModel } | undefined
+}
+
+const BOX_ONLY: FurnitureModelLookup = { get: () => undefined }
+
 export interface FramedSceneReconciler {
-  reconcile(graph: SceneGraph, paint?: Record<string, SurfaceTreatment>): FramedScene
+  reconcile(
+    graph: SceneGraph,
+    paint?: Record<string, SurfaceTreatment>,
+    models?: FurnitureModelLookup,
+  ): FramedScene
 }
 
 /** A built wall sub-group together with the exterior-wall fade targets it owns. */
@@ -41,6 +56,16 @@ interface WallBuild {
 interface SubgroupBuild<Node> {
   node: Node
   group: SceneRoot
+}
+
+/**
+ * A built furniture sub-group, kept with the node it was built from and whether it was built
+ * against a ready model. A box build can be swapped for a mesh build when its model turns ready.
+ */
+interface FurnitureSubgroupBuild {
+  node: FurnitureSceneNode
+  group: SceneRoot
+  builtReady: boolean
 }
 
 /**
@@ -57,7 +82,8 @@ interface CachedFloorBuild {
   wallOpeningNodes: OpeningSceneNode[]
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>
-  furniture: Map<string, SubgroupBuild<FurnitureSceneNode>>
+  furniture: Map<string, FurnitureSubgroupBuild>
+  readySignature: string
   framed: FramedScene
 }
 
@@ -77,6 +103,21 @@ function floorEntities(graph: SceneGraph, floorNode: SceneNode): FloorEntities {
     openings: graph.openings.filter((opening) => opening.floorId === modelId),
     furniture: graph.furniture.filter((item) => item.floorId === modelId),
   }
+}
+
+/**
+ * A stable string of the floor's currently-ready furniture content hashes. When a model turns
+ * ready this signature changes, defeating the whole-floor early-return so the piece can rebuild.
+ */
+function furnitureReadySignature(
+  furniture: FurnitureSceneNode[],
+  models: FurnitureModelLookup,
+): string {
+  return furniture
+    .filter((node) => models.get(node.assetRef.contentHash)?.status === 'ready')
+    .map((node) => node.assetRef.contentHash)
+    .sort()
+    .join('|')
 }
 
 /** Assembles a floor root from its wall and entity sub-groups, recomputing bounds and pose. */
@@ -152,22 +193,65 @@ function reuseOrBuildOpening(
   return buildOpeningSubgroup(node, materials)
 }
 
-/** Reuses a cached furniture box sub-group when its derived node reference is unchanged, else rebuilds. */
-function reuseOrBuildFurniture(
+/** The inputs a furniture sub-group is reused or built from, including the model lookup. */
+interface FurnitureBuildInput {
+  node: FurnitureSceneNode
+  materials: PaintMaterials
+  prev: CachedFloorBuild | undefined
+  models: FurnitureModelLookup
+}
+
+/**
+ * Whether a lookup entry yields a ready model. The single source of "this entry builds a mesh":
+ * both the cache key (builtReady) and the mesh-vs-box build branch derive from it, and as a type
+ * guard it narrows entry.template so the build can clone it without a separate undefined check.
+ */
+function providesReadyModel(
+  entry: ReturnType<FurnitureModelLookup['get']>,
+): entry is { status: 'ready'; template: FurnitureModel } {
+  return entry?.status === 'ready' && entry.template !== undefined
+}
+
+/** Builds a furniture sub-group from the real model when one is ready, else the massing box. */
+function buildFurnitureGroup(
   node: FurnitureSceneNode,
   materials: PaintMaterials,
-  prev: CachedFloorBuild | undefined,
+  entry: ReturnType<FurnitureModelLookup['get']>,
 ): SceneRoot {
-  const cached = prev?.furniture.get(node.id)
-  if (cached !== undefined && cached.node === node) return cached.group
+  if (providesReadyModel(entry)) {
+    return buildFurnitureModelGroup(entry.template.clone(true), node)
+  }
   return buildFurnitureSubgroup(node, materials)
 }
 
-/** Flattens the per-entity sub-group maps into the ordered group list a floor root is assembled from. */
+/**
+ * Reuses a cached furniture sub-group only when its derived node reference is unchanged and the
+ * readiness it was built against still matches; otherwise builds from the real model when one is
+ * ready (a mesh sub-group) and falls back to the massing box.
+ */
+function reuseOrBuildFurniture({
+  node,
+  materials,
+  prev,
+  models,
+}: FurnitureBuildInput): FurnitureSubgroupBuild {
+  const entry = models.get(node.assetRef.contentHash)
+  const builtReady = providesReadyModel(entry)
+  const cached = prev?.furniture.get(node.id)
+  if (cached !== undefined && cached.node === node && cached.builtReady === builtReady) {
+    return cached
+  }
+  return { node, group: buildFurnitureGroup(node, materials, entry), builtReady }
+}
+
+/**
+ * Flattens the per-entity sub-group maps into the ordered group list a floor root is assembled
+ * from: rooms first, then openings, then furniture.
+ */
 function collectSubgroupGroups(
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>,
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>,
-  furniture: Map<string, SubgroupBuild<FurnitureSceneNode>>,
+  furniture: Map<string, FurnitureSubgroupBuild>,
 ): SceneRoot[] {
   return [
     ...[...rooms.values()].map((build) => build.group),
@@ -182,13 +266,22 @@ interface FloorBuildInput {
   entities: FloorEntities
   paint: Record<string, SurfaceTreatment>
   prev: CachedFloorBuild | undefined
+  models: FurnitureModelLookup
+  readySignature: string
 }
 
 /**
  * Builds a floor's sub-groups and frames it into a cached build. Rooms whose derived node is
  * unchanged in value reuse their prior sub-group; changed rooms, walls, and openings rebuild.
  */
-function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput): CachedFloorBuild {
+function buildFloorBuild({
+  floorNode,
+  entities,
+  paint,
+  prev,
+  models,
+  readySignature,
+}: FloorBuildInput): CachedFloorBuild {
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
@@ -199,12 +292,26 @@ function buildFloorBuild({ floorNode, entities, paint, prev }: FloorBuildInput):
   const openings = subgroupMap(entities.openings, (node) =>
     reuseOrBuildOpening(node, materials, prev),
   )
-  const furniture = subgroupMap(entities.furniture, (node) =>
-    reuseOrBuildFurniture(node, materials, prev),
+  const furniture = new Map(
+    entities.furniture.map((node): [string, FurnitureSubgroupBuild] => [
+      node.id,
+      reuseOrBuildFurniture({ node, materials, prev, models }),
+    ]),
   )
   const framed = frameFloor(floorNode, wall, collectSubgroupGroups(rooms, openings, furniture))
   const wallNodes = entities.walls
-  return { floorNode, paint, wall, wallNodes, wallOpeningNodes, rooms, openings, furniture, framed }
+  return {
+    floorNode,
+    paint,
+    wall,
+    wallNodes,
+    wallOpeningNodes,
+    rooms,
+    openings,
+    furniture,
+    readySignature,
+    framed,
+  }
 }
 
 /**
@@ -220,22 +327,28 @@ export function createFramedSceneReconciler(): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
 
   return {
-    reconcile(graph, paint = {}) {
+    reconcile(graph, paint = {}, models = BOX_ONLY) {
       const floorNode = graph.nodes[0]
       // No active floor (a transient empty graph): build a throwaway scene without
       // caching, since there is no floor id to key it by.
       if (floorNode === undefined) {
         return buildFramedScene(graph, paint)
       }
+      const entities = floorEntities(graph, floorNode)
+      const readySignature = furnitureReadySignature(entities.furniture, models)
       const cached = buildsByFloorId.get(floorNode.id)
-      if (cached !== undefined && cached.floorNode === floorNode && cached.paint === paint) {
+      if (
+        cached !== undefined &&
+        cached.floorNode === floorNode &&
+        cached.paint === paint &&
+        cached.readySignature === readySignature
+      ) {
         return cached.framed
       }
       // A paint edit changes the paint reference, so prev is undefined and the floor rebuilds
       // whole; otherwise the prior build's unchanged room sub-groups are reused.
       const prev = cached !== undefined && cached.paint === paint ? cached : undefined
-      const entities = floorEntities(graph, floorNode)
-      const build = buildFloorBuild({ floorNode, entities, paint, prev })
+      const build = buildFloorBuild({ floorNode, entities, paint, prev, models, readySignature })
       buildsByFloorId.set(floorNode.id, build)
       return build.framed
     },

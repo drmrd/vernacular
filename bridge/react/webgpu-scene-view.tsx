@@ -21,6 +21,7 @@ import { useActiveFloorId } from './active-floor-context'
 import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { FurnitureModelSignals } from './furniture-model-signals'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -28,6 +29,7 @@ import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
 import { useSelection, useSelectionIds } from './selection-context'
+import { useFurnitureModelCache } from './use-furniture-model-cache'
 import { useProjectPaint } from './use-project-paint'
 import { useSceneGraph } from './use-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
@@ -313,9 +315,10 @@ export function WebGPUSceneView() {
   // One reconciler for the life of the view; it reuses an unchanged floor's built
   // scene instead of rebuilding on every edit (foundation spec 5.5).
   const reconcilerRef = useRef(createFramedSceneReconciler())
+  const models = useFurnitureModelCache(graph)
   const { root, pose, bounds, nearWallTargets } = useMemo(
-    () => reconcilerRef.current.reconcile(graph, paint),
-    [graph, paint],
+    () => reconcilerRef.current.reconcile(graph, paint, models.lookup),
+    [graph, paint, models],
   )
   const {
     mode,
@@ -357,6 +360,7 @@ export function WebGPUSceneView() {
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
+      <FurnitureModelSignals root={root} version={models.version} />
     </div>
   )
 }

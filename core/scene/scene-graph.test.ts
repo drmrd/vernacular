@@ -388,6 +388,7 @@ describe('deriveSceneGraph furniture', () => {
     expect(graph.furniture[0]).toEqual({
       id: FURNITURE_NODE_PREFIX + instance.id,
       kind: 'furniture',
+      assetRef: instance.assetRef,
       floorId: 'g',
       footprintCorners: furnitureFootprintCorners(
         instance.position,
