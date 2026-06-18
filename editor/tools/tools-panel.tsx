@@ -14,6 +14,7 @@ import {
 import { builtinElementTypes, type OpeningFamily } from '../../core'
 import { useActiveTool, type ToolId } from './active-tool-context'
 import { useOpeningTool } from '../plan/opening-tool-context'
+import '../design-system/segmented.css'
 import './tools-panel.css'
 
 const WINDOW_FAMILIES: ReadonlySet<OpeningFamily> = new Set(['window-fixed', 'window-crank'])
@@ -52,7 +53,7 @@ function Chip({ toolId, label, disabled, icon }: ChipProps) {
   return (
     <button
       type="button"
-      className={`tools-panel__chip${isActive ? ' tools-panel__chip--active' : ''}`}
+      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       aria-pressed={toolId !== undefined ? isActive : undefined}
       disabled={disabled}
       onClick={toolId !== undefined ? () => setTool(toolId) : undefined}
@@ -85,7 +86,7 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   return (
     <button
       type="button"
-      className={`tools-panel__chip${isActive ? ' tools-panel__chip--active' : ''}`}
+      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       aria-pressed={isActive}
       onClick={handleClick}
     >
