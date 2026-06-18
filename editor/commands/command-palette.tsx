@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Button } from '../design-system'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { useViewMode } from '../viewport/view-mode'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
@@ -62,9 +63,9 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
         onChange={(event) => setQuery(event.target.value)}
       />
       {filtered.map((command) => (
-        <button key={command.id} type="button" onClick={() => runCommand(command)}>
+        <Button key={command.id} type="button" onClick={() => runCommand(command)}>
           {command.label}
-        </button>
+        </Button>
       ))}
     </div>
   )
