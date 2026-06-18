@@ -1,5 +1,7 @@
 export { Button } from './button'
 export type { ButtonProps, ButtonVariant } from './button'
+export { IconButton } from './icon-button'
+export type { IconButtonProps } from './icon-button'
 export { SectionLabel } from './section-label'
 export type { SectionLabelProps } from './section-label'
 export { Stack } from './stack'

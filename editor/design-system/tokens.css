@@ -76,6 +76,9 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
+  /* Control sizing. The icon-button square target stays a placeholder until #234 raises it to 40/44. */
+  --size-control-icon: 1.75rem;
+
   /* Radius scale. */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
