@@ -15,6 +15,26 @@ function edgeLength(a: Point, b: Point): number {
   return Math.hypot(b.x - a.x, b.y - a.y)
 }
 
+function toMaterialArray(material: THREE.Material | THREE.Material[]): THREE.Material[] {
+  if (Array.isArray(material)) return material
+  return material ? [material] : []
+}
+
+/** Frees the geometries, materials, and textures of an object tree. */
+export function disposeObject(object: THREE.Object3D): void {
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh
+    mesh.geometry?.dispose?.()
+    const materials = toMaterialArray(mesh.material)
+    for (const entry of materials) {
+      for (const value of Object.values(entry)) {
+        if (value instanceof THREE.Texture) value.dispose()
+      }
+      entry.dispose()
+    }
+  })
+}
+
 /**
  * Fits a parsed model into a furniture node's footprint and height. Scales uniformly to fit
  * inside the box, centers on the footprint center in plan, anchors the model's bottom to the
