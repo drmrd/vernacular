@@ -1,4 +1,4 @@
-import { useTheme, type ThemeChoice } from '../design-system'
+import { Segmented, useTheme, type ThemeChoice } from '../design-system'
 import './theme-toggle.css'
 
 const CHOICES: { value: ThemeChoice; label: string }[] = [
@@ -7,26 +7,29 @@ const CHOICES: { value: ThemeChoice; label: string }[] = [
   { value: 'system', label: 'System' },
 ]
 
+const THEME_OPTIONS = CHOICES.map((choice) => ({ value: choice.value, label: choice.label }))
+const THEME_CHOICES = CHOICES.map((choice) => choice.value)
+
+function isThemeChoice(value: string): value is ThemeChoice {
+  return (THEME_CHOICES as readonly string[]).includes(value)
+}
+
 // A compact segmented control for the theme choice. The default stays "system" so
 // the editor respects an OS dark preference; this control makes the parchment light
 // theme one click away rather than hidden.
 export function ThemeToggle() {
   const { choice, setChoice } = useTheme()
   return (
-    <fieldset className="theme-toggle">
-      <legend className="theme-toggle__legend">Theme</legend>
-      {CHOICES.map((option) => (
-        <label key={option.value} className="theme-toggle__option">
-          <input
-            type="radio"
-            name="theme"
-            value={option.value}
-            checked={choice === option.value}
-            onChange={() => setChoice(option.value)}
-          />
-          {option.label}
-        </label>
-      ))}
-    </fieldset>
+    <div className="theme-toggle">
+      <span className="theme-toggle__label">Theme</span>
+      <Segmented
+        label="Theme"
+        options={THEME_OPTIONS}
+        value={choice}
+        onSelect={(value) => {
+          if (isThemeChoice(value)) setChoice(value)
+        }}
+      />
+    </div>
   )
 }
