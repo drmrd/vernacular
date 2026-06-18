@@ -50,11 +50,11 @@ async function runLoad<TModel>(state: CacheState<TModel>, ref: AssetReference): 
     const bytes = await state.deps.resolve(ref)
     if (bytes === undefined) {
       settleFailed(state, ref, new Error(`No bytes resolved for ${ref.contentHash}`))
-    } else {
-      const template = await state.deps.parse(bytes)
-      state.entries.set(ref.contentHash, { status: 'ready', template })
-      notify(state)
+      return
     }
+    const template = await state.deps.parse(bytes)
+    state.entries.set(ref.contentHash, { status: 'ready', template })
+    notify(state)
   } catch (error) {
     settleFailed(state, ref, error)
   } finally {
@@ -64,7 +64,7 @@ async function runLoad<TModel>(state: CacheState<TModel>, ref: AssetReference): 
 }
 
 function pump<TModel>(state: CacheState<TModel>): void {
-  while (state.inFlight < state.maxConcurrent && state.queue.length > 0) {
+  while (state.inFlight < state.maxConcurrent) {
     const ref = state.queue.shift()
     if (ref === undefined) break
     state.inFlight += 1
