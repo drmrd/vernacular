@@ -1,5 +1,7 @@
 export { Button } from './button'
 export type { ButtonProps, ButtonVariant } from './button'
+export { SectionLabel } from './section-label'
+export type { SectionLabelProps } from './section-label'
 export { Stack } from './stack'
 export type { StackProps, StackDirection, SpacingStep } from './stack'
 export { EmptyState, LoadingState } from './status'
