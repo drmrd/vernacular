@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createFurnitureModelCache } from './furniture-model-cache'
 
@@ -39,5 +39,21 @@ describe('createFurnitureModelCache', () => {
     cache.request(ref)
     await flushMicrotasks()
     expect(resolves).toBe(1)
+  })
+
+  it('settles a failed load to failed, warns, and does not break other loads', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const cache = createFurnitureModelCache({
+      resolve: async (ref) => (ref.contentHash === 'bad' ? undefined : new Uint8Array([1])),
+      parse: async () => ({ tag: 'model' }),
+      dispose: () => {},
+    })
+    cache.request({ scope: 'user', contentHash: 'bad' })
+    cache.request({ scope: 'user', contentHash: 'good' })
+    await flushMicrotasks()
+    expect(cache.get('bad')?.status).toBe('failed')
+    expect(cache.get('good')?.status).toBe('ready')
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 })
