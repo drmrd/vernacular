@@ -4,11 +4,11 @@ import { createFurnitureModelCache } from './furniture-model-cache'
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0))
 
-describe('createFurnitureModelCache', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
+describe('furniture model cache loading', () => {
   it('loads a model to ready and notifies', async () => {
     const template = { tag: 'sofa-model' }
     const cache = createFurnitureModelCache({
@@ -44,7 +44,9 @@ describe('createFurnitureModelCache', () => {
     await flushMicrotasks()
     expect(resolves).toBe(1)
   })
+})
 
+describe('furniture model cache failure', () => {
   it('settles a failed load to failed, warns, and does not break other loads', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const cache = createFurnitureModelCache({
@@ -59,7 +61,9 @@ describe('createFurnitureModelCache', () => {
     expect(cache.get('good')?.status).toBe('ready')
     expect(warn).toHaveBeenCalled()
   })
+})
 
+describe('furniture model cache concurrency', () => {
   it('caps concurrent parses', async () => {
     const gates: Array<() => void> = []
     let active = 0
@@ -88,7 +92,9 @@ describe('createFurnitureModelCache', () => {
     }
     expect(cache.get('d')?.status).toBe('ready')
   })
+})
 
+describe('furniture model cache eviction', () => {
   it('evicts and disposes an unreferenced template past the cap', async () => {
     const disposed: Array<{ tag: string }> = []
     const t1 = { tag: 'a' }
@@ -111,7 +117,9 @@ describe('createFurnitureModelCache', () => {
     expect(cache.get('a')).toBeUndefined()
     expect(cache.get('b')?.status).toBe('ready')
   })
+})
 
+describe('furniture model cache teardown', () => {
   it('drops a late completion after dispose and frees templates', async () => {
     let release: (model: { tag: string }) => void = () => {}
     const t = { tag: 'x' }
@@ -135,7 +143,8 @@ describe('createFurnitureModelCache', () => {
     cache.dispose()
     release(t) // late parse completion, arrives after dispose
     await flushMicrotasks()
-    expect(cache.get('h')?.status).not.toBe('ready')
+    expect(cache.get('h')).toBeUndefined()
+    expect(disposed).toContain(t)
     expect(changesAfterDispose).toBe(0)
   })
 })
