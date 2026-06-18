@@ -47,4 +47,10 @@ describe('LibraryLauncher', () => {
     expect(furnitureTrigger()).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('region', { name: /furniture library/i })).toBeNull()
   })
+
+  it('routes the furniture trigger through the Button primitive', () => {
+    renderLauncher()
+
+    expect(furnitureTrigger()).toHaveClass('ds-button')
+  })
 })

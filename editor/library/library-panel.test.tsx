@@ -42,12 +42,13 @@ function renderPanel(
   registry: AssetRegistry,
   onPick: (item: LibraryItem) => void = vi.fn(),
   onImport: () => void = vi.fn(),
-): void {
-  render(
+): HTMLElement {
+  const { container } = render(
     <AssetRegistryProvider registry={registry}>
       <LibraryPanel onPick={onPick} onImport={onImport} />
     </AssetRegistryProvider>,
   )
+  return container
 }
 
 afterEach(cleanup)
@@ -159,5 +160,77 @@ describe('LibraryPanel filtering', () => {
 
     expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
+  })
+})
+
+const EXPECTED_SEGMENTED_GROUPS = 2
+const SINGLE_ACTIVE_OPTION = 1
+
+function segmentedGroups(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('.ds-segmented')]
+}
+
+function activeOptionsIn(group: HTMLElement): HTMLElement[] {
+  return [...group.querySelectorAll<HTMLElement>('.is-active')]
+}
+
+describe('LibraryPanel design-system primitives', () => {
+  it('renders the source-filter and era-filter groups as Segmented controls', async () => {
+    const container = renderPanel(packAndUserRegistry())
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    expect(segmentedGroups(container)).toHaveLength(EXPECTED_SEGMENTED_GROUPS)
+  })
+
+  it('marks exactly one option active in each segmented filter group', async () => {
+    const container = renderPanel(packAndUserRegistry())
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    const groups = segmentedGroups(container)
+    expect(groups).toHaveLength(EXPECTED_SEGMENTED_GROUPS)
+    for (const group of groups) {
+      expect(activeOptionsIn(group)).toHaveLength(SINGLE_ACTIVE_OPTION)
+    }
+  })
+
+  it('exposes the active segmented option through aria-pressed', async () => {
+    const container = renderPanel(packAndUserRegistry())
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    const groups = segmentedGroups(container)
+    expect(groups).toHaveLength(EXPECTED_SEGMENTED_GROUPS)
+    for (const group of groups) {
+      const [active] = activeOptionsIn(group)
+      expect(active).toHaveAttribute('aria-pressed', 'true')
+    }
+  })
+
+  it('routes the Import GLB button through the Button primitive', async () => {
+    renderPanel(registryOf([libraryItem()], []))
+
+    expect(screen.getByRole('button', { name: /import glb/i })).toHaveClass('ds-button')
+  })
+
+  it('still updates the visible items when a source segmented option is selected', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'Yours' }))
+
+    expect(screen.queryByRole('button', { name: EAMES_NAME })).toBeNull()
+    expect(screen.getByRole('button', { name: OAK_NAME })).toBeInTheDocument()
+  })
+
+  it('still fires onImport when the Import GLB button is clicked', async () => {
+    const user = userEvent.setup()
+    const onImport = vi.fn()
+    renderPanel(registryOf([libraryItem()], []), vi.fn(), onImport)
+
+    await user.click(screen.getByRole('button', { name: /import glb/i }))
+
+    expect(onImport).toHaveBeenCalledTimes(1)
   })
 })
