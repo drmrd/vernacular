@@ -11,6 +11,7 @@ export interface ModelCacheDeps<TModel> {
   resolve: (ref: AssetReference) => Promise<Uint8Array | undefined>
   parse: (bytes: Uint8Array) => Promise<TModel>
   dispose: (model: TModel) => void
+  maxConcurrent?: number
 }
 
 export interface FurnitureModelCache<TModel> {
@@ -19,47 +20,84 @@ export interface FurnitureModelCache<TModel> {
   onChange(listener: () => void): () => void
 }
 
+const DEFAULT_MAX_CONCURRENT = 4
+
+interface CacheState<TModel> {
+  deps: ModelCacheDeps<TModel>
+  entries: Map<string, ModelEntry<TModel>>
+  listeners: Set<() => void>
+  queue: AssetReference[]
+  inFlight: number
+  maxConcurrent: number
+}
+
+function notify<TModel>(state: CacheState<TModel>): void {
+  for (const listener of state.listeners) listener()
+}
+
+function settleFailed<TModel>(
+  state: CacheState<TModel>,
+  ref: AssetReference,
+  reason: unknown,
+): void {
+  state.entries.set(ref.contentHash, { status: 'failed' })
+  console.warn(`Failed to load furniture model ${ref.contentHash}`, reason)
+  notify(state)
+}
+
+async function runLoad<TModel>(state: CacheState<TModel>, ref: AssetReference): Promise<void> {
+  try {
+    const bytes = await state.deps.resolve(ref)
+    if (bytes === undefined) {
+      settleFailed(state, ref, new Error(`No bytes resolved for ${ref.contentHash}`))
+    } else {
+      const template = await state.deps.parse(bytes)
+      state.entries.set(ref.contentHash, { status: 'ready', template })
+      notify(state)
+    }
+  } catch (error) {
+    settleFailed(state, ref, error)
+  } finally {
+    state.inFlight -= 1
+    pump(state)
+  }
+}
+
+function pump<TModel>(state: CacheState<TModel>): void {
+  while (state.inFlight < state.maxConcurrent && state.queue.length > 0) {
+    const ref = state.queue.shift()
+    if (ref === undefined) break
+    state.inFlight += 1
+    void runLoad(state, ref)
+  }
+}
+
 export function createFurnitureModelCache<TModel>(
   deps: ModelCacheDeps<TModel>,
 ): FurnitureModelCache<TModel> {
-  const entries = new Map<string, ModelEntry<TModel>>()
-  const listeners = new Set<() => void>()
-
-  function notify(): void {
-    for (const listener of listeners) listener()
+  const state: CacheState<TModel> = {
+    deps,
+    entries: new Map(),
+    listeners: new Set(),
+    queue: [],
+    inFlight: 0,
+    maxConcurrent: deps.maxConcurrent ?? DEFAULT_MAX_CONCURRENT,
   }
-
-  function settleFailed(ref: AssetReference, reason: unknown): void {
-    entries.set(ref.contentHash, { status: 'failed' })
-    console.warn(`Failed to load furniture model ${ref.contentHash}`, reason)
-    notify()
-  }
-
-  async function load(ref: AssetReference): Promise<void> {
-    try {
-      const bytes = await deps.resolve(ref)
-      if (bytes === undefined) {
-        settleFailed(ref, new Error(`No bytes resolved for ${ref.contentHash}`))
-        return
-      }
-      const template = await deps.parse(bytes)
-      entries.set(ref.contentHash, { status: 'ready', template })
-      notify()
-    } catch (error) {
-      settleFailed(ref, error)
-    }
-  }
-
   return {
     request(ref) {
-      if (entries.has(ref.contentHash)) return
-      entries.set(ref.contentHash, { status: 'loading' })
-      void load(ref)
+      if (state.entries.has(ref.contentHash)) return
+      state.entries.set(ref.contentHash, { status: 'loading' })
+      state.queue.push(ref)
+      pump(state)
     },
-    get: (contentHash) => entries.get(contentHash),
+    get(contentHash) {
+      return state.entries.get(contentHash)
+    },
     onChange(listener) {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
+      state.listeners.add(listener)
+      return () => {
+        state.listeners.delete(listener)
+      }
     },
   }
 }
