@@ -71,7 +71,7 @@ export function zoomAtCursor(viewport: Viewport, cursor: ScreenPoint, factor: nu
   }
 }
 
-/** The one-dimensional affine map `screen = world * scale + translate` for a single axis, as consumed by `axisSamples`. The horizontal axis uses the positive viewport scale; the vertical axis negates it to mirror the y-up sign flip in `worldToScreen` (see `axisProjection`). */
+/** The one-dimensional affine map `screen = world * scale + translate` for a single axis, as consumed by `axisSamples`. The horizontal axis uses the positive viewport scale; the vertical axis negates it to mirror the y-up sign flip in `worldToScreen`, so the scale field already incorporates any axis sign flip. */
 export interface AxisProjection {
   scale: number
   translate: number
