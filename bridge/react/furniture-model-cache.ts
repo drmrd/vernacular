@@ -85,9 +85,11 @@ function countReady<TModel>(state: CacheState<TModel>): number {
   return count
 }
 
-function oldestEvictable<TModel>(state: CacheState<TModel>): string | undefined {
+function oldestEvictable<TModel>(
+  state: CacheState<TModel>,
+): [string, ModelEntry<TModel>] | undefined {
   for (const [hash, entry] of state.entries) {
-    if (entry.status === 'ready' && !state.liveHashes.has(hash)) return hash
+    if (entry.status === 'ready' && !state.liveHashes.has(hash)) return [hash, entry]
   }
   return undefined
 }
@@ -97,9 +99,9 @@ function evict<TModel>(state: CacheState<TModel>): void {
   while (readyCount > state.maxTemplates) {
     const victim = oldestEvictable(state)
     if (victim === undefined) break
-    const entry = state.entries.get(victim)
-    if (entry?.template !== undefined) state.deps.dispose(entry.template)
-    state.entries.delete(victim)
+    const [hash, entry] = victim
+    if (entry.template !== undefined) state.deps.dispose(entry.template)
+    state.entries.delete(hash)
     readyCount -= 1
   }
 }
