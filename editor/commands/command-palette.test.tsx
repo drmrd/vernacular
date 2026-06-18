@@ -71,6 +71,22 @@ describe('CommandPaletteDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('renders each command row through the design-system Button primitive and still runs it on click', async () => {
+    const onClose = vi.fn()
+    renderDialog(onClose)
+
+    const undoRow = screen.getByRole('button', { name: 'Undo' })
+    const redoRow = screen.getByRole('button', { name: 'Redo' })
+
+    expect(undoRow).toHaveClass('ds-button')
+    expect(redoRow).toHaveClass('ds-button')
+
+    await userEvent.click(undoRow)
+
+    expect(runUndo).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('closes on Escape', async () => {
     const onClose = vi.fn()
     renderDialog(onClose)
