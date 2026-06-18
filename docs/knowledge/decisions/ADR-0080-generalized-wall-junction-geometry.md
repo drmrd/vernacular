@@ -9,6 +9,7 @@ related:
     decisions/ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier,
     decisions/ADR-0063-three-dimensional-opening-voids,
     decisions/ADR-0045-three-dimensional-render-harness-and-conventions,
+    decisions/ADR-0097-evaluate-doubly-connected-edge-list-for-plan-geometry,
   ]
 sourceFiles:
   [

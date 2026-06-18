@@ -10,6 +10,7 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0032-broad-then-narrow-hit-test-and-multi-select,
     decisions/ADR-0036-room-metadata-overrides-and-labels,
+    decisions/ADR-0097-evaluate-doubly-connected-edge-list-for-plan-geometry,
   ]
 sourceFiles:
   [

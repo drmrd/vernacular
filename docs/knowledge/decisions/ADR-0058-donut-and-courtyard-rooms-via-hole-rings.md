@@ -10,6 +10,7 @@ related:
     decisions/ADR-0036-room-metadata-overrides-and-labels,
     decisions/ADR-0043-dom-overlay-and-accessibility,
     decisions/ADR-0049-integration-acceptance-gate,
+    decisions/ADR-0097-evaluate-doubly-connected-edge-list-for-plan-geometry,
   ]
 sourceFiles:
   [
