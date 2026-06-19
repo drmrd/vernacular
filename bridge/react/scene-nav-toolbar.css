@@ -18,6 +18,32 @@
   border-radius: var(--radius-md);
 }
 
+/* The primary cluster gathers the mode toggle, reset, and select into one tight
+   group so it reads as the dominant navigation tier. Its intra-cluster gap is the
+   smallest space token so the controls stay compact in the narrow split pane. */
+.scene-nav-toolbar__primary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The preset cluster is the secondary tier: a hairline divider and a tier-spacing
+   token set it off from the primary cluster without introducing a new control. */
+.scene-nav-toolbar__secondary {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--color-border);
+}
+
+/* The environment (color-temperature) cluster claims its own row so it never forces
+   the whole toolbar to balloon when the split pane narrows. */
+.scene-nav-toolbar__environment {
+  display: inline-flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* The orbit and walk modes read as one segmented control: two abutting pills inside
    a single bordered frame, like the unit toggle in the 2D shell. */
 .scene-nav-toolbar__modes {
