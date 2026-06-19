@@ -6,6 +6,8 @@ import { ScenePane } from './scene-pane'
 // WebGPU-present branch renders a lightweight stub. This keeps the unit under
 // test "which branch ScenePane selects," not the R3F/WebGPU renderer internals.
 vi.mock('../../bridge', () => ({
+  // A component export legitimately keeps its PascalCase name in the mock.
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   SceneCanvas: () => <div data-testid="live-scene-canvas" />,
 }))
 
