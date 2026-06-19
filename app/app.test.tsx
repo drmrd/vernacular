@@ -1,9 +1,15 @@
 import { describe, it, expect, afterEach, vi, type Mock } from 'vitest'
-import { render, screen, cleanup, waitFor, act } from '@testing-library/react'
+import { render, screen, cleanup, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { App } from './app'
-import { InMemoryProjectStore, InMemoryRecentProjectStore } from '../storage'
-import { createEmptyProject, createFloor, createWall, type Project } from '../core'
+import { App, EditorWorkspace } from './app'
+import {
+  InMemoryAssetCache,
+  InMemoryProjectStore,
+  InMemoryRecentProjectStore,
+  type StorageCapabilities,
+} from '../storage'
+import { createEditorSession } from '../bridge'
+import { addFloor, createEmptyProject, createFloor, createWall, type Project } from '../core'
 
 function stubCapableStorage() {
   vi.stubGlobal('navigator', { storage: { getDirectory: () => Promise.resolve({}) } })
@@ -270,5 +276,69 @@ describe('App project actions', () => {
     await act(async () => {})
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+function capableCapabilities(): StorageCapabilities {
+  return {
+    opfs: true,
+    indexedDb: true,
+    fileSystemAccess: false,
+    persisted: true,
+    estimatedQuotaBytes: null,
+  }
+}
+
+describe('App unsaved-changes guard', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('prompts to discard a dirty project before New swaps it, and Cancel preserves the project', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    const session = createEditorSession(projectWithWalls('Drafthouse', 0))
+    const onSession = vi.fn()
+
+    render(
+      <EditorWorkspace
+        session={session}
+        store={store}
+        assets={new InMemoryAssetCache()}
+        projectId="current"
+        recentProjects={new InMemoryRecentProjectStore()}
+        capabilities={capableCapabilities()}
+        snapshots={undefined}
+        onSession={onSession}
+      />,
+    )
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+
+    // Dirty the live session by dispatching a real mutating command through the
+    // dispatch boundary (the only mutation channel), wrapped in act so the guard
+    // re-renders against the dirty state.
+    await act(async () => {
+      session.dispatch(addFloor('Second floor'))
+    })
+
+    // Trigger New through the UI: open the project menu and select New project.
+    await userEvent.click(await screen.findByRole('button', { name: /project menu/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /new project/i }))
+
+    // A discard confirmation names the dirty project and offers Cancel.
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent(/discard unsaved changes to drafthouse/i)
+
+    await userEvent.click(within(dialog).getByRole('button', { name: /cancel/i }))
+
+    // Cancel cancels the swap (no new session) and dismisses the dialog.
+    expect(onSession).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(
+      screen.getByText('Drafthouse', { selector: '.editor-shell__breadcrumb-active' }),
+    ).toBeInTheDocument()
   })
 })

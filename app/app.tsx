@@ -309,7 +309,7 @@ interface EditorWorkspaceProps {
   onSession: (session: EditorSession) => void
 }
 
-function EditorWorkspace(props: EditorWorkspaceProps) {
+export function EditorWorkspace(props: EditorWorkspaceProps) {
   const { session, store, assets, projectId, recentProjects, snapshots, onSession } = props
   const selection = useMemo(() => createSelectionStore(), [])
   const activeFloorStore = useMemo(
