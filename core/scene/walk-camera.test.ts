@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Vector3 } from './vector3'
 import {
+  accumulatePointerLook,
   advanceWalk,
   MAX_WALK_PITCH_RAD,
   pointerLookDelta,
@@ -128,6 +129,54 @@ describe('pointerLookDelta', () => {
     const { yawDelta: leftYaw } = pointerLookDelta(-rightwardMovementX, 0, sensitivity)
     expect(leftYaw).toBeLessThan(0)
     expect(leftYaw).toBeCloseTo(-rightwardMovementX * sensitivity, 5)
+  })
+})
+
+describe('accumulatePointerLook', () => {
+  const sensitivity = 0.002
+
+  it('adds the pointer-look deltas onto the input with signs matching pointer direction', () => {
+    const rightwardMovementX = 40
+    const downwardMovementY = 25
+
+    const accumulated = accumulatePointerLook(
+      noInput,
+      rightwardMovementX,
+      downwardMovementY,
+      sensitivity,
+    )
+
+    // A rightward pointer move turns the view right (positive yaw); a downward
+    // pointer move lowers the view (negative pitch). Signs stay consistent with
+    // pointerLookDelta rather than the bridge's old inverted accumulation.
+    const expected = pointerLookDelta(rightwardMovementX, downwardMovementY, sensitivity)
+    expect(accumulated.yawDelta).toBeGreaterThan(0)
+    expect(accumulated.pitchDelta).toBeLessThan(0)
+    expect(accumulated.yawDelta).toBeCloseTo(expected.yawDelta, 5)
+    expect(accumulated.pitchDelta).toBeCloseTo(expected.pitchDelta, 5)
+  })
+
+  it('adds to a pre-existing nonzero yaw and pitch delta rather than replacing it', () => {
+    const seededInput: WalkInput = { ...noInput, yawDelta: 0.1, pitchDelta: -0.05 }
+    const movementX = 30
+    const movementY = 18
+
+    const accumulated = accumulatePointerLook(seededInput, movementX, movementY, sensitivity)
+
+    const step = pointerLookDelta(movementX, movementY, sensitivity)
+    expect(accumulated.yawDelta).toBeCloseTo(seededInput.yawDelta + step.yawDelta, 5)
+    expect(accumulated.pitchDelta).toBeCloseTo(seededInput.pitchDelta + step.pitchDelta, 5)
+  })
+
+  it('scales the accumulated magnitude with sensitivity', () => {
+    const movementX = 30
+    const movementY = 18
+
+    const low = accumulatePointerLook(noInput, movementX, movementY, sensitivity)
+    const high = accumulatePointerLook(noInput, movementX, movementY, sensitivity * 3)
+
+    expect(high.yawDelta).toBeCloseTo(low.yawDelta * 3, 5)
+    expect(high.pitchDelta).toBeCloseTo(low.pitchDelta * 3, 5)
   })
 })
 
