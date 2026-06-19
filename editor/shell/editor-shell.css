@@ -38,9 +38,9 @@
 
 .editor-shell__wordmark {
   margin: 0;
-  font-family: var(--font-family-ui);
-  font-size: 1rem;
-  font-weight: 600;
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-xl);
+  font-weight: 500;
   color: var(--color-text);
 }
 
