@@ -150,9 +150,10 @@ same layout module is a follow-up, not part of this change.
 - Collision behavior is unit-tested on rectangles. Box estimation, the strict
   overlap predicate, per-room visibility, and both de-confliction passes are
   asserted directly on `{ min, max }` boxes with no DOM and no drawing context, so
-  the policy is verified without a pixel baseline. The home-plan visual-regression
-  baseline still moves to match the new label positions, but it is a consequence
-  of the change rather than the proof of it.
+  the policy is verified without a pixel baseline. The default editor view paints
+  no room or dimension labels, so the committed home visual-regression baseline is
+  unaffected; a plan that does paint labels shifts to match the new positions,
+  which is a consequence of the change rather than its proof.
 - The placement policy has one home. Because the renderer consults the layout
   module instead of embedding the rule, the room and dimension passes share the
   same de-confliction helper, and a future consumer (the DOM overlay dimension
