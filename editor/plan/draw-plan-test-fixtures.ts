@@ -17,17 +17,40 @@ interface DrawnArc {
   fillStyle: string
 }
 
+/** A 2x3 affine matrix in canvas convention: local (x,y) -> screen (a*x + c*y + e, b*x + d*y + f). */
+interface AffineMatrix {
+  a: number
+  b: number
+  c: number
+  d: number
+  e: number
+  f: number
+}
+
+interface DrawnImage {
+  dx: number
+  dy: number
+  dWidth: number
+  dHeight: number
+  alpha: number
+  transform: AffineMatrix
+}
+
 interface RecorderState {
   segments: DrawnSegment[]
   arcs: DrawnArc[]
   texts: { text: string; x: number; y: number; style: string }[]
   fillRects: { x: number; y: number; w: number; h: number; style: string }[]
-  images: { dx: number; dy: number; dWidth: number; dHeight: number; alpha: number }[]
+  images: DrawnImage[]
   fills: string[]
   ops: string[]
   clears: number
   pen: [number, number]
+  transform: AffineMatrix
+  transformStack: AffineMatrix[]
 }
+
+const IDENTITY_MATRIX: AffineMatrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }
 
 function emptyState(): RecorderState {
   return {
@@ -40,6 +63,8 @@ function emptyState(): RecorderState {
     ops: [],
     clears: 0,
     pen: [0, 0],
+    transform: { ...IDENTITY_MATRIX },
+    transformStack: [],
   }
 }
 
@@ -95,10 +120,54 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
       state.ops.push('fillRect')
       state.fillRects.push({ x, y, w, h, style: String(ctx.fillStyle) })
     },
+    save: () => {
+      state.ops.push('save')
+      state.transformStack.push({ ...state.transform })
+    },
+    restore: () => {
+      state.ops.push('restore')
+      const previous = state.transformStack.pop()
+      if (previous !== undefined) {
+        state.transform = previous
+      }
+    },
+    translate: (tx, ty) => {
+      state.ops.push('translate')
+      const { a, b, c, d } = state.transform
+      state.transform = {
+        a,
+        b,
+        c,
+        d,
+        e: state.transform.e + a * tx + c * ty,
+        f: state.transform.f + b * tx + d * ty,
+      }
+    },
+    rotate: (theta) => {
+      state.ops.push('rotate')
+      const co = Math.cos(theta)
+      const si = Math.sin(theta)
+      const { a, b, c, d, e, f } = state.transform
+      state.transform = {
+        a: a * co + c * si,
+        b: b * co + d * si,
+        c: -a * si + c * co,
+        d: -b * si + d * co,
+        e,
+        f,
+      }
+    },
     // eslint-disable-next-line max-params -- mirrors the five-argument CanvasRenderingContext2D.drawImage signature, recording the four destination parameters
     drawImage: (_image, dx, dy, dWidth, dHeight) => {
       state.ops.push('drawImage')
-      state.images.push({ dx, dy, dWidth, dHeight, alpha: ctx.globalAlpha })
+      state.images.push({
+        dx,
+        dy,
+        dWidth,
+        dHeight,
+        alpha: ctx.globalAlpha,
+        transform: { ...state.transform },
+      })
     },
   }
   return ctx

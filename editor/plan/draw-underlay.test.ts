@@ -6,9 +6,10 @@ import { underlayTracePoints } from './underlay-trace-points'
 import { worldToScreen, type Viewport } from './viewport'
 import type { UnderlaySceneNode } from '../../core'
 
-// This slice draws AXIS-ALIGNED underlays only (placement.rotation === 0). A
-// non-zero rotation (a canvas rotate/translate dance about the offset) is
-// deferred to the rotation-gizmo follow-up.
+// The renderer now honors placement.rotation: a non-zero rotation paints the
+// raster under a saved/restored canvas transform so its footprint matches the
+// rotated trace path, while an axis-aligned underlay (placement.rotation === 0)
+// remains a plain drawImage with no transform.
 const SOURCE_WIDTH_PX = 800
 const SOURCE_HEIGHT_PX = 600
 const MILLIMETERS_PER_PIXEL = 10
@@ -165,6 +166,37 @@ describe('drawUnderlay', () => {
     const bandBottom = Math.max(bandTopScreen.y, bandBottomScreen.y)
     expect(rasterTop).toBeLessThanOrEqual(bandBottom)
     expect(rasterBottom).toBeGreaterThanOrEqual(bandTop)
+  })
+
+  it('brackets a rotated underlay draw in a balanced save/restore transform scope so the rotation does not leak into later layers', () => {
+    const recorder = recordingContext()
+    const node = underlayNode({
+      placement: {
+        offset: { x: 1000, y: 500 },
+        millimetersPerPixel: MILLIMETERS_PER_PIXEL,
+        rotation: Math.PI / 6,
+      },
+    })
+
+    drawUnderlay(recorder.ctx, node, VIEWPORT, fakeImage)
+
+    const drawIndex = recorder.ops.indexOf('drawImage')
+    const saveIndex = recorder.ops.indexOf('save')
+    const restoreIndex = recorder.ops.lastIndexOf('restore')
+
+    // A save must precede the raster draw and a restore must follow it, so the
+    // rotated transform is scoped to the underlay and torn down before the grid
+    // and walls paint.
+    expect(drawIndex).toBeGreaterThanOrEqual(0)
+    expect(saveIndex).toBeGreaterThanOrEqual(0)
+    expect(saveIndex).toBeLessThan(drawIndex)
+    expect(restoreIndex).toBeGreaterThan(drawIndex)
+
+    // Every save is matched by a restore: the transform stack returns to where it
+    // started, so no transform leaks past the underlay layer.
+    const saveCount = recorder.ops.filter((op) => op === 'save').length
+    const restoreCount = recorder.ops.filter((op) => op === 'restore').length
+    expect(saveCount).toBe(restoreCount)
   })
 
   it('restores the context alpha to fully opaque after drawing the underlay', () => {
