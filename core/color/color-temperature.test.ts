@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  colorTemperatureLabel,
   formatColorTemperature,
   kelvinToLinearRgb,
   MIN_COLOR_TEMPERATURE_K,
@@ -52,5 +53,15 @@ describe('formatColorTemperature', () => {
 
   it('formats the warm end as a readable Kelvin value with its unit', () => {
     expect(formatColorTemperature(MIN_COLOR_TEMPERATURE_K)).toBe('2700 K')
+  })
+})
+
+describe('colorTemperatureLabel', () => {
+  it('describes the low end of the band as warm', () => {
+    expect(colorTemperatureLabel(MIN_COLOR_TEMPERATURE_K)).toBe('warm')
+  })
+
+  it('describes the high end of the band as cool', () => {
+    expect(colorTemperatureLabel(MAX_COLOR_TEMPERATURE_K)).toBe('cool')
   })
 })
