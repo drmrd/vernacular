@@ -19,6 +19,19 @@ export const GLASS_OPACITY = 0.3
 export const SLAB_TOP_DEPTH_BIAS = { factor: 1, units: 1 } as const
 
 /**
+ * The polygon-offset fields that push the slab top back in depth (see SLAB_TOP_DEPTH_BIAS). Both
+ * the neutral 'top' role and the painted floor branch source the bias from here so the convention
+ * lives in one place rather than diverging per material path.
+ */
+export function slabTopDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: SLAB_TOP_DEPTH_BIAS.factor,
+    polygonOffsetUnits: SLAB_TOP_DEPTH_BIAS.units,
+  }
+}
+
+/**
  * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
  * it blends without occluding the room behind it; the fill parts are thin boxes whose face
  * orientation depends on the opening normal sign, so leaf and glass render double-sided rather than
@@ -42,9 +55,7 @@ export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMat
     return {
       color: NEUTRAL_COLOR,
       name: role,
-      polygonOffset: true,
-      polygonOffsetFactor: SLAB_TOP_DEPTH_BIAS.factor,
-      polygonOffsetUnits: SLAB_TOP_DEPTH_BIAS.units,
+      ...slabTopDepthBiasParameters(),
     }
   }
   return { color: NEUTRAL_COLOR, name: role }

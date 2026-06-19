@@ -2,7 +2,7 @@ import * as THREE from 'three'
 
 import { surfaceKey, type LinearRgb, type SurfaceRef, type SurfaceTreatment } from '../../core'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
-import { roleMaterialParameters, SLAB_TOP_DEPTH_BIAS } from './role-appearance'
+import { roleMaterialParameters, slabTopDepthBiasParameters } from './role-appearance'
 
 export interface PaintMaterialOptions {
   lightColor: LinearRgb
@@ -51,13 +51,7 @@ export class PaintMaterialProvider implements MaterialProvider {
     const created = new THREE.MeshStandardMaterial({
       color: new THREE.Color(treatment.color.srgbHex),
       name: role,
-      ...(role === 'top'
-        ? {
-            polygonOffset: true,
-            polygonOffsetFactor: SLAB_TOP_DEPTH_BIAS.factor,
-            polygonOffsetUnits: SLAB_TOP_DEPTH_BIAS.units,
-          }
-        : {}),
+      ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
     })
     this.paintedByKey.set(key, created)
     return created
