@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FC, type RefObject } from 'react'
 
 import { Button } from '../design-system'
-import '../design-system/menu-surface.css'
 import { UnderlayRow, type UnderlayPanelProps } from './underlay-panel'
+import '../design-system/menu-surface.css'
 import './underlay-menu.css'
 
 // Close the flyout when Escape is pressed or a pointer goes down outside the
