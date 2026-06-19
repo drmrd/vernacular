@@ -8,16 +8,11 @@ import {
 } from '../../core'
 import type { Bounds } from './fit'
 import { midpoint } from './geometry'
-import {
-  labelBox,
-  labelsOverlap,
-  layoutDimensionLabels,
-  layoutRoomLabels,
-} from './label-layout'
+import { labelBox, labelsOverlap, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
 import { worldToScreen, type Viewport } from './viewport'
 
-function bounds(minX: number, minY: number, maxX: number, maxY: number): Bounds {
-  return { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } }
+function bounds(min: Point, max: Point): Bounds {
+  return { min: { x: min.x, y: min.y }, max: { x: max.x, y: max.y } }
 }
 
 // A fixed sans-serif size matching the canvas label paint path. Width is
@@ -75,15 +70,15 @@ describe('labelBox', () => {
 
 describe('labelsOverlap', () => {
   it('reports overlap for two boxes that share screen area', () => {
-    const a = bounds(0, 0, 10, 10)
-    const b = bounds(5, 5, 15, 15)
+    const a = bounds({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const b = bounds({ x: 5, y: 5 }, { x: 15, y: 15 })
 
     expect(labelsOverlap(a, b)).toBe(true)
   })
 
   it('reports no overlap for two clearly separated boxes', () => {
-    const a = bounds(0, 0, 10, 10)
-    const b = bounds(100, 100, 110, 110)
+    const a = bounds({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const b = bounds({ x: 100, y: 100 }, { x: 110, y: 110 })
 
     expect(labelsOverlap(a, b)).toBe(false)
   })
@@ -92,8 +87,8 @@ describe('labelsOverlap', () => {
     // Edge-touch policy: overlap requires a positive-area intersection, so two
     // rects abutting along a single boundary line (zero-area contact) are not
     // considered overlapping.
-    const a = bounds(0, 0, 10, 10)
-    const b = bounds(10, 0, 20, 10)
+    const a = bounds({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const b = bounds({ x: 10, y: 0 }, { x: 20, y: 10 })
 
     expect(labelsOverlap(a, b)).toBe(false)
   })
@@ -224,20 +219,14 @@ function horizontalDimension(
 // The raw, pre-declutter label box of a dimension: the formatted length text
 // placed (center/middle) at the screen midpoint of its offset line, exactly the
 // placement the draw path uses today. The layout pass de-conflicts these.
-function rawDimensionBox(
-  node: DimensionSceneNode,
-  viewport: Viewport,
-): Bounds {
+function rawDimensionBox(node: DimensionSceneNode, viewport: Viewport): Bounds {
   const geom = dimensionGeometry(node.start, node.end, node.offset)
   const anchor = worldToScreen(midpoint(geom.lineStart, geom.lineEnd), viewport)
   const text = formatAdaptiveLength(node.length, DEFAULT_METRIC_PREFERENCES)
   return labelBox(text, anchor, LAYOUT_LABEL_FONT)
 }
 
-function dimensionEntryFor(
-  layout: ReturnType<typeof layoutDimensionLabels>,
-  dimensionId: string,
-) {
+function dimensionEntryFor(layout: ReturnType<typeof layoutDimensionLabels>, dimensionId: string) {
   const entry = layout.find((candidate) => candidate.dimensionId === dimensionId)
   if (entry === undefined) {
     throw new Error(`no layout entry for dimension ${dimensionId}`)
@@ -257,10 +246,7 @@ describe('layoutDimensionLabels', () => {
     const second = horizontalDimension('dim-b', 0, 1000, 5)
 
     expect(
-      labelsOverlap(
-        rawDimensionBox(first, UNIT_VIEWPORT),
-        rawDimensionBox(second, UNIT_VIEWPORT),
-      ),
+      labelsOverlap(rawDimensionBox(first, UNIT_VIEWPORT), rawDimensionBox(second, UNIT_VIEWPORT)),
     ).toBe(true)
 
     const layout = layoutDimensionLabels([first, second], UNIT_VIEWPORT, layoutOptions)
