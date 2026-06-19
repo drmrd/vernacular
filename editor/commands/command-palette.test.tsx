@@ -97,6 +97,15 @@ describe('CommandPaletteDialog', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('exposes the open palette as a named modal dialog', () => {
+    renderDialog(vi.fn())
+
+    const dialog = screen.getByRole('dialog', { name: 'Command palette' })
+
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+  })
+
   it('labels the search input for assistive tech', () => {
     renderDialog(vi.fn())
 
