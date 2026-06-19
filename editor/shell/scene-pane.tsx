@@ -19,7 +19,8 @@ export function ScenePane(): ReactElement {
       />
     )
   }
-  if (!sceneGraphHasGeometry(sceneGraphForFloor(graph, activeFloorId))) {
+  const floorGraph = sceneGraphForFloor(graph, activeFloorId)
+  if (!sceneGraphHasGeometry(floorGraph)) {
     return (
       <EmptyState
         asRegion={false}
