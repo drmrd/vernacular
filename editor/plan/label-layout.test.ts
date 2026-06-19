@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import type { Point, RoomSceneNode } from '../../core'
-import { DEFAULT_METRIC_PREFERENCES, polygonCentroid } from '../../core'
+import type { DimensionSceneNode, Point, RoomSceneNode } from '../../core'
+import {
+  DEFAULT_METRIC_PREFERENCES,
+  dimensionGeometry,
+  formatAdaptiveLength,
+  polygonCentroid,
+} from '../../core'
 import type { Bounds } from './fit'
-import { labelBox, labelsOverlap, layoutRoomLabels } from './label-layout'
+import { midpoint } from './geometry'
+import {
+  labelBox,
+  labelsOverlap,
+  layoutDimensionLabels,
+  layoutRoomLabels,
+} from './label-layout'
 import { worldToScreen, type Viewport } from './viewport'
 
 function bounds(minX: number, minY: number, maxX: number, maxY: number): Bounds {
@@ -185,5 +196,96 @@ describe('layoutRoomLabels', () => {
     const secondCenter = centerOf(entryFor(layout, 'room-b').box)
     expect(secondCenter.x).toBeCloseTo(secondAnchor.x, POSITION_TOLERANCE_PX)
     expect(secondCenter.y).toBeCloseTo(secondAnchor.y, POSITION_TOLERANCE_PX)
+  })
+})
+
+// A horizontal dimension from (originX, 0) to (originX + length, 0) with the
+// given offset, mirroring how the dimension draw path consumes a
+// DimensionSceneNode (start/end/offset/length). At unit scale its offset line
+// projects to screen y = -offset, and its label sits at the offset-line
+// midpoint, matching dimensionChips / drawDimension.
+function horizontalDimension(
+  id: string,
+  originX: number,
+  length: number,
+  offset: number,
+): DimensionSceneNode {
+  return {
+    id,
+    kind: 'dimension',
+    floorId: 'floor-1',
+    start: { x: originX, y: 0 },
+    end: { x: originX + length, y: 0 },
+    offset,
+    length,
+  }
+}
+
+// The raw, pre-declutter label box of a dimension: the formatted length text
+// placed (center/middle) at the screen midpoint of its offset line, exactly the
+// placement the draw path uses today. The layout pass de-conflicts these.
+function rawDimensionBox(
+  node: DimensionSceneNode,
+  viewport: Viewport,
+): Bounds {
+  const geom = dimensionGeometry(node.start, node.end, node.offset)
+  const anchor = worldToScreen(midpoint(geom.lineStart, geom.lineEnd), viewport)
+  const text = formatAdaptiveLength(node.length, DEFAULT_METRIC_PREFERENCES)
+  return labelBox(text, anchor, LAYOUT_LABEL_FONT)
+}
+
+function dimensionEntryFor(
+  layout: ReturnType<typeof layoutDimensionLabels>,
+  dimensionId: string,
+) {
+  const entry = layout.find((candidate) => candidate.dimensionId === dimensionId)
+  if (entry === undefined) {
+    throw new Error(`no layout entry for dimension ${dimensionId}`)
+  }
+  return entry
+}
+
+describe('layoutDimensionLabels', () => {
+  const layoutOptions = { preferences: DEFAULT_METRIC_PREFERENCES }
+
+  it('displaces two parallel dimension labels whose midpoint boxes would collide', () => {
+    // Two parallel horizontal dimensions over the same x-span (identical length
+    // text) whose offset lines sit 5 px apart at unit scale. Their raw midpoint
+    // label boxes, both ~12 px tall, straddle each other, so the unresolved
+    // labels collide.
+    const first = horizontalDimension('dim-a', 0, 1000, 0)
+    const second = horizontalDimension('dim-b', 0, 1000, 5)
+
+    expect(
+      labelsOverlap(
+        rawDimensionBox(first, UNIT_VIEWPORT),
+        rawDimensionBox(second, UNIT_VIEWPORT),
+      ),
+    ).toBe(true)
+
+    const layout = layoutDimensionLabels([first, second], UNIT_VIEWPORT, layoutOptions)
+
+    expect(layout).toHaveLength(2)
+    const firstBox = dimensionEntryFor(layout, 'dim-a').box
+    const secondBox = dimensionEntryFor(layout, 'dim-b').box
+    expect(labelsOverlap(firstBox, secondBox)).toBe(false)
+  })
+
+  it('keeps a lone dimension label at its offset-line midpoint', () => {
+    // A single dimension has nothing to collide with, so the layout pass must
+    // leave its label centered on the projected offset-line midpoint. The
+    // assertion pins the box center to that midpoint, staying agnostic about the
+    // box's exact extent, which the layout module owns.
+    const lone = horizontalDimension('dim-a', 0, 1000, 0)
+
+    const geom = dimensionGeometry(lone.start, lone.end, lone.offset)
+    const anchor = worldToScreen(midpoint(geom.lineStart, geom.lineEnd), UNIT_VIEWPORT)
+
+    const layout = layoutDimensionLabels([lone], UNIT_VIEWPORT, layoutOptions)
+
+    expect(layout).toHaveLength(1)
+    const center = centerOf(dimensionEntryFor(layout, 'dim-a').box)
+    expect(center.x).toBeCloseTo(anchor.x, POSITION_TOLERANCE_PX)
+    expect(center.y).toBeCloseTo(anchor.y, POSITION_TOLERANCE_PX)
   })
 })
