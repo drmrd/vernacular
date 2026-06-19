@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '../design-system'
 import { useFocusTrap } from '../design-system/use-focus-trap'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
@@ -27,11 +27,11 @@ function filterCommands(
     .filter((command) => command.label.toLowerCase().includes(needle))
 }
 
-function useCloseWithFocusRestore(onClose: () => void): () => void {
+function useFocusRestoringClose(onClose: () => void): () => void {
   const openerRef = useRef<HTMLElement | null>(null)
-  if (openerRef.current === null) {
+  useLayoutEffect(() => {
     openerRef.current = document.activeElement as HTMLElement | null
-  }
+  }, [])
   return () => {
     onClose()
     openerRef.current?.focus()
@@ -58,7 +58,7 @@ function CommandList({ commands, onRun }: CommandListProps) {
 export function CommandPaletteDialog({ commands, context, onClose }: CommandPaletteDialogProps) {
   const [query, setQuery] = useState('')
   const dialogRef = useFocusTrap<HTMLDivElement>()
-  const close = useCloseWithFocusRestore(onClose)
+  const close = useFocusRestoringClose(onClose)
 
   const filtered = filterCommands(commands, context, query)
 

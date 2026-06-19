@@ -48,7 +48,19 @@ export function useFocusTrap<T extends HTMLElement = HTMLElement>(): RefObject<T
     container.addEventListener('keydown', onKeyDown)
     return () => {
       container.removeEventListener('keydown', onKeyDown)
-      opener?.focus()
+      // Skip the restore when the caller has already moved focus to a live element
+      // outside the trap (e.g. its own close handler restored the opener); otherwise
+      // we would redundantly re-focus, or clobber a deliberate handoff. Unmounting a
+      // child blurs it to <body>, so that case still falls through to restore.
+      const active = document.activeElement as HTMLElement | null
+      const focusMovedOutByCaller =
+        active !== null &&
+        active !== document.body &&
+        active.isConnected &&
+        !container.contains(active)
+      if (!focusMovedOutByCaller) {
+        opener?.focus()
+      }
     }
   }, [])
   return ref
