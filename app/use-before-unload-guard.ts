@@ -14,6 +14,9 @@ export function useBeforeUnloadGuard(isDirty: boolean): void {
 
     const warnBeforeUnload = (event: BeforeUnloadEvent): void => {
       event.preventDefault()
+      // Legacy cross-browser beforeunload idiom: a truthy returnValue is still
+      // required alongside preventDefault to trigger the native leave prompt in
+      // some browsers, so the TypeScript "deprecated" hint here is intentional.
       event.returnValue = true
     }
 
