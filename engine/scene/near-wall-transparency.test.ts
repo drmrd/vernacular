@@ -5,15 +5,11 @@ import {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
   updateNearWallTransparency,
+  type NearWallTarget,
 } from './near-wall-transparency'
 import { findByEntityId } from '../testing'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import {
-  buildWallGraph,
-  exteriorWalls,
-  junctionFadeGroups,
-  type SceneGraph,
-} from '../../core'
+import { buildWallGraph, exteriorWalls, junctionFadeGroups, type SceneGraph } from '../../core'
 
 const ROOM_SIDE_MM = 4000
 const WALL_THICKNESS_MM = 200
@@ -338,5 +334,58 @@ describe('updateNearWallTransparency', () => {
     expect(glass.opacity).toBe(GLASS_OPACITY)
     expect(glass.transparent).toBe(true)
     expect(glass.depthWrite).toBe(false)
+  })
+
+  it('holds a hold-opaque fill material at its solid baseline while its target fades the bar wall', () => {
+    const graph = tJunctionGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+
+    // The same prefixed scene-node ids the live framed-scene path supplies, so the
+    // prefix-robust selector join enrolls the tagged fill as a hold-opaque member.
+    const fadeGroups = junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms)
+    const prepared = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms),
+      fadeGroups,
+    )
+
+    const fillRecords = prepared
+      .flatMap((target) => target.materials)
+      .filter((record) => record.holdOpaque === true)
+    expect(fillRecords.length).toBeGreaterThan(0)
+
+    // The bar runs along world z=0 with its outward normal to negative Z (open air to the
+    // south), so a camera on the negative-Z side sees it from outside and its target fades.
+    // Carry the fill's hold-opaque records on that SAME fading target so that honoring
+    // `holdOpaque` per material is the only thing that can keep the fill solid. (The fill
+    // covers the leg's mitered end and divides the rooms; it must not fade with the bar.)
+    const barTarget = prepared.find((target) => target.outwardNormal.z < 0)
+    expect(barTarget).toBeDefined()
+    const fadingTarget: NearWallTarget = {
+      point: (barTarget as NearWallTarget).point,
+      outwardNormal: (barTarget as NearWallTarget).outwardNormal,
+      materials: [...(barTarget as NearWallTarget).materials, ...fillRecords],
+    }
+
+    const fillBaselines = fillRecords.map((record) => ({ ...record.baseline }))
+
+    updateNearWallTransparency([fadingTarget], { x: BAR_MIDPOINT_MM, z: -3000 })
+
+    // The bar wall fades as before.
+    for (const material of wallMaterials(root, 'wall:bar')) {
+      expect(material.transparent).toBe(true)
+      expect(material.opacity).toBe(FADED_OPACITY)
+      expect(material.depthWrite).toBe(false)
+    }
+
+    // The fill must NOT fade with the bar: every hold-opaque material stays at its recorded
+    // solid baseline, never dropping to the fade opacity.
+    fillRecords.forEach((record, index) => {
+      const baseline = fillBaselines[index]
+      expect(record.material.opacity).toBe(baseline.opacity)
+      expect(record.material.transparent).toBe(baseline.transparent)
+      expect(record.material.depthWrite).toBe(baseline.depthWrite)
+      expect(record.material.opacity).not.toBe(FADED_OPACITY)
+    })
   })
 })
