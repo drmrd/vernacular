@@ -35,6 +35,10 @@
   --clay-500: #9c5f4a;
   --sage-500: #7a8b6f;
 
+  /* Danger (brick-red) ramp: a deep red for light surfaces, a light red for dark surfaces. */
+  --brick-600: #b3261e;
+  --brick-300: #f2999a;
+
   /* Semantic (role) tokens: light theme defaults. */
   --color-text: var(--umber-900);
   --color-text-muted: var(--umber-500);
@@ -49,6 +53,8 @@
   --color-focus-ring: var(--ink-900);
   --color-surface-active: var(--vellum-200);
   --color-indicator: var(--brass-500);
+  /* Danger label/border color. Clears WCAG AA (4.5:1) as a label on the raised surface. */
+  --color-danger: var(--brick-600);
 
   /* Canvas role tokens. The 2D plan canvas cannot read CSS variables directly, so the
      PlanPalette resolver reads these and threads them into drawPlan. Warm light-theme
@@ -114,6 +120,7 @@
   --color-accent-strong: var(--brass-300);
   --color-on-accent: var(--umber-900);
   --color-focus-ring: var(--brass-500);
+  --color-danger: var(--brick-300);
   /* Dark canvas: ink surfaces matching the chrome, with a light wall poche and warm
      brass accents (selection, hover, preview, and marquee inherit the warm :root values). */
   --color-canvas-grid: var(--ink-800);

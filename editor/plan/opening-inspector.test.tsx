@@ -142,18 +142,70 @@ describe('OpeningInspector', () => {
     expect(command.params.axis).toBe('facing')
   })
 
-  it('dispatches removeOpening for the floor and opening from the remove control', async () => {
+  it('does not dispatch removeOpening on the first Remove click; it asks for confirmation instead', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    await user.click(screen.getByRole('button', { name: /remove/i }))
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+
+    // The first click never deletes; it only enters the confirm state.
+    expect(dispatch).not.toHaveBeenCalled()
+
+    // The plain Remove button is replaced by an explicit confirm and a cancel.
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Confirm remove' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+  })
+
+  it('dispatches removeOpening once for the floor and opening after Remove is confirmed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm remove' }))
 
     expect(dispatch).toHaveBeenCalledTimes(1)
     const command = onlyCommand<RemoveOpeningParams>(dispatch)
     expect(command.type).toBe(REMOVE_OPENING)
     expect(command.params.floorId).toBe(FLOOR_ID)
     expect(command.params.openingId).toBe(OPENING_ID)
+  })
+
+  it('aborts the removal and restores the Remove control when Cancel is clicked', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    // Cancel never deletes and returns to the plain Remove control.
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirm remove' })).toBeNull()
+  })
+
+  it('renders Remove as a destructive design-system Button, separated from the neutral Flip controls', () => {
+    renderInspector(vi.fn())
+
+    const removeButton = screen.getByRole('button', { name: /remove/i })
+    const flipHinge = screen.getByRole('button', { name: /flip hinge/i })
+    const flipSwing = screen.getByRole('button', { name: /flip (swing|facing)/i })
+
+    // Remove is routed through the design-system Button with the destructive treatment.
+    expect(removeButton).toHaveClass('ds-button', 'ds-button--destructive')
+
+    // The Flip controls are routed through the design-system Button too, as neutral,
+    // proving Remove is the only destructive control.
+    expect(flipHinge).toHaveClass('ds-button', 'ds-button--neutral')
+    expect(flipSwing).toHaveClass('ds-button', 'ds-button--neutral')
+
+    // Remove is visually separated from the Flip pair: the two Flip controls share an
+    // immediate parent, and Remove sits outside it rather than being a bare sibling.
+    expect(flipHinge.parentElement).toBe(flipSwing.parentElement)
+    expect(removeButton.parentElement).not.toBe(flipHinge.parentElement)
   })
 
   it('shows fractional-inch chip rows for each dimension field in imperial mode', () => {

@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { type ReactElement } from 'react'
 import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -8,6 +8,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
+import { RemoveControl } from './remove-control'
 
 // Default unit preferences for each system. The inspector formats the measured
 // length against the active system's defaults, mirroring the opening inspector.
@@ -39,9 +40,7 @@ export function DimensionInspector({
       <p>
         Length: <span>{formatted}</span>
       </p>
-      <button type="button" onClick={() => dispatch(removeDimension(floorId, dimensionId))}>
-        Remove
-      </button>
+      <RemoveControl onConfirm={() => dispatch(removeDimension(floorId, dimensionId))} />
     </div>
   )
 }
