@@ -59,4 +59,11 @@ describe('SceneProxyOverlay', () => {
 
     expect(screen.getByRole('option', { name: 'Wall 1' })).toHaveStyle({ pointerEvents: 'none' })
   })
+
+  it('exposes the proxy name accessibly without painting it over the 3d view', () => {
+    render(<SceneProxyOverlay proxies={proxies} selectedIds={new Set()} onSelect={vi.fn()} />)
+
+    const option = screen.getByRole('option', { name: 'Wall 1' })
+    expect(option).toBeEmptyDOMElement()
+  })
 })
