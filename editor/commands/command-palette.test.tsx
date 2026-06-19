@@ -158,6 +158,32 @@ describe('CommandPaletteDialog', () => {
     expect(dialog.contains(document.activeElement)).toBe(true)
   })
 
+  it('dresses the dialog, search input, and result rows in the design-system surface classes', () => {
+    renderDialog(vi.fn())
+
+    const dialog = screen.getByRole('dialog', { name: 'Command palette' })
+    const surface =
+      dialog.classList.contains('ds-menu-surface') ||
+      dialog.classList.contains('command-palette__panel')
+        ? dialog
+        : dialog.querySelector('.ds-menu-surface, .command-palette__panel')
+    expect(surface).not.toBeNull()
+
+    const searchInput = screen.getByRole('textbox', { name: 'Search commands' })
+    const fieldDressed =
+      searchInput.classList.contains('ds-field__control') ||
+      searchInput.closest('.ds-field') !== null
+    expect(fieldDressed).toBe(true)
+
+    const undoRow = screen.getByRole('button', { name: 'Undo' })
+    const redoRow = screen.getByRole('button', { name: 'Redo' })
+
+    expect(undoRow).toHaveClass('ds-button')
+    expect(undoRow).toHaveClass('ds-menu-surface__row')
+    expect(redoRow).toHaveClass('ds-button')
+    expect(redoRow).toHaveClass('ds-menu-surface__row')
+  })
+
   it('does not leak handled keystrokes to the window', () => {
     const onWindowKeyDown = vi.fn()
     window.addEventListener('keydown', onWindowKeyDown)
