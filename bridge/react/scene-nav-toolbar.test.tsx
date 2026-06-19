@@ -227,4 +227,18 @@ describe('SceneNavToolbar styling hooks', () => {
     expect(presets).toContainElement(screen.getByRole('button', { name: 'West' }))
     expect(presets).toContainElement(screen.getByRole('button', { name: 'Doorway' }))
   })
+
+  it('places the color-temperature control in its own environment cluster while keeping the slider accessible', () => {
+    const { container } = render(<SceneNavToolbar {...baseProps} />)
+
+    const environment = container.querySelector('.scene-nav-toolbar__environment')
+    expect(environment).not.toBeNull()
+
+    const slider = screen.getByRole('slider', { name: /color temperature/i })
+    expect(environment).toContainElement(slider)
+    expect(slider).toHaveAttribute('aria-valuetext', '6500 kelvin')
+    expect(environment).toContainElement(
+      screen.getByText(formatColorTemperature(baseProps.colorTemperatureK)),
+    )
+  })
 })
