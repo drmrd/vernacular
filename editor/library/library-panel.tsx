@@ -13,6 +13,8 @@ import {
   type SourceFilter,
 } from './library-filter'
 
+import '../design-system/field.css'
+import '../design-system/menu-surface.css'
 import './library-panel.css'
 
 export interface LibraryPanelProps {
@@ -54,9 +56,9 @@ function LibraryGrid({ items, onPick }: LibraryGridProps): ReactElement {
           key={`${formatAssetReference(item.reference)}:${index}`}
           className="library-panel__cell"
         >
-          <button type="button" onClick={() => onPick(item)}>
+          <Button className="ds-menu-surface__row" onClick={() => onPick(item)}>
             {item.name}
-          </button>
+          </Button>
         </li>
       ))}
     </ul>
@@ -114,6 +116,7 @@ function LibraryControls(props: LibraryControlsProps): ReactElement {
     <div className="library-panel__controls">
       <input
         type="search"
+        className="ds-field__control"
         aria-label="Search furniture"
         value={filters.query}
         onChange={(event) => setFilters({ ...filters, query: event.target.value })}
@@ -152,7 +155,7 @@ export function LibraryPanel(props: LibraryPanelProps): ReactElement {
   const registry = useAssetRegistry()
   const items = useLibraryItems(registry)
   return (
-    <section className="library-panel" aria-label="Furniture library">
+    <section className="library-panel ds-menu-surface" aria-label="Furniture library">
       <Button className="library-panel__import" onClick={onImport}>
         Import GLB
       </Button>
