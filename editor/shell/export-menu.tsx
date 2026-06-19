@@ -51,17 +51,16 @@ export function ExportMenu({
         <ul className="export-menu__list" role="menu">
           {items.map((item) => (
             <li key={item.label} role="none">
-              <button
-                type="button"
+              <Button
                 role="menuitem"
-                className="export-menu__item"
+                className="export-menu__row"
                 onClick={() => {
                   item.onSelect()
                   setOpen(false)
                 }}
               >
                 {item.label}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

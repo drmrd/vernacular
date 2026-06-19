@@ -38,9 +38,9 @@
 
 .editor-shell__wordmark {
   margin: 0;
-  font-family: var(--font-family-ui);
-  font-size: 1rem;
-  font-weight: 600;
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-xl);
+  font-weight: 500;
   color: var(--color-text);
 }
 
@@ -49,7 +49,7 @@
   align-items: center;
   gap: var(--space-1);
   font-family: var(--font-family-ui);
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
@@ -72,49 +72,6 @@
   margin-left: auto;
 }
 
-.editor-shell__icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition:
-    background var(--motion-duration),
-    color var(--motion-duration);
-}
-
-.editor-shell__icon-btn:hover {
-  background: var(--color-surface-active);
-  color: var(--color-text);
-}
-
-.editor-shell__icon-btn:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
-}
-
-.editor-shell__icon-btn[aria-pressed='true'] {
-  background: var(--color-surface-active);
-  border-color: var(--color-indicator);
-  color: var(--color-text);
-}
-
-/* The labeled variant relaxes the square icon button to fit an icon and a text
-   label, reusing the base hover, focus, and pressed styling. */
-.editor-shell__icon-btn--labeled {
-  width: auto;
-  gap: var(--space-1);
-  padding: 0 var(--space-2);
-  font-family: var(--font-family-ui);
-  font-size: 0.75rem;
-}
-
 /* The zoom control groups zoom-out / percent / zoom-in / fit as one segmented unit
    among the header actions. */
 .editor-shell__zoom {
@@ -123,89 +80,10 @@
   gap: var(--space-1);
 }
 
-/* The percent readout doubles as a reset-to-100% button; tabular figures and a fixed
-   min-width keep it from shifting as the digit count changes. */
-.editor-shell__zoom-percent {
-  height: 28px;
-  min-width: 4ch;
-  padding: 0 var(--space-1);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-family: var(--font-family-ui);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition:
-    background var(--motion-duration),
-    color var(--motion-duration);
-}
-
-.editor-shell__zoom-percent:hover {
-  background: var(--color-surface-active);
-  color: var(--color-text);
-}
-
-.editor-shell__zoom-percent:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
-}
-
 .editor-shell__save-status {
   font-family: var(--font-family-ui);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-}
-
-/* A compact segmented control: the metric/imperial radios as two abutting pills. */
-.unit-toggle {
-  display: inline-flex;
-  align-self: center;
-  margin: 0;
-  padding: 2px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-}
-
-.unit-toggle legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.unit-toggle__option {
-  padding: 0.1rem 0.6rem;
-  border-radius: 4px;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-/* Hide the native radio dot but keep it in the accessibility tree and focusable. */
-.unit-toggle__option input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-/* The checked segment uses the strong accent; on-accent text clears WCAG AA (4.5:1). */
-.unit-toggle__option:has(input:checked) {
-  background: var(--color-accent-strong);
-  color: var(--color-on-accent);
-}
-
-.unit-toggle__option:has(input:focus-visible) {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
 }
 
 .editor-shell__project {
@@ -235,7 +113,7 @@
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--shell-warning-border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-sm);
   padding: 0.5rem 0.75rem;
   background: var(--shell-warning-surface);
 }
@@ -252,7 +130,7 @@
    */
   height: 100%;
   min-height: 0;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 

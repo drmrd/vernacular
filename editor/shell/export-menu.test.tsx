@@ -32,6 +32,32 @@ describe('ExportMenu', () => {
     expect(onExportBundle).toHaveBeenCalledTimes(1)
   })
 
+  it('routes the export items through the design-system Button while preserving menu semantics', async () => {
+    const user = userEvent.setup()
+    const onExportBundle = vi.fn()
+    render(
+      <ExportMenu
+        onExportBundle={onExportBundle}
+        onExportPlan={vi.fn()}
+        onExportImage={vi.fn()}
+        onExportPdf={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: /^export$/i })
+    expect(trigger).toHaveClass('ds-button')
+
+    await user.click(trigger)
+
+    const item = screen.getByRole('menuitem', { name: /bundle/i })
+    expect(item).toHaveClass('ds-button')
+    expect(item).not.toHaveClass('export-menu__item')
+
+    await user.click(item)
+    expect(onExportBundle).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
   it('calls the PDF handler from its menu item', async () => {
     const user = userEvent.setup()
     const onExportPdf = vi.fn()

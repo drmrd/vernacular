@@ -9,7 +9,7 @@
 .project-identity__name {
   margin: 0;
   font-family: var(--font-family-heading);
-  font-size: 1.05rem;
+  font-size: var(--font-size-lg);
   font-weight: 500;
   line-height: 1.2;
   color: var(--color-text);
@@ -19,6 +19,6 @@
   margin: 0;
   font-family: var(--font-family-heading);
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }

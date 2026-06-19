@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
 import './finish-section.css'
@@ -22,6 +23,13 @@ const FACES = [
   { side: 'right', label: 'B' },
 ] as const
 
+const FACE_OPTIONS = FACES.map((face) => ({ value: face.side, label: face.label }))
+const FACE_SIDES = FACES.map((face) => face.side)
+
+function isFaceSide(value: string): value is 'left' | 'right' {
+  return (FACE_SIDES as readonly string[]).includes(value)
+}
+
 export function WallFinishSection({
   wallId,
   treatmentFor,
@@ -34,20 +42,15 @@ export function WallFinishSection({
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
   return (
     <section className="finish-section">
-      <h3 className="finish-section__label">Finish</h3>
-      <div className="finish-section__faces" role="group" aria-label="Wall face">
-        {FACES.map((face) => (
-          <button
-            key={face.side}
-            type="button"
-            className={`finish-section__chip${side === face.side ? ' finish-section__chip--active' : ''}`}
-            aria-pressed={side === face.side}
-            onClick={() => setSide(face.side)}
-          >
-            {face.label}
-          </button>
-        ))}
-      </div>
+      <SectionLabel>Finish</SectionLabel>
+      <Segmented
+        label="Wall face"
+        options={FACE_OPTIONS}
+        value={side}
+        onSelect={(value) => {
+          if (isFaceSide(value)) setSide(value)
+        }}
+      />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker

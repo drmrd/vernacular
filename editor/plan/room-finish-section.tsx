@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
 import './finish-section.css'
@@ -16,13 +17,23 @@ interface RoomFinishSectionProps {
 // Floor and ceiling are floor-level surfaces in the model, so all rooms on a floor
 // share them; selecting a room is the natural place to reach the floor it sits on.
 function surfaceRef(kind: 'floor' | 'ceiling', floorId: string): SurfaceRef {
-  return kind === 'floor' ? { kind: 'floor', floorId } : { kind: 'ceiling', floorId }
+  return { kind, floorId }
 }
 
 const SURFACES = [
   { kind: 'floor', label: 'Floor' },
   { kind: 'ceiling', label: 'Ceiling' },
 ] as const
+
+const SURFACE_OPTIONS = SURFACES.map((surface) => ({
+  value: surface.kind,
+  label: surface.label,
+}))
+const SURFACE_KINDS = SURFACES.map((surface) => surface.kind)
+
+function isSurfaceKind(value: string): value is 'floor' | 'ceiling' {
+  return (SURFACE_KINDS as readonly string[]).includes(value)
+}
 
 export function RoomFinishSection({
   floorId,
@@ -36,20 +47,15 @@ export function RoomFinishSection({
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
   return (
     <section className="finish-section">
-      <h3 className="finish-section__label">Finish</h3>
-      <div className="finish-section__faces" role="group" aria-label="Room surface">
-        {SURFACES.map((surface) => (
-          <button
-            key={surface.kind}
-            type="button"
-            className={`finish-section__chip${kind === surface.kind ? ' finish-section__chip--active' : ''}`}
-            aria-pressed={kind === surface.kind}
-            onClick={() => setKind(surface.kind)}
-          >
-            {surface.label}
-          </button>
-        ))}
-      </div>
+      <SectionLabel>Finish</SectionLabel>
+      <Segmented
+        label="Room surface"
+        options={SURFACE_OPTIONS}
+        value={kind}
+        onSelect={(value) => {
+          if (isSurfaceKind(value)) setKind(value)
+        }}
+      />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker

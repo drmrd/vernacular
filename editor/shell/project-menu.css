@@ -3,25 +3,23 @@
   display: inline-flex;
 }
 
-.project-menu__trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+/* The chevron trigger keeps the slim, borderless, muted shape of the retired
+   idiom on top of the design-system icon button. */
+.project-menu__trigger-shape {
+  width: auto;
   padding: 0 var(--space-1);
   border: none;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.75rem;
-  cursor: pointer;
+  font-size: var(--font-size-xs);
 }
 
-.project-menu__trigger:hover {
+/* The retired trigger stayed borderless on hover and only shifted its text from
+   muted to default; keep the background transparent so the icon button base
+   hover surface does not leak in. */
+.project-menu__trigger-shape:hover {
+  background: transparent;
   color: var(--color-text);
-}
-
-.project-menu__trigger:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
 }
 
 .project-menu__list {
@@ -39,25 +37,18 @@
   box-shadow: var(--elevation-overlay);
 }
 
-.project-menu__item {
-  display: block;
+/* Each menu entry keeps the full-width, left-aligned, transparent list-row look of
+   the retired idiom on top of the design-system button. */
+.project-menu__row {
   width: 100%;
+  justify-content: flex-start;
   padding: var(--space-1) var(--space-2);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-text);
-  font-family: var(--font-family-ui);
-  font-size: 0.85rem;
-  text-align: left;
-  cursor: pointer;
+  font-size: var(--font-size-sm);
 }
 
-.project-menu__item:hover {
+.project-menu__row:hover {
   background: var(--color-surface-active);
-}
-
-.project-menu__item:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: -2px;
 }

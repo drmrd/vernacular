@@ -48,10 +48,11 @@
 .plan-overlay__readout {
   transform: translate(-50%, -50%);
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: rgba(33, 37, 41, 0.92);
   color: #fff;
-  font: 11px sans-serif;
+  font-size: var(--font-size-xs);
+  font-family: sans-serif;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   pointer-events: none;
@@ -119,7 +120,7 @@
 
 .plan-overlay__compass-label {
   font-family: var(--font-family-ui);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   fill: currentColor;
 }
@@ -146,7 +147,7 @@
 
 .plan-overlay__scale-bar-label {
   font-family: var(--font-family-ui);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   color: var(--color-accent);
 }
@@ -161,9 +162,10 @@
   left: 8px;
   bottom: 8px;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: rgba(33, 37, 41, 0.92);
   color: #fff;
-  font: 11px sans-serif;
+  font-size: var(--font-size-xs);
+  font-family: sans-serif;
   pointer-events: none;
 }

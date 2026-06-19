@@ -11,20 +11,10 @@
   gap: var(--space-2);
 }
 
-.inspector__title {
-  margin: 0;
-  font-family: var(--font-family-ui);
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--color-text);
-}
-
 .inspector__component-title {
   margin: 0;
   font-family: var(--font-family-heading);
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   font-weight: 500;
   color: var(--color-text);
 }
@@ -33,11 +23,11 @@
   display: inline-flex;
   align-items: center;
   padding: 1px var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface-active);
   color: var(--color-text);
   font-family: var(--font-family-ui);
-  font-size: 0.68rem;
+  font-size: var(--font-size-xs);
 }
 
 .inspector__period-tags {
@@ -53,18 +43,18 @@
   display: inline-flex;
   align-items: center;
   padding: 2px var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-accent);
   color: var(--color-on-accent);
   font-family: var(--font-family-ui);
-  font-size: 0.65rem;
+  font-size: var(--font-size-xs);
   font-weight: 600;
 }
 
 .inspector__empty {
   margin: 0;
   font-family: var(--font-family-ui);
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   font-style: italic;
   color: var(--color-text-muted);
 }

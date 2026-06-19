@@ -1,3 +1,4 @@
+import { SectionLabel } from '../design-system'
 import './overall-dimensions.css'
 
 interface OverallDimensionsProps {
@@ -14,7 +15,7 @@ export function OverallDimensions({ extent }: OverallDimensionsProps) {
   }
   return (
     <div className="overall-dimensions">
-      <span className="overall-dimensions__label">Overall</span>
+      <SectionLabel>Overall</SectionLabel>
       <span className="overall-dimensions__value">{`${extent.width} × ${extent.height}`}</span>
     </div>
   )

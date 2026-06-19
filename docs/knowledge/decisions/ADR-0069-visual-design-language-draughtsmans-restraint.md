@@ -55,7 +55,8 @@ Chimney, Stairs, and future era-specific components) use Phosphor approximations
 custom SVGs are drawn. Custom icons will follow the same 24px/2px grid.
 
 **Rail structure.** Four sections (Select, Draw, Period, Annotate) with icon-plus-label
-chips in a 2-column grid for multi-tool sections. Snap controls are removed from the
+chips in a single-column grid at the default rail width for multi-tool sections. Snap
+controls are removed from the
 rail entirely; snap state lives in the status bar and the opt-in precision panel from
 the editor experience makeover spec. The Period section is intentionally sparse at
 launch and grows as the Period component asset track adds era-specific components.
@@ -93,3 +94,9 @@ inconsistent. EB Garamond provides the same old-style character at a ~30KB font 
   variant rules.
 - The `DraftingTable` Storybook story is replaced by a `DraughtsmansRestraint` story
   that documents the full swatch ramp, semantic assignments, and component gallery.
+
+## Related
+
+- ADR-0096 (design-system consolidation) extends this language: it fills in the token
+  scales, routes the chrome through shared primitives, and collapses the drifted active
+  treatments to one canonical surface-active state, all without changing the look set here.

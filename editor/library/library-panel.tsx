@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { formatAssetReference } from '../../core'
+import { Button, Segmented, type SegmentedOption } from '../design-system'
 import type { AssetRegistry, LibraryItem } from '../../storage'
 import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
 import {
   DEFAULT_FILTERS,
   distinctEras,
-  nextEra,
   visibleLibraryItems,
   type LibraryFilters,
   type SourceFilter,
@@ -63,11 +63,17 @@ function LibraryGrid({ items, onPick }: LibraryGridProps): ReactElement {
   )
 }
 
-const SOURCE_OPTIONS: ReadonlyArray<{ value: SourceFilter; label: string }> = [
+const SOURCE_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'sample', label: 'Sample' },
   { value: 'yours', label: 'Yours' },
-]
+] satisfies SegmentedOption[]
+
+// The era segmented control always carries a default-active option that maps to
+// the unfiltered (no-era) state, so exactly one option stays selected even when
+// the user has not narrowed to a specific era.
+const ALL_ERAS_VALUE = '__all-eras__'
+const ALL_ERAS_LABEL = 'All eras'
 
 interface LibraryControlsProps {
   filters: LibraryFilters
@@ -77,35 +83,27 @@ interface LibraryControlsProps {
 
 function SourceToggle({ filters, setFilters }: LibraryControlsProps): ReactElement {
   return (
-    <div className="library-panel__sources" role="group" aria-label="Source">
-      {SOURCE_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          aria-pressed={filters.source === option.value}
-          onClick={() => setFilters({ ...filters, source: option.value })}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label="Source"
+      options={SOURCE_OPTIONS}
+      value={filters.source}
+      onSelect={(value) => setFilters({ ...filters, source: value as SourceFilter })}
+    />
   )
 }
 
 function EraChips({ filters, eras, setFilters }: LibraryControlsProps): ReactElement {
+  const options = [
+    { value: ALL_ERAS_VALUE, label: ALL_ERAS_LABEL },
+    ...eras.map((era) => ({ value: era, label: era })),
+  ]
   return (
-    <div className="library-panel__eras" role="group" aria-label="Era">
-      {eras.map((era) => (
-        <button
-          key={era}
-          type="button"
-          aria-pressed={filters.era === era}
-          onClick={() => setFilters({ ...filters, era: nextEra(filters.era, era) })}
-        >
-          {era}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label="Era"
+      options={options}
+      value={filters.era ?? ALL_ERAS_VALUE}
+      onSelect={(value) => setFilters({ ...filters, era: value === ALL_ERAS_VALUE ? null : value })}
+    />
   )
 }
 
@@ -155,9 +153,9 @@ export function LibraryPanel(props: LibraryPanelProps): ReactElement {
   const items = useLibraryItems(registry)
   return (
     <section className="library-panel" aria-label="Furniture library">
-      <button type="button" className="library-panel__import" onClick={onImport}>
+      <Button className="library-panel__import" onClick={onImport}>
         Import GLB
-      </button>
+      </Button>
       <LibraryBody items={items} onPick={onPick} />
     </section>
   )

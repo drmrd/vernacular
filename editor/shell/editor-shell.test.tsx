@@ -120,7 +120,9 @@ describe('EditorShell', () => {
 
     renderShell()
 
-    expect(screen.getByRole('radio', { name: /system/i })).toBeInTheDocument()
+    const themeGroup = screen.getByRole('group', { name: /theme/i })
+    expect(themeGroup).toBeInTheDocument()
+    expect(within(themeGroup).getByRole('button', { name: /system/i })).toBeInTheDocument()
   })
 
   it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
@@ -154,6 +156,35 @@ describe('EditorShell', () => {
     const gridBtn = screen.getByRole('button', { name: /grid/i })
     expect(gridBtn).toHaveAttribute('aria-pressed', 'true')
 
+    await user.click(gridBtn)
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('routes the Grid, Dimensions, Undo, and Redo header buttons through the IconButton primitive', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    const dimensionsBtn = screen.getByRole('button', { name: /dimensions/i })
+    const undoBtn = screen.getByRole('button', { name: /undo/i })
+    const redoBtn = screen.getByRole('button', { name: /redo/i })
+
+    // Migrated to the design-system IconButton primitive (ds-icon-button), not the
+    // retired hand-rolled editor-shell__icon-btn idiom.
+    expect(gridBtn).toHaveClass('ds-icon-button')
+    expect(dimensionsBtn).toHaveClass('ds-icon-button')
+    expect(undoBtn).toHaveClass('ds-icon-button')
+    expect(redoBtn).toHaveClass('ds-icon-button')
+    expect(gridBtn).not.toHaveClass('editor-shell__icon-btn')
+
+    // The labeled toggles keep their visible text label after migration.
+    expect(within(gridBtn).getByText('Grid')).toBeInTheDocument()
+    expect(within(dimensionsBtn).getByText('Dimensions')).toBeInTheDocument()
+
+    // Behavior is preserved: the Grid toggle still flips aria-pressed on click.
+    expect(gridBtn).toHaveAttribute('aria-pressed', 'true')
     await user.click(gridBtn)
     expect(gridBtn).toHaveAttribute('aria-pressed', 'false')
   })

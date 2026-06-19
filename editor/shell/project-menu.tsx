@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button, IconButton } from '../design-system'
 import './project-menu.css'
 
 interface RecentProject {
@@ -56,31 +57,29 @@ export function ProjectMenu(props: ProjectMenuProps) {
   }
   return (
     <div className="project-menu">
-      <button
-        type="button"
-        className="project-menu__trigger"
+      <IconButton
+        className="project-menu__trigger-shape"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Project menu"
         onClick={() => setOpen((value) => !value)}
       >
         <span aria-hidden="true">▾</span>
-      </button>
+      </IconButton>
       {open ? (
         <ul className="project-menu__list" role="menu">
           {items.map((item) => (
             <li key={item.label} role="none">
-              <button
-                type="button"
+              <Button
                 role="menuitem"
-                className="project-menu__item"
+                className="project-menu__row"
                 onClick={() => {
                   item.onSelect()
                   setOpen(false)
                 }}
               >
                 {item.label}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

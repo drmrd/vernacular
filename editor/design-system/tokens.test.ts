@@ -46,6 +46,54 @@ describe('design tokens', () => {
   })
 })
 
+describe('extended spacing scale', () => {
+  it('registers --space-6 and --space-7 in the token registry', () => {
+    const names = tokenList.map((entry) => entry.name)
+    expect(names).toContain('--space-6')
+    expect(names).toContain('--space-7')
+  })
+
+  it('declares --space-6 and --space-7 in tokens.css', () => {
+    expect(tokensCss).toContain('--space-6:')
+    expect(tokensCss).toContain('--space-7:')
+  })
+
+  it('exposes var() accessors for the new spacing tokens', () => {
+    expect(tokens.space6.variable).toBe('var(--space-6)')
+    expect(tokens.space7.variable).toBe('var(--space-7)')
+  })
+})
+
+describe('extended type scale', () => {
+  it('registers --font-size-xs and --font-size-xl in the token registry', () => {
+    const names = tokenList.map((entry) => entry.name)
+    expect(names).toContain('--font-size-xs')
+    expect(names).toContain('--font-size-xl')
+  })
+
+  it('declares --font-size-xs and --font-size-xl in tokens.css', () => {
+    expect(tokensCss).toContain('--font-size-xs:')
+    expect(tokensCss).toContain('--font-size-xl:')
+  })
+
+  it('exposes var() accessors for the new type-scale tokens', () => {
+    expect(tokens.fontSizeXs.variable).toBe('var(--font-size-xs)')
+    expect(tokens.fontSizeXl.variable).toBe('var(--font-size-xl)')
+  })
+})
+
+describe('dead system-theme block', () => {
+  it('drops the unreachable data-theme="system" selector', () => {
+    expect(tokensCss).not.toContain("data-theme='system'")
+    expect(tokensCss).not.toContain('data-theme="system"')
+  })
+
+  it('keeps the real dark-theme assignments', () => {
+    expect(tokensCss).toContain("[data-theme='dark']")
+    expect(tokensCss).toMatch(/\[data-theme='dark'\][^}]*--color-surface:\s*var\(--ink-950\)/)
+  })
+})
+
 describe('drafting-table palette', () => {
   it('introduces the drafting-table primitive ramp', () => {
     expect(tokensCss).toContain('#f4efe4') // vellum canvas

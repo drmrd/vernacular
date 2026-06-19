@@ -1,0 +1,7 @@
+.ds-section-label {
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.09em;
+  color: var(--color-text-muted);
+}

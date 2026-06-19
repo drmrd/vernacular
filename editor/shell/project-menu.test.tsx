@@ -20,6 +20,30 @@ describe('ProjectMenu', () => {
     expect(onNewProject).toHaveBeenCalledTimes(1)
   })
 
+  it('routes the trigger and items through the design-system primitives while preserving menu semantics', async () => {
+    const user = userEvent.setup()
+    const onNewProject = vi.fn()
+    render(<ProjectMenu onNewProject={onNewProject} onOpenFolder={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: /project menu/i })
+    expect(trigger).toHaveClass('ds-icon-button')
+    expect(trigger).not.toHaveClass('project-menu__trigger')
+    expect(trigger).toHaveAttribute('aria-haspopup')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    const item = screen.getByRole('menuitem', { name: /new project/i })
+    expect(item).toHaveClass('ds-button')
+    expect(item).not.toHaveClass('project-menu__item')
+
+    await user.click(item)
+    expect(onNewProject).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
   it('opens the menu and calls Open file from its item', async () => {
     const user = userEvent.setup()
     const onOpenFile = vi.fn()

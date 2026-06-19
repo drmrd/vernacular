@@ -9,21 +9,24 @@ import { ToolsPanel } from './tools-panel'
 afterEach(cleanup)
 
 describe('ToolsPanel', () => {
-  it('renders four labeled rail sections', () => {
+  it('renders four rail section labels through the SectionLabel primitive', () => {
     const { container } = render(
       <ActiveToolProvider>
         <ToolsPanel />
       </ActiveToolProvider>,
     )
 
-    const labels = Array.from(container.querySelectorAll('.tools-panel__section-label')).map(
-      (el) => el.textContent?.toLowerCase() ?? '',
-    )
+    const sectionLabels = Array.from(container.querySelectorAll('.ds-section-label'))
+    const labels = sectionLabels.map((el) => el.textContent?.toLowerCase() ?? '')
 
     expect(labels).toContain('select')
     expect(labels).toContain('draw')
     expect(labels).toContain('period')
     expect(labels).toContain('annotate')
+
+    for (const el of sectionLabels) {
+      expect(el).not.toHaveClass('tools-panel__section-label')
+    }
   })
 
   it('includes a Pan chip in the SELECT section', () => {
@@ -72,7 +75,19 @@ describe('ToolsPanel', () => {
     expect(selectChip.querySelector('svg')).not.toBeNull()
   })
 
-  it('applies the surface-active class to the pressed chip, not the accent-strong class', async () => {
+  it('routes tool chips through the shared segmented option treatment', () => {
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    for (const name of [/select/i, /pan/i, /wall/i, /dimension/i]) {
+      expect(screen.getByRole('button', { name })).toHaveClass('ds-segmented__option')
+    }
+  })
+
+  it('marks the active tool chip with the shared is-active treatment and moves it on activation', async () => {
     const user = userEvent.setup()
     render(
       <ActiveToolProvider>
@@ -81,13 +96,31 @@ describe('ToolsPanel', () => {
     )
 
     const selectChip = screen.getByRole('button', { name: /select/i })
+    const panChip = screen.getByRole('button', { name: /pan/i })
 
-    expect(selectChip).toHaveClass('tools-panel__chip--active')
-    expect(selectChip).not.toHaveClass('tools-panel__chip--accent')
+    expect(selectChip).toHaveClass('is-active')
+    expect(selectChip).toHaveAttribute('aria-pressed', 'true')
+    expect(panChip).not.toHaveClass('is-active')
 
-    await user.click(screen.getByRole('button', { name: /pan/i }))
+    await user.click(panChip)
 
-    expect(selectChip).not.toHaveClass('tools-panel__chip--active')
+    expect(panChip).toHaveClass('is-active')
+    expect(panChip).toHaveAttribute('aria-pressed', 'true')
+    expect(selectChip).not.toHaveClass('is-active')
+    expect(selectChip).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('keeps disabled placeholder chips on the shared segmented option treatment', () => {
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    const fireplaceChip = screen.getByRole('button', { name: /fireplace/i })
+
+    expect(fireplaceChip).toBeDisabled()
+    expect(fireplaceChip).toHaveClass('ds-segmented__option')
   })
 
   it('renders Door and Window chips in the DRAW section (no standalone Opening chip)', () => {
@@ -114,9 +147,13 @@ describe('ToolsPanel', () => {
       </ActiveToolProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: /door/i }))
+    const doorChip = screen.getByRole('button', { name: /door/i })
+    expect(doorChip).toHaveClass('ds-segmented__option')
 
-    expect(screen.getByRole('button', { name: /door/i })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(doorChip)
+
+    expect(doorChip).toHaveAttribute('aria-pressed', 'true')
+    expect(doorChip).toHaveClass('is-active')
     expect(screen.getByRole('button', { name: /window/i })).toHaveAttribute('aria-pressed', 'false')
   })
 

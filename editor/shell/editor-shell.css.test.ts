@@ -30,4 +30,23 @@ describe('editor-shell.css', () => {
       /background:\s*var\(--color-accent-strong\)[^}]*\bcolor:\s*var\(--color-surface\)/,
     )
   })
+
+  it('no longer defines the retired icon-button and zoom-percent idiom selectors', () => {
+    // The header icon buttons and the zoom control route through the design-system
+    // IconButton primitive, so the hand-rolled idiom selectors move out of the shell
+    // CSS. The .editor-shell__zoom group wrapper may remain.
+    expect(css).not.toMatch(/\.editor-shell__icon-btn\b/)
+    expect(css).not.toMatch(/\.editor-shell__icon-btn--labeled\b/)
+    expect(css).not.toMatch(/\.editor-shell__zoom-percent\b/)
+  })
+
+  it('renders the wordmark in the heading font on the extended type scale', () => {
+    // ADR-0069 keeps the "Vernacular" wordmark in EB Garamond (the heading
+    // family) and on the extended type scale, not the UI family at a raw 1rem.
+    const wordmark = css.match(/\.editor-shell__wordmark\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(wordmark).not.toBe('')
+    expect(wordmark).toContain('var(--font-family-heading)')
+    expect(wordmark).toMatch(/font-size:\s*var\(--font-size-/)
+    expect(wordmark).not.toMatch(/font-size:\s*1rem/)
+  })
 })

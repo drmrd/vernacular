@@ -32,15 +32,34 @@ describe('ViewModeViewport', () => {
     expect(screen.getByRole('button', { name: '3D view' })).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('marks the active mode tab with an active class', () => {
+  it('routes the mode tabs through the design-system Segmented option vocabulary', () => {
     renderViewport()
 
-    expect(screen.getByRole('button', { name: 'Plan view' })).toHaveClass(
-      'view-mode-viewport__tab--active',
-    )
-    expect(screen.getByRole('button', { name: 'Split view' })).not.toHaveClass(
-      'view-mode-viewport__tab--active',
-    )
+    const plan = screen.getByRole('button', { name: 'Plan view' })
+    const split = screen.getByRole('button', { name: 'Split view' })
+    const preview = screen.getByRole('button', { name: '3D view' })
+
+    for (const tab of [plan, split, preview]) {
+      expect(tab).toHaveClass('ds-segmented__option')
+      expect(tab).not.toHaveClass('view-mode-viewport__tab')
+    }
+
+    expect(plan).toHaveClass('is-active')
+    expect(plan).toHaveAttribute('aria-pressed', 'true')
+    expect(split).not.toHaveClass('is-active')
+    expect(preview).not.toHaveClass('is-active')
+  })
+
+  it('switches the active Segmented option when another mode is clicked', async () => {
+    const user = userEvent.setup()
+    renderViewport()
+
+    await user.click(screen.getByRole('button', { name: 'Split view' }))
+
+    const split = screen.getByRole('button', { name: 'Split view' })
+    expect(split).toHaveClass('is-active')
+    expect(split).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Plan view' })).not.toHaveClass('is-active')
   })
 
   it('shows only the plan in plan mode', () => {

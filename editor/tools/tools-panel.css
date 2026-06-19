@@ -11,63 +11,31 @@
   gap: var(--space-1);
 }
 
-.tools-panel__section-label {
+/* Layout-only: the rail spacing the section labels carry. The uppercase font
+   idiom and color come from the .ds-section-label primitive. */
+.tools-panel__section-heading {
   padding: var(--space-1) 0;
-  font-family: var(--font-family-ui);
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--color-text);
 }
 
-/* Two-column grid for sections with multiple tools. */
+/* Single-column grid: chips are full-width left-aligned rows after the 10d
+   migration, so full-width labels like "Chimney" no longer clip at the default
+   rail width. */
 .tools-panel__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-1);
 }
 
+/* Layout and resting color for the tool-rail chips: the full-width, left-aligned,
+   icon+label row plus its muted resting text. The active, hover, focus, and disabled
+   treatment comes from .ds-segmented__option. */
 .tools-panel__chip {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: var(--space-1);
   width: 100%;
   padding: 4px var(--space-2);
-  border: none;
-  border-left: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
   color: var(--color-text-muted);
-  font-family: var(--font-family-ui);
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition:
-    background var(--motion-duration),
-    color var(--motion-duration);
-}
-
-.tools-panel__chip:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.tools-panel__chip--active {
-  background: var(--color-surface-active);
-  border-left-color: var(--color-indicator);
-  color: var(--color-text);
-}
-
-.tools-panel__chip--active:hover {
-  background: var(--color-surface-active);
-}
-
-.tools-panel__chip:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
-  outline-offset: 1px;
-}
-
-.tools-panel__chip:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  font-size: var(--font-size-xs);
 }

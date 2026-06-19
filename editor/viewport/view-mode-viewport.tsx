@@ -1,6 +1,6 @@
 import type { KeyboardEvent, ReactNode } from 'react'
-import { usePaneResize } from '../design-system'
-import { useViewMode, type ViewControls } from './view-mode'
+import { Segmented, usePaneResize } from '../design-system'
+import { useViewMode, type ViewControls, type ViewMode } from './view-mode'
 import { VIEW_MODES, VIEW_MODE_LABELS } from './view-mode-labels'
 import './view-mode-viewport.css'
 
@@ -9,24 +9,25 @@ const SPLIT_DEFAULT = 60
 const SPLIT_MIN = 30
 const SPLIT_MAX = 80
 
+const VIEW_MODE_OPTIONS = VIEW_MODES.map((value) => ({
+  value,
+  label: VIEW_MODE_LABELS[value],
+}))
+
+function isViewMode(value: string): value is ViewMode {
+  return (VIEW_MODES as readonly string[]).includes(value)
+}
+
 function ModeToolbar({ mode, setMode }: ViewControls) {
   return (
-    <div className="view-mode-viewport__toolbar" role="toolbar" aria-label="View mode">
-      {VIEW_MODES.map((value) => {
-        const isActive = mode === value
-        return (
-          <button
-            key={value}
-            type="button"
-            className={`view-mode-viewport__tab${isActive ? ' view-mode-viewport__tab--active' : ''}`}
-            aria-pressed={isActive}
-            onClick={() => setMode(value)}
-          >
-            {VIEW_MODE_LABELS[value]}
-          </button>
-        )
-      })}
-    </div>
+    <Segmented
+      label="View mode"
+      options={VIEW_MODE_OPTIONS}
+      value={mode}
+      onSelect={(value) => {
+        if (isViewMode(value)) setMode(value)
+      }}
+    />
   )
 }
 

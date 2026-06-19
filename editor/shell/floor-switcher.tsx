@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Button } from '../design-system'
+import { Button, Segmented } from '../design-system'
 import './floor-switcher.css'
 
 export interface FloorSummary {
@@ -22,23 +22,13 @@ export function FloorSwitcher({
 }: FloorSwitcherProps): ReactElement {
   return (
     <nav className="floor-switcher" aria-label="Floors">
-      <ul className="floor-switcher__tabs">
-        {floors.map((floor) => {
-          const isActive = floor.id === activeFloorId
-          return (
-            <li key={floor.id}>
-              <button
-                type="button"
-                className={`floor-switcher__tab${isActive ? ' floor-switcher__tab--active' : ''}`}
-                aria-pressed={isActive}
-                onClick={() => onSelectFloor(floor.id)}
-              >
-                {floor.name}
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+      <Segmented
+        label="Floors"
+        options={floors.map((floor) => ({ value: floor.id, label: floor.name }))}
+        /* '' is the "no floor selected" sentinel: it matches no floor id, so no option reads active. */
+        value={activeFloorId ?? ''}
+        onSelect={onSelectFloor}
+      />
       <Button onClick={onAddFloor}>Add floor</Button>
     </nav>
   )
