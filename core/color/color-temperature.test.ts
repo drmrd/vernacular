@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  formatColorTemperature,
   kelvinToLinearRgb,
   MIN_COLOR_TEMPERATURE_K,
   MAX_COLOR_TEMPERATURE_K,
@@ -41,5 +42,15 @@ describe('kelvinToLinearRgb', () => {
 
   it('defaults to the cool end of the supported band', () => {
     expect(DEFAULT_COLOR_TEMPERATURE_K).toBe(MAX_COLOR_TEMPERATURE_K)
+  })
+})
+
+describe('formatColorTemperature', () => {
+  it('formats the cool end as a readable Kelvin value with its unit', () => {
+    expect(formatColorTemperature(MAX_COLOR_TEMPERATURE_K)).toBe('6500 K')
+  })
+
+  it('formats the warm end as a readable Kelvin value with its unit', () => {
+    expect(formatColorTemperature(MIN_COLOR_TEMPERATURE_K)).toBe('2700 K')
   })
 })
