@@ -15,18 +15,12 @@ describe('assertPositiveLength', () => {
   it('rejects out-of-range dimensions with an InvalidLengthError', () => {
     expect(() => assertPositiveLength(0, 'Width')).toThrow(InvalidLengthError)
     expect(() => assertPositiveLength(-1, 'Width')).toThrow(InvalidLengthError)
-    expect(() => assertPositiveLength(Number.NaN, 'Width')).toThrow(
-      InvalidLengthError,
-    )
-    expect(() => assertPositiveLength(MAX_LENGTH_MM + 1, 'Width')).toThrow(
-      InvalidLengthError,
-    )
+    expect(() => assertPositiveLength(Number.NaN, 'Width')).toThrow(InvalidLengthError)
+    expect(() => assertPositiveLength(MAX_LENGTH_MM + 1, 'Width')).toThrow(InvalidLengthError)
   })
 
   it('accepts a dimension at each edge of the in-range interval', () => {
-    expect(() =>
-      assertPositiveLength(MIN_POSITIVE_LENGTH_MM, 'Width'),
-    ).not.toThrow()
+    expect(() => assertPositiveLength(MIN_POSITIVE_LENGTH_MM, 'Width')).not.toThrow()
     expect(() => assertPositiveLength(MAX_LENGTH_MM, 'Width')).not.toThrow()
   })
 
