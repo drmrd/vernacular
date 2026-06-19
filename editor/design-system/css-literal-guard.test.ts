@@ -38,19 +38,40 @@ function isAllowedRadius(value: string): boolean {
   return /^0(px|rem)?$/.test(trimmed)
 }
 
+// A font-size value is allowed when it routes through a --font-size-* token or
+// uses a CSS keyword (the CSS-wide keywords plus the absolute/relative size
+// keywords). Everything else is a raw numeric literal that must reach for a
+// --font-size-* token instead. `font-size: inherit` (snap-status.css) is a
+// keyword, not a literal, so it stays allowed.
+const FONT_SIZE_KEYWORDS =
+  /^(inherit|initial|unset|revert|revert-layer|xx-small|x-small|smaller|small|medium|large|larger|x-large|xx-large|xxx-large)$/
+
+function isAllowedFontSize(value: string): boolean {
+  const trimmed = value.trim()
+  if (/^var\(\s*--font-size-[\w-]+\s*\)$/.test(trimmed)) {
+    return true
+  }
+  return FONT_SIZE_KEYWORDS.test(trimmed)
+}
+
 interface Violation {
   file: string
   line: number
   value: string
 }
 
-function radiusViolationsIn(file: string): Violation[] {
+function violationsIn(
+  file: string,
+  property: string,
+  isAllowed: (value: string) => boolean,
+): Violation[] {
   const violations: Violation[] = []
+  const declaration = new RegExp(`${property}:\\s*([^;]+);`)
   const lines = readFileSync(file, 'utf8').split('\n')
   lines.forEach((line, index) => {
-    const match = line.match(/border-radius:\s*([^;]+);/)
+    const match = line.match(declaration)
     const value = match?.[1]
-    if (value !== undefined && !isAllowedRadius(value)) {
+    if (value !== undefined && !isAllowed(value)) {
       violations.push({
         file: relative(process.cwd(), file),
         line: index + 1,
@@ -62,9 +83,13 @@ function radiusViolationsIn(file: string): Violation[] {
 }
 
 describe('css literal guard', () => {
+  const scannedFiles = (): string[] =>
+    cssFilesUnder(editorRoot).filter((file) => file !== tokensCss)
+
   it('declares no raw numeric border-radius outside tokens.css', () => {
-    const scanned = cssFilesUnder(editorRoot).filter((file) => file !== tokensCss)
-    const violations = scanned.flatMap(radiusViolationsIn)
+    const violations = scannedFiles().flatMap((file) =>
+      violationsIn(file, 'border-radius', isAllowedRadius),
+    )
 
     const report = violations
       .map(({ file, line, value }) => `${file}:${line}: border-radius: ${value}`)
@@ -74,6 +99,23 @@ describe('css literal guard', () => {
       violations,
       `Raw border-radius literals must route through a --radius-* token ` +
         `(add --radius-pill for the 9999px pills). Offending declarations:\n${report}`,
+    ).toEqual([])
+  })
+
+  it('declares no raw numeric font-size outside tokens.css', () => {
+    const violations = scannedFiles().flatMap((file) =>
+      violationsIn(file, 'font-size', isAllowedFontSize),
+    )
+
+    const report = violations
+      .map(({ file, line, value }) => `${file}:${line}: font-size: ${value}`)
+      .join('\n')
+
+    expect(
+      violations,
+      `Raw font-size literals must route through a --font-size-* token ` +
+        `(snap each value to the nearest token on the xs/sm/md/lg/xl scale). ` +
+        `CSS keywords such as 'inherit' stay allowed. Offending declarations:\n${report}`,
     ).toEqual([])
   })
 })
