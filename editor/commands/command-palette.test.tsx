@@ -108,9 +108,7 @@ describe('CommandPaletteDialog', () => {
       const onClose = vi.fn()
       renderDialog(onClose)
 
-      expect(document.activeElement).toBe(
-        screen.getByRole('textbox', { name: 'Search commands' }),
-      )
+      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search commands' }))
 
       await userEvent.keyboard('{Escape}')
 
