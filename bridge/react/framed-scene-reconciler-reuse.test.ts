@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 import type {
   Floor,
@@ -130,6 +131,20 @@ function chairAt(x: number, id: string, contentHash = 'c'): FurnitureInstance {
     footprint: { width: CHAIR_DIMENSION_MM, depth: CHAIR_DIMENSION_MM },
     height: CHAIR_HEIGHT_MM,
   })
+}
+
+function firstMeshMaterialName(group: THREE.Object3D): string {
+  let mesh: THREE.Mesh | undefined
+  group.traverse((object) => {
+    if (mesh === undefined && object instanceof THREE.Mesh) {
+      mesh = object
+    }
+  })
+  if (mesh === undefined) {
+    throw new Error('expected the furniture box group to carry a mesh')
+  }
+  const material = mesh.material
+  return Array.isArray(material) ? (material[0]?.name ?? '') : material.name
 }
 
 function projectWith(floor: Floor): Project {
@@ -385,6 +400,39 @@ describe('createFramedSceneReconciler furniture model', () => {
     expect(boxGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
   })
 
+  it('builds the furnitureFailed box for a failed model entry and the plain box otherwise', () => {
+    const derive = createSceneGraphDeriver()
+    const chair = chairAt(0, 'chair-failed')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chair],
+    }
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const node = graph.furniture[0]
+    if (node === undefined) throw new Error('expected one furniture node')
+    const failedModels = {
+      get: (hash: string) =>
+        hash === node.assetRef.contentHash ? { status: 'failed' as const } : undefined,
+    }
+
+    const failedBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint(), failedModels)
+    const plainBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint())
+
+    const failedGroup = findByEntityId(failedBuild.root, chair.id)
+    const plainGroup = findByEntityId(plainBuild.root, chair.id)
+    expect(failedGroup).not.toBeNull()
+    expect(plainGroup).not.toBeNull()
+    // The failed stand-in is still a massing box, so it keeps the edge overlay (LineSegments).
+    expect(failedGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
+    // The failed box mesh carries the distinct furnitureFailed material; the box-only
+    // (no-entry/loading) fall-through keeps the plain furniture material.
+    if (failedGroup === null || plainGroup === null) {
+      throw new Error('expected both furniture box groups to exist')
+    }
+    expect(firstMeshMaterialName(failedGroup)).toBe('furnitureFailed')
+    expect(firstMeshMaterialName(plainGroup)).toBe('furniture')
+  })
+
   it('rebuilds only the piece whose model became ready', async () => {
     const derive = createSceneGraphDeriver()
     const reconciler = createFramedSceneReconciler()
@@ -416,5 +464,45 @@ describe('createFramedSceneReconciler furniture model', () => {
     const second = reconciler.reconcile(graph, paint, aReadyModels)
     expect(findByEntityId(second.root, chairA.id)).not.toBe(aFirst) // A rebuilt as a mesh
     expect(findByEntityId(second.root, chairB.id)).toBe(bFirst) // B reused by identity
+  })
+
+  it('rebuilds only the piece whose model transitioned loading to failed', () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const chairA = chairAt(EDITED_CHAIR_X_MM, 'chair-a', 'hash-a')
+    const chairB = chairAt(PRESERVED_CHAIR_X_MM, 'chair-b', 'hash-b')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chairA, chairB],
+    }
+    // Build the graph ONCE and reuse it (same node refs) across both reconciles, so the only
+    // thing that changes between calls is chair A's model load status: still-loading (a plain
+    // box) on the first reconcile, then failed (the distinct stand-in box) on the second.
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const nodeA = graph.furniture.find((node) => node.id === `${FURNITURE_NODE_PREFIX}${chairA.id}`)
+    if (nodeA === undefined) throw new Error('expected chair A to derive a furniture node')
+    const loadingModels = {
+      get: (hash: string) =>
+        hash === nodeA.assetRef.contentHash ? { status: 'loading' as const } : undefined,
+    }
+    const aFailedModels = {
+      get: (hash: string) =>
+        hash === nodeA.assetRef.contentHash ? { status: 'failed' as const } : undefined,
+    }
+
+    const first = reconciler.reconcile(graph, paint, loadingModels)
+    const aFirst = findByEntityId(first.root, chairA.id)
+    const bFirst = findByEntityId(first.root, chairB.id)
+    expect(aFirst).not.toBeNull()
+    expect(bFirst).not.toBeNull()
+
+    const second = reconciler.reconcile(graph, paint, aFailedModels)
+    const aSecond = findByEntityId(second.root, chairA.id)
+    expect(aSecond).not.toBe(aFirst) // A rebuilt: the loading box is replaced by the failed box
+    expect(findByEntityId(second.root, chairB.id)).toBe(bFirst) // B reused by identity
+    // The rebuilt A box carries the distinct failed material, not the plain loading box's.
+    if (aSecond === null) throw new Error('expected chair A to rebuild a furniture box group')
+    expect(firstMeshMaterialName(aSecond)).toBe('furnitureFailed')
   })
 })

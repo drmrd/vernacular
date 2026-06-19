@@ -58,14 +58,18 @@ interface SubgroupBuild<Node> {
   group: SceneRoot
 }
 
+/** Which furniture appearance a sub-group was built as: a ready mesh, the failed box, or the plain box. */
+type FurnitureBuildKind = 'mesh' | 'failedBox' | 'box'
+
 /**
- * A built furniture sub-group, kept with the node it was built from and whether it was built
- * against a ready model. A box build can be swapped for a mesh build when its model turns ready.
+ * A built furniture sub-group, kept with the node it was built from and which appearance it was
+ * built as. A box build can be swapped for a mesh build when its model turns ready, or for the
+ * failed box when its model load fails, so the kind (not just node ref) decides reuse.
  */
 interface FurnitureSubgroupBuild {
   node: FurnitureSceneNode
   group: SceneRoot
-  builtReady: boolean
+  buildKind: FurnitureBuildKind
 }
 
 /**
@@ -106,16 +110,19 @@ function floorEntities(graph: SceneGraph, floorNode: SceneNode): FloorEntities {
 }
 
 /**
- * A stable string of the floor's currently-ready furniture content hashes. When a model turns
- * ready this signature changes, defeating the whole-floor early-return so the piece can rebuild.
+ * A stable string of the floor's furniture content hashes tagged with the appearance their model
+ * status calls for (ready mesh, failed box, or plain box). When a model turns ready or its load
+ * fails this signature changes, defeating the whole-floor early-return so the piece can rebuild.
  */
 function furnitureReadySignature(
   furniture: FurnitureSceneNode[],
   models: FurnitureModelLookup,
 ): string {
   return furniture
-    .filter((node) => models.get(node.assetRef.contentHash)?.status === 'ready')
-    .map((node) => node.assetRef.contentHash)
+    .map(
+      (node) =>
+        `${node.assetRef.contentHash}:${furnitureBuildKind(models.get(node.assetRef.contentHash))}`,
+    )
     .sort()
     .join('|')
 }
@@ -203,13 +210,24 @@ interface FurnitureBuildInput {
 
 /**
  * Whether a lookup entry yields a ready model. The single source of "this entry builds a mesh":
- * both the cache key (builtReady) and the mesh-vs-box build branch derive from it, and as a type
+ * the furnitureBuildKind helper and the mesh-vs-box build branch both call it, and as a type
  * guard it narrows entry.template so the build can clone it without a separate undefined check.
  */
 function providesReadyModel(
   entry: ReturnType<FurnitureModelLookup['get']>,
 ): entry is { status: 'ready'; template: FurnitureModel } {
   return entry?.status === 'ready' && entry.template !== undefined
+}
+
+/**
+ * Which appearance a lookup entry calls for: a ready model yields a mesh, a failed load yields the
+ * failed box, and a loading or missing entry yields the plain box. This single decision feeds both
+ * the build branch and the reuse key, so a loading box and a failed box carry distinct keys.
+ */
+function furnitureBuildKind(entry: ReturnType<FurnitureModelLookup['get']>): FurnitureBuildKind {
+  if (providesReadyModel(entry)) return 'mesh'
+  if (entry?.status === 'failed') return 'failedBox'
+  return 'box'
 }
 
 /** Builds a furniture sub-group from the real model when one is ready, else the massing box. */
@@ -221,13 +239,18 @@ function buildFurnitureGroup(
   if (providesReadyModel(entry)) {
     return buildFurnitureModelGroup(entry.template.clone(true), node)
   }
+  if (entry?.status === 'failed') {
+    return buildFurnitureSubgroup(node, materials, 'furnitureFailed')
+  }
   return buildFurnitureSubgroup(node, materials)
 }
 
 /**
  * Reuses a cached furniture sub-group only when its derived node reference is unchanged and the
- * readiness it was built against still matches; otherwise builds from the real model when one is
- * ready (a mesh sub-group) and falls back to the massing box.
+ * appearance it was built as still matches; otherwise builds from the real model when one is
+ * ready (a mesh sub-group), the failed box when its load failed, and the plain massing box
+ * otherwise. The build kind distinguishes a loading box from a failed box so the loading->failed
+ * transition rebuilds the one sub-group rather than reusing the stale loading box.
  */
 function reuseOrBuildFurniture({
   node,
@@ -236,12 +259,12 @@ function reuseOrBuildFurniture({
   models,
 }: FurnitureBuildInput): FurnitureSubgroupBuild {
   const entry = models.get(node.assetRef.contentHash)
-  const builtReady = providesReadyModel(entry)
+  const buildKind = furnitureBuildKind(entry)
   const cached = prev?.furniture.get(node.id)
-  if (cached !== undefined && cached.node === node && cached.builtReady === builtReady) {
+  if (cached !== undefined && cached.node === node && cached.buildKind === buildKind) {
     return cached
   }
-  return { node, group: buildFurnitureGroup(node, materials, entry), builtReady }
+  return { node, group: buildFurnitureGroup(node, materials, entry), buildKind }
 }
 
 /**
