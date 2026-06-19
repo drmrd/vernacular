@@ -39,4 +39,14 @@ describe('editor-shell.css', () => {
     expect(css).not.toMatch(/\.editor-shell__icon-btn--labeled\b/)
     expect(css).not.toMatch(/\.editor-shell__zoom-percent\b/)
   })
+
+  it('renders the wordmark in the heading font on the extended type scale', () => {
+    // ADR-0069 keeps the "Vernacular" wordmark in EB Garamond (the heading
+    // family) and on the extended type scale, not the UI family at a raw 1rem.
+    const wordmark = css.match(/\.editor-shell__wordmark\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(wordmark).not.toBe('')
+    expect(wordmark).toContain('var(--font-family-heading)')
+    expect(wordmark).toMatch(/font-size:\s*var\(--font-size-/)
+    expect(wordmark).not.toMatch(/font-size:\s*1rem/)
+  })
 })
