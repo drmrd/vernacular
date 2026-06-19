@@ -9,3 +9,13 @@ import type { NavMode } from './scene-nav-toolbar'
 export function selectionEnabledForMode(mode: NavMode): boolean {
   return mode !== 'walk'
 }
+
+/**
+ * Whether a canvas click should commit a selection given the user toggle and the navigation
+ * mode. Click-to-select is opt-in and off by default: a click commits a selection only when
+ * the user has turned the toggle on AND the camera is not in walk mode. Walk-mode clicks stay
+ * pure pointer-lock for mouse-look even when the toggle is on, so walk always overrides it.
+ */
+export function selectionAllowed(input: { enabled: boolean; mode: NavMode }): boolean {
+  return input.enabled && input.mode !== 'walk'
+}
