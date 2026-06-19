@@ -253,6 +253,25 @@ describe('drawUnderlay', () => {
     expect(saveCount).toBe(restoreCount)
   })
 
+  it('paints an axis-aligned underlay with a single plain drawImage and no canvas transform ops', () => {
+    const recorder = recordingContext()
+    // The default node has placement.rotation === 0, so rotation support must be a
+    // no-op: the raster paints exactly as before, with no save/restore/translate/rotate.
+    const node = underlayNode()
+
+    drawUnderlay(recorder.ctx, node, VIEWPORT, fakeImage)
+
+    expect(recorder.ops.filter((op) => op === 'drawImage')).toHaveLength(1)
+    for (const op of ['save', 'restore', 'translate', 'rotate']) {
+      expect(recorder.ops).not.toContain(op)
+    }
+
+    // With no transform scope the single recorded image carries the identity matrix:
+    // the axis-aligned raster paints byte-for-byte at its plain destination rect.
+    expect(recorder.images).toHaveLength(1)
+    expect(recorder.images[0]!.transform).toEqual({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
+  })
+
   it('restores the context alpha to fully opaque after drawing the underlay', () => {
     const recorder = recordingContext()
 
