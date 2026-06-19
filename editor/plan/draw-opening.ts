@@ -139,25 +139,6 @@ function setInk(painter: OpeningPainter): void {
   painter.ctx.lineWidth = OPENING_INK_WIDTH
 }
 
-function leafEnd(node: OpeningSceneNode, hinge: Point, sign: number): Point {
-  return add(hinge, scale(node.normal, sign * facingSign(node) * node.width))
-}
-
-function drawSwingLeaf(
-  painter: OpeningPainter,
-  node: OpeningSceneNode,
-  leaf: { hinge: Point; closed: Point; sign: number; counterclockwise?: boolean | undefined },
-): void {
-  const open = leafEnd(node, leaf.hinge, leaf.sign)
-  strokeSegment(painter, leaf.hinge, open)
-  strokeArc(painter, {
-    hinge: leaf.hinge,
-    leafEnd: open,
-    closed: leaf.closed,
-    counterclockwise: leaf.counterclockwise,
-  })
-}
-
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
   setInk(painter)
   const node = opening.node
@@ -167,9 +148,11 @@ function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void 
   strokeSegment(painter, primary.hinge, primary.leafEnd)
   strokeArc(painter, primary)
   if (opening.double) {
-    // `sign: -1` mirrors the secondary leaf onto the opposite jamb; behavior 8 will
-    // migrate this path to `swingLeafGeometry(node, { leaf: 'secondary' })`.
-    drawSwingLeaf(painter, node, { hinge: primary.closed, closed: primary.hinge, sign: -1 })
+    // The secondary leaf mirrors the primary across the opening centerline onto the
+    // same facing side, pivoting from the other jamb with the opposite sweep flag.
+    const secondary = swingLeafGeometry(node, { leaf: 'secondary' })
+    strokeSegment(painter, secondary.hinge, secondary.leafEnd)
+    strokeArc(painter, secondary)
   }
 }
 
