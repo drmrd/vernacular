@@ -15,6 +15,7 @@ import {
 } from '../../core'
 import { Button, Stack } from '../design-system'
 import { LengthField } from './length-field'
+import { RemoveControl } from './remove-control'
 
 const INCH_IN_MM = 25.4
 
@@ -140,35 +141,6 @@ function DimensionFields({
         </Stack>
       ))}
     </>
-  )
-}
-
-interface RemoveControlProps {
-  onConfirm: () => void
-}
-
-function RemoveControl({ onConfirm }: RemoveControlProps): ReactElement {
-  const [confirming, setConfirming] = useState(false)
-
-  if (confirming) {
-    return (
-      <Stack direction="horizontal" gap="space-2">
-        <Button variant="destructive" onClick={onConfirm}>
-          Confirm remove
-        </Button>
-        <Button variant="neutral" onClick={() => setConfirming(false)}>
-          Cancel
-        </Button>
-      </Stack>
-    )
-  }
-
-  return (
-    <Stack direction="horizontal" gap="space-2">
-      <Button variant="destructive" onClick={() => setConfirming(true)}>
-        Remove
-      </Button>
-    </Stack>
   )
 }
 
