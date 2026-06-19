@@ -41,6 +41,8 @@ interface SceneNavToolbarProps {
   onReset: () => void
   colorTemperatureK: number
   onColorTemperatureChange: (kelvin: number) => void
+  selectionEnabled?: boolean
+  onToggleSelection?: () => void
   onPreset?: (preset: PresetChoice) => void
   canDoorway?: boolean
 }
@@ -66,6 +68,25 @@ function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
         </button>
       ))}
     </div>
+  )
+}
+
+interface SelectionToggleProps {
+  selectionEnabled: boolean
+  onToggleSelection: (() => void) | undefined
+}
+
+/** Click-to-select is opt-in: a pressed toggle reflects whether selecting is currently on. */
+function SelectionToggle({ selectionEnabled, onToggleSelection }: SelectionToggleProps) {
+  return (
+    <button
+      type="button"
+      className="scene-nav-toolbar__btn"
+      aria-pressed={selectionEnabled}
+      onClick={() => onToggleSelection?.()}
+    >
+      Select
+    </button>
   )
 }
 
@@ -149,12 +170,15 @@ export function SceneNavToolbar({
   onReset,
   colorTemperatureK,
   onColorTemperatureChange,
+  selectionEnabled = false,
+  onToggleSelection,
   onPreset,
   canDoorway,
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
       <ModeToggle mode={mode} onModeChange={onModeChange} />
+      <SelectionToggle selectionEnabled={selectionEnabled} onToggleSelection={onToggleSelection} />
       <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
         Reset view
       </button>

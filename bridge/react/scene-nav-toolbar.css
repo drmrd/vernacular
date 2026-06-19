@@ -92,6 +92,14 @@
   color: var(--color-text);
 }
 
+/* A pressed toggle button (such as the click-select toggle) carries the brass
+   indicator, matching the active mode segment and the 2D shell's pressed icon buttons. */
+.scene-nav-toolbar__btn[aria-pressed='true'] {
+  background: var(--color-surface-active);
+  border-color: var(--color-indicator);
+  color: var(--color-text);
+}
+
 .scene-nav-toolbar__btn:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
