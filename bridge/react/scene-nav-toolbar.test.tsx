@@ -213,4 +213,18 @@ describe('SceneNavToolbar styling hooks', () => {
     expect(primary).toContainElement(screen.getByRole('button', { name: 'Reset view' }))
     expect(primary).toContainElement(screen.getByRole('button', { name: /select/i }))
   })
+
+  it('marks the camera presets as the secondary tier while keeping the six named buttons', () => {
+    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
+
+    const presets = screen.getByRole('group', { name: /camera presets/i })
+    expect(presets).toHaveClass('scene-nav-toolbar__presets')
+    expect(presets).toHaveClass('scene-nav-toolbar__secondary')
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'Top down' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'North' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'South' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'East' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'West' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'Doorway' }))
+  })
 })
