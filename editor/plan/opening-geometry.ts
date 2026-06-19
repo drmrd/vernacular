@@ -47,6 +47,13 @@ export interface SwingLeafGeometry {
   counterclockwise: boolean
 }
 
+/**
+ * Half of the opening width, as a fraction of `width`. A jamb sits half the width
+ * from the opening center along the wall axis. (`draw-opening.ts` keeps its own
+ * `HALF` for the same idea; they unify in behavior 6 when `draw-opening.ts` is
+ * refactored to consume `swingLeafGeometry`, which would otherwise invert the
+ * import direction since `draw-opening.ts` already imports from this module.)
+ */
 const HALF_WIDTH = 0.5
 const TWO_PI = Math.PI * 2
 
@@ -75,6 +82,8 @@ export function swingLeafGeometry(
   const leaf = options?.leaf ?? 'primary'
   const signs = leafSigns(node)
   const { center, along, normal, width } = node
+  // The secondary leaf of a double door pivots from the opposite jamb, so its
+  // pivot sign is the negation of the primary leaf's.
   const pivotSign = leaf === 'primary' ? signs.hinge : -signs.hinge
   const hinge: Point = {
     x: center.x + along.x * pivotSign * width * HALF_WIDTH,
@@ -90,7 +99,11 @@ export function swingLeafGeometry(
   }
   const startAngle = Math.atan2(-(leafEnd.y - hinge.y), leafEnd.x - hinge.x)
   const endAngle = Math.atan2(-(closed.y - hinge.y), closed.x - hinge.x)
+  // Normalize the signed angle difference into [0, 2pi): the `% TWO_PI` can yield a
+  // negative remainder, so add TWO_PI and take the modulus again to fold it back in.
   const delta = (((endAngle - startAngle) % TWO_PI) + TWO_PI) % TWO_PI
+  // A counterclockwise (in this y-flipped frame) sweep > pi covers the major arc;
+  // selecting `delta > pi` therefore strokes the minor (<= 180 degree) swing arc.
   const counterclockwise = delta > Math.PI
   return { hinge, leafEnd, closed, counterclockwise }
 }
