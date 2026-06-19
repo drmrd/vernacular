@@ -124,6 +124,46 @@ describe('drawUnderlay', () => {
     expect(image.alpha).toBe(UNDERLAY_OPACITY)
   })
 
+  it('overlays geometry sharing its world-y band rather than displacing the raster into the lower half', () => {
+    // The 231 Hubbard regression: a floor-sized underlay whose footprint occupies
+    // the same +y world band as the floor geometry it was traced from. Before the
+    // y-up fix the raster landed below (and mirrored relative to) that geometry.
+    // Here the raster's projected screen y-extent must OVERLAP the feature's, so
+    // the underlay sits in the same screen region as the rooms, not displaced down.
+    const recorder = recordingContext()
+    // A floor-sized underlay: footprint spans world-y from 5000 (top) down to
+    // 5000 - 600 * 10 = -1000 (bottom).
+    const node = underlayNode({
+      placement: { offset: { x: 2000, y: 5000 }, millimetersPerPixel: MILLIMETERS_PER_PIXEL, rotation: 0 },
+    })
+
+    drawUnderlay(recorder.ctx, node, VIEWPORT, fakeImage)
+
+    expect(recorder.images).toHaveLength(1)
+    const image = recorder.images[0]
+    const rasterTop = Math.min(image.dy, image.dy + image.dHeight)
+    const rasterBottom = Math.max(image.dy, image.dy + image.dHeight)
+
+    // An asymmetric feature (a low, off-centre corner) sitting inside the same +y
+    // world band as the underlay footprint. Its projected screen y must fall within
+    // the raster's projected screen y-extent: same region, not the lower half.
+    const featureWorld = { x: 2500, y: 1200 }
+    const featureScreen = worldToScreen(featureWorld, VIEWPORT)
+
+    expect(featureScreen.y).toBeGreaterThanOrEqual(rasterTop)
+    expect(featureScreen.y).toBeLessThanOrEqual(rasterBottom)
+
+    // And the raster's y-extent overlaps the feature's band as a whole, not merely
+    // touching a single point: the projected top and bottom of the underlay's world
+    // band bracket the feature's projected screen y.
+    const bandTopScreen = worldToScreen({ x: 2500, y: 5000 }, VIEWPORT)
+    const bandBottomScreen = worldToScreen({ x: 2500, y: -1000 }, VIEWPORT)
+    const bandTop = Math.min(bandTopScreen.y, bandBottomScreen.y)
+    const bandBottom = Math.max(bandTopScreen.y, bandBottomScreen.y)
+    expect(rasterTop).toBeLessThanOrEqual(bandBottom)
+    expect(rasterBottom).toBeGreaterThanOrEqual(bandTop)
+  })
+
   it('restores the context alpha to fully opaque after drawing the underlay', () => {
     const recorder = recordingContext()
 
