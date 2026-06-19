@@ -8,6 +8,7 @@ import type {
 } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+import { assertPositiveLength } from '../../units/length-bounds'
 
 export const SET_ROOM_NAME = 'room/set-name'
 
@@ -181,6 +182,9 @@ export function setRoomCeilingHeight(
 
 const setRoomCeilingHeightHandler: CommandHandler<Project, SetRoomCeilingHeightParams> = {
   apply(state, params) {
+    if (params.height !== undefined) {
+      assertPositiveLength(params.height, 'Ceiling height')
+    }
     mergeRoomOverride(state, params.roomKey, { ceilingHeight: params.height })
   },
 }
