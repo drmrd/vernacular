@@ -175,6 +175,37 @@ function separate(a: Bounds, b: Bounds): { a: Bounds; b: Bounds } {
 }
 
 /**
+ * De-conflict a list of laid-out items in place, nudging each colliding pair of
+ * boxes symmetrically apart (the NUDGE policy) until disjoint. Items for which
+ * `isSkipped` returns true take no part in de-confliction and keep their box; the
+ * default predicate skips nothing. Shared by the room and dimension passes, whose
+ * only difference is the room pass's hidden-label skip.
+ */
+function deconflictBoxes<T extends { box: Bounds }>(
+  items: T[],
+  isSkipped: (item: T) => boolean = () => false,
+): void {
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = i + 1; j < items.length; j += 1) {
+      const first = items[i]
+      const second = items[j]
+      if (first === undefined || second === undefined) {
+        continue
+      }
+      if (isSkipped(first) || isSkipped(second)) {
+        continue
+      }
+      if (!labelsOverlap(first.box, second.box)) {
+        continue
+      }
+      const separated = separate(first.box, second.box)
+      first.box = separated.a
+      second.box = separated.b
+    }
+  }
+}
+
+/**
  * Lay out every room's label, de-conflicting overlapping visible boxes so no two
  * intersect. Each room is projected to its centroid and sized by its placement;
  * hidden rooms keep a degenerate box and take no part in de-confliction. Visible
@@ -199,24 +230,7 @@ export function layoutRoomLabels(
     }
   })
 
-  for (let i = 0; i < layout.length; i += 1) {
-    for (let j = i + 1; j < layout.length; j += 1) {
-      const first = layout[i]
-      const second = layout[j]
-      if (first === undefined || second === undefined) {
-        continue
-      }
-      if (first.kind === 'hidden' || second.kind === 'hidden') {
-        continue
-      }
-      if (!labelsOverlap(first.box, second.box)) {
-        continue
-      }
-      const separated = separate(first.box, second.box)
-      first.box = separated.a
-      second.box = separated.b
-    }
-  }
+  deconflictBoxes(layout, (item) => item.kind === 'hidden')
 
   return layout
 }
@@ -236,7 +250,10 @@ export interface DimensionLayoutOptions {
   preferences: UnitPreferences
 }
 
-/** The screen anchor a dimension's measured-length label centers on: the midpoint of its projected offset line, matching the draw path. */
+/**
+ * The screen anchor a dimension's measured-length label centers on: the midpoint
+ * of its projected offset line, matching the draw path.
+ */
 function dimensionLabelAnchor(node: DimensionSceneNode, viewport: Viewport): Point {
   const geometry = dimensionGeometry(node.start, node.end, node.offset)
   return worldToScreen(midpoint(geometry.lineStart, geometry.lineEnd), viewport)
@@ -266,21 +283,7 @@ export function layoutDimensionLabels(
     }
   })
 
-  for (let i = 0; i < layout.length; i += 1) {
-    for (let j = i + 1; j < layout.length; j += 1) {
-      const first = layout[i]
-      const second = layout[j]
-      if (first === undefined || second === undefined) {
-        continue
-      }
-      if (!labelsOverlap(first.box, second.box)) {
-        continue
-      }
-      const separated = separate(first.box, second.box)
-      first.box = separated.a
-      second.box = separated.b
-    }
-  }
+  deconflictBoxes(layout)
 
   return layout
 }
