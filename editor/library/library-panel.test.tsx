@@ -234,3 +234,33 @@ describe('LibraryPanel design-system primitives', () => {
     expect(onImport).toHaveBeenCalledTimes(1)
   })
 })
+
+function carriesFieldControlTreatment(control: HTMLElement): boolean {
+  return control.classList.contains('ds-field__control') || control.closest('.ds-field') !== null
+}
+
+describe('LibraryPanel design-system surfaces', () => {
+  it('gives the furniture library region the shared menu-surface class', async () => {
+    renderPanel(registryOf([libraryItem()], []))
+    await screen.findByRole('button', { name: PACK_ITEM_NAME })
+
+    expect(screen.getByRole('region', { name: /furniture library/i })).toHaveClass(
+      'ds-menu-surface',
+    )
+  })
+
+  it('routes the grid item button through the Button primitive', async () => {
+    renderPanel(registryOf([libraryItem()], []))
+
+    expect(await screen.findByRole('button', { name: PACK_ITEM_NAME })).toHaveClass('ds-button')
+  })
+
+  it('gives the furniture search input the field control treatment', async () => {
+    await renderBothLoaded()
+
+    const search = screen.getByRole('searchbox', { name: /search furniture/i })
+
+    expect(search).toBeInTheDocument()
+    expect(carriesFieldControlTreatment(search)).toBe(true)
+  })
+})
