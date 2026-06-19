@@ -5,16 +5,12 @@ import {
   SceneHarnessView,
   SelectionProvider,
   type HarnessScene,
-  createActiveFloorStore,
   createEditorSession,
-  createSelectionStore,
   loadOrCreateProject,
-  useAutosave,
   type EditorSession,
 } from '../bridge'
-import { ActiveToolProvider, EditorShell } from '../editor'
+import { ActiveToolProvider, DiscardDialog, EditorShell } from '../editor'
 import { AssetProviders } from './asset-providers'
-import { createAssetLibrary } from './create-asset-library-registry'
 import { ThemeProvider } from '../editor/design-system'
 import {
   InMemoryAssetCache,
@@ -36,8 +32,8 @@ import {
   type SurfaceTreatment,
 } from '../core'
 import { createInitialProject } from './create-initial-project'
-import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
 import { resolveProjectStorage } from './resolve-project-store'
+import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
 const DEFAULT_PROJECT_ID = 'current'
@@ -298,7 +294,7 @@ function asError(cause: unknown): Error {
   return cause instanceof Error ? cause : new Error('Failed to boot the project')
 }
 
-interface EditorWorkspaceProps {
+export interface EditorWorkspaceProps {
   session: EditorSession
   store: ProjectStore
   assets: AssetCache
@@ -309,39 +305,30 @@ interface EditorWorkspaceProps {
   onSession: (session: EditorSession) => void
 }
 
-function EditorWorkspace(props: EditorWorkspaceProps) {
-  const { session, store, assets, projectId, recentProjects, snapshots, onSession } = props
-  const selection = useMemo(() => createSelectionStore(), [])
-  const activeFloorStore = useMemo(
-    () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
-    [session],
-  )
-  // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
-  // option rejects an explicit undefined.
-  const saveStatus = useAutosave({ session, store, projectId, ...(snapshots ? { snapshots } : {}) })
-  const { recentEntries, recovery } = useRecentProjectsAndRecovery({
-    recentProjects,
-    snapshots,
-    onSession,
-  })
-  const actions = useProjectActions({ ...props, recentEntries })
-  // The asset library (starter pack + user imports), assembled once per content cache.
-  const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
+export function EditorWorkspace(props: EditorWorkspaceProps) {
+  const { session, assets } = props
+  const ws = useWorkspaceState(props)
 
   return (
     <ThemeProvider>
       <EditorSessionProvider session={session}>
-        <AssetProviders assets={assets} library={assetLibrary}>
-          <SelectionProvider store={selection}>
-            <ActiveFloorProvider store={activeFloorStore}>
+        <AssetProviders assets={assets} library={ws.assetLibrary}>
+          <SelectionProvider store={ws.selection}>
+            <ActiveFloorProvider store={ws.activeFloorStore}>
               <ActiveToolProvider>
                 <EditorShell
-                  saveStatus={saveStatus}
-                  recentProjects={recentEntries}
-                  {...actions}
-                  onDismissImportStatus={actions.dismissImportStatus}
+                  saveStatus={ws.saveStatus}
+                  recentProjects={ws.recentEntries}
+                  {...ws.actions}
+                  onDismissImportStatus={ws.actions.dismissImportStatus}
                   // Spread recovery only when present: the optional prop rejects an explicit undefined.
-                  {...(recovery ? { recovery } : {})}
+                  {...(ws.recovery ? { recovery: ws.recovery } : {})}
+                />
+                <DiscardDialog
+                  open={ws.discardRequest !== null}
+                  projectName={session.getProject().meta.name}
+                  onConfirm={() => ws.resolveDiscard(true)}
+                  onCancel={() => ws.resolveDiscard(false)}
                 />
               </ActiveToolProvider>
             </ActiveFloorProvider>

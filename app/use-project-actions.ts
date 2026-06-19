@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { SvgPlanExporter } from '../core'
-import { commitProject, createEditorSession, type EditorSession } from '../bridge'
+import { commitProject, createEditorSession, guardDestructive, type EditorSession } from '../bridge'
 import {
   DirectoryHandleStore,
   FileSystemFolderProjectStore,
@@ -76,18 +76,34 @@ export interface ProjectActionsContext {
   capabilities: StorageCapabilities
   recentEntries: RecentEntry[]
   onSession: (session: EditorSession) => void
+
+  /** Whether the live session has unsaved changes since the last save/load.
+   *  Source: the dirty tracker (bridge/session/create-dirty-tracker.ts) via
+   *  the app-layer useDirtyState hook. Treated as clean (false) when omitted. */
+  isDirty?: boolean
+
+  /** Prompt the user to discard unsaved work before a destructive swap.
+   *  Resolves true to proceed, false/falsy to cancel. Sync or async, matching
+   *  GuardDestructiveOptions.confirm exactly. Only consulted when isDirty is
+   *  true (per needsDiscardConfirmation). */
+  confirmDiscard?: () => boolean | Promise<boolean>
+
+  /** Clears the dirty baseline after an explicit save commits, returning the
+   *  dirty tracker to clean. Source: useDirtyTracker.
+   *  Optional so hook-level tests that build the context without it stay valid. */
+  markSaved?: () => void
 }
 
 export interface ProjectActions {
   onSave: () => void
   onOpenRecent: (id: string) => void
-  onNewProject: () => void
+  onNewProject: () => void | Promise<void>
   onExportBundle: () => void
   onExportPlan: () => void
   onExportImage: () => void
   onExportPdf: () => void
   onOpenFolder?: () => void
-  onImportDroppedFile?: (file: File) => void
+  onImportDroppedFile?: (file: File) => void | Promise<void>
   onOpenFile?: () => void
   importStatus?: ImportStatus | null
   dismissImportStatus?: () => void
@@ -108,7 +124,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
 }
 
 function useSaveAction(context: ProjectActionsContext): () => void {
-  const { session, store, projectId, snapshots, recentProjects, capabilities } = context
+  const { session, store, projectId, snapshots, recentProjects, capabilities, markSaved } = context
   const backend = defaultStoreBackend(capabilities)
   return useCallback(() => {
     const project = session.getProject()
@@ -122,11 +138,14 @@ function useSaveAction(context: ProjectActionsContext): () => void {
         if (backend !== null) {
           recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
         }
+        // A successful explicit save is the clean baseline: clear the dirty tracker
+        // so the beforeunload guard disarms.
+        markSaved?.()
       })
       // User-facing surfacing (a notification/toast) is deferred: no notification
       // system exists in this slice, so failures are logged for now.
       .catch((error: unknown) => console.error('save failed', error))
-  }, [session, store, projectId, snapshots, recentProjects, backend])
+  }, [session, store, projectId, snapshots, recentProjects, backend, markSaved])
 }
 
 function useExportBundleAction(context: ProjectActionsContext): () => void {
@@ -170,11 +189,17 @@ function useExportPdfAction(context: ProjectActionsContext): () => void {
   }, [session])
 }
 
-function useNewProjectAction(context: ProjectActionsContext): () => void {
-  const { onSession } = context
-  return useCallback(() => {
-    onSession(createEditorSession(createInitialProject()))
-  }, [onSession])
+function useNewProjectAction(context: ProjectActionsContext): () => void | Promise<void> {
+  const { onSession, isDirty, confirmDiscard } = context
+  return useCallback(
+    () =>
+      guardDestructive({
+        isDirty: isDirty ?? false,
+        confirm: confirmDiscard ?? (() => true),
+        run: () => onSession(createEditorSession(createInitialProject())),
+      }),
+    [onSession, isDirty, confirmDiscard],
+  )
 }
 
 // Open folder is gated on the native picker capability; without it the shell
