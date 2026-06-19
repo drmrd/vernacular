@@ -29,10 +29,9 @@ export function drawUnderlay(
 ): void {
   const pixelToScreen = node.placement.millimetersPerPixel * viewport.scale
   ctx.globalAlpha = node.opacity
+  // UnderlayImage is the structural slice (width/height) drawImage reads; a real
+  // ImageBitmap satisfies the seam's CanvasImageSource, so widen at each call below.
   if (node.placement.rotation === 0) {
-    // Axis-aligned: a plain drawImage at the projected offset, unchanged from the original path.
-    // UnderlayImage is the structural slice (width/height) drawImage reads; a real
-    // ImageBitmap satisfies the seam's CanvasImageSource, so widen at the call.
     const origin = worldToScreen(node.placement.offset, viewport)
     ctx.drawImage(
       image as CanvasImageSource,
@@ -44,10 +43,9 @@ export function drawUnderlay(
   } else {
     // Project the footprint corners the snap path already uses, then paint the raster into that rotated quad.
     const corners = underlayTracePoints(node).map((corner) => worldToScreen(corner, viewport))
-    const topLeft = corners[0]
-    const topRight = corners[1]
-    const bottomLeft = corners[3]
-    if (topLeft === undefined || topRight === undefined || bottomLeft === undefined) return // unreachable; satisfies strict indexing
+    const [topLeft, topRight, , bottomLeft] = corners
+    if (topLeft === undefined || topRight === undefined || bottomLeft === undefined) return // underlayTracePoints always returns four corners; this guard only satisfies strict array-index typing
+    // the screen-vector angle accounts for any viewport pan/zoom mapping baked into worldToScreen
     const angle = Math.atan2(topRight.y - topLeft.y, topRight.x - topLeft.x)
     const widthScreen = Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y)
     const heightScreen = Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y)
