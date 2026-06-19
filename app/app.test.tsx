@@ -341,4 +341,52 @@ describe('App unsaved-changes guard', () => {
       screen.getByText('Drafthouse', { selector: '.editor-shell__breadcrumb-active' }),
     ).toBeInTheDocument()
   })
+
+  it('arms the beforeunload guard while dirty and disarms it after an explicit Save', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    const session = createEditorSession(projectWithWalls('Drafthouse', 0))
+
+    render(
+      <EditorWorkspace
+        session={session}
+        store={store}
+        assets={new InMemoryAssetCache()}
+        projectId="current"
+        recentProjects={new InMemoryRecentProjectStore()}
+        capabilities={capableCapabilities()}
+        snapshots={undefined}
+        onSession={vi.fn()}
+      />,
+    )
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+
+    // Dirty the live session through the dispatch boundary (the only mutation
+    // channel), wrapped in act so the guard re-renders against the dirty state.
+    await act(async () => {
+      session.dispatch(addFloor('Second floor'))
+    })
+
+    // While dirty, the native beforeunload guard is armed: a cancelable
+    // beforeunload event gets vetoed (defaultPrevented) so the browser shows its
+    // "you have unsaved changes" warning. Dispatch inside act so any pending
+    // effect that registered the listener has flushed first.
+    await act(async () => {
+      const dirtyEvent = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(dirtyEvent)
+      expect(dirtyEvent.defaultPrevented).toBe(true)
+    })
+
+    // An explicit Save commits the project and clears the dirty baseline.
+    await userEvent.click(await screen.findByRole('button', { name: /save/i }))
+
+    // Once the async save settles and the effect cleanup removes the listener,
+    // a fresh beforeunload is no longer vetoed: the guard has disarmed.
+    await waitFor(() => {
+      const cleanEvent = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(cleanEvent)
+      expect(cleanEvent.defaultPrevented).toBe(false)
+    })
+  })
 })
