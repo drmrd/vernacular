@@ -54,15 +54,20 @@ function sidePositions(polygon: readonly Point[], base: number, top: number): nu
 // Top cap reverses its winding to face +Y after planToWorld's orientation-flipping axis map; the base
 // keeps the triangulation order to face -Y; the sides span base to top. Mirrors junction-fill so the
 // box reads solid from outside under front-side culling.
-function boxSections(corners: readonly Point[], base: number, top: number): WallSection[] {
+function boxSections(
+  corners: readonly Point[],
+  base: number,
+  top: number,
+  role: SurfaceRole,
+): WallSection[] {
   const triangles = capTriangles(corners)
   return [
     {
-      role: FURNITURE_ROLE,
+      role,
       positions: capPositions(corners, reverseTriangleWinding(triangles), top),
     },
-    { role: FURNITURE_ROLE, positions: capPositions(corners, triangles, base) },
-    { role: FURNITURE_ROLE, positions: sidePositions(corners, base, top) },
+    { role, positions: capPositions(corners, triangles, base) },
+    { role, positions: sidePositions(corners, base, top) },
   ]
 }
 
@@ -77,11 +82,12 @@ function boxSections(corners: readonly Point[], base: number, top: number): Wall
 export function buildFurnitureMassing(
   node: FurnitureSceneNode,
   materials: MaterialProvider,
+  role: SurfaceRole = FURNITURE_ROLE,
 ): THREE.Group {
   const base = node.elevationZ
   const top = node.elevationZ + node.height
-  const geometry = geometryFromSections(boxSections(node.footprintCorners, base, top))
-  const mesh = new THREE.Mesh(geometry, materials.material(FURNITURE_ROLE))
+  const geometry = geometryFromSections(boxSections(node.footprintCorners, base, top, role))
+  const mesh = new THREE.Mesh(geometry, materials.material(role))
   const group = new THREE.Group()
   group.add(mesh)
   group.name = node.id
