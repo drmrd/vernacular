@@ -55,3 +55,15 @@ export function kelvinToLinearRgb(kelvin: number): LinearRgb {
   const peak = Math.max(linear.r, linear.g, linear.b)
   return { r: linear.r / peak, g: linear.g / peak, b: linear.b / peak }
 }
+
+/** Formats a color temperature in kelvin as a readable value string with its unit, e.g. `'6500 K'`. */
+export function formatColorTemperature(kelvin: number): string {
+  return `${kelvin} K`
+}
+
+const COLOR_TEMPERATURE_MIDPOINT_K = (MIN_COLOR_TEMPERATURE_K + MAX_COLOR_TEMPERATURE_K) / 2
+
+/** Describes a color temperature in kelvin as `'warm'` (low end) or `'cool'` (high end). */
+export function colorTemperatureLabel(kelvin: number): 'warm' | 'cool' {
+  return kelvin < COLOR_TEMPERATURE_MIDPOINT_K ? 'warm' : 'cool'
+}

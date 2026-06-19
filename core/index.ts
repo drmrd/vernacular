@@ -461,6 +461,8 @@ export type { LinearRgb, OkLab, Srgb } from './color/oklab'
 export { linearToSrgb, okLabToSrgb, srgbToLinear, srgbToOkLab } from './color/oklab'
 export {
   kelvinToLinearRgb,
+  formatColorTemperature,
+  colorTemperatureLabel,
   MIN_COLOR_TEMPERATURE_K,
   MAX_COLOR_TEMPERATURE_K,
   DEFAULT_COLOR_TEMPERATURE_K,

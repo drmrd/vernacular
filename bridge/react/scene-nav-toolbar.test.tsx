@@ -2,6 +2,11 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SceneNavToolbar } from './scene-nav-toolbar'
+import {
+  formatColorTemperature,
+  MIN_COLOR_TEMPERATURE_K,
+  MAX_COLOR_TEMPERATURE_K,
+} from '../../core'
 
 afterEach(cleanup)
 
@@ -109,6 +114,44 @@ describe('SceneNavToolbar', () => {
     })
 
     expect(onColorTemperatureChange).toHaveBeenCalledWith(3000)
+  })
+})
+
+describe('SceneNavToolbar color-temperature readout', () => {
+  it('shows the live Kelvin value and warm/cool captions while keeping the slider accessible name', () => {
+    render(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={MAX_COLOR_TEMPERATURE_K}
+        onColorTemperatureChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(formatColorTemperature(MAX_COLOR_TEMPERATURE_K))).toBeInTheDocument()
+    expect(screen.getByText('Warm')).toBeInTheDocument()
+    expect(screen.getByText('Cool')).toBeInTheDocument()
+
+    const slider = screen.getByRole('slider', { name: /color temperature/i })
+    expect(slider).toHaveAttribute('aria-valuetext', '6500 kelvin')
+  })
+
+  it('reflects the current prop value in the readout rather than a hardcoded number', () => {
+    render(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={MIN_COLOR_TEMPERATURE_K}
+        onColorTemperatureChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(formatColorTemperature(MIN_COLOR_TEMPERATURE_K))).toBeInTheDocument()
+    expect(
+      screen.queryByText(formatColorTemperature(MAX_COLOR_TEMPERATURE_K)),
+    ).not.toBeInTheDocument()
   })
 })
 

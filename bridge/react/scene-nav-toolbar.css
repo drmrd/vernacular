@@ -112,3 +112,17 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
+
+/* The warm/cool end captions sit either side of the slider, dimmer than the readout
+   so the live value reads as the primary surface. */
+.scene-nav-toolbar__temperature-end {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The live Kelvin readout carries the toolbar's text color so the current value stays
+   legible alongside the muted captions. */
+.scene-nav-toolbar__temperature-readout {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
