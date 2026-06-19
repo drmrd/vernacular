@@ -34,3 +34,63 @@ export function projectPointOntoWall(start: Point, end: Point, world: Point): nu
   const alongY = (end.y - start.y) / length
   return (world.x - start.x) * alongX + (world.y - start.y) * alongY
 }
+
+/** The world-space leaf and swing-arc primitives a door symbol strokes for one leaf. */
+export interface SwingLeafGeometry {
+  /** World-space pivot jamb the leaf rotates about; the arc center. */
+  hinge: Point
+  /** World-space open leaf tip; the arc start point. */
+  leafEnd: Point
+  /** World-space closed-jamb target the arc sweeps toward; the arc end point. */
+  closed: Point
+  /** The canvas `arc` sweep flag, baked for the y-flipped screen projection, that yields the minor (<= 180 degree) arc. */
+  counterclockwise: boolean
+}
+
+const HALF_WIDTH = 0.5
+const TWO_PI = Math.PI * 2
+
+function leafSigns(node: OpeningSceneNode): { hinge: number; facing: number } {
+  return {
+    hinge: node.orientation.hinge === 'start' ? -1 : 1,
+    facing: node.orientation.facing === 'positive' ? 1 : -1,
+  }
+}
+
+/**
+ * The world-space leaf and arc primitives for one swing-door leaf. `hinge` is the
+ * pivot jamb, `closed` is the opposite (closed-door) jamb the arc ends at, and
+ * `leafEnd` is the open leaf tip on the facing side. The `counterclockwise` flag
+ * is computed from world points with the y-axis negated, matching the screen-space
+ * angles the plan renderer derives after `worldToScreen` (the ADR-0099 y-up flip),
+ * and is chosen so the arc from `leafEnd` to `closed` is the minor (quarter-circle)
+ * arc. The default `'primary'` leaf uses leaf-sign +1; `'secondary'` (for a double
+ * door's mirrored leaf) pivots from the other jamb with leaf-sign +1 on the same
+ * facing side.
+ */
+export function swingLeafGeometry(
+  node: OpeningSceneNode,
+  options?: { leaf?: 'primary' | 'secondary' },
+): SwingLeafGeometry {
+  const leaf = options?.leaf ?? 'primary'
+  const signs = leafSigns(node)
+  const { center, along, normal, width } = node
+  const pivotSign = leaf === 'primary' ? signs.hinge : -signs.hinge
+  const hinge: Point = {
+    x: center.x + along.x * pivotSign * width * HALF_WIDTH,
+    y: center.y + along.y * pivotSign * width * HALF_WIDTH,
+  }
+  const closed: Point = {
+    x: center.x + along.x * -pivotSign * width * HALF_WIDTH,
+    y: center.y + along.y * -pivotSign * width * HALF_WIDTH,
+  }
+  const leafEnd: Point = {
+    x: hinge.x + normal.x * signs.facing * width,
+    y: hinge.y + normal.y * signs.facing * width,
+  }
+  const startAngle = Math.atan2(-(leafEnd.y - hinge.y), leafEnd.x - hinge.x)
+  const endAngle = Math.atan2(-(closed.y - hinge.y), closed.x - hinge.x)
+  const delta = (((endAngle - startAngle) % TWO_PI) + TWO_PI) % TWO_PI
+  const counterclockwise = delta > Math.PI
+  return { hinge, leafEnd, closed, counterclockwise }
+}
