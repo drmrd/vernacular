@@ -1,22 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
   type HarnessScene,
-  createActiveFloorStore,
-  createDirtyTracker,
   createEditorSession,
-  createSelectionStore,
   loadOrCreateProject,
-  useAutosave,
-  useDirtyState,
   type EditorSession,
 } from '../bridge'
 import { ActiveToolProvider, DiscardDialog, EditorShell } from '../editor'
 import { AssetProviders } from './asset-providers'
-import { createAssetLibrary } from './create-asset-library-registry'
 import { ThemeProvider } from '../editor/design-system'
 import {
   InMemoryAssetCache,
@@ -38,8 +32,8 @@ import {
   type SurfaceTreatment,
 } from '../core'
 import { createInitialProject } from './create-initial-project'
-import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
 import { resolveProjectStorage } from './resolve-project-store'
+import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
 const DEFAULT_PROJECT_ID = 'current'
@@ -300,7 +294,7 @@ function asError(cause: unknown): Error {
   return cause instanceof Error ? cause : new Error('Failed to boot the project')
 }
 
-interface EditorWorkspaceProps {
+export interface EditorWorkspaceProps {
   session: EditorSession
   store: ProjectStore
   assets: AssetCache
@@ -312,51 +306,29 @@ interface EditorWorkspaceProps {
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
-  const { session, store, assets, projectId, recentProjects, snapshots, onSession } = props
-  const selection = useMemo(() => createSelectionStore(), [])
-  const activeFloorStore = useMemo(
-    () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
-    [session],
-  )
-  // A fresh session (New / Open / Import result) starts clean, so recreating the
-  // tracker per session resets the dirty baseline for free; dispose the old one
-  // when the session is replaced or the workspace unmounts.
-  const dirtyTracker = useMemo(() => createDirtyTracker(session), [session])
-  useEffect(() => () => dirtyTracker.dispose(), [dirtyTracker])
-  const isDirty = useDirtyState(dirtyTracker)
-  const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
-  // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
-  // option rejects an explicit undefined.
-  const saveStatus = useAutosave({ session, store, projectId, ...(snapshots ? { snapshots } : {}) })
-  const { recentEntries, recovery } = useRecentProjectsAndRecovery({
-    recentProjects,
-    snapshots,
-    onSession,
-  })
-  const actions = useProjectActions({ ...props, recentEntries, isDirty, confirmDiscard })
-  // The asset library (starter pack + user imports), assembled once per content cache.
-  const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
+  const { session, assets } = props
+  const ws = useWorkspaceState(props)
 
   return (
     <ThemeProvider>
       <EditorSessionProvider session={session}>
-        <AssetProviders assets={assets} library={assetLibrary}>
-          <SelectionProvider store={selection}>
-            <ActiveFloorProvider store={activeFloorStore}>
+        <AssetProviders assets={assets} library={ws.assetLibrary}>
+          <SelectionProvider store={ws.selection}>
+            <ActiveFloorProvider store={ws.activeFloorStore}>
               <ActiveToolProvider>
                 <EditorShell
-                  saveStatus={saveStatus}
-                  recentProjects={recentEntries}
-                  {...actions}
-                  onDismissImportStatus={actions.dismissImportStatus}
+                  saveStatus={ws.saveStatus}
+                  recentProjects={ws.recentEntries}
+                  {...ws.actions}
+                  onDismissImportStatus={ws.actions.dismissImportStatus}
                   // Spread recovery only when present: the optional prop rejects an explicit undefined.
-                  {...(recovery ? { recovery } : {})}
+                  {...(ws.recovery ? { recovery: ws.recovery } : {})}
                 />
                 <DiscardDialog
-                  open={discardRequest !== null}
+                  open={ws.discardRequest !== null}
                   projectName={session.getProject().meta.name}
-                  onConfirm={() => resolveDiscard(true)}
-                  onCancel={() => resolveDiscard(false)}
+                  onConfirm={() => ws.resolveDiscard(true)}
+                  onCancel={() => ws.resolveDiscard(false)}
                 />
               </ActiveToolProvider>
             </ActiveFloorProvider>
@@ -365,30 +337,4 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       </EditorSessionProvider>
     </ThemeProvider>
   )
-}
-
-interface DiscardRequest {
-  resolve: (ok: boolean) => void
-}
-
-// Bridges the imperative discard guard to the declarative DiscardDialog: a guard
-// asking to confirm opens the dialog and parks its resolver; the dialog's
-// confirm/cancel resolves that promise and clears the request.
-function useDiscardConfirmation(): {
-  discardRequest: DiscardRequest | null
-  confirmDiscard: () => Promise<boolean>
-  resolveDiscard: (ok: boolean) => void
-} {
-  const [discardRequest, setDiscardRequest] = useState<DiscardRequest | null>(null)
-  const confirmDiscard = useCallback(
-    () => new Promise<boolean>((resolve) => setDiscardRequest({ resolve })),
-    [],
-  )
-  const resolveDiscard = useCallback((ok: boolean) => {
-    setDiscardRequest((request) => {
-      request?.resolve(ok)
-      return null
-    })
-  }, [])
-  return { discardRequest, confirmDiscard, resolveDiscard }
 }
