@@ -26,6 +26,41 @@ describe('UnderlayMenu', () => {
     expect(screen.queryByText(/load image/i)).not.toBeInTheDocument()
   })
 
+  it('routes the trigger through the Button primitive while keeping its menu a11y attributes', () => {
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[]}
+        dispatch={vi.fn()}
+        onLoadImage={vi.fn()}
+        onCalibrate={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: /underlay/i })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).toHaveClass('ds-button')
+  })
+
+  it('opens onto a design-system menu surface whose Load image row routes through the Button primitive', async () => {
+    const user = userEvent.setup()
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[]}
+        dispatch={vi.fn()}
+        onLoadImage={vi.fn()}
+        onCalibrate={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /underlay/i }))
+
+    expect(screen.getByRole('menu')).toHaveClass('ds-menu-surface')
+    expect(screen.getByRole('menuitem', { name: /load image/i })).toHaveClass('ds-button')
+  })
+
   it('opens the flyout to reveal a Load image item and reflects the expanded state', async () => {
     const user = userEvent.setup()
     render(
