@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useFocusTrap } from './use-focus-trap'
 
 afterEach(cleanup)
@@ -36,5 +37,25 @@ describe('useFocusTrap', () => {
 
     rerender(<Harness open={false} />)
     expect(document.activeElement).toBe(opener)
+  })
+
+  it('cycles Tab focus within the container, wrapping last to first and first to last', async () => {
+    const user = userEvent.setup()
+    render(<Harness open={true} />)
+
+    const dialog = screen.getByRole('dialog', { name: 'Trapped' })
+    const firstField = screen.getByRole('textbox', { name: 'First field' })
+    const lastField = screen.getByRole('textbox', { name: 'Second field' })
+
+    lastField.focus()
+    expect(document.activeElement).toBe(lastField)
+
+    await user.tab()
+    expect(document.activeElement).toBe(firstField)
+    expect(dialog.contains(document.activeElement)).toBe(true)
+
+    await user.tab({ shift: true })
+    expect(document.activeElement).toBe(lastField)
+    expect(dialog.contains(document.activeElement)).toBe(true)
   })
 })
