@@ -8,7 +8,12 @@ import {
 } from './near-wall-transparency'
 import { findByEntityId } from '../testing'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { exteriorWalls, type SceneGraph } from '../../core'
+import {
+  buildWallGraph,
+  exteriorWalls,
+  junctionFadeGroups,
+  type SceneGraph,
+} from '../../core'
 
 const ROOM_SIDE_MM = 4000
 const WALL_THICKNESS_MM = 200
@@ -125,6 +130,83 @@ const openingMesh = (root: THREE.Group, entityId: string, name: string): THREE.M
   return found as THREE.Mesh
 }
 
+const BAR_LENGTH_MM = 2000
+const LEG_LENGTH_MM = 1000
+const BAR_MIDPOINT_MM = BAR_LENGTH_MM / 2
+
+/** A bar wall and the leg partition teed up from its midpoint, both on the ground floor. */
+const tJunctionWalls = (): SceneGraph['walls'] => [
+  wall('wall:bar', { x: 0, y: 0 }, { x: BAR_LENGTH_MM, y: 0 }),
+  wall('wall:leg', { x: BAR_MIDPOINT_MM, y: 0 }, { x: BAR_MIDPOINT_MM, y: LEG_LENGTH_MM }),
+]
+
+/**
+ * Two rooms north of an exterior "bar" wall, divided by an interior "leg" partition
+ * that tees up from the bar's midpoint. `buildWallGraph` splits the bar at the tee
+ * foot, so the vertex at the midpoint carries three incident edges: a 3+-way junction
+ * whose fill `buildScene` draws and tags with a `userData.junctionKey`. The bar is
+ * exterior (open air to the south); the leg bounds two interior rooms and never fades.
+ */
+const tJunctionGraph = (): SceneGraph => {
+  const roomA = [
+    { x: 0, y: 0 },
+    { x: BAR_MIDPOINT_MM, y: 0 },
+    { x: BAR_MIDPOINT_MM, y: LEG_LENGTH_MM },
+    { x: 0, y: LEG_LENGTH_MM },
+  ]
+  const roomB = [
+    { x: BAR_MIDPOINT_MM, y: 0 },
+    { x: BAR_LENGTH_MM, y: 0 },
+    { x: BAR_LENGTH_MM, y: LEG_LENGTH_MM },
+    { x: BAR_MIDPOINT_MM, y: LEG_LENGTH_MM },
+  ]
+  return {
+    nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
+    walls: tJunctionWalls(),
+    rooms: [
+      {
+        id: 'room:a',
+        kind: 'room',
+        floorId: 'g',
+        polygon: roomA,
+        clearPolygon: roomA,
+        area: BAR_MIDPOINT_MM * LEG_LENGTH_MM,
+        ceilingHeight: WALL_HEIGHT_MM,
+      },
+      {
+        id: 'room:b',
+        kind: 'room',
+        floorId: 'g',
+        polygon: roomB,
+        clearPolygon: roomB,
+        area: BAR_MIDPOINT_MM * LEG_LENGTH_MM,
+        ceilingHeight: WALL_HEIGHT_MM,
+      },
+    ],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+/** The single tagged junction-fill mesh under `root` (the one carrying a `junctionKey`). */
+const junctionFillMesh = (root: THREE.Group): THREE.Mesh => {
+  let found: THREE.Mesh | undefined
+  root.traverse((object) => {
+    if (
+      object instanceof THREE.Mesh &&
+      typeof object.userData.junctionKey === 'string' &&
+      found === undefined
+    ) {
+      found = object
+    }
+  })
+  expect(found).toBeDefined()
+  return found as THREE.Mesh
+}
+
 describe('cameraFacesWallOutside', () => {
   it('is true on the outward-normal side of the wall point and false on the other', () => {
     const point = { x: 0, z: 0 }
@@ -155,6 +237,49 @@ describe('prepareNearWallTransparency', () => {
     for (const bottom of bottomMaterials) {
       expect(topMaterials).not.toContain(bottom)
     }
+  })
+
+  it('enrolls the junction fill as a privatized, hold-opaque member of its fade group', () => {
+    const graph = tJunctionGraph()
+    const materials = new NeutralMaterialProvider()
+    const sharedJunctionFace = materials.material('junction')
+
+    const root = buildScene(graph, materials)
+
+    // The tagged fill mesh draws its sides with the SHARED `junction` role material
+    // before any privatization. Holding this shared instance opaque would pin every
+    // junction's material opaque, so the prep must clone it first.
+    const fill = junctionFillMesh(root)
+    const fillSourceMaterials = fill.material as THREE.Material[]
+    expect(fillSourceMaterials).toContain(sharedJunctionFace)
+
+    const fadeGroups = junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms)
+    const targets = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms),
+      fadeGroups,
+    )
+
+    // Across every prepared target, the records flagged to hold at baseline (the fill's
+    // side faces) must not animate to the faded opacity. At least one such record exists.
+    const holdOpaqueRecords = targets
+      .flatMap((target) => target.materials)
+      .filter((record) => (record as { holdOpaque?: boolean }).holdOpaque === true)
+    expect(holdOpaqueRecords.length).toBeGreaterThan(0)
+
+    // Privatization: the hold-opaque records own cloned materials, never the provider's
+    // shared `junction` instance, so holding the fill opaque cannot pin unrelated geometry.
+    for (const record of holdOpaqueRecords) {
+      expect(record.material).not.toBe(sharedJunctionFace)
+    }
+
+    // The fill's own materials were privatized in place: the mesh no longer references
+    // the shared instance, and a hold-opaque record points at one of its private clones.
+    const privatizedFillMaterials = fill.material as THREE.Material[]
+    expect(privatizedFillMaterials).not.toContain(sharedJunctionFace)
+    expect(
+      holdOpaqueRecords.some((record) => privatizedFillMaterials.includes(record.material)),
+    ).toBe(true)
   })
 })
 
