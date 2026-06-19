@@ -108,11 +108,17 @@ function setInk(painter: DimensionPainter): void {
   painter.ctx.lineWidth = DIMENSION_INK_WIDTH
 }
 
-/** Paint one dimension in screen space: the offset dimension line, an arrowhead at each end, the two extension lines, and the measured-length text at the line midpoint, plus a selection highlight when selected. */
+/** Paint one dimension in screen space: the offset dimension line, an arrowhead at each end, the two extension lines, and the measured-length text at its resolved label anchor (the line midpoint when none is given), plus a selection highlight when selected. */
 export function drawDimension(
   ctx: PlanDrawingContext,
   dimension: DrawableDimension,
-  render: { viewport: Viewport; palette: PlanPalette; preferences: UnitPreferences },
+  render: {
+    viewport: Viewport
+    palette: PlanPalette
+    preferences: UnitPreferences
+    /** The de-conflicted screen point for the length text; defaults to the line midpoint. */
+    labelAnchor?: ScreenPoint
+  },
 ): void {
   const painter: DimensionPainter = {
     ctx,
@@ -135,7 +141,7 @@ export function drawDimension(
   strokeArrowhead(painter, lineStart, direction)
   strokeArrowhead(painter, lineEnd, { x: -direction.x, y: -direction.y })
 
-  const labelMidpoint: ScreenPoint = midpoint(lineStart, lineEnd)
+  const labelMidpoint: ScreenPoint = render.labelAnchor ?? midpoint(lineStart, lineEnd)
   fillLengthText(painter, { node, midpoint: labelMidpoint, preferences: render.preferences })
 
   if (dimension.selected) {

@@ -18,6 +18,7 @@ import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-un
 import { openingCorners, openingJambs } from './opening-geometry'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
+import { layoutDimensionLabels, layoutRoomLabels } from './label-layout'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
@@ -288,8 +289,21 @@ function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions
 function drawDimensions(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const preferences = options.roomLabels?.preferences ?? DEFAULT_METRIC_PREFERENCES
   const palette = paletteOf(options)
-  for (const dimension of options.dimensions ?? []) {
-    drawDimension(ctx, dimension, { viewport: options.viewport, palette, preferences })
+  const dimensions = options.dimensions ?? []
+  const layouts = layoutDimensionLabels(
+    dimensions.map((dimension) => dimension.node),
+    options.viewport,
+    { preferences },
+  )
+  const labelById = new Map(layouts.map((layout) => [layout.dimensionId, boxCenter(layout.box)]))
+  for (const dimension of dimensions) {
+    const labelAnchor = labelById.get(dimension.node.id)
+    drawDimension(ctx, dimension, {
+      viewport: options.viewport,
+      palette,
+      preferences,
+      ...(labelAnchor !== undefined && { labelAnchor }),
+    })
   }
 }
 
@@ -298,13 +312,26 @@ function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void
   const roomLabels = options.roomLabels
   if (roomLabels === undefined) return
   const palette = paletteOf(options)
-  for (const room of options.rooms ?? []) {
+  const rooms = options.rooms ?? []
+  const layouts = layoutRoomLabels([...rooms], options.viewport, {
+    preferences: roomLabels.preferences,
+  })
+  const layoutById = new Map(layouts.map((layout) => [layout.roomId, layout]))
+  for (const room of rooms) {
+    const layout = layoutById.get(room.id)
+    if (layout === undefined || layout.kind === 'hidden') continue
     drawRoomLabel(ctx, room, {
       viewport: options.viewport,
       preferences: roomLabels.preferences,
       label: palette.label,
+      anchor: boxCenter(layout.box),
     })
   }
+}
+
+/** The center point of a label layout box, the de-conflicted anchor for its painted text. */
+function boxCenter(box: Bounds): Point {
+  return { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 }
 }
 
 interface RoomDrawing {
@@ -427,14 +454,20 @@ function drawEndpointHandle(
   ctx.fill()
 }
 
-/** Paint a room's name and area at its centroid; the area drops below a present name. */
+/** Paint a room's name and area at its centroid, or at a resolved screen anchor when given; the area drops below a present name. */
 export function drawRoomLabel(
   ctx: PlanDrawingContext,
   room: RoomSceneNode,
-  options: { viewport: Viewport; preferences: UnitPreferences; label: string },
+  options: {
+    viewport: Viewport
+    preferences: UnitPreferences
+    label: string
+    /** The de-conflicted screen anchor for the name line; defaults to the projected centroid. */
+    anchor?: Point
+  },
 ): void {
   const content = roomLabelContent(room, { preferences: options.preferences })
-  const anchor = worldToScreen(content.anchor, options.viewport)
+  const anchor = options.anchor ?? worldToScreen(content.anchor, options.viewport)
   ctx.font = LABEL_FONT
   ctx.fillStyle = options.label
   ctx.textAlign = LABEL_TEXT_ALIGN
