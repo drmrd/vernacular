@@ -17,10 +17,12 @@
   padding: var(--space-1) 0;
 }
 
-/* Two-column grid for sections with multiple tools. */
+/* Single-column grid: chips are full-width left-aligned rows after the 10d
+   migration, so full-width labels like "Chimney" no longer clip at the default
+   rail width. */
 .tools-panel__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-1);
 }
 
