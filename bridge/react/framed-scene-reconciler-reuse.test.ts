@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 import type {
   Floor,
@@ -130,6 +131,20 @@ function chairAt(x: number, id: string, contentHash = 'c'): FurnitureInstance {
     footprint: { width: CHAIR_DIMENSION_MM, depth: CHAIR_DIMENSION_MM },
     height: CHAIR_HEIGHT_MM,
   })
+}
+
+function firstMeshMaterialName(group: THREE.Object3D): string {
+  let mesh: THREE.Mesh | undefined
+  group.traverse((object) => {
+    if (mesh === undefined && object instanceof THREE.Mesh) {
+      mesh = object
+    }
+  })
+  if (mesh === undefined) {
+    throw new Error('expected the furniture box group to carry a mesh')
+  }
+  const material = mesh.material
+  return Array.isArray(material) ? (material[0]?.name ?? '') : material.name
 }
 
 function projectWith(floor: Floor): Project {
@@ -383,6 +398,39 @@ describe('createFramedSceneReconciler furniture model', () => {
     // The massing box carries an edge overlay (LineSegments); the real-model sub-group does not.
     expect(meshGroup?.getObjectByProperty('isLineSegments', true)).toBeUndefined()
     expect(boxGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
+  })
+
+  it('builds the furnitureFailed box for a failed model entry and the plain box otherwise', () => {
+    const derive = createSceneGraphDeriver()
+    const chair = chairAt(0, 'chair-failed')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chair],
+    }
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const node = graph.furniture[0]
+    if (node === undefined) throw new Error('expected one furniture node')
+    const failedModels = {
+      get: (hash: string) =>
+        hash === node.assetRef.contentHash ? { status: 'failed' as const } : undefined,
+    }
+
+    const failedBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint(), failedModels)
+    const plainBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint())
+
+    const failedGroup = findByEntityId(failedBuild.root, chair.id)
+    const plainGroup = findByEntityId(plainBuild.root, chair.id)
+    expect(failedGroup).not.toBeNull()
+    expect(plainGroup).not.toBeNull()
+    // The failed stand-in is still a massing box, so it keeps the edge overlay (LineSegments).
+    expect(failedGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
+    // The failed box mesh carries the distinct furnitureFailed material; the box-only
+    // (no-entry/loading) fall-through keeps the plain furniture material.
+    if (failedGroup === null || plainGroup === null) {
+      throw new Error('expected both furniture box groups to exist')
+    }
+    expect(firstMeshMaterialName(failedGroup)).toBe('furnitureFailed')
+    expect(firstMeshMaterialName(plainGroup)).toBe('furniture')
   })
 
   it('rebuilds only the piece whose model became ready', async () => {
