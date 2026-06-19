@@ -197,3 +197,68 @@ describe('useProjectActions import action', () => {
     expect(actions().importStatus).toBeNull()
   })
 })
+
+describe('useProjectActions import action discard guard', () => {
+  function guardedImportContext(
+    overrides: GuardedContextOverrides & { store: InMemoryProjectStore },
+  ): ProjectActionsContext {
+    const { onSession, isDirty, confirmDiscard, store } = overrides
+    return {
+      session: createEditorSession(sampleProject()),
+      store,
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      onSession,
+      isDirty,
+      confirmDiscard,
+    }
+  }
+
+  async function importDroppedFile(context: ProjectActionsContext, file: File): Promise<void> {
+    const { result } = renderHook(() => useProjectActions(context))
+    await act(async () => {
+      await (
+        result.current as { onImportDroppedFile: (file: File) => Promise<void> | void }
+      ).onImportDroppedFile(file)
+    })
+  }
+
+  // onImportDroppedFile (file drop) and onOpenFile (menu open / picker) share the
+  // same importAndActivate path, so guarding the dropped-file route guards both.
+  it('does not swap or persist a dropped project when a dirty session is not confirmed', async () => {
+    const store = new InMemoryProjectStore()
+    const save = vi.spyOn(store, 'save')
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => false)
+
+    const context = guardedImportContext({ onSession, isDirty: true, confirmDiscard, store })
+
+    await importDroppedFile(context, jsonFileFor(sampleProject()))
+
+    expect(onSession).not.toHaveBeenCalled()
+    expect(save).not.toHaveBeenCalled()
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+  })
+
+  it('activates and persists a dropped project when the dirty session is confirmed', async () => {
+    const store = new InMemoryProjectStore()
+    const save = vi.spyOn(store, 'save')
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => true)
+
+    const context = guardedImportContext({ onSession, isDirty: true, confirmDiscard, store })
+
+    await importDroppedFile(context, jsonFileFor(sampleProject()))
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).toHaveBeenCalledOnce()
+    expect(save).toHaveBeenCalledWith(
+      'current',
+      expect.objectContaining({ meta: expect.objectContaining({ name: 'My House' }) }),
+    )
+  })
+})
