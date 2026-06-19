@@ -10,6 +10,10 @@ export const LEAF_COLOR = 0xb9b0a2
 export const GLASS_COLOR = 0xbcd2da
 /** Low enough that the room reads through the window. */
 export const GLASS_OPACITY = 0.3
+/** A clear, saturated red so an unloaded-asset massing box reads as a placeholder, not a real surface. */
+export const FURNITURE_COLOR = 0xcc3333
+/** Low enough that the placeholder box reads as a translucent stand-in. */
+export const FURNITURE_OPACITY = 0.3
 /**
  * The slab top and the wall base share the Y = 0 finished-floor datum and overlap in plan under
  * every wall (ADR-0076), so the two coplanar faces z-fight on camera orbit. Push the slab top back
@@ -44,6 +48,16 @@ export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMat
       name: role,
       transparent: true,
       opacity: GLASS_OPACITY,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }
+  }
+  if (role === 'furniture') {
+    return {
+      color: FURNITURE_COLOR,
+      name: role,
+      transparent: true,
+      opacity: FURNITURE_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
     }

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { createFloor, createFurnitureInstance, deriveFurnitureNode } from '../../core'
 import type { FurnitureInstance, FurnitureSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
+import { FURNITURE_COLOR, FURNITURE_OPACITY } from '../materials/role-appearance'
 
 import { buildFurnitureMassing } from './furniture-builder'
 
@@ -83,6 +84,20 @@ describe('buildFurnitureMassing', () => {
     expect(materials.length).toBeGreaterThan(0)
     for (const material of materials) {
       expect(material.name).toBe('furniture')
+    }
+  })
+
+  it('carries the distinct red semi-transparent material on the unloaded box mesh', () => {
+    const group = buildFurnitureMassing(buildNode(buildInstance()), new NeutralMaterialProvider())
+
+    const materials = firstMeshMaterials(group)
+
+    expect(materials.length).toBeGreaterThan(0)
+    for (const material of materials) {
+      const colored = material as THREE.Material & { color: THREE.Color }
+      expect(colored.color.getHex()).toBe(FURNITURE_COLOR)
+      expect(material.transparent).toBe(true)
+      expect(material.opacity).toBe(FURNITURE_OPACITY)
     }
   })
 })
