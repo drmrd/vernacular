@@ -199,12 +199,15 @@ describe('layoutRoomLabels', () => {
 // DimensionSceneNode (start/end/offset/length). At unit scale its offset line
 // projects to screen y = -offset, and its label sits at the offset-line
 // midpoint, matching dimensionChips / drawDimension.
-function horizontalDimension(
-  id: string,
-  originX: number,
-  length: number,
-  offset: number,
-): DimensionSceneNode {
+interface HorizontalDimensionSpec {
+  id: string
+  originX: number
+  length: number
+  offset: number
+}
+
+function horizontalDimension(spec: HorizontalDimensionSpec): DimensionSceneNode {
+  const { id, originX, length, offset } = spec
   return {
     id,
     kind: 'dimension',
@@ -242,8 +245,8 @@ describe('layoutDimensionLabels', () => {
     // text) whose offset lines sit 5 px apart at unit scale. Their raw midpoint
     // label boxes, both ~12 px tall, straddle each other, so the unresolved
     // labels collide.
-    const first = horizontalDimension('dim-a', 0, 1000, 0)
-    const second = horizontalDimension('dim-b', 0, 1000, 5)
+    const first = horizontalDimension({ id: 'dim-a', originX: 0, length: 1000, offset: 0 })
+    const second = horizontalDimension({ id: 'dim-b', originX: 0, length: 1000, offset: 5 })
 
     expect(
       labelsOverlap(rawDimensionBox(first, UNIT_VIEWPORT), rawDimensionBox(second, UNIT_VIEWPORT)),
@@ -262,7 +265,7 @@ describe('layoutDimensionLabels', () => {
     // leave its label centered on the projected offset-line midpoint. The
     // assertion pins the box center to that midpoint, staying agnostic about the
     // box's exact extent, which the layout module owns.
-    const lone = horizontalDimension('dim-a', 0, 1000, 0)
+    const lone = horizontalDimension({ id: 'dim-a', originX: 0, length: 1000, offset: 0 })
 
     const geom = dimensionGeometry(lone.start, lone.end, lone.offset)
     const anchor = worldToScreen(midpoint(geom.lineStart, geom.lineEnd), UNIT_VIEWPORT)
