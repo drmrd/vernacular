@@ -15,6 +15,7 @@ import {
   DEFAULT_WALL_THICKNESS_MM,
 } from '../../model/factories'
 import type { Project } from '../../model/types'
+import { MAX_LENGTH_MM, InvalidLengthError } from '../../index'
 
 function projectWithFloor(): Project {
   const project = createEmptyProject({
@@ -169,5 +170,27 @@ describe('setWallThickness', () => {
     dispatcher.undo()
 
     expect(project.floors[0]!.walls[0]!.thickness).toBe(TARGET_THICKNESS)
+  })
+
+  it('rejects a non-positive or absurdly large thickness and leaves the wall unchanged', () => {
+    const rejectedThicknesses = [-5, 0, MAX_LENGTH_MM + 1]
+
+    for (const rejected of rejectedThicknesses) {
+      const project = projectWithTwoWalls()
+      const dispatcher = dispatcherFor(project)
+
+      let thrown: unknown
+      expect(() => {
+        try {
+          dispatcher.dispatch(setWallThickness('g', 'target', rejected))
+        } catch (error) {
+          thrown = error
+          throw error
+        }
+      }).toThrow(/rolled back/)
+      expect((thrown as Error).cause).toBeInstanceOf(InvalidLengthError)
+
+      expect(project.floors[0]!.walls[0]!.thickness).toBe(TARGET_THICKNESS)
+    }
   })
 })
