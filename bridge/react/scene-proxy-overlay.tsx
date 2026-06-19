@@ -43,15 +43,16 @@ function EntityProxyOption({ proxy, selected, tabIndex, onSelect }: OptionProps)
   return (
     <div
       role="option"
+      aria-label={proxy.label}
       aria-selected={selected}
       tabIndex={tabIndex}
       onKeyDown={onKeyDown}
       // pointer-events none keeps the canvas underneath receiving the pointer pick; the
       // proxies are the keyboard and screen-reader surface, reached by focus, not the mouse.
+      // The name rides on aria-label so the accessibility tree keeps it without painting
+      // text over the opaque 3D view (mirrors the 2D editor/plan/entity-proxy.tsx).
       style={{ position: 'absolute', left: proxy.x, top: proxy.y, pointerEvents: 'none' }}
-    >
-      {proxy.label}
-    </div>
+    />
   )
 }
 
