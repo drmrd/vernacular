@@ -15,6 +15,16 @@ import {
  */
 const MIN_FADE_INCIDENCE = 3
 
+/**
+ * The `wall:`-prefixed scene-node id for a graph edge's wall id, used to join against
+ * the keys `exteriorWalls(...)` returns. A graph built from raw wall ids (the per-floor
+ * build path) needs the prefix; one built from already-prefixed scene-node ids keeps it,
+ * so the join holds whichever id form the caller's graph carries.
+ */
+function wallSceneNodeId(wallId: string): string {
+  return wallId.startsWith(WALL_NODE_PREFIX) ? wallId : WALL_NODE_PREFIX + wallId
+}
+
 /** A 3+-way junction paired with the exterior walls whose fade its fill tracks. */
 export interface JunctionFadeGroup {
   /** Indices into PlanarGraph.edges of the walls meeting at the junction (its identity). */
@@ -50,7 +60,7 @@ export function junctionFadeGroups(
     if (edgeIndexes.length < MIN_FADE_INCIDENCE) continue
     const incidentExteriorWallIds = new Set<string>()
     for (const edgeIndex of edgeIndexes) {
-      const wallNodeId = WALL_NODE_PREFIX + (graph.edges[edgeIndex] as GraphEdge).wallId
+      const wallNodeId = wallSceneNodeId((graph.edges[edgeIndex] as GraphEdge).wallId)
       if (exteriorWallIds.has(wallNodeId)) incidentExteriorWallIds.add(wallNodeId)
     }
     const memberExteriorWallIds = [...incidentExteriorWallIds]

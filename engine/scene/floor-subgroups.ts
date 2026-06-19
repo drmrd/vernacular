@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import {
   exteriorWalls,
+  junctionFadeGroups,
   type FurnitureSceneNode,
   type OpeningSceneNode,
   type RoomSceneNode,
@@ -67,15 +68,20 @@ export function buildWallSubgroup(input: WallSubgroupInput): {
   nearWallTargets: NearWallTarget[]
 } {
   const { walls, rooms, openings, materials } = input
+  const graph = buildFloorWallGraph(walls)
   const group = buildWalls({
-    graph: buildFloorWallGraph(walls),
+    graph,
     walls,
     openingsByWall: groupOpeningsByHostWall(openings),
     materials,
   })
   addEdgeOverlay(group)
   markShadowCasters(group)
-  const nearWallTargets = prepareNearWallTransparency(group, exteriorWalls(walls, rooms, openings))
+  const nearWallTargets = prepareNearWallTransparency(
+    group,
+    exteriorWalls(walls, rooms, openings),
+    junctionFadeGroups(graph, walls, rooms, openings),
+  )
   return { group, nearWallTargets }
 }
 

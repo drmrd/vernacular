@@ -1,6 +1,8 @@
 import {
+  buildWallGraph,
   exteriorWalls,
   frameSceneCamera,
+  junctionFadeGroups,
   kelvinToLinearRgb,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
@@ -45,6 +47,7 @@ export function buildFramedScene(
   const nearWallTargets = prepareNearWallTransparency(
     root,
     exteriorWalls(graph.walls, graph.rooms, graph.openings),
+    junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms, graph.openings),
   )
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
