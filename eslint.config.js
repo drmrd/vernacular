@@ -127,6 +127,16 @@ export default tseslint.config(
     },
   },
   {
+    // Stories double as component tests: their render scaffolding and `play`
+    // interactions carry literal layout values and longer bodies, the same way
+    // test files do. Relax the same rules the test override relaxes.
+    files: ['**/*.stories.{ts,tsx}'],
+    rules: {
+      'no-magic-numbers': 'off',
+      'max-lines-per-function': ['warn', { max: 120, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
     files: ['vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
     languageOptions: {
       ecmaVersion: 2022,

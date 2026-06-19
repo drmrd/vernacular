@@ -9,8 +9,9 @@ const config: StorybookConfig = {
     '../src/**/*.stories.@(ts|tsx)',
     '../app/**/*.stories.@(ts|tsx)',
     '../editor/**/*.stories.@(ts|tsx)',
+    '../bridge/**/*.stories.@(ts|tsx)',
   ],
-  addons: [],
+  addons: ['@storybook/addon-vitest', '@storybook/addon-a11y'],
   typescript: {
     check: false,
     reactDocgen: 'react-docgen-typescript',
