@@ -1,5 +1,3 @@
-// core/units/length-bounds.ts
-//
 // Shared positivity and range guard for millimetre dimensions. Command handlers
 // call it before storing a value so out-of-range geometry never commits. The
 // 100 m ceiling matches the MAX_DIMENSION_MM precedent in
