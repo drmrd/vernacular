@@ -67,4 +67,16 @@ describe('swingLeafGeometry', () => {
     expect(geometry.closed).toEqual({ x: 600, y: 0 })
     expect(geometry.counterclockwise).toBe(true)
   })
+
+  it('hinges on the start jamb facing negative and sweeps the minor (quarter-circle) arc', () => {
+    const geometry = swingLeafGeometry(
+      openingNode({ orientation: { hinge: 'start', facing: 'negative' } }),
+    )
+
+    // The leaf opens onto the -y wall face, so the minor-arc sweep flag flips.
+    expect(geometry.hinge).toEqual({ x: 600, y: 0 })
+    expect(geometry.leafEnd).toEqual({ x: 600, y: -800 })
+    expect(geometry.closed).toEqual({ x: 1400, y: 0 })
+    expect(geometry.counterclockwise).toBe(true)
+  })
 })
