@@ -8,6 +8,8 @@ import { createEditorCommands } from './editor-commands'
 import { createViewCommands } from './view-commands'
 import { createSnapCommands } from './snap-commands'
 import { useCommandPalette } from './command-context'
+import '../design-system/field.css'
+import '../design-system/menu-surface.css'
 import './command-palette.css'
 
 interface CommandPaletteDialogProps {

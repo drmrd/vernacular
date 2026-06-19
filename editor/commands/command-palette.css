@@ -1,9 +1,7 @@
 /*
  * The command palette dressed as a centered modal: a viewport-covering backdrop
- * that centers a max-width panel built on the shared menu surface (#239).
+ * that centers a max-width panel built on the shared menu surface.
  */
-
-@import './../design-system/field.css';
 
 .command-palette__backdrop {
   position: fixed;
