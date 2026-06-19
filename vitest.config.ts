@@ -1,9 +1,9 @@
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
 
-const rootDir = dirname(fileURLToPath(import.meta.url))
+const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   test: {
