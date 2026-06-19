@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { Point } from '../../core'
-import { labelBox } from './label-layout'
+import type { Bounds } from './fit'
+import { labelBox, labelsOverlap } from './label-layout'
+
+function bounds(minX: number, minY: number, maxX: number, maxY: number): Bounds {
+  return { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } }
+}
 
 // A fixed sans-serif size matching the canvas label paint path. Width is
 // estimated from a pure average-glyph-advance model at this size, never from a
@@ -50,5 +55,31 @@ describe('labelBox', () => {
     const second = labelBox('Kitchen', anchor, LABEL_FONT)
 
     expect(second).toEqual(first)
+  })
+})
+
+describe('labelsOverlap', () => {
+  it('reports overlap for two boxes that share screen area', () => {
+    const a = bounds(0, 0, 10, 10)
+    const b = bounds(5, 5, 15, 15)
+
+    expect(labelsOverlap(a, b)).toBe(true)
+  })
+
+  it('reports no overlap for two clearly separated boxes', () => {
+    const a = bounds(0, 0, 10, 10)
+    const b = bounds(100, 100, 110, 110)
+
+    expect(labelsOverlap(a, b)).toBe(false)
+  })
+
+  it('does not count boxes that touch only along a shared edge as overlapping', () => {
+    // Edge-touch policy: overlap requires a positive-area intersection, so two
+    // rects abutting along a single boundary line (zero-area contact) are not
+    // considered overlapping.
+    const a = bounds(0, 0, 10, 10)
+    const b = bounds(10, 0, 20, 10)
+
+    expect(labelsOverlap(a, b)).toBe(false)
   })
 })
