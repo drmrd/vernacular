@@ -71,6 +71,30 @@ export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: numbe
   }
 }
 
+/** Yaw and pitch deltas produced from a single pointer-look move. */
+export interface PointerLookDelta {
+  yawDelta: number
+  pitchDelta: number
+}
+
+/**
+ * Maps a pointer-look move to yaw and pitch deltas, in radians. A rightward
+ * pointer move (positive movementX) yaws the view to the right (positive yaw),
+ * and a downward pointer move (positive movementY, screen-y grows downward)
+ * lowers the view (negative pitch). Both deltas scale with the sensitivity in
+ * radians per pixel.
+ */
+export function pointerLookDelta(
+  movementX: number,
+  movementY: number,
+  sensitivityRadPerPx: number,
+): PointerLookDelta {
+  return {
+    yawDelta: movementX * sensitivityRadPerPx,
+    pitchDelta: -movementY * sensitivityRadPerPx,
+  }
+}
+
 /**
  * Returns the point the walker is looking at, one look-distance ahead of the
  * eye. yaw 0 faces -Z and a positive pitch raises the view toward +Y, so the

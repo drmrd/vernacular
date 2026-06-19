@@ -370,13 +370,14 @@ export {
 } from './scene/opening-fill'
 export type { OpeningFillPart, OpeningFillRole, OpeningFillExtent } from './scene/opening-fill'
 export type { OpeningFillKind } from './registries/element-types'
-export type { WalkInput, WalkState } from './scene/walk-camera'
+export type { PointerLookDelta, WalkInput, WalkState } from './scene/walk-camera'
 export {
   MAX_WALK_PITCH_RAD,
   WALK_EYE_HEIGHT_MM,
   WALK_LOOK_DISTANCE_MM,
   WALK_SPEED_MM_PER_S,
   advanceWalk,
+  pointerLookDelta,
   walkLookTarget,
 } from './scene/walk-camera'
 export type {
