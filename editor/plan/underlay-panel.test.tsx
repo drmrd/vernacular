@@ -133,4 +133,15 @@ describe('UnderlayRow', () => {
       expect(screen.getByRole('button', { name })).toHaveClass('ds-button')
     }
   })
+
+  it('wraps the opacity and visibility controls in the design-system field treatment', () => {
+    renderRow(newUnderlay())
+
+    const opacity = screen.getByRole('slider')
+    expect(opacity).toBe(screen.getByLabelText(/opacity/i))
+    expect(opacity.closest('.ds-field')).not.toBeNull()
+
+    const visible = screen.getByRole('checkbox', { name: /visible/i })
+    expect(visible.closest('.ds-field')).not.toBeNull()
+  })
 })
