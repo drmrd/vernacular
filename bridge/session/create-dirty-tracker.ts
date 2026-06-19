@@ -35,6 +35,7 @@ export function createDirtyTracker(session: EditorSession): DirtyTracker {
   // Both start at 0; equal => clean on construction.
   let changeCount = 0
   let savedChangeCount = 0
+  // Mirrors isDirty() on construction: a fresh tracker is clean.
   let lastNotifiedDirty = false
 
   const listeners = new Set<() => void>()
@@ -57,19 +58,20 @@ export function createDirtyTracker(session: EditorSession): DirtyTracker {
     notifyIfTransitioned()
   })
 
-  return {
-    isDirty,
-    markSaved() {
-      savedChangeCount = changeCount
-      notifyIfTransitioned()
-    },
-    subscribe(listener) {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    dispose() {
-      unsubscribe()
-      listeners.clear()
-    },
+  const markSaved = (): void => {
+    savedChangeCount = changeCount
+    notifyIfTransitioned()
   }
+
+  const subscribe = (listener: () => void): (() => void) => {
+    listeners.add(listener)
+    return () => listeners.delete(listener)
+  }
+
+  const dispose = (): void => {
+    unsubscribe()
+    listeners.clear()
+  }
+
+  return { isDirty, markSaved, subscribe, dispose }
 }
