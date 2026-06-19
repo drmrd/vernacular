@@ -91,6 +91,60 @@ describe('drawUnderlay', () => {
     }
   })
 
+  // The painted raster's four SCREEN corners: the local drawImage rectangle
+  // corners pushed through the recorded canvas transform, so the screen region the
+  // raster actually covers is reconstructed regardless of how the renderer composed
+  // translate/rotate/scale.
+  function paintedScreenCorners(image: {
+    dx: number
+    dy: number
+    dWidth: number
+    dHeight: number
+    transform: { a: number; b: number; c: number; d: number; e: number; f: number }
+  }) {
+    const m = image.transform
+    return destinationCorners(image).map(({ x, y }) => ({
+      x: m.a * x + m.c * y + m.e,
+      y: m.b * x + m.d * y + m.f,
+    }))
+  }
+
+  it('paints a rotated underlay over its rotated trace footprint: the covered screen corners coincide with the trace footprint projected through worldToScreen', () => {
+    const recorder = recordingContext()
+    const node = underlayNode({
+      placement: {
+        offset: { x: 1000, y: 500 },
+        millimetersPerPixel: MILLIMETERS_PER_PIXEL,
+        rotation: Math.PI / 6,
+      },
+    })
+
+    drawUnderlay(recorder.ctx, node, VIEWPORT, fakeImage)
+
+    expect(recorder.images).toHaveLength(1)
+    const image = recorder.images[0]
+    expect(image).toBeDefined()
+
+    const corners = paintedScreenCorners(image!)
+    const expectedCorners = footprintScreenCorners(node)
+
+    // Float-tolerant, order-independent four-corner coincidence: every projected
+    // footprint corner is covered by a painted-raster corner and vice versa, so the
+    // rotated raster cannot drift away from the snap footprint.
+    for (const expected of expectedCorners) {
+      expect(corners).toContainEqual({
+        x: expect.closeTo(expected.x, 6),
+        y: expect.closeTo(expected.y, 6),
+      })
+    }
+    for (const corner of corners) {
+      expect(expectedCorners).toContainEqual({
+        x: expect.closeTo(corner.x, 6),
+        y: expect.closeTo(corner.y, 6),
+      })
+    }
+  })
+
   it('anchors the destination origin at the projected top edge and grows down-screen with positive extents', () => {
     const recorder = recordingContext()
     const node = underlayNode()
