@@ -5,6 +5,7 @@ import {
   type AssumedUnit,
   type UnitPreferences,
 } from '../../core'
+import { Field } from '../design-system'
 
 export interface LengthFieldProps {
   inputId: string
@@ -47,8 +48,7 @@ export function LengthField({
   }
 
   return (
-    <div>
-      <label htmlFor={inputId}>{label}</label>
+    <Field htmlFor={inputId} label={label}>
       <input
         id={inputId}
         type="text"
@@ -56,6 +56,6 @@ export function LengthField({
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
-    </div>
+    </Field>
   )
 }
