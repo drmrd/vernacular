@@ -28,6 +28,7 @@ import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-to
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
+import { selectionEnabledForMode } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
 import { useProjectPaint } from './use-project-paint'
@@ -245,7 +246,7 @@ function LiveSceneCanvas({
           changes in place, only when the element remounts. */}
       <primitive key={root.uuid} object={root} />
       <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
-      <SceneSelection root={root} />
+      <SceneSelection root={root} enabled={selectionEnabledForMode(mode)} />
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
