@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { commitProject, createEditorSession } from '../bridge'
+import { commitProject, createEditorSession, guardDestructive } from '../bridge'
 import { importProjectFile } from '../storage'
 import { validateLoadedProject } from './validate-loaded-project'
 import {
@@ -50,26 +50,32 @@ export function useOpenFileAction(context: ProjectActionsContext): {
   importStatus: ImportStatus | null
   dismissImportStatus: () => void
 } {
-  const { store, projectId, recentProjects, capabilities, onSession } = context
+  const { store, projectId, recentProjects, capabilities, onSession, isDirty, confirmDiscard } =
+    context
   const backend = defaultStoreBackend(capabilities)
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null)
   const importAndActivate = useCallback(
-    async (file: File) => {
-      try {
-        const bytes = await readFileBytes(file)
-        const project = await importProjectFile(file.name, bytes, projectId)
-        validateLoadedProject(project)
-        onSession(createEditorSession(project))
-        await commitProject({ store, projectId, project })
-        if (backend !== null) {
-          recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
-        }
-        setImportStatus(null)
-      } catch (error) {
-        setImportStatus({ fileName: file.name, reason: errorMessage(error) })
-      }
-    },
-    [store, projectId, recentProjects, backend, onSession],
+    (file: File) =>
+      guardDestructive({
+        isDirty: isDirty ?? false,
+        confirm: confirmDiscard ?? (() => true),
+        run: async () => {
+          try {
+            const bytes = await readFileBytes(file)
+            const project = await importProjectFile(file.name, bytes, projectId)
+            validateLoadedProject(project)
+            onSession(createEditorSession(project))
+            await commitProject({ store, projectId, project })
+            if (backend !== null) {
+              recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
+            }
+            setImportStatus(null)
+          } catch (error) {
+            setImportStatus({ fileName: file.name, reason: errorMessage(error) })
+          }
+        },
+      }),
+    [store, projectId, recentProjects, backend, onSession, isDirty, confirmDiscard],
   )
   return {
     onImportDroppedFile: importAndActivate,
