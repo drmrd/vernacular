@@ -13,6 +13,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
+import { Field, Stack } from '../design-system'
 import { LengthField } from './length-field'
 
 // A bare number entered for a metric project means millimetres; for an imperial
@@ -43,8 +44,7 @@ function NameField({ inputId, name, onCommit }: NameFieldProps): ReactElement {
   }
 
   return (
-    <div>
-      <label htmlFor={inputId}>Name</label>
+    <Field htmlFor={inputId} label="Name">
       <input
         id={inputId}
         type="text"
@@ -52,7 +52,7 @@ function NameField({ inputId, name, onCommit }: NameFieldProps): ReactElement {
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
-    </div>
+    </Field>
   )
 }
 
@@ -79,8 +79,7 @@ function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElem
   }
 
   return (
-    <div>
-      <label htmlFor={inputId}>Angle</label>
+    <Field htmlFor={inputId} label="Angle">
       <input
         id={inputId}
         type="text"
@@ -88,7 +87,7 @@ function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElem
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
-    </div>
+    </Field>
   )
 }
 
@@ -144,7 +143,7 @@ export function FurnitureInspector({
   const assumeUnit = ASSUME_UNIT_BY_SYSTEM[units]
 
   return (
-    <div>
+    <Stack gap="space-2">
       <NameField
         inputId={`furniture-name-${furniture.id}`}
         name={furniture.name ?? ''}
@@ -169,6 +168,6 @@ export function FurnitureInspector({
         assumeUnit={assumeUnit}
         onCommitMm={(mm) => dispatch(setFurnitureHeight(floorId, furniture.id, mm))}
       />
-    </div>
+    </Stack>
   )
 }

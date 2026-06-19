@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import { setRoomSubPurpose } from '../../core'
+import { Field } from '../design-system'
 
 export interface RoomSubPurposeEditorProps {
   roomKey: string
@@ -9,6 +10,7 @@ export interface RoomSubPurposeEditorProps {
 
 export function RoomSubPurposeEditor({ roomKey, subPurpose, dispatch }: RoomSubPurposeEditorProps) {
   const [text, setText] = useState(subPurpose ?? '')
+  const inputId = `room-sub-purpose-${roomKey}`
 
   function commit() {
     dispatch(setRoomSubPurpose(roomKey, text === '' ? undefined : text))
@@ -21,14 +23,14 @@ export function RoomSubPurposeEditor({ roomKey, subPurpose, dispatch }: RoomSubP
   }
 
   return (
-    <label>
-      Sub-purpose
+    <Field htmlFor={inputId} label="Sub-purpose">
       <input
+        id={inputId}
         type="text"
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
-    </label>
+    </Field>
   )
 }

@@ -7,6 +7,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
+import { Field } from '../design-system'
 
 // A bare number entered for a metric project means millimetres; for an imperial
 // project it means feet. This is the active system's assume-unit, so a number
@@ -33,6 +34,7 @@ export function WallThicknessEditor({
 }: WallThicknessEditorProps) {
   const formatted = formatAdaptiveLength(thickness, preferences)
   const [text, setText] = useState(formatted)
+  const inputId = `wall-thickness-${wallId}`
 
   function commit() {
     const assumeUnit = ASSUME_UNIT_BY_SYSTEM[preferences.system]
@@ -51,14 +53,14 @@ export function WallThicknessEditor({
   }
 
   return (
-    <label>
-      Thickness
+    <Field htmlFor={inputId} label="Thickness">
       <input
+        id={inputId}
         type="text"
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
-    </label>
+    </Field>
   )
 }

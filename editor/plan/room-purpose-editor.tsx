@@ -1,4 +1,5 @@
 import { builtinRoomPurposes, setRoomPurpose, type RoomPurposeId } from '../../core'
+import { Field } from '../design-system'
 
 export interface RoomPurposeEditorProps {
   roomKey: string
@@ -13,15 +14,16 @@ export interface RoomPurposeEditorProps {
  * set-purpose command on change.
  */
 export function RoomPurposeEditor({ roomKey, purpose, dispatch }: RoomPurposeEditorProps) {
+  const selectId = `room-purpose-${roomKey}`
+
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
     dispatch(setRoomPurpose(roomKey, value === '' ? undefined : value))
   }
 
   return (
-    <label>
-      Purpose
-      <select value={purpose ?? ''} onChange={handleChange}>
+    <Field htmlFor={selectId} label="Purpose">
+      <select id={selectId} value={purpose ?? ''} onChange={handleChange}>
         <option value="">Untagged</option>
         {Object.values(builtinRoomPurposes.entries).map((entry) => (
           <option key={entry.id} value={entry.id}>
@@ -29,6 +31,6 @@ export function RoomPurposeEditor({ roomKey, purpose, dispatch }: RoomPurposeEdi
           </option>
         ))}
       </select>
-    </label>
+    </Field>
   )
 }
