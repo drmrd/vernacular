@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
-import { Segmented } from '../design-system'
+import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
 import './finish-section.css'
@@ -42,7 +42,7 @@ export function WallFinishSection({
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
   return (
     <section className="finish-section">
-      <h3 className="finish-section__label">Finish</h3>
+      <SectionLabel>Finish</SectionLabel>
       <Segmented
         label="Wall face"
         options={FACE_OPTIONS}

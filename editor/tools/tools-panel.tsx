@@ -12,6 +12,7 @@ import {
   Tag,
 } from '@phosphor-icons/react'
 import { builtinElementTypes, type OpeningFamily } from '../../core'
+import { SectionLabel } from '../design-system'
 import { useActiveTool, type ToolId } from './active-tool-context'
 import { useOpeningTool } from '../plan/opening-tool-context'
 import '../design-system/segmented.css'
@@ -100,13 +101,13 @@ export function ToolsPanel() {
   return (
     <div className="tools-panel">
       <section className="tools-panel__section">
-        <span className="tools-panel__section-label">Select</span>
+        <SectionLabel className="tools-panel__section-heading">Select</SectionLabel>
         <Chip toolId="select" label="Select" icon={CursorClick} />
         <Chip toolId="pan" label="Pan" icon={Hand} />
       </section>
 
       <section className="tools-panel__section">
-        <span className="tools-panel__section-label">Draw</span>
+        <SectionLabel className="tools-panel__section-heading">Draw</SectionLabel>
         <div className="tools-panel__grid">
           <Chip toolId="draw-wall" label="Wall" icon={Minus} />
           <OpeningChip kind="door" icon={Door} label="Door" />
@@ -115,7 +116,7 @@ export function ToolsPanel() {
       </section>
 
       <section className="tools-panel__section">
-        <span className="tools-panel__section-label">Period</span>
+        <SectionLabel className="tools-panel__section-heading">Period</SectionLabel>
         <div className="tools-panel__grid">
           <Chip label="Fireplace" icon={Flame} disabled />
           <Chip label="Chimney" icon={Buildings} disabled />
@@ -124,7 +125,7 @@ export function ToolsPanel() {
       </section>
 
       <section className="tools-panel__section">
-        <span className="tools-panel__section-label">Annotate</span>
+        <SectionLabel className="tools-panel__section-heading">Annotate</SectionLabel>
         <div className="tools-panel__grid">
           <Chip toolId="dimension" label="Dimension" icon={Ruler} />
           <Chip label="Label" icon={Tag} disabled />

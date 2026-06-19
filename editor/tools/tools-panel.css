@@ -11,14 +11,10 @@
   gap: var(--space-1);
 }
 
-.tools-panel__section-label {
+/* Layout-only: the rail spacing the section labels carry. The uppercase font
+   idiom and color come from the .ds-section-label primitive. */
+.tools-panel__section-heading {
   padding: var(--space-1) 0;
-  font-family: var(--font-family-ui);
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--color-text);
 }
 
 /* Two-column grid for sections with multiple tools. */

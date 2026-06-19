@@ -28,6 +28,7 @@ import {
   type UnitSystem,
   type WallSceneNode,
 } from '../../core'
+import { SectionLabel } from '../design-system'
 import './inspector.css'
 import { DimensionInspector } from '../plan/dimension-inspector'
 import { FurnitureInspector } from '../plan/furniture-inspector'
@@ -420,7 +421,7 @@ export function Inspector() {
   return (
     <div className="inspector">
       <div className="inspector__header">
-        <h2 className="inspector__title">Properties</h2>
+        <SectionLabel>Properties</SectionLabel>
         {count > 0 ? <span className="inspector__count-badge">{count} selected</span> : null}
       </div>
       {title !== null ? <h3 className="inspector__component-title">{title}</h3> : null}
