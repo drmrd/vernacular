@@ -42,12 +42,7 @@ describe('drawUnderlay', () => {
   // The destination rectangle's four screen corners, derived purely from the
   // recorded drawImage destination parameters (origin top-left, growing right and
   // down in screen pixels, as drawImage does).
-  function destinationCorners(image: {
-    dx: number
-    dy: number
-    dWidth: number
-    dHeight: number
-  }) {
+  function destinationCorners(image: { dx: number; dy: number; dWidth: number; dHeight: number }) {
     return [
       { x: image.dx, y: image.dy },
       { x: image.dx + image.dWidth, y: image.dy },
@@ -73,8 +68,10 @@ describe('drawUnderlay', () => {
     drawUnderlay(recorder.ctx, node, VIEWPORT, fakeImage)
 
     expect(recorder.images).toHaveLength(1)
+    const image = recorder.images[0]
+    expect(image).toBeDefined()
 
-    const corners = destinationCorners(recorder.images[0])
+    const corners = destinationCorners(image!)
     const expectedCorners = footprintScreenCorners(node)
 
     // Float-tolerant four-corner coincidence: every projected footprint corner is
@@ -101,6 +98,7 @@ describe('drawUnderlay', () => {
 
     expect(recorder.images).toHaveLength(1)
     const image = recorder.images[0]
+    expect(image).toBeDefined()
 
     // The destination origin (dx, dy) is the projection of the footprint's TOP
     // edge corner, i.e. the corner with the LARGER world-y. In the y-up world that
@@ -115,13 +113,13 @@ describe('drawUnderlay', () => {
     const topLeftScreen = worldToScreen(topLeftWorld!, VIEWPORT)
 
     const pixelToScreen = node.placement.millimetersPerPixel * VIEWPORT.scale
-    expect(image.dx).toBeCloseTo(topLeftScreen.x, 6)
-    expect(image.dy).toBeCloseTo(topLeftScreen.y, 6)
-    expect(image.dWidth).toBeCloseTo(node.width * pixelToScreen, 6)
-    expect(image.dHeight).toBeCloseTo(node.height * pixelToScreen, 6)
-    expect(image.dWidth).toBeGreaterThan(0)
-    expect(image.dHeight).toBeGreaterThan(0)
-    expect(image.alpha).toBe(UNDERLAY_OPACITY)
+    expect(image!.dx).toBeCloseTo(topLeftScreen.x, 6)
+    expect(image!.dy).toBeCloseTo(topLeftScreen.y, 6)
+    expect(image!.dWidth).toBeCloseTo(node.width * pixelToScreen, 6)
+    expect(image!.dHeight).toBeCloseTo(node.height * pixelToScreen, 6)
+    expect(image!.dWidth).toBeGreaterThan(0)
+    expect(image!.dHeight).toBeGreaterThan(0)
+    expect(image!.alpha).toBe(UNDERLAY_OPACITY)
   })
 
   it('overlays geometry sharing its world-y band rather than displacing the raster into the lower half', () => {
@@ -134,15 +132,20 @@ describe('drawUnderlay', () => {
     // A floor-sized underlay: footprint spans world-y from 5000 (top) down to
     // 5000 - 600 * 10 = -1000 (bottom).
     const node = underlayNode({
-      placement: { offset: { x: 2000, y: 5000 }, millimetersPerPixel: MILLIMETERS_PER_PIXEL, rotation: 0 },
+      placement: {
+        offset: { x: 2000, y: 5000 },
+        millimetersPerPixel: MILLIMETERS_PER_PIXEL,
+        rotation: 0,
+      },
     })
 
     drawUnderlay(recorder.ctx, node, VIEWPORT, fakeImage)
 
     expect(recorder.images).toHaveLength(1)
     const image = recorder.images[0]
-    const rasterTop = Math.min(image.dy, image.dy + image.dHeight)
-    const rasterBottom = Math.max(image.dy, image.dy + image.dHeight)
+    expect(image).toBeDefined()
+    const rasterTop = Math.min(image!.dy, image!.dy + image!.dHeight)
+    const rasterBottom = Math.max(image!.dy, image!.dy + image!.dHeight)
 
     // An asymmetric feature (a low, off-centre corner) sitting inside the same +y
     // world band as the underlay footprint. Its projected screen y must fall within
