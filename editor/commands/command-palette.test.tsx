@@ -136,6 +136,28 @@ describe('CommandPaletteDialog', () => {
     expect(screen.getByRole('textbox', { name: 'Search commands' })).toBeInTheDocument()
   })
 
+  it('traps Tab focus within the open dialog, wrapping between the last result and the search input', async () => {
+    renderDialog(vi.fn())
+
+    const dialog = screen.getByRole('dialog', { name: 'Command palette' })
+    const searchInput = screen.getByRole('textbox', { name: 'Search commands' })
+    const lastResult = screen.getByRole('button', { name: 'Redo' })
+
+    lastResult.focus()
+    expect(document.activeElement).toBe(lastResult)
+    expect(dialog.contains(document.activeElement)).toBe(true)
+
+    await userEvent.tab()
+
+    expect(document.activeElement).toBe(searchInput)
+    expect(dialog.contains(document.activeElement)).toBe(true)
+
+    await userEvent.tab({ shift: true })
+
+    expect(document.activeElement).toBe(lastResult)
+    expect(dialog.contains(document.activeElement)).toBe(true)
+  })
+
   it('does not leak handled keystrokes to the window', () => {
     const onWindowKeyDown = vi.fn()
     window.addEventListener('keydown', onWindowKeyDown)
