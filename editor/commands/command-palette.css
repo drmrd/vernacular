@@ -1,0 +1,35 @@
+/*
+ * The command palette dressed as a centered modal: a viewport-covering backdrop
+ * that centers a max-width panel built on the shared menu surface.
+ */
+
+.command-palette__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: var(--space-6);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.command-palette__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 32rem;
+  padding: var(--space-2);
+}
+
+.command-palette__search {
+  width: 100%;
+  font-size: var(--font-size-sm);
+}
+
+.command-palette__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
