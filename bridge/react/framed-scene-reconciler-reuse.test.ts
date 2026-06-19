@@ -465,4 +465,44 @@ describe('createFramedSceneReconciler furniture model', () => {
     expect(findByEntityId(second.root, chairA.id)).not.toBe(aFirst) // A rebuilt as a mesh
     expect(findByEntityId(second.root, chairB.id)).toBe(bFirst) // B reused by identity
   })
+
+  it('rebuilds only the piece whose model transitioned loading to failed', () => {
+    const derive = createSceneGraphDeriver()
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const chairA = chairAt(EDITED_CHAIR_X_MM, 'chair-a', 'hash-a')
+    const chairB = chairAt(PRESERVED_CHAIR_X_MM, 'chair-b', 'hash-b')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chairA, chairB],
+    }
+    // Build the graph ONCE and reuse it (same node refs) across both reconciles, so the only
+    // thing that changes between calls is chair A's model load status: still-loading (a plain
+    // box) on the first reconcile, then failed (the distinct stand-in box) on the second.
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const nodeA = graph.furniture.find((node) => node.id === `${FURNITURE_NODE_PREFIX}${chairA.id}`)
+    if (nodeA === undefined) throw new Error('expected chair A to derive a furniture node')
+    const loadingModels = {
+      get: (hash: string) =>
+        hash === nodeA.assetRef.contentHash ? { status: 'loading' as const } : undefined,
+    }
+    const aFailedModels = {
+      get: (hash: string) =>
+        hash === nodeA.assetRef.contentHash ? { status: 'failed' as const } : undefined,
+    }
+
+    const first = reconciler.reconcile(graph, paint, loadingModels)
+    const aFirst = findByEntityId(first.root, chairA.id)
+    const bFirst = findByEntityId(first.root, chairB.id)
+    expect(aFirst).not.toBeNull()
+    expect(bFirst).not.toBeNull()
+
+    const second = reconciler.reconcile(graph, paint, aFailedModels)
+    const aSecond = findByEntityId(second.root, chairA.id)
+    expect(aSecond).not.toBe(aFirst) // A rebuilt: the loading box is replaced by the failed box
+    expect(findByEntityId(second.root, chairB.id)).toBe(bFirst) // B reused by identity
+    // The rebuilt A box carries the distinct failed material, not the plain loading box's.
+    if (aSecond === null) throw new Error('expected chair A to rebuild a furniture box group')
+    expect(firstMeshMaterialName(aSecond)).toBe('furnitureFailed')
+  })
 })
