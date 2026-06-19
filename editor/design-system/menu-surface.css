@@ -1,0 +1,31 @@
+/*
+ * The shared dropdown-surface treatment for tool-rail flyouts and floating panels.
+ * Distilled from the export-menu recipe so the underlay and furniture flyouts can
+ * adopt one token-clean surface instead of each copying the dropdown chrome.
+ */
+
+.ds-menu-surface {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-overlay);
+}
+
+/* A full-width, left-aligned, transparent list row built on the design-system
+   button, matching the retired dropdown-row idiom. */
+.ds-menu-surface__row {
+  width: 100%;
+  justify-content: flex-start;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: var(--font-size-sm);
+}
+
+.ds-menu-surface__row:hover {
+  background: var(--color-surface-active);
+}

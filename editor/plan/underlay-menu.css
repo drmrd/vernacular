@@ -1,0 +1,14 @@
+.underlay-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The underlay flyout floats below its trigger, mirroring the export-menu list
+   placement. The surface chrome itself comes from .ds-menu-surface. */
+.underlay-menu__list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 10;
+  min-width: 14rem;
+}

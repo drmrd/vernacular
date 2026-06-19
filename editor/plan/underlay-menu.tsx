@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type FC, type RefObject } from 'react'
 
+import { Button } from '../design-system'
+import '../design-system/menu-surface.css'
 import { UnderlayRow, type UnderlayPanelProps } from './underlay-panel'
+import './underlay-menu.css'
 
 // Close the flyout when Escape is pressed or a pointer goes down outside the
 // menu root, mirroring the dropdown dismissal pattern used elsewhere in the
@@ -46,11 +49,11 @@ const UnderlayMenuList: FC<UnderlayMenuListProps> = ({
   onCalibrate,
   onLoadImageClick,
 }) => (
-  <ul className="underlay-menu__list" role="menu">
+  <ul className="underlay-menu__list ds-menu-surface" role="menu">
     <li role="none">
-      <button type="button" role="menuitem" onClick={onLoadImageClick}>
+      <Button role="menuitem" className="ds-menu-surface__row" onClick={onLoadImageClick}>
         Load image
-      </button>
+      </Button>
     </li>
     {underlays.map((underlay, index) => (
       <li key={underlay.id} role="none">
@@ -76,15 +79,10 @@ export const UnderlayMenu: FC<UnderlayPanelProps> = (props) => {
   useDismissOnOutside(open, rootRef, () => setOpen(false))
   return (
     <div className="underlay-menu" ref={rootRef}>
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
+      <Button aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <span aria-hidden="true">▦</span>
         Underlay
-      </button>
+      </Button>
       {open ? (
         <UnderlayMenuList
           {...props}

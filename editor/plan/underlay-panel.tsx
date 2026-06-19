@@ -4,7 +4,7 @@ import {
   setUnderlayVisibility,
   type Underlay,
 } from '../../core'
-import { Button } from '../design-system'
+import { Button, Field } from '../design-system'
 
 const OPACITY_MIN = 0
 const OPACITY_MAX = 1
@@ -28,30 +28,32 @@ export interface UnderlayRowProps {
 
 export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: UnderlayRowProps) {
   const opacityInputId = `underlay-opacity-${underlay.id}`
+  const visibleInputId = `underlay-visible-${underlay.id}`
 
   return (
     <fieldset>
       <legend>{label}</legend>
-      <label htmlFor={opacityInputId}>Opacity</label>
-      <input
-        id={opacityInputId}
-        type="range"
-        min={OPACITY_MIN}
-        max={OPACITY_MAX}
-        step={OPACITY_STEP}
-        value={underlay.opacity}
-        onChange={(event) =>
-          dispatch(setUnderlayOpacity(floorId, underlay.id, Number(event.target.value)))
-        }
-      />
-      <label>
-        Visible
+      <Field htmlFor={opacityInputId} label="Opacity">
         <input
+          id={opacityInputId}
+          type="range"
+          min={OPACITY_MIN}
+          max={OPACITY_MAX}
+          step={OPACITY_STEP}
+          value={underlay.opacity}
+          onChange={(event) =>
+            dispatch(setUnderlayOpacity(floorId, underlay.id, Number(event.target.value)))
+          }
+        />
+      </Field>
+      <Field htmlFor={visibleInputId} label="Visible">
+        <input
+          id={visibleInputId}
           type="checkbox"
           checked={underlay.visible}
           onChange={() => dispatch(setUnderlayVisibility(floorId, underlay.id, !underlay.visible))}
         />
-      </label>
+      </Field>
       <Button onClick={() => onCalibrate(underlay.id)}>Calibrate</Button>
       <Button onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>Remove</Button>
     </fieldset>
