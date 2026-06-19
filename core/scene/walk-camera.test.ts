@@ -3,6 +3,7 @@ import type { Vector3 } from './vector3'
 import {
   advanceWalk,
   MAX_WALK_PITCH_RAD,
+  pointerLookDelta,
   WALK_EYE_HEIGHT_MM,
   WALK_LOOK_DISTANCE_MM,
   WALK_SPEED_MM_PER_S,
@@ -103,6 +104,30 @@ describe('advanceWalk look', () => {
     const next = advanceWalk(facingNegativeZ, { ...noInput, pitchDelta: -10 }, noTime)
 
     expect(next.pitch).toBeCloseTo(-MAX_WALK_PITCH_RAD, 5)
+  })
+})
+
+describe('pointerLookDelta', () => {
+  const sensitivity = 0.002
+
+  it('yaws the view toward the pointer: rightward pointer move yields a positive yaw turning the view toward +X', () => {
+    const rightwardMovementX = 40
+
+    const { yawDelta } = pointerLookDelta(rightwardMovementX, 0, sensitivity)
+
+    // A rightward pointer move must produce a positive yaw delta, scaled by sensitivity.
+    expect(yawDelta).toBeGreaterThan(0)
+    expect(yawDelta).toBeCloseTo(rightwardMovementX * sensitivity, 5)
+
+    // Fed through advanceWalk from a yaw-0 state, the look target moves toward +X (screen-right).
+    const turned = advanceWalk(facingNegativeZ, { ...noInput, yawDelta }, 0)
+    const target = walkLookTarget(turned)
+    expect(target.x).toBeGreaterThan(facingNegativeZ.position.x)
+
+    // Symmetrically, a leftward pointer move turns the view toward -X (left).
+    const { yawDelta: leftYaw } = pointerLookDelta(-rightwardMovementX, 0, sensitivity)
+    expect(leftYaw).toBeLessThan(0)
+    expect(leftYaw).toBeCloseTo(-rightwardMovementX * sensitivity, 5)
   })
 })
 
