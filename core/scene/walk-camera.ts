@@ -96,6 +96,27 @@ export function pointerLookDelta(
 }
 
 /**
+ * Accumulates a single pointer-look move onto the walk input, returning a new
+ * WalkInput whose yaw and pitch deltas are the input's existing values plus the
+ * pointer-look deltas. The sign rule lives entirely in pointerLookDelta, so a
+ * rightward pointer move yaws the view right and a downward move lowers it.
+ * Never mutates the input.
+ */
+export function accumulatePointerLook(
+  input: WalkInput,
+  movementX: number,
+  movementY: number,
+  sensitivityRadPerPx: number,
+): WalkInput {
+  const step = pointerLookDelta(movementX, movementY, sensitivityRadPerPx)
+  return {
+    ...input,
+    yawDelta: input.yawDelta + step.yawDelta,
+    pitchDelta: input.pitchDelta + step.pitchDelta,
+  }
+}
+
+/**
  * Returns the point the walker is looking at, one look-distance ahead of the
  * eye. yaw 0 faces -Z and a positive pitch raises the view toward +Y, so the
  * look direction is (sin yaw cos pitch, sin pitch, -cos yaw cos pitch). The

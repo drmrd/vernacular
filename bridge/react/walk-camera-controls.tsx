@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef, type RefObject } from 'react'
 import {
+  accumulatePointerLook,
   advanceWalk,
   walkLookTarget,
   WALK_EYE_HEIGHT_MM,
@@ -82,8 +83,12 @@ function startWalk({ camera, domElement, state, input, onUserControl }: WalkSess
   const onClick = () => void domElement.requestPointerLock()
   const onPointerMove = (event: PointerEvent) => {
     if (document.pointerLockElement !== domElement) return
-    input.current.yawDelta -= event.movementX * LOOK_SENSITIVITY_RAD_PER_PX
-    input.current.pitchDelta -= event.movementY * LOOK_SENSITIVITY_RAD_PER_PX
+    input.current = accumulatePointerLook(
+      input.current,
+      event.movementX,
+      event.movementY,
+      LOOK_SENSITIVITY_RAD_PER_PX,
+    )
   }
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)

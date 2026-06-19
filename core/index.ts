@@ -376,6 +376,7 @@ export {
   WALK_EYE_HEIGHT_MM,
   WALK_LOOK_DISTANCE_MM,
   WALK_SPEED_MM_PER_S,
+  accumulatePointerLook,
   advanceWalk,
   pointerLookDelta,
   walkLookTarget,
