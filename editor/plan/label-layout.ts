@@ -133,7 +133,7 @@ function projectedLabelBox(lines: string[], anchor: Point): Bounds {
 }
 
 /** The center point of a box. */
-function centerOf(box: Bounds): Point {
+export function centerOf(box: Bounds): Point {
   return { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 }
 }
 
@@ -215,7 +215,7 @@ function deconflictBoxes<T extends { box: Bounds }>(
  * deterministic function of its inputs.
  */
 export function layoutRoomLabels(
-  rooms: RoomSceneNode[],
+  rooms: readonly RoomSceneNode[],
   viewport: Viewport,
   options: RoomLabelOptions,
 ): RoomLabelLayout[] {

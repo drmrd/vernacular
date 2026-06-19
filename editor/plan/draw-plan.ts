@@ -18,7 +18,7 @@ import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-un
 import { openingCorners, openingJambs } from './opening-geometry'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
-import { layoutDimensionLabels, layoutRoomLabels } from './label-layout'
+import { centerOf, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
@@ -295,14 +295,15 @@ function drawDimensions(ctx: PlanDrawingContext, options: DrawPlanOptions): void
     options.viewport,
     { preferences },
   )
-  const labelById = new Map(layouts.map((layout) => [layout.dimensionId, boxCenter(layout.box)]))
+  const labelById = new Map(layouts.map((layout) => [layout.dimensionId, centerOf(layout.box)]))
   for (const dimension of dimensions) {
     const labelAnchor = labelById.get(dimension.node.id)
+    const anchorOption = labelAnchor !== undefined ? { labelAnchor } : {}
     drawDimension(ctx, dimension, {
       viewport: options.viewport,
       palette,
       preferences,
-      ...(labelAnchor !== undefined && { labelAnchor }),
+      ...anchorOption,
     })
   }
 }
@@ -313,25 +314,21 @@ function drawRoomLabels(ctx: PlanDrawingContext, options: DrawPlanOptions): void
   if (roomLabels === undefined) return
   const palette = paletteOf(options)
   const rooms = options.rooms ?? []
-  const layouts = layoutRoomLabels([...rooms], options.viewport, {
+  // layoutRoomLabels returns one layout per room in input order, so each room is
+  // drawn with the layout at the same index. The hidden ones paint nothing.
+  const layouts = layoutRoomLabels(rooms, options.viewport, {
     preferences: roomLabels.preferences,
   })
-  const layoutById = new Map(layouts.map((layout) => [layout.roomId, layout]))
-  for (const room of rooms) {
-    const layout = layoutById.get(room.id)
-    if (layout === undefined || layout.kind === 'hidden') continue
+  rooms.forEach((room, index) => {
+    const layout = layouts[index]
+    if (layout === undefined || layout.kind === 'hidden') return
     drawRoomLabel(ctx, room, {
       viewport: options.viewport,
       preferences: roomLabels.preferences,
       label: palette.label,
-      anchor: boxCenter(layout.box),
+      anchor: centerOf(layout.box),
     })
-  }
-}
-
-/** The center point of a label layout box, the de-conflicted anchor for its painted text. */
-function boxCenter(box: Bounds): Point {
-  return { x: (box.min.x + box.max.x) / 2, y: (box.min.y + box.max.y) / 2 }
+  })
 }
 
 interface RoomDrawing {
