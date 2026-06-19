@@ -128,6 +128,10 @@ function enrollJunctionFills(
     const junctionKey = group.edgeIndexes.join(':')
     return findFillMeshesByJunctionKey(root, junctionKey).map((mesh) => ({
       materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
+      // No-geometry placeholders: a fill never fades, so it needs no real world point.
+      // A zero outward normal makes `cameraFacesWallOutside` return false for every camera
+      // position, so the per-frame update never takes the fade branch and the fill holds at
+      // its baseline opacity. These are intentional sentinels, not an origin-point bug.
       point: { x: 0, z: 0 },
       outwardNormal: { x: 0, z: 0 },
     }))
@@ -147,7 +151,7 @@ function enrollJunctionFills(
 export function prepareNearWallTransparency(
   root: THREE.Object3D,
   exterior: ExteriorWall[],
-  junctionFadeGroups: JunctionFadeGroup[] = [],
+  fadeGroups: JunctionFadeGroup[] = [],
 ): NearWallTarget[] {
   const wallTargets = exterior.flatMap((wall) => {
     const mesh = findMeshByEntityId(root, wall.wallId)
@@ -167,7 +171,7 @@ export function prepareNearWallTransparency(
       },
     ]
   })
-  return [...wallTargets, ...enrollJunctionFills(root, junctionFadeGroups)]
+  return [...wallTargets, ...enrollJunctionFills(root, fadeGroups)]
 }
 
 /**
