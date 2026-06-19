@@ -15,7 +15,8 @@ export function selectionEnabledForMode(mode: NavMode): boolean {
  * mode. Click-to-select is opt-in and off by default: a click commits a selection only when
  * the user has turned the toggle on AND the camera is not in walk mode. Walk-mode clicks stay
  * pure pointer-lock for mouse-look even when the toggle is on, so walk always overrides it.
+ * Composes `selectionEnabledForMode` so the "not walk" rule lives in exactly one place.
  */
 export function selectionAllowed(input: { enabled: boolean; mode: NavMode }): boolean {
-  return input.enabled && input.mode !== 'walk'
+  return input.enabled && selectionEnabledForMode(input.mode)
 }
