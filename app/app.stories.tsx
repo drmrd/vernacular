@@ -7,6 +7,11 @@ import { InMemoryProjectStore } from '../storage'
 const meta: Meta<typeof App> = {
   title: 'App/Shell',
   component: App,
+  // The shell stories mount the whole application, including the WebGPU scene,
+  // and replay the same flows the end-to-end suite already covers. The '!test'
+  // tag keeps them out of the browser-mode component-test run so the harness
+  // stays focused on isolated components.
+  tags: ['!test'],
 }
 
 export default meta
