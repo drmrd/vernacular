@@ -177,11 +177,16 @@ export function SceneNavToolbar({
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <ModeToggle mode={mode} onModeChange={onModeChange} />
-      <SelectionToggle selectionEnabled={selectionEnabled} onToggleSelection={onToggleSelection} />
-      <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
-        Reset view
-      </button>
+      <div className="scene-nav-toolbar__primary">
+        <ModeToggle mode={mode} onModeChange={onModeChange} />
+        <SelectionToggle
+          selectionEnabled={selectionEnabled}
+          onToggleSelection={onToggleSelection}
+        />
+        <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
+          Reset view
+        </button>
+      </div>
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
       <ColorTemperatureControl
         colorTemperatureK={colorTemperatureK}
