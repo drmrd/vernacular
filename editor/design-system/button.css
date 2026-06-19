@@ -33,3 +33,11 @@
 .ds-button--neutral {
   background: var(--color-surface-raised);
 }
+
+/* Low-emphasis destructive treatment: danger-tinted label and border on the existing
+   surface, so the danger color carries the meaning without an on-fill contrast risk. */
+.ds-button--destructive {
+  border-color: var(--color-danger);
+  background: var(--color-surface-raised);
+  color: var(--color-danger);
+}

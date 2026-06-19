@@ -13,7 +13,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
-import { Stack } from '../design-system'
+import { Button, Stack } from '../design-system'
 import { LengthField } from './length-field'
 
 const INCH_IN_MM = 25.4
@@ -151,17 +151,27 @@ interface OpeningControlsProps {
 
 function OpeningControls({ floorId, openingId, dispatch }: OpeningControlsProps): ReactElement {
   return (
-    <>
-      <button type="button" onClick={() => dispatch(flipOpening(floorId, openingId, 'hinge'))}>
-        Flip hinge
-      </button>
-      <button type="button" onClick={() => dispatch(flipOpening(floorId, openingId, 'facing'))}>
-        Flip swing
-      </button>
-      <button type="button" onClick={() => dispatch(removeOpening(floorId, openingId))}>
-        Remove
-      </button>
-    </>
+    <Stack direction="horizontal" gap="space-3">
+      <Stack direction="horizontal" gap="space-2">
+        <Button
+          variant="neutral"
+          onClick={() => dispatch(flipOpening(floorId, openingId, 'hinge'))}
+        >
+          Flip hinge
+        </Button>
+        <Button
+          variant="neutral"
+          onClick={() => dispatch(flipOpening(floorId, openingId, 'facing'))}
+        >
+          Flip swing
+        </Button>
+      </Stack>
+      <Stack direction="horizontal" gap="space-2">
+        <Button variant="destructive" onClick={() => dispatch(removeOpening(floorId, openingId))}>
+          Remove
+        </Button>
+      </Stack>
+    </Stack>
   )
 }
 
