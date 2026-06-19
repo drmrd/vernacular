@@ -10,13 +10,14 @@ export const MIN_POSITIVE_LENGTH_MM = 1
 /** The absurd-max ceiling (100 m); the guard rejects anything above it. */
 export const MAX_LENGTH_MM = 100_000
 
-/** A dimension fell outside the accepted positive-length range. */
+/** A dimension fell outside the accepted length range. */
 export class InvalidLengthError extends Error {
   constructor(
     public readonly label: string,
     public readonly valueMm: number,
+    message?: string,
   ) {
-    super(`${label} must be a positive length up to 100 m`)
+    super(message ?? `${label} must be a positive length up to 100 m`)
     this.name = 'InvalidLengthError'
   }
 }
@@ -38,6 +39,6 @@ export function assertPositiveLength(valueMm: number, label: string): void {
  */
 export function assertNonNegativeLength(valueMm: number, label: string): void {
   if (!Number.isFinite(valueMm) || valueMm < 0 || valueMm > MAX_LENGTH_MM) {
-    throw new InvalidLengthError(label, valueMm)
+    throw new InvalidLengthError(label, valueMm, `${label} must be 0 or greater, up to 100 m`)
   }
 }
