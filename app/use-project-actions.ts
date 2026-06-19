@@ -30,6 +30,8 @@ export interface RecentEntry {
 
 export interface Recovery {
   onRestore: () => void
+  // Callers fire-and-forget (wired straight to an onClick); the Promise arm only
+  // lets hook-level tests await prune completion.
   onDiscard: () => void | Promise<void>
 }
 
@@ -232,8 +234,8 @@ export interface RecentAndRecoveryContext {
   snapshots: SnapshotsPort | undefined
   onSession: (session: EditorSession) => void
 
-  /** Prompt the user before discarding recovered snapshots. Resolves true to
-   *  prune, false/falsy to keep them. Sync or async, mirroring the ADR-0104
+  /** Prompt the user before discarding recovered snapshots. Returns or resolves
+   *  true to prune, false to keep them. Sync or async, mirroring the ADR-0104
    *  ProjectActionsContext.confirmDiscard seam. Discard never prunes when omitted. */
   confirmDiscard?: () => boolean | Promise<boolean>
 }
@@ -302,15 +304,20 @@ function buildRecovery(context: RecoveryHandlersContext): Recovery {
     // gated behind the ADR-0104 confirm seam: prune (and clear recovery) only
     // when the user confirms, otherwise leave the recovered snapshots intact.
     onDiscard: () =>
-      Promise.resolve(confirmDiscard ? confirmDiscard() : false).then((confirmed) => {
-        if (!confirmed) {
-          return
-        }
-        return snapshots.prune().then(() => {
-          if (isLive()) {
-            setRecovery(null)
+      Promise.resolve(confirmDiscard ? confirmDiscard() : false)
+        .then((confirmed) => {
+          if (!confirmed) {
+            return
           }
+          return snapshots.prune().then(() => {
+            if (isLive()) {
+              setRecovery(null)
+            }
+          })
         })
-      }),
+        // A prune I/O failure (disk full, OPFS error, permission loss) is logged
+        // rather than swallowed; the recovered snapshots survive so the user can
+        // retry the discard. Mirrors the 'reopen folder failed' pattern above.
+        .catch((error: unknown) => console.error('discard snapshots failed', error)),
   }
 }
