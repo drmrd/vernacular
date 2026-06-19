@@ -31,7 +31,10 @@ export function labelBox(text: string, anchor: Point, font: { sizePx: number }):
 /**
  * Whether two label boxes share positive on-screen area. Strict comparison: two
  * rects that touch only along a shared boundary edge (zero-area, line contact)
- * do not overlap, so a declutter pass leaves edge-adjacent labels alone.
+ * do not overlap, so a declutter pass leaves edge-adjacent labels alone. This is
+ * deliberately not the spatial index's `boundsIntersect` (spatial-index.ts),
+ * whose inclusive `<=`/`>=` comparisons count edge-touch as intersection for
+ * broad-phase query correctness; here a strict positive-area policy is required.
  */
 export function labelsOverlap(a: Bounds, b: Bounds): boolean {
   return a.min.x < b.max.x && b.min.x < a.max.x && a.min.y < b.max.y && b.min.y < a.max.y
