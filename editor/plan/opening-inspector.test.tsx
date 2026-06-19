@@ -156,6 +156,27 @@ describe('OpeningInspector', () => {
     expect(command.params.openingId).toBe(OPENING_ID)
   })
 
+  it('renders Remove as a destructive design-system Button, separated from the neutral Flip controls', () => {
+    renderInspector(vi.fn())
+
+    const removeButton = screen.getByRole('button', { name: /remove/i })
+    const flipHinge = screen.getByRole('button', { name: /flip hinge/i })
+    const flipSwing = screen.getByRole('button', { name: /flip (swing|facing)/i })
+
+    // Remove is routed through the design-system Button with the destructive treatment.
+    expect(removeButton).toHaveClass('ds-button', 'ds-button--destructive')
+
+    // The Flip controls are routed through the design-system Button too, as neutral,
+    // proving Remove is the only destructive control.
+    expect(flipHinge).toHaveClass('ds-button', 'ds-button--neutral')
+    expect(flipSwing).toHaveClass('ds-button', 'ds-button--neutral')
+
+    // Remove is visually separated from the Flip pair: the two Flip controls share an
+    // immediate parent, and Remove sits outside it rather than being a bare sibling.
+    expect(flipHinge.parentElement).toBe(flipSwing.parentElement)
+    expect(removeButton.parentElement).not.toBe(flipHinge.parentElement)
+  })
+
   it('shows fractional-inch chip rows for each dimension field in imperial mode', () => {
     renderInspector(vi.fn(), 'imperial')
 
