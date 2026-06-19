@@ -1,4 +1,4 @@
-import type { PlanarGraph } from '../topology/wall-graph'
+import type { GraphEdge, PlanarGraph } from '../topology/wall-graph'
 import { vertexIncidence } from '../topology/wall-footprint'
 import { exteriorWalls } from './exterior-walls'
 import {
@@ -8,7 +8,11 @@ import {
   type WallSceneNode,
 } from './scene-graph'
 
-/** A junction gets a fade group only where this many or more walls meet. */
+/**
+ * A junction gets a fade group only where this many or more walls meet. This is the
+ * same domain invariant (a junction is a 3+-way meeting) as `MIN_FILL_INCIDENCE` in
+ * `core/topology/junction-fill.ts`; keep the two in step if either ever changes.
+ */
 const MIN_FADE_INCIDENCE = 3
 
 /** A 3+-way junction paired with the exterior walls whose fade its fill tracks. */
@@ -40,7 +44,7 @@ export function junctionFadeGroups(
     if (edgeIndexes.length < MIN_FADE_INCIDENCE) continue
     const incidentExteriorWallIds = new Set<string>()
     for (const edgeIndex of edgeIndexes) {
-      const wallNodeId = WALL_NODE_PREFIX + graph.edges[edgeIndex]?.wallId
+      const wallNodeId = WALL_NODE_PREFIX + (graph.edges[edgeIndex] as GraphEdge).wallId
       if (exteriorWallIds.has(wallNodeId)) incidentExteriorWallIds.add(wallNodeId)
     }
     groups.push({ edgeIndexes, exteriorWallIds: [...incidentExteriorWallIds] })
