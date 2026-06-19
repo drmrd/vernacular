@@ -1,4 +1,5 @@
 import { builtinStyles, setRoomStyle, type StyleTag } from '../../core'
+import { Field } from '../design-system'
 
 export interface RoomStyleEditorProps {
   roomKey: string
@@ -13,15 +14,16 @@ export interface RoomStyleEditorProps {
  * style, and dispatches a set-style command on change.
  */
 export function RoomStyleEditor({ roomKey, style, dispatch }: RoomStyleEditorProps) {
+  const inputId = `room-style-${roomKey}`
+
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
     dispatch(setRoomStyle(roomKey, value === '' ? undefined : { styleId: value }))
   }
 
   return (
-    <label>
-      Style
-      <select value={style?.styleId ?? ''} onChange={handleChange}>
+    <Field htmlFor={inputId} label="Style">
+      <select id={inputId} value={style?.styleId ?? ''} onChange={handleChange}>
         <option value="">Inherit</option>
         {Object.values(builtinStyles.entries).map((entry) => (
           <option key={entry.id} value={entry.id}>
@@ -29,6 +31,6 @@ export function RoomStyleEditor({ roomKey, style, dispatch }: RoomStyleEditorPro
           </option>
         ))}
       </select>
-    </label>
+    </Field>
   )
 }

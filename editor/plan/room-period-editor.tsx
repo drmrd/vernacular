@@ -1,4 +1,5 @@
 import { builtinPeriods, setRoomPeriod, type PeriodId } from '../../core'
+import { Field } from '../design-system'
 
 export interface RoomPeriodEditorProps {
   roomKey: string
@@ -13,15 +14,16 @@ export interface RoomPeriodEditorProps {
  * dispatches a set-period command on change.
  */
 export function RoomPeriodEditor({ roomKey, period, dispatch }: RoomPeriodEditorProps) {
+  const inputId = `room-period-${roomKey}`
+
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
     dispatch(setRoomPeriod(roomKey, value === '' ? undefined : value))
   }
 
   return (
-    <label>
-      Period
-      <select value={period ?? ''} onChange={handleChange}>
+    <Field htmlFor={inputId} label="Period">
+      <select id={inputId} value={period ?? ''} onChange={handleChange}>
         <option value="">Inherit</option>
         {Object.values(builtinPeriods.entries).map((entry) => (
           <option key={entry.id} value={entry.id}>
@@ -29,6 +31,6 @@ export function RoomPeriodEditor({ roomKey, period, dispatch }: RoomPeriodEditor
           </option>
         ))}
       </select>
-    </label>
+    </Field>
   )
 }

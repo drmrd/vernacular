@@ -13,6 +13,7 @@ import {
   type UnitPreferences,
   type UnitSystem,
 } from '../../core'
+import { Stack } from '../design-system'
 import { LengthField } from './length-field'
 
 const INCH_IN_MM = 25.4
@@ -121,7 +122,7 @@ function DimensionFields({
   return (
     <>
       {DIMENSION_DESCRIPTORS.map(({ key, label }) => (
-        <div key={key}>
+        <Stack key={key} gap="space-2">
           <LengthField
             inputId={`opening-${kebabCase(key)}-${opening.id}`}
             label={label}
@@ -136,7 +137,7 @@ function DimensionFields({
               onNudge={(delta) => onResize({ ...current, [key]: current[key] + delta })}
             />
           ) : null}
-        </div>
+        </Stack>
       ))}
     </>
   )
@@ -174,7 +175,7 @@ export function OpeningInspector({
   const assumeUnit = ASSUME_UNIT_BY_SYSTEM[units]
 
   return (
-    <div>
+    <Stack gap="space-2">
       <DimensionFields
         opening={opening}
         preferences={preferences}
@@ -183,6 +184,6 @@ export function OpeningInspector({
         onResize={(dimensions) => dispatch(resizeOpening(floorId, opening.id, dimensions))}
       />
       <OpeningControls floorId={floorId} openingId={opening.id} dispatch={dispatch} />
-    </div>
+    </Stack>
   )
 }

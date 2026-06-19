@@ -56,4 +56,11 @@ describe('RoomNameEditor', () => {
     expect(lastCommand(dispatch).type).toBe(expected.type)
     expect(lastCommand(dispatch).params).toEqual(expected.params)
   })
+
+  it('renders the name input through the styled design-system field wrapper', () => {
+    renderEditor(CURRENT_NAME, vi.fn())
+
+    const input = screen.getByLabelText(/name/i)
+    expect(input.closest('.ds-field')).not.toBeNull()
+  })
 })
