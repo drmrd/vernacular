@@ -1,6 +1,7 @@
 import { polygonCentroid, type Point, type RoomSceneNode } from '../../core'
 
 import type { Bounds } from './fit'
+import { LABEL_FONT_SIZE_PX, LABEL_LINE_HEIGHT_PX } from './label-constants'
 import {
   roomLabelContent,
   roomLabelPlacement,
@@ -48,25 +49,18 @@ export function labelsOverlap(a: Bounds, b: Bounds): boolean {
 }
 
 /**
- * The pixel size of the canvas label face, mirrored from `room-label.ts` so the
- * laid-out box matches the painted text. Kept local to this pure module rather
- * than imported from the draw path.
- */
-const LABEL_FONT_SIZE_PX = 12
-
-/**
- * Vertical pixel gap between the name line and the area line, mirroring the draw
- * path's `LABEL_LINE_HEIGHT` so a name+area block's projected height matches what
- * is painted.
- */
-const LABEL_LINE_HEIGHT_PX = 14
-
-/**
  * One step of the de-confliction nudge, in pixels. Two colliding labels are
  * separated by repeated steps along the vector between their box centers until
  * their boxes are disjoint, so the step is the placement loop's resolution.
  */
 const NUDGE_STEP_PX = 2
+
+/**
+ * Half a nudge step. Each step moves both boxes by this amount in opposite
+ * directions, so the pair separates by a full `NUDGE_STEP_PX` per iteration while
+ * staying centered on their midpoint.
+ */
+const HALF_NUDGE_PX = NUDGE_STEP_PX / 2
 
 /**
  * The maximum number of nudge steps applied to a colliding pair before the loop
@@ -86,7 +80,11 @@ export interface RoomLabelLayout {
   box: Bounds
 }
 
-/** The visible label lines a placement paints for a room, widest first is not required. */
+/**
+ * The visible label lines a placement paints for a room, in paint order (name
+ * then area). Callers must not assume widest-first; `widestLine` extracts the
+ * widest line independently for box sizing.
+ */
 function visibleLines(
   room: RoomSceneNode,
   placement: RoomLabelPlacement,
@@ -108,15 +106,8 @@ function widestLine(lines: string[]): string {
   return lines.reduce((widest, line) => (line.length > widest.length ? line : widest), '')
 }
 
-/** The box a room's label occupies at its projected centroid, before de-confliction. */
-function projectedLabelBox(
-  room: RoomSceneNode,
-  viewport: Viewport,
-  options: RoomLabelOptions,
-): Bounds {
-  const placement = roomLabelPlacement(room, viewport, options)
-  const lines = visibleLines(room, placement, options)
-  const anchor = worldToScreen(polygonCentroid(room.polygon), viewport)
+/** The box `lines` occupy when painted centered on `anchor`, before de-confliction. */
+function projectedLabelBox(lines: string[], anchor: Point): Bounds {
   const box = labelBox(widestLine(lines), anchor, { sizePx: LABEL_FONT_SIZE_PX })
   // A two-line block is taller than a single font line, so grow the box by one
   // line-height for the area line. The growth is symmetric about the anchor so
@@ -162,9 +153,14 @@ function separate(a: Bounds, b: Bounds): { a: Bounds; b: Bounds } {
   let resolvedB = b
   for (let step = 0; step < MAX_NUDGE_STEPS && labelsOverlap(resolvedA, resolvedB); step += 1) {
     const direction = separationDirection(centerOf(resolvedA), centerOf(resolvedB))
-    const half = NUDGE_STEP_PX / 2
-    resolvedA = translateBox(resolvedA, { x: -direction.x * half, y: -direction.y * half })
-    resolvedB = translateBox(resolvedB, { x: direction.x * half, y: direction.y * half })
+    resolvedA = translateBox(resolvedA, {
+      x: -direction.x * HALF_NUDGE_PX,
+      y: -direction.y * HALF_NUDGE_PX,
+    })
+    resolvedB = translateBox(resolvedB, {
+      x: direction.x * HALF_NUDGE_PX,
+      y: direction.y * HALF_NUDGE_PX,
+    })
   }
   return { a: resolvedA, b: resolvedB }
 }
@@ -185,10 +181,12 @@ export function layoutRoomLabels(
 ): RoomLabelLayout[] {
   const layout: RoomLabelLayout[] = rooms.map((room) => {
     const placement = roomLabelPlacement(room, viewport, options)
+    const lines = visibleLines(room, placement, options)
+    const anchor = worldToScreen(polygonCentroid(room.polygon), viewport)
     return {
       roomId: room.id,
       kind: placement.kind,
-      box: projectedLabelBox(room, viewport, options),
+      box: projectedLabelBox(lines, anchor),
     }
   })
 

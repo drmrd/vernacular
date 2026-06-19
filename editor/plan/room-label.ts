@@ -7,6 +7,7 @@ import {
 } from '../../core'
 
 import { contentBounds } from './fit'
+import { LABEL_FONT_SIZE_PX, LABEL_LINE_HEIGHT_PX } from './label-constants'
 import { labelBox } from './label-layout'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -27,20 +28,6 @@ export function roomLabelContent(room: RoomSceneNode, options: RoomLabelOptions)
     anchor: polygonCentroid(room.polygon),
   }
 }
-
-/**
- * The pixel size of the canvas label face. Mirrors the `12px sans-serif` font
- * the draw path sets, kept here so the placement decision and the painted text
- * agree without `editor/plan/draw-plan.ts` leaking into this pure module.
- */
-const LABEL_FONT_SIZE_PX = 12
-
-/**
- * Vertical pixel gap between the name line and the area line. Mirrors the draw
- * path's `LABEL_LINE_HEIGHT`, so the projected block height matches what is
- * painted.
- */
-const LABEL_LINE_HEIGHT_PX = 14
 
 /**
  * How much of the room's on-screen footprint a label line may consume on either
