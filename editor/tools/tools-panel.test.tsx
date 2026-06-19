@@ -9,21 +9,24 @@ import { ToolsPanel } from './tools-panel'
 afterEach(cleanup)
 
 describe('ToolsPanel', () => {
-  it('renders four labeled rail sections', () => {
+  it('renders four rail section labels through the SectionLabel primitive', () => {
     const { container } = render(
       <ActiveToolProvider>
         <ToolsPanel />
       </ActiveToolProvider>,
     )
 
-    const labels = Array.from(container.querySelectorAll('.tools-panel__section-label')).map(
-      (el) => el.textContent?.toLowerCase() ?? '',
-    )
+    const sectionLabels = Array.from(container.querySelectorAll('.ds-section-label'))
+    const labels = sectionLabels.map((el) => el.textContent?.toLowerCase() ?? '')
 
     expect(labels).toContain('select')
     expect(labels).toContain('draw')
     expect(labels).toContain('period')
     expect(labels).toContain('annotate')
+
+    for (const el of sectionLabels) {
+      expect(el).not.toHaveClass('tools-panel__section-label')
+    }
   })
 
   it('includes a Pan chip in the SELECT section', () => {

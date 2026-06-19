@@ -37,9 +37,11 @@ function renderInspector() {
 }
 
 describe('Inspector', () => {
-  it('renders a PROPERTIES heading', () => {
+  it('renders a PROPERTIES section label through the SectionLabel primitive', () => {
     renderInspector()
-    expect(screen.getByRole('heading', { name: /properties/i })).toBeInTheDocument()
+    const title = screen.getByText(/properties/i)
+    expect(title).toHaveClass('ds-section-label')
+    expect(title).not.toHaveClass('inspector__title')
   })
 
   it('shows no selection count badge when nothing is selected', () => {

@@ -10,9 +10,11 @@ describe('OverallDimensions', () => {
     expect(screen.getByText('5 m × 3 m')).toHaveClass('overall-dimensions__value')
   })
 
-  it('labels the readout', () => {
+  it('labels the readout through the SectionLabel primitive', () => {
     render(<OverallDimensions extent={{ width: '5 m', height: '3 m' }} />)
-    expect(screen.getByText(/overall/i)).toHaveClass('overall-dimensions__label')
+    const label = screen.getByText(/overall/i)
+    expect(label).toHaveClass('ds-section-label')
+    expect(label).not.toHaveClass('overall-dimensions__label')
   })
 
   it('renders nothing when there is no extent', () => {

@@ -19,6 +19,20 @@ describe('RoomFinishSection', () => {
     expect(screen.getByRole('button', { name: 'Ceiling' })).toBeInTheDocument()
   })
 
+  it('renders the Finish label through the SectionLabel primitive', () => {
+    render(
+      <RoomFinishSection
+        floorId="g"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+    )
+    const label = screen.getByText(/finish/i)
+    expect(label).toHaveClass('ds-section-label')
+    expect(label).not.toHaveClass('finish-section__label')
+  })
+
   it('routes the surface chips through the design-system Segmented option vocabulary', () => {
     render(
       <RoomFinishSection

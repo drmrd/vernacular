@@ -19,6 +19,20 @@ describe('WallFinishSection', () => {
     expect(screen.getByRole('button', { name: 'B' })).toBeInTheDocument()
   })
 
+  it('renders the Finish label through the SectionLabel primitive', () => {
+    render(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+    )
+    const label = screen.getByText(/finish/i)
+    expect(label).toHaveClass('ds-section-label')
+    expect(label).not.toHaveClass('finish-section__label')
+  })
+
   it('marks Face A active by default', () => {
     render(
       <WallFinishSection
