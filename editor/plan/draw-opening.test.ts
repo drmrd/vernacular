@@ -107,6 +107,27 @@ describe('drawOpening', () => {
     expect(recorder.arcs).toHaveLength(2)
   })
 
+  it('mirrors both leaves of a double door onto the same facing side with opposite sweeps', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing', { double: true }), RENDER)
+
+    expect(recorder.arcs).toHaveLength(2)
+    const [firstArc, secondArc] = recorder.arcs
+    expect(firstArc).toBeDefined()
+    expect(secondArc).toBeDefined()
+    if (firstArc === undefined || secondArc === undefined) return
+    // Both leaves pivot from opposite jambs but open to the SAME facing side
+    // (mirrored across the opening centerline, spec lines 297-298), so the two
+    // swing arcs carry OPPOSITE sweep flags...
+    expect(new Set([firstArc.counterclockwise, secondArc.counterclockwise])).toEqual(
+      new Set([false, true]),
+    )
+    // ...and both arcs open toward the same facing side, so they start at the
+    // same angle (each measured from its own hinge toward the +y facing side).
+    expect(firstArc.startAngle).toBeCloseTo(secondArc.startAngle)
+  })
+
   it('draws a sliding door as a panel and track with no arcs', () => {
     const recorder = recordingContext()
 
