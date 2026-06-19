@@ -1,6 +1,6 @@
 import { type OpeningSceneNode, type Point } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
-import { openingCorners } from './opening-geometry'
+import { openingCorners, swingLeafGeometry } from './opening-geometry'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -77,7 +77,7 @@ function strokeSegment(painter: OpeningPainter, from: Point, to: Point): void {
  */
 function strokeArc(
   painter: OpeningPainter,
-  swing: { hinge: Point; leafEnd: Point; closed: Point },
+  swing: { hinge: Point; leafEnd: Point; closed: Point; counterclockwise?: boolean | undefined },
 ): void {
   const center = worldToScreen(swing.hinge, painter.viewport)
   const open = worldToScreen(swing.leafEnd, painter.viewport)
@@ -86,7 +86,7 @@ function strokeArc(
   const startAngle = Math.atan2(open.y - center.y, open.x - center.x)
   const endAngle = Math.atan2(closed.y - center.y, closed.x - center.x)
   painter.ctx.beginPath()
-  painter.ctx.arc(center.x, center.y, radius, startAngle, endAngle)
+  painter.ctx.arc(center.x, center.y, radius, startAngle, endAngle, swing.counterclockwise)
   painter.ctx.stroke()
 }
 
@@ -139,28 +139,18 @@ function setInk(painter: OpeningPainter): void {
   painter.ctx.lineWidth = OPENING_INK_WIDTH
 }
 
-function leafEnd(node: OpeningSceneNode, hinge: Point, sign: number): Point {
-  return add(hinge, scale(node.normal, sign * facingSign(node) * node.width))
-}
-
-function drawSwingLeaf(
-  painter: OpeningPainter,
-  node: OpeningSceneNode,
-  leaf: { hinge: Point; closed: Point; sign: number },
-): void {
-  const open = leafEnd(node, leaf.hinge, leaf.sign)
-  strokeSegment(painter, leaf.hinge, open)
-  strokeArc(painter, { hinge: leaf.hinge, leafEnd: open, closed: leaf.closed })
-}
-
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
   setInk(painter)
   const node = opening.node
-  const hinge = hingeJamb(node)
-  const other = otherJamb(node)
-  drawSwingLeaf(painter, node, { hinge, closed: other, sign: 1 })
+  const primary = swingLeafGeometry(node, { leaf: 'primary' })
+  strokeSegment(painter, primary.hinge, primary.leafEnd)
+  strokeArc(painter, primary)
   if (opening.double) {
-    drawSwingLeaf(painter, node, { hinge: other, closed: hinge, sign: -1 })
+    // The secondary leaf mirrors the primary across the opening centerline onto the
+    // same facing side, pivoting from the other jamb with the opposite sweep flag.
+    const secondary = swingLeafGeometry(node, { leaf: 'secondary' })
+    strokeSegment(painter, secondary.hinge, secondary.leafEnd)
+    strokeArc(painter, secondary)
   }
 }
 
@@ -189,17 +179,16 @@ function drawDoorFold(painter: OpeningPainter, opening: DrawableOpening): void {
 function drawDoorPivot(painter: OpeningPainter, opening: DrawableOpening): void {
   const node = opening.node
   setInk(painter)
-  const hinge = hingeJamb(node)
-  const open = leafEnd(node, hinge, 1)
-  strokeSegment(painter, hinge, open)
+  const leaf = swingLeafGeometry(node, { leaf: 'primary' })
+  strokeSegment(painter, leaf.hinge, leaf.leafEnd)
   // A filled pivot dot at the hinge.
-  const dot = worldToScreen(hinge, painter.viewport)
+  const dot = worldToScreen(leaf.hinge, painter.viewport)
   painter.ctx.fillStyle = painter.ink
   painter.ctx.beginPath()
   painter.ctx.arc(dot.x, dot.y, PIVOT_DOT_RADIUS_PX, 0, FULL_CIRCLE)
   painter.ctx.fill()
   // The swing arc.
-  strokeArc(painter, { hinge, leafEnd: open, closed: otherJamb(node) })
+  strokeArc(painter, leaf)
 }
 
 function drawCasedOpening(): void {

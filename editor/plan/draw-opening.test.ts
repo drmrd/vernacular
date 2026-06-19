@@ -73,12 +73,59 @@ describe('drawOpening', () => {
     expect(recorder.arcs).toHaveLength(1)
   })
 
+  it('carries the swing sweep direction to the canvas for opposite-sweeping doors', () => {
+    const startRecorder = recordingContext()
+    const endRecorder = recordingContext()
+
+    drawOpening(
+      startRecorder.ctx,
+      drawable('door-swing', { node: { orientation: { hinge: 'start', facing: 'positive' } } }),
+      RENDER,
+    )
+    drawOpening(
+      endRecorder.ctx,
+      drawable('door-swing', { node: { orientation: { hinge: 'end', facing: 'positive' } } }),
+      RENDER,
+    )
+
+    expect(startRecorder.arcs).toHaveLength(1)
+    expect(endRecorder.arcs).toHaveLength(1)
+    const startArc = startRecorder.arcs[0]
+    const endArc = endRecorder.arcs[0]
+    expect(startArc).toBeDefined()
+    expect(endArc).toBeDefined()
+    // start/positive sweeps the minor arc clockwise; end/positive the other way.
+    expect(startArc?.counterclockwise).toBe(false)
+    expect(endArc?.counterclockwise).toBe(true)
+  })
+
   it('draws two mirrored swing leaves with exactly two arcs for a double door', () => {
     const recorder = recordingContext()
 
     drawOpening(recorder.ctx, drawable('door-swing', { double: true }), RENDER)
 
     expect(recorder.arcs).toHaveLength(2)
+  })
+
+  it('mirrors both leaves of a double door onto the same facing side with opposite sweeps', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing', { double: true }), RENDER)
+
+    expect(recorder.arcs).toHaveLength(2)
+    const [firstArc, secondArc] = recorder.arcs
+    expect(firstArc).toBeDefined()
+    expect(secondArc).toBeDefined()
+    if (firstArc === undefined || secondArc === undefined) return
+    // Both leaves pivot from opposite jambs but open to the SAME facing side
+    // (mirrored across the opening centerline, spec lines 297-298), so the two
+    // swing arcs carry OPPOSITE sweep flags...
+    expect(new Set([firstArc.counterclockwise, secondArc.counterclockwise])).toEqual(
+      new Set([false, true]),
+    )
+    // ...and both arcs open toward the same facing side, so they start at the
+    // same angle (each measured from its own hinge toward the +y facing side).
+    expect(firstArc.startAngle).toBeCloseTo(secondArc.startAngle)
   })
 
   it('draws a sliding door as a panel and track with no arcs', () => {
@@ -107,6 +154,25 @@ describe('drawOpening', () => {
     drawOpening(recorder.ctx, drawable('door-pivot'), RENDER)
 
     expect(recorder.arcs.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('sweeps the pivot swing arc the same minor-arc direction as the single swing leaf', () => {
+    const pivotRecorder = recordingContext()
+    const swingRecorder = recordingContext()
+    const orientation = { hinge: 'end', facing: 'positive' } as const
+
+    drawOpening(pivotRecorder.ctx, drawable('door-pivot', { node: { orientation } }), RENDER)
+    drawOpening(swingRecorder.ctx, drawable('door-swing', { node: { orientation } }), RENDER)
+
+    // The pivot symbol records a small filled pivot dot plus the large swing
+    // arc; select the swing arc as the recorded arc with the larger radius.
+    const pivotSwingArc = pivotRecorder.arcs.reduce((a, b) => (b.radius > a.radius ? b : a))
+    const swingArc = swingRecorder.arcs[0]
+    expect(swingArc).toBeDefined()
+    // For hinge=end/facing=positive the minor arc sweeps counterclockwise; the
+    // pivot must inherit the same corrected direction as the single swing leaf.
+    expect(swingArc?.counterclockwise).toBe(true)
+    expect(pivotSwingArc.counterclockwise).toBe(true)
   })
 
   it('draws a cased opening as the gap only, with no arcs', () => {

@@ -11,6 +11,9 @@ interface DrawnArc {
   x: number
   y: number
   radius: number
+  startAngle: number
+  endAngle: number
+  counterclockwise: boolean | undefined
   fillStyle: string
 }
 
@@ -66,9 +69,18 @@ function recordingCtx(state: RecorderState): PlanDrawingContext {
     },
     closePath: () => state.ops.push('closePath'),
     stroke: () => state.ops.push('stroke'),
-    arc: (x, y, radius) => {
+    // eslint-disable-next-line max-params -- mirrors the CanvasRenderingContext2D.arc signature including the counterclockwise sweep flag the fake records
+    arc: (x, y, radius, startAngle, endAngle, counterclockwise) => {
       state.ops.push('arc')
-      state.arcs.push({ x, y, radius, fillStyle: String(ctx.fillStyle) })
+      state.arcs.push({
+        x,
+        y,
+        radius,
+        startAngle,
+        endAngle,
+        counterclockwise,
+        fillStyle: String(ctx.fillStyle),
+      })
     },
     fill: () => {
       state.ops.push('fill')

@@ -40,7 +40,14 @@ export interface PlanDrawingContext {
   beginPath(): void
   moveTo(x: number, y: number): void
   lineTo(x: number, y: number): void
-  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): void
+  arc(
+    x: number,
+    y: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    counterclockwise?: boolean,
+  ): void
   closePath(): void
   stroke(): void
   fill(): void
