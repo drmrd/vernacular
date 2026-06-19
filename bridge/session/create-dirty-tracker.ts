@@ -17,6 +17,13 @@ export interface DirtyTracker {
    */
   markSaved(): void
   /**
+   * Registers a listener fired on each clean<->dirty transition, so the UI can
+   * re-render the guard/indicator. Repeated changes in the same direction are
+   * coalesced: the listener fires only when `isDirty()` actually flips. Returns
+   * an unsubscribe function.
+   */
+  subscribe(listener: () => void): () => void
+  /**
    * Detaches the change listener from the session. Call this when the session is
    * abandoned (New / Open / Import) so the old session can be garbage-collected
    * and stale undo/redo do not fire a dead listener.
@@ -28,20 +35,41 @@ export function createDirtyTracker(session: EditorSession): DirtyTracker {
   // Both start at 0; equal => clean on construction.
   let changeCount = 0
   let savedChangeCount = 0
+  let lastNotifiedDirty = false
+
+  const listeners = new Set<() => void>()
+
+  const isDirty = (): boolean => changeCount !== savedChangeCount
+
+  const notifyIfTransitioned = (): void => {
+    const dirty = isDirty()
+    if (dirty === lastNotifiedDirty) {
+      return
+    }
+    lastNotifiedDirty = dirty
+    for (const listener of listeners) {
+      listener()
+    }
+  }
 
   const unsubscribe = session.subscribe(() => {
     changeCount += 1
+    notifyIfTransitioned()
   })
 
   return {
-    isDirty() {
-      return changeCount !== savedChangeCount
-    },
+    isDirty,
     markSaved() {
       savedChangeCount = changeCount
+      notifyIfTransitioned()
+    },
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
     },
     dispose() {
       unsubscribe()
+      listeners.clear()
     },
   }
 }
