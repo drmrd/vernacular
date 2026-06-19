@@ -64,4 +64,42 @@ describe('junctionFadeGroups', () => {
     // the interior leg partition.
     expect([...group.exteriorWallIds].sort()).toEqual(['wall:bar'])
   })
+
+  it('marks the junction fill opaque while any incident exterior wall fades', () => {
+    // Same T-junction fixture: an exterior "bar" wall and an interior "leg"
+    // partition meet at a three-way tee with two rooms north of the bar.
+    //
+    // The chosen rule (issue #227): the junction fill that covers the leg's
+    // mitered end and divides the two rooms must STAY at its solid baseline
+    // whenever a member exterior wall fades for the see-through camera view.
+    // The fade group therefore exposes a "fill stays opaque" policy. The group
+    // still enumerates its member exterior wall ids, so the engine can read the
+    // policy without re-deriving membership.
+    const graph = buildWallGraph([
+      { id: 'bar', start: point(0, 0), end: point(2000, 0), thickness: WALL_THICKNESS },
+      { id: 'leg', start: point(1000, 0), end: point(1000, 1000), thickness: WALL_THICKNESS },
+    ])
+
+    const walls = [
+      wall('wall:bar', point(0, 0), point(2000, 0)),
+      wall('wall:leg', point(1000, 0), point(1000, 1000)),
+    ]
+    const rooms = [
+      room('room:a', [point(0, 0), point(1000, 0), point(1000, 1000), point(0, 1000)]),
+      room('room:b', [point(1000, 0), point(2000, 0), point(2000, 1000), point(1000, 1000)]),
+    ]
+
+    const groups: JunctionFadeGroup[] = junctionFadeGroups(graph, walls, rooms)
+
+    expect(groups).toHaveLength(1)
+    const [group] = groups as [JunctionFadeGroup]
+
+    // This junction has an incident exterior wall (the bar), so its fill must
+    // hold opaque while that wall fades.
+    expect(group.exteriorWallIds.length).toBeGreaterThanOrEqual(1)
+    expect(group.fillStaysOpaque).toBe(true)
+
+    // The member exterior wall ids stay available alongside the policy.
+    expect([...group.exteriorWallIds].sort()).toEqual(['wall:bar'])
+  })
 })
