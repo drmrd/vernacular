@@ -97,7 +97,11 @@ interface CameraPresetButtonsProps {
 
 function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps) {
   return (
-    <div role="group" aria-label="Camera presets" className="scene-nav-toolbar__presets">
+    <div
+      role="group"
+      aria-label="Camera presets"
+      className="scene-nav-toolbar__presets scene-nav-toolbar__secondary"
+    >
       {PRESET_VIEW_BUTTONS.map(({ label, preset }) => (
         <button
           key={preset}
