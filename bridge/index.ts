@@ -1,6 +1,8 @@
 export type { EditorSession } from './session/editor-session'
 export { createEditorSession } from './session/editor-session'
 export { loadOrCreateProject } from './session/load-or-create-project'
+export type { GuardDestructiveOptions } from './session/discard-guard'
+export { guardDestructive } from './session/discard-guard'
 export type { SelectionStore } from './selection/selection-store'
 export { createSelectionStore } from './selection/selection-store'
 export type { ActiveFloorStore } from './active-floor/active-floor-store'

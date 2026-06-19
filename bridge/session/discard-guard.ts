@@ -10,14 +10,16 @@ export function needsDiscardConfirmation(isDirty: boolean): boolean {
 }
 
 /**
- * Collaborators for a guarded destructive swap. `isDirty` is the current
- * project state, `confirm` prompts the user (sync or async) when discarding
- * unsaved work, and `run` performs the swap itself.
+ * Collaborators for a guarded destructive swap. All three are required.
+ * `confirm` is never called when the project is clean; it prompts the user
+ * (sync or async) only when discarding unsaved work, and `run` performs the
+ * swap itself (sync or async). A rejected `confirm` or `run` propagates
+ * through `guardDestructive`'s returned promise rather than escaping silently.
  */
 export interface GuardDestructiveOptions {
   isDirty: boolean
   confirm: () => boolean | Promise<boolean>
-  run: () => void
+  run: () => void | Promise<void>
 }
 
 /**
@@ -34,5 +36,5 @@ export async function guardDestructive({
   if (needsDiscardConfirmation(isDirty) && !(await confirm())) {
     return
   }
-  run()
+  await run()
 }
