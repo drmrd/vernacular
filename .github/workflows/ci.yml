@@ -78,7 +78,7 @@ jobs:
         run: pnpm rgb:audit --range "origin/${{ github.base_ref }}..HEAD"
 
   storybook-build:
-    name: Storybook build
+    name: Storybook build and component tests
     runs-on: ubuntu-latest
     needs: check
     steps:
@@ -98,6 +98,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Storybook component tests
+        run: pnpm storybook:test
 
       - name: Build Storybook
         run: pnpm build-storybook
