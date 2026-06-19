@@ -54,6 +54,10 @@ export interface PlanDrawingContext {
   fillText(text: string, x: number, y: number): void
   fillRect(x: number, y: number, width: number, height: number): void
   drawImage(image: CanvasImageSource, dx: number, dy: number, dWidth: number, dHeight: number): void
+  save(): void
+  restore(): void
+  translate(x: number, y: number): void
+  rotate(angle: number): void
 }
 
 export interface PreviewSegment {

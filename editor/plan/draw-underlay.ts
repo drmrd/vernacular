@@ -1,5 +1,6 @@
 import type { Point, UnderlaySceneNode } from '../../core'
 import type { PlanDrawingContext, PreviewSegment } from './draw-plan'
+import { underlayTracePoints } from './underlay-trace-points'
 import { worldToScreen, type Viewport } from './viewport'
 
 /** The narrow structural slice of a decoded bitmap that drawImage needs (a real ImageBitmap satisfies it). */
@@ -26,19 +27,36 @@ export function drawUnderlay(
   viewport: Viewport,
   image: UnderlayImage,
 ): void {
-  // Axis-aligned only this slice (node.placement.rotation === 0); rotation is deferred to the rotation-gizmo follow-up.
-  const origin = worldToScreen(node.placement.offset, viewport)
   const pixelToScreen = node.placement.millimetersPerPixel * viewport.scale
   ctx.globalAlpha = node.opacity
-  // UnderlayImage is the structural slice (width/height) drawImage reads; a real
-  // ImageBitmap satisfies the seam's CanvasImageSource, so widen at the call.
-  ctx.drawImage(
-    image as CanvasImageSource,
-    origin.x,
-    origin.y,
-    node.width * pixelToScreen,
-    node.height * pixelToScreen,
-  )
+  if (node.placement.rotation === 0) {
+    // Axis-aligned: a plain drawImage at the projected offset, unchanged from the original path.
+    // UnderlayImage is the structural slice (width/height) drawImage reads; a real
+    // ImageBitmap satisfies the seam's CanvasImageSource, so widen at the call.
+    const origin = worldToScreen(node.placement.offset, viewport)
+    ctx.drawImage(
+      image as CanvasImageSource,
+      origin.x,
+      origin.y,
+      node.width * pixelToScreen,
+      node.height * pixelToScreen,
+    )
+  } else {
+    // Project the footprint corners the snap path already uses, then paint the raster into that rotated quad.
+    const corners = underlayTracePoints(node).map((corner) => worldToScreen(corner, viewport))
+    const topLeft = corners[0]
+    const topRight = corners[1]
+    const bottomLeft = corners[3]
+    if (topLeft === undefined || topRight === undefined || bottomLeft === undefined) return // unreachable; satisfies strict indexing
+    const angle = Math.atan2(topRight.y - topLeft.y, topRight.x - topLeft.x)
+    const widthScreen = Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y)
+    const heightScreen = Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y)
+    ctx.save()
+    ctx.translate(topLeft.x, topLeft.y)
+    ctx.rotate(angle)
+    ctx.drawImage(image as CanvasImageSource, 0, 0, widthScreen, heightScreen)
+    ctx.restore()
+  }
   ctx.globalAlpha = FULLY_OPAQUE
 }
 
