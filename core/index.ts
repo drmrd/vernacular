@@ -435,6 +435,12 @@ export { dimensionGeometry, dimensionLength } from './geometry/dimension'
 export { insetPolygon, pointInPolygon, polygonArea, polygonCentroid } from './geometry/polygon'
 export { lineIntersection, pointOnSegment, segmentIntersection } from './geometry/segment'
 export { dot, leftNormal, leftPerp, shift, subtract, unit } from './geometry/vector'
+export {
+  MAX_LENGTH_MM,
+  MIN_POSITIVE_LENGTH_MM,
+  InvalidLengthError,
+  assertPositiveLength,
+} from './units/length-bounds'
 export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint, MIN_OPENING_WIDTH_MM } from './topology/openings'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'
