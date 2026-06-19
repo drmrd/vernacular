@@ -33,6 +33,63 @@ function jsonFileFor(project: ReturnType<typeof sampleProject>): File {
   return new File([bytes.buffer as ArrayBuffer], 'house.json')
 }
 
+interface GuardedContextOverrides {
+  onSession: ProjectActionsContext['onSession']
+  isDirty: boolean
+  confirmDiscard: () => boolean | Promise<boolean>
+}
+
+describe('useProjectActions new-project action', () => {
+  function newProjectContext(overrides: GuardedContextOverrides): ProjectActionsContext {
+    const { onSession, isDirty, confirmDiscard } = overrides
+    return {
+      session: createEditorSession(sampleProject()),
+      store: new InMemoryProjectStore(),
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      onSession,
+      isDirty,
+      confirmDiscard,
+    } as ProjectActionsContext
+  }
+
+  it('does not swap the project when a dirty session is not confirmed', async () => {
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => false)
+
+    const context = newProjectContext({ onSession, isDirty: true, confirmDiscard })
+
+    const { result } = renderHook(() => useProjectActions(context))
+
+    await act(async () => {
+      await (result.current as { onNewProject: () => Promise<void> | void }).onNewProject()
+    })
+
+    expect(onSession).not.toHaveBeenCalled()
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+  })
+
+  it('swaps in a fresh initial project when the dirty session is confirmed', async () => {
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => true)
+
+    const context = newProjectContext({ onSession, isDirty: true, confirmDiscard })
+
+    const { result } = renderHook(() => useProjectActions(context))
+
+    await act(async () => {
+      await (result.current as { onNewProject: () => Promise<void> | void }).onNewProject()
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).toHaveBeenCalledOnce()
+  })
+})
+
 describe('useProjectActions import action', () => {
   it('activates, persists, and records a dropped project file', async () => {
     const project = sampleProject()
