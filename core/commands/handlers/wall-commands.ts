@@ -1,5 +1,6 @@
 import { createWall } from '../../model/factories'
 import type { Floor, Point, Project, Wall, WallEnd } from '../../model/types'
+import { assertPositiveLength } from '../../units/length-bounds'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 
@@ -103,6 +104,7 @@ export function setWallThickness(
 
 const setWallThicknessHandler: CommandHandler<Project, SetWallThicknessParams> = {
   apply(state, params) {
+    assertPositiveLength(params.thickness, 'Thickness')
     state.floors = updateWall(state.floors, params.floorId, params.wallId, (wall) => ({
       ...wall,
       thickness: params.thickness,
