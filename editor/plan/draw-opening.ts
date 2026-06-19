@@ -161,18 +161,15 @@ function drawSwingLeaf(
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
   setInk(painter)
   const node = opening.node
-  const hinge = hingeJamb(node)
-  const other = otherJamb(node)
-  // The primary leaf carries the swing-arc sweep direction from the pure helper.
+  // The primary leaf consumes the pure helper's hinge, open tip, closed jamb, and
+  // sweep direction directly, so the geometry has a single authoritative source.
   const primary = swingLeafGeometry(node, { leaf: 'primary' })
-  drawSwingLeaf(painter, node, {
-    hinge,
-    closed: other,
-    sign: 1,
-    counterclockwise: primary.counterclockwise,
-  })
+  strokeSegment(painter, primary.hinge, primary.leafEnd)
+  strokeArc(painter, primary)
   if (opening.double) {
-    drawSwingLeaf(painter, node, { hinge: other, closed: hinge, sign: -1 })
+    // `sign: -1` mirrors the secondary leaf onto the opposite jamb; behavior 8 will
+    // migrate this path to `swingLeafGeometry(node, { leaf: 'secondary' })`.
+    drawSwingLeaf(painter, node, { hinge: primary.closed, closed: primary.hinge, sign: -1 })
   }
 }
 
