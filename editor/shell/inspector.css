@@ -23,7 +23,7 @@
   display: inline-flex;
   align-items: center;
   padding: 1px var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface-active);
   color: var(--color-text);
   font-family: var(--font-family-ui);
@@ -43,7 +43,7 @@
   display: inline-flex;
   align-items: center;
   padding: 2px var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-accent);
   color: var(--color-on-accent);
   font-family: var(--font-family-ui);

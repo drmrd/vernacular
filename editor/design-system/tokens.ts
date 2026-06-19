@@ -30,6 +30,7 @@ export const tokens = {
   sizeControlIcon: token('--size-control-icon'),
   radiusSm: token('--radius-sm'),
   radiusMd: token('--radius-md'),
+  radiusPill: token('--radius-pill'),
   fontSizeXs: token('--font-size-xs'),
   fontSizeSm: token('--font-size-sm'),
   fontSizeMd: token('--font-size-md'),

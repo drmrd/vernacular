@@ -113,7 +113,7 @@
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--shell-warning-border);
-  border-radius: 0.3rem;
+  border-radius: var(--radius-sm);
   padding: 0.5rem 0.75rem;
   background: var(--shell-warning-surface);
 }
