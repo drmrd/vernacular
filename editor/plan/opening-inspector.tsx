@@ -143,6 +143,35 @@ function DimensionFields({
   )
 }
 
+interface RemoveControlProps {
+  onConfirm: () => void
+}
+
+function RemoveControl({ onConfirm }: RemoveControlProps): ReactElement {
+  const [confirming, setConfirming] = useState(false)
+
+  if (confirming) {
+    return (
+      <Stack direction="horizontal" gap="space-2">
+        <Button variant="destructive" onClick={onConfirm}>
+          Confirm remove
+        </Button>
+        <Button variant="neutral" onClick={() => setConfirming(false)}>
+          Cancel
+        </Button>
+      </Stack>
+    )
+  }
+
+  return (
+    <Stack direction="horizontal" gap="space-2">
+      <Button variant="destructive" onClick={() => setConfirming(true)}>
+        Remove
+      </Button>
+    </Stack>
+  )
+}
+
 interface OpeningControlsProps {
   floorId: string
   openingId: string
@@ -166,11 +195,7 @@ function OpeningControls({ floorId, openingId, dispatch }: OpeningControlsProps)
           Flip swing
         </Button>
       </Stack>
-      <Stack direction="horizontal" gap="space-2">
-        <Button variant="destructive" onClick={() => dispatch(removeOpening(floorId, openingId))}>
-          Remove
-        </Button>
-      </Stack>
+      <RemoveControl onConfirm={() => dispatch(removeOpening(floorId, openingId))} />
     </Stack>
   )
 }
