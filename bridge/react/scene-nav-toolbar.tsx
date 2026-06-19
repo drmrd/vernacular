@@ -192,10 +192,12 @@ export function SceneNavToolbar({
         </button>
       </div>
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
-      <ColorTemperatureControl
-        colorTemperatureK={colorTemperatureK}
-        onColorTemperatureChange={onColorTemperatureChange}
-      />
+      <div className="scene-nav-toolbar__environment">
+        <ColorTemperatureControl
+          colorTemperatureK={colorTemperatureK}
+          onColorTemperatureChange={onColorTemperatureChange}
+        />
+      </div>
     </div>
   )
 }
