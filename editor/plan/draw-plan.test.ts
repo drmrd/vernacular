@@ -10,6 +10,7 @@ import {
   drawRulers,
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
+import { labelBox, labelsOverlap } from './label-layout'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
@@ -1027,6 +1028,140 @@ describe('drawPlan floor fill tint', () => {
     const recorder = recordingContext()
     drawPlan(recorder.ctx, planOptions({ rooms: [rectangleRoom('room:r')] }))
     expect(recorder.fills).toContain(DEFAULT_PLAN_PALETTE.roomFill)
+  })
+})
+
+// One world millimeter maps to one screen pixel, so the room and dimension
+// declutter fixtures below project to easily reasoned screen rects. They reuse
+// the exact collision setups the pure layout tests (label-layout.test.ts
+// behaviors 4/5) proved overlap at their raw centroids/midpoints. labelBox and
+// labelsOverlap are the public layout helpers, used here as black boxes to read
+// a painted label's box back from its recorded fillText position.
+const DECLUTTER_VIEWPORT = { scale: 1, offset: { x: 0, y: 0 } }
+const DECLUTTER_LABEL_FONT = { sizePx: 12 }
+
+/** A 4 m by 3 m room large enough that its name label is shown, not hidden. */
+function largeRoom(id: string, name: string, originX: number): RoomSceneNode {
+  const polygon = [
+    { x: originX, y: 0 },
+    { x: originX + 4000, y: 0 },
+    { x: originX + 4000, y: 3000 },
+    { x: originX, y: 3000 },
+  ]
+  return { id, kind: 'room', floorId: 'f', polygon, clearPolygon: polygon, area: 12_000_000, name }
+}
+
+/** A horizontal 1 m dimension over the same x-span at the given perpendicular offset. */
+function horizontalDimension(id: string, offset: number): DrawableDimension {
+  const node: DimensionSceneNode = {
+    id,
+    kind: 'dimension',
+    floorId: 'f',
+    start: { x: 0, y: 0 },
+    end: { x: 1000, y: 0 },
+    offset,
+    length: 1000,
+  }
+  return { node, selected: false }
+}
+
+/** The de-conflicted box a recorded label occupies, read back from its fillText position. */
+function paintedLabelBox(entry: { text: string; x: number; y: number }): Bounds {
+  return labelBox(entry.text, { x: entry.x, y: entry.y }, DECLUTTER_LABEL_FONT)
+}
+
+describe('drawPlan room label declutter', () => {
+  it('paints two colliding room labels at de-conflicted, non-overlapping screen positions', () => {
+    // Two rooms 10 px apart at unit scale. At the raw centroids their "WC" name
+    // boxes (~13 px wide) straddle each other, so painting at the centroid stacks
+    // them. The wired layout pass must move the recorded fillText positions apart.
+    const first = largeRoom('room-a', 'WC', 0)
+    const second = largeRoom('room-b', 'WC', 10)
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, {
+      walls: [],
+      rooms: [first, second],
+      viewport: DECLUTTER_VIEWPORT,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+      roomLabels: { preferences: DEFAULT_METRIC_PREFERENCES },
+    })
+
+    const names = recorder.texts.filter((entry) => entry.text === 'WC')
+    expect(names).toHaveLength(2)
+
+    // Read each painted label's box back from its recorded position and assert the
+    // two no longer overlap. At the raw centroids these boxes intersect; only a
+    // draw path that honors layoutRoomLabels separates them.
+    expect(labelsOverlap(paintedLabelBox(names[0]!), paintedLabelBox(names[1]!))).toBe(false)
+  })
+
+  it('emits no fillText for a room whose label placement is hidden', () => {
+    // A room far too small at this zoom to seat even its name line, so its
+    // placement is hidden and the draw path must skip its label entirely. A
+    // generously sized neighbor keeps its label, proving labels are still painted.
+    const tiny: RoomSceneNode = {
+      id: 'room-tiny',
+      kind: 'room',
+      floorId: 'f',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 8, y: 0 },
+        { x: 8, y: 8 },
+        { x: 0, y: 8 },
+      ],
+      clearPolygon: [
+        { x: 0, y: 0 },
+        { x: 8, y: 0 },
+        { x: 8, y: 8 },
+        { x: 0, y: 8 },
+      ],
+      area: 64,
+      name: 'Powder Room',
+    }
+    const roomy = largeRoom('room-big', 'Parlor', 2000)
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, {
+      walls: [],
+      rooms: [tiny, roomy],
+      viewport: DECLUTTER_VIEWPORT,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+      roomLabels: { preferences: DEFAULT_METRIC_PREFERENCES },
+    })
+
+    const painted = recorder.texts.map((entry) => entry.text)
+    expect(painted).not.toContain('Powder Room')
+    expect(painted).toContain('Parlor')
+  })
+})
+
+describe('drawPlan dimension label declutter', () => {
+  it('paints two colliding dimension labels at de-conflicted, non-overlapping screen positions', () => {
+    // Two parallel 1 m dimensions over the same x-span (identical "1.00 m" label
+    // text) whose offset lines sit 5 px apart at unit scale. Their raw midpoint
+    // label boxes straddle each other, so painting at the midpoint stacks them.
+    const first = horizontalDimension('dim-a', 0)
+    const second = horizontalDimension('dim-b', 5)
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, {
+      walls: [],
+      viewport: DECLUTTER_VIEWPORT,
+      width: 800,
+      height: 600,
+      selectedIds: new Set<string>(),
+      dimensions: [first, second],
+    })
+
+    const labels = recorder.texts.filter((entry) => entry.text === '1.00 m')
+    expect(labels).toHaveLength(2)
+
+    expect(labelsOverlap(paintedLabelBox(labels[0]!), paintedLabelBox(labels[1]!))).toBe(false)
   })
 })
 

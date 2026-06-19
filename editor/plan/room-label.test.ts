@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Point, RoomSceneNode } from '../../core'
 import { DEFAULT_METRIC_PREFERENCES } from '../../core'
-import { roomLabelContent } from './room-label'
+import { roomLabelContent, roomLabelPlacement } from './room-label'
+import type { Viewport } from './viewport'
 
 // A 4 m by 3 m rectangle. Its vertices average to (2000, 1500), the centroid
 // the label is anchored to.
@@ -57,5 +58,54 @@ describe('roomLabelContent', () => {
     })
 
     expect(content.anchor).toEqual(EXPECTED_CENTROID)
+  })
+})
+
+// A 200 mm by 200 mm room: a closet-scale footprint. At a moderate zoom its
+// on-screen extent is only a handful of pixels across, far too small to seat
+// even the room name, let alone the name plus the area line below it.
+const TINY_POLYGON: Point[] = [
+  { x: 0, y: 0 },
+  { x: 200, y: 0 },
+  { x: 200, y: 200 },
+  { x: 0, y: 200 },
+]
+const ONE_QUARTER_SQUARE_METER_IN_MM2 = 250_000
+
+function tinyRoom(overrides: Partial<RoomSceneNode> = {}): RoomSceneNode {
+  return {
+    id: 'closet-1',
+    kind: 'room',
+    floorId: 'floor-1',
+    polygon: TINY_POLYGON,
+    clearPolygon: TINY_POLYGON,
+    area: ONE_QUARTER_SQUARE_METER_IN_MM2,
+    ...overrides,
+  }
+}
+
+// A scale (pixels per millimeter) where the 4 m by 3 m room projects to a
+// 320 px by 240 px footprint, comfortably larger than its name plus area block,
+// while the 200 mm closet projects to just 16 px across.
+const PLACEMENT_VIEWPORT: Viewport = { scale: 0.08 }
+
+describe('roomLabelPlacement', () => {
+  it('shows the full name and area block for a room with ample on-screen footprint', () => {
+    const placement = roomLabelPlacement(rectangularRoom({ name: 'Parlor' }), PLACEMENT_VIEWPORT, {
+      preferences: DEFAULT_METRIC_PREFERENCES,
+    })
+
+    expect(placement.kind).toBe('full')
+    expect(placement.showName).toBe(true)
+    expect(placement.showArea).toBe(true)
+  })
+
+  it('suppresses the area line or hides the label when the room is too small at this zoom', () => {
+    const placement = roomLabelPlacement(tinyRoom({ name: 'Closet' }), PLACEMENT_VIEWPORT, {
+      preferences: DEFAULT_METRIC_PREFERENCES,
+    })
+
+    expect(placement.kind === 'name-only' || placement.kind === 'hidden').toBe(true)
+    expect(placement.showArea).toBe(false)
   })
 })
