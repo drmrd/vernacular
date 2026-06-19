@@ -1,12 +1,15 @@
-import type { ReactElement } from 'react'
+import { Suspense, type ReactElement } from 'react'
 
+import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { detectRenderBackend } from '../../engine'
-import { SceneCanvas } from '../../bridge'
-import { EmptyState } from '../design-system'
+import { SceneCanvas, useActiveFloorId, useSceneGraph } from '../../bridge'
+import { EmptyState, LoadingState } from '../design-system'
 
 // The pane lives in the editor layer so the styled fallback can use the design
 // system, which the bridge layer cannot import.
 export function ScenePane(): ReactElement {
+  const graph = useSceneGraph()
+  const activeFloorId = useActiveFloorId()
   if (detectRenderBackend() !== 'webgpu') {
     return (
       <EmptyState
@@ -16,5 +19,19 @@ export function ScenePane(): ReactElement {
       />
     )
   }
-  return <SceneCanvas />
+  const floorGraph = sceneGraphForFloor(graph, activeFloorId)
+  if (!sceneGraphHasGeometry(floorGraph)) {
+    return (
+      <EmptyState
+        asRegion={false}
+        title="Nothing to show in 3D yet"
+        description="Draw walls in plan view to see them here in 3D."
+      />
+    )
+  }
+  return (
+    <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
+      <SceneCanvas />
+    </Suspense>
+  )
 }
