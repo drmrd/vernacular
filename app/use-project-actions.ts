@@ -87,6 +87,11 @@ export interface ProjectActionsContext {
    *  GuardDestructiveOptions.confirm exactly. Only consulted when isDirty is
    *  true (per needsDiscardConfirmation). */
   confirmDiscard?: () => boolean | Promise<boolean>
+
+  /** Clears the dirty baseline after an explicit save commits, returning the
+   *  dirty tracker to clean. Source: useDirtyTracker (bridge/react/use-dirty-state.ts).
+   *  Optional so hook-level tests that build the context without it stay valid. */
+  markSaved?: () => void
 }
 
 export interface ProjectActions {
@@ -119,7 +124,7 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
 }
 
 function useSaveAction(context: ProjectActionsContext): () => void {
-  const { session, store, projectId, snapshots, recentProjects, capabilities } = context
+  const { session, store, projectId, snapshots, recentProjects, capabilities, markSaved } = context
   const backend = defaultStoreBackend(capabilities)
   return useCallback(() => {
     const project = session.getProject()
@@ -133,11 +138,14 @@ function useSaveAction(context: ProjectActionsContext): () => void {
         if (backend !== null) {
           recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
         }
+        // A successful explicit save is the clean baseline: clear the dirty tracker
+        // so the beforeunload guard disarms.
+        markSaved?.()
       })
       // User-facing surfacing (a notification/toast) is deferred: no notification
       // system exists in this slice, so failures are logged for now.
       .catch((error: unknown) => console.error('save failed', error))
-  }, [session, store, projectId, snapshots, recentProjects, backend])
+  }, [session, store, projectId, snapshots, recentProjects, backend, markSaved])
 }
 
 function useExportBundleAction(context: ProjectActionsContext): () => void {

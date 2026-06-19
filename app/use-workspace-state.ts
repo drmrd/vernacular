@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { createActiveFloorStore, createSelectionStore, useAutosave, useDirtyTracker } from '../bridge'
 import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
+import { useBeforeUnloadGuard } from './use-before-unload-guard'
 import { useDiscardConfirmation } from './use-discard-confirmation'
 import { useProjectActions, useRecentProjectsAndRecovery } from './use-project-actions'
 
@@ -28,7 +29,9 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
     () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
     [session],
   )
-  const { isDirty } = useDirtyTracker(session)
+  const { isDirty, markSaved } = useDirtyTracker(session)
+  // Arm the browser-native leave warning while the workspace has unsaved changes.
+  useBeforeUnloadGuard(isDirty)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
   // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
   // option rejects an explicit undefined.
@@ -38,7 +41,7 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
     snapshots,
     onSession,
   })
-  const actions = useProjectActions({ ...props, recentEntries, isDirty, confirmDiscard })
+  const actions = useProjectActions({ ...props, recentEntries, isDirty, confirmDiscard, markSaved })
   // The asset library (starter pack + user imports), assembled once per content cache.
   const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
   return {
