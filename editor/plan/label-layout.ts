@@ -1,6 +1,15 @@
-import { polygonCentroid, type Point, type RoomSceneNode } from '../../core'
+import {
+  dimensionGeometry,
+  formatAdaptiveLength,
+  polygonCentroid,
+  type DimensionSceneNode,
+  type Point,
+  type RoomSceneNode,
+  type UnitPreferences,
+} from '../../core'
 
 import type { Bounds } from './fit'
+import { midpoint } from './geometry'
 import { LABEL_FONT_SIZE_PX, LABEL_LINE_HEIGHT_PX } from './label-constants'
 import {
   roomLabelContent,
@@ -198,6 +207,70 @@ export function layoutRoomLabels(
         continue
       }
       if (first.kind === 'hidden' || second.kind === 'hidden') {
+        continue
+      }
+      if (!labelsOverlap(first.box, second.box)) {
+        continue
+      }
+      const separated = separate(first.box, second.box)
+      first.box = separated.a
+      second.box = separated.b
+    }
+  }
+
+  return layout
+}
+
+/**
+ * A dimension's resolved on-screen label: the final, de-conflicted box. `box` is
+ * the same `{ min, max }` shape as `labelBox`, so it feeds straight into
+ * `labelsOverlap`.
+ */
+export interface DimensionLabelLayout {
+  dimensionId: string
+  box: Bounds
+}
+
+/** Options the dimension layout pass needs to format each measured length. */
+export interface DimensionLayoutOptions {
+  preferences: UnitPreferences
+}
+
+/** The screen anchor a dimension's measured-length label centers on: the midpoint of its projected offset line, matching the draw path. */
+function dimensionLabelAnchor(node: DimensionSceneNode, viewport: Viewport): Point {
+  const geometry = dimensionGeometry(node.start, node.end, node.offset)
+  return worldToScreen(midpoint(geometry.lineStart, geometry.lineEnd), viewport)
+}
+
+/**
+ * Lay out every dimension's measured-length label, de-conflicting overlapping
+ * boxes so no two intersect. Each dimension is anchored at the midpoint of its
+ * projected offset line and sized by its formatted length, matching today's draw
+ * path. Two parallel dimensions whose midpoint boxes collide are nudged
+ * symmetrically apart along the vector between their centers (which for parallel
+ * offset lines is the perpendicular/offset direction) until disjoint, so both
+ * stay visible; a lone dimension keeps its midpoint placement. The pass is a
+ * pure, deterministic function of its inputs.
+ */
+export function layoutDimensionLabels(
+  dimensions: DimensionSceneNode[],
+  viewport: Viewport,
+  options: DimensionLayoutOptions,
+): DimensionLabelLayout[] {
+  const layout: DimensionLabelLayout[] = dimensions.map((node) => {
+    const text = formatAdaptiveLength(node.length, options.preferences)
+    const anchor = dimensionLabelAnchor(node, viewport)
+    return {
+      dimensionId: node.id,
+      box: labelBox(text, anchor, { sizePx: LABEL_FONT_SIZE_PX }),
+    }
+  })
+
+  for (let i = 0; i < layout.length; i += 1) {
+    for (let j = i + 1; j < layout.length; j += 1) {
+      const first = layout[i]
+      const second = layout[j]
+      if (first === undefined || second === undefined) {
         continue
       }
       if (!labelsOverlap(first.box, second.box)) {
