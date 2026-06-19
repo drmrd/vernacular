@@ -31,14 +31,14 @@ function readFileBytes(file: File): Promise<Uint8Array> {
 // Opens a hidden file input scoped to the supported project extensions, then routes
 // the first chosen file through the import callback. The picker is DOM glue; tests
 // drive the import callback directly.
-function openFilePicker(onFile: (file: File) => void): void {
+function openFilePicker(onFile: (file: File) => void | Promise<void>): void {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = '.building,.json,application/json'
   input.addEventListener('change', () => {
     const file = input.files?.[0]
     if (file) {
-      onFile(file)
+      void onFile(file)
     }
   })
   input.click()

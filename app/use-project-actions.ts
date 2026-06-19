@@ -98,7 +98,7 @@ export interface ProjectActions {
   onExportImage: () => void
   onExportPdf: () => void
   onOpenFolder?: () => void
-  onImportDroppedFile?: (file: File) => void
+  onImportDroppedFile?: (file: File) => void | Promise<void>
   onOpenFile?: () => void
   importStatus?: ImportStatus | null
   dismissImportStatus?: () => void
