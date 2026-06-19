@@ -23,9 +23,7 @@ function selectionStatusOf(page: Page) {
 // pointer pick without depending on the non-deterministic WebGPU backend's exact pixels.
 
 test.describe('Live three-dimensional toggle-gated selection', () => {
-  test('clicking an entity does not select it while the Select toggle is off', async ({
-    page,
-  }) => {
+  test('clicking an entity does not select it while the Select toggle is off', async ({ page }) => {
     await page.goto('/')
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
