@@ -1,5 +1,6 @@
 export { EditorShell } from './shell/editor-shell'
 export type { EditorShellProps } from './shell/editor-shell'
+export { DiscardDialog } from './shell/discard-dialog'
 export { ActiveToolProvider } from './tools/active-tool-provider'
 export { FinishPicker } from './paint/finish-picker'
 export type { FinishPickerProps } from './paint/finish-picker'
