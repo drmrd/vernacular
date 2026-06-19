@@ -1,9 +1,9 @@
-import type { ReactElement } from 'react'
+import { Suspense, type ReactElement } from 'react'
 
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { detectRenderBackend } from '../../engine'
 import { SceneCanvas, useActiveFloorId, useSceneGraph } from '../../bridge'
-import { EmptyState } from '../design-system'
+import { EmptyState, LoadingState } from '../design-system'
 
 // The pane lives in the editor layer so the styled fallback can use the design
 // system, which the bridge layer cannot import.
@@ -29,5 +29,9 @@ export function ScenePane(): ReactElement {
       />
     )
   }
-  return <SceneCanvas />
+  return (
+    <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
+      <SceneCanvas />
+    </Suspense>
+  )
 }
