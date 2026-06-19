@@ -102,6 +102,7 @@ export function pointerLookDelta(
  * rightward pointer move yaws the view right and a downward move lowers it.
  * Never mutates the input.
  */
+// eslint-disable-next-line max-params -- four physically-independent quantities: the walk input plus the two screen-axis deltas and the scale factor; none can be meaningfully collapsed, matching pointerLookDelta's arity.
 export function accumulatePointerLook(
   input: WalkInput,
   movementX: number,
