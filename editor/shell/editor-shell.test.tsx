@@ -120,7 +120,9 @@ describe('EditorShell', () => {
 
     renderShell()
 
-    expect(screen.getByRole('radio', { name: /system/i })).toBeInTheDocument()
+    const themeGroup = screen.getByRole('group', { name: /theme/i })
+    expect(themeGroup).toBeInTheDocument()
+    expect(within(themeGroup).getByRole('button', { name: /system/i })).toBeInTheDocument()
   })
 
   it('renders Grid and Dimensions toggle buttons in the toolbar', () => {
