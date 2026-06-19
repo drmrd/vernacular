@@ -55,10 +55,13 @@ function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDeps): voi
 }
 
 // Commits a selection on pointer release only when the press and release land within the
-// click tolerance, so a drag to orbit or pan the camera is a camera move, not a pick.
-function useScenePointerSelection(deps: PointerSelectionDeps): void {
+// click tolerance, so a drag to orbit or pan the camera is a camera move, not a pick. When
+// selection is disabled (walk mode), the click-to-select listeners are not attached, so a
+// walk-mode click engages pointer lock for mouse-look only and never commits a pick.
+function useScenePointerSelection(deps: PointerSelectionDeps, enabled: boolean): void {
   const { domElement } = deps
   useEffect(() => {
+    if (!enabled) return
     let pressedAt: PointerPoint | null = null
     function onPointerDown(event: PointerEvent) {
       pressedAt = { x: event.clientX, y: event.clientY }
@@ -76,10 +79,10 @@ function useScenePointerSelection(deps: PointerSelectionDeps): void {
       domElement.removeEventListener('pointerdown', onPointerDown)
       domElement.removeEventListener('pointerup', onPointerUp)
     }
-  }, [domElement, deps])
+  }, [domElement, deps, enabled])
 }
 
-export function SceneSelection({ root }: { root: SceneRoot }) {
+export function SceneSelection({ root, enabled = true }: { root: SceneRoot; enabled?: boolean }) {
   const camera = useThree((state) => state.camera)
   const raycaster = useThree((state) => state.raycaster)
   const scene = useThree((state) => state.scene)
@@ -103,7 +106,7 @@ export function SceneSelection({ root }: { root: SceneRoot }) {
     () => ({ domElement, camera, raycaster, root, selection }),
     [domElement, camera, raycaster, root, selection],
   )
-  useScenePointerSelection(pointerDeps)
+  useScenePointerSelection(pointerDeps, enabled)
 
   return null
 }

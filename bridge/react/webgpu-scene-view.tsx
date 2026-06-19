@@ -28,6 +28,7 @@ import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-to
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
+import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
 import { useProjectPaint } from './use-project-paint'
@@ -110,9 +111,11 @@ function PresetCamera({
 // to the viewport through its `active` transition.
 function useSceneNavigation() {
   const [mode, setMode] = useState<NavMode>('orbit')
+  const [selectionEnabled, setSelectionEnabled] = useState(false)
   const [userControlled, setUserControlled] = useState(false)
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
+  const toggleSelection = useCallback(() => setSelectionEnabled((value) => !value), [])
   // Reset leaves the last presetRequest in place on purpose: a stale request cannot
   // re-fire because PresetCamera's effect depends on the request's identity, which does
   // not change on reset.
@@ -126,6 +129,8 @@ function useSceneNavigation() {
   return {
     mode,
     setMode,
+    selectionEnabled,
+    toggleSelection,
     userControlled,
     markUserControlled,
     resetView,
@@ -198,6 +203,7 @@ interface LiveSceneCanvasProps {
   pose: CameraPose
   bounds: Bounds3 | null
   mode: NavMode
+  selectionEnabled: boolean
   userControlled: boolean
   onUserControl: () => void
   colorTemperatureK: number
@@ -217,6 +223,7 @@ function LiveSceneCanvas({
   pose,
   bounds,
   mode,
+  selectionEnabled,
   userControlled,
   onUserControl,
   colorTemperatureK,
@@ -245,7 +252,7 @@ function LiveSceneCanvas({
           changes in place, only when the element remounts. */}
       <primitive key={root.uuid} object={root} />
       <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
-      <SceneSelection root={root} />
+      <SceneSelection root={root} enabled={selectionAllowed({ enabled: selectionEnabled, mode })} />
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
@@ -323,6 +330,8 @@ export function WebGPUSceneView() {
   const {
     mode,
     setMode,
+    selectionEnabled,
+    toggleSelection,
     userControlled,
     markUserControlled,
     resetView,
@@ -338,6 +347,8 @@ export function WebGPUSceneView() {
       <SceneNavToolbar
         mode={mode}
         onModeChange={setMode}
+        selectionEnabled={selectionEnabled}
+        onToggleSelection={toggleSelection}
         onReset={resetView}
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={setColorTemperatureK}
@@ -350,6 +361,7 @@ export function WebGPUSceneView() {
           pose={pose}
           bounds={bounds}
           mode={mode}
+          selectionEnabled={selectionEnabled}
           userControlled={userControlled}
           onUserControl={markUserControlled}
           colorTemperatureK={colorTemperatureK}
