@@ -221,6 +221,9 @@ function buildFurnitureGroup(
   if (providesReadyModel(entry)) {
     return buildFurnitureModelGroup(entry.template.clone(true), node)
   }
+  if (entry?.status === 'failed') {
+    return buildFurnitureSubgroup(node, materials, 'furnitureFailed')
+  }
   return buildFurnitureSubgroup(node, materials)
 }
 

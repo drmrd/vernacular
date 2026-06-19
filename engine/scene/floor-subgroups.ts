@@ -9,7 +9,7 @@ import {
   type SceneNode,
   type WallSceneNode,
 } from '../../core'
-import type { MaterialProvider } from '../materials/material-provider'
+import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
 import { addEdgeOverlay } from './edge-overlay'
 import { buildFurnitureMassing } from './furniture-builder'
@@ -51,8 +51,9 @@ export function buildOpeningSubgroup(
 export function buildFurnitureSubgroup(
   node: FurnitureSceneNode,
   materials: MaterialProvider,
+  role: SurfaceRole = 'furniture',
 ): THREE.Group {
-  const group = buildFurnitureMassing(node, materials)
+  const group = buildFurnitureMassing(node, materials, role)
   addEdgeOverlay(group)
   markShadowCasters(group)
   return group
