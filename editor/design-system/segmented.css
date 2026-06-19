@@ -25,6 +25,7 @@
 
 .ds-segmented__option:disabled {
   cursor: not-allowed;
+  /* TODO(behavior 14): tokenize as --opacity-disabled */
   opacity: 0.5;
 }
 

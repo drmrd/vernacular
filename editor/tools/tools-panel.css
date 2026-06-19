@@ -28,8 +28,9 @@
   gap: var(--space-1);
 }
 
-/* Layout only: the rail's full-width, left-aligned, icon+label row. The active,
-   hover, focus, and disabled treatment now comes from .ds-segmented__option. */
+/* Layout and resting color for the tool-rail chips: the full-width, left-aligned,
+   icon+label row plus its muted resting text. The active, hover, focus, and disabled
+   treatment comes from .ds-segmented__option. */
 .tools-panel__chip {
   display: inline-flex;
   align-items: center;
@@ -37,7 +38,6 @@
   gap: var(--space-1);
   width: 100%;
   padding: 4px var(--space-2);
-  border-radius: var(--radius-sm);
   color: var(--color-text-muted);
   font-size: 0.75rem;
 }
