@@ -97,6 +97,30 @@ describe('CommandPaletteDialog', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('focuses the search input on open and restores focus to the opener on Escape', async () => {
+    const opener = document.createElement('button')
+    opener.textContent = 'Open palette'
+    document.body.appendChild(opener)
+    opener.focus()
+    expect(document.activeElement).toBe(opener)
+
+    try {
+      const onClose = vi.fn()
+      renderDialog(onClose)
+
+      expect(document.activeElement).toBe(
+        screen.getByRole('textbox', { name: 'Search commands' }),
+      )
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(onClose).toHaveBeenCalled()
+      expect(document.activeElement).toBe(opener)
+    } finally {
+      opener.remove()
+    }
+  })
+
   it('exposes the open palette as a named modal dialog', () => {
     renderDialog(vi.fn())
 
