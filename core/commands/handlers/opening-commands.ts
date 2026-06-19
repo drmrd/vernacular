@@ -1,4 +1,5 @@
 import type { Floor, Opening, Project } from '../../model/types'
+import { assertNonNegativeLength, assertPositiveLength } from '../../units/length-bounds'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 import { mapTargetFloor } from './map-target-floor'
@@ -103,6 +104,9 @@ export function resizeOpening(
 
 const resizeOpeningHandler: CommandHandler<Project, ResizeOpeningParams> = {
   apply(state, params) {
+    assertPositiveLength(params.dimensions.width, 'Width')
+    assertPositiveLength(params.dimensions.height, 'Height')
+    assertNonNegativeLength(params.dimensions.sillHeight, 'Sill height')
     mapTargetFloor(state, params.floorId, (floor) =>
       mapTargetOpening(floor, params.openingId, (opening) => ({
         ...opening,
@@ -139,6 +143,7 @@ export function resizeOpeningEdge(
 
 const resizeOpeningEdgeHandler: CommandHandler<Project, ResizeOpeningEdgeParams> = {
   apply(state, params) {
+    assertPositiveLength(params.width, 'Width')
     mapTargetFloor(state, params.floorId, (floor) =>
       mapTargetOpening(floor, params.openingId, (opening) => ({
         ...opening,

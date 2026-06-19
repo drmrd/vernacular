@@ -30,3 +30,14 @@ export function assertPositiveLength(valueMm: number, label: string): void {
     throw new InvalidLengthError(label, valueMm)
   }
 }
+
+/**
+ * Throw InvalidLengthError when `valueMm` is not a finite non-negative length
+ * within the accepted range; otherwise return. Allows 0 (for example an opening
+ * sill that sits on the floor) while still rejecting negatives and the absurd-max.
+ */
+export function assertNonNegativeLength(valueMm: number, label: string): void {
+  if (!Number.isFinite(valueMm) || valueMm < 0 || valueMm > MAX_LENGTH_MM) {
+    throw new InvalidLengthError(label, valueMm)
+  }
+}

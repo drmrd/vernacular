@@ -424,6 +424,7 @@ export {
   MAX_LENGTH_MM,
   MIN_POSITIVE_LENGTH_MM,
   InvalidLengthError,
+  assertNonNegativeLength,
   assertPositiveLength,
 } from './units/length-bounds'
 export type { MigrateOptions, ProjectShape, RegistryMigration, SchemaMigration } from './migrations'
