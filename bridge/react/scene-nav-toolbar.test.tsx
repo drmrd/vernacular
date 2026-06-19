@@ -117,6 +117,43 @@ describe('SceneNavToolbar', () => {
   })
 })
 
+describe('SceneNavToolbar click-select toggle', () => {
+  it('renders a select-toggle button that is off by default and toggles on click', async () => {
+    const onToggleSelection = vi.fn()
+    const { rerender } = render(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={6500}
+        onColorTemperatureChange={vi.fn()}
+        selectionEnabled={false}
+        onToggleSelection={onToggleSelection}
+      />,
+    )
+
+    const toggle = screen.getByRole('button', { name: /select/i })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    await userEvent.click(toggle)
+    expect(onToggleSelection).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <SceneNavToolbar
+        mode="orbit"
+        onModeChange={vi.fn()}
+        onReset={vi.fn()}
+        colorTemperatureK={6500}
+        onColorTemperatureChange={vi.fn()}
+        selectionEnabled
+        onToggleSelection={onToggleSelection}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /select/i })).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
 describe('SceneNavToolbar color-temperature readout', () => {
   it('shows the live Kelvin value and warm/cool captions while keeping the slider accessible name', () => {
     render(
