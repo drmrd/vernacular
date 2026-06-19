@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { Button } from '../design-system'
-import { useFocusTrap } from '../design-system/use-focus-trap'
+import { Button, useFocusTrap } from '../design-system'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { useViewMode } from '../viewport/view-mode'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
@@ -9,6 +8,7 @@ import { createEditorCommands } from './editor-commands'
 import { createViewCommands } from './view-commands'
 import { createSnapCommands } from './snap-commands'
 import { useCommandPalette } from './command-context'
+import './command-palette.css'
 
 interface CommandPaletteDialogProps {
   commands: EditorCommand[]
@@ -38,6 +38,23 @@ function useFocusRestoringClose(onClose: () => void): () => void {
   }
 }
 
+interface SearchInputProps {
+  query: string
+  onQueryChange: (query: string) => void
+}
+
+function SearchInput({ query, onQueryChange }: SearchInputProps) {
+  return (
+    <input
+      type="text"
+      aria-label="Search commands"
+      className="ds-field__control command-palette__search"
+      value={query}
+      onChange={(event) => onQueryChange(event.target.value)}
+    />
+  )
+}
+
 interface CommandListProps {
   commands: EditorCommand[]
   onRun: (command: EditorCommand) => void
@@ -45,13 +62,13 @@ interface CommandListProps {
 
 function CommandList({ commands, onRun }: CommandListProps) {
   return (
-    <>
+    <div className="command-palette__list">
       {commands.map((command) => (
-        <Button key={command.id} onClick={() => onRun(command)}>
+        <Button key={command.id} className="ds-menu-surface__row" onClick={() => onRun(command)}>
           {command.label}
         </Button>
       ))}
-    </>
+    </div>
   )
 }
 
@@ -81,20 +98,18 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
   }
 
   return (
-    <div
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Command palette"
-      onKeyDown={handleKeyDown}
-    >
-      <input
-        type="text"
-        aria-label="Search commands"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <CommandList commands={filtered} onRun={runCommand} />
+    <div className="command-palette__backdrop">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        className="ds-menu-surface command-palette__panel"
+        onKeyDown={handleKeyDown}
+      >
+        <SearchInput query={query} onQueryChange={setQuery} />
+        <CommandList commands={filtered} onRun={runCommand} />
+      </div>
     </div>
   )
 }
