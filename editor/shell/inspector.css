@@ -14,7 +14,7 @@
 .inspector__component-title {
   margin: 0;
   font-family: var(--font-family-heading);
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   font-weight: 500;
   color: var(--color-text);
 }
@@ -27,7 +27,7 @@
   background: var(--color-surface-active);
   color: var(--color-text);
   font-family: var(--font-family-ui);
-  font-size: 0.68rem;
+  font-size: var(--font-size-xs);
 }
 
 .inspector__period-tags {
@@ -47,14 +47,14 @@
   background: var(--color-accent);
   color: var(--color-on-accent);
   font-family: var(--font-family-ui);
-  font-size: 0.65rem;
+  font-size: var(--font-size-xs);
   font-weight: 600;
 }
 
 .inspector__empty {
   margin: 0;
   font-family: var(--font-family-ui);
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   font-style: italic;
   color: var(--color-text-muted);
 }

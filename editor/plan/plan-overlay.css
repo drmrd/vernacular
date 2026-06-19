@@ -119,7 +119,7 @@
 
 .plan-overlay__compass-label {
   font-family: var(--font-family-ui);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   fill: currentColor;
 }
@@ -146,7 +146,7 @@
 
 .plan-overlay__scale-bar-label {
   font-family: var(--font-family-ui);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   color: var(--color-accent);
 }

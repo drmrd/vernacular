@@ -11,7 +11,7 @@
   border: none;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
 }
 
 /* The retired trigger stayed borderless on hover and only shifted its text from

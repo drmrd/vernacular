@@ -19,6 +19,6 @@
   margin: 0;
   font-family: var(--font-family-heading);
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }

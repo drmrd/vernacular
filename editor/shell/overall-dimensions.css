@@ -9,6 +9,6 @@
 
 .overall-dimensions__value {
   font-family: var(--font-family-mono);
-  font-size: 0.78rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
