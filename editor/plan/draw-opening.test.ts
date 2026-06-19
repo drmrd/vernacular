@@ -73,6 +73,28 @@ describe('drawOpening', () => {
     expect(recorder.arcs).toHaveLength(1)
   })
 
+  it('carries the swing sweep direction to the canvas for opposite-sweeping doors', () => {
+    const startRecorder = recordingContext()
+    const endRecorder = recordingContext()
+
+    drawOpening(
+      startRecorder.ctx,
+      drawable('door-swing', { node: { orientation: { hinge: 'start', facing: 'positive' } } }),
+      RENDER,
+    )
+    drawOpening(
+      endRecorder.ctx,
+      drawable('door-swing', { node: { orientation: { hinge: 'end', facing: 'positive' } } }),
+      RENDER,
+    )
+
+    expect(startRecorder.arcs).toHaveLength(1)
+    expect(endRecorder.arcs).toHaveLength(1)
+    // start/positive sweeps the minor arc clockwise; end/positive the other way.
+    expect(startRecorder.arcs[0].counterclockwise).toBe(false)
+    expect(endRecorder.arcs[0].counterclockwise).toBe(true)
+  })
+
   it('draws two mirrored swing leaves with exactly two arcs for a double door', () => {
     const recorder = recordingContext()
 
