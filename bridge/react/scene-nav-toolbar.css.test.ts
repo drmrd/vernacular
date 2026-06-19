@@ -28,4 +28,18 @@ describe('scene-nav-toolbar.css', () => {
     expect(css).toContain('var(--color-text-muted)')
     expect(css).toContain('var(--color-surface-active)')
   })
+
+  it('expresses the grouped tier hierarchy via cluster classes spaced with space tokens', () => {
+    expect(css).toContain('.scene-nav-toolbar__primary')
+    expect(css).toContain('.scene-nav-toolbar__secondary')
+    expect(css).toContain('.scene-nav-toolbar__environment')
+
+    const clusterRules = css.match(
+      /\.scene-nav-toolbar__(?:primary|secondary|environment)\b[^{]*\{[^}]*\}/g,
+    )
+    expect(clusterRules).not.toBeNull()
+    const clusterCss = (clusterRules ?? []).join('\n')
+    expect(clusterCss).toMatch(/var\(--space-/)
+    expect(clusterCss).not.toMatch(/gap:\s*\d/)
+  })
 })

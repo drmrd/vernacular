@@ -97,7 +97,11 @@ interface CameraPresetButtonsProps {
 
 function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps) {
   return (
-    <div role="group" aria-label="Camera presets" className="scene-nav-toolbar__presets">
+    <div
+      role="group"
+      aria-label="Camera presets"
+      className="scene-nav-toolbar__presets scene-nav-toolbar__secondary"
+    >
       {PRESET_VIEW_BUTTONS.map(({ label, preset }) => (
         <button
           key={preset}
@@ -177,16 +181,23 @@ export function SceneNavToolbar({
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <ModeToggle mode={mode} onModeChange={onModeChange} />
-      <SelectionToggle selectionEnabled={selectionEnabled} onToggleSelection={onToggleSelection} />
-      <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
-        Reset view
-      </button>
+      <div className="scene-nav-toolbar__primary">
+        <ModeToggle mode={mode} onModeChange={onModeChange} />
+        <SelectionToggle
+          selectionEnabled={selectionEnabled}
+          onToggleSelection={onToggleSelection}
+        />
+        <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
+          Reset view
+        </button>
+      </div>
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
-      <ColorTemperatureControl
-        colorTemperatureK={colorTemperatureK}
-        onColorTemperatureChange={onColorTemperatureChange}
-      />
+      <div className="scene-nav-toolbar__environment">
+        <ColorTemperatureControl
+          colorTemperatureK={colorTemperatureK}
+          onColorTemperatureChange={onColorTemperatureChange}
+        />
+      </div>
     </div>
   )
 }

@@ -201,4 +201,44 @@ describe('SceneNavToolbar styling hooks', () => {
     expect(screen.getByRole('button', { name: 'Top down' })).toHaveClass('scene-nav-toolbar__btn')
     expect(screen.getByRole('button', { name: 'Doorway' })).toHaveClass('scene-nav-toolbar__btn')
   })
+
+  it('groups the camera-mode toggle and the reset action into a primary cluster', () => {
+    const { container } = render(
+      <SceneNavToolbar {...baseProps} selectionEnabled={false} onToggleSelection={vi.fn()} />,
+    )
+
+    const primary = container.querySelector('.scene-nav-toolbar__primary')
+    expect(primary).not.toBeNull()
+    expect(primary).toContainElement(screen.getByRole('group', { name: /camera mode/i }))
+    expect(primary).toContainElement(screen.getByRole('button', { name: 'Reset view' }))
+    expect(primary).toContainElement(screen.getByRole('button', { name: /select/i }))
+  })
+
+  it('marks the camera presets as the secondary tier while keeping the six named buttons', () => {
+    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
+
+    const presets = screen.getByRole('group', { name: /camera presets/i })
+    expect(presets).toHaveClass('scene-nav-toolbar__presets')
+    expect(presets).toHaveClass('scene-nav-toolbar__secondary')
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'Top down' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'North' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'South' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'East' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'West' }))
+    expect(presets).toContainElement(screen.getByRole('button', { name: 'Doorway' }))
+  })
+
+  it('places the color-temperature control in its own environment cluster while keeping the slider accessible', () => {
+    const { container } = render(<SceneNavToolbar {...baseProps} />)
+
+    const environment = container.querySelector('.scene-nav-toolbar__environment')
+    expect(environment).not.toBeNull()
+
+    const slider = screen.getByRole('slider', { name: /color temperature/i })
+    expect(environment).toContainElement(slider)
+    expect(slider).toHaveAttribute('aria-valuetext', '6500 kelvin')
+    expect(environment).toContainElement(
+      screen.getByText(formatColorTemperature(baseProps.colorTemperatureK)),
+    )
+  })
 })
