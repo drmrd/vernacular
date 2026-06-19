@@ -41,17 +41,57 @@ describe('DimensionInspector', () => {
     expect(screen.getByText(EXPECTED_LENGTH)).toBeInTheDocument()
   })
 
-  it('dispatches removeDimension for the floor and dimension from the remove control', async () => {
+  it('renders Remove as a destructive design-system Button', () => {
+    renderInspector(vi.fn())
+
+    const removeButton = screen.getByRole('button', { name: 'Remove' })
+
+    // Remove is routed through the design-system Button with the destructive treatment.
+    expect(removeButton).toHaveClass('ds-button', 'ds-button--destructive')
+  })
+
+  it('does not dispatch removeDimension on the first Remove click; it asks for confirmation instead', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    await user.click(screen.getByRole('button', { name: /remove/i }))
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+
+    // The first click never deletes; it only enters the confirm state.
+    expect(dispatch).not.toHaveBeenCalled()
+
+    // The plain Remove button is replaced by an explicit confirm and a cancel.
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Confirm remove' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+  })
+
+  it('dispatches removeDimension once for the floor and dimension after Remove is confirmed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm remove' }))
 
     expect(dispatch).toHaveBeenCalledTimes(1)
     const command = onlyCommand<RemoveDimensionParams>(dispatch)
     expect(command.type).toBe(REMOVE_DIMENSION)
     expect(command.params.floorId).toBe(FLOOR_ID)
     expect(command.params.dimensionId).toBe(DIMENSION_ID)
+  })
+
+  it('aborts the removal and restores the Remove control when Cancel is clicked', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    // Cancel never deletes and returns to the plain Remove control.
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirm remove' })).toBeNull()
   })
 })
