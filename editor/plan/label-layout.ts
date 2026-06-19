@@ -27,3 +27,12 @@ export function labelBox(text: string, anchor: Point, font: { sizePx: number }):
     max: { x: anchor.x + halfWidth, y: anchor.y + halfHeight },
   }
 }
+
+/**
+ * Whether two label boxes share positive on-screen area. Strict comparison: two
+ * rects that touch only along a shared boundary edge (zero-area, line contact)
+ * do not overlap, so a declutter pass leaves edge-adjacent labels alone.
+ */
+export function labelsOverlap(a: Bounds, b: Bounds): boolean {
+  return a.min.x < b.max.x && b.min.x < a.max.x && a.min.y < b.max.y && b.min.y < a.max.y
+}
