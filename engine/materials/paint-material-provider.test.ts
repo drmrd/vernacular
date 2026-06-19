@@ -75,4 +75,14 @@ describe('PaintMaterialProvider', () => {
 
     expect(material.color.equals(new THREE.Color(PAINT_HEX))).toBe(false)
   })
+
+  it('pushes a painted slab top back in depth so the wall base does not z-fight', () => {
+    const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR, paint: paintStore })
+
+    const material = provider.material('top', FLOOR_REF) as THREE.MeshStandardMaterial
+
+    expect(material.polygonOffset).toBe(true)
+    expect(material.polygonOffsetFactor).toBeGreaterThan(0)
+    expect(material.polygonOffsetUnits).toBeGreaterThan(0)
+  })
 })

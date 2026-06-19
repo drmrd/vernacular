@@ -10,6 +10,26 @@ export const LEAF_COLOR = 0xb9b0a2
 export const GLASS_COLOR = 0xbcd2da
 /** Low enough that the room reads through the window. */
 export const GLASS_OPACITY = 0.3
+/**
+ * The slab top and the wall base share the Y = 0 finished-floor datum and overlap in plan under
+ * every wall (ADR-0076), so the two coplanar faces z-fight on camera orbit. Push the slab top back
+ * in depth with a positive polygon offset so the coincident wall base wins the depth contest
+ * deterministically, leaving the spec datum and all geometry untouched.
+ */
+export const SLAB_TOP_DEPTH_BIAS = { factor: 1, units: 1 } as const
+
+/**
+ * The polygon-offset fields that push the slab top back in depth (see SLAB_TOP_DEPTH_BIAS). Both
+ * the neutral 'top' role and the painted floor branch source the bias from here so the convention
+ * lives in one place rather than diverging per material path.
+ */
+export function slabTopDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: SLAB_TOP_DEPTH_BIAS.factor,
+    polygonOffsetUnits: SLAB_TOP_DEPTH_BIAS.units,
+  }
+}
 
 /**
  * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
@@ -30,6 +50,13 @@ export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMat
   }
   if (role === 'leaf') {
     return { color: LEAF_COLOR, name: role, side: THREE.DoubleSide }
+  }
+  if (role === 'top') {
+    return {
+      color: NEUTRAL_COLOR,
+      name: role,
+      ...slabTopDepthBiasParameters(),
+    }
   }
   return { color: NEUTRAL_COLOR, name: role }
 }
