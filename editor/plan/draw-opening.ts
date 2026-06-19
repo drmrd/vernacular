@@ -142,8 +142,6 @@ function setInk(painter: OpeningPainter): void {
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
   setInk(painter)
   const node = opening.node
-  // The primary leaf consumes the pure helper's hinge, open tip, closed jamb, and
-  // sweep direction directly, so the geometry has a single authoritative source.
   const primary = swingLeafGeometry(node, { leaf: 'primary' })
   strokeSegment(painter, primary.hinge, primary.leafEnd)
   strokeArc(painter, primary)

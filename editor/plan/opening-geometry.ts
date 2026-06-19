@@ -47,13 +47,7 @@ export interface SwingLeafGeometry {
   counterclockwise: boolean
 }
 
-/**
- * Half of the opening width, as a fraction of `width`. A jamb sits half the width
- * from the opening center along the wall axis. (`draw-opening.ts` keeps its own
- * `HALF` for the same idea; they unify in behavior 6 when `draw-opening.ts` is
- * refactored to consume `swingLeafGeometry`, which would otherwise invert the
- * import direction since `draw-opening.ts` already imports from this module.)
- */
+/** Half-extent factor for the jamb offset from the opening center along the wall axis. */
 const HALF_WIDTH = 0.5
 const TWO_PI = Math.PI * 2
 
