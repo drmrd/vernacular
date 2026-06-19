@@ -89,7 +89,7 @@ export interface ProjectActionsContext {
   confirmDiscard?: () => boolean | Promise<boolean>
 
   /** Clears the dirty baseline after an explicit save commits, returning the
-   *  dirty tracker to clean. Source: useDirtyTracker (bridge/react/use-dirty-state.ts).
+   *  dirty tracker to clean. Source: useDirtyTracker.
    *  Optional so hook-level tests that build the context without it stay valid. */
   markSaved?: () => void
 }
