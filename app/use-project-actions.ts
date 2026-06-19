@@ -30,7 +30,7 @@ export interface RecentEntry {
 
 export interface Recovery {
   onRestore: () => void
-  onDiscard: () => void
+  onDiscard: () => void | Promise<void>
 }
 
 /**
@@ -231,13 +231,18 @@ export interface RecentAndRecoveryContext {
   recentProjects: RecentProjectStore
   snapshots: SnapshotsPort | undefined
   onSession: (session: EditorSession) => void
+
+  /** Prompt the user before discarding recovered snapshots. Resolves true to
+   *  prune, false/falsy to keep them. Sync or async, mirroring the ADR-0104
+   *  ProjectActionsContext.confirmDiscard seam. Discard never prunes when omitted. */
+  confirmDiscard?: () => boolean | Promise<boolean>
 }
 
 export function useRecentProjectsAndRecovery(context: RecentAndRecoveryContext): {
   recentEntries: RecentEntry[]
   recovery: Recovery | null
 } {
-  const { recentProjects, snapshots, onSession } = context
+  const { recentProjects, snapshots, onSession, confirmDiscard } = context
   const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
   const [recovery, setRecovery] = useState<Recovery | null>(null)
 
@@ -256,7 +261,7 @@ export function useRecentProjectsAndRecovery(context: RecentAndRecoveryContext):
     if (snapshots) {
       void snapshots.isRecoverable().then((recoverable) => {
         if (isLive() && recoverable) {
-          setRecovery(buildRecovery({ snapshots, onSession, setRecovery, isLive }))
+          setRecovery(buildRecovery({ snapshots, onSession, setRecovery, isLive, confirmDiscard }))
         }
       })
     }
@@ -264,7 +269,7 @@ export function useRecentProjectsAndRecovery(context: RecentAndRecoveryContext):
     return () => {
       cancelled = true
     }
-  }, [recentProjects, snapshots, onSession])
+  }, [recentProjects, snapshots, onSession, confirmDiscard])
 
   return { recentEntries, recovery }
 }
@@ -274,12 +279,13 @@ interface RecoveryHandlersContext {
   onSession: (session: EditorSession) => void
   setRecovery: (recovery: Recovery | null) => void
   isLive: () => boolean
+  confirmDiscard: (() => boolean | Promise<boolean>) | undefined
 }
 
 // Builds the restore/discard handlers, each guarded so they never touch React state
 // after the owning effect has been torn down.
 function buildRecovery(context: RecoveryHandlersContext): Recovery {
-  const { snapshots, onSession, setRecovery, isLive } = context
+  const { snapshots, onSession, setRecovery, isLive, confirmDiscard } = context
   return {
     onRestore: () => {
       void snapshots.restore().then((project) => {
@@ -292,12 +298,19 @@ function buildRecovery(context: RecoveryHandlersContext): Recovery {
         setRecovery(null)
       })
     },
-    onDiscard: () => {
-      void snapshots.prune().then(() => {
-        if (isLive()) {
-          setRecovery(null)
+    // Pruning deletes every autosave file including session-start, so it is
+    // gated behind the ADR-0104 confirm seam: prune (and clear recovery) only
+    // when the user confirms, otherwise leave the recovered snapshots intact.
+    onDiscard: () =>
+      Promise.resolve(confirmDiscard ? confirmDiscard() : false).then((confirmed) => {
+        if (!confirmed) {
+          return
         }
-      })
-    },
+        return snapshots.prune().then(() => {
+          if (isLive()) {
+            setRecovery(null)
+          }
+        })
+      }),
   }
 }
