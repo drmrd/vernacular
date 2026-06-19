@@ -7,6 +7,7 @@ import type {
 } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
+import { assertPositiveLength } from '../../units/length-bounds'
 import { mapTargetFloor } from './map-target-floor'
 
 // Returns a new floor whose furniture item matching `furnitureId` is replaced by `update(furniture)`;
@@ -141,6 +142,8 @@ export function resizeFurniture(
 
 const resizeFurnitureHandler: CommandHandler<Project, ResizeFurnitureParams> = {
   apply(state, params) {
+    assertPositiveLength(params.footprint.width, 'Width')
+    assertPositiveLength(params.footprint.depth, 'Depth')
     mapTargetFloor(state, params.floorId, (floor) =>
       mapTargetFurniture(floor, params.furnitureId, (furniture) => ({
         ...furniture,
@@ -172,6 +175,7 @@ export function setFurnitureHeight(
 
 const setFurnitureHeightHandler: CommandHandler<Project, SetFurnitureHeightParams> = {
   apply(state, params) {
+    assertPositiveLength(params.height, 'Height')
     mapTargetFloor(state, params.floorId, (floor) =>
       mapTargetFurniture(floor, params.furnitureId, (furniture) => ({
         ...furniture,
