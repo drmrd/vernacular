@@ -72,7 +72,10 @@ function fillSections(polygon: Point[], height: number): WallSection[] {
  * face per polygon edge connecting them. Every vertex passes through
  * `planToWorld`, so the fill shares the walls' axis map. Each section draws its
  * own surface role (`top`, `base`, then `junction` for the sides) through a
- * per-section material group. The mesh carries no `userData.entityId`.
+ * per-section material group. The mesh carries no `userData.entityId` (a junction is
+ * not an entity, ADR-0082), but it carries a stable `userData.junctionKey` derived from
+ * the fill's incident edge indexes so the fade pass can locate it and join it to its
+ * junction's fade group while keeping it non-pickable.
  */
 export function buildJunctionFill(
   fill: JunctionFill,
@@ -82,5 +85,7 @@ export function buildJunctionFill(
   const sections = fillSections(fill.polygon, height)
   const geometry = geometryFromSections(sections)
   const fillMaterials = sections.map((section) => materials.material(section.role))
-  return new THREE.Mesh(geometry, fillMaterials)
+  const mesh = new THREE.Mesh(geometry, fillMaterials)
+  mesh.userData.junctionKey = fill.edgeIndexes.join(':')
+  return mesh
 }
