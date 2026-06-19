@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createEditorSession } from './editor-session'
 import { createDirtyTracker } from './create-dirty-tracker'
 import { addFloor, createEmptyProject, type Project } from '../../core'
@@ -36,5 +36,22 @@ describe('createDirtyTracker', () => {
 
     session.dispatch(addFloor('First'))
     expect(tracker.isDirty()).toBe(true)
+  })
+
+  it('notifies subscribers on both the clean-to-dirty and dirty-to-clean transitions', () => {
+    const session = createEditorSession(emptyProject())
+    const tracker = createDirtyTracker(session)
+    const listener = vi.fn()
+
+    tracker.subscribe(listener)
+
+    session.dispatch(addFloor('Ground'))
+    expect(tracker.isDirty()).toBe(true)
+    const callsAfterDirtying = listener.mock.calls.length
+    expect(callsAfterDirtying).toBeGreaterThanOrEqual(1)
+
+    tracker.markSaved()
+    expect(tracker.isDirty()).toBe(false)
+    expect(listener.mock.calls.length).toBeGreaterThan(callsAfterDirtying)
   })
 })
