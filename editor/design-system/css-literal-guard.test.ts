@@ -54,6 +54,25 @@ function isAllowedFontSize(value: string): boolean {
   return FONT_SIZE_KEYWORDS.test(trimmed)
 }
 
+// The `font:` shorthand can smuggle a raw numeric size past the font-size-only
+// guard (`font: 11px sans-serif` hides an 11px length). Match the shorthand
+// property specifically: `font:` but not `font-size:`/`font-family:`/
+// `font-weight:`/`font-style:`/`font-variant:`/`font-feature-settings:`, by
+// requiring the character after `font` is not a hyphen. A shorthand size is a
+// raw literal when it is a number immediately followed by px/rem/em and is not
+// wrapped in a --font-size-* token.
+const FONT_SHORTHAND = /\bfont\s*:\s*([^;]+);/
+const RAW_LENGTH = /(?<![\w-])\d*\.?\d+(px|rem|em)\b/
+
+function isFontShorthandLine(line: string): boolean {
+  return /\bfont\s*:/.test(line) && !/\bfont-[\w]+\s*:/.test(line)
+}
+
+function fontShorthandViolation(value: string): boolean {
+  const tokenless = value.replace(/var\(\s*--font-size-[\w-]+\s*\)/g, '')
+  return RAW_LENGTH.test(tokenless)
+}
+
 interface Violation {
   file: string
   line: number
@@ -72,6 +91,25 @@ function violationsIn(
     const match = line.match(declaration)
     const value = match?.[1]
     if (value !== undefined && !isAllowed(value)) {
+      violations.push({
+        file: relative(process.cwd(), file),
+        line: index + 1,
+        value: value.trim(),
+      })
+    }
+  })
+  return violations
+}
+
+function fontShorthandViolationsIn(file: string): Violation[] {
+  const violations: Violation[] = []
+  const lines = readFileSync(file, 'utf8').split('\n')
+  lines.forEach((line, index) => {
+    if (!isFontShorthandLine(line)) {
+      return
+    }
+    const value = line.match(FONT_SHORTHAND)?.[1]
+    if (value !== undefined && fontShorthandViolation(value)) {
       violations.push({
         file: relative(process.cwd(), file),
         line: index + 1,
@@ -116,6 +154,25 @@ describe('css literal guard', () => {
       `Raw font-size literals must route through a --font-size-* token ` +
         `(snap each value to the nearest token on the xs/sm/md/lg/xl scale). ` +
         `CSS keywords such as 'inherit' stay allowed. Offending declarations:\n${report}`,
+    ).toEqual([])
+  })
+
+  // Behavior 14c of 14: no editor CSS outside tokens.css declares a raw numeric
+  // size inside a `font:` shorthand. The font-size-only guard cannot see the
+  // size hidden in `font: 11px sans-serif`, so the shorthand must route its
+  // size through a --font-size-* token (or be split into a font-size longhand).
+  it('declares no raw numeric size inside a font shorthand outside tokens.css', () => {
+    const violations = scannedFiles().flatMap(fontShorthandViolationsIn)
+
+    const report = violations
+      .map(({ file, line, value }) => `${file}:${line}: font: ${value}`)
+      .join('\n')
+
+    expect(
+      violations,
+      `Raw sizes inside a 'font:' shorthand must come from a --font-size-* ` +
+        `token, or the shorthand must be split into a font-size longhand. ` +
+        `Offending declarations:\n${report}`,
     ).toEqual([])
   })
 })
