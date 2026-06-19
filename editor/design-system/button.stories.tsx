@@ -35,3 +35,18 @@ export const Clicking: Story = {
     await expect(await screen.findByText('Count: 2')).toBeInTheDocument()
   },
 }
+
+// This story opts into the accessibility gate: parameters.a11y.test = 'error'
+// makes the addon-a11y axe-core pass fail the browser-mode component test on any
+// violation. The button carries a clear text label, so it has an accessible name
+// and reports no violations, proving the gate participates in the test run.
+export const AccessibilityGate: Story = {
+  parameters: {
+    a11y: { test: 'error' },
+  },
+  render: () => <Button>Open project</Button>,
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByRole('button', { name: 'Open project' })).toBeInTheDocument()
+  },
+}
