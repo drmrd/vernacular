@@ -37,6 +37,9 @@ describe('Tier-0 corpus plan packed into a conformant .building archive', () => 
   // failure is attributed to this suite rather than crashing test collection.
   let unpacked: Map<string, Uint8Array>
 
+  // The pack/unpack round trip and the raster byte comparison are CPU-heavy. Run alone
+  // they finish in about two seconds, but under the full suite's parallel workers the byte
+  // comparison can run past the default five-second budget, so give these a generous ceiling.
   beforeAll(() => {
     const attributions = buildAttributions(meta)
     const entries = buildBuildingArchiveEntries({
@@ -46,7 +49,7 @@ describe('Tier-0 corpus plan packed into a conformant .building archive', () => 
       attributions,
     })
     unpacked = unzipFolder(zipFolder(entries))
-  })
+  }, 30_000)
 
   it('embeds a CORE-valid Document as vernacular.json', () => {
     const bytes = unpacked.get('vernacular.json')
@@ -59,7 +62,7 @@ describe('Tier-0 corpus plan packed into a conformant .building archive', () => 
     const asset = unpacked.get(`assets/${contentHash}`)
     expect(asset).toBeDefined()
     expect(asset).toEqual(rasterBytes)
-  })
+  }, 30_000)
 
   it('generates an ATTRIBUTIONS.md carrying the license and creator', () => {
     const bytes = unpacked.get('ATTRIBUTIONS.md')
