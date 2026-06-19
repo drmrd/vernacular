@@ -17,6 +17,12 @@ const ARIA_DESCRIBED_BY = 'aria-describedby'
 
 function describeControl(control: ReactNode, hintId: string): ReactNode {
   if (!isValidElement<HTMLAttributes<HTMLElement>>(control)) {
+    if (import.meta.env.DEV) {
+      console.error(
+        '[Field] hint was supplied but the child is not a single React element. ' +
+          'aria-describedby was not injected. Pass a single <input> or <select> as the child.',
+      )
+    }
     return control
   }
   const existing = control.props[ARIA_DESCRIBED_BY]
@@ -25,14 +31,14 @@ function describeControl(control: ReactNode, hintId: string): ReactNode {
 }
 
 export function Field({ htmlFor, label, children, hint }: FieldProps) {
-  const hintId = `${htmlFor}-hint`
+  const hintId = hint ? `${htmlFor}-hint` : undefined
   return (
     <div className="ds-field">
       <label className="ds-field__label" htmlFor={htmlFor}>
         {label}
       </label>
-      {hint ? describeControl(children, hintId) : children}
-      {hint ? (
+      {hintId ? describeControl(children, hintId) : children}
+      {hintId ? (
         <span className="ds-field__hint" id={hintId}>
           {hint}
         </span>

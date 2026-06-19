@@ -10,7 +10,16 @@
 }
 
 .ds-field input,
-.ds-field select,
+.ds-field select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+}
+
 .ds-field__control {
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-border);
@@ -22,7 +31,11 @@
 }
 
 .ds-field input:focus-visible,
-.ds-field select:focus-visible,
+.ds-field select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
 .ds-field__control:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
