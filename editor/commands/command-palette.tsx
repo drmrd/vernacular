@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '../design-system'
+import { useFocusTrap } from '../design-system/use-focus-trap'
 import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { useViewMode } from '../viewport/view-mode'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
@@ -26,24 +27,50 @@ function filterCommands(
     .filter((command) => command.label.toLowerCase().includes(needle))
 }
 
+function useCloseWithFocusRestore(onClose: () => void): () => void {
+  const openerRef = useRef<HTMLElement | null>(null)
+  if (openerRef.current === null) {
+    openerRef.current = document.activeElement as HTMLElement | null
+  }
+  return () => {
+    onClose()
+    openerRef.current?.focus()
+  }
+}
+
+interface CommandListProps {
+  commands: EditorCommand[]
+  onRun: (command: EditorCommand) => void
+}
+
+function CommandList({ commands, onRun }: CommandListProps) {
+  return (
+    <>
+      {commands.map((command) => (
+        <Button key={command.id} onClick={() => onRun(command)}>
+          {command.label}
+        </Button>
+      ))}
+    </>
+  )
+}
+
 export function CommandPaletteDialog({ commands, context, onClose }: CommandPaletteDialogProps) {
   const [query, setQuery] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
+  const dialogRef = useFocusTrap<HTMLDivElement>()
+  const close = useCloseWithFocusRestore(onClose)
 
   const filtered = filterCommands(commands, context, query)
 
   function runCommand(command: EditorCommand): void {
     command.run(context)
-    onClose()
+    close()
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.key === 'Escape') {
       event.stopPropagation()
-      onClose()
+      close()
       return
     }
     const first = filtered[0]
@@ -54,19 +81,20 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Command palette" onKeyDown={handleKeyDown}>
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Command palette"
+      onKeyDown={handleKeyDown}
+    >
       <input
-        ref={inputRef}
         type="text"
         aria-label="Search commands"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
-      {filtered.map((command) => (
-        <Button key={command.id} onClick={() => runCommand(command)}>
-          {command.label}
-        </Button>
-      ))}
+      <CommandList commands={filtered} onRun={runCommand} />
     </div>
   )
 }
