@@ -73,7 +73,7 @@ function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
 
 interface SelectionToggleProps {
   selectionEnabled: boolean
-  onToggleSelection: (() => void) | undefined
+  onToggleSelection: () => void
 }
 
 /** Click-to-select is opt-in: a pressed toggle reflects whether selecting is currently on. */
@@ -83,7 +83,7 @@ function SelectionToggle({ selectionEnabled, onToggleSelection }: SelectionToggl
       type="button"
       className="scene-nav-toolbar__btn"
       aria-pressed={selectionEnabled}
-      onClick={() => onToggleSelection?.()}
+      onClick={onToggleSelection}
     >
       Select
     </button>
@@ -171,7 +171,7 @@ export function SceneNavToolbar({
   colorTemperatureK,
   onColorTemperatureChange,
   selectionEnabled = false,
-  onToggleSelection,
+  onToggleSelection = () => {},
   onPreset,
   canDoorway,
 }: SceneNavToolbarProps) {
