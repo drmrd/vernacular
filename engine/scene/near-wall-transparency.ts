@@ -126,15 +126,16 @@ function enrollJunctionFills(
       return []
     }
     const junctionKey = group.edgeIndexes.join(':')
-    return findFillMeshesByJunctionKey(root, junctionKey).map((mesh) => ({
-      materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
-      // No-geometry placeholders: a fill never fades, so it needs no real world point.
-      // A zero outward normal makes `cameraFacesWallOutside` return false for every camera
-      // position, so the per-frame update never takes the fade branch and the fill holds at
-      // its baseline opacity. These are intentional sentinels, not an origin-point bug.
-      point: { x: 0, z: 0 },
-      outwardNormal: { x: 0, z: 0 },
-    }))
+    return findFillMeshesByJunctionKey(root, junctionKey).map((mesh) => {
+      const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
+      return {
+        materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
+        // The fill holds opaque via its `holdOpaque` materials, so the per-frame update never
+        // fades it regardless of camera position; the point/normal are unused for these members.
+        point: { x: center.x, z: center.z },
+        outwardNormal: { x: 0, z: 0 },
+      }
+    })
   })
 }
 
@@ -184,10 +185,11 @@ export function updateNearWallTransparency(
 ): void {
   for (const target of targets) {
     const faded = cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
-    for (const { material, baseline } of target.materials) {
-      material.transparent = faded ? true : baseline.transparent
-      material.opacity = faded ? FADED_OPACITY : baseline.opacity
-      material.depthWrite = faded ? false : baseline.depthWrite
+    for (const { material, baseline, holdOpaque } of target.materials) {
+      const fade = faded && holdOpaque !== true
+      material.transparent = fade ? true : baseline.transparent
+      material.opacity = fade ? FADED_OPACITY : baseline.opacity
+      material.depthWrite = fade ? false : baseline.depthWrite
     }
   }
 }
