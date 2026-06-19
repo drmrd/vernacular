@@ -241,9 +241,18 @@ describe('App project actions', () => {
 
     render(<App store={store} projectId="current" snapshots={snapshots} />)
 
-    await screen.findByRole('alert')
-    await userEvent.click(screen.getByRole('button', { name: /discard/i }))
+    // Clicking Discard on the recovery prompt opens the discard confirmation
+    // dialog rather than pruning immediately: discarding recovered work is
+    // destructive (prune deletes every autosave file), so it routes through the
+    // same confirm seam as New/Open/Import (ADR-0104).
+    const alert = await screen.findByRole('alert')
+    await userEvent.click(within(alert).getByRole('button', { name: /discard/i }))
 
+    // Confirm the dialog the same way the New/Open/Import discard tests do.
+    const dialog = await screen.findByRole('alertdialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: /discard/i }))
+
+    // Only after the confirmation does pruning happen and the prompt dismiss.
     await waitFor(() => expect(snapshots.prune).toHaveBeenCalled())
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
