@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { ExteriorWall } from '../../core'
+import type { ExteriorWall, JunctionFadeGroup } from '../../core'
 
 /** Opacity of a wall the camera looks at from outside, so the interior reads through it. */
 const FADED_OPACITY = 0.1
@@ -15,6 +15,8 @@ interface WorldXZ {
 interface FadeMaterial {
   material: THREE.Material
   baseline: { transparent: boolean; opacity: number; depthWrite: boolean }
+  /** True => `updateNearWallTransparency` holds it at baseline, never dropping it to the fade opacity. */
+  holdOpaque?: boolean
 }
 
 /** Captures a freshly cloned material's transparency, opacity, and depth-write as its restore baseline. */
@@ -33,6 +35,11 @@ function fadeMaterial(material: THREE.Material): FadeMaterial {
 export interface NearWallTarget {
   materials: FadeMaterial[]
   point: WorldXZ
+  /**
+   * Only meaningful for members whose materials lack `holdOpaque`. For hold-opaque
+   * fill members the camera-facing test is always masked, so this is unused and the
+   * outward direction is left zero because it is undefined for a planar fill.
+   */
   outwardNormal: WorldXZ
 }
 
@@ -97,18 +104,63 @@ function cloneEntityMaterials(root: THREE.Object3D, entityId: string): FadeMater
   return cloned
 }
 
+/** Every descendant mesh of `root` carrying the given `userData.junctionKey`. */
+function findFillMeshesByJunctionKey(root: THREE.Object3D, junctionKey: string): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = []
+  root.traverse((node) => {
+    if (node instanceof THREE.Mesh && node.userData.junctionKey === junctionKey) {
+      meshes.push(node)
+    }
+  })
+  return meshes
+}
+
+/**
+ * Privatizes (clones) the materials of every junction fill whose `junctionKey`
+ * matches an opaque-holding fade group, records them as hold-opaque members so the
+ * per-frame update keeps them at baseline while their incident walls fade. Cloning
+ * is required because the fill's side faces share the `junction` role material; pinning
+ * the shared instance opaque would pin every junction's material opaque.
+ */
+function enrollJunctionFills(
+  root: THREE.Object3D,
+  fadeGroups: JunctionFadeGroup[],
+): NearWallTarget[] {
+  return fadeGroups.flatMap((group) => {
+    if (!group.fillStaysOpaque) {
+      return []
+    }
+    const junctionKey = group.edgeIndexes.join(':')
+    return findFillMeshesByJunctionKey(root, junctionKey).map((mesh) => {
+      const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
+      return {
+        materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
+        // `point` still feeds the camera-facing test, but `holdOpaque` on every fill material
+        // masks the result, so the fill's opacity never depends on camera position or the
+        // (zero) outward normal.
+        point: { x: center.x, z: center.z },
+        outwardNormal: { x: 0, z: 0 },
+      }
+    })
+  })
+}
+
 /**
  * Clones each exterior wall's materials, plus those of its hosted openings, into
  * private instances so the wall and its openings fade together while their opacity
  * animates independently of the rest of the scene. Records the world point and
  * outward normal that decide whether the camera sees the wall from outside. Walls
- * whose mesh is not found in `root` are skipped.
+ * whose mesh is not found in `root` are skipped. Each opaque-holding junction fade
+ * group's tagged fill mesh is enrolled as a privatized, hold-opaque member so the
+ * fill stays solid (covering the leg-end miter and dividing the rooms) while its
+ * incident walls fade.
  */
 export function prepareNearWallTransparency(
   root: THREE.Object3D,
   exterior: ExteriorWall[],
+  fadeGroups: JunctionFadeGroup[] = [],
 ): NearWallTarget[] {
-  return exterior.flatMap((wall) => {
+  const wallTargets = exterior.flatMap((wall) => {
     const mesh = findMeshByEntityId(root, wall.wallId)
     if (mesh === null) {
       return []
@@ -126,6 +178,7 @@ export function prepareNearWallTransparency(
       },
     ]
   })
+  return [...wallTargets, ...enrollJunctionFills(root, fadeGroups)]
 }
 
 /**
@@ -138,10 +191,11 @@ export function updateNearWallTransparency(
 ): void {
   for (const target of targets) {
     const faded = cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
-    for (const { material, baseline } of target.materials) {
-      material.transparent = faded ? true : baseline.transparent
-      material.opacity = faded ? FADED_OPACITY : baseline.opacity
-      material.depthWrite = faded ? false : baseline.depthWrite
+    for (const { material, baseline, holdOpaque } of target.materials) {
+      const fade = faded && holdOpaque !== true
+      material.transparent = fade ? true : baseline.transparent
+      material.opacity = fade ? FADED_OPACITY : baseline.opacity
+      material.depthWrite = fade ? false : baseline.depthWrite
     }
   }
 }

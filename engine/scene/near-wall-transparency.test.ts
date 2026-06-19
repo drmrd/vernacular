@@ -5,10 +5,11 @@ import {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
   updateNearWallTransparency,
+  type NearWallTarget,
 } from './near-wall-transparency'
 import { findByEntityId } from '../testing'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { exteriorWalls, type SceneGraph } from '../../core'
+import { buildWallGraph, exteriorWalls, junctionFadeGroups, type SceneGraph } from '../../core'
 
 const ROOM_SIDE_MM = 4000
 const WALL_THICKNESS_MM = 200
@@ -125,6 +126,86 @@ const openingMesh = (root: THREE.Group, entityId: string, name: string): THREE.M
   return found as THREE.Mesh
 }
 
+/** The recorded solid restore state of a privatized fade material. */
+type FadeMaterialBaseline = NearWallTarget['materials'][number]['baseline']
+
+const BAR_LENGTH_MM = 2000
+const LEG_LENGTH_MM = 1000
+const BAR_MIDPOINT_MM = BAR_LENGTH_MM / 2
+
+/** A bar wall and the leg partition teed up from its midpoint, both on the ground floor. */
+const tJunctionWalls = (): SceneGraph['walls'] => [
+  wall('wall:bar', { x: 0, y: 0 }, { x: BAR_LENGTH_MM, y: 0 }),
+  wall('wall:leg', { x: BAR_MIDPOINT_MM, y: 0 }, { x: BAR_MIDPOINT_MM, y: LEG_LENGTH_MM }),
+]
+
+/**
+ * Two rooms north of an exterior "bar" wall, divided by an interior "leg" partition
+ * that tees up from the bar's midpoint. `buildWallGraph` splits the bar at the tee
+ * foot, so the vertex at the midpoint carries three incident edges: a 3+-way junction
+ * whose fill `buildScene` draws and tags with a `userData.junctionKey`. The bar is
+ * exterior (open air to the south); the leg bounds two interior rooms and never fades.
+ */
+const tJunctionGraph = (): SceneGraph => {
+  const roomA = [
+    { x: 0, y: 0 },
+    { x: BAR_MIDPOINT_MM, y: 0 },
+    { x: BAR_MIDPOINT_MM, y: LEG_LENGTH_MM },
+    { x: 0, y: LEG_LENGTH_MM },
+  ]
+  const roomB = [
+    { x: BAR_MIDPOINT_MM, y: 0 },
+    { x: BAR_LENGTH_MM, y: 0 },
+    { x: BAR_LENGTH_MM, y: LEG_LENGTH_MM },
+    { x: BAR_MIDPOINT_MM, y: LEG_LENGTH_MM },
+  ]
+  return {
+    nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
+    walls: tJunctionWalls(),
+    rooms: [
+      {
+        id: 'room:a',
+        kind: 'room',
+        floorId: 'g',
+        polygon: roomA,
+        clearPolygon: roomA,
+        area: BAR_MIDPOINT_MM * LEG_LENGTH_MM,
+        ceilingHeight: WALL_HEIGHT_MM,
+      },
+      {
+        id: 'room:b',
+        kind: 'room',
+        floorId: 'g',
+        polygon: roomB,
+        clearPolygon: roomB,
+        area: BAR_MIDPOINT_MM * LEG_LENGTH_MM,
+        ceilingHeight: WALL_HEIGHT_MM,
+      },
+    ],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+/** The single tagged junction-fill mesh under `root` (the one carrying a `junctionKey`). */
+const junctionFillMesh = (root: THREE.Group): THREE.Mesh => {
+  let found: THREE.Mesh | undefined
+  root.traverse((object) => {
+    if (
+      object instanceof THREE.Mesh &&
+      typeof object.userData.junctionKey === 'string' &&
+      found === undefined
+    ) {
+      found = object
+    }
+  })
+  expect(found).toBeDefined()
+  return found as THREE.Mesh
+}
+
 describe('cameraFacesWallOutside', () => {
   it('is true on the outward-normal side of the wall point and false on the other', () => {
     const point = { x: 0, z: 0 }
@@ -155,6 +236,49 @@ describe('prepareNearWallTransparency', () => {
     for (const bottom of bottomMaterials) {
       expect(topMaterials).not.toContain(bottom)
     }
+  })
+
+  it('enrolls the junction fill as a privatized, hold-opaque member of its fade group', () => {
+    const graph = tJunctionGraph()
+    const materials = new NeutralMaterialProvider()
+    const sharedJunctionFace = materials.material('junction')
+
+    const root = buildScene(graph, materials)
+
+    // The tagged fill mesh draws its sides with the SHARED `junction` role material
+    // before any privatization. Holding this shared instance opaque would pin every
+    // junction's material opaque, so the prep must clone it first.
+    const fill = junctionFillMesh(root)
+    const fillSourceMaterials = fill.material as THREE.Material[]
+    expect(fillSourceMaterials).toContain(sharedJunctionFace)
+
+    const fadeGroups = junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms)
+    const targets = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms),
+      fadeGroups,
+    )
+
+    // Across every prepared target, the records flagged to hold at baseline (the fill's
+    // side faces) must not animate to the faded opacity. At least one such record exists.
+    const holdOpaqueRecords = targets
+      .flatMap((target) => target.materials)
+      .filter((record) => (record as { holdOpaque?: boolean }).holdOpaque === true)
+    expect(holdOpaqueRecords.length).toBeGreaterThan(0)
+
+    // Privatization: the hold-opaque records own cloned materials, never the provider's
+    // shared `junction` instance, so holding the fill opaque cannot pin unrelated geometry.
+    for (const record of holdOpaqueRecords) {
+      expect(record.material).not.toBe(sharedJunctionFace)
+    }
+
+    // The fill's own materials were privatized in place: the mesh no longer references
+    // the shared instance, and a hold-opaque record points at one of its private clones.
+    const privatizedFillMaterials = fill.material as THREE.Material[]
+    expect(privatizedFillMaterials).not.toContain(sharedJunctionFace)
+    expect(
+      holdOpaqueRecords.some((record) => privatizedFillMaterials.includes(record.material)),
+    ).toBe(true)
   })
 })
 
@@ -213,5 +337,120 @@ describe('updateNearWallTransparency', () => {
     expect(glass.opacity).toBe(GLASS_OPACITY)
     expect(glass.transparent).toBe(true)
     expect(glass.depthWrite).toBe(false)
+  })
+
+  it('holds a hold-opaque fill material at its solid baseline while its target fades the bar wall', () => {
+    const graph = tJunctionGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+
+    // The same prefixed scene-node ids the live framed-scene path supplies, so the
+    // prefix-robust selector join enrolls the tagged fill as a hold-opaque member.
+    const fadeGroups = junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms)
+    const prepared = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms),
+      fadeGroups,
+    )
+
+    const fillRecords = prepared
+      .flatMap((target) => target.materials)
+      .filter((record) => record.holdOpaque === true)
+    expect(fillRecords.length).toBeGreaterThan(0)
+
+    // The bar runs along world z=0 with its outward normal to negative Z (open air to the
+    // south), so a camera on the negative-Z side sees it from outside and its target fades.
+    // Carry the fill's hold-opaque records on that SAME fading target so that honoring
+    // `holdOpaque` per material is the only thing that can keep the fill solid. (The fill
+    // covers the leg's mitered end and divides the rooms; it must not fade with the bar.)
+    const barTarget = prepared.find((target) => target.outwardNormal.z < 0)
+    expect(barTarget).toBeDefined()
+    const fadingTarget: NearWallTarget = {
+      point: (barTarget as NearWallTarget).point,
+      outwardNormal: (barTarget as NearWallTarget).outwardNormal,
+      materials: [...(barTarget as NearWallTarget).materials, ...fillRecords],
+    }
+
+    const fillBaselines = fillRecords.map((record) => ({ ...record.baseline }))
+
+    updateNearWallTransparency([fadingTarget], { x: BAR_MIDPOINT_MM, z: -3000 })
+
+    // The bar wall fades as before.
+    for (const material of wallMaterials(root, 'wall:bar')) {
+      expect(material.transparent).toBe(true)
+      expect(material.opacity).toBe(FADED_OPACITY)
+      expect(material.depthWrite).toBe(false)
+    }
+
+    // The fill must NOT fade with the bar: every hold-opaque material stays at its recorded
+    // solid baseline, never dropping to the fade opacity.
+    fillRecords.forEach((record, index) => {
+      const baseline = fillBaselines[index]
+      expect(baseline).toBeDefined()
+      const solid = baseline as FadeMaterialBaseline
+      expect(record.material.opacity).toBe(solid.opacity)
+      expect(record.material.transparent).toBe(solid.transparent)
+      expect(record.material.depthWrite).toBe(solid.depthWrite)
+      expect(record.material.opacity).not.toBe(FADED_OPACITY)
+    })
+  })
+
+  it('keeps the junction fill solid whether the bar or the leg is the faded incident wall', () => {
+    const graph = tJunctionGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+
+    // The hold-opaque fill records, enrolled via the prefix-robust selector join.
+    const fadeGroups = junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms)
+    const prepared = prepareNearWallTransparency(
+      root,
+      exteriorWalls(graph.walls, graph.rooms),
+      fadeGroups,
+    )
+    const fillRecords = prepared
+      .flatMap((target) => target.materials)
+      .filter((record) => record.holdOpaque === true)
+    expect(fillRecords.length).toBeGreaterThan(0)
+
+    const fillBaselines = fillRecords.map((record) => ({ ...record.baseline }))
+
+    /** Asserts every hold-opaque fill material reads its recorded solid baseline. */
+    const expectFillSolid = (label: string): void => {
+      fillRecords.forEach((record, index) => {
+        const baseline = fillBaselines[index]
+        expect(baseline, label).toBeDefined()
+        const solid = baseline as FadeMaterialBaseline
+        expect(record.material.opacity, label).toBe(solid.opacity)
+        expect(record.material.transparent, label).toBe(solid.transparent)
+        expect(record.material.depthWrite, label).toBe(solid.depthWrite)
+        expect(record.material.opacity, label).not.toBe(FADED_OPACITY)
+      })
+    }
+
+    // The fill rides on the SAME target as whichever incident wall fades, so honoring
+    // `holdOpaque` per material is the only thing that can keep it solid in each case.
+    const fillTarget = (
+      point: NearWallTarget['point'],
+      outwardNormal: NearWallTarget['outwardNormal'],
+    ): NearWallTarget => ({
+      point,
+      outwardNormal,
+      materials: [...fillRecords],
+    })
+
+    // Condition A: bar faded, leg solid. The bar runs along world z=0 with its outward
+    // normal to negative Z, so a camera to the south sees it from outside and it fades.
+    updateNearWallTransparency([fillTarget({ x: BAR_MIDPOINT_MM, z: 0 }, { x: 0, z: -1 })], {
+      x: BAR_MIDPOINT_MM,
+      z: -3000,
+    })
+    expectFillSolid('bar faded, leg solid')
+
+    // Condition B: leg faded, bar solid. The leg runs along world x = BAR_MIDPOINT_MM with
+    // its outward normal to positive X, so a camera to the east sees it from outside and it
+    // fades. The joint must still read as a covered, square corner with a room divider.
+    updateNearWallTransparency(
+      [fillTarget({ x: BAR_MIDPOINT_MM, z: -LEG_LENGTH_MM / 2 }, { x: 1, z: 0 })],
+      { x: BAR_MIDPOINT_MM + 3000, z: -LEG_LENGTH_MM / 2 },
+    )
+    expectFillSolid('leg faded, bar solid')
   })
 })
