@@ -35,6 +35,11 @@ function fadeMaterial(material: THREE.Material): FadeMaterial {
 export interface NearWallTarget {
   materials: FadeMaterial[]
   point: WorldXZ
+  /**
+   * Only meaningful for members whose materials lack `holdOpaque`. For hold-opaque
+   * fill members the camera-facing test is always masked, so this is unused and the
+   * outward direction is left zero because it is undefined for a planar fill.
+   */
   outwardNormal: WorldXZ
 }
 
@@ -130,8 +135,9 @@ function enrollJunctionFills(
       const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
       return {
         materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
-        // The fill holds opaque via its `holdOpaque` materials, so the per-frame update never
-        // fades it regardless of camera position; the point/normal are unused for these members.
+        // `point` still feeds the camera-facing test, but `holdOpaque` on every fill material
+        // masks the result, so the fill's opacity never depends on camera position or the
+        // (zero) outward normal.
         point: { x: center.x, z: center.z },
         outwardNormal: { x: 0, z: 0 },
       }
