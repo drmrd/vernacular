@@ -201,4 +201,16 @@ describe('SceneNavToolbar styling hooks', () => {
     expect(screen.getByRole('button', { name: 'Top down' })).toHaveClass('scene-nav-toolbar__btn')
     expect(screen.getByRole('button', { name: 'Doorway' })).toHaveClass('scene-nav-toolbar__btn')
   })
+
+  it('groups the camera-mode toggle and the reset action into a primary cluster', () => {
+    const { container } = render(
+      <SceneNavToolbar {...baseProps} selectionEnabled={false} onToggleSelection={vi.fn()} />,
+    )
+
+    const primary = container.querySelector('.scene-nav-toolbar__primary')
+    expect(primary).not.toBeNull()
+    expect(primary).toContainElement(screen.getByRole('group', { name: /camera mode/i }))
+    expect(primary).toContainElement(screen.getByRole('button', { name: 'Reset view' }))
+    expect(primary).toContainElement(screen.getByRole('button', { name: /select/i }))
+  })
 })
