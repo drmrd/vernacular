@@ -129,9 +129,7 @@ describe('SceneNavToolbar color-temperature readout', () => {
       />,
     )
 
-    expect(
-      screen.getByText(formatColorTemperature(MAX_COLOR_TEMPERATURE_K)),
-    ).toBeInTheDocument()
+    expect(screen.getByText(formatColorTemperature(MAX_COLOR_TEMPERATURE_K))).toBeInTheDocument()
     expect(screen.getByText('Warm')).toBeInTheDocument()
     expect(screen.getByText('Cool')).toBeInTheDocument()
 
@@ -150,9 +148,7 @@ describe('SceneNavToolbar color-temperature readout', () => {
       />,
     )
 
-    expect(
-      screen.getByText(formatColorTemperature(MIN_COLOR_TEMPERATURE_K)),
-    ).toBeInTheDocument()
+    expect(screen.getByText(formatColorTemperature(MIN_COLOR_TEMPERATURE_K))).toBeInTheDocument()
     expect(
       screen.queryByText(formatColorTemperature(MAX_COLOR_TEMPERATURE_K)),
     ).not.toBeInTheDocument()
