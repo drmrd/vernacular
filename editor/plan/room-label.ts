@@ -52,9 +52,15 @@ const LABEL_FIT_RATIO = 0.9
 /**
  * The placement decision for a room's name and area block. `kind` summarizes the
  * outcome; `showName` and `showArea` say which lines the draw path paints.
+ *
+ * Unnamed-room contract: a room whose `content.name` is `undefined` has no name
+ * line to paint, so `showName` is never `true` for it and its `kind` is never
+ * `name-only`. Such a room shows at most its area: `area-only` when the area
+ * string fits the footprint, otherwise `hidden`. This keeps the draw path from
+ * ever calling `fillText` with an absent name.
  */
 export interface RoomLabelPlacement {
-  kind: 'full' | 'name-only' | 'hidden'
+  kind: 'full' | 'name-only' | 'area-only' | 'hidden'
   showName: boolean
   showArea: boolean
 }
@@ -98,15 +104,18 @@ export function roomLabelPlacement(
     return HIDDEN_PLACEMENT
   }
   const content = roomLabelContent(room, options)
-  const nameLine = content.name ?? content.area
-  if (!lineFits(nameLine, footprint)) {
+  const primaryLine = content.name ?? content.area
+  if (!lineFits(primaryLine, footprint)) {
     return HIDDEN_PLACEMENT
+  }
+  // An unnamed room has no name line to paint. Its primary line is the area
+  // string itself, so a fit here is an area-only label, never a name-only one.
+  if (content.name === undefined) {
+    return { kind: 'area-only', showName: false, showArea: true }
   }
   const blockHeight = LABEL_FONT_SIZE_PX + LABEL_LINE_HEIGHT_PX
   const areaFits =
-    content.name !== undefined &&
-    lineFits(content.area, footprint) &&
-    blockHeight <= footprint.height * LABEL_FIT_RATIO
+    lineFits(content.area, footprint) && blockHeight <= footprint.height * LABEL_FIT_RATIO
   if (!areaFits) {
     return { kind: 'name-only', showName: true, showArea: false }
   }
