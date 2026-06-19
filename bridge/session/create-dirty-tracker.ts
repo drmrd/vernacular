@@ -25,6 +25,7 @@ export interface DirtyTracker {
 }
 
 export function createDirtyTracker(session: EditorSession): DirtyTracker {
+  // Both start at 0; equal => clean on construction.
   let changeCount = 0
   let savedChangeCount = 0
 
@@ -33,7 +34,9 @@ export function createDirtyTracker(session: EditorSession): DirtyTracker {
   })
 
   return {
-    isDirty: () => changeCount !== savedChangeCount,
+    isDirty() {
+      return changeCount !== savedChangeCount
+    },
     markSaved() {
       savedChangeCount = changeCount
     },
