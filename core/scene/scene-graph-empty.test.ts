@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { DimensionSceneNode, SceneGraph, UnderlaySceneNode, WallSceneNode } from './scene-graph'
+import type {
+  DimensionSceneNode,
+  SceneGraph,
+  UnderlaySceneNode,
+  WallSceneNode,
+} from './scene-graph'
 import { sceneGraphHasGeometry } from './scene-graph-empty'
 
 const FLOOR_ID = 'g'
