@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { ArrowClockwise, ArrowCounterClockwise, GridFour, Ruler } from '@phosphor-icons/react'
 import {
-  SceneCanvas,
   createSurfaceSelectionStore,
   SurfaceSelectionProvider,
   useActiveFloorId,
@@ -63,6 +62,7 @@ import { ThemeToggle } from './theme-toggle'
 import { ZoomControl } from './zoom-control'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
+import { ScenePane } from './scene-pane'
 import { ImportAlert } from './import-alert'
 import { ImportDropTarget } from './import-drop-target'
 import { UnitToggle } from './unit-toggle'
@@ -279,7 +279,7 @@ function ViewportArea({
         }
         preview={
           <section className="editor-shell__preview" aria-label="3D preview">
-            <SceneCanvas />
+            <ScenePane />
           </section>
         }
       />
