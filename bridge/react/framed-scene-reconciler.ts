@@ -210,7 +210,7 @@ interface FurnitureBuildInput {
 
 /**
  * Whether a lookup entry yields a ready model. The single source of "this entry builds a mesh":
- * both the cache key (builtReady) and the mesh-vs-box build branch derive from it, and as a type
+ * the furnitureBuildKind helper and the mesh-vs-box build branch both call it, and as a type
  * guard it narrows entry.template so the build can clone it without a separate undefined check.
  */
 function providesReadyModel(
