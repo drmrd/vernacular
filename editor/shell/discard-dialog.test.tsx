@@ -12,12 +12,7 @@ describe('DiscardDialog', () => {
     const onCancel = vi.fn()
 
     render(
-      <DiscardDialog
-        open
-        projectName="Hubbard House"
-        onConfirm={onConfirm}
-        onCancel={onCancel}
-      />,
+      <DiscardDialog open projectName="Hubbard House" onConfirm={onConfirm} onCancel={onCancel} />,
     )
 
     const dialog = screen.getByRole('alertdialog')
