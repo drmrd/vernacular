@@ -1,6 +1,6 @@
 import { type OpeningSceneNode, type Point } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
-import { openingCorners } from './opening-geometry'
+import { openingCorners, swingLeafGeometry } from './opening-geometry'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -77,7 +77,7 @@ function strokeSegment(painter: OpeningPainter, from: Point, to: Point): void {
  */
 function strokeArc(
   painter: OpeningPainter,
-  swing: { hinge: Point; leafEnd: Point; closed: Point },
+  swing: { hinge: Point; leafEnd: Point; closed: Point; counterclockwise?: boolean | undefined },
 ): void {
   const center = worldToScreen(swing.hinge, painter.viewport)
   const open = worldToScreen(swing.leafEnd, painter.viewport)
@@ -86,7 +86,7 @@ function strokeArc(
   const startAngle = Math.atan2(open.y - center.y, open.x - center.x)
   const endAngle = Math.atan2(closed.y - center.y, closed.x - center.x)
   painter.ctx.beginPath()
-  painter.ctx.arc(center.x, center.y, radius, startAngle, endAngle)
+  painter.ctx.arc(center.x, center.y, radius, startAngle, endAngle, swing.counterclockwise)
   painter.ctx.stroke()
 }
 
@@ -146,11 +146,16 @@ function leafEnd(node: OpeningSceneNode, hinge: Point, sign: number): Point {
 function drawSwingLeaf(
   painter: OpeningPainter,
   node: OpeningSceneNode,
-  leaf: { hinge: Point; closed: Point; sign: number },
+  leaf: { hinge: Point; closed: Point; sign: number; counterclockwise?: boolean | undefined },
 ): void {
   const open = leafEnd(node, leaf.hinge, leaf.sign)
   strokeSegment(painter, leaf.hinge, open)
-  strokeArc(painter, { hinge: leaf.hinge, leafEnd: open, closed: leaf.closed })
+  strokeArc(painter, {
+    hinge: leaf.hinge,
+    leafEnd: open,
+    closed: leaf.closed,
+    counterclockwise: leaf.counterclockwise,
+  })
 }
 
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
@@ -158,7 +163,14 @@ function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void 
   const node = opening.node
   const hinge = hingeJamb(node)
   const other = otherJamb(node)
-  drawSwingLeaf(painter, node, { hinge, closed: other, sign: 1 })
+  // The primary leaf carries the swing-arc sweep direction from the pure helper.
+  const primary = swingLeafGeometry(node, { leaf: 'primary' })
+  drawSwingLeaf(painter, node, {
+    hinge,
+    closed: other,
+    sign: 1,
+    counterclockwise: primary.counterclockwise,
+  })
   if (opening.double) {
     drawSwingLeaf(painter, node, { hinge: other, closed: hinge, sign: -1 })
   }
