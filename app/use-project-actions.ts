@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { SvgPlanExporter } from '../core'
-import { commitProject, createEditorSession, type EditorSession } from '../bridge'
+import { commitProject, createEditorSession, guardDestructive, type EditorSession } from '../bridge'
 import {
   DirectoryHandleStore,
   FileSystemFolderProjectStore,
@@ -76,12 +76,23 @@ export interface ProjectActionsContext {
   capabilities: StorageCapabilities
   recentEntries: RecentEntry[]
   onSession: (session: EditorSession) => void
+
+  /** Whether the live session has unsaved changes since the last save/load.
+   *  Source: the dirty tracker (bridge/session/create-dirty-tracker.ts) via
+   *  the app-layer useDirtyState hook. Treated as clean (false) when omitted. */
+  isDirty?: boolean
+
+  /** Prompt the user to discard unsaved work before a destructive swap.
+   *  Resolves true to proceed, false/falsy to cancel. Sync or async, matching
+   *  GuardDestructiveOptions.confirm exactly. Only consulted when isDirty is
+   *  true (per needsDiscardConfirmation). */
+  confirmDiscard?: () => boolean | Promise<boolean>
 }
 
 export interface ProjectActions {
   onSave: () => void
   onOpenRecent: (id: string) => void
-  onNewProject: () => void
+  onNewProject: () => void | Promise<void>
   onExportBundle: () => void
   onExportPlan: () => void
   onExportImage: () => void
@@ -170,11 +181,17 @@ function useExportPdfAction(context: ProjectActionsContext): () => void {
   }, [session])
 }
 
-function useNewProjectAction(context: ProjectActionsContext): () => void {
-  const { onSession } = context
-  return useCallback(() => {
-    onSession(createEditorSession(createInitialProject()))
-  }, [onSession])
+function useNewProjectAction(context: ProjectActionsContext): () => void | Promise<void> {
+  const { onSession, isDirty, confirmDiscard } = context
+  return useCallback(
+    () =>
+      guardDestructive({
+        isDirty: isDirty ?? false,
+        confirm: confirmDiscard ?? (() => true),
+        run: () => onSession(createEditorSession(createInitialProject())),
+      }),
+    [onSession, isDirty, confirmDiscard],
+  )
 }
 
 // Open folder is gated on the native picker capability; without it the shell
