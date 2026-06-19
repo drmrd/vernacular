@@ -14,7 +14,7 @@ export interface RoomPeriodEditorProps {
  * dispatches a set-period command on change.
  */
 export function RoomPeriodEditor({ roomKey, period, dispatch }: RoomPeriodEditorProps) {
-  const selectId = `room-period-${roomKey}`
+  const inputId = `room-period-${roomKey}`
 
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
@@ -22,8 +22,8 @@ export function RoomPeriodEditor({ roomKey, period, dispatch }: RoomPeriodEditor
   }
 
   return (
-    <Field htmlFor={selectId} label="Period">
-      <select id={selectId} value={period ?? ''} onChange={handleChange}>
+    <Field htmlFor={inputId} label="Period">
+      <select id={inputId} value={period ?? ''} onChange={handleChange}>
         <option value="">Inherit</option>
         {Object.values(builtinPeriods.entries).map((entry) => (
           <option key={entry.id} value={entry.id}>

@@ -14,7 +14,7 @@ export interface RoomStyleEditorProps {
  * style, and dispatches a set-style command on change.
  */
 export function RoomStyleEditor({ roomKey, style, dispatch }: RoomStyleEditorProps) {
-  const selectId = `room-style-${roomKey}`
+  const inputId = `room-style-${roomKey}`
 
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
@@ -22,8 +22,8 @@ export function RoomStyleEditor({ roomKey, style, dispatch }: RoomStyleEditorPro
   }
 
   return (
-    <Field htmlFor={selectId} label="Style">
-      <select id={selectId} value={style?.styleId ?? ''} onChange={handleChange}>
+    <Field htmlFor={inputId} label="Style">
+      <select id={inputId} value={style?.styleId ?? ''} onChange={handleChange}>
         <option value="">Inherit</option>
         {Object.values(builtinStyles.entries).map((entry) => (
           <option key={entry.id} value={entry.id}>

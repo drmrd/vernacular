@@ -14,7 +14,7 @@ export interface RoomPurposeEditorProps {
  * set-purpose command on change.
  */
 export function RoomPurposeEditor({ roomKey, purpose, dispatch }: RoomPurposeEditorProps) {
-  const selectId = `room-purpose-${roomKey}`
+  const inputId = `room-purpose-${roomKey}`
 
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.target.value
@@ -22,8 +22,8 @@ export function RoomPurposeEditor({ roomKey, purpose, dispatch }: RoomPurposeEdi
   }
 
   return (
-    <Field htmlFor={selectId} label="Purpose">
-      <select id={selectId} value={purpose ?? ''} onChange={handleChange}>
+    <Field htmlFor={inputId} label="Purpose">
+      <select id={inputId} value={purpose ?? ''} onChange={handleChange}>
         <option value="">Untagged</option>
         {Object.values(builtinRoomPurposes.entries).map((entry) => (
           <option key={entry.id} value={entry.id}>
