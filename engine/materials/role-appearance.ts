@@ -14,6 +14,10 @@ export const GLASS_OPACITY = 0.3
 export const FURNITURE_COLOR = 0xcc3333
 /** Low enough that the placeholder box reads as a translucent stand-in. */
 export const FURNITURE_OPACITY = 0.3
+/** A desaturated cool gray so a failed-load massing box reads as inert, distinct from the unloaded red. */
+export const FURNITURE_FAILED_COLOR = 0x6a6a6a
+/** A touch more opaque than the unloaded box, reinforcing that this is the final state, not in-flight. */
+export const FURNITURE_FAILED_OPACITY = 0.45
 /**
  * The slab top and the wall base share the Y = 0 finished-floor datum and overlap in plan under
  * every wall (ADR-0076), so the two coplanar faces z-fight on camera orbit. Push the slab top back
@@ -58,6 +62,16 @@ export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMat
       name: role,
       transparent: true,
       opacity: FURNITURE_OPACITY,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }
+  }
+  if (role === 'furnitureFailed') {
+    return {
+      color: FURNITURE_FAILED_COLOR,
+      name: role,
+      transparent: true,
+      opacity: FURNITURE_FAILED_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
     }
