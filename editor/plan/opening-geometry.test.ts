@@ -79,4 +79,16 @@ describe('swingLeafGeometry', () => {
     expect(geometry.closed).toEqual({ x: 1400, y: 0 })
     expect(geometry.counterclockwise).toBe(true)
   })
+
+  it('hinges on the end jamb facing negative and sweeps the minor (quarter-circle) arc', () => {
+    const geometry = swingLeafGeometry(
+      openingNode({ orientation: { hinge: 'end', facing: 'negative' } }),
+    )
+
+    // The diagonal cell of the matrix: leaf on the -y side anchored at the +x jamb.
+    expect(geometry.hinge).toEqual({ x: 1400, y: 0 })
+    expect(geometry.leafEnd).toEqual({ x: 1400, y: -800 })
+    expect(geometry.closed).toEqual({ x: 600, y: 0 })
+    expect(geometry.counterclockwise).toBe(false)
+  })
 })
