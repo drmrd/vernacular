@@ -19,12 +19,15 @@ const node: UnderlaySceneNode = {
 describe('underlayTracePoints', () => {
   it('returns the four calibrated footprint corners in plan millimeters', () => {
     const points = underlayTracePoints(node)
-    // Footprint: offset (1000, 2000), size 100 * 10 by 50 * 10 = 1000 by 500.
+    // Footprint: offset (1000, 2000) is the top-left in the y-up world; the image's
+    // downward pixel axis maps to downward world-y, so the height spans toward
+    // DECREASING y. Size 100 * 10 by 50 * 10 = 1000 by 500, so the bottom edge is
+    // at y = 2000 - 500 = 1500.
     expect(points).toHaveLength(4)
     expect(points).toContainEqual({ x: 1000, y: 2000 })
     expect(points).toContainEqual({ x: 2000, y: 2000 })
-    expect(points).toContainEqual({ x: 2000, y: 2500 })
-    expect(points).toContainEqual({ x: 1000, y: 2500 })
+    expect(points).toContainEqual({ x: 2000, y: 1500 })
+    expect(points).toContainEqual({ x: 1000, y: 1500 })
   })
 })
 
