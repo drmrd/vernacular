@@ -198,18 +198,16 @@ function drawDoorFold(painter: OpeningPainter, opening: DrawableOpening): void {
 function drawDoorPivot(painter: OpeningPainter, opening: DrawableOpening): void {
   const node = opening.node
   setInk(painter)
-  // The pivot leaf consumes the pure helper's hinge, open tip, closed jamb, and
-  // sweep direction, so its swing arc inherits the corrected minor-arc flag.
-  const primary = swingLeafGeometry(node, { leaf: 'primary' })
-  strokeSegment(painter, primary.hinge, primary.leafEnd)
+  const leaf = swingLeafGeometry(node, { leaf: 'primary' })
+  strokeSegment(painter, leaf.hinge, leaf.leafEnd)
   // A filled pivot dot at the hinge.
-  const dot = worldToScreen(primary.hinge, painter.viewport)
+  const dot = worldToScreen(leaf.hinge, painter.viewport)
   painter.ctx.fillStyle = painter.ink
   painter.ctx.beginPath()
   painter.ctx.arc(dot.x, dot.y, PIVOT_DOT_RADIUS_PX, 0, FULL_CIRCLE)
   painter.ctx.fill()
   // The swing arc.
-  strokeArc(painter, primary)
+  strokeArc(painter, leaf)
 }
 
 function drawCasedOpening(): void {
