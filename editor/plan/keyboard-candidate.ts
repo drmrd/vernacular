@@ -1,13 +1,14 @@
 import type { Point } from '../../core'
 
-// The keyboard candidate steps by the same grid step the selection nudge uses,
-// so authoring and editing share one motion granularity.
 export const CANDIDATE_STEP_MM = 100
 
 /**
- * Move the candidate point by one grid step for an arrow key, or null for any
- * other key. The motion is in world space (y increases upward), matching the
- * selection nudge, so ArrowUp adds to y and ArrowDown subtracts.
+ * Move the candidate point by one grid step for an arrow key, returning null
+ * for any other key. The motion is in world space (y increases upward),
+ * matching the selection nudge, so ArrowUp adds to y and ArrowDown subtracts.
+ *
+ * @param step distance to move, usually `CANDIDATE_STEP_MM` so authoring and
+ *   editing share one motion granularity with the selection nudge.
  */
 export function nudgeCandidate(point: Point, key: string, step: number): Point | null {
   switch (key) {
