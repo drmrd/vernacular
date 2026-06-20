@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -40,6 +41,17 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
 
   const toggle = useCallback(() => setOpen((current) => !current), [])
   const close = useCallback(() => setOpen(false), [])
+
+  // When the menu opens, move DOM focus to its first item so keyboard users land
+  // inside the menu. The items render only while `open`, and the effect runs after
+  // commit, so they are present in the DOM when this lookup runs.
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const firstItem = containerRef.current?.querySelector<HTMLElement>('[role="menuitem"]')
+    firstItem?.focus()
+  }, [open])
   // The explicit annotation widens the inferred `() => void` to the keyboard
   // signature the `MenuButton` interface requires. The body is a deliberate
   // no-op for now; later behaviors (B2-B5) add the actual key handling here.
