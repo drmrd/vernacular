@@ -19,10 +19,22 @@ export function SnapStatus() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="snap-status__marker" aria-hidden="true">
+        <span
+          className={[
+            'snap-status__marker',
+            preferences.enabled ? 'snap-status__marker--on' : 'snap-status__marker--off',
+          ].join(' ')}
+          aria-hidden="true"
+        >
           ◆
         </span>
         {preferences.enabled ? 'Snap' : 'Snap off'}
+        <span
+          className={['snap-status__caret', open && 'is-open'].filter(Boolean).join(' ')}
+          aria-hidden="true"
+        >
+          ▾
+        </span>
       </button>
       {open ? (
         <div className="snap-status__popover" role="dialog" aria-label="Snapping precision">
