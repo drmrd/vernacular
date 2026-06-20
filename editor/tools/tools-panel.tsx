@@ -43,11 +43,11 @@ const DEFAULT_WINDOW_TYPE: string =
 interface ChipProps {
   toolId?: ToolId
   label: string
-  disabled?: boolean
+  unavailable?: boolean
   icon?: Icon
 }
 
-function Chip({ toolId, label, disabled, icon }: ChipProps) {
+function Chip({ toolId, label, unavailable, icon }: ChipProps) {
   const { tool, setTool } = useActiveTool()
   const isActive = toolId !== undefined && tool === toolId
   const IconComponent = icon
@@ -56,8 +56,9 @@ function Chip({ toolId, label, disabled, icon }: ChipProps) {
       type="button"
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       aria-pressed={toolId !== undefined ? isActive : undefined}
-      disabled={disabled}
-      onClick={toolId !== undefined ? () => setTool(toolId) : undefined}
+      aria-disabled={unavailable ? true : undefined}
+      title={unavailable ? 'Planned, not yet available' : undefined}
+      onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
     >
       {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
       {label}
@@ -118,9 +119,9 @@ export function ToolsPanel() {
       <section className="tools-panel__section">
         <SectionLabel className="tools-panel__section-heading">Period</SectionLabel>
         <div className="tools-panel__grid">
-          <Chip label="Fireplace" icon={Flame} disabled />
-          <Chip label="Chimney" icon={Buildings} disabled />
-          <Chip label="Stairs" icon={Stairs} disabled />
+          <Chip label="Fireplace" icon={Flame} unavailable />
+          <Chip label="Chimney" icon={Buildings} unavailable />
+          <Chip label="Stairs" icon={Stairs} unavailable />
         </div>
       </section>
 
@@ -128,7 +129,7 @@ export function ToolsPanel() {
         <SectionLabel className="tools-panel__section-heading">Annotate</SectionLabel>
         <div className="tools-panel__grid">
           <Chip toolId="dimension" label="Dimension" icon={Ruler} />
-          <Chip label="Label" icon={Tag} disabled />
+          <Chip label="Label" icon={Tag} unavailable />
         </div>
       </section>
     </div>
