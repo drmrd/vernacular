@@ -19,4 +19,17 @@ describe('status-bar.css', () => {
     expect(block).toMatch(/font-variant-numeric:\s*tabular-nums/)
     expect(block).toMatch(/min-width:/)
   })
+
+  it('presents the tool readout as a static readout rather than a control', () => {
+    // The footer status bar mixes static readouts (the "Tool: Select" readout
+    // and the live coordinates) with controls (Snap, Units, and the floor
+    // tabs). They share the same muted type, so a user cannot tell which
+    // respond to a click. The Tool readout is static, yet sitting among
+    // clickable items it can look interactive. The .status-bar__tool rule must
+    // declare cursor: default so the readout does not invite a click; it stays
+    // muted via the inherited .status-bar color.
+    const block = css.match(/\.status-bar__tool\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(block).not.toBe('')
+    expect(block).toMatch(/cursor:\s*default/)
+  })
 })
