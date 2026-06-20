@@ -67,6 +67,25 @@ describe('RoomCeilingHeightEditor', () => {
     expect(command.params).toEqual(expected.params)
   })
 
+  it('commits the parsed ceiling height on blur, without pressing Enter', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderEditor(dispatch)
+
+    const input = screen.getByLabelText(/ceiling height/i)
+    await user.clear(input)
+    await user.type(input, VALID_ENTRY)
+    // Leave the field (focus moves away) without pressing Enter, so the count
+    // stays exact and the blur is the only thing that can commit.
+    await user.tab()
+
+    const expected = setRoomCeilingHeight(ROOM_KEY, EXPECTED_PARSED_MM)
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = dispatch.mock.calls[0]?.[0] as Command<SetRoomCeilingHeightParams>
+    expect(command.type).toBe(expected.type)
+    expect(command.params).toEqual(expected.params)
+  })
+
   it('dispatches nothing when an unparseable entry is committed with Enter', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()

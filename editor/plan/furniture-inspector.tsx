@@ -51,6 +51,7 @@ function NameField({ inputId, name, onCommit }: NameFieldProps): ReactElement {
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={() => onCommit(text)}
       />
     </Field>
   )
@@ -86,6 +87,7 @@ function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElem
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={commit}
       />
     </Field>
   )
