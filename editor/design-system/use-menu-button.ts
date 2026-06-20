@@ -67,6 +67,32 @@ function handleMenuKeyDown(
   roveMenuFocus(event, container)
 }
 
+// While the menu is open, a pointer-down outside the container closes it (no
+// focus move, since the user is interacting elsewhere). This also gives sibling
+// mutual-exclusion for free: a pointer-down on another menu's trigger is outside
+// this container, so this menu closes during the same gesture.
+function useDismissOnOutsidePointerDown<C extends HTMLElement>(
+  open: boolean,
+  containerRef: RefObject<C | null>,
+  close: () => void,
+): void {
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      const container = containerRef.current
+      if (container && event.target instanceof Node && !container.contains(event.target)) {
+        close()
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [open, containerRef, close])
+}
+
 export interface MenuButton<C extends HTMLElement> {
   open: boolean
   toggle: () => void
@@ -91,7 +117,8 @@ export interface MenuButton<C extends HTMLElement> {
  * (Project, Export). A consumer spreads `triggerProps` onto its trigger and
  * `menuProps` onto the `role="menu"` list; `open` gates rendering the list. The
  * menu key handler roves focus across the items and closes the menu on Escape;
- * the trigger key handler is still a no-op, pending outside-pointer dismissal.
+ * a pointer-down outside the container also closes an open menu. The trigger key
+ * handler is still a no-op.
  */
 export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuButton<C> {
   const [open, setOpen] = useState(false)
@@ -110,6 +137,8 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
     const firstItem = containerRef.current?.querySelector<HTMLElement>('[role="menuitem"]')
     firstItem?.focus()
   }, [open])
+
+  useDismissOnOutsidePointerDown(open, containerRef, close)
 
   // The explicit annotation widens the inferred `() => void` to the keyboard
   // signature the `MenuButton` interface requires. The trigger body is still a
