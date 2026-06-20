@@ -42,6 +42,22 @@ describe('RoomNameEditor', () => {
     expect(lastCommand(dispatch).params).toEqual(expected.params)
   })
 
+  it('dispatches one setRoomName for the room when the name is committed on blur', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderEditor(CURRENT_NAME, dispatch)
+
+    const input = screen.getByLabelText(/name/i)
+    await user.clear(input)
+    await user.type(input, ENTERED_NAME)
+    await user.tab()
+
+    const expected = setRoomName(ROOM_KEY, ENTERED_NAME)
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(lastCommand(dispatch).type).toBe(expected.type)
+    expect(lastCommand(dispatch).params).toEqual(expected.params)
+  })
+
   it('dispatches setRoomName with an empty name when the input is cleared and committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
