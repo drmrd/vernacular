@@ -10,6 +10,11 @@ import {
 
 type MenuKeyboardEvent = KeyboardEvent | ReactKeyboardEvent
 
+// Shared no-op for the trigger key handler. This slot is reserved for an
+// ArrowDown-opens-and-focuses-first nicety (a deferred WAI-ARIA Menu Button
+// refinement); it is intentionally inert until that tested behavior lands.
+const noop = (): void => {}
+
 // Roving target for ArrowDown/ArrowUp. Returns the index of the menu item to
 // focus next, or `null` when there is nothing to rove (no items). When the
 // active element is not one of the items, ArrowDown lands on the first item and
@@ -82,6 +87,8 @@ function useDismissOnOutsidePointerDown<C extends HTMLElement>(
     }
     const onPointerDown = (event: PointerEvent) => {
       const container = containerRef.current
+      // `event.target` is typed `EventTarget | null`; narrow to `Node` before
+      // calling `contains`, since `EventTarget` has no `contains`.
       if (container && event.target instanceof Node && !container.contains(event.target)) {
         close()
       }
@@ -90,7 +97,10 @@ function useDismissOnOutsidePointerDown<C extends HTMLElement>(
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
     }
-  }, [open, containerRef, close])
+    // `containerRef` is a stable `useRef` and is read inside the effect, so it is
+    // intentionally omitted from the dependency array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, close])
 }
 
 export interface MenuButton<C extends HTMLElement> {
@@ -140,10 +150,9 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
 
   useDismissOnOutsidePointerDown(open, containerRef, close)
 
-  // The explicit annotation widens the inferred `() => void` to the keyboard
-  // signature the `MenuButton` interface requires. The trigger body is still a
-  // deliberate no-op for now; later behaviors add its key handling here.
-  const onKeyDown: (event: MenuKeyboardEvent) => void = useCallback(() => {}, [])
+  // The trigger key handler is the reserved no-op (see `noop`). Widening the
+  // annotation matches the keyboard signature the `MenuButton` interface requires.
+  const onKeyDown: (event: MenuKeyboardEvent) => void = noop
 
   // Arrow keys rove focus between the menu items, wrapping past the last item
   // back to the first and before the first back to the last; Escape closes the
