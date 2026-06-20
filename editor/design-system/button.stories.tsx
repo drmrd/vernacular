@@ -6,6 +6,7 @@ import { Button } from './index'
 const meta: Meta<typeof Button> = {
   title: 'Design System/Button',
   component: Button,
+  tags: ['autodocs'],
 }
 
 export default meta

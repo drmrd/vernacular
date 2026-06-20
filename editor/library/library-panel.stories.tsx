@@ -27,6 +27,7 @@ function fetchBackedRegistry(): AssetRegistry {
 const meta: Meta<typeof LibraryPanel> = {
   title: 'Editor/Library Panel',
   component: LibraryPanel,
+  tags: ['autodocs'],
   render: () => (
     <AssetRegistryProvider registry={fetchBackedRegistry()}>
       <LibraryPanel onPick={() => {}} onImport={() => {}} />

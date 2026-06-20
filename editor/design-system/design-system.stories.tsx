@@ -13,6 +13,7 @@ import {
 
 const meta: Meta = {
   title: 'Design System/Foundation',
+  tags: ['autodocs'],
 }
 
 export default meta
