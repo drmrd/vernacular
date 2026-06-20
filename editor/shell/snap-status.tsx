@@ -19,7 +19,13 @@ export function SnapStatus() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <span className="snap-status__marker" aria-hidden="true">
+        <span
+          className={[
+            'snap-status__marker',
+            preferences.enabled ? 'snap-status__marker--on' : 'snap-status__marker--off',
+          ].join(' ')}
+          aria-hidden="true"
+        >
           ◆
         </span>
         {preferences.enabled ? 'Snap' : 'Snap off'}
