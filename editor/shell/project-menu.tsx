@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Button, IconButton } from '../design-system'
+import { Button, IconButton, useMenuButton } from '../design-system'
 import './project-menu.css'
 
 interface RecentProject {
@@ -50,24 +49,22 @@ function projectMenuItems({
 // recent projects into one dropdown, rendering only the entries whose handler is wired
 // and nothing at all when none are.
 export function ProjectMenu(props: ProjectMenuProps) {
-  const [open, setOpen] = useState(false)
+  const menu = useMenuButton<HTMLDivElement>()
   const items = projectMenuItems(props)
   if (items.length === 0) {
     return null
   }
   return (
-    <div className="project-menu">
+    <div className="project-menu" ref={menu.containerRef}>
       <IconButton
         className="project-menu__trigger-shape"
-        aria-haspopup="menu"
-        aria-expanded={open}
         aria-label="Project menu"
-        onClick={() => setOpen((value) => !value)}
+        {...menu.triggerProps}
       >
         <span aria-hidden="true">▾</span>
       </IconButton>
-      {open ? (
-        <ul className="project-menu__list" role="menu">
+      {menu.open ? (
+        <ul className="project-menu__list" {...menu.menuProps}>
           {items.map((item) => (
             <li key={item.label} role="none">
               <Button
@@ -75,7 +72,7 @@ export function ProjectMenu(props: ProjectMenuProps) {
                 className="project-menu__row"
                 onClick={() => {
                   item.onSelect()
-                  setOpen(false)
+                  menu.close()
                 }}
               >
                 {item.label}
