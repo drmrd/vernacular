@@ -36,8 +36,8 @@ export function rulerTicks(
 ): RulerTick[] {
   // Labels snap to the unit-nice interval (whole feet in imperial, a metric 1-2-5
   // decade in metric) via rulerLabelSpacingMm, decoupled from the metric drawing
-  // grid so the values a reader sees are round in their own unit. Minor ticks
-  // (drawRulerTicks) stay on gridSpacingMm.
+  // grid so the values a reader sees are round in their own unit. Minor ticks stay
+  // on the grid spacing.
   const labelSpacingMm = rulerLabelSpacingMm(preferences, viewport.scale)
   return axisSamples(axisProjection(viewport, orientation), lengthPx, labelSpacingMm).map(
     (sample) => ({
