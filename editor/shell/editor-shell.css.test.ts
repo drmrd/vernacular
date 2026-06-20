@@ -49,4 +49,18 @@ describe('editor-shell.css', () => {
     expect(wordmark).toMatch(/font-size:\s*var\(--font-size-/)
     expect(wordmark).not.toMatch(/font-size:\s*1rem/)
   })
+
+  it('reserves a steady footprint for the header save-status indicator', () => {
+    // The header save-status indicator cycles through labels of very different
+    // widths ("Ready", "Saving...", "All changes saved", "Save failed"). As a
+    // flex item in .editor-shell__toolbar it sizes to its current label, so the
+    // element resizes and the surrounding header chrome shifts as the autosave
+    // state changes. The .editor-shell__save-status rule must reserve a steady
+    // box: a min-width declaration wide enough for the longest label keeps the
+    // element from growing or shrinking as the state changes. The exact min-width
+    // value is the implementer's call.
+    const block = css.match(/\.editor-shell__save-status\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(block).not.toBe('')
+    expect(block).toMatch(/min-width:/)
+  })
 })
