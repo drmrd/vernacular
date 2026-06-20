@@ -452,12 +452,6 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the shell story sub-issue; it reads the theme context and is covered alongside the theme provider wrapper.',
   },
   {
-    component: 'UnitToggle',
-    file: 'editor/shell/unit-toggle.tsx',
-    reason:
-      'deferred to the shell story sub-issue; a units toggle interaction story is the first shell leaf authored in the #275 slice.',
-  },
-  {
     component: 'ZoomControl',
     file: 'editor/shell/zoom-control.tsx',
     reason:
