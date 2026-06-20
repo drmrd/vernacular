@@ -433,6 +433,39 @@ describe('createFramedSceneReconciler furniture model', () => {
     expect(firstMeshMaterialName(plainGroup)).toBe('furniture')
   })
 
+  it('builds the furnitureLoading box for a loading model entry and the plain box otherwise', () => {
+    const derive = createSceneGraphDeriver()
+    const chair = chairAt(0, 'chair-loading')
+    const floor: Floor = {
+      ...createFloor('Ground', { id: REUSE_FLOOR_ID, walls: singleRoomWalls() }),
+      furniture: [chair],
+    }
+    const graph = activeFloorGraph(derive, projectWith(floor))
+    const node = graph.furniture[0]
+    if (node === undefined) throw new Error('expected one furniture node')
+    const loadingModels = {
+      get: (hash: string) =>
+        hash === node.assetRef.contentHash ? { status: 'loading' as const } : undefined,
+    }
+
+    const loadingBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint(), loadingModels)
+    const plainBuild = createFramedSceneReconciler().reconcile(graph, emptyPaint())
+
+    const loadingGroup = findByEntityId(loadingBuild.root, chair.id)
+    const plainGroup = findByEntityId(plainBuild.root, chair.id)
+    expect(loadingGroup).not.toBeNull()
+    expect(plainGroup).not.toBeNull()
+    // The loading stand-in is still a massing box, so it keeps the edge overlay (LineSegments).
+    expect(loadingGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
+    // The loading box mesh carries the distinct furnitureLoading material; the box-only
+    // (no-entry) fall-through keeps the plain furniture material.
+    if (loadingGroup === null || plainGroup === null) {
+      throw new Error('expected both furniture box groups to exist')
+    }
+    expect(firstMeshMaterialName(loadingGroup)).toBe('furnitureLoading')
+    expect(firstMeshMaterialName(plainGroup)).toBe('furniture')
+  })
+
   it('rebuilds only the piece whose model became ready', async () => {
     const derive = createSceneGraphDeriver()
     const reconciler = createFramedSceneReconciler()
