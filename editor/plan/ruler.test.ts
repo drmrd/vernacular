@@ -122,10 +122,13 @@ describe('rulerTicks', () => {
     expect(imperialLabels).toEqual(expectedImperialLabels)
     expect(imperialLabels).not.toEqual(metricLabels)
 
-    // Only the label changes with the units; the world and screen geometry is identical.
-    expect(imperialTicks.map((tick) => tick.worldValue)).toEqual(
+    // The unit system now drives BOTH the label AND the labelled-tick spacing:
+    // imperial snaps to whole feet (2 ft = 609.6 mm) while metric snaps to a
+    // 1-2-5 decade (1000 mm), so at scale 0.1 / lengthPx 100 their worldValues
+    // diverge ([0, 609.6] vs [0, 1000]). Metric and imperial ticks therefore no
+    // longer share geometry.
+    expect(imperialTicks.map((tick) => tick.worldValue)).not.toEqual(
       metricTicks.map((tick) => tick.worldValue),
     )
-    expect(imperialTicks.map((tick) => tick.screen)).toEqual(metricTicks.map((tick) => tick.screen))
   })
 })
