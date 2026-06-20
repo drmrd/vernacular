@@ -1,3 +1,29 @@
+---
+slug: decisions/ADR-0069-visual-design-language-draughtsmans-restraint
+title: "ADR-0069: Visual design language, Draughtsman's Restraint"
+type: decision
+tags: [design-system, visual-language, theming, color, typography, iconography, accessibility]
+related:
+  [
+    decisions/ADR-0096-design-system-consolidation,
+    decisions/ADR-0076-wordmark-typeface,
+    decisions/ADR-0048-paint-color-palette-and-site-metadata,
+    decisions/ADR-0081-canvas-resolves-design-tokens-at-runtime,
+  ]
+sourceFiles:
+  [
+    docs/specs/2026-06-13-visual-design-language.md,
+    docs/specs/2026-06-10-editor-experience-makeover.md,
+    docs/specs/2026-06-09-design-system-token-and-theming-contract.md,
+    editor/design-system/tokens.css,
+    editor/design-system/tokens.ts,
+    editor/design-system/palette-contrast.test.ts,
+    index.html,
+  ]
+status: current
+updated: 2026-06-13
+---
+
 # ADR-0069: Visual design language -- Draughtsman's Restraint
 
 Date: 2026-06-13
