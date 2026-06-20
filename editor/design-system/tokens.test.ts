@@ -165,3 +165,38 @@ describe('Google Fonts loading', () => {
     expect(indexHtml).toContain('family=Inter')
   })
 })
+
+describe('WCAG target-size tokens (issue #234)', () => {
+  it('declares the fine-pointer 40px target minimum', () => {
+    expect(tokensCss).toMatch(/--size-target-min:\s*2\.5rem/)
+  })
+
+  it('declares the coarse-pointer 44px touch minimum', () => {
+    expect(tokensCss).toMatch(/--size-target-min-touch:\s*2\.75rem/)
+  })
+
+  it('retokenizes the icon square onto the fine-pointer minimum', () => {
+    expect(tokensCss).toMatch(/--size-control-icon:\s*var\(--size-target-min\)/)
+  })
+
+  it('drops the old icon-square placeholder literal', () => {
+    expect(tokensCss).not.toMatch(/--size-control-icon:\s*1\.75rem/)
+  })
+
+  it('bumps the target minimum to the touch value on a coarse pointer', () => {
+    expect(tokensCss).toMatch(
+      /@media \(pointer: coarse\)[^}]*--size-target-min:\s*var\(--size-target-min-touch\)/s,
+    )
+  })
+
+  it('registers the two new target-size tokens', () => {
+    expect(tokenList.map((t) => t.name)).toEqual(
+      expect.arrayContaining(['--size-target-min', '--size-target-min-touch']),
+    )
+  })
+
+  it('exposes var() accessors for the new target-size tokens', () => {
+    expect(tokens.sizeTargetMin.variable).toBe('var(--size-target-min)')
+    expect(tokens.sizeTargetMinTouch.variable).toBe('var(--size-target-min-touch)')
+  })
+})
