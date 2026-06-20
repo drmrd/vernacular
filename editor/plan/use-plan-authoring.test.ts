@@ -1,7 +1,8 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
-import { ADD_DIMENSION, ADD_WALL, PLACE_OPENING } from '../../core'
+import { ADD_DIMENSION, ADD_WALL, PLACE_FURNITURE, PLACE_OPENING } from '../../core'
 import type { SceneGraph, WallSceneNode } from '../../core'
+import type { LibraryItem } from '../../storage'
 import type { EditorSession } from '../../bridge'
 import { usePlanAuthoring } from './use-plan-authoring'
 
@@ -36,6 +37,20 @@ function graphWithWalls(walls: WallSceneNode[]): SceneGraph {
 
 function wall(id: string, start: WallSceneNode['start'], end: WallSceneNode['end']): WallSceneNode {
   return { id, kind: 'wall', floorId: 'g', start, end, thickness: 100 }
+}
+
+// A library item armed for placement: the place-furniture branch reads
+// reference/footprint/height/name to build the dropped instance.
+function armedItem(name: string): LibraryItem {
+  return {
+    reference: { scope: 'pack:starter@1.0.0', contentHash: 'abc123' },
+    name,
+    kind: 'furniture',
+    categories: ['seating'],
+    eras: ['victorian'],
+    footprint: { width: 600, depth: 600 },
+    height: 900,
+  }
 }
 
 describe('usePlanAuthoring', () => {
@@ -194,6 +209,51 @@ describe('usePlanAuthoring', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(result.current.announcement).toMatch(/no wall/i)
+  })
+
+  it('drops the armed furniture item at the candidate on Enter', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    const armed = armedItem('Wingback chair')
+    const { result } = renderHook(() =>
+      usePlanAuthoring({
+        session,
+        tool: 'place-furniture',
+        activeFloorId: 'g',
+        armed,
+        rotation: 0,
+      }),
+    )
+
+    // Enter drops a fresh instance of the armed item at the seeded origin
+    // candidate, dispatching the same placeFurniture command the pointer path uses.
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const cmd = dispatch.mock.calls[0]![0]
+    expect(cmd.type).toBe(PLACE_FURNITURE)
+    expect(cmd.params.furniture.assetRef).toEqual(armed.reference)
+    expect(cmd.params.furniture.position).toEqual({ x: 0, y: 0 })
+    expect(result.current.announcement).toMatch(new RegExp(`placed.*${armed.name}`, 'i'))
+  })
+
+  it('dispatches nothing when no furniture item is armed', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    renderHook(() =>
+      usePlanAuthoring({
+        session,
+        tool: 'place-furniture',
+        activeFloorId: 'g',
+        armed: null,
+        rotation: 0,
+      }),
+    )
+
+    // With nothing armed, Enter has no item to drop, so no command lands.
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).not.toHaveBeenCalled()
   })
 
   it('ignores Enter while a non-creative tool is active', () => {
