@@ -11,6 +11,12 @@
   color: var(--color-text-muted);
 }
 
+.status-bar__coords {
+  min-width: 11ch;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
 .floor-switcher__tab--active {
   color: var(--color-text);
   border-bottom: 2px solid var(--color-indicator);
