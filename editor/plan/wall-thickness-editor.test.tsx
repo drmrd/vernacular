@@ -86,6 +86,39 @@ describe('WallThicknessEditor', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('commits one parsed setWallThickness when a valid entry is committed on blur', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderEditor(dispatch)
+
+    const input = screen.getByLabelText(/thickness/i)
+    await user.clear(input)
+    await user.type(input, VALID_ENTRY)
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = dispatch.mock.calls[0]?.[0] as Command<SetWallThicknessParams>
+    expect(command.type).toBe(SET_WALL_THICKNESS)
+    expect(command.params).toEqual({
+      floorId: FLOOR_ID,
+      wallId: WALL_ID,
+      thickness: EXPECTED_PARSED_MM,
+    })
+  })
+
+  it('dispatches nothing when an unparseable entry is blurred', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderEditor(dispatch)
+
+    const input = screen.getByLabelText(/thickness/i)
+    await user.clear(input)
+    await user.type(input, UNPARSEABLE_ENTRY)
+    await user.tab()
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
   it('shows an inline error and keeps the typed text when a commit is rejected for being out of range', async () => {
     const dispatch = vi.fn(() => {
       // Mirror the dispatcher: a throwing handler is wrapped and rolled back,
