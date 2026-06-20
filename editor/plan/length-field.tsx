@@ -31,8 +31,7 @@ export function LengthField({
   assumeUnit,
   onCommitMm,
 }: LengthFieldProps): ReactElement {
-  const formatted = formatAdaptiveLength(valueMm, preferences)
-  const [text, setText] = useState(formatted)
+  const [text, setText] = useState(() => formatAdaptiveLength(valueMm, preferences))
   const [error, setError] = useState<string | null>(null)
 
   function commit(): void {
@@ -40,8 +39,7 @@ export function LengthField({
       onCommitMm(parseLength(text, { assumeUnit }))
       setError(null)
     } catch (err) {
-      // A rejected command surfaces a recoverable error; both it and an
-      // unparseable entry keep the invalid text without dispatching.
+      // A rejected command or unparseable entry keeps the text without dispatching.
       const message = lengthRejectionMessage(err)
       if (message) {
         setError(message)
@@ -64,6 +62,7 @@ export function LengthField({
         aria-invalid={error ? 'true' : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={commit}
       />
     </Field>
   )
