@@ -17,6 +17,8 @@ export type SurfaceRole =
   | 'furniture'
   // The role for a furniture massing box whose model failed to load.
   | 'furnitureFailed'
+  // The role for a furniture massing box whose model is still loading.
+  | 'furnitureLoading'
 
 /**
  * Supplies the material for each surface role. The MVP provider returns a single
