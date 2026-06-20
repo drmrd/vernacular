@@ -22,7 +22,12 @@ function isUnitSystem(value: string): value is UnitSystem {
 export function UnitToggle({ units, onChange }: UnitToggleProps): ReactElement {
   return (
     <div className="unit-toggle">
-      <span className="unit-toggle__label">Units</span>
+      {/* Hidden from assistive tech: the Segmented group already names
+          itself "Units" via aria-label, so this visible text is redundant
+          for screen-reader users and would otherwise be announced twice. */}
+      <span className="unit-toggle__label" aria-hidden="true">
+        Units
+      </span>
       <Segmented
         label="Units"
         options={[...UNIT_OPTIONS]}
