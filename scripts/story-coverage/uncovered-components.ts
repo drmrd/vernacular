@@ -154,12 +154,6 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the design-system story sub-issue; its layout-slot props warrant a small spike before authoring a representative story.',
   },
   {
-    component: 'Field',
-    file: 'editor/design-system/field.tsx',
-    reason:
-      'deferred to the design-system story sub-issue; a label-and-hint association story lands in the design-system slice.',
-  },
-  {
     component: 'PanelSlot',
     file: 'editor/design-system/panel-slot.tsx',
     reason:
