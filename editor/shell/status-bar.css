@@ -17,6 +17,16 @@
   text-align: left;
 }
 
+/*
+ * The Tool readout is a static readout sitting among clickable items (Snap,
+ * Units, the floor tabs), so it must not invite a click. A default cursor
+ * keeps it reading as text rather than a control; it stays muted via the
+ * inherited .status-bar color.
+ */
+.status-bar__tool {
+  cursor: default;
+}
+
 .floor-switcher__tab--active {
   color: var(--color-text);
   border-bottom: 2px solid var(--color-indicator);
