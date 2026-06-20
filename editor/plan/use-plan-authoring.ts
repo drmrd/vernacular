@@ -4,7 +4,12 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
-import { advanceWallTool, IDLE_WALL_TOOL, type WallToolState } from './wall-tool'
+import {
+  advanceWallTool,
+  cancelWallTool,
+  IDLE_WALL_TOOL,
+  type WallToolState,
+} from './wall-tool'
 
 // The keyboard authoring run seeds its candidate at the world origin when no
 // viewport is supplied, so the candidate is reachable before any pointer move.
@@ -40,7 +45,9 @@ function candidateMessage(point: Point): string {
 }
 
 // Drop a wall vertex at the candidate, dispatching the same commands the pointer
-// path dispatches, then advance the wall tool state and announce the drop.
+// path dispatches, then advance the wall tool state. A same-point Enter ends the
+// run (the tool returns to idle with no command), so announce the finish; any
+// other advance keeps drawing, so announce the dropped vertex.
 function dropWallVertex(ctx: WallKeyContext): void {
   const floorId = ctx.activeFloorId ?? ctx.session.getProject().floors[0]?.id
   if (floorId === undefined) {
@@ -52,11 +59,20 @@ function dropWallVertex(ctx: WallKeyContext): void {
     ctx.session.dispatch(command)
   })
   ctx.setToolState(result.state)
-  ctx.setAnnouncement('Wall vertex dropped')
+  const ranEnded = result.state.phase === 'idle' && result.commands === undefined
+  ctx.setAnnouncement(ranEnded ? 'Wall run finished' : 'Wall vertex dropped')
+}
+
+// Abandon the in-progress run, returning the tool to idle and committing nothing.
+function cancelWallRun(ctx: WallKeyContext): void {
+  ctx.event.preventDefault()
+  ctx.setToolState(cancelWallTool(ctx.toolState))
+  ctx.setAnnouncement('Wall run cancelled')
 }
 
 // Handle one keystroke while the wall tool is active: arrow keys move the
-// candidate, Enter drops a vertex, any other key falls through.
+// candidate, Enter drops a vertex or finishes the run, Escape cancels the run,
+// any other key falls through.
 function handleWallKey(ctx: WallKeyContext): void {
   const next = nudgeCandidate(ctx.candidate, ctx.event.key, CANDIDATE_STEP_MM)
   if (next !== null) {
@@ -67,6 +83,10 @@ function handleWallKey(ctx: WallKeyContext): void {
   }
   if (ctx.event.key === 'Enter') {
     dropWallVertex(ctx)
+    return
+  }
+  if (ctx.event.key === 'Escape') {
+    cancelWallRun(ctx)
   }
 }
 
