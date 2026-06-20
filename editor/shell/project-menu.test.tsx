@@ -15,7 +15,7 @@ describe('ProjectMenu', () => {
     const user = userEvent.setup()
     const onNewProject = vi.fn()
     render(<ProjectMenu onNewProject={onNewProject} onOpenFolder={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /new project/i }))
     expect(onNewProject).toHaveBeenCalledTimes(1)
   })
@@ -25,7 +25,7 @@ describe('ProjectMenu', () => {
     const onNewProject = vi.fn()
     render(<ProjectMenu onNewProject={onNewProject} onOpenFolder={vi.fn()} />)
 
-    const trigger = screen.getByRole('button', { name: /project menu/i })
+    const trigger = screen.getByRole('button', { name: /project/i })
     expect(trigger).toHaveClass('ds-icon-button')
     expect(trigger).not.toHaveClass('project-menu__trigger')
     expect(trigger).toHaveAttribute('aria-haspopup')
@@ -48,7 +48,7 @@ describe('ProjectMenu', () => {
     const user = userEvent.setup()
     const onOpenFile = vi.fn()
     render(<ProjectMenu onNewProject={vi.fn()} onOpenFile={onOpenFile} />)
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /open file/i }))
     expect(onOpenFile).toHaveBeenCalledOnce()
   })
@@ -62,9 +62,17 @@ describe('ProjectMenu', () => {
         recentProjects={[{ id: 'p1', name: 'Eastmore Farmstead' }]}
       />,
     )
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /eastmore farmstead/i }))
     expect(onOpenRecent).toHaveBeenCalledWith('p1')
+  })
+
+  it('renders a visible "Project" label on the trigger beside the chevron', () => {
+    render(<ProjectMenu onNewProject={vi.fn()} onOpenFolder={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: /project/i })
+    expect(trigger).toHaveTextContent('Project')
+    expect(screen.getByText('Project')).toBeInTheDocument()
   })
 
   it('closes the open menu and returns focus to the trigger when Escape is pressed', async () => {
