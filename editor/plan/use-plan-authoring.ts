@@ -178,7 +178,9 @@ function handleDimensionKey(ctx: DimensionKeyContext): void {
 }
 
 // One keystroke while the opening tool is active: the shared run plus the event
-// and the wall graph and placement type the opening branch projects onto.
+// and the wall graph and placement type the opening branch projects onto. Either
+// being undefined makes the Enter a no-op via dropOpening's early return, so the
+// caller never has to pre-check the optional deps.
 interface OpeningKeyContext extends AuthoringRun {
   event: KeyboardEvent
   graph: SceneGraph | undefined
@@ -188,7 +190,8 @@ interface OpeningKeyContext extends AuthoringRun {
 // Place an opening at the candidate by projecting it onto the nearest wall. On a
 // hit, dispatch the same place-opening command the pointer path dispatches for a
 // freshly created opening of the active placement type; on a miss, announce that
-// no wall sits under the candidate and dispatch nothing.
+// no wall sits near the candidate and dispatch nothing. This is a keyboard-only
+// path, so the miss phrasing names the candidate rather than a pointer cursor.
 function dropOpening(ctx: OpeningKeyContext): void {
   if (ctx.graph === undefined || ctx.placementType === undefined) {
     return
@@ -196,7 +199,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
   ctx.event.preventDefault()
   const target = placeOpeningTarget(ctx.graph, ctx.candidate, DEFAULT_HIT_TOLERANCE_MM)
   if (target === null) {
-    ctx.setAnnouncement('No wall under the cursor')
+    ctx.setAnnouncement('No wall near the candidate')
     return
   }
   const opening = createOpening({
@@ -251,24 +254,38 @@ function listenForAuthoringKeys(tools: AuthoringTools): () => void {
   }
 }
 
-// Route one keystroke to the active tool's handler. Each handler runs its own
-// arrow-nudge prologue, so this only picks the branch by the active tool.
+function routeWallKey(tools: AuthoringTools, event: KeyboardEvent): void {
+  handleWallKey({ ...tools.run, event, toolState: tools.wallState, setToolState: tools.setWallState })
+}
+
+function routeOpeningKey(tools: AuthoringTools, event: KeyboardEvent): void {
+  handleOpeningKey({ ...tools.run, event, graph: tools.graph, placementType: tools.placementType })
+}
+
+function routeDimensionKey(tools: AuthoringTools, event: KeyboardEvent): void {
+  const { run, dimensionState, setDimensionState } = tools
+  handleDimensionKey({ ...run, event, toolState: dimensionState, setToolState: setDimensionState })
+}
+
+// Route one keystroke to the active tool's handler. Each authoring tool names its
+// own branch explicitly and an unhandled tool does nothing, so a new tool (e.g.
+// furniture) adds its own case without inheriting another tool's branch as an
+// accidental fallback. Each handler runs its own arrow-nudge prologue, so this
+// only picks the branch by the active tool.
 function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
-  const { run } = tools
-  if (tools.tool === 'draw-wall') {
-    handleWallKey({ ...run, event, toolState: tools.wallState, setToolState: tools.setWallState })
-    return
+  switch (tools.tool) {
+    case 'draw-wall':
+      routeWallKey(tools, event)
+      return
+    case 'place-opening':
+      routeOpeningKey(tools, event)
+      return
+    case 'dimension':
+      routeDimensionKey(tools, event)
+      return
+    default:
+      return
   }
-  if (tools.tool === 'place-opening') {
-    handleOpeningKey({ ...run, event, graph: tools.graph, placementType: tools.placementType })
-    return
-  }
-  handleDimensionKey({
-    ...run,
-    event,
-    toolState: tools.dimensionState,
-    setToolState: tools.setDimensionState,
-  })
 }
 
 /**
