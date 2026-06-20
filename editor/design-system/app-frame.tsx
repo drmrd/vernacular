@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Button } from './button'
 import { usePaneCollapse } from './use-pane-collapse'
 import { usePaneResize } from './use-pane-resize'
@@ -16,6 +16,7 @@ export interface AppFrameProps {
   statusBar?: ReactNode
 }
 
+const RAIL_ID = 'ds-app-frame-rail'
 const RAIL_BOUNDS = { initial: 11, min: 8, max: 20 }
 const INSPECTOR_BOUNDS = { initial: 15, min: 10, max: 28 }
 const RESIZE_STEP_REM = 1
@@ -24,6 +25,7 @@ const PANE_BOUNDS = { rail: RAIL_BOUNDS, inspector: INSPECTOR_BOUNDS } as const
 interface CollapsiblePaneProps {
   area: 'rail' | 'inspector'
   label: string
+  id?: string
   children: ReactNode
 }
 
@@ -56,13 +58,14 @@ function PaneResizeHandle({ label, size, bounds, onResizeStep }: PaneResizeHandl
   )
 }
 
-function CollapsiblePane({ area, label, children }: CollapsiblePaneProps) {
+function CollapsiblePane({ area, label, id, children }: CollapsiblePaneProps) {
   const { collapsed, toggle } = usePaneCollapse(false)
   const { size, onResizeStep } = usePaneResize(PANE_BOUNDS[area])
   const style = { [`--ds-${area}-size`]: `${size}rem` } as CSSProperties
   return (
     <aside
       className={`ds-app-frame__${area}`}
+      id={id}
       aria-label={label}
       data-collapsed={collapsed}
       style={style}
@@ -90,6 +93,33 @@ function CollapsiblePane({ area, label, children }: CollapsiblePaneProps) {
   )
 }
 
+interface RailDisclosureToggleProps {
+  railLabel: string
+  open: boolean
+  setOpen: (updater: (open: boolean) => boolean) => void
+}
+
+function RailDisclosureToggle({ railLabel, open, setOpen }: RailDisclosureToggleProps) {
+  return (
+    <Button
+      className="ds-app-frame__rail-toggle"
+      aria-expanded={open}
+      aria-controls={RAIL_ID}
+      onClick={() => setOpen((current) => !current)}
+    >
+      {`${open ? 'Hide' : 'Show'} ${railLabel}`}
+    </Button>
+  )
+}
+
+function NarrowNotice({ railLabel }: { railLabel: string }) {
+  return (
+    <p className="ds-app-frame__narrow-notice" role="note">
+      {`Vernacular works best on a wider screen. Open the tools with the ${railLabel} button.`}
+    </p>
+  )
+}
+
 export function AppFrame({
   header,
   rail,
@@ -102,12 +132,20 @@ export function AppFrame({
 }: AppFrameProps) {
   const frameRef = useRef<HTMLDivElement>(null)
   const breakpoint = useBreakpoint(frameRef)
+  const [railOpen, setRailOpen] = useState(false)
   return (
-    <div ref={frameRef} className="ds-app-frame" data-breakpoint={breakpoint}>
+    <div
+      ref={frameRef}
+      className="ds-app-frame"
+      data-breakpoint={breakpoint}
+      data-rail-open={railOpen}
+    >
       <header className="ds-app-frame__header" role="banner">
         {header}
       </header>
-      <CollapsiblePane area="rail" label={railLabel}>
+      <RailDisclosureToggle railLabel={railLabel} open={railOpen} setOpen={setRailOpen} />
+      <NarrowNotice railLabel={railLabel} />
+      <CollapsiblePane area="rail" label={railLabel} id={RAIL_ID}>
         {rail}
       </CollapsiblePane>
       <main className="ds-app-frame__main" aria-label={mainLabel}>

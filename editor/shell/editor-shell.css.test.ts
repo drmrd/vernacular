@@ -50,6 +50,23 @@ describe('editor-shell.css', () => {
     expect(wordmark).not.toMatch(/font-size:\s*1rem/)
   })
 
+  it('lets the header toolbar and actions cluster wrap so they never overflow', () => {
+    // Below the 1024px wide breakpoint the header (brand + project menu +
+    // breadcrumb + the Grid/Dimensions/zoom/undo/redo/theme/Export/Save actions
+    // cluster + the save-status span) is a single non-wrapping flex row whose
+    // intrinsic min-width exceeds the viewport, so Export/Save clip off the right
+    // edge and the frame is forced wider than the viewport (sideways scroll).
+    // Letting both the toolbar and its actions cluster wrap reflows the header to
+    // multiple rows, collapsing its intrinsic min-width to the widest single item.
+    const toolbar = css.match(/\.editor-shell__toolbar\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(toolbar).not.toBe('')
+    expect(toolbar).toMatch(/flex-wrap:\s*wrap/)
+
+    const actions = css.match(/\.editor-shell__toolbar-actions\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(actions).not.toBe('')
+    expect(actions).toMatch(/flex-wrap:\s*wrap/)
+  })
+
   it('reserves a steady footprint for the header save-status indicator', () => {
     // The header save-status indicator cycles through labels of very different
     // widths ("Ready", "Saving...", "All changes saved", "Save failed"). As a
