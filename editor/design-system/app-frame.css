@@ -102,6 +102,9 @@
 .ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__rail-toggle {
   display: inline-flex;
   justify-self: start;
+  /* grid-row: 1 drops the toggle into the header row track via auto-placement (it
+     claims no named area), and the frame's overflow: hidden keeps the implicit
+     column it auto-places into from expanding the frame. */
   grid-row: 1;
 }
 

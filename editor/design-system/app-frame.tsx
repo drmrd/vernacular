@@ -96,7 +96,7 @@ function CollapsiblePane({ area, label, id, children }: CollapsiblePaneProps) {
 interface RailDisclosureToggleProps {
   railLabel: string
   open: boolean
-  setOpen: (next: (open: boolean) => boolean) => void
+  setOpen: (updater: (open: boolean) => boolean) => void
 }
 
 function RailDisclosureToggle({ railLabel, open, setOpen }: RailDisclosureToggleProps) {
