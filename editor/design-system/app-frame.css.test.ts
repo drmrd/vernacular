@@ -26,4 +26,23 @@ describe('app-frame.css', () => {
     expect(overlay).toMatch(/top:\s*0/)
     expect(overlay).toMatch(/bottom:\s*0/)
   })
+
+  it('keeps the status bar inside the frame at medium and narrow by pinning its grid row', () => {
+    // The frame is a 100dvh box with overflow: hidden, so the status bar only
+    // stays reachable when it places into an explicit `statusbar` grid area. The
+    // responsive templates drop that area, so the footer auto-flows into an
+    // implicit row past the explicit grid and is clipped. Restoring the
+    // `statusbar` area in both templates AND adding an explicit
+    // grid-template-rows override (so the row count matches and `main` keeps the
+    // single flexible track) pins the status bar inside the frame at every width.
+    const medium = css.match(/\.ds-app-frame\[data-breakpoint='medium'\]\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(medium).not.toBe('')
+    expect(medium).toMatch(/grid-template-areas:[^;]*statusbar/)
+    expect(medium).toMatch(/grid-template-rows:/)
+
+    const narrow = css.match(/\.ds-app-frame\[data-breakpoint='narrow'\]\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(narrow).not.toBe('')
+    expect(narrow).toMatch(/grid-template-areas:[^;]*statusbar/)
+    expect(narrow).toMatch(/grid-template-rows:/)
+  })
 })
