@@ -114,6 +114,12 @@ begun by pointer and a run begun by keyboard are separate runs.
   that arming path is the natural follow-up before furniture closes end to end.
 - The hook stays small by keeping the per-tool handlers in a sibling module, `authoring-tool-handlers`,
   so the hook file reads as state plus a routing switch and each tool adds one case.
+- A second window keydown listener under the wall tool exposed a latent fragility in the pointer wall
+  tool. Its keyboard listener re-subscribed on every render, so a sibling listener that updated state
+  inside a keystroke could re-add it mid-dispatch, and the DOM drops a listener re-added during
+  dispatch, which silently swallowed the pointer Escape and Enter. The pointer wall keyboard listener
+  now subscribes once per tool and reads its handlers through a ref, so it stays controllable no
+  matter what else listens on the window.
 
 ## References
 
