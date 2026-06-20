@@ -33,8 +33,7 @@ export function WallThicknessEditor({
   dispatch,
   preferences,
 }: WallThicknessEditorProps) {
-  const formatted = formatAdaptiveLength(thickness, preferences)
-  const [text, setText] = useState(formatted)
+  const [text, setText] = useState(() => formatAdaptiveLength(thickness, preferences))
   const [error, setError] = useState<string | null>(null)
   const inputId = `wall-thickness-${wallId}`
 
@@ -67,6 +66,7 @@ export function WallThicknessEditor({
         aria-invalid={error ? 'true' : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={commit}
       />
     </Field>
   )
