@@ -119,6 +119,8 @@
   --color-surface: var(--ink-950);
   --color-surface-raised: var(--ink-900);
   --color-surface-panel: var(--ink-900);
+  /* #2c3e57; --color-text on it = 10.16:1, was inheriting light vellum-200 = 1.19:1 */
+  --color-surface-active: var(--ink-800);
   --color-border: var(--ink-600);
   --color-accent: var(--brass-500);
   --color-accent-strong: var(--brass-300);
