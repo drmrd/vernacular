@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import {
   formatAdaptiveLength,
+  InvalidLengthError,
   parseLength,
   setWallThickness,
   type AssumedUnit,
@@ -34,6 +35,7 @@ export function WallThicknessEditor({
 }: WallThicknessEditorProps) {
   const formatted = formatAdaptiveLength(thickness, preferences)
   const [text, setText] = useState(formatted)
+  const [error, setError] = useState<string | null>(null)
   const inputId = `wall-thickness-${wallId}`
 
   function commit() {
@@ -41,8 +43,12 @@ export function WallThicknessEditor({
     try {
       const parsed = parseLength(text, { assumeUnit })
       dispatch(setWallThickness(floorId, wallId, parsed))
-    } catch {
-      // An unparseable entry dispatches nothing; the input keeps its invalid text.
+      setError(null)
+    } catch (err) {
+      // A rejected command surfaces a recoverable error; both it and an
+      // unparseable entry keep the invalid text without dispatching.
+      if (err instanceof Error && err.cause instanceof InvalidLengthError)
+        setError(err.cause.message)
     }
   }
 
@@ -53,11 +59,12 @@ export function WallThicknessEditor({
   }
 
   return (
-    <Field htmlFor={inputId} label="Thickness">
+    <Field htmlFor={inputId} label="Thickness" hint={error ?? undefined}>
       <input
         id={inputId}
         type="text"
         value={text}
+        aria-invalid={error ? 'true' : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />
