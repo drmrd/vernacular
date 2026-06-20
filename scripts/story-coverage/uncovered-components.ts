@@ -154,12 +154,6 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the design-system story sub-issue; its layout-slot props warrant a small spike before authoring a representative story.',
   },
   {
-    component: 'PanelSlot',
-    file: 'editor/design-system/panel-slot.tsx',
-    reason:
-      'deferred to the design-system story sub-issue; a with-children and empty-state story lands in the design-system slice.',
-  },
-  {
     component: 'ThemeProvider',
     file: 'editor/design-system/theme-provider.tsx',
     reason:
