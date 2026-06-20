@@ -8,6 +8,7 @@
     'statusbar statusbar statusbar';
   gap: var(--space-3);
   box-sizing: border-box;
+  position: relative;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -89,6 +90,32 @@
 
 .ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__rail {
   display: none;
+}
+
+/* The Tools disclosure is hidden at wide (the rail is always in the grid) and shown
+   at medium and narrow so the rail stays reachable. */
+.ds-app-frame__rail-toggle {
+  display: none;
+}
+
+.ds-app-frame[data-breakpoint='medium'] .ds-app-frame__rail-toggle,
+.ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__rail-toggle {
+  display: inline-flex;
+  justify-self: start;
+  grid-row: 1;
+}
+
+/* When opened at medium or narrow, the hidden rail becomes a positioned overlay over
+   the canvas. These rules override the closed-state display: none above only when open. */
+.ds-app-frame[data-breakpoint='medium'][data-rail-open='true'] .ds-app-frame__rail,
+.ds-app-frame[data-breakpoint='narrow'][data-rail-open='true'] .ds-app-frame__rail {
+  display: flex;
+  position: absolute;
+  z-index: 1;
+  top: var(--space-3);
+  left: var(--space-3);
+  max-height: calc(100dvh - 2 * var(--space-3));
+  width: var(--ds-rail-size, 11rem);
 }
 
 /* Collapsing a pane overrides its live resize width with a thin fixed strip. */
