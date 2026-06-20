@@ -54,6 +54,43 @@ describe('usePlanAuthoring', () => {
     expect(result.current.announcement).toMatch(/vertex|wall/i)
   })
 
+  it('finishes the run on a second Enter on the same candidate', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    const { result } = renderHook(() =>
+      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+    )
+
+    // Anchor, nudge, commit one wall.
+    act(() => dispatchWindowKey('Enter'))
+    act(() => dispatchWindowKey('ArrowRight'))
+    act(() => dispatchWindowKey('Enter'))
+    expect(dispatch).toHaveBeenCalledTimes(1)
+
+    // A second Enter on the unchanged candidate ends the run: advanceWallTool
+    // returns idle with no command for a same-point click, so no wall lands.
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(result.current.announcement).toMatch(/finish|done|complete|end/i)
+  })
+
+  it('cancels the run on Escape', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    const { result } = renderHook(() =>
+      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+    )
+
+    // Anchor the run and move the candidate, then abandon with Escape.
+    act(() => dispatchWindowKey('Enter'))
+    act(() => dispatchWindowKey('ArrowRight'))
+    act(() => dispatchWindowKey('Escape'))
+
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(result.current.announcement).toMatch(/cancel|abandon/i)
+  })
+
   it('ignores Enter while a non-creative tool is active', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
