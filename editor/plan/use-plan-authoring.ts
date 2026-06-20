@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { type Point, type SceneGraph } from '../../core'
 import type { LibraryItem } from '../../storage'
 import type { EditorSession } from '../../bridge'
@@ -37,6 +37,10 @@ export interface PlanAuthoringDeps {
 export interface PlanAuthoringResult {
   candidate: Point
   announcement: string
+  // A pointer move calls this so a fresh snap/selection announcement is not
+  // permanently masked by a stale keyboard-authoring step: the live region
+  // otherwise keeps prioritizing the non-empty authoring announcement.
+  clearAnnouncement: () => void
 }
 
 // Only the creative tools that drop free points on the canvas are wired here.
@@ -127,6 +131,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
   const [dimensionToolState, setDimensionToolState] =
     useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [announcement, setAnnouncement] = useState('')
+  const clearAnnouncement = useCallback(() => setAnnouncement(''), [])
 
   useEffect(() => {
     if (!isAuthoringTool(tool)) {
@@ -157,5 +162,5 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     rotation,
   ])
 
-  return { candidate, announcement }
+  return { candidate, announcement, clearAnnouncement }
 }
