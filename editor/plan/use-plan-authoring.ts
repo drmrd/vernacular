@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { distance, type Point } from '../../core'
+import { createOpening, distance, placeOpening, type Point, type SceneGraph } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
+import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
+import { placeOpeningTarget } from './place-opening'
 import {
   advanceWallTool,
   cancelWallTool,
@@ -29,6 +31,10 @@ export interface PlanAuthoringDeps {
   session: EditorSession
   tool: ToolId
   activeFloorId: string | null
+  /** Wall graph the opening branch projects the candidate onto via placeOpeningTarget. */
+  graph?: SceneGraph
+  /** Element-type id the opening branch places (e.g. 'single-swing-door'). */
+  placementType?: string
 }
 
 export interface PlanAuthoringResult {
@@ -71,6 +77,19 @@ function candidateMessage(point: Point): string {
 // The announcement for a measured dimension, naming its span and unit.
 function dimensionAnnouncement(span: number): string {
   return `Dimension measured ${span} ${DISTANCE_UNIT}`
+}
+
+// The announcement for a placed opening, named by the placement type so a door
+// reads "Door placed" and a window reads "Window placed". Anything else falls
+// back to a generic phrase without nesting ternaries.
+function openingAnnouncement(placementType: string): string {
+  if (placementType.includes('door')) {
+    return 'Door placed'
+  }
+  if (placementType.includes('window')) {
+    return 'Window placed'
+  }
+  return 'Opening placed'
 }
 
 // The arrow-key prologue shared by every tool handler: nudge the candidate, and
@@ -158,9 +177,98 @@ function handleDimensionKey(ctx: DimensionKeyContext): void {
   }
 }
 
+// One keystroke while the opening tool is active: the shared run plus the event
+// and the wall graph and placement type the opening branch projects onto.
+interface OpeningKeyContext extends AuthoringRun {
+  event: KeyboardEvent
+  graph: SceneGraph | undefined
+  placementType: string | undefined
+}
+
+// Place an opening at the candidate by projecting it onto the nearest wall. On a
+// hit, dispatch the same place-opening command the pointer path dispatches for a
+// freshly created opening of the active placement type; on a miss, announce that
+// no wall sits under the candidate and dispatch nothing.
+function dropOpening(ctx: OpeningKeyContext): void {
+  if (ctx.graph === undefined || ctx.placementType === undefined) {
+    return
+  }
+  ctx.event.preventDefault()
+  const target = placeOpeningTarget(ctx.graph, ctx.candidate, DEFAULT_HIT_TOLERANCE_MM)
+  if (target === null) {
+    ctx.setAnnouncement('No wall under the cursor')
+    return
+  }
+  const opening = createOpening({
+    type: ctx.placementType,
+    hostWallId: target.hostWallId,
+    position: target.position,
+  })
+  ctx.session.dispatch(placeOpening(target.floorId, opening))
+  ctx.setAnnouncement(openingAnnouncement(ctx.placementType))
+}
+
+// Handle one keystroke while the opening tool is active: arrow keys move the
+// candidate, Enter places an opening at the candidate, any other key falls through.
+function handleOpeningKey(ctx: OpeningKeyContext): void {
+  if (handleNudge(ctx, ctx.event)) {
+    return
+  }
+  if (ctx.event.key === 'Enter') {
+    dropOpening(ctx)
+  }
+}
+
 // Only the creative tools that drop free points on the canvas are wired here.
-function isAuthoringTool(tool: ToolId): tool is 'draw-wall' | 'dimension' {
-  return tool === 'draw-wall' || tool === 'dimension'
+function isAuthoringTool(tool: ToolId): tool is 'draw-wall' | 'dimension' | 'place-opening' {
+  return tool === 'draw-wall' || tool === 'dimension' || tool === 'place-opening'
+}
+
+// The full set of per-tool state and graph the window listener routes a
+// keystroke into, threaded as one object so the hook body stays lean.
+interface AuthoringTools {
+  tool: ToolId
+  run: AuthoringRun
+  wallState: WallKeyContext['toolState']
+  setWallState: WallKeyContext['setToolState']
+  dimensionState: DimensionKeyContext['toolState']
+  setDimensionState: DimensionKeyContext['setToolState']
+  graph: SceneGraph | undefined
+  placementType: string | undefined
+}
+
+// Install the window keydown listener that routes a keystroke to the active
+// tool, with cleanup. Kept out of the hook body so usePlanAuthoring stays lean.
+function listenForAuthoringKeys(tools: AuthoringTools): () => void {
+  const listener = (event: KeyboardEvent): void => {
+    if (!isTextEntry(event.target)) {
+      routeAuthoringKey(tools, event)
+    }
+  }
+  window.addEventListener('keydown', listener)
+  return () => {
+    window.removeEventListener('keydown', listener)
+  }
+}
+
+// Route one keystroke to the active tool's handler. Each handler runs its own
+// arrow-nudge prologue, so this only picks the branch by the active tool.
+function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
+  const { run } = tools
+  if (tools.tool === 'draw-wall') {
+    handleWallKey({ ...run, event, toolState: tools.wallState, setToolState: tools.setWallState })
+    return
+  }
+  if (tools.tool === 'place-opening') {
+    handleOpeningKey({ ...run, event, graph: tools.graph, placementType: tools.placementType })
+    return
+  }
+  handleDimensionKey({
+    ...run,
+    event,
+    toolState: tools.dimensionState,
+    setToolState: tools.setDimensionState,
+  })
 }
 
 /**
@@ -172,7 +280,7 @@ function isAuthoringTool(tool: ToolId): tool is 'draw-wall' | 'dimension' {
  * focused, mirroring the selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
-  const { session, tool, activeFloorId } = deps
+  const { session, tool, activeFloorId, graph, placementType } = deps
   const [candidate, setCandidate] = useState<Point>(ORIGIN)
   const [wallToolState, setWallToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [dimensionToolState, setDimensionToolState] =
@@ -183,27 +291,26 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     if (!isAuthoringTool(tool)) {
       return undefined
     }
-    const run: AuthoringRun = { session, activeFloorId, candidate, setCandidate, setAnnouncement }
-    const listener = (event: KeyboardEvent): void => {
-      if (isTextEntry(event.target)) {
-        return
-      }
-      if (tool === 'draw-wall') {
-        handleWallKey({ ...run, event, toolState: wallToolState, setToolState: setWallToolState })
-        return
-      }
-      handleDimensionKey({
-        ...run,
-        event,
-        toolState: dimensionToolState,
-        setToolState: setDimensionToolState,
-      })
-    }
-    window.addEventListener('keydown', listener)
-    return () => {
-      window.removeEventListener('keydown', listener)
-    }
-  }, [session, tool, activeFloorId, candidate, wallToolState, dimensionToolState])
+    return listenForAuthoringKeys({
+      tool,
+      run: { session, activeFloorId, candidate, setCandidate, setAnnouncement },
+      wallState: wallToolState,
+      setWallState: setWallToolState,
+      dimensionState: dimensionToolState,
+      setDimensionState: setDimensionToolState,
+      graph,
+      placementType,
+    })
+  }, [
+    session,
+    tool,
+    activeFloorId,
+    candidate,
+    wallToolState,
+    dimensionToolState,
+    graph,
+    placementType,
+  ])
 
   return { candidate, announcement }
 }
