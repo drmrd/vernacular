@@ -34,7 +34,7 @@ describe('usePlanAuthoring', () => {
     act(() => dispatchWindowKey('Enter'))
 
     expect(dispatch).toHaveBeenCalledTimes(1)
-    const cmd = dispatch.mock.calls[0][0]
+    const cmd = dispatch.mock.calls[0]![0]
     expect(cmd.type).toBe(ADD_WALL)
     expect(cmd.params.wall.start).toEqual({ x: 0, y: 0 })
     expect(cmd.params.wall.end).toEqual({ x: 100, y: 0 })

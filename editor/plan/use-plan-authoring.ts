@@ -17,7 +17,7 @@ export interface PlanAuthoringDeps {
 }
 
 export interface PlanAuthoringResult {
-  candidate: Point | null
+  candidate: Point
   announcement: string
 }
 
