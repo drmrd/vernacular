@@ -14,5 +14,6 @@ export function readableTextColor(
 ): string {
   const lightRatio = contrastRatio(candidates.light, fillHex)
   const darkRatio = contrastRatio(candidates.dark, fillHex)
+  // >= so ties favor the light candidate
   return lightRatio >= darkRatio ? candidates.light : candidates.dark
 }
