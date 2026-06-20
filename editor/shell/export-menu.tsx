@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Button } from '../design-system'
+import { Button, useMenuButton } from '../design-system'
 import './export-menu.css'
 
 interface ExportMenuProps {
@@ -23,7 +22,7 @@ export function ExportMenu({
   onExportImage,
   onExportPdf,
 }: ExportMenuProps) {
-  const [open, setOpen] = useState(false)
+  const menu = useMenuButton<HTMLDivElement>()
   const candidates: { label: string; onSelect: (() => void) | undefined }[] = [
     { label: 'Project bundle', onSelect: onExportBundle },
     { label: 'Plan (SVG)', onSelect: onExportPlan },
@@ -37,18 +36,13 @@ export function ExportMenu({
     return null
   }
   return (
-    <div className="export-menu">
-      <Button
-        variant="primary"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
+    <div className="export-menu" ref={menu.containerRef}>
+      <Button variant="primary" {...menu.triggerProps}>
         Export
         <span aria-hidden="true"> ▾</span>
       </Button>
-      {open ? (
-        <ul className="export-menu__list" role="menu">
+      {menu.open ? (
+        <ul className="export-menu__list" {...menu.menuProps}>
           {items.map((item) => (
             <li key={item.label} role="none">
               <Button
@@ -56,7 +50,7 @@ export function ExportMenu({
                 className="export-menu__row"
                 onClick={() => {
                   item.onSelect()
-                  setOpen(false)
+                  menu.close()
                 }}
               >
                 {item.label}
