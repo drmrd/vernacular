@@ -18,6 +18,9 @@ function MenuHarness() {
           <li role="none">
             <button role="menuitem">Open</button>
           </li>
+          <li role="none">
+            <button role="menuitem">Save</button>
+          </li>
         </ul>
       ) : null}
     </div>
@@ -52,5 +55,28 @@ describe('useMenuButton', () => {
     const items = screen.getAllByRole('menuitem')
     expect(items[0]).toHaveTextContent('New')
     expect(items[0]).toHaveFocus()
+  })
+
+  it('roves focus with the arrow keys, wrapping past the last item and before the first', async () => {
+    const user = userEvent.setup()
+    render(<MenuHarness />)
+
+    const trigger = screen.getByRole('button', { name: 'Project' })
+    await user.click(trigger)
+
+    const items = screen.getAllByRole('menuitem')
+    expect(items[0]).toHaveFocus()
+
+    await user.keyboard('{ArrowDown}')
+    expect(items[1]).toHaveFocus()
+
+    await user.keyboard('{ArrowDown}')
+    expect(items[2]).toHaveFocus()
+
+    await user.keyboard('{ArrowDown}')
+    expect(items[0]).toHaveFocus()
+
+    await user.keyboard('{ArrowUp}')
+    expect(items[2]).toHaveFocus()
   })
 })
