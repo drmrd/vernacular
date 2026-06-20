@@ -21,6 +21,10 @@ import {
 // viewport is supplied, so the candidate is reachable before any pointer move.
 const ORIGIN: Point = { x: 0, y: 0 }
 
+// core distance() reports spans in millimetres, so dimension announcements name
+// that unit explicitly rather than embedding a bare literal at the callsite.
+const DISTANCE_UNIT = 'mm'
+
 export interface PlanAuthoringDeps {
   session: EditorSession
   tool: ToolId
@@ -32,17 +36,31 @@ export interface PlanAuthoringResult {
   announcement: string
 }
 
-// The state the wall handler reads and writes for one keystroke, plus the
-// setters that surface the next candidate, tool state, and announcement.
-interface WallKeyContext {
-  event: KeyboardEvent
+// The tool-independent state and setters one keystroke reads, threaded so the
+// per-tool key handlers can compose their own context object.
+interface AuthoringRun {
   session: EditorSession
   activeFloorId: string | null
   candidate: Point
-  toolState: WallToolState
   setCandidate: (point: Point) => void
-  setToolState: (state: WallToolState) => void
   setAnnouncement: (message: string) => void
+}
+
+// One keystroke for a specific tool: the shared run plus the event and the
+// per-tool state the handler reads and writes.
+interface ToolKeyContext<State> extends AuthoringRun {
+  event: KeyboardEvent
+  toolState: State
+  setToolState: (state: State) => void
+}
+
+type WallKeyContext = ToolKeyContext<WallToolState>
+type DimensionKeyContext = ToolKeyContext<DimensionToolState>
+
+// The floor the dropped entity lands on: the active floor when one is selected,
+// otherwise the project's first floor; undefined when the project has no floors.
+function resolveFloorId(ctx: AuthoringRun): string | undefined {
+  return ctx.activeFloorId ?? ctx.session.getProject().floors[0]?.id
 }
 
 // The announcement for a moved candidate, naming its world coordinate.
@@ -50,12 +68,31 @@ function candidateMessage(point: Point): string {
   return `Candidate at ${point.x}, ${point.y}`
 }
 
+// The announcement for a measured dimension, naming its span and unit.
+function dimensionAnnouncement(span: number): string {
+  return `Dimension measured ${span} ${DISTANCE_UNIT}`
+}
+
+// The arrow-key prologue shared by every tool handler: nudge the candidate, and
+// when an arrow key moved it, consume the event and announce the new position.
+// Returns true when it handled the keystroke so the caller can return early.
+function handleNudge(ctx: AuthoringRun, event: KeyboardEvent): boolean {
+  const next = nudgeCandidate(ctx.candidate, event.key, CANDIDATE_STEP_MM)
+  if (next === null) {
+    return false
+  }
+  event.preventDefault()
+  ctx.setCandidate(next)
+  ctx.setAnnouncement(candidateMessage(next))
+  return true
+}
+
 // Drop a wall vertex at the candidate, dispatching the same commands the pointer
 // path dispatches, then advance the wall tool state. A same-point Enter ends the
 // run (the tool returns to idle with no command), so announce the finish; any
 // other advance keeps drawing, so announce the dropped vertex.
 function dropWallVertex(ctx: WallKeyContext): void {
-  const floorId = ctx.activeFloorId ?? ctx.session.getProject().floors[0]?.id
+  const floorId = resolveFloorId(ctx)
   if (floorId === undefined) {
     return
   }
@@ -79,11 +116,7 @@ function cancelWallRun(ctx: WallKeyContext): void {
 // candidate, Enter drops a vertex or finishes the run, Escape cancels the run,
 // any other key falls through.
 function handleWallKey(ctx: WallKeyContext): void {
-  const next = nudgeCandidate(ctx.candidate, ctx.event.key, CANDIDATE_STEP_MM)
-  if (next !== null) {
-    ctx.event.preventDefault()
-    ctx.setCandidate(next)
-    ctx.setAnnouncement(candidateMessage(next))
+  if (handleNudge(ctx, ctx.event)) {
     return
   }
   if (ctx.event.key === 'Enter') {
@@ -95,25 +128,12 @@ function handleWallKey(ctx: WallKeyContext): void {
   }
 }
 
-// The state the dimension handler reads and writes for one keystroke, plus the
-// setters that surface the next candidate, dimension tool state, and announcement.
-interface DimensionKeyContext {
-  event: KeyboardEvent
-  session: EditorSession
-  activeFloorId: string | null
-  candidate: Point
-  toolState: DimensionToolState
-  setCandidate: (point: Point) => void
-  setToolState: (state: DimensionToolState) => void
-  setAnnouncement: (message: string) => void
-}
-
 // Drop a dimension endpoint at the candidate. The first Enter anchors the start
 // (no command), the second Enter at a different candidate dispatches the single
 // add-dimension command and announces the measured span; a same-point second
 // Enter idles the tool and commits nothing.
 function dropDimensionEndpoint(ctx: DimensionKeyContext): void {
-  const floorId = ctx.activeFloorId ?? ctx.session.getProject().floors[0]?.id
+  const floorId = resolveFloorId(ctx)
   if (floorId === undefined) {
     return
   }
@@ -122,7 +142,7 @@ function dropDimensionEndpoint(ctx: DimensionKeyContext): void {
   if (result.command !== undefined) {
     ctx.session.dispatch(result.command)
     const span = distance(result.command.params.dimension.start, ctx.candidate)
-    ctx.setAnnouncement(`Dimension measured ${span} mm`)
+    ctx.setAnnouncement(dimensionAnnouncement(span))
   }
   ctx.setToolState(result.state)
 }
@@ -130,26 +150,12 @@ function dropDimensionEndpoint(ctx: DimensionKeyContext): void {
 // Handle one keystroke while the dimension tool is active: arrow keys move the
 // candidate, Enter drops a dimension endpoint, any other key falls through.
 function handleDimensionKey(ctx: DimensionKeyContext): void {
-  const next = nudgeCandidate(ctx.candidate, ctx.event.key, CANDIDATE_STEP_MM)
-  if (next !== null) {
-    ctx.event.preventDefault()
-    ctx.setCandidate(next)
-    ctx.setAnnouncement(candidateMessage(next))
+  if (handleNudge(ctx, ctx.event)) {
     return
   }
   if (ctx.event.key === 'Enter') {
     dropDimensionEndpoint(ctx)
   }
-}
-
-// The tool-independent state and setters one keystroke reads, threaded so the
-// per-tool key handlers can compose their own context object.
-interface AuthoringRun {
-  session: EditorSession
-  activeFloorId: string | null
-  candidate: Point
-  setCandidate: (point: Point) => void
-  setAnnouncement: (message: string) => void
 }
 
 // Only the creative tools that drop free points on the canvas are wired here.
