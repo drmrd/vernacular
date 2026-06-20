@@ -13,6 +13,13 @@ export interface WallToolResult {
   commands?: readonly Command[]
 }
 
+// A run ends when an advance returns to idle without committing a wall: the only
+// such transition is a same-point Enter on the active corner. Owning this
+// invariant here keeps callers from inspecting the result shape themselves.
+export function wallRunEnded(result: WallToolResult): boolean {
+  return result.state.phase === 'idle' && result.commands === undefined
+}
+
 export interface PreviewSegment {
   start: Point
   end: Point

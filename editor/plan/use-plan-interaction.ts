@@ -140,7 +140,17 @@ function useReresolveOnFreeAngleToggle({
   }, [])
 }
 
-/** Escape abandons the run, Enter ends it, and Backspace undoes the last segment. */
+/**
+ * Escape abandons the run, Enter ends it, and Backspace undoes the last segment.
+ *
+ * The handlers are read through a ref that is refreshed every render, so the
+ * window listener subscribes once per tool change rather than on every render.
+ * A render-scoped subscription would re-add the listener mid-keystroke whenever
+ * a sibling hook (such as the keyboard authoring hook) updates state inside the
+ * same keydown, and the DOM drops a listener re-added during dispatch, which
+ * would silently swallow this run-control key. The stable subscription keeps the
+ * wall run controllable no matter what else listens on the window.
+ */
 function useWallKeyboard({
   tool,
   finish,
@@ -149,25 +159,28 @@ function useWallKeyboard({
   setToolState,
   setPointer,
 }: WallKeyboardDeps): void {
+  const handlersRef = useRef({ finish, backspace, snapping, setToolState, setPointer })
+  handlersRef.current = { finish, backspace, snapping, setToolState, setPointer }
   useEffect(() => {
     if (tool !== 'draw-wall') {
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
+      const handlers = handlersRef.current
       if (event.key === 'Escape') {
-        setToolState(cancelWallTool)
-        setPointer(null)
-        snapping.clear()
+        handlers.setToolState(cancelWallTool)
+        handlers.setPointer(null)
+        handlers.snapping.clear()
       } else if (event.key === 'Enter') {
-        finish()
+        handlers.finish()
       } else if (event.key === 'Backspace') {
         event.preventDefault()
-        backspace()
+        handlers.backspace()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tool, finish, backspace, snapping, setToolState, setPointer])
+  }, [tool])
 }
 
 interface WallSnappingDeps {
