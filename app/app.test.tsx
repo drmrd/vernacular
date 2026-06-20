@@ -204,7 +204,7 @@ describe('App project actions', () => {
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
 
-    await userEvent.click(await screen.findByRole('button', { name: /project menu/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /project/i }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'My House' }))
 
     expect(
@@ -325,7 +325,7 @@ describe('App unsaved-changes guard', () => {
     })
 
     // Trigger New through the UI: open the project menu and select New project.
-    await userEvent.click(await screen.findByRole('button', { name: /project menu/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /project/i }))
     await userEvent.click(await screen.findByRole('menuitem', { name: /new project/i }))
 
     // A discard confirmation names the dirty project and offers Cancel.
