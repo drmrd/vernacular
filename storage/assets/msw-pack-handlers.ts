@@ -82,10 +82,7 @@ function buildManifest(assets: ManifestAsset[]): ServedManifest {
  * MSW handlers that serve a valid pack manifest listing exactly `assets`, in
  * order, at `GET ${base}/manifest.json`.
  */
-export function packHandlers(options: {
-  base: string
-  assets: ManifestAsset[]
-}): RequestHandler[] {
+export function packHandlers(options: { base: string; assets: ManifestAsset[] }): RequestHandler[] {
   const manifest = buildManifest(options.assets)
   return [http.get(`${options.base}/manifest.json`, () => HttpResponse.json(manifest))]
 }
@@ -94,10 +91,7 @@ export function packHandlers(options: {
  * MSW handlers that respond with a non-ok status (default 500) at
  * `GET ${base}/manifest.json`, so the fetch-backed reader surfaces an empty pack.
  */
-export function packErrorHandlers(options: {
-  base: string
-  status?: number
-}): RequestHandler[] {
+export function packErrorHandlers(options: { base: string; status?: number }): RequestHandler[] {
   const status = options.status ?? DEFAULT_ERROR_STATUS
   return [http.get(`${options.base}/manifest.json`, () => new HttpResponse(null, { status }))]
 }
