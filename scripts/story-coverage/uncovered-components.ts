@@ -394,7 +394,8 @@ export const UNCOVERED_COMPONENTS: {
   {
     component: 'BrandMark',
     file: 'editor/shell/brand-mark.tsx',
-    reason: 'deferred to the shell story sub-issue.',
+    reason:
+      'deferred to the shell story sub-issue; it is a zero-prop SVG component with no context dependency, so a story is straightforward.',
   },
   {
     component: 'CoordsReadout',
@@ -405,7 +406,8 @@ export const UNCOVERED_COMPONENTS: {
   {
     component: 'DiscardDialog',
     file: 'editor/shell/discard-dialog.tsx',
-    reason: 'deferred to the shell story sub-issue.',
+    reason:
+      'deferred to the shell story sub-issue; it is a props-only dialog component with no context dependency, so a story is straightforward.',
   },
   {
     component: 'EditorShell',
@@ -428,7 +430,8 @@ export const UNCOVERED_COMPONENTS: {
   {
     component: 'ImportAlert',
     file: 'editor/shell/import-alert.tsx',
-    reason: 'deferred to the shell story sub-issue.',
+    reason:
+      'deferred to the shell story sub-issue; it is a props-only alert component with no context dependency, so a story is straightforward.',
   },
   {
     component: 'ImportDropTarget',
