@@ -97,6 +97,27 @@ describe('AppFrame collapse', () => {
   })
 })
 
+describe('AppFrame rail disclosure', () => {
+  it('opens the rail through a Tools disclosure that flips aria-expanded and data-rail-open', async () => {
+    const user = userEvent.setup()
+    renderFrame()
+
+    const toggle = screen.getByRole('button', { name: /show tools/i })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveAttribute('aria-controls', 'ds-app-frame-rail')
+    expect(screen.getByRole('complementary', { name: 'Tools' })).toHaveAttribute(
+      'id',
+      'ds-app-frame-rail',
+    )
+
+    await user.click(toggle)
+
+    const opened = screen.getByRole('button', { name: /hide tools/i })
+    expect(opened).toHaveAttribute('aria-expanded', 'true')
+    expect(opened.closest('.ds-app-frame')).toHaveAttribute('data-rail-open', 'true')
+  })
+})
+
 describe('AppFrame statusBar', () => {
   it('renders the optional statusBar slot spanning the full width', () => {
     render(

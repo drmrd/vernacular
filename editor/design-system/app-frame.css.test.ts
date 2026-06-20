@@ -45,4 +45,34 @@ describe('app-frame.css', () => {
     expect(narrow).toMatch(/grid-template-areas:[^;]*statusbar/)
     expect(narrow).toMatch(/grid-template-rows:/)
   })
+
+  it('renders the rail as an overlay when the disclosure is open and gates the toggle by breakpoint', () => {
+    // jsdom applies no stylesheets, so the breakpoint-gated visibility of the
+    // disclosure is pinned here as a CSS literal guard. The frame must establish
+    // a positioning context so the opened rail can float over the canvas: the
+    // BASE `.ds-app-frame` rule (not a descendant) carries position: relative.
+    const frame = css.match(/\.ds-app-frame\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(frame).not.toBe('')
+    expect(frame).toMatch(/position:\s*relative/)
+
+    // When opened at medium the hidden rail becomes an absolutely positioned
+    // overlay over the main area rather than reclaiming a grid column.
+    const overlay =
+      css.match(
+        /\[data-breakpoint='medium'\]\[data-rail-open='true'\][^{]*\.ds-app-frame__rail\s*\{[^}]*\}/,
+      )?.[0] ?? ''
+    expect(overlay).not.toBe('')
+    expect(overlay).toMatch(/position:\s*absolute/)
+
+    // The toggle is hidden by default so it never shows at wide (where no
+    // data-breakpoint override applies and the rail lives in the grid).
+    const baseToggle = css.match(/\.ds-app-frame__rail-toggle\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(baseToggle).not.toBe('')
+    expect(baseToggle).toMatch(/display:\s*none/)
+
+    // The toggle is revealed at BOTH medium and narrow so the rail stays
+    // reachable on the narrow notice screen too.
+    expect(css).toMatch(/\[data-breakpoint='medium'\][^{]*\.ds-app-frame__rail-toggle/)
+    expect(css).toMatch(/\[data-breakpoint='narrow'\][^{]*\.ds-app-frame__rail-toggle/)
+  })
 })
