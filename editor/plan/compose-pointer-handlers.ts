@@ -35,6 +35,10 @@ export interface PointerSources {
   openingPlacement: OpeningPlacement
   furniturePlacement: FurniturePlacementHandlers
   hover: PlanHover
+  // Clears any standing keyboard-authoring announcement. A pointer move is a fresh
+  // pointer interaction, so it supersedes a stale authoring step ("Wall vertex
+  // dropped") that would otherwise keep masking the live snap/selection text.
+  clearAuthoringAnnouncement: () => void
 }
 
 // The select-tool footprint grabs, in priority order: an opening jamb resize beats
@@ -99,6 +103,10 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
   return {
     onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => composedPointerDown(sources, event),
     onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => {
+      // A pointer move supersedes any standing keyboard-authoring announcement, so a
+      // fresh snap or selection reads in the live region rather than the last
+      // "Wall vertex dropped". No-op (a stable empty set) when nothing is standing.
+      sources.clearAuthoringAnnouncement()
       // Runs before the guards: hover self-gates on event.buttons, so the highlight
       // always updates regardless of which handler below claims the rest of the move.
       hover.onPointerMove(event)

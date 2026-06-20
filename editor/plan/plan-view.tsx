@@ -359,6 +359,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       openingPlacement: openingLayer.placement,
       furniturePlacement: layers.furnitureLayer.placement,
       hover: layers.planHover,
+      clearAuthoringAnnouncement: layers.authoring.clearAnnouncement,
     }),
     overlay: buildOverlayProps(layers, readout),
   }

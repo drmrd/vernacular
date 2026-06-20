@@ -89,6 +89,25 @@ describe('usePlanAuthoring', () => {
     expect(result.current.announcement).toMatch(/vertex|wall/i)
   })
 
+  it('clears the live announcement so a later pointer interaction can supersede it', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    const { result } = renderHook(() =>
+      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+    )
+
+    // Drop a vertex so the live region carries a keyboard-authoring announcement.
+    act(() => dispatchWindowKey('Enter'))
+    act(() => dispatchWindowKey('ArrowRight'))
+    act(() => dispatchWindowKey('Enter'))
+    expect(result.current.announcement).toMatch(/vertex|wall/i)
+
+    // Clearing resets the announcement so a fresh pointer interaction is not suppressed.
+    act(() => result.current.clearAnnouncement())
+
+    expect(result.current.announcement).toBe('')
+  })
+
   it('finishes the run on a second Enter on the same candidate', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
