@@ -479,6 +479,7 @@ export {
 } from './color/color-temperature'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
+export { readableTextColor } from './color/readable-text-color'
 export type { Color, NamedColor } from './color/color'
 export { colorFromHex, colorFromOkLab } from './color/color'
 export { mixColors, nearestColor, perceptualDistance } from './color/operations'

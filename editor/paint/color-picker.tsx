@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   assignSurfacePaint,
   builtinPalettes,
+  readableTextColor,
   type Color,
   type Command,
   type NamedColor,
@@ -21,6 +22,11 @@ function paletteColors(): NamedColor[] {
   return Object.values(builtinPalettes.entries).flatMap((palette) => palette.colors)
 }
 
+// Candidate label colors for a swatch chip: the readable-text helper picks
+// whichever reads better on the chip's variable fill.
+const SWATCH_LABEL_LIGHT = '#fbf7ef' // vellum-50
+const SWATCH_LABEL_DARK = '#2f2615' // umber-900
+
 interface ColorChipProps {
   label: string
   srgbHex: string
@@ -28,8 +34,17 @@ interface ColorChipProps {
 }
 
 function ColorChip({ label, srgbHex, onSelect }: ColorChipProps) {
+  const labelColor = readableTextColor(srgbHex, {
+    light: SWATCH_LABEL_LIGHT,
+    dark: SWATCH_LABEL_DARK,
+  })
   return (
-    <button type="button" aria-label={label} style={{ background: srgbHex }} onClick={onSelect}>
+    <button
+      type="button"
+      aria-label={label}
+      style={{ background: srgbHex, color: labelColor }}
+      onClick={onSelect}
+    >
       {label}
     </button>
   )

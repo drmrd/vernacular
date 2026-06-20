@@ -92,6 +92,11 @@ describe('dead system-theme block', () => {
     expect(tokensCss).toContain("[data-theme='dark']")
     expect(tokensCss).toMatch(/\[data-theme='dark'\][^}]*--color-surface:\s*var\(--ink-950\)/)
   })
+
+  it('overrides the active-surface fill in the dark block so it does not inherit the light vellum', () => {
+    const darkBlock = tokensCss.match(/\[data-theme='dark'\]\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(darkBlock).toMatch(/--color-surface-active:\s*var\(--ink-800\)/)
+  })
 })
 
 describe('drafting-table palette', () => {
