@@ -65,6 +65,7 @@ export function RoomCeilingHeightEditor({
         aria-invalid={error ? 'true' : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={commit}
       />
     </Field>
   )
