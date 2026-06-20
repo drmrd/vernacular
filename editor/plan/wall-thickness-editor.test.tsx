@@ -3,6 +3,7 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   DEFAULT_METRIC_PREFERENCES,
+  InvalidLengthError,
   SET_WALL_THICKNESS,
   parseLength,
   type Command,
@@ -25,6 +26,7 @@ const METRIC_ASSUMED_UNIT = 'mm' as const
 
 const VALID_ENTRY = '150'
 const UNPARSEABLE_ENTRY = 'abc'
+const OUT_OF_RANGE_ENTRY = '-5'
 
 // A wall-thickness-scale length reads in centimetres with one decimal under the
 // adaptive metric rule: 100 mm renders as "10.0 cm", not "100 mm".
@@ -82,5 +84,33 @@ describe('WallThicknessEditor', () => {
     await user.type(input, `${UNPARSEABLE_ENTRY}{Enter}`)
 
     expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('shows an inline error and keeps the typed text when a commit is rejected for being out of range', async () => {
+    const dispatch = vi.fn(() => {
+      // Mirror the dispatcher: a throwing handler is wrapped and rolled back,
+      // with the original domain rejection carried on `.cause`.
+      const rejection = new Error('Command "set-wall-thickness" failed and was rolled back')
+      rejection.cause = new InvalidLengthError('Thickness', -5)
+      throw rejection
+    })
+    const user = userEvent.setup()
+    renderEditor(dispatch)
+
+    const input = screen.getByLabelText(/thickness/i)
+    await user.clear(input)
+    await user.type(input, `${OUT_OF_RANGE_ENTRY}{Enter}`)
+
+    // The entered text is kept so the user can correct it in place.
+    expect(input).toHaveValue(OUT_OF_RANGE_ENTRY)
+
+    // A visible, recoverable error surfaces through the Field hint slot.
+    const hint = document.querySelector('.ds-field__hint')
+    expect(hint).not.toBeNull()
+    expect(hint).toHaveTextContent(/\S/)
+
+    // The control is marked invalid and points at the error text.
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
   })
 })
