@@ -72,4 +72,8 @@ describe.each(['light', 'dark'] as const)('drafting-table %s contrast', (theme) 
   it('keeps the focus ring visible against the surface', () => {
     expect(ratio('--color-focus-ring', '--color-surface')).toBeGreaterThanOrEqual(AA_UI)
   })
+
+  it('keeps active-state label text readable on the active fill', () => {
+    expect(ratio('--color-text', '--color-surface-active')).toBeGreaterThanOrEqual(AA_NORMAL)
+  })
 })
