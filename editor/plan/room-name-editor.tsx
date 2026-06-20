@@ -30,6 +30,7 @@ export function RoomNameEditor({ roomKey, name, dispatch }: RoomNameEditorProps)
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
+        onBlur={commit}
       />
     </Field>
   )
