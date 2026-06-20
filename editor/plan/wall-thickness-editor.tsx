@@ -1,7 +1,6 @@
 import { useState, type KeyboardEvent } from 'react'
 import {
   formatAdaptiveLength,
-  InvalidLengthError,
   parseLength,
   setWallThickness,
   type AssumedUnit,
@@ -9,6 +8,7 @@ import {
   type UnitSystem,
 } from '../../core'
 import { Field } from '../design-system'
+import { lengthRejectionMessage } from './length-rejection-message'
 
 // A bare number entered for a metric project means millimetres; for an imperial
 // project it means feet. This is the active system's assume-unit, so a number
@@ -47,15 +47,15 @@ export function WallThicknessEditor({
     } catch (err) {
       // A rejected command surfaces a recoverable error; both it and an
       // unparseable entry keep the invalid text without dispatching.
-      if (err instanceof Error && err.cause instanceof InvalidLengthError)
-        setError(err.cause.message)
+      const message = lengthRejectionMessage(err)
+      if (message) {
+        setError(message)
+      }
     }
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      commit()
-    }
+    if (event.key === 'Enter') commit()
   }
 
   return (
