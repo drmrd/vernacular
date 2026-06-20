@@ -166,12 +166,6 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the design-system story sub-issue; a text-rendering story lands in the design-system slice.',
   },
   {
-    component: 'EmptyState',
-    file: 'editor/design-system/status.tsx',
-    reason:
-      'deferred to the design-system story sub-issue; one status story covers both the empty and loading states this module exports.',
-  },
-  {
     component: 'ThemeProvider',
     file: 'editor/design-system/theme-provider.tsx',
     reason:
