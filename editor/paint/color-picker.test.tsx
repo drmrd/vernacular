@@ -5,6 +5,7 @@ import {
   assignSurfacePaint,
   builtinPalettes,
   colorFromHex,
+  readableTextColor,
   type Command,
   type SurfaceRef,
 } from '../../core'
@@ -14,6 +15,7 @@ const REF: SurfaceRef = { kind: 'floor', floorId: 'floor-1' }
 const RECENT = [colorFromHex('#6e2b2b', 'Oxblood')]
 const FIRST_PALETTE = Object.values(builtinPalettes.entries)[0]!
 const FIRST_COLOR = FIRST_PALETTE.colors[0]!
+const CANDIDATES = { light: '#fbf7ef', dark: '#2f2615' }
 
 afterEach(cleanup)
 
@@ -44,5 +46,13 @@ describe('ColorPicker', () => {
     await user.type(screen.getByLabelText(/search/i), FIRST_COLOR.name)
 
     expect(screen.getByText(FIRST_COLOR.name)).toBeInTheDocument()
+  })
+
+  it('paints each swatch label in the readable-text color for its own fill', () => {
+    render(<ColorPicker surface={REF} finishId="matte" recent={RECENT} dispatch={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: FIRST_COLOR.name })).toHaveStyle({
+      color: readableTextColor(FIRST_COLOR.color.srgbHex, CANDIDATES),
+    })
   })
 })
