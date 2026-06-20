@@ -112,6 +112,14 @@ function RailDisclosureToggle({ railLabel, open, setOpen }: RailDisclosureToggle
   )
 }
 
+function NarrowNotice({ railLabel }: { railLabel: string }) {
+  return (
+    <p className="ds-app-frame__narrow-notice" role="note">
+      {`Vernacular works best on a wider screen. Open the tools with the ${railLabel} button.`}
+    </p>
+  )
+}
+
 export function AppFrame({
   header,
   rail,
@@ -136,6 +144,7 @@ export function AppFrame({
         {header}
       </header>
       <RailDisclosureToggle railLabel={railLabel} open={railOpen} setOpen={setRailOpen} />
+      <NarrowNotice railLabel={railLabel} />
       <CollapsiblePane area="rail" label={railLabel} id={RAIL_ID}>
         {rail}
       </CollapsiblePane>

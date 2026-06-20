@@ -108,6 +108,23 @@
   grid-row: 1;
 }
 
+/* The unsupported-width notice is always in the DOM but hidden by default; it appears
+   only at narrow so that width reads as a defined state rather than breaking silently. */
+.ds-app-frame__narrow-notice {
+  display: none;
+}
+
+.ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__narrow-notice {
+  display: block;
+  grid-row: 1;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
 /* When opened at medium or narrow, the hidden rail becomes a positioned overlay over
    the canvas. These rules override the closed-state display: none above only when open. */
 .ds-app-frame[data-breakpoint='medium'][data-rail-open='true'] .ds-app-frame__rail,
