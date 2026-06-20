@@ -14,3 +14,8 @@ reports/stryker
 # Prettier must not reformat them. Hand-written docs like schema/README.md
 # stay formatted.
 schema/*/vernacular.schema.json
+
+# Generated MSW service worker. It is copied verbatim by `msw init` and carries
+# an integrity checksum tied to the installed msw version, so Prettier must not
+# reformat it. Regenerate it with `msw init public/ --save` on an msw bump.
+public/mockServiceWorker.js
