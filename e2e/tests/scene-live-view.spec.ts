@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 
 // This exercises the editor's LIVE three-dimensional preview pane (`WebGPUSceneView`),
 // not the deterministic `?fixture=scene-harness` render harness. It reproduces the
@@ -13,11 +13,14 @@ import { test, expect, type Locator } from '@playwright/test'
 //
 // The assertion is semantic, not a committed pixel baseline: the live view renders
 // through the non-deterministic WebGPU backend (ADR-0045 explains why a WebGPU pixel
-// baseline is not pinned). It compares two STABLE frames - blank vs after a wall is
-// drawn - and requires them to differ. Stability matters: an earlier version of this
-// test fired on a transient frame during canvas init and passed even on the unfixed,
-// always-blank view, so each frame is captured only once two consecutive screenshots
-// match.
+// baseline is not pinned). An empty floor shows the "Nothing to show in 3D yet"
+// empty-state rather than a blank canvas, so the canvas only mounts once a wall exists.
+// The test first confirms that empty-state, then compares two STABLE canvas frames - one
+// wall vs a second wall added - and requires them to differ, which catches both an
+// unframed camera (geometry off-screen leaves both frames identically blank) and a view
+// that never updates when the plan changes. Stability matters: an earlier version fired
+// on a transient frame during canvas init and passed even on the unfixed view, so each
+// frame is captured only once two consecutive screenshots match.
 
 // Polls until the canvas reaches a steady frame (two consecutive identical screenshots),
 // then returns that stable frame. The scene has no animation, so a steady frame is the
@@ -38,6 +41,21 @@ async function stableFrame(canvas: Locator): Promise<Buffer> {
   return last
 }
 
+type Point = { x: number; y: number }
+
+// Commits one wall run in the plan pane: arm the Wall tool, click the two endpoints, then
+// press Enter so the buffered run commits.
+async function drawWall(
+  page: Page,
+  plan: Locator,
+  segment: { from: Point; to: Point },
+): Promise<void> {
+  await page.getByRole('button', { name: 'Wall', exact: true }).click()
+  await plan.click({ position: segment.from })
+  await plan.click({ position: segment.to })
+  await page.keyboard.press('Enter')
+}
+
 test.describe('Live three-dimensional preview pane', () => {
   test('reflects a drawn wall in the split-view 3D pane', async ({ page }) => {
     await page.goto('/')
@@ -50,6 +68,17 @@ test.describe('Live three-dimensional preview pane', () => {
     await page.getByRole('button', { name: 'Split view' }).click()
 
     const pane = page.getByRole('region', { name: /3d preview/i })
+    // An empty floor has no geometry, so the pane shows the empty-state and no canvas.
+    await expect(pane.getByRole('heading', { name: /nothing to show in 3d yet/i })).toBeVisible()
+    await expect(pane.locator('canvas')).toHaveCount(0)
+
+    const plan = page.getByLabel('Floor plan')
+    await expect(plan).toBeVisible()
+
+    // The first wall gives the live view geometry, so the canvas mounts and frames it.
+    await drawWall(page, plan, { from: { x: 100, y: 150 }, to: { x: 300, y: 150 } })
+    await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
+
     const canvas = pane.locator('canvas')
     await expect(canvas).toBeVisible()
     // React Three Fiber mounts the canvas at the HTML default 300x150, then resizes it to
@@ -61,22 +90,17 @@ test.describe('Live three-dimensional preview pane', () => {
       })
       .toBeGreaterThan(200)
 
-    const blankFrame = await stableFrame(canvas)
+    const oneWallFrame = await stableFrame(canvas)
 
-    // Draw one wall in the plan pane (visible beside the 3D pane in split view).
-    const plan = page.getByLabel('Floor plan')
-    await expect(plan).toBeVisible()
-    await page.getByRole('button', { name: 'Wall', exact: true }).click()
-    await plan.click({ position: { x: 100, y: 150 } })
-    await plan.click({ position: { x: 300, y: 150 } })
-    // Finish the run with Enter so the buffered wall commits.
-    await page.keyboard.press('Enter')
-    await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
+    // A second, separate wall changes the plan, so the live view must re-frame and
+    // re-render. A disjoint parallel run grows the framed bounds without sharing a vertex.
+    await drawWall(page, plan, { from: { x: 100, y: 260 }, to: { x: 300, y: 260 } })
+    await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(2)
 
-    const drawnFrame = await stableFrame(canvas)
+    const twoWallFrame = await stableFrame(canvas)
 
-    // The settled 3D frame must change once the live view frames the drawn geometry.
-    // On the unfixed view both frames are the identical blank render.
-    expect(drawnFrame.equals(blankFrame)).toBe(false)
+    // The settled 3D frame must change once the live view reflects the new geometry.
+    // On the unfixed view both frames are the identical render that never updated.
+    expect(twoWallFrame.equals(oneWallFrame)).toBe(false)
   })
 })

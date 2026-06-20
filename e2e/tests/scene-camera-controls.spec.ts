@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test'
-import { settledSceneCanvas } from './scene-helpers'
+import { drawnSceneCanvas } from './scene-helpers'
 
 // Exercises the live three-dimensional pane's discoverable camera affordances: the
 // per-mode controls hint caption and the grab cursor on the preview pane. Runs only in
 // the GPU `scene-webgl` Playwright project (the config routes `scene-*.spec.ts` there)
 // and self-skips without WebGPU, because the live pane renders through the WebGPU backend
 // and otherwise shows a fallback message.
+//
+// The camera affordances belong to the live canvas, which only mounts once the active
+// floor carries geometry; until then the pane shows the "Nothing to show in 3D yet"
+// empty-state. So each test draws a wall first via `drawnSceneCanvas` before reaching for
+// the canvas and its controls.
 //
 // The assertions are on the DOM affordances (the hint text and the pane cursor), not on a
 // committed pixel baseline: the live view renders through the non-deterministic WebGPU
@@ -17,7 +22,8 @@ test.describe('Discoverable three-dimensional camera controls', () => {
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
-    await settledSceneCanvas(page)
+    // Draw a wall so the live canvas mounts (the empty floor shows the empty-state instead).
+    await drawnSceneCanvas(page)
 
     // Orbit is the default mode, so the hint shows the orbit lines on first render.
     await expect(page.getByRole('group', { name: /camera controls/i })).toBeVisible()
@@ -40,7 +46,8 @@ test.describe('Discoverable three-dimensional camera controls', () => {
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
-    const canvas = await settledSceneCanvas(page)
+    // Draw a wall so the live canvas mounts (the empty floor shows the empty-state instead).
+    const canvas = await drawnSceneCanvas(page)
     const pane = page.locator('.scene-camera-pane')
     const paneCursor = () => pane.evaluate((el) => getComputedStyle(el).cursor)
 
