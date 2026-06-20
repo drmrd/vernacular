@@ -35,6 +35,7 @@
   justify-content: flex-start;
   gap: var(--space-1);
   width: 100%;
+  min-height: var(--size-target-min);
   padding: 4px var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);

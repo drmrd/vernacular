@@ -101,12 +101,29 @@
 }
 
 .ds-app-frame__resize {
+  position: relative;
   align-self: stretch;
   width: var(--space-1);
   margin-left: auto;
   border-radius: var(--radius-sm);
   background: var(--color-border);
   cursor: col-resize;
+}
+
+/* A transparent, full-height overlay widens the pointer hit area to the 40px WCAG
+   target floor without growing the 4px visible bar. The overlay extends past the bar
+   into the adjacent panes and is inert today because the handle only listens for
+   keyboard resize. If a pointer-drag handler is later wired to this element, scope or
+   shrink the overlay (or add pointer-events: none on its edges) so it does not swallow
+   pointerdown in the neighboring panes. */
+.ds-app-frame__resize::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--size-target-min);
+  transform: translateX(-50%);
 }
 
 .ds-app-frame__resize:focus-visible {

@@ -82,8 +82,12 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  /* Control sizing. The icon-button square target stays a placeholder until #234 raises it to 40/44. */
-  --size-control-icon: 1.75rem;
+  /* Control sizing. WCAG 2.5.8 target-size minimums (ADR-0112): 40px fine pointer,
+     44px coarse (touch) pointer. The coarse block below re-points this single token so
+     every consumer inherits the 44px floor with no per-file changes. */
+  --size-target-min: 2.5rem;
+  --size-target-min-touch: 2.75rem;
+  --size-control-icon: var(--size-target-min);
 
   /* Radius scale. */
   --radius-sm: 0.25rem;
@@ -144,5 +148,11 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-duration: 0ms;
+  }
+}
+
+@media (pointer: coarse) {
+  :root {
+    --size-target-min: var(--size-target-min-touch);
   }
 }
