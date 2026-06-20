@@ -84,6 +84,8 @@
   font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
+  min-width: 9rem;
+  text-align: right;
 }
 
 .editor-shell__project {
