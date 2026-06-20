@@ -8,6 +8,7 @@ import {
   advanceWallTool,
   cancelWallTool,
   IDLE_WALL_TOOL,
+  wallRunEnded,
   type WallToolState,
 } from './wall-tool'
 
@@ -59,8 +60,7 @@ function dropWallVertex(ctx: WallKeyContext): void {
     ctx.session.dispatch(command)
   })
   ctx.setToolState(result.state)
-  const ranEnded = result.state.phase === 'idle' && result.commands === undefined
-  ctx.setAnnouncement(ranEnded ? 'Wall run finished' : 'Wall vertex dropped')
+  ctx.setAnnouncement(wallRunEnded(result) ? 'Wall run finished' : 'Wall vertex dropped')
 }
 
 // Abandon the in-progress run, returning the tool to idle and committing nothing.
