@@ -40,6 +40,9 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
 
   const toggle = useCallback(() => setOpen((current) => !current), [])
   const close = useCallback(() => setOpen(false), [])
+  // The explicit annotation widens the inferred `() => void` to the keyboard
+  // signature the `MenuButton` interface requires. The body is a deliberate
+  // no-op for now; later behaviors (B2-B5) add the actual key handling here.
   const onKeyDown: (event: MenuKeyboardEvent) => void = useCallback(() => {}, [])
 
   const triggerProps = useMemo(
