@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
-import { createOpening, distance, placeOpening, type Point, type SceneGraph } from '../../core'
+import {
+  createFurnitureInstance,
+  createOpening,
+  distance,
+  placeFurniture,
+  placeOpening,
+  type Point,
+  type SceneGraph,
+} from '../../core'
+import type { LibraryItem } from '../../storage'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
@@ -35,6 +44,10 @@ export interface PlanAuthoringDeps {
   graph?: SceneGraph
   /** Element-type id the opening branch places (e.g. 'single-swing-door'). */
   placementType?: string
+  /** The library item armed for placement the furniture branch drops, or null. */
+  armed?: LibraryItem | null
+  /** The ghost rotation in degrees applied to a dropped furniture instance. */
+  rotation?: number
 }
 
 export interface PlanAuthoringResult {
@@ -222,9 +235,61 @@ function handleOpeningKey(ctx: OpeningKeyContext): void {
   }
 }
 
+// One keystroke while the place-furniture tool is active: the shared run plus the
+// event, the armed item, and the ghost rotation the furniture branch drops. A null
+// armed item makes the Enter a no-op via dropFurniture's early return.
+interface FurnitureKeyContext extends AuthoringRun {
+  event: KeyboardEvent
+  armed: LibraryItem | null
+  rotation: number
+}
+
+// Drop the armed furniture instance at the candidate by dispatching the same
+// place-furniture command the pointer path dispatches. With nothing armed, the
+// Enter is inert; otherwise announce the item name so a chair reads "Placed Wingback chair".
+function dropFurniture(ctx: FurnitureKeyContext): void {
+  if (ctx.armed === null) {
+    return
+  }
+  const floorId = resolveFloorId(ctx)
+  if (floorId === undefined) {
+    return
+  }
+  ctx.event.preventDefault()
+  const furniture = createFurnitureInstance({
+    assetRef: ctx.armed.reference,
+    position: ctx.candidate,
+    footprint: ctx.armed.footprint,
+    height: ctx.armed.height,
+    rotation: ctx.rotation,
+    ...(ctx.armed.name !== '' ? { name: ctx.armed.name } : {}),
+  })
+  ctx.session.dispatch(placeFurniture(floorId, furniture))
+  ctx.setAnnouncement(`Placed ${ctx.armed.name}`)
+}
+
+// Handle one keystroke while the place-furniture tool is active: arrow keys move
+// the candidate, Enter drops the armed item at the candidate, any other key falls
+// through.
+function handleFurnitureKey(ctx: FurnitureKeyContext): void {
+  if (handleNudge(ctx, ctx.event)) {
+    return
+  }
+  if (ctx.event.key === 'Enter') {
+    dropFurniture(ctx)
+  }
+}
+
 // Only the creative tools that drop free points on the canvas are wired here.
-function isAuthoringTool(tool: ToolId): tool is 'draw-wall' | 'dimension' | 'place-opening' {
-  return tool === 'draw-wall' || tool === 'dimension' || tool === 'place-opening'
+type AuthoringTool = 'draw-wall' | 'dimension' | 'place-opening' | 'place-furniture'
+
+function isAuthoringTool(tool: ToolId): tool is AuthoringTool {
+  return (
+    tool === 'draw-wall' ||
+    tool === 'dimension' ||
+    tool === 'place-opening' ||
+    tool === 'place-furniture'
+  )
 }
 
 // The full set of per-tool state and graph the window listener routes a
@@ -238,6 +303,8 @@ interface AuthoringTools {
   setDimensionState: DimensionKeyContext['setToolState']
   graph: SceneGraph | undefined
   placementType: string | undefined
+  armed: LibraryItem | null
+  rotation: number
 }
 
 // Install the window keydown listener that routes a keystroke to the active
@@ -254,34 +321,30 @@ function listenForAuthoringKeys(tools: AuthoringTools): () => void {
   }
 }
 
-function routeWallKey(tools: AuthoringTools, event: KeyboardEvent): void {
-  handleWallKey({ ...tools.run, event, toolState: tools.wallState, setToolState: tools.setWallState })
-}
-
-function routeOpeningKey(tools: AuthoringTools, event: KeyboardEvent): void {
-  handleOpeningKey({ ...tools.run, event, graph: tools.graph, placementType: tools.placementType })
-}
-
-function routeDimensionKey(tools: AuthoringTools, event: KeyboardEvent): void {
-  const { run, dimensionState, setDimensionState } = tools
-  handleDimensionKey({ ...run, event, toolState: dimensionState, setToolState: setDimensionState })
-}
-
-// Route one keystroke to the active tool's handler. Each authoring tool names its
-// own branch explicitly and an unhandled tool does nothing, so a new tool (e.g.
-// furniture) adds its own case without inheriting another tool's branch as an
-// accidental fallback. Each handler runs its own arrow-nudge prologue, so this
-// only picks the branch by the active tool.
+// Route one keystroke to the active tool's handler, building that handler's
+// context inline. Each authoring tool names its own branch explicitly and an
+// unhandled tool does nothing, so a new tool (e.g. furniture) adds its own case
+// without inheriting another tool's branch as an accidental fallback. Each handler
+// runs its own arrow-nudge prologue, so this only picks the branch by tool.
 function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
+  const { run } = tools
   switch (tools.tool) {
     case 'draw-wall':
-      routeWallKey(tools, event)
+      handleWallKey({ ...run, event, toolState: tools.wallState, setToolState: tools.setWallState })
       return
     case 'place-opening':
-      routeOpeningKey(tools, event)
+      handleOpeningKey({ ...run, event, graph: tools.graph, placementType: tools.placementType })
       return
     case 'dimension':
-      routeDimensionKey(tools, event)
+      handleDimensionKey({
+        ...run,
+        event,
+        toolState: tools.dimensionState,
+        setToolState: tools.setDimensionState,
+      })
+      return
+    case 'place-furniture':
+      handleFurnitureKey({ ...run, event, armed: tools.armed, rotation: tools.rotation })
       return
     default:
       return
@@ -298,6 +361,8 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
   const { session, tool, activeFloorId, graph, placementType } = deps
+  const armed = deps.armed ?? null
+  const rotation = deps.rotation ?? 0
   const [candidate, setCandidate] = useState<Point>(ORIGIN)
   const [wallToolState, setWallToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [dimensionToolState, setDimensionToolState] =
@@ -317,6 +382,8 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
       setDimensionState: setDimensionToolState,
       graph,
       placementType,
+      armed,
+      rotation,
     })
   }, [
     session,
@@ -327,6 +394,8 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     dimensionToolState,
     graph,
     placementType,
+    armed,
+    rotation,
   ])
 
   return { candidate, announcement }
