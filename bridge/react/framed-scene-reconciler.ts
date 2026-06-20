@@ -58,8 +58,8 @@ interface SubgroupBuild<Node> {
   group: SceneRoot
 }
 
-/** Which furniture appearance a sub-group was built as: a ready mesh, the failed box, or the plain box. */
-type FurnitureBuildKind = 'mesh' | 'failedBox' | 'box'
+/** Which furniture appearance a sub-group was built as: a ready mesh, the failed box, the loading box, or the plain box. */
+type FurnitureBuildKind = 'mesh' | 'failedBox' | 'loadingBox' | 'box'
 
 /**
  * A built furniture sub-group, kept with the node it was built from and which appearance it was
@@ -111,8 +111,9 @@ function floorEntities(graph: SceneGraph, floorNode: SceneNode): FloorEntities {
 
 /**
  * A stable string of the floor's furniture content hashes tagged with the appearance their model
- * status calls for (ready mesh, failed box, or plain box). When a model turns ready or its load
- * fails this signature changes, defeating the whole-floor early-return so the piece can rebuild.
+ * status calls for (ready mesh, failed box, loading box, or plain box). When a model turns ready,
+ * starts loading, or its load fails this signature changes, defeating the whole-floor early-return
+ * so the piece can rebuild.
  */
 function furnitureReadySignature(
   furniture: FurnitureSceneNode[],
@@ -221,16 +222,21 @@ function providesReadyModel(
 
 /**
  * Which appearance a lookup entry calls for: a ready model yields a mesh, a failed load yields the
- * failed box, and a loading or missing entry yields the plain box. This single decision feeds both
- * the build branch and the reuse key, so a loading box and a failed box carry distinct keys.
+ * failed box, a loading entry yields the loading box, and a missing entry yields the plain box. This
+ * single decision feeds both the build branch and the reuse key, so a loading box, a failed box, and
+ * a plain box carry distinct keys.
  */
 function furnitureBuildKind(entry: ReturnType<FurnitureModelLookup['get']>): FurnitureBuildKind {
   if (providesReadyModel(entry)) return 'mesh'
   if (entry?.status === 'failed') return 'failedBox'
+  if (entry?.status === 'loading') return 'loadingBox'
   return 'box'
 }
 
-/** Builds a furniture sub-group from the real model when one is ready, else the massing box. */
+/**
+ * Builds a furniture sub-group from the real model when one is ready, the failed box when its load
+ * failed, the loading box while its model is fetching, and the plain massing box otherwise.
+ */
 function buildFurnitureGroup(
   node: FurnitureSceneNode,
   materials: PaintMaterials,
@@ -241,6 +247,9 @@ function buildFurnitureGroup(
   }
   if (entry?.status === 'failed') {
     return buildFurnitureSubgroup(node, materials, 'furnitureFailed')
+  }
+  if (entry?.status === 'loading') {
+    return buildFurnitureSubgroup(node, materials, 'furnitureLoading')
   }
   return buildFurnitureSubgroup(node, materials)
 }
