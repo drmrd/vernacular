@@ -74,13 +74,19 @@ describe('EditorShell', () => {
     expect(within(banner).getByRole('img', { name: /vernacular/i })).toBeInTheDocument()
   })
 
-  it('shows the My Projects breadcrumb segment', () => {
+  it('shows only the current project name in the breadcrumb', () => {
     vi.stubGlobal('navigator', {})
 
     renderShell()
 
     const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
-    expect(within(breadcrumb).getByText(/my projects/i)).toBeInTheDocument()
+
+    // The single-project model has no projects list, so the false "My Projects"
+    // parent crumb and the leading separator are gone.
+    expect(within(breadcrumb).queryByText(/my projects/i)).not.toBeInTheDocument()
+    expect(within(breadcrumb).getByText('Test')).toBeInTheDocument()
+    expect(breadcrumb.textContent?.startsWith('/')).toBe(false)
+    expect(breadcrumb.textContent).toContain('Test')
   })
 
   it('reveals the 3D preview when the 3D view mode is selected', async () => {
