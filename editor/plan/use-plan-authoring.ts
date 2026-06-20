@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Point } from '../../core'
+import { distance, type Point } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
@@ -11,6 +11,11 @@ import {
   wallRunEnded,
   type WallToolState,
 } from './wall-tool'
+import {
+  advanceDimensionTool,
+  IDLE_DIMENSION_TOOL,
+  type DimensionToolState,
+} from './dimension-tool'
 
 // The keyboard authoring run seeds its candidate at the world origin when no
 // viewport is supplied, so the candidate is reachable before any pointer move.
@@ -90,44 +95,109 @@ function handleWallKey(ctx: WallKeyContext): void {
   }
 }
 
+// The state the dimension handler reads and writes for one keystroke, plus the
+// setters that surface the next candidate, dimension tool state, and announcement.
+interface DimensionKeyContext {
+  event: KeyboardEvent
+  session: EditorSession
+  activeFloorId: string | null
+  candidate: Point
+  toolState: DimensionToolState
+  setCandidate: (point: Point) => void
+  setToolState: (state: DimensionToolState) => void
+  setAnnouncement: (message: string) => void
+}
+
+// Drop a dimension endpoint at the candidate. The first Enter anchors the start
+// (no command), the second Enter at a different candidate dispatches the single
+// add-dimension command and announces the measured span; a same-point second
+// Enter idles the tool and commits nothing.
+function dropDimensionEndpoint(ctx: DimensionKeyContext): void {
+  const floorId = ctx.activeFloorId ?? ctx.session.getProject().floors[0]?.id
+  if (floorId === undefined) {
+    return
+  }
+  ctx.event.preventDefault()
+  const result = advanceDimensionTool(ctx.toolState, ctx.candidate, floorId)
+  if (result.command !== undefined) {
+    ctx.session.dispatch(result.command)
+    const span = distance(result.command.params.dimension.start, ctx.candidate)
+    ctx.setAnnouncement(`Dimension measured ${span} mm`)
+  }
+  ctx.setToolState(result.state)
+}
+
+// Handle one keystroke while the dimension tool is active: arrow keys move the
+// candidate, Enter drops a dimension endpoint, any other key falls through.
+function handleDimensionKey(ctx: DimensionKeyContext): void {
+  const next = nudgeCandidate(ctx.candidate, ctx.event.key, CANDIDATE_STEP_MM)
+  if (next !== null) {
+    ctx.event.preventDefault()
+    ctx.setCandidate(next)
+    ctx.setAnnouncement(candidateMessage(next))
+    return
+  }
+  if (ctx.event.key === 'Enter') {
+    dropDimensionEndpoint(ctx)
+  }
+}
+
+// The tool-independent state and setters one keystroke reads, threaded so the
+// per-tool key handlers can compose their own context object.
+interface AuthoringRun {
+  session: EditorSession
+  activeFloorId: string | null
+  candidate: Point
+  setCandidate: (point: Point) => void
+  setAnnouncement: (message: string) => void
+}
+
+// Only the creative tools that drop free points on the canvas are wired here.
+function isAuthoringTool(tool: ToolId): tool is 'draw-wall' | 'dimension' {
+  return tool === 'draw-wall' || tool === 'dimension'
+}
+
 /**
  * Binds the creative-tool authoring keystrokes to the window. While the
- * draw-wall tool is active, arrow keys nudge a keyboard-reachable candidate
- * point by a grid step and Enter drops a wall vertex at the candidate by
- * dispatching the same commands the pointer path dispatches. Inert under any
- * other tool and ignored while a form control is focused, mirroring the
- * selection and furniture keyboard hooks.
+ * draw-wall or dimension tool is active, arrow keys nudge a keyboard-reachable
+ * candidate point by a grid step and Enter drops a wall vertex or a dimension
+ * endpoint at the candidate by dispatching the same commands the pointer path
+ * dispatches. Inert under any other tool and ignored while a form control is
+ * focused, mirroring the selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
   const { session, tool, activeFloorId } = deps
   const [candidate, setCandidate] = useState<Point>(ORIGIN)
-  const [toolState, setToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
+  const [wallToolState, setWallToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
+  const [dimensionToolState, setDimensionToolState] =
+    useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
-    if (tool !== 'draw-wall') {
+    if (!isAuthoringTool(tool)) {
       return undefined
     }
+    const run: AuthoringRun = { session, activeFloorId, candidate, setCandidate, setAnnouncement }
     const listener = (event: KeyboardEvent): void => {
       if (isTextEntry(event.target)) {
         return
       }
-      handleWallKey({
+      if (tool === 'draw-wall') {
+        handleWallKey({ ...run, event, toolState: wallToolState, setToolState: setWallToolState })
+        return
+      }
+      handleDimensionKey({
+        ...run,
         event,
-        session,
-        activeFloorId,
-        candidate,
-        toolState,
-        setCandidate,
-        setToolState,
-        setAnnouncement,
+        toolState: dimensionToolState,
+        setToolState: setDimensionToolState,
       })
     }
     window.addEventListener('keydown', listener)
     return () => {
       window.removeEventListener('keydown', listener)
     }
-  }, [session, tool, activeFloorId, candidate, toolState])
+  }, [session, tool, activeFloorId, candidate, wallToolState, dimensionToolState])
 
   return { candidate, announcement }
 }
