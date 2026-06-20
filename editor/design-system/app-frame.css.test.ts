@@ -75,4 +75,22 @@ describe('app-frame.css', () => {
     expect(css).toMatch(/\[data-breakpoint='medium'\][^{]*\.ds-app-frame__rail-toggle/)
     expect(css).toMatch(/\[data-breakpoint='narrow'\][^{]*\.ds-app-frame__rail-toggle/)
   })
+
+  it('shows the unsupported-width notice only at narrow', () => {
+    // The narrow unsupported-width notice is always in the DOM but is gated by
+    // breakpoint in CSS, which jsdom cannot evaluate, so the visibility contract
+    // is pinned here as a literal guard. The base rule hides the notice so it
+    // never appears at wide or medium, and a narrow-scoped override reveals it so
+    // narrow reads as an explicit defined state rather than breaking silently.
+    const base = css.match(/\.ds-app-frame__narrow-notice\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(base).not.toBe('')
+    expect(base).toMatch(/display:\s*none/)
+
+    const narrowNotice =
+      css.match(
+        /\[data-breakpoint='narrow'\][^{]*\.ds-app-frame__narrow-notice\s*\{[^}]*\}/,
+      )?.[0] ?? ''
+    expect(narrowNotice).not.toBe('')
+    expect(narrowNotice).toMatch(/display:\s*block/)
+  })
 })

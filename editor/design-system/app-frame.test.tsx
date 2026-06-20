@@ -43,6 +43,13 @@ describe('AppFrame', () => {
     expect(screen.getByRole('complementary', { name: 'Inspector' })).toBeInTheDocument()
     expect(screen.getByText('inspector content')).toBeInTheDocument()
   })
+
+  it('always renders an unsupported-width notice element so narrow widths read as a defined state', () => {
+    renderFrame()
+    const notice = screen.getByRole('note')
+    expect(notice).toBeInTheDocument()
+    expect(notice).toHaveTextContent(/wider screen/i)
+  })
 })
 
 describe('AppFrame collapse', () => {
