@@ -3,11 +3,14 @@ import { describe, expect, it } from 'vitest'
 
 import { createFloor, createFurnitureInstance, deriveFurnitureNode } from '../../core'
 import type { FurnitureInstance, FurnitureSceneNode } from '../../core'
+import type { SurfaceRole } from '../materials/material-provider'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import {
   FURNITURE_COLOR,
   FURNITURE_FAILED_COLOR,
   FURNITURE_FAILED_OPACITY,
+  FURNITURE_LOADING_COLOR,
+  FURNITURE_LOADING_OPACITY,
   FURNITURE_OPACITY,
 } from '../materials/role-appearance'
 
@@ -122,6 +125,25 @@ describe('buildFurnitureMassing', () => {
       expect(material.name).toBe('furnitureFailed')
       expect(material.transparent).toBe(true)
       expect(material.opacity).toBe(FURNITURE_FAILED_OPACITY)
+    }
+  })
+
+  it('carries the furnitureLoading material on a loading box mesh', () => {
+    const group = buildFurnitureMassing(
+      buildNode(buildInstance()),
+      new NeutralMaterialProvider(),
+      'furnitureLoading' as SurfaceRole,
+    )
+
+    const materials = firstMeshMaterials(group)
+
+    expect(materials.length).toBeGreaterThan(0)
+    for (const material of materials) {
+      const colored = material as THREE.Material & { color: THREE.Color }
+      expect(colored.color.getHex()).toBe(FURNITURE_LOADING_COLOR)
+      expect(material.name).toBe('furnitureLoading')
+      expect(material.transparent).toBe(true)
+      expect(material.opacity).toBe(FURNITURE_LOADING_OPACITY)
     }
   })
 })

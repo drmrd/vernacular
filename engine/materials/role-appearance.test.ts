@@ -5,6 +5,8 @@ import {
   FURNITURE_OPACITY,
   FURNITURE_FAILED_COLOR,
   FURNITURE_FAILED_OPACITY,
+  FURNITURE_LOADING_COLOR,
+  FURNITURE_LOADING_OPACITY,
   NEUTRAL_COLOR,
 } from './role-appearance'
 import type { SurfaceRole } from './material-provider'
@@ -37,5 +39,17 @@ describe('roleMaterialParameters', () => {
     expect(failed.transparent).toBe(true)
     expect(failed.opacity).toBe(FURNITURE_FAILED_OPACITY)
     expect(failed.name).toBe('furnitureFailed')
+  })
+
+  it('resolves the loading-furniture role to a distinct amber, semi-transparent appearance', () => {
+    const loading = roleMaterialParameters('furnitureLoading' as SurfaceRole)
+
+    expect(loading.color).toBe(FURNITURE_LOADING_COLOR)
+    expect(loading.color).not.toBe(FURNITURE_COLOR)
+    expect(loading.color).not.toBe(FURNITURE_FAILED_COLOR)
+    expect(loading.color).not.toBe(NEUTRAL_COLOR)
+    expect(loading.transparent).toBe(true)
+    expect(loading.opacity).toBe(FURNITURE_LOADING_OPACITY)
+    expect(loading.name).toBe('furnitureLoading')
   })
 })
