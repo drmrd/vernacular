@@ -15,7 +15,10 @@ import { RULER_MIN_LABEL_GAP_PX } from './ruler'
  *
  * @param scale viewport zoom in pixels per millimetre (px/mm)
  */
-export function rulerLabelSpacingMm(preferences: UnitPreferences, scale: number /* px/mm */): number {
+export function rulerLabelSpacingMm(
+  preferences: UnitPreferences,
+  scale: number /* px/mm */,
+): number {
   const minWorldMm = RULER_MIN_LABEL_GAP_PX / scale
   if (preferences.system === 'metric') {
     return nice125AtLeast(minWorldMm)

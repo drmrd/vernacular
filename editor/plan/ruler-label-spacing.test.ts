@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  DEFAULT_IMPERIAL_PREFERENCES,
-  DEFAULT_METRIC_PREFERENCES,
-  MM_PER_FOOT,
-} from '../../core'
+import { DEFAULT_IMPERIAL_PREFERENCES, DEFAULT_METRIC_PREFERENCES, MM_PER_FOOT } from '../../core'
 import { rulerLabelSpacingMm } from './ruler-label-spacing'
 import { RULER_MIN_LABEL_GAP_PX } from './ruler'
 
@@ -41,9 +37,9 @@ describe('rulerLabelSpacingMm', () => {
 
   it('keeps the on-screen label gap at least RULER_MIN_LABEL_GAP_PX wide across zoom levels', () => {
     for (const scale of [0.02, 0.05, 0.1, 0.5, 1]) {
-      expect(
-        rulerLabelSpacingMm(DEFAULT_METRIC_PREFERENCES, scale) * scale,
-      ).toBeGreaterThanOrEqual(RULER_MIN_LABEL_GAP_PX)
+      expect(rulerLabelSpacingMm(DEFAULT_METRIC_PREFERENCES, scale) * scale).toBeGreaterThanOrEqual(
+        RULER_MIN_LABEL_GAP_PX,
+      )
       expect(
         rulerLabelSpacingMm(DEFAULT_IMPERIAL_PREFERENCES, scale) * scale,
       ).toBeGreaterThanOrEqual(RULER_MIN_LABEL_GAP_PX)
