@@ -19,6 +19,7 @@ import {
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createFloor, createFurnitureInstance } from '../../model/factories'
+import { InvalidLengthError, MAX_LENGTH_MM } from '../../index'
 import type { FurnitureInstance, FurnitureFootprint, Project } from '../../model/types'
 
 function furnitureFixture(id = 'fu-1'): FurnitureInstance {
@@ -219,6 +220,45 @@ describe('resizeFurniture', () => {
 
     expect(project.floors[0]?.furniture[0]?.footprint).toEqual(originalFootprint)
   })
+
+  it('rejects a non-positive or absurd footprint width or depth', () => {
+    const rejectedFootprints: FurnitureFootprint[] = [
+      { width: 0, depth: 600 },
+      { width: -5, depth: 600 },
+      { width: 600, depth: -10 },
+      { width: MAX_LENGTH_MM + 1, depth: 600 },
+    ]
+
+    for (const rejected of rejectedFootprints) {
+      const project = projectWithTwoFloors()
+      const dispatcher = dispatcherFor(project)
+      const instance = furnitureFixture()
+      const originalFootprint = instance.footprint
+      dispatcher.dispatch(placeFurniture('g', instance))
+
+      let thrown: unknown
+      expect(() => {
+        try {
+          dispatcher.dispatch(resizeFurniture('g', instance.id, rejected))
+        } catch (error) {
+          thrown = error
+          throw error
+        }
+      }).toThrow(/rolled back/)
+      expect((thrown as Error).cause).toBeInstanceOf(InvalidLengthError)
+
+      expect(project.floors[0]?.furniture[0]?.footprint).toEqual(originalFootprint)
+    }
+
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const instance = furnitureFixture()
+    dispatcher.dispatch(placeFurniture('g', instance))
+
+    dispatcher.dispatch(resizeFurniture('g', instance.id, NEW_FOOTPRINT))
+
+    expect(project.floors[0]?.furniture[0]?.footprint).toEqual(NEW_FOOTPRINT)
+  })
 })
 
 describe('setFurnitureHeight', () => {
@@ -264,6 +304,40 @@ describe('setFurnitureHeight', () => {
     dispatcher.undo()
 
     expect(project.floors[0]?.furniture[0]?.height).toBe(originalHeight)
+  })
+
+  it('rejects a non-positive or absurd height', () => {
+    const rejectedHeights = [0, -1, MAX_LENGTH_MM + 1]
+
+    for (const rejected of rejectedHeights) {
+      const project = projectWithTwoFloors()
+      const dispatcher = dispatcherFor(project)
+      const instance = furnitureFixture()
+      const originalHeight = instance.height
+      dispatcher.dispatch(placeFurniture('g', instance))
+
+      let thrown: unknown
+      expect(() => {
+        try {
+          dispatcher.dispatch(setFurnitureHeight('g', instance.id, rejected))
+        } catch (error) {
+          thrown = error
+          throw error
+        }
+      }).toThrow(/rolled back/)
+      expect((thrown as Error).cause).toBeInstanceOf(InvalidLengthError)
+
+      expect(project.floors[0]?.furniture[0]?.height).toBe(originalHeight)
+    }
+
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const instance = furnitureFixture()
+    dispatcher.dispatch(placeFurniture('g', instance))
+
+    dispatcher.dispatch(setFurnitureHeight('g', instance.id, NEW_HEIGHT))
+
+    expect(project.floors[0]?.furniture[0]?.height).toBe(NEW_HEIGHT)
   })
 })
 

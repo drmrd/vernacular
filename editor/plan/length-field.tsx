@@ -6,6 +6,7 @@ import {
   type UnitPreferences,
 } from '../../core'
 import { Field } from '../design-system'
+import { lengthRejectionMessage } from './length-rejection-message'
 
 export interface LengthFieldProps {
   inputId: string
@@ -32,12 +33,19 @@ export function LengthField({
 }: LengthFieldProps): ReactElement {
   const formatted = formatAdaptiveLength(valueMm, preferences)
   const [text, setText] = useState(formatted)
+  const [error, setError] = useState<string | null>(null)
 
   function commit(): void {
     try {
       onCommitMm(parseLength(text, { assumeUnit }))
-    } catch {
-      // An unparseable entry dispatches nothing; the input keeps its invalid text.
+      setError(null)
+    } catch (err) {
+      // A rejected command surfaces a recoverable error; both it and an
+      // unparseable entry keep the invalid text without dispatching.
+      const message = lengthRejectionMessage(err)
+      if (message) {
+        setError(message)
+      }
     }
   }
 
@@ -48,11 +56,12 @@ export function LengthField({
   }
 
   return (
-    <Field htmlFor={inputId} label={label}>
+    <Field htmlFor={inputId} label={label} hint={error ?? undefined}>
       <input
         id={inputId}
         type="text"
         value={text}
+        aria-invalid={error ? 'true' : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
       />

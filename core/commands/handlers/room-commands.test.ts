@@ -6,6 +6,7 @@ import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject } from '../../model/factories'
 import type { Point } from '../../index'
+import { InvalidLengthError } from '../../index'
 import type { Project } from '../../model/types'
 
 const TARGET_KEY = 'room:wall-a|wall-b'
@@ -213,6 +214,37 @@ describe('setRoomCeilingHeight', () => {
   })
 
   it('clears the override when set to undefined', () => {
+    const project = newProject()
+    project.roomOverrides = { [TARGET_KEY]: { ceilingHeight: CEILING_HEIGHT_MM } }
+    const dispatcher = dispatcherFor(project)
+
+    dispatcher.dispatch(setRoomCeilingHeight(TARGET_KEY, undefined))
+
+    expect(project.roomOverrides?.[TARGET_KEY]?.ceilingHeight).toBeUndefined()
+  })
+
+  it('rejects a non-positive ceiling height but still allows undefined to clear the override', () => {
+    const rejectedHeights = [0, -100]
+
+    for (const rejected of rejectedHeights) {
+      const project = newProject()
+      project.roomOverrides = { [TARGET_KEY]: { ceilingHeight: CEILING_HEIGHT_MM } }
+      const dispatcher = dispatcherFor(project)
+
+      let thrown: unknown
+      expect(() => {
+        try {
+          dispatcher.dispatch(setRoomCeilingHeight(TARGET_KEY, rejected))
+        } catch (error) {
+          thrown = error
+          throw error
+        }
+      }).toThrow(/rolled back/)
+      expect((thrown as Error).cause).toBeInstanceOf(InvalidLengthError)
+
+      expect(project.roomOverrides?.[TARGET_KEY]?.ceilingHeight).toBe(CEILING_HEIGHT_MM)
+    }
+
     const project = newProject()
     project.roomOverrides = { [TARGET_KEY]: { ceilingHeight: CEILING_HEIGHT_MM } }
     const dispatcher = dispatcherFor(project)

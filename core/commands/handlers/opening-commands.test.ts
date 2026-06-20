@@ -18,6 +18,7 @@ import type { OpeningDimensions } from './opening-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createFloor, createWall, createOpening } from '../../model/factories'
+import { InvalidLengthError, MAX_LENGTH_MM } from '../../index'
 import type { Opening, Project } from '../../model/types'
 
 const HOST_WALL_ID = 'wall-1'
@@ -175,6 +176,55 @@ describe('resizeOpening', () => {
 
   it('carries a stable command type', () => {
     expect(resizeOpening('g', 'opening-1', NEW_DIMENSIONS).type).toBe(RESIZE_OPENING)
+  })
+
+  it('rejects a non-positive or absurd width or height but allows a zero sill height', () => {
+    const rejectedDimensions: OpeningDimensions[] = [
+      { width: 0, height: 2100, sillHeight: 300 },
+      { width: -5, height: 2100, sillHeight: 300 },
+      { width: 1626, height: -10, sillHeight: 300 },
+      { width: MAX_LENGTH_MM + 1, height: 2100, sillHeight: 300 },
+      { width: 1626, height: 2100, sillHeight: -1 },
+      { width: 1626, height: 2100, sillHeight: MAX_LENGTH_MM + 1 },
+    ]
+
+    for (const rejected of rejectedDimensions) {
+      const project = projectWithTwoFloors()
+      const dispatcher = dispatcherFor(project)
+      const target = newOpening()
+      const originalWidth = target.width
+      const originalHeight = target.height
+      const originalSillHeight = target.sillHeight
+      dispatcher.dispatch(placeOpening('g', target))
+
+      let thrown: unknown
+      expect(() => {
+        try {
+          dispatcher.dispatch(resizeOpening('g', target.id, rejected))
+        } catch (error) {
+          thrown = error
+          throw error
+        }
+      }).toThrow(/rolled back/)
+      expect((thrown as Error).cause).toBeInstanceOf(InvalidLengthError)
+
+      const unchanged = project.floors[0]?.openings[0]
+      expect(unchanged?.width).toBe(originalWidth)
+      expect(unchanged?.height).toBe(originalHeight)
+      expect(unchanged?.sillHeight).toBe(originalSillHeight)
+    }
+
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newOpening()
+    dispatcher.dispatch(placeOpening('g', target))
+
+    dispatcher.dispatch(resizeOpening('g', target.id, { width: 900, height: 2100, sillHeight: 0 }))
+
+    const floorMounted = project.floors[0]?.openings[0]
+    expect(floorMounted?.width).toBe(900)
+    expect(floorMounted?.height).toBe(2100)
+    expect(floorMounted?.sillHeight).toBe(0)
   })
 })
 
