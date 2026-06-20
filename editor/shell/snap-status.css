@@ -7,7 +7,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  border: 0;
+  /* A labeled-button frame so the indicator reads as a disclosure control,
+     not bare bold text. */
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text);
   font-family: var(--font-family-ui);
@@ -18,6 +22,28 @@
 
 .snap-status__marker {
   color: var(--color-accent-strong);
+}
+
+/* Active snap: accent marker, matching the base marker. */
+.snap-status__marker--on {
+  color: var(--color-accent-strong);
+}
+
+/* Disabled snap: muted marker. */
+.snap-status__marker--off {
+  color: var(--color-text-muted);
+}
+
+/* Muted disclosure caret that signals the precision popover. */
+.snap-status__caret {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  transition: transform 0.15s ease;
+}
+
+/* Flip the caret while the popover is open. */
+.snap-status__caret.is-open {
+  transform: rotate(180deg);
 }
 
 .snap-status__indicator:focus-visible {
