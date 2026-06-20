@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
-import { ADD_DIMENSION, ADD_WALL } from '../../core'
+import { ADD_DIMENSION, ADD_WALL, PLACE_OPENING } from '../../core'
+import type { SceneGraph, WallSceneNode } from '../../core'
 import type { EditorSession } from '../../bridge'
 import { usePlanAuthoring } from './use-plan-authoring'
 
@@ -16,6 +17,25 @@ function fakeSession(dispatch: ReturnType<typeof vi.fn>): EditorSession {
     getProject: () => ({ floors: [{ id: 'g' }] }),
     undo: vi.fn(),
   } as unknown as EditorSession
+}
+
+// A scene graph carrying only the supplied walls; placeOpeningTarget reads
+// nothing else, so the other node lists stay empty.
+function graphWithWalls(walls: WallSceneNode[]): SceneGraph {
+  return {
+    nodes: [],
+    walls,
+    rooms: [],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+function wall(id: string, start: WallSceneNode['start'], end: WallSceneNode['end']): WallSceneNode {
+  return { id, kind: 'wall', floorId: 'g', start, end, thickness: 100 }
 }
 
 describe('usePlanAuthoring', () => {
@@ -126,6 +146,54 @@ describe('usePlanAuthoring', () => {
     act(() => dispatchWindowKey('Enter'))
 
     expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('places an opening on the wall under the candidate on Enter', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    // A horizontal wall straddling the seeded origin candidate {0, 0}; the
+    // candidate projects onto it within DEFAULT_HIT_TOLERANCE_MM.
+    const graph = graphWithWalls([wall('w1', { x: -500, y: 0 }, { x: 500, y: 0 })])
+    const { result } = renderHook(() =>
+      usePlanAuthoring({
+        session,
+        tool: 'place-opening',
+        activeFloorId: 'g',
+        graph,
+        placementType: 'single-swing-door',
+      }),
+    )
+
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const cmd = dispatch.mock.calls[0]![0]
+    expect(cmd.type).toBe(PLACE_OPENING)
+    expect(cmd.params.opening.type).toBe('single-swing-door')
+    expect(cmd.params.opening.hostWallId).toBe('w1')
+    expect(result.current.announcement).toMatch(/placed/i)
+  })
+
+  it('dispatches nothing when no wall sits under the candidate', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    // A wall far from the seeded origin candidate: every wall misses by more
+    // than DEFAULT_HIT_TOLERANCE_MM, so placeOpeningTarget returns null.
+    const graph = graphWithWalls([wall('w1', { x: 9000, y: 9000 }, { x: 9500, y: 9000 })])
+    const { result } = renderHook(() =>
+      usePlanAuthoring({
+        session,
+        tool: 'place-opening',
+        activeFloorId: 'g',
+        graph,
+        placementType: 'single-swing-door',
+      }),
+    )
+
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(result.current.announcement).toMatch(/no wall/i)
   })
 
   it('ignores Enter while a non-creative tool is active', () => {
