@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { renderHook, act, cleanup } from '@testing-library/react'
-import { ADD_WALL } from '../../core'
+import { ADD_DIMENSION, ADD_WALL } from '../../core'
 import type { EditorSession } from '../../bridge'
 import { usePlanAuthoring } from './use-plan-authoring'
 
@@ -89,6 +89,43 @@ describe('usePlanAuthoring', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(result.current.announcement).toMatch(/cancel|abandon/i)
+  })
+
+  it('authors a dimension from a start and end Enter with the candidate nudged between', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    const { result } = renderHook(() =>
+      usePlanAuthoring({ session, tool: 'dimension', activeFloorId: 'g' }),
+    )
+
+    // First Enter drops the dimension start at the seeded origin; advanceDimensionTool
+    // from idle yields no command yet.
+    act(() => dispatchWindowKey('Enter'))
+    expect(dispatch).not.toHaveBeenCalled()
+
+    // Nudge the candidate one grid step along +y, then drop the end point.
+    act(() => dispatchWindowKey('ArrowUp'))
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const cmd = dispatch.mock.calls[0]![0]
+    expect(cmd.type).toBe(ADD_DIMENSION)
+    expect(cmd.params.dimension.start).toEqual({ x: 0, y: 0 })
+    expect(cmd.params.dimension.end).toEqual({ x: 0, y: 100 })
+    expect(result.current.announcement).toMatch(/\b100\b|mm|length|dimension|measure/i)
+  })
+
+  it('dispatches nothing for a zero-length dimension', () => {
+    const dispatch = vi.fn()
+    const session = fakeSession(dispatch)
+    renderHook(() => usePlanAuthoring({ session, tool: 'dimension', activeFloorId: 'g' }))
+
+    // Two Enters on the unchanged candidate: advanceDimensionTool idles on a
+    // same-point end, so no dimension lands.
+    act(() => dispatchWindowKey('Enter'))
+    act(() => dispatchWindowKey('Enter'))
+
+    expect(dispatch).not.toHaveBeenCalled()
   })
 
   it('ignores Enter while a non-creative tool is active', () => {
