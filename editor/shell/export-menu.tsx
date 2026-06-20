@@ -26,9 +26,7 @@ function exportMenuItems({
     { label: 'PNG image', onSelect: onExportImage },
     { label: 'PDF', onSelect: onExportPdf },
   ]
-  return candidates.filter(
-    (item): item is ExportItem => item.onSelect !== undefined,
-  )
+  return candidates.filter((item): item is ExportItem => item.onSelect !== undefined)
 }
 
 // The single brass Export control. It collapses the four export targets into one
