@@ -65,9 +65,11 @@
 /* Medium: drop the rail; keep the header strip and the inspector. */
 .ds-app-frame[data-breakpoint='medium'] {
   grid-template-columns: 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
     'header header'
-    'main inspector';
+    'main inspector'
+    'statusbar statusbar';
 }
 
 .ds-app-frame[data-breakpoint='medium'] .ds-app-frame__rail {
@@ -77,10 +79,12 @@
 /* Narrow: stack every region in one column. */
 .ds-app-frame[data-breakpoint='narrow'] {
   grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
     'header'
     'main'
-    'inspector';
+    'inspector'
+    'statusbar';
 }
 
 .ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__rail {
