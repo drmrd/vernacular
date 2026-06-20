@@ -172,12 +172,6 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the design-system story sub-issue; a text-rendering story lands in the design-system slice.',
   },
   {
-    component: 'Segmented',
-    file: 'editor/design-system/segmented.tsx',
-    reason:
-      'deferred to the design-system story sub-issue; a selection-interaction story lands in the design-system slice.',
-  },
-  {
     component: 'Stack',
     file: 'editor/design-system/stack.tsx',
     reason:
