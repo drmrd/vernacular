@@ -17,4 +17,16 @@ describe('tools-panel.css', () => {
     expect(grid).toMatch(/grid-template-columns:\s*1fr\s*;/)
     expect(grid).not.toMatch(/grid-template-columns:\s*1fr\s+1fr/)
   })
+
+  it('gives each tool chip a 40px minimum target height', () => {
+    // WCAG 2.5.8 (Target Size, Minimum) asks interactive controls to present at
+    // least a 40px target on a fine pointer. The tool chips own their own layout
+    // and set no height today, so they render ~22 to 24px tall. The chip must
+    // route its minimum through the shared --size-target-min token so it tracks
+    // the design-system target-size scale (and the coarse-pointer bump) rather
+    // than restating a raw pixel value.
+    const chip = css.match(/\.tools-panel__chip\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(chip).not.toBe('')
+    expect(chip).toMatch(/min-height:\s*var\(--size-target-min\)/)
+  })
 })
