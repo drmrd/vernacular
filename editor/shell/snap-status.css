@@ -20,11 +20,7 @@
   cursor: pointer;
 }
 
-.snap-status__marker {
-  color: var(--color-accent-strong);
-}
-
-/* Active snap: accent marker, matching the base marker. */
+/* Active snap: accent marker. */
 .snap-status__marker--on {
   color: var(--color-accent-strong);
 }
@@ -38,7 +34,7 @@
 .snap-status__caret {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-duration) ease;
 }
 
 /* Flip the caret while the popover is open. */
