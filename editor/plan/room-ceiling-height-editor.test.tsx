@@ -3,6 +3,7 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   DEFAULT_METRIC_PREFERENCES,
+  InvalidLengthError,
   setRoomCeilingHeight,
   parseLength,
   type Command,
@@ -24,6 +25,7 @@ const METRIC_ASSUMED_UNIT = 'mm' as const
 
 const VALID_ENTRY = '3000'
 const UNPARSEABLE_ENTRY = 'abc'
+const OUT_OF_RANGE_ENTRY = '0'
 
 const EXPECTED_PARSED_MM = parseLength(VALID_ENTRY, { assumeUnit: METRIC_ASSUMED_UNIT })
 
@@ -76,5 +78,33 @@ describe('RoomCeilingHeightEditor', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(input).toHaveValue(UNPARSEABLE_ENTRY)
+  })
+
+  it('shows an inline error and keeps the typed text when a commit is rejected for being out of range', async () => {
+    const dispatch = vi.fn(() => {
+      // Mirror the dispatcher: a throwing handler is wrapped and rolled back,
+      // with the original domain rejection carried on `.cause`.
+      const rejection = new Error('Command "set-room-ceiling-height" failed and was rolled back')
+      rejection.cause = new InvalidLengthError('Ceiling height', 0)
+      throw rejection
+    })
+    const user = userEvent.setup()
+    renderEditor(dispatch)
+
+    const input = screen.getByLabelText(/ceiling height/i)
+    await user.clear(input)
+    await user.type(input, `${OUT_OF_RANGE_ENTRY}{Enter}`)
+
+    // The entered text is kept so the user can correct it in place.
+    expect(input).toHaveValue(OUT_OF_RANGE_ENTRY)
+
+    // A visible, recoverable error surfaces through the Field hint slot.
+    const hint = document.querySelector('.ds-field__hint')
+    expect(hint).not.toBeNull()
+    expect(hint).toHaveTextContent(/\S/)
+
+    // The control is marked invalid and points at the error text.
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
   })
 })
