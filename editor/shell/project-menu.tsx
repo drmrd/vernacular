@@ -56,11 +56,8 @@ export function ProjectMenu(props: ProjectMenuProps) {
   }
   return (
     <div className="project-menu" ref={menu.containerRef}>
-      <IconButton
-        className="project-menu__trigger-shape"
-        aria-label="Project menu"
-        {...menu.triggerProps}
-      >
+      <IconButton labeled className="project-menu__trigger-shape" {...menu.triggerProps}>
+        <span>Project</span>
         <span aria-hidden="true">▾</span>
       </IconButton>
       {menu.open ? (
