@@ -42,4 +42,17 @@ describe('scene-nav-toolbar.css', () => {
     expect(clusterCss).toMatch(/var\(--space-/)
     expect(clusterCss).not.toMatch(/gap:\s*\d/)
   })
+
+  it('gives the 3D nav buttons and mode pills a 40px minimum target height', () => {
+    const btn = css.match(/\.scene-nav-toolbar__btn\s*\{[^}]*\}/)?.[0] ?? ''
+    const mode = css.match(/\.scene-nav-toolbar__mode\s*\{[^}]*\}/)?.[0] ?? ''
+
+    expect(btn).not.toBe('')
+    expect(mode).not.toBe('')
+
+    expect(btn).toMatch(/min-height:\s*var\(--size-target-min\)/)
+    expect(btn).not.toMatch(/height:\s*28px/)
+
+    expect(mode).toMatch(/min-height:\s*var\(--size-target-min\)/)
+  })
 })
