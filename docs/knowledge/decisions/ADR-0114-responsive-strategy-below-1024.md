@@ -2,7 +2,8 @@
 slug: decisions/ADR-0114-responsive-strategy-below-1024
 title: 'ADR-0114: Responsive strategy below 1024px'
 type: decision
-tags: [design-system, layout, responsive, breakpoint, accessibility, a11y, wcag, reflow, chrome, css]
+tags:
+  [design-system, layout, responsive, breakpoint, accessibility, a11y, wcag, reflow, chrome, css]
 related:
   [
     decisions/ADR-0096-design-system-consolidation,
