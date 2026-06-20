@@ -112,6 +112,45 @@ describe('FurnitureInspector', () => {
     expect(command?.params.rotation).toBe(EXPECTED_ANGLE)
   })
 
+  it('dispatches setFurnitureName with the typed name when the name is committed on blur', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    const nameInput = screen.getByLabelText('Name')
+    await user.clear(nameInput)
+    await user.type(nameInput, NEW_NAME)
+    await user.tab()
+
+    const command = commandOfType<{ floorId: string; furnitureId: string; name: string }>(
+      dispatch,
+      SET_FURNITURE_NAME,
+    )
+    expect(command).toBeDefined()
+    expect(command?.params).toEqual({
+      floorId: FLOOR_ID,
+      furnitureId: FURNITURE_ID,
+      name: NEW_NAME,
+    })
+  })
+
+  it('dispatches rotateFurniture with the parsed degrees when the angle is committed on blur', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    const angleInput = screen.getByLabelText('Angle')
+    await user.clear(angleInput)
+    await user.type(angleInput, NEW_ANGLE)
+    await user.tab()
+
+    const command = commandOfType<RotateFurnitureParams>(dispatch, ROTATE_FURNITURE)
+    expect(command).toBeDefined()
+    expect(command?.params.floorId).toBe(FLOOR_ID)
+    expect(command?.params.furnitureId).toBe(FURNITURE_ID)
+    expect(command?.params.rotation).toBe(EXPECTED_ANGLE)
+  })
+
   it('dispatches resizeFurniture with the new width and unchanged depth when the width is committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
