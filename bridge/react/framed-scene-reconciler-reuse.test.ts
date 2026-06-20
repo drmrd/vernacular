@@ -371,6 +371,12 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
   })
 })
 
+/* eslint-disable-next-line max-lines-per-function --
+ * One scenario per furniture model-cache status: a ready mesh, the failed box, the
+ * loading box, and the plain box, plus the loading-to-failed swap. The block grows by
+ * one `it` per status the reconciler maps, so the per-function line cap is the wrong
+ * tool for this aggregate behavior suite.
+ */
 describe('createFramedSceneReconciler furniture model', () => {
   it('builds a mesh sub-group for a ready model and a box otherwise', async () => {
     const derive = createSceneGraphDeriver()
