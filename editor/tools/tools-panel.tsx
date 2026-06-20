@@ -56,7 +56,7 @@ function Chip({ toolId, label, unavailable, icon }: ChipProps) {
       type="button"
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       aria-pressed={toolId !== undefined ? isActive : undefined}
-      aria-disabled={unavailable ? true : undefined}
+      aria-disabled={unavailable || undefined}
       title={unavailable ? 'Planned, not yet available' : undefined}
       onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
     >
