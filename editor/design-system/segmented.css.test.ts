@@ -24,8 +24,7 @@ describe('segmented.css', () => {
     // tree. The shared dimmed-appearance rule (cursor: not-allowed; opacity:
     // 0.5) therefore has to reach them via [aria-disabled='true'] as well, or
     // the planned chips stop reading as unavailable.
-    const dimmingRule =
-      css.match(/[^{}]*\[aria-disabled='true'\][^{}]*\{[^}]*\}/)?.[0] ?? ''
+    const dimmingRule = css.match(/[^{}]*\[aria-disabled='true'\][^{}]*\{[^}]*\}/)?.[0] ?? ''
     expect(dimmingRule).not.toBe('')
     expect(dimmingRule).toMatch(/\.ds-segmented__option\[aria-disabled='true'\]/)
     expect(dimmingRule).toMatch(/opacity:\s*0\.5/)
