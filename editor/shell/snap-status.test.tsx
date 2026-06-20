@@ -29,4 +29,16 @@ describe('SnapStatus', () => {
     expect(screen.getByRole('checkbox', { name: /grid/i })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: /endpoint/i })).toBeInTheDocument()
   })
+
+  it('renders a disclosure caret cue on the indicator that reflects the open state', async () => {
+    const user = userEvent.setup()
+    renderSnapStatus()
+    const button = screen.getByRole('button', { name: /snap/i })
+    const caret = button.querySelector('.snap-status__caret')
+    expect(caret).not.toBeNull()
+    expect(caret).toHaveAttribute('aria-hidden', 'true')
+    expect(caret).not.toHaveClass('is-open')
+    await user.click(button)
+    expect(caret).toHaveClass('is-open')
+  })
 })
