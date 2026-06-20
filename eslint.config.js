@@ -154,4 +154,14 @@ export default tseslint.config(
       'no-magic-numbers': 'off',
     },
   },
+  {
+    files: ['scripts/story-coverage/uncovered-components.ts'],
+    rules: {
+      // The story-coverage allowlist is a declarative data table with one entry
+      // per tolerated uncovered component module; its length is inherent to its
+      // purpose and shrinks as story coverage lands, so the file-length cap does
+      // not apply.
+      'max-lines': 'off',
+    },
+  },
 )
