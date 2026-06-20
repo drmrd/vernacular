@@ -110,7 +110,7 @@ describe('ToolsPanel', () => {
     expect(selectChip).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('keeps disabled placeholder chips on the shared segmented option treatment', () => {
+  it('keeps planned placeholder chips on the shared segmented option treatment', () => {
     render(
       <ActiveToolProvider>
         <ToolsPanel />
@@ -119,8 +119,38 @@ describe('ToolsPanel', () => {
 
     const fireplaceChip = screen.getByRole('button', { name: /fireplace/i })
 
-    expect(fireplaceChip).toBeDisabled()
+    expect(fireplaceChip).toHaveAttribute('aria-disabled', 'true')
+    expect(fireplaceChip).toBeEnabled()
     expect(fireplaceChip).toHaveClass('ds-segmented__option')
+  })
+
+  it('planned tools stay perceivable and read as planned', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider>
+        <ToolsPanel />
+      </ActiveToolProvider>,
+    )
+
+    const selectChip = screen.getByRole('button', { name: /select/i })
+
+    for (const name of [/fireplace/i, /chimney/i, /stairs/i, /label/i]) {
+      const chip = screen.getByRole('button', { name })
+
+      expect(chip).toHaveAttribute('aria-disabled', 'true')
+      expect(chip).toBeEnabled()
+      expect(chip).toHaveAttribute('title', expect.stringMatching(/planned/i))
+      expect(chip).toHaveClass('tools-panel__chip')
+    }
+
+    const fireplaceChip = screen.getByRole('button', { name: /fireplace/i })
+
+    expect(selectChip).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(fireplaceChip)
+
+    expect(selectChip).toHaveAttribute('aria-pressed', 'true')
+    expect(fireplaceChip).not.toHaveAttribute('aria-pressed', 'true')
   })
 
   it('renders Door and Window chips in the DRAW section (no standalone Opening chip)', () => {
