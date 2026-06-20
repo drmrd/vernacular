@@ -1,5 +1,3 @@
-// storage/assets/msw-pack-handlers.ts
-//
 // Shared MSW request handlers for the app's pack-fetch surface. Used by both
 // the browser-mode Storybook component run and the node-level Vitest unit test
 // to serve a deterministic, valid pack manifest in place of a real network
@@ -7,15 +5,16 @@
 
 import { http, HttpResponse } from 'msw'
 import type { RequestHandler } from 'msw'
+import type { AssetKind } from '../../core/assets/pack-manifest'
 
 const PACK_ID = 'vernacular-starter'
 const PACK_VERSION = '1.0.0'
 const PACK_LICENSE = 'CC0-1.0'
 const PACK_ATTRIBUTION = 'Vernacular project'
-const PACK_ERAS = ['mid-century']
-const PACK_CATEGORIES = ['seating']
+const PACK_ERAS = Object.freeze(['mid-century'])
+const PACK_CATEGORIES = Object.freeze(['seating'])
 
-const ASSET_KIND = 'furniture'
+const ASSET_KIND: AssetKind = 'furniture'
 const ASSET_WIDTH_MM = 500
 const ASSET_DEPTH_MM = 520
 const ASSET_HEIGHT_MM = 800
@@ -25,7 +24,34 @@ interface ManifestAsset {
   name: string
 }
 
-function buildManifestAsset(asset: ManifestAsset): Record<string, unknown> {
+interface ManifestDimensions {
+  width: number
+  depth: number
+  height: number
+}
+
+interface ServedManifestAsset {
+  contentHash: string
+  name: string
+  kind: AssetKind
+  license: string
+  attribution: string
+  eras: readonly string[]
+  categories: readonly string[]
+  dimensions: ManifestDimensions
+}
+
+interface ServedManifest {
+  packId: string
+  version: string
+  license: string
+  attribution: string
+  eras: readonly string[]
+  categories: readonly string[]
+  assets: ServedManifestAsset[]
+}
+
+function buildManifestAsset(asset: ManifestAsset): ServedManifestAsset {
   return {
     contentHash: asset.contentHash,
     name: asset.name,
@@ -38,7 +64,7 @@ function buildManifestAsset(asset: ManifestAsset): Record<string, unknown> {
   }
 }
 
-function buildManifest(assets: ManifestAsset[]): Record<string, unknown> {
+function buildManifest(assets: ManifestAsset[]): ServedManifest {
   return {
     packId: PACK_ID,
     version: PACK_VERSION,
