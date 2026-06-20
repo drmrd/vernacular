@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { UnitSystem } from '../../core'
 import { Segmented } from '../design-system'
+import './unit-toggle.css'
 
 export interface UnitToggleProps {
   units: UnitSystem
@@ -20,13 +21,16 @@ function isUnitSystem(value: string): value is UnitSystem {
 
 export function UnitToggle({ units, onChange }: UnitToggleProps): ReactElement {
   return (
-    <Segmented
-      label="Units"
-      options={[...UNIT_OPTIONS]}
-      value={units}
-      onSelect={(value) => {
-        if (isUnitSystem(value)) onChange(value)
-      }}
-    />
+    <div className="unit-toggle">
+      <span className="unit-toggle__label">Units</span>
+      <Segmented
+        label="Units"
+        options={[...UNIT_OPTIONS]}
+        value={units}
+        onSelect={(value) => {
+          if (isUnitSystem(value)) onChange(value)
+        }}
+      />
+    </div>
   )
 }
