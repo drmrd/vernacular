@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { setupServer } from 'msw/node'
 import { PackSource } from './pack-source'
 import { createFetchPackReader } from './fetch-pack-reader'
-import { packHandlers } from './msw-pack-handlers'
+import { packErrorHandlers, packHandlers } from './msw-pack-handlers'
 
 const BASE = 'http://localhost/packs/vernacular-starter-1.0.0'
 
@@ -33,5 +33,13 @@ describe('packHandlers', () => {
     const items = await source.list()
 
     expect(items.map((item) => item.name)).toEqual(['Mid-century chair', 'Edwardian writing desk'])
+  })
+
+  it('lists nothing when the mocked manifest request errors', async () => {
+    server.use(...packErrorHandlers({ base: BASE }))
+
+    const source = new PackSource(createFetchPackReader(BASE, fetch))
+
+    expect(await source.list()).toEqual([])
   })
 })
