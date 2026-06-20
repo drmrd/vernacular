@@ -21,6 +21,12 @@ describe('UnitToggle', () => {
     expect(screen.getByRole('group', { name: /units/i })).toBeInTheDocument()
   })
 
+  it('renders a visible Units label so the option pair reads as one labeled switch', () => {
+    render(<UnitToggle units="metric" onChange={vi.fn()} />)
+
+    expect(screen.getByText('Units', { selector: 'span' })).toBeInTheDocument()
+  })
+
   it('marks the Metric option active when units is metric', () => {
     render(<UnitToggle units="metric" onChange={vi.fn()} />)
 
