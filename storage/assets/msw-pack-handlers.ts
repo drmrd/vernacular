@@ -14,6 +14,8 @@ const PACK_ATTRIBUTION = 'Vernacular project'
 const PACK_ERAS = Object.freeze(['mid-century'])
 const PACK_CATEGORIES = Object.freeze(['seating'])
 
+const DEFAULT_ERROR_STATUS = 500
+
 const ASSET_KIND: AssetKind = 'furniture'
 const ASSET_WIDTH_MM = 500
 const ASSET_DEPTH_MM = 520
@@ -86,4 +88,16 @@ export function packHandlers(options: {
 }): RequestHandler[] {
   const manifest = buildManifest(options.assets)
   return [http.get(`${options.base}/manifest.json`, () => HttpResponse.json(manifest))]
+}
+
+/**
+ * MSW handlers that respond with a non-ok status (default 500) at
+ * `GET ${base}/manifest.json`, so the fetch-backed reader surfaces an empty pack.
+ */
+export function packErrorHandlers(options: {
+  base: string
+  status?: number
+}): RequestHandler[] {
+  const status = options.status ?? DEFAULT_ERROR_STATUS
+  return [http.get(`${options.base}/manifest.json`, () => new HttpResponse(null, { status }))]
 }
