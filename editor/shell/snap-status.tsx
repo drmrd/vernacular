@@ -23,6 +23,12 @@ export function SnapStatus() {
           ◆
         </span>
         {preferences.enabled ? 'Snap' : 'Snap off'}
+        <span
+          className={['snap-status__caret', open && 'is-open'].filter(Boolean).join(' ')}
+          aria-hidden="true"
+        >
+          ▾
+        </span>
       </button>
       {open ? (
         <div className="snap-status__popover" role="dialog" aria-label="Snapping precision">
