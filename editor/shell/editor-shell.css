@@ -55,16 +55,8 @@
   color: var(--color-text-muted);
 }
 
-.editor-shell__breadcrumb-sep {
-  color: var(--color-text-muted);
-}
-
 .editor-shell__breadcrumb-active {
   color: var(--color-text);
-}
-
-.editor-shell__breadcrumb-crumb {
-  color: var(--color-text-muted);
 }
 
 .editor-shell__toolbar-actions {
