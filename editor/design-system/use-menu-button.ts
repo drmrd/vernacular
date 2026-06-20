@@ -44,6 +44,29 @@ function roveMenuFocus(event: MenuKeyboardEvent, container: HTMLElement | null):
   items[target]?.focus()
 }
 
+// Restores DOM focus to the trigger button. The trigger renders unconditionally
+// (it does not depend on `open`), so it is present even as the menu closes.
+function focusTrigger(container: HTMLElement | null): void {
+  container?.querySelector<HTMLElement>('[aria-haspopup]')?.focus()
+}
+
+// Dispatches an open-menu keydown: Escape returns focus to the trigger and
+// closes the menu (focus first, since the trigger is not unmounted on close);
+// arrow keys rove. Other keys fall through.
+function handleMenuKeyDown(
+  event: MenuKeyboardEvent,
+  container: HTMLElement | null,
+  close: () => void,
+): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    focusTrigger(container)
+    close()
+    return
+  }
+  roveMenuFocus(event, container)
+}
+
 export interface MenuButton<C extends HTMLElement> {
   open: boolean
   toggle: () => void
@@ -94,10 +117,11 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
   const onKeyDown: (event: MenuKeyboardEvent) => void = useCallback(() => {}, [])
 
   // Arrow keys rove focus between the menu items, wrapping past the last item
-  // back to the first and before the first back to the last.
+  // back to the first and before the first back to the last; Escape closes the
+  // menu and returns focus to the trigger.
   const onMenuKeyDown = useCallback(
-    (event: MenuKeyboardEvent) => roveMenuFocus(event, containerRef.current),
-    [],
+    (event: MenuKeyboardEvent) => handleMenuKeyDown(event, containerRef.current, close),
+    [close],
   )
 
   const triggerProps = useMemo(
