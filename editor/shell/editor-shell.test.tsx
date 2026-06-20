@@ -235,7 +235,7 @@ describe('EditorShell', () => {
     renderShell({ onNewProject, onSave, onExportBundle })
 
     // New lives in the project menu near the wordmark; Save stays a visible action.
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /new project/i }))
     const project = screen.getByRole('navigation', { name: /project/i })
     await user.click(within(project).getByRole('button', { name: /^save$/i }))
@@ -254,7 +254,7 @@ describe('EditorShell', () => {
 
     renderShell({ onOpenFolder })
 
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /open folder/i }))
 
     expect(onOpenFolder).toHaveBeenCalledTimes(1)
@@ -273,7 +273,7 @@ describe('EditorShell', () => {
       onOpenRecent,
     })
 
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     expect(screen.getByRole('menuitem', { name: /alpha/i })).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: /beta/i }))
 
@@ -314,7 +314,7 @@ describe('EditorShell', () => {
       importStatus: { fileName: 'x.building', reason: 'corrupt' },
     })
 
-    await user.click(screen.getByRole('button', { name: /project menu/i }))
+    await user.click(screen.getByRole('button', { name: /project/i }))
     expect(screen.getByRole('menuitem', { name: /open file/i })).toBeInTheDocument()
 
     expect(screen.getByRole('alert')).toHaveTextContent(/x\.building/)

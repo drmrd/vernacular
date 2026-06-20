@@ -66,4 +66,25 @@ describe('ExportMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: /pdf/i }))
     expect(onExportPdf).toHaveBeenCalledTimes(1)
   })
+
+  it('closes the open menu and returns focus to the trigger when Escape is pressed', async () => {
+    const user = userEvent.setup()
+    render(
+      <ExportMenu
+        onExportBundle={vi.fn()}
+        onExportPlan={vi.fn()}
+        onExportImage={vi.fn()}
+        onExportPdf={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: /^export$/i })
+    await user.click(trigger)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(trigger).toHaveFocus()
+  })
 })
