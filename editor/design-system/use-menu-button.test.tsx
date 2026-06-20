@@ -41,4 +41,16 @@ describe('useMenuButton', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('menu')).toBeNull()
   })
+
+  it('moves focus to the first menu item when the menu opens', async () => {
+    const user = userEvent.setup()
+    render(<MenuHarness />)
+
+    const trigger = screen.getByRole('button', { name: 'Project' })
+    await user.click(trigger)
+
+    const items = screen.getAllByRole('menuitem')
+    expect(items[0]).toHaveTextContent('New')
+    expect(items[0]).toHaveFocus()
+  })
 })
