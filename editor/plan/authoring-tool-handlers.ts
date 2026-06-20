@@ -128,8 +128,8 @@ function cancelWallRun(ctx: WallKeyContext): void {
 }
 
 // Handle one keystroke while the wall tool is active: arrow keys move the
-// candidate, Enter drops a vertex or finishes the run, Escape cancels the run,
-// any other key falls through.
+// candidate, Enter drops a vertex or finishes the run, Escape cancels a run that
+// is in progress, any other key falls through.
 export function handleWallKey(ctx: WallKeyContext): void {
   if (handleNudge(ctx, ctx.event)) {
     return
@@ -138,7 +138,10 @@ export function handleWallKey(ctx: WallKeyContext): void {
     dropWallVertex(ctx)
     return
   }
-  if (ctx.event.key === 'Escape') {
+  // Only cancel a keyboard run that is actually open. With no keyboard run in
+  // progress, Escape is left untouched so it neither announces a phantom cancel
+  // nor disturbs the pointer wall tool's own Escape handling on the same event.
+  if (ctx.event.key === 'Escape' && ctx.toolState.phase === 'drawing') {
     cancelWallRun(ctx)
   }
 }
