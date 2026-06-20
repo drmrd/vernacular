@@ -49,6 +49,22 @@ describe('LengthField', () => {
     expect(onCommitMm).toHaveBeenCalledWith(EXPECTED_MM)
   })
 
+  it('commits the parsed millimetre value on blur without pressing Enter', async () => {
+    const onCommitMm = vi.fn()
+    const user = userEvent.setup()
+    renderField(onCommitMm)
+
+    const input = screen.getByLabelText(LABEL)
+    await user.clear(input)
+    await user.type(input, ENTERED_VALUE)
+    // Leave the field the way a user does when they click the canvas: move
+    // focus off the input, which fires a real blur. No Enter is pressed.
+    await user.tab()
+
+    expect(onCommitMm).toHaveBeenCalledTimes(1)
+    expect(onCommitMm).toHaveBeenCalledWith(EXPECTED_MM)
+  })
+
   it('shows an inline error and keeps the typed text when a commit is rejected for being out of range', async () => {
     const onCommitMm = vi.fn(() => {
       // Mirror the real path: onCommitMm -> parent dispatch -> the dispatcher
