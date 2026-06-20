@@ -72,6 +72,22 @@
   transform: translate(12px, calc(-100% - 8px));
 }
 
+/*
+ * The keyboard authoring candidate marker: a small crosshair dot showing where the
+ * next Enter drops geometry. It uses the accent (the draughtsman's annotation color)
+ * so it stands clear of the wall lines, and is centered on its screen anchor. It
+ * paints only while a creative tool is active, so it is absent from the at-rest plan.
+ */
+.plan-overlay__candidate {
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
 /* The live region is available to assistive technology but visually hidden. */
 .plan-overlay__live {
   position: absolute;

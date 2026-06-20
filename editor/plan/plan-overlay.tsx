@@ -1,7 +1,8 @@
 import './plan-overlay.css'
 import { useState, type FocusEvent, type ReactElement } from 'react'
-import type { SceneGraph, UnitPreferences } from '../../core'
+import type { Point, SceneGraph, UnitPreferences } from '../../core'
 import type { SelectionStore } from '../../bridge'
+import type { ToolId } from '../tools/active-tool-context'
 import { dimensionChips, type DimensionChip } from './dimension-chip'
 import type { DragReadout } from './drag-readout'
 import type { PreviewSegment } from './draw-plan'
@@ -31,6 +32,9 @@ export interface PlanOverlayProps {
   selection: SelectionStore
   preferences: UnitPreferences
   snap: SnapResult | null
+  // The active tool, used to gate the keyboard authoring candidate marker so it
+  // never paints under the select tool (the at-rest visual-regression state).
+  tool: ToolId
   // The in-progress wall-draw segment, present only while drawing, which drives the
   // live readout chip and the angle-lock announcement.
   preview?: PreviewSegment
@@ -38,6 +42,26 @@ export interface PlanOverlayProps {
   // runs. The wall draw and the move drag never co-occur, so this is independent of
   // the preview-driven readout chip.
   readout?: DragReadout
+  // The keyboard authoring candidate point, marked on the canvas while a creative
+  // tool is active so a keyboard user can see where Enter will drop geometry.
+  authoringCandidate?: Point
+  // The live keyboard authoring announcement ("Wall vertex dropped", etc.); when
+  // non-empty it wins the single live region over the snap/selection text.
+  authoringAnnouncement?: string
+}
+
+// The creative tools that drop free points on the canvas, which the keyboard
+// authoring candidate marker paints under. Gated as a set so the marker never
+// renders at rest under select, keeping the home screenshot byte-identical.
+const CREATIVE_AUTHORING_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
+  'draw-wall',
+  'dimension',
+  'place-opening',
+  'place-furniture',
+])
+
+function isCreativeAuthoringTool(tool: ToolId): boolean {
+  return CREATIVE_AUTHORING_TOOLS.has(tool)
 }
 
 interface PillProps {
@@ -116,6 +140,30 @@ function FocusTooltip({ entity, viewport, visible }: FocusTooltipProps): ReactEl
   )
 }
 
+interface CandidateMarkerProps {
+  candidate: Point | undefined
+  tool: ToolId
+  viewport: Viewport
+}
+
+// The small marker showing where the keyboard authoring candidate sits, so a
+// keyboard user can see where Enter will drop geometry. It paints only while a
+// creative tool is active, so it is absent at rest under the select tool and the
+// home screenshot stays byte-identical.
+function CandidateMarker({ candidate, tool, viewport }: CandidateMarkerProps): ReactElement | null {
+  if (candidate === undefined || !isCreativeAuthoringTool(tool)) {
+    return null
+  }
+  const screen = worldToScreen(candidate, viewport)
+  return (
+    <div
+      className="plan-overlay__candidate"
+      data-testid="plan-authoring-candidate"
+      style={{ position: 'absolute', left: screen.x, top: screen.y }}
+    />
+  )
+}
+
 // Ignore focus moving between the overlay's own proxies; only a move outside the
 // container hides the tooltip.
 function focusLeftContainer(event: FocusEvent<HTMLDivElement>): boolean {
@@ -162,13 +210,15 @@ function ProxyListbox({
   )
 }
 
-// The live-region text. An engaged angle lock reads as its bearing ("Locked to 90
-// degrees"); otherwise the active snap, or the current selection, is announced.
-function liveAnnouncement(
-  snap: SnapResult | null,
-  preview: PreviewSegment | undefined,
-  selected: readonly OverlayEntity[],
-): string {
+// The live-region text. A keyboard authoring step ("Wall vertex dropped") wins
+// while authoring, so the user hears the geometry they just dropped rather than a
+// snap. Otherwise an engaged angle lock reads as its bearing ("Locked to 90
+// degrees"), then the active snap, then the current selection.
+function liveAnnouncement(props: PlanOverlayProps, selected: readonly OverlayEntity[]): string {
+  const { authoringAnnouncement, snap, preview } = props
+  if (authoringAnnouncement !== undefined && authoringAnnouncement !== '') {
+    return authoringAnnouncement
+  }
   if (snap?.kind === 'angle' && preview) {
     return angleLockAnnouncement(segmentReadout(preview).bearingDeg)
   }
@@ -189,6 +239,37 @@ interface ReadoutPillProps {
 // co-occur, so a single pill class serves both.
 function ReadoutPill({ screen, text }: ReadoutPillProps): ReactElement {
   return <PositionedPill className="plan-overlay__readout" screen={screen} text={text} />
+}
+
+interface OverlayReadoutsProps {
+  viewport: Viewport
+  preferences: UnitPreferences
+  preview: PreviewSegment | undefined
+  readout: DragReadout | undefined
+}
+
+// The pair of near-cursor readout pills: the in-progress wall draw's length/bearing
+// at the snapped segment end, and a live move drag's pre-formatted text at its anchor.
+// The two never co-occur, so each renders only when its source is present.
+function OverlayReadouts({
+  viewport,
+  preferences,
+  preview,
+  readout,
+}: OverlayReadoutsProps): ReactElement {
+  return (
+    <>
+      {preview ? (
+        <ReadoutPill
+          screen={worldToScreen(preview.end, viewport)}
+          text={formatReadout(segmentReadout(preview), preferences)}
+        />
+      ) : null}
+      {readout ? (
+        <ReadoutPill screen={worldToScreen(readout.anchor, viewport)} text={readout.text} />
+      ) : null}
+    </>
+  )
 }
 
 // The brass scale bar in the lower-right of the plan stage: a tick bar whose width
@@ -221,12 +302,13 @@ function ScaleBar({
  */
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const { viewport, graph, selectedIds, selection, preferences, snap, preview, readout } = props
+  const { tool, authoringCandidate } = props
   const entities = overlayEntities(graph, selectedIds, preferences)
   const keyboard = useOverlayKeyboard(entities.length, selection)
   const [focused, setFocused] = useState(false)
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
-  const announcement = liveAnnouncement(snap, preview, selected)
+  const announcement = liveAnnouncement(props, selected)
   const snapStatus = snapStatusLabel(snap)
 
   return (
@@ -239,15 +321,13 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
       />
       <ChipLayer chips={dimensionChips(graph.dimensions, viewport, preferences)} />
       <FocusTooltip entity={focusedEntity} viewport={viewport} visible={focused} />
-      {preview ? (
-        <ReadoutPill
-          screen={worldToScreen(preview.end, viewport)}
-          text={formatReadout(segmentReadout(preview), preferences)}
-        />
-      ) : null}
-      {readout ? (
-        <ReadoutPill screen={worldToScreen(readout.anchor, viewport)} text={readout.text} />
-      ) : null}
+      <CandidateMarker candidate={authoringCandidate} tool={tool} viewport={viewport} />
+      <OverlayReadouts
+        viewport={viewport}
+        preferences={preferences}
+        preview={preview}
+        readout={readout}
+      />
       <div className="plan-overlay__annotations">
         <Compass />
         <ScaleBar viewport={viewport} preferences={preferences} />

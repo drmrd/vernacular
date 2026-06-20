@@ -24,6 +24,7 @@ import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { planCursor } from './plan-cursor'
 import { DEFAULT_PLAN_PALETTE, resolvePlanPalette, type PlanPalette } from './plan-palette'
 import type { DrawableDimension } from './draw-dimension'
+import type { DragReadout } from './drag-readout'
 import { toDrawableDimensions } from './drawable-dimensions'
 import { singleSelectedWall } from './selected-wall'
 import { composePointerHandlers, type ComposedPointerHandlers } from './compose-pointer-handlers'
@@ -44,6 +45,9 @@ import { usePlanHover, type PlanHover } from './use-plan-hover'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useFloorFillColor, useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
+import { usePlanAuthoring, type PlanAuthoringResult } from './use-plan-authoring'
+import { useOpeningTool } from './opening-tool-context'
+import { useFurniturePlacement } from './furniture-placement-context'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
@@ -91,6 +95,7 @@ interface PlanLayers {
   underlayLayer: PlanUnderlayLayer
   openingLayer: OpeningLayer
   furnitureLayer: FurnitureLayer
+  authoring: PlanAuthoringResult
 }
 
 /**
@@ -222,6 +227,17 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     activeFloorId,
     furniture,
   })
+  const { placementType } = useOpeningTool()
+  const { armed, rotation } = useFurniturePlacement()
+  const authoring = usePlanAuthoring({
+    session,
+    tool,
+    activeFloorId,
+    graph,
+    placementType,
+    armed,
+    rotation,
+  })
   const wallEditing = useWallEditing({
     session,
     selectedWall,
@@ -260,6 +276,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     underlayLayer,
     openingLayer,
     furnitureLayer,
+    authoring,
   }
 }
 
@@ -285,6 +302,29 @@ function usePlanPalette(canvasRef: CanvasRef): PlanPalette {
     )
   }, [resolved, canvasRef])
   return palette
+}
+
+/**
+ * Builds the overlay props from the resolved layers and the live readout. The
+ * authoring candidate and announcement come straight from usePlanAuthoring; the
+ * overlay gates the candidate marker on the active tool so it stays absent at rest.
+ * A pure transform kept out of usePlanController so that hook body stays lean.
+ */
+function buildOverlayProps(layers: PlanLayers, readout: DragReadout | undefined): PlanOverlayProps {
+  const { interaction } = layers
+  return {
+    viewport: layers.viewport,
+    graph: layers.graph,
+    selectedIds: layers.selectedIds,
+    selection: layers.selection,
+    preferences: layers.preferences,
+    snap: interaction.snap,
+    tool: layers.tool,
+    authoringCandidate: layers.authoring.candidate,
+    authoringAnnouncement: layers.authoring.announcement,
+    ...(interaction.preview ? { preview: interaction.preview } : {}),
+    ...(readout ? { readout } : {}),
+  }
 }
 
 /**
@@ -320,16 +360,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       furniturePlacement: layers.furnitureLayer.placement,
       hover: layers.planHover,
     }),
-    overlay: {
-      viewport: layers.viewport,
-      graph: layers.graph,
-      selectedIds: layers.selectedIds,
-      selection: layers.selection,
-      preferences: layers.preferences,
-      snap: interaction.snap,
-      ...(interaction.preview ? { preview: interaction.preview } : {}),
-      ...(readout ? { readout } : {}),
-    },
+    overlay: buildOverlayProps(layers, readout),
   }
 }
 
