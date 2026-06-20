@@ -13,12 +13,17 @@ const STORY_FILE_SUFFIX = '.stories.tsx'
 const TEST_FILE_SUFFIX = '.test.tsx'
 const SPEC_FILE_SUFFIX = '.spec.tsx'
 
-// An exported PascalCase function or const is a component. A leading lowercase
-// identifier is a helper, and a `use[A-Z]` identifier is a hook; neither is a
-// component. Type/interface/enum exports never make a file a component module.
+// An exported PascalCase function or component const is a component. A const is
+// only a component when its initializer is a function: an arrow function, or a
+// `forwardRef`/`memo` wrapper. A PascalCase const bound to anything else (e.g.
+// `export const ThemeContext = createContext(...)`) is not a component, so the
+// const pattern deliberately does not match a bare `= value`. A leading
+// lowercase identifier is a helper, and a `use[A-Z]` identifier is a hook;
+// neither is a component. Type/interface/enum exports never make a file a
+// component module.
 const EXPORTED_COMPONENT_PATTERNS = [
   /export\s+function\s+[A-Z]\w*/,
-  /export\s+const\s+[A-Z]\w*\s*=/,
+  /export\s+const\s+[A-Z]\w*\s*=\s*(?:[^=]*=>|forwardRef\b|memo\b)/,
   /export\s+default\s+function\s+[A-Z]\w*/,
 ]
 
@@ -52,12 +57,19 @@ function isComponentCandidate(name: string): boolean {
   )
 }
 
-function exportsComponent(file: string): boolean {
-  const source = readFileSync(file, 'utf8')
-  const isComponentLine = (line: string): boolean =>
+function isComponentExportLine(line: string): boolean {
+  return (
     EXPORTED_COMPONENT_PATTERNS.some((pattern) => pattern.test(line)) &&
     !HOOK_EXPORT_PATTERNS.some((pattern) => pattern.test(line))
-  return source.split('\n').some(isComponentLine)
+  )
+}
+
+function classifiesAsComponentModule(source: string): boolean {
+  return source.split('\n').some(isComponentExportLine)
+}
+
+function exportsComponent(file: string): boolean {
+  return classifiesAsComponentModule(readFileSync(file, 'utf8'))
 }
 
 function hasSiblingStory(file: string): boolean {
