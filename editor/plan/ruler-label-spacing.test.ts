@@ -17,7 +17,8 @@ describe('rulerLabelSpacingMm', () => {
     const spacing = rulerLabelSpacingMm(DEFAULT_IMPERIAL_PREFERENCES, 0.05)
 
     expect(spacing).toBe(5 * MM_PER_FOOT)
-    expect(spacing % MM_PER_FOOT).toBe(0)
+    expect(Number.isInteger(spacing / MM_PER_FOOT)).toBe(true)
+    expect(spacing / MM_PER_FOOT).toBe(5)
     expect(NICE_FEET).toContain(spacing / MM_PER_FOOT)
   })
 
@@ -26,7 +27,8 @@ describe('rulerLabelSpacingMm', () => {
     const spacing = rulerLabelSpacingMm(DEFAULT_IMPERIAL_PREFERENCES, 0.01)
 
     expect(spacing).toBe(20 * MM_PER_FOOT)
-    expect(spacing % MM_PER_FOOT).toBe(0)
+    expect(Number.isInteger(spacing / MM_PER_FOOT)).toBe(true)
+    expect(spacing / MM_PER_FOOT).toBe(20)
     expect(NICE_FEET).toContain(spacing / MM_PER_FOOT)
   })
 
