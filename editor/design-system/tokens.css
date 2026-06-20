@@ -82,9 +82,9 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  /* Control sizing. The WCAG 2.5.8 target-size scale: 40px is the fine-pointer
-     minimum and 44px the coarse/touch minimum. The icon-button square consumes the
-     fine-pointer minimum and a coarse-pointer block below bumps it to the touch value. */
+  /* Control sizing. WCAG 2.5.8 target-size minimums (ADR-0112): 40px fine pointer,
+     44px coarse (touch) pointer. The coarse block below re-points this single token so
+     every consumer inherits the 44px floor with no per-file changes. */
   --size-target-min: 2.5rem;
   --size-target-min-touch: 2.75rem;
   --size-control-icon: var(--size-target-min);
