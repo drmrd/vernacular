@@ -6,6 +6,7 @@ import {
 } from '../../core'
 import type { DrawPlanOptions, PlanDrawingContext } from './draw-plan'
 import { gridSpacingMm } from './grid'
+import { rulerLabelSpacingMm } from './ruler-label-spacing'
 import { axisProjection, axisSamples, type Viewport } from './viewport'
 import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 
@@ -33,13 +34,11 @@ export function rulerTicks(
   orientation: 'horizontal' | 'vertical',
   preferences: UnitPreferences,
 ): RulerTick[] {
-  const gridSpacing = gridSpacingMm(viewport.scale)
-  const stepPx = gridSpacing * viewport.scale
-  // Label every Nth grid line, where N is the smallest integer that spreads
-  // adjacent labels at least RULER_MIN_LABEL_GAP_PX apart. Keeping the label
-  // spacing an integer multiple of the grid spacing leaves ticks grid-aligned.
-  const labelEvery = Math.max(1, Math.ceil(RULER_MIN_LABEL_GAP_PX / stepPx))
-  const labelSpacingMm = gridSpacing * labelEvery
+  // Labels snap to the unit-nice interval (whole feet in imperial, a metric 1-2-5
+  // decade in metric) via rulerLabelSpacingMm, decoupled from the metric drawing
+  // grid so the values a reader sees are round in their own unit. Minor ticks
+  // (drawRulerTicks) stay on gridSpacingMm.
+  const labelSpacingMm = rulerLabelSpacingMm(preferences, viewport.scale)
   return axisSamples(axisProjection(viewport, orientation), lengthPx, labelSpacingMm).map(
     (sample) => ({
       worldValue: sample.worldValue,
