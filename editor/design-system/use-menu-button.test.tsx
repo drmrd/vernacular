@@ -79,4 +79,19 @@ describe('useMenuButton', () => {
     await user.keyboard('{ArrowUp}')
     expect(items[2]).toHaveFocus()
   })
+
+  it('closes the menu and returns focus to the trigger when Escape is pressed', async () => {
+    const user = userEvent.setup()
+    render(<MenuHarness />)
+
+    const trigger = screen.getByRole('button', { name: 'Project' })
+    await user.click(trigger)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).toHaveFocus()
+  })
 })
