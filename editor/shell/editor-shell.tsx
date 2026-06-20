@@ -124,9 +124,6 @@ interface ShellHeaderProps {
 function Breadcrumb({ projectName }: { projectName: string }) {
   return (
     <nav className="editor-shell__breadcrumb" aria-label="Breadcrumb">
-      <span className="editor-shell__breadcrumb-sep">/</span>
-      <span className="editor-shell__breadcrumb-crumb">My Projects</span>
-      <span className="editor-shell__breadcrumb-sep">/</span>
       <span className="editor-shell__breadcrumb-active">{projectName}</span>
     </nav>
   )
