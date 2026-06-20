@@ -10,6 +10,40 @@ import {
 
 type MenuKeyboardEvent = KeyboardEvent | ReactKeyboardEvent
 
+// Roving target for ArrowDown/ArrowUp. Returns the index of the menu item to
+// focus next, or `null` when there is nothing to rove (no items). When the
+// active element is not one of the items, ArrowDown lands on the first item and
+// ArrowUp on the last as a sensible fallback.
+function nextRovingIndex(items: HTMLElement[], key: 'ArrowDown' | 'ArrowUp'): number | null {
+  const count = items.length
+  if (count === 0) {
+    return null
+  }
+  const current = items.indexOf(document.activeElement as HTMLElement)
+  if (key === 'ArrowDown') {
+    return current === -1 ? 0 : (current + 1) % count
+  }
+  return current === -1 ? count - 1 : (current - 1 + count) % count
+}
+
+// Moves focus to the roving target when an arrow key fires on an open menu, and
+// suppresses the default scroll. A no-op for other keys or an absent container.
+function roveMenuFocus(event: MenuKeyboardEvent, container: HTMLElement | null): void {
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+    return
+  }
+  if (!container) {
+    return
+  }
+  const items = Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+  const target = nextRovingIndex(items, event.key)
+  if (target === null) {
+    return
+  }
+  event.preventDefault()
+  items[target]?.focus()
+}
+
 export interface MenuButton<C extends HTMLElement> {
   open: boolean
   toggle: () => void
@@ -54,9 +88,16 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
   }, [open])
 
   // The explicit annotation widens the inferred `() => void` to the keyboard
-  // signature the `MenuButton` interface requires. The body is a deliberate
-  // no-op for now; later behaviors (B3-B5) add the actual key handling here.
+  // signature the `MenuButton` interface requires. The trigger body is still a
+  // deliberate no-op for now; later behaviors add its key handling here.
   const onKeyDown: (event: MenuKeyboardEvent) => void = useCallback(() => {}, [])
+
+  // Arrow keys rove focus between the menu items, wrapping past the last item
+  // back to the first and before the first back to the last.
+  const onMenuKeyDown = useCallback(
+    (event: MenuKeyboardEvent) => roveMenuFocus(event, containerRef.current),
+    [],
+  )
 
   const triggerProps = useMemo(
     () =>
@@ -75,9 +116,9 @@ export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuBut
     () =>
       ({
         role: 'menu',
-        onKeyDown,
+        onKeyDown: onMenuKeyDown,
       }) as const,
-    [onKeyDown],
+    [onMenuKeyDown],
   )
 
   return { open, toggle, close, containerRef, triggerProps, menuProps }
