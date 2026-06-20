@@ -90,8 +90,8 @@ export interface MenuButton<C extends HTMLElement> {
  * Owns the open/close plus keyboard contract shared by the header dropdown menus
  * (Project, Export). A consumer spreads `triggerProps` onto its trigger and
  * `menuProps` onto the `role="menu"` list; `open` gates rendering the list. The
- * menu key handler roves focus across the items; the trigger key handler is still
- * a no-op, with later behaviors (B4 Escape, B5 outside-dismiss) adding its handling.
+ * menu key handler roves focus across the items and closes the menu on Escape;
+ * the trigger key handler is still a no-op, pending outside-pointer dismissal.
  */
 export function useMenuButton<C extends HTMLElement = HTMLDivElement>(): MenuButton<C> {
   const [open, setOpen] = useState(false)
