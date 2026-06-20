@@ -110,11 +110,7 @@ describe('findUncoveredComponentModules', () => {
     const helperModule = join(componentDir, 'helpers.tsx')
     const contextModule = join(componentDir, 'theme-context.tsx')
     const typesModule = join(componentDir, 'types.tsx')
-    writeFileSync(
-      hookModule,
-      'export function useThing() { return null }\n',
-      'utf8',
-    )
+    writeFileSync(hookModule, 'export function useThing() { return null }\n', 'utf8')
     writeFileSync(helperModule, 'export function helper() { return 1 }\n', 'utf8')
     writeFileSync(
       contextModule,
@@ -122,11 +118,7 @@ describe('findUncoveredComponentModules', () => {
         'export const ThemeContext = createContext(null)\n',
       'utf8',
     )
-    writeFileSync(
-      typesModule,
-      'export type Widget = { id: string }\n',
-      'utf8',
-    )
+    writeFileSync(typesModule, 'export type Widget = { id: string }\n', 'utf8')
 
     const result = findUncoveredComponentModules({
       roots: [treeRoot],

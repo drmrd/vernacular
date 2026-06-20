@@ -18,9 +18,7 @@ import { UNCOVERED_COMPONENTS } from './uncovered-components'
 
 const repoRoot = resolve(process.cwd())
 const roots = ['app', 'editor', 'bridge'].map((dir) => resolve(repoRoot, dir))
-const allowlist = UNCOVERED_COMPONENTS.map((entry) =>
-  resolve(repoRoot, entry.file),
-)
+const allowlist = UNCOVERED_COMPONENTS.map((entry) => resolve(repoRoot, entry.file))
 
 function reportPaths(paths: string[]): string {
   return paths.map((path) => relative(repoRoot, path)).join('\n')
