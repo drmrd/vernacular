@@ -66,4 +66,18 @@ describe('ProjectMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: /eastmore farmstead/i }))
     expect(onOpenRecent).toHaveBeenCalledWith('p1')
   })
+
+  it('closes the open menu and returns focus to the trigger when Escape is pressed', async () => {
+    const user = userEvent.setup()
+    render(<ProjectMenu onNewProject={vi.fn()} onOpenFolder={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: /project/i })
+    await user.click(trigger)
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(trigger).toHaveFocus()
+  })
 })
