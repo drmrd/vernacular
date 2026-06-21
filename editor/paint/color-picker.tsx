@@ -8,7 +8,7 @@ import {
   type NamedColor,
   type SurfaceRef,
 } from '../../core'
-import { Stack } from '../design-system'
+import { SectionLabel, Stack } from '../design-system'
 import { searchColorNames } from './color-name-search'
 
 export interface ColorPickerProps {
@@ -74,16 +74,21 @@ export function ColorPicker({ surface, finishId, recent, dispatch }: ColorPicker
           />
         ))}
       </Stack>
-      <Stack direction="horizontal">
-        {recent.map((color) => (
-          <ColorChip
-            key={color.srgbHex}
-            label={color.originalSpec ?? color.srgbHex}
-            srgbHex={color.srgbHex}
-            onSelect={() => choose(color)}
-          />
-        ))}
-      </Stack>
+      {recent.length > 0 && (
+        <Stack>
+          <SectionLabel>Recent colors</SectionLabel>
+          <Stack direction="horizontal">
+            {recent.map((color) => (
+              <ColorChip
+                key={color.srgbHex}
+                label={color.originalSpec ?? color.srgbHex}
+                srgbHex={color.srgbHex}
+                onSelect={() => choose(color)}
+              />
+            ))}
+          </Stack>
+        </Stack>
+      )}
     </Stack>
   )
 }
