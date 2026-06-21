@@ -96,6 +96,12 @@ describe('LibraryPanel', () => {
     expect(await screen.findByText(EMPTY_STATE)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: PACK_ITEM_NAME })).toBeNull()
   })
+
+  it('presents the empty-state message as a heading', async () => {
+    renderPanel(new AssetRegistry([]))
+
+    expect(await screen.findByRole('heading', { name: EMPTY_STATE })).toBeInTheDocument()
+  })
 })
 
 const EAMES_NAME = 'Eames chair'
