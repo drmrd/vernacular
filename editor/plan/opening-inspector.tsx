@@ -6,6 +6,7 @@ import {
   flipOpening,
   removeOpening,
   resizeOpening,
+  setOpeningType,
   type AssumedUnit,
   type Command,
   type Opening,
@@ -15,6 +16,7 @@ import {
 } from '../../core'
 import { Button, Stack } from '../design-system'
 import { LengthField } from './length-field'
+import { isWindow, openingTypes, OpeningOptionGroup } from './opening-type-chooser'
 import { RemoveControl } from './remove-control'
 
 const INCH_IN_MM = 25.4
@@ -144,6 +146,31 @@ function DimensionFields({
   )
 }
 
+interface OpeningTypeFieldProps {
+  opening: Opening
+  onChangeType: (type: string) => void
+}
+
+function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): ReactElement {
+  const selectId = `opening-type-${opening.id}`
+  const types = openingTypes()
+  const doors = types.filter((type) => !isWindow(type))
+  const windows = types.filter(isWindow)
+  return (
+    <Stack gap="space-2">
+      <label htmlFor={selectId}>Opening type</label>
+      <select
+        id={selectId}
+        value={opening.type}
+        onChange={(event) => onChangeType(event.target.value)}
+      >
+        <OpeningOptionGroup label="Doors" types={doors} />
+        <OpeningOptionGroup label="Windows" types={windows} />
+      </select>
+    </Stack>
+  )
+}
+
 interface OpeningControlsProps {
   floorId: string
   openingId: string
@@ -183,6 +210,10 @@ export function OpeningInspector({
 
   return (
     <Stack gap="space-2">
+      <OpeningTypeField
+        opening={opening}
+        onChangeType={(type) => dispatch(setOpeningType(floorId, opening.id, type))}
+      />
       <DimensionFields
         opening={opening}
         preferences={preferences}
