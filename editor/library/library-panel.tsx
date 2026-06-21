@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { formatAssetReference } from '../../core'
-import { Button, Segmented, type SegmentedOption } from '../design-system'
+import { Button, LoadingState, Segmented, type SegmentedOption } from '../design-system'
 import type { AssetRegistry, LibraryItem } from '../../storage'
 import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
@@ -41,6 +41,7 @@ function useLibraryItems(registry: AssetRegistry): LibraryItem[] | null {
 }
 
 const EMPTY_MESSAGE = 'No furniture to show yet. Import a model to add your own.'
+const LOADING_MESSAGE = 'Loading furniture...'
 
 interface LibraryGridProps {
   items: LibraryItem[]
@@ -132,12 +133,12 @@ interface LibraryBodyProps {
   onPick: (item: LibraryItem) => void
 }
 
-// Pick the body to render: nothing while loading, the empty message when there
-// are no items, otherwise the filter controls above the matching grid.
+// Pick the body to render: a loading state while listing, the empty message when
+// there are no items, otherwise the filter controls above the matching grid.
 function LibraryBody({ items, onPick }: LibraryBodyProps): ReactElement | null {
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS)
   if (items === null) {
-    return null
+    return <LoadingState message={LOADING_MESSAGE} />
   }
   if (items.length === 0) {
     return <p className="library-panel__empty">{EMPTY_MESSAGE}</p>
