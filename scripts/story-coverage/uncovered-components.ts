@@ -338,12 +338,6 @@ export const UNCOVERED_COMPONENTS: {
 
   // --- editor/shell -------------------------------------------------------
   {
-    component: 'BrandMark',
-    file: 'editor/shell/brand-mark.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it is a zero-prop SVG component with no context dependency, so a story is straightforward.',
-  },
-  {
     component: 'CoordsReadout',
     file: 'editor/shell/coords-readout.tsx',
     reason:
@@ -360,18 +354,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/shell/editor-shell.tsx',
     reason:
       'composes the entire editor across twelve contexts and a live scene pane; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'ExportMenu',
-    file: 'editor/shell/export-menu.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the project and dispatch contexts and needs a provider wrapper.',
-  },
-  {
-    component: 'FloorSwitcher',
-    file: 'editor/shell/floor-switcher.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the active floor and scene-graph contexts and needs a provider wrapper.',
   },
   {
     component: 'ImportAlert',
@@ -392,22 +374,10 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the shell story sub-issue; it reads the editor session, selection, scene-graph, and active floor contexts and needs a provider wrapper.',
   },
   {
-    component: 'OverallDimensions',
-    file: 'editor/shell/overall-dimensions.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the scene-graph context and needs a provider wrapper.',
-  },
-  {
     component: 'ProjectControls',
     file: 'editor/shell/project-controls.tsx',
     reason:
       'deferred to the shell story sub-issue; it reads the project and dispatch contexts and needs a provider wrapper.',
-  },
-  {
-    component: 'ProjectIdentity',
-    file: 'editor/shell/project-identity.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the project context and needs a provider wrapper.',
   },
   {
     component: 'ProjectMenu',
@@ -432,12 +402,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/shell/status-bar.tsx',
     reason:
       'deferred to the shell story sub-issue; it composes the readout leaves and reads several editor-session contexts.',
-  },
-  {
-    component: 'ThemeToggle',
-    file: 'editor/shell/theme-toggle.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the theme context and is covered alongside the theme provider wrapper.',
   },
   {
     component: 'ZoomControl',
