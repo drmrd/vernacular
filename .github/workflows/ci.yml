@@ -54,6 +54,31 @@ jobs:
       - name: Build
         run: pnpm build
 
+  decide:
+    name: Decide heavy suites
+    runs-on: ubuntu-latest
+    outputs:
+      e2e: ${{ steps.d.outputs.e2e }}
+      visual: ${{ steps.d.outputs.visual }}
+      lighthouse: ${{ steps.d.outputs.lighthouse }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - name: Decide
+        id: d
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node scripts/ci/decide.mjs --base "origin/${{ github.base_ref }}"
+
   ping-pong:
     name: Ping-pong compliance
     if: github.event_name == 'pull_request'
@@ -81,7 +106,8 @@ jobs:
   storybook-build:
     name: Storybook build and component tests
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check, decide]
+    if: needs.decide.outputs.visual == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -126,7 +152,8 @@ jobs:
   e2e:
     name: End-to-end (chromium)
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check, decide]
+    if: needs.decide.outputs.e2e == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -162,9 +189,9 @@ jobs:
 
   lighthouse:
     name: Lighthouse CI
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check, decide]
+    if: needs.decide.outputs.lighthouse == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -197,12 +224,12 @@ jobs:
     name: ci-complete
     if: always()
     runs-on: ubuntu-latest
-    needs: [check, ping-pong, storybook-build, e2e, lighthouse]
+    needs: [check, decide, ping-pong, storybook-build, e2e, lighthouse]
     steps:
       - name: Gate on required jobs
         run: |
-          echo "check=${{ needs.check.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} lighthouse=${{ needs.lighthouse.result }}"
-          for result in "${{ needs.check.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.lighthouse.result }}"; do
+          echo "check=${{ needs.check.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} lighthouse=${{ needs.lighthouse.result }}"
+          for result in "${{ needs.check.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.lighthouse.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
               echo "A required job did not pass: $result"
               exit 1
