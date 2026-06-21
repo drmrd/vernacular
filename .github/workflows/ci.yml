@@ -36,7 +36,18 @@ jobs:
         run: pnpm lint
       - name: Format check
         run: pnpm format:check
-      - name: Test
+      - name: Select unit tests (pull requests)
+        id: select
+        if: github.event_name == 'pull_request'
+        run: node scripts/ci/select-tests.mjs --base "origin/${{ github.base_ref }}"
+      - name: Unit tests (selected)
+        if: github.event_name == 'pull_request' && steps.select.outputs.mode == 'some'
+        run: pnpm exec vitest run --project unit ${{ steps.select.outputs.paths }}
+      - name: Unit tests (skipped note)
+        if: github.event_name == 'pull_request' && steps.select.outputs.mode == 'none'
+        run: echo "No unit-bearing layers changed; the full suite runs in the merge queue."
+      - name: Unit tests (full)
+        if: github.event_name != 'pull_request' || steps.select.outputs.mode == 'all'
         run: pnpm test
       - name: Integration-acceptance audit
         run: pnpm integration:audit
