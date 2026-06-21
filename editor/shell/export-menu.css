@@ -22,6 +22,9 @@
    of the retired idiom on top of the design-system button. */
 .export-menu__row {
   width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
   justify-content: flex-start;
   padding: var(--space-1) var(--space-2);
   border: 0;
@@ -32,4 +35,9 @@
 
 .export-menu__row:hover {
   background: var(--color-surface-active);
+}
+
+.export-menu__row-description {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }

@@ -58,6 +58,26 @@ describe('ExportMenu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  it('describes each export option and names the bundle extension', async () => {
+    const user = userEvent.setup()
+    render(
+      <ExportMenu
+        onExportBundle={vi.fn()}
+        onExportPlan={vi.fn()}
+        onExportImage={vi.fn()}
+        onExportPdf={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /^export$/i }))
+
+    expect(screen.getByText(/Project bundle \(\.building\)/)).toBeInTheDocument()
+    expect(screen.getByText('A full, re-openable copy of your project.')).toBeInTheDocument()
+    expect(screen.getByText('A vector drawing of the plan.')).toBeInTheDocument()
+    expect(screen.getByText('A flat image of the plan.')).toBeInTheDocument()
+    expect(screen.getByText('For printing to scale.')).toBeInTheDocument()
+  })
+
   it('calls the PDF handler from its menu item', async () => {
     const user = userEvent.setup()
     const onExportPdf = vi.fn()
