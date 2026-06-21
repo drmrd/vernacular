@@ -32,12 +32,14 @@ describe('runSelectTests', () => {
     const d = deps(['package.json'])
     await runSelectTests(['--base', 'origin/main'], d)
     expect(d.outputs.mode).toBe('all')
+    expect(d.outputs.paths).toBe('')
   })
 
   it('treats a runAllPrefixes match as a full run', async () => {
     const d = deps(['src/setupTests.ts'])
     await runSelectTests(['--base', 'origin/main'], d)
     expect(d.outputs.mode).toBe('all')
+    expect(d.outputs.paths).toBe('')
   })
 
   it('expands edge prefixes before the closure (schema reaches core -> all)', async () => {
@@ -64,6 +66,13 @@ describe('runSelectTests', () => {
     const d = deps([])
     await runSelectTests(['--base', 'origin/main'], d)
     expect(d.outputs.mode).toBe('none')
+  })
+
+  it('expands edge prefix resources before the closure', async () => {
+    const d = deps(['resources/textures/wall.png'])
+    await runSelectTests(['--base', 'origin/main'], d)
+    expect(d.outputs.mode).toBe('some')
+    expect(d.outputs.paths).toBe('app/ bridge/ editor/ engine/')
   })
 
   it('passes the base ref through to git', async () => {
