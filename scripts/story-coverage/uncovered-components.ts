@@ -164,18 +164,6 @@ export const UNCOVERED_COMPONENTS: {
 
   // --- editor/paint (pickers + panel) -------------------------------------
   {
-    component: 'ColorPicker',
-    file: 'editor/paint/color-picker.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the paint pickers land together in the paint slice.',
-  },
-  {
-    component: 'FinishPicker',
-    file: 'editor/paint/finish-picker.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the paint pickers land together in the paint slice.',
-  },
-  {
     component: 'PaintPanel',
     file: 'editor/paint/paint-panel.tsx',
     reason:
@@ -183,18 +171,6 @@ export const UNCOVERED_COMPONENTS: {
   },
 
   // --- editor/plan (inspectors, editors, overlays) ------------------------
-  {
-    component: 'Compass',
-    file: 'editor/plan/compass.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'DimensionInspector',
-    file: 'editor/plan/dimension-inspector.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
   {
     component: 'EntityProxy',
     file: 'editor/plan/entity-proxy.tsx',
@@ -204,12 +180,6 @@ export const UNCOVERED_COMPONENTS: {
   {
     component: 'FurnitureInspector',
     file: 'editor/plan/furniture-inspector.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'LengthField',
-    file: 'editor/plan/length-field.tsx',
     reason:
       'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
   },
@@ -238,26 +208,8 @@ export const UNCOVERED_COMPONENTS: {
       'renders the plan canvas and reads eight editor contexts; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
-    component: 'RemoveControl',
-    file: 'editor/plan/remove-control.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'RoomCeilingHeightEditor',
-    file: 'editor/plan/room-ceiling-height-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
-  },
-  {
     component: 'RoomFinishSection',
     file: 'editor/plan/room-finish-section.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'RoomNameEditor',
-    file: 'editor/plan/room-name-editor.tsx',
     reason:
       'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
   },
@@ -286,12 +238,6 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
   },
   {
-    component: 'SelectionTransformPanel',
-    file: 'editor/plan/selection-transform-panel.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the selection transform panel reads selection and scene contexts and needs a provider wrapper.',
-  },
-  {
     component: 'SnapPanel',
     file: 'editor/plan/snap-panel.tsx',
     reason:
@@ -314,18 +260,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/plan/underlay-panel.tsx',
     reason:
       'deferred to the tools-and-panels story sub-issue; the underlay panels read the active floor and dispatch contexts and need a provider wrapper.',
-  },
-  {
-    component: 'WallFinishSection',
-    file: 'editor/plan/wall-finish-section.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the wall editors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'WallThicknessEditor',
-    file: 'editor/plan/wall-thickness-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the wall editors land together in the plan-inspector slice.',
   },
 
   // --- editor/shell -------------------------------------------------------
