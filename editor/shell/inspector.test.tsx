@@ -114,6 +114,16 @@ describe('Inspector', () => {
     renderInspector()
     expect(screen.queryByRole('listitem')).toBeNull()
   })
+
+  it('shows a Transform section header when a transformable entity is selected', () => {
+    const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
+    const { selection } = renderInspector([wall])
+    expect(screen.queryByText('Transform')).toBeNull()
+    act(() => {
+      selection.select(`wall:${wall.id}`)
+    })
+    expect(screen.getByText('Transform')).toBeInTheDocument()
+  })
 })
 
 describe('PeriodTags', () => {
