@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,36 +17,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10.33.4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Typecheck
         run: pnpm typecheck
-
       - name: Lint
         run: pnpm lint
-
       - name: Format check
         run: pnpm format:check
-
       - name: Test
         run: pnpm test
-
       - name: Integration-acceptance audit
         run: pnpm integration:audit
-
       - name: Build
         run: pnpm build
 
@@ -59,21 +53,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10.33.4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Audit the red-green-blue commit history
         run: pnpm rgb:audit --range "origin/${{ github.base_ref }}..HEAD"
 
@@ -84,40 +74,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10.33.4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
-
       - name: Run Storybook component tests
         run: pnpm storybook:test
-
       - name: Build Storybook
         run: pnpm build-storybook
-
       - name: Visual-regression diff of Storybook stories
         run: pnpm stories:test
-
       - name: Upload static Storybook
         uses: actions/upload-artifact@v4
         with:
           name: storybook-static
           path: storybook-static
           retention-days: 7
-
       - name: Upload story visual diff report on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -133,30 +119,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10.33.4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
-
       - name: Build production bundle
         run: pnpm build
-
       - name: Run Playwright (chromium)
         run: pnpm exec playwright test --project=chromium
-
       - name: Upload Playwright HTML report on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -167,36 +151,29 @@ jobs:
 
   lighthouse:
     name: Lighthouse CI
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: check
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 10.33.4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Install Chrome for Lighthouse
         uses: browser-actions/setup-chrome@v1
-
       - name: Build production bundle
         run: pnpm build
-
       - name: Run Lighthouse CI
         run: pnpm lhci
-
       - name: Upload Lighthouse results
         if: always()
         uses: actions/upload-artifact@v4
@@ -204,3 +181,20 @@ jobs:
           name: lighthouseci
           path: .lighthouseci
           retention-days: 7
+
+  ci-complete:
+    name: ci-complete
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [check, ping-pong, storybook-build, e2e, lighthouse]
+    steps:
+      - name: Gate on required jobs
+        run: |
+          echo "check=${{ needs.check.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} lighthouse=${{ needs.lighthouse.result }}"
+          for result in "${{ needs.check.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.lighthouse.result }}"; do
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              echo "A required job did not pass: $result"
+              exit 1
+            fi
+          done
+          echo "All gating jobs passed or were skipped."
