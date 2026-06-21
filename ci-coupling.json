@@ -1,0 +1,17 @@
+{
+  "runAll": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "eslint.config.js",
+    ".nvmrc"
+  ],
+  "runAllPrefixes": ["src/"],
+  "edges": {
+    "schema/": ["core"],
+    "resources/": ["engine"]
+  }
+}
