@@ -14,7 +14,15 @@ import {
   type UnitSystem,
 } from '../../core'
 import { Field, Stack } from '../design-system'
+import { DEG_TO_RAD, RAD_TO_DEG } from './angles'
 import { LengthField } from './length-field'
+
+const ANGLE_DECIMAL_PLACES = 2
+
+// Render degrees without trailing-zero cruft so a right angle shows "90".
+function formatDegrees(radians: number): string {
+  return String(Number((radians * RAD_TO_DEG).toFixed(ANGLE_DECIMAL_PLACES)))
+}
 
 // A bare number entered for a metric project means millimetres; for an imperial
 // project it means feet. This mirrors the opening inspector's resolution.
@@ -64,12 +72,12 @@ interface AngleFieldProps {
 }
 
 function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElement {
-  const [text, setText] = useState(String(rotation))
+  const [text, setText] = useState(formatDegrees(rotation))
 
   function commit(): void {
     const parsed = Number.parseFloat(text)
     if (Number.isFinite(parsed)) {
-      onCommit(parsed)
+      onCommit(parsed * DEG_TO_RAD)
     }
   }
 
@@ -80,7 +88,7 @@ function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElem
   }
 
   return (
-    <Field htmlFor={inputId} label="Angle">
+    <Field htmlFor={inputId} label="Angle (deg)">
       <input
         id={inputId}
         type="text"
