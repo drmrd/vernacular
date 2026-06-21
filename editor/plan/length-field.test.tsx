@@ -3,6 +3,8 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DEFAULT_METRIC_PREFERENCES, InvalidLengthError, parseLength } from '../../core'
 import { LengthField } from './length-field'
+import { WallThicknessEditor } from './wall-thickness-editor'
+import { RoomCeilingHeightEditor } from './room-ceiling-height-editor'
 
 // A metric project reads a bare number as millimeters, so a typed entry parses
 // to that exact millimetre value. Fixed so the committed payload is deterministic.
@@ -92,6 +94,40 @@ describe('LengthField', () => {
     // The control is marked invalid and points at the error text.
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
+  })
+
+  it('surfaces the assumed unit in the length-field labels across the inspector', () => {
+    // A bare number typed without a unit token is read as the field's assumed
+    // unit. Spelling that unit out in the label keeps the entry unambiguous.
+    render(
+      <>
+        <LengthField
+          inputId={INPUT_ID}
+          label="Width"
+          valueMm={CURRENT_MM}
+          preferences={DEFAULT_METRIC_PREFERENCES}
+          assumeUnit="in"
+          onCommitMm={vi.fn()}
+        />
+        <WallThicknessEditor
+          floorId="ground"
+          wallId="wall-1"
+          thickness={100}
+          dispatch={vi.fn()}
+          preferences={DEFAULT_METRIC_PREFERENCES}
+        />
+        <RoomCeilingHeightEditor
+          roomKey="wall-1|wall-2|wall-3"
+          ceilingHeight={2438}
+          dispatch={vi.fn()}
+          preferences={DEFAULT_METRIC_PREFERENCES}
+        />
+      </>,
+    )
+
+    expect(screen.getByLabelText('Width (in)')).toBeInstanceOf(HTMLInputElement)
+    expect(screen.getByLabelText('Thickness (mm)')).toBeInstanceOf(HTMLInputElement)
+    expect(screen.getByLabelText('Ceiling height (mm)')).toBeInstanceOf(HTMLInputElement)
   })
 
   it('renders through the styled design-system field wrapper', () => {
