@@ -1,5 +1,3 @@
-// scripts/serve-static.mjs
-//
 // A dependency-free static file server built on node built-ins. Used to serve a
 // directory of pre-built files (the Storybook static build) to Playwright's
 // webServer for visual-regression runs without adding a server package under the
@@ -40,7 +38,7 @@ function resolveWithinRoot(rootDir, pathname) {
   const relativePath = pathname.replace(/^\/+/, '')
   const resolved = path.resolve(root, relativePath)
   const isInsideRoot = resolved === root || resolved.startsWith(root + path.sep)
-  return { root, resolved, isInsideRoot }
+  return { resolved, isInsideRoot }
 }
 
 async function respondWithFile(response, filePath) {
