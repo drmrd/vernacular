@@ -85,7 +85,7 @@ Run via the role-separated subagents from the MAIN thread (memory
   `pnpm stories:update-snapshots` (docker linux/amd64), then `pnpm stories:test` green; flip a CSS
   value to see a real diff; revert.
 - Full gate before any push: `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test &&
-  pnpm build`, plus `pnpm build-storybook` and the new `stories` project. rgb:audit on
+pnpm build`, plus `pnpm build-storybook` and the new `stories` project. rgb:audit on
   origin/main..HEAD (slices 1-3 must be test->feat->refactor; slice 4 is `build:`-exempt).
 
 ## Risks / open points
