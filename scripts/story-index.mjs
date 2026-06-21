@@ -1,9 +1,13 @@
-// Reads the ids of every story entry from the text of Storybook's static
-// index.json. Docs entries (and any non-story type) are excluded. Used by the
-// visual-regression spec to enumerate which stories to screenshot.
+// Takes the raw file TEXT (not a parsed object) so the caller owns when disk
+// I/O happens. Stays dependency-free to honor the 30-day dependency cooldown.
 
 export function readStoryIds(indexJsonText) {
-  const index = JSON.parse(indexJsonText)
+  let index
+  try {
+    index = JSON.parse(indexJsonText)
+  } catch (error) {
+    throw new Error('Failed to parse the Storybook index.json', { cause: error })
+  }
   const entries = index.entries
   if (!entries) {
     return []
