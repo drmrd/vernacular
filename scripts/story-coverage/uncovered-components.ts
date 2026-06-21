@@ -148,16 +148,10 @@ export const UNCOVERED_COMPONENTS: {
 
   // --- editor/design-system remainder -------------------------------------
   {
-    component: 'AppFrame',
-    file: 'editor/design-system/app-frame.tsx',
-    reason:
-      'deferred to the design-system story sub-issue; its layout-slot props warrant a small spike before authoring a representative story.',
-  },
-  {
     component: 'ThemeProvider',
     file: 'editor/design-system/theme-provider.tsx',
     reason:
-      'deferred to the design-system story sub-issue; it is a provider best covered as a render wrapper rather than a standalone component story.',
+      'a context provider whose only behavior is theming its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, so it stays recorded here at the floor (see ADR-0111).',
   },
 
   // --- editor/library (networked, reuse the MSW pack handlers) ------------
@@ -165,13 +159,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'LibraryLauncherPanel',
     file: 'editor/library/library-launcher-panel.tsx',
     reason:
-      'deferred to the library story sub-issue; it is networked and reuses the MSW pack handlers, and also pulls furniture-placement and active-tool contexts.',
-  },
-  {
-    component: 'LibraryLauncher',
-    file: 'editor/library/library-launcher.tsx',
-    reason:
-      'deferred to the library story sub-issue; it composes the launcher panel and shares its networked, multi-context wrapper.',
+      'a connected orchestrator that wires the furniture-placement, active-tool, and user-asset-source contexts into the launcher; an isolated browser-mode story is not feasible, so it stays recorded here at the floor (see ADR-0111).',
   },
 
   // --- editor/metadata ----------------------------------------------------
