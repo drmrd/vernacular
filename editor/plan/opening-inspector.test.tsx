@@ -79,7 +79,7 @@ describe('OpeningInspector', () => {
     renderInspector(vi.fn())
 
     expect(screen.getByLabelText(/width/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('Height', { exact: true })).toBeInTheDocument()
+    expect(screen.getByLabelText('Height (mm)', { exact: true })).toBeInTheDocument()
     expect(screen.getByLabelText(/sill height/i)).toBeInTheDocument()
   })
 

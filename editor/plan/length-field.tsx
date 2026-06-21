@@ -8,6 +8,12 @@ import {
 import { Field } from '../design-system'
 import { lengthRejectionMessage } from './length-rejection-message'
 
+// Surfaces the assumed unit a bare number is read as, so an entry like "30" is
+// unambiguous. Every unit is spelled out in the label uniformly.
+function withAssumedUnit(label: string, assumeUnit: AssumedUnit): string {
+  return `${label} (${assumeUnit})`
+}
+
 export interface LengthFieldProps {
   inputId: string
   label: string
@@ -54,7 +60,7 @@ export function LengthField({
   }
 
   return (
-    <Field htmlFor={inputId} label={label} hint={error ?? undefined}>
+    <Field htmlFor={inputId} label={withAssumedUnit(label, assumeUnit)} hint={error ?? undefined}>
       <input
         id={inputId}
         type="text"

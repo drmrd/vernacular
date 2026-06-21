@@ -1,11 +1,10 @@
 import { useState, type ReactElement } from 'react'
 import { rotateEntities, type Command, type Point } from '../../core'
 import { Button } from '../design-system'
+import { DEG_TO_RAD } from './angles'
 import './selection-transform-panel.css'
 
 const QUARTER_TURN = Math.PI / 2
-const STRAIGHT_ANGLE_DEGREES = 180
-const DEGREES_TO_RADIANS = Math.PI / STRAIGHT_ANGLE_DEGREES
 
 export interface SelectionTransformPanelProps {
   floorId: string
@@ -24,7 +23,7 @@ function AngleForm({ onRotate }: { onRotate: (radians: number) => void }): React
     if (!Number.isFinite(degrees)) {
       return
     }
-    onRotate(degrees * DEGREES_TO_RADIANS)
+    onRotate(degrees * DEG_TO_RAD)
   }
 
   return (
@@ -36,7 +35,7 @@ function AngleForm({ onRotate }: { onRotate: (radians: number) => void }): React
       }}
     >
       <label className="selection-transform-panel__angle-label">
-        Angle
+        Angle (deg)
         <input
           className="selection-transform-panel__angle-input"
           type="number"
