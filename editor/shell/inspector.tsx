@@ -399,12 +399,15 @@ function TransformPanel({ session, selectedIds }: TransformPanelProps) {
     return null
   }
   return (
-    <SelectionTransformPanel
-      floorId={floor.id}
-      entityIds={entityIds}
-      center={selectionCenter(floor, entityIds)}
-      dispatch={session.dispatch}
-    />
+    <section className="inspector__transform">
+      <SectionLabel>Transform</SectionLabel>
+      <SelectionTransformPanel
+        floorId={floor.id}
+        entityIds={entityIds}
+        center={selectionCenter(floor, entityIds)}
+        dispatch={session.dispatch}
+      />
+    </section>
   )
 }
 
