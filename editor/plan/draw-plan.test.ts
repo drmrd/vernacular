@@ -872,6 +872,23 @@ describe('drawPlan palette', () => {
     expect(recorder.fills).toContain('#a0a0a0')
   })
 
+  it("keeps a selected room's paint visible instead of covering it with the selection fill", () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        palette,
+        rooms: [rectangleRoom('room:r')],
+        selectedIds: new Set(['room:r']),
+        roomFillColor: '#9aa583',
+      }),
+    )
+
+    expect(recorder.fills).toContain('#9aa583')
+    expect(recorder.fills).not.toContain('#a0a0a0')
+  })
+
   it('draws the wall preview line and its start marker in the palette preview color', () => {
     const recorder = recordingContext()
 
