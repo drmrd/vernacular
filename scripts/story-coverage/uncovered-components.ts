@@ -162,20 +162,12 @@ export const UNCOVERED_COMPONENTS: {
       'a connected orchestrator that wires the furniture-placement, active-tool, and user-asset-source contexts into the launcher; an isolated browser-mode story is not feasible, so it stays recorded here at the floor (see ADR-0111).',
   },
 
-  // --- editor/paint (pickers + panel) -------------------------------------
-  {
-    component: 'PaintPanel',
-    file: 'editor/paint/paint-panel.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the paint panel reads paint and selection contexts and needs a provider wrapper.',
-  },
-
   // --- editor/plan (inspectors, editors, overlays) ------------------------
   {
     component: 'EntityProxy',
     file: 'editor/plan/entity-proxy.tsx',
     reason:
-      'requires the live plan overlay projection from the scene context; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+      'an invisible accessibility overlay proxy with no standalone visual to snapshot; its keyboard selection behavior is covered by entity-proxy.test.tsx, so it stays recorded here rather than forcing a contrived visual story (see ADR-0111).',
   },
   {
     component: 'PlanOverlay',
@@ -188,12 +180,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/plan/plan-view.tsx',
     reason:
       'renders the plan canvas and reads eight editor contexts; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'SnapPanel',
-    file: 'editor/plan/snap-panel.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the snap panel reads the snap-preferences context and needs a provider wrapper.',
   },
   {
     component: 'SnapPreferencesProvider',
@@ -232,12 +218,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/shell/scene-pane.tsx',
     reason:
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'StatusBar',
-    file: 'editor/shell/status-bar.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it composes the readout leaves and reads several editor-session contexts.',
   },
   {
     component: 'ZoomControl',
