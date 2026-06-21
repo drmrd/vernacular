@@ -51,6 +51,12 @@
   font-weight: 600;
 }
 
+.inspector__character {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 .inspector__transform {
   display: flex;
   flex-direction: column;

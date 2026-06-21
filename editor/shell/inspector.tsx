@@ -200,7 +200,8 @@ interface RoomMetadataEditorsProps {
 // each reading its value from the room's stored override.
 function RoomMetadataEditors({ roomKey, override, dispatch }: RoomMetadataEditorsProps) {
   return (
-    <>
+    <section className="inspector__character">
+      <SectionLabel>Character and period</SectionLabel>
       <RoomPurposeEditor roomKey={roomKey} purpose={override?.purpose} dispatch={dispatch} />
       {/* Key on the room key and sub-purpose so the editor remounts when the
           selected room changes or an undo restores a different value; the editor
@@ -213,7 +214,7 @@ function RoomMetadataEditors({ roomKey, override, dispatch }: RoomMetadataEditor
       />
       <RoomPeriodEditor roomKey={roomKey} period={override?.periodOverride} dispatch={dispatch} />
       <RoomStyleEditor roomKey={roomKey} style={override?.styleOverride} dispatch={dispatch} />
-    </>
+    </section>
   )
 }
 
