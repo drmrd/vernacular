@@ -128,22 +128,10 @@ export const UNCOVERED_COMPONENTS: {
 
   // --- editor/commands (command palette + bar; multi-context) -------------
   {
-    component: 'CommandBar',
-    file: 'editor/commands/command-bar.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; it reads several editor-session contexts and needs a provider wrapper.',
-  },
-  {
     component: 'CommandPaletteProvider',
     file: 'editor/commands/command-context.tsx',
     reason:
-      'deferred to the tools-and-panels story sub-issue; it is the command-palette context provider, covered as a wrapper alongside the palette story.',
-  },
-  {
-    component: 'CommandPalette',
-    file: 'editor/commands/command-palette.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; it reads eight editor contexts including the focus trap and needs a provider wrapper.',
+      'a context provider whose only behavior is holding the palette open/closed state for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and it is exercised through the CommandBar and CommandPalette stories that wrap their subjects in it (see ADR-0111).',
   },
 
   // --- editor/design-system remainder -------------------------------------
