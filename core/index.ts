@@ -63,6 +63,7 @@ export {
 export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
 export { furnitureFootprintCorners } from './model/furniture-footprint'
+export { openingWouldOverlap } from './model/opening-overlap'
 export type {
   AssetFootprint,
   AssetResolution,
