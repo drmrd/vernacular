@@ -36,7 +36,7 @@ function AngleForm({ onRotate }: { onRotate: (radians: number) => void }): React
       }}
     >
       <label className="selection-transform-panel__angle-label">
-        Angle
+        Angle (deg)
         <input
           className="selection-transform-panel__angle-input"
           type="number"
