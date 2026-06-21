@@ -15,6 +15,14 @@ describe('FinishPicker', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(6)
   })
 
+  it('renders finish names as human-readable Title Case labels', () => {
+    render(<FinishPicker surface={REF} color={COLOR} finishId="matte" dispatch={vi.fn()} />)
+
+    expect(screen.getByText('Matte')).toBeInTheDocument()
+    expect(screen.getByText('Semi-Gloss')).toBeInTheDocument()
+    expect(screen.queryByText('semi-gloss')).not.toBeInTheDocument()
+  })
+
   it('dispatches an assignment with the chosen finish and the existing color', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
