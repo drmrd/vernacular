@@ -207,6 +207,7 @@ export type {
   RemoveOpeningParams,
   ResizeOpeningEdgeParams,
   ResizeOpeningParams,
+  SetOpeningTypeParams,
 } from './commands/handlers/opening-commands'
 export {
   FLIP_OPENING,
@@ -215,6 +216,7 @@ export {
   REMOVE_OPENING,
   RESIZE_OPENING,
   RESIZE_OPENING_EDGE,
+  SET_OPENING_TYPE,
   flipOpening,
   moveOpening,
   placeOpening,
@@ -222,6 +224,7 @@ export {
   removeOpening,
   resizeOpening,
   resizeOpeningEdge,
+  setOpeningType,
 } from './commands/handlers/opening-commands'
 export type {
   MoveFurnitureParams,
