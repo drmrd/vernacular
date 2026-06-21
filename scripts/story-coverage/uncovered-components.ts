@@ -162,14 +162,6 @@ export const UNCOVERED_COMPONENTS: {
       'a connected orchestrator that wires the furniture-placement, active-tool, and user-asset-source contexts into the launcher; an isolated browser-mode story is not feasible, so it stays recorded here at the floor (see ADR-0111).',
   },
 
-  // --- editor/metadata ----------------------------------------------------
-  {
-    component: 'SiteEditor',
-    file: 'editor/metadata/site-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the site metadata editor reads the editor session and needs a provider wrapper.',
-  },
-
   // --- editor/paint (pickers + panel) -------------------------------------
   {
     component: 'ColorPicker',
@@ -344,28 +336,10 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the shell story sub-issue; it reads the editor session and pointer-readout contexts and needs a provider wrapper.',
   },
   {
-    component: 'DiscardDialog',
-    file: 'editor/shell/discard-dialog.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it is a props-only dialog component with no context dependency, so a story is straightforward.',
-  },
-  {
     component: 'EditorShell',
     file: 'editor/shell/editor-shell.tsx',
     reason:
       'composes the entire editor across twelve contexts and a live scene pane; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'ImportAlert',
-    file: 'editor/shell/import-alert.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it is a props-only alert component with no context dependency, so a story is straightforward.',
-  },
-  {
-    component: 'ImportDropTarget',
-    file: 'editor/shell/import-drop-target.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the import and project contexts and needs a provider wrapper.',
   },
   {
     component: 'Inspector',
@@ -374,28 +348,10 @@ export const UNCOVERED_COMPONENTS: {
       'deferred to the shell story sub-issue; it reads the editor session, selection, scene-graph, and active floor contexts and needs a provider wrapper.',
   },
   {
-    component: 'ProjectControls',
-    file: 'editor/shell/project-controls.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the project and dispatch contexts and needs a provider wrapper.',
-  },
-  {
-    component: 'ProjectMenu',
-    file: 'editor/shell/project-menu.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the project and dispatch contexts and needs a provider wrapper.',
-  },
-  {
     component: 'ScenePane',
     file: 'editor/shell/scene-pane.tsx',
     reason:
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'SnapStatus',
-    file: 'editor/shell/snap-status.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the snap-preferences context and needs a provider wrapper.',
   },
   {
     component: 'StatusBar',
