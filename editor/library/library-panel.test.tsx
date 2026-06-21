@@ -235,6 +235,20 @@ describe('LibraryPanel design-system primitives', () => {
   })
 })
 
+const LOADING_MESSAGE = 'Loading furniture...'
+
+function neverResolvingRegistry(): AssetRegistry {
+  return { list: () => new Promise(() => {}) } as unknown as AssetRegistry
+}
+
+describe('LibraryPanel loading state', () => {
+  it('shows a loading message while the registry is still listing items', () => {
+    renderPanel(neverResolvingRegistry())
+
+    expect(screen.getByText(LOADING_MESSAGE)).toBeInTheDocument()
+  })
+})
+
 function carriesFieldControlTreatment(control: HTMLElement): boolean {
   return control.classList.contains('ds-field__control') || control.closest('.ds-field') !== null
 }
