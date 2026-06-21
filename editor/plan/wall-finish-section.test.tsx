@@ -71,6 +71,19 @@ describe('WallFinishSection', () => {
     expect(faceB).not.toHaveClass('is-active')
   })
 
+  it('explains that A and B are the two paintable wall faces', () => {
+    render(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(/two paintable faces/i)).toBeInTheDocument()
+  })
+
   it('switches the active face when Face B is clicked', async () => {
     const user = userEvent.setup()
     render(
