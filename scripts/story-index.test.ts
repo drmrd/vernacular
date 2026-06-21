@@ -24,14 +24,16 @@ type IndexEntry = {
 
 const importPath = './editor/design-system/button.stories.tsx'
 
-function entry(id: string, name: string, type: 'story' | 'docs', tags: string[]): IndexEntry {
+type EntryFields = Pick<IndexEntry, 'id' | 'name' | 'type' | 'tags'>
+
+function entry({ id, name, type, tags }: EntryFields): IndexEntry {
   return { id, title: 'Design System/Button', name, importPath, type, tags }
 }
 
 // A testable component story: Storybook tags it `test` so the visual-regression
 // run screenshots it.
 function storyEntry(id: string, name: string): IndexEntry {
-  return entry(id, name, 'story', ['autodocs', 'test'])
+  return entry({ id, name, type: 'story', tags: ['autodocs', 'test'] })
 }
 
 // Storybook story ids are kebab-case (e.g. `design-system-button--primary`), so
@@ -44,7 +46,7 @@ const indexJsonText = JSON.stringify({
   entries: Object.fromEntries(
     [
       storyEntry('design-system-button--secondary', 'Secondary'),
-      entry('design-system-button--docs', 'Docs', 'docs', ['autodocs']),
+      entry({ id: 'design-system-button--docs', name: 'Docs', type: 'docs', tags: ['autodocs'] }),
       storyEntry('design-system-button--primary', 'Primary'),
     ].map((indexEntry) => [indexEntry.id, indexEntry]),
   ),
@@ -67,7 +69,12 @@ describe('readStoryIds', () => {
       v: 5,
       entries: Object.fromEntries(
         [
-          entry('app-shell--default', 'Default', 'story', ['dev', 'manifest']),
+          entry({
+            id: 'app-shell--default',
+            name: 'Default',
+            type: 'story',
+            tags: ['dev', 'manifest'],
+          }),
           storyEntry('design-system-button--primary', 'Primary'),
         ].map((indexEntry) => [indexEntry.id, indexEntry]),
       ),
