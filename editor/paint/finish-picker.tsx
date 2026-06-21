@@ -13,6 +13,13 @@ export interface FinishPickerProps {
   dispatch: (command: Command) => void
 }
 
+function finishLabel(id: string): string {
+  return id
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('-')
+}
+
 export function FinishPicker({ surface, color, finishId, dispatch }: FinishPickerProps) {
   return (
     <fieldset>
@@ -26,7 +33,7 @@ export function FinishPicker({ surface, color, finishId, dispatch }: FinishPicke
             checked={id === finishId}
             onChange={() => dispatch(assignSurfacePaint(surface, color, id))}
           />
-          {id}
+          {finishLabel(id)}
         </label>
       ))}
     </fieldset>
