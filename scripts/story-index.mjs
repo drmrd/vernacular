@@ -13,7 +13,7 @@ export function readStoryIds(indexJsonText) {
     return []
   }
   return Object.values(entries)
-    .filter((entry) => entry.type === 'story')
+    .filter((entry) => entry.type === 'story' && entry.tags.includes('test'))
     .map((entry) => entry.id)
     .sort()
 }
