@@ -1,5 +1,11 @@
 import { useCallback, type PointerEvent } from 'react'
-import { createOpening, placeOpening, type Point, type SceneGraph } from '../../core'
+import {
+  createOpening,
+  openingWouldOverlap,
+  placeOpening,
+  type Point,
+  type SceneGraph,
+} from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
@@ -49,6 +55,11 @@ export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacemen
         hostWallId: target.hostWallId,
         position: target.position,
       })
+      const existingOpenings =
+        session.getProject().floors.find((floor) => floor.id === target.floorId)?.openings ?? []
+      if (openingWouldOverlap(opening, existingOpenings)) {
+        return
+      }
       session.dispatch(placeOpening(target.floorId, opening))
     },
     [session, graph, tool, viewport, placementType],
