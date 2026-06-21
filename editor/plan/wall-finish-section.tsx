@@ -43,6 +43,7 @@ export function WallFinishSection({
   return (
     <section className="finish-section">
       <SectionLabel>Finish</SectionLabel>
+      <p className="finish-section__hint">A and B are the wall&apos;s two paintable faces.</p>
       <Segmented
         label="Wall face"
         options={FACE_OPTIONS}
