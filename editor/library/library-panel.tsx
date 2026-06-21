@@ -58,6 +58,7 @@ function LibraryGrid({ items, onPick }: LibraryGridProps): ReactElement {
           className="library-panel__cell"
         >
           <Button className="ds-menu-surface__row" onClick={() => onPick(item)}>
+            <span className="library-panel__thumb" aria-hidden="true" />
             {item.name}
           </Button>
         </li>
