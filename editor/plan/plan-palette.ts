@@ -28,7 +28,7 @@ export interface PlanPalette {
 // Warm light-theme fallbacks, used when a token reads empty (tests, server render).
 // They mirror the `--color-canvas-*` values in tokens.css.
 export const DEFAULT_PLAN_PALETTE: PlanPalette = {
-  grid: '#e5dcc6',
+  grid: '#dccfb2',
   wall: '#2f2615',
   roomFill: '#fbf7ef',
   rulerBand: '#f4efe4',
