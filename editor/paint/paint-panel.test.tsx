@@ -100,6 +100,12 @@ describe('PaintPanel', () => {
     expect(screen.queryByRole('searchbox')).toBeNull()
   })
 
+  it('presents the empty hint as a heading when no surface is active', () => {
+    renderPanel({ activeSurface: null })
+
+    expect(screen.getByRole('heading', { name: 'Select a surface to paint' })).toBeInTheDocument()
+  })
+
   it('mounts the finish picker when the active surface already has a solid treatment', () => {
     const treatmentFor = (ref: SurfaceRef): SurfaceTreatment | undefined =>
       surfaceKey(ref) === surfaceKey(WALL_REF) ? solidTreatment(PAINT_COLOR, 'matte') : undefined

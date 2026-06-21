@@ -8,7 +8,7 @@ import {
   createSelectionStore,
   createActiveFloorStore,
 } from '../../bridge'
-import { createEmptyProject, createFloor, createWall, type Wall } from '../../core'
+import { createEmptyProject, createFloor, createWall, deriveRooms, type Wall } from '../../core'
 import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
@@ -113,6 +113,32 @@ describe('Inspector', () => {
   it('shows no period tags when no room with overrides is selected', () => {
     renderInspector()
     expect(screen.queryByRole('listitem')).toBeNull()
+  })
+
+  it('groups a selected room\'s purpose, period, and style editors under a "Character and period" section header', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }),
+      createWall({ x: 1000, y: 0 }, { x: 1000, y: 1000 }),
+      createWall({ x: 1000, y: 1000 }, { x: 0, y: 1000 }),
+      createWall({ x: 0, y: 1000 }, { x: 0, y: 0 }),
+    ]
+    const { selection } = renderInspector(walls)
+    const [room] = deriveRooms(walls)
+    if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
+    act(() => {
+      selection.select(room.id)
+    })
+    expect(screen.getByText('Character and period')).toBeInTheDocument()
+  })
+
+  it('shows a Transform section header when a transformable entity is selected', () => {
+    const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
+    const { selection } = renderInspector([wall])
+    expect(screen.queryByText('Transform')).toBeNull()
+    act(() => {
+      selection.select(`wall:${wall.id}`)
+    })
+    expect(screen.getByText('Transform')).toBeInTheDocument()
   })
 })
 

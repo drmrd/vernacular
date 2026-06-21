@@ -9,7 +9,7 @@ import {
 } from '../../core'
 import { ColorPicker } from './color-picker'
 import { FinishPicker } from './finish-picker'
-import { Stack } from '../design-system'
+import { EmptyState, Stack } from '../design-system'
 
 export interface PaintPanelProps {
   surfaces: readonly PaintableSurface[]
@@ -133,7 +133,7 @@ export function PaintPanel(props: PaintPanelProps): ReactElement {
           dispatch={props.dispatch}
         />
       ) : (
-        <p>Select a surface to paint</p>
+        <EmptyState title="Select a surface to paint" asRegion={false} />
       )}
     </Stack>
   )
