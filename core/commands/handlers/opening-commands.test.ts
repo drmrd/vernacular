@@ -6,6 +6,7 @@ import {
   resizeOpeningEdge,
   flipOpening,
   removeOpening,
+  setOpeningType,
   registerOpeningCommands,
   PLACE_OPENING,
   MOVE_OPENING,
@@ -369,5 +370,32 @@ describe('removeOpening', () => {
 
   it('carries a stable command type', () => {
     expect(removeOpening('g', 'opening-1').type).toBe(REMOVE_OPENING)
+  })
+})
+
+describe('setOpeningType', () => {
+  it('changes only the opening type and preserves every other field', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = createOpening({
+      type: 'single-swing-door',
+      hostWallId: HOST_WALL_ID,
+      position: 1200,
+      width: 900,
+      height: 2100,
+      sillHeight: 0,
+    })
+    dispatcher.dispatch(placeOpening('g', target))
+
+    dispatcher.dispatch(setOpeningType('g', target.id, 'double-swing-door'))
+
+    const retyped = project.floors[0]?.openings[0]
+    expect(retyped?.type).toBe('double-swing-door')
+    expect(retyped?.hostWallId).toBe(target.hostWallId)
+    expect(retyped?.position).toBe(target.position)
+    expect(retyped?.width).toBe(target.width)
+    expect(retyped?.height).toBe(target.height)
+    expect(retyped?.sillHeight).toBe(target.sillHeight)
+    expect(retyped?.orientation).toEqual(target.orientation)
   })
 })
