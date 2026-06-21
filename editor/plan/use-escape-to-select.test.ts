@@ -30,4 +30,17 @@ describe('useEscapeToSelect', () => {
 
     expect(setTool).not.toHaveBeenCalled()
   })
+
+  it('ignores Escape while a form control is focused', () => {
+    const setTool = vi.fn()
+    renderHook(() => useEscapeToSelect({ tool: 'draw-wall', setTool }))
+
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    input.remove()
+
+    expect(setTool).not.toHaveBeenCalled()
+  })
 })
