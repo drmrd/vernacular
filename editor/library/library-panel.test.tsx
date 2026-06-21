@@ -255,6 +255,22 @@ describe('LibraryPanel loading state', () => {
   })
 })
 
+const EXPECTED_THUMBNAIL_TILES = 2
+
+describe('LibraryPanel thumbnail placeholders', () => {
+  it('renders one decorative placeholder thumbnail tile per item without replacing its name', async () => {
+    const container = renderPanel(packAndUserRegistry())
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    expect(container.querySelectorAll('.library-panel__thumb')).toHaveLength(
+      EXPECTED_THUMBNAIL_TILES,
+    )
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: OAK_NAME })).toBeInTheDocument()
+  })
+})
+
 function carriesFieldControlTreatment(control: HTMLElement): boolean {
   return control.classList.contains('ds-field__control') || control.closest('.ds-field') !== null
 }
