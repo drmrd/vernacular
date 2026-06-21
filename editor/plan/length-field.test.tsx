@@ -10,6 +10,9 @@ import { RoomCeilingHeightEditor } from './room-ceiling-height-editor'
 // to that exact millimetre value. Fixed so the committed payload is deterministic.
 const INPUT_ID = 'opening-width-o1'
 const LABEL = 'Width'
+// The label spells out the field's assumed unit, including millimetres, so the
+// metric field reads "Width (mm)" just as the imperial field reads "Width (in)".
+const METRIC_LABEL = 'Width (mm)'
 const CURRENT_MM = 900
 const METRIC_ASSUMED_UNIT = 'mm' as const
 const ENTERED_VALUE = '1200'
@@ -35,7 +38,7 @@ describe('LengthField', () => {
   it('associates its label with the input', () => {
     renderField(vi.fn())
 
-    expect(screen.getByLabelText(LABEL)).toBeInstanceOf(HTMLInputElement)
+    expect(screen.getByLabelText(METRIC_LABEL)).toBeInstanceOf(HTMLInputElement)
   })
 
   it('commits the parsed millimetre value when Enter is pressed', async () => {
@@ -43,7 +46,7 @@ describe('LengthField', () => {
     const user = userEvent.setup()
     renderField(onCommitMm)
 
-    const input = screen.getByLabelText(LABEL)
+    const input = screen.getByLabelText(METRIC_LABEL)
     await user.clear(input)
     await user.type(input, `${ENTERED_VALUE}{Enter}`)
 
@@ -56,7 +59,7 @@ describe('LengthField', () => {
     const user = userEvent.setup()
     renderField(onCommitMm)
 
-    const input = screen.getByLabelText(LABEL)
+    const input = screen.getByLabelText(METRIC_LABEL)
     await user.clear(input)
     await user.type(input, ENTERED_VALUE)
     // Leave the field the way a user does when they click the canvas: move
@@ -79,7 +82,7 @@ describe('LengthField', () => {
     const user = userEvent.setup()
     renderField(onCommitMm)
 
-    const input = screen.getByLabelText(LABEL)
+    const input = screen.getByLabelText(METRIC_LABEL)
     await user.clear(input)
     await user.type(input, `${OUT_OF_RANGE_ENTRY}{Enter}`)
 
