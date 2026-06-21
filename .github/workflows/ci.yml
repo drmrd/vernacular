@@ -57,6 +57,10 @@ jobs:
   decide:
     name: Decide heavy suites
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     outputs:
       e2e: ${{ steps.d.outputs.e2e }}
       visual: ${{ steps.d.outputs.visual }}
