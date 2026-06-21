@@ -59,7 +59,7 @@
   /* Canvas role tokens. The 2D plan canvas cannot read CSS variables directly, so the
      PlanPalette resolver reads these and threads them into drawPlan. Warm light-theme
      values; dark equivalents land with the dark-canvas pass. */
-  --color-canvas-grid: #e5dcc6;
+  --color-canvas-grid: #dccfb2;
   --color-canvas-wall: #2f2615;
   --color-canvas-room-fill: #fbf7ef;
   --color-canvas-ruler-band: #f4efe4;
