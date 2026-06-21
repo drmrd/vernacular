@@ -5,6 +5,7 @@ import {
   FLIP_OPENING,
   REMOVE_OPENING,
   RESIZE_OPENING,
+  SET_OPENING_TYPE,
   createOpening,
   parseLength,
   type Command,
@@ -13,6 +14,7 @@ import {
   type OpeningDimensions,
   type RemoveOpeningParams,
   type ResizeOpeningParams,
+  type SetOpeningTypeParams,
 } from '../../core'
 import { OpeningInspector } from './opening-inspector'
 
@@ -219,6 +221,26 @@ describe('OpeningInspector', () => {
     renderInspector(vi.fn(), 'metric')
 
     expect(screen.queryByRole('list', { name: /fraction chips for/i })).toBeNull()
+  })
+
+  it('dispatches setOpeningType when a different opening type is chosen', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    renderInspector(dispatch)
+
+    const typeSelect = screen.getByRole('combobox', { name: /opening type/i })
+    expect(typeSelect).toHaveValue('single-swing-door')
+
+    await user.selectOptions(typeSelect, 'double-swing-door')
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = onlyCommand<SetOpeningTypeParams>(dispatch)
+    expect(command.type).toBe(SET_OPENING_TYPE)
+    expect(command.params).toEqual<SetOpeningTypeParams>({
+      floorId: FLOOR_ID,
+      openingId: OPENING_ID,
+      type: 'double-swing-door',
+    })
   })
 
   it('clicking a fraction chip dispatches a resize command', async () => {
