@@ -108,11 +108,22 @@ jobs:
       - name: Build Storybook
         run: pnpm build-storybook
 
+      - name: Visual-regression diff of Storybook stories
+        run: pnpm stories:test
+
       - name: Upload static Storybook
         uses: actions/upload-artifact@v4
         with:
           name: storybook-static
           path: storybook-static
+          retention-days: 7
+
+      - name: Upload story visual diff report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-visual-report
+          path: playwright-report
           retention-days: 7
 
   e2e:
