@@ -16,7 +16,7 @@ import {
 } from '../../core'
 import { Button, Stack } from '../design-system'
 import { LengthField } from './length-field'
-import { isWindow, openingTypes, OpeningOptionGroup } from './opening-type-chooser'
+import { groupedOpeningTypes, OpeningOptionGroup } from './opening-type-chooser'
 import { RemoveControl } from './remove-control'
 
 const INCH_IN_MM = 25.4
@@ -153,9 +153,7 @@ interface OpeningTypeFieldProps {
 
 function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): ReactElement {
   const selectId = `opening-type-${opening.id}`
-  const types = openingTypes()
-  const doors = types.filter((type) => !isWindow(type))
-  const windows = types.filter(isWindow)
+  const { doors, windows } = groupedOpeningTypes()
   return (
     <Stack gap="space-2">
       <label htmlFor={selectId}>Opening type</label>

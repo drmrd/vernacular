@@ -208,6 +208,7 @@ export const SET_OPENING_TYPE = 'floor/set-opening-type'
 export interface SetOpeningTypeParams {
   floorId: string
   openingId: string
+  /** An ElementType id; the authority for valid ids is `builtinElementTypes`. */
   type: string
 }
 
