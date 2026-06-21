@@ -96,6 +96,12 @@ describe('LibraryPanel', () => {
     expect(await screen.findByText(EMPTY_STATE)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: PACK_ITEM_NAME })).toBeNull()
   })
+
+  it('presents the empty-state message as a heading', async () => {
+    renderPanel(new AssetRegistry([]))
+
+    expect(await screen.findByRole('heading', { name: EMPTY_STATE })).toBeInTheDocument()
+  })
 })
 
 const EAMES_NAME = 'Eames chair'
@@ -232,6 +238,56 @@ describe('LibraryPanel design-system primitives', () => {
     await user.click(screen.getByRole('button', { name: /import glb/i }))
 
     expect(onImport).toHaveBeenCalledTimes(1)
+  })
+})
+
+const LOADING_MESSAGE = 'Loading furniture...'
+
+function neverResolvingRegistry(): AssetRegistry {
+  return { list: () => new Promise(() => {}) } as unknown as AssetRegistry
+}
+
+describe('LibraryPanel loading state', () => {
+  it('shows a loading message while the registry is still listing items', () => {
+    renderPanel(neverResolvingRegistry())
+
+    expect(screen.getByText(LOADING_MESSAGE)).toBeInTheDocument()
+  })
+})
+
+const EXPECTED_THUMBNAIL_TILES = 2
+
+describe('LibraryPanel thumbnail placeholders', () => {
+  it('renders one decorative placeholder thumbnail tile per item without replacing its name', async () => {
+    const container = renderPanel(packAndUserRegistry())
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    expect(container.querySelectorAll('.library-panel__thumb')).toHaveLength(
+      EXPECTED_THUMBNAIL_TILES,
+    )
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: OAK_NAME })).toBeInTheDocument()
+  })
+})
+
+describe('LibraryPanel placement feedback', () => {
+  it('captions the armed item and marks only its button pressed', async () => {
+    const armed = libraryItem({
+      name: EAMES_NAME,
+      reference: { scope: PACK_SCOPE, contentHash: 'p1' },
+    })
+    render(
+      <AssetRegistryProvider registry={packAndUserRegistry()}>
+        <LibraryPanel onPick={vi.fn()} onImport={vi.fn()} armed={armed} />
+      </AssetRegistryProvider>,
+    )
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    expect(screen.getByText(`Click the canvas to place ${EAMES_NAME}`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: OAK_NAME })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 

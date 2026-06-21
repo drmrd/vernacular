@@ -15,7 +15,7 @@ import { LibraryLauncher } from './library-launcher'
 // user's asset source. The list and the user source are provided at app boot;
 // without them the panel shows its empty state and import no-ops.
 export function LibraryLauncherPanel(): ReactElement {
-  const { armItem } = useFurniturePlacement()
+  const { armItem, armed } = useFurniturePlacement()
   const { setTool } = useActiveTool()
   const userSource = useUserAssetSource()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -47,7 +47,7 @@ export function LibraryLauncherPanel(): ReactElement {
 
   return (
     <>
-      <LibraryLauncher onPick={onPick} onImport={onImport} />
+      <LibraryLauncher onPick={onPick} onImport={onImport} armed={armed} />
       <input
         ref={inputRef}
         type="file"
