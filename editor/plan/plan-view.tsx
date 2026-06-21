@@ -46,6 +46,7 @@ import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useFloorFillColor, useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
 import { usePlanAuthoring, type PlanAuthoringResult } from './use-plan-authoring'
+import { useEscapeToSelect } from './use-escape-to-select'
 import { useOpeningTool } from './opening-tool-context'
 import { useFurniturePlacement } from './furniture-placement-context'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
@@ -189,7 +190,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const graph = useActiveFloorGraph()
   const activeFloorId = useActiveFloorId()
   const selection = useSelection()
-  const { tool } = useActiveTool()
+  const { tool, setTool } = useActiveTool()
   const { viewport, setViewport } = useViewport()
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
@@ -227,6 +228,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     activeFloorId,
     furniture,
   })
+  useEscapeToSelect({ tool, setTool })
   const { placementType } = useOpeningTool()
   const { armed, rotation } = useFurniturePlacement()
   const authoring = usePlanAuthoring({
