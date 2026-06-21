@@ -55,4 +55,14 @@ describe('ColorPicker', () => {
       color: readableTextColor(FIRST_COLOR.color.srgbHex, CANDIDATES),
     })
   })
+
+  it('labels the recent colors section only when at least one recent color exists', () => {
+    render(<ColorPicker surface={REF} finishId="matte" recent={RECENT} dispatch={vi.fn()} />)
+    expect(screen.getByText('Recent colors')).toBeInTheDocument()
+
+    cleanup()
+
+    render(<ColorPicker surface={REF} finishId="matte" recent={[]} dispatch={vi.fn()} />)
+    expect(screen.queryByText('Recent colors')).toBeNull()
+  })
 })
