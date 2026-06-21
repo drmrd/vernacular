@@ -96,6 +96,14 @@ describe('SelectionTransformPanel', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('labels the free-rotation angle entry with its degree unit', () => {
+    renderPanel(vi.fn())
+
+    expect(screen.getByLabelText('Angle (deg)')).toBe(
+      screen.getByRole('spinbutton', { name: /angle/i }),
+    )
+  })
+
   it('renders its rotate and apply controls as neutral design-system buttons', () => {
     renderPanel(vi.fn())
 
