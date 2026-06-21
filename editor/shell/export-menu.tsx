@@ -10,6 +10,7 @@ interface ExportMenuProps {
 
 interface ExportItem {
   label: string
+  description: string
   onSelect: () => void
 }
 
@@ -20,11 +21,27 @@ function exportMenuItems({
   onExportImage,
   onExportPdf,
 }: ExportMenuProps): ExportItem[] {
-  const candidates: { label: string; onSelect: (() => void) | undefined }[] = [
-    { label: 'Project bundle', onSelect: onExportBundle },
-    { label: 'Plan (SVG)', onSelect: onExportPlan },
-    { label: 'PNG image', onSelect: onExportImage },
-    { label: 'PDF', onSelect: onExportPdf },
+  const candidates: { label: string; description: string; onSelect: (() => void) | undefined }[] = [
+    {
+      label: 'Project bundle (.building)',
+      description: 'A full, re-openable copy of your project.',
+      onSelect: onExportBundle,
+    },
+    {
+      label: 'Plan (SVG)',
+      description: 'A vector drawing of the plan.',
+      onSelect: onExportPlan,
+    },
+    {
+      label: 'PNG image',
+      description: 'A flat image of the plan.',
+      onSelect: onExportImage,
+    },
+    {
+      label: 'PDF',
+      description: 'For printing to scale.',
+      onSelect: onExportPdf,
+    },
   ]
   return candidates.filter((item): item is ExportItem => item.onSelect !== undefined)
 }
@@ -56,7 +73,8 @@ export function ExportMenu(props: ExportMenuProps) {
                   menu.close()
                 }}
               >
-                {item.label}
+                <span className="export-menu__row-label">{item.label}</span>
+                <span className="export-menu__row-description">{item.description}</span>
               </Button>
             </li>
           ))}
