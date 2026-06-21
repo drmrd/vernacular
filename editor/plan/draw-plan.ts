@@ -358,7 +358,7 @@ interface RoomDrawing {
 function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDrawing): void {
   const [firstPoint, ...remainingPoints] = room.polygon
   if (firstPoint === undefined || remainingPoints.length < 2) return
-  ctx.fillStyle = drawing.selected ? drawing.selectionFill : (drawing.fillColor ?? drawing.roomFill)
+  ctx.fillStyle = drawing.fillColor ?? (drawing.selected ? drawing.selectionFill : drawing.roomFill)
   ctx.beginPath()
   traceRingPath(ctx, room.polygon, drawing.viewport)
   // Holes wind opposite the outer ring so the nonzero rule leaves them unpainted.
