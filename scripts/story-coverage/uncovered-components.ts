@@ -208,12 +208,6 @@ export const UNCOVERED_COMPONENTS: {
       'composes the entire editor across twelve contexts and a live scene pane; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
-    component: 'Inspector',
-    file: 'editor/shell/inspector.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the editor session, selection, scene-graph, and active floor contexts and needs a provider wrapper.',
-  },
-  {
     component: 'ScenePane',
     file: 'editor/shell/scene-pane.tsx',
     reason:
@@ -232,12 +226,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/tools/active-tool-provider.tsx',
     reason:
       'deferred to the tools-and-panels story sub-issue; it is the active-tool context provider, covered as a wrapper alongside the tools panel story.',
-  },
-  {
-    component: 'ToolsPanel',
-    file: 'editor/tools/tools-panel.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; it reads the active-tool and opening-tool contexts and needs a provider wrapper.',
   },
 
   // --- editor/viewport ----------------------------------------------------
