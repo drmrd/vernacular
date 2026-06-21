@@ -159,7 +159,9 @@ describe('FurnitureInspector', () => {
     const angleInput = screen.getByLabelText('Angle (deg)') as HTMLInputElement
     expect(angleInput.value).toBe(QUARTER_TURN_DEGREES)
   })
+})
 
+describe('FurnitureInspector dimensions', () => {
   it('dispatches resizeFurniture with the new width and unchanged depth when the width is committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
