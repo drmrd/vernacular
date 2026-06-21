@@ -271,6 +271,26 @@ describe('LibraryPanel thumbnail placeholders', () => {
   })
 })
 
+describe('LibraryPanel placement feedback', () => {
+  it('captions the armed item and marks only its button pressed', async () => {
+    const armed = libraryItem({
+      name: EAMES_NAME,
+      reference: { scope: PACK_SCOPE, contentHash: 'p1' },
+    })
+    render(
+      <AssetRegistryProvider registry={packAndUserRegistry()}>
+        <LibraryPanel onPick={vi.fn()} onImport={vi.fn()} armed={armed} />
+      </AssetRegistryProvider>,
+    )
+    await screen.findByRole('button', { name: EAMES_NAME })
+    await screen.findByRole('button', { name: OAK_NAME })
+
+    expect(screen.getByText(`Click the canvas to place ${EAMES_NAME}`)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: OAK_NAME })).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
 function carriesFieldControlTreatment(control: HTMLElement): boolean {
   return control.classList.contains('ds-field__control') || control.closest('.ds-field') !== null
 }
