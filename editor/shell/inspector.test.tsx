@@ -8,19 +8,19 @@ import {
   createSelectionStore,
   createActiveFloorStore,
 } from '../../bridge'
-import { createEmptyProject, createFloor } from '../../core'
+import { createEmptyProject, createFloor, createWall } from '../../core'
 import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
 
-function renderInspector() {
+function renderInspector(walls = []) {
   const project = createEmptyProject({
     name: 'T',
     units: 'imperial',
     period: 'modern',
     appVersion: '0.0.0',
   })
-  project.floors = [createFloor('G', { id: 'g' })]
+  project.floors = [createFloor('G', { id: 'g', walls })]
   const session = createEditorSession(project)
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore('g')
@@ -50,8 +50,16 @@ describe('Inspector', () => {
   })
 
   it('shows a quiet hint when nothing is selected', () => {
-    renderInspector()
+    renderInspector([createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })])
     expect(screen.getByText(/nothing selected/i)).toBeInTheDocument()
+  })
+
+  it('shows a first-run cue naming the first action when the plan is empty and nothing is selected', () => {
+    renderInspector()
+    expect(
+      screen.getByText('Pick the Wall tool and click to draw your first wall.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/nothing selected/i)).toBeNull()
   })
 
   it('shows a "1 selected" badge when one entity is selected', () => {
