@@ -187,20 +187,8 @@ export const UNCOVERED_COMPONENTS: {
     reason:
       'deferred to the tools-and-panels story sub-issue; it is the snap-preferences context provider, covered as a wrapper alongside the snap panel story.',
   },
-  {
-    component: 'UnderlayMenuPanel',
-    file: 'editor/plan/underlay-menu-panel.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the underlay panels read the active floor and dispatch contexts and need a provider wrapper.',
-  },
 
   // --- editor/shell -------------------------------------------------------
-  {
-    component: 'CoordsReadout',
-    file: 'editor/shell/coords-readout.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the editor session and pointer-readout contexts and needs a provider wrapper.',
-  },
   {
     component: 'EditorShell',
     file: 'editor/shell/editor-shell.tsx',
@@ -212,12 +200,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/shell/scene-pane.tsx',
     reason:
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'ZoomControl',
-    file: 'editor/shell/zoom-control.tsx',
-    reason:
-      'deferred to the shell story sub-issue; it reads the viewport, active floor, and scene-graph contexts and needs a provider wrapper.',
   },
 
   // --- editor/tools -------------------------------------------------------
