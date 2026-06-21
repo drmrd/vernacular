@@ -50,13 +50,20 @@ describe('runDecide', () => {
   it('skips heavy suites on a draft even when paths match', async () => {
     const d = deps({ changed: ['editor/plan/plan-view.tsx'], draft: true })
     await runDecide(['--base', 'origin/main'], d)
-    expect(d.outputs).toMatchObject({ e2e: 'false', visual: 'false' })
+    expect(d.outputs).toMatchObject({ e2e: 'false', visual: 'false', lighthouse: 'false' })
   })
 
   it('run:e2e overrides a draft', async () => {
     const d = deps({ changed: ['core/index.ts'], draft: true, labels: ['run:e2e'] })
     await runDecide(['--base', 'origin/main'], d)
     expect(d.outputs.e2e).toBe('true')
+  })
+
+  it('run:visual overrides a draft', async () => {
+    const d = deps({ changed: ['core/index.ts'], draft: true, labels: ['run:visual'] })
+    await runDecide(['--base', 'origin/main'], d)
+    expect(d.outputs.visual).toBe('true')
+    expect(d.outputs.e2e).toBe('false')
   })
 
   it('ci:full forces all suites', async () => {
