@@ -28,7 +28,9 @@ const METRIC_ASSUMED_UNIT = 'mm' as const
 
 const NEW_NAME = 'Reading Chair'
 const NEW_ANGLE = '45'
-const EXPECTED_ANGLE = 45
+const EXPECTED_ANGLE_RADIANS = (45 * Math.PI) / 180
+const QUARTER_TURN_RADIANS = Math.PI / 2
+const QUARTER_TURN_DEGREES = '90'
 const NEW_WIDTH_ENTRY = '800'
 const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, {
   assumeUnit: METRIC_ASSUMED_UNIT,
@@ -42,23 +44,23 @@ const EXPECTED_NEW_HEIGHT_MM = parseLength(NEW_HEIGHT_ENTRY, {
   assumeUnit: METRIC_ASSUMED_UNIT,
 })
 
-function buildFurniture() {
+function buildFurniture(rotation = 0) {
   return createFurnitureInstance({
     id: FURNITURE_ID,
     assetRef: { scope: 'user', contentHash: 'h' },
     position: { x: 0, y: 0 },
     footprint: { width: WIDTH_MM, depth: DEPTH_MM },
     height: HEIGHT_MM,
-    rotation: 0,
+    rotation,
     name: 'Chair',
   })
 }
 
-function renderInspector(dispatch: (command: unknown) => void) {
+function renderInspector(dispatch: (command: unknown) => void, rotation = 0) {
   render(
     <FurnitureInspector
       floorId={FLOOR_ID}
-      furniture={buildFurniture()}
+      furniture={buildFurniture(rotation)}
       units={UNITS}
       dispatch={dispatch as never}
     />,
@@ -101,7 +103,7 @@ describe('FurnitureInspector', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const angleInput = screen.getByLabelText('Angle')
+    const angleInput = screen.getByLabelText('Angle (deg)')
     await user.clear(angleInput)
     await user.type(angleInput, `${NEW_ANGLE}{Enter}`)
 
@@ -109,7 +111,7 @@ describe('FurnitureInspector', () => {
     expect(command).toBeDefined()
     expect(command?.params.floorId).toBe(FLOOR_ID)
     expect(command?.params.furnitureId).toBe(FURNITURE_ID)
-    expect(command?.params.rotation).toBe(EXPECTED_ANGLE)
+    expect(command?.params.rotation).toBeCloseTo(EXPECTED_ANGLE_RADIANS, 10)
   })
 
   it('dispatches setFurnitureName with the typed name when the name is committed on blur', async () => {
@@ -139,7 +141,7 @@ describe('FurnitureInspector', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const angleInput = screen.getByLabelText('Angle')
+    const angleInput = screen.getByLabelText('Angle (deg)')
     await user.clear(angleInput)
     await user.type(angleInput, NEW_ANGLE)
     await user.tab()
@@ -148,7 +150,14 @@ describe('FurnitureInspector', () => {
     expect(command).toBeDefined()
     expect(command?.params.floorId).toBe(FLOOR_ID)
     expect(command?.params.furnitureId).toBe(FURNITURE_ID)
-    expect(command?.params.rotation).toBe(EXPECTED_ANGLE)
+    expect(command?.params.rotation).toBeCloseTo(EXPECTED_ANGLE_RADIANS, 10)
+  })
+
+  it('shows the furniture rotation converted to degrees in the Angle field', () => {
+    renderInspector(vi.fn(), QUARTER_TURN_RADIANS)
+
+    const angleInput = screen.getByLabelText('Angle (deg)') as HTMLInputElement
+    expect(angleInput.value).toBe(QUARTER_TURN_DEGREES)
   })
 
   it('dispatches resizeFurniture with the new width and unchanged depth when the width is committed', async () => {
@@ -156,7 +165,7 @@ describe('FurnitureInspector', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const widthInput = screen.getByLabelText('Width')
+    const widthInput = screen.getByLabelText('Width (mm)')
     await user.clear(widthInput)
     await user.type(widthInput, `${NEW_WIDTH_ENTRY}{Enter}`)
 
@@ -174,7 +183,7 @@ describe('FurnitureInspector', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const depthInput = screen.getByLabelText('Depth')
+    const depthInput = screen.getByLabelText('Depth (mm)')
     await user.clear(depthInput)
     await user.type(depthInput, `${NEW_DEPTH_ENTRY}{Enter}`)
 
@@ -190,7 +199,7 @@ describe('FurnitureInspector', () => {
   it('shows the furniture instance height in the Height field', () => {
     renderInspector(vi.fn())
 
-    const heightInput = screen.getByLabelText('Height') as HTMLInputElement
+    const heightInput = screen.getByLabelText('Height (mm)') as HTMLInputElement
     expect(parseLength(heightInput.value, { assumeUnit: METRIC_ASSUMED_UNIT })).toBe(HEIGHT_MM)
   })
 
@@ -199,7 +208,7 @@ describe('FurnitureInspector', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const heightInput = screen.getByLabelText('Height')
+    const heightInput = screen.getByLabelText('Height (mm)')
     await user.clear(heightInput)
     await user.type(heightInput, `${NEW_HEIGHT_ENTRY}{Enter}`)
 
