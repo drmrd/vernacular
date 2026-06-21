@@ -16,7 +16,8 @@ import {
 } from '../../core'
 import { Button, Stack } from '../design-system'
 import { LengthField } from './length-field'
-import { groupedOpeningTypes, OpeningOptionGroup } from './opening-type-chooser'
+import { OpeningOptionGroup } from './opening-type-chooser'
+import { groupedOpeningTypes } from './opening-type-options'
 import { RemoveControl } from './remove-control'
 
 const INCH_IN_MM = 25.4
