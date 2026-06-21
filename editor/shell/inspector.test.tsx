@@ -124,7 +124,7 @@ describe('Inspector', () => {
     ]
     const { selection } = renderInspector(walls)
     const [room] = deriveRooms(walls)
-    expect(room).toBeDefined()
+    if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
     act(() => {
       selection.select(room.id)
     })
