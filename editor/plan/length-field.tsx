@@ -9,10 +9,9 @@ import { Field } from '../design-system'
 import { lengthRejectionMessage } from './length-rejection-message'
 
 // Surfaces the assumed unit a bare number is read as, so an entry like "30" is
-// unambiguous. Millimetres is the implicit metric base the adaptive formatter
-// already spells out in the value, so it stays out of the label.
+// unambiguous. Every unit is spelled out in the label uniformly.
 function withAssumedUnit(label: string, assumeUnit: AssumedUnit): string {
-  return assumeUnit === 'mm' ? label : `${label} (${assumeUnit})`
+  return `${label} (${assumeUnit})`
 }
 
 export interface LengthFieldProps {
