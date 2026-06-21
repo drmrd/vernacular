@@ -20,6 +20,7 @@ import './library-panel.css'
 export interface LibraryPanelProps {
   onPick: (item: LibraryItem) => void
   onImport: () => void
+  armed?: LibraryItem | null
 }
 
 // Load the registry's library items once, guarding against a state update after
@@ -46,10 +47,12 @@ const LOADING_MESSAGE = 'Loading furniture...'
 interface LibraryGridProps {
   items: LibraryItem[]
   onPick: (item: LibraryItem) => void
+  armed: LibraryItem | null
 }
 
 // One pickable button per library item, keyed by its content-addressed reference.
-function LibraryGrid({ items, onPick }: LibraryGridProps): ReactElement {
+function LibraryGrid({ items, onPick, armed }: LibraryGridProps): ReactElement {
+  const armedReference = armed ? formatAssetReference(armed.reference) : null
   return (
     <ul className="library-panel__grid">
       {items.map((item, index) => (
@@ -57,7 +60,11 @@ function LibraryGrid({ items, onPick }: LibraryGridProps): ReactElement {
           key={`${formatAssetReference(item.reference)}:${index}`}
           className="library-panel__cell"
         >
-          <Button className="ds-menu-surface__row" onClick={() => onPick(item)}>
+          <Button
+            className="ds-menu-surface__row"
+            onClick={() => onPick(item)}
+            aria-pressed={formatAssetReference(item.reference) === armedReference}
+          >
             <span className="library-panel__thumb" aria-hidden="true" />
             {item.name}
           </Button>
@@ -132,11 +139,12 @@ function LibraryControls(props: LibraryControlsProps): ReactElement {
 interface LibraryBodyProps {
   items: LibraryItem[] | null
   onPick: (item: LibraryItem) => void
+  armed: LibraryItem | null
 }
 
 // Pick the body to render: a loading state while listing, the empty message when
 // there are no items, otherwise the filter controls above the matching grid.
-function LibraryBody({ items, onPick }: LibraryBodyProps): ReactElement | null {
+function LibraryBody({ items, onPick, armed }: LibraryBodyProps): ReactElement | null {
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS)
   if (items === null) {
     return <LoadingState message={LOADING_MESSAGE} />
@@ -147,13 +155,16 @@ function LibraryBody({ items, onPick }: LibraryBodyProps): ReactElement | null {
   return (
     <>
       <LibraryControls filters={filters} eras={distinctEras(items)} setFilters={setFilters} />
-      <LibraryGrid items={visibleLibraryItems(items, filters)} onPick={onPick} />
+      {armed ? (
+        <p className="library-panel__placement-hint">Click the canvas to place {armed.name}</p>
+      ) : null}
+      <LibraryGrid items={visibleLibraryItems(items, filters)} onPick={onPick} armed={armed} />
     </>
   )
 }
 
 export function LibraryPanel(props: LibraryPanelProps): ReactElement {
-  const { onPick, onImport } = props
+  const { onPick, onImport, armed = null } = props
   const registry = useAssetRegistry()
   const items = useLibraryItems(registry)
   return (
@@ -161,7 +172,7 @@ export function LibraryPanel(props: LibraryPanelProps): ReactElement {
       <Button className="library-panel__import" onClick={onImport}>
         Import GLB
       </Button>
-      <LibraryBody items={items} onPick={onPick} />
+      <LibraryBody items={items} onPick={onPick} armed={armed} />
     </section>
   )
 }

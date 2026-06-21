@@ -39,6 +39,12 @@
   color: var(--color-text-muted);
 }
 
+.library-panel__placement-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .library-panel__controls {
   display: flex;
   flex-direction: column;
