@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 
 import { formatAssetReference } from '../../core'
-import { Button, LoadingState, Segmented, type SegmentedOption } from '../design-system'
+import { Button, EmptyState, LoadingState, Segmented, type SegmentedOption } from '../design-system'
 import type { AssetRegistry, LibraryItem } from '../../storage'
 import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
@@ -141,7 +141,7 @@ function LibraryBody({ items, onPick }: LibraryBodyProps): ReactElement | null {
     return <LoadingState message={LOADING_MESSAGE} />
   }
   if (items.length === 0) {
-    return <p className="library-panel__empty">{EMPTY_MESSAGE}</p>
+    return <EmptyState title={EMPTY_MESSAGE} asRegion={false} />
   }
   return (
     <>
