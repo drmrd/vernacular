@@ -178,24 +178,6 @@ export const UNCOVERED_COMPONENTS: {
       'requires the live plan overlay projection from the scene context; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
-    component: 'FurnitureInspector',
-    file: 'editor/plan/furniture-inspector.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'OpeningInspector',
-    file: 'editor/plan/opening-inspector.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'OpeningTypeChooser',
-    file: 'editor/plan/opening-type-chooser.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the plan inspectors land together in the plan-inspector slice.',
-  },
-  {
     component: 'PlanOverlay',
     file: 'editor/plan/plan-overlay.tsx',
     reason:
@@ -206,36 +188,6 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/plan/plan-view.tsx',
     reason:
       'renders the plan canvas and reads eight editor contexts; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
-  },
-  {
-    component: 'RoomFinishSection',
-    file: 'editor/plan/room-finish-section.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'RoomPeriodEditor',
-    file: 'editor/plan/room-period-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'RoomPurposeEditor',
-    file: 'editor/plan/room-purpose-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'RoomStyleEditor',
-    file: 'editor/plan/room-style-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
-  },
-  {
-    component: 'RoomSubPurposeEditor',
-    file: 'editor/plan/room-sub-purpose-editor.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the room editors land together in the plan-inspector slice.',
   },
   {
     component: 'SnapPanel',
@@ -252,12 +204,6 @@ export const UNCOVERED_COMPONENTS: {
   {
     component: 'UnderlayMenuPanel',
     file: 'editor/plan/underlay-menu-panel.tsx',
-    reason:
-      'deferred to the tools-and-panels story sub-issue; the underlay panels read the active floor and dispatch contexts and need a provider wrapper.',
-  },
-  {
-    component: 'UnderlayRow',
-    file: 'editor/plan/underlay-panel.tsx',
     reason:
       'deferred to the tools-and-panels story sub-issue; the underlay panels read the active floor and dispatch contexts and need a provider wrapper.',
   },
