@@ -203,6 +203,37 @@ const flipOpeningHandler: CommandHandler<Project, FlipOpeningParams> = {
   },
 }
 
+export const SET_OPENING_TYPE = 'floor/set-opening-type'
+
+export interface SetOpeningTypeParams {
+  floorId: string
+  openingId: string
+  type: string
+}
+
+export function setOpeningType(
+  floorId: string,
+  openingId: string,
+  type: string,
+): Command<SetOpeningTypeParams> {
+  return {
+    type: SET_OPENING_TYPE,
+    params: { floorId, openingId, type },
+    description: 'Change opening type',
+  }
+}
+
+const setOpeningTypeHandler: CommandHandler<Project, SetOpeningTypeParams> = {
+  apply(state, params) {
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetOpening(floor, params.openingId, (opening) => ({
+        ...opening,
+        type: params.type,
+      })),
+    )
+  },
+}
+
 export const REMOVE_OPENING = 'floor/remove-opening'
 
 export interface RemoveOpeningParams {
@@ -236,5 +267,6 @@ export function registerOpeningCommands(
     .register(RESIZE_OPENING, resizeOpeningHandler)
     .register(RESIZE_OPENING_EDGE, resizeOpeningEdgeHandler)
     .register(FLIP_OPENING, flipOpeningHandler)
+    .register(SET_OPENING_TYPE, setOpeningTypeHandler)
     .register(REMOVE_OPENING, removeOpeningHandler)
 }
