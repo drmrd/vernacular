@@ -143,7 +143,9 @@ describe('OpeningInspector', () => {
     expect(command.type).toBe(FLIP_OPENING)
     expect(command.params.axis).toBe('facing')
   })
+})
 
+describe('OpeningInspector remove and options', () => {
   it('does not dispatch removeOpening on the first Remove click; it asks for confirmation instead', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
