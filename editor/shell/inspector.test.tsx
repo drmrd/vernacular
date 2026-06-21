@@ -8,12 +8,12 @@ import {
   createSelectionStore,
   createActiveFloorStore,
 } from '../../bridge'
-import { createEmptyProject, createFloor, createWall } from '../../core'
+import { createEmptyProject, createFloor, createWall, type Wall } from '../../core'
 import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
 
-function renderInspector(walls = []) {
+function renderInspector(walls: Wall[] = []) {
   const project = createEmptyProject({
     name: 'T',
     units: 'imperial',
