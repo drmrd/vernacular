@@ -8,6 +8,13 @@ import {
 import { Field } from '../design-system'
 import { lengthRejectionMessage } from './length-rejection-message'
 
+// Surfaces the assumed unit a bare number is read as, so an entry like "30" is
+// unambiguous. Millimetres is the implicit metric base the adaptive formatter
+// already spells out in the value, so it stays out of the label.
+function withAssumedUnit(label: string, assumeUnit: AssumedUnit): string {
+  return assumeUnit === 'mm' ? label : `${label} (${assumeUnit})`
+}
+
 export interface LengthFieldProps {
   inputId: string
   label: string
@@ -54,7 +61,7 @@ export function LengthField({
   }
 
   return (
-    <Field htmlFor={inputId} label={label} hint={error ?? undefined}>
+    <Field htmlFor={inputId} label={withAssumedUnit(label, assumeUnit)} hint={error ?? undefined}>
       <input
         id={inputId}
         type="text"

@@ -35,9 +35,9 @@ export function RoomCeilingHeightEditor({
   const [text, setText] = useState(formatted)
   const [error, setError] = useState<string | null>(null)
   const inputId = `room-ceiling-height-${roomKey}`
+  const assumeUnit = ASSUME_UNIT_BY_SYSTEM[preferences.system]
 
   function commit() {
-    const assumeUnit = ASSUME_UNIT_BY_SYSTEM[preferences.system]
     try {
       const parsed = parseLength(text, { assumeUnit })
       dispatch(setRoomCeilingHeight(roomKey, parsed))
@@ -57,7 +57,7 @@ export function RoomCeilingHeightEditor({
   }
 
   return (
-    <Field htmlFor={inputId} label="Ceiling height" hint={error ?? undefined}>
+    <Field htmlFor={inputId} label={`Ceiling height (${assumeUnit})`} hint={error ?? undefined}>
       <input
         id={inputId}
         type="text"

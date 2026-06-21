@@ -36,9 +36,9 @@ export function WallThicknessEditor({
   const [text, setText] = useState(() => formatAdaptiveLength(thickness, preferences))
   const [error, setError] = useState<string | null>(null)
   const inputId = `wall-thickness-${wallId}`
+  const assumeUnit = ASSUME_UNIT_BY_SYSTEM[preferences.system]
 
   function commit() {
-    const assumeUnit = ASSUME_UNIT_BY_SYSTEM[preferences.system]
     try {
       const parsed = parseLength(text, { assumeUnit })
       dispatch(setWallThickness(floorId, wallId, parsed))
@@ -58,7 +58,7 @@ export function WallThicknessEditor({
   }
 
   return (
-    <Field htmlFor={inputId} label="Thickness" hint={error ?? undefined}>
+    <Field htmlFor={inputId} label={`Thickness (${assumeUnit})`} hint={error ?? undefined}>
       <input
         id={inputId}
         type="text"
