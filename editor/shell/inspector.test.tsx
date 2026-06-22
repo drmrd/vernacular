@@ -8,12 +8,20 @@ import {
   createSelectionStore,
   createActiveFloorStore,
 } from '../../bridge'
-import { createEmptyProject, createFloor, createWall, deriveRooms, type Wall } from '../../core'
+import {
+  createEmptyProject,
+  createFloor,
+  createWall,
+  deriveRooms,
+  ROOM_ID_PREFIX,
+  type Project,
+  type Wall,
+} from '../../core'
 import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
 
-function renderInspector(walls: Wall[] = []) {
+function renderInspector(walls: Wall[] = [], roomOverrides?: Project['roomOverrides']) {
   const project = createEmptyProject({
     name: 'T',
     units: 'imperial',
@@ -21,6 +29,7 @@ function renderInspector(walls: Wall[] = []) {
     appVersion: '0.0.0',
   })
   project.floors = [createFloor('G', { id: 'g', walls })]
+  project.roomOverrides = roomOverrides
   const session = createEditorSession(project)
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore('g')
@@ -129,6 +138,28 @@ describe('Inspector', () => {
       selection.select(room.id)
     })
     expect(screen.getByText('Character and period')).toBeInTheDocument()
+  })
+
+  it("renders a selected room's style override as the style display name, not a stringified object", () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 1000, y: 0 }),
+      createWall({ x: 1000, y: 0 }, { x: 1000, y: 1000 }),
+      createWall({ x: 1000, y: 1000 }, { x: 0, y: 1000 }),
+      createWall({ x: 0, y: 1000 }, { x: 0, y: 0 }),
+    ]
+    const [room] = deriveRooms(walls)
+    if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
+    const roomKey = room.id.slice(ROOM_ID_PREFIX.length)
+    const { selection } = renderInspector(walls, {
+      [roomKey]: { styleOverride: { styleId: 'craftsman' } },
+    })
+    act(() => {
+      selection.select(room.id)
+    })
+    expect(
+      screen.getByText('Craftsman', { selector: '.inspector__period-tag' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('[object Object]')).toBeNull()
   })
 
   it('shows a Transform section header when a transformable entity is selected', () => {
