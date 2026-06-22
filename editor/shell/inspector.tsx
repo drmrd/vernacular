@@ -7,6 +7,7 @@ import {
 } from '../../bridge'
 import {
   builtinPeriods,
+  builtinStyles,
   ceilingHeight as resolveCeilingHeight,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
@@ -233,7 +234,10 @@ function RoomInspector({ roomNode, project, dispatch }: RoomInspectorProps) {
     ? builtinPeriods.entries[override.periodOverride]
     : undefined
   const periodName = periodEntry?.displayName?.['en-US']
-  const styleName = override?.styleOverride ? String(override.styleOverride) : undefined
+  const styleEntry = override?.styleOverride
+    ? builtinStyles.entries[override.styleOverride.styleId]
+    : undefined
+  const styleName = styleEntry?.displayName?.['en-US']
   return (
     <>
       <PeriodTags periodName={periodName} styleName={styleName} />
