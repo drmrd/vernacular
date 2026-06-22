@@ -5,6 +5,7 @@ import {
   useAutosave,
   useDirtyTracker,
 } from '../bridge'
+import { useNotifications } from '../editor/design-system'
 import type { EditorWorkspaceProps } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
 import { useBeforeUnloadGuard } from './use-before-unload-guard'
@@ -46,7 +47,15 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
     snapshots,
     onSession,
   })
-  const actions = useProjectActions({ ...props, recentEntries, isDirty, confirmDiscard, markSaved })
+  const notifications = useNotifications()
+  const actions = useProjectActions({
+    ...props,
+    recentEntries,
+    isDirty,
+    confirmDiscard,
+    markSaved,
+    notifications,
+  })
   // The asset library (starter pack + user imports), assembled once per content cache.
   const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
   return {

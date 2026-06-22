@@ -17,8 +17,6 @@ export interface ProjectControlsProps {
   onOpenFolder?: () => void
   onOpenFile?: () => void
   onImportDroppedFile?: ((file: File) => void) | undefined
-  importStatus?: { fileName: string; reason: string } | null
-  onDismissImportStatus?: (() => void) | undefined
 }
 
 export function ProjectControls({

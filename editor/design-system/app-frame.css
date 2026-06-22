@@ -21,6 +21,15 @@
 .ds-app-frame__header {
   grid-area: header;
 }
+.ds-app-frame__banner {
+  grid-area: banner;
+}
+
+/* An empty banner slot (no active banner) is removed from the grid entirely so it
+   claims no row and no gap. The :has rules below add the row only when it has content. */
+.ds-app-frame__banner:empty {
+  display: none;
+}
 .ds-app-frame__rail {
   grid-area: rail;
   display: flex;
@@ -180,4 +189,32 @@
 .ds-app-frame__resize:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
+}
+
+.ds-app-frame:has(.ds-app-frame__banner:not(:empty)) {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'header header header'
+    'banner banner banner'
+    'rail main inspector'
+    'statusbar statusbar statusbar';
+}
+
+.ds-app-frame[data-breakpoint='medium']:has(.ds-app-frame__banner:not(:empty)) {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'header header'
+    'banner banner'
+    'main inspector'
+    'statusbar statusbar';
+}
+
+.ds-app-frame[data-breakpoint='narrow']:has(.ds-app-frame__banner:not(:empty)) {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'header'
+    'banner'
+    'main'
+    'inspector'
+    'statusbar';
 }

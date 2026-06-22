@@ -1,21 +1,13 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { commitProject, createEditorSession, guardDestructive } from '../bridge'
 import { importProjectFile } from '../storage'
+import { humanMessage } from '../editor/design-system'
 import { validateLoadedProject } from './validate-loaded-project'
 import {
   defaultStoreBackend,
   recordRecent,
   type ProjectActionsContext,
 } from './use-project-actions'
-
-export interface ImportStatus {
-  fileName: string
-  reason: string
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
 
 // Reads the file's bytes through a FileReader, which both browsers and the jsdom
 // test File implement (jsdom's Blob exposes no async byte readers).
@@ -47,13 +39,10 @@ function openFilePicker(onFile: (file: File) => void | Promise<void>): void {
 export function useOpenFileAction(context: ProjectActionsContext): {
   onImportDroppedFile: (file: File) => Promise<void>
   onOpenFile: () => void
-  importStatus: ImportStatus | null
-  dismissImportStatus: () => void
 } {
-  const { store, projectId, recentProjects, capabilities, onSession, isDirty, confirmDiscard } =
-    context
+  const { store, projectId, recentProjects, capabilities, onSession, isDirty } = context
+  const { confirmDiscard, notifications } = context
   const backend = defaultStoreBackend(capabilities)
-  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null)
   const importAndActivate = useCallback(
     (file: File) =>
       guardDestructive({
@@ -69,18 +58,15 @@ export function useOpenFileAction(context: ProjectActionsContext): {
             if (backend !== null) {
               recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
             }
-            setImportStatus(null)
           } catch (error) {
-            setImportStatus({ fileName: file.name, reason: errorMessage(error) })
+            notifications.error(`Couldn't open ${file.name}: ${humanMessage(error)}`)
           }
         },
       }),
-    [store, projectId, recentProjects, backend, onSession, isDirty, confirmDiscard],
+    [store, projectId, recentProjects, backend, onSession, isDirty, confirmDiscard, notifications],
   )
   return {
     onImportDroppedFile: importAndActivate,
     onOpenFile: () => openFilePicker(importAndActivate),
-    importStatus,
-    dismissImportStatus: () => setImportStatus(null),
   }
 }

@@ -136,6 +136,12 @@ export const UNCOVERED_COMPONENTS: {
 
   // --- editor/design-system remainder -------------------------------------
   {
+    component: 'NotificationProvider',
+    file: 'editor/design-system/notifications/use-notifications.tsx',
+    reason:
+      'a context provider whose only behavior is holding the active notification list and the auto-dismiss timers for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and the visible toast and banner surfaces are covered by the Toast and Banner stories (see ADR-0111).',
+  },
+  {
     component: 'ThemeProvider',
     file: 'editor/design-system/theme-provider.tsx',
     reason:

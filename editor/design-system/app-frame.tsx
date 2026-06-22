@@ -7,6 +7,7 @@ import './app-frame.css'
 
 export interface AppFrameProps {
   header: ReactNode
+  banner?: ReactNode
   rail: ReactNode
   railLabel: string
   main: ReactNode
@@ -120,8 +121,28 @@ function NarrowNotice({ railLabel }: { railLabel: string }) {
   )
 }
 
+interface FrameTopSlotsProps {
+  header: ReactNode
+  banner: ReactNode
+}
+
+// The header and the banner share the top of the frame. The banner div is rendered
+// unconditionally (unlike the optional statusBar footer) so its CSS-driven :empty collapse
+// can add or remove the banner grid row without a React remount when content toggles at runtime.
+function FrameTopSlots({ header, banner }: FrameTopSlotsProps) {
+  return (
+    <>
+      <header className="ds-app-frame__header" role="banner">
+        {header}
+      </header>
+      <div className="ds-app-frame__banner">{banner}</div>
+    </>
+  )
+}
+
 export function AppFrame({
   header,
+  banner,
   rail,
   railLabel,
   main,
@@ -140,9 +161,7 @@ export function AppFrame({
       data-breakpoint={breakpoint}
       data-rail-open={railOpen}
     >
-      <header className="ds-app-frame__header" role="banner">
-        {header}
-      </header>
+      <FrameTopSlots header={header} banner={banner} />
       <RailDisclosureToggle railLabel={railLabel} open={railOpen} setOpen={setRailOpen} />
       <NarrowNotice railLabel={railLabel} />
       <CollapsiblePane area="rail" label={railLabel} id={RAIL_ID}>

@@ -188,3 +188,21 @@ describe('AppFrame resize', () => {
     expect(screen.getByRole('separator', { name: /resize inspector/i })).toBeInTheDocument()
   })
 })
+
+describe('AppFrame banner slot', () => {
+  it('renders banner content under the header when provided', () => {
+    render(
+      <AppFrame
+        header={<div>header</div>}
+        banner={<div>degraded storage</div>}
+        rail={<div>rail</div>}
+        railLabel="Rail"
+        main={<div>main</div>}
+        mainLabel="Main"
+        inspector={<div>inspector</div>}
+        inspectorLabel="Inspector"
+      />,
+    )
+    expect(screen.getByText('degraded storage')).toBeInTheDocument()
+  })
+})

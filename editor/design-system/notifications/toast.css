@@ -1,0 +1,96 @@
+.ds-toast-region {
+  position: fixed;
+  right: var(--space-3);
+  bottom: var(--space-6);
+  z-index: 10;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-2);
+  /* ~22rem caps toast width for readability; there is no max-width token scale. */
+  max-width: 22rem;
+  pointer-events: none;
+}
+
+.ds-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-panel);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-overlay);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  animation: ds-toast-in var(--motion-duration) ease-out;
+}
+
+.ds-toast[data-severity='success'] {
+  border-left-color: var(--color-positive, var(--color-accent));
+}
+.ds-toast[data-severity='warning'] {
+  border-left-color: var(--color-warning, var(--color-accent));
+}
+.ds-toast[data-severity='error'] {
+  border-left-color: var(--color-danger, var(--color-accent));
+}
+
+.ds-toast__message {
+  flex: 1 1 auto;
+}
+
+.ds-toast__action,
+.ds-toast__dismiss {
+  flex: 0 0 auto;
+  min-height: var(--size-target-min);
+  min-width: var(--size-target-min);
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.ds-toast__dismiss {
+  color: var(--color-text-muted);
+}
+
+.ds-toast__spinner {
+  flex: 0 0 auto;
+  width: var(--size-control-icon);
+  height: var(--size-control-icon);
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: var(--radius-pill);
+  /* 800ms is the deliberate spinner rotation rate. */
+  animation: ds-toast-spin 0.8s linear infinite;
+}
+
+@keyframes ds-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ds-toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-toast {
+    animation: none;
+  }
+  .ds-toast__spinner {
+    /* 2s is the slowed reduced-motion rotation rate. */
+    animation-duration: 2s;
+  }
+}

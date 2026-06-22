@@ -49,7 +49,7 @@ import { ToolsPanel } from '../tools/tools-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame, IconButton } from '../design-system'
+import { AppFrame, BannerRegion, IconButton, ToastRegion } from '../design-system'
 import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
@@ -63,7 +63,7 @@ import { ZoomControl } from './zoom-control'
 import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
 import { ScenePane } from './scene-pane'
-import { ImportAlert } from './import-alert'
+import { useSaveFailureToast } from './use-save-failure-toast'
 import { ImportDropTarget } from './import-drop-target'
 import { UnitToggle } from './unit-toggle'
 import './editor-shell.css'
@@ -304,6 +304,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // palette, the snap panel, and the plan's snapping all read one source, persisted
   // to localStorage as an editor preference.
   const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
+  useSaveFailureToast(saveStatus)
   return (
     // The command-palette provider wraps everything so the keybinding layer, the
     // command bar, and the palette dialog all share one open/close state. The
@@ -321,19 +322,13 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                     <FurniturePlacementProvider>
                       <KeybindingLayer />
                       <CommandPalette />
+                      <ToastRegion />
                       {recovery ? (
                         <RecoveryPrompt
                           onRestore={recovery.onRestore}
                           onDiscard={recovery.onDiscard}
                         />
                       ) : null}
-                      <ImportAlert
-                        status={projectControls.importStatus ?? null}
-                        // Spread onDismiss only when present: the optional prop rejects an explicit undefined.
-                        {...(projectControls.onDismissImportStatus
-                          ? { onDismiss: projectControls.onDismissImportStatus }
-                          : {})}
-                      />
                       <SurfaceSelectionProvider store={surfaceSelection}>
                         <EntitySurfaceBridge />
                         <AppFrame
@@ -343,6 +338,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                               projectControls={projectControls}
                             />
                           }
+                          banner={<BannerRegion />}
                           railLabel="Tool rail"
                           rail={<ToolRail />}
                           mainLabel="Viewport"

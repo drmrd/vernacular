@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useProjectActions, type ProjectActionsContext } from './use-project-actions'
+import { type NotificationApi } from '../editor/design-system'
 import { createEditorSession } from '../bridge'
 import { createEmptyProject } from '../core'
 import { serializeProjectJson } from '../storage/folder/project-json'
@@ -26,6 +27,19 @@ const capableStorage: StorageCapabilities = {
   fileSystemAccess: false,
   persisted: false,
   estimatedQuotaBytes: null,
+}
+
+function fakeNotifications(): NotificationApi {
+  return {
+    notifications: [],
+    success: vi.fn(() => 'id'),
+    info: vi.fn(() => 'id'),
+    warning: vi.fn(() => 'id'),
+    error: vi.fn(() => 'id'),
+    banner: vi.fn(() => 'id'),
+    promise: vi.fn((task) => task),
+    dismiss: vi.fn(),
+  }
 }
 
 function jsonFileFor(project: ReturnType<typeof sampleProject>): File {
@@ -54,6 +68,7 @@ describe('useProjectActions new-project action', () => {
       onSession,
       isDirty,
       confirmDiscard,
+      notifications: fakeNotifications(),
     } as ProjectActionsContext
   }
 
@@ -90,6 +105,37 @@ describe('useProjectActions new-project action', () => {
   })
 })
 
+describe('useProjectActions save action', () => {
+  it('emits an error toast with Retry when save fails', async () => {
+    const notifications = fakeNotifications()
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'save').mockRejectedValue(new Error('disk full'))
+    const context: ProjectActionsContext = {
+      session: createEditorSession(sampleProject()),
+      store,
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      onSession: vi.fn(),
+      notifications,
+    }
+    const { result } = renderHook(() => useProjectActions(context))
+    act(() => {
+      result.current.onSave()
+    })
+    await waitFor(() => expect(notifications.error).toHaveBeenCalled())
+    expect(notifications.error).toHaveBeenCalledWith(
+      'disk full',
+      expect.objectContaining({
+        actions: [expect.objectContaining({ label: 'Retry' })],
+      }),
+    )
+  })
+})
+
 describe('useProjectActions import action', () => {
   it('activates, persists, and records a dropped project file', async () => {
     const project = sampleProject()
@@ -111,6 +157,7 @@ describe('useProjectActions import action', () => {
       capabilities: capableStorage,
       recentEntries: [],
       onSession,
+      notifications: fakeNotifications(),
     }
 
     const { result } = renderHook(() => useProjectActions(context))
@@ -129,7 +176,8 @@ describe('useProjectActions import action', () => {
     expect(record).toHaveBeenCalled()
   })
 
-  it('surfaces an import status when the router rejects a file and clears it on dismiss', async () => {
+  it('emits an error toast naming the file when import fails', async () => {
+    const notifications = fakeNotifications()
     const context: ProjectActionsContext = {
       session: createEditorSession(sampleProject()),
       store: new InMemoryProjectStore(),
@@ -140,61 +188,18 @@ describe('useProjectActions import action', () => {
       capabilities: capableStorage,
       recentEntries: [],
       onSession: vi.fn(),
+      notifications,
     }
 
     const { result } = renderHook(() => useProjectActions(context))
-    const actions = () =>
-      result.current as {
-        onImportDroppedFile: (file: File) => Promise<void> | void
-        importStatus: { fileName: string; reason: string } | null
-        dismissImportStatus: () => void
-      }
-
-    const textFile = new File([new Uint8Array()], 'notes.txt')
-    await act(async () => {
-      await expect(
-        Promise.resolve(actions().onImportDroppedFile(textFile)),
-      ).resolves.toBeUndefined()
-    })
-
-    expect(actions().importStatus).toEqual({
-      fileName: 'notes.txt',
-      reason: expect.any(String),
-    })
-    expect((actions().importStatus as { reason: string }).reason.length).toBeGreaterThan(0)
-
-    act(() => {
-      actions().dismissImportStatus()
-    })
-
-    expect(actions().importStatus).toBeNull()
-  })
-
-  it('leaves the import status null after a successful import', async () => {
-    const context: ProjectActionsContext = {
-      session: createEditorSession(sampleProject()),
-      store: new InMemoryProjectStore(),
-      assets: new InMemoryAssetCache(),
-      projectId: 'current',
-      snapshots: undefined,
-      recentProjects: new InMemoryRecentProjectStore(),
-      capabilities: capableStorage,
-      recentEntries: [],
-      onSession: vi.fn(),
-    }
-
-    const { result } = renderHook(() => useProjectActions(context))
-    const actions = () =>
-      result.current as {
-        onImportDroppedFile: (file: File) => Promise<void> | void
-        importStatus: { fileName: string; reason: string } | null
-      }
 
     await act(async () => {
-      await actions().onImportDroppedFile(jsonFileFor(sampleProject()))
+      await (
+        result.current as { onImportDroppedFile: (file: File) => Promise<void> | void }
+      ).onImportDroppedFile(new File(['not a project'], 'broken.building'))
     })
 
-    expect(actions().importStatus).toBeNull()
+    expect(notifications.error).toHaveBeenCalledWith(expect.stringContaining('broken.building'))
   })
 })
 
@@ -215,6 +220,7 @@ describe('useProjectActions import action discard guard', () => {
       onSession,
       isDirty,
       confirmDiscard,
+      notifications: fakeNotifications(),
     }
   }
 
@@ -260,5 +266,51 @@ describe('useProjectActions import action discard guard', () => {
       'current',
       expect.objectContaining({ meta: expect.objectContaining({ name: 'My House' }) }),
     )
+  })
+})
+
+describe('useProjectActions export actions', () => {
+  // jsdom does not implement URL.createObjectURL/revokeObjectURL. The download helpers
+  // (downloadText/downloadBytes) call them, so stub both; otherwise the sync plan export
+  // throws and lands in its error branch instead of calling notifications.success.
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:test')
+    URL.revokeObjectURL = vi.fn()
+  })
+
+  function exportContext(notifications: NotificationApi): ProjectActionsContext {
+    return {
+      session: createEditorSession(sampleProject()),
+      store: new InMemoryProjectStore(),
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      onSession: vi.fn(),
+      notifications,
+    }
+  }
+
+  it('shows a promise toast for a bundle export', () => {
+    const notifications = fakeNotifications()
+    const { result } = renderHook(() => useProjectActions(exportContext(notifications)))
+    act(() => {
+      result.current.onExportBundle()
+    })
+    expect(notifications.promise).toHaveBeenCalledWith(
+      expect.any(Promise),
+      expect.objectContaining({ pending: expect.stringMatching(/Exporting/) }),
+    )
+  })
+
+  it('shows a success toast for the synchronous plan export', () => {
+    const notifications = fakeNotifications()
+    const { result } = renderHook(() => useProjectActions(exportContext(notifications)))
+    act(() => {
+      result.current.onExportPlan()
+    })
+    expect(notifications.success).toHaveBeenCalledWith(expect.stringMatching(/Exported/))
   })
 })

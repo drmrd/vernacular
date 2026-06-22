@@ -13,6 +13,7 @@ import {
 } from '../../bridge'
 import { createEmptyProject, createFloor, type Project } from '../../core'
 import { ThemeProvider } from '../design-system'
+import { NotificationProvider } from '../design-system/notifications/use-notifications'
 import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
 
 function projectWithFloor(): Project {
@@ -31,17 +32,19 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore(session.getProject().floors[0]?.id ?? null)
   render(
-    <ThemeProvider>
-      <EditorSessionProvider session={session}>
-        <SelectionProvider store={selection}>
-          <ActiveFloorProvider store={activeFloor}>
-            <ActiveToolProvider>
-              <EditorShell saveStatus="idle" {...props} />
-            </ActiveToolProvider>
-          </ActiveFloorProvider>
-        </SelectionProvider>
-      </EditorSessionProvider>
-    </ThemeProvider>,
+    <NotificationProvider>
+      <ThemeProvider>
+        <EditorSessionProvider session={session}>
+          <SelectionProvider store={selection}>
+            <ActiveFloorProvider store={activeFloor}>
+              <ActiveToolProvider>
+                <EditorShell saveStatus="idle" {...props} />
+              </ActiveToolProvider>
+            </ActiveFloorProvider>
+          </SelectionProvider>
+        </EditorSessionProvider>
+      </ThemeProvider>
+    </NotificationProvider>,
   )
   return { session, selection }
 }
@@ -303,7 +306,7 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('button', { name: /discard/i })).toBeNull()
   })
 
-  it('shows the open-file menu item, the import alert, and a viewport drop target', async () => {
+  it('shows the open-file menu item and a viewport drop target', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
 
@@ -311,13 +314,11 @@ describe('EditorShell', () => {
       onNewProject: vi.fn(),
       onOpenFile: vi.fn(),
       onImportDroppedFile: vi.fn(),
-      importStatus: { fileName: 'x.building', reason: 'corrupt' },
     })
 
     await user.click(screen.getByRole('button', { name: /project/i }))
     expect(screen.getByRole('menuitem', { name: /open file/i })).toBeInTheDocument()
 
-    expect(screen.getByRole('alert')).toHaveTextContent(/x\.building/)
     expect(screen.getByTestId('import-drop-target')).toBeInTheDocument()
   })
 

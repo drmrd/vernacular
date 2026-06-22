@@ -1,33 +1,26 @@
 import { useCallback, useEffect, useState } from 'react'
-import { SvgPlanExporter } from '../core'
 import { commitProject, createEditorSession, guardDestructive, type EditorSession } from '../bridge'
 import {
   DirectoryHandleStore,
   FileSystemFolderProjectStore,
-  exportProjectBundle,
-  bundleFilename,
-  downloadBytes,
-  downloadText,
   orderRecentProjects,
-  pngPlanFilename,
-  pdfPlanFilename,
-  rasterizeSvgToPng,
   recentEntryFor,
-  svgPlanFilename,
-  svgPlanToPdf,
-  DEFAULT_RASTER_MAX_EDGE,
-  PRINT_RASTER_MAX_EDGE,
   type AssetCache,
   type ProjectBackend,
   type ProjectStore,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
+import { humanMessage, type NotificationApi } from '../editor/design-system'
 import { createInitialProject } from './create-initial-project'
-import { useOpenFileAction, type ImportStatus } from './use-open-file-action'
+import {
+  useExportBundleAction,
+  useExportImageAction,
+  useExportPdfAction,
+  useExportPlanAction,
+} from './use-export-actions'
+import { useOpenFileAction } from './use-open-file-action'
 import type { SnapshotsPort } from './app'
-
-export type { ImportStatus }
 
 export interface RecentEntry {
   id: string
@@ -76,6 +69,7 @@ export interface ProjectActionsContext {
   capabilities: StorageCapabilities
   recentEntries: RecentEntry[]
   onSession: (session: EditorSession) => void
+  notifications: NotificationApi
 
   /** Whether the live session has unsaved changes since the last save/load.
    *  Source: the dirty tracker (bridge/session/create-dirty-tracker.ts) via
@@ -94,6 +88,16 @@ export interface ProjectActionsContext {
   markSaved?: () => void
 }
 
+// Runs an async file operation and, on failure, raises an error toast whose
+// Retry re-invokes the same operation through this helper (so Retry retries).
+function runWithErrorToast(notifications: NotificationApi, op: () => Promise<void>): void {
+  void op().catch((error: unknown) => {
+    notifications.error(humanMessage(error), {
+      actions: [{ label: 'Retry', onAction: () => runWithErrorToast(notifications, op) }],
+    })
+  })
+}
+
 export interface ProjectActions {
   onSave: () => void
   onOpenRecent: (id: string) => void
@@ -105,8 +109,6 @@ export interface ProjectActions {
   onOpenFolder?: () => void
   onImportDroppedFile?: (file: File) => void | Promise<void>
   onOpenFile?: () => void
-  importStatus?: ImportStatus | null
-  dismissImportStatus?: () => void
 }
 
 export function useProjectActions(context: ProjectActionsContext): ProjectActions {
@@ -124,69 +126,29 @@ export function useProjectActions(context: ProjectActionsContext): ProjectAction
 }
 
 function useSaveAction(context: ProjectActionsContext): () => void {
-  const { session, store, projectId, snapshots, recentProjects, capabilities, markSaved } = context
+  const {
+    session,
+    store,
+    projectId,
+    snapshots,
+    recentProjects,
+    capabilities,
+    markSaved,
+    notifications,
+  } = context
   const backend = defaultStoreBackend(capabilities)
   return useCallback(() => {
-    const project = session.getProject()
-    void commitProject({
-      store,
-      projectId,
-      project,
-      ...(snapshots ? { snapshots } : {}),
+    runWithErrorToast(notifications, async () => {
+      const project = session.getProject()
+      await commitProject({ store, projectId, project, ...(snapshots ? { snapshots } : {}) })
+      if (backend !== null) {
+        recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
+      }
+      // A successful explicit save is the clean baseline: clear the dirty tracker
+      // so the beforeunload guard disarms.
+      markSaved?.()
     })
-      .then(() => {
-        if (backend !== null) {
-          recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
-        }
-        // A successful explicit save is the clean baseline: clear the dirty tracker
-        // so the beforeunload guard disarms.
-        markSaved?.()
-      })
-      // User-facing surfacing (a notification/toast) is deferred: no notification
-      // system exists in this slice, so failures are logged for now.
-      .catch((error: unknown) => console.error('save failed', error))
-  }, [session, store, projectId, snapshots, recentProjects, backend, markSaved])
-}
-
-function useExportBundleAction(context: ProjectActionsContext): () => void {
-  const { session, projectId, assets } = context
-  return useCallback(() => {
-    const project = session.getProject()
-    void exportProjectBundle(projectId, project, assets)
-      .then((bytes) => downloadBytes(bytes, bundleFilename(project.meta.name)))
-      .catch((error: unknown) => console.error('export bundle failed', error))
-  }, [session, projectId, assets])
-}
-
-function useExportPlanAction(context: ProjectActionsContext): () => void {
-  const { session } = context
-  return useCallback(() => {
-    const project = session.getProject()
-    const { content } = new SvgPlanExporter().export(project)
-    downloadText(content, svgPlanFilename(project.meta.name), 'image/svg+xml')
-  }, [session])
-}
-
-function useExportImageAction(context: ProjectActionsContext): () => void {
-  const { session } = context
-  return useCallback(() => {
-    const project = session.getProject()
-    const { content } = new SvgPlanExporter().export(project)
-    void rasterizeSvgToPng(content, DEFAULT_RASTER_MAX_EDGE)
-      .then((png) => downloadBytes(png, pngPlanFilename(project.meta.name)))
-      .catch((error: unknown) => console.error('export PNG failed', error))
-  }, [session])
-}
-
-function useExportPdfAction(context: ProjectActionsContext): () => void {
-  const { session } = context
-  return useCallback(() => {
-    const project = session.getProject()
-    const { content } = new SvgPlanExporter().export(project)
-    void svgPlanToPdf(content, { units: project.meta.units, maxEdge: PRINT_RASTER_MAX_EDGE })
-      .then((pdf) => downloadBytes(pdf, pdfPlanFilename(project.meta.name)))
-      .catch((error: unknown) => console.error('export PDF failed', error))
-  }, [session])
+  }, [session, store, projectId, snapshots, recentProjects, backend, markSaved, notifications])
 }
 
 function useNewProjectAction(context: ProjectActionsContext): () => void | Promise<void> {
@@ -205,40 +167,39 @@ function useNewProjectAction(context: ProjectActionsContext): () => void | Promi
 // Open folder is gated on the native picker capability; without it the shell
 // renders no control, so the handler is omitted rather than rendered inert.
 function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: () => void } {
-  const { projectId, recentProjects, capabilities, onSession } = context
+  const { projectId, recentProjects, capabilities, onSession, notifications } = context
   const onOpenFolder = useCallback(() => {
-    void FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore())
-      .then(async (store) => {
-        const project = await store.load(projectId)
-        onSession(createEditorSession(project))
-        recordRecent(recentProjects, {
-          id: projectId,
-          name: project.meta.name,
-          backend: 'file-system-folder',
-        })
+    runWithErrorToast(notifications, async () => {
+      const store = await FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore())
+      const project = await store.load(projectId)
+      onSession(createEditorSession(project))
+      recordRecent(recentProjects, {
+        id: projectId,
+        name: project.meta.name,
+        backend: 'file-system-folder',
       })
-      .catch((error: unknown) => console.error('open folder failed', error))
-  }, [projectId, recentProjects, onSession])
+    })
+  }, [projectId, recentProjects, onSession, notifications])
   return capabilities.fileSystemAccess ? { onOpenFolder } : {}
 }
 
 function useOpenRecentAction(context: ProjectActionsContext): (id: string) => void {
-  const { store, projectId, recentEntries, onSession } = context
+  const { store, projectId, recentEntries, onSession, notifications } = context
   return useCallback(
     (id: string) => {
       const entry = recentEntries.find((candidate) => candidate.id === id)
       if (entry?.backend === 'file-system-folder') {
-        openFolderRecent({ id, projectId, onSession, fallback: store })
+        openFolderRecent({ id, projectId, onSession, fallback: store, notifications })
         return
       }
       // OPFS, zip-bundle, or no recorded backend route through the default store
       // load; per-backend reopen for the others is deferred (plan Open questions).
-      void store
-        .load(id)
-        .then((project) => onSession(createEditorSession(project)))
-        .catch((error: unknown) => console.error('open recent failed', error))
+      runWithErrorToast(notifications, async () => {
+        const project = await store.load(id)
+        onSession(createEditorSession(project))
+      })
     },
-    [store, projectId, recentEntries, onSession],
+    [store, projectId, recentEntries, onSession, notifications],
   )
 }
 
@@ -247,23 +208,23 @@ interface OpenFolderRecentContext {
   projectId: string
   onSession: (session: EditorSession) => void
   fallback: ProjectStore
+  notifications: NotificationApi
 }
 
 // Reopen a picked folder, re-requesting permission; falls back to the default
 // store load when no stored handle exists or permission is denied (spec 5.7).
 function openFolderRecent(context: OpenFolderRecentContext): void {
-  const { id, projectId, onSession, fallback } = context
-  void FileSystemFolderProjectStore.reopen(id, new DirectoryHandleStore())
-    .then(async (reopenedStore) => {
-      if (reopenedStore === undefined) {
-        const project = await fallback.load(id)
-        onSession(createEditorSession(project))
-        return
-      }
-      const project = await reopenedStore.load(projectId)
+  const { id, projectId, onSession, fallback, notifications } = context
+  runWithErrorToast(notifications, async () => {
+    const reopenedStore = await FileSystemFolderProjectStore.reopen(id, new DirectoryHandleStore())
+    if (reopenedStore === undefined) {
+      const project = await fallback.load(id)
       onSession(createEditorSession(project))
-    })
-    .catch((error: unknown) => console.error('reopen folder failed', error))
+      return
+    }
+    const project = await reopenedStore.load(projectId)
+    onSession(createEditorSession(project))
+  })
 }
 
 export interface RecentAndRecoveryContext {

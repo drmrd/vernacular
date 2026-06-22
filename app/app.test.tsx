@@ -10,6 +10,7 @@ import {
 } from '../storage'
 import { createEditorSession } from '../bridge'
 import { addFloor, createEmptyProject, createFloor, createWall, type Project } from '../core'
+import { NotificationProvider } from '../editor/design-system'
 
 function stubCapableStorage() {
   vi.stubGlobal('navigator', { storage: { getDirectory: () => Promise.resolve({}) } })
@@ -78,18 +79,14 @@ describe('App boot and storage warnings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not open the project/i)
   })
 
-  it('warns once when booting into a storage-degraded environment', async () => {
+  it('raises a banner when booting into a storage-degraded environment', async () => {
     vi.stubGlobal('navigator', {})
     vi.stubGlobal('indexedDB', undefined)
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     render(<App store={new InMemoryProjectStore()} />)
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
-    await waitFor(() =>
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Storage capabilities')),
-    )
-    expect(warn).toHaveBeenCalledTimes(1)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/storage/i)
   })
 
   it('stays silent when storage is healthy', async () => {
@@ -303,16 +300,18 @@ describe('App unsaved-changes guard', () => {
     const onSession = vi.fn()
 
     render(
-      <EditorWorkspace
-        session={session}
-        store={store}
-        assets={new InMemoryAssetCache()}
-        projectId="current"
-        recentProjects={new InMemoryRecentProjectStore()}
-        capabilities={capableCapabilities()}
-        snapshots={undefined}
-        onSession={onSession}
-      />,
+      <NotificationProvider>
+        <EditorWorkspace
+          session={session}
+          store={store}
+          assets={new InMemoryAssetCache()}
+          projectId="current"
+          recentProjects={new InMemoryRecentProjectStore()}
+          capabilities={capableCapabilities()}
+          snapshots={undefined}
+          onSession={onSession}
+        />
+      </NotificationProvider>,
     )
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
@@ -348,16 +347,18 @@ describe('App unsaved-changes guard', () => {
     const session = createEditorSession(projectWithWalls('Drafthouse', 0))
 
     render(
-      <EditorWorkspace
-        session={session}
-        store={store}
-        assets={new InMemoryAssetCache()}
-        projectId="current"
-        recentProjects={new InMemoryRecentProjectStore()}
-        capabilities={capableCapabilities()}
-        snapshots={undefined}
-        onSession={vi.fn()}
-      />,
+      <NotificationProvider>
+        <EditorWorkspace
+          session={session}
+          store={store}
+          assets={new InMemoryAssetCache()}
+          projectId="current"
+          recentProjects={new InMemoryRecentProjectStore()}
+          capabilities={capableCapabilities()}
+          snapshots={undefined}
+          onSession={vi.fn()}
+        />
+      </NotificationProvider>,
     )
 
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })

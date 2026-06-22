@@ -11,13 +11,11 @@ import {
 } from '../bridge'
 import { ActiveToolProvider, DiscardDialog, EditorShell } from '../editor'
 import { AssetProviders } from './asset-providers'
-import { ThemeProvider } from '../editor/design-system'
+import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import {
   InMemoryAssetCache,
   InMemoryRecentProjectStore,
-  isStorageDegraded,
   probeStorageCapabilities,
-  summarizeStorageCapabilities,
   type AssetCache,
   type ProjectStorage,
   type ProjectStore,
@@ -33,6 +31,7 @@ import {
 } from '../core'
 import { createInitialProject } from './create-initial-project'
 import { resolveProjectStorage } from './resolve-project-store'
+import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
@@ -141,7 +140,14 @@ export function App(props: AppProps) {
       />
     )
   }
-  return <AppWorkspace {...props} />
+  // The notification provider wraps AppWorkspace (not a tree inside EditorWorkspace) so every emit
+  // site sits under it: the storage check in AppWorkspace's body and the file-op hooks in
+  // EditorWorkspace's body both run above their returned trees, so the provider must be their ancestor.
+  return (
+    <NotificationProvider>
+      <AppWorkspace {...props} />
+    </NotificationProvider>
+  )
 }
 
 function AppWorkspace({
@@ -163,6 +169,7 @@ function AppWorkspace({
     [providedRecentProjects],
   )
   const capabilities = useStorageCapabilities()
+  useDegradedStorageBanner(capabilities)
 
   if (error !== null) {
     return bootStatusView(error)
@@ -197,9 +204,6 @@ function useStorageCapabilities(): StorageCapabilities | null {
         return
       }
       setCapabilities(probed)
-      if (isStorageDegraded(probed)) {
-        console.warn(summarizeStorageCapabilities(probed))
-      }
     })
     return () => {
       cancelled = true
@@ -320,7 +324,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                   saveStatus={ws.saveStatus}
                   recentProjects={ws.recentEntries}
                   {...ws.actions}
-                  onDismissImportStatus={ws.actions.dismissImportStatus}
                   // Spread recovery only when present: the optional prop rejects an explicit undefined.
                   {...(ws.recovery ? { recovery: ws.recovery } : {})}
                 />
