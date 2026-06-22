@@ -219,6 +219,15 @@ function RoomMetadataEditors({ roomKey, override, dispatch }: RoomMetadataEditor
   )
 }
 
+// Resolve a registry entry's English display name from its key, tolerating a
+// missing key (no override set) or an entry that lacks an 'en-US' label.
+function resolveDisplayName(
+  entries: Readonly<Record<string, { displayName?: Record<string, string> }>>,
+  key: string | undefined,
+): string | undefined {
+  return key ? entries[key]?.displayName?.['en-US'] : undefined
+}
+
 interface RoomInspectorProps {
   roomNode: RoomSceneNode
   project: Readonly<Project>
@@ -230,14 +239,8 @@ function RoomInspector({ roomNode, project, dispatch }: RoomInspectorProps) {
   const override = project.roomOverrides?.[roomKey]
   const preferences = PREFERENCES_BY_UNITS[project.meta.units]
   const height = resolveCeilingHeight(roomNode)
-  const periodEntry = override?.periodOverride
-    ? builtinPeriods.entries[override.periodOverride]
-    : undefined
-  const periodName = periodEntry?.displayName?.['en-US']
-  const styleEntry = override?.styleOverride
-    ? builtinStyles.entries[override.styleOverride.styleId]
-    : undefined
-  const styleName = styleEntry?.displayName?.['en-US']
+  const periodName = resolveDisplayName(builtinPeriods.entries, override?.periodOverride)
+  const styleName = resolveDisplayName(builtinStyles.entries, override?.styleOverride?.styleId)
   return (
     <>
       <PeriodTags periodName={periodName} styleName={styleName} />
