@@ -33,6 +33,7 @@ import {
   CommandPalette,
   CommandPaletteProvider,
   createEditorCommands,
+  createSaveCommand,
   createSnapCommands,
   createViewCommands,
   useCommandPalette,
@@ -109,7 +110,7 @@ function ToolsNav() {
 
 // A render-nothing layer that assembles the command context from the editor
 // hooks and registers the global keybindings (undo/redo/delete/deselect/palette).
-function KeybindingLayer() {
+function KeybindingLayer({ onSave }: { onSave?: (() => void) | undefined }) {
   const session = useEditorSession()
   const selection = useSelection()
   const activeFloorId = useActiveFloorId()
@@ -122,8 +123,9 @@ function KeybindingLayer() {
       ...createEditorCommands(),
       ...createViewCommands(view),
       ...createSnapCommands(snapStore),
+      ...(onSave ? [createSaveCommand(onSave)] : []),
     ],
-    [view, snapStore],
+    [view, snapStore, onSave],
   )
   const context: CommandContext = {
     session,
@@ -161,6 +163,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       </div>
       <ProjectMenu
         onNewProject={projectControls.onNewProject}
+        onSave={projectControls.onSave}
         onOpenFile={projectControls.onOpenFile}
         onOpenFolder={projectControls.onOpenFolder}
         onOpenRecent={projectControls.onOpenRecent}
@@ -342,7 +345,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                 <UnderlayProvider>
                   <OpeningToolProvider>
                     <FurniturePlacementProvider>
-                      <KeybindingLayer />
+                      <KeybindingLayer onSave={projectControls.onSave} />
                       <CommandPalette />
                       <ToastRegion />
                       {recovery ? (
