@@ -48,26 +48,39 @@ const UnderlayMenuList: FC<UnderlayMenuListProps> = ({
   dispatch,
   onCalibrate,
   onLoadImageClick,
-}) => (
-  <ul className="underlay-menu__list ds-menu-surface" role="menu">
-    <li role="none">
-      <Button role="menuitem" className="ds-menu-surface__row" onClick={onLoadImageClick}>
-        Load image
-      </Button>
-    </li>
-    {underlays.map((underlay, index) => (
-      <li key={underlay.id} role="none">
-        <UnderlayRow
-          floorId={floorId}
-          underlay={underlay}
-          label={`Underlay ${index + 1}`}
-          dispatch={dispatch}
-          onCalibrate={onCalibrate}
-        />
+  armedUnderlayId,
+  knownDistance,
+  onKnownDistanceChange,
+}) => {
+  // Forward the two co-dependent calibration props together or not at all,
+  // satisfying exactOptionalPropertyTypes without splitting them apart.
+  const calibrationProps =
+    knownDistance !== undefined && onKnownDistanceChange !== undefined
+      ? { knownDistance, onKnownDistanceChange }
+      : {}
+  return (
+    <ul className="underlay-menu__list ds-menu-surface" role="menu">
+      <li role="none">
+        <Button role="menuitem" className="ds-menu-surface__row" onClick={onLoadImageClick}>
+          Load image
+        </Button>
       </li>
-    ))}
-  </ul>
-)
+      {underlays.map((underlay, index) => (
+        <li key={underlay.id} role="none">
+          <UnderlayRow
+            floorId={floorId}
+            underlay={underlay}
+            label={`Underlay ${index + 1}`}
+            dispatch={dispatch}
+            onCalibrate={onCalibrate}
+            calibrating={underlay.id === armedUnderlayId}
+            {...calibrationProps}
+          />
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 // A low-prominence launcher for the underlay controls, pinned to the tool rail.
 // The trigger carries an "Underlay" label and the standard dropdown a11y
