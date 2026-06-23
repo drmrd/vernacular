@@ -204,10 +204,9 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   // a copy narrowed to the active edit layer so off-layer elements stay visible but
   // inert. The 'all' layer returns the graph unchanged, preserving today's behavior.
   const selectableGraph = useMemo(() => scopeSceneToLayer(graph, layer), [graph, layer])
-  const selectableFurniture = useMemo(
-    () => scopeFurnitureToLayer(furniture, layer),
-    [furniture, layer],
-  )
+  // furniture is rebuilt each render (a fresh array from the project lookup), so
+  // narrowing it inline matches how its other consumers already read it; no useMemo.
+  const selectableFurniture = scopeFurnitureToLayer(furniture, layer)
   const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceEnabled)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport, activeFloorId })
