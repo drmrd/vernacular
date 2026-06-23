@@ -40,25 +40,28 @@ export function createAutosave(config: AutosaveConfig): Autosave {
   const report = config.onStatusChange ?? noop
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  const persistWriteAhead = async (
-    ports: SnapshotWriter & SnapshotPruner,
-    project: Project,
-  ): Promise<void> => {
-    // Write ahead to a snapshot first so a crash mid-save still recovers the
-    // edit, then save canonically, then prune. prune() runs only after the
-    // canonical save resolves, so a failed save leaves the snapshot intact.
-    await ports.writeSnapshot(project)
-    await store.save(projectId, project)
-    await ports.prune()
-  }
+  // Resolve the persistence strategy once: with snapshots configured we write
+  // ahead, otherwise we save canonically. persist() then closes over a single
+  // write function with no per-call branching.
+  const write: (project: Project) => Promise<void> = snapshots
+    ? async (project) => {
+        // Write ahead to a snapshot first so a crash mid-save still recovers the
+        // edit, then save canonically, then prune. prune() runs only after the
+        // canonical save resolves, so a failed save leaves the snapshot intact.
+        await snapshots.writeSnapshot(project)
+        await store.save(projectId, project)
+        await snapshots.prune()
+      }
+    : (project) => store.save(projectId, project)
 
   const persist = (): void => {
     // getProject() is a live reference; reading it when the debounce fires saves
     // the latest coalesced edit. ProjectStore.save clones synchronously, so a
     // dispatch arriving mid-save does not corrupt the written snapshot.
     const project = session.getProject()
-    const write = snapshots ? persistWriteAhead(snapshots, project) : store.save(projectId, project)
-    void write.then(() => report('saved')).catch(() => report('error'))
+    void write(project)
+      .then(() => report('saved'))
+      .catch(() => report('error'))
   }
 
   const unsubscribe = session.subscribe(() => {
