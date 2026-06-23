@@ -3,6 +3,7 @@ import { render, screen, cleanup, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditorShell, type EditorShellProps } from './editor-shell'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
+import { EditLayerProvider } from '../tools/edit-layer-provider'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
@@ -38,7 +39,9 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
           <SelectionProvider store={selection}>
             <ActiveFloorProvider store={activeFloor}>
               <ActiveToolProvider>
-                <EditorShell saveStatus="idle" {...props} />
+                <EditLayerProvider>
+                  <EditorShell saveStatus="idle" {...props} />
+                </EditLayerProvider>
               </ActiveToolProvider>
             </ActiveFloorProvider>
           </SelectionProvider>

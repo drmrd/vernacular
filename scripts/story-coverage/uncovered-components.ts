@@ -205,6 +205,12 @@ export const UNCOVERED_COMPONENTS: {
     reason:
       'a context provider whose only behavior is holding the active-tool selection for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and it is exercised through the tools-panel story that wraps its subject in it (see ADR-0111).',
   },
+  {
+    component: 'EditLayerProvider',
+    file: 'editor/tools/edit-layer-provider.tsx',
+    reason:
+      'a context provider whose only behavior is holding the active edit-layer selection for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and it is exercised through the edit-layer-panel story that wraps its subject in it (see ADR-0111).',
+  },
 
   // --- editor/viewport ----------------------------------------------------
   {
