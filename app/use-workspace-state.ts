@@ -30,7 +30,10 @@ export interface WorkspaceState {
 }
 
 interface SaveStatusOptions {
-  props: EditorWorkspaceProps
+  session: EditorWorkspaceProps['session']
+  store: EditorWorkspaceProps['store']
+  projectId: EditorWorkspaceProps['projectId']
+  snapshots?: EditorWorkspaceProps['snapshots']
   revision: ReturnType<typeof useDirtyTracker>['revision']
   markSavedRevision: ReturnType<typeof useDirtyTracker>['markSavedRevision']
 }
@@ -42,11 +45,7 @@ function useSaveStatus(options: SaveStatusOptions): {
   saveStatus: AutosaveStatus
   reportSaved: () => void
 } {
-  const {
-    props: { session, store, projectId, snapshots },
-    revision,
-    markSavedRevision,
-  } = options
+  const { session, store, projectId, snapshots, revision, markSavedRevision } = options
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
   useAutosave({
     session,
@@ -63,6 +62,47 @@ function useSaveStatus(options: SaveStatusOptions): {
   return { saveStatus, reportSaved }
 }
 
+interface WorkspaceActionsOptions {
+  props: EditorWorkspaceProps
+  recentEntries: WorkspaceState['recentEntries']
+  isDirty: ReturnType<typeof useDirtyTracker>['isDirty']
+  confirmDiscard: ReturnType<typeof useDiscardConfirmation>['confirmDiscard']
+  revision: ReturnType<typeof useDirtyTracker>['revision']
+  markSavedRevision: ReturnType<typeof useDirtyTracker>['markSavedRevision']
+}
+
+// Owns the save-status indicator plus the file-menu actions that share it: the
+// explicit save reports through the same status the autosave drives, and the actions
+// raise their outcomes through the notification channel. Kept apart so
+// useWorkspaceState reads as the provider-tree wiring rather than the hook plumbing.
+function useWorkspaceActions(options: WorkspaceActionsOptions): {
+  saveStatus: AutosaveStatus
+  actions: ReturnType<typeof useProjectActions>
+} {
+  const { props, recentEntries, isDirty, confirmDiscard, revision, markSavedRevision } = options
+  const { session, store, projectId, snapshots } = props
+  const { saveStatus, reportSaved } = useSaveStatus({
+    session,
+    store,
+    projectId,
+    snapshots,
+    revision,
+    markSavedRevision,
+  })
+  const notifications = useNotifications()
+  const actions = useProjectActions({
+    ...props,
+    recentEntries,
+    isDirty,
+    confirmDiscard,
+    revision,
+    markSavedRevision,
+    reportSaved,
+    notifications,
+  })
+  return { saveStatus, actions }
+}
+
 export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const { session, assets, recentProjects, snapshots, onSession } = props
   const selection = useMemo(() => createSelectionStore(), [])
@@ -74,22 +114,19 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   // Arm the browser-native leave warning while the workspace has unsaved changes.
   useBeforeUnloadGuard(isDirty)
   const { discardRequest, confirmDiscard, resolveDiscard } = useDiscardConfirmation()
-  const { saveStatus, reportSaved } = useSaveStatus({ props, revision, markSavedRevision })
   const { recentEntries, recovery } = useRecentProjectsAndRecovery({
     recentProjects,
     snapshots,
     onSession,
     confirmDiscard,
   })
-  const actions = useProjectActions({
-    ...props,
+  const { saveStatus, actions } = useWorkspaceActions({
+    props,
     recentEntries,
     isDirty,
     confirmDiscard,
     revision,
     markSavedRevision,
-    reportSaved,
-    notifications: useNotifications(),
   })
   // The asset library (starter pack + user imports), assembled once per content cache.
   const assetLibrary = useMemo(() => createAssetLibrary(assets), [assets])
