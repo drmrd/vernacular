@@ -17,6 +17,9 @@ export interface UnderlayPanelProps {
   dispatch: (command: unknown) => void
   onLoadImage: () => void
   onCalibrate: (underlayId: string) => void
+  armedUnderlayId?: string | null
+  knownDistance?: string
+  onKnownDistanceChange?: (value: string) => void
 }
 
 export interface UnderlayRowProps {
