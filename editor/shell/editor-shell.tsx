@@ -1,5 +1,15 @@
 import { useMemo } from 'react'
-import { ArrowClockwise, ArrowCounterClockwise, GridFour, Ruler } from '@phosphor-icons/react'
+import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
+  CheckCircle,
+  Circle,
+  CircleNotch,
+  GridFour,
+  Ruler,
+  WarningCircle,
+  type Icon,
+} from '@phosphor-icons/react'
 import {
   createSurfaceSelectionStore,
   SurfaceSelectionProvider,
@@ -23,6 +33,7 @@ import {
   CommandPalette,
   CommandPaletteProvider,
   createEditorCommands,
+  createSaveCommand,
   createSnapCommands,
   createViewCommands,
   useCommandPalette,
@@ -61,7 +72,7 @@ import { StatusBar } from './status-bar'
 import { CoordsReadout } from './coords-readout'
 import { ThemeToggle } from './theme-toggle'
 import { ZoomControl } from './zoom-control'
-import { ProjectControls, RecoveryPrompt, type ProjectControlsProps } from './project-controls'
+import { RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
 import { ScenePane } from './scene-pane'
 import { useSaveFailureToast } from './use-save-failure-toast'
@@ -74,6 +85,15 @@ const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
   pending: 'Saving...',
   saved: 'All changes saved',
   error: 'Save failed',
+}
+
+// A small decorative icon paired with each save-status label. The icon is
+// aria-hidden so the role="status" label text stays the announced content.
+const SAVE_STATUS_ICONS: Record<AutosaveStatus, Icon> = {
+  idle: Circle,
+  pending: CircleNotch,
+  saved: CheckCircle,
+  error: WarningCircle,
 }
 
 // The tools nav: the tool buttons, plus the opening-type chooser surfaced only
@@ -90,7 +110,7 @@ function ToolsNav() {
 
 // A render-nothing layer that assembles the command context from the editor
 // hooks and registers the global keybindings (undo/redo/delete/deselect/palette).
-function KeybindingLayer() {
+function KeybindingLayer({ onSave }: { onSave?: (() => void) | undefined }) {
   const session = useEditorSession()
   const selection = useSelection()
   const activeFloorId = useActiveFloorId()
@@ -103,8 +123,9 @@ function KeybindingLayer() {
       ...createEditorCommands(),
       ...createViewCommands(view),
       ...createSnapCommands(snapStore),
+      ...(onSave ? [createSaveCommand(onSave)] : []),
     ],
-    [view, snapStore],
+    [view, snapStore, onSave],
   )
   const context: CommandContext = {
     session,
@@ -133,6 +154,7 @@ function Breadcrumb({ projectName }: { projectName: string }) {
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const session = useEditorSession()
   const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
+  const StatusIcon = SAVE_STATUS_ICONS[saveStatus]
   return (
     <div className="editor-shell__toolbar">
       <div className="editor-shell__brand">
@@ -141,6 +163,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       </div>
       <ProjectMenu
         onNewProject={projectControls.onNewProject}
+        onSave={projectControls.onSave}
         onOpenFile={projectControls.onOpenFile}
         onOpenFolder={projectControls.onOpenFolder}
         onOpenRecent={projectControls.onOpenRecent}
@@ -175,9 +198,9 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           onExportImage={projectControls.onExportImage}
           onExportPdf={projectControls.onExportPdf}
         />
-        {projectControls.onSave ? <ProjectControls onSave={projectControls.onSave} /> : null}
       </div>
       <span role="status" className="editor-shell__save-status">
+        <StatusIcon size={14} aria-hidden="true" />
         {SAVE_STATUS_LABELS[saveStatus]}
       </span>
     </div>
@@ -322,7 +345,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                 <UnderlayProvider>
                   <OpeningToolProvider>
                     <FurniturePlacementProvider>
-                      <KeybindingLayer />
+                      <KeybindingLayer onSave={projectControls.onSave} />
                       <CommandPalette />
                       <ToastRegion />
                       {recovery ? (

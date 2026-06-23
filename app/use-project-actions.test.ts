@@ -140,6 +140,70 @@ describe('useProjectActions save action', () => {
       }),
     )
   })
+
+  it('explicit save marks the captured revision saved and pulses the status', async () => {
+    const store = new InMemoryProjectStore()
+    const revision = vi.fn(() => 5)
+    const markSavedRevision = vi.fn()
+    const reportSaved = vi.fn()
+    const context = {
+      session: createEditorSession(sampleProject()),
+      store,
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      onSession: vi.fn(),
+      notifications: fakeNotifications(),
+      revision,
+      markSavedRevision,
+      reportSaved,
+    } as ProjectActionsContext
+
+    const { result } = renderHook(() => useProjectActions(context))
+    act(() => {
+      result.current.onSave()
+    })
+
+    await waitFor(() => expect(markSavedRevision).toHaveBeenCalledOnce())
+    expect(markSavedRevision).toHaveBeenCalledWith(5)
+    expect(reportSaved).toHaveBeenCalledOnce()
+  })
+
+  it('does not mark saved or pulse when the save fails', async () => {
+    const notifications = fakeNotifications()
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'save').mockRejectedValue(new Error('disk full'))
+    const revision = vi.fn(() => 5)
+    const markSavedRevision = vi.fn()
+    const reportSaved = vi.fn()
+    const context = {
+      session: createEditorSession(sampleProject()),
+      store,
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      onSession: vi.fn(),
+      notifications,
+      revision,
+      markSavedRevision,
+      reportSaved,
+    } as ProjectActionsContext
+
+    const { result } = renderHook(() => useProjectActions(context))
+    act(() => {
+      result.current.onSave()
+    })
+
+    await waitFor(() => expect(notifications.error).toHaveBeenCalled())
+    expect(markSavedRevision).not.toHaveBeenCalled()
+    expect(reportSaved).not.toHaveBeenCalled()
+  })
 })
 
 describe('useProjectActions import action', () => {

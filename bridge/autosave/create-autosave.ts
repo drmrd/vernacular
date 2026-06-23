@@ -28,6 +28,13 @@ export interface AutosaveConfig extends AutosaveOptions {
   store: ProjectStore
   projectId: string
   snapshots?: SnapshotWriter & SnapshotPruner
+  /** Reads the dirty-tracker revision. Captured synchronously at persist time
+   *  (before any await) so onSaved reports the revision of the project actually
+   *  written, never a later edit's. */
+  revision?: () => number
+  /** Called after a successful persist with the revision captured at persist
+   *  start. Not called when the persist fails. */
+  onSaved?: (savedRevision: number) => void
 }
 
 export interface Autosave {
@@ -58,9 +65,19 @@ export function createAutosave(config: AutosaveConfig): Autosave {
     // getProject() is a live reference; reading it when the debounce fires saves
     // the latest coalesced edit. ProjectStore.save clones synchronously, so a
     // dispatch arriving mid-save does not corrupt the written snapshot.
+    //
+    // Capture the revision synchronously here, before the async write begins, so
+    // a dispatch arriving mid-write advances the live revision while
+    // savedRevision stays fixed to the project actually persisted.
     const project = session.getProject()
+    const savedRevision = config.revision?.()
     void write(project)
-      .then(() => report('saved'))
+      .then(() => {
+        report('saved')
+        if (savedRevision !== undefined) {
+          config.onSaved?.(savedRevision)
+        }
+      })
       .catch(() => report('error'))
   }
 
