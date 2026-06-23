@@ -37,6 +37,7 @@ export type {
 export type { DirectoryPort } from './fs/directory-port'
 export { InMemoryDirectory } from './fs/in-memory-directory'
 export { FileSystemDirectory } from './fs/file-system-directory'
+export { SubdirectoryPort } from './fs/subdirectory-port'
 export { FolderProjectStore, ProjectFileNotFoundError } from './folder/folder-project-store'
 export type { FolderProjectStoreOptions } from './folder/folder-project-store'
 export { OpfsProjectStore, createOpfsProjectStore } from './opfs/opfs-project-store'
