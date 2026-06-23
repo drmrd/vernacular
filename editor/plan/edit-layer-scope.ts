@@ -17,6 +17,8 @@ export function scopeSceneToLayer(scene: SceneGraph, layer: EditLayer): SceneGra
     case 'all':
       return scene
     case 'walls':
+      // Rooms are wall-derived regions, so keep them selectable here: naming a
+      // room or setting its style is structural work alongside the walls.
       return { ...scene, openings: [], dimensions: [], furniture: [] }
     case 'openings':
       return { ...scene, walls: [], rooms: [], dimensions: [], furniture: [] }
