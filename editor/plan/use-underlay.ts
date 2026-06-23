@@ -54,6 +54,9 @@ export interface UnderlayContextValue {
   /** The two-click calibration measurement state. */
   calibrationToolState: CalibrationToolState
   setCalibrationToolState: (state: CalibrationToolState) => void
+  /** The known real-world distance the user has entered for the armed calibration, empty when none. */
+  knownDistanceText: string
+  setKnownDistanceText: (text: string) => void
   /** Pair each underlay scene node on the floor with its cached bitmap; skip nodes whose bitmap is not yet decoded. */
   resolveDrawables: (graph: SceneGraph, floorId: string | undefined) => DrawableUnderlay[]
 }
@@ -69,6 +72,8 @@ const FALLBACK_VALUE: UnderlayContextValue = {
   armedUnderlayId: null,
   calibrationToolState: IDLE_CALIBRATION_TOOL,
   setCalibrationToolState: () => {},
+  knownDistanceText: '',
+  setKnownDistanceText: () => {},
   resolveDrawables: () => NO_DRAWABLES,
 }
 
@@ -82,6 +87,8 @@ interface CalibrationArming {
   armedUnderlayId: string | null
   calibrationToolState: CalibrationToolState
   setCalibrationToolState: (state: CalibrationToolState) => void
+  knownDistanceText: string
+  setKnownDistanceText: (text: string) => void
   startCalibration: (underlayId: string) => void
 }
 
@@ -89,6 +96,7 @@ function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
   const [armedUnderlayId, setArmedUnderlayId] = useState<string | null>(null)
   const [calibrationToolState, setCalibrationToolState] =
     useState<CalibrationToolState>(IDLE_CALIBRATION_TOOL)
+  const [knownDistanceText, setKnownDistanceText] = useState('')
   const { setTool } = activeTool
 
   const startCalibration = useCallback(
@@ -102,10 +110,18 @@ function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
 
   // Memoize the bundle so consumers (the provider's context-value memo) see a
   // stable reference across renders that do not change the armed underlay or the
-  // measurement state. setCalibrationToolState and startCalibration are stable.
+  // measurement state. setCalibrationToolState, setKnownDistanceText, and
+  // startCalibration are stable.
   return useMemo(
-    () => ({ armedUnderlayId, calibrationToolState, setCalibrationToolState, startCalibration }),
-    [armedUnderlayId, calibrationToolState, startCalibration],
+    () => ({
+      armedUnderlayId,
+      calibrationToolState,
+      setCalibrationToolState,
+      knownDistanceText,
+      setKnownDistanceText,
+      startCalibration,
+    }),
+    [armedUnderlayId, calibrationToolState, knownDistanceText, startCalibration],
   )
 }
 
@@ -180,10 +196,6 @@ const ASSUMED_UNIT_BY_UNITS: Record<UnitSystem, AssumedUnit> = {
   imperial: 'ft',
 }
 
-// The calibration distance entry is a window.prompt because slice 12's panel
-// exposes no distance input; a panel field is a documented follow-up.
-const CALIBRATION_PROMPT = 'Enter the known real-world distance (for example "3 m" or "10\'")'
-
 // Convert a world point into the underlay's source-pixel space using its
 // placement. Rotation is 0 this slice, so the map is a pure offset and scale.
 function worldToPixel(world: Point, placement: UnderlayPlacement): Point {
@@ -213,6 +225,7 @@ export interface CalibrationCommit {
   graph: SceneGraph
   armedUnderlayId: string
   units: UnitSystem
+  knownDistanceText: string
 }
 
 // The armed underlay's scene node, matched by its raw underlay id against the
@@ -223,7 +236,7 @@ function armedUnderlayNode(graph: SceneGraph, armedUnderlayId: string): Underlay
 }
 
 /**
- * Complete a calibration: prompt for the known distance, convert the measured
+ * Complete a calibration: read the entered known distance, convert the measured
  * world segment to pixels, derive the new scale, and dispatch the calibrated
  * placement. Any cancel (no armed node, blank or unparseable entry) dispatches
  * nothing. Lives here so the plan-view canvas glue stays composition-only.
@@ -233,7 +246,7 @@ export function commitCalibration(segment: PreviewSegment, commit: CalibrationCo
   if (node === null) {
     return
   }
-  const entry = window.prompt(CALIBRATION_PROMPT) ?? ''
+  const entry = commit.knownDistanceText
   const knownMm = parseKnownDistance(entry, ASSUMED_UNIT_BY_UNITS[commit.units])
   if (knownMm === undefined) {
     return
@@ -273,7 +286,13 @@ function applyCalibrationClick(world: Point, deps: CalibrationInteractionDeps): 
   const result = advanceCalibrationTool(underlay.calibrationToolState, world)
   underlay.setCalibrationToolState(result.state)
   if (result.segment && armedUnderlayId !== null) {
-    commitCalibration(result.segment, { session, graph, armedUnderlayId, units })
+    commitCalibration(result.segment, {
+      session,
+      graph,
+      armedUnderlayId,
+      units,
+      knownDistanceText: underlay.knownDistanceText,
+    })
   }
 }
 
