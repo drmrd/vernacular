@@ -175,6 +175,24 @@ describe('UnderlayRow', () => {
     expect(onKnownDistanceChange).toHaveBeenCalledWith('3 m')
   })
 
+  it('wires the calibration helper text as the known-distance input accessible description', () => {
+    render(
+      <UnderlayRow
+        floorId={FLOOR_ID}
+        underlay={newUnderlay()}
+        label={ROW_LABEL}
+        dispatch={vi.fn()}
+        onCalibrate={vi.fn()}
+        calibrating
+        knownDistance=""
+        onKnownDistanceChange={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByLabelText(/known distance/i)
+    expect(input).toHaveAccessibleDescription('Set a known distance to scale the image')
+  })
+
   it('renders neither the distance entry nor its helper text when not calibrating', () => {
     renderRow(newUnderlay())
 
