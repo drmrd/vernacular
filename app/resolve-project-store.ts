@@ -5,6 +5,7 @@ import {
   selectProjectStoreBackend,
   type ProjectStorage,
 } from '../storage'
+import { opfsUsable } from './opfs-probe'
 
 /**
  * Probe storage capabilities once and construct the durable {store, assets} pair
@@ -22,20 +23,4 @@ export async function resolveProjectStorage(): Promise<ProjectStorage> {
     return createOpfsProjectStorage()
   }
   return createDefaultProjectStorage()
-}
-
-/**
- * Capability probing only feature-detects the OPFS API surface, but some hosts
- * expose `getDirectory` as a function while rejecting at call time (notably some
- * WebKit builds, which throw an UnknownError). Verify the root directory actually
- * resolves before booting against OPFS so such hosts fall back to IndexedDB rather
- * than failing to open the project.
- */
-async function opfsUsable(): Promise<boolean> {
-  try {
-    await navigator.storage.getDirectory()
-    return true
-  } catch {
-    return false
-  }
 }

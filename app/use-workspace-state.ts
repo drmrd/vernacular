@@ -46,6 +46,7 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
     recentProjects,
     snapshots,
     onSession,
+    confirmDiscard,
   })
   const notifications = useNotifications()
   const actions = useProjectActions({
