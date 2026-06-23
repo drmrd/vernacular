@@ -21,6 +21,8 @@ import {
 } from '../../bridge'
 import { useTheme } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
+import { useActiveEditLayer } from '../tools/edit-layer-context'
+import { scopeFurnitureToLayer, scopeSceneToLayer } from './edit-layer-scope'
 import { planCursor } from './plan-cursor'
 import { DEFAULT_PLAN_PALETTE, resolvePlanPalette, type PlanPalette } from './plan-palette'
 import type { DrawableDimension } from './draw-dimension'
@@ -191,27 +193,35 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const activeFloorId = useActiveFloorId()
   const selection = useSelection()
   const { tool, setTool } = useActiveTool()
+  const { layer } = useActiveEditLayer()
   const { viewport, setViewport } = useViewport()
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
   const furniture =
     session.getProject().floors.find((floor) => floor.id === activeFloorId)?.furniture ?? []
+  // The full graph still renders every layer; selection, hover, and move-drag read
+  // a copy narrowed to the active edit layer so off-layer elements stay visible but
+  // inert. The 'all' layer returns the graph unchanged, preserving today's behavior.
+  const selectableGraph = useMemo(() => scopeSceneToLayer(graph, layer), [graph, layer])
+  // furniture is rebuilt each render (a fresh array from the project lookup), so
+  // narrowing it inline matches how its other consumers already read it; no useMemo.
+  const selectableFurniture = scopeFurnitureToLayer(furniture, layer)
   const deps = planInteractionDeps({ session, tool, viewport, activeFloorId }, graph, traceEnabled)
   const interaction = usePlanInteraction(deps)
   const dimensionTool = useDimensionTool({ session, tool, viewport, activeFloorId })
   const planSelection = usePlanSelection({
-    graph,
-    furniture,
+    graph: selectableGraph,
+    furniture: selectableFurniture,
     selection,
     tool,
     viewport,
     setViewport,
   })
-  const planHover = usePlanHover({ graph, selectedIds, tool, viewport })
+  const planHover = usePlanHover({ graph: selectableGraph, selectedIds, tool, viewport })
   const selectionMove = useSelectionMove({
     session,
-    graph,
+    graph: selectableGraph,
     selectedIds,
     tool,
     viewport,

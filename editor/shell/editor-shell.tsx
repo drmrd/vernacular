@@ -46,6 +46,7 @@ import { PointerReadoutProvider } from '../plan/pointer-readout'
 import { useActiveTool } from '../tools/active-tool-context'
 import { toolLabel } from '../tools/tool-label'
 import { ToolsPanel } from '../tools/tools-panel'
+import { EditLayerPanel } from '../tools/edit-layer-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
@@ -226,6 +227,7 @@ function ToolRail() {
         periodLabel={railPeriodLabel(project.meta.period)}
       />
       <ToolsNav />
+      <EditLayerPanel />
       <OverallDimensions extent={overall} />
       <LibraryLauncherPanel />
       <UnderlayMenuPanel />
