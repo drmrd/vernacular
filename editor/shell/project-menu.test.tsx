@@ -44,6 +44,15 @@ describe('ProjectMenu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
+  it('opens the menu and calls Save from its item', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<ProjectMenu onSave={onSave} onNewProject={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('menuitem', { name: /save/i }))
+    expect(onSave).toHaveBeenCalledOnce()
+  })
+
   it('opens the menu and calls Open file from its item', async () => {
     const user = userEvent.setup()
     const onOpenFile = vi.fn()
