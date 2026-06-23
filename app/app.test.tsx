@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi, type Mock } from 'vitest'
 import { render, screen, cleanup, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { App, EditorWorkspace } from './app'
+import { App, EditorWorkspace, type AppProps } from './app'
 import {
   InMemoryAssetCache,
   InMemoryProjectStore,
@@ -228,6 +228,31 @@ describe('App project actions', () => {
     expect(
       await screen.findByText('Recovered', { selector: '.editor-shell__breadcrumb-active' }),
     ).toBeInTheDocument()
+  })
+
+  it('offers the same recovery prompt when snapshots are resolved asynchronously', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    await store.save('current', projectWithWalls('Current', 0))
+    const snapshots = makeSnapshots({
+      isRecoverable: true,
+      restore: projectWithWalls('Recovered', 1),
+    })
+
+    // `resolveSnapshots` is not on AppProps yet, so cast the props bag the same
+    // way the in-repo RED tests do (see use-project-actions.test.ts) to keep
+    // this file compiling. The behavior is unwired, so the alert never appears:
+    // that is the RED.
+    const props = {
+      store,
+      projectId: 'current',
+      resolveSnapshots: () => Promise.resolve(snapshots),
+    } as AppProps
+
+    render(<App {...props} />)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/recovered/i)
   })
 
   it('discards recovered work and dismisses the prompt when Discard is clicked', async () => {
