@@ -92,7 +92,7 @@ interface CalibrationArming {
   startCalibration: (underlayId: string) => void
 }
 
-function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
+export function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
   const [armedUnderlayId, setArmedUnderlayId] = useState<string | null>(null)
   const [calibrationToolState, setCalibrationToolState] =
     useState<CalibrationToolState>(IDLE_CALIBRATION_TOOL)
@@ -103,6 +103,7 @@ function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
     (underlayId: string) => {
       setArmedUnderlayId(underlayId)
       setCalibrationToolState(IDLE_CALIBRATION_TOOL)
+      setKnownDistanceText('')
       setTool('calibrate')
     },
     [setTool],
