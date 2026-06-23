@@ -127,6 +127,12 @@ describe('UnderlayRow', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('displays the underlay opacity as a whole-number percentage next to the slider', () => {
+    renderRow({ ...newUnderlay(), opacity: NEW_OPACITY })
+
+    expect(screen.getByText('50%')).toBeInTheDocument()
+  })
+
   it('renders its action controls as design-system buttons', () => {
     renderRow(newUnderlay())
     for (const name of [/calibrate/i, /remove/i]) {
