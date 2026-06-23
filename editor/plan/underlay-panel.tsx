@@ -82,16 +82,17 @@ function CalibrationDistanceEntry({
   const distanceInputId = `underlay-distance-${underlay.id}`
 
   return (
-    <>
-      <Field htmlFor={distanceInputId} label="Known distance">
-        <input
-          id={distanceInputId}
-          type="text"
-          value={knownDistance ?? ''}
-          onChange={(event) => onKnownDistanceChange?.(event.target.value)}
-        />
-      </Field>
-      <p>Set a known distance to scale the image</p>
-    </>
+    <Field
+      htmlFor={distanceInputId}
+      label="Known distance"
+      hint="Set a known distance to scale the image"
+    >
+      <input
+        id={distanceInputId}
+        type="text"
+        value={knownDistance ?? ''}
+        onChange={(event) => onKnownDistanceChange?.(event.target.value)}
+      />
+    </Field>
   )
 }
