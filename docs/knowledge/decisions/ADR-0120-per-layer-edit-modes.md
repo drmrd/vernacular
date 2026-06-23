@@ -63,6 +63,11 @@ the issue's intent onto the real node kinds. Walls answers the "I clicked the wa
 dimension layer the issue flagged as a likely future mode. The "All" layer is the default and the
 no-op: it leaves every kind selectable.
 
+The furniture layer's chip reads "Decor", the issue's own word for it, rather than "Furniture". The tool
+rail already has a "Furniture" button that opens the furniture library, and two buttons with the same name
+doing different things would be ambiguous to a screen reader. The enum value stays `'furniture'`; only the
+display label differs.
+
 Rooms travel with walls rather than getting their own layer. A room is the region a closed wall loop
 encloses, so naming a room or setting its style is structural work alongside the walls that bound it. The
 walls layer keeps both walls and rooms selectable; every other specific layer empties rooms.
