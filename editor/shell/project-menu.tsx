@@ -8,6 +8,7 @@ interface RecentProject {
 
 export interface ProjectMenuProps {
   onNewProject?: (() => void) | undefined
+  onSave?: (() => void) | undefined
   onOpenFile?: (() => void) | undefined
   onOpenFolder?: (() => void) | undefined
   onOpenRecent?: ((id: string) => void) | undefined
@@ -22,6 +23,7 @@ interface MenuItem {
 // Build the menu entries from the wired handlers, in display order.
 function projectMenuItems({
   onNewProject,
+  onSave,
   onOpenFile,
   onOpenFolder,
   onOpenRecent,
@@ -30,6 +32,9 @@ function projectMenuItems({
   const items: MenuItem[] = []
   if (onNewProject) {
     items.push({ label: 'New project', onSelect: onNewProject })
+  }
+  if (onSave) {
+    items.push({ label: 'Save', onSelect: onSave })
   }
   if (onOpenFile) {
     items.push({ label: 'Open file', onSelect: onOpenFile })
