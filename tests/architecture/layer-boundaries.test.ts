@@ -3,14 +3,20 @@
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
 
+// Constructing the ESLint flat config is the expensive part, so build one shared
+// instance for the whole file instead of one per test. Linting is type-aware and
+// CPU-bound, so allow extra time over Vitest's 5s per-test default when the unit
+// suite saturates the worker pool, even though each lint finishes quickly alone.
+const eslint = new ESLint()
+const LINT_TIMEOUT_MS = 30_000
+
 async function ruleIdsFor(code: string, filePath: string): Promise<(string | null)[]> {
-  const eslint = new ESLint()
   const [result] = await eslint.lintText(code, { filePath })
   return result?.messages.map((message) => message.ruleId) ?? []
 }
 
 describe('layer boundary enforcement', () => {
-  it('rejects a core module importing storage', async () => {
+  it('rejects a core module importing storage', { timeout: LINT_TIMEOUT_MS }, async () => {
     const ids = await ruleIdsFor(
       "import type { ProjectStore } from '../storage'\nexport type Forbidden = ProjectStore\n",
       'core/boundary-sample.ts',
@@ -18,7 +24,7 @@ describe('layer boundary enforcement', () => {
     expect(ids).toContain('boundaries/dependencies')
   })
 
-  it('allows a storage module importing core', async () => {
+  it('allows a storage module importing core', { timeout: LINT_TIMEOUT_MS }, async () => {
     const ids = await ruleIdsFor(
       "import type { Project } from '../core'\nexport type Allowed = Project\n",
       'storage/boundary-sample.ts',
