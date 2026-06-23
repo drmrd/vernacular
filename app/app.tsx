@@ -36,7 +36,7 @@ import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
-const DEFAULT_PROJECT_ID = 'current'
+export const DEFAULT_PROJECT_ID = 'current'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
 // mounts the deterministic three-dimensional render harness instead of the editor, so
