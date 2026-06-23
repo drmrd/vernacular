@@ -48,6 +48,9 @@ const UnderlayMenuList: FC<UnderlayMenuListProps> = ({
   dispatch,
   onCalibrate,
   onLoadImageClick,
+  armedUnderlayId,
+  knownDistance,
+  onKnownDistanceChange,
 }) => (
   <ul className="underlay-menu__list ds-menu-surface" role="menu">
     <li role="none">
@@ -63,6 +66,9 @@ const UnderlayMenuList: FC<UnderlayMenuListProps> = ({
           label={`Underlay ${index + 1}`}
           dispatch={dispatch}
           onCalibrate={onCalibrate}
+          calibrating={underlay.id === armedUnderlayId}
+          {...(knownDistance === undefined ? {} : { knownDistance })}
+          {...(onKnownDistanceChange === undefined ? {} : { onKnownDistanceChange })}
         />
       </li>
     ))}
