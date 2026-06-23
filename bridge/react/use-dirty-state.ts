@@ -12,10 +12,13 @@ export function useDirtyState(tracker: DirtyTracker): boolean {
   return useSyncExternalStore(tracker.subscribe, tracker.isDirty)
 }
 
-/** The reactive dirty flag plus the save-baseline reset, scoped to one session. */
+/** The reactive dirty flag plus the revision-based save-baseline reset, scoped to one session. */
 export interface SessionDirtyState {
   isDirty: boolean
-  markSaved: () => void
+  /** The current change revision, to capture before an async save (ADR-0104). */
+  revision: () => number
+  /** Marks the captured revision saved, clearing dirtiness only if no newer change has arrived. */
+  markSavedRevision: (revision: number) => void
 }
 
 /**
@@ -23,13 +26,14 @@ export interface SessionDirtyState {
  * (New / Open / Import result) starts clean, so recreating the tracker per
  * session resets the dirty baseline for free; the paired cleanup disposes the
  * old tracker when the session is replaced or the component unmounts. Returns
- * the reactive `isDirty` flag and a stable `markSaved` for clearing the baseline
- * after an explicit save.
+ * the reactive `isDirty` flag together with the stable `revision` reader and
+ * `markSavedRevision` for clearing the baseline after a save.
  */
 export function useDirtyTracker(session: EditorSession): SessionDirtyState {
   const tracker = useMemo(() => createDirtyTracker(session), [session])
   useEffect(() => () => tracker.dispose(), [tracker])
   const isDirty = useDirtyState(tracker)
-  const markSaved = useCallback(() => tracker.markSaved(), [tracker])
-  return { isDirty, markSaved }
+  const revision = useCallback(() => tracker.revision(), [tracker])
+  const markSavedRevision = useCallback((rev: number) => tracker.markSavedRevision(rev), [tracker])
+  return { isDirty, revision, markSavedRevision }
 }
