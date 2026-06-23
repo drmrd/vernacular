@@ -127,6 +127,12 @@ describe('UnderlayRow', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('displays the underlay opacity as a whole-number percentage next to the slider', () => {
+    renderRow({ ...newUnderlay(), opacity: NEW_OPACITY })
+
+    expect(screen.getByText('50%')).toBeInTheDocument()
+  })
+
   it('renders its action controls as design-system buttons', () => {
     renderRow(newUnderlay())
     for (const name of [/calibrate/i, /remove/i]) {
@@ -143,5 +149,54 @@ describe('UnderlayRow', () => {
 
     const visible = screen.getByRole('checkbox', { name: /visible/i })
     expect(visible.closest('.ds-field')).not.toBeNull()
+  })
+
+  it('renders an inline labeled distance entry and helper text while calibrating, reporting typed values', () => {
+    const onKnownDistanceChange = vi.fn()
+    render(
+      <UnderlayRow
+        floorId={FLOOR_ID}
+        underlay={newUnderlay()}
+        label={ROW_LABEL}
+        dispatch={vi.fn()}
+        onCalibrate={vi.fn()}
+        calibrating
+        knownDistance=""
+        onKnownDistanceChange={onKnownDistanceChange}
+      />,
+    )
+
+    const distance = screen.getByLabelText(/known distance/i)
+    expect(distance).toBeInTheDocument()
+    expect(distance).toHaveValue('')
+    expect(screen.getByText('Set a known distance to scale the image')).toBeInTheDocument()
+
+    fireEvent.change(distance, { target: { value: '3 m' } })
+    expect(onKnownDistanceChange).toHaveBeenCalledWith('3 m')
+  })
+
+  it('wires the calibration helper text as the known-distance input accessible description', () => {
+    render(
+      <UnderlayRow
+        floorId={FLOOR_ID}
+        underlay={newUnderlay()}
+        label={ROW_LABEL}
+        dispatch={vi.fn()}
+        onCalibrate={vi.fn()}
+        calibrating
+        knownDistance=""
+        onKnownDistanceChange={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByLabelText(/known distance/i)
+    expect(input).toHaveAccessibleDescription('Set a known distance to scale the image')
+  })
+
+  it('renders neither the distance entry nor its helper text when not calibrating', () => {
+    renderRow(newUnderlay())
+
+    expect(screen.queryByLabelText(/known distance/i)).toBeNull()
+    expect(screen.queryByText(/set a known distance to scale the image/i)).toBeNull()
   })
 })
