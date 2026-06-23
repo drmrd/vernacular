@@ -32,7 +32,7 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
   const session = createEditorSession(projectWithFloor())
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore(session.getProject().floors[0]?.id ?? null)
-  render(
+  const { container } = render(
     <NotificationProvider>
       <ThemeProvider>
         <EditorSessionProvider session={session}>
@@ -49,7 +49,7 @@ function renderShell(props: Partial<EditorShellProps> = {}) {
       </ThemeProvider>
     </NotificationProvider>,
   )
-  return { session, selection }
+  return { session, selection, container }
 }
 
 describe('EditorShell', () => {
@@ -231,26 +231,42 @@ describe('EditorShell', () => {
     expect(screen.getByText(/tool: select/i)).toBeInTheDocument()
   })
 
-  it('invokes the new, save, and export handlers when their controls are used', async () => {
+  it('invokes the new and export handlers when their controls are used', async () => {
     vi.stubGlobal('navigator', {})
     const onNewProject = vi.fn()
-    const onSave = vi.fn()
     const onExportBundle = vi.fn()
     const user = userEvent.setup()
 
-    renderShell({ onNewProject, onSave, onExportBundle })
+    renderShell({ onNewProject, onExportBundle })
 
-    // New lives in the project menu near the wordmark; Save stays a visible action.
+    // New lives in the project menu near the wordmark; Export is the single
+    // dominant header action now that autosave persists every change.
     await user.click(screen.getByRole('button', { name: /project/i }))
     await user.click(screen.getByRole('menuitem', { name: /new project/i }))
-    const project = screen.getByRole('navigation', { name: /project/i })
-    await user.click(within(project).getByRole('button', { name: /^save$/i }))
     await user.click(screen.getByRole('button', { name: /^export$/i }))
     await user.click(screen.getByRole('menuitem', { name: /bundle/i }))
 
     expect(onNewProject).toHaveBeenCalledTimes(1)
-    expect(onSave).toHaveBeenCalledTimes(1)
     expect(onExportBundle).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops the manual Save button now that autosave persists changes', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell({ onSave: vi.fn() })
+
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull()
+  })
+
+  it('pairs the save-status label with a state icon', () => {
+    vi.stubGlobal('navigator', {})
+
+    const { container } = renderShell({ saveStatus: 'saved' })
+
+    const status = container.querySelector('.editor-shell__save-status')
+    expect(status).not.toBeNull()
+    expect(status?.textContent).toMatch(/all changes saved/i)
+    expect(status?.querySelector('svg')).not.toBeNull()
   })
 
   it('invokes the open-folder handler from the project menu', async () => {
