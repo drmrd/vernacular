@@ -24,6 +24,9 @@ export function UnderlayMenuPanel() {
       dispatch={(command) => session.dispatch(command as Command)}
       onLoadImage={underlay.loadImage}
       onCalibrate={underlay.startCalibration}
+      armedUnderlayId={underlay.armedUnderlayId}
+      knownDistance={underlay.knownDistanceText}
+      onKnownDistanceChange={underlay.setKnownDistanceText}
     />
   )
 }
