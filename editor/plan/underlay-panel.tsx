@@ -25,12 +25,15 @@ export interface UnderlayRowProps {
   label: string
   dispatch: (command: unknown) => void
   onCalibrate: (underlayId: string) => void
+  calibrating?: boolean
+  knownDistance?: string
+  onKnownDistanceChange?: (value: string) => void
 }
 
-export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: UnderlayRowProps) {
+export function UnderlayRow(props: UnderlayRowProps) {
+  const { floorId, underlay, label, dispatch, onCalibrate } = props
   const opacityInputId = `underlay-opacity-${underlay.id}`
   const visibleInputId = `underlay-visible-${underlay.id}`
-
   return (
     <fieldset>
       <legend>{label}</legend>
@@ -57,7 +60,30 @@ export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }:
         />
       </Field>
       <Button onClick={() => onCalibrate(underlay.id)}>Calibrate</Button>
+      {props.calibrating ? <CalibrationDistanceEntry {...props} /> : null}
       <Button onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>Remove</Button>
     </fieldset>
+  )
+}
+
+function CalibrationDistanceEntry({
+  underlay,
+  knownDistance,
+  onKnownDistanceChange,
+}: UnderlayRowProps) {
+  const distanceInputId = `underlay-distance-${underlay.id}`
+
+  return (
+    <>
+      <Field htmlFor={distanceInputId} label="Known distance">
+        <input
+          id={distanceInputId}
+          type="text"
+          value={knownDistance ?? ''}
+          onChange={(event) => onKnownDistanceChange?.(event.target.value)}
+        />
+      </Field>
+      <p>Set a known distance to scale the image</p>
+    </>
   )
 }
