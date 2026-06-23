@@ -22,7 +22,7 @@ sourceFiles:
     eslint.config.js,
   ]
 status: current
-updated: 2026-06-19
+updated: 2026-06-23
 ---
 
 # ADR-0111: Story coverage guardrail and the component story backfill policy
@@ -132,6 +132,31 @@ them an integration-style story or leave them permanently recorded.
   granularity keeps the reach of a misjudgment small.
 - The data file is exempt from the file-length limit through a narrow eslint override scoped to
   that one path, since its length is inherent to its purpose and falls as coverage grows.
+
+## Update (2026-06-23): the backfill reached its floor
+
+The per-area follow-on issues are resolved and the allowlist has fallen from seventy-four entries
+to about thirty. The design-system, shell, library, tools, paint, and panel stories landed in
+earlier batches, so what is left is the floor this policy anticipated: components that cannot earn
+a meaningful isolated story.
+
+The tools and panels slice is complete. Every inspector, panel, paint control, and command surface
+gained a co-located story. Three context providers stay recorded: the snap-preferences, active-tool,
+and view-mode providers. Each one holds state for its subtree and does nothing else, so an isolated
+story would be a contrived wrapper rather than a render worth snapshotting, and each is already
+exercised inside a consumer story that wraps it. That is the disposition the command-palette,
+notification, and theme providers already carry, so the three now read the same way.
+
+The bridge and scene slice decided against integration-style stories. Each of those modules needs a
+live R3F canvas, a WebGPU context, or the full editor provider tree to render, and a browser-mode
+story cannot stand one up without rebuilding the editor session around it. That scaffolding buys a
+render that asserts nothing the scene's own tests do not already cover, so each module stays
+permanently recorded with the reason it cannot be isolated. The same holds for the full-tree editor
+surfaces: the editor shell, the scene pane, the plan view and its overlay, the view-mode viewport,
+and the asset and library orchestrators.
+
+With these settled the allowlist sits at its floor. It grows again only when a new component arrives
+without a story, which is the regression the guard exists to catch.
 
 ## References
 
