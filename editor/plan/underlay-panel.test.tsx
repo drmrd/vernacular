@@ -150,4 +150,35 @@ describe('UnderlayRow', () => {
     const visible = screen.getByRole('checkbox', { name: /visible/i })
     expect(visible.closest('.ds-field')).not.toBeNull()
   })
+
+  it('renders an inline labeled distance entry and helper text while calibrating, reporting typed values', () => {
+    const onKnownDistanceChange = vi.fn()
+    render(
+      <UnderlayRow
+        floorId={FLOOR_ID}
+        underlay={newUnderlay()}
+        label={ROW_LABEL}
+        dispatch={vi.fn()}
+        onCalibrate={vi.fn()}
+        calibrating
+        knownDistance=""
+        onKnownDistanceChange={onKnownDistanceChange}
+      />,
+    )
+
+    const distance = screen.getByLabelText(/known distance/i)
+    expect(distance).toBeInTheDocument()
+    expect(distance).toHaveValue('')
+    expect(screen.getByText('Set a known distance to scale the image')).toBeInTheDocument()
+
+    fireEvent.change(distance, { target: { value: '3 m' } })
+    expect(onKnownDistanceChange).toHaveBeenCalledWith('3 m')
+  })
+
+  it('renders neither the distance entry nor its helper text when not calibrating', () => {
+    renderRow(newUnderlay())
+
+    expect(screen.queryByLabelText(/known distance/i)).toBeNull()
+    expect(screen.queryByText(/set a known distance to scale the image/i)).toBeNull()
+  })
 })
