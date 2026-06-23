@@ -1,3 +1,4 @@
+import { DEFAULT_PROJECT_ID, resolveSnapshotStore } from '../app'
 import { createEmptyProject, createFloor, type Project } from '../core'
 import { createOpfsProjectStore, IndexedDbRecentProjectStore, WebLocksManager } from '../storage'
 
@@ -32,6 +33,7 @@ export interface VernacularE2eStorage {
   lockSequence(): Promise<LockSequenceResult>
   opfsPersistSave(): Promise<void>
   opfsPersistName(): Promise<string>
+  plantRecoverySnapshot(): Promise<boolean>
 }
 
 declare global {
@@ -108,6 +110,18 @@ async function opfsPersistName(): Promise<string> {
   return loaded.meta.name
 }
 
+// Simulates a crash: write a recovery snapshot at the production project's OPFS
+// location and leave it there (no canonical save + prune follows). A subsequent
+// production page load resolves the same snapshot store and should offer recovery.
+async function plantRecoverySnapshot(): Promise<boolean> {
+  const snapshots = await resolveSnapshotStore(DEFAULT_PROJECT_ID)
+  if (snapshots === undefined) {
+    return false
+  }
+  await snapshots.writeSnapshot(sampleProject('Recovered House'))
+  return true
+}
+
 /** Attach the durable-adapter test routines to window for the Playwright spec. */
 export function install(): void {
   window.vernacularE2eStorage = {
@@ -116,5 +130,6 @@ export function install(): void {
     lockSequence,
     opfsPersistSave,
     opfsPersistName,
+    plantRecoverySnapshot,
   }
 }

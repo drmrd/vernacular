@@ -92,18 +92,27 @@ describe('createAutosave', () => {
     expect(statuses).toEqual([])
   })
 
-  it('writes a snapshot instead of saving when snapshots are provided', async () => {
+  it('writes ahead to a snapshot, then saves canonically, then prunes in order', async () => {
     const session = createEditorSession(emptyProject())
     const store = new InMemoryProjectStore()
-    const saveSpy = vi.spyOn(store, 'save')
-    const writeSnapshot = vi.fn().mockResolvedValue(undefined)
+    const order: string[] = []
+    const writeSnapshot = vi.fn().mockImplementation(async () => {
+      order.push('writeSnapshot')
+    })
+    const prune = vi.fn().mockImplementation(async () => {
+      order.push('prune')
+    })
+    const saveSpy = vi.spyOn(store, 'save').mockImplementation(async () => {
+      order.push('save')
+    })
+    const snapshots = { writeSnapshot, prune }
     const statuses: string[] = []
     const autosave = createAutosave({
       session,
       store,
       projectId: 'current',
       delayMs: 500,
-      snapshots: { writeSnapshot },
+      snapshots,
       onStatusChange: (status) => statuses.push(status),
     })
 
@@ -114,8 +123,70 @@ describe('createAutosave', () => {
 
     expect(writeSnapshot).toHaveBeenCalledTimes(1)
     expect(writeSnapshot).toHaveBeenCalledWith(session.getProject())
-    expect(saveSpy).not.toHaveBeenCalled()
+    expect(saveSpy).toHaveBeenCalledTimes(1)
+    expect(saveSpy).toHaveBeenCalledWith('current', session.getProject())
+    expect(prune).toHaveBeenCalledTimes(1)
+    expect(order).toEqual(['writeSnapshot', 'save', 'prune'])
     expect(statuses).toEqual(['pending', 'saved'])
+
+    autosave.dispose()
+  })
+
+  it('leaves the latest edit in the canonical store after a write-ahead cycle', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const writeSnapshot = vi.fn().mockResolvedValue(undefined)
+    const prune = vi.fn().mockResolvedValue(undefined)
+    const snapshots = { writeSnapshot, prune }
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
+      delayMs: 500,
+      snapshots,
+    })
+
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect((await store.load('current')).floors).toHaveLength(1)
+
+    autosave.dispose()
+  })
+
+  it('keeps the snapshot without pruning and reports error when the canonical save fails', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const order: string[] = []
+    const writeSnapshot = vi.fn().mockImplementation(async () => {
+      order.push('writeSnapshot')
+    })
+    const prune = vi.fn().mockImplementation(async () => {
+      order.push('prune')
+    })
+    const saveSpy = vi.spyOn(store, 'save').mockImplementation(async () => {
+      order.push('save')
+      throw new Error('disk full')
+    })
+    const snapshots = { writeSnapshot, prune }
+    const statuses: string[] = []
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
+      delayMs: 500,
+      snapshots,
+      onStatusChange: (status) => statuses.push(status),
+    })
+
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(writeSnapshot).toHaveBeenCalledTimes(1)
+    expect(saveSpy).toHaveBeenCalledTimes(1)
+    expect(prune).not.toHaveBeenCalled()
+    expect(order).toEqual(['writeSnapshot', 'save'])
+    expect(statuses).toEqual(['pending', 'error'])
 
     autosave.dispose()
   })
