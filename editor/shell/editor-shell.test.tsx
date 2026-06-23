@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, act, within } from '@testing-library/react'
+import { render, screen, cleanup, act, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditorShell, type EditorShellProps } from './editor-shell'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
@@ -256,6 +256,32 @@ describe('EditorShell', () => {
     renderShell({ onSave: vi.fn() })
 
     expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull()
+  })
+
+  it('invokes the save handler on Mod+S', () => {
+    vi.stubGlobal('navigator', {})
+    const onSave = vi.fn()
+
+    renderShell({ onSave })
+
+    // navigator is the non-mac stub, so Mod resolves to the Ctrl key. The
+    // keybinding layer listens on window for the global Mod+S save shortcut.
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true })
+
+    expect(onSave).toHaveBeenCalledTimes(1)
+  })
+
+  it('invokes the save handler from the project menu Save item', async () => {
+    vi.stubGlobal('navigator', {})
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+
+    renderShell({ onSave })
+
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('menuitem', { name: /save/i }))
+
+    expect(onSave).toHaveBeenCalledTimes(1)
   })
 
   it('pairs the save-status label with a state icon', () => {
