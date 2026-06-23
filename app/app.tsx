@@ -32,10 +32,11 @@ import {
 import { createInitialProject } from './create-initial-project'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
+import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
-const DEFAULT_PROJECT_ID = 'current'
+export const DEFAULT_PROJECT_ID = 'current'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
 // mounts the deterministic three-dimensional render harness instead of the editor, so
@@ -128,6 +129,7 @@ export interface AppProps {
   projectId?: string
   recentProjects?: RecentProjectStore
   snapshots?: SnapshotsPort
+  resolveSnapshots?: () => Promise<SnapshotsPort | undefined>
 }
 
 export function App(props: AppProps) {
@@ -156,7 +158,8 @@ function AppWorkspace({
   resolveStore,
   projectId = DEFAULT_PROJECT_ID,
   recentProjects: providedRecentProjects,
-  snapshots,
+  snapshots: providedSnapshots,
+  resolveSnapshots,
 }: AppProps) {
   const { store, assets, session, setSession, error } = useProjectBoot({
     providedStore,
@@ -164,6 +167,7 @@ function AppWorkspace({
     resolveStore,
     projectId,
   })
+  const snapshots = useResolvedSnapshots(providedSnapshots, resolveSnapshots)
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
     [providedRecentProjects],
@@ -171,11 +175,10 @@ function AppWorkspace({
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
 
-  if (error !== null) {
+  const booting = store === null || assets === null || session === null || capabilities === null
+  if (error !== null || booting) {
+    // bootStatusView renders the error notice when error is set, otherwise the loading notice.
     return bootStatusView(error)
-  }
-  if (store === null || assets === null || session === null || capabilities === null) {
-    return bootStatusView(null)
   }
 
   return (

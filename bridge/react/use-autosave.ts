@@ -3,6 +3,7 @@ import type { ProjectStore } from '../../storage'
 import {
   createAutosave,
   type AutosaveStatus,
+  type SnapshotPruner,
   type SnapshotWriter,
 } from '../autosave/create-autosave'
 import type { EditorSession } from '../session/editor-session'
@@ -11,7 +12,7 @@ export interface UseAutosaveOptions {
   session: EditorSession
   store: ProjectStore
   projectId: string
-  snapshots?: SnapshotWriter
+  snapshots?: SnapshotWriter & SnapshotPruner
 }
 
 /** Runs the debounced autosave for the session's lifetime and reports its status. */
