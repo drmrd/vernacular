@@ -9,6 +9,7 @@ import { Button, Field } from '../design-system'
 const OPACITY_MIN = 0
 const OPACITY_MAX = 1
 const OPACITY_STEP = 0.05
+const PERCENT = 100
 
 export interface UnderlayPanelProps {
   floorId: string
@@ -16,6 +17,9 @@ export interface UnderlayPanelProps {
   dispatch: (command: unknown) => void
   onLoadImage: () => void
   onCalibrate: (underlayId: string) => void
+  armedUnderlayId?: string | null
+  knownDistance?: string
+  onKnownDistanceChange?: (value: string) => void
 }
 
 export interface UnderlayRowProps {
@@ -24,12 +28,15 @@ export interface UnderlayRowProps {
   label: string
   dispatch: (command: unknown) => void
   onCalibrate: (underlayId: string) => void
+  calibrating?: boolean
+  knownDistance?: string
+  onKnownDistanceChange?: (value: string) => void
 }
 
-export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }: UnderlayRowProps) {
+export function UnderlayRow(props: UnderlayRowProps) {
+  const { floorId, underlay, label, dispatch, onCalibrate, calibrating, ...calibration } = props
   const opacityInputId = `underlay-opacity-${underlay.id}`
   const visibleInputId = `underlay-visible-${underlay.id}`
-
   return (
     <fieldset>
       <legend>{label}</legend>
@@ -45,6 +52,7 @@ export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }:
             dispatch(setUnderlayOpacity(floorId, underlay.id, Number(event.target.value)))
           }
         />
+        <span aria-hidden="true">{Math.round(underlay.opacity * PERCENT)}%</span>
       </Field>
       <Field htmlFor={visibleInputId} label="Visible">
         <input
@@ -55,7 +63,36 @@ export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }:
         />
       </Field>
       <Button onClick={() => onCalibrate(underlay.id)}>Calibrate</Button>
+      {calibrating ? <CalibrationDistanceEntry underlay={underlay} {...calibration} /> : null}
       <Button onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>Remove</Button>
     </fieldset>
+  )
+}
+
+type CalibrationDistanceEntryProps = Pick<
+  UnderlayRowProps,
+  'underlay' | 'knownDistance' | 'onKnownDistanceChange'
+>
+
+function CalibrationDistanceEntry({
+  underlay,
+  knownDistance,
+  onKnownDistanceChange,
+}: CalibrationDistanceEntryProps) {
+  const distanceInputId = `underlay-distance-${underlay.id}`
+
+  return (
+    <Field
+      htmlFor={distanceInputId}
+      label="Known distance"
+      hint="Set a known distance to scale the image"
+    >
+      <input
+        id={distanceInputId}
+        type="text"
+        value={knownDistance ?? ''}
+        onChange={(event) => onKnownDistanceChange?.(event.target.value)}
+      />
+    </Field>
   )
 }

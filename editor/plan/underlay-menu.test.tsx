@@ -169,4 +169,54 @@ describe('UnderlayMenu', () => {
 
     expect(onCalibrate).toHaveBeenCalledWith('u1')
   })
+
+  it('shows the inline calibration distance entry only on the armed underlay row', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const u1 = { id: 'u1', opacity: 0.5, visible: true } as Underlay
+    const u2 = { id: 'u2', opacity: 0.5, visible: true } as Underlay
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[u1, u2]}
+        dispatch={vi.fn()}
+        onLoadImage={vi.fn()}
+        onCalibrate={vi.fn()}
+        armedUnderlayId="u1"
+        knownDistance=""
+        onKnownDistanceChange={onChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /underlay/i }))
+
+    const distanceInput = screen.getByLabelText(/known distance/i)
+    expect(screen.getByText('Set a known distance to scale the image')).toBeInTheDocument()
+
+    fireEvent.change(distanceInput, { target: { value: '12 ft' } })
+
+    expect(onChange).toHaveBeenCalledWith('12 ft')
+  })
+
+  it('shows no calibration distance entry when no underlay is armed', async () => {
+    const user = userEvent.setup()
+    const u1 = { id: 'u1', opacity: 0.5, visible: true } as Underlay
+    const u2 = { id: 'u2', opacity: 0.5, visible: true } as Underlay
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[u1, u2]}
+        dispatch={vi.fn()}
+        onLoadImage={vi.fn()}
+        onCalibrate={vi.fn()}
+        armedUnderlayId={null}
+        knownDistance=""
+        onKnownDistanceChange={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /underlay/i }))
+
+    expect(screen.queryByLabelText(/known distance/i)).not.toBeInTheDocument()
+  })
 })

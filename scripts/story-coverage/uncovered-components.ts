@@ -6,14 +6,16 @@
 // fails three ways: a new uncovered module that is not listed here, a listed
 // module that has since gained a story (remove it), and a listed file that no
 // longer exists (remove it). As story coverage lands, entries leave this list
-// in lockstep until only the genuinely-not-isolable scene components remain.
+// in lockstep. The per-area backfill (issue #275) has reached its floor: every
+// entry left here is a component that cannot earn a meaningful isolated story,
+// so each one carries the settled reason it stays.
 //
 // `file` is a repository-relative POSIX path so the data is portable across
 // machines and CI; the guard resolves each one to an absolute path at run time.
 // `component` is the module's primary exported component name, a human label at
 // module granularity. `reason` is a descriptive English sentence (no shorthand
-// codes) grouped by the deferred per-area story sub-issues called out in the
-// issue #275 plan.
+// codes) grouped by area: the app orchestrators, the bridge and scene layer, and
+// the remaining editor providers and full-tree surfaces.
 
 export const UNCOVERED_COMPONENTS: {
   component: string
@@ -179,7 +181,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'SnapPreferencesProvider',
     file: 'editor/plan/snap-preferences-provider.tsx',
     reason:
-      'deferred to the tools-and-panels story sub-issue; it is the snap-preferences context provider, covered as a wrapper alongside the snap panel story.',
+      'a context provider whose only behavior is holding the snap-preferences store for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and it is exercised through the snap-panel story that wraps its subject in it (see ADR-0111).',
   },
 
   // --- editor/shell -------------------------------------------------------
@@ -201,7 +203,7 @@ export const UNCOVERED_COMPONENTS: {
     component: 'ActiveToolProvider',
     file: 'editor/tools/active-tool-provider.tsx',
     reason:
-      'deferred to the tools-and-panels story sub-issue; it is the active-tool context provider, covered as a wrapper alongside the tools panel story.',
+      'a context provider whose only behavior is holding the active-tool selection for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and it is exercised through the tools-panel story that wraps its subject in it (see ADR-0111).',
   },
 
   // --- editor/viewport ----------------------------------------------------
@@ -215,6 +217,6 @@ export const UNCOVERED_COMPONENTS: {
     component: 'ViewModeProvider',
     file: 'editor/viewport/view-mode.tsx',
     reason:
-      'deferred to the tools-and-panels story sub-issue; it is the view-mode context provider, covered as a wrapper alongside the viewport story.',
+      'a context provider whose only behavior is holding the view-mode (plan, split, or preview) state for its subtree; an isolated component story would be a contrived wrapper rather than a meaningful render, and it is exercised through the command-palette story that wraps its subject in it (see ADR-0111).',
   },
 ]
