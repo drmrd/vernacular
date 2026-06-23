@@ -246,8 +246,7 @@ export function commitCalibration(segment: PreviewSegment, commit: CalibrationCo
   if (node === null) {
     return
   }
-  const entry = commit.knownDistanceText
-  const knownMm = parseKnownDistance(entry, ASSUMED_UNIT_BY_UNITS[commit.units])
+  const knownMm = parseKnownDistance(commit.knownDistanceText, ASSUMED_UNIT_BY_UNITS[commit.units])
   if (knownMm === undefined) {
     return
   }
