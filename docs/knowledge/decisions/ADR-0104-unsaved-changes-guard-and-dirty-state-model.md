@@ -20,6 +20,7 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0003-storage-provider-pattern,
     decisions/ADR-0019-bridge-dispatch-boundary,
+    decisions/ADR-0119-write-ahead-crash-recovery,
   ]
 sourceFiles:
   [
@@ -27,15 +28,20 @@ sourceFiles:
     bridge/session/create-dirty-tracker.ts,
     bridge/session/discard-guard.ts,
     bridge/react/use-dirty-state.ts,
+    bridge/react/use-autosave.ts,
+    bridge/autosave/create-autosave.ts,
     app/use-before-unload-guard.ts,
     app/use-discard-confirmation.ts,
     app/use-workspace-state.ts,
     app/use-project-actions.ts,
     app/use-open-file-action.ts,
+    editor/commands/save-command.ts,
     editor/shell/discard-dialog.tsx,
+    editor/shell/project-menu.tsx,
+    editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-06-18
+updated: 2026-06-23
 ---
 
 # ADR-0104: Unsaved-changes guard and dirty-state model
@@ -46,8 +52,17 @@ Accepted, landed. New, Open, Import, Open-Recent, and Open-Folder now check
 whether the in-memory project has unsaved changes before they swap it. A dirty
 project prompts a discard confirmation first, and closing or refreshing the tab
 while dirty raises the browser's native leave warning. A fresh project, whether
-from a New, an Open, an Import, or the boot load, starts clean, and an explicit
-Save clears the flag.
+from a New, an Open, an Import, or the boot load, starts clean.
+
+Revised 2026-06-23. The dirty flag now clears on any successful canonical save,
+not only an explicit one. Since the write-ahead change in ADR-0119, the debounced
+autosave writes the real project to the store on every cycle, so a successful
+autosave returns the project to a saved baseline and disarms the guard. An
+explicit save still does the same; it moved off a dedicated header button onto a
+Save item in the project menu and the Cmd+S (Ctrl+S elsewhere) shortcut, and it
+pulses the save-status indicator to confirm the write. Both paths mark the saved
+baseline by the revision they persisted, so an edit made while a save is in
+flight stays dirty.
 
 ## Context
 
@@ -62,8 +77,18 @@ signal. Autosave writes a rolling snapshot on a debounce of roughly 500ms, so
 `AutosaveStatus.saved` means a snapshot exists, not that the project matches the
 last explicit save. Deriving dirtiness from autosave would report a project clean
 about half a second after every edit, which would leave the guard inert exactly
-when work is most at risk. The guard needs a baseline that only the user moves:
-an explicit save, or the adoption of a fresh project.
+when work is most at risk. The guard needs a baseline that only a real save moves:
+originally an explicit save, or the adoption of a fresh project.
+
+That premise shifted with the write-ahead change (ADR-0119). Autosave no longer
+writes only a throwaway snapshot; each debounced cycle writes the canonical
+project to the store, then prunes the snapshot. A successful autosave is now a
+genuine save, the same write an explicit save performs. Leaving the guard armed
+through every autosave then became its own problem: once the header Save button
+was removed in favor of autosave, a project that autosaved cleanly still warned
+on close, because nothing cleared the baseline. The revision-based marking below
+lets a confirmed canonical save, whether autosave or explicit, clear the baseline
+without losing an edit that lands mid-save.
 
 ## Decision
 
@@ -110,6 +135,33 @@ otherwise. `markSaved()` is called on an explicit-save success (the
 `commitProject` path) and, implicitly through the per-session tracker, on every
 fresh-session adoption.
 
+**Revision-based saved marking (revised 2026-06-23).** The tracker counts the
+mutating dispatches it has seen and exposes that count as `revision()`. Marking a
+save records the revision it persisted: `markSavedRevision(rev)` raises the saved
+baseline to that revision, and `markSaved()` is now just
+`markSavedRevision(revision())`. The clean test stays "saved baseline equals
+current revision", so a later edit advances the count past the baseline and the
+project reads dirty again.
+
+This is what lets autosave and an explicit save share one disarm path without a
+race. A save reads `revision()` at the moment it begins, before the asynchronous
+write, and calls `markSavedRevision(thatRevision)` only when the write succeeds.
+If an edit arrives while the write is in flight, the live revision advances past
+the captured one, so marking the captured revision leaves the project dirty and
+the new edit is not silently dropped. Autosave (`bridge/autosave/create-autosave.ts`,
+`bridge/react/use-autosave.ts`) reports the revision it wrote through an `onSaved`
+callback, and the explicit save (`app/use-project-actions.ts`) captures the
+revision the same way; `app/use-workspace-state.ts` wires both to the dirty
+tracker's `markSavedRevision`.
+
+The explicit save reaches the user two ways now that the header Save button is
+gone: a Save item in the project menu (`editor/shell/project-menu.tsx`) and a
+`Mod+S` command (`editor/commands/save-command.ts`) registered in the editor's
+keybinding layer. The save status state moved up to `app/use-workspace-state.ts`
+so both autosave and the explicit save report into one indicator; on a successful
+explicit save the action pulses that indicator to "saved", so Cmd+S confirms the
+write rather than appearing to do nothing.
+
 This slice changed no `docs/specs/` file: it adds a safety guard around the
 existing open and import flows rather than a new file format or a spec change,
 so there is no spec-change ADR companion. The behavior it guards is the one the
@@ -120,10 +172,12 @@ open and import specification already describes.
 - A destructive swap on a dirty project now prompts before it discards, and a
   tab close or refresh while dirty raises the native warning, so a mis-click or
   a stray dropped file no longer silently loses work.
-- Dirtiness is read off the dispatch boundary and is independent of the autosave
-  snapshot status. The clean baseline is the explicit save (`commitProject`) and
-  a fresh load or swap, never the rolling autosave snapshot, so the guard stays
-  armed through the debounce window where work is most exposed.
+- Dirtiness is read off the dispatch boundary, not off the autosave status flag.
+  The clean baseline is a confirmed canonical save, identified by the revision it
+  wrote: the explicit save (`commitProject`), a successful autosave (the
+  write-ahead store write from ADR-0119), and a fresh load or swap. The guard
+  stays armed through the debounce window until a save actually completes, and an
+  edit that lands while a save is in flight keeps the project dirty.
 - The policy lives at one point. `needsDiscardConfirmation` and
   `guardDestructive` are unit-tested without a DOM, and the call sites name the
   predicate and the runner rather than re-deriving the rule, so a later change to
@@ -146,6 +200,8 @@ open and import specification already describes.
   source the dirty tracker subscribes to).
 - ADR-0003 (the storage provider pattern behind `commitProject`, the explicit
   save that sets the clean baseline).
+- ADR-0119 (the write-ahead autosave that turned each debounced cycle into a
+  canonical store write, so a successful autosave now clears the dirty baseline).
 - ADR-0001 (the six-layer architecture: the tracker and guard stay
   framework-free in `bridge/`, the dialog lives in `editor/`, and the wiring
   lives in `app/`).
