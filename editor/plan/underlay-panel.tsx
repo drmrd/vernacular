@@ -9,6 +9,7 @@ import { Button, Field } from '../design-system'
 const OPACITY_MIN = 0
 const OPACITY_MAX = 1
 const OPACITY_STEP = 0.05
+const PERCENT = 100
 
 export interface UnderlayPanelProps {
   floorId: string
@@ -45,6 +46,7 @@ export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }:
             dispatch(setUnderlayOpacity(floorId, underlay.id, Number(event.target.value)))
           }
         />
+        <span>{Math.round(underlay.opacity * PERCENT)}%</span>
       </Field>
       <Field htmlFor={visibleInputId} label="Visible">
         <input
