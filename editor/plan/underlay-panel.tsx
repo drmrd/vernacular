@@ -46,7 +46,7 @@ export function UnderlayRow({ floorId, underlay, label, dispatch, onCalibrate }:
             dispatch(setUnderlayOpacity(floorId, underlay.id, Number(event.target.value)))
           }
         />
-        <span>{Math.round(underlay.opacity * PERCENT)}%</span>
+        <span aria-hidden="true">{Math.round(underlay.opacity * PERCENT)}%</span>
       </Field>
       <Field htmlFor={visibleInputId} label="Visible">
         <input
