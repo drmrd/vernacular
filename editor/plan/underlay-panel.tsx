@@ -31,7 +31,7 @@ export interface UnderlayRowProps {
 }
 
 export function UnderlayRow(props: UnderlayRowProps) {
-  const { floorId, underlay, label, dispatch, onCalibrate } = props
+  const { floorId, underlay, label, dispatch, onCalibrate, calibrating, ...calibration } = props
   const opacityInputId = `underlay-opacity-${underlay.id}`
   const visibleInputId = `underlay-visible-${underlay.id}`
   return (
@@ -60,17 +60,22 @@ export function UnderlayRow(props: UnderlayRowProps) {
         />
       </Field>
       <Button onClick={() => onCalibrate(underlay.id)}>Calibrate</Button>
-      {props.calibrating ? <CalibrationDistanceEntry {...props} /> : null}
+      {calibrating ? <CalibrationDistanceEntry underlay={underlay} {...calibration} /> : null}
       <Button onClick={() => dispatch(removeUnderlay(floorId, underlay.id))}>Remove</Button>
     </fieldset>
   )
 }
 
+type CalibrationDistanceEntryProps = Pick<
+  UnderlayRowProps,
+  'underlay' | 'knownDistance' | 'onKnownDistanceChange'
+>
+
 function CalibrationDistanceEntry({
   underlay,
   knownDistance,
   onKnownDistanceChange,
-}: UnderlayRowProps) {
+}: CalibrationDistanceEntryProps) {
   const distanceInputId = `underlay-distance-${underlay.id}`
 
   return (
