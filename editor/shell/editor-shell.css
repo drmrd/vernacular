@@ -80,7 +80,10 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   min-width: 9rem;
-  text-align: right;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
 }
 
 .editor-shell__project {
