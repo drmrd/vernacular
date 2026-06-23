@@ -7,7 +7,7 @@ import { EditLayerPanel } from './edit-layer-panel'
 
 afterEach(cleanup)
 
-const NON_DEFAULT_LAYER_NAMES = [/^walls$/i, /^openings$/i, /^furniture$/i, /^annotations$/i]
+const NON_DEFAULT_LAYER_NAMES = [/^walls$/i, /^openings$/i, /^decor$/i, /^annotations$/i]
 
 describe('EditLayerPanel', () => {
   it('renders a button for each of the five edit layers', () => {
@@ -46,7 +46,7 @@ describe('EditLayerPanel', () => {
     await user.click(screen.getByRole('button', { name: /^walls$/i }))
 
     expect(screen.getByRole('button', { name: /^walls$/i })).toHaveAttribute('aria-pressed', 'true')
-    for (const name of [/^all$/i, /^openings$/i, /^furniture$/i, /^annotations$/i]) {
+    for (const name of [/^all$/i, /^openings$/i, /^decor$/i, /^annotations$/i]) {
       expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false')
     }
   })
