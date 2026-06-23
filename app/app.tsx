@@ -9,7 +9,7 @@ import {
   loadOrCreateProject,
   type EditorSession,
 } from '../bridge'
-import { ActiveToolProvider, DiscardDialog, EditorShell } from '../editor'
+import { ActiveToolProvider, EditLayerProvider, DiscardDialog, EditorShell } from '../editor'
 import { AssetProviders } from './asset-providers'
 import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import {
@@ -323,19 +323,21 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           <SelectionProvider store={ws.selection}>
             <ActiveFloorProvider store={ws.activeFloorStore}>
               <ActiveToolProvider>
-                <EditorShell
-                  saveStatus={ws.saveStatus}
-                  recentProjects={ws.recentEntries}
-                  {...ws.actions}
-                  // Spread recovery only when present: the optional prop rejects an explicit undefined.
-                  {...(ws.recovery ? { recovery: ws.recovery } : {})}
-                />
-                <DiscardDialog
-                  open={ws.discardRequest !== null}
-                  projectName={session.getProject().meta.name}
-                  onConfirm={() => ws.resolveDiscard(true)}
-                  onCancel={() => ws.resolveDiscard(false)}
-                />
+                <EditLayerProvider>
+                  <EditorShell
+                    saveStatus={ws.saveStatus}
+                    recentProjects={ws.recentEntries}
+                    {...ws.actions}
+                    // Spread recovery only when present: the optional prop rejects an explicit undefined.
+                    {...(ws.recovery ? { recovery: ws.recovery } : {})}
+                  />
+                  <DiscardDialog
+                    open={ws.discardRequest !== null}
+                    projectName={session.getProject().meta.name}
+                    onConfirm={() => ws.resolveDiscard(true)}
+                    onCancel={() => ws.resolveDiscard(false)}
+                  />
+                </EditLayerProvider>
               </ActiveToolProvider>
             </ActiveFloorProvider>
           </SelectionProvider>
