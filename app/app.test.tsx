@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi, type Mock } from 'vitest'
 import { render, screen, cleanup, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { App, EditorWorkspace, type AppProps } from './app'
+import { App, EditorWorkspace } from './app'
 import {
   InMemoryAssetCache,
   InMemoryProjectStore,
@@ -239,17 +239,9 @@ describe('App project actions', () => {
       restore: projectWithWalls('Recovered', 1),
     })
 
-    // `resolveSnapshots` is not on AppProps yet, so cast the props bag the same
-    // way the in-repo RED tests do (see use-project-actions.test.ts) to keep
-    // this file compiling. The behavior is unwired, so the alert never appears:
-    // that is the RED.
-    const props = {
-      store,
-      projectId: 'current',
-      resolveSnapshots: () => Promise.resolve(snapshots),
-    } as AppProps
-
-    render(<App {...props} />)
+    render(
+      <App store={store} projectId="current" resolveSnapshots={() => Promise.resolve(snapshots)} />,
+    )
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(/recovered/i)
