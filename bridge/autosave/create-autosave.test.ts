@@ -190,6 +190,94 @@ describe('createAutosave', () => {
 
     autosave.dispose()
   })
+
+  it('reports the saved revision once after a successful save', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const onSaved = vi.fn()
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
+      delayMs: 500,
+      revision: () => 7,
+      onSaved,
+    })
+
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(onSaved).toHaveBeenCalledTimes(1)
+    expect(onSaved).toHaveBeenCalledWith(7)
+
+    autosave.dispose()
+  })
+
+  it('reports the revision captured at persist start, not one bumped during the write', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const onSaved = vi.fn()
+    let rev = 1
+    vi.spyOn(store, 'save').mockImplementation(async () => {
+      rev = 2
+    })
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
+      delayMs: 500,
+      revision: () => rev,
+      onSaved,
+    })
+
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(onSaved).toHaveBeenCalledTimes(1)
+    expect(onSaved).toHaveBeenCalledWith(1)
+
+    autosave.dispose()
+  })
+
+  it('does not report a saved revision when the canonical save fails', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const onSaved = vi.fn()
+    vi.spyOn(store, 'save').mockImplementation(async () => {
+      throw new Error('disk full')
+    })
+    const statuses: string[] = []
+    const autosave = createAutosave({
+      session,
+      store,
+      projectId: 'current',
+      delayMs: 500,
+      revision: () => 3,
+      onSaved,
+      onStatusChange: (status) => statuses.push(status),
+    })
+
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(statuses).toEqual(['pending', 'error'])
+
+    autosave.dispose()
+  })
+
+  it('saves normally when revision and onSaved are omitted', async () => {
+    const session = createEditorSession(emptyProject())
+    const store = new InMemoryProjectStore()
+    const autosave = createAutosave({ session, store, projectId: 'current', delayMs: 500 })
+
+    session.dispatch(addFloor('Ground'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect((await store.load('current')).floors).toHaveLength(1)
+
+    autosave.dispose()
+  })
 })
 
 describe('commitProject', () => {

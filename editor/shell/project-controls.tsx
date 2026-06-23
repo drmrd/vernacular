@@ -19,6 +19,9 @@ export interface ProjectControlsProps {
   onImportDroppedFile?: ((file: File) => void) | undefined
 }
 
+// The editor header no longer surfaces a manual Save button: autosave is the canonical
+// persistence path since the write-ahead recovery work. This component and its onSave action
+// are kept for the component catalogue and as a programmatic save entry point, not rendered in the shell.
 export function ProjectControls({
   recentProjects,
   onNewProject,

@@ -17,6 +17,20 @@ export interface DirtyTracker {
    */
   markSaved(): void
   /**
+   * Returns the current change revision: the number of mutating dispatches the
+   * session has seen since the tracker was constructed.
+   */
+  revision(): number
+  /**
+   * Marks the given revision as saved, clearing dirtiness only if no newer
+   * change has arrived. Monotonic: savedChangeCount becomes
+   * max(savedChangeCount, revision), so a stale (older) revision never un-cleans
+   * a newer baseline, and the no-race property holds (a change arriving after the
+   * captured revision keeps the tracker dirty). Fires the clean<->dirty
+   * transition notification like markSaved() does.
+   */
+  markSavedRevision(revision: number): void
+  /**
    * Registers a listener fired on each clean<->dirty transition, so the UI can
    * re-render the guard/indicator. Repeated changes in the same direction are
    * coalesced: the listener fires only when `isDirty()` actually flips. Returns
@@ -58,9 +72,15 @@ export function createDirtyTracker(session: EditorSession): DirtyTracker {
     notifyIfTransitioned()
   })
 
-  const markSaved = (): void => {
-    savedChangeCount = changeCount
+  const revision = (): number => changeCount
+
+  const markSavedRevision = (rev: number): void => {
+    savedChangeCount = Math.max(savedChangeCount, rev)
     notifyIfTransitioned()
+  }
+
+  const markSaved = (): void => {
+    markSavedRevision(revision())
   }
 
   const subscribe = (listener: () => void): (() => void) => {
@@ -73,5 +93,5 @@ export function createDirtyTracker(session: EditorSession): DirtyTracker {
     listeners.clear()
   }
 
-  return { isDirty, markSaved, subscribe, dispose }
+  return { isDirty, markSaved, revision, markSavedRevision, subscribe, dispose }
 }

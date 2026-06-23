@@ -84,10 +84,17 @@ export interface ProjectActionsContext {
    *  true (per needsDiscardConfirmation). */
   confirmDiscard?: () => boolean | Promise<boolean>
 
-  /** Clears the dirty baseline after an explicit save commits, returning the
-   *  dirty tracker to clean. Source: useDirtyTracker.
-   *  Optional so hook-level tests that build the context without it stay valid. */
-  markSaved?: () => void
+  /** Reads the dirty-tracker revision, captured when an explicit save begins so the
+   *  guard disarms for exactly the persisted revision (ADR-0104). Absent => not captured. */
+  revision?: () => number
+
+  /** Clears the dirty baseline for a captured revision after an explicit save commits.
+   *  Source: useDirtyTracker. Optional so hook-level tests stay valid. */
+  markSavedRevision?: (revision: number) => void
+
+  /** Pulses the save-status indicator to "saved" after an explicit save commits, so
+   *  Cmd+S and the menu Save give visible confirmation. Optional. */
+  reportSaved?: () => void
 }
 
 // Runs an async file operation and, on failure, raises an error toast whose
@@ -135,22 +142,42 @@ function useSaveAction(context: ProjectActionsContext): () => void {
     snapshots,
     recentProjects,
     capabilities,
-    markSaved,
+    revision,
+    markSavedRevision,
+    reportSaved,
     notifications,
   } = context
   const backend = defaultStoreBackend(capabilities)
   return useCallback(() => {
+    // Capture the revision synchronously, before the async save begins: an edit
+    // arriving mid-save advances the live revision, so marking the captured one
+    // keeps the later edit dirty (no save/edit race).
+    const savedRevision = revision?.()
     runWithErrorToast(notifications, async () => {
       const project = session.getProject()
       await commitProject({ store, projectId, project, ...(snapshots ? { snapshots } : {}) })
       if (backend !== null) {
         recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
       }
-      // A successful explicit save is the clean baseline: clear the dirty tracker
-      // so the beforeunload guard disarms.
-      markSaved?.()
+      // A successful explicit save is the clean baseline for the captured revision
+      // and pulses the status to saved (flush-and-confirm).
+      if (savedRevision !== undefined) {
+        markSavedRevision?.(savedRevision)
+      }
+      reportSaved?.()
     })
-  }, [session, store, projectId, snapshots, recentProjects, backend, markSaved, notifications])
+  }, [
+    session,
+    store,
+    projectId,
+    snapshots,
+    recentProjects,
+    backend,
+    revision,
+    markSavedRevision,
+    reportSaved,
+    notifications,
+  ])
 }
 
 function useNewProjectAction(context: ProjectActionsContext): () => void | Promise<void> {
