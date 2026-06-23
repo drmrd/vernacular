@@ -9,7 +9,9 @@ const EDIT_LAYERS: { id: EditLayer; label: string; icon: Icon }[] = [
   { id: 'all', label: 'All', icon: SelectionAll },
   { id: 'walls', label: 'Walls', icon: Minus },
   { id: 'openings', label: 'Openings', icon: Door },
-  { id: 'furniture', label: 'Furniture', icon: Armchair },
+  // Labeled "Decor" rather than "Furniture" so the chip's name stays distinct from
+  // the furniture library launcher button in the same rail (#289).
+  { id: 'furniture', label: 'Decor', icon: Armchair },
   { id: 'annotations', label: 'Annotations', icon: Tag },
 ]
 
