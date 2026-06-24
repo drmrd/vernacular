@@ -23,7 +23,7 @@ function renderWithSurface(
   }
 }
 
-describe('WallFinishSection', () => {
+describe('WallFinishSection chip rendering and structure', () => {
   it('renders Face A and Face B chips for the two wall sides', () => {
     renderWithSurface(
       <WallFinishSection
@@ -120,7 +120,9 @@ describe('WallFinishSection', () => {
     expect(faceB).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'A' })).not.toHaveClass('is-active')
   })
+})
 
+describe('WallFinishSection selection-driven plan highlight', () => {
   it('highlights the wall A face on the plan as soon as the section mounts', () => {
     const { store } = renderWithSurface(
       <WallFinishSection
@@ -178,7 +180,9 @@ describe('WallFinishSection', () => {
       side: 'left',
     })
   })
+})
 
+describe('WallFinishSection hover preview of the plan highlight', () => {
   it('previews the wall B face on the plan while the B chip is hovered without changing the selection', async () => {
     const user = userEvent.setup()
     const { store } = renderWithSurface(

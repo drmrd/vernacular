@@ -4,9 +4,11 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   ActiveFloorProvider,
+  SurfaceSelectionProvider,
   createEditorSession,
   createSelectionStore,
   createActiveFloorStore,
+  createSurfaceSelectionStore,
 } from '../../bridge'
 import {
   createEmptyProject,
@@ -33,11 +35,14 @@ function renderInspector(walls: Wall[] = [], roomOverrides?: Project['roomOverri
   const session = createEditorSession(project)
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore('g')
+  const surfaceSelection = createSurfaceSelectionStore()
   render(
     <EditorSessionProvider session={session}>
       <SelectionProvider store={selection}>
         <ActiveFloorProvider store={activeFloor}>
-          <Inspector />
+          <SurfaceSelectionProvider store={surfaceSelection}>
+            <Inspector />
+          </SurfaceSelectionProvider>
         </ActiveFloorProvider>
       </SelectionProvider>
     </EditorSessionProvider>,
