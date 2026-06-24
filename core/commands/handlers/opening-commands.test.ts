@@ -19,7 +19,7 @@ import type { OpeningDimensions } from './opening-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
 import { createEmptyProject, createFloor, createWall, createOpening } from '../../model/factories'
-import { InvalidLengthError, MAX_LENGTH_MM } from '../../index'
+import { InvalidLengthError, MAX_LENGTH_MM, builtinElementTypes, getEntry } from '../../index'
 import type { Opening, Project } from '../../model/types'
 
 const HOST_WALL_ID = 'wall-1'
@@ -397,5 +397,56 @@ describe('setOpeningType', () => {
     expect(retyped?.height).toBe(target.height)
     expect(retyped?.sillHeight).toBe(target.sillHeight)
     expect(retyped?.orientation).toEqual(target.orientation)
+  })
+
+  it('resets the sill and height to the new defaults on a cross-category change while preserving placement', () => {
+    const windowDefaults = getEntry(builtinElementTypes, 'double-hung-window')?.opening
+    const doorDefaults = getEntry(builtinElementTypes, 'single-swing-door')?.opening
+
+    const doorProject = projectWithTwoFloors()
+    const doorDispatcher = dispatcherFor(doorProject)
+    const door = createOpening({
+      type: 'single-swing-door',
+      hostWallId: HOST_WALL_ID,
+      position: 1200,
+      width: 1000,
+      height: 2100,
+      sillHeight: 0,
+    })
+    doorDispatcher.dispatch(placeOpening('g', door))
+
+    doorDispatcher.dispatch(setOpeningType('g', door.id, 'double-hung-window'))
+
+    const asWindow = doorProject.floors[0]?.openings[0]
+    expect(asWindow?.type).toBe('double-hung-window')
+    expect(asWindow?.hostWallId).toBe(door.hostWallId)
+    expect(asWindow?.position).toBe(door.position)
+    expect(asWindow?.width).toBe(door.width)
+    expect(asWindow?.orientation).toEqual(door.orientation)
+    expect(asWindow?.sillHeight).toBe(windowDefaults?.defaultSillHeight)
+    expect(asWindow?.height).toBe(windowDefaults?.defaultHeight)
+
+    const windowProject = projectWithTwoFloors()
+    const windowDispatcher = dispatcherFor(windowProject)
+    const window = createOpening({
+      type: 'double-hung-window',
+      hostWallId: HOST_WALL_ID,
+      position: 1200,
+      width: 1400,
+      height: 1500,
+      sillHeight: 750,
+    })
+    windowDispatcher.dispatch(placeOpening('g', window))
+
+    windowDispatcher.dispatch(setOpeningType('g', window.id, 'single-swing-door'))
+
+    const asDoor = windowProject.floors[0]?.openings[0]
+    expect(asDoor?.type).toBe('single-swing-door')
+    expect(asDoor?.hostWallId).toBe(window.hostWallId)
+    expect(asDoor?.position).toBe(window.position)
+    expect(asDoor?.width).toBe(window.width)
+    expect(asDoor?.orientation).toEqual(window.orientation)
+    expect(asDoor?.sillHeight).toBe(doorDefaults?.defaultSillHeight)
+    expect(asDoor?.height).toBe(doorDefaults?.defaultHeight)
   })
 })
