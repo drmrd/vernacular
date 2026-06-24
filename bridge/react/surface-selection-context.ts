@@ -16,3 +16,8 @@ export function useActiveSurface(): SurfaceRef | null {
   const store = useSurfaceSelection()
   return useSyncExternalStore(store.subscribe, store.getActiveSurface)
 }
+
+export function useHighlightedSurface(): SurfaceRef | null {
+  const store = useSurfaceSelection()
+  return useSyncExternalStore(store.subscribe, store.getHighlightedSurface)
+}

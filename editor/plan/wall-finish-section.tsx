@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { useSurfaceSelection } from '../../bridge'
 import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
@@ -37,6 +38,11 @@ export function WallFinishSection({
   dispatch,
 }: WallFinishSectionProps) {
   const [side, setSide] = useState<'left' | 'right'>('left')
+  const surfaceSelection = useSurfaceSelection()
+  useEffect(() => {
+    surfaceSelection.highlight({ kind: 'wall-face', wallId, side })
+    return () => surfaceSelection.clearHighlight()
+  }, [surfaceSelection, wallId, side])
   const ref: SurfaceRef = { kind: 'wall-face', wallId, side }
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID

@@ -1,6 +1,11 @@
 import { useMemo } from 'react'
 import { surfaceKey } from '../../core'
-import { useActiveFloorId, useActiveSurface, useEditorSession } from '../../bridge'
+import {
+  useActiveFloorId,
+  useActiveSurface,
+  useEditorSession,
+  useHighlightedSurface,
+} from '../../bridge'
 import type { DrawPlanOptions } from './draw-plan'
 
 /**
@@ -12,13 +17,15 @@ import type { DrawPlanOptions } from './draw-plan'
 export function useSurfacePaintLayer(): NonNullable<DrawPlanOptions['surfacePaint']> {
   const { paint } = useEditorSession().getProject()
   const activeSurface = useActiveSurface()
+  const highlightedSurface = useHighlightedSurface()
   return useMemo(
     () => ({
       treatmentForFace: (wallId: string, side: 'left' | 'right') =>
         paint?.[surfaceKey({ kind: 'wall-face', wallId, side })],
       activeSurface,
+      highlightedSurface,
     }),
-    [paint, activeSurface],
+    [paint, activeSurface, highlightedSurface],
   )
 }
 
