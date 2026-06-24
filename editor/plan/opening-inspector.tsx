@@ -8,7 +8,6 @@ import {
   removeOpening,
   resizeOpening,
   setOpeningType,
-  type AssumedUnit,
   type Command,
   type Opening,
   type OpeningDimensions,
@@ -33,14 +32,6 @@ const FRACTION_CHIPS = [
   { label: '3/4"', deltaMm: (3 * INCH_IN_MM) / 4 },
   { label: '7/8"', deltaMm: (7 * INCH_IN_MM) / 8 },
 ] as const
-
-// A bare number entered for a metric project means millimetres; for an imperial
-// project it means feet. This is the active system's assume-unit, so a number
-// without a unit token still parses, matching the wall thickness editor.
-const ASSUME_UNIT_BY_SYSTEM: Record<UnitSystem, AssumedUnit> = {
-  metric: 'mm',
-  imperial: 'ft',
-}
 
 // Default unit preferences for each system. The inspector formats and parses
 // against the active system's defaults, mirroring the wall thickness editor.
@@ -113,7 +104,6 @@ function openingDimensions(opening: Opening): OpeningDimensions {
 interface DimensionFieldsProps {
   opening: Opening
   preferences: UnitPreferences
-  assumeUnit: AssumedUnit
   units: UnitSystem
   onResize: (dimensions: OpeningDimensions) => void
 }
@@ -121,7 +111,6 @@ interface DimensionFieldsProps {
 function DimensionFields({
   opening,
   preferences,
-  assumeUnit,
   units,
   onResize,
 }: DimensionFieldsProps): ReactElement {
@@ -135,7 +124,6 @@ function DimensionFields({
             label={label}
             valueMm={current[key]}
             preferences={preferences}
-            assumeUnit={assumeUnit}
             onCommitMm={(value) => onResize({ ...current, [key]: value })}
           />
           {units === 'imperial' ? (
@@ -209,7 +197,6 @@ export function OpeningInspector({
   dispatch,
 }: OpeningInspectorProps): ReactElement {
   const preferences = PREFERENCES_BY_UNITS[units]
-  const assumeUnit = ASSUME_UNIT_BY_SYSTEM[units]
 
   return (
     <Stack gap="space-2">
@@ -220,7 +207,6 @@ export function OpeningInspector({
       <DimensionFields
         opening={opening}
         preferences={preferences}
-        assumeUnit={assumeUnit}
         units={units}
         onResize={(dimensions) =>
           dispatch(

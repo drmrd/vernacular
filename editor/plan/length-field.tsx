@@ -1,17 +1,60 @@
-import { useState, type KeyboardEvent, type ReactElement } from 'react'
+import { useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
+import './length-field.css'
 import {
-  formatAdaptiveLength,
+  formatEntryMagnitude,
   parseLength,
   type AssumedUnit,
   type UnitPreferences,
+  type UnitSystem,
 } from '../../core'
-import { Field } from '../design-system'
+import { Field, Segmented, type SegmentedOption } from '../design-system'
 import { lengthRejectionMessage } from './length-rejection-message'
 
-// Surfaces the assumed unit a bare number is read as, so an entry like "30" is
-// unambiguous. Every unit is spelled out in the label uniformly.
-function withAssumedUnit(label: string, assumeUnit: AssumedUnit): string {
-  return `${label} (${assumeUnit})`
+// The selectable entry units per system, in display order. The value and label
+// are both the unit string so the picker reads as plain "m / cm / mm".
+const ENTRY_UNITS: Record<UnitSystem, readonly AssumedUnit[]> = {
+  metric: ['m', 'cm', 'mm'],
+  imperial: ['ft', 'in'],
+}
+
+// The unit a bare number is read as until the user picks another.
+const DEFAULT_ENTRY_UNIT: Record<UnitSystem, AssumedUnit> = {
+  metric: 'm',
+  imperial: 'ft',
+}
+
+function entryOptions(system: UnitSystem): SegmentedOption[] {
+  return ENTRY_UNITS[system].map((unit) => ({ value: unit, label: unit }))
+}
+
+interface UnitPickerProps {
+  label: string
+  system: UnitSystem
+  entryUnit: AssumedUnit
+  onSelect: (value: string) => void
+  onPress: () => void
+}
+
+// The entry-unit picker. The press handler flags an in-progress unit switch so the
+// input's blur re-expresses the value instead of committing it. Naming the group
+// through `title` keeps it out of label-text queries that target the input.
+function UnitPicker({
+  label,
+  system,
+  entryUnit,
+  onSelect,
+  onPress,
+}: UnitPickerProps): ReactElement {
+  return (
+    <span className="length-field__unit" onMouseDown={onPress}>
+      <Segmented
+        title={`${label} unit`}
+        options={entryOptions(system)}
+        value={entryUnit}
+        onSelect={onSelect}
+      />
+    </span>
+  )
 }
 
 export interface LengthFieldProps {
@@ -19,57 +62,129 @@ export interface LengthFieldProps {
   label: string
   valueMm: number
   preferences: UnitPreferences
-  assumeUnit: AssumedUnit
   onCommitMm: (mm: number) => void
 }
 
+interface LengthEntry {
+  entryUnit: AssumedUnit
+  text: string
+  error: string | null
+  setText: (text: string) => void
+  commit: () => void
+  handleBlur: () => void
+  changeUnit: (next: string) => void
+  pressUnit: () => void
+}
+
+interface CommitSinks {
+  onCommitMm: (mm: number) => void
+  setError: (message: string | null) => void
+}
+
+// Parses the text in the selected unit and dispatches it, recording a rejection
+// message instead when the command or the entry is refused.
+function commitText(text: string, entryUnit: AssumedUnit, sinks: CommitSinks): void {
+  try {
+    sinks.onCommitMm(parseLength(text, { assumeUnit: entryUnit }))
+    sinks.setError(null)
+  } catch (err) {
+    // A rejected command or unparseable entry keeps the text without dispatching.
+    const message = lengthRejectionMessage(err)
+    if (message) {
+      sinks.setError(message)
+    }
+  }
+}
+
+// Drives the editable text and selected entry unit. Pressing a unit button steals
+// focus from the input; the switching flag turns that blur into a re-express rather
+// than a commit, so a unit switch never dispatches a resize.
+function useLengthEntry(
+  system: UnitSystem,
+  valueMm: number,
+  onCommitMm: (mm: number) => void,
+): LengthEntry {
+  const switchingUnit = useRef(false)
+  const [entryUnit, setEntryUnit] = useState<AssumedUnit>(DEFAULT_ENTRY_UNIT[system])
+  const [text, setText] = useState(() => formatEntryMagnitude(valueMm, DEFAULT_ENTRY_UNIT[system]))
+  const [error, setError] = useState<string | null>(null)
+
+  const commit = (): void => commitText(text, entryUnit, { onCommitMm, setError })
+
+  function changeUnit(next: string): void {
+    const nextUnit = next as AssumedUnit
+    setText(formatEntryMagnitude(currentMm(text, entryUnit, valueMm), nextUnit))
+    setEntryUnit(nextUnit)
+    setError(null)
+    switchingUnit.current = false
+  }
+
+  return {
+    entryUnit,
+    text,
+    error,
+    setText,
+    commit,
+    handleBlur: () => (switchingUnit.current ? undefined : commit()),
+    changeUnit,
+    pressUnit: () => {
+      switchingUnit.current = true
+    },
+  }
+}
+
 /**
- * A unit-aware length input: it seeds from the adaptive-formatted value, lets the
- * user retype freely, and commits the parsed millimetre value on Enter. An
- * unparseable entry dispatches nothing and keeps its text, so a stray keystroke
- * never resizes anything. Shared by the opening and furniture inspectors.
+ * A unit-aware length input whose entry unit is user-selectable via a segmented
+ * picker, decoupled from how values are displayed elsewhere. The text holds a bare
+ * magnitude in the chosen entry unit; an unparseable entry dispatches nothing and
+ * keeps its text. Shared by the opening and furniture inspectors.
  */
 export function LengthField({
   inputId,
   label,
   valueMm,
   preferences,
-  assumeUnit,
   onCommitMm,
 }: LengthFieldProps): ReactElement {
-  const [text, setText] = useState(() => formatAdaptiveLength(valueMm, preferences))
-  const [error, setError] = useState<string | null>(null)
-
-  function commit(): void {
-    try {
-      onCommitMm(parseLength(text, { assumeUnit }))
-      setError(null)
-    } catch (err) {
-      // A rejected command or unparseable entry keeps the text without dispatching.
-      const message = lengthRejectionMessage(err)
-      if (message) {
-        setError(message)
-      }
-    }
-  }
+  const system = preferences.system
+  const entry = useLengthEntry(system, valueMm, onCommitMm)
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Enter') {
-      commit()
+      entry.commit()
     }
   }
 
   return (
-    <Field htmlFor={inputId} label={withAssumedUnit(label, assumeUnit)} hint={error ?? undefined}>
-      <input
-        id={inputId}
-        type="text"
-        value={text}
-        aria-invalid={error ? 'true' : undefined}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={commit}
+    <div className="length-field">
+      <Field htmlFor={inputId} label={label} hint={entry.error ?? undefined}>
+        <input
+          id={inputId}
+          type="text"
+          value={entry.text}
+          aria-invalid={entry.error ? 'true' : undefined}
+          onChange={(event) => entry.setText(event.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={entry.handleBlur}
+        />
+      </Field>
+      <UnitPicker
+        label={label}
+        system={system}
+        entryUnit={entry.entryUnit}
+        onSelect={entry.changeUnit}
+        onPress={entry.pressUnit}
       />
-    </Field>
+    </div>
   )
+}
+
+// Re-express the current text in millimetres, falling back to the committed value
+// when the entry cannot be parsed so a unit switch never loses the field.
+function currentMm(text: string, entryUnit: AssumedUnit, fallbackMm: number): number {
+  try {
+    return parseLength(text, { assumeUnit: entryUnit })
+  } catch {
+    return fallbackMm
+  }
 }
