@@ -52,12 +52,14 @@ function buildOpening(): Opening {
 function renderInspector(
   dispatch: (command: unknown) => void,
   units: 'metric' | 'imperial' = UNITS,
+  siblingOpenings: readonly Opening[] = [],
 ) {
   render(
     <OpeningInspector
       floorId={FLOOR_ID}
       opening={buildOpening()}
       units={units}
+      siblingOpenings={siblingOpenings}
       dispatch={dispatch as never}
     />,
   )
@@ -101,6 +103,38 @@ describe('OpeningInspector', () => {
     expect(command.params.openingId).toBe(OPENING_ID)
     expect(command.params.dimensions).toEqual<OpeningDimensions>({
       width: EXPECTED_NEW_WIDTH_MM,
+      height: HEIGHT_MM,
+      sillHeight: SILL_HEIGHT_MM,
+    })
+  })
+
+  it('clamps a committed width to the largest non-overlapping span before dispatching resizeOpening', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    // A same-wall neighbor at position 1500 with width 200 has its near edge at
+    // 1400. From the selected opening's center at 1000 the right gap is 400, so
+    // the widest centered span that does not overlap is 800 mm.
+    const neighbor = createOpening({
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      position: 1500,
+      width: 200,
+      height: HEIGHT_MM,
+      sillHeight: SILL_HEIGHT_MM,
+      id: 'o2',
+    })
+    renderInspector(dispatch, UNITS, [neighbor])
+
+    const widthInput = screen.getByLabelText(/width/i)
+    await user.clear(widthInput)
+    // 1200 mm would widen the opening into the neighbor.
+    await user.type(widthInput, `1200{Enter}`)
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = onlyCommand<ResizeOpeningParams>(dispatch)
+    expect(command.type).toBe(RESIZE_OPENING)
+    expect(command.params.dimensions).toEqual<OpeningDimensions>({
+      width: 800,
       height: HEIGHT_MM,
       sillHeight: SILL_HEIGHT_MM,
     })
