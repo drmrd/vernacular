@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { createOpening } from './factories'
-import { clampOpeningMove, clampOpeningWidth, openingWouldOverlap } from './opening-overlap'
+import {
+  clampOpeningMove,
+  clampOpeningResizeJamb,
+  clampOpeningWidth,
+  openingWouldOverlap,
+} from './opening-overlap'
 import type { Opening } from './types'
 
 // Build a full Opening from just the fields the overlap predicate cares about
@@ -83,8 +88,8 @@ describe('clampOpeningWidth', () => {
     // Candidate stays centered at 1000 throughout; width is what we clamp.
     const candidate = opening({ id: 'candidate', hostWallId: 'wall-a', position: 1000, width: 200 })
 
-    // (a) With no same-wall neighbor to constrain it, the target width is returned
-    // unchanged.
+    // (a) With only a same-wall neighbor too distant to constrain the target, the
+    // target width is returned unchanged.
     const clearRight = opening({
       id: 'clear-right',
       hostWallId: 'wall-a',
@@ -110,5 +115,36 @@ describe('clampOpeningWidth', () => {
     // target of 1400 is returned unchanged.
     const offWall = opening({ id: 'off-wall', hostWallId: 'wall-b', position: 1600, width: 200 })
     expect(clampOpeningWidth(candidate, 1400, [offWall])).toBe(1400)
+  })
+})
+
+describe('clampOpeningResizeJamb', () => {
+  it('clamps a dragged jamb to the nearest blocking same-wall neighbor and ignores clear or off-wall openings', () => {
+    // Opening occupies [900, 1100] on wall A (center 1000, width 200). During a
+    // jamb-drag resize one jamb moves while the opposite jamb stays fixed.
+    const target = opening({ id: 'target', hostWallId: 'wall-a', position: 1000, width: 200 })
+
+    // (a) Dragging the 'end' (higher) jamb is bounded on the right by the near edge
+    // of the nearest neighbor beyond the current far edge. A width-200 neighbor
+    // centered at 1600 has near edge 1500, so a dragged 'end' jamb of 1700 clamps to
+    // 1500, while a dragged 'end' jamb of 1300 (clear of the neighbor) stays 1300.
+    const rightNeighbor = opening({ id: 'right', hostWallId: 'wall-a', position: 1600, width: 200 })
+    expect(clampOpeningResizeJamb(target, 'end', 1700, [rightNeighbor])).toBe(1500)
+    expect(clampOpeningResizeJamb(target, 'end', 1300, [rightNeighbor])).toBe(1300)
+
+    // (b) Dragging the 'start' (lower) jamb is bounded on the left by the far edge
+    // of the nearest neighbor before the current near edge. A width-200 neighbor
+    // centered at 400 has far edge 500, so a dragged 'start' jamb of 300 clamps to 500.
+    const leftNeighbor = opening({ id: 'left', hostWallId: 'wall-a', position: 400, width: 200 })
+    expect(clampOpeningResizeJamb(target, 'start', 300, [leftNeighbor])).toBe(500)
+
+    // (c) With no same-wall neighbor on the dragged side, the dragged jamb is
+    // returned unchanged.
+    expect(clampOpeningResizeJamb(target, 'end', 1700, [leftNeighbor])).toBe(1700)
+
+    // (d) A blocking-looking neighbor on a different wall does not constrain, so the
+    // dragged jamb is returned unchanged.
+    const offWall = opening({ id: 'off-wall', hostWallId: 'wall-b', position: 1600, width: 200 })
+    expect(clampOpeningResizeJamb(target, 'end', 1700, [offWall])).toBe(1700)
   })
 })
