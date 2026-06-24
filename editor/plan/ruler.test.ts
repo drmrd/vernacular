@@ -31,7 +31,7 @@ describe('rulerTicks', () => {
     )
 
     expect(ticks.map((tick) => tick.worldValue)).toEqual([0, 1000])
-    expect(ticks.map((tick) => tick.label)).toEqual(['0 mm', '1000 mm'])
+    expect(ticks.map((tick) => tick.label)).toEqual(['0.00 m', '1.00 m'])
     expect(ticks.map((tick) => tick.screen)).toEqual([0, 100])
   })
 
@@ -112,8 +112,8 @@ describe('rulerTicks', () => {
     const metricLabels = metricTicks.map((tick) => tick.label)
     const imperialLabels = imperialTicks.map((tick) => tick.label)
 
-    // Metric formats the millimetre worldValues directly at 0 decimal places.
-    expect(metricLabels).toEqual(['0 mm', '1000 mm'])
+    // Metric formats the millimetre worldValues as metres at 2 decimal places.
+    expect(metricLabels).toEqual(['0.00 m', '1.00 m'])
 
     // Imperial delegates to the units formatter, reading the same ticks in feet/inches.
     const expectedImperialLabels = imperialTicks.map((tick) =>
