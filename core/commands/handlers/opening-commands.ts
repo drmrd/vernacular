@@ -1,4 +1,6 @@
 import type { Floor, Opening, Project } from '../../model/types'
+import { builtinElementTypes, openingKindOfType } from '../../registries/element-types'
+import { getEntry } from '../../registries/registry'
 import { assertNonNegativeLength, assertPositiveLength } from '../../units/length-bounds'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
@@ -224,13 +226,28 @@ export function setOpeningType(
   }
 }
 
+// Converting between a door and a window resets the type-defining dimensions
+// (sill height and height) to the new type's defaults while preserving placement.
+function retypeOpening(opening: Opening, type: string): Opening {
+  const oldKind = openingKindOfType(opening.type)
+  const newKind = openingKindOfType(type)
+  const newEntry = getEntry(builtinElementTypes, type)
+  const isCrossCategory = oldKind !== undefined && newKind !== undefined && oldKind !== newKind
+  if (!isCrossCategory || !newEntry?.opening) {
+    return { ...opening, type }
+  }
+  return {
+    ...opening,
+    type,
+    sillHeight: newEntry.opening.defaultSillHeight,
+    height: newEntry.opening.defaultHeight,
+  }
+}
+
 const setOpeningTypeHandler: CommandHandler<Project, SetOpeningTypeParams> = {
   apply(state, params) {
     mapTargetFloor(state, params.floorId, (floor) =>
-      mapTargetOpening(floor, params.openingId, (opening) => ({
-        ...opening,
-        type: params.type,
-      })),
+      mapTargetOpening(floor, params.openingId, (opening) => retypeOpening(opening, params.type)),
     )
   },
 }
