@@ -59,6 +59,7 @@ export {
   SurfaceSelectionContext,
   useSurfaceSelection,
   useActiveSurface,
+  useHighlightedSurface,
 } from './react/surface-selection-context'
 export type { SurfaceSelectionProviderProps } from './react/surface-selection-provider'
 export { SurfaceSelectionProvider } from './react/surface-selection-provider'
