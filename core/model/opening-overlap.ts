@@ -22,6 +22,40 @@ export function openingWouldOverlap(candidate: Opening, existing: readonly Openi
 }
 
 /**
+ * The raw jamb-coordinate bounds the opening's current span imposes from its
+ * same-wall neighbors. `leftLimit` is the far edge of the nearest neighbor whose
+ * far edge sits at or before the opening's near edge (default `-Infinity`);
+ * `rightLimit` is the near edge of the nearest neighbor whose near edge sits at
+ * or after the opening's far edge (default `+Infinity`).
+ *
+ * Neighbors on a different host wall and the opening itself are skipped. A
+ * neighbor that already overlaps the opening's current span sits to neither
+ * side, so it contributes no bound; this keeps a pre-existing overlap from
+ * spuriously trapping the opening.
+ */
+function neighborEdgeLimits(
+  opening: Opening,
+  others: readonly Opening[],
+): { leftLimit: number; rightLimit: number } {
+  const half = opening.width / HALF
+  const candidateStart = opening.position - half
+  const candidateEnd = opening.position + half
+
+  let leftLimit = -Infinity
+  let rightLimit = Infinity
+  for (const other of others) {
+    if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
+    const neighborHalf = other.width / HALF
+    const neighborStart = other.position - neighborHalf
+    const neighborEnd = other.position + neighborHalf
+    if (neighborEnd <= candidateStart) leftLimit = Math.max(leftLimit, neighborEnd)
+    else if (neighborStart >= candidateEnd) rightLimit = Math.min(rightLimit, neighborStart)
+  }
+
+  return { leftLimit, rightLimit }
+}
+
+/**
  * The along-wall coordinate to move `opening` to. If moving to `targetPosition`
  * keeps the opening's span clear of every same-wall neighbor, the target is
  * returned unchanged. Otherwise the target is clamped into the maximal
@@ -44,19 +78,9 @@ export function clampOpeningMove(
   others: readonly Opening[],
 ): number {
   const half = opening.width / HALF
-  const candidateStart = opening.position - half
-  const candidateEnd = opening.position + half
-
-  let minCenter = -Infinity
-  let maxCenter = Infinity
-  for (const other of others) {
-    if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
-    const otherHalf = other.width / HALF
-    const neighborStart = other.position - otherHalf
-    const neighborEnd = other.position + otherHalf
-    if (neighborEnd <= candidateStart) minCenter = Math.max(minCenter, neighborEnd + half)
-    else if (neighborStart >= candidateEnd) maxCenter = Math.min(maxCenter, neighborStart - half)
-  }
+  const { leftLimit, rightLimit } = neighborEdgeLimits(opening, others)
+  const minCenter = leftLimit + half
+  const maxCenter = rightLimit - half
 
   if (minCenter > maxCenter) return opening.position
   return Math.min(Math.max(targetPosition, minCenter), maxCenter)
@@ -117,25 +141,8 @@ export function clampOpeningResizeJamb(
   draggedJamb: number,
   others: readonly Opening[],
 ): number {
-  const half = opening.width / HALF
-  const candidateStart = opening.position - half
-  const candidateEnd = opening.position + half
+  const { leftLimit, rightLimit } = neighborEdgeLimits(opening, others)
 
-  if (edge === 'end') {
-    let rightLimit = Infinity
-    for (const other of others) {
-      if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
-      const neighborStart = other.position - other.width / HALF
-      if (neighborStart >= candidateEnd) rightLimit = Math.min(rightLimit, neighborStart)
-    }
-    return Math.min(draggedJamb, rightLimit)
-  }
-
-  let leftLimit = -Infinity
-  for (const other of others) {
-    if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
-    const neighborEnd = other.position + other.width / HALF
-    if (neighborEnd <= candidateStart) leftLimit = Math.max(leftLimit, neighborEnd)
-  }
+  if (edge === 'end') return Math.min(draggedJamb, rightLimit)
   return Math.max(draggedJamb, leftLimit)
 }
