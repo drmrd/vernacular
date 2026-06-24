@@ -96,3 +96,46 @@ export function clampOpeningWidth(
   if (maxHalfWidth <= 0) return opening.width
   return Math.min(targetWidth, maxHalfWidth * HALF)
 }
+
+/**
+ * The clamped coordinate for a dragged jamb during a resize. One jamb moves to
+ * `draggedJamb` while the other stays fixed; `edge` names the dragged jamb
+ * (`'start'` is the lower-coordinate jamb, `'end'` is the higher). The returned
+ * coordinate keeps the resized span from strictly overlapping a same-wall
+ * neighbor (touching is allowed).
+ *
+ * A dragged `'end'` jamb is bounded above by the near edge of the closest
+ * neighbor sitting beyond the opening's far edge; a dragged `'start'` jamb is
+ * bounded below by the far edge of the closest neighbor sitting before the
+ * opening's near edge. Neighbors on a different host wall and the opening itself
+ * never constrain the drag.
+ */
+// eslint-disable-next-line max-params -- the opening, which jamb is dragged, its proposed coordinate, and the neighbors is the natural signature for clamping one resize jamb
+export function clampOpeningResizeJamb(
+  opening: Opening,
+  edge: 'start' | 'end',
+  draggedJamb: number,
+  others: readonly Opening[],
+): number {
+  const half = opening.width / HALF
+  const candidateStart = opening.position - half
+  const candidateEnd = opening.position + half
+
+  if (edge === 'end') {
+    let rightLimit = Infinity
+    for (const other of others) {
+      if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
+      const neighborStart = other.position - other.width / HALF
+      if (neighborStart >= candidateEnd) rightLimit = Math.min(rightLimit, neighborStart)
+    }
+    return Math.min(draggedJamb, rightLimit)
+  }
+
+  let leftLimit = -Infinity
+  for (const other of others) {
+    if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
+    const neighborEnd = other.position + other.width / HALF
+    if (neighborEnd <= candidateStart) leftLimit = Math.max(leftLimit, neighborEnd)
+  }
+  return Math.max(draggedJamb, leftLimit)
+}
