@@ -22,9 +22,9 @@ export const DEFAULT_IMPERIAL_PREFERENCES: UnitPreferences = {
 export const DEFAULT_METRIC_PREFERENCES: UnitPreferences = {
   system: 'metric',
   imperialForm: 'feet-and-inches',
-  metricForm: 'millimeters',
+  metricForm: 'meters',
   imperialLengthPrecision: { kind: 'fraction', denominator: 8 },
-  metricLengthPrecision: { kind: 'decimal-places', places: 0 },
+  metricLengthPrecision: { kind: 'decimal-places', places: 2 },
 }
 
 // Preferences are loaded from persisted project data, so the form/precision pairing
