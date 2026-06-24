@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createOpening } from './factories'
-import { clampOpeningMove, openingWouldOverlap } from './opening-overlap'
+import { clampOpeningMove, clampOpeningWidth, openingWouldOverlap } from './opening-overlap'
 import type { Opening } from './types'
 
 // Build a full Opening from just the fields the overlap predicate cares about
@@ -75,5 +75,40 @@ describe('clampOpeningMove', () => {
     // (d) A blocking-looking neighbor on a different wall does not constrain.
     const offWall = opening({ id: 'off-wall', hostWallId: 'wall-b', position: 1500, width: 200 })
     expect(clampOpeningMove(candidate, 1450, [offWall])).toBe(1450)
+  })
+})
+
+describe('clampOpeningWidth', () => {
+  it('widens up to the nearest same-wall neighbor while staying centered, taking the smaller side gap', () => {
+    // Candidate stays centered at 1000 throughout; width is what we clamp.
+    const candidate = opening({ id: 'candidate', hostWallId: 'wall-a', position: 1000, width: 200 })
+
+    // (a) With no same-wall neighbor to constrain it, the target width is returned
+    // unchanged.
+    const clearRight = opening({
+      id: 'clear-right',
+      hostWallId: 'wall-a',
+      position: 3000,
+      width: 200,
+    })
+    expect(clampOpeningWidth(candidate, 1400, [clearRight])).toBe(1400)
+
+    // (b) A width-200 neighbor centered at 1600 has near edge 1500, so from the
+    // fixed center 1000 the half-width is capped at 500 and the max width is 1000.
+    // A target of 1400 clamps to 1000.
+    const rightNeighbor = opening({ id: 'right', hostWallId: 'wall-a', position: 1600, width: 200 })
+    expect(clampOpeningWidth(candidate, 1400, [rightNeighbor])).toBe(1000)
+
+    // (c) With neighbors on both sides, the smaller side gap wins. The right
+    // neighbor's near edge is 1500 (gap 500); a left neighbor width 200 centered
+    // at 650 has near edge 750 (gap 250 from center 1000), so the half-width is
+    // capped at 250 and the max width is 500. A target of 1400 clamps to 500.
+    const leftNeighbor = opening({ id: 'left', hostWallId: 'wall-a', position: 650, width: 200 })
+    expect(clampOpeningWidth(candidate, 1400, [rightNeighbor, leftNeighbor])).toBe(500)
+
+    // (d) A blocking-looking neighbor on a different wall does not constrain, so a
+    // target of 1400 is returned unchanged.
+    const offWall = opening({ id: 'off-wall', hostWallId: 'wall-b', position: 1600, width: 200 })
+    expect(clampOpeningWidth(candidate, 1400, [offWall])).toBe(1400)
   })
 })
