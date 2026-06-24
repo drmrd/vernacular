@@ -1,7 +1,7 @@
 import type { Project } from '../../core'
-import { DEFAULT_TOOL, type ToolId } from './active-tool-context'
+import { DEFAULT_TOOL, type ToolId } from './tool-types'
 
 export function initialToolForProject(project: Project): ToolId {
-  const isEmpty = project.floors.every((floor) => floor.walls.length === 0)
-  return isEmpty ? 'draw-wall' : DEFAULT_TOOL
+  const hasNoWalls = project.floors.every((floor) => floor.walls.length === 0)
+  return hasNoWalls ? 'draw-wall' : DEFAULT_TOOL
 }

@@ -1,15 +1,8 @@
 import { createContext, useContext } from 'react'
 
-export type ToolId =
-  | 'draw-wall'
-  | 'select'
-  | 'calibrate'
-  | 'place-opening'
-  | 'dimension'
-  | 'pan'
-  | 'place-furniture'
+import type { ToolId } from './tool-types'
 
-export const DEFAULT_TOOL: ToolId = 'select'
+export { DEFAULT_TOOL, type ToolId } from './tool-types'
 
 export interface ActiveToolValue {
   tool: ToolId
