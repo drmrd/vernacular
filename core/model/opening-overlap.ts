@@ -20,3 +20,35 @@ export function openingWouldOverlap(candidate: Opening, existing: readonly Openi
       Math.abs(other.position - candidate.position) < (other.width + candidate.width) / HALF,
   )
 }
+
+/**
+ * The along-wall coordinate to move `opening` to. If moving to `targetPosition`
+ * keeps the opening's span clear of every same-wall neighbor, the target is
+ * returned unchanged. Otherwise the target is clamped into the maximal
+ * overlap-free interval that contains the opening's current position, sliding
+ * flush against the blocking neighbor (touching is allowed) but no further.
+ * Neighbors on a different host wall, the opening itself, and neighbors that
+ * already overlap the current span are ignored.
+ */
+export function clampOpeningMove(
+  opening: Opening,
+  targetPosition: number,
+  others: readonly Opening[],
+): number {
+  const half = opening.width / HALF
+  const near = opening.position - half
+  const far = opening.position + half
+
+  let lo = -Infinity
+  let hi = Infinity
+  for (const other of others) {
+    if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
+    const otherHalf = other.width / HALF
+    const otherNear = other.position - otherHalf
+    const otherFar = other.position + otherHalf
+    if (otherFar <= near) lo = Math.max(lo, otherFar + half)
+    else if (otherNear >= far) hi = Math.min(hi, otherNear - half)
+  }
+
+  return Math.min(Math.max(targetPosition, lo), hi)
+}
