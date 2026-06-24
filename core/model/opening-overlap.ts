@@ -27,8 +27,16 @@ export function openingWouldOverlap(candidate: Opening, existing: readonly Openi
  * returned unchanged. Otherwise the target is clamped into the maximal
  * overlap-free interval that contains the opening's current position, sliding
  * flush against the blocking neighbor (touching is allowed) but no further.
- * Neighbors on a different host wall, the opening itself, and neighbors that
- * already overlap the current span are ignored.
+ *
+ * Neighbors on a different host wall and the opening itself never constrain the
+ * move. By design, a neighbor that already overlaps the opening's current span
+ * is also ignored: it sits to neither the left nor the right of the current
+ * span, so it contributes no bound. This keeps an invalid pre-existing overlap
+ * from spuriously trapping the opening.
+ *
+ * If the allowed interval is empty (`minCenter > maxCenter`), the input is
+ * already inside a pre-existing overlap and has no valid position to clamp to;
+ * the opening's current `position` is returned unchanged.
  */
 export function clampOpeningMove(
   opening: Opening,
@@ -36,19 +44,20 @@ export function clampOpeningMove(
   others: readonly Opening[],
 ): number {
   const half = opening.width / HALF
-  const near = opening.position - half
-  const far = opening.position + half
+  const candidateStart = opening.position - half
+  const candidateEnd = opening.position + half
 
-  let lo = -Infinity
-  let hi = Infinity
+  let minCenter = -Infinity
+  let maxCenter = Infinity
   for (const other of others) {
     if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
     const otherHalf = other.width / HALF
-    const otherNear = other.position - otherHalf
-    const otherFar = other.position + otherHalf
-    if (otherFar <= near) lo = Math.max(lo, otherFar + half)
-    else if (otherNear >= far) hi = Math.min(hi, otherNear - half)
+    const neighborStart = other.position - otherHalf
+    const neighborEnd = other.position + otherHalf
+    if (neighborEnd <= candidateStart) minCenter = Math.max(minCenter, neighborEnd + half)
+    else if (neighborStart >= candidateEnd) maxCenter = Math.min(maxCenter, neighborStart - half)
   }
 
-  return Math.min(Math.max(targetPosition, lo), hi)
+  if (minCenter > maxCenter) return opening.position
+  return Math.min(Math.max(targetPosition, minCenter), maxCenter)
 }
