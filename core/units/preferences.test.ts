@@ -15,11 +15,19 @@ describe('lengthFormatOptions resolving preferences', () => {
     })
   })
 
-  it('resolves the metric defaults to whole millimeters', () => {
+  it('resolves the metric defaults to metres at two decimal places', () => {
     expect(lengthFormatOptions(DEFAULT_METRIC_PREFERENCES)).toEqual({
       system: 'metric',
-      form: 'millimeters',
-      precision: { kind: 'decimal-places', places: 0 },
+      form: 'meters',
+      precision: { kind: 'decimal-places', places: 2 },
+    })
+  })
+
+  it("resolves the imperial default's metric fallback to metres at two decimal places", () => {
+    expect(lengthFormatOptions({ ...DEFAULT_IMPERIAL_PREFERENCES, system: 'metric' })).toEqual({
+      system: 'metric',
+      form: 'meters',
+      precision: { kind: 'decimal-places', places: 2 },
     })
   })
 
@@ -38,7 +46,7 @@ describe('lengthFormatOptions resolving preferences', () => {
   })
 
   it('produces options the formatter consumes directly', () => {
-    expect(formatLength(2030, lengthFormatOptions(DEFAULT_METRIC_PREFERENCES))).toBe('2030 mm')
+    expect(formatLength(2030, lengthFormatOptions(DEFAULT_METRIC_PREFERENCES))).toBe('2.03 m')
   })
 })
 

@@ -20,7 +20,7 @@ describe('the units public surface reached through the core barrel', () => {
     )
   })
 
-  it('formats the metric default as whole millimeters', () => {
-    expect(formatLength(2030, lengthFormatOptions(DEFAULT_METRIC_PREFERENCES))).toBe('2030 mm')
+  it('formats the metric default in metres', () => {
+    expect(formatLength(2030, lengthFormatOptions(DEFAULT_METRIC_PREFERENCES))).toBe('2.03 m')
   })
 })
