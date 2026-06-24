@@ -72,6 +72,11 @@ export function clampOpeningMove(
  * Neighbors on a different host wall and the opening itself never constrain the
  * width. With no same-wall neighbor, the side gaps are unbounded and
  * `targetWidth` is returned unchanged.
+ *
+ * If a same-wall neighbor already overlaps the opening's current span, the side
+ * gap to it is negative and the bounding half-width drops to `<= 0`. There is no
+ * valid centered width to clamp to in that case, so the opening's current
+ * `width` is returned unchanged.
  */
 export function clampOpeningWidth(
   opening: Opening,
@@ -82,12 +87,12 @@ export function clampOpeningWidth(
   for (const other of others) {
     if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
     const otherHalf = other.width / HALF
-    const sideGap =
-      other.position >= opening.position
-        ? other.position - otherHalf - opening.position
-        : opening.position - (other.position + otherHalf)
+    // Distance from the fixed center to the neighbor's near edge, on whichever
+    // side the neighbor sits. Negative when the neighbor already overlaps.
+    const sideGap = Math.abs(other.position - opening.position) - otherHalf
     maxHalfWidth = Math.min(maxHalfWidth, sideGap)
   }
 
+  if (maxHalfWidth <= 0) return opening.width
   return Math.min(targetWidth, maxHalfWidth * HALF)
 }
