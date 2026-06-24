@@ -80,7 +80,7 @@ export const NothingSelected: Story = {
     const screen = within(canvasElement)
     await expect(screen.getByText(/properties/i)).toBeInTheDocument()
     await expect(
-      screen.getByText('Pick the Wall tool and click to draw your first wall.'),
+      screen.getByText('Draw your first wall to get started'),
     ).toBeInTheDocument()
   },
 }

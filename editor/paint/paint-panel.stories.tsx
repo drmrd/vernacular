@@ -47,7 +47,7 @@ export const NoSelection: Story = {
   play: async ({ canvasElement }) => {
     const screen = within(canvasElement)
     await expect(
-      screen.getByRole('heading', { name: 'Select a surface to paint' }),
+      screen.getByRole('heading', { name: 'Pick a surface to paint' }),
     ).toBeInTheDocument()
   },
 }

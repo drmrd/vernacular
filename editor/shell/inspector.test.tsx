@@ -65,13 +65,13 @@ describe('Inspector', () => {
 
   it('shows a quiet hint when nothing is selected', () => {
     renderInspector([createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })])
-    expect(screen.getByText(/nothing selected/i)).toBeInTheDocument()
+    expect(screen.getByText('Nothing selected yet')).toBeInTheDocument()
   })
 
   it('shows a first-run cue naming the first action when the plan is empty and nothing is selected', () => {
     renderInspector()
     expect(
-      screen.getByText('Pick the Wall tool and click to draw your first wall.'),
+      screen.getByText('Draw your first wall to get started'),
     ).toBeInTheDocument()
     expect(screen.queryByText(/nothing selected/i)).toBeNull()
   })
