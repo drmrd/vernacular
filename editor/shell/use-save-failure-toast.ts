@@ -4,13 +4,16 @@ import type { AutosaveStatus } from '../../bridge'
 
 // Raise one error toast on the transition into the error status. A ref tracks the previous status so
 // re-renders that keep the status at error do not stack duplicate toasts.
-export function useSaveFailureToast(status: AutosaveStatus): void {
+export function useSaveFailureToast(status: AutosaveStatus, onRetry?: () => void): void {
   const { error } = useNotifications()
   const previous = useRef<AutosaveStatus>(status)
   useEffect(() => {
     if (status === 'error' && previous.current !== 'error') {
-      error('Save failed. Your latest changes are not saved yet.')
+      error(
+        'Save failed. Your latest changes are not saved yet.',
+        onRetry ? { actions: [{ label: 'Retry', onAction: onRetry }] } : undefined,
+      )
     }
     previous.current = status
-  }, [status, error])
+  }, [status, error, onRetry])
 }
