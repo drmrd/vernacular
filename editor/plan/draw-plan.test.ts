@@ -733,7 +733,7 @@ describe('drawRulers', () => {
     expect(recorder.fillRects.length).toBeGreaterThanOrEqual(2)
     // the origin label appears as text when in view at offset 0, formatted in the
     // metric default unit system
-    expect(recorder.texts.map((entry) => entry.text)).toContain('0 mm')
+    expect(recorder.texts.map((entry) => entry.text)).toContain('0.00 m')
   })
 
   it('draws short minor ticks at each grid line and full-height major ticks at the labels', () => {
