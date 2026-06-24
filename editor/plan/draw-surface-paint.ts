@@ -13,6 +13,8 @@ const BAND_LINE_WIDTH = 3
 // The brass accent stroke for the active surface highlight. Distinct from any treatment color.
 const ACTIVE_HIGHLIGHT_COLOR = '#b5894a'
 const ACTIVE_HIGHLIGHT_WIDTH = 2
+// The width in pixels of the highlighted-face band; thicker than the paint band so it reads on top.
+const HIGHLIGHT_BAND_WIDTH = 4
 const HALF = 0.5
 const FACE_SIDES = ['left', 'right'] as const
 
@@ -22,6 +24,8 @@ export interface SurfacePaintLayer {
   /** RAW wall id (no `wall:` prefix) + side -> treatment, or undefined when unpainted. */
   treatmentForFace: (wallId: string, side: 'left' | 'right') => SurfaceTreatment | undefined
   activeSurface: SurfaceRef | null
+  /** The wall face to highlight on top, drawn even when that face is unpainted. */
+  highlightedSurface?: SurfaceRef | null
   viewport: Viewport
 }
 
@@ -67,17 +71,24 @@ interface PaintedFace {
   treatment: SurfaceTreatment
 }
 
-/** Offset both wall endpoints perpendicular toward the face, then stroke the band in the treatment color. */
-function strokeBand(painter: SurfacePainter, face: PaintedFace): void {
-  const { wall, side, treatment } = face
+/** The wall's endpoints offset perpendicular toward `side` by half the wall thickness. */
+function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point; to: Point } {
   const direction = unitDirection(wall.start, wall.end)
   const perpendicular = { x: -direction.y, y: direction.x }
   const reach = (side === 'left' ? 1 : -1) * wall.thickness * HALF
   const offset = { x: perpendicular.x * reach, y: perpendicular.y * reach }
+  return {
+    from: { x: wall.start.x + offset.x, y: wall.start.y + offset.y },
+    to: { x: wall.end.x + offset.x, y: wall.end.y + offset.y },
+  }
+}
+
+/** Offset both wall endpoints perpendicular toward the face, then stroke the band in the treatment color. */
+function strokeBand(painter: SurfacePainter, face: PaintedFace): void {
+  const { wall, side, treatment } = face
   painter.ctx.strokeStyle = treatment.color.srgbHex
   painter.ctx.lineWidth = BAND_LINE_WIDTH
-  const from = { x: wall.start.x + offset.x, y: wall.start.y + offset.y }
-  const to = { x: wall.end.x + offset.x, y: wall.end.y + offset.y }
+  const { from, to } = offsetBand(wall, side)
   strokeSegment(painter, from, to)
 }
 
@@ -115,6 +126,22 @@ function drawActiveHighlight(painter: SurfacePainter, layer: SurfacePaintLayer):
   strokeSegment(painter, wall.start, wall.end)
 }
 
+/** Stroke the brass accent band along the highlighted wall face, even when that face is unpainted. */
+function drawHighlightedFace(painter: SurfacePainter, layer: SurfacePaintLayer): void {
+  const highlighted = layer.highlightedSurface
+  if (highlighted === null || highlighted === undefined || highlighted.kind !== 'wall-face') {
+    return
+  }
+  const wall = layer.walls.find((candidate) => rawWallId(candidate) === highlighted.wallId)
+  if (wall === undefined) {
+    return
+  }
+  painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
+  painter.ctx.lineWidth = HIGHLIGHT_BAND_WIDTH
+  const { from, to } = offsetBand(wall, highlighted.side)
+  strokeSegment(painter, from, to)
+}
+
 /** Paint each painted wall face as a thin colored band, then highlight the active surface's wall. */
 export function drawSurfacePaint(ctx: PlanDrawingContext, layer: SurfacePaintLayer): void {
   const painter: SurfacePainter = { ctx, viewport: layer.viewport }
@@ -122,4 +149,5 @@ export function drawSurfacePaint(ctx: PlanDrawingContext, layer: SurfacePaintLay
     drawWallBands(painter, wall, layer)
   }
   drawActiveHighlight(painter, layer)
+  drawHighlightedFace(painter, layer)
 }
