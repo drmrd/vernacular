@@ -60,6 +60,12 @@ function activeFloor(project: Readonly<Project>, activeFloorId: string | null) {
   return project.floors.find((floor) => floor.id === activeFloorId) ?? project.floors[0]
 }
 
+// The openings on the given floor, or an empty list when the floor is gone; handed to
+// the opening inspector so it can clamp a widened opening against same-wall neighbors.
+function floorOpenings(project: Readonly<Project>, floorId: string): readonly Opening[] {
+  return project.floors.find((floor) => floor.id === floorId)?.openings ?? []
+}
+
 /**
  * The single selected wall node, or null. Reflects a selected wall regardless of
  * the active tool (unlike the tool-gated `singleSelectedWall` the drag glue uses),
@@ -346,6 +352,9 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const project = session.getProject()
   const selectedOpening = singleSelectedOpening(selectedIds, project)
   if (selectedOpening !== null) {
+    // The openings on the selected opening's floor, so the inspector can clamp a
+    // widened opening against same-wall neighbors (filtered inside the component).
+    const siblingOpenings = floorOpenings(project, selectedOpening.floorId)
     return (
       // Key on the opening id so the inspector remounts when the selected opening
       // changes; its dimension fields seed from the opening at mount.
@@ -354,6 +363,7 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
         floorId={selectedOpening.floorId}
         opening={selectedOpening.opening}
         units={project.meta.units}
+        siblingOpenings={siblingOpenings}
         dispatch={session.dispatch}
       />
     )

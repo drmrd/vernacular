@@ -8,12 +8,15 @@ import {
   type SetStateAction,
 } from 'react'
 import {
+  clampOpeningResizeJamb,
   distance,
   MIN_OPENING_WIDTH_MM,
   WALL_NODE_PREFIX,
   resizeOpeningEdge,
+  type Opening,
   type OpeningSceneNode,
   type Point,
+  type Project,
   type SceneGraph,
   type UnitPreferences,
   type WallSceneNode,
@@ -78,27 +81,47 @@ interface DragState {
   opening: OpeningSceneNode
   hostWall: WallSceneNode
   edge: OpeningResizeEdge
+  // The dragged opening's persisted model and its floor's openings, captured at
+  // grab time so the live resize can clamp the jamb against same-wall neighbors.
+  // `model` is null only when the opening is gone from the project.
+  model: Opening | null
+  siblings: readonly Opening[]
 }
 
 interface ResizeControl {
   drag: RefObject<DragState | null>
   setReadout: Dispatch<SetStateAction<DragReadout | undefined>>
+  session: EditorSession
   viewport: Viewport
   preferences: UnitPreferences
 }
 
+// The dragged opening's persisted model and the openings on its floor, looked up by
+// the opening's raw id; a null model and empty siblings when the floor or opening is gone.
+function resolveResizeModel(
+  project: Readonly<Project>,
+  node: OpeningSceneNode,
+): { model: Opening | null; siblings: readonly Opening[] } {
+  const floor = project.floors.find((candidate) => candidate.id === node.floorId)
+  const model = floor?.openings.find((candidate) => candidate.id === rawOpeningId(node)) ?? null
+  return { model, siblings: floor?.openings ?? [] }
+}
+
 // The clamped, snapped resize for the cursor: project the cursor onto the host wall to
-// find the dragged jamb, snap it to a wall end, and recompute the width and center with
-// the opposite jamb fixed. The opening's current center projects to its along-wall position.
+// find the dragged jamb, snap it to a wall end, clamp it so the resized span cannot
+// overlap a same-wall neighbor, and recompute the width and center with the opposite
+// jamb fixed. The opening's current center projects to its along-wall position.
 function resolveResize(drag: DragState, world: Point, viewport: Viewport): OpeningResize {
-  const { opening, hostWall, edge } = drag
+  const { opening, hostWall, edge, model, siblings } = drag
   const wallLength = distance(hostWall.start, hostWall.end)
   const rawJamb = projectPointOntoWall(hostWall.start, hostWall.end, world)
   const snapped = snapJambToWallEnd(rawJamb, wallLength, HANDLE_GRAB_PIXELS / viewport.scale)
+  const guardedJamb =
+    model === null ? snapped : clampOpeningResizeJamb(model, edge, snapped, siblings)
   const position = projectPointOntoWall(hostWall.start, hostWall.end, opening.center)
   return computeOpeningResize({
     edge,
-    draggedJambPosition: snapped,
+    draggedJambPosition: guardedJamb,
     width: opening.width,
     position,
     wallLength,
@@ -112,7 +135,7 @@ function useResizeGrab(
   graph: SceneGraph,
   control: ResizeControl,
 ): (event: PointerEvent<HTMLCanvasElement>) => boolean {
-  const { drag, viewport } = control
+  const { drag, session, viewport } = control
   return useCallback(
     (event: PointerEvent<HTMLCanvasElement>): boolean => {
       if (selectedOpening === null || event.button !== PRIMARY_BUTTON) {
@@ -126,10 +149,11 @@ function useResizeGrab(
         return false
       }
       event.currentTarget.setPointerCapture(event.pointerId)
-      drag.current = { opening: selectedOpening, hostWall, edge }
+      const { model, siblings } = resolveResizeModel(session.getProject(), selectedOpening)
+      drag.current = { opening: selectedOpening, hostWall, edge, model, siblings }
       return true
     },
-    [selectedOpening, graph, drag, viewport],
+    [selectedOpening, graph, session, drag, viewport],
   )
 }
 
@@ -154,10 +178,9 @@ function useResizeMove(
 
 /** Release: clear the drag and dispatch an undoable resize from the cursor's final jamb position. */
 function useResizeRelease(
-  session: EditorSession,
   control: ResizeControl,
 ): (event: PointerEvent<HTMLCanvasElement>) => void {
-  const { drag, setReadout, viewport } = control
+  const { drag, setReadout, session, viewport } = control
   return useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       const active = drag.current
@@ -194,9 +217,9 @@ export function useOpeningResizing({
 }: OpeningResizingDeps): OpeningResizing {
   const drag = useRef<DragState | null>(null)
   const [readout, setReadout] = useState<DragReadout | undefined>(undefined)
-  const control: ResizeControl = { drag, setReadout, viewport, preferences }
+  const control: ResizeControl = { drag, setReadout, session, viewport, preferences }
   const onPointerDown = useResizeGrab(selectedOpening, graph, control)
   const onPointerMove = useResizeMove(control)
-  const onPointerUp = useResizeRelease(session, control)
+  const onPointerUp = useResizeRelease(control)
   return { readout, onPointerDown, onPointerMove, onPointerUp }
 }
