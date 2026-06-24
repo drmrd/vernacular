@@ -20,9 +20,10 @@ sourceFiles:
     scripts/story-index.test.ts,
     package.json,
     .github/workflows/ci.yml,
+    .github/workflows/refresh-story-baselines.yml,
   ]
 status: current
-updated: 2026-06-20
+updated: 2026-06-23
 ---
 
 # ADR-0117: Visual regression for Storybook stories
@@ -30,9 +31,29 @@ updated: 2026-06-20
 ## Status
 
 Accepted, landed. Every testable Storybook story now has a committed screenshot baseline, and
-CI fails when a story's rendered pixels drift from it. The baselines are generated in a linux
-container so they match the ubuntu CI runner, and the suite reads its story list from the built
-Storybook index, so it grows on its own as the story backfill in ADR-0111 lands.
+CI fails when a story's rendered pixels drift from it. The baselines are generated on the ubuntu CI
+runner so they match it, and the suite reads its story list from the built Storybook index, so it
+grows on its own as the story backfill in ADR-0111 lands.
+
+## Update (2026-06-23): baselines render on the CI runner, and the gate enforces
+
+The decision below rendered baselines in a Playwright linux container at the developer machine's own
+architecture and trusted the pixel threshold to absorb the gap between an arm64 render and the amd64
+CI runner. That gap was wider than expected. Glyph height shifted by a few pixels between the two
+chromium builds, past the threshold for most stories, so the gate shipped with continue-on-error and
+the diff was advisory rather than enforced. Re-rendering the committed set on the runner showed how
+widespread the drift was: 54 of the 75 existing baselines changed.
+
+The fix is to render the baselines on the runner that gates them. A manually dispatched workflow,
+refresh-story-baselines, builds Storybook and regenerates every baseline on the amd64 ubuntu runner,
+then uploads them as an artifact to download and commit. With the baselines and the gate on the same
+architecture the cross-build drift is gone, so continue-on-error is removed: a drift in the
+storybook-build job is again a real visual change that fails the run.
+
+A developer machine still cannot make these baselines. It is arm64, amd64 chromium crashes under
+qemu, and the docker stories:update-snapshots script renders arm64 pixels that will not match the
+runner. That script stays useful for a quick local look, but the committed baselines come from the
+workflow.
 
 ## Context
 
