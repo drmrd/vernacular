@@ -1,6 +1,9 @@
-import { createRegistry, type Registry, type RegistryEntry } from './registry'
+import { createRegistry, getEntry, type Registry, type RegistryEntry } from './registry'
 
 export type ElementCategory = 'wall' | 'opening' | 'stair'
+
+/** Whether an opening reads as a door or a window. */
+export type OpeningKind = 'door' | 'window'
 
 export interface Plan2DSymbol {
   /** Identifier of the 2D plan-symbol drawing routine. */
@@ -313,3 +316,23 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
     },
   ],
 )
+
+const doorFamilies: ReadonlySet<OpeningFamily> = new Set([
+  'swing',
+  'slide',
+  'fold',
+  'pivot',
+  'cased',
+])
+
+/**
+ * Classifies a built-in element type as a door or window opening. Returns `undefined`
+ * when the id is unknown or the type is not an opening.
+ */
+export function openingKindOfType(typeId: string): OpeningKind | undefined {
+  const family = getEntry(builtinElementTypes, typeId)?.opening?.family
+  if (family === undefined) {
+    return undefined
+  }
+  return doorFamilies.has(family) ? 'door' : 'window'
+}
