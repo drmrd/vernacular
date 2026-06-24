@@ -57,6 +57,13 @@ export function WallFinishSection({
         onSelect={(value) => {
           if (isFaceSide(value)) setSide(value)
         }}
+        onHover={(hovered) => {
+          if (hovered === null) {
+            surfaceSelection.highlight({ kind: 'wall-face', wallId, side })
+          } else if (isFaceSide(hovered)) {
+            surfaceSelection.highlight({ kind: 'wall-face', wallId, side: hovered })
+          }
+        }}
       />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
