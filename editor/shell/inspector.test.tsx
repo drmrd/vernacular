@@ -70,9 +70,7 @@ describe('Inspector', () => {
 
   it('shows a first-run cue naming the first action when the plan is empty and nothing is selected', () => {
     renderInspector()
-    expect(
-      screen.getByText('Draw your first wall to get started'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Draw your first wall to get started')).toBeInTheDocument()
     expect(screen.queryByText(/nothing selected/i)).toBeNull()
   })
 

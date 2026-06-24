@@ -79,9 +79,7 @@ export const NothingSelected: Story = {
   play: async ({ canvasElement }) => {
     const screen = within(canvasElement)
     await expect(screen.getByText(/properties/i)).toBeInTheDocument()
-    await expect(
-      screen.getByText('Draw your first wall to get started'),
-    ).toBeInTheDocument()
+    await expect(screen.getByText('Draw your first wall to get started')).toBeInTheDocument()
   },
 }
 
