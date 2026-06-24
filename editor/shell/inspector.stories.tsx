@@ -5,9 +5,11 @@ import {
   EditorSessionProvider,
   SelectionProvider,
   ActiveFloorProvider,
+  SurfaceSelectionProvider,
   createEditorSession,
   createSelectionStore,
   createActiveFloorStore,
+  createSurfaceSelectionStore,
 } from '../../bridge'
 import { createEmptyProject, createFloor, createWall, type Wall } from '../../core'
 import { Inspector } from './inspector'
@@ -16,6 +18,13 @@ const meta: Meta<typeof Inspector> = {
   title: 'Editor/Inspector',
   component: Inspector,
   tags: ['autodocs'],
+  decorators: [
+    (story) => (
+      <SurfaceSelectionProvider store={createSurfaceSelectionStore()}>
+        {story()}
+      </SurfaceSelectionProvider>
+    ),
+  ],
 }
 
 export default meta

@@ -5,11 +5,15 @@ export interface SurfaceSelectionStore {
   isActive(ref: SurfaceRef): boolean
   select(ref: SurfaceRef): void
   clear(): void
+  getHighlightedSurface(): SurfaceRef | null
+  highlight(ref: SurfaceRef): void
+  clearHighlight(): void
   subscribe(listener: () => void): () => void
 }
 
 export function createSurfaceSelectionStore(): SurfaceSelectionStore {
   let active: SurfaceRef | null = null
+  let highlighted: SurfaceRef | null = null
   const listeners = new Set<() => void>()
 
   const notify = (): void => {
@@ -27,6 +31,15 @@ export function createSurfaceSelectionStore(): SurfaceSelectionStore {
     },
     clear: () => {
       active = null
+      notify()
+    },
+    getHighlightedSurface: () => highlighted,
+    highlight: (ref) => {
+      highlighted = ref
+      notify()
+    },
+    clearHighlight: () => {
+      highlighted = null
       notify()
     },
     subscribe(listener) {

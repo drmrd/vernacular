@@ -16,11 +16,18 @@ export interface SegmentedProps {
   onSelect: (value: string) => void
   /** Optional accessible name for the option group (rendered as aria-label). */
   label?: string
+  /** Fires with an option's `value` when the pointer enters it, and with null when the pointer leaves the group. */
+  onHover?: (value: string | null) => void
 }
 
-export function Segmented({ options, value, onSelect, label }: SegmentedProps) {
+export function Segmented({ options, value, onSelect, label, onHover }: SegmentedProps) {
   return (
-    <div className="ds-segmented" role="group" aria-label={label}>
+    <div
+      className="ds-segmented"
+      role="group"
+      aria-label={label}
+      onMouseLeave={() => onHover?.(null)}
+    >
       {options.map((option) => {
         const isActive = option.value === value
         const classes = ['ds-segmented__option', isActive && 'is-active'].filter(Boolean).join(' ')
@@ -31,6 +38,7 @@ export function Segmented({ options, value, onSelect, label }: SegmentedProps) {
             className={classes}
             aria-pressed={isActive}
             onClick={() => onSelect(option.value)}
+            onMouseEnter={() => onHover?.(option.value)}
           >
             {option.label}
           </button>

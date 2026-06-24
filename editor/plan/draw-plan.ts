@@ -91,7 +91,10 @@ export interface DrawPlanOptions {
   dimensions?: readonly DrawableDimension[]
   calibration?: PreviewSegment
   ghost?: readonly PreviewSegment[]
-  surfacePaint?: Pick<SurfacePaintLayer, 'treatmentForFace' | 'activeSurface'>
+  surfacePaint?: Pick<
+    SurfacePaintLayer,
+    'treatmentForFace' | 'activeSurface' | 'highlightedSurface'
+  >
   /** The active floor's solid paint color; tints every room fill when set. */
   roomFillColor?: string
   /** The canvas color palette; defaults to the warm light-theme palette when absent. */
