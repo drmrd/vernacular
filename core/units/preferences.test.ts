@@ -23,6 +23,14 @@ describe('lengthFormatOptions resolving preferences', () => {
     })
   })
 
+  it("resolves the imperial default's metric fallback to metres at two decimal places", () => {
+    expect(lengthFormatOptions({ ...DEFAULT_IMPERIAL_PREFERENCES, system: 'metric' })).toEqual({
+      system: 'metric',
+      form: 'meters',
+      precision: { kind: 'decimal-places', places: 2 },
+    })
+  })
+
   it('resolves a decimal imperial form using its decimal-places precision', () => {
     expect(
       lengthFormatOptions({
