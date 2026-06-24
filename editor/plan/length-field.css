@@ -7,3 +7,8 @@
 .length-field > :first-child {
   flex: 1;
 }
+
+.length-field__unit {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}

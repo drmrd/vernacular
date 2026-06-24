@@ -21,6 +21,10 @@ export interface SegmentedProps {
    * `aria-label`. It names the group for assistive tech and `getByRole` queries
    * without being picked up by label-text queries, so a picker can sit beside an
    * input that shares a word in its label without colliding.
+   *
+   * Caveat: `title` also renders a native browser tooltip on the group container,
+   * so use it only when that tooltip is acceptable; prefer `label`/`aria-label`
+   * otherwise.
    */
   title?: string
   /** Fires with an option's `value` when the pointer enters it, and with null when the pointer leaves the group. */

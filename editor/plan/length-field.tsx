@@ -66,9 +66,11 @@ export interface LengthFieldProps {
 }
 
 interface LengthEntry {
+  // Read-only state.
   entryUnit: AssumedUnit
   text: string
   error: string | null
+  // Callbacks.
   setText: (text: string) => void
   commit: () => void
   handleBlur: () => void
@@ -96,6 +98,16 @@ function commitText(text: string, entryUnit: AssumedUnit, sinks: CommitSinks): v
   }
 }
 
+// Re-express the current text in millimetres, falling back to the committed value
+// when the entry cannot be parsed so a unit switch never loses the field.
+function currentMm(text: string, entryUnit: AssumedUnit, fallbackMm: number): number {
+  try {
+    return parseLength(text, { assumeUnit: entryUnit })
+  } catch {
+    return fallbackMm
+  }
+}
+
 // Drives the editable text and selected entry unit. Pressing a unit button steals
 // focus from the input; the switching flag turns that blur into a re-express rather
 // than a commit, so a unit switch never dispatches a resize.
@@ -112,6 +124,10 @@ function useLengthEntry(
   const commit = (): void => commitText(text, entryUnit, { onCommitMm, setError })
 
   function changeUnit(next: string): void {
+    // Ignore an unrecognised option so a stray value never formats with a bad unit.
+    if (!ENTRY_UNITS[system].includes(next as AssumedUnit)) {
+      return
+    }
     const nextUnit = next as AssumedUnit
     setText(formatEntryMagnitude(currentMm(text, entryUnit, valueMm), nextUnit))
     setEntryUnit(nextUnit)
@@ -125,7 +141,9 @@ function useLengthEntry(
     error,
     setText,
     commit,
-    handleBlur: () => (switchingUnit.current ? undefined : commit()),
+    handleBlur: () => {
+      if (!switchingUnit.current) commit()
+    },
     changeUnit,
     pressUnit: () => {
       switchingUnit.current = true
@@ -177,14 +195,4 @@ export function LengthField({
       />
     </div>
   )
-}
-
-// Re-express the current text in millimetres, falling back to the committed value
-// when the entry cannot be parsed so a unit switch never loses the field.
-function currentMm(text: string, entryUnit: AssumedUnit, fallbackMm: number): number {
-  try {
-    return parseLength(text, { assumeUnit: entryUnit })
-  } catch {
-    return fallbackMm
-  }
 }
