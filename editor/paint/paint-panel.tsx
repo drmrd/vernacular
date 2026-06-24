@@ -133,7 +133,7 @@ export function PaintPanel(props: PaintPanelProps): ReactElement {
           dispatch={props.dispatch}
         />
       ) : (
-        <EmptyState title="Select a surface to paint" asRegion={false} />
+        <EmptyState title="Pick a surface to paint" asRegion={false} />
       )}
     </Stack>
   )
