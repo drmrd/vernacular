@@ -1,5 +1,6 @@
 import type { Floor, Opening, Project } from '../../model/types'
-import { builtinElementTypes, openingKindOfType } from '../../registries/element-types'
+import { builtinElementTypes } from '../../registries/element-types'
+import { openingKindOfType } from '../../registries/opening-kind'
 import { getEntry } from '../../registries/registry'
 import { assertNonNegativeLength, assertPositiveLength } from '../../units/length-bounds'
 import type { Command, CommandHandler } from '../command'
