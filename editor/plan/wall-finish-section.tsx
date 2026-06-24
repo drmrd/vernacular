@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
-import { useSurfaceSelection } from '../../bridge'
 import { SectionLabel, Segmented } from '../design-system'
+import { useWallFaceHighlight } from './use-wall-face-highlight'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
 import './finish-section.css'
@@ -38,11 +38,7 @@ export function WallFinishSection({
   dispatch,
 }: WallFinishSectionProps) {
   const [side, setSide] = useState<'left' | 'right'>('left')
-  const surfaceSelection = useSurfaceSelection()
-  useEffect(() => {
-    surfaceSelection.highlight({ kind: 'wall-face', wallId, side })
-    return () => surfaceSelection.clearHighlight()
-  }, [surfaceSelection, wallId, side])
+  const onHoverFace = useWallFaceHighlight(wallId, side)
   const ref: SurfaceRef = { kind: 'wall-face', wallId, side }
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
@@ -57,13 +53,7 @@ export function WallFinishSection({
         onSelect={(value) => {
           if (isFaceSide(value)) setSide(value)
         }}
-        onHover={(hovered) => {
-          if (hovered === null) {
-            surfaceSelection.highlight({ kind: 'wall-face', wallId, side })
-          } else if (isFaceSide(hovered)) {
-            surfaceSelection.highlight({ kind: 'wall-face', wallId, side: hovered })
-          }
-        }}
+        onHover={onHoverFace}
       />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       {treatment?.kind === 'solid' ? (
