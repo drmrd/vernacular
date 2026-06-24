@@ -61,3 +61,33 @@ export function clampOpeningMove(
   if (minCenter > maxCenter) return opening.position
   return Math.min(Math.max(targetPosition, minCenter), maxCenter)
 }
+
+/**
+ * The width to resize `opening` to, kept centered on its current `position`. The
+ * opening grows symmetrically until its near edge meets the closest same-wall
+ * neighbor on either side (touching is allowed), and never beyond
+ * `targetWidth`. The smaller of the two side gaps bounds the half-width, so the
+ * centered span stays clear of every neighbor.
+ *
+ * Neighbors on a different host wall and the opening itself never constrain the
+ * width. With no same-wall neighbor, the side gaps are unbounded and
+ * `targetWidth` is returned unchanged.
+ */
+export function clampOpeningWidth(
+  opening: Opening,
+  targetWidth: number,
+  others: readonly Opening[],
+): number {
+  let maxHalfWidth = Infinity
+  for (const other of others) {
+    if (other.id === opening.id || other.hostWallId !== opening.hostWallId) continue
+    const otherHalf = other.width / HALF
+    const sideGap =
+      other.position >= opening.position
+        ? other.position - otherHalf - opening.position
+        : opening.position - (other.position + otherHalf)
+    maxHalfWidth = Math.min(maxHalfWidth, sideGap)
+  }
+
+  return Math.min(targetWidth, maxHalfWidth * HALF)
+}
