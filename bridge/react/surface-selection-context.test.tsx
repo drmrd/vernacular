@@ -4,7 +4,11 @@ import { surfaceKey } from '../../core'
 import type { SurfaceRef } from '../../core'
 import { createSurfaceSelectionStore } from '../selection/surface-selection-store'
 import { SurfaceSelectionProvider } from './surface-selection-provider'
-import { useSurfaceSelection, useActiveSurface } from './surface-selection-context'
+import {
+  useSurfaceSelection,
+  useActiveSurface,
+  useHighlightedSurface,
+} from './surface-selection-context'
 
 afterEach(cleanup)
 
@@ -18,6 +22,11 @@ function SurfaceReadout() {
       {active === null ? 'none' : surfaceKey(active)}
     </button>
   )
+}
+
+function HighlightReadout() {
+  const highlighted = useHighlightedSurface()
+  return <span>{highlighted === null ? 'none' : surfaceKey(highlighted)}</span>
 }
 
 describe('SurfaceSelectionProvider', () => {
@@ -34,6 +43,21 @@ describe('SurfaceSelectionProvider', () => {
       store.select(wallFaceLeft)
     })
     expect(screen.getByRole('button')).toHaveTextContent(surfaceKey(wallFaceLeft))
+  })
+
+  it('exposes the highlighted surface to consumers and re-renders them on change', () => {
+    const store = createSurfaceSelectionStore()
+    render(
+      <SurfaceSelectionProvider store={store}>
+        <HighlightReadout />
+      </SurfaceSelectionProvider>,
+    )
+
+    expect(screen.getByText('none')).toBeInTheDocument()
+    act(() => {
+      store.highlight(wallFaceLeft)
+    })
+    expect(screen.getByText(surfaceKey(wallFaceLeft))).toBeInTheDocument()
   })
 
   it('throws when useSurfaceSelection is used outside a provider', () => {
