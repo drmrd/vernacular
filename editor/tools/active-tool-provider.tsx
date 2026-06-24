@@ -3,10 +3,11 @@ import { ActiveToolContext, DEFAULT_TOOL, type ToolId } from './active-tool-cont
 
 export interface ActiveToolProviderProps {
   children: ReactNode
+  initialTool?: ToolId
 }
 
-export function ActiveToolProvider({ children }: ActiveToolProviderProps) {
-  const [tool, setTool] = useState<ToolId>(DEFAULT_TOOL)
+export function ActiveToolProvider({ children, initialTool }: ActiveToolProviderProps) {
+  const [tool, setTool] = useState<ToolId>(initialTool ?? DEFAULT_TOOL)
   const value = useMemo(() => ({ tool, setTool }), [tool])
   return <ActiveToolContext.Provider value={value}>{children}</ActiveToolContext.Provider>
 }

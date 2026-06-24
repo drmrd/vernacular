@@ -9,7 +9,13 @@ import {
   loadOrCreateProject,
   type EditorSession,
 } from '../bridge'
-import { ActiveToolProvider, EditLayerProvider, DiscardDialog, EditorShell } from '../editor'
+import {
+  ActiveToolProvider,
+  EditLayerProvider,
+  DiscardDialog,
+  EditorShell,
+  initialToolForProject,
+} from '../editor'
 import { AssetProviders } from './asset-providers'
 import { NotificationProvider, ThemeProvider } from '../editor/design-system'
 import {
@@ -322,7 +328,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         <AssetProviders assets={assets} library={ws.assetLibrary}>
           <SelectionProvider store={ws.selection}>
             <ActiveFloorProvider store={ws.activeFloorStore}>
-              <ActiveToolProvider>
+              <ActiveToolProvider initialTool={initialToolForProject(session.getProject())}>
                 <EditLayerProvider>
                   <EditorShell
                     saveStatus={ws.saveStatus}
