@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import './opening-inspector.css'
 import {
+  clampOpeningWidth,
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   flipOpening,
@@ -82,6 +83,8 @@ export interface OpeningInspectorProps {
   floorId: string
   opening: Opening
   units: UnitSystem
+  /** Openings on the same floor; used to clamp a widened opening against same-wall neighbors. */
+  siblingOpenings?: readonly Opening[]
   dispatch: (command: Command) => void
 }
 
@@ -202,6 +205,7 @@ export function OpeningInspector({
   floorId,
   opening,
   units,
+  siblingOpenings = [],
   dispatch,
 }: OpeningInspectorProps): ReactElement {
   const preferences = PREFERENCES_BY_UNITS[units]
@@ -218,7 +222,14 @@ export function OpeningInspector({
         preferences={preferences}
         assumeUnit={assumeUnit}
         units={units}
-        onResize={(dimensions) => dispatch(resizeOpening(floorId, opening.id, dimensions))}
+        onResize={(dimensions) =>
+          dispatch(
+            resizeOpening(floorId, opening.id, {
+              ...dimensions,
+              width: clampOpeningWidth(opening, dimensions.width, siblingOpenings),
+            }),
+          )
+        }
       />
       <OpeningControls floorId={floorId} openingId={opening.id} dispatch={dispatch} />
     </Stack>
