@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import userEvent from '@testing-library/user-event'
 import { SurfaceSelectionContext } from '../../bridge/react/surface-selection-context'
@@ -176,6 +176,49 @@ describe('WallFinishSection', () => {
       kind: 'wall-face',
       wallId: 'w1',
       side: 'left',
+    })
+  })
+
+  it('previews the wall B face on the plan while the B chip is hovered without changing the selection', async () => {
+    const user = userEvent.setup()
+    const { store } = renderWithSurface(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+    )
+
+    await user.hover(screen.getByRole('button', { name: 'B' }))
+
+    expect(store.getHighlightedSurface()).toEqual({
+      kind: 'wall-face',
+      wallId: 'w1',
+      side: 'right',
+    })
+    expect(screen.getByRole('button', { name: 'A' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('reverts the plan highlight to the selected wall face when the pointer leaves the chips', async () => {
+    const user = userEvent.setup()
+    const { store } = renderWithSurface(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'B' }))
+    await user.hover(screen.getByRole('button', { name: 'A' }))
+    fireEvent.mouseLeave(screen.getByRole('group', { name: 'Wall face' }))
+
+    expect(store.getHighlightedSurface()).toEqual({
+      kind: 'wall-face',
+      wallId: 'w1',
+      side: 'right',
     })
   })
 

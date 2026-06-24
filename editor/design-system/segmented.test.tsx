@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Segmented } from './index'
 
@@ -55,5 +55,35 @@ describe('Segmented', () => {
     expect(screen.getByRole('button', { name: 'Elevation' })).toHaveFocus()
     await userEvent.tab()
     expect(screen.getByRole('button', { name: 'Perspective' })).toHaveFocus()
+  })
+
+  it('reports the previewed option value through onHover when an option is hovered', async () => {
+    const onHover = vi.fn()
+    render(
+      <Segmented options={viewOptions} value="plan" onSelect={() => {}} onHover={onHover} />,
+    )
+
+    await userEvent.hover(screen.getByRole('button', { name: 'Elevation' }))
+
+    expect(onHover).toHaveBeenCalledWith('elevation')
+  })
+
+  it('reports null through onHover when the pointer leaves the group', () => {
+    const onHover = vi.fn()
+    render(
+      <Segmented options={viewOptions} value="plan" onSelect={() => {}} onHover={onHover} />,
+    )
+
+    fireEvent.mouseLeave(screen.getByRole('group'))
+
+    expect(onHover).toHaveBeenCalledWith(null)
+  })
+
+  it('does not throw when an option is hovered without an onHover handler', async () => {
+    render(<Segmented options={viewOptions} value="plan" onSelect={() => {}} />)
+
+    await expect(
+      userEvent.hover(screen.getByRole('button', { name: 'Elevation' })),
+    ).resolves.not.toThrow()
   })
 })
