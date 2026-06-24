@@ -1,5 +1,6 @@
 import { useCallback, useRef, type PointerEvent } from 'react'
 import {
+  clampOpeningMove,
   moveOpening,
   pointInPolygon,
   type Opening,
@@ -38,32 +39,41 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
 }
 
-// Resolve the dragged opening's host wall from the project so the release can
-// project the cursor onto it; null when the floor, opening, or host wall is gone.
-function resolveHostWall(project: Readonly<Project>, node: OpeningSceneNode): Wall | null {
-  const floor = project.floors.find((candidate) => candidate.id === node.floorId)
-  if (floor === undefined) {
-    return null
-  }
-  const opening: Opening | undefined = floor.openings.find(
-    (candidate) => candidate.id === rawOpeningId(node),
-  )
-  if (opening === undefined) {
-    return null
-  }
-  return floor.walls.find((wall) => wall.id === opening.hostWallId) ?? null
+interface MoveTarget {
+  opening: Opening
+  hostWall: Wall
+  // The openings on the dragged opening's floor, used to clamp the move against
+  // same-wall neighbors; `clampOpeningMove` filters by host wall and id.
+  siblings: readonly Opening[]
 }
 
-// Dispatch the undoable along-wall move for the dragged opening; a missing host
-// wall no-ops so a half-resolved project never dispatches a bad command.
+// Resolve the dragged opening, its host wall, and its floor's openings from the
+// project so the release can project the cursor onto the wall and clamp the move;
+// null when the floor, opening, or host wall is gone.
+function resolveMoveTarget(project: Readonly<Project>, node: OpeningSceneNode): MoveTarget | null {
+  const floor = project.floors.find((candidate) => candidate.id === node.floorId)
+  const opening = floor?.openings.find((candidate) => candidate.id === rawOpeningId(node))
+  const hostWall = floor?.walls.find((wall) => wall.id === opening?.hostWallId)
+  if (floor === undefined || opening === undefined || hostWall === undefined) {
+    return null
+  }
+  return { opening, hostWall, siblings: floor.openings }
+}
+
+// Dispatch the undoable along-wall move for the dragged opening, clamped so it
+// cannot slide on top of a same-wall neighbor; a missing host wall no-ops so a
+// half-resolved project never dispatches a bad command.
 function dispatchMove(session: EditorSession, node: OpeningSceneNode, world: Point): void {
-  const hostWall = resolveHostWall(session.getProject(), node)
-  if (hostWall === null) {
+  const target = resolveMoveTarget(session.getProject(), node)
+  if (target === null) {
     return
   }
-  session.dispatch(
-    moveOpening(node.floorId, rawOpeningId(node), openingDragPosition(hostWall, world)),
+  const position = clampOpeningMove(
+    target.opening,
+    openingDragPosition(target.hostWall, world),
+    target.siblings,
   )
+  session.dispatch(moveOpening(node.floorId, rawOpeningId(node), position))
 }
 
 /**
