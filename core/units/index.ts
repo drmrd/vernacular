@@ -25,6 +25,7 @@ export {
 export { preferencesForUnits } from './preferences-for-units'
 export { formatArea } from './format-area'
 export { formatAdaptiveLength } from './format-adaptive-length'
+export { formatEntryMagnitude } from './format-entry-magnitude'
 export type { FormatLengthOptions } from './format-length'
 export { formatLength } from './format-length'
 export type { AssumedUnit, ParseLengthOptions } from './parse-length'

@@ -416,6 +416,7 @@ export {
   feetToMillimeters,
   formatAdaptiveLength,
   formatArea,
+  formatEntryMagnitude,
   formatLength,
   inchesToMillimeters,
   lengthFormatOptions,
