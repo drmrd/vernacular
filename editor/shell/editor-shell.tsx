@@ -329,7 +329,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // palette, the snap panel, and the plan's snapping all read one source, persisted
   // to localStorage as an editor preference.
   const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
-  useSaveFailureToast(saveStatus)
+  useSaveFailureToast(saveStatus, projectControls.onSave)
   return (
     // The command-palette provider wraps everything so the keybinding layer, the
     // command bar, and the palette dialog all share one open/close state. The
