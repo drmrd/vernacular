@@ -59,9 +59,7 @@ describe('Segmented', () => {
 
   it('reports the previewed option value through onHover when an option is hovered', async () => {
     const onHover = vi.fn()
-    render(
-      <Segmented options={viewOptions} value="plan" onSelect={() => {}} onHover={onHover} />,
-    )
+    render(<Segmented options={viewOptions} value="plan" onSelect={() => {}} onHover={onHover} />)
 
     await userEvent.hover(screen.getByRole('button', { name: 'Elevation' }))
 
@@ -70,9 +68,7 @@ describe('Segmented', () => {
 
   it('reports null through onHover when the pointer leaves the group', () => {
     const onHover = vi.fn()
-    render(
-      <Segmented options={viewOptions} value="plan" onSelect={() => {}} onHover={onHover} />,
-    )
+    render(<Segmented options={viewOptions} value="plan" onSelect={() => {}} onHover={onHover} />)
 
     fireEvent.mouseLeave(screen.getByRole('group'))
 
