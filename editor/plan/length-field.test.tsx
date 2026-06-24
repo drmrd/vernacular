@@ -1,73 +1,154 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { DEFAULT_METRIC_PREFERENCES, InvalidLengthError, parseLength } from '../../core'
+import {
+  DEFAULT_IMPERIAL_PREFERENCES,
+  DEFAULT_METRIC_PREFERENCES,
+  InvalidLengthError,
+  type UnitPreferences,
+} from '../../core'
 import { LengthField } from './length-field'
-import { WallThicknessEditor } from './wall-thickness-editor'
-import { RoomCeilingHeightEditor } from './room-ceiling-height-editor'
 
-// A metric project reads a bare number as millimeters, so a typed entry parses
-// to that exact millimetre value. Fixed so the committed payload is deterministic.
 const INPUT_ID = 'opening-width-o1'
 const LABEL = 'Width'
-// The label spells out the field's assumed unit, including millimetres, so the
-// metric field reads "Width (mm)" just as the imperial field reads "Width (in)".
-const METRIC_LABEL = 'Width (mm)'
 const CURRENT_MM = 900
-const METRIC_ASSUMED_UNIT = 'mm' as const
-const ENTERED_VALUE = '1200'
-const EXPECTED_MM = parseLength(ENTERED_VALUE, { assumeUnit: METRIC_ASSUMED_UNIT })
-const OUT_OF_RANGE_ENTRY = '-5'
 
-function renderField(onCommitMm: (mm: number) => void) {
+function renderField(
+  onCommitMm: (mm: number) => void,
+  preferences: UnitPreferences = DEFAULT_METRIC_PREFERENCES,
+  valueMm: number = CURRENT_MM,
+) {
   render(
     <LengthField
       inputId={INPUT_ID}
       label={LABEL}
-      valueMm={CURRENT_MM}
-      preferences={DEFAULT_METRIC_PREFERENCES}
-      assumeUnit={METRIC_ASSUMED_UNIT}
+      valueMm={valueMm}
+      preferences={preferences}
       onCommitMm={onCommitMm}
     />,
   )
 }
 
+function unitPicker() {
+  return screen.getByRole('group', { name: `${LABEL} unit` })
+}
+
 afterEach(cleanup)
 
 describe('LengthField', () => {
-  it('associates its label with the input', () => {
+  it('associates its label with the input, with no unit baked into the label text', () => {
     renderField(vi.fn())
 
-    expect(screen.getByLabelText(METRIC_LABEL)).toBeInstanceOf(HTMLInputElement)
+    // The entry unit now lives in a picker, so the label is the bare field name.
+    expect(screen.getByLabelText(LABEL)).toBeInstanceOf(HTMLInputElement)
   })
 
-  it('commits the parsed millimetre value when Enter is pressed', async () => {
+  it('defaults a metric field to metres and shows the value as a bare magnitude', () => {
+    renderField(vi.fn(), DEFAULT_METRIC_PREFERENCES, 1000)
+
+    // 1000 mm is 1 m; the value is shown bare because the unit lives in the picker.
+    expect(screen.getByLabelText(LABEL)).toHaveValue('1')
+    expect(within(unitPicker()).getByRole('button', { name: 'm' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('defaults an imperial field to feet', () => {
+    renderField(vi.fn(), DEFAULT_IMPERIAL_PREFERENCES, 304.8)
+
+    expect(screen.getByLabelText(LABEL)).toHaveValue('1')
+    expect(within(unitPicker()).getByRole('button', { name: 'ft' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('re-expresses the committed value when the entry unit changes', async () => {
+    const user = userEvent.setup()
+    renderField(vi.fn(), DEFAULT_METRIC_PREFERENCES, 1000)
+    const input = screen.getByLabelText(LABEL)
+    const picker = unitPicker()
+
+    expect(input).toHaveValue('1')
+    await user.click(within(picker).getByRole('button', { name: 'cm' }))
+    expect(input).toHaveValue('100')
+    await user.click(within(picker).getByRole('button', { name: 'mm' }))
+    expect(input).toHaveValue('1000')
+    await user.click(within(picker).getByRole('button', { name: 'm' }))
+    expect(input).toHaveValue('1')
+  })
+
+  it('re-expresses a freshly typed value on a unit change without committing', async () => {
+    const onCommitMm = vi.fn()
+    const user = userEvent.setup()
+    renderField(onCommitMm, DEFAULT_METRIC_PREFERENCES, 1000)
+    const input = screen.getByLabelText(LABEL)
+    const picker = unitPicker()
+
+    await user.click(within(picker).getByRole('button', { name: 'cm' }))
+    await user.clear(input)
+    await user.type(input, '200')
+    await user.click(within(picker).getByRole('button', { name: 'm' }))
+
+    // 200 cm re-expressed in metres is 2; switching the unit never dispatches.
+    expect(input).toHaveValue('2')
+    expect(onCommitMm).not.toHaveBeenCalled()
+  })
+
+  it('commits a bare number read in the selected entry unit', async () => {
     const onCommitMm = vi.fn()
     const user = userEvent.setup()
     renderField(onCommitMm)
+    const input = screen.getByLabelText(LABEL)
 
-    const input = screen.getByLabelText(METRIC_LABEL)
     await user.clear(input)
-    await user.type(input, `${ENTERED_VALUE}{Enter}`)
+    await user.type(input, '1.2{Enter}')
 
     expect(onCommitMm).toHaveBeenCalledTimes(1)
-    expect(onCommitMm).toHaveBeenCalledWith(EXPECTED_MM)
+    expect(onCommitMm).toHaveBeenCalledWith(1200)
   })
 
-  it('commits the parsed millimetre value on blur without pressing Enter', async () => {
+  it('reads a bare number in centimetres after the entry unit is switched to cm', async () => {
     const onCommitMm = vi.fn()
     const user = userEvent.setup()
     renderField(onCommitMm)
+    const input = screen.getByLabelText(LABEL)
 
-    const input = screen.getByLabelText(METRIC_LABEL)
+    await user.click(within(unitPicker()).getByRole('button', { name: 'cm' }))
     await user.clear(input)
-    await user.type(input, ENTERED_VALUE)
-    // Leave the field the way a user does when they click the canvas: move
-    // focus off the input, which fires a real blur. No Enter is pressed.
+    await user.type(input, '50{Enter}')
+
+    expect(onCommitMm).toHaveBeenCalledWith(500)
+  })
+
+  it('parses an inline unit suffix regardless of the selected entry unit', async () => {
+    const onCommitMm = vi.fn()
+    const user = userEvent.setup()
+    renderField(onCommitMm)
+    const input = screen.getByLabelText(LABEL)
+
+    await user.clear(input)
+    await user.type(input, '128 cm{Enter}')
+
+    // The typed suffix wins over the selected metres unit: 128 cm is 1280 mm.
+    expect(onCommitMm).toHaveBeenCalledWith(1280)
+  })
+
+  it('commits the parsed value on blur without pressing Enter', async () => {
+    const onCommitMm = vi.fn()
+    const user = userEvent.setup()
+    renderField(onCommitMm)
+    const input = screen.getByLabelText(LABEL)
+
+    await user.clear(input)
+    await user.type(input, '1.2')
+    // Leave the field the way a user does when they click the canvas: move focus
+    // off the input, which fires a real blur. No Enter is pressed.
     await user.tab()
 
     expect(onCommitMm).toHaveBeenCalledTimes(1)
-    expect(onCommitMm).toHaveBeenCalledWith(EXPECTED_MM)
+    expect(onCommitMm).toHaveBeenCalledWith(1200)
   })
 
   it('shows an inline error and keeps the typed text when a commit is rejected for being out of range', async () => {
@@ -82,12 +163,12 @@ describe('LengthField', () => {
     const user = userEvent.setup()
     renderField(onCommitMm)
 
-    const input = screen.getByLabelText(METRIC_LABEL)
+    const input = screen.getByLabelText(LABEL)
     await user.clear(input)
-    await user.type(input, `${OUT_OF_RANGE_ENTRY}{Enter}`)
+    await user.type(input, '-5{Enter}')
 
     // The entered text is kept so the user can correct it in place.
-    expect(input).toHaveValue(OUT_OF_RANGE_ENTRY)
+    expect(input).toHaveValue('-5')
 
     // A visible, recoverable error surfaces through the Field hint slot.
     const hint = document.querySelector('.ds-field__hint')
@@ -99,40 +180,6 @@ describe('LengthField', () => {
     expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
   })
 
-  it('surfaces the assumed unit in the length-field labels across the inspector', () => {
-    // A bare number typed without a unit token is read as the field's assumed
-    // unit. Spelling that unit out in the label keeps the entry unambiguous.
-    render(
-      <>
-        <LengthField
-          inputId={INPUT_ID}
-          label="Width"
-          valueMm={CURRENT_MM}
-          preferences={DEFAULT_METRIC_PREFERENCES}
-          assumeUnit="in"
-          onCommitMm={vi.fn()}
-        />
-        <WallThicknessEditor
-          floorId="ground"
-          wallId="wall-1"
-          thickness={100}
-          dispatch={vi.fn()}
-          preferences={DEFAULT_METRIC_PREFERENCES}
-        />
-        <RoomCeilingHeightEditor
-          roomKey="wall-1|wall-2|wall-3"
-          ceilingHeight={2438}
-          dispatch={vi.fn()}
-          preferences={DEFAULT_METRIC_PREFERENCES}
-        />
-      </>,
-    )
-
-    expect(screen.getByLabelText('Width (in)')).toBeInstanceOf(HTMLInputElement)
-    expect(screen.getByLabelText('Thickness (mm)')).toBeInstanceOf(HTMLInputElement)
-    expect(screen.getByLabelText('Ceiling height (mm)')).toBeInstanceOf(HTMLInputElement)
-  })
-
   it('renders through the styled design-system field wrapper', () => {
     const { container } = render(
       <LengthField
@@ -140,7 +187,6 @@ describe('LengthField', () => {
         label={LABEL}
         valueMm={CURRENT_MM}
         preferences={DEFAULT_METRIC_PREFERENCES}
-        assumeUnit={METRIC_ASSUMED_UNIT}
         onCommitMm={vi.fn()}
       />,
     )

@@ -26,11 +26,11 @@ const WIDTH_MM = 813
 const HEIGHT_MM = 2032
 const SILL_HEIGHT_MM = 0
 
-// A door-width-scale length reads in centimetres with one decimal under the
-// adaptive metric rule: 813 mm renders as "81.3 cm".
-const EXPECTED_WIDTH = '81.3 cm'
-const NEW_WIDTH_ENTRY = '900'
-const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, { assumeUnit: 'mm' })
+// The metric entry unit defaults to metres and the value is shown bare, so an
+// 813 mm width reads as "0.813".
+const EXPECTED_WIDTH = '0.813'
+const NEW_WIDTH_ENTRY = '0.9'
+const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, { assumeUnit: 'm' })
 
 function buildOpening(): Opening {
   return createOpening({

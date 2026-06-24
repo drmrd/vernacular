@@ -19,21 +19,21 @@ import {
 import { OpeningInspector } from './opening-inspector'
 
 // A single selected opening, fixed so the formatted values and the dispatched
-// command payloads are all deterministic. A metric project reads a bare number
-// as millimeters, matching the active system's assume-unit.
+// command payloads are all deterministic. A metric field defaults its entry unit
+// to metres, so a bare number is read as metres.
 const FLOOR_ID = 'floor-1'
 const OPENING_ID = 'o1'
 const WIDTH_MM = 813
 const HEIGHT_MM = 2032
 const SILL_HEIGHT_MM = 0
 const UNITS = 'metric' as const
-const METRIC_ASSUMED_UNIT = 'mm' as const
+const METRIC_ASSUMED_UNIT = 'm' as const
 
-// A door-width-scale length reads in centimetres with one decimal under the
-// adaptive metric rule: 813 mm renders as "81.3 cm", not "813 mm".
-const EXPECTED_WIDTH = '81.3 cm'
+// The metric entry unit defaults to metres and the value is shown bare, so an
+// 813 mm width reads as "0.813".
+const EXPECTED_WIDTH = '0.813'
 
-const NEW_WIDTH_ENTRY = '900'
+const NEW_WIDTH_ENTRY = '0.9'
 const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, { assumeUnit: METRIC_ASSUMED_UNIT })
 const UNPARSEABLE_ENTRY = 'abc'
 
@@ -83,7 +83,7 @@ describe('OpeningInspector', () => {
     renderInspector(vi.fn())
 
     expect(screen.getByLabelText(/width/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('Height (mm)', { exact: true })).toBeInTheDocument()
+    expect(screen.getByLabelText('Height', { exact: true })).toBeInTheDocument()
     expect(screen.getByLabelText(/sill height/i)).toBeInTheDocument()
   })
 
@@ -127,8 +127,8 @@ describe('OpeningInspector', () => {
 
     const widthInput = screen.getByLabelText(/width/i)
     await user.clear(widthInput)
-    // 1200 mm would widen the opening into the neighbor.
-    await user.type(widthInput, `1200{Enter}`)
+    // 1.2 m (1200 mm) would widen the opening into the neighbor.
+    await user.type(widthInput, `1.2{Enter}`)
 
     expect(dispatch).toHaveBeenCalledTimes(1)
     const command = onlyCommand<ResizeOpeningParams>(dispatch)

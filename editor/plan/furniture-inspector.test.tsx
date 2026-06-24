@@ -16,30 +16,30 @@ import {
 import { FurnitureInspector } from './furniture-inspector'
 
 // A single selected furniture item, fixed so the formatted values and the
-// dispatched command payloads are all deterministic. A metric project reads a
-// bare number as millimeters, matching the active system's assume-unit.
+// dispatched command payloads are all deterministic. A metric field defaults its
+// entry unit to metres, so a bare number is read as metres.
 const FLOOR_ID = 'floor-1'
 const FURNITURE_ID = 'f1'
 const WIDTH_MM = 600
 const DEPTH_MM = 400
 const HEIGHT_MM = 750
 const UNITS = 'metric' as const
-const METRIC_ASSUMED_UNIT = 'mm' as const
+const METRIC_ASSUMED_UNIT = 'm' as const
 
 const NEW_NAME = 'Reading Chair'
 const NEW_ANGLE = '45'
 const EXPECTED_ANGLE_RADIANS = (45 * Math.PI) / 180
 const QUARTER_TURN_RADIANS = Math.PI / 2
 const QUARTER_TURN_DEGREES = '90'
-const NEW_WIDTH_ENTRY = '800'
+const NEW_WIDTH_ENTRY = '0.8'
 const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, {
   assumeUnit: METRIC_ASSUMED_UNIT,
 })
-const NEW_DEPTH_ENTRY = '500'
+const NEW_DEPTH_ENTRY = '0.5'
 const EXPECTED_NEW_DEPTH_MM = parseLength(NEW_DEPTH_ENTRY, {
   assumeUnit: METRIC_ASSUMED_UNIT,
 })
-const NEW_HEIGHT_ENTRY = '900'
+const NEW_HEIGHT_ENTRY = '0.9'
 const EXPECTED_NEW_HEIGHT_MM = parseLength(NEW_HEIGHT_ENTRY, {
   assumeUnit: METRIC_ASSUMED_UNIT,
 })
@@ -167,7 +167,7 @@ describe('FurnitureInspector dimensions', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const widthInput = screen.getByLabelText('Width (mm)')
+    const widthInput = screen.getByLabelText('Width')
     await user.clear(widthInput)
     await user.type(widthInput, `${NEW_WIDTH_ENTRY}{Enter}`)
 
@@ -185,7 +185,7 @@ describe('FurnitureInspector dimensions', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const depthInput = screen.getByLabelText('Depth (mm)')
+    const depthInput = screen.getByLabelText('Depth')
     await user.clear(depthInput)
     await user.type(depthInput, `${NEW_DEPTH_ENTRY}{Enter}`)
 
@@ -201,7 +201,7 @@ describe('FurnitureInspector dimensions', () => {
   it('shows the furniture instance height in the Height field', () => {
     renderInspector(vi.fn())
 
-    const heightInput = screen.getByLabelText('Height (mm)') as HTMLInputElement
+    const heightInput = screen.getByLabelText('Height') as HTMLInputElement
     expect(parseLength(heightInput.value, { assumeUnit: METRIC_ASSUMED_UNIT })).toBe(HEIGHT_MM)
   })
 
@@ -210,7 +210,7 @@ describe('FurnitureInspector dimensions', () => {
     const user = userEvent.setup()
     renderInspector(dispatch)
 
-    const heightInput = screen.getByLabelText('Height (mm)')
+    const heightInput = screen.getByLabelText('Height')
     await user.clear(heightInput)
     await user.type(heightInput, `${NEW_HEIGHT_ENTRY}{Enter}`)
 
