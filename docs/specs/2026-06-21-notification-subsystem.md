@@ -195,8 +195,11 @@ verified against the current tree:
 
 - **Degraded storage (#262).** `app/app.tsx` probes storage capability and, when
   `isStorageDegraded(probed)` is true (`storage/storage-capabilities.ts`), only `console.warn`s
-  today. It instead raises `n.banner({ id: 'storage-degraded', severity: 'warning', message, ... })`
-  with a message built from `summarizeStorageCapabilities`. The banner is dismissible.
+  today. It instead raises a dismissible `n.banner({ id: 'storage-degraded', severity: 'warning',
+... })`. The banner carries a plain user-facing sentence about the consequence ("Storage is
+  unavailable, so your work will not be saved between sessions.") rather than the technical
+  `summarizeStorageCapabilities` diagnostic, which suits a console log but not a banner an end-user
+  reads (ADR-0123). `summarizeStorageCapabilities` stays available for diagnostics.
 
 - **Import-error migration.** The import catch in `app/use-open-file-action.ts` sets a bespoke
   status that renders `editor/shell/import-alert.tsx`. The catch instead calls
