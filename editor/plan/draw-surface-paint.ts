@@ -24,7 +24,13 @@ export interface SurfacePaintLayer {
   /** RAW wall id (no `wall:` prefix) + side -> treatment, or undefined when unpainted. */
   treatmentForFace: (wallId: string, side: 'left' | 'right') => SurfaceTreatment | undefined
   activeSurface: SurfaceRef | null
-  /** The wall face to highlight on top, drawn even when that face is unpainted. */
+  /**
+   * The wall face to highlight on top, drawn even when that face is unpainted.
+   *
+   * Optional (unlike the required `activeSurface`) because not every caller supplies a
+   * hover/selection highlight target yet. This reflects incremental delivery of the inspector
+   * finish-chip link, not a deliberate API asymmetry; callers without a highlight omit the field.
+   */
   highlightedSurface?: SurfaceRef | null
   viewport: Viewport
 }
@@ -126,19 +132,30 @@ function drawActiveHighlight(painter: SurfacePainter, layer: SurfacePaintLayer):
   strokeSegment(painter, wall.start, wall.end)
 }
 
-/** Stroke the brass accent band along the highlighted wall face, even when that face is unpainted. */
-function drawHighlightedFace(painter: SurfacePainter, layer: SurfacePaintLayer): void {
+/** The wall (with the face side) matching the highlighted wall-face surface, or undefined when none. */
+function highlightedWall(
+  layer: SurfacePaintLayer,
+): { wall: WallSceneNode; side: 'left' | 'right' } | undefined {
   const highlighted = layer.highlightedSurface
   if (highlighted === null || highlighted === undefined || highlighted.kind !== 'wall-face') {
-    return
+    return undefined
   }
   const wall = layer.walls.find((candidate) => rawWallId(candidate) === highlighted.wallId)
   if (wall === undefined) {
+    return undefined
+  }
+  return { wall, side: highlighted.side }
+}
+
+/** Stroke the brass accent band along the highlighted wall face, even when that face is unpainted. */
+function drawHighlightedFace(painter: SurfacePainter, layer: SurfacePaintLayer): void {
+  const highlighted = highlightedWall(layer)
+  if (highlighted === undefined) {
     return
   }
   painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
   painter.ctx.lineWidth = HIGHLIGHT_BAND_WIDTH
-  const { from, to } = offsetBand(wall, highlighted.side)
+  const { from, to } = offsetBand(highlighted.wall, highlighted.side)
   strokeSegment(painter, from, to)
 }
 
