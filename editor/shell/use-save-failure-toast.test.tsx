@@ -6,13 +6,7 @@ import { NotificationProvider, ToastRegion } from '../design-system'
 import { useSaveFailureToast } from './use-save-failure-toast'
 import type { AutosaveStatus } from '../../bridge'
 
-function SaveStatusProbe({
-  status,
-  onRetry,
-}: {
-  status: AutosaveStatus
-  onRetry?: () => void
-}) {
+function SaveStatusProbe({ status, onRetry }: { status: AutosaveStatus; onRetry?: () => void }) {
   useSaveFailureToast(status, onRetry)
   return null
 }
