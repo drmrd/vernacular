@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
@@ -39,6 +39,7 @@ import { createInitialProject } from './create-initial-project'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
+import { useSessionKey } from './use-session-key'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
@@ -316,21 +317,6 @@ export interface EditorWorkspaceProps {
   capabilities: StorageCapabilities
   snapshots: SnapshotsPort | undefined
   onSession: (session: EditorSession) => void
-}
-
-// A stable remount key per session object. Within a session the same key recurs,
-// so within-session re-renders never remount the tool provider (the user's chosen
-// tool survives). A New/Open/restore swaps in a fresh session object, which earns
-// the next key, remounting the provider so the initial-tool decision re-runs.
-function useSessionKey(session: EditorSession): number {
-  const keys = useRef(new WeakMap<EditorSession, number>())
-  const nextKey = useRef(0)
-  let key = keys.current.get(session)
-  if (key === undefined) {
-    key = nextKey.current++
-    keys.current.set(session, key)
-  }
-  return key
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
