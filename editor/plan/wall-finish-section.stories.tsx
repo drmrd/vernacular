@@ -20,6 +20,10 @@ export default meta
 
 type Story = StoryObj<typeof WallFinishSection>
 
+// A store the PlanHighlightedFace story drives in its play step to stand in for a
+// plan canvas hover, held at module scope so play and the decorator share the instance.
+const highlightStore = createSurfaceSelectionStore()
+
 export const Default: Story = {
   args: {
     wallId: 'w1',
@@ -42,5 +46,32 @@ export const Default: Story = {
     await userEvent.click(faceB)
     await expect(screen.getByRole('button', { name: 'B' })).toHaveAttribute('aria-pressed', 'true')
     await expect(screen.getByRole('button', { name: 'A' })).toHaveAttribute('aria-pressed', 'false')
+  },
+}
+
+// The reverse finish-chip link: the plan highlights this wall's B face (the store
+// driven directly here, standing in for a canvas hover) while Face A stays selected,
+// so the B chip wears the preview outline without becoming the pressed selection. The
+// highlight is set in play, after mount, so the section's own mount highlight (which
+// asserts the selected A face) does not overwrite it.
+export const PlanHighlightedFace: Story = {
+  args: {
+    wallId: 'w1',
+    treatmentFor: () => undefined,
+    recent: [],
+    dispatch: fn(),
+  },
+  decorators: [
+    (story) => (
+      <SurfaceSelectionProvider store={highlightStore}>{story()}</SurfaceSelectionProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    highlightStore.highlight({ kind: 'wall-face', wallId: 'w1', side: 'right' })
+    const faceB = await screen.findByRole('button', { name: 'B' })
+    await expect(faceB).toHaveClass('is-preview')
+    await expect(faceB).toHaveAttribute('aria-pressed', 'false')
+    await expect(screen.getByRole('button', { name: 'A' })).toHaveAttribute('aria-pressed', 'true')
   },
 }

@@ -12,6 +12,7 @@ import type { FurniturePlacementHandlers } from './use-furniture-layer'
 import type { SelectionMove } from './use-selection-move'
 import type { ViewportControls } from './use-viewport-controls'
 import type { WallEditing } from './use-wall-editing'
+import type { WallFacePlanHighlight } from './use-wall-face-plan-highlight'
 
 export interface ComposedPointerHandlers {
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
@@ -35,6 +36,8 @@ export interface PointerSources {
   openingPlacement: OpeningPlacement
   furniturePlacement: FurniturePlacementHandlers
   hover: PlanHover
+  // The reverse finish-chip link: hovering a selected wall's face previews its A/B chip.
+  wallFaceHighlight: WallFacePlanHighlight
   // Clears any standing keyboard-authoring announcement. A pointer move is a fresh
   // pointer interaction, so it supersedes a stale authoring step ("Wall vertex
   // dropped") that would otherwise keep masking the live snap/selection text.
@@ -110,6 +113,9 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       // Runs before the guards: hover self-gates on event.buttons, so the highlight
       // always updates regardless of which handler below claims the rest of the move.
       hover.onPointerMove(event)
+      // Self-gates on a single selected wall under the select tool, so it can run
+      // alongside hover without claiming the move; previews the hovered face's A/B chip.
+      sources.wallFaceHighlight.onPointerMove(event)
       // The placement ghost tracks the cursor; it self-gates on the place-furniture tool.
       furniturePlacement.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
@@ -135,6 +141,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       dimensionTool.onPointerLeave()
       calibration.onPointerLeave()
       hover.onPointerLeave()
+      sources.wallFaceHighlight.onPointerLeave()
     },
   }
 }

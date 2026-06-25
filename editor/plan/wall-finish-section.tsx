@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
+import { useHighlightedSurface } from '../../bridge'
 import { SectionLabel, Segmented } from '../design-system'
 import { useWallFaceHighlight } from './use-wall-face-highlight'
 import { ColorPicker } from '../paint/color-picker'
@@ -31,6 +32,29 @@ function isFaceSide(value: string): value is 'left' | 'right' {
   return (FACE_SIDES as readonly string[]).includes(value)
 }
 
+/**
+ * The face the chips should preview: the plan-highlighted face of this wall when it
+ * differs from the selected side, otherwise undefined. The selected face is already
+ * shown as active, so only an external highlight on the OTHER face previews a chip,
+ * which keeps the reverse link (plan -> chip) from echoing the section's own forward
+ * highlight (chip -> plan, which always points at the selected face) back as a preview.
+ */
+function previewedSide(
+  highlighted: SurfaceRef | null,
+  wallId: string,
+  selectedSide: 'left' | 'right',
+): 'left' | 'right' | undefined {
+  if (
+    highlighted === null ||
+    highlighted.kind !== 'wall-face' ||
+    highlighted.wallId !== wallId ||
+    highlighted.side === selectedSide
+  ) {
+    return undefined
+  }
+  return highlighted.side
+}
+
 export function WallFinishSection({
   wallId,
   treatmentFor,
@@ -39,6 +63,8 @@ export function WallFinishSection({
 }: WallFinishSectionProps) {
   const [side, setSide] = useState<'left' | 'right'>('left')
   const onHoverFace = useWallFaceHighlight(wallId, side)
+  const highlighted = useHighlightedSurface()
+  const preview = previewedSide(highlighted, wallId, side)
   const ref: SurfaceRef = { kind: 'wall-face', wallId, side }
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
@@ -50,6 +76,7 @@ export function WallFinishSection({
         label="Wall face"
         options={FACE_OPTIONS}
         value={side}
+        {...(preview ? { previewValue: preview } : {})}
         onSelect={(value) => {
           if (isFaceSide(value)) setSide(value)
         }}

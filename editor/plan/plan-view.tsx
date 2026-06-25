@@ -44,6 +44,10 @@ import { useSnapPreferences } from './snap-preferences-context'
 import { isSnapKindEnabled } from './snap-preferences'
 import { PlanOverlay, type PlanOverlayProps } from './plan-overlay'
 import { usePlanHover, type PlanHover } from './use-plan-hover'
+import {
+  useWallFacePlanHighlight,
+  type WallFacePlanHighlight,
+} from './use-wall-face-plan-highlight'
 import { usePlanSelection, type PlanSelection } from './use-plan-selection'
 import { useFloorFillColor, useSurfacePaintLayer } from './use-surface-paint-layer'
 import { useSelectionKeyboard } from './use-selection-keyboard'
@@ -92,6 +96,7 @@ interface PlanLayers {
   dimensions: readonly DrawableDimension[]
   planSelection: PlanSelection
   planHover: PlanHover
+  wallFaceHighlight: WallFacePlanHighlight
   selectionMove: SelectionMove
   wallEditing: WallEditing
   controls: ViewportControls
@@ -219,6 +224,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     setViewport,
   })
   const planHover = usePlanHover({ graph: selectableGraph, selectedIds, tool, viewport })
+  const wallFaceHighlight = useWallFacePlanHighlight({ selectedWall, tool, viewport })
   const selectionMove = useSelectionMove({
     session,
     graph: selectableGraph,
@@ -282,6 +288,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     dimensions: toDrawableDimensions(graph.dimensions, selectedIds),
     planSelection,
     planHover,
+    wallFaceHighlight,
     selectionMove,
     wallEditing,
     controls,
@@ -371,6 +378,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       openingPlacement: openingLayer.placement,
       furniturePlacement: layers.furnitureLayer.placement,
       hover: layers.planHover,
+      wallFaceHighlight: layers.wallFaceHighlight,
       clearAuthoringAnnouncement: layers.authoring.clearAnnouncement,
     }),
     overlay: buildOverlayProps(layers, readout),

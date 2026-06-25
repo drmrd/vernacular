@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import userEvent from '@testing-library/user-event'
 import { SurfaceSelectionContext } from '../../bridge/react/surface-selection-context'
@@ -239,5 +239,64 @@ describe('WallFinishSection hover preview of the plan highlight', () => {
     unmount()
 
     expect(store.getHighlightedSurface()).toBeNull()
+  })
+})
+
+describe('WallFinishSection reflection of a plan-driven face highlight', () => {
+  it('previews the B chip when the plan highlights this wall B face while A is selected', () => {
+    const store = createSurfaceSelectionStore()
+    renderWithSurface(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+      store,
+    )
+
+    act(() => store.highlight({ kind: 'wall-face', wallId: 'w1', side: 'right' }))
+
+    const faceB = screen.getByRole('button', { name: 'B' })
+    expect(faceB).toHaveClass('is-preview')
+    // The reflection is preview-only: the selection stays on Face A.
+    expect(faceB).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'A' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('does not preview a chip when the plan highlights the already-selected face', () => {
+    const store = createSurfaceSelectionStore()
+    renderWithSurface(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+      store,
+    )
+
+    act(() => store.highlight({ kind: 'wall-face', wallId: 'w1', side: 'left' }))
+
+    expect(screen.getByRole('button', { name: 'A' })).not.toHaveClass('is-preview')
+    expect(screen.getByRole('button', { name: 'B' })).not.toHaveClass('is-preview')
+  })
+
+  it('does not preview a chip when a different wall is highlighted on the plan', () => {
+    const store = createSurfaceSelectionStore()
+    renderWithSurface(
+      <WallFinishSection
+        wallId="w1"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+      store,
+    )
+
+    act(() => store.highlight({ kind: 'wall-face', wallId: 'w2', side: 'right' }))
+
+    expect(screen.getByRole('button', { name: 'A' })).not.toHaveClass('is-preview')
+    expect(screen.getByRole('button', { name: 'B' })).not.toHaveClass('is-preview')
   })
 })

@@ -40,3 +40,12 @@
   background: var(--color-surface-active);
   color: var(--color-text);
 }
+
+/*
+ * The previewed treatment: a transient outline echoing an external highlight (the
+ * plan hovering this face) without the filled active background, so a preview reads
+ * as a soft "this one" cue that is clearly not the committed selection.
+ */
+.ds-segmented__option.is-preview {
+  border-color: var(--color-focus-ring);
+}
