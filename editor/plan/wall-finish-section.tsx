@@ -63,7 +63,8 @@ export function WallFinishSection({
 }: WallFinishSectionProps) {
   const [side, setSide] = useState<'left' | 'right'>('left')
   const onHoverFace = useWallFaceHighlight(wallId, side)
-  const preview = previewedSide(useHighlightedSurface(), wallId, side)
+  const highlighted = useHighlightedSurface()
+  const preview = previewedSide(highlighted, wallId, side)
   const ref: SurfaceRef = { kind: 'wall-face', wallId, side }
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
