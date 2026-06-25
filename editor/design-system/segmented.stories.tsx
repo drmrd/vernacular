@@ -35,3 +35,16 @@ export const Default: Story = {
     ).toBeInTheDocument()
   },
 }
+
+// A second option carries the transient preview outline while the first stays
+// selected, so the previewed and pressed states are visibly distinct side by side.
+export const Previewed: Story = {
+  render: () => <Segmented value="one" previewValue="two" options={OPTIONS} onSelect={() => {}} />,
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    const previewed = screen.getByRole('button', { name: 'Two' })
+    await expect(previewed).toHaveClass('is-preview')
+    await expect(previewed).toHaveAttribute('aria-pressed', 'false')
+    await expect(screen.getByRole('button', { name: 'One', pressed: true })).toBeInTheDocument()
+  },
+}
