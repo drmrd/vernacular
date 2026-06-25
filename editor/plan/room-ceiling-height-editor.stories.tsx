@@ -3,7 +3,6 @@ import { within, expect, userEvent, fn } from 'storybook/test'
 import {
   DEFAULT_METRIC_PREFERENCES,
   setRoomCeilingHeight,
-  parseLength,
   type Command,
   type SetRoomCeilingHeightParams,
 } from '../../core'
@@ -20,8 +19,9 @@ export default meta
 type Story = StoryObj<typeof RoomCeilingHeightEditor>
 
 const ROOM_KEY = 'wall-1|wall-2|wall-3'
-const VALID_ENTRY = '3000'
-const EXPECTED_PARSED_MM = parseLength(VALID_ENTRY, { assumeUnit: 'mm' })
+// The metric entry unit defaults to metres, so "3" commits 3000 mm.
+const METRE_ENTRY = '3'
+const EXPECTED_PARSED_MM = 3000
 
 export const Default: Story = {
   args: {
@@ -37,7 +37,7 @@ export const Default: Story = {
     await expect(input).not.toHaveValue('')
 
     await userEvent.clear(input)
-    await userEvent.type(input, `${VALID_ENTRY}{Enter}`)
+    await userEvent.type(input, `${METRE_ENTRY}{Enter}`)
 
     const expected = setRoomCeilingHeight(ROOM_KEY, EXPECTED_PARSED_MM)
     await expect(args.dispatch).toHaveBeenCalledTimes(1)
