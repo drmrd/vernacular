@@ -12,6 +12,13 @@ export interface SegmentedProps {
   options: SegmentedOption[]
   /** The currently selected option value. */
   value: string
+  /**
+   * An option to render in a transient previewed state, distinct from the selected
+   * one: it gets the `is-preview` class without the pressed flag or active class, so
+   * an external highlight (such as the plan hovering a wall face) can echo onto the
+   * matching chip without changing the selection.
+   */
+  previewValue?: string
   /** Invoked with the clicked option's `value`. */
   onSelect: (value: string) => void
   /** Optional accessible name for the option group (rendered as aria-label). */
@@ -31,7 +38,15 @@ export interface SegmentedProps {
   onHover?: (value: string | null) => void
 }
 
-export function Segmented({ options, value, onSelect, label, title, onHover }: SegmentedProps) {
+export function Segmented({
+  options,
+  value,
+  previewValue,
+  onSelect,
+  label,
+  title,
+  onHover,
+}: SegmentedProps) {
   return (
     <div
       className="ds-segmented"
@@ -42,7 +57,10 @@ export function Segmented({ options, value, onSelect, label, title, onHover }: S
     >
       {options.map((option) => {
         const isActive = option.value === value
-        const classes = ['ds-segmented__option', isActive && 'is-active'].filter(Boolean).join(' ')
+        const isPreview = option.value === previewValue
+        const classes = ['ds-segmented__option', isActive && 'is-active', isPreview && 'is-preview']
+          .filter(Boolean)
+          .join(' ')
         return (
           <button
             key={option.value}
