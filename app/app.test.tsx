@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { describe, it, expect, afterEach, vi, type Mock } from 'vitest'
 import { render, screen, cleanup, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { App, EditorWorkspace } from './app'
+import { App, EditorWorkspace, type EditorWorkspaceProps } from './app'
 import {
   InMemoryAssetCache,
   InMemoryProjectStore,
@@ -468,6 +469,62 @@ describe('App unsaved-changes guard', () => {
         expect(cleanEvent.defaultPrevented).toBe(false)
       },
       { timeout: 2000 },
+    )
+  })
+})
+
+// A host that owns the session the way AppWorkspace does, so onSession actually
+// swaps the live session prop and re-renders EditorWorkspace (rather than a vi.fn
+// that drops the new session on the floor). This exercises the real mid-session
+// New flow, where a fresh empty project replaces the current one in place.
+function SessionHost(props: Omit<EditorWorkspaceProps, 'onSession'>) {
+  const [session, setSession] = useState(props.session)
+  return (
+    <NotificationProvider>
+      <EditorWorkspace {...props} session={session} onSession={setSession} />
+    </NotificationProvider>
+  )
+}
+
+describe('App initial tool after a mid-session New', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('re-arms the wall tool when a mid-session New replaces walls with a fresh empty project', async () => {
+    stubCapableStorage()
+
+    render(
+      <SessionHost
+        session={createEditorSession(projectWithWalls('Drafthouse', 1))}
+        store={new InMemoryProjectStore()}
+        assets={new InMemoryAssetCache()}
+        projectId="current"
+        recentProjects={new InMemoryRecentProjectStore()}
+        capabilities={capableCapabilities()}
+        snapshots={undefined}
+      />,
+    )
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+
+    // The starting project has a wall, so #318 leaves the wall tool unarmed.
+    expect(screen.getByRole('button', { name: 'Wall' })).toHaveAttribute('aria-pressed', 'false')
+
+    // New replaces the project in place with a fresh empty one (no discard prompt
+    // because the starting session is clean).
+    await userEvent.click(await screen.findByRole('button', { name: /project/i }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /new project/i }))
+
+    // The fresh empty project re-runs the initial-tool decision: the wall tool is
+    // armed again, mirroring a freshly loaded empty project at mount (#318).
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Wall' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
     )
   })
 })
