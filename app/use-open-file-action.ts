@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { commitProject, createEditorSession, guardDestructive } from '../bridge'
 import { importProjectFile } from '../storage'
-import { humanMessage } from '../editor/design-system'
+import { failureMessage } from './failure-message'
 import { validateLoadedProject } from './validate-loaded-project'
 import {
   defaultStoreBackend,
@@ -59,7 +59,7 @@ export function useOpenFileAction(context: ProjectActionsContext): {
               recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
             }
           } catch (error) {
-            notifications.error(`Couldn't open ${file.name}: ${humanMessage(error)}`)
+            notifications.error(failureMessage('Open', error))
           }
         },
       }),

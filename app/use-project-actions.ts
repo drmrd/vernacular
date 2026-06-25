@@ -11,8 +11,9 @@ import {
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
-import { humanMessage, type NotificationApi } from '../editor/design-system'
+import { type NotificationApi } from '../editor/design-system'
 import { createInitialProject } from './create-initial-project'
+import { failureMessage } from './failure-message'
 import {
   useExportBundleAction,
   useExportImageAction,
@@ -99,10 +100,15 @@ export interface ProjectActionsContext {
 
 // Runs an async file operation and, on failure, raises an error toast whose
 // Retry re-invokes the same operation through this helper (so Retry retries).
-function runWithErrorToast(notifications: NotificationApi, op: () => Promise<void>): void {
+// The action label produces the unified "<Action> failed: <reason>" prefix.
+function runWithErrorToast(
+  notifications: NotificationApi,
+  action: string,
+  op: () => Promise<void>,
+): void {
   void op().catch((error: unknown) => {
-    notifications.error(humanMessage(error), {
-      actions: [{ label: 'Retry', onAction: () => runWithErrorToast(notifications, op) }],
+    notifications.error(failureMessage(action, error), {
+      actions: [{ label: 'Retry', onAction: () => runWithErrorToast(notifications, action, op) }],
     })
   })
 }
@@ -153,7 +159,7 @@ function useSaveAction(context: ProjectActionsContext): () => void {
     // arriving mid-save advances the live revision, so marking the captured one
     // keeps the later edit dirty (no save/edit race).
     const savedRevision = revision?.()
-    runWithErrorToast(notifications, async () => {
+    runWithErrorToast(notifications, 'Save', async () => {
       const project = session.getProject()
       await commitProject({ store, projectId, project, ...(snapshots ? { snapshots } : {}) })
       if (backend !== null) {
@@ -198,7 +204,7 @@ function useNewProjectAction(context: ProjectActionsContext): () => void | Promi
 function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: () => void } {
   const { projectId, recentProjects, capabilities, onSession, notifications } = context
   const onOpenFolder = useCallback(() => {
-    runWithErrorToast(notifications, async () => {
+    runWithErrorToast(notifications, 'Open', async () => {
       const store = await FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore())
       const project = await store.load(projectId)
       onSession(createEditorSession(project))
@@ -223,7 +229,7 @@ function useOpenRecentAction(context: ProjectActionsContext): (id: string) => vo
       }
       // OPFS, zip-bundle, or no recorded backend route through the default store
       // load; per-backend reopen for the others is deferred (plan Open questions).
-      runWithErrorToast(notifications, async () => {
+      runWithErrorToast(notifications, 'Open', async () => {
         const project = await store.load(id)
         onSession(createEditorSession(project))
       })
@@ -244,7 +250,7 @@ interface OpenFolderRecentContext {
 // store load when no stored handle exists or permission is denied (spec 5.7).
 function openFolderRecent(context: OpenFolderRecentContext): void {
   const { id, projectId, onSession, fallback, notifications } = context
-  runWithErrorToast(notifications, async () => {
+  runWithErrorToast(notifications, 'Open', async () => {
     const reopenedStore = await FileSystemFolderProjectStore.reopen(id, new DirectoryHandleStore())
     if (reopenedStore === undefined) {
       const project = await fallback.load(id)

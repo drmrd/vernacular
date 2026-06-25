@@ -13,7 +13,8 @@ import {
   DEFAULT_RASTER_MAX_EDGE,
   PRINT_RASTER_MAX_EDGE,
 } from '../storage'
-import { humanMessage, type NotificationApi } from '../editor/design-system'
+import { type NotificationApi } from '../editor/design-system'
+import { failureMessage } from './failure-message'
 import type { ProjectActionsContext } from './use-project-actions'
 
 // Wrap an async export in a promise toast: an indeterminate pending toast while it runs, a success
@@ -28,7 +29,7 @@ function runExportWithToast(
       pending: `Exporting ${name}...`,
       success: () => `Exported ${name}`,
       error: (error) => ({
-        message: `Export failed: ${humanMessage(error)}`,
+        message: failureMessage('Export', error),
         actions: [{ label: 'Retry', onAction: attempt }],
       }),
     })
@@ -57,7 +58,7 @@ export function useExportPlanAction(context: ProjectActionsContext): () => void 
       downloadText(content, name, 'image/svg+xml')
       notifications.success(`Exported ${name}`)
     } catch (error) {
-      notifications.error(`Export failed: ${humanMessage(error)}`)
+      notifications.error(failureMessage('Export', error))
     }
   }, [session, notifications])
 }

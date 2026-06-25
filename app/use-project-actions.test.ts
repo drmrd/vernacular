@@ -134,7 +134,7 @@ describe('useProjectActions save action', () => {
     })
     await waitFor(() => expect(notifications.error).toHaveBeenCalled())
     expect(notifications.error).toHaveBeenCalledWith(
-      'disk full',
+      'Save failed: disk full',
       expect.objectContaining({
         actions: [expect.objectContaining({ label: 'Retry' })],
       }),
@@ -269,7 +269,7 @@ describe('useProjectActions import action', () => {
       ).onImportDroppedFile(new File(['not a project'], 'broken.building'))
     })
 
-    expect(notifications.error).toHaveBeenCalledWith(expect.stringContaining('broken.building'))
+    expect(notifications.error).toHaveBeenCalledWith(expect.stringContaining('Open failed:'))
   })
 })
 
