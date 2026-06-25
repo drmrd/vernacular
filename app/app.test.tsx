@@ -521,10 +521,7 @@ describe('App initial tool after a mid-session New', () => {
     // The fresh empty project re-runs the initial-tool decision: the wall tool is
     // armed again, mirroring a freshly loaded empty project at mount (#318).
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Wall' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      ),
+      expect(screen.getByRole('button', { name: 'Wall' })).toHaveAttribute('aria-pressed', 'true'),
     )
   })
 })
