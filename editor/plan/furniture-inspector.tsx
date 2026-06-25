@@ -6,7 +6,6 @@ import {
   rotateFurniture,
   setFurnitureHeight,
   setFurnitureName,
-  type AssumedUnit,
   type Command,
   type FurnitureFootprint,
   type FurnitureInstance,
@@ -22,13 +21,6 @@ const ANGLE_DECIMAL_PLACES = 2
 // Render degrees without trailing-zero cruft so a right angle shows "90".
 function formatDegrees(radians: number): string {
   return String(Number((radians * RAD_TO_DEG).toFixed(ANGLE_DECIMAL_PLACES)))
-}
-
-// A bare number entered for a metric project means millimetres; for an imperial
-// project it means feet. This mirrors the opening inspector's resolution.
-const ASSUME_UNIT_BY_SYSTEM: Record<UnitSystem, AssumedUnit> = {
-  metric: 'mm',
-  imperial: 'ft',
 }
 
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
@@ -111,16 +103,10 @@ export interface FurnitureInspectorProps {
 interface FootprintFieldsProps {
   furniture: FurnitureInstance
   preferences: UnitPreferences
-  assumeUnit: AssumedUnit
   onResize: (footprint: FurnitureFootprint) => void
 }
 
-function FootprintFields({
-  furniture,
-  preferences,
-  assumeUnit,
-  onResize,
-}: FootprintFieldsProps): ReactElement {
+function FootprintFields({ furniture, preferences, onResize }: FootprintFieldsProps): ReactElement {
   return (
     <>
       <LengthField
@@ -128,7 +114,6 @@ function FootprintFields({
         label="Width"
         valueMm={furniture.footprint.width}
         preferences={preferences}
-        assumeUnit={assumeUnit}
         onCommitMm={(mm) => onResize({ ...furniture.footprint, width: mm })}
       />
       <LengthField
@@ -136,7 +121,6 @@ function FootprintFields({
         label="Depth"
         valueMm={furniture.footprint.depth}
         preferences={preferences}
-        assumeUnit={assumeUnit}
         onCommitMm={(mm) => onResize({ ...furniture.footprint, depth: mm })}
       />
     </>
@@ -150,7 +134,6 @@ export function FurnitureInspector({
   dispatch,
 }: FurnitureInspectorProps): ReactElement {
   const preferences = PREFERENCES_BY_UNITS[units]
-  const assumeUnit = ASSUME_UNIT_BY_SYSTEM[units]
 
   return (
     <Stack gap="space-2">
@@ -167,7 +150,6 @@ export function FurnitureInspector({
       <FootprintFields
         furniture={furniture}
         preferences={preferences}
-        assumeUnit={assumeUnit}
         onResize={(footprint) => dispatch(resizeFurniture(floorId, furniture.id, footprint))}
       />
       <LengthField
@@ -175,7 +157,6 @@ export function FurnitureInspector({
         label="Height"
         valueMm={furniture.height}
         preferences={preferences}
-        assumeUnit={assumeUnit}
         onCommitMm={(mm) => dispatch(setFurnitureHeight(floorId, furniture.id, mm))}
       />
     </Stack>

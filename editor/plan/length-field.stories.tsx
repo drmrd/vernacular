@@ -13,8 +13,8 @@ export default meta
 
 type Story = StoryObj<typeof LengthField>
 
-// A metric project reads a bare number as millimeters, so "1200" commits 1200.
-const ENTERED_VALUE = '1200'
+// The metric entry unit defaults to metres, so "1.2" commits 1200 mm.
+const ENTERED_VALUE = '1.2'
 
 export const Metric: Story = {
   args: {
@@ -22,14 +22,13 @@ export const Metric: Story = {
     label: 'Width',
     valueMm: 900,
     preferences: DEFAULT_METRIC_PREFERENCES,
-    assumeUnit: 'mm',
     onCommitMm: fn(),
   },
   play: async ({ args, canvasElement }) => {
     const screen = within(canvasElement)
 
-    // The label spells out the assumed unit, so the metric field reads "Width (mm)".
-    const input = screen.getByLabelText('Width (mm)')
+    // The entry unit lives in the picker, so the field's label is just "Width".
+    const input = screen.getByLabelText('Width')
     await userEvent.clear(input)
     await userEvent.type(input, `${ENTERED_VALUE}{Enter}`)
 
