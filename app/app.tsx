@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
@@ -318,9 +318,28 @@ export interface EditorWorkspaceProps {
   onSession: (session: EditorSession) => void
 }
 
+// A stable remount key per session object. Within a session the same key recurs,
+// so within-session re-renders never remount the tool provider (the user's chosen
+// tool survives). A New/Open/restore swaps in a fresh session object, which earns
+// the next key, remounting the provider so the initial-tool decision re-runs.
+function useSessionKey(session: EditorSession): number {
+  const keys = useRef(new WeakMap<EditorSession, number>())
+  const nextKey = useRef(0)
+  let key = keys.current.get(session)
+  if (key === undefined) {
+    key = nextKey.current++
+    keys.current.set(session, key)
+  }
+  return key
+}
+
 export function EditorWorkspace(props: EditorWorkspaceProps) {
   const { session, assets } = props
   const ws = useWorkspaceState(props)
+  // Remount the tool provider when the active session is replaced (mid-session New,
+  // Open, or restore) so a fresh empty project re-arms the wall tool (#351), keeping
+  // the #318 initial-tool decision in sync past the very first mount.
+  const sessionKey = useSessionKey(session)
 
   return (
     <ThemeProvider>
@@ -328,7 +347,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         <AssetProviders assets={assets} library={ws.assetLibrary}>
           <SelectionProvider store={ws.selection}>
             <ActiveFloorProvider store={ws.activeFloorStore}>
-              <ActiveToolProvider initialTool={initialToolForProject(session.getProject())}>
+              <ActiveToolProvider
+                key={sessionKey}
+                initialTool={initialToolForProject(session.getProject())}
+              >
                 <EditLayerProvider>
                   <EditorShell
                     saveStatus={ws.saveStatus}
