@@ -1,4 +1,7 @@
-import { WALL_NODE_PREFIX, type Point, type WallSceneNode } from '../../core'
+import { rawWallId, type Point, type WallSceneNode } from '../../core'
+
+/** Halves a wall's thickness to reach a face from its centerline. */
+const HALF = 2
 
 /**
  * The wall face a plan pointer points at: the raw wall id (no `wall:` prefix) plus
@@ -8,11 +11,6 @@ import { WALL_NODE_PREFIX, type Point, type WallSceneNode } from '../../core'
 export interface WallFaceHit {
   wallId: string
   side: 'left' | 'right'
-}
-
-/** The raw wall id with the `wall:` scene-node prefix removed, when present. */
-function rawWallId(wall: WallSceneNode): string {
-  return wall.id.startsWith(WALL_NODE_PREFIX) ? wall.id.slice(WALL_NODE_PREFIX.length) : wall.id
 }
 
 interface FaceProjection {
@@ -55,6 +53,7 @@ export function hitTestWallFace(
   tolerance: number,
 ): WallFaceHit | null {
   let best: WallFaceHit | null = null
+  // Seeded with the tolerance so the same `<=` test both bounds the band and tracks the winner.
   let bestDistance = tolerance
   for (const wall of walls) {
     const { signed, along } = projectOntoWall(point, wall)
@@ -62,7 +61,7 @@ export function hitTestWallFace(
       continue
     }
     const side = signed >= 0 ? 'left' : 'right'
-    const faceDistance = Math.abs(Math.abs(signed) - wall.thickness / 2)
+    const faceDistance = Math.abs(Math.abs(signed) - wall.thickness / HALF)
     if (faceDistance <= bestDistance) {
       bestDistance = faceDistance
       best = { wallId: rawWallId(wall), side }

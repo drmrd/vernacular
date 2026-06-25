@@ -349,6 +349,7 @@ export {
 } from './scene/scene-graph'
 export type { ExteriorWall } from './scene/exterior-walls'
 export { exteriorWalls } from './scene/exterior-walls'
+export { rawWallId } from './scene/wall-id'
 export type { JunctionFadeGroup } from './scene/junction-fade'
 export { junctionFadeGroups } from './scene/junction-fade'
 export { createSceneGraphDeriver } from './scene/scene-graph-deriver'
