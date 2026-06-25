@@ -96,14 +96,14 @@ describe('PaintPanel', () => {
   it('shows a hint and no color picker when no surface is active', () => {
     renderPanel({ activeSurface: null })
 
-    expect(screen.getByText(/select a surface to paint/i)).toBeTruthy()
+    expect(screen.getByText(/pick a surface to paint/i)).toBeTruthy()
     expect(screen.queryByRole('searchbox')).toBeNull()
   })
 
   it('presents the empty hint as a heading when no surface is active', () => {
     renderPanel({ activeSurface: null })
 
-    expect(screen.getByRole('heading', { name: 'Select a surface to paint' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Pick a surface to paint' })).toBeInTheDocument()
   })
 
   it('mounts the finish picker when the active surface already has a solid treatment', () => {

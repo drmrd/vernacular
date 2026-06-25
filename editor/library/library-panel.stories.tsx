@@ -10,7 +10,7 @@ import { LibraryPanel } from './library-panel'
 // network or on-disk pack is read during the story.
 const BASE = '/packs/vernacular-starter-1.0.0'
 
-const EMPTY_STATE = 'No furniture to show yet. Import a model to add your own.'
+const EMPTY_STATE = 'Your library is empty'
 
 const MID_CENTURY_CHAIR = 'Mid-century chair'
 const EDWARDIAN_DESK = 'Edwardian writing desk'

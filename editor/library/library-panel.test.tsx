@@ -9,7 +9,7 @@ import { LibraryPanel } from './library-panel'
 const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
 const PACK_ITEM_NAME = 'Mid-century chair'
 const USER_ITEM_NAME = 'Inherited armchair'
-const EMPTY_STATE = 'No furniture to show yet. Import a model to add your own.'
+const EMPTY_STATE = 'Your library is empty'
 
 const FOOTPRINT_WIDTH_MM = 600
 const FOOTPRINT_DEPTH_MM = 600

@@ -295,8 +295,8 @@ function SelectedDimensionInspector({ node, units, session }: SelectedDimensionI
 
 // The empty-state copy: a first-run cue when the plan has no geometry, otherwise
 // the quiet "nothing selected" hint once there is something to pick.
-const FIRST_RUN_CUE = 'Pick the Wall tool and click to draw your first wall.'
-const NOTHING_SELECTED_HINT = 'Nothing selected. Pick an element to edit it.'
+const FIRST_RUN_CUE = 'Draw your first wall to get started'
+const NOTHING_SELECTED_HINT = 'Nothing selected yet'
 
 // A plan is empty when it has no geometry of any kind to select.
 function planIsEmpty(graph: SceneGraph): boolean {

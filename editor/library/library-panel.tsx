@@ -41,7 +41,7 @@ function useLibraryItems(registry: AssetRegistry): LibraryItem[] | null {
   return items
 }
 
-const EMPTY_MESSAGE = 'No furniture to show yet. Import a model to add your own.'
+const EMPTY_MESSAGE = 'Your library is empty'
 const LOADING_MESSAGE = 'Loading furniture...'
 
 interface LibraryGridProps {
