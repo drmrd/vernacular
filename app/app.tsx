@@ -39,6 +39,7 @@ import { createInitialProject } from './create-initial-project'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
+import { useSessionKey } from './use-session-key'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
@@ -321,6 +322,10 @@ export interface EditorWorkspaceProps {
 export function EditorWorkspace(props: EditorWorkspaceProps) {
   const { session, assets } = props
   const ws = useWorkspaceState(props)
+  // Remount the tool provider when the active session is replaced (mid-session New,
+  // Open, or restore) so a fresh empty project re-arms the wall tool (#351), keeping
+  // the #318 initial-tool decision in sync past the very first mount.
+  const sessionKey = useSessionKey(session)
 
   return (
     <ThemeProvider>
@@ -328,7 +333,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         <AssetProviders assets={assets} library={ws.assetLibrary}>
           <SelectionProvider store={ws.selection}>
             <ActiveFloorProvider store={ws.activeFloorStore}>
-              <ActiveToolProvider initialTool={initialToolForProject(session.getProject())}>
+              <ActiveToolProvider
+                key={sessionKey}
+                initialTool={initialToolForProject(session.getProject())}
+              >
                 <EditLayerProvider>
                   <EditorShell
                     saveStatus={ws.saveStatus}
