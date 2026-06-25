@@ -3,7 +3,6 @@ import { within, expect, userEvent, fn } from 'storybook/test'
 import {
   DEFAULT_METRIC_PREFERENCES,
   SET_WALL_THICKNESS,
-  parseLength,
   type Command,
   type SetWallThicknessParams,
 } from '../../core'
@@ -21,14 +20,15 @@ type Story = StoryObj<typeof WallThicknessEditor>
 
 const FLOOR_ID = 'ground'
 const WALL_ID = 'wall-1'
-const VALID_ENTRY = '150'
-const EXPECTED_PARSED_MM = parseLength(VALID_ENTRY, { assumeUnit: 'mm' })
+// The metric entry unit defaults to metres, so "0.15" commits 150 mm.
+const METRE_ENTRY = '0.15'
+const EXPECTED_PARSED_MM = 150
 
 export const Default: Story = {
   args: {
     floorId: FLOOR_ID,
     wallId: WALL_ID,
-    // 100 mm renders as "10.0 cm" under the adaptive metric rule.
+    // 100 mm shows as the bare magnitude "0.1" in the default metres entry unit.
     thickness: 100,
     dispatch: fn(),
     preferences: DEFAULT_METRIC_PREFERENCES,
@@ -37,10 +37,10 @@ export const Default: Story = {
     const screen = within(canvasElement)
 
     const input = screen.getByLabelText(/thickness/i)
-    await expect(input).toHaveValue('10.0 cm')
+    await expect(input).toHaveValue('0.1')
 
     await userEvent.clear(input)
-    await userEvent.type(input, `${VALID_ENTRY}{Enter}`)
+    await userEvent.type(input, `${METRE_ENTRY}{Enter}`)
 
     await expect(args.dispatch).toHaveBeenCalledTimes(1)
     const command = (args.dispatch as ReturnType<typeof fn>).mock
