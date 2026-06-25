@@ -82,4 +82,24 @@ describe('Segmented', () => {
       userEvent.hover(screen.getByRole('button', { name: 'Elevation' })),
     ).resolves.not.toThrow()
   })
+
+  it('marks the previewValue option as previewed without pressing it', () => {
+    render(
+      <Segmented options={viewOptions} value="plan" previewValue="elevation" onSelect={() => {}} />,
+    )
+
+    const previewed = screen.getByRole('button', { name: 'Elevation' })
+    expect(previewed).toHaveClass('is-preview')
+    // The preview is a distinct, non-selecting state: it must not flip the pressed flag.
+    expect(previewed).toHaveAttribute('aria-pressed', 'false')
+    expect(previewed).not.toHaveClass('is-active')
+  })
+
+  it('does not mark any option previewed when previewValue is absent', () => {
+    render(<Segmented options={viewOptions} value="plan" onSelect={() => {}} />)
+
+    for (const name of ['Plan', 'Elevation', 'Perspective']) {
+      expect(screen.getByRole('button', { name })).not.toHaveClass('is-preview')
+    }
+  })
 })
