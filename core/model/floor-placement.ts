@@ -56,3 +56,34 @@ export function planUpperFloor(elevations: readonly number[]): PlannedFloor {
     elevation: highestElevation(elevations) + DEFAULT_FLOOR_TO_FLOOR_MM,
   }
 }
+
+const BASEMENT_NAME = 'Basement'
+const SUBTERRANEAN_PREFIX = 'Sub-'
+const DEEPER_PREFIX = 'sub-'
+const BASEMENT_WORD = 'basement'
+
+// The first level below ground is the "Basement"; each deeper level prepends a
+// further "Sub-", giving "Sub-basement", "Sub-sub-basement", and so on.
+export function defaultBasementName(depth: number): string {
+  if (depth <= 1) {
+    return BASEMENT_NAME
+  }
+  return `${SUBTERRANEAN_PREFIX}${DEEPER_PREFIX.repeat(depth - 2)}${BASEMENT_WORD}`
+}
+
+function countBelowGround(elevations: readonly number[]): number {
+  return elevations.filter((elevation) => elevation < GROUND_ELEVATION_MM).length
+}
+
+function lowestElevation(elevations: readonly number[]): number {
+  return elevations.length === 0 ? GROUND_ELEVATION_MM : Math.min(...elevations)
+}
+
+// Basements descend from the ground: the first sits one storey below the lowest
+// existing floor at a negative elevation, keeping above/below ordering by sign.
+export function planBasement(elevations: readonly number[]): PlannedFloor {
+  return {
+    name: defaultBasementName(countBelowGround(elevations) + 1),
+    elevation: lowestElevation(elevations) - DEFAULT_FLOOR_TO_FLOOR_MM,
+  }
+}
