@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_FLOOR_TO_FLOOR_MM, ordinalLabel, planUpperFloor } from './floor-placement'
+import {
+  DEFAULT_FLOOR_TO_FLOOR_MM,
+  ordinalLabel,
+  planBasement,
+  planUpperFloor,
+} from './floor-placement'
 
 describe('ordinalLabel', () => {
   it('labels small cardinals with their English ordinal suffix', () => {
@@ -45,6 +50,29 @@ describe('planUpperFloor', () => {
     expect(planUpperFloor([-DEFAULT_FLOOR_TO_FLOOR_MM, 0])).toEqual({
       name: '2nd Floor',
       elevation: DEFAULT_FLOOR_TO_FLOOR_MM,
+    })
+  })
+})
+
+describe('planBasement', () => {
+  it('names the first floor below the ground "Basement" at a negative elevation', () => {
+    expect(planBasement([0])).toEqual({
+      name: 'Basement',
+      elevation: -DEFAULT_FLOOR_TO_FLOOR_MM,
+    })
+  })
+
+  it('names the next level down "Sub-basement" and drops it a further storey', () => {
+    expect(planBasement([0, -DEFAULT_FLOOR_TO_FLOOR_MM])).toEqual({
+      name: 'Sub-basement',
+      elevation: -2 * DEFAULT_FLOOR_TO_FLOOR_MM,
+    })
+  })
+
+  it('prefixes each additional level downward with another "Sub-"', () => {
+    expect(planBasement([0, -DEFAULT_FLOOR_TO_FLOOR_MM, -2 * DEFAULT_FLOOR_TO_FLOOR_MM])).toEqual({
+      name: 'Sub-sub-basement',
+      elevation: -3 * DEFAULT_FLOOR_TO_FLOOR_MM,
     })
   })
 })
