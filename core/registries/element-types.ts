@@ -7,8 +7,8 @@ export interface Plan2DSymbol {
   symbol: string
 }
 
-/** The named shape of an opening's wall-cut void. The union is open to further variants (half-round, round-topped, segmental) additively, the way `ContourSegment` is. */
-export type VoidContourKind = 'rectangular'
+/** The named shape of an opening's head: its wall-cut void in 3D and its plan symbol in 2D. The union is open to further variants (bay, bow, octagonal) additively, the way `ContourSegment` is. */
+export type VoidContourKind = 'rectangular' | 'round'
 
 /** The named body an opening renders in its void. Open to further variants additively. */
 export type OpeningFillKind = 'door-leaf' | 'window-sash'
