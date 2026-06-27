@@ -1,15 +1,25 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import {
   accumulatePointerLook,
   advanceWalk,
+  sceneGraphForFloor,
   walkLookTarget,
+  wallSegmentsForWalk,
   WALK_EYE_HEIGHT_MM,
+  type WalkCollisionWorld,
   type WalkInput,
   type WalkState,
 } from '../../core'
+import { useActiveFloorId } from './active-floor-context'
+import { useSceneGraph } from './use-scene-graph'
 
 const LOOK_SENSITIVITY_RAD_PER_PX = 0.0025
+
+// The walker's horizontal collision radius, in millimeters: how far the eye stays
+// clear of any wall. About half a person's shoulder width, wide enough to keep the
+// camera off the wall surface yet narrow enough to step through a doorway.
+const WALK_RADIUS_MM = 250
 
 // Maps a keyboard code to the movement flag it drives. A Map keeps the lookup result
 // `... | undefined`, so an unmapped key (anything but WASD) is ignored cleanly.
@@ -104,6 +114,19 @@ function startWalk({ camera, domElement, state, input, onUserControl }: WalkSess
   }
 }
 
+// Builds the collision world for the active floor: every wall on the floor with
+// its openings closed (solid), plus the walker's radius. It rebuilds only when the
+// scene graph or active floor changes. The passable-opening set stays empty here,
+// the seam the open-door work fills so a walked-open door stops blocking.
+function useWalkCollisionWorld(): WalkCollisionWorld {
+  const rawGraph = useSceneGraph()
+  const activeFloorId = useActiveFloorId()
+  return useMemo(() => {
+    const graph = sceneGraphForFloor(rawGraph, activeFloorId)
+    return { segments: wallSegmentsForWalk(graph.walls, graph.openings), radius: WALK_RADIUS_MM }
+  }, [rawGraph, activeFloorId])
+}
+
 interface WalkCameraControlsProps {
   enabled: boolean
   onUserControl: () => void
@@ -126,6 +149,7 @@ export function WalkCameraControls({ enabled, onUserControl }: WalkCameraControl
     pitch: 0,
   })
   const inputRef = useRef<WalkInput>(emptyWalkInput())
+  const collision = useWalkCollisionWorld()
 
   useEffect(() => {
     if (!enabled) return
@@ -140,7 +164,7 @@ export function WalkCameraControls({ enabled, onUserControl }: WalkCameraControl
 
   useFrame((_state, delta) => {
     if (!enabled) return
-    const next = advanceWalk(stateRef.current, inputRef.current, delta)
+    const next = advanceWalk(stateRef.current, inputRef.current, delta, collision)
     inputRef.current.yawDelta = 0
     inputRef.current.pitchDelta = 0
     stateRef.current = next
