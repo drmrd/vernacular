@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { WallSceneNode } from './scene-graph'
+import type { OpeningSceneNode, WallSceneNode } from './scene-graph'
 import { resolveWalkCollision, wallSegmentsForWalk, type WallSegment } from './walk-collision'
 
 function wallNode(overrides: Partial<WallSceneNode> = {}): WallSceneNode {
@@ -10,6 +10,25 @@ function wallNode(overrides: Partial<WallSceneNode> = {}): WallSceneNode {
     start: { x: 100, y: 200 },
     end: { x: 100, y: 800 },
     thickness: 100,
+    ...overrides,
+  }
+}
+
+function openingNode(overrides: Partial<OpeningSceneNode> = {}): OpeningSceneNode {
+  return {
+    id: 'opening:o1',
+    kind: 'opening',
+    floorId: 'f1',
+    type: 'door',
+    center: { x: 0, y: 0 },
+    along: { x: 1, y: 0 },
+    normal: { x: 0, y: 1 },
+    width: 800,
+    height: 2000,
+    sillHeight: 0,
+    hostThickness: 100,
+    orientation: { hinge: 'start', facing: 'positive' },
+    hostWallId: 'w1',
     ...overrides,
   }
 }
@@ -57,5 +76,27 @@ describe('wallSegmentsForWalk', () => {
     expect(segments).toHaveLength(1)
     expect(segments[0]?.start).toEqual({ x: 100, z: 200 })
     expect(segments[0]?.end).toEqual({ x: 100, z: 800 })
+  })
+
+  it('keeps a wall with a closed opening solid but cuts a gap for a passable one', () => {
+    // A 2000-long wall along world X with an 800-wide opening centered on it.
+    const wall = wallNode({ start: { x: -1000, y: 0 }, end: { x: 1000, y: 0 } })
+    const opening = openingNode()
+
+    // A closed opening (none marked passable) leaves the wall a single solid span,
+    // so the walker cannot pass through a shut door or a window.
+    const closed = wallSegmentsForWalk([wall], [opening])
+    expect(closed).toHaveLength(1)
+    expect(closed[0]?.start).toEqual({ x: -1000, z: 0 })
+    expect(closed[0]?.end).toEqual({ x: 1000, z: 0 })
+
+    // Marking the opening passable cuts the wall into the two solid stretches on
+    // either side of the 800-wide gap, leaving an opening to walk through.
+    const passable = wallSegmentsForWalk([wall], [opening], new Set([opening.id]))
+    expect(passable).toHaveLength(2)
+    expect(passable[0]?.start).toEqual({ x: -1000, z: 0 })
+    expect(passable[0]?.end).toEqual({ x: -400, z: 0 })
+    expect(passable[1]?.start).toEqual({ x: 400, z: 0 })
+    expect(passable[1]?.end).toEqual({ x: 1000, z: 0 })
   })
 })
