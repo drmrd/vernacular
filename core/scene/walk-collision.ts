@@ -19,7 +19,7 @@ export interface WallSegment {
 const CONTACT_EPSILON_MM = 1e-6
 
 /** The point on a finite segment nearest the given point, clamped to its ends. */
-export function closestPointOnSegment(point: PlanarPoint, segment: WallSegment): PlanarPoint {
+function closestPointOnSegment(point: PlanarPoint, segment: WallSegment): PlanarPoint {
   const spanX = segment.end.x - segment.start.x
   const spanZ = segment.end.z - segment.start.z
   const lengthSquared = spanX * spanX + spanZ * spanZ
