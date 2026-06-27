@@ -1,3 +1,4 @@
+import { curvedOpeningElementTypes } from './curved-opening-element-types'
 import { createRegistry, type Registry, type RegistryEntry } from './registry'
 
 export type ElementCategory = 'wall' | 'opening' | 'stair'
@@ -305,6 +306,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
         defaultSillHeight: 0,
       },
     },
+    ...curvedOpeningElementTypes,
     {
       id: 'straight-stair',
       category: 'stair',
