@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { planUpperFloor, type PlannedFloor } from '../../core'
 import { Button, Segmented } from '../design-system'
 import './floor-switcher.css'
 
@@ -13,7 +14,8 @@ export interface FloorSwitcherProps {
   floors: readonly FloorSummary[]
   activeFloorId: string | null
   onSelectFloor: (id: string) => void
-  onAddFloor: () => void
+  /** Adds a floor at a default-named, well-ordered placement the switcher computes. */
+  onAddFloor: (placement: PlannedFloor) => void
 }
 
 const GROUND_ELEVATION_MM = 0
@@ -26,6 +28,10 @@ function byElevationDescending(floors: readonly FloorSummary[]): FloorSummary[] 
     (first, second) =>
       (second.elevation ?? GROUND_ELEVATION_MM) - (first.elevation ?? GROUND_ELEVATION_MM),
   )
+}
+
+function elevationsOf(floors: readonly FloorSummary[]): number[] {
+  return floors.map((floor) => floor.elevation ?? GROUND_ELEVATION_MM)
 }
 
 export function FloorSwitcher({
@@ -46,7 +52,7 @@ export function FloorSwitcher({
         value={activeFloorId ?? ''}
         onSelect={onSelectFloor}
       />
-      <Button onClick={onAddFloor}>Add floor</Button>
+      <Button onClick={() => onAddFloor(planUpperFloor(elevationsOf(floors)))}>Add floor</Button>
     </nav>
   )
 }

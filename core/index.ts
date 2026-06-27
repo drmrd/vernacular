@@ -64,6 +64,14 @@ export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
 export { furnitureFootprintCorners } from './model/furniture-footprint'
 export {
+  DEFAULT_FLOOR_TO_FLOOR_MM,
+  defaultBasementName,
+  ordinalLabel,
+  planBasement,
+  planUpperFloor,
+} from './model/floor-placement'
+export type { PlannedFloor } from './model/floor-placement'
+export {
   clampOpeningMove,
   clampOpeningResizeJamb,
   clampOpeningWidth,

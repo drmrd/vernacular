@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import type { PlannedFloor } from '../../core'
 import { FloorSwitcher, type FloorSummary } from './floor-switcher'
 import './status-bar.css'
 
@@ -6,7 +7,7 @@ export interface StatusBarProps {
   floors: readonly FloorSummary[]
   activeFloorId: string | null
   onSelectFloor: (id: string) => void
-  onAddFloor: () => void
+  onAddFloor: (placement: PlannedFloor) => void
   tool?: ReactNode
   snap?: ReactNode
   units?: ReactNode
