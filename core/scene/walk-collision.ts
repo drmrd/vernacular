@@ -16,6 +16,12 @@ export interface WallSegment {
   end: PlanarPoint
 }
 
+/** The walls a walker is blocked by and the walker's radius, passed to advanceWalk. */
+export interface WalkCollisionWorld {
+  segments: readonly WallSegment[]
+  radius: number
+}
+
 // Below this separation the push-out direction is taken from the wall's own
 // normal rather than the (degenerate) vector from the wall to the walker.
 const CONTACT_EPSILON_MM = 1e-6
