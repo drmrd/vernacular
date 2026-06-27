@@ -9,3 +9,15 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+/* The inline rename editor swaps in for the read-only controls; it keeps the
+ * label, input, and save action on one row to match the switcher's height. */
+.floor-switcher__rename {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.floor-switcher__rename-input {
+  min-width: 12ch;
+}

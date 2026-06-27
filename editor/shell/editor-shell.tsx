@@ -25,6 +25,7 @@ import {
   builtinPeriods,
   formatAdaptiveLength,
   preferencesForUnits,
+  renameFloor,
   sceneGraphForFloor,
   setUnits,
   type Project,
@@ -277,6 +278,7 @@ function EditorStatusBar() {
       onAddFloor={(placement) =>
         session.dispatch(addFloor(placement.name, { elevation: placement.elevation }))
       }
+      onRenameFloor={(id, name) => session.dispatch(renameFloor(id, name))}
       tool={`Tool: ${toolLabel(tool)}`}
       coords={<CoordsReadout />}
       snap={<SnapStatus />}
