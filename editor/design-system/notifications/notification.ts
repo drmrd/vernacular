@@ -17,6 +17,11 @@ export interface Notification {
   autoDismissMs?: number
   /** Internal: a promise toast in flight, rendered with an indeterminate spinner. */
   pending?: boolean
+  /**
+   * Internal: a determinate progress fraction in the range [0, 1]. When present on a pending
+   * toast, the toast renders a determinate progress bar instead of the indeterminate spinner.
+   */
+  fraction?: number
 }
 
 /** At most this many toasts are visible; a newer toast drops the oldest. Banners are not capped. */
