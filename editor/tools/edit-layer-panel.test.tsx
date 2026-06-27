@@ -64,6 +64,66 @@ describe('EditLayerPanel', () => {
       expect(screen.getByRole('radio', { name })).toHaveClass('ds-segmented__option')
     }
   })
+
+  it('keeps only the checked radio in the tab order (roving tabindex)', () => {
+    renderPanel()
+
+    expect(screen.getByRole('radio', { name: /^all$/i })).toHaveAttribute('tabindex', '0')
+    for (const name of NON_DEFAULT_LAYER_NAMES) {
+      expect(screen.getByRole('radio', { name })).toHaveAttribute('tabindex', '-1')
+    }
+  })
+
+  it('moves selection and focus to the next layer on ArrowRight', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /^all$/i }).focus()
+    await user.keyboard('{ArrowRight}')
+
+    const walls = screen.getByRole('radio', { name: /^walls$/i })
+    expect(walls).toHaveFocus()
+    expect(walls).toHaveAttribute('aria-checked', 'true')
+    expect(walls).toHaveAttribute('tabindex', '0')
+    const all = screen.getByRole('radio', { name: /^all$/i })
+    expect(all).toHaveAttribute('aria-checked', 'false')
+    expect(all).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('moves selection and focus to the next layer on ArrowDown', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /^all$/i }).focus()
+    await user.keyboard('{ArrowDown}')
+
+    expect(screen.getByRole('radio', { name: /^walls$/i })).toHaveFocus()
+    expect(screen.getByRole('radio', { name: /^walls$/i })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('wraps to the last layer when moving before the first on ArrowLeft', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /^all$/i }).focus()
+    await user.keyboard('{ArrowLeft}')
+
+    const annotations = screen.getByRole('radio', { name: /^annotations$/i })
+    expect(annotations).toHaveFocus()
+    expect(annotations).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('jumps to the last layer on End and the first on Home', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /^all$/i }).focus()
+    await user.keyboard('{End}')
+    expect(screen.getByRole('radio', { name: /^annotations$/i })).toHaveFocus()
+
+    await user.keyboard('{Home}')
+    expect(screen.getByRole('radio', { name: /^all$/i })).toHaveFocus()
+  })
 })
 
 describe('useActiveEditLayer', () => {
