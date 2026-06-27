@@ -87,6 +87,24 @@ describe('FloorSwitcher', () => {
     expect(tabs.map((tab) => tab.textContent)).toEqual(['2nd Floor', 'Ground', 'Basement'])
   })
 
+  it('adds an upper floor above the ground with the default ordinal name', async () => {
+    const onAddFloor = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <FloorSwitcher
+        floors={[{ id: 'ground', name: 'Ground', elevation: 0 }]}
+        activeFloorId="ground"
+        onSelectFloor={vi.fn()}
+        onAddFloor={onAddFloor}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /add floor/i }))
+
+    expect(onAddFloor).toHaveBeenCalledWith({ name: '2nd Floor', elevation: 3000 })
+  })
+
   it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
     render(
       <FloorSwitcher
