@@ -123,6 +123,30 @@ describe('FloorSwitcher', () => {
     expect(onAddFloor).toHaveBeenCalledWith({ name: 'Basement', elevation: -3000 })
   })
 
+  it('renames the active floor inline and reports the committed name', async () => {
+    const onRenameFloor = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <FloorSwitcher
+        floors={[{ id: 'f1', name: 'Ground', elevation: 0 }]}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+        onRenameFloor={onRenameFloor}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /rename floor/i }))
+    const input = screen.getByRole('textbox', { name: /floor name/i })
+    expect(input).toHaveValue('Ground')
+
+    await user.clear(input)
+    await user.type(input, 'Cellar{Enter}')
+
+    expect(onRenameFloor).toHaveBeenCalledWith('f1', 'Cellar')
+  })
+
   it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
     render(
       <FloorSwitcher
