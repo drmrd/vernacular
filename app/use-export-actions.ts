@@ -43,7 +43,9 @@ export function useExportBundleAction(context: ProjectActionsContext): () => voi
     const project = session.getProject()
     const name = bundleFilename(project.meta.name)
     runExportWithToast(notifications, name, () =>
-      exportProjectBundle(projectId, project, assets).then((bytes) => downloadBytes(bytes, name)),
+      exportProjectBundle(projectId, project, { assets }).then((bytes) =>
+        downloadBytes(bytes, name),
+      ),
     )
   }, [session, projectId, assets, notifications])
 }
