@@ -19,10 +19,10 @@ const EDIT_LAYERS: { id: EditLayer; label: string; icon: Icon }[] = [
 /** Radiogroup selector that scopes which plan elements are selectable. */
 export function EditLayerPanel() {
   const { layer, setLayer } = useActiveEditLayer()
-  const { containerRef, onKeyDown } = useRovingRadioGroup<HTMLElement>()
+  const { containerRef, onKeyDown } = useRovingRadioGroup<HTMLDivElement>()
   return (
     <div className="tools-panel">
-      <section
+      <div
         ref={containerRef}
         className="tools-panel__section"
         role="radiogroup"
@@ -48,7 +48,7 @@ export function EditLayerPanel() {
             </button>
           )
         })}
-      </section>
+      </div>
     </div>
   )
 }
