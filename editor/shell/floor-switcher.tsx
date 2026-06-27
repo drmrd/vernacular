@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { planUpperFloor, type PlannedFloor } from '../../core'
+import { planBasement, planUpperFloor, type PlannedFloor } from '../../core'
 import { Button, Segmented } from '../design-system'
 import './floor-switcher.css'
 
@@ -53,6 +53,7 @@ export function FloorSwitcher({
         onSelect={onSelectFloor}
       />
       <Button onClick={() => onAddFloor(planUpperFloor(elevationsOf(floors)))}>Add floor</Button>
+      <Button onClick={() => onAddFloor(planBasement(elevationsOf(floors)))}>Add basement</Button>
     </nav>
   )
 }
