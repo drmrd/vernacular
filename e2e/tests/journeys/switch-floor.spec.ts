@@ -6,7 +6,7 @@ test('switches floors and the canvas changes', async ({ page }) => {
   await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
   await expect(selectors.wallProxies(page)).toHaveCount(1)
   await selectors.addFloorButton(page).click()
-  await selectors.floorButton(page, 'New Floor').click()
+  await selectors.floorButton(page, '2nd Floor').click()
   await expect(selectors.wallProxies(page)).toHaveCount(0)
   await selectors.floorButton(page, 'Ground').click()
   await expect(selectors.wallProxies(page)).toHaveCount(1)

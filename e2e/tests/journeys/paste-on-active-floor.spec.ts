@@ -14,7 +14,7 @@ test('pastes onto the active non-ground floor, not the ground floor', async ({ p
 
   // Switch to a new floor and paste.
   await selectors.addFloorButton(page).click()
-  await selectors.floorButton(page, 'New Floor').click()
+  await selectors.floorButton(page, '2nd Floor').click()
   await expect(selectors.wallProxies(page)).toHaveCount(0)
   await page.keyboard.press('ControlOrMeta+v')
 

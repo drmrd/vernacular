@@ -7,7 +7,7 @@ test('measures a dimension on the active non-ground floor, not the ground floor'
 }) => {
   await gotoEditor(page)
   await selectors.addFloorButton(page).click()
-  await selectors.floorButton(page, 'New Floor').click()
+  await selectors.floorButton(page, '2nd Floor').click()
 
   await page.getByRole('button', { name: 'Dimension', exact: true }).click()
   const canvas = selectors.planCanvas(page)
