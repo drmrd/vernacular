@@ -53,4 +53,12 @@ describe('Toast', () => {
     render(<Toast notification={base({ dismissible: false })} onDismiss={() => {}} />)
     expect(screen.queryByRole('button', { name: /dismiss/i })).toBeNull()
   })
+
+  it('renders a determinate progress bar when a pending toast supplies a fraction', () => {
+    render(<Toast notification={base({ pending: true, fraction: 0.25 })} onDismiss={() => {}} />)
+    const bar = screen.getByRole('progressbar')
+    expect(bar).toHaveAttribute('aria-valuenow', '0.25')
+    expect(bar).toHaveAttribute('aria-valuemin', '0')
+    expect(bar).toHaveAttribute('aria-valuemax', '1')
+  })
 })

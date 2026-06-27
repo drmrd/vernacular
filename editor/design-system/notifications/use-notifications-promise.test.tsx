@@ -33,6 +33,41 @@ describe('useNotifications.promise', () => {
     expect(result.current.notifications[0]?.severity).toBe('success')
   })
 
+  it('updates the pending toast with a determinate fraction as progress is reported', async () => {
+    const { result } = renderHook(() => useNotifications(), { wrapper })
+    let resolve!: (value: string) => void
+    const task = new Promise<string>((r) => {
+      resolve = r
+    })
+    let report: (fraction: number) => void = () => {}
+    act(() => {
+      result.current.promise(
+        task,
+        {
+          pending: 'Exporting...',
+          success: (value) => `Exported ${value}`,
+          error: () => 'Export failed',
+        },
+        (reporter) => {
+          report = reporter
+        },
+      )
+    })
+    expect(result.current.notifications[0]?.pending).toBe(true)
+    expect(result.current.notifications[0]?.fraction).toBeUndefined()
+
+    act(() => {
+      report(0.5)
+    })
+    expect(result.current.notifications[0]?.fraction).toBe(0.5)
+
+    await act(async () => {
+      resolve('plan.pdf')
+      await task
+    })
+    await waitFor(() => expect(result.current.notifications[0]?.severity).toBe('success'))
+  })
+
   it('mutates the same toast to an error and rethrows', async () => {
     const { result } = renderHook(() => useNotifications(), { wrapper })
     const task = Promise.reject(new Error('disk full'))

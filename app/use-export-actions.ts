@@ -17,22 +17,43 @@ import { type NotificationApi } from '../editor/design-system'
 import { failureMessage } from './failure-message'
 import type { ProjectActionsContext } from './use-project-actions'
 
-// Wrap an async export in a promise toast: an indeterminate pending toast while it runs, a success
-// toast naming the file, or an error toast whose Retry re-runs the export.
-function runExportWithToast(
+/** A no-op reporter used until the toast hands back its real one synchronously. */
+const NO_PROGRESS = (): void => {}
+
+/** Map completed-of-total counts to a fraction in [0, 1], treating zero work as no progress. */
+function progressFraction(completed: number, total: number): number {
+  return total === 0 ? 0 : completed / total
+}
+
+/**
+ * Wrap an async export in a promise toast: a pending toast while it runs, a success toast naming
+ * the file, or an error toast whose Retry re-runs the export. The toast starts indeterminate and
+ * becomes a determinate bar once `run` reports progress through its `onProgress` argument.
+ */
+export function runExportWithToast(
   notifications: NotificationApi,
   name: string,
-  run: () => Promise<unknown>,
+  run: (onProgress: (completed: number, total: number) => void) => Promise<unknown>,
 ): void {
   const attempt = (): void => {
-    void notifications.promise(run(), {
-      pending: `Exporting ${name}...`,
-      success: () => `Exported ${name}`,
-      error: (error) => ({
-        message: failureMessage('Export', error),
-        actions: [{ label: 'Retry', onAction: attempt }],
-      }),
+    let report: (fraction: number) => void = NO_PROGRESS
+    const task = run((completed, total) => {
+      report(progressFraction(completed, total))
     })
+    void notifications.promise(
+      task,
+      {
+        pending: `Exporting ${name}...`,
+        success: () => `Exported ${name}`,
+        error: (error) => ({
+          message: failureMessage('Export', error),
+          actions: [{ label: 'Retry', onAction: attempt }],
+        }),
+      },
+      (reporter) => {
+        report = reporter
+      },
+    )
   }
   attempt()
 }
@@ -42,8 +63,10 @@ export function useExportBundleAction(context: ProjectActionsContext): () => voi
   return useCallback(() => {
     const project = session.getProject()
     const name = bundleFilename(project.meta.name)
-    runExportWithToast(notifications, name, () =>
-      exportProjectBundle(projectId, project, assets).then((bytes) => downloadBytes(bytes, name)),
+    runExportWithToast(notifications, name, (onProgress) =>
+      exportProjectBundle(projectId, project, { assets, onProgress }).then((bytes) =>
+        downloadBytes(bytes, name),
+      ),
     )
   }, [session, projectId, assets, notifications])
 }
