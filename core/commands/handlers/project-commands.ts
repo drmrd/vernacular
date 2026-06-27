@@ -1,5 +1,4 @@
-import { createFloor } from '../../model/factories'
-import type { NewFloorOptions } from '../../model/factories'
+import { createFloor, type NewFloorOptions } from '../../model/factories'
 import type { Floor, PeriodId, Project, ProjectMeta, StyleTag, UnitSystem } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
