@@ -3,9 +3,8 @@ import type { FurnitureInstance, Point, SceneGraph } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { Bounds } from './fit'
-import { hitTest, DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import { hitTestFurniture } from './hit-test-furniture'
 import { entitiesInRect } from './marquee'
+import { planClickTarget } from './plan-click-target'
 import {
   advanceSelectGesture,
   beginSelectGesture,
@@ -47,13 +46,12 @@ interface GestureHandle {
 }
 
 /**
- * A bare click selects, toggles (with shift), or clears the selection. Furniture
- * is hit-tested first because it paints above the walls and openings, so a click
- * on a piece selects it rather than the entity beneath.
+ * A bare click selects, toggles (with shift), or clears the selection. The click
+ * target resolves in paint order (furniture, then graph entities, then a loaded
+ * underlay), so a piece or wall over the underlay selects rather than the image.
  */
 function applyClick(deps: PlanSelectionDeps, world: Point, shift: boolean): void {
-  const hit =
-    hitTestFurniture(deps.furniture, world) ?? hitTest(deps.graph, world, DEFAULT_HIT_TOLERANCE_MM)
+  const hit = planClickTarget(deps.graph, deps.furniture, world)
   if (hit === null) {
     if (!shift) {
       deps.selection.clear()
