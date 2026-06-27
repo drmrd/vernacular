@@ -168,6 +168,54 @@ describe('ToolsPanel', () => {
     expect(screen.getByRole('radio', { name: /window/i })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /door/i })).toHaveAttribute('aria-checked', 'false')
   })
+
+  it('keeps only the checked tool in the tab order (roving tabindex)', () => {
+    renderPanel()
+
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '0')
+    for (const name of [/pan/i, /wall/i, /door/i, /window/i, /dimension/i, /fireplace/i]) {
+      expect(screen.getByRole('radio', { name })).toHaveAttribute('tabindex', '-1')
+    }
+  })
+
+  it('moves selection and focus to the next tool on ArrowDown', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /select/i }).focus()
+    await user.keyboard('{ArrowDown}')
+
+    const pan = screen.getByRole('radio', { name: /pan/i })
+    expect(pan).toHaveFocus()
+    expect(pan).toHaveAttribute('aria-checked', 'true')
+    expect(pan).toHaveAttribute('tabindex', '0')
+  })
+
+  it('steps over the disabled planned chips when roving', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /window/i }).focus()
+    await user.keyboard('{ArrowDown}')
+
+    const dimension = screen.getByRole('radio', { name: /dimension/i })
+    expect(dimension).toHaveFocus()
+    expect(dimension).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /fireplace/i })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    )
+  })
+
+  it('wraps to the last enabled tool when moving before the first on ArrowUp', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    screen.getByRole('radio', { name: /select/i }).focus()
+    await user.keyboard('{ArrowUp}')
+
+    expect(screen.getByRole('radio', { name: /dimension/i })).toHaveFocus()
+  })
 })
 
 describe('useActiveTool', () => {
