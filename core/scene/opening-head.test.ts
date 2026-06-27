@@ -43,4 +43,28 @@ describe('openingHeadArcs', () => {
     expect(radius(arc.from)).toBeCloseTo(radius(arc.crown))
     expect(radius(arc.to)).toBeCloseTo(radius(arc.crown))
   })
+
+  it('resolves a lancet head as two arcs meeting at a point above the springline', () => {
+    const arcs = openingHeadArcs('lancet', WIDTH_MM)
+
+    expect(arcs).toHaveLength(2)
+    const [left, right] = arcs
+    expect(left).toBeDefined()
+    expect(right).toBeDefined()
+    if (left === undefined || right === undefined) return
+    // Both arcs rise to the same apex on the centerline, taller than a semicircle (a pointed arch).
+    expect(left.to).toEqual(right.to)
+    expect(left.to.x).toBe(0)
+    expect(left.to.y).toBeGreaterThan(HALF_WIDTH_MM)
+    // Each arc springs from one jamb and is centered on the opposite jamb (mirror images).
+    expect(left.from).toEqual({ x: -HALF_WIDTH_MM, y: 0 })
+    expect(left.center).toEqual({ x: HALF_WIDTH_MM, y: 0 })
+    expect(right.from).toEqual({ x: HALF_WIDTH_MM, y: 0 })
+    expect(right.center).toEqual({ x: -HALF_WIDTH_MM, y: 0 })
+    // A genuine circular arc: the spring, the crown, and the apex share one radius.
+    const leftRadius = (p: { x: number; y: number }): number =>
+      Math.hypot(p.x - left.center.x, p.y - left.center.y)
+    expect(leftRadius(left.from)).toBeCloseTo(leftRadius(left.crown))
+    expect(leftRadius(left.to)).toBeCloseTo(leftRadius(left.crown))
+  })
 })
