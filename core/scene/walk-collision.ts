@@ -162,22 +162,30 @@ function hostsOpening(wall: WallSceneNode, opening: OpeningSceneNode): boolean {
   return opening.hostWallId !== undefined && wall.id === `${WALL_NODE_PREFIX}${opening.hostWallId}`
 }
 
-function splitWall(wall: WallSceneNode, openings: readonly OpeningSceneNode[]): WallSegment[] {
+function splitWall(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+  passableOpeningIds: ReadonlySet<string>,
+): WallSegment[] {
   const segment = wallToSegment(wall)
   const gaps = openings
-    .filter((opening) => hostsOpening(wall, opening))
+    .filter((opening) => passableOpeningIds.has(opening.id) && hostsOpening(wall, opening))
     .map((opening) => openingSpan(segment, opening))
   return gaps.length === 0 ? [segment] : solidSubsegments(segment, gaps)
 }
 
 /**
  * Builds the collision segments a walker is blocked by on the active floor. Each
- * wall contributes its centerline, cut into solid stretches around the openings
- * it hosts, so the walker can pass through a doorway or window gap.
+ * wall contributes its centerline. A closed opening (a shut door or any window)
+ * leaves its host wall solid so the walker cannot pass through it; only an opening
+ * named in `passableOpeningIds` (an open, walkable door) cuts a gap in the wall.
+ * That set is the seam the open-door work fills in; today it is empty, so every
+ * opening is closed.
  */
 export function wallSegmentsForWalk(
   walls: readonly WallSceneNode[],
   openings: readonly OpeningSceneNode[],
+  passableOpeningIds: ReadonlySet<string> = new Set(),
 ): WallSegment[] {
-  return walls.flatMap((wall) => splitWall(wall, openings))
+  return walls.flatMap((wall) => splitWall(wall, openings, passableOpeningIds))
 }
