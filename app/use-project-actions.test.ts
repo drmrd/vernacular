@@ -372,6 +372,7 @@ describe('useProjectActions export actions', () => {
     expect(notifications.promise).toHaveBeenCalledWith(
       expect.any(Promise),
       expect.objectContaining({ pending: expect.stringMatching(/Exporting/) }),
+      expect.any(Function),
     )
   })
 
