@@ -185,6 +185,7 @@ export {
 } from './commands/handlers/wall-commands'
 export type {
   CalibrateUnderlayParams,
+  MoveUnderlayParams,
   PlaceUnderlayParams,
   RemoveUnderlayParams,
   SetUnderlayOpacityParams,
@@ -192,11 +193,13 @@ export type {
 } from './commands/handlers/underlay-commands'
 export {
   CALIBRATE_UNDERLAY,
+  MOVE_UNDERLAY,
   PLACE_UNDERLAY,
   REMOVE_UNDERLAY,
   SET_UNDERLAY_OPACITY,
   SET_UNDERLAY_VISIBILITY,
   calibrateUnderlay,
+  moveUnderlay,
   placeUnderlay,
   registerUnderlayCommands,
   removeUnderlay,
