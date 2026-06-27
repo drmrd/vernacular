@@ -62,14 +62,32 @@ describe('builtin element types', () => {
     expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(5)
   })
 
-  it('marks every opening element type with a rectangular void contour', () => {
+  it('marks every conventional opening element type with a rectangular void contour', () => {
+    const curvedHeads = new Set(['arched-window', 'round-top-window', 'lancet-window'])
     const openings = Object.values(builtinElementTypes.entries).filter(
       (entry) => entry.category === 'opening',
     )
     expect(openings.length).toBeGreaterThan(0)
 
     for (const entry of openings) {
+      if (curvedHeads.has(entry.id)) continue
       expect(entry.scene3D.voidContour).toBe('rectangular')
+    }
+  })
+
+  it('registers curved-head window types carrying their head shape as the void contour', () => {
+    const cases = [
+      { id: 'arched-window', voidContour: 'arched' },
+      { id: 'round-top-window', voidContour: 'round' },
+      { id: 'lancet-window', voidContour: 'lancet' },
+    ] as const
+
+    for (const { id, voidContour } of cases) {
+      const entry = getEntry(builtinElementTypes, id)
+      expect(entry?.category).toBe('opening')
+      expect(entry?.plan2D.symbol).toBe('window-fixed')
+      expect(entry?.scene3D.voidContour).toBe(voidContour)
+      expect(entry?.scene3D.fill).toBe('window-sash')
     }
   })
 

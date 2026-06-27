@@ -7,10 +7,10 @@ const FALLBACK_SYMBOL = 'cased-opening'
 
 /**
  * Pair each opening scene node with the render decisions resolved from its
- * element type and the current selection. The symbol and the double flag come
- * from the `builtinElementTypes` entry (with a cased-opening / single-leaf
- * fallback when the type is unknown), and `selected` reflects the selection set.
- * Coverage-excluded glue feeding `drawPlan`.
+ * element type and the current selection. The symbol, the double flag, and the
+ * head shape come from the `builtinElementTypes` entry (with a cased-opening /
+ * single-leaf fallback when the type is unknown), and `selected` reflects the
+ * selection set. Coverage-excluded glue feeding `drawPlan`.
  */
 export function toDrawableOpenings(
   openings: readonly OpeningSceneNode[],
@@ -23,6 +23,7 @@ export function toDrawableOpenings(
       symbol: type?.plan2D.symbol ?? FALLBACK_SYMBOL,
       double: type?.opening?.double ?? false,
       selected: selectedIds.has(node.id),
+      head: type?.scene3D.voidContour,
     }
   })
 }
