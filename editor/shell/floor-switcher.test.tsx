@@ -66,6 +66,27 @@ describe('FloorSwitcher', () => {
     expect(onAddFloor).toHaveBeenCalledTimes(1)
   })
 
+  it('orders floors from the highest elevation down so basements sit at the bottom', () => {
+    render(
+      <FloorSwitcher
+        floors={[
+          { id: 'ground', name: 'Ground', elevation: 0 },
+          { id: 'basement', name: 'Basement', elevation: -3000 },
+          { id: 'upper', name: '2nd Floor', elevation: 3000 },
+        ]}
+        activeFloorId="ground"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+      />,
+    )
+
+    const tabs = screen
+      .getAllByRole('button')
+      .filter((button) => button.classList.contains('ds-segmented__option'))
+
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['2nd Floor', 'Ground', 'Basement'])
+  })
+
   it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
     render(
       <FloorSwitcher
