@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ActiveToolProvider } from './active-tool-provider'
 import { useActiveTool } from './active-tool-context'
@@ -8,13 +8,19 @@ import { ToolsPanel } from './tools-panel'
 
 afterEach(cleanup)
 
+function renderPanel() {
+  return render(
+    <ActiveToolProvider>
+      <OpeningToolProvider>
+        <ToolsPanel />
+      </OpeningToolProvider>
+    </ActiveToolProvider>,
+  )
+}
+
 describe('ToolsPanel', () => {
   it('renders four rail section labels through the SectionLabel primitive', () => {
-    const { container } = render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    const { container } = renderPanel()
 
     const sectionLabels = Array.from(container.querySelectorAll('.ds-section-label'))
     const labels = sectionLabels.map((el) => el.textContent?.toLowerCase() ?? '')
@@ -29,113 +35,91 @@ describe('ToolsPanel', () => {
     }
   })
 
+  it('groups all tool chips inside a single Tools radiogroup', () => {
+    renderPanel()
+
+    const group = screen.getByRole('radiogroup', { name: /tools/i })
+    for (const name of [/^select$/i, /^pan$/i, /^wall$/i, /^door$/i, /^window$/i, /^dimension$/i]) {
+      expect(within(group).getByRole('radio', { name })).toBeInTheDocument()
+    }
+  })
+
   it('includes a Pan chip in the SELECT section', () => {
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    expect(screen.getByRole('button', { name: /pan/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /pan/i })).toBeInTheDocument()
   })
 
-  it('defaults to the Select tool active', () => {
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+  it('defaults to the Select tool checked', () => {
+    renderPanel()
 
-    expect(screen.getByRole('button', { name: /select/i })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /pan/i })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /pan/i })).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('marks the active tool chip pressed and all others unpressed', async () => {
+  it('marks the active tool chip checked and all others unchecked', async () => {
     const user = userEvent.setup()
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    await user.click(screen.getByRole('button', { name: /pan/i }))
+    await user.click(screen.getByRole('radio', { name: /pan/i }))
 
-    expect(screen.getByRole('button', { name: /pan/i })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /select/i })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: /pan/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('renders a Phosphor icon SVG inside the Select chip', () => {
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    const selectChip = screen.getByRole('button', { name: /select/i })
+    const selectChip = screen.getByRole('radio', { name: /select/i })
     expect(selectChip.querySelector('svg')).not.toBeNull()
   })
 
   it('routes tool chips through the shared segmented option treatment', () => {
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
     for (const name of [/select/i, /pan/i, /wall/i, /dimension/i]) {
-      expect(screen.getByRole('button', { name })).toHaveClass('ds-segmented__option')
+      expect(screen.getByRole('radio', { name })).toHaveClass('ds-segmented__option')
     }
   })
 
   it('marks the active tool chip with the shared is-active treatment and moves it on activation', async () => {
     const user = userEvent.setup()
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    const selectChip = screen.getByRole('button', { name: /select/i })
-    const panChip = screen.getByRole('button', { name: /pan/i })
+    const selectChip = screen.getByRole('radio', { name: /select/i })
+    const panChip = screen.getByRole('radio', { name: /pan/i })
 
     expect(selectChip).toHaveClass('is-active')
-    expect(selectChip).toHaveAttribute('aria-pressed', 'true')
+    expect(selectChip).toHaveAttribute('aria-checked', 'true')
     expect(panChip).not.toHaveClass('is-active')
 
     await user.click(panChip)
 
     expect(panChip).toHaveClass('is-active')
-    expect(panChip).toHaveAttribute('aria-pressed', 'true')
+    expect(panChip).toHaveAttribute('aria-checked', 'true')
     expect(selectChip).not.toHaveClass('is-active')
-    expect(selectChip).toHaveAttribute('aria-pressed', 'false')
+    expect(selectChip).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('keeps planned placeholder chips on the shared segmented option treatment', () => {
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+  it('exposes planned placeholder chips as disabled radios on the shared treatment', () => {
+    renderPanel()
 
-    const fireplaceChip = screen.getByRole('button', { name: /fireplace/i })
+    const fireplaceChip = screen.getByRole('radio', { name: /fireplace/i })
 
     expect(fireplaceChip).toHaveAttribute('aria-disabled', 'true')
+    expect(fireplaceChip).toHaveAttribute('aria-checked', 'false')
     expect(fireplaceChip).toBeEnabled()
     expect(fireplaceChip).toHaveClass('ds-segmented__option')
   })
 
   it('planned tools stay perceivable and read as planned', async () => {
     const user = userEvent.setup()
-    render(
-      <ActiveToolProvider>
-        <ToolsPanel />
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    const selectChip = screen.getByRole('button', { name: /select/i })
+    const selectChip = screen.getByRole('radio', { name: /select/i })
 
     for (const name of [/fireplace/i, /chimney/i, /stairs/i, /label/i]) {
-      const chip = screen.getByRole('button', { name })
+      const chip = screen.getByRole('radio', { name })
 
       expect(chip).toHaveAttribute('aria-disabled', 'true')
       expect(chip).toBeEnabled()
@@ -143,64 +127,46 @@ describe('ToolsPanel', () => {
       expect(chip).toHaveClass('tools-panel__chip')
     }
 
-    const fireplaceChip = screen.getByRole('button', { name: /fireplace/i })
+    const fireplaceChip = screen.getByRole('radio', { name: /fireplace/i })
 
-    expect(selectChip).toHaveAttribute('aria-pressed', 'true')
+    expect(selectChip).toHaveAttribute('aria-checked', 'true')
 
     await user.click(fireplaceChip)
 
-    expect(selectChip).toHaveAttribute('aria-pressed', 'true')
-    expect(fireplaceChip).not.toHaveAttribute('aria-pressed', 'true')
+    expect(selectChip).toHaveAttribute('aria-checked', 'true')
+    expect(fireplaceChip).not.toHaveAttribute('aria-checked', 'true')
   })
 
   it('renders Door and Window chips in the DRAW section (no standalone Opening chip)', () => {
-    render(
-      <ActiveToolProvider>
-        <OpeningToolProvider>
-          <ToolsPanel />
-        </OpeningToolProvider>
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    expect(screen.getByRole('button', { name: /door/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /window/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^opening$/i })).toBeNull()
+    expect(screen.getByRole('radio', { name: /door/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /window/i })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /^opening$/i })).toBeNull()
   })
 
   it('pressing Door activates place-opening with a door type', async () => {
     const user = userEvent.setup()
-    render(
-      <ActiveToolProvider>
-        <OpeningToolProvider>
-          <ToolsPanel />
-        </OpeningToolProvider>
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    const doorChip = screen.getByRole('button', { name: /door/i })
+    const doorChip = screen.getByRole('radio', { name: /door/i })
     expect(doorChip).toHaveClass('ds-segmented__option')
 
     await user.click(doorChip)
 
-    expect(doorChip).toHaveAttribute('aria-pressed', 'true')
+    expect(doorChip).toHaveAttribute('aria-checked', 'true')
     expect(doorChip).toHaveClass('is-active')
-    expect(screen.getByRole('button', { name: /window/i })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: /window/i })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('pressing Window activates place-opening with a window type', async () => {
     const user = userEvent.setup()
-    render(
-      <ActiveToolProvider>
-        <OpeningToolProvider>
-          <ToolsPanel />
-        </OpeningToolProvider>
-      </ActiveToolProvider>,
-    )
+    renderPanel()
 
-    await user.click(screen.getByRole('button', { name: /window/i }))
+    await user.click(screen.getByRole('radio', { name: /window/i }))
 
-    expect(screen.getByRole('button', { name: /window/i })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /door/i })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: /window/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /door/i })).toHaveAttribute('aria-checked', 'false')
   })
 })
 
