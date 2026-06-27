@@ -19,16 +19,6 @@ export interface OpeningHeadArc {
 /** Crown rise of a segmental arch as a fraction of the half-width, shallower than a semicircle's full half-width rise. */
 const SEGMENTAL_RISE_FRACTION = 0.5
 
-/** A semicircular head: the circle centered on the springline midpoint, rising a half-width to its crown. */
-function roundHead(halfWidth: number): OpeningHeadArc {
-  return {
-    center: { x: 0, y: 0 },
-    from: { x: -halfWidth, y: 0 },
-    to: { x: halfWidth, y: 0 },
-    crown: { x: 0, y: halfWidth },
-  }
-}
-
 /**
  * A single circular arc springing from both jambs to a crown `rise` above the
  * springline. The center sits on the centerline at the y that makes the jambs and
@@ -59,7 +49,8 @@ export function openingHeadArcs(
   const halfWidth = width / 2
   switch (shape) {
     case 'round':
-      return [roundHead(halfWidth)]
+      // A semicircle is the on-axis arc whose rise equals the half-width.
+      return [onAxisArc(halfWidth, halfWidth)]
     case 'arched':
       return [onAxisArc(halfWidth, halfWidth * SEGMENTAL_RISE_FRACTION)]
     default:
