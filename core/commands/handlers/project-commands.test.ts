@@ -44,6 +44,15 @@ describe('project commands', () => {
     expect(state.floors).toEqual([])
   })
 
+  it('places an added floor at a supplied elevation so basements sit below ground', () => {
+    const state = newProject()
+    const dispatcher = projectDispatcher(state)
+
+    dispatcher.dispatch(addFloor('Basement', { elevation: -3000 }))
+
+    expect(state.floors[0]?.elevation).toBe(-3000)
+  })
+
   it('renames the project and restores the prior name on undo', () => {
     const state = newProject()
     const dispatcher = projectDispatcher(state)
