@@ -54,9 +54,10 @@ function Chip({ toolId, label, unavailable, icon }: ChipProps) {
   return (
     <button
       type="button"
-      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      aria-pressed={toolId !== undefined ? isActive : undefined}
+      role="radio"
+      aria-checked={isActive}
       aria-disabled={unavailable || undefined}
+      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       title={unavailable ? 'Planned, not yet available' : undefined}
       onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
     >
@@ -88,8 +89,9 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={isActive}
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      aria-pressed={isActive}
       onClick={handleClick}
     >
       <IconComponent size={16} aria-hidden="true" />
@@ -100,7 +102,7 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
 
 export function ToolsPanel() {
   return (
-    <div className="tools-panel">
+    <div className="tools-panel" role="radiogroup" aria-label="Tools">
       <section className="tools-panel__section">
         <SectionLabel className="tools-panel__section-heading">Select</SectionLabel>
         <Chip toolId="select" label="Select" icon={CursorClick} />

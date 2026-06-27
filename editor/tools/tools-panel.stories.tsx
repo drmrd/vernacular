@@ -25,15 +25,15 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const screen = within(canvasElement)
 
-    const select = screen.getByRole('button', { name: /select/i })
-    const wall = screen.getByRole('button', { name: /wall/i })
+    const select = screen.getByRole('radio', { name: /select/i })
+    const wall = screen.getByRole('radio', { name: /wall/i })
     await expect(select).toBeInTheDocument()
     await expect(wall).toBeInTheDocument()
-    await expect(select).toHaveAttribute('aria-pressed', 'true')
+    await expect(select).toHaveAttribute('aria-checked', 'true')
 
     await userEvent.click(wall)
 
-    await expect(wall).toHaveAttribute('aria-pressed', 'true')
-    await expect(select).toHaveAttribute('aria-pressed', 'false')
+    await expect(wall).toHaveAttribute('aria-checked', 'true')
+    await expect(select).toHaveAttribute('aria-checked', 'false')
   },
 }
