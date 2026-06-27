@@ -105,6 +105,24 @@ describe('FloorSwitcher', () => {
     expect(onAddFloor).toHaveBeenCalledWith({ name: '2nd Floor', elevation: 3000 })
   })
 
+  it('adds a basement below the ground with a negative elevation', async () => {
+    const onAddFloor = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <FloorSwitcher
+        floors={[{ id: 'ground', name: 'Ground', elevation: 0 }]}
+        activeFloorId="ground"
+        onSelectFloor={vi.fn()}
+        onAddFloor={onAddFloor}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /add basement/i }))
+
+    expect(onAddFloor).toHaveBeenCalledWith({ name: 'Basement', elevation: -3000 })
+  })
+
   it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
     render(
       <FloorSwitcher
