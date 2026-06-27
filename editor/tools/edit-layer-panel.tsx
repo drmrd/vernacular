@@ -15,12 +15,12 @@ const EDIT_LAYERS: { id: EditLayer; label: string; icon: Icon }[] = [
   { id: 'annotations', label: 'Annotations', icon: Tag },
 ]
 
-/** Segmented selector that scopes which plan elements are selectable. */
+/** Radiogroup selector that scopes which plan elements are selectable. */
 export function EditLayerPanel() {
   const { layer, setLayer } = useActiveEditLayer()
   return (
     <div className="tools-panel">
-      <section className="tools-panel__section">
+      <section className="tools-panel__section" role="radiogroup" aria-label="Edit layer">
         <SectionLabel className="tools-panel__section-heading">Edit layer</SectionLabel>
         {EDIT_LAYERS.map(({ id, label, icon }) => {
           const isActive = layer === id
@@ -29,8 +29,9 @@ export function EditLayerPanel() {
             <button
               key={id}
               type="button"
+              role="radio"
+              aria-checked={isActive}
               className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-              aria-pressed={isActive}
               onClick={() => setLayer(id)}
             >
               <IconComponent size={16} aria-hidden="true" />
