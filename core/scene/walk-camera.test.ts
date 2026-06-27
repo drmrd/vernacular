@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Vector3 } from './vector3'
+import type { WallSegment } from './walk-collision'
 import {
   accumulatePointerLook,
   advanceWalk,
@@ -73,6 +74,32 @@ describe('advanceWalk horizontal movement at yaw 0', () => {
     expect(horizontalDistance(facingNegativeZ.position, forwardRight.position)).toBeCloseTo(step, 5)
     expect(forwardRight.position.x).toBeCloseTo(diagonalComponent, 5)
     expect(forwardRight.position.z).toBeCloseTo(-diagonalComponent, 5)
+  })
+})
+
+describe('advanceWalk collision', () => {
+  const radius = 300
+
+  it('clamps a forward move that would cross a wall to a radius standoff and holds eye height', () => {
+    // A wall lying across the path ahead at z = -1500, perpendicular to the -Z
+    // forward move (yaw 0 faces -Z).
+    const wall: WallSegment = { start: { x: -1000, z: -1500 }, end: { x: 1000, z: -1500 } }
+    const start: WalkState = {
+      position: { x: 0, y: WALK_EYE_HEIGHT_MM, z: -1100 },
+      yaw: 0,
+      pitch: 0,
+    }
+    // A short forward step whose proposed end (z = -1250) lies inside the radius
+    // of the wall, so collision must pull it back rather than let it through.
+    const dt = 150 / WALK_SPEED_MM_PER_S
+
+    const next = advanceWalk(start, { ...noInput, forward: true }, dt, { segments: [wall], radius })
+
+    // Stopped exactly one radius in front of the wall, not at the proposed -1250.
+    expect(next.position.z).toBeCloseTo(-1500 + radius, 5)
+    expect(next.position.x).toBeCloseTo(0, 5)
+    // The walker stays on the floor: collision never changes eye height.
+    expect(next.position.y).toBeCloseTo(WALK_EYE_HEIGHT_MM, 5)
   })
 })
 

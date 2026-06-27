@@ -397,6 +397,8 @@ export {
   pointerLookDelta,
   walkLookTarget,
 } from './scene/walk-camera'
+export type { PlanarPoint, WallSegment, WalkCollisionWorld } from './scene/walk-collision'
+export { resolveWalkCollision, wallSegmentsForWalk } from './scene/walk-collision'
 export type {
   AssumedUnit,
   DecimalPrecision,
