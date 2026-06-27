@@ -3,7 +3,7 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { recordingContext } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { Viewport } from './viewport'
-import type { OpeningSceneNode } from '../../core'
+import type { OpeningSceneNode, VoidContourKind } from '../../core'
 
 // A non-trivial scale and pan so the projection is observable rather than an
 // identity map, mirroring the underlay draw test.
@@ -39,13 +39,19 @@ function openingNode(overrides: Partial<OpeningSceneNode> = {}): OpeningSceneNod
 
 function drawable(
   symbol: string,
-  options: { double?: boolean; selected?: boolean; node?: Partial<OpeningSceneNode> } = {},
+  options: {
+    double?: boolean
+    selected?: boolean
+    node?: Partial<OpeningSceneNode>
+    head?: VoidContourKind
+  } = {},
 ): DrawableOpening {
   return {
     node: openingNode(options.node),
     symbol,
     double: options.double ?? false,
     selected: options.selected ?? false,
+    head: options.head,
   }
 }
 
@@ -207,6 +213,15 @@ describe('drawOpening', () => {
     expect(countOp(crankRecorder.ops, 'lineTo')).toBeGreaterThan(
       countOp(fixedRecorder.ops, 'lineTo'),
     )
+  })
+
+  it('draws a lancet window head as two arcs above the fixed-window glazing', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('window-fixed', { head: 'lancet' }), RENDER)
+
+    // The pointed head adds its two arcs to the otherwise arc-free fixed window.
+    expect(recorder.arcs).toHaveLength(2)
   })
 
   it('emits an extra highlight stroke when the opening is selected', () => {
