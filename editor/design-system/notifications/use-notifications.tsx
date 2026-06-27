@@ -32,6 +32,15 @@ export interface BannerInput {
   dismissible?: boolean
 }
 
+/** Reports a determinate progress fraction in the range [0, 1] to a pending promise toast. */
+export type ProgressReporter = (fraction: number) => void
+
+/**
+ * Receives the {@link ProgressReporter} bound to a promise toast, synchronously, before the task
+ * settles. A caller stores the reporter and feeds it fractions as its work advances.
+ */
+export type ProgressRegister = (report: ProgressReporter) => void
+
 export interface NotificationApi {
   notifications: Notification[]
   success(message: string, options?: ToastOptions): string
@@ -39,7 +48,11 @@ export interface NotificationApi {
   warning(message: string, options?: ToastOptions): string
   error(message: string, options?: ToastOptions): string
   banner(input: BannerInput): string
-  promise<T>(task: Promise<T>, messages: PromiseMessages<T>): Promise<T>
+  promise<T>(
+    task: Promise<T>,
+    messages: PromiseMessages<T>,
+    register?: ProgressRegister,
+  ): Promise<T>
   dismiss(id: string): void
 }
 
@@ -91,7 +104,8 @@ function resolveMessage(message: PromiseMessage): {
 }
 
 // The pending toast is sticky (no auto-dismiss) and not dismissible while the task is in flight.
-function pendingToast(id: string, message: PromiseMessage): Notification {
+// A fraction, when supplied, switches the toast from the indeterminate spinner to a determinate bar.
+function pendingToast(id: string, message: PromiseMessage, fraction?: number): Notification {
   return {
     id,
     tier: 'toast',
@@ -101,6 +115,7 @@ function pendingToast(id: string, message: PromiseMessage): Notification {
     message: resolveMessage(message).message,
     pending: true,
     dismissible: false,
+    ...(fraction !== undefined ? { fraction } : {}),
   }
 }
 
@@ -122,11 +137,18 @@ function settledToast(
 }
 
 // Wires a promise to a single toast: pending while in flight, then success or error on settle.
+// When a register is supplied, the toast also subscribes to progress fractions, re-emitting the
+// pending toast with each fraction so it renders a determinate bar.
 function usePromise(emit: (notification: Notification) => string, nextId: () => string) {
   return useCallback(
-    <T,>(task: Promise<T>, messages: PromiseMessages<T>): Promise<T> => {
+    <T,>(
+      task: Promise<T>,
+      messages: PromiseMessages<T>,
+      register?: ProgressRegister,
+    ): Promise<T> => {
       const id = nextId()
       emit(pendingToast(id, messages.pending))
+      register?.((fraction) => emit(pendingToast(id, messages.pending, fraction)))
       // This .then only subscribes the toast to the task's settlement (a side-effect); we still
       // return the original task so the caller receives the resolved value type T and can handle
       // the rejection itself. Returning task.then(...) would change the resolved type to void and
@@ -198,7 +220,11 @@ function useEmitter(dispatch: Dispatch) {
 interface ApiCallbacks {
   toast: (severity: NotificationSeverity, message: string, options?: ToastOptions) => string
   emit: (notification: Notification) => string
-  promise: <T>(task: Promise<T>, messages: PromiseMessages<T>) => Promise<T>
+  promise: <T>(
+    task: Promise<T>,
+    messages: PromiseMessages<T>,
+    register?: ProgressRegister,
+  ) => Promise<T>
   dismiss: (id: string) => void
 }
 
