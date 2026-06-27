@@ -373,6 +373,8 @@ export { ceilingHeight } from './scene/ceiling-height'
 export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
+export { openingHeadArcs } from './scene/opening-head'
+export type { OpeningHeadArc } from './scene/opening-head'
 export {
   openingFill,
   LEAF_REVEAL_GAP_MM,

@@ -1,4 +1,10 @@
-import { type OpeningSceneNode, type Point } from '../../core'
+import {
+  openingHeadArcs,
+  type OpeningHeadArc,
+  type OpeningSceneNode,
+  type Point,
+  type VoidContourKind,
+} from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { openingCorners, swingLeafGeometry } from './opening-geometry'
 import type { PlanPalette } from './plan-palette'
@@ -11,6 +17,8 @@ export interface DrawableOpening {
   symbol: string
   double: boolean
   selected: boolean
+  /** The element type's head shape (`scene3D.voidContour`); an absent or rectangular head draws no curved arc. */
+  head?: VoidContourKind | undefined
 }
 
 // The provisional gap fill that breaks the wall stroke; the slice documents this as a background-color gap.
@@ -247,6 +255,70 @@ function familyRoutine(symbol: string): FamilyRoutine | undefined {
   }
 }
 
+/** A head arc with all four reference points lifted from the opening-local frame into world space. */
+interface HeadArcWorld {
+  center: Point
+  from: Point
+  to: Point
+  crown: Point
+}
+
+/** Fold a signed angle delta into `[0, 2pi)`. */
+function normalizeAngle(radians: number): number {
+  return ((radians % FULL_CIRCLE) + FULL_CIRCLE) % FULL_CIRCLE
+}
+
+/** Map an opening-local head point onto the wall axes: `x` along the wall, `y` across it toward the facing side. */
+function headPoint(node: OpeningSceneNode, facing: number, local: Point): Point {
+  return add(add(node.center, scale(node.along, local.x)), scale(node.normal, facing * local.y))
+}
+
+function headArcToWorld(node: OpeningSceneNode, facing: number, arc: OpeningHeadArc): HeadArcWorld {
+  return {
+    center: headPoint(node, facing, arc.center),
+    from: headPoint(node, facing, arc.from),
+    to: headPoint(node, facing, arc.to),
+    crown: headPoint(node, facing, arc.crown),
+  }
+}
+
+/**
+ * The canvas sweep flag, in projected screen space, that strokes the arc from
+ * `from` to `to` passing through `crown`. The crown disambiguates the two arcs
+ * between the endpoints: the sweep covers the crown only when it lies within the
+ * clockwise span, so the flag flips when the crown is on the far side.
+ */
+function headSweepCounterclockwise(painter: OpeningPainter, arc: HeadArcWorld): boolean {
+  const center = worldToScreen(arc.center, painter.viewport)
+  const from = worldToScreen(arc.from, painter.viewport)
+  const to = worldToScreen(arc.to, painter.viewport)
+  const crown = worldToScreen(arc.crown, painter.viewport)
+  const start = Math.atan2(from.y - center.y, from.x - center.x)
+  const deltaEnd = normalizeAngle(Math.atan2(to.y - center.y, to.x - center.x) - start)
+  const deltaCrown = normalizeAngle(Math.atan2(crown.y - center.y, crown.x - center.x) - start)
+  return deltaCrown > deltaEnd
+}
+
+/** Stroke the opening's curved head: the arcs its head shape resolves to, springing from the jambs toward the facing side. */
+function drawHead(painter: OpeningPainter, opening: DrawableOpening): void {
+  const node = opening.node
+  const arcs = openingHeadArcs(opening.head, node.width)
+  if (arcs.length === 0) {
+    return
+  }
+  setInk(painter)
+  const facing = facingSign(node)
+  for (const arc of arcs) {
+    const world = headArcToWorld(node, facing, arc)
+    strokeArc(painter, {
+      hinge: world.center,
+      leafEnd: world.from,
+      closed: world.to,
+      counterclockwise: headSweepCounterclockwise(painter, world),
+    })
+  }
+}
+
 function drawSelectionHighlight(painter: OpeningPainter, node: OpeningSceneNode): void {
   painter.ctx.strokeStyle = painter.selection
   painter.ctx.lineWidth = OPENING_SELECTION_WIDTH
@@ -271,6 +343,7 @@ export function drawOpening(
   if (routine !== undefined) {
     routine(painter, opening)
   }
+  drawHead(painter, opening)
   if (opening.selected) {
     drawSelectionHighlight(painter, opening.node)
   }
