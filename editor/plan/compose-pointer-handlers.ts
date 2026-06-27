@@ -10,6 +10,7 @@ import type { PlanUnderlayLayer } from './use-underlay'
 import type { FurnitureEditing } from './use-furniture-editing'
 import type { FurniturePlacementHandlers } from './use-furniture-layer'
 import type { SelectionMove } from './use-selection-move'
+import type { UnderlayMove } from './use-underlay-move'
 import type { ViewportControls } from './use-viewport-controls'
 import type { WallEditing } from './use-wall-editing'
 import type { WallFacePlanHighlight } from './use-wall-face-plan-highlight'
@@ -29,6 +30,9 @@ export interface PointerSources {
   openingEditing: OpeningEditing
   furnitureEditing: FurnitureEditing
   selectionMove: SelectionMove
+  // A press on an already-selected underlay drags it; sits beneath the entity
+  // move-drag so a selected wall over the image still group-moves.
+  underlayMove: UnderlayMove
   interaction: PlanInteraction
   dimensionTool: DimensionTool
   calibration: PlanUnderlayLayer['calibration']
@@ -80,6 +84,7 @@ function composedPointerDown(
   const { dimensionTool, openingPlacement, furniturePlacement, selection } = sources
   if (controls.onPanPointerDown(event) || wallEditing.onPointerDown(event)) return
   if (entityPointerDown(sources, event) || selectionMove.onPointerDown(event)) return
+  if (sources.underlayMove.onPointerDown(event)) return
   calibration.onPointerDown(event)
   interaction.onPointerDown(event)
   dimensionTool.onPointerDown(event)
@@ -120,6 +125,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       furniturePlacement.onPointerMove(event)
       if (controls.onPanPointerMove(event) || wallEditing.onPointerMove(event)) return
       if (entityPointerMove(sources, event) || selectionMove.onPointerMove(event)) return
+      if (sources.underlayMove.onPointerMove(event)) return
       calibration.onPointerMove(event)
       interaction.onPointerMove(event)
       dimensionTool.onPointerMove(event)
@@ -131,7 +137,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       openingResizing.onPointerUp(event)
       openingEditing.onPointerUp(event)
       furnitureEditing.onPointerUp(event)
-      if (selectionMove.onPointerUp(event)) return
+      if (selectionMove.onPointerUp(event) || sources.underlayMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },
     onDoubleClick: interaction.onDoubleClick,
