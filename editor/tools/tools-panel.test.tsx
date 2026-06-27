@@ -168,7 +168,9 @@ describe('ToolsPanel', () => {
     expect(screen.getByRole('radio', { name: /window/i })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /door/i })).toHaveAttribute('aria-checked', 'false')
   })
+})
 
+describe('ToolsPanel keyboard navigation', () => {
   it('keeps only the checked tool in the tab order (roving tabindex)', () => {
     renderPanel()
 
