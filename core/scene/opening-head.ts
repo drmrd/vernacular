@@ -1,3 +1,4 @@
+import { distance } from '../geometry/point'
 import type { Point } from '../model/types'
 import type { VoidContourKind } from '../registries/element-types'
 
@@ -35,6 +36,35 @@ function onAxisArc(halfWidth: number, rise: number): OpeningHeadArc {
   }
 }
 
+/** The midpoint of an arc's minor (visible) span: the point on the circle along the bisector of its two endpoints. */
+function arcCrown(center: Point, from: Point, to: Point): Point {
+  const radius = distance(center, from)
+  const sumX = (from.x - center.x + (to.x - center.x)) / radius
+  const sumY = (from.y - center.y + (to.y - center.y)) / radius
+  const bisectorLength = Math.hypot(sumX, sumY)
+  return {
+    x: center.x + (radius * sumX) / bisectorLength,
+    y: center.y + (radius * sumY) / bisectorLength,
+  }
+}
+
+/** One side of a pointed (lancet) arch: a circular arc centered on the far jamb, springing from the near jamb up to the apex. */
+function lancetArc(center: Point, spring: Point, apex: Point): OpeningHeadArc {
+  return { center, from: spring, to: apex, crown: arcCrown(center, spring, apex) }
+}
+
+/**
+ * A pointed head: two equilateral arcs, each centered on the far jamb with a
+ * radius equal to the full width, meeting at an apex above the springline.
+ */
+function lancetArcs(halfWidth: number): OpeningHeadArc[] {
+  const span = halfWidth * 2
+  const apex: Point = { x: 0, y: Math.sqrt(span * span - halfWidth * halfWidth) }
+  const leftSpring: Point = { x: -halfWidth, y: 0 }
+  const rightSpring: Point = { x: halfWidth, y: 0 }
+  return [lancetArc(rightSpring, leftSpring, apex), lancetArc(leftSpring, rightSpring, apex)]
+}
+
 /**
  * The plan head arcs resolved from an opening's shape parameter
  * (`scene3D.voidContour`), in the opening-local frame described on
@@ -53,6 +83,8 @@ export function openingHeadArcs(
       return [onAxisArc(halfWidth, halfWidth)]
     case 'arched':
       return [onAxisArc(halfWidth, halfWidth * SEGMENTAL_RISE_FRACTION)]
+    case 'lancet':
+      return lancetArcs(halfWidth)
     default:
       return []
   }
