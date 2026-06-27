@@ -21,3 +21,38 @@ export function ordinalLabel(value: number): string {
   const suffix = ORDINAL_SUFFIXES[value % ORDINAL_UNITS_MODULUS] ?? ORDINAL_SUFFIX_OTHER
   return `${value}${suffix}`
 }
+
+// Default storey rise (finished-floor to finished-floor) for a freshly added
+// floor. Users adjust it afterward through setFloorElevation; this only seeds a
+// sensible, well-ordered default.
+export const DEFAULT_FLOOR_TO_FLOOR_MM = 3000
+const GROUND_ELEVATION_MM = 0
+const FLOOR_NAME_SUFFIX = ' Floor'
+
+/** The default name and elevation a newly added floor should take. */
+export interface PlannedFloor {
+  name: string
+  elevation: number
+}
+
+function countAtOrAboveGround(elevations: readonly number[]): number {
+  return elevations.filter((elevation) => elevation >= GROUND_ELEVATION_MM).length
+}
+
+// An empty stack sits one storey below ground so the first added upper floor
+// lands exactly at ground level (0).
+function highestElevation(elevations: readonly number[]): number {
+  return elevations.length === 0
+    ? GROUND_ELEVATION_MM - DEFAULT_FLOOR_TO_FLOOR_MM
+    : Math.max(...elevations)
+}
+
+// Above-ground floors number upward from the ground: with only a ground floor
+// present the next one is the "2nd Floor", and it stacks one storey higher.
+export function planUpperFloor(elevations: readonly number[]): PlannedFloor {
+  const ordinal = ordinalLabel(countAtOrAboveGround(elevations) + 1)
+  return {
+    name: `${ordinal}${FLOOR_NAME_SUFFIX}`,
+    elevation: highestElevation(elevations) + DEFAULT_FLOOR_TO_FLOOR_MM,
+  }
+}
