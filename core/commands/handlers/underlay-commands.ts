@@ -1,3 +1,4 @@
+import { translatePoint } from '../../geometry/point'
 import type { Floor, Point, Project, Underlay, UnderlayPlacement } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
@@ -100,10 +101,7 @@ const moveUnderlayHandler: CommandHandler<Project, MoveUnderlayParams> = {
         ...underlay,
         placement: {
           ...underlay.placement,
-          offset: {
-            x: underlay.placement.offset.x + params.delta.x,
-            y: underlay.placement.offset.y + params.delta.y,
-          },
+          offset: translatePoint(underlay.placement.offset, params.delta),
         },
       })),
     )
