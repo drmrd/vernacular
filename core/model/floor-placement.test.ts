@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ordinalLabel } from './floor-placement'
+import { DEFAULT_FLOOR_TO_FLOOR_MM, ordinalLabel, planUpperFloor } from './floor-placement'
 
 describe('ordinalLabel', () => {
   it('labels small cardinals with their English ordinal suffix', () => {
@@ -23,5 +23,28 @@ describe('ordinalLabel', () => {
     expect(ordinalLabel(22)).toBe('22nd')
     expect(ordinalLabel(23)).toBe('23rd')
     expect(ordinalLabel(101)).toBe('101st')
+  })
+})
+
+describe('planUpperFloor', () => {
+  it('names the first floor above the ground "2nd Floor" and lifts it one storey', () => {
+    expect(planUpperFloor([0])).toEqual({
+      name: '2nd Floor',
+      elevation: DEFAULT_FLOOR_TO_FLOOR_MM,
+    })
+  })
+
+  it('keeps counting upward and stacks above the highest existing floor', () => {
+    expect(planUpperFloor([0, DEFAULT_FLOOR_TO_FLOOR_MM])).toEqual({
+      name: '3rd Floor',
+      elevation: 2 * DEFAULT_FLOOR_TO_FLOOR_MM,
+    })
+  })
+
+  it('ignores basements when numbering and placing the next upper floor', () => {
+    expect(planUpperFloor([-DEFAULT_FLOOR_TO_FLOOR_MM, 0])).toEqual({
+      name: '2nd Floor',
+      elevation: DEFAULT_FLOOR_TO_FLOOR_MM,
+    })
   })
 })
