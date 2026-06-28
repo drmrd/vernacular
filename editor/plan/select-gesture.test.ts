@@ -151,13 +151,30 @@ describe('endSelectGesture', () => {
     ).toEqual({ kind: 'none' })
   })
 
-  it('ends a marquee gesture with the resolved rectangle', () => {
+  it('resolves a left-to-right marquee to a window selection', () => {
     expect(
       endSelectGesture(
         { mode: 'marquee', originWorld: { x: 0, y: 0 }, lastCanvas: { x: 50, y: 10 } },
         { world: { x: 100, y: 40 }, shift: false },
       ),
-    ).toEqual({ kind: 'marquee', rect: { min: { x: 0, y: 0 }, max: { x: 100, y: 40 } } })
+    ).toEqual({
+      kind: 'marquee',
+      rect: { min: { x: 0, y: 0 }, max: { x: 100, y: 40 } },
+      mode: 'window',
+    })
+  })
+
+  it('resolves a right-to-left marquee to a crossing selection', () => {
+    expect(
+      endSelectGesture(
+        { mode: 'marquee', originWorld: { x: 100, y: 0 }, lastCanvas: { x: 50, y: 10 } },
+        { world: { x: 0, y: 40 }, shift: false },
+      ),
+    ).toEqual({
+      kind: 'marquee',
+      rect: { min: { x: 0, y: 0 }, max: { x: 100, y: 40 } },
+      mode: 'crossing',
+    })
   })
 
   it('ends a pending gesture with a click at the press origin', () => {
