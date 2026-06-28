@@ -14,14 +14,18 @@ import { applyOpeningMotionForNode, type SceneRoot } from '../../engine'
  * The "use" action: casts a short ray from the walker's eye and toggles the
  * opening it lands on within reach, returning the updated interaction state. With
  * nothing in reach the state is returned unchanged, so pressing the interact key
- * in open space is a no-op.
+ * in open space is a no-op. The per-opening `openness` lets the ray reach a
+ * swung-open leaf where it currently rests, so looking at an open door closes it.
  */
+// eslint-disable-next-line max-params -- the walker, the world's openings, the interaction state being updated, and the live per-opening openness are independent inputs; none collapses into another.
 export function interactFromWalk(
   walk: WalkState,
   openings: readonly OpeningSceneNode[],
   interaction: OpeningInteractionState,
+  openness?: ReadonlyMap<string, number>,
 ): OpeningInteractionState {
-  const targetId = openingUnderReach(walk.position, walkLookDirection(walk), openings)
+  const options = openness ? { openness } : undefined
+  const targetId = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
   return targetId === null ? interaction : toggleOpening(interaction, targetId)
 }
 
