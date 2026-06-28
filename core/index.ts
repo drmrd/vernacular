@@ -405,6 +405,7 @@ export {
   accumulatePointerLook,
   advanceWalk,
   pointerLookDelta,
+  walkLookDirection,
   walkLookTarget,
 } from './scene/walk-camera'
 export type { PlanarPoint, WallSegment, WalkCollisionWorld } from './scene/walk-collision'
