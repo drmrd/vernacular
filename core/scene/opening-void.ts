@@ -48,6 +48,9 @@ function samePoint(a: Point, b: Point): boolean {
   return Math.abs(a.x - b.x) < SAME_POINT_EPSILON && Math.abs(a.y - b.y) < SAME_POINT_EPSILON
 }
 
+/** A curved head shape: every {@link VoidContourKind} except the flat-headed rectangle, which has no head arcs. */
+type CurvedVoidContourKind = Exclude<VoidContourKind, 'rectangular'>
+
 /** The peak rise the head reaches above the springline: the highest point of any of its arcs. */
 function headRise(arcs: OpeningHeadArc[]): number {
   return Math.max(...arcs.flatMap((arc) => [arc.from.y, arc.to.y, arc.crown.y]))
@@ -85,11 +88,12 @@ function headArcSegments(
   const remaining = [...arcs]
   let current: Point = { x: -halfWidth, y: 0 }
   while (remaining.length > 0) {
-    const index = remaining.findIndex(
+    const arcIndex = remaining.findIndex(
       (arc) => samePoint(arc.from, current) || samePoint(arc.to, current),
     )
-    if (index < 0) break
-    const [arc] = remaining.splice(index, 1)
+    if (arcIndex < 0) break
+    const [arc] = remaining.splice(arcIndex, 1)
+    // Narrowing guard only: splice returns one element because arcIndex >= 0.
     if (arc === undefined) break
     const reversed = samePoint(arc.to, current)
     const end = reversed ? arc.from : arc.to
@@ -113,7 +117,7 @@ function headArcSegments(
  * shared with the 2D head drawing through {@link openingHeadArcs}, so the 3D void
  * and the plan symbol describe one curve.
  */
-function curvedVoidContour(node: OpeningSceneNode, shape: VoidContourKind): Contour {
+function curvedVoidContour(node: OpeningSceneNode, shape: CurvedVoidContourKind): Contour {
   const halfWidth = node.width / 2
   const topY = node.sillHeight + node.height
   const arcs = openingHeadArcs(shape, node.width)
