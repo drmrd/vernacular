@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 import { FLOOR_NODE_PREFIX, type SceneGraph } from '../../core'
 
-import { sceneGraphForBuilding } from './view-scene-graph'
+import { sceneGraphForBuilding, viewSceneGraph } from './view-scene-graph'
 
 // Storey rise in millimetres for the stacked test fixtures: a ground floor at the
 // datum, an upper floor one storey above, and a basement one storey below grade.
@@ -73,5 +73,36 @@ describe('sceneGraphForBuilding', () => {
       `${FLOOR_NODE_PREFIX}upper`,
     ])
     expect(building.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
+  })
+})
+
+describe('viewSceneGraph', () => {
+  const graph = stack(
+    floorWithWall('basement', -STOREY_RISE_MM),
+    floorWithWall('ground', 0),
+    floorWithWall('upper', STOREY_RISE_MM),
+  )
+
+  it('narrows to the active floor in floor scope', () => {
+    const view = viewSceneGraph({
+      rawGraph: graph,
+      scope: 'floor',
+      activeFloorId: 'ground',
+      includeUnderground: true,
+    })
+
+    expect(view.nodes.map((node) => node.id)).toEqual([`${FLOOR_NODE_PREFIX}ground`])
+    expect(view.walls.map((wall) => wall.floorId)).toEqual(['ground'])
+  })
+
+  it('aggregates every floor in building scope, honoring the underground flag', () => {
+    const view = viewSceneGraph({
+      rawGraph: graph,
+      scope: 'building',
+      activeFloorId: 'ground',
+      includeUnderground: false,
+    })
+
+    expect(view.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
   })
 })
