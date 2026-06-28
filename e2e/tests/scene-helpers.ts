@@ -52,7 +52,7 @@ export async function drawnSceneCanvas(page: Page): Promise<Locator> {
 
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
-  await page.getByRole('button', { name: 'Wall', exact: true }).click()
+  await page.getByRole('radio', { name: 'Wall', exact: true }).click()
   await plan.click({ position: { x: 100, y: 120 } })
   await plan.click({ position: { x: 320, y: 120 } })
   await plan.click({ position: { x: 320, y: 260 } })
@@ -71,7 +71,7 @@ async function drawClosedRectangularRoom(page: Page): Promise<Locator> {
 
   const plan = page.getByLabel('Floor plan')
   await expect(plan).toBeVisible()
-  await page.getByRole('button', { name: 'Wall', exact: true }).click()
+  await page.getByRole('radio', { name: 'Wall', exact: true }).click()
   await plan.click({ position: { x: 100, y: 120 } })
   await plan.click({ position: { x: 300, y: 120 } })
   await plan.click({ position: { x: 300, y: 260 } })
@@ -95,7 +95,7 @@ export async function drawnRoomCanvas(page: Page): Promise<Locator> {
 export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
   const plan = await drawClosedRectangularRoom(page)
   // Arm opening placement, then host one door on the midpoint of the top wall.
-  await page.getByRole('button', { name: 'Door', exact: true }).click()
+  await page.getByRole('radio', { name: 'Door', exact: true }).click()
   await plan.click({ position: { x: 200, y: 120 } })
   await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(1)
 

@@ -8,7 +8,7 @@ test.describe('Keyboard plan authoring', () => {
 
     // Activate the Wall tool, then move focus off the tool button so the
     // window-level authoring keys are not swallowed by the focused control.
-    await page.getByRole('button', { name: 'Wall', exact: true }).click()
+    await page.getByRole('radio', { name: 'Wall', exact: true }).click()
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
 
     // The candidate marker appears once a creative tool is active, showing where

@@ -2,6 +2,7 @@ import type { Icon } from '@phosphor-icons/react'
 import { Armchair, Door, Minus, SelectionAll, Tag } from '@phosphor-icons/react'
 import { SectionLabel } from '../design-system'
 import { useActiveEditLayer, type EditLayer } from './edit-layer-context'
+import { useRovingRadioGroup } from './roving-radio-group'
 import '../design-system/segmented.css'
 import './tools-panel.css'
 
@@ -15,12 +16,19 @@ const EDIT_LAYERS: { id: EditLayer; label: string; icon: Icon }[] = [
   { id: 'annotations', label: 'Annotations', icon: Tag },
 ]
 
-/** Segmented selector that scopes which plan elements are selectable. */
+/** Radiogroup selector that scopes which plan elements are selectable. */
 export function EditLayerPanel() {
   const { layer, setLayer } = useActiveEditLayer()
+  const { containerRef, onKeyDown } = useRovingRadioGroup<HTMLDivElement>()
   return (
     <div className="tools-panel">
-      <section className="tools-panel__section">
+      <div
+        ref={containerRef}
+        className="tools-panel__section"
+        role="radiogroup"
+        aria-label="Edit layer"
+        onKeyDown={onKeyDown}
+      >
         <SectionLabel className="tools-panel__section-heading">Edit layer</SectionLabel>
         {EDIT_LAYERS.map(({ id, label, icon }) => {
           const isActive = layer === id
@@ -29,8 +37,10 @@ export function EditLayerPanel() {
             <button
               key={id}
               type="button"
+              role="radio"
+              aria-checked={isActive}
+              tabIndex={isActive ? 0 : -1}
               className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-              aria-pressed={isActive}
               onClick={() => setLayer(id)}
             >
               <IconComponent size={16} aria-hidden="true" />
@@ -38,7 +48,7 @@ export function EditLayerPanel() {
             </button>
           )
         })}
-      </section>
+      </div>
     </div>
   )
 }

@@ -13,7 +13,7 @@ test.describe('Crash recovery', () => {
     const canvas = page.getByLabel('Floor plan')
     await expect(canvas).toBeVisible()
 
-    await page.getByRole('button', { name: 'Wall', exact: true }).click()
+    await page.getByRole('radio', { name: 'Wall', exact: true }).click()
     await canvas.click({ position: { x: 120, y: 200 } })
     await canvas.click({ position: { x: 520, y: 200 } })
     // Finish the run with Enter so the buffered wall commits.

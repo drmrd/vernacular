@@ -16,7 +16,7 @@ export const selectors = {
   dimensionProxies: (page: Page) => page.getByRole('option', { name: /^Dimension,/ }),
   addFloorButton: (page: Page) => page.getByRole('button', { name: 'Add floor' }),
   floorButton: (page: Page, name: string) => page.getByRole('button', { name }),
-  selectTool: (page: Page) => page.getByRole('button', { name: 'Select' }),
+  selectTool: (page: Page) => page.getByRole('radio', { name: 'Select' }),
   threeDRegion: (page: Page) => page.getByLabel('3D preview'),
   viewModeButton: (page: Page, name: string) => page.getByRole('button', { name }),
   liveRegion: (page: Page) => page.locator('.plan-overlay__live'),
@@ -42,7 +42,7 @@ export async function canvasBox(page: Page) {
 // Activate the wall-drawing tool. Drawing is an explicit tool choice now that
 // Select (drag-to-pan) is the default (ADR-0069), so a draw must select it first.
 export async function selectWallTool(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Wall', exact: true }).click()
+  await page.getByRole('radio', { name: 'Wall', exact: true }).click()
 }
 
 // Draw a single straight wall by clicking a start and an end point on the plan.

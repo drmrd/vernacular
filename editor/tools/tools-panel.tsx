@@ -15,6 +15,7 @@ import { builtinElementTypes, type OpeningFamily } from '../../core'
 import { SectionLabel } from '../design-system'
 import { useActiveTool, type ToolId } from './active-tool-context'
 import { useOpeningTool } from '../plan/opening-tool-context'
+import { useRovingRadioGroup } from './roving-radio-group'
 import '../design-system/segmented.css'
 import './tools-panel.css'
 
@@ -54,9 +55,11 @@ function Chip({ toolId, label, unavailable, icon }: ChipProps) {
   return (
     <button
       type="button"
-      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      aria-pressed={toolId !== undefined ? isActive : undefined}
+      role="radio"
+      aria-checked={isActive}
       aria-disabled={unavailable || undefined}
+      tabIndex={isActive ? 0 : -1}
+      className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       title={unavailable ? 'Planned, not yet available' : undefined}
       onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
     >
@@ -88,8 +91,10 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={isActive}
+      tabIndex={isActive ? 0 : -1}
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      aria-pressed={isActive}
       onClick={handleClick}
     >
       <IconComponent size={16} aria-hidden="true" />
@@ -98,9 +103,9 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   )
 }
 
-export function ToolsPanel() {
+function ToolRailSections() {
   return (
-    <div className="tools-panel">
+    <>
       <section className="tools-panel__section">
         <SectionLabel className="tools-panel__section-heading">Select</SectionLabel>
         <Chip toolId="select" label="Select" icon={CursorClick} />
@@ -132,6 +137,21 @@ export function ToolsPanel() {
           <Chip label="Label" icon={Tag} unavailable />
         </div>
       </section>
+    </>
+  )
+}
+
+export function ToolsPanel() {
+  const { containerRef, onKeyDown } = useRovingRadioGroup<HTMLDivElement>()
+  return (
+    <div
+      ref={containerRef}
+      className="tools-panel"
+      role="radiogroup"
+      aria-label="Tools"
+      onKeyDown={onKeyDown}
+    >
+      <ToolRailSections />
     </div>
   )
 }

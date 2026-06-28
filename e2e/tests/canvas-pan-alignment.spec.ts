@@ -16,7 +16,7 @@ test.describe('Canvas pan alignment', () => {
     }
 
     // Draw a vertical wall by two clicks sharing the same displayed x.
-    await page.getByRole('button', { name: 'Wall', exact: true }).click()
+    await page.getByRole('radio', { name: 'Wall', exact: true }).click()
     const x0 = box.width * 0.3
     await canvas.click({ position: { x: x0, y: box.height * 0.3 } })
     await canvas.click({ position: { x: x0, y: box.height * 0.6 } })
@@ -36,7 +36,7 @@ test.describe('Canvas pan alignment', () => {
     await page.mouse.up({ button: 'middle' })
 
     // Switch to the Select tool.
-    await page.getByRole('button', { name: 'Select' }).click()
+    await page.getByRole('radio', { name: 'Select' }).click()
 
     // On a correct 1:1 pan, panning the content right by PAN moves the wall
     // right by exactly PAN CSS pixels, so the wall now sits at x0 + PAN.

@@ -511,7 +511,7 @@ describe('App initial tool after a mid-session New', () => {
     await screen.findByRole('heading', { level: 1, name: /vernacular/i })
 
     // The starting project has a wall, so #318 leaves the wall tool unarmed.
-    expect(screen.getByRole('button', { name: 'Wall' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: 'Wall' })).toHaveAttribute('aria-checked', 'false')
 
     // New replaces the project in place with a fresh empty one (no discard prompt
     // because the starting session is clean).
@@ -521,7 +521,7 @@ describe('App initial tool after a mid-session New', () => {
     // The fresh empty project re-runs the initial-tool decision: the wall tool is
     // armed again, mirroring a freshly loaded empty project at mount (#318).
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Wall' })).toHaveAttribute('aria-pressed', 'true'),
+      expect(screen.getByRole('radio', { name: 'Wall' })).toHaveAttribute('aria-checked', 'true'),
     )
   })
 })

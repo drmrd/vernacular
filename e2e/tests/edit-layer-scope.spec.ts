@@ -54,12 +54,12 @@ test.describe('Per-layer edit modes scope plan selection', () => {
     await expect(wall).toHaveAttribute('aria-selected', 'false')
 
     // Enter the Annotations layer: walls are now off-layer, so the same click is inert.
-    await page.getByRole('button', { name: 'Annotations', exact: true }).click()
+    await page.getByRole('radio', { name: 'Annotations', exact: true }).click()
     await clickWallThroughProxy(page)
     await expect(wall).toHaveAttribute('aria-selected', 'false')
 
     // Enter the Walls layer: the wall is selectable again and the click selects it.
-    await page.getByRole('button', { name: 'Walls', exact: true }).click()
+    await page.getByRole('radio', { name: 'Walls', exact: true }).click()
     await clickWallThroughProxy(page)
     await expect(wall).toHaveAttribute('aria-selected', 'true')
   })
