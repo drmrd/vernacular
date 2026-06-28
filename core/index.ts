@@ -400,6 +400,7 @@ export { openingVoidContour, rectangularVoidContour } from './scene/opening-void
 export { openingHeadArcs } from './scene/opening-head'
 export type { OpeningHeadArc } from './scene/opening-head'
 export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
+export { constructionTotalThickness } from './scene/construction-profile'
 export {
   openingFill,
   LEAF_REVEAL_GAP_MM,
