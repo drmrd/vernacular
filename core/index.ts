@@ -100,6 +100,15 @@ export type { FloorPattern } from './registries/floor-patterns'
 export { FLOOR_PATTERN_REGISTRY_VERSION, builtinFloorPatterns } from './registries/floor-patterns'
 export type { TrimCategory, TrimProfile, TrimProfileShape } from './registries/trim-profiles'
 export { TRIM_PROFILE_REGISTRY_VERSION, builtinTrimProfiles } from './registries/trim-profiles'
+export type {
+  ConstructionLayer,
+  ConstructionProfile,
+  ConstructionSystem,
+} from './registries/construction-profiles'
+export {
+  CONSTRUCTION_PROFILE_REGISTRY_VERSION,
+  builtinConstructionProfiles,
+} from './registries/construction-profiles'
 export type { Period } from './registries/periods'
 export { PERIOD_REGISTRY_VERSION, builtinPeriods } from './registries/periods'
 export type { Style, StyleCategory } from './registries/styles'
@@ -391,6 +400,11 @@ export { openingVoidContour, rectangularVoidContour } from './scene/opening-void
 export { openingHeadArcs } from './scene/opening-head'
 export type { OpeningHeadArc } from './scene/opening-head'
 export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
+export {
+  constructionTotalThickness,
+  resolveConstructionProfile,
+} from './scene/construction-profile'
+export type { ResolvedConstruction } from './scene/construction-profile'
 export {
   openingFill,
   LEAF_REVEAL_GAP_MM,
