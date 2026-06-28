@@ -9,6 +9,7 @@ import {
   WALK_EYE_HEIGHT_MM,
   WALK_LOOK_DISTANCE_MM,
   WALK_SPEED_MM_PER_S,
+  walkLookDirection,
   walkLookTarget,
   type WalkInput,
   type WalkState,
@@ -204,6 +205,45 @@ describe('accumulatePointerLook', () => {
 
     expect(high.yawDelta).toBeCloseTo(low.yawDelta * 3, 5)
     expect(high.pitchDelta).toBeCloseTo(low.pitchDelta * 3, 5)
+  })
+})
+
+describe('walkLookDirection', () => {
+  it('points one unit straight down -Z at rest', () => {
+    const direction = walkLookDirection(facingNegativeZ)
+
+    expect(direction.x).toBeCloseTo(0, 5)
+    expect(direction.y).toBeCloseTo(0, 5)
+    expect(direction.z).toBeCloseTo(-1, 5)
+  })
+
+  it('turns toward +X when yawed a quarter turn', () => {
+    const yawedRight: WalkState = { ...facingNegativeZ, yaw: Math.PI / 2 }
+
+    const direction = walkLookDirection(yawedRight)
+
+    expect(direction.x).toBeCloseTo(1, 5)
+    expect(direction.z).toBeCloseTo(0, 5)
+  })
+
+  it('tilts above the horizon when pitched up and stays a unit vector', () => {
+    const lookingUp: WalkState = { ...facingNegativeZ, pitch: 0.4 }
+
+    const direction = walkLookDirection(lookingUp)
+
+    expect(direction.y).toBeGreaterThan(0)
+    expect(Math.hypot(direction.x, direction.y, direction.z)).toBeCloseTo(1, 5)
+  })
+
+  it('aims at the look target one look-distance ahead of the eye', () => {
+    const pitched: WalkState = { ...facingNegativeZ, yaw: 0.7, pitch: 0.3 }
+
+    const direction = walkLookDirection(pitched)
+    const target = walkLookTarget(pitched)
+
+    expect(pitched.position.x + direction.x * WALK_LOOK_DISTANCE_MM).toBeCloseTo(target.x, 5)
+    expect(pitched.position.y + direction.y * WALK_LOOK_DISTANCE_MM).toBeCloseTo(target.y, 5)
+    expect(pitched.position.z + direction.z * WALK_LOOK_DISTANCE_MM).toBeCloseTo(target.z, 5)
   })
 })
 

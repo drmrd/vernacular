@@ -3,16 +3,21 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import {
   accumulatePointerLook,
   advanceWalk,
+  emptyOpeningInteraction,
   sceneGraphForFloor,
   walkLookTarget,
   wallSegmentsForWalk,
   WALK_EYE_HEIGHT_MM,
+  type OpeningInteractionState,
+  type OpeningSceneNode,
   type WalkCollisionWorld,
   type WalkInput,
   type WalkState,
 } from '../../core'
+import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { useSceneGraph } from './use-scene-graph'
+import { interactFromWalk, tickOpenings } from './walk-interaction'
 
 const LOOK_SENSITIVITY_RAD_PER_PX = 0.0025
 
@@ -30,6 +35,10 @@ const MOVEMENT_KEYS = new Map<string, 'forward' | 'back' | 'left' | 'right'>([
   ['KeyD', 'right'],
 ])
 
+// The "use" key, the conventional first-person interact verb. It is read as a general
+// interact action so other interactables (lights, drawers) can hook in here later.
+const INTERACT_KEY = 'KeyE'
+
 // The subset of the three camera this wrapper reads and writes, declared structurally
 // so the file types the camera without importing three (rules.md rule 1).
 interface WalkCamera {
@@ -41,6 +50,10 @@ interface WalkCamera {
 
 function emptyWalkInput(): WalkInput {
   return { forward: false, back: false, left: false, right: false, yawDelta: 0, pitchDelta: 0 }
+}
+
+function initialWalkState(): WalkState {
+  return { position: { x: 0, y: WALK_EYE_HEIGHT_MM, z: 0 }, yaw: 0, pitch: 0 }
 }
 
 // Seeds a walk state from the camera's current eye-level position and heading so
@@ -68,19 +81,26 @@ interface WalkSession {
   domElement: HTMLElement
   state: RefObject<WalkState>
   input: RefObject<WalkInput>
+  openings: RefObject<OpeningSceneNode[]>
+  interaction: RefObject<OpeningInteractionState>
   onUserControl: () => void
 }
 
-// Seeds the walk state, takes control of the camera, and wires the keyboard,
-// click-to-capture, and pointer-look listeners. Movement keys act independently of
-// pointer capture; the pointer only drives look while captured. Returns a teardown
-// that removes the listeners, releases capture, and clears held input.
-function startWalk({ camera, domElement, state, input, onUserControl }: WalkSession): () => void {
-  state.current = seedWalkState(camera)
-  // Mark user-controlled immediately so FrameCamera stops reapplying the framed pose
-  // and the walk controller owns the camera from the first frame.
-  onUserControl()
+// Builds the keydown and keyup handlers. Keydown routes the interact key to the
+// opening under the walker's gaze and every other code to its movement flag;
+// keyup clears the movement flag. The interact key takes no movement flag, so it
+// never leaves a key stuck down.
+function walkKeyHandlers(session: WalkSession): {
+  onKeyDown: (event: KeyboardEvent) => void
+  onKeyUp: (event: KeyboardEvent) => void
+} {
+  const { state, input, openings, interaction, onUserControl } = session
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.code === INTERACT_KEY) {
+      interaction.current = interactFromWalk(state.current, openings.current, interaction.current)
+      onUserControl()
+      return
+    }
     const flag = MOVEMENT_KEYS.get(event.code)
     if (flag === undefined) return
     input.current[flag] = true
@@ -90,6 +110,20 @@ function startWalk({ camera, domElement, state, input, onUserControl }: WalkSess
     const flag = MOVEMENT_KEYS.get(event.code)
     if (flag !== undefined) input.current[flag] = false
   }
+  return { onKeyDown, onKeyUp }
+}
+
+// Seeds the walk state, takes control of the camera, and wires the keyboard,
+// click-to-capture, and pointer-look listeners. Movement keys act independently of
+// pointer capture; the pointer only drives look while captured. Returns a teardown
+// that removes the listeners, releases capture, and clears held input.
+function startWalk(session: WalkSession): () => void {
+  const { camera, domElement, state, input, onUserControl } = session
+  state.current = seedWalkState(camera)
+  // Mark user-controlled immediately so FrameCamera stops reapplying the framed pose
+  // and the walk controller owns the camera from the first frame.
+  onUserControl()
+  const { onKeyDown, onKeyUp } = walkKeyHandlers(session)
   const onClick = () => void domElement.requestPointerLock()
   const onPointerMove = (event: PointerEvent) => {
     if (document.pointerLockElement !== domElement) return
@@ -127,29 +161,93 @@ function useWalkCollisionWorld(): WalkCollisionWorld {
   }, [rawGraph, activeFloorId])
 }
 
+// The openings on the active floor, the candidates an interact ray can land on.
+// It rebuilds only when the scene graph or active floor changes, like the
+// collision world above.
+function useWalkOpenings(): OpeningSceneNode[] {
+  const rawGraph = useSceneGraph()
+  const activeFloorId = useActiveFloorId()
+  return useMemo(
+    () => sceneGraphForFloor(rawGraph, activeFloorId).openings,
+    [rawGraph, activeFloorId],
+  )
+}
+
+// The refs the interact key and the per-frame swing read: the live openings (kept
+// current for the keydown closure), the open/closed view-state, and each opening's
+// in-flight openness. They are walk-session view-state, never persisted edits.
+function useWalkInteraction(): {
+  openingsRef: RefObject<OpeningSceneNode[]>
+  interactionRef: RefObject<OpeningInteractionState>
+  opennessRef: RefObject<Map<string, number>>
+} {
+  const openings = useWalkOpenings()
+  const openingsRef = useRef<OpeningSceneNode[]>(openings)
+  openingsRef.current = openings
+  const interactionRef = useRef<OpeningInteractionState>(emptyOpeningInteraction())
+  const opennessRef = useRef<Map<string, number>>(new Map())
+  return { openingsRef, interactionRef, opennessRef }
+}
+
+// The live inputs the per-frame walk step reads: the camera and scene root it
+// writes to, the collision world, and the walk and interaction refs it advances.
+interface WalkFrameContext {
+  camera: WalkCamera
+  collision: WalkCollisionWorld
+  root: SceneRoot
+  state: RefObject<WalkState>
+  input: RefObject<WalkInput>
+  openings: RefObject<OpeningSceneNode[]>
+  interaction: RefObject<OpeningInteractionState>
+  openness: RefObject<Map<string, number>>
+}
+
+// Advances the walk one timestep: steps the walk state against the collision
+// world, drives the live camera to the new eye and look, and swings any opening
+// that is mid open or close. The look deltas are consumed so they do not re-apply.
+function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
+  const next = advanceWalk(ctx.state.current, ctx.input.current, delta, ctx.collision)
+  ctx.input.current.yawDelta = 0
+  ctx.input.current.pitchDelta = 0
+  ctx.state.current = next
+  ctx.camera.position.set(next.position.x, next.position.y, next.position.z)
+  const look = walkLookTarget(next)
+  ctx.camera.lookAt(look.x, look.y, look.z)
+  tickOpenings(
+    {
+      root: ctx.root,
+      openings: ctx.openings.current,
+      interaction: ctx.interaction.current,
+      openness: ctx.openness.current,
+    },
+    delta,
+  )
+}
+
 interface WalkCameraControlsProps {
   enabled: boolean
   onUserControl: () => void
+  root: SceneRoot
 }
 
 /**
  * Hand-rolled first-person walk: WASD movement (active whenever walk mode is on,
- * independent of pointer capture) plus pointer-lock mouse-look. It reads the pure
- * walk math from core and applies the result to the live camera each frame, so this
- * file holds no Three.js import. Entering walk mode seeds the camera at eye height
- * and takes control of it. This is rendering glue that only runs under a real WebGPU
- * canvas (foundation 6.3); its behavior is proven by the scene-webgl navigation e2e.
+ * independent of pointer capture), pointer-lock mouse-look, and the E "use" key
+ * that opens or closes the opening the walker faces within reach. It reads the
+ * pure walk and interaction math from core and applies the result to the live
+ * camera and the scene each frame; the only Three.js touch is handing the scene
+ * root to the engine swing helper. Entering walk mode seeds the camera at eye
+ * height and takes control of it. This is rendering glue that only runs under a
+ * real WebGPU canvas (foundation 6.3); its behavior is proven by the scene-webgl
+ * navigation e2e.
  */
-export function WalkCameraControls({ enabled, onUserControl }: WalkCameraControlsProps) {
+export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraControlsProps) {
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
-  const stateRef = useRef<WalkState>({
-    position: { x: 0, y: WALK_EYE_HEIGHT_MM, z: 0 },
-    yaw: 0,
-    pitch: 0,
-  })
+  const stateRef = useRef<WalkState>(initialWalkState())
   const inputRef = useRef<WalkInput>(emptyWalkInput())
   const collision = useWalkCollisionWorld()
+  const { openingsRef, interactionRef, opennessRef } = useWalkInteraction()
 
   useEffect(() => {
     if (!enabled) return
@@ -158,19 +256,27 @@ export function WalkCameraControls({ enabled, onUserControl }: WalkCameraControl
       domElement,
       state: stateRef,
       input: inputRef,
+      openings: openingsRef,
+      interaction: interactionRef,
       onUserControl,
     })
-  }, [enabled, camera, domElement, onUserControl])
+  }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef])
 
   useFrame((_state, delta) => {
     if (!enabled) return
-    const next = advanceWalk(stateRef.current, inputRef.current, delta, collision)
-    inputRef.current.yawDelta = 0
-    inputRef.current.pitchDelta = 0
-    stateRef.current = next
-    camera.position.set(next.position.x, next.position.y, next.position.z)
-    const look = walkLookTarget(next)
-    camera.lookAt(look.x, look.y, look.z)
+    stepWalkFrame(
+      {
+        camera,
+        collision,
+        root,
+        state: stateRef,
+        input: inputRef,
+        openings: openingsRef,
+        interaction: interactionRef,
+        openness: opennessRef,
+      },
+      delta,
+    )
   })
 
   return null

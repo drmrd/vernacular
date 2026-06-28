@@ -140,20 +140,28 @@ export function accumulatePointerLook(
 }
 
 /**
+ * The unit vector the walker looks along. yaw 0 faces -Z and a positive pitch
+ * raises the view toward +Y, so the direction is (sin yaw cos pitch, sin pitch,
+ * -cos yaw cos pitch). It is the seam an interaction ray casts from the eye.
+ */
+export function walkLookDirection(state: WalkState): Vector3 {
+  const cosPitch = Math.cos(state.pitch)
+  return {
+    x: Math.sin(state.yaw) * cosPitch,
+    y: Math.sin(state.pitch),
+    z: -Math.cos(state.yaw) * cosPitch,
+  }
+}
+
+/**
  * Returns the point the walker is looking at, one look-distance ahead of the
- * eye. yaw 0 faces -Z and a positive pitch raises the view toward +Y, so the
- * look direction is (sin yaw cos pitch, sin pitch, -cos yaw cos pitch). The
- * direction is scaled by WALK_LOOK_DISTANCE_MM and added to the eye position.
+ * eye, along {@link walkLookDirection}.
  */
 export function walkLookTarget(state: WalkState): Vector3 {
-  const cosPitch = Math.cos(state.pitch)
-  const directionX = Math.sin(state.yaw) * cosPitch
-  const directionY = Math.sin(state.pitch)
-  const directionZ = -Math.cos(state.yaw) * cosPitch
-
+  const direction = walkLookDirection(state)
   return {
-    x: state.position.x + directionX * WALK_LOOK_DISTANCE_MM,
-    y: state.position.y + directionY * WALK_LOOK_DISTANCE_MM,
-    z: state.position.z + directionZ * WALK_LOOK_DISTANCE_MM,
+    x: state.position.x + direction.x * WALK_LOOK_DISTANCE_MM,
+    y: state.position.y + direction.y * WALK_LOOK_DISTANCE_MM,
+    z: state.position.z + direction.z * WALK_LOOK_DISTANCE_MM,
   }
 }
