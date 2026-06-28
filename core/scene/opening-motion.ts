@@ -80,6 +80,8 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
       return alongWallSlide(opening, partCountOf(params))
     case 'window-hung':
       return verticalSlide(opening, PAIRED_PARTS)
+    case 'window-slide':
+      return alongWallSlide(opening, SINGLE_PART)
     default:
       return NO_MOTION
   }
