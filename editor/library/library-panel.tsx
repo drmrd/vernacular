@@ -8,6 +8,7 @@ import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 import {
   DEFAULT_FILTERS,
   distinctEras,
+  distinctStyles,
   visibleLibraryItems,
   type LibraryFilters,
   type SourceFilter,
@@ -86,9 +87,15 @@ const SOURCE_OPTIONS = [
 const ALL_ERAS_VALUE = '__all-eras__'
 const ALL_ERAS_LABEL = 'All eras'
 
+// The style segmented control mirrors the era control: a default-active option
+// maps to the unfiltered (no-style) state, so exactly one option stays selected.
+const ALL_STYLES_VALUE = '__all-styles__'
+const ALL_STYLES_LABEL = 'All styles'
+
 interface LibraryControlsProps {
   filters: LibraryFilters
   eras: string[]
+  styles: string[]
   setFilters: (filters: LibraryFilters) => void
 }
 
@@ -118,6 +125,23 @@ function EraChips({ filters, eras, setFilters }: LibraryControlsProps): ReactEle
   )
 }
 
+function StyleChips({ filters, styles, setFilters }: LibraryControlsProps): ReactElement {
+  const options = [
+    { value: ALL_STYLES_VALUE, label: ALL_STYLES_LABEL },
+    ...styles.map((style) => ({ value: style, label: style })),
+  ]
+  return (
+    <Segmented
+      label="Style"
+      options={options}
+      value={filters.style ?? ALL_STYLES_VALUE}
+      onSelect={(value) =>
+        setFilters({ ...filters, style: value === ALL_STYLES_VALUE ? null : value })
+      }
+    />
+  )
+}
+
 // Search box, source toggle, and era chips that drive the visible-item filter.
 function LibraryControls(props: LibraryControlsProps): ReactElement {
   const { filters, setFilters } = props
@@ -132,6 +156,7 @@ function LibraryControls(props: LibraryControlsProps): ReactElement {
       />
       <SourceToggle {...props} />
       <EraChips {...props} />
+      <StyleChips {...props} />
     </div>
   )
 }
@@ -154,7 +179,12 @@ function LibraryBody({ items, onPick, armed }: LibraryBodyProps): ReactElement |
   }
   return (
     <>
-      <LibraryControls filters={filters} eras={distinctEras(items)} setFilters={setFilters} />
+      <LibraryControls
+        filters={filters}
+        eras={distinctEras(items)}
+        styles={distinctStyles(items)}
+        setFilters={setFilters}
+      />
       {armed ? (
         <p className="library-panel__placement-hint">Click the canvas to place {armed.name}</p>
       ) : null}
