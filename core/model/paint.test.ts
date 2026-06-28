@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { patternTreatment, solidTreatment, surfaceKey, type SurfaceRef } from './paint'
+import {
+  patternTreatment,
+  solidTreatment,
+  surfaceKey,
+  surfaceTintHex,
+  type SurfaceRef,
+} from './paint'
 import { colorFromHex } from '../color/color'
 
 const leftFace: SurfaceRef = { kind: 'wall-face', wallId: 'wall-1', side: 'left' }
@@ -74,5 +80,19 @@ describe('patternTreatment', () => {
       scale: 150,
       colors: [colorFromHex('#8a6240'), colorFromHex('#6f4d31')],
     })
+  })
+})
+
+describe('surfaceTintHex', () => {
+  it('uses the color of a solid treatment', () => {
+    expect(surfaceTintHex(solidTreatment(colorFromHex('#9aa583'), 'matte'))).toBe(
+      colorFromHex('#9aa583').srgbHex,
+    )
+  })
+
+  it('uses the base (first) color of a pattern treatment', () => {
+    const base = colorFromHex('#8a6240')
+    const grain = colorFromHex('#6f4d31')
+    expect(surfaceTintHex(patternTreatment('plank', 150, [base, grain]))).toBe(base.srgbHex)
   })
 })
