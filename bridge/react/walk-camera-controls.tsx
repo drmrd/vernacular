@@ -157,8 +157,8 @@ function startWalk(session: WalkSession): () => void {
 // step combines these with the live open-door set to build the collision world, so
 // these need rebuild only when the scene graph or active floor changes.
 interface WalkCollisionInputs {
-  walls: WallSceneNode[]
-  openings: OpeningSceneNode[]
+  walls: readonly WallSceneNode[]
+  openings: readonly OpeningSceneNode[]
   furnitureSegments: WallSegment[]
   radius: number
 }
@@ -206,7 +206,7 @@ function useWalkInteraction(): {
 }
 
 // The live inputs the per-frame walk step reads: the camera and scene root it
-// writes to, the collision world, and the walk and interaction refs it advances.
+// writes to, the collision inputs, and the walk and interaction refs it advances.
 interface WalkFrameContext {
   camera: WalkCamera
   collisionInputs: WalkCollisionInputs

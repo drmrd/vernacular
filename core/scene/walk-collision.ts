@@ -192,8 +192,7 @@ function splitWall(
  * wall contributes its centerline. A closed opening (a shut door or any window)
  * leaves its host wall solid so the walker cannot pass through it; only an opening
  * named in `passableOpeningIds` (an open, walkable door) cuts a gap in the wall.
- * That set is the seam the open-door work fills in; today it is empty, so every
- * opening is closed.
+ * {@link passableDoorIds} derives that set from the live open-door state.
  */
 export function wallSegmentsForWalk(
   walls: readonly WallSceneNode[],
