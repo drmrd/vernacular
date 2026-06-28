@@ -28,6 +28,7 @@ import {
   maxAxisOfRole,
   meshesOf,
   roleArea,
+  roleTriangleCount,
   singleWallMesh,
   splitEdgeGraph,
   wallGroup,
@@ -188,6 +189,48 @@ describe('buildWalls opening voids', () => {
     expect(mesh).toBeDefined()
     if (mesh === undefined) return
     expect(Math.abs(roleArea(mesh, 'interiorFace') - WALL_FACE_AREA)).toBeLessThan(AREA_TOLERANCE)
+  })
+})
+
+describe('buildWalls curved opening voids', () => {
+  const WINDOW_WIDTH = 900
+  const WINDOW_HEIGHT = 1500
+  const WINDOW_SILL = 800
+
+  const sameSizeWindow = (type: string): THREE.Mesh | undefined =>
+    singleWallMesh([
+      centeredOpening({
+        id: 'opening:cw',
+        type,
+        width: WINDOW_WIDTH,
+        height: WINDOW_HEIGHT,
+        sillHeight: WINDOW_SILL,
+      }),
+    ])
+
+  it('tessellates a round-top void into more reveal facets than the rectangular void of the same size', () => {
+    const rectangular = sameSizeWindow('double-hung-window')
+    const round = sameSizeWindow('round-top-window')
+    expect(rectangular).toBeDefined()
+    expect(round).toBeDefined()
+    if (rectangular === undefined || round === undefined) return
+
+    // The flat rectangular head needs one reveal facet; the semicircular head is
+    // sampled into a curve, so its void carries many more reveal triangles.
+    expect(roleTriangleCount(round, 'reveal')).toBeGreaterThan(
+      roleTriangleCount(rectangular, 'reveal'),
+    )
+  })
+
+  it('arcs the round-top head up to the opening top, not flat across at the springline', () => {
+    const round = sameSizeWindow('round-top-window')
+    expect(round).toBeDefined()
+    if (round === undefined) return
+
+    // The semicircular head crowns at the opening top (sill + height); a flat chord
+    // across the springline would stop a half-width short of it.
+    const openingTop = WINDOW_SILL + WINDOW_HEIGHT
+    expect(maxAxisOfRole(round, 'reveal', 'y')).toBeCloseTo(openingTop, PRECISION)
   })
 })
 
