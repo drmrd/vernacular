@@ -4,6 +4,7 @@
   "license": "CC0-1.0",
   "attribution": "Vernacular project",
   "eras": ["mid-century"],
+  "styles": ["mid-century-modern"],
   "categories": ["seating"],
   "assets": [
     {
@@ -13,6 +14,7 @@
       "license": "CC0-1.0",
       "attribution": "Vernacular project",
       "eras": ["mid-century"],
+      "styles": ["mid-century-modern"],
       "categories": ["seating"],
       "dimensions": {
         "width": 500,
