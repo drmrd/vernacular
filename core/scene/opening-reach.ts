@@ -95,29 +95,25 @@ function swungFrame(shut: OpeningFrame, motion: HingeMotion, openness: number): 
   }
 }
 
-/**
- * The ray distance from the eye to the opening's rectangle, or null when the ray
- * runs parallel to it, points away from it, lands beyond reach, or crosses the
- * opening plane outside the leaf rectangle. The ray direction must be a unit
- * vector, so the returned distance is in millimeters.
- */
 /** How far the walker can reach and how far open the leaf is swung or slid. */
 interface ReachLimit {
   reachMm: number
   openness: number
 }
 
+/**
+ * The ray distance from the eye to the opening's rectangle, or null when the ray
+ * runs parallel to it, points away from it, lands beyond reach, or crosses the
+ * opening plane outside the leaf rectangle. The ray direction must be a unit
+ * vector, so the returned distance is in millimeters.
+ */
 function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit): number | null {
   const frame = openingFrame(node, limit.openness)
   const denom = dot(ray.direction, frame.normal)
   if (Math.abs(denom) < PARALLEL_EPSILON) return null
   const t = dot(subtract(frame.center, ray.origin), frame.normal) / denom
   if (t <= 0 || t > limit.reachMm) return null
-  const hit: Vector3 = {
-    x: ray.origin.x + ray.direction.x * t,
-    y: ray.origin.y + ray.direction.y * t,
-    z: ray.origin.z + ray.direction.z * t,
-  }
+  const hit = add(ray.origin, scale(ray.direction, t))
   const local = subtract(hit, frame.center)
   if (Math.abs(dot(local, frame.along)) > node.width / 2) return null
   if (Math.abs(dot(local, frame.up)) > node.height / 2) return null
