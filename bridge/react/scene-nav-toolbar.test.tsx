@@ -77,6 +77,53 @@ describe('SceneNavToolbar', () => {
   })
 })
 
+describe('SceneNavToolbar view scope', () => {
+  it('renders a view-scope toggle with this-floor and whole-building options', () => {
+    render(<SceneNavToolbar {...baseProps} />)
+
+    const group = screen.getByRole('group', { name: /view scope/i })
+    expect(group).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'This floor' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Whole building' })).toBeInTheDocument()
+  })
+
+  it('defaults to the active-floor scope and marks it pressed', () => {
+    render(<SceneNavToolbar {...baseProps} />)
+
+    expect(screen.getByRole('button', { name: 'This floor' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'Whole building' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('marks the whole-building scope pressed when it is active', () => {
+    render(<SceneNavToolbar {...baseProps} scope="building" />)
+
+    expect(screen.getByRole('button', { name: 'Whole building' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: 'This floor' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('reports a scope change when an inactive scope button is clicked', async () => {
+    const onScopeChange = vi.fn()
+    render(<SceneNavToolbar {...baseProps} onScopeChange={onScopeChange} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Whole building' }))
+
+    expect(onScopeChange).toHaveBeenCalledTimes(1)
+    expect(onScopeChange).toHaveBeenCalledWith('building')
+  })
+})
+
 describe('SceneNavToolbar click-select toggle', () => {
   it('renders a select-toggle button that is off by default and toggles on click', async () => {
     const onToggleSelection = vi.fn()
