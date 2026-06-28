@@ -6,6 +6,8 @@ import {
 } from '../../core'
 import type { CameraPreset } from '../../core'
 
+import type { SceneScope } from './view-scene-graph'
+
 import './scene-nav-toolbar.css'
 
 export type NavMode = 'orbit' | 'walk'
@@ -27,6 +29,11 @@ const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
   { label: 'Walk', mode: 'walk' },
 ]
 
+const VIEW_SCOPE_BUTTONS: ReadonlyArray<{ label: string; scope: SceneScope }> = [
+  { label: 'This floor', scope: 'floor' },
+  { label: 'Whole building', scope: 'building' },
+]
+
 const PRESET_VIEW_BUTTONS: ReadonlyArray<{ label: string; preset: CameraPreset }> = [
   { label: 'Top down', preset: 'top' },
   { label: 'North', preset: 'north' },
@@ -45,6 +52,32 @@ interface SceneNavToolbarProps {
   onToggleSelection?: () => void
   onPreset?: (preset: PresetChoice) => void
   canDoorway?: boolean
+  scope?: SceneScope
+  onScopeChange?: (scope: SceneScope) => void
+}
+
+interface ScopeToggleProps {
+  scope: SceneScope
+  onScopeChange: (scope: SceneScope) => void
+}
+
+/** Whether the view frames a single floor or the whole building, as a segmented toggle. */
+function ScopeToggle({ scope, onScopeChange }: ScopeToggleProps) {
+  return (
+    <div role="group" aria-label="View scope" className="scene-nav-toolbar__modes">
+      {VIEW_SCOPE_BUTTONS.map(({ label, scope: buttonScope }) => (
+        <button
+          key={buttonScope}
+          type="button"
+          className="scene-nav-toolbar__mode"
+          aria-pressed={scope === buttonScope}
+          onClick={() => onScopeChange(buttonScope)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 interface ModeToggleProps {
@@ -178,10 +211,13 @@ export function SceneNavToolbar({
   onToggleSelection = () => {},
   onPreset,
   canDoorway,
+  scope = 'floor',
+  onScopeChange = () => {},
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
       <div className="scene-nav-toolbar__primary">
+        <ScopeToggle scope={scope} onScopeChange={onScopeChange} />
         <ModeToggle mode={mode} onModeChange={onModeChange} />
         <SelectionToggle
           selectionEnabled={selectionEnabled}
