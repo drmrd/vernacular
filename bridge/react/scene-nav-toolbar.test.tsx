@@ -124,6 +124,49 @@ describe('SceneNavToolbar view scope', () => {
   })
 })
 
+describe('SceneNavToolbar underground levels', () => {
+  it('renders an underground-levels toggle pressed when underground levels are shown', () => {
+    render(<SceneNavToolbar {...baseProps} scope="building" showUnderground />)
+
+    expect(screen.getByRole('button', { name: /underground levels/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('marks the underground toggle unpressed when underground levels are hidden', () => {
+    render(<SceneNavToolbar {...baseProps} scope="building" showUnderground={false} />)
+
+    expect(screen.getByRole('button', { name: /underground levels/i })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('reports a toggle when the underground control is clicked in building scope', async () => {
+    const onToggleUnderground = vi.fn()
+    render(
+      <SceneNavToolbar {...baseProps} scope="building" onToggleUnderground={onToggleUnderground} />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /underground levels/i }))
+
+    expect(onToggleUnderground).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables the underground toggle in this-floor scope where it does not apply', () => {
+    render(<SceneNavToolbar {...baseProps} scope="floor" />)
+
+    expect(screen.getByRole('button', { name: /underground levels/i })).toBeDisabled()
+  })
+
+  it('enables the underground toggle in whole-building scope', () => {
+    render(<SceneNavToolbar {...baseProps} scope="building" />)
+
+    expect(screen.getByRole('button', { name: /underground levels/i })).toBeEnabled()
+  })
+})
+
 describe('SceneNavToolbar click-select toggle', () => {
   it('renders a select-toggle button that is off by default and toggles on click', async () => {
     const onToggleSelection = vi.fn()
