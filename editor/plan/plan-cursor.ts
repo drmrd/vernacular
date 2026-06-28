@@ -4,6 +4,7 @@ const CROSSHAIR_TOOLS: ReadonlySet<ToolId> = new Set([
   'draw-wall',
   'calibrate',
   'place-opening',
+  'place-stair',
   'dimension',
 ])
 
