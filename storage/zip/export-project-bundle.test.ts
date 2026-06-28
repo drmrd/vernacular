@@ -87,12 +87,32 @@ describe('exportProjectBundle', () => {
     const cache = new InMemoryAssetCache()
     await cache.put(FURNITURE_HASH, GLB_BYTES)
 
-    const bytes = await exportProjectBundle('current', project, cache)
+    const bytes = await exportProjectBundle('current', project, { assets: cache })
     const reopened = await ZipBundleProjectStore.fromBundle('current', bytes)
 
     expect(await reopened.assetCache().get(FURNITURE_HASH)).toEqual(GLB_BYTES)
     const loaded = await reopened.load('current')
     expect(loaded.floors[0]?.furniture[0]?.assetRef.contentHash).toBe(FURNITURE_HASH)
+  })
+
+  it('reports incremental progress as each referenced asset is copied', async () => {
+    const project = projectWithFurnitureAndUnderlay()
+    const cache = new InMemoryAssetCache()
+    await cache.put(FURNITURE_HASH, GLB_BYTES)
+    await cache.put(UNDERLAY_HASH, GLB_BYTES)
+
+    const calls: Array<[number, number]> = []
+    await exportProjectBundle('current', project, {
+      assets: cache,
+      onProgress: (completed, total) => {
+        calls.push([completed, total])
+      },
+    })
+
+    expect(calls).toEqual([
+      [1, 2],
+      [2, 2],
+    ])
   })
 
   it('omits asset bytes from a plain bundle that was not built with exportProjectBundle', async () => {

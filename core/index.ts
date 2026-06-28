@@ -64,6 +64,14 @@ export type { AssetReference, AssetScope } from './model/asset-reference'
 export { formatAssetReference, parseAssetReference } from './model/asset-reference'
 export { furnitureFootprintCorners } from './model/furniture-footprint'
 export {
+  DEFAULT_FLOOR_TO_FLOOR_MM,
+  defaultBasementName,
+  ordinalLabel,
+  planBasement,
+  planUpperFloor,
+} from './model/floor-placement'
+export type { PlannedFloor } from './model/floor-placement'
+export {
   clampOpeningMove,
   clampOpeningResizeJamb,
   clampOpeningWidth,
@@ -185,6 +193,7 @@ export {
 } from './commands/handlers/wall-commands'
 export type {
   CalibrateUnderlayParams,
+  MoveUnderlayParams,
   PlaceUnderlayParams,
   RemoveUnderlayParams,
   SetUnderlayOpacityParams,
@@ -192,11 +201,13 @@ export type {
 } from './commands/handlers/underlay-commands'
 export {
   CALIBRATE_UNDERLAY,
+  MOVE_UNDERLAY,
   PLACE_UNDERLAY,
   REMOVE_UNDERLAY,
   SET_UNDERLAY_OPACITY,
   SET_UNDERLAY_VISIBILITY,
   calibrateUnderlay,
+  moveUnderlay,
   placeUnderlay,
   registerUnderlayCommands,
   removeUnderlay,
@@ -373,6 +384,8 @@ export { ceilingHeight } from './scene/ceiling-height'
 export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
+export { openingHeadArcs } from './scene/opening-head'
+export type { OpeningHeadArc } from './scene/opening-head'
 export {
   openingFill,
   LEAF_REVEAL_GAP_MM,
@@ -394,6 +407,8 @@ export {
   pointerLookDelta,
   walkLookTarget,
 } from './scene/walk-camera'
+export type { PlanarPoint, WallSegment, WalkCollisionWorld } from './scene/walk-collision'
+export { resolveWalkCollision, wallSegmentsForWalk } from './scene/walk-collision'
 export type {
   AssumedUnit,
   DecimalPrecision,

@@ -10,7 +10,7 @@ test('loads a reference image onto the active non-ground floor, not the ground f
 }) => {
   await gotoEditor(page)
   await selectors.addFloorButton(page).click()
-  await selectors.floorButton(page, 'New Floor').click()
+  await selectors.floorButton(page, '2nd Floor').click()
 
   // The underlay controls live in a launcher pinned to the tool rail; open it to load.
   await page.getByRole('button', { name: 'Underlay' }).click()

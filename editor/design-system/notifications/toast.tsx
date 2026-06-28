@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useNotifications } from './use-notifications'
 import type { Notification } from './notification'
 import './toast.css'
@@ -7,11 +8,38 @@ export interface ToastProps {
   onDismiss: (id: string) => void
 }
 
+// A pending toast shows a determinate bar when it carries a progress fraction and an
+// indeterminate spinner otherwise; a settled toast shows neither.
+const PERCENT = 100
+
+function pendingIndicator(notification: Notification): ReactNode {
+  if (!notification.pending) {
+    return null
+  }
+  if (notification.fraction === undefined) {
+    return <span className="ds-toast__spinner" aria-hidden="true" />
+  }
+  return (
+    <div
+      className="ds-toast__progress"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={1}
+      aria-valuenow={notification.fraction}
+    >
+      <span
+        className="ds-toast__progress-fill"
+        style={{ width: `${notification.fraction * PERCENT}%` }}
+      />
+    </div>
+  )
+}
+
 export function Toast({ notification, onDismiss }: ToastProps) {
   const role = notification.severity === 'error' ? 'alert' : 'status'
   return (
     <div className="ds-toast" data-severity={notification.severity} role={role}>
-      {notification.pending ? <span className="ds-toast__spinner" aria-hidden="true" /> : null}
+      {pendingIndicator(notification)}
       <span className="ds-toast__message">{notification.message}</span>
       {(notification.actions ?? []).map((action, index) => (
         <button

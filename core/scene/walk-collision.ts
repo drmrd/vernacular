@@ -1,0 +1,197 @@
+import { WALL_NODE_PREFIX, type OpeningSceneNode, type WallSceneNode } from './scene-graph'
+
+/**
+ * A point in the world horizontal plane (X, Z), in millimeters. Walk collision
+ * runs entirely in this plane: the walker stands on the floor at a fixed eye
+ * height, so only the horizontal axes can move into a wall.
+ */
+export interface PlanarPoint {
+  x: number
+  z: number
+}
+
+/** A wall as a collision segment in the world horizontal plane (X, Z). */
+export interface WallSegment {
+  start: PlanarPoint
+  end: PlanarPoint
+}
+
+/** The walls a walker is blocked by and the walker's radius, passed to advanceWalk. */
+export interface WalkCollisionWorld {
+  segments: readonly WallSegment[]
+  radius: number
+}
+
+// Below this separation the push-out direction is taken from the wall's own
+// normal rather than the (degenerate) vector from the wall to the walker.
+const CONTACT_EPSILON_MM = 1e-6
+
+/** The point on a finite segment nearest the given point, clamped to its ends. */
+function closestPointOnSegment(point: PlanarPoint, segment: WallSegment): PlanarPoint {
+  const spanX = segment.end.x - segment.start.x
+  const spanZ = segment.end.z - segment.start.z
+  const lengthSquared = spanX * spanX + spanZ * spanZ
+  if (lengthSquared === 0) {
+    return { x: segment.start.x, z: segment.start.z }
+  }
+  const projection =
+    ((point.x - segment.start.x) * spanX + (point.z - segment.start.z) * spanZ) / lengthSquared
+  const clamped = Math.max(0, Math.min(1, projection))
+  return { x: segment.start.x + clamped * spanX, z: segment.start.z + clamped * spanZ }
+}
+
+/** The wall's unit normal in the horizontal plane, used when the walker is on it. */
+function segmentNormal(segment: WallSegment): PlanarPoint {
+  const spanX = segment.end.x - segment.start.x
+  const spanZ = segment.end.z - segment.start.z
+  const length = Math.hypot(spanX, spanZ)
+  if (length === 0) {
+    return { x: 1, z: 0 }
+  }
+  return { x: -spanZ / length, z: spanX / length }
+}
+
+/**
+ * Pushes a single point out of one wall segment. If the point is within `radius`
+ * of the segment it is moved to exactly `radius` away along the outward direction;
+ * the along-wall component is left untouched, so a glancing move slides instead of
+ * stopping. A point already clear of the wall is returned unchanged.
+ */
+function pushOutOfSegment(point: PlanarPoint, segment: WallSegment, radius: number): PlanarPoint {
+  const closest = closestPointOnSegment(point, segment)
+  const outX = point.x - closest.x
+  const outZ = point.z - closest.z
+  const distance = Math.hypot(outX, outZ)
+  if (distance >= radius) {
+    return point
+  }
+  const direction =
+    distance > CONTACT_EPSILON_MM
+      ? { x: outX / distance, z: outZ / distance }
+      : segmentNormal(segment)
+  return { x: closest.x + direction.x * radius, z: closest.z + direction.z * radius }
+}
+
+/**
+ * Resolves a proposed walker position against every wall segment, modeling the
+ * walker as a circle of the given radius (a capsule seen from above). Each
+ * penetrating segment pushes the position out to the radius along that wall's
+ * normal, which clamps a head-on move and lets an angled move slide along the
+ * wall. Segments are resolved in sequence so a later wall corrects a position an
+ * earlier wall left inside it.
+ */
+export function resolveWalkCollision(
+  position: PlanarPoint,
+  segments: readonly WallSegment[],
+  radius: number,
+): PlanarPoint {
+  let resolved = position
+  for (const segment of segments) {
+    resolved = pushOutOfSegment(resolved, segment, radius)
+  }
+  return resolved
+}
+
+/** The wall centerline as a world-plane segment: plan x to X, plan y to Z. */
+function wallToSegment(wall: WallSceneNode): WallSegment {
+  return {
+    start: { x: wall.start.x, z: wall.start.y },
+    end: { x: wall.end.x, z: wall.end.y },
+  }
+}
+
+/** A range of the parameter t in [0, 1] that walks a segment from start to end. */
+interface SpanInterval {
+  start: number
+  end: number
+}
+
+function clampUnit(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+/** The position of a world point as a parameter t along the segment. */
+function wallParam(segment: WallSegment, x: number, z: number): number {
+  const spanX = segment.end.x - segment.start.x
+  const spanZ = segment.end.z - segment.start.z
+  const lengthSquared = spanX * spanX + spanZ * spanZ
+  if (lengthSquared === 0) {
+    return 0
+  }
+  return ((x - segment.start.x) * spanX + (z - segment.start.z) * spanZ) / lengthSquared
+}
+
+/** The world point at parameter t along the segment. */
+function pointAtParam(segment: WallSegment, t: number): PlanarPoint {
+  return {
+    x: segment.start.x + (segment.end.x - segment.start.x) * t,
+    z: segment.start.z + (segment.end.z - segment.start.z) * t,
+  }
+}
+
+/** The span an opening covers on its host wall, as a t interval along the wall. */
+function openingSpan(segment: WallSegment, opening: OpeningSceneNode): SpanInterval {
+  const half = opening.width / 2
+  const startParam = wallParam(
+    segment,
+    opening.center.x - opening.along.x * half,
+    opening.center.y - opening.along.y * half,
+  )
+  const endParam = wallParam(
+    segment,
+    opening.center.x + opening.along.x * half,
+    opening.center.y + opening.along.y * half,
+  )
+  return { start: Math.min(startParam, endParam), end: Math.max(startParam, endParam) }
+}
+
+/** The solid stretches of a wall once the given gap spans are cut out of it. */
+function solidSubsegments(segment: WallSegment, gaps: readonly SpanInterval[]): WallSegment[] {
+  const ordered = [...gaps].sort((first, second) => first.start - second.start)
+  const result: WallSegment[] = []
+  let cursor = 0
+  for (const gap of ordered) {
+    const gapStart = clampUnit(gap.start)
+    if (gapStart > cursor) {
+      result.push({ start: pointAtParam(segment, cursor), end: pointAtParam(segment, gapStart) })
+    }
+    cursor = Math.max(cursor, clampUnit(gap.end))
+  }
+  if (cursor < 1) {
+    result.push({ start: pointAtParam(segment, cursor), end: pointAtParam(segment, 1) })
+  }
+  return result
+}
+
+/** Whether the wall hosts the opening, matching the wall node's prefixed id. */
+function hostsOpening(wall: WallSceneNode, opening: OpeningSceneNode): boolean {
+  return opening.hostWallId !== undefined && wall.id === `${WALL_NODE_PREFIX}${opening.hostWallId}`
+}
+
+function splitWall(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+  passableOpeningIds: ReadonlySet<string>,
+): WallSegment[] {
+  const segment = wallToSegment(wall)
+  const gaps = openings
+    .filter((opening) => passableOpeningIds.has(opening.id) && hostsOpening(wall, opening))
+    .map((opening) => openingSpan(segment, opening))
+  return gaps.length === 0 ? [segment] : solidSubsegments(segment, gaps)
+}
+
+/**
+ * Builds the collision segments a walker is blocked by on the active floor. Each
+ * wall contributes its centerline. A closed opening (a shut door or any window)
+ * leaves its host wall solid so the walker cannot pass through it; only an opening
+ * named in `passableOpeningIds` (an open, walkable door) cuts a gap in the wall.
+ * That set is the seam the open-door work fills in; today it is empty, so every
+ * opening is closed.
+ */
+export function wallSegmentsForWalk(
+  walls: readonly WallSceneNode[],
+  openings: readonly OpeningSceneNode[],
+  passableOpeningIds: ReadonlySet<string> = new Set(),
+): WallSegment[] {
+  return walls.flatMap((wall) => splitWall(wall, openings, passableOpeningIds))
+}

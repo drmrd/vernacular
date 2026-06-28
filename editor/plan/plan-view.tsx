@@ -56,6 +56,7 @@ import { useEscapeToSelect } from './use-escape-to-select'
 import { useOpeningTool } from './opening-tool-context'
 import { useFurniturePlacement } from './furniture-placement-context'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
+import { useUnderlayMove, type UnderlayMove } from './use-underlay-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
 import {
   eventToCanvas,
@@ -98,6 +99,7 @@ interface PlanLayers {
   planHover: PlanHover
   wallFaceHighlight: WallFacePlanHighlight
   selectionMove: SelectionMove
+  underlayMove: UnderlayMove
   wallEditing: WallEditing
   controls: ViewportControls
   underlayLayer: PlanUnderlayLayer
@@ -234,6 +236,14 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     preferences,
     activeFloorId,
   })
+  const underlayMove = useUnderlayMove({
+    session,
+    graph: selectableGraph,
+    selectedIds,
+    tool,
+    viewport,
+    activeFloorId,
+  })
   const clipboard = useClipboardStore()
   useSelectionKeyboard({
     session,
@@ -290,6 +300,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     planHover,
     wallFaceHighlight,
     selectionMove,
+    underlayMove,
     wallEditing,
     controls,
     underlayLayer,
@@ -358,7 +369,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
   const palette = usePlanPalette(canvasRef)
   usePlanRedraw(canvasRef, buildScene(layers, surfacePaint, roomFillColor), palette)
   const { controls, wallEditing, interaction, dimensionTool, planSelection } = layers
-  const { underlayLayer, openingLayer, selectionMove } = layers
+  const { underlayLayer, openingLayer, selectionMove, underlayMove } = layers
   // The overlay readout pill draws from the move drag, the wall-endpoint drag, or
   // the opening jamb resize. Only one drag is ever live, so `??` is merely tidy here.
   const readout = selectionMove.readout ?? wallEditing.readout ?? openingLayer.resizing.readout
@@ -371,6 +382,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       openingEditing: openingLayer.editing,
       furnitureEditing: layers.furnitureLayer.editing,
       selectionMove,
+      underlayMove,
       interaction,
       dimensionTool,
       calibration: underlayLayer.calibration,

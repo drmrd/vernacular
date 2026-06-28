@@ -14,9 +14,9 @@ export default meta
 type Story = StoryObj<typeof FloorSwitcher>
 
 const FLOORS: FloorSummary[] = [
-  { id: 'basement', name: 'Basement' },
-  { id: 'ground', name: 'Ground Floor' },
-  { id: 'first', name: 'First Floor' },
+  { id: 'basement', name: 'Basement', elevation: -3000 },
+  { id: 'ground', name: 'Ground Floor', elevation: 0 },
+  { id: 'first', name: 'First Floor', elevation: 3000 },
 ]
 
 function FloorSwitcherController() {
@@ -27,6 +27,7 @@ function FloorSwitcherController() {
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
       onAddFloor={fn()}
+      onRenameFloor={fn()}
     />
   )
 }

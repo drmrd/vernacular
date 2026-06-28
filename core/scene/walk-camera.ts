@@ -1,4 +1,5 @@
 import type { Vector3 } from './vector3'
+import { resolveWalkCollision, type PlanarPoint, type WalkCollisionWorld } from './walk-collision'
 
 /** Eye height above the floor datum, in millimeters. */
 export const WALK_EYE_HEIGHT_MM = 1700
@@ -37,16 +38,36 @@ function axisSign(positive: boolean, negative: boolean): number {
   return (positive ? 1 : 0) - (negative ? 1 : 0)
 }
 
+/** Resolves the proposed horizontal move against the collision world, if any. */
+function resolveMove(
+  proposed: PlanarPoint,
+  collision: WalkCollisionWorld | undefined,
+): PlanarPoint {
+  if (collision === undefined) {
+    return proposed
+  }
+  return resolveWalkCollision(proposed, collision.segments, collision.radius)
+}
+
 /**
  * Advances a walking camera by one timestep. Movement is constrained to the
  * horizontal (x, z) plane at the current eye height: yaw 0 faces -Z, so the
  * forward axis is (sin yaw, 0, -cos yaw) and the right axis is (cos yaw, 0,
  * sin yaw). The net direction is normalized and scaled by speed and dt, so a
- * diagonal covers the same total distance as a single key. Yaw advances by the
- * input yaw delta, and pitch advances by the input pitch delta clamped to
- * +/-MAX_WALK_PITCH_RAD. Returns a new state and never mutates the input.
+ * diagonal covers the same total distance as a single key. When a collision
+ * world is supplied, the proposed horizontal move is clamped or slid so the
+ * walker keeps clear of the walls, while the eye height (y) is left untouched.
+ * Yaw advances by the input yaw delta, and pitch advances by the input pitch
+ * delta clamped to +/-MAX_WALK_PITCH_RAD. Returns a new state and never mutates
+ * the input.
  */
-export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: number): WalkState {
+// eslint-disable-next-line max-params -- the optional collision world is an environmental input independent of the walk state, the per-frame intent, and the timestep; collapsing it into any of those would conflate distinct concerns.
+export function advanceWalk(
+  state: WalkState,
+  input: WalkInput,
+  dtSeconds: number,
+  collision?: WalkCollisionWorld,
+): WalkState {
   const forwardScale = axisSign(input.forward, input.back)
   const rightScale = axisSign(input.right, input.left)
   const directionX = Math.sin(state.yaw) * forwardScale + Math.cos(state.yaw) * rightScale
@@ -60,12 +81,13 @@ export function advanceWalk(state: WalkState, input: WalkInput, dtSeconds: numbe
     nextX += directionX * step
     nextZ += directionZ * step
   }
+  const moved = resolveMove({ x: nextX, z: nextZ }, collision)
 
   const pitch = state.pitch + input.pitchDelta
   const clampedPitch = Math.max(-MAX_WALK_PITCH_RAD, Math.min(MAX_WALK_PITCH_RAD, pitch))
 
   return {
-    position: { x: nextX, y: state.position.y, z: nextZ },
+    position: { x: moved.x, y: state.position.y, z: moved.z },
     yaw: state.yaw + input.yawDelta,
     pitch: clampedPitch,
   }

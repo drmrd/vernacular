@@ -1,4 +1,5 @@
-import type { Floor, Project, Underlay, UnderlayPlacement } from '../../model/types'
+import { translatePoint } from '../../geometry/point'
+import type { Floor, Point, Project, Underlay, UnderlayPlacement } from '../../model/types'
 import type { Command, CommandHandler } from '../command'
 import type { CommandRegistry } from '../command-registry'
 import { mapTargetFloor } from './map-target-floor'
@@ -68,6 +69,40 @@ const calibrateUnderlayHandler: CommandHandler<Project, CalibrateUnderlayParams>
       mapTargetUnderlay(floor, params.underlayId, (underlay) => ({
         ...underlay,
         placement: params.placement,
+      })),
+    )
+  },
+}
+
+export const MOVE_UNDERLAY = 'floor/move-underlay'
+
+export interface MoveUnderlayParams {
+  floorId: string
+  underlayId: string
+  delta: Point
+}
+
+export function moveUnderlay(
+  floorId: string,
+  underlayId: string,
+  delta: Point,
+): Command<MoveUnderlayParams> {
+  return {
+    type: MOVE_UNDERLAY,
+    params: { floorId, underlayId, delta },
+    description: 'Move underlay',
+  }
+}
+
+const moveUnderlayHandler: CommandHandler<Project, MoveUnderlayParams> = {
+  apply(state, params) {
+    mapTargetFloor(state, params.floorId, (floor) =>
+      mapTargetUnderlay(floor, params.underlayId, (underlay) => ({
+        ...underlay,
+        placement: {
+          ...underlay.placement,
+          offset: translatePoint(underlay.placement.offset, params.delta),
+        },
       })),
     )
   },
@@ -165,6 +200,7 @@ export function registerUnderlayCommands(
   return registry
     .register(PLACE_UNDERLAY, placeUnderlayHandler)
     .register(CALIBRATE_UNDERLAY, calibrateUnderlayHandler)
+    .register(MOVE_UNDERLAY, moveUnderlayHandler)
     .register(SET_UNDERLAY_OPACITY, setUnderlayOpacityHandler)
     .register(SET_UNDERLAY_VISIBILITY, setUnderlayVisibilityHandler)
     .register(REMOVE_UNDERLAY, removeUnderlayHandler)

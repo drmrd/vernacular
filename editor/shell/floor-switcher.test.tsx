@@ -10,7 +10,7 @@ const floors = [
   { id: 'f2', name: 'Upper' },
 ]
 
-describe('FloorSwitcher', () => {
+describe('FloorSwitcher selection and ordering', () => {
   it('lists every floor, marks the active floor, and reports the clicked selection', async () => {
     const onSelectFloor = vi.fn()
     const user = userEvent.setup()
@@ -36,6 +36,52 @@ describe('FloorSwitcher', () => {
     expect(onSelectFloor).toHaveBeenCalledWith('f2')
   })
 
+  it('orders floors from the highest elevation down so basements sit at the bottom', () => {
+    render(
+      <FloorSwitcher
+        floors={[
+          { id: 'ground', name: 'Ground', elevation: 0 },
+          { id: 'basement', name: 'Basement', elevation: -3000 },
+          { id: 'upper', name: '2nd Floor', elevation: 3000 },
+        ]}
+        activeFloorId="ground"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+      />,
+    )
+
+    const tabs = screen
+      .getAllByRole('button')
+      .filter((button) => button.classList.contains('ds-segmented__option'))
+
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['2nd Floor', 'Ground', 'Basement'])
+  })
+
+  it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
+    render(
+      <FloorSwitcher
+        floors={floors}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+      />,
+    )
+
+    const ground = screen.getByRole('button', { name: /Ground/ })
+    const upper = screen.getByRole('button', { name: /Upper/ })
+
+    for (const tab of [ground, upper]) {
+      expect(tab).toHaveClass('ds-segmented__option')
+      expect(tab).not.toHaveClass('floor-switcher__tab')
+    }
+
+    expect(ground).toHaveClass('is-active')
+    expect(ground).toHaveAttribute('aria-pressed', 'true')
+    expect(upper).not.toHaveClass('is-active')
+  })
+})
+
+describe('FloorSwitcher floor creation and rename', () => {
   it('renders Add floor as a design-system button', () => {
     render(
       <FloorSwitcher
@@ -66,26 +112,63 @@ describe('FloorSwitcher', () => {
     expect(onAddFloor).toHaveBeenCalledTimes(1)
   })
 
-  it('routes the floor tabs through the design-system Segmented option vocabulary', () => {
+  it('adds an upper floor above the ground with the default ordinal name', async () => {
+    const onAddFloor = vi.fn()
+    const user = userEvent.setup()
+
     render(
       <FloorSwitcher
-        floors={floors}
-        activeFloorId="f1"
+        floors={[{ id: 'ground', name: 'Ground', elevation: 0 }]}
+        activeFloorId="ground"
         onSelectFloor={vi.fn()}
-        onAddFloor={vi.fn()}
+        onAddFloor={onAddFloor}
       />,
     )
 
-    const ground = screen.getByRole('button', { name: /Ground/ })
-    const upper = screen.getByRole('button', { name: /Upper/ })
+    await user.click(screen.getByRole('button', { name: /add floor/i }))
 
-    for (const tab of [ground, upper]) {
-      expect(tab).toHaveClass('ds-segmented__option')
-      expect(tab).not.toHaveClass('floor-switcher__tab')
-    }
+    expect(onAddFloor).toHaveBeenCalledWith({ name: '2nd Floor', elevation: 3000 })
+  })
 
-    expect(ground).toHaveClass('is-active')
-    expect(ground).toHaveAttribute('aria-pressed', 'true')
-    expect(upper).not.toHaveClass('is-active')
+  it('adds a basement below the ground with a negative elevation', async () => {
+    const onAddFloor = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <FloorSwitcher
+        floors={[{ id: 'ground', name: 'Ground', elevation: 0 }]}
+        activeFloorId="ground"
+        onSelectFloor={vi.fn()}
+        onAddFloor={onAddFloor}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /add basement/i }))
+
+    expect(onAddFloor).toHaveBeenCalledWith({ name: 'Basement', elevation: -3000 })
+  })
+
+  it('renames the active floor inline and reports the committed name', async () => {
+    const onRenameFloor = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <FloorSwitcher
+        floors={[{ id: 'f1', name: 'Ground', elevation: 0 }]}
+        activeFloorId="f1"
+        onSelectFloor={vi.fn()}
+        onAddFloor={vi.fn()}
+        onRenameFloor={onRenameFloor}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /rename floor/i }))
+    const input = screen.getByRole('textbox', { name: /floor name/i })
+    expect(input).toHaveValue('Ground')
+
+    await user.clear(input)
+    await user.type(input, 'Cellar{Enter}')
+
+    expect(onRenameFloor).toHaveBeenCalledWith('f1', 'Cellar')
   })
 })

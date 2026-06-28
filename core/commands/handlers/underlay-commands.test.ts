@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest'
 import {
   placeUnderlay,
   calibrateUnderlay,
+  moveUnderlay,
   removeUnderlay,
   setUnderlayOpacity,
   setUnderlayVisibility,
   registerUnderlayCommands,
   PLACE_UNDERLAY,
   CALIBRATE_UNDERLAY,
+  MOVE_UNDERLAY,
   REMOVE_UNDERLAY,
   SET_UNDERLAY_OPACITY,
   SET_UNDERLAY_VISIBILITY,
@@ -131,6 +133,55 @@ describe('calibrateUnderlay', () => {
 
   it('carries a stable command type', () => {
     expect(calibrateUnderlay('g', 'underlay-1', NEW_PLACEMENT).type).toBe(CALIBRATE_UNDERLAY)
+  })
+})
+
+const MOVE_DELTA = { x: 50, y: -30 }
+const FACTORY_DEFAULT_OFFSET = { x: 0, y: 0 }
+
+describe('moveUnderlay', () => {
+  it('translates the target underlay offset by the delta', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+
+    dispatcher.dispatch(moveUnderlay('g', target.id, MOVE_DELTA))
+
+    expect(project.floors[0]?.underlays[0]?.placement.offset).toEqual({ x: 50, y: -30 })
+  })
+
+  it('leaves the target underlay other placement fields and a sibling underlay untouched', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    const sibling = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+    dispatcher.dispatch(placeUnderlay('g', sibling))
+
+    dispatcher.dispatch(moveUnderlay('g', target.id, MOVE_DELTA))
+
+    const moved = project.floors[0]?.underlays[0]
+    expect(moved?.placement.millimetersPerPixel).toBe(target.placement.millimetersPerPixel)
+    expect(moved?.placement.rotation).toBe(target.placement.rotation)
+    expect(moved?.source).toEqual(target.source)
+    expect(project.floors[0]?.underlays[1]).toEqual(sibling)
+  })
+
+  it('restores the previous offset on undo', () => {
+    const project = projectWithTwoFloors()
+    const dispatcher = dispatcherFor(project)
+    const target = newUnderlay()
+    dispatcher.dispatch(placeUnderlay('g', target))
+
+    dispatcher.dispatch(moveUnderlay('g', target.id, MOVE_DELTA))
+    dispatcher.undo()
+
+    expect(project.floors[0]?.underlays[0]?.placement.offset).toEqual(FACTORY_DEFAULT_OFFSET)
+  })
+
+  it('carries a stable command type', () => {
+    expect(moveUnderlay('g', 'underlay-1', MOVE_DELTA).type).toBe(MOVE_UNDERLAY)
   })
 })
 
