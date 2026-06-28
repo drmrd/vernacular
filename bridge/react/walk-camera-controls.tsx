@@ -83,6 +83,7 @@ interface WalkSession {
   input: RefObject<WalkInput>
   openings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
+  openness: RefObject<Map<string, number>>
   onUserControl: () => void
 }
 
@@ -94,10 +95,17 @@ function walkKeyHandlers(session: WalkSession): {
   onKeyDown: (event: KeyboardEvent) => void
   onKeyUp: (event: KeyboardEvent) => void
 } {
-  const { state, input, openings, interaction, onUserControl } = session
+  const { state, input, openings, interaction, openness, onUserControl } = session
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.code === INTERACT_KEY) {
-      interaction.current = interactFromWalk(state.current, openings.current, interaction.current)
+      // Pass the live openness so the ray reaches an opening at its swung or slid
+      // position, letting the walker close a door that is already open.
+      interaction.current = interactFromWalk(
+        state.current,
+        openings.current,
+        interaction.current,
+        openness.current,
+      )
       onUserControl()
       return
     }
@@ -258,9 +266,10 @@ export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraC
       input: inputRef,
       openings: openingsRef,
       interaction: interactionRef,
+      openness: opennessRef,
       onUserControl,
     })
-  }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef])
+  }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef, opennessRef])
 
   useFrame((_state, delta) => {
     if (!enabled) return
