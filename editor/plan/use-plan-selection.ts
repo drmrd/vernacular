@@ -3,7 +3,7 @@ import type { FurnitureInstance, Point, SceneGraph } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { Bounds } from './fit'
-import { entitiesInRect } from './marquee'
+import { resolveMarqueeSelection } from './marquee-selection'
 import { planClickTarget } from './plan-click-target'
 import {
   advanceSelectGesture,
@@ -65,12 +65,17 @@ function applyClick(deps: PlanSelectionDeps, world: Point, shift: boolean): void
   }
 }
 
-/** Applies the release outcome: a click selects, a marquee replaces, a pan does nothing. */
+/**
+ * Applies the release outcome: a click selects, a marquee folds its window or
+ * crossing result into the selection (replace, add, or subtract), a pan does nothing.
+ */
 function applyEndEffect(deps: PlanSelectionDeps, effect: SelectEndEffect): void {
   if (effect.kind === 'click') {
     applyClick(deps, effect.world, effect.shift)
   } else if (effect.kind === 'marquee') {
-    deps.selection.setSelection(entitiesInRect(deps.graph, effect.rect))
+    deps.selection.setSelection(
+      resolveMarqueeSelection(deps.graph, deps.selection.getSelectedIds(), effect),
+    )
   }
 }
 
@@ -104,7 +109,12 @@ function pointerMove(
   }
   const canvas = eventToCanvas(event, event.currentTarget)
   const world = screenToWorld(canvas, deps.viewport)
-  const result = advanceSelectGesture(gesture, { world, canvas, shift: event.shiftKey })
+  const result = advanceSelectGesture(gesture, {
+    world,
+    canvas,
+    shift: event.shiftKey,
+    alt: event.altKey,
+  })
   handle.stateRef.current = result.state
   if (result.marquee) {
     handle.setMarquee(result.marquee)
@@ -130,15 +140,21 @@ function pointerUp(
     return
   }
   const world = screenToWorld(eventToCanvas(event, event.currentTarget), deps.viewport)
-  applyEndEffect(deps, endSelectGesture(gesture, { world, shift: event.shiftKey }))
+  applyEndEffect(
+    deps,
+    endSelectGesture(gesture, { world, shift: event.shiftKey, alt: event.altKey }),
+  )
 }
 
 /**
  * The select tool's primary-button pointer lifecycle, resolved by the pure
- * `select-gesture` machine: a plain drag pans the view, a Shift-drag rubber-bands a
- * marquee that replaces the selection on release, and a bare click selects,
- * shift-toggles, or clears. A press on an already-selected entity is grabbed earlier
- * by the move-drag, so this never sees it. Inert under any tool but `select`.
+ * `select-gesture` machine: a plain drag pans the view, a Shift- or Alt-drag
+ * rubber-bands a marquee, and a bare click selects, shift-toggles, or clears. A
+ * left-to-right marquee takes the entities fully inside it, a right-to-left marquee
+ * also takes the ones it crosses, and on release Shift adds to the selection, Alt
+ * subtracts, and neither replaces it. A press on an already-selected entity is
+ * grabbed earlier by the move-drag, so this never sees it. Inert under any tool but
+ * `select`.
  */
 export function usePlanSelection(deps: PlanSelectionDeps): PlanSelection {
   const stateRef = useRef<SelectGestureState | null>(null)

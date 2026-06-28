@@ -3,10 +3,12 @@ import { useState, type FocusEvent, type ReactElement } from 'react'
 import type { Point, SceneGraph, UnitPreferences } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
+import type { EditLayer } from '../tools/edit-layer-context'
 import { dimensionChips, type DimensionChip } from './dimension-chip'
 import type { DragReadout } from './drag-readout'
 import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
+import { scopeSceneToLayer } from './edit-layer-scope'
 import { EntityProxy } from './entity-proxy'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
 import {
@@ -35,6 +37,10 @@ export interface PlanOverlayProps {
   // The active tool, used to gate the keyboard authoring candidate marker so it
   // never paints under the select tool (the at-rest visual-regression state).
   tool: ToolId
+  // The active edit layer scopes which entity proxies are keyboard-reachable, so a
+  // keyboard user can only select what the active layer leaves selectable, matching
+  // how the same layer scopes pointer selection. The dimension chips stay unscoped.
+  layer: EditLayer
   // The in-progress wall-draw segment, present only while drawing, which drives the
   // live readout chip and the angle-lock announcement.
   preview?: PreviewSegment
@@ -302,8 +308,8 @@ function ScaleBar({
  */
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const { viewport, graph, selectedIds, selection, preferences, snap, preview, readout } = props
-  const { tool, authoringCandidate } = props
-  const entities = overlayEntities(graph, selectedIds, preferences)
+  const { tool, authoringCandidate, layer } = props
+  const entities = overlayEntities(scopeSceneToLayer(graph, layer), selectedIds, preferences)
   const keyboard = useOverlayKeyboard(entities.length, selection)
   const [focused, setFocused] = useState(false)
   const focusedEntity = entities[keyboard.focusIndex]

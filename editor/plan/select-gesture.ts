@@ -15,6 +15,7 @@ export interface SelectMoveSample {
   world: Point
   canvas: ScreenPoint
   shift: boolean
+  alt?: boolean
 }
 
 export interface SelectMoveResult {
@@ -28,11 +29,24 @@ export interface SelectEndSample {
   // the press origin, so the panning and click outcomes ignore it.
   world: Point
   shift: boolean
+  alt?: boolean
 }
+
+/**
+ * A left-to-right marquee selects only fully contained entities (`window`); a
+ * right-to-left marquee also grabs the ones it merely crosses (`crossing`).
+ */
+export type MarqueeMode = 'window' | 'crossing'
+
+/**
+ * How the marquee result folds into the standing selection: `replace` swaps it
+ * wholesale, `add` unions with it (Shift), `subtract` removes from it (Alt).
+ */
+export type SelectOperation = 'replace' | 'add' | 'subtract'
 
 export type SelectEndEffect =
   | { kind: 'click'; world: Point; shift: boolean }
-  | { kind: 'marquee'; rect: Bounds }
+  | { kind: 'marquee'; rect: Bounds; mode: MarqueeMode; operation: SelectOperation }
   | { kind: 'none' }
 
 /** A drag must travel this far in world millimeters before it locks into pan or marquee. */
@@ -85,9 +99,19 @@ export function advanceSelectGesture(
     if (!reachedDragThreshold(normalizedBounds(state.originWorld, sample.world))) {
       return { state }
     }
-    mode = sample.shift ? 'marquee' : 'panning'
+    mode = sample.shift || sample.alt ? 'marquee' : 'panning'
   }
   return mode === 'marquee' ? resolveMarquee(state, sample) : resolvePanning(state, sample)
+}
+
+function marqueeMode(originWorld: Point, releaseWorld: Point): MarqueeMode {
+  return releaseWorld.x < originWorld.x ? 'crossing' : 'window'
+}
+
+function marqueeOperation(sample: SelectEndSample): SelectOperation {
+  if (sample.alt) return 'subtract'
+  if (sample.shift) return 'add'
+  return 'replace'
 }
 
 export function endSelectGesture(
@@ -96,7 +120,12 @@ export function endSelectGesture(
 ): SelectEndEffect {
   if (state.mode === 'panning') return { kind: 'none' }
   if (state.mode === 'marquee') {
-    return { kind: 'marquee', rect: normalizedBounds(state.originWorld, sample.world) }
+    return {
+      kind: 'marquee',
+      rect: normalizedBounds(state.originWorld, sample.world),
+      mode: marqueeMode(state.originWorld, sample.world),
+      operation: marqueeOperation(sample),
+    }
   }
   return { kind: 'click', world: state.originWorld, shift: sample.shift }
 }
