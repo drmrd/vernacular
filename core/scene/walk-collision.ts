@@ -1,5 +1,11 @@
+import type { Point } from '../model/types'
 import { openingKindOfType } from '../registries/opening-kind'
-import { WALL_NODE_PREFIX, type OpeningSceneNode, type WallSceneNode } from './scene-graph'
+import {
+  WALL_NODE_PREFIX,
+  type FurnitureSceneNode,
+  type OpeningSceneNode,
+  type WallSceneNode,
+} from './scene-graph'
 
 /**
  * A point in the world horizontal plane (X, Z), in millimeters. Walk collision
@@ -215,4 +221,30 @@ export function passableDoorIds(
     }
   }
   return passable
+}
+
+/** A footprint corner as a world-plane point: plan x to X, plan y to Z. */
+function cornerToPlanar(corner: Point): PlanarPoint {
+  return { x: corner.x, z: corner.y }
+}
+
+/** The four perimeter segments of a footprint, traced as a closed loop. */
+function footprintSegments(corners: FurnitureSceneNode['footprintCorners']): WallSegment[] {
+  const [first, second, third, fourth] = corners
+  return [
+    { start: cornerToPlanar(first), end: cornerToPlanar(second) },
+    { start: cornerToPlanar(second), end: cornerToPlanar(third) },
+    { start: cornerToPlanar(third), end: cornerToPlanar(fourth) },
+    { start: cornerToPlanar(fourth), end: cornerToPlanar(first) },
+  ]
+}
+
+/**
+ * Builds the collision segments a walker is blocked by from furniture footprints.
+ * Each piece contributes the four perimeter segments of its footprint as a closed
+ * loop, so the walker cannot step into a piece of furniture from any side. Plan x
+ * maps to world X and plan y to world Z, matching the wall mapping.
+ */
+export function furnitureSegmentsForWalk(furniture: readonly FurnitureSceneNode[]): WallSegment[] {
+  return furniture.flatMap((node) => footprintSegments(node.footprintCorners))
 }
