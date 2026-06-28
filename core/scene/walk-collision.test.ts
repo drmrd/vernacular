@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import type { OpeningSceneNode, WallSceneNode } from './scene-graph'
+import type { FurnitureSceneNode, OpeningSceneNode, WallSceneNode } from './scene-graph'
 import {
+  furnitureSegmentsForWalk,
   passableDoorIds,
   resolveWalkCollision,
   wallSegmentsForWalk,
@@ -38,6 +39,24 @@ function openingNode(overrides: Partial<OpeningSceneNode> = {}): OpeningSceneNod
   }
 }
 
+function furnitureNode(overrides: Partial<FurnitureSceneNode> = {}): FurnitureSceneNode {
+  return {
+    id: 'furniture:f1',
+    kind: 'furniture',
+    floorId: 'f1',
+    footprintCorners: [
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+      { x: 1000, y: 500 },
+      { x: 0, y: 500 },
+    ],
+    elevationZ: 0,
+    height: 750,
+    assetRef: { scope: 'project', contentHash: 'abc123' },
+    ...overrides,
+  }
+}
+
 // A wall lying along the world X axis at z = 0, long enough that its endpoints do
 // not interfere with the near-origin cases. The walker is a circle of this radius
 // in the horizontal (x, z) plane.
@@ -71,6 +90,21 @@ describe('resolveWalkCollision', () => {
     const pastEnd = resolveWalkCollision({ x: 1500, z: -100 }, [wallAlongX], radius)
     expect(pastEnd.x).toBeCloseTo(1500, 5)
     expect(pastEnd.z).toBeCloseTo(-100, 5)
+  })
+})
+
+describe('furnitureSegmentsForWalk', () => {
+  it('returns the four closed-loop perimeter segments of a footprint, mapping plan y to Z', () => {
+    const segments = furnitureSegmentsForWalk([furnitureNode()])
+
+    // The 4 corners trace a closed loop: 0->1, 1->2, 2->3, 3->0, with plan x kept
+    // as world X and plan y mapped to world Z.
+    expect(segments).toEqual([
+      { start: { x: 0, z: 0 }, end: { x: 1000, z: 0 } },
+      { start: { x: 1000, z: 0 }, end: { x: 1000, z: 500 } },
+      { start: { x: 1000, z: 500 }, end: { x: 0, z: 500 } },
+      { start: { x: 0, z: 500 }, end: { x: 0, z: 0 } },
+    ])
   })
 })
 
