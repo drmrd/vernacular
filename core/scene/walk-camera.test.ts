@@ -30,6 +30,12 @@ const noInput: WalkInput = {
   pitchDelta: 0,
 }
 
+describe('WALK_EYE_HEIGHT_MM', () => {
+  it('stands the eye at a representative 1600mm standing height', () => {
+    expect(WALK_EYE_HEIGHT_MM).toBe(1600)
+  })
+})
+
 describe('advanceWalk horizontal movement at yaw 0', () => {
   it('moves on the horizontal plane relative to heading without drifting off eye height', () => {
     const oneSecond = 1

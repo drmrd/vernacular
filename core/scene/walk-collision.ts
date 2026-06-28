@@ -1,4 +1,11 @@
-import { WALL_NODE_PREFIX, type OpeningSceneNode, type WallSceneNode } from './scene-graph'
+import type { Point } from '../model/types'
+import { openingKindOfType } from '../registries/opening-kind'
+import {
+  WALL_NODE_PREFIX,
+  type FurnitureSceneNode,
+  type OpeningSceneNode,
+  type WallSceneNode,
+} from './scene-graph'
 
 /**
  * A point in the world horizontal plane (X, Z), in millimeters. Walk collision
@@ -185,8 +192,7 @@ function splitWall(
  * wall contributes its centerline. A closed opening (a shut door or any window)
  * leaves its host wall solid so the walker cannot pass through it; only an opening
  * named in `passableOpeningIds` (an open, walkable door) cuts a gap in the wall.
- * That set is the seam the open-door work fills in; today it is empty, so every
- * opening is closed.
+ * {@link passableDoorIds} derives that set from the live open-door state.
  */
 export function wallSegmentsForWalk(
   walls: readonly WallSceneNode[],
@@ -194,4 +200,50 @@ export function wallSegmentsForWalk(
   passableOpeningIds: ReadonlySet<string> = new Set(),
 ): WallSegment[] {
   return walls.flatMap((wall) => splitWall(wall, openings, passableOpeningIds))
+}
+
+/**
+ * Narrows a set of open opening ids to just the doors. An open door is walkable,
+ * so it cuts a gap in its host wall; an open window is not, since you cannot walk
+ * through a window. An opening counts as a door when `openingKindOfType` of its
+ * type is `'door'`; an unknown or non-opening type is excluded. The result feeds
+ * `wallSegmentsForWalk` as its passable set.
+ */
+export function passableDoorIds(
+  openings: readonly OpeningSceneNode[],
+  openIds: ReadonlySet<string>,
+): Set<string> {
+  const passable = new Set<string>()
+  for (const opening of openings) {
+    if (openIds.has(opening.id) && openingKindOfType(opening.type) === 'door') {
+      passable.add(opening.id)
+    }
+  }
+  return passable
+}
+
+/** A footprint corner as a world-plane point: plan x to X, plan y to Z. */
+function cornerToPlanar(corner: Point): PlanarPoint {
+  return { x: corner.x, z: corner.y }
+}
+
+/** The four perimeter segments of a footprint, traced as a closed loop. */
+function footprintSegments(corners: FurnitureSceneNode['footprintCorners']): WallSegment[] {
+  const [first, second, third, fourth] = corners
+  return [
+    { start: cornerToPlanar(first), end: cornerToPlanar(second) },
+    { start: cornerToPlanar(second), end: cornerToPlanar(third) },
+    { start: cornerToPlanar(third), end: cornerToPlanar(fourth) },
+    { start: cornerToPlanar(fourth), end: cornerToPlanar(first) },
+  ]
+}
+
+/**
+ * Builds the collision segments a walker is blocked by from furniture footprints.
+ * Each piece contributes the four perimeter segments of its footprint as a closed
+ * loop, so the walker cannot step into a piece of furniture from any side. Plan x
+ * maps to world X and plan y to world Z, matching the wall mapping.
+ */
+export function furnitureSegmentsForWalk(furniture: readonly FurnitureSceneNode[]): WallSegment[] {
+  return furniture.flatMap((node) => footprintSegments(node.footprintCorners))
 }
