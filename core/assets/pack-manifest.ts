@@ -81,6 +81,22 @@ function validateRequiredStringArray(
   }
 }
 
+function validateOptionalStringArray(
+  source: Record<string, unknown>,
+  descriptor: FieldDescriptor,
+  errors: string[],
+): void {
+  const value = source[descriptor.key]
+  if (value === undefined) {
+    return
+  }
+  const isStringArray =
+    Array.isArray(value) && value.every((entry) => typeof entry === 'string' && entry.trim() !== '')
+  if (!isStringArray) {
+    errors.push(`${resolveLabel(descriptor)} must be an array of non-empty strings`)
+  }
+}
+
 function validateOptionalUrl(
   source: Record<string, unknown>,
   descriptor: FieldDescriptor,
@@ -133,6 +149,7 @@ function validateAssetFields(
   }
   validateRequiredString(source, { key: 'attribution', label: `${label}.attribution` }, errors)
   validateRequiredStringArray(source, { key: 'eras', label: `${label}.eras` }, errors)
+  validateOptionalStringArray(source, { key: 'styles', label: `${label}.styles` }, errors)
   validateRequiredStringArray(source, { key: 'categories', label: `${label}.categories` }, errors)
   validateOptionalUrl(source, { key: 'sourceUrl', label: `${label}.sourceUrl` }, errors)
   if (!ASSET_KINDS.includes(source['kind'] as AssetKind)) {
