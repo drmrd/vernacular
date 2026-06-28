@@ -363,6 +363,15 @@ describe('buildRoomShell surface paint', () => {
     expect(top.color.equals(new THREE.Color(hex))).toBe(true)
   })
 
+  it('tags the floor slab with its floor surface ref so a 3D pick can target it', () => {
+    const node = rectangularRoom()
+
+    const group = buildRoomShell(node, new NeutralMaterialProvider())
+
+    const slab = findFloorSlab(group) as THREE.Mesh
+    expect(slab.userData.surface).toEqual({ kind: 'floor', floorId: 'g' })
+  })
+
   it('paints the ceiling from the paint store', () => {
     const node = rectangularRoom({ ceilingHeight: CEILING_HEIGHT })
     const hex = '#225588'

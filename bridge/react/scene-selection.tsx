@@ -4,11 +4,13 @@ import { useEffect, useLayoutEffect, useMemo } from 'react'
 import {
   createSelectionOutlineGroup,
   pickEntityIdAt,
+  pickSurfaceAt,
   reconcileSelectionOutline,
   type SceneRoot,
 } from '../../engine'
 import { isClick, type PointerPoint } from './pointer-click'
 import { useSelection, useSelectionIds } from './selection-context'
+import { useSurfaceSelection } from './surface-selection-context'
 
 // A pointer click selects the entity under the cursor and writes the shared bridge
 // selection (so the plan reflects it); a modifier click toggles it, and a click on empty
@@ -32,17 +34,22 @@ interface PointerSelectionDeps {
   raycaster: PickContext['raycaster']
   root: SceneRoot
   selection: ReturnType<typeof useSelection>
+  surfaceSelection: ReturnType<typeof useSurfaceSelection>
 }
 
 // Picks the entity under the release point and writes the shared selection: a modifier
-// click toggles, a plain click selects, and a click on empty space clears.
-function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDeps): void {
-  const { domElement, camera, raycaster, root, selection } = deps
+// click toggles, a plain click selects, and a click on empty space clears. A pick that
+// lands on a paintable surface (a room floor today) also targets that surface, so the
+// active paint target stays consistent across the 2D plan and the 3D model (ADR-0056).
+export function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDeps): void {
+  const { domElement, camera, raycaster, root, selection, surfaceSelection } = deps
   const rect = domElement.getBoundingClientRect()
   const ndc = {
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
   }
+  const surface = pickSurfaceAt({ raycaster, camera, root, ndc })
+  if (surface !== null) surfaceSelection.select(surface)
   const id = pickEntityIdAt({ raycaster, camera, root, ndc })
   const additive = event.shiftKey || event.metaKey || event.ctrlKey
   if (id === null) {
@@ -88,6 +95,7 @@ export function SceneSelection({ root, enabled = true }: { root: SceneRoot; enab
   const scene = useThree((state) => state.scene)
   const domElement = useThree((state) => state.gl.domElement)
   const selection = useSelection()
+  const surfaceSelection = useSurfaceSelection()
   const selectedIds = useSelectionIds()
   const outlineGroup = useMemo(() => createSelectionOutlineGroup(), [])
 
@@ -103,8 +111,8 @@ export function SceneSelection({ root, enabled = true }: { root: SceneRoot; enab
   }, [root, selectedIds, outlineGroup])
 
   const pointerDeps = useMemo<PointerSelectionDeps>(
-    () => ({ domElement, camera, raycaster, root, selection }),
-    [domElement, camera, raycaster, root, selection],
+    () => ({ domElement, camera, raycaster, root, selection, surfaceSelection }),
+    [domElement, camera, raycaster, root, selection, surfaceSelection],
   )
   useScenePointerSelection(pointerDeps, enabled)
 
