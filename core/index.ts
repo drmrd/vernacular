@@ -411,6 +411,7 @@ export type { PlanarPoint, WallSegment, WalkCollisionWorld } from './scene/walk-
 export { resolveWalkCollision, wallSegmentsForWalk } from './scene/walk-collision'
 export type { OpeningInteractionState } from './scene/opening-interaction'
 export { emptyOpeningInteraction, isOpeningOpen, toggleOpening } from './scene/opening-interaction'
+export { DEFAULT_INTERACT_REACH_MM, openingUnderReach } from './scene/opening-reach'
 export type {
   AssumedUnit,
   DecimalPrecision,
