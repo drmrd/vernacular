@@ -58,4 +58,20 @@ describe('sceneGraphForBuilding', () => {
     ])
     expect(building.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
   })
+
+  it('drops below-grade floors and their walls when underground levels are excluded', () => {
+    const graph = stack(
+      floorWithWall('basement', -STOREY_RISE_MM),
+      floorWithWall('ground', 0),
+      floorWithWall('upper', STOREY_RISE_MM),
+    )
+
+    const building = sceneGraphForBuilding(graph, { includeUnderground: false })
+
+    expect(building.nodes.map((node) => node.id)).toEqual([
+      `${FLOOR_NODE_PREFIX}ground`,
+      `${FLOOR_NODE_PREFIX}upper`,
+    ])
+    expect(building.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
+  })
 })
