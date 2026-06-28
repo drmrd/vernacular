@@ -413,6 +413,7 @@ export { resolveWalkCollision, wallSegmentsForWalk } from './scene/walk-collisio
 export type { OpeningInteractionState } from './scene/opening-interaction'
 export { emptyOpeningInteraction, isOpeningOpen, toggleOpening } from './scene/opening-interaction'
 export { DEFAULT_INTERACT_REACH_MM, openingUnderReach } from './scene/opening-reach'
+export { OPENNESS_RATE_PER_S, advanceOpenness } from './scene/opening-openness'
 export type {
   AssumedUnit,
   DecimalPrecision,
