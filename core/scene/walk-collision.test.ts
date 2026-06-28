@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import type { OpeningSceneNode, WallSceneNode } from './scene-graph'
-import { resolveWalkCollision, wallSegmentsForWalk, type WallSegment } from './walk-collision'
+import {
+  passableDoorIds,
+  resolveWalkCollision,
+  wallSegmentsForWalk,
+  type WallSegment,
+} from './walk-collision'
 
 function wallNode(overrides: Partial<WallSceneNode> = {}): WallSceneNode {
   return {
@@ -66,6 +71,22 @@ describe('resolveWalkCollision', () => {
     const pastEnd = resolveWalkCollision({ x: 1500, z: -100 }, [wallAlongX], radius)
     expect(pastEnd.x).toBeCloseTo(1500, 5)
     expect(pastEnd.z).toBeCloseTo(-100, 5)
+  })
+})
+
+describe('passableDoorIds', () => {
+  it('keeps open doors but drops open windows, closed openings, and unknown types', () => {
+    const openDoor = openingNode({ id: 'opening:door-open', type: 'single-swing-door' })
+    const openWindow = openingNode({ id: 'opening:window-open', type: 'double-hung-window' })
+    const closedDoor = openingNode({ id: 'opening:door-closed', type: 'single-swing-door' })
+    const openUnknown = openingNode({ id: 'opening:mystery', type: 'not-a-real-type' })
+
+    const openIds = new Set([openDoor.id, openWindow.id, openUnknown.id])
+    const passable = passableDoorIds([openDoor, openWindow, closedDoor, openUnknown], openIds)
+
+    // Only the open door cuts a gap: a window is never walkable, a closed door is
+    // not in the open set, and an unrecognized type is treated as not a door.
+    expect(passable).toEqual(new Set([openDoor.id]))
   })
 })
 
