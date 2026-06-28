@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   emptyOpeningInteraction,
   isOpeningOpen,
+  toggleOpening,
   type OpeningSceneNode,
   type SceneGraph,
   type WalkState,
@@ -75,6 +76,28 @@ describe('walk interaction', () => {
     tickOpenings({ root, openings: [door], interaction: closed, openness }, FULL_STEP)
     expect(openness.get(DOOR_ID)).toBe(0)
     expect(group.position.length()).toBeCloseTo(0, 3)
+  })
+
+  it('raises a window sash instead of swinging it when ticked open', () => {
+    const window: OpeningSceneNode = {
+      ...frontDoor(),
+      id: 'opening:front-window',
+      type: 'double-hung-window',
+      height: 1200,
+      sillHeight: 900,
+    }
+    const root = buildScene(graphWith(window), new NeutralMaterialProvider())
+    const group = root.getObjectByName(window.id)
+    expect(group).toBeDefined()
+    if (group === undefined) return
+    const openness = new Map<string, number>()
+
+    const opened = toggleOpening(emptyOpeningInteraction(), window.id)
+    tickOpenings({ root, openings: [window], interaction: opened, openness }, FULL_STEP)
+
+    expect(openness.get(window.id)).toBe(1)
+    // A hung window slides its sash up; the swing path would have left y at 0.
+    expect(group.position.y).toBeGreaterThan(0)
   })
 
   it('leaves every opening shut when the walker looks at none within reach', () => {
