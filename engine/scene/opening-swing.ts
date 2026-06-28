@@ -47,3 +47,20 @@ export function swingOpeningGroup(
   const pivoted = hinge.clone().applyQuaternion(group.quaternion)
   group.position.set(hinge.x - pivoted.x, hinge.y - pivoted.y, hinge.z - pivoted.z)
 }
+
+/**
+ * Swings the opening fill group named for the node within `root` to the given
+ * openness. The group is located by its name (the opening id that
+ * {@link buildOpeningFill} stamps on it); a node with no built group is ignored,
+ * so the runtime can drive every opening on the floor without a guard of its own.
+ */
+export function applyOpeningSwing(
+  root: THREE.Object3D,
+  node: OpeningSceneNode,
+  openness: number,
+): void {
+  const group = root.getObjectByName(node.id)
+  if (group) {
+    swingOpeningGroup(group, node, openness)
+  }
+}

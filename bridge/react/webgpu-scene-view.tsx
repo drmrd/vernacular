@@ -263,7 +263,7 @@ function LiveSceneCanvas({
         target={pose.target}
         onUserControl={onUserControl}
       />
-      <WalkCameraControls enabled={mode === 'walk'} onUserControl={onUserControl} />
+      <WalkCameraControls enabled={mode === 'walk'} onUserControl={onUserControl} root={root} />
     </Canvas>
   )
 }

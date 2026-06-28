@@ -13,6 +13,7 @@ export {
   buildRoomSubgroup,
   buildWallSubgroup,
 } from './scene/floor-subgroups'
+export { applyOpeningSwing, swingOpeningGroup } from './scene/opening-swing'
 export { sceneBounds } from './scene/scene-bounds'
 export { markShadowCasters } from './scene/shadow-casters'
 export type { OrbitController } from './scene/orbit-controls'
