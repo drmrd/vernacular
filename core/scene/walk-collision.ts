@@ -1,3 +1,4 @@
+import { openingKindOfType } from '../registries/opening-kind'
 import { WALL_NODE_PREFIX, type OpeningSceneNode, type WallSceneNode } from './scene-graph'
 
 /**
@@ -194,4 +195,24 @@ export function wallSegmentsForWalk(
   passableOpeningIds: ReadonlySet<string> = new Set(),
 ): WallSegment[] {
   return walls.flatMap((wall) => splitWall(wall, openings, passableOpeningIds))
+}
+
+/**
+ * Narrows a set of open opening ids to just the doors. An open door is walkable,
+ * so it cuts a gap in its host wall; an open window is not, since you cannot walk
+ * through a window. An opening counts as a door when `openingKindOfType` of its
+ * type is `'door'`; an unknown or non-opening type is excluded. The result feeds
+ * `wallSegmentsForWalk` as its passable set.
+ */
+export function passableDoorIds(
+  openings: readonly OpeningSceneNode[],
+  openIds: ReadonlySet<string>,
+): Set<string> {
+  const passable = new Set<string>()
+  for (const opening of openings) {
+    if (openIds.has(opening.id) && openingKindOfType(opening.type) === 'door') {
+      passable.add(opening.id)
+    }
+  }
+  return passable
 }
