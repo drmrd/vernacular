@@ -81,6 +81,14 @@ const roleDrawnPoints = (mesh: THREE.Mesh, role: string): Vector3[] => {
 export const maxAxisOfRole = (mesh: THREE.Mesh, role: string, axis: 'x' | 'y' | 'z'): number =>
   Math.max(...roleDrawnPoints(mesh, role).map((point) => point[axis]))
 
+const VERTICES_PER_TRIANGLE = 3
+
+// The number of triangles a mesh draws for the named role, across every material
+// group carrying it: a tessellated curved void lines its head with many reveal
+// facets, where a flat rectangular head needs only one.
+export const roleTriangleCount = (mesh: THREE.Mesh, role: string): number =>
+  roleDrawnPoints(mesh, role).length / VERTICES_PER_TRIANGLE
+
 // The set of surface roles drawn by a mesh's material groups.
 export const drawnRolesOf = (mesh: THREE.Mesh): Set<string | undefined> => {
   const materials = mesh.material as THREE.Material[]
