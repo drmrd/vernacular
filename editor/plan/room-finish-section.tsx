@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
 import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
-import { FinishPicker } from '../paint/finish-picker'
+import { FinishPicker, FloorPatternPicker } from '../paint/finish-picker'
 import './finish-section.css'
 
 const DEFAULT_FINISH_ID = 'matte'
@@ -45,6 +45,7 @@ export function RoomFinishSection({
   const ref = surfaceRef(kind, floorId)
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
+  const patternId = treatment?.kind === 'pattern' ? treatment.patternId : undefined
   return (
     <section className="finish-section">
       <SectionLabel>Finish</SectionLabel>
@@ -64,6 +65,9 @@ export function RoomFinishSection({
           finishId={treatment.finishId}
           dispatch={dispatch}
         />
+      ) : null}
+      {kind === 'floor' ? (
+        <FloorPatternPicker surface={ref} patternId={patternId} dispatch={dispatch} />
       ) : null}
     </section>
   )
