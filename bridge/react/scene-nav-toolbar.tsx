@@ -225,12 +225,52 @@ function ColorTemperatureControl({
   )
 }
 
+interface PrimaryClusterProps {
+  scope: SceneScope
+  onScopeChange: (scope: SceneScope) => void
+  showUnderground: boolean
+  onToggleUnderground: () => void
+  mode: NavMode
+  onModeChange: (mode: NavMode) => void
+  selectionEnabled: boolean
+  onToggleSelection: () => void
+  onReset: () => void
+}
+
+/**
+ * The primary navigation tier: the view-scope toggle and its underground control, the
+ * orbit/walk camera modes, click-to-select, and the reset action, gathered into one
+ * tight cluster so they read as the dominant controls.
+ */
+function PrimaryCluster(props: PrimaryClusterProps) {
+  return (
+    <div className="scene-nav-toolbar__primary">
+      <ScopeToggle scope={props.scope} onScopeChange={props.onScopeChange} />
+      <UndergroundToggle
+        showUnderground={props.showUnderground}
+        onToggleUnderground={props.onToggleUnderground}
+        disabled={props.scope === 'floor'}
+      />
+      <ModeToggle mode={props.mode} onModeChange={props.onModeChange} />
+      <SelectionToggle
+        selectionEnabled={props.selectionEnabled}
+        onToggleSelection={props.onToggleSelection}
+      />
+      <button type="button" className="scene-nav-toolbar__btn" onClick={props.onReset}>
+        Reset view
+      </button>
+    </div>
+  )
+}
+
 /**
  * Navigation chrome for the three-dimensional scene view. It exposes a toggle between
- * the orbit and walk camera modes, a control that returns the camera to its framed
- * starting view, and a group of camera presets (a top-down view, the four elevations,
- * and a view from a doorway). The active mode is reflected through `aria-pressed` so
- * assistive technology announces which way the camera currently moves.
+ * viewing the active floor and the whole building stacked (with a control to show or
+ * hide underground levels such as a basement), a toggle between the orbit and walk
+ * camera modes, a control that returns the camera to its framed starting view, and a
+ * group of camera presets (a top-down view, the four elevations, and a view from a
+ * doorway). Pressed states are reflected through `aria-pressed` so assistive technology
+ * announces the active view and camera mode.
  */
 export function SceneNavToolbar({
   mode,
@@ -249,22 +289,17 @@ export function SceneNavToolbar({
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <div className="scene-nav-toolbar__primary">
-        <ScopeToggle scope={scope} onScopeChange={onScopeChange} />
-        <UndergroundToggle
-          showUnderground={showUnderground}
-          onToggleUnderground={onToggleUnderground}
-          disabled={scope === 'floor'}
-        />
-        <ModeToggle mode={mode} onModeChange={onModeChange} />
-        <SelectionToggle
-          selectionEnabled={selectionEnabled}
-          onToggleSelection={onToggleSelection}
-        />
-        <button type="button" className="scene-nav-toolbar__btn" onClick={onReset}>
-          Reset view
-        </button>
-      </div>
+      <PrimaryCluster
+        scope={scope}
+        onScopeChange={onScopeChange}
+        showUnderground={showUnderground}
+        onToggleUnderground={onToggleUnderground}
+        mode={mode}
+        onModeChange={onModeChange}
+        selectionEnabled={selectionEnabled}
+        onToggleSelection={onToggleSelection}
+        onReset={onReset}
+      />
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
       <div className="scene-nav-toolbar__environment">
         <ColorTemperatureControl
