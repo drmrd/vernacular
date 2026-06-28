@@ -79,6 +79,19 @@ describe('openingMotion swing doors', () => {
   })
 })
 
+describe('openingMotion sliding doors', () => {
+  it('resolves a pocket door to a slide along the wall', () => {
+    const motion = openingMotion('pocket-door', openingNode('pocket-door'))
+
+    expect(motion.kind).toBe('slide')
+    if (motion.kind !== 'slide') return
+    expect(motion.axis).toBe('along-wall')
+    // Travels a full opening width along the wall (+x here), level and in plane.
+    expect(motion.travel).toEqual({ x: 900, y: 0, z: 0 })
+    expect(motion.partCount).toBe(1)
+  })
+})
+
 describe('openingMotion fixed openings', () => {
   it('resolves a cased opening to no motion', () => {
     expect(openingMotion('cased-opening', openingNode('cased-opening'))).toEqual({ kind: 'none' })
