@@ -149,7 +149,7 @@ describe('openingMotion windows', () => {
 })
 
 describe('openingMotion fold and pivot fallback', () => {
-  it('falls back to a jamb hinge for a bifold door in wave one', () => {
+  it('falls back to a jamb hinge for a bifold door', () => {
     const motion = openingMotion('bifold-door', openingNode('bifold-door'))
 
     expect(motion.kind).toBe('hinge')
@@ -158,7 +158,7 @@ describe('openingMotion fold and pivot fallback', () => {
     expect(motion.pivot).toEqual({ x: -450, y: 0, z: 0 })
   })
 
-  it('falls back to a jamb hinge for a pivot door in wave one', () => {
+  it('falls back to a jamb hinge for a pivot door', () => {
     const motion = openingMotion('pivot-door', openingNode('pivot-door'))
 
     expect(motion.kind).toBe('hinge')

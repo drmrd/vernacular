@@ -21,10 +21,20 @@ export function applyOpeningMotion(
   motion: OpeningMotion,
   openness: number,
 ): void {
-  if (motion.kind === 'hinge') {
-    applyHinge(group, motion, openness)
-  } else if (motion.kind === 'slide') {
-    applySlide(group, motion, openness)
+  switch (motion.kind) {
+    case 'hinge':
+      applyHinge(group, motion, openness)
+      break
+    case 'slide':
+      applySlide(group, motion, openness)
+      break
+    case 'none':
+      // A fixed opening has no moving part, so it keeps the transform it was built with.
+      break
+    default: {
+      const unreachable: never = motion
+      return unreachable
+    }
   }
 }
 
