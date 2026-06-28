@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0126-whole-building-3d-view
-title: 'ADR-0126: Whole-building 3D view stacks every floor at the bridge seam'
+slug: decisions/ADR-0127-whole-building-3d-view
+title: 'ADR-0127: Whole-building 3D view stacks every floor at the bridge seam'
 type: decision
 tags: [3d-preview, scene-graph, bridge, floors, elevation, session-state]
 related:
@@ -24,7 +24,7 @@ status: current
 updated: 2026-06-27
 ---
 
-# ADR-0126: Whole-building 3D view stacks every floor at the bridge seam
+# ADR-0127: Whole-building 3D view stacks every floor at the bridge seam
 
 ## Status
 
