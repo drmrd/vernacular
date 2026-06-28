@@ -54,6 +54,10 @@ export interface PlanOverlayProps {
   // The live keyboard authoring announcement ("Wall vertex dropped", etc.); when
   // non-empty it wins the single live region over the snap/selection text.
   authoringAnnouncement?: string
+  // The project site's north bearing in radians (the angle from plan-up to true
+  // north), rotating the compass so the mark points at true north. Absent or zero
+  // leaves north pointing up, the plan as drawn.
+  northBearing?: number | undefined
 }
 
 // The creative tools that drop free points on the canvas, which the keyboard
@@ -335,7 +339,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
         readout={readout}
       />
       <div className="plan-overlay__annotations">
-        <Compass />
+        <Compass northBearing={props.northBearing} />
         <ScaleBar viewport={viewport} preferences={preferences} />
       </div>
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}

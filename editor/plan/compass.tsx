@@ -8,7 +8,7 @@ const COMPASS_CENTER_Y = 18
 export interface CompassProps {
   // The site's north bearing in radians (the angle from plan-up to true north). When
   // absent or zero the needle points straight up, north as the plan is drawn.
-  northBearing?: number
+  northBearing?: number | undefined
 }
 
 // The transform that swings the needle group to true north, or undefined when the

@@ -93,6 +93,7 @@ interface PlanLayers {
   selectedWall: WallSceneNode | null
   viewport: Viewport
   preferences: UnitPreferences
+  northBearing: number | undefined
   selection: SelectionStore
   interaction: PlanInteraction
   dimensionTool: DimensionTool
@@ -208,6 +209,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
+  const northBearing = session.getProject().site?.northBearing
   const furniture =
     session.getProject().floors.find((floor) => floor.id === activeFloorId)?.furniture ?? []
   // The full graph still renders every layer; selection, hover, and move-drag read
@@ -297,6 +299,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     selectedWall,
     viewport,
     preferences,
+    northBearing,
     selection,
     interaction,
     dimensionTool,
@@ -359,6 +362,7 @@ function buildOverlayProps(layers: PlanLayers, readout: DragReadout | undefined)
     layer: layers.layer,
     authoringCandidate: layers.authoring.candidate,
     authoringAnnouncement: layers.authoring.announcement,
+    northBearing: layers.northBearing,
     ...(interaction.preview ? { preview: interaction.preview } : {}),
     ...(readout ? { readout } : {}),
   }
