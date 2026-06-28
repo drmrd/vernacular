@@ -390,7 +390,7 @@ export type { Contour, ContourSegment } from './scene/contour'
 export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
 export { openingHeadArcs } from './scene/opening-head'
 export type { OpeningHeadArc } from './scene/opening-head'
-export { trimProfileSection } from './scene/trim-profile'
+export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
 export {
   openingFill,
   LEAF_REVEAL_GAP_MM,

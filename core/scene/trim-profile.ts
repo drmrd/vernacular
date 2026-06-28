@@ -1,5 +1,10 @@
 import type { Point } from '../model/types'
-import type { TrimProfileShape } from '../registries/trim-profiles'
+import { getEntry, type Registry } from '../registries/registry'
+import {
+  builtinTrimProfiles,
+  type TrimProfile,
+  type TrimProfileShape,
+} from '../registries/trim-profiles'
 import type { Contour } from './contour'
 
 /**
@@ -66,4 +71,21 @@ export function trimProfileSection(
     case 'flat':
       return flatSection(height, projection)
   }
+}
+
+/**
+ * Resolves a trim profile's cross-section contour from a registry id, the trim
+ * analog of {@link openingVoidContour} resolving an opening's void from its
+ * element type. The shape and stock dimensions come from the registry entry, so
+ * the 2D plan or section symbol reads geometry without knowing the profile shape.
+ * An id the registry does not carry resolves to `undefined`, since the dimensions
+ * live on the entry and there is nothing plausible to draw without it.
+ */
+export function resolveTrimProfileSection(
+  profileId: string,
+  trimProfiles: Registry<TrimProfile> = builtinTrimProfiles,
+): Contour | undefined {
+  const entry = getEntry(trimProfiles, profileId)
+  if (entry === undefined) return undefined
+  return trimProfileSection(entry.shape, entry.height, entry.projection)
 }
