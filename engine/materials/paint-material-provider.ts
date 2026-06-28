@@ -44,6 +44,9 @@ export class PaintMaterialProvider implements MaterialProvider {
     key: string,
     treatment: SurfaceTreatment,
   ): THREE.Material {
+    if (treatment.kind !== 'solid') {
+      return this.neutralMaterial(role)
+    }
     const cached = this.paintedByKey.get(key)
     if (cached) {
       return cached

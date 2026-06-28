@@ -40,5 +40,6 @@ export function useFloorFillColor(): string | undefined {
   if (floorId === null) {
     return undefined
   }
-  return paint?.[surfaceKey({ kind: 'floor', floorId })]?.color.srgbHex
+  const treatment = paint?.[surfaceKey({ kind: 'floor', floorId })]
+  return treatment?.kind === 'solid' ? treatment.color.srgbHex : undefined
 }

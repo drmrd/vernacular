@@ -13,12 +13,26 @@ export type SurfaceRef =
   | { kind: 'floor'; floorId: string }
   | { kind: 'ceiling'; floorId: string }
 
-/** A surface treatment. Solid color is the only built variant; the discriminated
- *  `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0056). */
-export type SurfaceTreatment = { kind: 'solid'; color: Color; finishId: string }
+/**
+ * A surface treatment. Solid color and pattern are the built variants; the
+ * discriminated `kind` keeps `tiled-image` as a future extension seam (ADR-0056).
+ * A `pattern` treatment names a floor-pattern registry entry plus the repeat scale
+ * (in millimeters) and the resolved colors the pattern is drawn in.
+ */
+export type SurfaceTreatment =
+  | { kind: 'solid'; color: Color; finishId: string }
+  | { kind: 'pattern'; patternId: string; scale: number; colors: Color[] }
 
 export function solidTreatment(color: Color, finishId: string): SurfaceTreatment {
   return { kind: 'solid', color, finishId }
+}
+
+export function patternTreatment(
+  patternId: string,
+  scale: number,
+  colors: Color[],
+): SurfaceTreatment {
+  return { kind: 'pattern', patternId, scale, colors }
 }
 
 /** The stable string key the paint store is keyed by. Derivation-independent. */
