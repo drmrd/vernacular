@@ -66,6 +66,25 @@ function polygonCrossesRect(polygon: readonly Point[], rect: Bounds): boolean {
   return edgeCrosses || rectCorners(rect).some((corner) => pointInPolygon(corner, polygon))
 }
 
+interface EntityHits {
+  wall: (wall: WallSceneNode) => boolean
+  room: (room: RoomSceneNode) => boolean
+  opening: (opening: OpeningSceneNode) => boolean
+  dimension: (dimension: DimensionSceneNode) => boolean
+}
+
+/** Collect the ids of every entity whose per-kind predicate accepts it, in wall-room-opening-dimension order. */
+function selectEntities(scene: SceneGraph, hits: EntityHits): string[] {
+  return [
+    ...scene.walls.filter((wall) => hits.wall(wall)).map((wall) => wall.id),
+    ...scene.rooms.filter((room) => hits.room(room)).map((room) => room.id),
+    ...scene.openings.filter((opening) => hits.opening(opening)).map((opening) => opening.id),
+    ...scene.dimensions
+      .filter((dimension) => hits.dimension(dimension))
+      .map((dimension) => dimension.id),
+  ]
+}
+
 function wallContained(wall: WallSceneNode, rect: Bounds): boolean {
   return pointInRect(wall.start, rect) && pointInRect(wall.end, rect)
 }
@@ -88,23 +107,12 @@ function dimensionContained(dimension: DimensionSceneNode, rect: Bounds): boolea
  * excluded; crossing selection is deferred to a later editing slice.
  */
 export function entitiesInRect(scene: SceneGraph, rect: Bounds): string[] {
-  const walls = scene.walls.filter((wall) => wallContained(wall, rect)).map((wall) => wall.id)
-  const rooms = scene.rooms.filter((room) => roomContained(room, rect)).map((room) => room.id)
-  const openings = scene.openings
-    .filter((opening) => openingContained(opening, rect))
-    .map((opening) => opening.id)
-  const dimensions = scene.dimensions
-    .filter((dimension) => dimensionContained(dimension, rect))
-    .map((dimension) => dimension.id)
-  return [...walls, ...rooms, ...openings, ...dimensions]
-}
-
-function wallCrosses(wall: WallSceneNode, rect: Bounds): boolean {
-  return segmentCrossesRect(wall.start, wall.end, rect)
-}
-
-function dimensionCrosses(dimension: DimensionSceneNode, rect: Bounds): boolean {
-  return segmentCrossesRect(dimension.start, dimension.end, rect)
+  return selectEntities(scene, {
+    wall: (wall) => wallContained(wall, rect),
+    room: (room) => roomContained(room, rect),
+    opening: (opening) => openingContained(opening, rect),
+    dimension: (dimension) => dimensionContained(dimension, rect),
+  })
 }
 
 /**
@@ -114,15 +122,10 @@ function dimensionCrosses(dimension: DimensionSceneNode, rect: Bounds): boolean 
  * `entitiesInRect`.
  */
 export function entitiesCrossingRect(scene: SceneGraph, rect: Bounds): string[] {
-  const walls = scene.walls.filter((wall) => wallCrosses(wall, rect)).map((wall) => wall.id)
-  const rooms = scene.rooms
-    .filter((room) => polygonCrossesRect(room.polygon, rect))
-    .map((room) => room.id)
-  const openings = scene.openings
-    .filter((opening) => polygonCrossesRect(openingCorners(opening), rect))
-    .map((opening) => opening.id)
-  const dimensions = scene.dimensions
-    .filter((dimension) => dimensionCrosses(dimension, rect))
-    .map((dimension) => dimension.id)
-  return [...walls, ...rooms, ...openings, ...dimensions]
+  return selectEntities(scene, {
+    wall: (wall) => segmentCrossesRect(wall.start, wall.end, rect),
+    room: (room) => polygonCrossesRect(room.polygon, rect),
+    opening: (opening) => polygonCrossesRect(openingCorners(opening), rect),
+    dimension: (dimension) => segmentCrossesRect(dimension.start, dimension.end, rect),
+  })
 }
