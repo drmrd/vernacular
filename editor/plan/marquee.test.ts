@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entitiesInRect } from './marquee'
+import { entitiesCrossingRect, entitiesInRect } from './marquee'
 import type { Bounds } from './fit'
 import type {
   DimensionSceneNode,
@@ -125,5 +125,62 @@ describe('entitiesInRect', () => {
     })
 
     expect(entitiesInRect(graph, rect)).toEqual(['dimension:inside'])
+  })
+})
+
+describe('entitiesCrossingRect', () => {
+  it('includes walls and rooms that merely overlap and excludes ones fully outside', () => {
+    const graph = scene(
+      [
+        wall('wall:inside', { x: 100, y: 100 }, { x: 900, y: 900 }),
+        wall('wall:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 }),
+        wall('wall:outside', { x: 2000, y: 2000 }, { x: 3000, y: 3000 }),
+      ],
+      [
+        room('room:overlapping', [
+          { x: 500, y: 500 },
+          { x: 1500, y: 500 },
+          { x: 1500, y: 1500 },
+          { x: 500, y: 1500 },
+        ]),
+        room('room:outside', [
+          { x: 2000, y: 2000 },
+          { x: 3000, y: 2000 },
+          { x: 3000, y: 3000 },
+          { x: 2000, y: 3000 },
+        ]),
+      ],
+    )
+
+    expect(new Set(entitiesCrossingRect(graph, rect))).toEqual(
+      new Set(['wall:inside', 'wall:straddling', 'room:overlapping']),
+    )
+  })
+
+  it('includes a room that fully encloses the rectangle', () => {
+    const graph = scene(
+      [],
+      [
+        room('room:enclosing', [
+          { x: -500, y: -500 },
+          { x: 2000, y: -500 },
+          { x: 2000, y: 2000 },
+          { x: -500, y: 2000 },
+        ]),
+      ],
+    )
+
+    expect(entitiesCrossingRect(graph, rect)).toEqual(['room:enclosing'])
+  })
+
+  it('includes openings and dimensions that straddle the rectangle edge', () => {
+    const graph = scene([], [], {
+      openings: [opening('opening:straddling', { x: 950, y: 500 })],
+      dimensions: [dimension('dimension:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 })],
+    })
+
+    expect(new Set(entitiesCrossingRect(graph, rect))).toEqual(
+      new Set(['opening:straddling', 'dimension:straddling']),
+    )
   })
 })
