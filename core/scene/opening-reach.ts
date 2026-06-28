@@ -21,6 +21,12 @@ function normalize(v: Vector3): Vector3 {
   return { x: v.x / length, y: v.y / length, z: v.z / length }
 }
 
+/** A short look ray from the eye along a unit direction, in world space. */
+interface ReachRay {
+  origin: Vector3
+  direction: Vector3
+}
+
 /** The opening's rectangle in world space: its center and the three local axes. */
 interface OpeningFrame {
   center: Vector3
@@ -41,24 +47,21 @@ function openingFrame(node: OpeningSceneNode): OpeningFrame {
 /**
  * The ray distance from the eye to the opening's rectangle, or null when the ray
  * runs parallel to it, points away from it, lands beyond reach, or crosses the
- * opening plane outside the leaf rectangle. The direction must be a unit vector,
- * so the returned distance is in millimeters.
+ * opening plane outside the leaf rectangle. The ray direction must be a unit
+ * vector, so the returned distance is in millimeters.
  */
-function reachDistance(
-  eye: Vector3,
-  direction: Vector3,
-  node: OpeningSceneNode,
-  reachMm: number,
-): number | null {
+function reachDistance(ray: ReachRay, node: OpeningSceneNode, reachMm: number): number | null {
   const frame = openingFrame(node)
-  const denom = dot(direction, frame.normal)
+  const denom = dot(ray.direction, frame.normal)
   if (Math.abs(denom) < PARALLEL_EPSILON) return null
-  const t = dot(subtract(frame.center, eye), frame.normal) / denom
+  const t = dot(subtract(frame.center, ray.origin), frame.normal) / denom
   if (t <= 0 || t > reachMm) return null
-  const local = subtract(
-    { x: eye.x + direction.x * t, y: eye.y + direction.y * t, z: eye.z + direction.z * t },
-    frame.center,
-  )
+  const hit: Vector3 = {
+    x: ray.origin.x + ray.direction.x * t,
+    y: ray.origin.y + ray.direction.y * t,
+    z: ray.origin.z + ray.direction.z * t,
+  }
+  const local = subtract(hit, frame.center)
   if (Math.abs(dot(local, frame.along)) > node.width / 2) return null
   if (Math.abs(dot(local, frame.up)) > node.height / 2) return null
   return t
@@ -78,11 +81,11 @@ export function openingUnderReach(
   openings: readonly OpeningSceneNode[],
   reachMm: number = DEFAULT_INTERACT_REACH_MM,
 ): string | null {
-  const dir = normalize(direction)
+  const ray: ReachRay = { origin: eye, direction: normalize(direction) }
   let nearestId: string | null = null
   let nearestDistance = Infinity
   for (const node of openings) {
-    const distance = reachDistance(eye, dir, node, reachMm)
+    const distance = reachDistance(ray, node, reachMm)
     if (distance !== null && distance < nearestDistance) {
       nearestDistance = distance
       nearestId = node.id
