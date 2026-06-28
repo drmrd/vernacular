@@ -30,9 +30,15 @@ export interface SelectEndSample {
   shift: boolean
 }
 
+/**
+ * A left-to-right marquee selects only fully contained entities (`window`); a
+ * right-to-left marquee also grabs the ones it merely crosses (`crossing`).
+ */
+export type MarqueeMode = 'window' | 'crossing'
+
 export type SelectEndEffect =
   | { kind: 'click'; world: Point; shift: boolean }
-  | { kind: 'marquee'; rect: Bounds }
+  | { kind: 'marquee'; rect: Bounds; mode: MarqueeMode }
   | { kind: 'none' }
 
 /** A drag must travel this far in world millimeters before it locks into pan or marquee. */
@@ -90,13 +96,21 @@ export function advanceSelectGesture(
   return mode === 'marquee' ? resolveMarquee(state, sample) : resolvePanning(state, sample)
 }
 
+function marqueeMode(originWorld: Point, releaseWorld: Point): MarqueeMode {
+  return releaseWorld.x < originWorld.x ? 'crossing' : 'window'
+}
+
 export function endSelectGesture(
   state: SelectGestureState,
   sample: SelectEndSample,
 ): SelectEndEffect {
   if (state.mode === 'panning') return { kind: 'none' }
   if (state.mode === 'marquee') {
-    return { kind: 'marquee', rect: normalizedBounds(state.originWorld, sample.world) }
+    return {
+      kind: 'marquee',
+      rect: normalizedBounds(state.originWorld, sample.world),
+      mode: marqueeMode(state.originWorld, sample.world),
+    }
   }
   return { kind: 'click', world: state.originWorld, shift: sample.shift }
 }
