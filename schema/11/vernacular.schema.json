@@ -798,26 +798,58 @@
       "description": "A color in the OKLab perceptual space: L lightness (0..1), a and b chroma axes."
     },
     "SurfaceTreatment": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "const": "solid"
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "solid"
+            },
+            "color": {
+              "$ref": "#/definitions/Color"
+            },
+            "finishId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "color",
+            "finishId"
+          ],
+          "additionalProperties": false
         },
-        "color": {
-          "$ref": "#/definitions/Color"
-        },
-        "finishId": {
-          "type": "string"
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "pattern"
+            },
+            "patternId": {
+              "type": "string"
+            },
+            "scale": {
+              "type": "number"
+            },
+            "colors": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Color"
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "patternId",
+            "scale",
+            "colors"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "kind",
-        "color",
-        "finishId"
       ],
-      "additionalProperties": false,
-      "description": "A surface treatment. Solid color is the only built variant; the discriminated `kind` is the extension seam for future `tiled-image` and `pattern` variants (ADR-0056)."
+      "description": "A surface treatment. Solid color and pattern are the built variants; the discriminated `kind` keeps `tiled-image` as a future extension seam (ADR-0056). A `pattern` treatment names a floor-pattern registry entry plus the repeat scale (in millimeters) and the resolved colors the pattern is drawn in."
     },
     "Site": {
       "type": "object",
