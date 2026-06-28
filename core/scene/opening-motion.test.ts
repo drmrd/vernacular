@@ -92,6 +92,25 @@ describe('openingMotion sliding doors', () => {
   })
 })
 
+describe('openingMotion fold and pivot fallback', () => {
+  it('falls back to a jamb hinge for a bifold door in wave one', () => {
+    const motion = openingMotion('bifold-door', openingNode('bifold-door'))
+
+    expect(motion.kind).toBe('hinge')
+    if (motion.kind !== 'hinge') return
+    expect(motion.edge).toBe('jamb')
+    expect(motion.pivot).toEqual({ x: -450, y: 0, z: 0 })
+  })
+
+  it('falls back to a jamb hinge for a pivot door in wave one', () => {
+    const motion = openingMotion('pivot-door', openingNode('pivot-door'))
+
+    expect(motion.kind).toBe('hinge')
+    if (motion.kind !== 'hinge') return
+    expect(motion.edge).toBe('jamb')
+  })
+})
+
 describe('openingMotion fixed openings', () => {
   it('resolves a cased opening to no motion', () => {
     expect(openingMotion('cased-opening', openingNode('cased-opening'))).toEqual({ kind: 'none' })
