@@ -1,4 +1,4 @@
-import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode } from '../../core'
+import { FLOOR_NODE_PREFIX, sceneGraphForFloor, type SceneGraph, type SceneNode } from '../../core'
 
 /** Options controlling which floors the whole-building view includes. */
 export interface BuildingViewOptions {
@@ -46,4 +46,29 @@ export function sceneGraphForBuilding(graph: SceneGraph, options: BuildingViewOp
     stairs: graph.stairs.filter(onVisibleFloor),
     furniture: graph.furniture.filter(onVisibleFloor),
   }
+}
+
+/** Whether the 3D view shows a single active floor or the whole building stacked. */
+export type SceneScope = 'floor' | 'building'
+
+/** The live inputs that decide which scene graph the 3D view renders. */
+export interface ViewSceneGraphInput {
+  rawGraph: SceneGraph
+  scope: SceneScope
+  activeFloorId: string | null
+  includeUnderground: boolean
+}
+
+/**
+ * Selects the scene graph the 3D view renders: the active floor on its own in floor
+ * scope, or the whole building stacked at its elevations in building scope (with the
+ * underground floors dropped when `includeUnderground` is false).
+ */
+export function viewSceneGraph(input: ViewSceneGraphInput): SceneGraph {
+  if (input.scope === 'building') {
+    return sceneGraphForBuilding(input.rawGraph, {
+      includeUnderground: input.includeUnderground,
+    })
+  }
+  return sceneGraphForFloor(input.rawGraph, input.activeFloorId)
 }
