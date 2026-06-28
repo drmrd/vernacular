@@ -15,6 +15,7 @@ export interface UserAssetMeta {
   height?: number
   kind: AssetKind
   eras: string[]
+  styles?: string[]
   categories: string[]
 }
 
@@ -54,6 +55,7 @@ export class UserSource implements AssetSource {
       kind: meta.kind,
       categories: meta.categories,
       eras: meta.eras,
+      styles: meta.styles ?? [],
       footprint: meta.footprint,
       height: meta.height ?? DEFAULT_FURNITURE_HEIGHT_MM,
     }
