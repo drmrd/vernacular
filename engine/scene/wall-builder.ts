@@ -29,6 +29,7 @@ import {
   type Triangle,
   type WallSection,
 } from './geometry-utils'
+import { tessellateContourLoop } from './contour-tessellation'
 import { buildJunctionFill } from './junction-fill-builder'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
 
@@ -236,13 +237,15 @@ function edgeLocalToWorld(frame: EdgeFrame, uv: THREE.Vector2, side: number): TH
 }
 
 /**
- * The void hole loop in the edge-local `(u, v)` frame: the contour's corner
- * points (start plus each segment's `to`, dropping the final closing duplicate),
- * with the contour-local `x` shifted to the opening's distance along the edge.
+ * The void hole loop in the edge-local `(u, v)` frame: the contour flattened to a
+ * point loop (arc heads sampled into short chords by {@link tessellateContourLoop}),
+ * with the contour-local `x` shifted to the opening's distance along the edge. A
+ * straight (all-line) contour yields its four corners unchanged.
  */
 function voidHoleLoop(contour: Contour, positionAlongEdge: number): THREE.Vector2[] {
-  const corners = [contour.start, ...contour.segments.slice(0, -1).map((segment) => segment.to)]
-  return corners.map((point) => new THREE.Vector2(positionAlongEdge + point.x, point.y))
+  return tessellateContourLoop(contour).map(
+    (point) => new THREE.Vector2(positionAlongEdge + point.x, point.y),
+  )
 }
 
 /** The outer elevation rectangle's corners, `[base, baseEnd, topEnd, top]`. */
