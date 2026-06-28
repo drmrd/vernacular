@@ -35,6 +35,18 @@ export function patternTreatment(
   return { kind: 'pattern', patternId, scale, colors }
 }
 
+/** The sRGB hex a 2D plan tints a surface with: the solid color, or a pattern's base color. */
+export function surfaceTintHex(treatment: SurfaceTreatment): string {
+  if (treatment.kind === 'solid') {
+    return treatment.color.srgbHex
+  }
+  const base = treatment.colors[0]
+  return base === undefined ? NEUTRAL_TINT_HEX : base.srgbHex
+}
+
+/** The fallback tint for a pattern with no colors, which the registry never seeds. */
+const NEUTRAL_TINT_HEX = '#d8d4cc'
+
 /** The stable string key the paint store is keyed by. Derivation-independent. */
 export function surfaceKey(ref: SurfaceRef): string {
   switch (ref.kind) {
