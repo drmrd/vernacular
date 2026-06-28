@@ -1,6 +1,14 @@
 import * as THREE from 'three'
 
-import { surfaceKey, type LinearRgb, type SurfaceRef, type SurfaceTreatment } from '../../core'
+import {
+  builtinFloorPatterns,
+  getEntry,
+  surfaceKey,
+  surfaceTintHex,
+  type LinearRgb,
+  type SurfaceRef,
+  type SurfaceTreatment,
+} from '../../core'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
 import { roleMaterialParameters, slabTopDepthBiasParameters } from './role-appearance'
 
@@ -44,17 +52,15 @@ export class PaintMaterialProvider implements MaterialProvider {
     key: string,
     treatment: SurfaceTreatment,
   ): THREE.Material {
-    if (treatment.kind !== 'solid') {
-      return this.neutralMaterial(role)
-    }
     const cached = this.paintedByKey.get(key)
     if (cached) {
       return cached
     }
     const created = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(treatment.color.srgbHex),
+      color: new THREE.Color(surfaceTintHex(treatment)),
       name: role,
       ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
+      ...patternParameters(treatment),
     })
     this.paintedByKey.set(key, created)
     return created
@@ -68,5 +74,22 @@ export class PaintMaterialProvider implements MaterialProvider {
     const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
     this.neutralByRole.set(role, created)
     return created
+  }
+}
+
+/**
+ * The extra material parameters a `pattern` treatment contributes: the wearing
+ * surface's roughness from the floor-pattern registry and the pattern id as
+ * userData so the rendered material stays traceable to its finish. A solid
+ * treatment contributes nothing, so its material keeps the prior appearance.
+ */
+function patternParameters(treatment: SurfaceTreatment): THREE.MeshStandardMaterialParameters {
+  if (treatment.kind !== 'pattern') {
+    return {}
+  }
+  const pattern = getEntry(builtinFloorPatterns, treatment.patternId)
+  return {
+    ...(pattern === undefined ? {} : { roughness: pattern.roughness }),
+    userData: { patternId: treatment.patternId },
   }
 }
