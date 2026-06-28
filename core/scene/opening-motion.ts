@@ -82,6 +82,8 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
       return verticalSlide(opening, PAIRED_PARTS)
     case 'window-slide':
       return alongWallSlide(opening, SINGLE_PART)
+    case 'window-crank':
+      return crankHinge(opening, params.hingeEdge)
     default:
       return NO_MOTION
   }
@@ -114,6 +116,37 @@ function jambHinge(opening: OpeningSceneNode, partCount: number): HingeMotion {
     openAngle: QUARTER_TURN_RAD * facingSign,
     partId: REPRESENTATIVE_PART,
     partCount,
+  }
+}
+
+/**
+ * A crank window's hinge: a jamb (vertical axis) for a casement, the head or the
+ * sill (horizontal along-wall axis) for an awning or a hopper.
+ */
+function crankHinge(opening: OpeningSceneNode, edge: HingeEdge | undefined): HingeMotion {
+  if (edge === 'head' || edge === 'sill') {
+    return horizontalHinge(opening, edge)
+  }
+  return jambHinge(opening, SINGLE_PART)
+}
+
+/**
+ * A hinge about a horizontal axis running along the wall, at the opening head or
+ * sill. The free edge cranks toward the opening's facing side.
+ */
+function horizontalHinge(opening: OpeningSceneNode, edge: 'head' | 'sill'): HingeMotion {
+  const height = edge === 'head' ? opening.sillHeight + opening.height : opening.sillHeight
+  const pivot = planToWorld({ x: opening.center.x, y: opening.center.y }, height)
+  const facingSign = opening.orientation.facing === 'negative' ? -1 : 1
+  const edgeSense = edge === 'head' ? -1 : 1
+  return {
+    kind: 'hinge',
+    edge,
+    pivot,
+    axis: { x: opening.along.x, y: 0, z: opening.along.y },
+    openAngle: QUARTER_TURN_RAD * facingSign * edgeSense,
+    partId: REPRESENTATIVE_PART,
+    partCount: SINGLE_PART,
   }
 }
 
