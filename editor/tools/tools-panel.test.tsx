@@ -118,7 +118,7 @@ describe('ToolsPanel', () => {
 
     const selectChip = screen.getByRole('radio', { name: /select/i })
 
-    for (const name of [/fireplace/i, /chimney/i, /stairs/i, /label/i]) {
+    for (const name of [/fireplace/i, /chimney/i, /label/i]) {
       const chip = screen.getByRole('radio', { name })
 
       expect(chip).toHaveAttribute('aria-disabled', 'true')
@@ -168,6 +168,19 @@ describe('ToolsPanel', () => {
     expect(screen.getByRole('radio', { name: /window/i })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /door/i })).toHaveAttribute('aria-checked', 'false')
   })
+
+  it('pressing Stairs activates the place-stair tool', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    const stairsChip = screen.getByRole('radio', { name: /stairs/i })
+    expect(stairsChip).toHaveClass('ds-segmented__option')
+
+    await user.click(stairsChip)
+
+    expect(stairsChip).toHaveAttribute('aria-checked', 'true')
+    expect(stairsChip).toHaveClass('is-active')
+  })
 })
 
 describe('ToolsPanel keyboard navigation', () => {
@@ -200,9 +213,9 @@ describe('ToolsPanel keyboard navigation', () => {
     screen.getByRole('radio', { name: /window/i }).focus()
     await user.keyboard('{ArrowDown}')
 
-    const dimension = screen.getByRole('radio', { name: /dimension/i })
-    expect(dimension).toHaveFocus()
-    expect(dimension).toHaveAttribute('aria-checked', 'true')
+    const stairs = screen.getByRole('radio', { name: /stairs/i })
+    expect(stairs).toHaveFocus()
+    expect(stairs).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /fireplace/i })).toHaveAttribute(
       'aria-checked',
       'false',

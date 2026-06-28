@@ -17,5 +17,7 @@ export function toolLabel(tool: ToolId): string {
       return 'Calibrate'
     case 'place-furniture':
       return 'Furniture'
+    case 'place-stair':
+      return 'Stairs'
   }
 }

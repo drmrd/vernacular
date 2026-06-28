@@ -58,6 +58,7 @@ import { useFurniturePlacement } from './furniture-placement-context'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useUnderlayMove, type UnderlayMove } from './use-underlay-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
+import { useStairPlacement, type StairPlacement } from './use-stair-placement'
 import {
   eventToCanvas,
   useFitToContent,
@@ -106,6 +107,7 @@ interface PlanLayers {
   underlayLayer: PlanUnderlayLayer
   openingLayer: OpeningLayer
   furnitureLayer: FurnitureLayer
+  stairPlacement: StairPlacement
   authoring: PlanAuthoringResult
 }
 
@@ -286,6 +288,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     furniture,
     selectedIds,
   })
+  const stairPlacement = useStairPlacement({ session, tool, viewport, activeFloorId })
   return {
     graph,
     tool,
@@ -308,6 +311,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     underlayLayer,
     openingLayer,
     furnitureLayer,
+    stairPlacement,
     authoring,
   }
 }
@@ -392,6 +396,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       selection: planSelection,
       openingPlacement: openingLayer.placement,
       furniturePlacement: layers.furnitureLayer.placement,
+      stairPlacement: layers.stairPlacement,
       hover: layers.planHover,
       wallFaceHighlight: layers.wallFaceHighlight,
       clearAuthoringAnnouncement: layers.authoring.clearAnnouncement,

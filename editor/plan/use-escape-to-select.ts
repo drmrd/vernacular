@@ -3,7 +3,12 @@ import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
 
 // The placement tools that the Escape key leaves to return to the select tool.
-const PLACEMENT_TOOLS: readonly ToolId[] = ['draw-wall', 'place-opening', 'place-furniture']
+const PLACEMENT_TOOLS: readonly ToolId[] = [
+  'draw-wall',
+  'place-opening',
+  'place-furniture',
+  'place-stair',
+]
 
 const ESCAPE_KEY = 'Escape'
 
