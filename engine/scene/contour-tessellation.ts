@@ -10,13 +10,18 @@ const ARC_SEGMENTS_PER_HALF_TURN = 16
 /** Full turn in radians; an arc's signed sweep is folded into one turn around its center. */
 const FULL_TURN = Math.PI * 2
 
+/** Half turn in radians; the per-half-turn sample budget is scaled by how much of one the arc sweeps. */
+const HALF_TURN = FULL_TURN / 2
+
 /** One arc variant of {@link ContourSegment}, narrowed for the flattener. */
 type ArcSegment = Extract<ContourSegment, { kind: 'arc' }>
 
 /**
- * The signed sweep from the `start` angle to the `end` angle that turns in the
- * requested direction, folded into one turn so it is the minor arc between the
- * endpoints: negative (decreasing angle) when clockwise, non-negative when not.
+ * The signed angular displacement from the `start` angle to the `end` angle when
+ * traversed in the requested direction, folded into at most one turn: negative
+ * (decreasing angle) when clockwise, non-negative when not. The opening head arcs
+ * never sweep past a half turn, so this is their minor arc; a future reflex arc
+ * would take the directed long way round, which is the intended cut.
  */
 function signedSweep(start: number, end: number, clockwise: boolean): number {
   const raw = end - start
@@ -36,7 +41,7 @@ function arcPolyline(from: Point, segment: ArcSegment): Point[] {
   const start = Math.atan2(from.y - center.y, from.x - center.x)
   const end = Math.atan2(to.y - center.y, to.x - center.x)
   const sweep = signedSweep(start, end, clockwise)
-  const steps = Math.max(1, Math.ceil((Math.abs(sweep) / Math.PI) * ARC_SEGMENTS_PER_HALF_TURN))
+  const steps = Math.max(1, Math.ceil((Math.abs(sweep) / HALF_TURN) * ARC_SEGMENTS_PER_HALF_TURN))
   const points: Point[] = []
   for (let step = 1; step <= steps; step += 1) {
     const angle = start + (sweep * step) / steps

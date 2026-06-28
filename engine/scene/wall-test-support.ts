@@ -85,7 +85,7 @@ const VERTICES_PER_TRIANGLE = 3
 
 // The number of triangles a mesh draws for the named role, across every material
 // group carrying it: a tessellated curved void lines its head with many reveal
-// facets, where a flat rectangular head needs only one.
+// facets, where a flat rectangular head needs only the four edges of its void.
 export const roleTriangleCount = (mesh: THREE.Mesh, role: string): number =>
   roleDrawnPoints(mesh, role).length / VERTICES_PER_TRIANGLE
 
