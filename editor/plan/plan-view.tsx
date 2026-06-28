@@ -21,7 +21,7 @@ import {
 } from '../../bridge'
 import { useTheme } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
-import { useActiveEditLayer } from '../tools/edit-layer-context'
+import { useActiveEditLayer, type EditLayer } from '../tools/edit-layer-context'
 import { scopeFurnitureToLayer, scopeSceneToLayer } from './edit-layer-scope'
 import { planCursor } from './plan-cursor'
 import { DEFAULT_PLAN_PALETTE, resolvePlanPalette, type PlanPalette } from './plan-palette'
@@ -87,6 +87,7 @@ const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
 interface PlanLayers {
   graph: SceneGraph
   tool: ToolId
+  layer: EditLayer
   selectedIds: ReadonlySet<string>
   selectedWall: WallSceneNode | null
   viewport: Viewport
@@ -288,6 +289,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   return {
     graph,
     tool,
+    layer,
     selectedIds,
     selectedWall,
     viewport,
@@ -350,6 +352,7 @@ function buildOverlayProps(layers: PlanLayers, readout: DragReadout | undefined)
     preferences: layers.preferences,
     snap: interaction.snap,
     tool: layers.tool,
+    layer: layers.layer,
     authoringCandidate: layers.authoring.candidate,
     authoringAnnouncement: layers.authoring.announcement,
     ...(interaction.preview ? { preview: interaction.preview } : {}),
