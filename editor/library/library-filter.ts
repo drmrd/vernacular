@@ -6,15 +6,18 @@ export interface LibraryFilters {
   query: string
   source: SourceFilter
   era: string | null
+  style: string | null
 }
 
 const EMPTY_QUERY = ''
 const NO_ERA = null
+const NO_STYLE = null
 
 export const DEFAULT_FILTERS: LibraryFilters = {
   query: EMPTY_QUERY,
   source: 'all',
   era: NO_ERA,
+  style: NO_STYLE,
 }
 
 // The distinct eras across the loaded items, de-duplicated and sorted, so the
@@ -27,6 +30,18 @@ export function distinctEras(items: LibraryItem[]): string[] {
     }
   }
   return [...eras].sort()
+}
+
+// The distinct styles across the loaded items, de-duplicated and sorted, so the
+// style chips read in a stable order.
+export function distinctStyles(items: LibraryItem[]): string[] {
+  const styles = new Set<string>()
+  for (const item of items) {
+    for (const style of item.styles ?? []) {
+      styles.add(style)
+    }
+  }
+  return [...styles].sort()
 }
 
 function matchesQuery(item: LibraryItem, query: string): boolean {
@@ -50,13 +65,22 @@ function matchesEra(item: LibraryItem, era: string | null): boolean {
   return item.eras.includes(era)
 }
 
-// Keep only the items satisfying every active filter (search AND source AND era).
+function matchesStyle(item: LibraryItem, style: string | null): boolean {
+  if (style === NO_STYLE) {
+    return true
+  }
+  return (item.styles ?? []).includes(style)
+}
+
+// Keep only the items satisfying every active filter (search AND source AND era
+// AND style).
 export function visibleLibraryItems(items: LibraryItem[], filters: LibraryFilters): LibraryItem[] {
   return items.filter(
     (item) =>
       matchesQuery(item, filters.query) &&
       matchesSource(item, filters.source) &&
-      matchesEra(item, filters.era),
+      matchesEra(item, filters.era) &&
+      matchesStyle(item, filters.style),
   )
 }
 
@@ -65,6 +89,15 @@ export function visibleLibraryItems(items: LibraryItem[], filters: LibraryFilter
 export function nextEra(active: string | null, clicked: string): string | null {
   if (active === clicked) {
     return NO_ERA
+  }
+  return clicked
+}
+
+// The style a chip click should produce: toggling the active chip clears it,
+// otherwise the clicked style becomes active.
+export function nextStyle(active: string | null, clicked: string): string | null {
+  if (active === clicked) {
+    return NO_STYLE
   }
   return clicked
 }
