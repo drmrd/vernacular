@@ -12,6 +12,7 @@ const PACK_VERSION = '1.0.0'
 const PACK_LICENSE = 'CC0-1.0'
 const PACK_ATTRIBUTION = 'Vernacular project'
 const PACK_ERAS = Object.freeze(['mid-century'])
+const PACK_STYLES = Object.freeze(['mid-century-modern'])
 const PACK_CATEGORIES = Object.freeze(['seating'])
 
 const DEFAULT_ERROR_STATUS = 500
@@ -39,6 +40,7 @@ interface ServedManifestAsset {
   license: string
   attribution: string
   eras: readonly string[]
+  styles: readonly string[]
   categories: readonly string[]
   dimensions: ManifestDimensions
 }
@@ -49,6 +51,7 @@ interface ServedManifest {
   license: string
   attribution: string
   eras: readonly string[]
+  styles: readonly string[]
   categories: readonly string[]
   assets: ServedManifestAsset[]
 }
@@ -61,6 +64,7 @@ function buildManifestAsset(asset: ManifestAsset): ServedManifestAsset {
     license: PACK_LICENSE,
     attribution: PACK_ATTRIBUTION,
     eras: PACK_ERAS,
+    styles: PACK_STYLES,
     categories: PACK_CATEGORIES,
     dimensions: { width: ASSET_WIDTH_MM, depth: ASSET_DEPTH_MM, height: ASSET_HEIGHT_MM },
   }
@@ -73,6 +77,7 @@ function buildManifest(assets: ManifestAsset[]): ServedManifest {
     license: PACK_LICENSE,
     attribution: PACK_ATTRIBUTION,
     eras: PACK_ERAS,
+    styles: PACK_STYLES,
     categories: PACK_CATEGORIES,
     assets: assets.map(buildManifestAsset),
   }

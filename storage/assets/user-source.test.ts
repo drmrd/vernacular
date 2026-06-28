@@ -75,6 +75,20 @@ describe('UserSource', () => {
     expect(result).toBeUndefined()
   })
 
+  it('put defaults styles to an empty array when meta omits them', async () => {
+    const source = new UserSource(new InMemoryAssetCache(), makeIndex())
+    const item = await source.put(SAMPLE_BYTES, SAMPLE_META)
+
+    expect(item.styles).toEqual([])
+  })
+
+  it('put carries the meta styles onto the returned item', async () => {
+    const source = new UserSource(new InMemoryAssetCache(), makeIndex())
+    const item = await source.put(SAMPLE_BYTES, { ...SAMPLE_META, styles: ['craftsman'] })
+
+    expect(item.styles).toEqual(['craftsman'])
+  })
+
   it('put carries the meta height onto the returned item', async () => {
     const source = new UserSource(new InMemoryAssetCache(), makeIndex())
     const item = await source.put(SAMPLE_BYTES, { ...SAMPLE_META, height: 815 })

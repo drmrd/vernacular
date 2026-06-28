@@ -201,6 +201,36 @@ describe('validatePackManifest - asset categories', () => {
   })
 })
 
+describe('validatePackManifest - asset styles', () => {
+  it('accepts an asset with no styles, since styles are optional', () => {
+    const result = validatePackManifest({
+      ...validManifest(),
+      assets: [withoutKey(validAsset(), 'styles')],
+    })
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('accepts an asset with a non-empty styles array', () => {
+    const asset = { ...validAsset(), styles: ['queen-anne'] }
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+    expect(result).toEqual({ valid: true, errors: [] })
+  })
+
+  it('rejects styles as a plain string instead of an array', () => {
+    const asset = { ...validAsset(), styles: 'queen-anne' }
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+    expect(result.valid).toBe(false)
+    expect(result.errors.join(' ')).toContain('styles')
+  })
+
+  it('rejects an asset with a styles entry that is an empty string', () => {
+    const asset = { ...validAsset(), styles: [''] }
+    const result = validatePackManifest({ ...validManifest(), assets: [asset] })
+    expect(result.valid).toBe(false)
+    expect(result.errors.join(' ')).toContain('styles')
+  })
+})
+
 describe('validatePackManifest - asset sourceUrl', () => {
   it('accepts an asset with no sourceUrl', () => {
     expect(validatePackManifest({ ...validManifest(), assets: [validAsset()] })).toEqual({

@@ -111,11 +111,13 @@ function packAndUserRegistry(): AssetRegistry {
   const packItem = libraryItem({
     name: EAMES_NAME,
     eras: ['mid-century'],
+    styles: ['mid-century-modern'],
     reference: { scope: PACK_SCOPE, contentHash: 'p1' },
   })
   const userItem = libraryItem({
     name: OAK_NAME,
     eras: ['victorian'],
+    styles: ['queen-anne'],
     reference: { scope: 'user', contentHash: 'u1' },
   })
   return registryOf([packItem], [userItem])
@@ -167,9 +169,19 @@ describe('LibraryPanel filtering', () => {
     expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
   })
+
+  it('narrows the grid to items in the chosen style when a style chip is activated', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'mid-century-modern' }))
+
+    expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
+  })
 })
 
-const EXPECTED_SEGMENTED_GROUPS = 2
+const EXPECTED_SEGMENTED_GROUPS = 3
 const SINGLE_ACTIVE_OPTION = 1
 
 function segmentedGroups(container: HTMLElement): HTMLElement[] {
@@ -181,7 +193,7 @@ function activeOptionsIn(group: HTMLElement): HTMLElement[] {
 }
 
 describe('LibraryPanel design-system primitives', () => {
-  it('renders the source-filter and era-filter groups as Segmented controls', async () => {
+  it('renders the source-filter, era-filter, and style-filter groups as Segmented controls', async () => {
     const container = renderPanel(packAndUserRegistry())
     await screen.findByRole('button', { name: EAMES_NAME })
     await screen.findByRole('button', { name: OAK_NAME })
