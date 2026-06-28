@@ -11,7 +11,12 @@ function dispatchWindowKey(key: string): void {
 
 describe('useEscapeToSelect', () => {
   it('returns a placement tool to select on Escape, and leaves the select tool alone', () => {
-    const placementTools: ToolId[] = ['draw-wall', 'place-opening', 'place-furniture']
+    const placementTools: ToolId[] = [
+      'draw-wall',
+      'place-opening',
+      'place-furniture',
+      'place-stair',
+    ]
 
     for (const tool of placementTools) {
       const setTool = vi.fn()

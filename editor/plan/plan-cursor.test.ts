@@ -22,6 +22,10 @@ describe('planCursor', () => {
     expect(planCursor('place-opening', false)).toBe('crosshair')
   })
 
+  it('shows a crosshair for the stair-placement tool when idle', () => {
+    expect(planCursor('place-stair', false)).toBe('crosshair')
+  })
+
   it('shows a crosshair for the dimension tool when idle', () => {
     expect(planCursor('dimension', false)).toBe('crosshair')
   })
