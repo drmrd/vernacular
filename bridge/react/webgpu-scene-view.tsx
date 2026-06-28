@@ -3,7 +3,6 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode
 import {
   cameraPresetPose,
   doorwayPose,
-  sceneGraphForFloor,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
@@ -31,8 +30,10 @@ import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
+import { useBuildingViewState } from './use-building-view-state'
 import { useProjectPaint } from './use-project-paint'
 import { useSceneGraph } from './use-scene-graph'
+import { useViewSceneGraph } from './use-view-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
 
 // Frames the camera on the scene bounds, fitting the model to the live canvas
@@ -310,14 +311,10 @@ function ScenePaneShell({ mode, children }: { mode: NavMode; children: ReactNode
 export function WebGPUSceneView() {
   const rawGraph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
-  // Scope to the active floor and rebuild the scene only when that scoped graph
-  // actually changes, not on every render (sceneGraphForFloor returns a fresh object
-  // each call). The wholesale rebuild on change is the temporary approach the
-  // incremental-update slice replaces (foundation spec 5.5).
-  const graph = useMemo(
-    () => sceneGraphForFloor(rawGraph, activeFloorId),
-    [rawGraph, activeFloorId],
-  )
+  const buildingView = useBuildingViewState()
+  // Scope to the active floor or the whole building stacked at its elevations (issue
+  // #206); the scoped graph is memoized so the scene rebuilds only when it changes.
+  const graph = useViewSceneGraph(rawGraph, activeFloorId, buildingView)
   const paint = useProjectPaint()
   // One reconciler for the life of the view; it reuses an unchanged floor's built
   // scene instead of rebuilding on every edit (foundation spec 5.5).
@@ -354,6 +351,10 @@ export function WebGPUSceneView() {
         onColorTemperatureChange={setColorTemperatureK}
         onPreset={applyPreset}
         canDoorway={doorwayOpening !== null}
+        scope={buildingView.scope}
+        onScopeChange={buildingView.setScope}
+        showUnderground={buildingView.showUnderground}
+        onToggleUnderground={buildingView.toggleUnderground}
       />
       <ScenePaneShell mode={mode}>
         <LiveSceneCanvas
