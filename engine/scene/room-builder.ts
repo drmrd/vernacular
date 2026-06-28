@@ -148,7 +148,12 @@ function buildSlabMesh(
       section.role === 'top' ? { kind: 'floor', floorId } : undefined,
     ),
   )
-  return new THREE.Mesh(geometry, slabMaterials)
+  const mesh = new THREE.Mesh(geometry, slabMaterials)
+  // The slab carries its floor surface ref, so a 3D pick walks up to the same
+  // SurfaceRef the 2D plan paints (ADR-0056); the active paint target stays
+  // consistent across both views.
+  mesh.userData.surface = { kind: 'floor', floorId }
+  return mesh
 }
 
 /**
