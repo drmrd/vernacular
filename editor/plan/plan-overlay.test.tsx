@@ -146,3 +146,26 @@ describe('PlanOverlay edit-layer scoping', () => {
     expect(screen.getByRole('option', { name: /^Dimension,/ })).toBeInTheDocument()
   })
 })
+
+// The overlay's compass marks true north, so it must rotate to the project site's
+// north bearing rather than always pointing up.
+describe('PlanOverlay north arrow', () => {
+  it('rotates the compass to the site north bearing', () => {
+    render(
+      <PlanOverlay
+        viewport={VIEWPORT}
+        graph={graphWithOneOfEach()}
+        selectedIds={EMPTY_SELECTION}
+        selection={createSelectionStore()}
+        preferences={DEFAULT_METRIC_PREFERENCES}
+        snap={null}
+        tool="select"
+        layer="all"
+        northBearing={Math.PI / 2}
+      />,
+    )
+
+    const compass = screen.getByRole('img', { name: /north/i })
+    expect(compass.querySelector('g')?.getAttribute('transform')).toBe('rotate(-90 12 18)')
+  })
+})
