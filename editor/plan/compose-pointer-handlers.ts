@@ -9,6 +9,7 @@ import type { PlanSelection } from './use-plan-selection'
 import type { PlanUnderlayLayer } from './use-underlay'
 import type { FurnitureEditing } from './use-furniture-editing'
 import type { FurniturePlacementHandlers } from './use-furniture-layer'
+import type { StairPlacement } from './use-stair-placement'
 import type { SelectionMove } from './use-selection-move'
 import type { UnderlayMove } from './use-underlay-move'
 import type { ViewportControls } from './use-viewport-controls'
@@ -39,6 +40,7 @@ export interface PointerSources {
   selection: PlanSelection
   openingPlacement: OpeningPlacement
   furniturePlacement: FurniturePlacementHandlers
+  stairPlacement: StairPlacement
   hover: PlanHover
   // The reverse finish-chip link: hovering a selected wall's face previews its A/B chip.
   wallFaceHighlight: WallFacePlanHighlight
@@ -90,6 +92,7 @@ function composedPointerDown(
   dimensionTool.onPointerDown(event)
   openingPlacement.onPointerDown(event)
   furniturePlacement.onPointerDown(event)
+  sources.stairPlacement.onPointerDown(event)
   selection.onPointerDown(event)
 }
 
