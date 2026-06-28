@@ -126,7 +126,7 @@ function ToolRailSections() {
         <div className="tools-panel__grid">
           <Chip label="Fireplace" icon={Flame} unavailable />
           <Chip label="Chimney" icon={Buildings} unavailable />
-          <Chip label="Stairs" icon={Stairs} unavailable />
+          <Chip toolId="place-stair" label="Stairs" icon={Stairs} />
         </div>
       </section>
 
