@@ -54,6 +54,8 @@ interface SceneNavToolbarProps {
   canDoorway?: boolean
   scope?: SceneScope
   onScopeChange?: (scope: SceneScope) => void
+  showUnderground?: boolean
+  onToggleUnderground?: () => void
 }
 
 interface ScopeToggleProps {
@@ -101,6 +103,35 @@ function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
         </button>
       ))}
     </div>
+  )
+}
+
+interface UndergroundToggleProps {
+  showUnderground: boolean
+  onToggleUnderground: () => void
+  disabled: boolean
+}
+
+/**
+ * Shows or hides the building's below-grade levels (a basement). It applies only to
+ * the whole-building view, so it is disabled in the active-floor scope; a pressed
+ * toggle means the underground levels are currently in the model.
+ */
+function UndergroundToggle({
+  showUnderground,
+  onToggleUnderground,
+  disabled,
+}: UndergroundToggleProps) {
+  return (
+    <button
+      type="button"
+      className="scene-nav-toolbar__btn"
+      aria-pressed={showUnderground}
+      disabled={disabled}
+      onClick={onToggleUnderground}
+    >
+      Underground levels
+    </button>
   )
 }
 
@@ -213,11 +244,18 @@ export function SceneNavToolbar({
   canDoorway,
   scope = 'floor',
   onScopeChange = () => {},
+  showUnderground = true,
+  onToggleUnderground = () => {},
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
       <div className="scene-nav-toolbar__primary">
         <ScopeToggle scope={scope} onScopeChange={onScopeChange} />
+        <UndergroundToggle
+          showUnderground={showUnderground}
+          onToggleUnderground={onToggleUnderground}
+          disabled={scope === 'floor'}
+        />
         <ModeToggle mode={mode} onModeChange={onModeChange} />
         <SelectionToggle
           selectionEnabled={selectionEnabled}
