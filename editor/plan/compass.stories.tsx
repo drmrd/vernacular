@@ -20,3 +20,13 @@ export const Default: Story = {
     await expect(screen.getByText('N')).toBeInTheDocument()
   },
 }
+
+// A quarter-turn site north bearing swings the needle off plan-up so the mark aims
+// at true north while the plan itself stays square.
+export const Rotated: Story = {
+  render: () => <Compass northBearing={Math.PI / 2} />,
+  play: async ({ canvasElement }) => {
+    const screen = within(canvasElement)
+    await expect(screen.getByRole('img', { name: /north/i })).toBeInTheDocument()
+  },
+}
