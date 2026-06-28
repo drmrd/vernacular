@@ -35,6 +35,15 @@ describe('packHandlers', () => {
     expect(items.map((item) => item.name)).toEqual(['Mid-century chair', 'Edwardian writing desk'])
   })
 
+  it('serves assets tagged with the starter pack styles so the style chips have content', async () => {
+    server.use(...packHandlers({ base: BASE, assets: ASSETS }))
+
+    const source = new PackSource(createFetchPackReader(BASE, fetch))
+    const items = await source.list()
+
+    expect(items[0]?.styles).toContain('mid-century-modern')
+  })
+
   it('lists nothing when the mocked manifest request errors', async () => {
     server.use(...packErrorHandlers({ base: BASE }))
 
