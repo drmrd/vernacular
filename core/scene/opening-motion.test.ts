@@ -103,6 +103,16 @@ describe('openingMotion windows', () => {
     expect(motion.travel).toEqual({ x: 0, y: 2000, z: 0 })
     expect(motion.partCount).toBe(2)
   })
+
+  it('resolves a sliding window to a slide along the wall', () => {
+    const motion = openingMotion('sliding-window', openingNode('sliding-window'))
+
+    expect(motion.kind).toBe('slide')
+    if (motion.kind !== 'slide') return
+    expect(motion.axis).toBe('along-wall')
+    expect(motion.travel).toEqual({ x: 900, y: 0, z: 0 })
+    expect(motion.partCount).toBe(1)
+  })
 })
 
 describe('openingMotion fold and pivot fallback', () => {
