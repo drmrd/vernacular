@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { solidTreatment, surfaceKey, type SurfaceRef } from './paint'
+import { patternTreatment, solidTreatment, surfaceKey, type SurfaceRef } from './paint'
 import { colorFromHex } from '../color/color'
 
 const leftFace: SurfaceRef = { kind: 'wall-face', wallId: 'wall-1', side: 'left' }
@@ -60,6 +60,19 @@ describe('solidTreatment', () => {
       kind: 'solid',
       color: colorFromHex('#9aa583'),
       finishId: 'matte',
+    })
+  })
+})
+
+describe('patternTreatment', () => {
+  it('builds a pattern surface treatment from a pattern id, scale, and colors', () => {
+    const oak = colorFromHex('#8a6240')
+    const grain = colorFromHex('#6f4d31')
+    expect(patternTreatment('plank', 150, [oak, grain])).toEqual({
+      kind: 'pattern',
+      patternId: 'plank',
+      scale: 150,
+      colors: [colorFromHex('#8a6240'), colorFromHex('#6f4d31')],
     })
   })
 })

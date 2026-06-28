@@ -40,8 +40,7 @@ describe('assignSurfacePaint', () => {
   it('defaults the finish to matte when none is given', () => {
     const project = newProject()
     dispatcherFor(project).dispatch(assignSurfacePaint(REF, SAGE))
-    expect(project.paint?.[surfaceKey(REF)]?.kind).toBe('solid')
-    expect(project.paint?.[surfaceKey(REF)]?.finishId).toBe('matte')
+    expect(project.paint?.[surfaceKey(REF)]).toEqual(solidTreatment(SAGE, 'matte'))
   })
 
   it('restores absent paint on undo when none existed before', () => {
