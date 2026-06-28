@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { colorFromHex, solidTreatment, surfaceKey } from '../../core'
+import {
+  builtinFloorPatterns,
+  colorFromHex,
+  getEntry,
+  patternTreatment,
+  solidTreatment,
+  surfaceKey,
+} from '../../core'
 import { PaintMaterialProvider } from './paint-material-provider'
 
 const LIGHT_COLOR = { r: 1, g: 0.8, b: 0.6 }
@@ -84,5 +91,39 @@ describe('PaintMaterialProvider', () => {
     expect(material.polygonOffset).toBe(true)
     expect(material.polygonOffsetFactor).toBeGreaterThan(0)
     expect(material.polygonOffsetUnits).toBeGreaterThan(0)
+  })
+
+  const PATTERN_ID = 'tile-grid'
+  const PATTERN_BASE_HEX = '#cfc7ba'
+  const patternStore = {
+    [surfaceKey(FLOOR_REF)]: patternTreatment(PATTERN_ID, 300, [
+      colorFromHex(PATTERN_BASE_HEX),
+      colorFromHex('#b8b0a3'),
+    ]),
+  }
+
+  it('renders a floor pattern with the pattern base color and registry roughness', () => {
+    const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR, paint: patternStore })
+
+    const material = provider.material('top', FLOOR_REF) as THREE.MeshStandardMaterial
+
+    expect(material.color.equals(new THREE.Color(PATTERN_BASE_HEX))).toBe(true)
+    expect(material.roughness).toBe(getEntry(builtinFloorPatterns, PATTERN_ID)?.roughness)
+  })
+
+  it('records the pattern id on a patterned floor material so the finish is identifiable', () => {
+    const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR, paint: patternStore })
+
+    const material = provider.material('top', FLOOR_REF)
+
+    expect(material.userData.patternId).toBe(PATTERN_ID)
+  })
+
+  it('pushes a patterned slab top back in depth so the wall base does not z-fight', () => {
+    const provider = new PaintMaterialProvider({ lightColor: LIGHT_COLOR, paint: patternStore })
+
+    const material = provider.material('top', FLOOR_REF) as THREE.MeshStandardMaterial
+
+    expect(material.polygonOffset).toBe(true)
   })
 })

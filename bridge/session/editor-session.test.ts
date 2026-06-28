@@ -7,6 +7,7 @@ import {
   colorFromHex,
   createEmptyProject,
   resolveSurfacePaint,
+  solidTreatment,
   type Project,
 } from '../../core'
 
@@ -120,8 +121,6 @@ describe('createEditorSession subscription', () => {
     session.dispatch(assignSurfacePaint(ref, colorFromHex('#9aa583'), 'matte'))
 
     const treatment = resolveSurfacePaint(session.getProject(), ref)
-    expect(treatment).toBeDefined()
-    expect(treatment?.kind).toBe('solid')
-    expect(treatment?.color.srgbHex).toBe(colorFromHex('#9aa583').srgbHex)
+    expect(treatment).toEqual(solidTreatment(colorFromHex('#9aa583'), 'matte'))
   })
 })

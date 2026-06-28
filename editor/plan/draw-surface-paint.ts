@@ -92,6 +92,9 @@ function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point;
 /** Offset both wall endpoints perpendicular toward the face, then stroke the band in the treatment color. */
 function strokeBand(painter: SurfacePainter, face: PaintedFace): void {
   const { wall, side, treatment } = face
+  if (treatment.kind !== 'solid') {
+    return
+  }
   painter.ctx.strokeStyle = treatment.color.srgbHex
   painter.ctx.lineWidth = BAND_LINE_WIDTH
   const { from, to } = offsetBand(wall, side)

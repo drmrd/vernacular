@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { surfaceKey } from '../../core'
+import { surfaceKey, surfaceTintHex } from '../../core'
 import {
   useActiveFloorId,
   useActiveSurface,
@@ -40,5 +40,6 @@ export function useFloorFillColor(): string | undefined {
   if (floorId === null) {
     return undefined
   }
-  return paint?.[surfaceKey({ kind: 'floor', floorId })]?.color.srgbHex
+  const treatment = paint?.[surfaceKey({ kind: 'floor', floorId })]
+  return treatment === undefined ? undefined : surfaceTintHex(treatment)
 }
