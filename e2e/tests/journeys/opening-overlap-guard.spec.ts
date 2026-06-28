@@ -10,7 +10,7 @@ test('a door cannot be placed on top of another door', async ({ page }) => {
   await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
   await expectWallCount(page, 1)
 
-  await page.getByRole('button', { name: 'Door', exact: true }).click()
+  await page.getByRole('radio', { name: 'Door', exact: true }).click()
   await selectors.planCanvas(page).click({ position: { x: 320, y: 200 } })
   await expect(openingProxies(page)).toHaveCount(1)
 

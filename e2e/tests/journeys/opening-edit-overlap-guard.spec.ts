@@ -43,7 +43,7 @@ async function openingCenterXs(page: Page): Promise<number[]> {
 // Place a door on the wall at the given canvas-relative x by clicking the Door chip
 // (which arms the place-opening tool) and clicking the wall centerline.
 async function placeDoorAt(page: Page, box: { width: number; height: number }, xFraction: number) {
-  await page.getByRole('button', { name: 'Door', exact: true }).click()
+  await page.getByRole('radio', { name: 'Door', exact: true }).click()
   await selectors
     .planCanvas(page)
     .click({ position: { x: box.width * xFraction, y: box.height * WALL_START.y } })

@@ -13,7 +13,7 @@ test('a wall cannot host on an opening', async ({ page }) => {
 
   // The door chip arms opening placement, which hosts on a wall: clicking on the
   // wall places one opening.
-  await page.getByRole('button', { name: 'Door', exact: true }).click()
+  await page.getByRole('radio', { name: 'Door', exact: true }).click()
   await selectors.planCanvas(page).click({ position: { x: 320, y: 200 } })
   await expect(openingProxies(page)).toHaveCount(1)
 

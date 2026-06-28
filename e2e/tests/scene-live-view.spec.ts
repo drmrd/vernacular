@@ -50,7 +50,7 @@ async function drawWall(
   plan: Locator,
   segment: { from: Point; to: Point },
 ): Promise<void> {
-  await page.getByRole('button', { name: 'Wall', exact: true }).click()
+  await page.getByRole('radio', { name: 'Wall', exact: true }).click()
   await plan.click({ position: segment.from })
   await plan.click({ position: segment.to })
   await page.keyboard.press('Enter')
