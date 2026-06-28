@@ -25,6 +25,7 @@ import {
   builtinPeriods,
   formatAdaptiveLength,
   preferencesForUnits,
+  renameFloor,
   sceneGraphForFloor,
   setUnits,
   type Project,
@@ -207,10 +208,15 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   )
 }
 
-// The floor rows the switcher renders: each floor's raw id and name (not the
-// scene-node prefixed id).
-function floorSummaries(project: Project): { id: string; name: string }[] {
-  return project.floors.map((floor) => ({ id: floor.id, name: floor.name }))
+// The floor rows the switcher renders: each floor's raw id, name, and elevation
+// (not the scene-node prefixed id). Elevation lets the switcher order floors and
+// place newly added ones above or below the existing stack.
+function floorSummaries(project: Project): { id: string; name: string; elevation: number }[] {
+  return project.floors.map((floor) => ({
+    id: floor.id,
+    name: floor.name,
+    elevation: floor.elevation,
+  }))
 }
 
 // The italic period subtitle for the rail project block: the era's display name
@@ -269,7 +275,10 @@ function EditorStatusBar() {
       floors={floorSummaries(session.getProject())}
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
-      onAddFloor={() => session.dispatch(addFloor('New Floor'))}
+      onAddFloor={(placement) =>
+        session.dispatch(addFloor(placement.name, { elevation: placement.elevation }))
+      }
+      onRenameFloor={(id, name) => session.dispatch(renameFloor(id, name))}
       tool={`Tool: ${toolLabel(tool)}`}
       coords={<CoordsReadout />}
       snap={<SnapStatus />}

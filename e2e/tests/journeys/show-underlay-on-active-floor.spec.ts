@@ -8,7 +8,7 @@ const underlayFixture = fileURLToPath(new URL('../../fixtures/underlay.png', imp
 test('draws the active non-ground floor reference image on the plan canvas', async ({ page }) => {
   await gotoEditor(page)
   await selectors.addFloorButton(page).click()
-  await selectors.floorButton(page, 'New Floor').click()
+  await selectors.floorButton(page, '2nd Floor').click()
 
   const snapshot = (): Promise<string> =>
     selectors.planCanvas(page).evaluate((c) => (c as HTMLCanvasElement).toDataURL())

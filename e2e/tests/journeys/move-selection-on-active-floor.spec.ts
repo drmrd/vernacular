@@ -5,7 +5,7 @@ import { canvasBox, drawWall, expectWallCount, gotoEditor, selectors } from './s
 test('moves a selected wall on the active non-ground floor', async ({ page }) => {
   await gotoEditor(page)
   await selectors.addFloorButton(page).click()
-  await selectors.floorButton(page, 'New Floor').click()
+  await selectors.floorButton(page, '2nd Floor').click()
 
   const box = await canvasBox(page)
   const x0 = box.width * 0.35
