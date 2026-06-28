@@ -4,12 +4,16 @@ import {
   accumulatePointerLook,
   advanceWalk,
   emptyOpeningInteraction,
+  furnitureSegmentsForWalk,
+  passableDoorIds,
   sceneGraphForFloor,
   walkLookTarget,
   wallSegmentsForWalk,
   WALK_EYE_HEIGHT_MM,
   type OpeningInteractionState,
   type OpeningSceneNode,
+  type WallSceneNode,
+  type WallSegment,
   type WalkCollisionWorld,
   type WalkInput,
   type WalkState,
@@ -148,16 +152,28 @@ function startWalk(session: WalkSession): () => void {
   }
 }
 
-// Builds the collision world for the active floor: every wall on the floor with
-// its openings closed (solid), plus the walker's radius. It rebuilds only when the
-// scene graph or active floor changes. The passable-opening set stays empty here,
-// the seam the open-door work fills so a walked-open door stops blocking.
-function useWalkCollisionWorld(): WalkCollisionWorld {
+// The static collision inputs for the active floor: its walls and openings, the
+// precomputed furniture perimeter segments, and the walker's radius. The per-frame
+// step combines these with the live open-door set to build the collision world, so
+// these need rebuild only when the scene graph or active floor changes.
+interface WalkCollisionInputs {
+  walls: WallSceneNode[]
+  openings: OpeningSceneNode[]
+  furnitureSegments: WallSegment[]
+  radius: number
+}
+
+function useWalkCollisionInputs(): WalkCollisionInputs {
   const rawGraph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
   return useMemo(() => {
     const graph = sceneGraphForFloor(rawGraph, activeFloorId)
-    return { segments: wallSegmentsForWalk(graph.walls, graph.openings), radius: WALK_RADIUS_MM }
+    return {
+      walls: graph.walls,
+      openings: graph.openings,
+      furnitureSegments: furnitureSegmentsForWalk(graph.furniture),
+      radius: WALK_RADIUS_MM,
+    }
   }, [rawGraph, activeFloorId])
 }
 
@@ -193,7 +209,7 @@ function useWalkInteraction(): {
 // writes to, the collision world, and the walk and interaction refs it advances.
 interface WalkFrameContext {
   camera: WalkCamera
-  collision: WalkCollisionWorld
+  collisionInputs: WalkCollisionInputs
   root: SceneRoot
   state: RefObject<WalkState>
   input: RefObject<WalkInput>
@@ -202,11 +218,24 @@ interface WalkFrameContext {
   openness: RefObject<Map<string, number>>
 }
 
+// Builds this frame's collision world from the static inputs and the live open-door
+// set: open doors cut gaps in their host walls, closed doors and all windows stay
+// solid, and furniture footprints always block. Closed doors and windows are solid
+// because only door ids in the live open set are passed through as passable.
+function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
+  const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
+  const passable = passableDoorIds(openings, ctx.interaction.current.openIds)
+  return {
+    segments: [...wallSegmentsForWalk(walls, openings, passable), ...furnitureSegments],
+    radius,
+  }
+}
+
 // Advances the walk one timestep: steps the walk state against the collision
 // world, drives the live camera to the new eye and look, and swings any opening
 // that is mid open or close. The look deltas are consumed so they do not re-apply.
 function stepWalkFrame(ctx: WalkFrameContext, delta: number): void {
-  const next = advanceWalk(ctx.state.current, ctx.input.current, delta, ctx.collision)
+  const next = advanceWalk(ctx.state.current, ctx.input.current, delta, frameCollisionWorld(ctx))
   ctx.input.current.yawDelta = 0
   ctx.input.current.pitchDelta = 0
   ctx.state.current = next
@@ -246,7 +275,7 @@ export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraC
   const domElement = useThree((state) => state.gl.domElement)
   const stateRef = useRef<WalkState>(initialWalkState())
   const inputRef = useRef<WalkInput>(emptyWalkInput())
-  const collision = useWalkCollisionWorld()
+  const collisionInputs = useWalkCollisionInputs()
   const { openingsRef, interactionRef, opennessRef } = useWalkInteraction()
 
   useEffect(() => {
@@ -267,7 +296,7 @@ export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraC
     stepWalkFrame(
       {
         camera,
-        collision,
+        collisionInputs,
         root,
         state: stateRef,
         input: inputRef,
