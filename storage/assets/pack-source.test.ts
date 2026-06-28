@@ -46,9 +46,15 @@ const EXPECTED_ITEM: LibraryItem = {
   kind: 'furniture',
   categories: ['seating'],
   eras: ['mid-century'],
+  styles: [],
   footprint: { width: 500, depth: 520 },
   height: 800,
   thumbnail: { scope: PACK_ID, contentHash: ZERO_HASH },
+}
+
+const STYLED_MANIFEST = {
+  ...VALID_MANIFEST,
+  assets: [{ ...VALID_MANIFEST.assets[0], styles: ['queen-anne'] }],
 }
 
 describe('PackSource', () => {
@@ -56,6 +62,18 @@ describe('PackSource', () => {
     const source = new PackSource(fakeReader(VALID_MANIFEST))
     const items = await source.list()
     expect(items).toEqual([EXPECTED_ITEM])
+  })
+
+  it('defaults each listed item styles to an empty array when the manifest omits them', async () => {
+    const source = new PackSource(fakeReader(VALID_MANIFEST))
+    const items = await source.list()
+    expect(items[0]?.styles).toEqual([])
+  })
+
+  it('carries the manifest asset styles onto the listed item', async () => {
+    const source = new PackSource(fakeReader(STYLED_MANIFEST))
+    const items = await source.list()
+    expect(items[0]?.styles).toEqual(['queen-anne'])
   })
 
   it('sets each listed item height from the manifest asset dimensions', async () => {
