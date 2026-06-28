@@ -14,7 +14,7 @@ export {
   buildWallSubgroup,
 } from './scene/floor-subgroups'
 export { applyOpeningSwing, swingOpeningGroup } from './scene/opening-swing'
-export { applyOpeningMotion } from './scene/opening-motion'
+export { applyOpeningMotion, applyOpeningMotionForNode } from './scene/opening-motion'
 export { sceneBounds } from './scene/scene-bounds'
 export { markShadowCasters } from './scene/shadow-casters'
 export type { OrbitController } from './scene/orbit-controls'

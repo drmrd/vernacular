@@ -1,6 +1,12 @@
 import * as THREE from 'three'
 
-import type { HingeMotion, OpeningMotion, SlideMotion } from '../../core'
+import {
+  openingMotion,
+  type HingeMotion,
+  type OpeningMotion,
+  type OpeningSceneNode,
+  type SlideMotion,
+} from '../../core'
 
 /**
  * Transforms an opening fill group (its leaf, sash, and glass, from
@@ -19,6 +25,23 @@ export function applyOpeningMotion(
     applyHinge(group, motion, openness)
   } else if (motion.kind === 'slide') {
     applySlide(group, motion, openness)
+  }
+}
+
+/**
+ * Resolves the motion for the opening node and plays it on the node's fill group
+ * within `root`. The group is located by its name (the opening id that
+ * {@link buildOpeningFill} stamps on it); a node with no built group is ignored,
+ * so the runtime can drive every opening on the floor without a guard of its own.
+ */
+export function applyOpeningMotionForNode(
+  root: THREE.Object3D,
+  node: OpeningSceneNode,
+  openness: number,
+): void {
+  const group = root.getObjectByName(node.id)
+  if (group) {
+    applyOpeningMotion(group, openingMotion(node.type, node), openness)
   }
 }
 
