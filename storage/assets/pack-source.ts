@@ -16,6 +16,7 @@ interface PackAssetShape {
   kind: AssetKind
   categories: string[]
   eras: string[]
+  styles?: string[]
   dimensions: { width: number; depth: number; height: number }
 }
 
@@ -59,6 +60,7 @@ export class PackSource implements AssetSource {
       kind: asset.kind,
       categories: asset.categories,
       eras: asset.eras,
+      styles: asset.styles ?? [],
       footprint: { width: asset.dimensions.width, depth: asset.dimensions.depth },
       height: asset.dimensions.height,
       thumbnail: { scope: this.scope, contentHash: asset.contentHash },

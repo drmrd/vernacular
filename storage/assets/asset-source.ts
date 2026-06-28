@@ -12,6 +12,8 @@ export interface LibraryItem {
   kind: AssetKind
   categories: string[]
   eras: string[]
+  /** Architectural styles this item suits; optional so packs predating the field still load. */
+  styles?: string[]
   footprint: FurnitureFootprint
   /** Declared height of the item in millimeters; defaults the placed instance's massing height. */
   height: number
