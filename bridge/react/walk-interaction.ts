@@ -14,16 +14,20 @@ import { applyOpeningMotionForNode, type SceneRoot } from '../../engine'
  * The "use" action: casts a short ray from the walker's eye and toggles the
  * opening it lands on within reach, returning the updated interaction state. With
  * nothing in reach the state is returned unchanged, so pressing the interact key
- * in open space is a no-op. The per-opening `openness` lets the ray reach a
- * swung-open leaf where it currently rests, so looking at an open door closes it.
+ * in open space is a no-op. The per-opening `openness` lets the ray test each leaf
+ * at its open position, so looking at an opened door or a slid-back pocket door
+ * closes it.
  */
-// eslint-disable-next-line max-params -- the walker, the world's openings, the interaction state being updated, and the live per-opening openness are independent inputs; none collapses into another.
+// eslint-disable-next-line max-params -- a 4th input trips max-params whether bare or bundled, and unlike openingUnderReach (two optional extras) this function has a single optional extra (openness), so a bare parameter is clearer than a one-field options bag; this mirrors the four-param disable already on openingUnderReach.
 export function interactFromWalk(
   walk: WalkState,
   openings: readonly OpeningSceneNode[],
   interaction: OpeningInteractionState,
   openness?: ReadonlyMap<string, number>,
 ): OpeningInteractionState {
+  // exactOptionalPropertyTypes rejects `{ openness: undefined }` for openingUnderReach's
+  // `openness?` field, so build options only when a map is present (a Map is always
+  // truthy); omitting it leaves the field genuinely absent.
   const options = openness ? { openness } : undefined
   const targetId = openingUnderReach(walk.position, walkLookDirection(walk), openings, options)
   return targetId === null ? interaction : toggleOpening(interaction, targetId)
