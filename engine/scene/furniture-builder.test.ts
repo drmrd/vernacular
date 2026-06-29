@@ -71,6 +71,12 @@ describe('buildFurnitureMassing', () => {
     expect(group.userData.entityId).toBe(instance.id)
   })
 
+  it('flags the massing group as a placeholder box so a loaded model is distinguishable from it', () => {
+    const group = buildFurnitureMassing(buildNode(buildInstance()), new NeutralMaterialProvider())
+
+    expect(group.userData.furnitureMassing).toBe(true)
+  })
+
   it('spans the footprint in X and Z and elevation-to-top in Y in world space', () => {
     const group = buildFurnitureMassing(buildNode(buildInstance()), new NeutralMaterialProvider())
 
