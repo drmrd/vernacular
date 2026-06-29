@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0130-surface-edge-overlay-opt-in-view-toggle
-title: 'ADR-0130: Surface edge overlay is an opt-in view toggle, off by default in Orbit'
+slug: decisions/ADR-0132-surface-edge-overlay-opt-in-view-toggle
+title: 'ADR-0132: Surface edge overlay is an opt-in view toggle, off by default in Orbit'
 type: decision
 tags: [architecture, three-dimensional, rendering, edges, preview, view-settings, engine]
 related:
@@ -22,7 +22,7 @@ status: accepted
 updated: 2026-06-29
 ---
 
-# ADR-0130: Surface edge overlay is an opt-in view toggle, off by default in Orbit
+# ADR-0132: Surface edge overlay is an opt-in view toggle, off by default in Orbit
 
 ## Status
 
@@ -69,7 +69,7 @@ on is a follow-on; the seam is in place for it.
 ### A loaded furniture model is distinguished by a placeholder flag, not the overlay
 
 The end-to-end model-swap signal used to tell a furniture massing box from a loaded model
-by the box carrying the edge overlay and the model not. With the overlay off by default
+by the box carrying the edge overlay while the model did not. With the overlay off by default
 that test no longer holds, so the massing box now sets `userData.furnitureMassing`, and
 the signal reads that flag instead. The flag is the stable marker the overlay had been
 standing in for.

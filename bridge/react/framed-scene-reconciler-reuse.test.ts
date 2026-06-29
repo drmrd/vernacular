@@ -433,7 +433,7 @@ describe('createFramedSceneReconciler furniture model', () => {
     }
     // The massing box carries the furniture massing material; the real-model sub-group is
     // the loaded mesh and does not. (The edge overlay is an opt-in view toggle, off by
-    // default in this build path per ADR-0130, so it no longer marks the box.)
+    // default in this build path per ADR-0132, so it no longer marks the box.)
     expect(firstMeshMaterialName(boxGroup)).toBe('furniture')
     expect(firstMeshMaterialName(meshGroup)).not.toBe('furniture')
   })

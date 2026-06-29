@@ -80,7 +80,7 @@ function boxSections(
  * furniture on the raw id, so the generic 3D pick and outline select in step with the plan.
  * userData.furnitureMassing flags the group as a placeholder box, so a loaded model
  * sub-group is distinguishable from it now that the edge overlay (which used to mark the
- * box) is an opt-in view toggle, off by default (ADR-0130).
+ * box) is an opt-in view toggle, off by default (ADR-0132).
  */
 export function buildFurnitureMassing(
   node: FurnitureSceneNode,

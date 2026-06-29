@@ -26,7 +26,7 @@ export function buildScene(
   }
   // Draw a dark edge line along every surface so a wall reads against the floor and
   // its neighbors, but only when the view turns the overlay on: it is an opt-in view
-  // toggle, off by default in Orbit (ADR-0078, amended by ADR-0130).
+  // toggle, off by default in Orbit (ADR-0078, amended by ADR-0132).
   applyEdgeOverlay(root, options)
   return root
 }
