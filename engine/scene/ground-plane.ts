@@ -7,7 +7,7 @@ import * as THREE from 'three'
  * positive elevations and basements at negative ones (core/model/floor-placement.ts,
  * and the underground filter in the building view, ADR-0127). The ground plane sits
  * at that same datum, so a partly buried basement's foundation rises through it. See
- * ADR-0130; an explicit grade/exposure model field is a recommended follow-up.
+ * ADR-0131; an explicit grade/exposure model field is a recommended follow-up.
  */
 export const GRADE_ELEVATION_MM = 0
 
