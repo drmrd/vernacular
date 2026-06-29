@@ -54,4 +54,18 @@ describe('SiteEditor', () => {
     expect(sent.type).toBe(setSiteNorthBearing(0).type)
     expect(sent.params.northBearing).toBeCloseTo(45 * RADIANS_PER_DEGREE)
   })
+
+  it('does not dispatch a bearing update when the field is cleared', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={dispatch} />,
+    )
+
+    const bearing = screen.getByLabelText(/north bearing/i)
+    await user.clear(bearing)
+    await user.keyboard('{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
 })
