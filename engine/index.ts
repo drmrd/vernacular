@@ -1,5 +1,6 @@
 export type { SceneRoot } from './scene/build-scene'
 export { buildScene } from './scene/build-scene'
+export type { EdgeOverlayOptions } from './scene/edge-overlay'
 export { buildFurnitureMassing } from './scene/furniture-builder'
 export {
   buildFurnitureModelGroup,

@@ -11,7 +11,7 @@ import {
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
-import { addEdgeOverlay } from './edge-overlay'
+import { applyEdgeOverlay, type EdgeOverlayOptions } from './edge-overlay'
 import { buildFurnitureMassing } from './furniture-builder'
 import { buildOpeningFill } from './opening-fill-builder'
 import { prepareNearWallTransparency, type NearWallTarget } from './near-wall-transparency'
@@ -21,48 +21,68 @@ import { buildWalls } from './wall-builder'
 import { buildFloorWallGraph, groupOpeningsByHostWall } from './wall-scene-helpers'
 
 /** A floor's wall, room, and opening nodes, with the material provider to build them. */
-export interface WallSubgroupInput {
+export interface WallSubgroupInput extends EdgeOverlayOptions {
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
   openings: OpeningSceneNode[]
   materials: MaterialProvider
 }
 
-/** Builds one room's self-contained sub-group: shell, edge overlay, shadow flags. */
-export function buildRoomSubgroup(node: RoomSceneNode, materials: MaterialProvider): THREE.Group {
+/** Build options for one furniture sub-group: its appearance role and the edge-overlay toggle. */
+export interface FurnitureSubgroupOptions extends EdgeOverlayOptions {
+  /** Which furniture appearance to build: placed, loading, or failed. Defaults to placed. */
+  role?: SurfaceRole
+}
+
+/**
+ * Builds one room's self-contained sub-group: shell, edge overlay (off unless the view
+ * turns it on), shadow flags.
+ */
+export function buildRoomSubgroup(
+  node: RoomSceneNode,
+  materials: MaterialProvider,
+  options: EdgeOverlayOptions = {},
+): THREE.Group {
   const group = buildRoomShell(node, materials)
-  addEdgeOverlay(group)
+  applyEdgeOverlay(group, options)
   markShadowCasters(group)
   return group
 }
 
-/** Builds one opening's self-contained sub-group: fill, edge overlay, shadow flags. */
+/**
+ * Builds one opening's self-contained sub-group: fill, edge overlay (off unless the view
+ * turns it on), shadow flags.
+ */
 export function buildOpeningSubgroup(
   node: OpeningSceneNode,
   materials: MaterialProvider,
+  options: EdgeOverlayOptions = {},
 ): THREE.Group {
   const group = buildOpeningFill(node, materials)
-  addEdgeOverlay(group)
+  applyEdgeOverlay(group, options)
   markShadowCasters(group)
   return group
 }
 
-/** Builds one furniture instance's self-contained sub-group: box, edge overlay, shadow flags. */
+/**
+ * Builds one furniture instance's self-contained sub-group: box, edge overlay (off unless
+ * the view turns it on), shadow flags.
+ */
 export function buildFurnitureSubgroup(
   node: FurnitureSceneNode,
   materials: MaterialProvider,
-  role: SurfaceRole = 'furniture',
+  options: FurnitureSubgroupOptions = {},
 ): THREE.Group {
-  const group = buildFurnitureMassing(node, materials, role)
-  addEdgeOverlay(group)
+  const group = buildFurnitureMassing(node, materials, options.role ?? 'furniture')
+  applyEdgeOverlay(group, options)
   markShadowCasters(group)
   return group
 }
 
 /**
  * Builds a floor's self-contained wall sub-group from its wall, room, and opening
- * nodes: the wall meshes, an edge overlay, shadow flags, and the near-wall fade
- * targets for its exterior walls.
+ * nodes: the wall meshes, an edge overlay (off unless the view turns it on), shadow
+ * flags, and the near-wall fade targets for its exterior walls.
  */
 export function buildWallSubgroup(input: WallSubgroupInput): {
   group: THREE.Group
@@ -76,7 +96,7 @@ export function buildWallSubgroup(input: WallSubgroupInput): {
     openingsByWall: groupOpeningsByHostWall(openings),
     materials,
   })
-  addEdgeOverlay(group)
+  applyEdgeOverlay(group, input)
   markShadowCasters(group)
   const nearWallTargets = prepareNearWallTransparency(
     group,
