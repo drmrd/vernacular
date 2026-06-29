@@ -247,35 +247,45 @@ describe('buildScene furniture', () => {
   })
 })
 
-describe('buildScene surface edges', () => {
-  it('adds an edge line to each structural mesh while keeping its entity id', () => {
-    const graph: SceneGraph = {
-      nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
-      walls: [
-        {
-          id: 'wall:w1',
-          kind: 'wall',
-          floorId: 'g',
-          start: { x: 0, y: 0 },
-          end: { x: 1000, y: 0 },
-          thickness: 100,
-          height: 2400,
-        },
-      ],
-      rooms: [],
-      underlays: [],
-      openings: [],
-      dimensions: [],
-      stairs: [],
-      furniture: [],
-    }
+const singleWallGraph = (): SceneGraph => ({
+  nodes: [{ id: 'floor:g', kind: 'floor', name: 'Ground', elevation: 0 }],
+  walls: [
+    {
+      id: 'wall:w1',
+      kind: 'wall',
+      floorId: 'g',
+      start: { x: 0, y: 0 },
+      end: { x: 1000, y: 0 },
+      thickness: 100,
+      height: 2400,
+    },
+  ],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+  furniture: [],
+})
 
-    const wall = findByEntityId(buildScene(graph), 'wall:w1')
+const edgeLineChildren = (mesh: THREE.Mesh): THREE.LineSegments[] =>
+  mesh.children.filter(
+    (child): child is THREE.LineSegments => child instanceof THREE.LineSegments,
+  )
+
+describe('buildScene surface edges', () => {
+  it('leaves each structural mesh without an edge overlay by default', () => {
+    const wall = findByEntityId(buildScene(singleWallGraph()), 'wall:w1')
     expect(wall).toBeInstanceOf(THREE.Mesh)
-    const edges = (wall as THREE.Mesh).children.filter(
-      (child): child is THREE.LineSegments => child instanceof THREE.LineSegments,
-    )
-    expect(edges).toHaveLength(1)
+    expect(edgeLineChildren(wall as THREE.Mesh)).toHaveLength(0)
+    expect((wall as THREE.Mesh).userData.entityId).toBe('wall:w1')
+  })
+
+  it('adds an edge line to each structural mesh when the overlay is toggled on', () => {
+    const root = buildScene(singleWallGraph(), undefined, { edgeOverlay: true })
+    const wall = findByEntityId(root, 'wall:w1')
+    expect(wall).toBeInstanceOf(THREE.Mesh)
+    expect(edgeLineChildren(wall as THREE.Mesh)).toHaveLength(1)
     expect((wall as THREE.Mesh).userData.entityId).toBe('wall:w1')
   })
 })
