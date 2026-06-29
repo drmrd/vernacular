@@ -120,6 +120,7 @@ export { resolveStyle } from './architecture-era/resolve-style'
 export type {
   ElementCategory,
   ElementType,
+  HingeEdge,
   OpeningFamily,
   OpeningTypeParameters,
   Plan2DSymbol,

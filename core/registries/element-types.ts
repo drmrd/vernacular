@@ -30,11 +30,18 @@ export type OpeningFamily =
   | 'pivot'
   | 'cased'
   | 'window-fixed'
+  | 'window-hung'
+  | 'window-slide'
   | 'window-crank'
+
+/** The edge a crank window (or other hinged opening) pivots on. */
+export type HingeEdge = 'jamb' | 'head' | 'sill'
 
 export interface OpeningTypeParameters {
   family: OpeningFamily
   double?: boolean
+  /** The hinge edge for a crank window: jamb (casement), head (awning), sill (hopper). */
+  hingeEdge?: HingeEdge
   defaultWidth: number
   defaultHeight: number
   defaultSillHeight: number
@@ -47,7 +54,7 @@ export interface ElementType extends RegistryEntry {
   opening?: OpeningTypeParameters
 }
 
-export const ELEMENT_TYPE_REGISTRY_VERSION = 5
+export const ELEMENT_TYPE_REGISTRY_VERSION = 6
 
 export const builtinElementTypes: Registry<ElementType> = createRegistry(
   ELEMENT_TYPE_REGISTRY_VERSION,
@@ -201,7 +208,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
-        family: 'window-fixed',
+        family: 'window-hung',
         defaultWidth: 900,
         defaultHeight: 1200,
         defaultSillHeight: 900,
@@ -216,7 +223,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
-        family: 'window-fixed',
+        family: 'window-hung',
         defaultWidth: 900,
         defaultHeight: 1200,
         defaultSillHeight: 900,
@@ -228,7 +235,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
-        family: 'window-fixed',
+        family: 'window-slide',
         defaultWidth: 1200,
         defaultHeight: 900,
         defaultSillHeight: 1000,
@@ -253,6 +260,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
         family: 'window-crank',
+        hingeEdge: 'jamb',
         defaultWidth: 600,
         defaultHeight: 1200,
         defaultSillHeight: 900,
@@ -265,6 +273,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
         family: 'window-crank',
+        hingeEdge: 'head',
         defaultWidth: 900,
         defaultHeight: 600,
         defaultSillHeight: 1500,
@@ -277,6 +286,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
         family: 'window-crank',
+        hingeEdge: 'sill',
         defaultWidth: 900,
         defaultHeight: 600,
         defaultSillHeight: 300,
