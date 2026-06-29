@@ -4,10 +4,6 @@ import { buildScene } from './build-scene'
 import { isGroundPlane } from './ground-plane'
 import { findByEntityId } from '../testing'
 
-// The built root carries one group per floor plus the ground plane; these cases
-// assert over the floor groups, so the ground plane is filtered out first.
-const floorGroups = (root: THREE.Group): THREE.Object3D[] =>
-  root.children.filter((child) => !isGroundPlane(child))
 import {
   createEmptyProject,
   createFloor,
@@ -19,6 +15,11 @@ import {
   type RoomSceneNode,
   type SceneGraph,
 } from '../../core'
+
+// The built root carries one group per floor plus the ground plane; these cases
+// assert over the floor groups, so the ground plane is filtered out first.
+const floorGroups = (root: THREE.Group): THREE.Object3D[] =>
+  root.children.filter((child) => !isGroundPlane(child))
 
 const ROOM_WIDTH_MM = 4000
 const ROOM_DEPTH_MM = 3000
@@ -215,7 +216,7 @@ describe('buildScene opening fill', () => {
 
     const root = buildScene(graph)
 
-    const floorGroup = root.children.at(0)
+    const floorGroup = floorGroups(root).at(0)
     expect(floorGroup).toBeDefined()
     if (!floorGroup) return
 
