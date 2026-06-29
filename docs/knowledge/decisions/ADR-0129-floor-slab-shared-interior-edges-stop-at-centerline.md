@@ -138,6 +138,15 @@ there is no model field, no serialization, and no schema bump.
   practical effect is that an edit near a shared wall can change an adjacent room's slab,
   so the scene reconciler rebuilds that room's node rather than reusing it. Widening a room
   away from the shared wall leaves the neighbor's boundary untouched and still reuses it.
+- The outer boundary needs a small numerical cleanup that ADR-0076 did not. Where a shared
+  edge at zero offset meets a perimeter edge at half-thickness offset, the offset-line
+  intersection puts that corner a fraction of a nanometer off its exact coordinate. That is
+  far below any junction tolerance, but it is still enough to break an exact-coordinate
+  comparison between two abutting slabs. The fix snaps the outer-boundary vertices to a
+  sub-micrometer grid in `core/topology`, where this change was scoped. It belongs in the
+  geometry primitive instead, since `insetPolygon` shares the same intersection and leaves the
+  same dust on the clear polygon. Moving the snap into the primitive, and checking whether the
+  clear polygon needs it, are tracked as a follow-up rather than folded in here.
 - #391 stays open as the umbrella. After this lands, the walk-mode view is re-checked for
   any remaining coincident pairs on the verticals, for example a slab side face coplanar
   inside a shared wall, which are triaged separately rather than chased speculatively here.
