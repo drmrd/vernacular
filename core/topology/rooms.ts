@@ -60,6 +60,16 @@ export const ROOM_ID_PREFIX = 'room:'
 const DEFAULT_WALL_THICKNESS = 0
 
 /**
+ * Reciprocal of the grid, in 1/millimeters, that outer-boundary coordinates snap
+ * to. The outward offset is built from shifted-line intersections that carry
+ * IEEE-754 rounding noise far below the junction tolerance, so two perimeter
+ * edges that meet on an axis can land a fraction of a nanometer off their exact
+ * coordinate. Snapping to this sub-micrometer grid removes that noise so adjacent
+ * slabs meet on exact coordinates, without disturbing any real geometry.
+ */
+const OUTER_BOUNDARY_SNAP = 1e6
+
+/**
  * The stable key for a room: the pre-sorted bounding-wall ids joined with `|` that
  * `Room.id` encodes, without the `room:` prefix. This function does not sort; it
  * trusts the caller to supply already-sorted ids (`deriveRooms` does so via
@@ -127,25 +137,66 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
   const halfEdges = buildHalfEdges(graph.edges)
   const faces = enumerateFaces(halfEdges, graph.vertices)
   const thicknessByWallId = new Map(walls.map((wall) => [wall.id, wall.thickness]))
+  const faceOfHalfEdge = facesByHalfEdge(faces)
+
+  const boundaries = faces.map((face) =>
+    faceBoundary(face, graph.vertices, { thicknessByWallId, faceOfHalfEdge }),
+  )
+  // A face becomes a room when its centerline polygon clears the minimum area;
+  // the negative-area outer (unbounded) face is excluded. An edge is shared when
+  // its twin belongs to one of these kept room faces.
+  const roomFaces = new Set<number>()
+  boundaries.forEach((boundary, index) => {
+    if (polygonArea(boundary.polygon) > MIN_ROOM_AREA) roomFaces.add(index)
+  })
 
   const rooms: Room[] = []
-  for (const face of faces) {
-    const { polygon, edgeOffsets } = faceBoundary(face, graph.vertices, thicknessByWallId)
-    if (polygonArea(polygon) <= MIN_ROOM_AREA) continue
-    const clearPolygon = insetPolygon(polygon, edgeOffsets)
-    const outerPolygon = outsetPolygon(polygon, edgeOffsets)
-    const area = Math.abs(polygonArea(clearPolygon))
-    const wallIds = sortedUniqueWallIds(face)
-    rooms.push({
-      id: ROOM_ID_PREFIX + roomKey({ wallIds }),
-      polygon,
-      clearPolygon,
-      outerPolygon,
-      area,
-      wallIds,
-    })
+  for (const faceIndex of roomFaces) {
+    const face = faces[faceIndex]
+    const boundary = boundaries[faceIndex]
+    if (face === undefined || boundary === undefined) continue
+    rooms.push(buildRoom(face, boundary, roomFaces))
   }
   return assignHoles(rooms)
+}
+
+/**
+ * Assemble one room from its face and boundary. The clear interior insets by
+ * every edge's half-thickness. The outer boundary outsets only on perimeter
+ * edges; a shared edge (its twin belongs to another room face) takes a zero
+ * outward offset so it stays on the centerline, where adjacent slabs meet edge
+ * to edge instead of overlapping. See
+ * [[ADR-0129-floor-slab-shared-interior-edges-stop-at-centerline]].
+ */
+function buildRoom(
+  face: readonly HalfEdge[],
+  boundary: FaceBoundary,
+  roomFaces: ReadonlySet<number>,
+): Room {
+  const { polygon, edgeOffsets, twinFaceIndices } = boundary
+  const outsetOffsets = edgeOffsets.map((offset, index) =>
+    roomFaces.has(twinFaceIndices[index] ?? -1) ? 0 : offset,
+  )
+  const clearPolygon = insetPolygon(polygon, edgeOffsets)
+  const wallIds = sortedUniqueWallIds(face)
+  return {
+    id: ROOM_ID_PREFIX + roomKey({ wallIds }),
+    polygon,
+    clearPolygon,
+    outerPolygon: snapPolygon(outsetPolygon(polygon, outsetOffsets)),
+    area: Math.abs(polygonArea(clearPolygon)),
+    wallIds,
+  }
+}
+
+/** Snap a coordinate to the outer-boundary grid, clearing sub-tolerance noise. */
+function snapCoordinate(value: number): number {
+  return Math.round(value * OUTER_BOUNDARY_SNAP) / OUTER_BOUNDARY_SNAP
+}
+
+/** Snap every vertex of a polygon to the outer-boundary grid. */
+function snapPolygon(polygon: readonly Point[]): Point[] {
+  return polygon.map((point) => ({ x: snapCoordinate(point.x), y: snapCoordinate(point.y) }))
 }
 
 /**
@@ -211,6 +262,34 @@ function buildHalfEdges(edges: readonly { a: number; b: number; wallId: string }
     halfEdges.push({ from: edge.b, to: edge.a, wallId: edge.wallId })
   }
   return halfEdges
+}
+
+/** Stable key for a directed half-edge: its ordered endpoints and host wall. */
+function halfEdgeKey(from: number, to: number, wallId: string): string {
+  return `${from}:${to}:${wallId}`
+}
+
+/**
+ * Map every half-edge to the index of the face that claims it. Each half-edge is
+ * walked by exactly one face, so the key resolves to a single face index.
+ */
+function facesByHalfEdge(faces: readonly HalfEdge[][]): Map<string, number> {
+  const faceOfHalfEdge = new Map<string, number>()
+  for (const [faceIndex, face] of faces.entries()) {
+    for (const half of face) {
+      faceOfHalfEdge.set(halfEdgeKey(half.from, half.to, half.wallId), faceIndex)
+    }
+  }
+  return faceOfHalfEdge
+}
+
+/**
+ * Index of the face owning a half-edge's twin (the reverse half-edge along the
+ * same wall), or -1 when no face claims it. Per ADR-0129 the twin classifies the
+ * edge: a kept room face means shared, the exterior face means perimeter.
+ */
+function twinFaceIndexOf(half: HalfEdge, faceOfHalfEdge: ReadonlyMap<string, number>): number {
+  return faceOfHalfEdge.get(halfEdgeKey(half.to, half.from, half.wallId)) ?? -1
 }
 
 /**
@@ -325,6 +404,27 @@ interface BoundaryCorner {
   vertexIndex: number
   /** Half the thickness of the wall hosting the edge that leaves this corner. */
   halfThickness: number
+  /**
+   * Index of the face owning the leaving edge's twin; classifies the edge as
+   * shared (a kept room face) or perimeter (the exterior face), per ADR-0129.
+   */
+  twinFaceIndex: number
+}
+
+/** Read-only inputs shared while building one face's boundary. */
+interface BoundaryContext {
+  /** Wall thickness, in millimeters, keyed by wall id. */
+  thicknessByWallId: ReadonlyMap<string, number>
+  /** Face index that owns each half-edge, keyed by {@link halfEdgeKey}. */
+  faceOfHalfEdge: ReadonlyMap<string, number>
+}
+
+/** A face's centerline polygon with per-edge inset offsets and twin face indices. */
+interface FaceBoundary {
+  polygon: Point[]
+  edgeOffsets: number[]
+  /** For each edge, the face owning its twin (see {@link twinFaceIndexOf}). */
+  twinFaceIndices: number[]
 }
 
 /**
@@ -338,30 +438,36 @@ interface BoundaryCorner {
 function faceBoundary(
   face: readonly HalfEdge[],
   vertices: readonly Point[],
-  thicknessByWallId: ReadonlyMap<string, number>,
-): { polygon: Point[]; edgeOffsets: number[] } {
-  const corners = removeSpikes(toBoundaryCorners(face, thicknessByWallId))
+  context: BoundaryContext,
+): FaceBoundary {
+  const corners = removeSpikes(toBoundaryCorners(face, context))
   const polygon: Point[] = []
   const edgeOffsets: number[] = []
+  const twinFaceIndices: number[] = []
   for (const corner of corners) {
     const vertex = vertices[corner.vertexIndex]
-    // Skipping a vertex also skips its paired offset, keeping polygon and
-    // edgeOffsets index-aligned.
+    // Skipping a vertex also skips its paired offset and twin face, keeping the
+    // three arrays index-aligned.
     if (vertex === undefined) continue
     polygon.push(vertex)
     edgeOffsets.push(corner.halfThickness)
+    twinFaceIndices.push(corner.twinFaceIndex)
   }
-  return { polygon, edgeOffsets }
+  return { polygon, edgeOffsets, twinFaceIndices }
 }
 
-/** Pair each face corner with half the thickness of its leaving edge's host wall. */
-function toBoundaryCorners(
-  face: readonly HalfEdge[],
-  thicknessByWallId: ReadonlyMap<string, number>,
-): BoundaryCorner[] {
+/**
+ * Pair each face corner with half its leaving edge's host-wall thickness and the
+ * face owning that edge's twin (which classifies it shared or perimeter).
+ */
+function toBoundaryCorners(face: readonly HalfEdge[], context: BoundaryContext): BoundaryCorner[] {
   return face.map((half) => {
-    const thickness = thicknessByWallId.get(half.wallId) ?? DEFAULT_WALL_THICKNESS
-    return { vertexIndex: half.from, halfThickness: thickness / 2 }
+    const thickness = context.thicknessByWallId.get(half.wallId) ?? DEFAULT_WALL_THICKNESS
+    return {
+      vertexIndex: half.from,
+      halfThickness: thickness / 2,
+      twinFaceIndex: twinFaceIndexOf(half, context.faceOfHalfEdge),
+    }
   })
 }
 
@@ -370,9 +476,9 @@ function toBoundaryCorners(
  * `v -> s -> v` excursion: the path walks out to a tip `s` and immediately back to
  * the same vertex `v`. Treating the loop as cyclic, a tip is any position whose
  * previous and next neighbors are the same vertex; drop the tip and the duplicated
- * next neighbor, and re-point the surviving corner's leaving-edge offset to that
- * next neighbor's offset (the edge `v` now continues along). Restart until no spike
- * remains.
+ * next neighbor, and re-point the surviving corner's leaving-edge data (its offset
+ * and twin face) to that next neighbor's (the edge `v` now continues along).
+ * Restart until no spike remains.
  *
  * Dangling stub walls are dead-end artifacts of the half-edge walk traversing into
  * and back out of a stub, and their stub endpoints must not appear as room corners.
@@ -394,8 +500,10 @@ function removeSpikes(loop: BoundaryCorner[]): BoundaryCorner[] {
         previous.vertexIndex === next.vertexIndex
       ) {
         // The surviving corner `v` (at `previous`) keeps the spike's exit edge, so
-        // its offset becomes the next neighbor's offset (the edge `v` continues along).
+        // its offset and twin face become the next neighbor's (the edge `v`
+        // continues along).
         previous.halfThickness = next.halfThickness
+        previous.twinFaceIndex = next.twinFaceIndex
         // Drop the spike tip, then the duplicated neighbor. Removing the tip shifts
         // every later element left by one, so the duplicate that was at `index + 1`
         // now sits at `index % cleaned.length` (the modulus only matters when the
