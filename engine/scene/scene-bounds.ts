@@ -3,14 +3,24 @@ import * as THREE from 'three'
 import type { Bounds3 } from '../../core'
 
 import type { SceneRoot } from './build-scene'
+import { isGroundPlane } from './ground-plane'
 
 /**
  * World-space axis-aligned bounds of a built scene tree, or null when it holds no
  * renderable geometry (an empty THREE.Box3). frameSceneCamera maps that null to the
  * fixed default pose, so callers never have to handle an Infinity-valued box.
+ *
+ * The ground plane is excluded so it never drives the camera fit (ADR-0075,
+ * ADR-0130): the lawn spans the footprint plus a wide site margin, so framing it
+ * would pull the building away, and a scene holding only the ground reads as empty.
  */
 export function sceneBounds(root: SceneRoot): Bounds3 | null {
-  const box = new THREE.Box3().setFromObject(root)
+  const box = new THREE.Box3()
+  for (const child of root.children) {
+    if (!isGroundPlane(child)) {
+      box.expandByObject(child)
+    }
+  }
   if (box.isEmpty()) {
     return null
   }
