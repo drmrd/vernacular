@@ -1,7 +1,13 @@
 import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 import { buildScene } from './build-scene'
+import { isGroundPlane } from './ground-plane'
 import { findByEntityId } from '../testing'
+
+// The built root carries one group per floor plus the ground plane; these cases
+// assert over the floor groups, so the ground plane is filtered out first.
+const floorGroups = (root: THREE.Group): THREE.Object3D[] =>
+  root.children.filter((child) => !isGroundPlane(child))
 import {
   createEmptyProject,
   createFloor,
@@ -71,8 +77,9 @@ describe('buildScene', () => {
 
     const root = buildScene(graph)
 
-    expect(root.children).toHaveLength(2)
-    const [first, second] = root.children
+    const groups = floorGroups(root)
+    expect(groups).toHaveLength(2)
+    const [first, second] = groups
     expect(first?.name).toBe('floor:a')
     expect(first?.userData.entityId).toBe('floor:a')
     expect(first?.position.y).toBe(0)
@@ -113,11 +120,11 @@ describe('buildScene', () => {
 
     const root = buildScene(graph)
 
-    expect(root.children).toHaveLength(1)
+    expect(floorGroups(root)).toHaveLength(1)
     expect(findByEntityId(root, 'wall:w1')).not.toBeNull()
     expect(findByEntityId(root, 'wall:w2')).not.toBeNull()
 
-    const floorGroup = root.children[0]
+    const floorGroup = floorGroups(root)[0]
     expect(floorGroup).toBeDefined()
     if (floorGroup) {
       expect(findByEntityId(floorGroup, 'wall:w1')).not.toBeNull()
@@ -154,10 +161,10 @@ describe('buildScene', () => {
 
     const root = buildScene(graph)
 
-    expect(root.children).toHaveLength(1)
+    expect(floorGroups(root)).toHaveLength(1)
     expect(findByEntityId(root, 'room:r1')).not.toBeNull()
 
-    const floorGroup = root.children[0]
+    const floorGroup = floorGroups(root)[0]
     expect(floorGroup).toBeDefined()
     if (floorGroup) {
       expect(findByEntityId(floorGroup, 'room:r1')).not.toBeNull()

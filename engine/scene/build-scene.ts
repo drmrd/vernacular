@@ -6,6 +6,7 @@ import type { MaterialProvider } from '../materials/material-provider'
 
 import { addEdgeOverlay } from './edge-overlay'
 import { buildFurnitureMassing } from './furniture-builder'
+import { addGroundPlane } from './ground-plane'
 import { buildOpeningFill } from './opening-fill-builder'
 import { buildRoomShell } from './room-builder'
 import { buildWalls } from './wall-builder'
@@ -26,6 +27,11 @@ export function buildScene(
   // Draw a dark edge line along every surface so a wall reads against the floor
   // and its neighbors whatever the lighting and paint are (ADR-0078).
   addEdgeOverlay(root)
+  // Seat the building on a grass-colored ground plane at grade, so it reads as
+  // sitting on its site and a partly buried basement's foundation rises through
+  // the surface (ADR-0130). Added after the edge overlay so the lawn takes no
+  // hidden-line outline.
+  addGroundPlane(root)
   return root
 }
 
