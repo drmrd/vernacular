@@ -26,13 +26,29 @@ export interface HingeMotion {
   partCount: number
 }
 
+/** The axis a slide motion travels along. */
+export type SlideAxis = 'along-wall' | 'vertical'
+
+/** Translation of a leaf or sash along an axis. */
+export interface SlideMotion {
+  kind: 'slide'
+  /** Whether the part slides along the wall or vertically. */
+  axis: SlideAxis
+  /** World translation applied at full openness. */
+  travel: Vector3
+  /** The representative part this wave animates. */
+  partId: string
+  /** How many parts the full motion moves (wave two moves them all). */
+  partCount: number
+}
+
 /** An opening with no moving part: a cased opening or a fixed window. */
 export interface NoMotion {
   kind: 'none'
 }
 
 /** The motion an opening plays when opened in walk mode. */
-export type OpeningMotion = HingeMotion | NoMotion
+export type OpeningMotion = HingeMotion | SlideMotion | NoMotion
 
 // A fully open leaf turns a quarter circle from shut, which reads clearly as open.
 const QUARTER_TURN_RAD = Math.PI / 2
@@ -55,6 +71,8 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
   switch (params?.family) {
     case 'swing':
       return jambHinge(opening, partCountOf(params))
+    case 'slide':
+      return alongWallSlide(opening, partCountOf(params))
     default:
       return NO_MOTION
   }
@@ -85,6 +103,21 @@ function jambHinge(opening: OpeningSceneNode, partCount: number): HingeMotion {
     pivot,
     axis: WORLD_UP,
     openAngle: QUARTER_TURN_RAD * facingSign,
+    partId: REPRESENTATIVE_PART,
+    partCount,
+  }
+}
+
+/** A slide one opening width along the wall, in the opening's along direction. */
+function alongWallSlide(opening: OpeningSceneNode, partCount: number): SlideMotion {
+  return {
+    kind: 'slide',
+    axis: 'along-wall',
+    travel: {
+      x: opening.along.x * opening.width,
+      y: 0,
+      z: opening.along.y * opening.width,
+    },
     partId: REPRESENTATIVE_PART,
     partCount,
   }
