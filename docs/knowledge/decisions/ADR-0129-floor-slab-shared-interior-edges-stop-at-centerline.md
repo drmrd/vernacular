@@ -18,16 +18,15 @@ sourceFiles:
     core/geometry/polygon.ts,
     engine/scene/room-builder.ts,
   ]
-status: proposed
-updated: 2026-06-28
+status: accepted
+updated: 2026-06-29
 ---
 
 # ADR-0129: Floor slab stops shared interior edges at the wall centerline
 
 ## Status
 
-Proposed. The design is owner-approved; this record lands with the fix and flips to
-accepted then. It amends one rule from
+Accepted. The design is owner-approved and lands with this fix. It amends one rule from
 [[ADR-0076-three-dimensional-floor-slab-under-walls]]: how the slab boundary treats a
 wall shared between two rooms. The rest of ADR-0076, including the slab reaching the
 outer face along the building perimeter, stands unchanged.
