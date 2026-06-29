@@ -29,7 +29,7 @@ export function buildScene(
   addEdgeOverlay(root)
   // Seat the building on a grass-colored ground plane at grade, so it reads as
   // sitting on its site and a partly buried basement's foundation rises through
-  // the surface (ADR-0130). Added after the edge overlay so the lawn takes no
+  // the surface (ADR-0131). Added after the edge overlay so the lawn takes no
   // hidden-line outline.
   addGroundPlane(root)
   return root

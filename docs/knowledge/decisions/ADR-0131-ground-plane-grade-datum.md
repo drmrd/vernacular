@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0130-ground-plane-grade-datum
-title: 'ADR-0130: Ground plane sits at the zero-elevation grade datum'
+slug: decisions/ADR-0131-ground-plane-grade-datum
+title: 'ADR-0131: Ground plane sits at the zero-elevation grade datum'
 type: decision
 tags: [3d-preview, scene-graph, engine, ground, grade, foundation, elevation]
 related:
@@ -17,7 +17,7 @@ status: current
 updated: 2026-06-29
 ---
 
-# ADR-0130: Ground plane sits at the zero-elevation grade datum
+# ADR-0131: Ground plane sits at the zero-elevation grade datum
 
 ## Status
 
@@ -30,7 +30,7 @@ shows the part of its foundation walls that rises above the surface.
 The whole-building view stacks every floor at its own elevation (ADR-0127, #206). Without a ground
 reference the model floats in space, and there is no way to read how far a partly buried basement rises
 above grade (#207). The model already encodes the vertical datum the ground needs: it has no explicit
-grade field, but it treats a finished-floor elevation of 0 as the ground datum, placing above-grade floors
+grade field, but it treats a finished-floor elevation of 0 as the ground datum, so above-grade floors sit
 at positive elevations and basements at negative ones. The floor-placement defaults produce that ordering
 (`core/model/floor-placement.ts`), and the building view's underground filter reads it directly, hiding
 every floor seated below 0.

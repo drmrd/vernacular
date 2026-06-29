@@ -11,7 +11,7 @@ import { isGroundPlane } from './ground-plane'
  * fixed default pose, so callers never have to handle an Infinity-valued box.
  *
  * The ground plane is excluded so it never drives the camera fit (ADR-0075,
- * ADR-0130): the lawn spans the footprint plus a wide site margin, so framing it
+ * ADR-0131): the lawn spans the footprint plus a wide site margin, so framing it
  * would pull the building away, and a scene holding only the ground reads as empty.
  */
 export function sceneBounds(root: SceneRoot): Bounds3 | null {
