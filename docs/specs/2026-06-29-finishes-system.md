@@ -1,6 +1,6 @@
 # Finishes system: floor, interior wall, and exterior wall finishes
 
-Status: draft for owner ratification (autonomously authored, 2026-06-29).
+Status: draft for owner ratification (2026-06-29).
 Epic: #208. Children: #377 (floor, done), #378 (interior wall), #379 (exterior wall types and cladding).
 Architecture decision: ADR-0130.
 
