@@ -120,8 +120,20 @@ const edgeLinesOf = (group: THREE.Object3D): THREE.LineSegments[] => {
   return lines
 }
 
+/** A furniture node fixture mirroring the furniture-builder placement style. */
+const placedFurniture = () =>
+  deriveFurnitureNode(
+    createFloor('Ground'),
+    createFurnitureInstance({
+      assetRef: { scope: 'user', contentHash: 'abc' },
+      position: { x: 1000, y: 1000 },
+      footprint: { width: 1200, depth: 600 },
+      height: 750,
+    }),
+  )
+
 describe('buildRoomSubgroup', () => {
-  it('returns a self-decorated room group with mesh geometry, an edge overlay, and shadow-casting meshes', () => {
+  it('returns a self-decorated room group with mesh geometry, no edge overlay by default, and shadow-casting meshes', () => {
     const group = buildRoomSubgroup(rectangularRoom(), new NeutralMaterialProvider())
 
     expect(group).toBeInstanceOf(THREE.Group)
@@ -130,14 +142,14 @@ describe('buildRoomSubgroup', () => {
     expect(meshes.length).toBeGreaterThan(0)
     expect(meshes.every((mesh) => mesh.geometry instanceof THREE.BufferGeometry)).toBe(true)
 
-    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+    expect(edgeLinesOf(group)).toHaveLength(0)
 
     expect(meshes.every((mesh) => mesh.castShadow === true)).toBe(true)
   })
 })
 
 describe('buildOpeningSubgroup', () => {
-  it('returns a self-decorated door-leaf group with mesh geometry, an edge overlay, and shadow-casting meshes', () => {
+  it('returns a self-decorated door-leaf group with mesh geometry, no edge overlay by default, and shadow-casting meshes', () => {
     const group = buildOpeningSubgroup(doorOpening(), new NeutralMaterialProvider())
 
     expect(group).toBeInstanceOf(THREE.Group)
@@ -146,25 +158,15 @@ describe('buildOpeningSubgroup', () => {
     expect(meshes.length).toBeGreaterThan(0)
     expect(meshes.every((mesh) => mesh.geometry instanceof THREE.BufferGeometry)).toBe(true)
 
-    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+    expect(edgeLinesOf(group)).toHaveLength(0)
 
     expect(meshes.every((mesh) => mesh.castShadow === true)).toBe(true)
   })
 })
 
 describe('buildFurnitureSubgroup', () => {
-  it('returns a self-decorated furniture group with a box mesh, an edge overlay, and shadow-casting meshes', () => {
-    const furnitureNode = deriveFurnitureNode(
-      createFloor('Ground'),
-      createFurnitureInstance({
-        assetRef: { scope: 'user', contentHash: 'abc' },
-        position: { x: 1000, y: 1000 },
-        footprint: { width: 1200, depth: 600 },
-        height: 750,
-      }),
-    )
-
-    const group = buildFurnitureSubgroup(furnitureNode, new NeutralMaterialProvider())
+  it('returns a self-decorated furniture group with a box mesh, no edge overlay by default, and shadow-casting meshes', () => {
+    const group = buildFurnitureSubgroup(placedFurniture(), new NeutralMaterialProvider())
 
     expect(group).toBeInstanceOf(THREE.Group)
 
@@ -172,7 +174,7 @@ describe('buildFurnitureSubgroup', () => {
     expect(meshes.length).toBeGreaterThan(0)
     expect(meshes.every((mesh) => mesh.geometry instanceof THREE.BufferGeometry)).toBe(true)
 
-    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+    expect(edgeLinesOf(group)).toHaveLength(0)
 
     expect(meshes.some((mesh) => mesh.castShadow === true)).toBe(true)
   })
@@ -197,12 +199,46 @@ describe('buildWallSubgroup', () => {
     expect(meshes.length).toBeGreaterThan(0)
     expect(meshes.every((mesh) => mesh.geometry instanceof THREE.BufferGeometry)).toBe(true)
 
-    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+    expect(edgeLinesOf(group)).toHaveLength(0)
 
     expect(meshes.every((mesh) => mesh.castShadow === true)).toBe(true)
 
     expect(nearWallTargets).toHaveLength(exteriorWalls(walls, rooms, openings).length)
     expect(nearWallTargets).toHaveLength(EXTERIOR_WALL_COUNT)
+  })
+})
+
+describe('floor sub-group edge overlay toggle', () => {
+  const materials = () => new NeutralMaterialProvider()
+
+  it('adds an edge overlay to a room group when the overlay is toggled on', () => {
+    const group = buildRoomSubgroup(rectangularRoom(), materials(), { edgeOverlay: true })
+
+    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+  })
+
+  it('adds an edge overlay to a door-leaf group when the overlay is toggled on', () => {
+    const group = buildOpeningSubgroup(doorOpening(), materials(), { edgeOverlay: true })
+
+    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+  })
+
+  it('adds an edge overlay to a furniture group when the overlay is toggled on', () => {
+    const group = buildFurnitureSubgroup(placedFurniture(), materials(), { edgeOverlay: true })
+
+    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
+  })
+
+  it('adds an edge overlay to a wall group when the overlay is toggled on', () => {
+    const { group } = buildWallSubgroup({
+      walls: closedRoomWalls(),
+      rooms: [closedRoom()],
+      openings: [],
+      materials: materials(),
+      edgeOverlay: true,
+    })
+
+    expect(edgeLinesOf(group).length).toBeGreaterThan(0)
   })
 })
 
