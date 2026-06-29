@@ -31,6 +31,10 @@ export function buildScene(
   return root
 }
 
+// Builds one floor's group from the primitive builders. The edge overlay is not applied
+// here: buildScene adds it once over the whole tree (above). The separate per-sub-group
+// applyEdgeOverlay calls in floor-subgroups.ts serve the reconciler's incremental path,
+// not this one.
 function buildFloorGroup(
   node: SceneNode,
   graph: SceneGraph,
