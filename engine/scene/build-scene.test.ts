@@ -269,9 +269,7 @@ const singleWallGraph = (): SceneGraph => ({
 })
 
 const edgeLineChildren = (mesh: THREE.Mesh): THREE.LineSegments[] =>
-  mesh.children.filter(
-    (child): child is THREE.LineSegments => child instanceof THREE.LineSegments,
-  )
+  mesh.children.filter((child): child is THREE.LineSegments => child instanceof THREE.LineSegments)
 
 describe('buildScene surface edges', () => {
   it('leaves each structural mesh without an edge overlay by default', () => {
