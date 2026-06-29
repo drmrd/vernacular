@@ -1,7 +1,13 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { setSiteLocation, setSiteNorthBearing, type Command, type Site } from '../../core'
+import {
+  setSiteLocation,
+  setSiteNorthBearing,
+  type Command,
+  type SetSiteNorthBearingParams,
+  type Site,
+} from '../../core'
 import { SiteEditor } from './site-editor'
 
 const SITE: Site = { latLong: { latitude: 42.36, longitude: -71.06 } }
@@ -44,9 +50,8 @@ describe('SiteEditor', () => {
     await user.clear(bearing)
     await user.type(bearing, '45{Enter}')
 
-    const sent = dispatch.mock.calls[0]?.[0] as Command
+    const sent = dispatch.mock.calls[0]?.[0] as Command<SetSiteNorthBearingParams>
     expect(sent.type).toBe(setSiteNorthBearing(0).type)
-    const params = sent.params as { northBearing: number }
-    expect(params.northBearing).toBeCloseTo(45 * RADIANS_PER_DEGREE)
+    expect(sent.params.northBearing).toBeCloseTo(45 * RADIANS_PER_DEGREE)
   })
 })

@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { setSiteLocation, setSiteNorthBearing, type Command, type Site } from '../../core'
 import { Stack } from '../design-system'
 
-// 180 degrees is one pi radians; name the per-degree scalar so no-magic-numbers stays quiet.
+// Name the per-degree scalar so the no-magic-numbers lint rule stays quiet.
 const DEGREES_PER_HALF_TURN = 180
 const RADIANS_PER_DEGREE = Math.PI / DEGREES_PER_HALF_TURN
 
