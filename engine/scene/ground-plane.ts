@@ -44,8 +44,8 @@ export function isGroundPlane(object: THREE.Object3D): boolean {
 
 // Horizontal extent of the already-built geometry, padded with the site margin so the
 // lawn surrounds the building; a default square when the plan holds no geometry.
-function groundFootprint(building: THREE.Object3D): GroundFootprint {
-  const box = new THREE.Box3().setFromObject(building)
+function groundFootprint(sceneRoot: THREE.Object3D): GroundFootprint {
+  const box = new THREE.Box3().setFromObject(sceneRoot)
   if (box.isEmpty()) {
     return {
       width: EMPTY_PLAN_GROUND_SIZE_MM,
