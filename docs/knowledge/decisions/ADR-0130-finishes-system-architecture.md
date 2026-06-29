@@ -163,7 +163,7 @@ board and batten) is a registry-backed `SurfaceTreatment` on the exterior `wall-
 bonds are `pattern` data, and photographic claddings are `tiled-image`. The two combine to
 describe both a solid brick bearing wall (a masonry profile with an exposed-brick or stucco
 cladding finish) and a framed wall with brick veneer (a framed profile with a brick-bond
-cladding finish), storing the structural truth and the visible finish once each. Walls stay
+cladding finish). Each stores the structural truth and the visible finish once. Walls stay
 bare geometry; the construction-profile reference is #365's to add, and the finish lives in the
 paint store.
 
@@ -175,7 +175,7 @@ paint store.
   it. Derivation from `exteriorWalls` gives the same result without reshaping the model.
 - A wall element type that owns "wall type" (mirroring how an opening references an
   `ElementType`). Rejected. It would re-store data the construction profile (structure) and the
-  cladding finish (surface) already hold, creating a third home for the same facts and a
+  cladding finish (surface) already hold. That makes a third home for the same facts and a
   reconciliation burden between them.
 - Modeling wallpaper as a thin paneling-style feature, or modeling paneling as a finish.
   Rejected. Collapsing geometry and surface color onto one axis either gives a covering a false
