@@ -49,7 +49,7 @@ updated: 2026-06-29
 
 ## Status
 
-Proposed. Autonomously authored on 2026-06-29 from the finishes epic (#208) and its children
+Proposed on 2026-06-29, from the finishes epic (#208) and its children
 (#377 floor, #378 interior wall, #379 exterior wall types and cladding). It awaits owner
 ratification before it is treated as accepted. It records the architecture of the finishes
 system: the seam reuse, the exterior-face addressing decision, the floor-first sequencing
@@ -72,9 +72,7 @@ The floor slice of this epic has already landed (#377, PR #385). It built the fl
 registry (`core/registries/floor-patterns.ts`) and wired the `pattern` variant end to end:
 resolved through `resolveSurfacePaint`, drawn on the 2D floor fill and the 3D floor surface,
 and exposed in the floor finish picker. So the foundational material-treatment slice the two
-wall children declare a dependency on is delivered, not pending. The task that produced this
-ADR was briefed to file that slice as missing; it is already filed and closed as completed, so
-no duplicate was created.
+wall children declare a dependency on is delivered, not pending.
 
 Two adjacent tracks supply structure the exterior slice coordinates with. Wall construction
 profiles (#365) already exist as registry data (`core/registries/construction-profiles.ts`):
