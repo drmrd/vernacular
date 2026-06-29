@@ -78,6 +78,9 @@ function boxSections(
  * material draws all faces. The group name is the prefixed scene id, but
  * userData.entityId is the RAW instance id (the prefix stripped): the 2D selection keys
  * furniture on the raw id, so the generic 3D pick and outline select in step with the plan.
+ * userData.furnitureMassing flags the group as a placeholder box, so a loaded model
+ * sub-group is distinguishable from it now that the edge overlay (which used to mark the
+ * box) is an opt-in view toggle, off by default (ADR-0130).
  */
 export function buildFurnitureMassing(
   node: FurnitureSceneNode,
@@ -92,5 +95,6 @@ export function buildFurnitureMassing(
   group.add(mesh)
   group.name = node.id
   group.userData.entityId = node.id.slice(FURNITURE_NODE_PREFIX.length)
+  group.userData.furnitureMassing = true
   return group
 }

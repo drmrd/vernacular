@@ -11,15 +11,17 @@ function signalsEnabled(): boolean {
 }
 
 // The raw entity ids of furniture groups now showing their real model: a furniture-named group
-// whose subtree has a mesh but no box edge-overlay line segments. The massing box always carries
-// that overlay (buildFurnitureSubgroup adds it); the swapped-in model group never does.
+// whose subtree has a mesh and is not flagged as a placeholder massing box. The massing box sets
+// userData.furnitureMassing (buildFurnitureMassing); the swapped-in model group never does. (The
+// box edge overlay used to mark the box, but it is now an opt-in view toggle, off by default per
+// ADR-0130, so the placeholder flag is the stable signal instead.)
 function loadedFurnitureEntityIds(root: SceneRoot): string[] {
   const ids: string[] = []
   root.traverse((object) => {
     if (!object.name.startsWith(FURNITURE_NODE_PREFIX)) return
     const hasMesh = object.getObjectByProperty('isMesh', true) !== undefined
-    const hasEdgeOverlay = object.getObjectByProperty('isLineSegments', true) !== undefined
-    if (hasMesh && !hasEdgeOverlay) ids.push(String(object.userData.entityId))
+    const isMassingBox = object.userData.furnitureMassing === true
+    if (hasMesh && !isMassingBox) ids.push(String(object.userData.entityId))
   })
   return ids
 }
