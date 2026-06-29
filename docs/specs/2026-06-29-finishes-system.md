@@ -7,7 +7,7 @@ Architecture decision: ADR-0130.
 ## Purpose
 
 The model carries geometry but not the materials on its surfaces. A finishes system
-describes what a building is actually made of, inside and out, and keeps that description as
+describes what a building is made of, inside and out, and keeps that description as
 project data so it drives both the 2D plan and the 3D model. This spec covers the three
 slices of the epic (floor finishes, interior wall finishes, exterior wall types and cladding
 finishes), how they reuse the existing paint model rather than duplicating it, and how the
@@ -19,8 +19,7 @@ questions, with resolutions.
 
 ## What already exists
 
-The finishes system does not start from nothing. It sits on a paint foundation that several
-prior slices already shipped.
+The finishes system sits on a paint foundation that several prior slices already shipped.
 
 - The surface paint model (ADR-0048, ADR-0056). A `SurfaceRef` addresses a paintable
   surface (`core/model/paint.ts`): a `wall-face` with a `wallId` and a geometric `side`
@@ -79,8 +78,8 @@ The floor slice is the first instance: the floor-pattern registry, the `pattern`
 floor fill and floor surface, the floor finish picker. The interior-wall and exterior-wall
 slices are the second and third instances of the same shape on different surfaces and
 registries. Nothing about the store, the key, the resolver, or the schema changes between
-instances. This is the reuse the epic asks for: one treatment model, several registries, not
-several parallel mechanisms.
+instances. This is the reuse the epic asks for: one treatment model with a registry per surface, instead
+of several parallel mechanisms.
 
 One generalization the wall slices need that the floor slice did not. The 3D material
 provider resolves a `pattern` treatment's `patternId` against the floor-pattern registry
@@ -160,7 +159,7 @@ twice.
 ## Exterior wall types and cladding finishes (#379)
 
 This is the largest slice and introduces a cladding concept the model does not have. Exterior
-wall type drives much of how a building reads from outside: stucco, brick in various bonds,
+wall type accounts for much of how a building reads from outside: stucco, brick in various bonds,
 clapboard or shingle siding, board and batten.
 
 ### Exterior-face addressing
