@@ -27,7 +27,9 @@ updated: 2026-06-14
 
 ## Status
 
-Accepted. A legibility item on the three-dimensional preview, from owner feedback
+Accepted, and amended by [[ADR-0130-surface-edge-overlay-opt-in-view-toggle]]: the
+overlay is now an opt-in view toggle, off by default in Orbit, rather than always on.
+A legibility item on the three-dimensional preview, from owner feedback
 on 2026-06-14: a wall is hard to tell apart from the floor behind it or from an
 adjacent wall, and corners are hard to read. It builds on the wall shell
 ([[ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier]]) and reuses
