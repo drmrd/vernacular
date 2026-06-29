@@ -60,14 +60,15 @@ export const ROOM_ID_PREFIX = 'room:'
 const DEFAULT_WALL_THICKNESS = 0
 
 /**
- * Reciprocal of the grid, in 1/millimeters, that outer-boundary coordinates snap
- * to. The outward offset is built from shifted-line intersections that carry
- * IEEE-754 rounding noise far below the junction tolerance, so two perimeter
+ * Snap-grid resolution, in units per millimeter, that outer-boundary coordinates
+ * round to: each coordinate is snapped to the nearest 1/SNAP_UNITS_PER_MM of a
+ * millimeter. The outward offset is built from shifted-line intersections that
+ * carry IEEE-754 rounding noise far below the junction tolerance, so two perimeter
  * edges that meet on an axis can land a fraction of a nanometer off their exact
  * coordinate. Snapping to this sub-micrometer grid removes that noise so adjacent
  * slabs meet on exact coordinates, without disturbing any real geometry.
  */
-const OUTER_BOUNDARY_SNAP = 1e6
+const SNAP_UNITS_PER_MM = 1e6
 
 /**
  * The stable key for a room: the pre-sorted bounding-wall ids joined with `|` that
@@ -152,33 +153,27 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
 
   const rooms: Room[] = []
   for (const faceIndex of roomFaces) {
-    const face = faces[faceIndex]
     const boundary = boundaries[faceIndex]
-    if (face === undefined || boundary === undefined) continue
-    rooms.push(buildRoom(face, boundary, roomFaces))
+    if (boundary === undefined) continue
+    rooms.push(buildRoom(boundary, roomFaces))
   }
   return assignHoles(rooms)
 }
 
 /**
- * Assemble one room from its face and boundary. The clear interior insets by
- * every edge's half-thickness. The outer boundary outsets only on perimeter
- * edges; a shared edge (its twin belongs to another room face) takes a zero
- * outward offset so it stays on the centerline, where adjacent slabs meet edge
- * to edge instead of overlapping. See
+ * Assemble one room from its boundary. The clear interior insets by every edge's
+ * half-thickness. The outer boundary outsets only on perimeter edges; a shared
+ * edge (its twin belongs to another room face) takes a zero outward offset so it
+ * stays on the centerline, where adjacent slabs meet edge to edge instead of
+ * overlapping. See
  * [[ADR-0129-floor-slab-shared-interior-edges-stop-at-centerline]].
  */
-function buildRoom(
-  face: readonly HalfEdge[],
-  boundary: FaceBoundary,
-  roomFaces: ReadonlySet<number>,
-): Room {
-  const { polygon, edgeOffsets, twinFaceIndices } = boundary
+function buildRoom(boundary: FaceBoundary, roomFaces: ReadonlySet<number>): Room {
+  const { polygon, edgeOffsets, twinFaceIndices, wallIds } = boundary
   const outsetOffsets = edgeOffsets.map((offset, index) =>
     roomFaces.has(twinFaceIndices[index] ?? -1) ? 0 : offset,
   )
   const clearPolygon = insetPolygon(polygon, edgeOffsets)
-  const wallIds = sortedUniqueWallIds(face)
   return {
     id: ROOM_ID_PREFIX + roomKey({ wallIds }),
     polygon,
@@ -191,7 +186,7 @@ function buildRoom(
 
 /** Snap a coordinate to the outer-boundary grid, clearing sub-tolerance noise. */
 function snapCoordinate(value: number): number {
-  return Math.round(value * OUTER_BOUNDARY_SNAP) / OUTER_BOUNDARY_SNAP
+  return Math.round(value * SNAP_UNITS_PER_MM) / SNAP_UNITS_PER_MM
 }
 
 /** Snap every vertex of a polygon to the outer-boundary grid. */
@@ -425,6 +420,8 @@ interface FaceBoundary {
   edgeOffsets: number[]
   /** For each edge, the face owning its twin (see {@link twinFaceIndexOf}). */
   twinFaceIndices: number[]
+  /** Sorted, unique ids of the walls that enclose the face. */
+  wallIds: string[]
 }
 
 /**
@@ -453,7 +450,7 @@ function faceBoundary(
     edgeOffsets.push(corner.halfThickness)
     twinFaceIndices.push(corner.twinFaceIndex)
   }
-  return { polygon, edgeOffsets, twinFaceIndices }
+  return { polygon, edgeOffsets, twinFaceIndices, wallIds: sortedUniqueWallIds(face) }
 }
 
 /**
