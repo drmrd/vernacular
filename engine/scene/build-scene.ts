@@ -4,7 +4,7 @@ import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
-import { addEdgeOverlay } from './edge-overlay'
+import { applyEdgeOverlay, type EdgeOverlayOptions } from './edge-overlay'
 import { buildFurnitureMassing } from './furniture-builder'
 import { buildOpeningFill } from './opening-fill-builder'
 import { buildRoomShell } from './room-builder'
@@ -18,14 +18,16 @@ export type SceneRoot = THREE.Group
 export function buildScene(
   graph: SceneGraph,
   materials: MaterialProvider = new NeutralMaterialProvider(),
+  options: EdgeOverlayOptions = {},
 ): SceneRoot {
   const root = new THREE.Group()
   for (const node of graph.nodes) {
     root.add(buildFloorGroup(node, graph, materials))
   }
-  // Draw a dark edge line along every surface so a wall reads against the floor
-  // and its neighbors whatever the lighting and paint are (ADR-0078).
-  addEdgeOverlay(root)
+  // Draw a dark edge line along every surface so a wall reads against the floor and
+  // its neighbors, but only when the view turns the overlay on: it is an opt-in view
+  // toggle, off by default in Orbit (ADR-0078, amended by ADR-0130).
+  applyEdgeOverlay(root, options)
   return root
 }
 

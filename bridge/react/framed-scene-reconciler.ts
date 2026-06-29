@@ -246,10 +246,10 @@ function buildFurnitureGroup(
     return buildFurnitureModelGroup(entry.template.clone(true), node)
   }
   if (entry?.status === 'failed') {
-    return buildFurnitureSubgroup(node, materials, 'furnitureFailed')
+    return buildFurnitureSubgroup(node, materials, { role: 'furnitureFailed' })
   }
   if (entry?.status === 'loading') {
-    return buildFurnitureSubgroup(node, materials, 'furnitureLoading')
+    return buildFurnitureSubgroup(node, materials, { role: 'furnitureLoading' })
   }
   return buildFurnitureSubgroup(node, materials)
 }

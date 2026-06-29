@@ -428,9 +428,14 @@ describe('createFramedSceneReconciler furniture model', () => {
     const boxGroup = findByEntityId(boxBuild.root, chair.id)
     expect(meshGroup).not.toBeNull()
     expect(boxGroup).not.toBeNull()
-    // The massing box carries an edge overlay (LineSegments); the real-model sub-group does not.
-    expect(meshGroup?.getObjectByProperty('isLineSegments', true)).toBeUndefined()
-    expect(boxGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
+    if (meshGroup === null || boxGroup === null) {
+      throw new Error('expected both furniture sub-groups to exist')
+    }
+    // The massing box carries the furniture massing material; the real-model sub-group is
+    // the loaded mesh and does not. (The edge overlay is an opt-in view toggle, off by
+    // default in this build path per ADR-0130, so it no longer marks the box.)
+    expect(firstMeshMaterialName(boxGroup)).toBe('furniture')
+    expect(firstMeshMaterialName(meshGroup)).not.toBe('furniture')
   })
 
   it('builds the furnitureFailed box for a failed model entry and the plain box otherwise', () => {
@@ -455,8 +460,6 @@ describe('createFramedSceneReconciler furniture model', () => {
     const plainGroup = findByEntityId(plainBuild.root, chair.id)
     expect(failedGroup).not.toBeNull()
     expect(plainGroup).not.toBeNull()
-    // The failed stand-in is still a massing box, so it keeps the edge overlay (LineSegments).
-    expect(failedGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
     // The failed box mesh carries the distinct furnitureFailed material; the box-only
     // (no-entry/loading) fall-through keeps the plain furniture material.
     if (failedGroup === null || plainGroup === null) {
@@ -488,8 +491,6 @@ describe('createFramedSceneReconciler furniture model', () => {
     const plainGroup = findByEntityId(plainBuild.root, chair.id)
     expect(loadingGroup).not.toBeNull()
     expect(plainGroup).not.toBeNull()
-    // The loading stand-in is still a massing box, so it keeps the edge overlay (LineSegments).
-    expect(loadingGroup?.getObjectByProperty('isLineSegments', true)).toBeDefined()
     // The loading box mesh carries the distinct furnitureLoading material; the box-only
     // (no-entry) fall-through keeps the plain furniture material.
     if (loadingGroup === null || plainGroup === null) {
