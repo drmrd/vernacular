@@ -68,8 +68,9 @@ const CHAIR_Y_MM = 1000
 
 // A rectangle split by a partition wall at PARTITION_X_MM into a left cell and a
 // right cell, so the floor derives exactly two rooms. The right wall sits at
-// `rightX`, so widening it reshapes only the right (partition-to-right) room and
-// leaves the left (left-to-partition) room untouched.
+// `rightX`; widening the right enclosure (see widenedRightEnclosureWall) reshapes
+// only the right (partition-to-right) room and leaves the left (left-to-partition)
+// room untouched.
 function partitionedWalls(rightX: number): Wall[] {
   return [
     createWall({ x: 0, y: 0 }, { x: rightX, y: 0 }, { id: BOTTOM_WALL_ID }),
@@ -90,6 +91,38 @@ function partitionedWalls(rightX: number): Wall[] {
       },
     ),
   ]
+}
+
+// The edit the room-reuse test applies: it widens the right room by pushing its
+// right, bottom, and top walls out to ENCLOSURE_WIDENED_RIGHT_MM while leaving the
+// left wall and the shared partition untouched (same references). Extending the
+// bottom and top alongside the right wall keeps the right room enclosed, so the
+// partition stays shared and the left room's slab is unchanged. Moving the right
+// wall alone would detach it, deleting the right room and turning the partition
+// into a perimeter edge that reshapes the left room's slab too (see ADR-0129).
+function widenedRightEnclosureWall(wall: Wall): Wall {
+  if (wall.id === RIGHT_WALL_ID) {
+    return createWall(
+      { x: ENCLOSURE_WIDENED_RIGHT_MM, y: 0 },
+      { x: ENCLOSURE_WIDENED_RIGHT_MM, y: ENCLOSURE_HEIGHT_MM },
+      { id: RIGHT_WALL_ID },
+    )
+  }
+  if (wall.id === BOTTOM_WALL_ID) {
+    return createWall(
+      { x: 0, y: 0 },
+      { x: ENCLOSURE_WIDENED_RIGHT_MM, y: 0 },
+      { id: BOTTOM_WALL_ID },
+    )
+  }
+  if (wall.id === TOP_WALL_ID) {
+    return createWall(
+      { x: 0, y: ENCLOSURE_HEIGHT_MM },
+      { x: ENCLOSURE_WIDENED_RIGHT_MM, y: ENCLOSURE_HEIGHT_MM },
+      { id: TOP_WALL_ID },
+    )
+  }
+  return wall
 }
 
 function singleRoomWalls(): Wall[] {
@@ -200,17 +233,11 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
     expect(keptFirstGroup).not.toBeNull()
     expect(movedFirstGroup).not.toBeNull()
 
-    // Immutably move only the right exterior wall, which bounds the moved room
-    // alone. The partition and the kept room's walls keep their references.
-    const movedWalls = walls.map((wall) =>
-      wall.id === RIGHT_WALL_ID
-        ? createWall(
-            { x: ENCLOSURE_WIDENED_RIGHT_MM, y: 0 },
-            { x: ENCLOSURE_WIDENED_RIGHT_MM, y: ENCLOSURE_HEIGHT_MM },
-            { id: RIGHT_WALL_ID },
-          )
-        : wall,
-    )
+    // Immutably widen the right room's enclosure (right, bottom, and top walls),
+    // which reshapes the moved room alone. The partition and the kept room's walls
+    // keep their references, and the partition stays shared so the kept room's slab
+    // is byte-identical and its group is reused.
+    const movedWalls = walls.map(widenedRightEnclosureWall)
     const editedFloor: Floor = { ...floor, walls: movedWalls }
     const secondGraph = activeFloorGraph(derive, projectWith(editedFloor))
     const second = reconciler.reconcile(secondGraph, paint)
