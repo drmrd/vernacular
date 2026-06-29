@@ -14,7 +14,7 @@ function signalsEnabled(): boolean {
 // whose subtree has a mesh and is not flagged as a placeholder massing box. The massing box sets
 // userData.furnitureMassing (buildFurnitureMassing); the swapped-in model group never does. (The
 // box edge overlay used to mark the box, but it is now an opt-in view toggle, off by default per
-// ADR-0130, so the placeholder flag is the stable signal instead.)
+// ADR-0132, so the placeholder flag is the stable signal instead.)
 function loadedFurnitureEntityIds(root: SceneRoot): string[] {
   const ids: string[] = []
   root.traverse((object) => {

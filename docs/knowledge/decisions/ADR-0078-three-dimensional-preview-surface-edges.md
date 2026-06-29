@@ -9,7 +9,7 @@ related:
     decisions/ADR-0066-three-dimensional-selection-and-accessibility,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
     decisions/ADR-0077-three-dimensional-mitered-wall-junctions,
-    decisions/ADR-0130-surface-edge-overlay-opt-in-view-toggle,
+    decisions/ADR-0132-surface-edge-overlay-opt-in-view-toggle,
   ]
 sourceFiles:
   [
@@ -28,7 +28,7 @@ updated: 2026-06-14
 
 ## Status
 
-Accepted, and amended by [[ADR-0130-surface-edge-overlay-opt-in-view-toggle]]: the
+Accepted, and amended by [[ADR-0132-surface-edge-overlay-opt-in-view-toggle]]: the
 overlay is now an opt-in view toggle, off by default in Orbit, rather than always on.
 A legibility item on the three-dimensional preview, from owner feedback
 on 2026-06-14: a wall is hard to tell apart from the floor behind it or from an

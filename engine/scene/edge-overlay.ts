@@ -8,7 +8,7 @@ export const EDGE_COLOR = 0x2b2b2b
 /**
  * View-level display options for the surface edge overlay. The overlay is an opt-in
  * view toggle, off by default in Orbit, that amends the always-on stance of ADR-0078
- * (see ADR-0130). It styles the view only and is not model data, so it is never saved
+ * (see ADR-0132). It styles the view only and is not model data, so it is never saved
  * to the project.
  */
 export interface EdgeOverlayOptions {
