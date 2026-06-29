@@ -3,7 +3,7 @@ import { within, expect, userEvent, fn } from 'storybook/test'
 import type { Site } from '../../core'
 import { SiteEditor } from './site-editor'
 
-const SITE: Site = { latLong: { latitude: 42.36, longitude: -71.06 } }
+const SITE: Site = { latLong: { latitude: 42.36, longitude: -71.06 }, northBearing: Math.PI / 2 }
 
 const meta: Meta<typeof SiteEditor> = {
   title: 'Editor/SiteEditor',
@@ -24,6 +24,7 @@ export const Default: Story = {
     const screen = within(canvasElement)
     const latitude = screen.getByLabelText(/latitude/i)
     await expect(latitude).toHaveValue(42.36)
+    await expect(screen.getByLabelText(/north bearing/i)).toHaveValue(90)
     await userEvent.clear(latitude)
     await userEvent.type(latitude, '40{Enter}')
     await expect(args.dispatch).toHaveBeenCalled()
