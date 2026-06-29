@@ -9,6 +9,7 @@ related:
     decisions/ADR-0066-three-dimensional-selection-and-accessibility,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
     decisions/ADR-0077-three-dimensional-mitered-wall-junctions,
+    decisions/ADR-0130-surface-edge-overlay-opt-in-view-toggle,
   ]
 sourceFiles:
   [
