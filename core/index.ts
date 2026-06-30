@@ -559,6 +559,7 @@ export { resolveSurfacePaint } from './paint/resolve-surface-paint'
 export type { PaintableSurface } from './paint/paintable-surfaces'
 export { paintableSurfaces } from './paint/paintable-surfaces'
 export type { LatLong, Obstruction, Site } from './model/site'
+export { DEFAULT_GRADE_ELEVATION_MM, resolveGradeElevation } from './model/site'
 export type {
   AddPaletteColorParams,
   CreateProjectPaletteParams,

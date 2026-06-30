@@ -16,6 +16,7 @@ import type {
   UnderlaySource,
   Wall,
 } from '../model/types'
+import { resolveGradeElevation } from '../model/site'
 import { deriveOpeningGeometry } from '../topology/openings'
 import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
 
@@ -166,6 +167,12 @@ export interface SceneGraph {
   dimensions: DimensionSceneNode[]
   stairs: StairSceneNode[]
   furniture: FurnitureSceneNode[]
+  /**
+   * Ground-surface grade datum in millimeters for this projection. Optional so
+   * hand-built literals omit it; `deriveSceneGraph` always sets it and readers
+   * default to the 0 datum. Forwarded by the floor and building filters.
+   */
+  gradeElevation?: number
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -324,5 +331,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: deriveStairNodes(project),
     furniture: project.floors.flatMap(deriveFurnitureNodesForFloor),
+    gradeElevation: resolveGradeElevation(project.site),
   }
 }
