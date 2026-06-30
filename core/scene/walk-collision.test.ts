@@ -4,6 +4,7 @@ import {
   furnitureSegmentsForWalk,
   passableDoorIds,
   resolveWalkCollision,
+  sweepWalkCollision,
   wallSegmentsForWalk,
   type WallSegment,
 } from './walk-collision'
@@ -90,6 +91,31 @@ describe('resolveWalkCollision', () => {
     const pastEnd = resolveWalkCollision({ x: 1500, z: -100 }, [wallAlongX], radius)
     expect(pastEnd.x).toBeCloseTo(1500, 5)
     expect(pastEnd.z).toBeCloseTo(-100, 5)
+  })
+})
+
+describe('sweepWalkCollision', () => {
+  it('stops a fast straight-across move on the near side instead of tunneling through the wall', () => {
+    // A single frame proposes a move from one side of the wall to the other.
+    // The walker starts clear on the -z side (farther than the radius) and the
+    // proposed end point is clear on the far +z side.
+    const from = { x: 0, z: -500 }
+    const to = { x: 0, z: 500 }
+
+    // A discrete resolve only inspects the proposed end point. Because that end
+    // point is clear on the far side, resolveWalkCollision leaves the walker
+    // there, having silently tunneled straight through the wall.
+    const tunneled = resolveWalkCollision(to, [wallAlongX], radius)
+    expect(tunneled.z).toBeCloseTo(500, 5)
+
+    // The swept resolver inspects the whole path, so the wall lying between the
+    // endpoints stops the walker on the near (-z) side at the radius standoff
+    // rather than letting it cross.
+    const result = sweepWalkCollision(from, to, [wallAlongX], radius)
+    expect(result.x).toBeCloseTo(0, 5)
+    expect(result.z).toBeCloseTo(-radius, 5)
+    // Make the no-tunnel intent explicit: the walker never reaches the far side.
+    expect(result.z).toBeLessThan(0)
   })
 })
 
