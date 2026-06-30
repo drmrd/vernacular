@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
-import type { HingeMotion, OpeningSceneNode } from '../../core'
+import type { HingeMotion, OpeningSceneNode, SlideMotion } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 
 import { buildOpeningFill } from './opening-fill-builder'
@@ -29,6 +29,19 @@ function singleSwingDoor(): OpeningSceneNode {
     hostWallId: 'south',
   }
 }
+
+// A double-hung window on the same wall, for the slide motions.
+function doubleHungWindow(): OpeningSceneNode {
+  return {
+    ...singleSwingDoor(),
+    id: 'opening:test-window',
+    type: 'double-hung-window',
+    height: 1200,
+    sillHeight: 900,
+  }
+}
+
+const SASH_RISE = 1200
 
 const HINGE_POINT = new THREE.Vector3(550, 1000, 0)
 const FAR_JAMB = new THREE.Vector3(1450, 1000, 0)
@@ -74,5 +87,28 @@ describe('applyOpeningMotion hinge', () => {
     expect(far.x).toBeCloseTo(HINGE_POINT.x, PRECISION)
     expect(Math.abs(far.z)).toBeCloseTo(SWING_RADIUS, PRECISION)
     expect(far.distanceTo(hinge)).toBeCloseTo(SWING_RADIUS, PRECISION)
+  })
+})
+
+describe('applyOpeningMotion vertical slide', () => {
+  const motion: SlideMotion = {
+    kind: 'slide',
+    axis: 'vertical',
+    travel: { x: 0, y: SASH_RISE, z: 0 },
+    partId: 'primary',
+    partCount: 2,
+  }
+
+  it('raises the sash straight up when fully open and rests it shut at zero', () => {
+    const group = buildOpeningFill(doubleHungWindow(), new NeutralMaterialProvider())
+
+    applyOpeningMotion(group, motion, 1)
+    expect(group.position.x).toBeCloseTo(0, PRECISION)
+    expect(group.position.y).toBeCloseTo(SASH_RISE, PRECISION)
+    expect(group.position.z).toBeCloseTo(0, PRECISION)
+    expect(group.quaternion.w).toBeCloseTo(1, PRECISION)
+
+    applyOpeningMotion(group, motion, 0)
+    expect(group.position.length()).toBeCloseTo(0, PRECISION)
   })
 })
