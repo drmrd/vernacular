@@ -33,7 +33,7 @@ export function buildScene(
   // sitting on its site and a partly buried basement's foundation rises through
   // the surface (ADR-0131). Added after the edge overlay so the lawn takes no
   // hidden-line outline.
-  addGroundPlane(root)
+  addGroundPlane(root, graph.gradeElevation)
   return root
 }
 

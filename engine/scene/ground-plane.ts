@@ -64,7 +64,7 @@ function groundFootprint(sceneRoot: THREE.Object3D): GroundFootprint {
   }
 }
 
-function groundMesh(footprint: GroundFootprint): THREE.Mesh {
+function groundMesh(footprint: GroundFootprint, gradeElevation: number): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(footprint.width, footprint.depth)
   const material = new THREE.MeshStandardMaterial({
     color: GRASS_COLOR,
@@ -75,7 +75,7 @@ function groundMesh(footprint: GroundFootprint): THREE.Mesh {
   mesh.userData.ground = true
   // Lay the XY plane flat into the XZ ground plane, normal pointing up.
   mesh.rotation.x = -Math.PI / 2
-  mesh.position.set(footprint.centerX, GRADE_ELEVATION_MM, footprint.centerZ)
+  mesh.position.set(footprint.centerX, gradeElevation, footprint.centerZ)
   mesh.receiveShadow = true
   return mesh
 }
@@ -84,8 +84,12 @@ function groundMesh(footprint: GroundFootprint): THREE.Mesh {
  * Adds a grass-colored ground plane at grade, sized to cover the building footprint
  * with a surrounding site margin. It reads the footprint from the geometry already in
  * `root`, so it must run after the floors are built. The plane carries no entity id or
- * surface ref, so entity picking, surface picking, and selection ignore it.
+ * surface ref, so entity picking, surface picking, and selection ignore it. The plane is
+ * seated at `gradeElevation`, defaulting to the grade datum when none is supplied.
  */
-export function addGroundPlane(root: THREE.Object3D): void {
-  root.add(groundMesh(groundFootprint(root)))
+export function addGroundPlane(
+  root: THREE.Object3D,
+  gradeElevation: number = GRADE_ELEVATION_MM,
+): void {
+  root.add(groundMesh(groundFootprint(root), gradeElevation))
 }
