@@ -153,6 +153,43 @@ describe('openingMotion windows', () => {
   })
 })
 
+describe('openingMotion on angled walls', () => {
+  // A wall running off the axes, so along.y is nonzero and the plan-y to world -Z
+  // mapping is exercised. Plan north (+y) maps to world -Z, so a plan along of
+  // (0.6, 0.8) gives a world hinge axis and slide travel whose Z negates along.y.
+  const angledAlong = { x: 0.6, y: 0.8 }
+  const angledNormal = { x: -0.8, y: 0.6 }
+
+  it('cranks an awning window about an along-wall axis whose Z negates along.y', () => {
+    const motion = openingMotion(
+      'awning-window',
+      openingNode('awning-window', { along: angledAlong, normal: angledNormal }),
+    )
+
+    expect(motion.kind).toBe('hinge')
+    if (motion.kind !== 'hinge') return
+    expect(motion.edge).toBe('head')
+    // The hinge runs along the wall: world X tracks plan x, world Z negates plan y.
+    expect(motion.axis.x).toBeCloseTo(angledAlong.x, PRECISION)
+    expect(motion.axis.y).toBeCloseTo(0, PRECISION)
+    expect(motion.axis.z).toBeCloseTo(-angledAlong.y, PRECISION)
+  })
+
+  it('slides a sliding window along the wall with travel Z negating along.y', () => {
+    const node = openingNode('sliding-window', { along: angledAlong, normal: angledNormal })
+    const motion = openingMotion('sliding-window', node)
+
+    expect(motion.kind).toBe('slide')
+    if (motion.kind !== 'slide') return
+    expect(motion.axis).toBe('along-wall')
+    // Travels a full opening width along the wall: world X tracks plan x, world Z
+    // negates plan y.
+    expect(motion.travel.x).toBeCloseTo(angledAlong.x * node.width, PRECISION)
+    expect(motion.travel.y).toBeCloseTo(0, PRECISION)
+    expect(motion.travel.z).toBeCloseTo(-angledAlong.y * node.width, PRECISION)
+  })
+})
+
 describe('openingMotion fold and pivot fallback', () => {
   it('falls back to a jamb hinge for a bifold door', () => {
     const motion = openingMotion('bifold-door', openingNode('bifold-door'))

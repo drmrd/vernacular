@@ -63,9 +63,11 @@ interface OpeningFrame {
 function openingFrame(node: OpeningSceneNode, openness: number): OpeningFrame {
   const shut: OpeningFrame = {
     center: planToWorld(node.center, node.sillHeight + node.height / 2),
-    along: normalize({ x: node.along.x, y: 0, z: node.along.y }),
+    // Plan north (+y) maps to world -Z, so the along and normal Z terms negate
+    // plan y. `0 - ...` rather than negation keeps an axis-aligned wall's Z a clean +0.
+    along: normalize({ x: node.along.x, y: 0, z: 0 - node.along.y }),
     up: { x: 0, y: 1, z: 0 },
-    normal: normalize({ x: node.normal.x, y: 0, z: node.normal.y }),
+    normal: normalize({ x: node.normal.x, y: 0, z: 0 - node.normal.y }),
   }
   if (openness <= 0) return shut
   return openedFrame(shut, openingMotion(node.type, node), openness)

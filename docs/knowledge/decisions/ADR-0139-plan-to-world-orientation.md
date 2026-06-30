@@ -21,6 +21,7 @@ sourceFiles:
     core/scene/plan-to-world.ts,
     core/scene/camera-presets.ts,
     core/scene/opening-motion.ts,
+    core/scene/opening-reach.ts,
     engine/scene/room-builder.ts,
     engine/scene/junction-fill-builder.ts,
     engine/scene/furniture-builder.ts,
@@ -109,14 +110,13 @@ ADR is the record of that spec correction.
   `-Z`), so the preset and doorway views frame the building from the named side.
 - The committed Storybook visual baselines for any 3D story shift, because the
   rendered scene reorients. They regenerate on the runner that gates them.
-- A latent inconsistency remains and is deliberately deferred: three opening direction
-  vectors still map plan `y` to `+Z` rather than `-Z`. They are `openingFrame`'s
-  `along` and `normal` in `opening-reach.ts`, and the `horizontalHinge` axis and the
-  `alongWallSlide` travel in `opening-motion.ts`. Every opening exercised today runs
-  along world X, so the Z term is zero and no behavior is wrong, but an opening on a
-  wall that is not axis-aligned (an awning or hopper crank, a sliding or pocket door)
-  would resolve a slightly off axis. A follow-up routes those direction vectors through
-  the corrected convention with a test for an angled-wall opening.
+- The four opening direction vectors that the first pass left mapping plan `y` to `+Z`
+  now follow the corrected convention. They are `openingFrame`'s `along` and `normal` in
+  `opening-reach.ts`, and the `horizontalHinge` axis and the `alongWallSlide` travel in
+  `opening-motion.ts`. Each one negates its Z term the way `planToWorld` does, so an
+  opening on a wall that is not axis-aligned (an awning or hopper crank, a sliding or
+  pocket door) resolves on the right axis. A test for an angled-wall opening pins the Z
+  term that the axis-aligned cases had left at zero.
 
 ## References
 
