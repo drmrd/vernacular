@@ -68,4 +68,16 @@ describe('SiteEditor', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
   })
+
+  it('does not dispatch a location update when a coordinate field is cleared', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.keyboard('{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
 })
