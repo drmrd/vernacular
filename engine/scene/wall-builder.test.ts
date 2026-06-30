@@ -27,6 +27,7 @@ import {
   horizontalWall,
   maxAxisOfRole,
   meshesOf,
+  oneEdgeGraph,
   roleArea,
   roleTriangleCount,
   singleWallMesh,
@@ -45,6 +46,26 @@ describe('buildWalls', () => {
     expect(mesh.userData.entityId).toBe('wall:w1')
     expect(materialGroups(mesh.geometry)).toHaveLength(FACE_GROUP_COUNT)
     expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: FULL_THICKNESS_SPAN })
+  })
+
+  it('sizes a wall footprint from its construction profile total thickness', () => {
+    // solid-masonry-brick is 16mm plaster + 215mm brick = 231mm, distinct from the
+    // wall's raw 120mm thickness, so the box's cross-wall (world Z) span bites only
+    // when the construction-profile total drives the footprint.
+    const PROFILE_TOTAL = 231
+    const profileHalfSpan: [number, number] = [-PROFILE_TOTAL / 2, PROFILE_TOTAL / 2]
+    const group = buildWalls({
+      graph: oneEdgeGraph(),
+      walls: [horizontalWall({ constructionProfile: 'solid-masonry-brick' })],
+      openingsByWall: new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+    const meshes = meshesOf(group)
+    expect(meshes).toHaveLength(1)
+    const mesh = meshes[0]
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: profileHalfSpan })
   })
 
   it('builds one box per edge for a split wall, both carrying the wall node id', () => {
