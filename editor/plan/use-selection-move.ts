@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useRef, useState, type PointerEvent } from 'react'
 import type { Point, SceneGraph, UnitPreferences } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
@@ -14,6 +14,9 @@ import {
   type MoveDragState,
 } from './move-drag'
 import { selectedEntityIds, selectionGhostSegments } from './selection-entities'
+import { snapPoint } from './snap'
+import { useOptionalSnapPreferences } from './snap-preferences-context'
+import { buildSnapContext } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -55,6 +58,9 @@ interface MoveHandle {
   stateRef: { current: MoveDragState }
   setGhost: (ghost: readonly PreviewSegment[]) => void
   setReadout: (readout: DragReadout | undefined) => void
+  // Resolves a proposed world point to the nearest snap target, so the move-drag
+  // anchors the whole group on a snapped representative point.
+  snap: (point: Point) => Point
 }
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
@@ -102,7 +108,7 @@ function pointerMove(
     return false
   }
   const world = eventToWorld(event, deps.viewport)
-  handle.setGhost(moveDragGhost(handle.stateRef.current, world))
+  handle.setGhost(moveDragGhost(handle.stateRef.current, world, handle.snap))
   handle.setReadout(moveDragReadout(handle.stateRef.current, world, deps.preferences))
   return true
 }
@@ -128,6 +134,7 @@ function pointerUp(
     eventToWorld(event, deps.viewport),
     floorId,
     selectedEntityIds(deps.selectedIds),
+    handle.snap,
   )
   if (result.command) {
     deps.session.dispatch(result.command)
@@ -146,7 +153,19 @@ export function useSelectionMove(deps: SelectionMoveDeps): SelectionMove {
   const stateRef = useRef<MoveDragState>(IDLE_MOVE_DRAG)
   const [ghost, setGhost] = useState<readonly PreviewSegment[]>([])
   const [readout, setReadout] = useState<DragReadout | undefined>(undefined)
-  const handle: MoveHandle = { stateRef, setGhost, setReadout }
+  const snapPreferences = useOptionalSnapPreferences()
+  const snap = useCallback(
+    (point: Point): Point => {
+      const targets = deps.graph.walls.filter((wall) => !deps.selectedIds.has(wall.id))
+      const context = buildSnapContext(
+        { walls: targets, viewport: deps.viewport, origin: undefined },
+        snapPreferences,
+      )
+      return snapPoint(point, context)?.point ?? point
+    },
+    [deps.graph, deps.selectedIds, deps.viewport, snapPreferences],
+  )
+  const handle: MoveHandle = { stateRef, setGhost, setReadout, snap }
   return {
     ghost,
     readout,
