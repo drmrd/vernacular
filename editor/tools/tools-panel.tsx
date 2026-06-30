@@ -11,7 +11,7 @@ import {
   Stairs,
   Tag,
 } from '@phosphor-icons/react'
-import { builtinElementTypes, type OpeningFamily } from '../../core'
+import { builtinElementTypes, openingKindOfType } from '../../core'
 import { SectionLabel } from '../design-system'
 import { useActiveTool, type ToolId } from './active-tool-context'
 import { useOpeningTool } from '../plan/opening-tool-context'
@@ -19,27 +19,19 @@ import { useRovingRadioGroup } from './roving-radio-group'
 import '../design-system/segmented.css'
 import './tools-panel.css'
 
-const WINDOW_FAMILIES: ReadonlySet<OpeningFamily> = new Set(['window-fixed', 'window-crank'])
-
 function openingEntries() {
   return Object.values(builtinElementTypes.entries).filter((t) => t.category === 'opening')
 }
 
 function isWindowPlacementType(id: string): boolean {
-  const type = builtinElementTypes.entries[id]
-  const family = type?.opening?.family
-  return family !== undefined && WINDOW_FAMILIES.has(family as OpeningFamily)
+  return openingKindOfType(id) === 'window'
 }
 
 const DEFAULT_DOOR_TYPE: string =
-  openingEntries().find(
-    (t) => t.opening !== undefined && !WINDOW_FAMILIES.has(t.opening.family as OpeningFamily),
-  )?.id ?? 'single-swing-door'
+  openingEntries().find((t) => openingKindOfType(t.id) === 'door')?.id ?? 'single-swing-door'
 
 const DEFAULT_WINDOW_TYPE: string =
-  openingEntries().find(
-    (t) => t.opening !== undefined && WINDOW_FAMILIES.has(t.opening.family as OpeningFamily),
-  )?.id ?? 'window-fixed'
+  openingEntries().find((t) => openingKindOfType(t.id) === 'window')?.id ?? 'double-hung-window'
 
 interface ChipProps {
   toolId?: ToolId
