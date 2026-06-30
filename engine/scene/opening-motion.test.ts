@@ -5,7 +5,7 @@ import type { HingeMotion, OpeningSceneNode, SlideMotion } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 
 import { buildOpeningFill } from './opening-fill-builder'
-import { applyOpeningMotion } from './opening-motion'
+import { applyOpeningMotion, applyOpeningMotionForNode } from './opening-motion'
 
 const PRECISION = 3
 
@@ -110,5 +110,50 @@ describe('applyOpeningMotion vertical slide', () => {
 
     applyOpeningMotion(group, motion, 0)
     expect(group.position.length()).toBeCloseTo(0, PRECISION)
+  })
+})
+
+// A pocket door on the same wall, hinged-field at start; it resolves to a slide.
+function pocketDoor(): OpeningSceneNode {
+  return { ...singleSwingDoor(), id: 'opening:test-pocket', type: 'pocket-door' }
+}
+
+function rootWith(...nodes: OpeningSceneNode[]): THREE.Object3D {
+  const root = new THREE.Group()
+  for (const node of nodes) {
+    root.add(buildOpeningFill(node, new NeutralMaterialProvider()))
+  }
+  return root
+}
+
+describe('applyOpeningMotionForNode', () => {
+  it('resolves a node motion and slides a pocket door along the wall', () => {
+    const node = pocketDoor()
+    const root = rootWith(node)
+
+    applyOpeningMotionForNode(root, node, 1)
+
+    const group = root.getObjectByName(node.id)
+    expect(group).toBeDefined()
+    expect(group?.position.x).toBeCloseTo(node.width, PRECISION)
+    expect(group?.position.y).toBeCloseTo(0, PRECISION)
+    expect(group?.position.z).toBeCloseTo(0, PRECISION)
+  })
+
+  it('swings a door off its built pose and rests it shut at zero', () => {
+    const node = singleSwingDoor()
+    const root = rootWith(node)
+
+    applyOpeningMotionForNode(root, node, 1)
+    expect(root.getObjectByName(node.id)?.position.length()).toBeGreaterThan(0)
+
+    applyOpeningMotionForNode(root, node, 0)
+    expect(root.getObjectByName(node.id)?.position.length()).toBeCloseTo(0, PRECISION)
+  })
+
+  it('ignores a node whose fill group is absent from the root', () => {
+    const root = rootWith(singleSwingDoor())
+
+    expect(() => applyOpeningMotionForNode(root, pocketDoor(), 1)).not.toThrow()
   })
 })
