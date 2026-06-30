@@ -193,9 +193,11 @@ function useDoorwayOpening(
 // Fades the prepared exterior walls each frame from the live camera, so a wall the
 // camera is outside of turns transparent and the interior shows through it (issue #122).
 // It reads the live camera through useFrame rather than reframing, so it never moves the
-// camera; it only sets material opacity.
-function NearWallFade({ targets }: { targets: NearWallTarget[] }) {
-  useFrame(({ camera }) => updateNearWallTransparency(targets, camera.position))
+// camera; it only sets material opacity. The fade is gated to orbit: while walking on the
+// floor the camera is inside the building, where fading the surrounding walls would be
+// wrong, so `enabled` goes false and every wall is held at its opaque baseline (issue #256).
+function NearWallFade({ targets, enabled }: { targets: NearWallTarget[]; enabled: boolean }) {
+  useFrame(({ camera }) => updateNearWallTransparency(targets, camera.position, { enabled }))
   return null
 }
 
@@ -257,7 +259,7 @@ function LiveSceneCanvas({
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
-      <NearWallFade targets={nearWallTargets} />
+      <NearWallFade targets={nearWallTargets} enabled={mode === 'orbit'} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
         target={pose.target}
