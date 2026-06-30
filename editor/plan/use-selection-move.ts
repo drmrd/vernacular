@@ -11,7 +11,7 @@ import {
   IDLE_MOVE_DRAG,
   moveDragGhost,
   moveDragReadout,
-  snappedMovePointer,
+  moveDragReadoutPoint,
   type MoveDragState,
 } from './move-drag'
 import { selectedEntityIds, selectionGhostSegments } from './selection-entities'
@@ -134,7 +134,7 @@ function pointerMove(
   handle.setGhost(moveDragGhost(state, world, handle.snap))
   // The readout measures from the grab origin to the snapped point, so the chip shows
   // the snapped displacement the ghost and the commit use, not the raw cursor distance.
-  const snappedPointer = snappedMovePointer(state, world, handle.snap)
+  const snappedPointer = moveDragReadoutPoint(state, world, handle.snap)
   handle.setReadout(moveDragReadout(state, snappedPointer, deps.preferences))
   return true
 }
