@@ -29,7 +29,7 @@ The finishes system sits on a paint foundation that several prior slices already
   reads it.
 - The treatment union has two built variants today: `{ kind: 'solid'; color; finishId }` and
   `{ kind: 'pattern'; patternId; scale; colors }`. A third variant, `{ kind: 'tiled-image';
-  assetRef; repeatMm; rotationDeg }`, is reserved in ADR-0056 and is not built yet.
+assetRef; repeatMm; rotationDeg }`, is reserved in ADR-0056 and is not built yet.
 - 2D rendering of paint on the plan (a color band along a wall face, a floor fill) and 3D
   rendering through a material provider (`engine/materials/paint-material-provider.ts`) that
   keys a material by surface and reads `resolveSurfacePaint` (ADR-0067).
