@@ -108,4 +108,40 @@ describe('walk interaction', () => {
 
     expect(isOpeningOpen(result, DOOR_ID)).toBe(false)
   })
+
+  it('closes an already-open leaf the walker looks at when openness is threaded', () => {
+    const door = frontDoor()
+
+    // frontDoor: hinge `start`, facing `positive`, wall along world X at world
+    // Z = 2000, width 900, height 2032, sill 0.
+    // - SHUT, the leaf lies in the world plane z = 2000.
+    // - At openness 1 the leaf has swung a quarter turn about its hinge jamb to
+    //   stand in the world plane x = 550, centered at {x:550, y:1016, z:1550},
+    //   spanning z in [1100, 2000] and y in [0, 2032].
+    //
+    // A walker standing at {x:200, y:1700, z:1550} looking due +x. With this
+    // codebase's yaw convention (walkLookDirection: x = sin(yaw)cos(pitch),
+    // z = -cos(yaw)cos(pitch)), looking +x is yaw: PI/2, pitch: 0. That ray
+    // crosses the OPEN leaf plane (x=550) at 350mm (within reach) inside the
+    // leaf, but runs exactly PARALLEL to the shut aperture plane (z=2000), so
+    // the shut leaf is missed.
+    const aimedAtSwungLeaf: WalkState = {
+      position: { x: 200, y: 1700, z: 1550 },
+      yaw: Math.PI / 2,
+      pitch: 0,
+    }
+
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    expect(isOpeningOpen(open, DOOR_ID)).toBe(true)
+
+    // With the leaf's openness threaded, the ray tests the swung leaf at x=550,
+    // hits it, and toggles the open door shut.
+    const closed = interactFromWalk(aimedAtSwungLeaf, [door], open, new Map([[DOOR_ID, 1]]))
+    expect(isOpeningOpen(closed, DOOR_ID)).toBe(false)
+
+    // Without openness, the ray only tests the shut aperture plane (z=2000),
+    // which it runs parallel to, so it misses the swung leaf and toggles nothing.
+    const stillOpen = interactFromWalk(aimedAtSwungLeaf, [door], open)
+    expect(isOpeningOpen(stillOpen, DOOR_ID)).toBe(true)
+  })
 })
