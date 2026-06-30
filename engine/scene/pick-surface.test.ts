@@ -36,7 +36,8 @@ describe('pickSurface', () => {
     const root = buildScene(graph)
     root.updateMatrixWorld(true)
     const raycaster = new THREE.Raycaster()
-    raycaster.set(new THREE.Vector3(1000, 5000, 1000), new THREE.Vector3(0, -1, 0))
+    // The slab sits at world z in [-2000, 0] (plan y maps to world -z), so aim down at z = -1000.
+    raycaster.set(new THREE.Vector3(1000, 5000, -1000), new THREE.Vector3(0, -1, 0))
     expect(pickSurface(raycaster, root)).toEqual({ kind: 'floor', floorId: 'g' })
   })
 
@@ -54,8 +55,9 @@ describe('pickSurfaceAt', () => {
     const root = buildScene(graph)
     root.updateMatrixWorld(true)
     const camera = new THREE.PerspectiveCamera(50, 1, 1, 100000)
-    camera.position.set(1000, 5000, 1000)
-    camera.lookAt(1000, 0, 1000)
+    // The floor center is at world z = -1000 (plan y maps to world -z).
+    camera.position.set(1000, 5000, -1000)
+    camera.lookAt(1000, 0, -1000)
     camera.updateMatrixWorld(true)
     const raycaster = new THREE.Raycaster()
     expect(pickSurfaceAt({ raycaster, camera, root, ndc: { x: 0, y: 0 } })).toEqual({

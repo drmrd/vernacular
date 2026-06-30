@@ -73,10 +73,10 @@ describe('buildJunctionFill', () => {
     expect(baseVertices.every((v) => v.y === FLOOR_DATUM_Y)).toBe(true)
 
     // Every plan corner maps onto the top cap through planToWorld(point, h) =
-    // { x: point.x, y: h, z: point.y }: plan x -> world X, plan y -> world Z.
+    // { x: point.x, y: h, z: -point.y }: plan x -> world X, plan y -> world -Z.
     for (const corner of CORE_TRIANGLE) {
       const present = topVertices.some(
-        (v) => Math.abs(v.x - corner.x) < TOLERANCE && Math.abs(v.z - corner.y) < TOLERANCE,
+        (v) => Math.abs(v.x - corner.x) < TOLERANCE && Math.abs(v.z + corner.y) < TOLERANCE,
       )
       expect(present).toBe(true)
     }
