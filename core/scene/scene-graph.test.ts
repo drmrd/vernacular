@@ -121,9 +121,7 @@ describe('deriveSceneGraph walls', () => {
       thickness: 120,
       constructionProfile: 'solid-masonry-brick',
     } as Wall
-    expect(
-      (deriveWallNode(floor, wall) as { constructionProfile?: string }).constructionProfile,
-    ).toBe('solid-masonry-brick')
+    expect(deriveWallNode(floor, wall).constructionProfile).toBe('solid-masonry-brick')
   })
 
   it('omits constructionProfile on the node when the wall has none', () => {
