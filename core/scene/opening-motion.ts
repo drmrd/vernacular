@@ -20,9 +20,9 @@ export interface HingeMotion {
   axis: Vector3
   /** Signed swing angle (radians) at full openness. */
   openAngle: number
-  /** The representative part this wave animates. */
+  /** The part this motion drives (the representative moving leaf or sash). */
   partId: string
-  /** How many parts the full motion moves (wave two moves them all). */
+  /** How many parts move together in the full opening; a double has two. */
   partCount: number
 }
 
@@ -36,9 +36,9 @@ export interface SlideMotion {
   axis: SlideAxis
   /** World translation applied at full openness. */
   travel: Vector3
-  /** The representative part this wave animates. */
+  /** The part this motion drives (the representative moving leaf or sash). */
   partId: string
-  /** How many parts the full motion moves (wave two moves them all). */
+  /** How many parts move together in the full opening; a double has two. */
   partCount: number
 }
 
@@ -54,7 +54,7 @@ export type OpeningMotion = HingeMotion | SlideMotion | NoMotion
 const QUARTER_TURN_RAD = Math.PI / 2
 // Openings hinged on a jamb turn about the vertical (world Y) axis.
 const WORLD_UP: Vector3 = { x: 0, y: 1, z: 0 }
-// Wave one animates a single representative part; wave two names and moves them all.
+// The motion drives one representative part; partCount records how many move together.
 const REPRESENTATIVE_PART = 'primary'
 const SINGLE_PART = 1
 const PAIRED_PARTS = 2
@@ -71,8 +71,8 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
   switch (params?.family) {
     case 'swing':
       return jambHinge(opening, partCountOf(params))
-    // Wave one approximates a fold or pivot with a jamb hinge so the door still
-    // reads as opening; wave two replaces these with their own motions.
+    // Fold and pivot openings reuse the jamb-hinge swing so the door still reads as
+    // opening; their own motions are tracked separately.
     case 'fold':
     case 'pivot':
       return jambHinge(opening, SINGLE_PART)
@@ -134,7 +134,7 @@ function crankHinge(opening: OpeningSceneNode, edge: HingeEdge | undefined): Hin
  * A hinge about a horizontal axis running along the wall, at the opening head or
  * sill. The free edge cranks toward the opening's facing side.
  */
-function horizontalHinge(opening: OpeningSceneNode, edge: 'head' | 'sill'): HingeMotion {
+function horizontalHinge(opening: OpeningSceneNode, edge: Exclude<HingeEdge, 'jamb'>): HingeMotion {
   const height = edge === 'head' ? opening.sillHeight + opening.height : opening.sillHeight
   const pivot = planToWorld({ x: opening.center.x, y: opening.center.y }, height)
   const facingSign = opening.orientation.facing === 'negative' ? -1 : 1
