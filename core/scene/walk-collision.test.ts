@@ -179,3 +179,39 @@ describe('wallSegmentsForWalk', () => {
     expect(passable[1]?.end).toEqual({ x: 1000, z: 0 })
   })
 })
+
+describe('wall-thickness standoff', () => {
+  // A real wall is a solid slab, not a centerline. resolveWalkCollision pushes
+  // the walker out of a segment, and that standoff must clear the wall FACE, not
+  // the centerline. The near face sits half the wall's thickness off the
+  // centerline, so a segment carrying `thickness: T` widens the standoff from
+  // `radius` to `radius + T / 2`. Treating the wall as zero-thickness (today's
+  // behavior) leaves the walker standing half-buried in the slab.
+  it('pushes the walker clear of the wall face at radius plus half the thickness', () => {
+    const thickWall: WallSegment = {
+      start: { x: -1000, z: 0 },
+      end: { x: 1000, z: 0 },
+      thickness: 200,
+    }
+
+    const resolved = resolveWalkCollision({ x: 0, z: -100 }, [thickWall], radius)
+
+    // The 200mm-thick wall's face is 100mm off its centerline, so a straight-in
+    // step is pushed to radius + 100 = 400 from the centerline (not the old
+    // centerline-only 300), with no sideways drift.
+    expect(resolved.x).toBeCloseTo(0, 5)
+    expect(resolved.z).toBeCloseTo(-(radius + 200 / 2), 5)
+  })
+
+  // Real walls must carry their own thickness into the collision segments so the
+  // face-clearing standoff applies end to end. (Furniture footprints are exact
+  // boundaries whose perimeter IS the solid edge, so those segments leave
+  // `thickness` unset and keep the plain `radius` standoff.)
+  it('propagates each wall node thickness onto its collision segment', () => {
+    const segments = wallSegmentsForWalk([wallNode()], [])
+
+    // wallNode() is 100mm thick, so its derived segment carries thickness 100;
+    // without this the standoff would ignore the wall's real solid width.
+    expect(segments[0]?.thickness).toBe(100)
+  })
+})
