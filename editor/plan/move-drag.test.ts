@@ -78,7 +78,14 @@ describe('endMoveDrag', () => {
   it('returns to idle and emits a translate command for the pointer delta', () => {
     const dragging = beginMoveDrag(ORIGIN, SEGMENTS)
 
-    const result = endMoveDrag(dragging, { x: 130, y: 100 }, FLOOR_ID, ENTITY_IDS)
+    const result = endMoveDrag(
+      dragging,
+      { x: 130, y: 100 },
+      {
+        floorId: FLOOR_ID,
+        entityIds: ENTITY_IDS,
+      },
+    )
 
     expect(result.state.phase).toBe('idle')
     expect(result.command?.type).toBe(TRANSLATE_ENTITIES)
@@ -92,7 +99,7 @@ describe('endMoveDrag', () => {
   it('returns to idle without a command when the drag has zero delta', () => {
     const dragging = beginMoveDrag(ORIGIN, SEGMENTS)
 
-    const result = endMoveDrag(dragging, ORIGIN, FLOOR_ID, ENTITY_IDS)
+    const result = endMoveDrag(dragging, ORIGIN, { floorId: FLOOR_ID, entityIds: ENTITY_IDS })
 
     expect(result.state.phase).toBe('idle')
     expect(result.command).toBeUndefined()
@@ -102,7 +109,15 @@ describe('endMoveDrag', () => {
     const dragging = beginMoveDrag(ORIGIN, SEGMENTS)
 
     // Raw delta {30,0} → proposed anchor {30,0} snaps to {50,0} → effective delta {50,0}.
-    const result = endMoveDrag(dragging, { x: 130, y: 100 }, FLOOR_ID, ENTITY_IDS, snapToFifties)
+    const result = endMoveDrag(
+      dragging,
+      { x: 130, y: 100 },
+      {
+        floorId: FLOOR_ID,
+        entityIds: ENTITY_IDS,
+        snap: snapToFifties,
+      },
+    )
 
     expect(result.command?.type).toBe(TRANSLATE_ENTITIES)
     expect(result.command?.params).toEqual({

@@ -22,6 +22,13 @@ export interface MoveDragResult {
   command?: Command<TranslateEntitiesParams>
 }
 
+/** What a committed move needs: the target floor, the moved entities, and the optional snap resolver. */
+export interface MoveDragCommit {
+  floorId: string
+  entityIds: readonly string[]
+  snap?: (point: Point) => Point
+}
+
 function dragDelta(origin: Point, pointer: Point): Point {
   return { x: pointer.x - origin.x, y: pointer.y - origin.y }
 }
@@ -71,16 +78,16 @@ export function moveDragReadout(
   return dragReadout(state.origin, pointer, preferences)
 }
 
-// eslint-disable-next-line max-params -- the drag state, the release point, the target floor, the selected ids, and the optional snap resolver are the minimal inputs to commit a move
 export function endMoveDrag(
   state: MoveDragState,
   pointer: Point,
-  floorId: string,
-  entityIds: readonly string[],
-  snap?: (point: Point) => Point,
+  commit: MoveDragCommit,
 ): MoveDragResult {
   if (state.phase !== 'dragging') return { state: IDLE_MOVE_DRAG }
-  const delta = snappedDragDelta(state, pointer, snap)
+  const delta = snappedDragDelta(state, pointer, commit.snap)
   if (delta.x === 0 && delta.y === 0) return { state: IDLE_MOVE_DRAG }
-  return { state: IDLE_MOVE_DRAG, command: translateEntities(floorId, [...entityIds], delta) }
+  return {
+    state: IDLE_MOVE_DRAG,
+    command: translateEntities(commit.floorId, [...commit.entityIds], delta),
+  }
 }
