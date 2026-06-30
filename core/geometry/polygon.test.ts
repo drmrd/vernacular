@@ -162,4 +162,26 @@ describe('outsetPolygon', () => {
       { x: -50, y: 700 },
     ])
   })
+
+  it('snaps corners to exact coordinates when one edge is outset and the rest are shared', () => {
+    // ADR-0129 shared-edge case: one perimeter edge takes a nonzero half-thickness
+    // outward offset while the three shared edges keep a zero outward offset. The
+    // shifted-line intersection must land on the exact corner, free of sub-tolerance
+    // IEEE-754 noise, so abutting room slabs meet on identical coordinates.
+    const square: Point[] = [
+      { x: 0, y: 0 },
+      { x: 3000, y: 0 },
+      { x: 3000, y: 3000 },
+      { x: 0, y: 3000 },
+    ]
+
+    const outset = outsetPolygon(square, [100, 0, 0, 0])
+
+    expect(outset).toEqual([
+      { x: 0, y: -100 },
+      { x: 3000, y: -100 },
+      { x: 3000, y: 3000 },
+      { x: 0, y: 3000 },
+    ])
+  })
 })
