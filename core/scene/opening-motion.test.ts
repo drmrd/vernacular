@@ -113,6 +113,39 @@ describe('openingMotion windows', () => {
     expect(motion.travel).toEqual({ x: 900, y: 0, z: 0 })
     expect(motion.partCount).toBe(1)
   })
+
+  it('cranks a casement window on its jamb', () => {
+    const motion = openingMotion('casement-window', openingNode('casement-window'))
+
+    expect(motion.kind).toBe('hinge')
+    if (motion.kind !== 'hinge') return
+    expect(motion.edge).toBe('jamb')
+    expect(motion.pivot).toEqual({ x: -450, y: 0, z: 0 })
+    expect(motion.axis).toEqual({ x: 0, y: 1, z: 0 })
+  })
+
+  it('cranks an awning window on its head about the along-wall axis', () => {
+    const motion = openingMotion('awning-window', openingNode('awning-window'))
+
+    expect(motion.kind).toBe('hinge')
+    if (motion.kind !== 'hinge') return
+    expect(motion.edge).toBe('head')
+    // Pivot at the opening head (top), on the wall centerline.
+    expect(motion.pivot).toEqual({ x: 0, y: 2000, z: 0 })
+    // Horizontal axis running along the wall.
+    expect(motion.axis).toEqual({ x: 1, y: 0, z: 0 })
+  })
+
+  it('cranks a hopper window on its sill about the along-wall axis', () => {
+    const motion = openingMotion('hopper-window', openingNode('hopper-window'))
+
+    expect(motion.kind).toBe('hinge')
+    if (motion.kind !== 'hinge') return
+    expect(motion.edge).toBe('sill')
+    // Pivot at the opening sill (bottom), on the wall centerline.
+    expect(motion.pivot).toEqual({ x: 0, y: 0, z: 0 })
+    expect(motion.axis).toEqual({ x: 1, y: 0, z: 0 })
+  })
 })
 
 describe('openingMotion fold and pivot fallback', () => {
