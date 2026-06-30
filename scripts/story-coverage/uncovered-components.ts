@@ -56,6 +56,12 @@ export const UNCOVERED_COMPONENTS: {
       'requires a live R3F Canvas to load and report furniture model signals; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'NearWallFade',
+    file: 'bridge/react/near-wall-fade.tsx',
+    reason:
+      'reads the live camera each frame through useFrame to fade the prepared exterior walls and renders no DOM (it returns null); it requires a live R3F Canvas and a Three.js camera, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'OrbitCameraControls',
     file: 'bridge/react/orbit-camera-controls.tsx',
     reason:
