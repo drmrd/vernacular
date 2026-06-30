@@ -118,7 +118,8 @@ export function resolveWalkCollision(
  * so a wall lying between the two endpoints always stops the walker on the near
  * side at the radius standoff. When the move is already within one radius it
  * reduces to a single resolveWalkCollision(to). Returns the final resolved
- * position; never mutates its inputs.
+ * position; never mutates its inputs. See ADR-0135 for why the sweep
+ * sub-steps rather than solving the contact analytically.
  */
 export function sweepWalkCollision(
   from: PlanarPoint,
