@@ -184,13 +184,24 @@ export function prepareNearWallTransparency(
 /**
  * Fades each target's materials when the camera looks at the wall from outside,
  * and restores full opacity otherwise.
+ *
+ * When `options.enabled` is false the fade is gated off: every material is forced
+ * back to its captured baseline regardless of camera position, so a previously
+ * faded wall is restored and a wall the camera currently faces from outside is held
+ * opaque (the camera-facing test is skipped). Callers disable the gate when the view
+ * leaves orbit mode, for example while walking on the floor inside the building,
+ * where fading the surrounding walls would be wrong (#256, builds on ADR-0086).
+ * The gate defaults to enabled when `options` or `options.enabled` is omitted.
  */
 export function updateNearWallTransparency(
   targets: NearWallTarget[],
   cameraPosition: WorldXZ,
+  options?: { enabled?: boolean },
 ): void {
+  const enabled = options?.enabled ?? true
   for (const target of targets) {
-    const faded = cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
+    const faded =
+      enabled && cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
     for (const { material, baseline, holdOpaque } of target.materials) {
       const fade = faded && holdOpaque !== true
       material.transparent = fade ? true : baseline.transparent
