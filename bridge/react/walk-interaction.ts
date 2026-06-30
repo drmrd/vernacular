@@ -8,7 +8,7 @@ import {
   type OpeningSceneNode,
   type WalkState,
 } from '../../core'
-import { applyOpeningSwing, type SceneRoot } from '../../engine'
+import { applyOpeningMotionForNode, type SceneRoot } from '../../engine'
 
 /**
  * The "use" action: casts a short ray from the walker's eye and toggles the
@@ -25,7 +25,7 @@ export function interactFromWalk(
   return targetId === null ? interaction : toggleOpening(interaction, targetId)
 }
 
-/** The per-frame inputs that drive the opening swing animation. */
+/** The per-frame inputs that drive the opening motion animation. */
 export interface OpeningTick {
   root: SceneRoot
   openings: readonly OpeningSceneNode[]
@@ -39,9 +39,10 @@ const OPEN = 1
 const SHUT = 0
 
 /**
- * Advances every opening one timestep toward its open or closed target and swings
- * its fill group to match. An opening already at rest on its target is skipped, so
- * the swing runs only while a door or window is in motion.
+ * Advances every opening one timestep toward its open or closed target and moves
+ * its fill group to match, playing the motion its type resolves to. An opening
+ * already at rest on its target is skipped, so the motion runs only while a door
+ * or window is in motion.
  */
 export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
   for (const node of tick.openings) {
@@ -50,6 +51,6 @@ export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
     if (current === target) continue
     const next = advanceOpenness(current, target, dtSeconds)
     tick.openness.set(node.id, next)
-    applyOpeningSwing(tick.root, node, next)
+    applyOpeningMotionForNode(tick.root, node, next)
   }
 }
