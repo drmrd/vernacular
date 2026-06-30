@@ -71,6 +71,11 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
   switch (params?.family) {
     case 'swing':
       return jambHinge(opening, partCountOf(params))
+    // Wave one approximates a fold or pivot with a jamb hinge so the door still
+    // reads as opening; wave two replaces these with their own motions.
+    case 'fold':
+    case 'pivot':
+      return jambHinge(opening, SINGLE_PART)
     case 'slide':
       return alongWallSlide(opening, partCountOf(params))
     default:
