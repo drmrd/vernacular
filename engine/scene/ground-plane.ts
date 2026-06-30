@@ -3,13 +3,15 @@ import * as THREE from 'three'
 import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
 
 /**
- * Grade (ground-surface) elevation in millimeters: the vertical datum the ground
- * plane sits at. The model carries no explicit grade field today. It treats a
- * finished-floor elevation of 0 as the ground datum, placing above-grade floors at
- * positive elevations and basements at negative ones (core/model/floor-placement.ts,
- * and the underground filter in the building view, ADR-0127). The ground plane sits
- * at that same datum, so a partly buried basement's foundation rises through it. See
- * ADR-0131; an explicit grade/exposure model field is a recommended follow-up.
+ * Engine-side default grade datum in millimeters. Used when `addGroundPlane` is
+ * called without an explicit elevation (the parameter default). In normal
+ * `buildScene` use the grade flows from `Site.gradeElevation` through
+ * `deriveSceneGraph` to `SceneGraph.gradeElevation` and is forwarded here, so
+ * this constant acts only as the fallback for plans that predate the field or
+ * hand-built graphs that omit it. The zero datum treats a finished-floor
+ * elevation of 0 as grade, with above-grade floors at positive elevations and
+ * basements at negative ones. See ADR-0131 (original datum decision) and
+ * ADR-0138 (explicit grade elevation field).
  */
 export const GRADE_ELEVATION_MM = 0
 
