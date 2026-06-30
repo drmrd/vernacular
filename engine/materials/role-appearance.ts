@@ -51,11 +51,15 @@ export function slabTopDepthBiasParameters(): THREE.MeshStandardMaterialParamete
  * finished floor draws over the grass where the two coplanar faces meet. Both fields stay strictly
  * greater than the slab top's so the ground plane always loses to the floor it sits beneath.
  */
-export const GROUND_PLANE_DEPTH_BIAS = { factor: 2, units: 2 } as const
+export const GROUND_PLANE_DEPTH_BIAS = {
+  factor: SLAB_TOP_DEPTH_BIAS.factor + 1,
+  units: SLAB_TOP_DEPTH_BIAS.units + 1,
+} as const
 
 /**
  * The polygon-offset fields that push the ground plane back in depth (see GROUND_PLANE_DEPTH_BIAS),
- * mirroring slabTopDepthBiasParameters so the convention lives in one place per surface.
+ * mirroring slabTopDepthBiasParameters so the convention lives in one place rather than diverging
+ * per material path.
  */
 export function groundPlaneDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
   return {
