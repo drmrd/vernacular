@@ -47,7 +47,12 @@ export function SiteEditor({ site, dispatch }: SiteEditorProps) {
     (site.northBearing ?? 0) / RADIANS_PER_DEGREE,
   )
 
-  const commitLocation = commitOnEnter(() => dispatch(setSiteLocation({ latitude, longitude })))
+  const commitLocation = commitOnEnter(() => {
+    // A cleared number input reads back as NaN; never commit that as a coordinate.
+    if (!Number.isNaN(latitude) && !Number.isNaN(longitude)) {
+      dispatch(setSiteLocation({ latitude, longitude }))
+    }
+  })
   const commitBearing = commitOnEnter(() => {
     // A cleared number input reads back as NaN; never commit that as a bearing.
     if (Number.isNaN(bearingDegrees)) {
