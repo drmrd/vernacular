@@ -71,6 +71,12 @@ export interface Wall {
   end: Point
   /** Wall thickness in millimeters. */
   thickness: number
+  /**
+   * References an entry in the ConstructionProfileRegistry. Validated at the
+   * registry boundary, not by this alias. Absent preserves the single-`thickness`
+   * footprint; present resolves to the assembly's total thickness.
+   */
+  constructionProfile?: string
   /** Third-party extension data; see {@link Extensions}. */
   extensions?: Extensions
 }

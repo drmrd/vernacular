@@ -9,6 +9,7 @@ import { addRoomOverridesMigration } from './add-room-overrides'
 import { addStairsMigration } from './add-stairs'
 import { addSurfaceTreatmentMigration } from './add-surface-treatment'
 import { addUnderlayKindMigration } from './add-underlay-kind'
+import { addWallConstructionProfileMigration } from './add-wall-construction-profile'
 
 export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addRoomOverridesMigration,
@@ -21,4 +22,5 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addSurfaceTreatmentMigration,
   addFloorFurnitureMigration,
   addFurnitureHeightMigration,
+  addWallConstructionProfileMigration,
 ]
