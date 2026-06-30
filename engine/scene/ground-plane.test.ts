@@ -16,6 +16,9 @@ const FOOTPRINT_WIDTH_MM = 4000
 const FOOTPRINT_DEPTH_MM = 3000
 const FOOTPRINT_HEIGHT_MM = 2400
 
+// A non-zero grade the ground plane must honor, distinct from the 0 datum.
+const SUPPLIED_GRADE_MM = 1500
+
 const BASEMENT_ELEVATION_MM = -2400
 const FOUNDATION_WALL_HEIGHT_MM = 2700
 
@@ -56,6 +59,20 @@ describe('addGroundPlane', () => {
     const material = (ground as THREE.Mesh).material as THREE.MeshStandardMaterial
     expect(material.color.g).toBeGreaterThan(material.color.r)
     expect(material.color.g).toBeGreaterThan(material.color.b)
+  })
+
+  it('seats the ground plane at the supplied grade elevation', () => {
+    const root = new THREE.Group()
+
+    addGroundPlane(root, SUPPLIED_GRADE_MM)
+
+    const ground = root.children.find(isGroundPlane)
+    expect(ground).toBeDefined()
+    if (!ground) return
+    const box = worldBox(root, ground)
+    // The flat plane sits on the supplied grade, not the 0 datum.
+    expect(box.min.y).toBeCloseTo(SUPPLIED_GRADE_MM)
+    expect(box.max.y).toBeCloseTo(SUPPLIED_GRADE_MM)
   })
 })
 
