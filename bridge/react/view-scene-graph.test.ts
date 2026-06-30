@@ -46,6 +46,21 @@ function stack(...floors: SceneGraph[]): SceneGraph {
   }
 }
 
+// A scene graph with every entity collection empty, for fixtures that only need a
+// grade datum and a couple of floor nodes.
+function emptyGraph(): SceneGraph {
+  return {
+    nodes: [],
+    walls: [],
+    rooms: [],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
 describe('sceneGraphForBuilding', () => {
   it('keeps every floor and its walls so the whole building renders as one model', () => {
     const graph = stack(floorWithWall('ground', 0), floorWithWall('upper', STOREY_RISE_MM))
@@ -73,6 +88,27 @@ describe('sceneGraphForBuilding', () => {
       `${FLOOR_NODE_PREFIX}upper`,
     ])
     expect(building.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
+  })
+
+  it('hides only floors below the model grade datum', () => {
+    const graph: SceneGraph = {
+      ...emptyGraph(),
+      gradeElevation: -600,
+      nodes: [
+        { id: 'floor:above', kind: 'floor', name: 'Raised', elevation: -400 },
+        { id: 'floor:below', kind: 'floor', name: 'Cellar', elevation: -800 },
+      ],
+    }
+
+    const projected = sceneGraphForBuilding(graph, { includeUnderground: false })
+
+    expect(projected.nodes.map((node) => node.id)).toEqual(['floor:above'])
+  })
+
+  it('forwards the grade elevation onto the projected building graph', () => {
+    const graph: SceneGraph = { ...emptyGraph(), gradeElevation: -600 }
+
+    expect(sceneGraphForBuilding(graph, { includeUnderground: false }).gradeElevation).toBe(-600)
   })
 })
 

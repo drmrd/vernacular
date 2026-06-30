@@ -6,6 +6,7 @@ import {
   createWall,
 } from '../model/factories'
 import type { Floor, Project } from '../model/types'
+import type { SceneGraph } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
 import { sceneGraphForFloor } from './scene-graph-for-floor'
 
@@ -40,6 +41,21 @@ function floorWithFurniture(name: string, id: string, instanceId: string): Floor
         footprint: { width: 1000, depth: 600 },
       }),
     ],
+  }
+}
+
+// A scene graph with every entity collection empty, for fixtures that only need a
+// grade datum and a single floor node.
+function emptyGraph(): SceneGraph {
+  return {
+    nodes: [],
+    walls: [],
+    rooms: [],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
   }
 }
 
@@ -118,6 +134,16 @@ describe('sceneGraphForFloor', () => {
     const nodeIds = narrowed.nodes.map((node) => node.id)
     expect(nodeIds).toContain('floor:a')
     expect(nodeIds).not.toContain('floor:b')
+  })
+
+  it('preserves the grade elevation when narrowing to a floor', () => {
+    const graph: SceneGraph = {
+      ...emptyGraph(),
+      gradeElevation: -600,
+      nodes: [{ id: 'floor:a', kind: 'floor', name: 'A', elevation: 0 }],
+    }
+
+    expect(sceneGraphForFloor(graph, 'a').gradeElevation).toBe(-600)
   })
 
   it('returns an empty graph when no floor is active', () => {
