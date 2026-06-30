@@ -199,3 +199,20 @@ export function updateNearWallTransparency(
     }
   }
 }
+
+/**
+ * Forces every target's materials back to their captured solid baseline, ignoring
+ * camera position. Callers use this when the view leaves orbit mode, for example
+ * while walking on the floor inside the building, where fading the surrounding walls
+ * would be wrong: a wall faded from outside snaps back to full opacity (#256,
+ * builds on ADR-0086).
+ */
+export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
+  for (const target of targets) {
+    for (const { material, baseline } of target.materials) {
+      material.transparent = baseline.transparent
+      material.opacity = baseline.opacity
+      material.depthWrite = baseline.depthWrite
+    }
+  }
+}

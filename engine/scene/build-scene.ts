@@ -4,8 +4,9 @@ import { FLOOR_NODE_PREFIX, type SceneGraph, type SceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import type { MaterialProvider } from '../materials/material-provider'
 
-import { addEdgeOverlay } from './edge-overlay'
+import { applyEdgeOverlay, type EdgeOverlayOptions } from './edge-overlay'
 import { buildFurnitureMassing } from './furniture-builder'
+import { addGroundPlane } from './ground-plane'
 import { buildOpeningFill } from './opening-fill-builder'
 import { buildRoomShell } from './room-builder'
 import { buildWalls } from './wall-builder'
@@ -18,17 +19,28 @@ export type SceneRoot = THREE.Group
 export function buildScene(
   graph: SceneGraph,
   materials: MaterialProvider = new NeutralMaterialProvider(),
+  options: EdgeOverlayOptions = {},
 ): SceneRoot {
   const root = new THREE.Group()
   for (const node of graph.nodes) {
     root.add(buildFloorGroup(node, graph, materials))
   }
-  // Draw a dark edge line along every surface so a wall reads against the floor
-  // and its neighbors whatever the lighting and paint are (ADR-0078).
-  addEdgeOverlay(root)
+  // Draw a dark edge line along every surface so a wall reads against the floor and
+  // its neighbors, but only when the view turns the overlay on: it is an opt-in view
+  // toggle, off by default in Orbit (ADR-0078, amended by ADR-0132).
+  applyEdgeOverlay(root, options)
+  // Seat the building on a grass-colored ground plane at grade, so it reads as
+  // sitting on its site and a partly buried basement's foundation rises through
+  // the surface (ADR-0131). Added after the edge overlay so the lawn takes no
+  // hidden-line outline.
+  addGroundPlane(root, graph.gradeElevation)
   return root
 }
 
+// Builds one floor's group from the primitive builders. The edge overlay is not applied
+// here: buildScene adds it once over the whole tree (above). The separate per-sub-group
+// applyEdgeOverlay calls in floor-subgroups.ts serve the reconciler's incremental path,
+// not this one.
 function buildFloorGroup(
   node: SceneNode,
   graph: SceneGraph,

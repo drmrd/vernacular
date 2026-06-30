@@ -15,6 +15,7 @@ import {
   HALF_THICKNESS,
   HEIGHT,
   PRECISION,
+  SOLID_MASONRY_BRICK_SPAN,
   SPLIT_X,
   THICKNESS,
   VOID_HEIGHT,
@@ -27,6 +28,7 @@ import {
   horizontalWall,
   maxAxisOfRole,
   meshesOf,
+  oneEdgeGraph,
   roleArea,
   roleTriangleCount,
   singleWallMesh,
@@ -45,6 +47,41 @@ describe('buildWalls', () => {
     expect(mesh.userData.entityId).toBe('wall:w1')
     expect(materialGroups(mesh.geometry)).toHaveLength(FACE_GROUP_COUNT)
     expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: FULL_THICKNESS_SPAN })
+  })
+
+  it('sizes a wall footprint from its construction profile total thickness', () => {
+    // solid-masonry-brick's total is distinct from the wall's raw 120mm thickness, so
+    // the box's cross-wall (world Z) span bites only when the construction-profile total
+    // drives the footprint.
+    const group = buildWalls({
+      graph: oneEdgeGraph(),
+      walls: [horizontalWall({ constructionProfile: 'solid-masonry-brick' })],
+      openingsByWall: new Map(),
+      materials: new NeutralMaterialProvider(),
+    })
+    const meshes = meshesOf(group)
+    expect(meshes).toHaveLength(1)
+    const mesh = meshes[0]
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: SOLID_MASONRY_BRICK_SPAN })
+  })
+
+  it('sizes an opening wall footprint from its construction profile total thickness', () => {
+    // The opening path places the long faces from the edge frame's thickness. The
+    // footprint already sizes from the solid-masonry-brick total, but the frame must
+    // too, or the faces land at the raw 120mm (cross-wall span [-60, 60]) instead of
+    // the profile's [-115.5, 115.5].
+    const group = buildWalls({
+      graph: oneEdgeGraph(),
+      walls: [horizontalWall({ constructionProfile: 'solid-masonry-brick' })],
+      openingsByWall: new Map([['w1', [centeredOpening()]]]),
+      materials: new NeutralMaterialProvider(),
+    })
+    const mesh = meshesOf(group).find((m) => m.userData.entityId === 'wall:w1')
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: SOLID_MASONRY_BRICK_SPAN })
   })
 
   it('builds one box per edge for a split wall, both carrying the wall node id', () => {

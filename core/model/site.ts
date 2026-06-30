@@ -19,10 +19,28 @@ export interface Obstruction {
   height: number
 }
 
+/**
+ * Ground-surface grade datum, in millimeters, used when a site carries no explicit
+ * grade. Above-grade floors sit at positive elevations and basements at negative
+ * ones relative to this datum (ADR-0131).
+ */
+export const DEFAULT_GRADE_ELEVATION_MM = 0
+
 /** Optional project site metadata (design spec 3.1). */
 export interface Site {
   latLong?: LatLong
   /** Angle from plan-up to true north, in radians (matching UnderlayPlacement.rotation). */
   northBearing?: number
   obstructions?: Obstruction[]
+  /**
+   * Ground-surface elevation in millimeters: the datum the ground plane sits at and
+   * the threshold the whole-building view treats as below grade. Absent means the
+   * 0 datum, decoupling grade from the finished-floor-zero convention only when set.
+   */
+  gradeElevation?: number
+}
+
+/** The site's explicit grade elevation, or the default datum when none is set. */
+export function resolveGradeElevation(site?: Site): number {
+  return site?.gradeElevation ?? DEFAULT_GRADE_ELEVATION_MM
 }

@@ -39,7 +39,7 @@ describe('builtin element types', () => {
         id: 'double-hung-window',
         symbol: 'window-fixed',
         opening: {
-          family: 'window-fixed',
+          family: 'window-hung',
           defaultWidth: 900,
           defaultHeight: 1200,
           defaultSillHeight: 900,
@@ -48,7 +48,7 @@ describe('builtin element types', () => {
       {
         id: 'casement-window',
         symbol: 'window-crank',
-        opening: { family: 'window-crank' },
+        opening: { family: 'window-crank', hingeEdge: 'jamb' },
       },
     ] as const
 
@@ -59,7 +59,7 @@ describe('builtin element types', () => {
       expect(entry?.opening).toMatchObject(expected.opening)
     }
 
-    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(5)
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(6)
   })
 
   it('marks every conventional opening element type with a rectangular void contour', () => {
@@ -116,6 +116,46 @@ describe('builtin element types', () => {
     const stair = getEntry(builtinElementTypes, 'straight-stair')
     expect(stair?.category).toBe('stair')
     expect(stair?.scene3D.voidContour).toBeUndefined()
+  })
+})
+
+describe('operable window families', () => {
+  it('splits the hung and sliding windows into their own motion families', () => {
+    const families: ReadonlyArray<readonly [string, string]> = [
+      ['double-hung-window', 'window-hung'],
+      ['single-hung-window', 'window-hung'],
+      ['sliding-window', 'window-slide'],
+    ]
+    for (const [id, family] of families) {
+      expect(getEntry(builtinElementTypes, id)?.opening?.family).toBe(family)
+    }
+  })
+
+  it('tags each crank window with its hinge edge', () => {
+    const hingeEdges: ReadonlyArray<readonly [string, string]> = [
+      ['casement-window', 'jamb'],
+      ['awning-window', 'head'],
+      ['hopper-window', 'sill'],
+    ]
+    for (const [id, hingeEdge] of hingeEdges) {
+      const entry = getEntry(builtinElementTypes, id)
+      expect(entry?.opening?.family).toBe('window-crank')
+      expect(entry?.opening?.hingeEdge).toBe(hingeEdge)
+    }
+  })
+
+  it('keeps the truly fixed windows in the window-fixed family', () => {
+    const fixed = [
+      'picture-window',
+      'transom-window',
+      'sidelight-window',
+      'arched-window',
+      'round-top-window',
+      'lancet-window',
+    ]
+    for (const id of fixed) {
+      expect(getEntry(builtinElementTypes, id)?.opening?.family).toBe('window-fixed')
+    }
   })
 })
 

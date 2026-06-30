@@ -4,6 +4,7 @@ import { buildScene } from './build-scene'
 import {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
+  restoreNearWallTransparency,
   updateNearWallTransparency,
   type NearWallTarget,
 } from './near-wall-transparency'
@@ -300,6 +301,31 @@ describe('updateNearWallTransparency', () => {
     }
     for (const material of wallMaterials(root, 'wall:top')) {
       expect(material.opacity).toBe(OPAQUE)
+    }
+  })
+
+  it('restores a faded wall to its opaque baseline (walk-mode gate)', () => {
+    const graph = rectangularRoomGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+
+    // Camera well to the negative-Z side: outside the bottom wall (world z=0,
+    // outward normal world (0,0,-1)). This is the camera position that fades the
+    // bottom wall.
+    const outsideBottomWall = { x: 2000, z: -3000 }
+
+    // Fade the bottom wall the normal way first, so the restore has a faded
+    // material to clear rather than one that happened to be solid all along.
+    updateNearWallTransparency(targets, outsideBottomWall)
+
+    // Leaving orbit (walk mode) restores every material to its captured solid
+    // baseline regardless of facing: transparent false, full opacity, depth writes on.
+    restoreNearWallTransparency(targets)
+
+    for (const material of wallMaterials(root, 'wall:bottom')) {
+      expect(material.opacity).toBe(OPAQUE)
+      expect(material.transparent).toBe(false)
+      expect(material.depthWrite).toBe(true)
     }
   })
 

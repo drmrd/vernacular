@@ -4,6 +4,7 @@ import {
   WALL_NODE_PREFIX,
   distance,
   dot,
+  effectiveWallThickness,
   junctionFills,
   openingVoidContour,
   planToWorld,
@@ -51,9 +52,10 @@ export interface WallBuildInput {
 export function buildWalls(input: WallBuildInput): THREE.Group {
   const group = new THREE.Group()
   const wallsByModelId = indexWallsByModelId(input.walls)
-  const thicknessByEdge = input.graph.edges.map(
-    (edge) => wallsByModelId.get(edge.wallId)?.thickness ?? 0,
-  )
+  const thicknessByEdge = input.graph.edges.map((edge) => {
+    const node = wallsByModelId.get(edge.wallId)
+    return node === undefined ? 0 : effectiveWallThickness(node)
+  })
   const footprints = wallFootprints(input.graph, thicknessByEdge)
   input.graph.edges.forEach((edge, index) => {
     const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
@@ -137,9 +139,10 @@ function indexWallsByModelId(walls: WallSceneNode[]): Map<string, WallSceneNode>
 
 /**
  * Synthesizes the {@link WallSceneNode} for one graph edge: the edge's segment
- * carrying its host wall's id, thickness, and height, so {@link buildWallPrism}
- * builds the prism from the edge's footprint. Returns null when the host wall node
- * or either endpoint is missing (guarding `noUncheckedIndexedAccess`).
+ * carrying its host wall's id, thickness, height, and construction profile, so
+ * {@link buildWallPrism} builds the prism from the edge's footprint. Returns null
+ * when the host wall node or either endpoint is missing (guarding
+ * `noUncheckedIndexedAccess`).
  */
 function edgeWallNode(
   edge: GraphEdge,
@@ -158,6 +161,9 @@ function edgeWallNode(
     end: b,
     thickness: wall.thickness,
     ...(wall.height !== undefined ? { height: wall.height } : {}),
+    ...(wall.constructionProfile !== undefined
+      ? { constructionProfile: wall.constructionProfile }
+      : {}),
   }
 }
 
@@ -193,7 +199,7 @@ function edgeFrame(a: Point, b: Point, target: OpeningWall): EdgeFrame {
     normal: { x: -along.y, y: along.x },
     length,
     height: wallHeight(target.wall),
-    thickness: target.wall.thickness,
+    thickness: effectiveWallThickness(target.wall),
     footprint: target.footprint,
   }
 }

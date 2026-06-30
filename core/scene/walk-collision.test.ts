@@ -4,6 +4,7 @@ import {
   furnitureSegmentsForWalk,
   passableDoorIds,
   resolveWalkCollision,
+  sweepWalkCollision,
   wallSegmentsForWalk,
   type WallSegment,
 } from './walk-collision'
@@ -93,6 +94,29 @@ describe('resolveWalkCollision', () => {
   })
 })
 
+describe('sweepWalkCollision', () => {
+  it('stops a fast straight-across move on the near side instead of tunneling through the wall', () => {
+    // A single frame proposes a move from one side of the wall to the other.
+    // The walker starts clear on the -z side (farther than the radius) and the
+    // proposed end point is clear on the far +z side.
+    const from = { x: 0, z: -500 }
+    const to = { x: 0, z: 500 }
+
+    // A discrete resolve only inspects the proposed end point. Because that end
+    // point is clear on the far side, resolveWalkCollision leaves the walker
+    // there, having silently tunneled straight through the wall.
+    const tunneled = resolveWalkCollision(to, [wallAlongX], radius)
+    expect(tunneled.z).toBeCloseTo(500, 5)
+
+    // The swept resolver inspects the whole path, so the wall lying between the
+    // endpoints stops the walker on the near (-z) side at the radius standoff
+    // rather than letting it cross.
+    const result = sweepWalkCollision(from, to, { segments: [wallAlongX], radius })
+    expect(result.x).toBeCloseTo(0, 5)
+    expect(result.z).toBeCloseTo(-radius, 5)
+  })
+})
+
 describe('furnitureSegmentsForWalk', () => {
   it('returns the four closed-loop perimeter segments of a footprint, mapping plan y to Z', () => {
     const segments = furnitureSegmentsForWalk([furnitureNode()])
@@ -153,5 +177,42 @@ describe('wallSegmentsForWalk', () => {
     expect(passable[0]?.end).toEqual({ x: -400, z: 0 })
     expect(passable[1]?.start).toEqual({ x: 400, z: 0 })
     expect(passable[1]?.end).toEqual({ x: 1000, z: 0 })
+  })
+})
+
+describe('wall-thickness standoff', () => {
+  // A real wall is a solid slab, not a centerline. resolveWalkCollision pushes
+  // the walker out of a segment, and that standoff must clear the wall FACE, not
+  // the centerline. The near face sits half the wall's thickness off the
+  // centerline, so a segment carrying `thickness: T` widens the standoff from
+  // `radius` to `radius + T / 2`. Treating the wall as zero-thickness (today's
+  // behavior) leaves the walker standing half-buried in the slab.
+  it('pushes the walker clear of the wall face at radius plus half the thickness', () => {
+    const wallThickness = 200
+    const thickWall: WallSegment = {
+      start: { x: -1000, z: 0 },
+      end: { x: 1000, z: 0 },
+      thickness: wallThickness,
+    }
+
+    const resolved = resolveWalkCollision({ x: 0, z: -100 }, [thickWall], radius)
+
+    // The 200mm-thick wall's face is 100mm off its centerline, so a straight-in
+    // step is pushed to radius + 100 = 400 from the centerline (not the old
+    // centerline-only 300), with no sideways drift.
+    expect(resolved.x).toBeCloseTo(0, 5)
+    expect(resolved.z).toBeCloseTo(-(radius + wallThickness / 2), 5)
+  })
+
+  // Real walls must carry their own thickness into the collision segments so the
+  // face-clearing standoff applies end to end. (Furniture footprints are exact
+  // boundaries whose perimeter IS the solid edge, so those segments leave
+  // `thickness` unset and keep the plain `radius` standoff.)
+  it('propagates each wall node thickness onto its collision segment', () => {
+    const segments = wallSegmentsForWalk([wallNode()], [])
+
+    // wallNode() is 100mm thick, so its derived segment carries thickness 100;
+    // without this the standoff would ignore the wall's real solid width.
+    expect(segments[0]?.thickness).toBe(100)
   })
 })

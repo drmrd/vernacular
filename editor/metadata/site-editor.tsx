@@ -15,10 +15,16 @@ interface LabeledNumberInputProps {
   label: string
   value: number
   onValueChange: (value: number) => void
-  onCommit: (event: KeyboardEvent<HTMLInputElement>) => void
+  onCommit: () => void
 }
 
 function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNumberInputProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // A cleared number input reads back as NaN; never commit an empty field.
+    if (event.key === 'Enter' && !Number.isNaN(value)) {
+      onCommit()
+    }
+  }
   return (
     <label>
       {label}
@@ -26,18 +32,10 @@ function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNu
         type="number"
         value={value}
         onChange={(event) => onValueChange(event.target.valueAsNumber)}
-        onKeyDown={onCommit}
+        onKeyDown={handleKeyDown}
       />
     </label>
   )
-}
-
-function commitOnEnter(commit: () => void) {
-  return (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      commit()
-    }
-  }
 }
 
 export function SiteEditor({ site, dispatch }: SiteEditorProps) {
@@ -47,14 +45,14 @@ export function SiteEditor({ site, dispatch }: SiteEditorProps) {
     (site.northBearing ?? 0) / RADIANS_PER_DEGREE,
   )
 
-  const commitLocation = commitOnEnter(() => dispatch(setSiteLocation({ latitude, longitude })))
-  const commitBearing = commitOnEnter(() => {
-    // A cleared number input reads back as NaN; never commit that as a bearing.
-    if (Number.isNaN(bearingDegrees)) {
-      return
+  const commitLocation = () => {
+    // Both coordinates dispatch together, so guard the partner field that the
+    // committing input cannot see for itself.
+    if (!Number.isNaN(latitude) && !Number.isNaN(longitude)) {
+      dispatch(setSiteLocation({ latitude, longitude }))
     }
-    dispatch(setSiteNorthBearing(bearingDegrees * RADIANS_PER_DEGREE))
-  })
+  }
+  const commitBearing = () => dispatch(setSiteNorthBearing(bearingDegrees * RADIANS_PER_DEGREE))
 
   return (
     <Stack>

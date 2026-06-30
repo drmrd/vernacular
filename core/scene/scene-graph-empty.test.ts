@@ -1,26 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type {
-  DimensionSceneNode,
-  SceneGraph,
-  UnderlaySceneNode,
-  WallSceneNode,
-} from './scene-graph'
+import type { DimensionSceneNode, UnderlaySceneNode, WallSceneNode } from './scene-graph'
 import { sceneGraphHasGeometry } from './scene-graph-empty'
+import { emptySceneGraph } from './scene-graph-test-fixtures'
 
 const FLOOR_ID = 'g'
-
-function emptyGraph(): SceneGraph {
-  return {
-    nodes: [],
-    walls: [],
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
-}
 
 const wallNode: WallSceneNode = {
   id: 'wall:w1',
@@ -55,13 +38,13 @@ const dimensionNode: DimensionSceneNode = {
 
 describe('sceneGraphHasGeometry', () => {
   it('counts renderable geometry but not underlays or dimensions as having geometry', () => {
-    expect(sceneGraphHasGeometry(emptyGraph())).toBe(false)
+    expect(sceneGraphHasGeometry(emptySceneGraph())).toBe(false)
 
-    expect(sceneGraphHasGeometry({ ...emptyGraph(), walls: [wallNode] })).toBe(true)
+    expect(sceneGraphHasGeometry({ ...emptySceneGraph(), walls: [wallNode] })).toBe(true)
 
     expect(
       sceneGraphHasGeometry({
-        ...emptyGraph(),
+        ...emptySceneGraph(),
         underlays: [underlayNode],
         dimensions: [dimensionNode],
       }),

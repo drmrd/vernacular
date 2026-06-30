@@ -72,6 +72,14 @@ targets is unit tested; and the per-frame wiring is rendering glue carried in th
 preview and confirmed by inspection. A committed pixel baseline of the rendered effect is
 deferred (see the consequences).
 
+The fade runs in orbit only. While the camera walks on the floor it sits inside the
+building, where fading the surrounding walls reads as a glitch rather than a help, so the
+per-frame wiring gates on the camera mode: in walk mode it restores every prepared wall to
+its recorded baseline instead of testing the camera side. A dedicated restore step in the
+engine keeps that path a named, single-purpose call rather than a flag on the fade. This is
+a first cut of the broader plan to make transparency a toggle that follows whether the
+camera is grounded (issue #256).
+
 ## Alternatives considered
 
 - **Occlusion trigger.** Fade the walls that actually occlude the room the camera looks

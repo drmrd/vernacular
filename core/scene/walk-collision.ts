@@ -21,6 +21,13 @@ export interface PlanarPoint {
 export interface WallSegment {
   start: PlanarPoint
   end: PlanarPoint
+  /**
+   * The wall's full thickness in millimeters. The walker stands off the
+   * centerline by `radius + thickness / 2`, so half the thickness widens the
+   * standoff to clear the wall face. Optional: a footprint-perimeter segment is
+   * the exact solid boundary and omits it, keeping the plain `radius` standoff.
+   */
+  thickness?: number
 }
 
 /** The walls a walker is blocked by and the walker's radius, passed to advanceWalk. */
@@ -59,24 +66,28 @@ function segmentNormal(segment: WallSegment): PlanarPoint {
 }
 
 /**
- * Pushes a single point out of one wall segment. If the point is within `radius`
- * of the segment it is moved to exactly `radius` away along the outward direction;
- * the along-wall component is left untouched, so a glancing move slides instead of
- * stopping. A point already clear of the wall is returned unchanged.
+ * Pushes a single point out of one wall segment. The effective clearance is
+ * `radius + thickness / 2`, so the walker clears the wall face rather than its
+ * centerline; a segment without `thickness` keeps the plain `radius` standoff.
+ * If the point is within that clearance it is moved to exactly the clearance
+ * distance along the outward direction; the along-wall component is left
+ * untouched, so a glancing move slides instead of stopping. A point already
+ * clear of the wall is returned unchanged.
  */
 function pushOutOfSegment(point: PlanarPoint, segment: WallSegment, radius: number): PlanarPoint {
+  const clearance = radius + (segment.thickness ?? 0) / 2
   const closest = closestPointOnSegment(point, segment)
   const outX = point.x - closest.x
   const outZ = point.z - closest.z
   const distance = Math.hypot(outX, outZ)
-  if (distance >= radius) {
+  if (distance >= clearance) {
     return point
   }
   const direction =
     distance > CONTACT_EPSILON_MM
       ? { x: outX / distance, z: outZ / distance }
       : segmentNormal(segment)
-  return { x: closest.x + direction.x * radius, z: closest.z + direction.z * radius }
+  return { x: closest.x + direction.x * clearance, z: closest.z + direction.z * clearance }
 }
 
 /**
@@ -99,11 +110,43 @@ export function resolveWalkCollision(
   return resolved
 }
 
+/**
+ * Sweeps a walker from `from` to `to`, resolving collision along the whole path
+ * so a large per-frame move can never tunnel through a wall. The straight move
+ * is sub-stepped into increments no larger than the walker radius, and each
+ * increment is resolved with resolveWalkCollision against the running position,
+ * so a wall lying between the two endpoints always stops the walker on the near
+ * side at the radius standoff. When the move is already within one radius it
+ * reduces to a single resolveWalkCollision(to). Returns the final resolved
+ * position; never mutates its inputs. See ADR-0135 for why the sweep
+ * sub-steps rather than solving the contact analytically.
+ */
+export function sweepWalkCollision(
+  from: PlanarPoint,
+  to: PlanarPoint,
+  world: WalkCollisionWorld,
+): PlanarPoint {
+  const { segments, radius } = world
+  const spanX = to.x - from.x
+  const spanZ = to.z - from.z
+  const distance = Math.hypot(spanX, spanZ)
+  const steps = radius > 0 ? Math.max(1, Math.ceil(distance / radius)) : 1
+  const incrementX = spanX / steps
+  const incrementZ = spanZ / steps
+  let resolved = from
+  for (let step = 1; step <= steps; step += 1) {
+    const advanced = { x: resolved.x + incrementX, z: resolved.z + incrementZ }
+    resolved = resolveWalkCollision(advanced, segments, radius)
+  }
+  return resolved
+}
+
 /** The wall centerline as a world-plane segment: plan x to X, plan y to Z. */
 function wallToSegment(wall: WallSceneNode): WallSegment {
   return {
     start: { x: wall.start.x, z: wall.start.y },
     end: { x: wall.end.x, z: wall.end.y },
+    thickness: wall.thickness,
   }
 }
 
@@ -160,12 +203,16 @@ function solidSubsegments(segment: WallSegment, gaps: readonly SpanInterval[]): 
   for (const gap of ordered) {
     const gapStart = clampUnit(gap.start)
     if (gapStart > cursor) {
-      result.push({ start: pointAtParam(segment, cursor), end: pointAtParam(segment, gapStart) })
+      result.push({
+        ...segment,
+        start: pointAtParam(segment, cursor),
+        end: pointAtParam(segment, gapStart),
+      })
     }
     cursor = Math.max(cursor, clampUnit(gap.end))
   }
   if (cursor < 1) {
-    result.push({ start: pointAtParam(segment, cursor), end: pointAtParam(segment, 1) })
+    result.push({ ...segment, start: pointAtParam(segment, cursor), end: pointAtParam(segment, 1) })
   }
   return result
 }

@@ -120,6 +120,7 @@ export { resolveStyle } from './architecture-era/resolve-style'
 export type {
   ElementCategory,
   ElementType,
+  HingeEdge,
   OpeningFamily,
   OpeningTypeParameters,
   Plan2DSymbol,
@@ -127,6 +128,8 @@ export type {
   VoidContourKind,
 } from './registries/element-types'
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
+export type { OpeningKind } from './registries/opening-kind'
+export { openingKindOfType } from './registries/opening-kind'
 export type { Command, CommandHandler } from './commands/command'
 export { CommandRegistry } from './commands/command-registry'
 export type { DispatcherOptions } from './commands/dispatcher'
@@ -397,11 +400,20 @@ export { ceilingHeight } from './scene/ceiling-height'
 export { DEFAULT_FLOOR_SLAB_THICKNESS_MM, floorSlabThickness } from './scene/floor-slab'
 export type { Contour, ContourSegment } from './scene/contour'
 export { openingVoidContour, rectangularVoidContour } from './scene/opening-void'
+export type {
+  HingeMotion,
+  NoMotion,
+  OpeningMotion,
+  SlideAxis,
+  SlideMotion,
+} from './scene/opening-motion'
+export { openingMotion } from './scene/opening-motion'
 export { openingHeadArcs } from './scene/opening-head'
 export type { OpeningHeadArc } from './scene/opening-head'
 export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
 export {
   constructionTotalThickness,
+  effectiveWallThickness,
   resolveConstructionProfile,
 } from './scene/construction-profile'
 export type { ResolvedConstruction } from './scene/construction-profile'
@@ -547,6 +559,7 @@ export { resolveSurfacePaint } from './paint/resolve-surface-paint'
 export type { PaintableSurface } from './paint/paintable-surfaces'
 export { paintableSurfaces } from './paint/paintable-surfaces'
 export type { LatLong, Obstruction, Site } from './model/site'
+export { DEFAULT_GRADE_ELEVATION_MM, resolveGradeElevation } from './model/site'
 export type {
   AddPaletteColorParams,
   CreateProjectPaletteParams,

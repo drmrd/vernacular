@@ -1,3 +1,4 @@
+import { crankWindowElementTypes } from './crank-window-element-types'
 import { curvedOpeningElementTypes } from './curved-opening-element-types'
 import { createRegistry, type Registry, type RegistryEntry } from './registry'
 
@@ -30,11 +31,18 @@ export type OpeningFamily =
   | 'pivot'
   | 'cased'
   | 'window-fixed'
+  | 'window-hung'
+  | 'window-slide'
   | 'window-crank'
+
+/** The edge a crank window (or other hinged opening) pivots on. */
+export type HingeEdge = 'jamb' | 'head' | 'sill'
 
 export interface OpeningTypeParameters {
   family: OpeningFamily
   double?: boolean
+  /** The hinge edge for a crank window: jamb (casement), head (awning), sill (hopper). */
+  hingeEdge?: HingeEdge
   defaultWidth: number
   defaultHeight: number
   defaultSillHeight: number
@@ -47,7 +55,7 @@ export interface ElementType extends RegistryEntry {
   opening?: OpeningTypeParameters
 }
 
-export const ELEMENT_TYPE_REGISTRY_VERSION = 5
+export const ELEMENT_TYPE_REGISTRY_VERSION = 6
 
 export const builtinElementTypes: Registry<ElementType> = createRegistry(
   ELEMENT_TYPE_REGISTRY_VERSION,
@@ -201,7 +209,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
-        family: 'window-fixed',
+        family: 'window-hung',
         defaultWidth: 900,
         defaultHeight: 1200,
         defaultSillHeight: 900,
@@ -216,7 +224,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
-        family: 'window-fixed',
+        family: 'window-hung',
         defaultWidth: 900,
         defaultHeight: 1200,
         defaultSillHeight: 900,
@@ -228,7 +236,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
       opening: {
-        family: 'window-fixed',
+        family: 'window-slide',
         defaultWidth: 1200,
         defaultHeight: 900,
         defaultSillHeight: 1000,
@@ -246,42 +254,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
         defaultSillHeight: 600,
       },
     },
-    {
-      id: 'casement-window',
-      category: 'opening',
-      plan2D: { symbol: 'window-crank' },
-      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
-      opening: {
-        family: 'window-crank',
-        defaultWidth: 600,
-        defaultHeight: 1200,
-        defaultSillHeight: 900,
-      },
-    },
-    {
-      id: 'awning-window',
-      category: 'opening',
-      plan2D: { symbol: 'window-crank' },
-      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
-      opening: {
-        family: 'window-crank',
-        defaultWidth: 900,
-        defaultHeight: 600,
-        defaultSillHeight: 1500,
-      },
-    },
-    {
-      id: 'hopper-window',
-      category: 'opening',
-      plan2D: { symbol: 'window-crank' },
-      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
-      opening: {
-        family: 'window-crank',
-        defaultWidth: 900,
-        defaultHeight: 600,
-        defaultSillHeight: 300,
-      },
-    },
+    ...crankWindowElementTypes,
     {
       id: 'transom-window',
       category: 'opening',

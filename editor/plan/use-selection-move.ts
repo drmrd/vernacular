@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useRef, useState, type PointerEvent } from 'react'
 import type { Point, SceneGraph, UnitPreferences } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
@@ -11,9 +11,13 @@ import {
   IDLE_MOVE_DRAG,
   moveDragGhost,
   moveDragReadout,
+  moveDragReadoutPoint,
   type MoveDragState,
 } from './move-drag'
 import { selectedEntityIds, selectionGhostSegments } from './selection-entities'
+import { snapPoint } from './snap'
+import { useOptionalSnapPreferences } from './snap-preferences-context'
+import { buildSnapContext } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -55,10 +59,34 @@ interface MoveHandle {
   stateRef: { current: MoveDragState }
   setGhost: (ghost: readonly PreviewSegment[]) => void
   setReadout: (readout: DragReadout | undefined) => void
+  // Resolves a proposed world point to the nearest snap target, so the move-drag
+  // anchors the whole group on a snapped representative point.
+  snap: (point: Point) => Point
 }
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
+}
+
+/**
+ * The snap resolver the move-drag anchors on: it snaps a proposed world point to the
+ * nearest target, with the dragged selection filtered out so the move never snaps to
+ * its own pre-move position. No origin is passed, which leaves the directional snaps
+ * (angle, perpendicular, parallel) off, since a translation has no draw-origin.
+ */
+function useMoveSnapResolver(deps: SelectionMoveDeps): (point: Point) => Point {
+  const snapPreferences = useOptionalSnapPreferences()
+  return useCallback(
+    (point: Point): Point => {
+      const targets = deps.graph.walls.filter((wall) => !deps.selectedIds.has(wall.id))
+      const context = buildSnapContext(
+        { walls: targets, viewport: deps.viewport, origin: undefined },
+        snapPreferences,
+      )
+      return snapPoint(point, context)?.point ?? point
+    },
+    [deps.graph, deps.selectedIds, deps.viewport, snapPreferences],
+  )
 }
 
 // True when the pointer is over an entity that is already selected, so a press
@@ -102,8 +130,12 @@ function pointerMove(
     return false
   }
   const world = eventToWorld(event, deps.viewport)
-  handle.setGhost(moveDragGhost(handle.stateRef.current, world))
-  handle.setReadout(moveDragReadout(handle.stateRef.current, world, deps.preferences))
+  const state = handle.stateRef.current
+  handle.setGhost(moveDragGhost(state, world, handle.snap))
+  // The readout measures from the grab origin to the snapped point, so the chip shows
+  // the snapped displacement the ghost and the commit use, not the raw cursor distance.
+  const snappedPointer = moveDragReadoutPoint(state, world, handle.snap)
+  handle.setReadout(moveDragReadout(state, snappedPointer, deps.preferences))
   return true
 }
 
@@ -123,12 +155,11 @@ function pointerUp(
   if (floorId === undefined) {
     return true
   }
-  const result = endMoveDrag(
-    state,
-    eventToWorld(event, deps.viewport),
+  const result = endMoveDrag(state, eventToWorld(event, deps.viewport), {
     floorId,
-    selectedEntityIds(deps.selectedIds),
-  )
+    entityIds: selectedEntityIds(deps.selectedIds),
+    snap: handle.snap,
+  })
   if (result.command) {
     deps.session.dispatch(result.command)
   }
@@ -146,7 +177,8 @@ export function useSelectionMove(deps: SelectionMoveDeps): SelectionMove {
   const stateRef = useRef<MoveDragState>(IDLE_MOVE_DRAG)
   const [ghost, setGhost] = useState<readonly PreviewSegment[]>([])
   const [readout, setReadout] = useState<DragReadout | undefined>(undefined)
-  const handle: MoveHandle = { stateRef, setGhost, setReadout }
+  const snap = useMoveSnapResolver(deps)
+  const handle: MoveHandle = { stateRef, setGhost, setReadout, snap }
   return {
     ghost,
     readout,

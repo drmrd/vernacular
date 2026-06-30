@@ -1,6 +1,7 @@
 import { dimensionLength } from '../geometry/dimension'
 import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
+import { resolveGradeElevation } from '../model/site'
 import type {
   Dimension,
   Floor,
@@ -50,6 +51,11 @@ export interface WallSceneNode {
    * `DEFAULT_CEILING_HEIGHT_MM` fallback for those literal-built nodes.
    */
   height?: number
+  /**
+   * The wall's ConstructionProfileRegistry id when it carries one; resolved to a
+   * footprint thickness by `effectiveWallThickness`.
+   */
+  constructionProfile?: string
 }
 
 export interface RoomSceneNode {
@@ -161,6 +167,13 @@ export interface SceneGraph {
   dimensions: DimensionSceneNode[]
   stairs: StairSceneNode[]
   furniture: FurnitureSceneNode[]
+  /**
+   * Ground-surface grade datum in millimeters for this projection. Optional so
+   * hand-built literals omit it; `deriveSceneGraph` always sets it and readers
+   * default to the 0 datum. Callers that narrow the graph forward this field so
+   * the underground filter and the engine ground plane read the right datum.
+   */
+  gradeElevation?: number
 }
 
 export function deriveFloorNode(floor: Floor): SceneNode {
@@ -181,6 +194,9 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
     end: wall.end,
     thickness: wall.thickness,
     height: floor.defaultCeilingHeight,
+    ...(wall.constructionProfile === undefined
+      ? {}
+      : { constructionProfile: wall.constructionProfile }),
   }
 }
 
@@ -316,5 +332,6 @@ export function deriveSceneGraph(project: Project): SceneGraph {
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: deriveStairNodes(project),
     furniture: project.floors.flatMap(deriveFurnitureNodesForFloor),
+    gradeElevation: resolveGradeElevation(project.site),
   }
 }

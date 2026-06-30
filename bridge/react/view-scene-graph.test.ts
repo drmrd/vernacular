@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { FLOOR_NODE_PREFIX, type SceneGraph } from '../../core'
+import { emptySceneGraph } from '../../core/scene/scene-graph-test-fixtures'
 
 import { sceneGraphForBuilding, viewSceneGraph } from './view-scene-graph'
 
@@ -73,6 +74,27 @@ describe('sceneGraphForBuilding', () => {
       `${FLOOR_NODE_PREFIX}upper`,
     ])
     expect(building.walls.map((wall) => wall.floorId)).toEqual(['ground', 'upper'])
+  })
+
+  it('hides only floors below the model grade datum', () => {
+    const graph: SceneGraph = {
+      ...emptySceneGraph(),
+      gradeElevation: -600,
+      nodes: [
+        { id: 'floor:above', kind: 'floor', name: 'Raised', elevation: -400 },
+        { id: 'floor:below', kind: 'floor', name: 'Cellar', elevation: -800 },
+      ],
+    }
+
+    const projected = sceneGraphForBuilding(graph, { includeUnderground: false })
+
+    expect(projected.nodes.map((node) => node.id)).toEqual(['floor:above'])
+  })
+
+  it('forwards the grade elevation onto the projected building graph', () => {
+    const graph: SceneGraph = { ...emptySceneGraph(), gradeElevation: -600 }
+
+    expect(sceneGraphForBuilding(graph, { includeUnderground: false }).gradeElevation).toBe(-600)
   })
 })
 

@@ -6,8 +6,10 @@ import {
   createWall,
 } from '../model/factories'
 import type { Floor, Project } from '../model/types'
+import type { SceneGraph } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
 import { sceneGraphForFloor } from './scene-graph-for-floor'
+import { emptySceneGraph } from './scene-graph-test-fixtures'
 
 function twoFloorProject(): Project {
   const project = createEmptyProject({
@@ -118,6 +120,16 @@ describe('sceneGraphForFloor', () => {
     const nodeIds = narrowed.nodes.map((node) => node.id)
     expect(nodeIds).toContain('floor:a')
     expect(nodeIds).not.toContain('floor:b')
+  })
+
+  it('preserves the grade elevation when narrowing to a floor', () => {
+    const graph: SceneGraph = {
+      ...emptySceneGraph(),
+      gradeElevation: -600,
+      nodes: [{ id: 'floor:a', kind: 'floor', name: 'A', elevation: 0 }],
+    }
+
+    expect(sceneGraphForFloor(graph, 'a').gradeElevation).toBe(-600)
   })
 
   it('returns an empty graph when no floor is active', () => {

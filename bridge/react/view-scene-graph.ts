@@ -1,29 +1,31 @@
-import { FLOOR_NODE_PREFIX, sceneGraphForFloor, type SceneGraph, type SceneNode } from '../../core'
+import {
+  DEFAULT_GRADE_ELEVATION_MM,
+  FLOOR_NODE_PREFIX,
+  sceneGraphForFloor,
+  type SceneGraph,
+  type SceneNode,
+} from '../../core'
 
 /** Options controlling which floors the whole-building view includes. */
 export interface BuildingViewOptions {
-  /** Include floors below grade (negative elevation), such as a basement. */
+  /** Include floors below the model grade datum (`gradeElevation`), such as a basement. */
   includeUnderground: boolean
 }
-
-// A floor sits below grade when its finished-floor elevation is under the ground
-// datum at 0 mm; basements and sub-basements are placed at negative elevations.
-const GROUND_ELEVATION_MM = 0
 
 function floorModelId(node: SceneNode): string {
   return node.id.slice(FLOOR_NODE_PREFIX.length)
 }
 
 // The model ids of the floors hidden in this projection: none when underground
-// levels are shown, otherwise every floor seated below grade.
+// levels are shown, otherwise every floor seated below the model grade datum.
+// Basements and sub-basements are placed at elevations under that datum.
 function hiddenFloorIds(graph: SceneGraph, options: BuildingViewOptions): Set<string> {
   if (options.includeUnderground) {
     return new Set()
   }
+  const grade = graph.gradeElevation ?? DEFAULT_GRADE_ELEVATION_MM
   return new Set(
-    graph.nodes
-      .filter((node) => node.elevation < GROUND_ELEVATION_MM)
-      .map((node) => floorModelId(node)),
+    graph.nodes.filter((node) => node.elevation < grade).map((node) => floorModelId(node)),
   )
 }
 
@@ -45,6 +47,7 @@ export function sceneGraphForBuilding(graph: SceneGraph, options: BuildingViewOp
     dimensions: graph.dimensions.filter(onVisibleFloor),
     stairs: graph.stairs.filter(onVisibleFloor),
     furniture: graph.furniture.filter(onVisibleFloor),
+    ...(graph.gradeElevation === undefined ? {} : { gradeElevation: graph.gradeElevation }),
   }
 }
 

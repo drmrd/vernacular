@@ -1,12 +1,11 @@
-import { builtinElementTypes, type ElementType, type OpeningFamily } from '../../core'
+import { builtinElementTypes, openingKindOfType, type ElementType } from '../../core'
 
-// Window families render under the Windows group; every other opening family
-// (swing, slide, fold, pivot, cased) reads as a door-like opening.
-const WINDOW_FAMILIES: ReadonlySet<OpeningFamily> = new Set(['window-fixed', 'window-crank'])
-
+// An opening renders under the Windows group when the shared door-or-window
+// classifier reads its type as a window; every door family reads as a door. This
+// derives from the one classifier (openingKindOfType) rather than a second window
+// list, so a new window family groups correctly without another edit here.
 function isWindow(type: ElementType): boolean {
-  const family = type.opening?.family
-  return family !== undefined && WINDOW_FAMILIES.has(family)
+  return openingKindOfType(type.id) === 'window'
 }
 
 // A readable label from the element-type id: kebab-case to Title Case so the

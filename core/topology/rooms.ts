@@ -60,17 +60,6 @@ export const ROOM_ID_PREFIX = 'room:'
 const DEFAULT_WALL_THICKNESS = 0
 
 /**
- * Snap-grid resolution, in units per millimeter, that outer-boundary coordinates
- * round to: each coordinate is snapped to the nearest 1/SNAP_UNITS_PER_MM of a
- * millimeter. The outward offset is built from shifted-line intersections that
- * carry IEEE-754 rounding noise far below the junction tolerance, so two perimeter
- * edges that meet on an axis can land a fraction of a nanometer off their exact
- * coordinate. Snapping to this sub-micrometer grid removes that noise so adjacent
- * slabs meet on exact coordinates, without disturbing any real geometry.
- */
-const SNAP_UNITS_PER_MM = 1e6
-
-/**
  * The stable key for a room: the pre-sorted bounding-wall ids joined with `|` that
  * `Room.id` encodes, without the `room:` prefix. This function does not sort; it
  * trusts the caller to supply already-sorted ids (`deriveRooms` does so via
@@ -165,8 +154,13 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
  * half-thickness. The outer boundary outsets only on perimeter edges; a shared
  * edge (its twin belongs to another room face) takes a zero outward offset so it
  * stays on the centerline, where adjacent slabs meet edge to edge instead of
- * overlapping. See
- * [[ADR-0129-floor-slab-shared-interior-edges-stop-at-centerline]].
+ * overlapping. `outsetPolygon` returns coordinates already snapped to its
+ * sub-micrometer grid, so abutting slabs meet on exact coordinates without a snap
+ * in this layer. See
+ * [[ADR-0129-floor-slab-shared-interior-edges-stop-at-centerline]] for the
+ * shared-edge rule and
+ * [[ADR-0134-geometry-primitive-snaps-polygon-offset-corners]] for why the snap
+ * lives in the geometry primitive.
  */
 function buildRoom(boundary: FaceBoundary, roomFaces: ReadonlySet<number>): Room {
   const { polygon, edgeOffsets, twinFaceIndices, wallIds } = boundary
@@ -178,20 +172,10 @@ function buildRoom(boundary: FaceBoundary, roomFaces: ReadonlySet<number>): Room
     id: ROOM_ID_PREFIX + roomKey({ wallIds }),
     polygon,
     clearPolygon,
-    outerPolygon: snapPolygon(outsetPolygon(polygon, outsetOffsets)),
+    outerPolygon: outsetPolygon(polygon, outsetOffsets),
     area: Math.abs(polygonArea(clearPolygon)),
     wallIds,
   }
-}
-
-/** Snap a coordinate to the outer-boundary grid, clearing sub-tolerance noise. */
-function snapCoordinate(value: number): number {
-  return Math.round(value * SNAP_UNITS_PER_MM) / SNAP_UNITS_PER_MM
-}
-
-/** Snap every vertex of a polygon to the outer-boundary grid. */
-function snapPolygon(polygon: readonly Point[]): Point[] {
-  return polygon.map((point) => ({ x: snapCoordinate(point.x), y: snapCoordinate(point.y) }))
 }
 
 /**

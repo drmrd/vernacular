@@ -1,4 +1,4 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   cameraPresetPose,
@@ -11,7 +11,6 @@ import {
 } from '../../core'
 import {
   createSceneRenderer,
-  updateNearWallTransparency,
   type EntityScreenPosition,
   type NearWallTarget,
   type SceneRoot,
@@ -21,6 +20,7 @@ import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { FurnitureModelSignals } from './furniture-model-signals'
+import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -190,15 +190,6 @@ function useDoorwayOpening(
   }, [openings, selectedIds])
 }
 
-// Fades the prepared exterior walls each frame from the live camera, so a wall the
-// camera is outside of turns transparent and the interior shows through it (issue #122).
-// It reads the live camera through useFrame rather than reframing, so it never moves the
-// camera; it only sets material opacity.
-function NearWallFade({ targets }: { targets: NearWallTarget[] }) {
-  useFrame(({ camera }) => updateNearWallTransparency(targets, camera.position))
-  return null
-}
-
 interface LiveSceneCanvasProps {
   root: SceneRoot
   pose: CameraPose
@@ -257,7 +248,7 @@ function LiveSceneCanvas({
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
-      <NearWallFade targets={nearWallTargets} />
+      <NearWallFade targets={nearWallTargets} enabled={mode === 'orbit'} />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
         target={pose.target}

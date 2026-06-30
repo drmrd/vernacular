@@ -16,7 +16,8 @@ import {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_WALL_THICKNESS_MM,
 } from '../model/factories'
-import type { Floor, Project, RoomOverride, Underlay } from '../model/types'
+import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
+import type { Floor, Project, RoomOverride, Underlay, Wall } from '../model/types'
 import { deriveRooms, ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
   deriveRoomNodesForFloor,
@@ -53,6 +54,19 @@ describe('deriveSceneGraph', () => {
     const project = projectWithFloors()
 
     expect(deriveSceneGraph(project)).toEqual(deriveSceneGraph(project))
+  })
+
+  it('carries the site grade elevation onto the scene graph', () => {
+    const project = projectWithFloors()
+    project.site = { gradeElevation: -600 }
+
+    expect(deriveSceneGraph(project).gradeElevation).toBe(-600)
+  })
+
+  it('defaults the scene-graph grade to the datum when no site grade is set', () => {
+    const project = projectWithFloors()
+
+    expect(deriveSceneGraph(project).gradeElevation).toBe(DEFAULT_GRADE_ELEVATION_MM)
   })
 })
 
@@ -110,6 +124,24 @@ describe('deriveSceneGraph walls', () => {
 
     expect(node.id).toBe('wall:w9')
     expect(node.floorId).toBe('g')
+  })
+
+  it('carries the wall construction profile id onto the derived node', () => {
+    const floor = { id: 'f1', name: 'G', defaultCeilingHeight: 2400 } as Floor
+    const wall = {
+      id: 'w1',
+      start: { x: 0, y: 0 },
+      end: { x: 1000, y: 0 },
+      thickness: 120,
+      constructionProfile: 'solid-masonry-brick',
+    } as Wall
+    expect(deriveWallNode(floor, wall).constructionProfile).toBe('solid-masonry-brick')
+  })
+
+  it('omits constructionProfile on the node when the wall has none', () => {
+    const floor = { id: 'f1', name: 'G', defaultCeilingHeight: 2400 } as Floor
+    const wall = { id: 'w1', start: { x: 0, y: 0 }, end: { x: 1000, y: 0 }, thickness: 120 } as Wall
+    expect('constructionProfile' in deriveWallNode(floor, wall)).toBe(false)
   })
 })
 

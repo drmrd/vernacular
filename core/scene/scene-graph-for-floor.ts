@@ -34,5 +34,6 @@ export function sceneGraphForFloor(graph: SceneGraph, floorId: string | null): S
     dimensions: graph.dimensions.filter(onFloor(floorId)),
     stairs: graph.stairs.filter(onFloor(floorId)),
     furniture: graph.furniture.filter(onFloor(floorId)),
+    ...(graph.gradeElevation === undefined ? {} : { gradeElevation: graph.gradeElevation }),
   }
 }

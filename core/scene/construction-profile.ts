@@ -46,3 +46,21 @@ export function resolveConstructionProfile(
   if (entry === undefined) return undefined
   return { layers: entry.layers, totalThickness: constructionTotalThickness(entry.layers) }
 }
+
+/**
+ * The footprint thickness a wall node draws to: the resolved assembly total when
+ * the node references a registry-known construction profile, otherwise the node's
+ * raw thickness. An unknown id also falls back to the raw thickness, so a missing
+ * registry entry degrades to today's single-thickness behavior rather than
+ * collapsing the wall to zero.
+ */
+export function effectiveWallThickness(
+  node: { thickness: number; constructionProfile?: string },
+  constructionProfiles: Registry<ConstructionProfile> = builtinConstructionProfiles,
+): number {
+  if (node.constructionProfile === undefined) return node.thickness
+  return (
+    resolveConstructionProfile(node.constructionProfile, constructionProfiles)?.totalThickness ??
+    node.thickness
+  )
+}

@@ -1,5 +1,6 @@
 export type { SceneRoot } from './scene/build-scene'
 export { buildScene } from './scene/build-scene'
+export type { EdgeOverlayOptions } from './scene/edge-overlay'
 export { buildFurnitureMassing } from './scene/furniture-builder'
 export {
   buildFurnitureModelGroup,
@@ -13,7 +14,7 @@ export {
   buildRoomSubgroup,
   buildWallSubgroup,
 } from './scene/floor-subgroups'
-export { applyOpeningSwing, swingOpeningGroup } from './scene/opening-swing'
+export { applyOpeningMotion, applyOpeningMotionForNode } from './scene/opening-motion'
 export { sceneBounds } from './scene/scene-bounds'
 export { markShadowCasters } from './scene/shadow-casters'
 export type { OrbitController } from './scene/orbit-controls'
@@ -28,6 +29,7 @@ export type { NearWallTarget } from './scene/near-wall-transparency'
 export {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
+  restoreNearWallTransparency,
   updateNearWallTransparency,
 } from './scene/near-wall-transparency'
 export type { LightingProvider } from './lighting/lighting-provider'
