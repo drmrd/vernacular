@@ -413,6 +413,7 @@ export type { OpeningHeadArc } from './scene/opening-head'
 export { resolveTrimProfileSection, trimProfileSection } from './scene/trim-profile'
 export {
   constructionTotalThickness,
+  effectiveWallThickness,
   resolveConstructionProfile,
 } from './scene/construction-profile'
 export type { ResolvedConstruction } from './scene/construction-profile'
