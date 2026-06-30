@@ -92,6 +92,19 @@ describe('openingMotion sliding doors', () => {
   })
 })
 
+describe('openingMotion windows', () => {
+  it('resolves a double-hung window to a vertical slide of both sashes', () => {
+    const motion = openingMotion('double-hung-window', openingNode('double-hung-window'))
+
+    expect(motion.kind).toBe('slide')
+    if (motion.kind !== 'slide') return
+    expect(motion.axis).toBe('vertical')
+    // Raises straight up (world +Y) by the opening height; no in-plane travel.
+    expect(motion.travel).toEqual({ x: 0, y: 2000, z: 0 })
+    expect(motion.partCount).toBe(2)
+  })
+})
+
 describe('openingMotion fold and pivot fallback', () => {
   it('falls back to a jamb hinge for a bifold door in wave one', () => {
     const motion = openingMotion('bifold-door', openingNode('bifold-door'))
