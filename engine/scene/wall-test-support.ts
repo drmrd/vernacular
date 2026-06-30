@@ -21,9 +21,14 @@ export const CUT_FACE_AREA = WALL_FACE_AREA - VOID_AREA // 8_571_200
 export const FACE_GROUP_COUNT = 6
 export const PRECISION = 3
 export const AREA_TOLERANCE = 10
+export const SOLID_MASONRY_BRICK_TOTAL = 231 // 16mm plaster + 215mm brick
 const TRIANGLE_STRIDE = 9 // 3 vertices x 3 (x, y, z) components
 
 export const FULL_THICKNESS_SPAN: [number, number] = [-HALF_THICKNESS, HALF_THICKNESS]
+export const SOLID_MASONRY_BRICK_SPAN: [number, number] = [
+  -SOLID_MASONRY_BRICK_TOTAL / 2,
+  SOLID_MASONRY_BRICK_TOTAL / 2,
+]
 
 export const meshesOf = (group: THREE.Group): THREE.Mesh[] =>
   group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)

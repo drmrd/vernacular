@@ -15,6 +15,7 @@ import {
   HALF_THICKNESS,
   HEIGHT,
   PRECISION,
+  SOLID_MASONRY_BRICK_SPAN,
   SPLIT_X,
   THICKNESS,
   VOID_HEIGHT,
@@ -49,11 +50,9 @@ describe('buildWalls', () => {
   })
 
   it('sizes a wall footprint from its construction profile total thickness', () => {
-    // solid-masonry-brick is 16mm plaster + 215mm brick = 231mm, distinct from the
-    // wall's raw 120mm thickness, so the box's cross-wall (world Z) span bites only
-    // when the construction-profile total drives the footprint.
-    const PROFILE_TOTAL = 231
-    const profileHalfSpan: [number, number] = [-PROFILE_TOTAL / 2, PROFILE_TOTAL / 2]
+    // solid-masonry-brick's total is distinct from the wall's raw 120mm thickness, so
+    // the box's cross-wall (world Z) span bites only when the construction-profile total
+    // drives the footprint.
     const group = buildWalls({
       graph: oneEdgeGraph(),
       walls: [horizontalWall({ constructionProfile: 'solid-masonry-brick' })],
@@ -65,16 +64,14 @@ describe('buildWalls', () => {
     const mesh = meshes[0]
     expect(mesh).toBeDefined()
     if (mesh === undefined) return
-    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: profileHalfSpan })
+    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: SOLID_MASONRY_BRICK_SPAN })
   })
 
   it('sizes an opening wall footprint from its construction profile total thickness', () => {
     // The opening path places the long faces from the edge frame's thickness. The
-    // footprint already sizes from the 231mm solid-masonry-brick total, but the
-    // frame must too, or the faces land at the raw 120mm (cross-wall span [-60, 60])
-    // instead of the profile's [-115.5, 115.5].
-    const PROFILE_TOTAL = 231
-    const profileHalfSpan: [number, number] = [-PROFILE_TOTAL / 2, PROFILE_TOTAL / 2]
+    // footprint already sizes from the solid-masonry-brick total, but the frame must
+    // too, or the faces land at the raw 120mm (cross-wall span [-60, 60]) instead of
+    // the profile's [-115.5, 115.5].
     const group = buildWalls({
       graph: oneEdgeGraph(),
       walls: [horizontalWall({ constructionProfile: 'solid-masonry-brick' })],
@@ -84,7 +81,7 @@ describe('buildWalls', () => {
     const mesh = meshesOf(group).find((m) => m.userData.entityId === 'wall:w1')
     expect(mesh).toBeDefined()
     if (mesh === undefined) return
-    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: profileHalfSpan })
+    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: SOLID_MASONRY_BRICK_SPAN })
   })
 
   it('builds one box per edge for a split wall, both carrying the wall node id', () => {
