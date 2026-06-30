@@ -99,6 +99,36 @@ export function resolveWalkCollision(
   return resolved
 }
 
+/**
+ * Sweeps a walker from `from` to `to`, resolving collision along the whole path
+ * so a large per-frame move can never tunnel through a wall. The straight move
+ * is sub-stepped into increments no larger than the walker radius, and each
+ * increment is resolved with resolveWalkCollision against the running position,
+ * so a wall lying between the two endpoints always stops the walker on the near
+ * side at the radius standoff. When the move is already within one radius it
+ * reduces to a single resolveWalkCollision(to). Returns the final resolved
+ * position; never mutates its inputs.
+ */
+export function sweepWalkCollision(
+  from: PlanarPoint,
+  to: PlanarPoint,
+  segments: readonly WallSegment[],
+  radius: number,
+): PlanarPoint {
+  const spanX = to.x - from.x
+  const spanZ = to.z - from.z
+  const distance = Math.hypot(spanX, spanZ)
+  const steps = radius > 0 ? Math.max(1, Math.ceil(distance / radius)) : 1
+  const incrementX = spanX / steps
+  const incrementZ = spanZ / steps
+  let resolved = from
+  for (let step = 1; step <= steps; step += 1) {
+    const advanced = { x: resolved.x + incrementX, z: resolved.z + incrementZ }
+    resolved = resolveWalkCollision(advanced, segments, radius)
+  }
+  return resolved
+}
+
 /** The wall centerline as a world-plane segment: plan x to X, plan y to Z. */
 function wallToSegment(wall: WallSceneNode): WallSegment {
   return {

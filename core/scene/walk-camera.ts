@@ -1,5 +1,5 @@
 import type { Vector3 } from './vector3'
-import { resolveWalkCollision, type PlanarPoint, type WalkCollisionWorld } from './walk-collision'
+import { sweepWalkCollision, type PlanarPoint, type WalkCollisionWorld } from './walk-collision'
 
 /** Eye height above the floor datum, in millimeters. */
 export const WALK_EYE_HEIGHT_MM = 1600
@@ -38,15 +38,16 @@ function axisSign(positive: boolean, negative: boolean): number {
   return (positive ? 1 : 0) - (negative ? 1 : 0)
 }
 
-/** Resolves the proposed horizontal move against the collision world, if any. */
+/** Sweeps the horizontal move from the previous position against the collision world, if any. */
 function resolveMove(
+  from: PlanarPoint,
   proposed: PlanarPoint,
   collision: WalkCollisionWorld | undefined,
 ): PlanarPoint {
   if (collision === undefined) {
     return proposed
   }
-  return resolveWalkCollision(proposed, collision.segments, collision.radius)
+  return sweepWalkCollision(from, proposed, collision.segments, collision.radius)
 }
 
 /**
@@ -81,7 +82,8 @@ export function advanceWalk(
     nextX += directionX * step
     nextZ += directionZ * step
   }
-  const moved = resolveMove({ x: nextX, z: nextZ }, collision)
+  const from = { x: state.position.x, z: state.position.z }
+  const moved = resolveMove(from, { x: nextX, z: nextZ }, collision)
 
   const pitch = state.pitch + input.pitchDelta
   const clampedPitch = Math.max(-MAX_WALK_PITCH_RAD, Math.min(MAX_WALK_PITCH_RAD, pitch))
