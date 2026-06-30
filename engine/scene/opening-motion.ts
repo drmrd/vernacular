@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { HingeMotion, OpeningMotion } from '../../core'
+import type { HingeMotion, OpeningMotion, SlideMotion } from '../../core'
 
 /**
  * Transforms an opening fill group (its leaf, sash, and glass, from
@@ -17,7 +17,19 @@ export function applyOpeningMotion(
 ): void {
   if (motion.kind === 'hinge') {
     applyHinge(group, motion, openness)
+  } else if (motion.kind === 'slide') {
+    applySlide(group, motion, openness)
   }
+}
+
+/** Translates the group along the motion's travel vector, scaled by openness. */
+function applySlide(group: THREE.Object3D, motion: SlideMotion, openness: number): void {
+  group.quaternion.identity()
+  group.position.set(
+    motion.travel.x * openness,
+    motion.travel.y * openness,
+    motion.travel.z * openness,
+  )
 }
 
 /**
