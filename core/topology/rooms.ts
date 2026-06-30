@@ -157,7 +157,10 @@ export function deriveRooms(walls: readonly Wall[], options?: { tolerance?: numb
  * overlapping. `outsetPolygon` returns coordinates already snapped to its
  * sub-micrometer grid, so abutting slabs meet on exact coordinates without a snap
  * in this layer. See
- * [[ADR-0129-floor-slab-shared-interior-edges-stop-at-centerline]].
+ * [[ADR-0129-floor-slab-shared-interior-edges-stop-at-centerline]] for the
+ * shared-edge rule and
+ * [[ADR-0134-geometry-primitive-snaps-polygon-offset-corners]] for why the snap
+ * lives in the geometry primitive.
  */
 function buildRoom(boundary: FaceBoundary, roomFaces: ReadonlySet<number>): Room {
   const { polygon, edgeOffsets, twinFaceIndices, wallIds } = boundary
