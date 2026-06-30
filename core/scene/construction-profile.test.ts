@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ConstructionLayer } from '../registries/construction-profiles'
-import {
-  constructionTotalThickness,
-  effectiveWallThickness,
-  resolveConstructionProfile,
-} from './construction-profile'
+import { constructionTotalThickness, effectiveWallThickness } from './construction-profile'
 
 describe('constructionTotalThickness', () => {
   it('sums the layer thicknesses into the total assembly thickness', () => {
@@ -29,9 +25,9 @@ describe('effectiveWallThickness', () => {
 
   it('returns the resolved assembly total thickness for a known profile', () => {
     const node = { thickness: 120, constructionProfile: 'solid-masonry-brick' }
-    expect(effectiveWallThickness(node)).toBe(
-      resolveConstructionProfile('solid-masonry-brick')?.totalThickness,
-    )
+    // solid-masonry-brick is 16mm plaster + 215mm brick; its 231mm total differs
+    // from the node's raw 120mm so the assertion bites against a raw-thickness regression.
+    expect(effectiveWallThickness(node)).toBe(231)
   })
 
   it('falls back to raw thickness for an unknown profile id', () => {
