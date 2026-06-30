@@ -145,12 +145,12 @@ function shiftedEdgeLine(
   }
 }
 
-/** Snap a coordinate to the offset grid, clearing sub-tolerance noise. */
+/** Clears the IEEE-754 dust left by `intersectLines`; see `SNAP_UNITS_PER_MM`. */
 function snapCoordinate(value: number): number {
   return Math.round(value * SNAP_UNITS_PER_MM) / SNAP_UNITS_PER_MM
 }
 
-/** Snap every vertex of a polygon to the offset grid. */
+/** Snap every vertex so abutting geometry meets on exact coordinates. */
 function snapPolygon(polygon: readonly Point[]): Point[] {
   return polygon.map((point) => ({ x: snapCoordinate(point.x), y: snapCoordinate(point.y) }))
 }
