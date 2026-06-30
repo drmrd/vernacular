@@ -188,10 +188,11 @@ describe('wall-thickness standoff', () => {
   // `radius` to `radius + T / 2`. Treating the wall as zero-thickness (today's
   // behavior) leaves the walker standing half-buried in the slab.
   it('pushes the walker clear of the wall face at radius plus half the thickness', () => {
+    const wallThickness = 200
     const thickWall: WallSegment = {
       start: { x: -1000, z: 0 },
       end: { x: 1000, z: 0 },
-      thickness: 200,
+      thickness: wallThickness,
     }
 
     const resolved = resolveWalkCollision({ x: 0, z: -100 }, [thickWall], radius)
@@ -200,7 +201,7 @@ describe('wall-thickness standoff', () => {
     // step is pushed to radius + 100 = 400 from the centerline (not the old
     // centerline-only 300), with no sideways drift.
     expect(resolved.x).toBeCloseTo(0, 5)
-    expect(resolved.z).toBeCloseTo(-(radius + 200 / 2), 5)
+    expect(resolved.z).toBeCloseTo(-(radius + wallThickness / 2), 5)
   })
 
   // Real walls must carry their own thickness into the collision segments so the
