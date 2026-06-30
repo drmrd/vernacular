@@ -10,6 +10,7 @@ related:
     decisions/ADR-0075-three-dimensional-preview-camera-fit,
     decisions/ADR-0078-surface-edge-overlay,
     decisions/ADR-0127-whole-building-3d-view,
+    decisions/ADR-0138-explicit-grade-elevation-field,
   ]
 sourceFiles:
   [engine/scene/ground-plane.ts, engine/scene/build-scene.ts, engine/scene/scene-bounds.ts]
@@ -94,7 +95,9 @@ expected, and excluding the plane from the camera fit keeps an upper-floor view 
 ## Follow-ups
 
 - Add an explicit grade or above-grade-exposure field to the model so the ground level is not pinned to the
-  zero datum, covering sloped sites and stepped foundations.
+  zero datum, covering sloped sites and stepped foundations. The grade half landed as
+  [[ADR-0138-explicit-grade-elevation-field]] (`Site.gradeElevation`); the per-edge / sloped-site /
+  stepped-foundation exposure half remains open.
 - Replace the flat grass color with a grass texture once the content-addressed asset pipeline is in scope.
 
 ## References
