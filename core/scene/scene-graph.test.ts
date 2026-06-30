@@ -54,6 +54,19 @@ describe('deriveSceneGraph', () => {
 
     expect(deriveSceneGraph(project)).toEqual(deriveSceneGraph(project))
   })
+
+  it('carries the site grade elevation onto the scene graph', () => {
+    const project = projectWithFloors()
+    project.site = { gradeElevation: -600 }
+
+    expect(deriveSceneGraph(project).gradeElevation).toBe(-600)
+  })
+
+  it('defaults the scene-graph grade to the datum when no site grade is set', () => {
+    const project = projectWithFloors()
+
+    expect(deriveSceneGraph(project).gradeElevation).toBe(0)
+  })
 })
 
 describe('deriveSceneGraph stairs', () => {
