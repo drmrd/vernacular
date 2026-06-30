@@ -82,7 +82,8 @@ describe('buildRoomShell floor slab side faces', () => {
     // The rectangle's XZ center stands for the slab interior. A side face whose
     // normal points outward has a positive dot with the vector from the interior
     // out to the face, so every side triangle must read strictly greater than 0.
-    const center: Point2D = { x: ROOM_WIDTH / 2, z: ROOM_DEPTH / 2 }
+    // Plan y maps to world -z, so the interior center sits at a negated z.
+    const center: Point2D = { x: ROOM_WIDTH / 2, z: -ROOM_DEPTH / 2 }
     const dots = sideFaceOutwardness(slab as THREE.Mesh, center)
 
     expect(dots.length).toBeGreaterThan(0)

@@ -174,7 +174,10 @@ export function prepareNearWallTransparency(
       {
         materials,
         point: { x: center.x, z: center.z },
-        outwardNormal: { x: wall.outwardNormal.x, z: wall.outwardNormal.y },
+        // The wall's outward normal is a plan-space direction; it maps to world the
+        // same way `planToWorld` maps points, so plan y becomes world -z. Negating
+        // keeps the normal pointing the same way as the (z-flipped) wall geometry.
+        outwardNormal: { x: wall.outwardNormal.x, z: -wall.outwardNormal.y },
       },
     ]
   })

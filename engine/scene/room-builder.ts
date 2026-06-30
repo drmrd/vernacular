@@ -90,15 +90,15 @@ function roomCapGeometry(boundary: Point[], holes?: Point[][]): RoomCapGeometry 
 
 /** The slab's three contiguous sections, in geometry order: top, base, sides. */
 function slabSections(cap: RoomCapGeometry, thickness: number): SlabSection[] {
-  // The triangulation winds the caps to face down after the orientation-flipping
-  // axis map, so the upward (top) cap reverses its winding to face `+Y` while the
-  // downward (base) cap keeps the order to face `-Y`.
-  const topTriangles = reverseTriangleWinding(cap.triangles)
+  // The axis map is orientation-preserving, so the natural triangulation already
+  // winds the caps to face up: the top cap keeps that order to face `+Y` while the
+  // downward (base) cap reverses its winding to face `-Y`.
+  const baseTriangles = reverseTriangleWinding(cap.triangles)
   return [
-    { role: 'top', positions: slabCapPositions(cap.points, topTriangles, FLOOR_DATUM_Y) },
+    { role: 'top', positions: slabCapPositions(cap.points, cap.triangles, FLOOR_DATUM_Y) },
     {
       role: 'base',
-      positions: slabCapPositions(cap.points, cap.triangles, FLOOR_DATUM_Y - thickness),
+      positions: slabCapPositions(cap.points, baseTriangles, FLOOR_DATUM_Y - thickness),
     },
     { role: 'exteriorFace', positions: slabSidePositions(cap.boundary, thickness) },
   ]
@@ -158,8 +158,9 @@ function buildSlabMesh(
 
 /**
  * Builds the ceiling as a single downward-facing plane at the room's ceiling
- * height. It reuses the slab's cap triangulation in its natural order, which
- * faces world `-Y` (down into the room), and draws the `base` role.
+ * height. The axis map is orientation-preserving, so the slab's cap triangulation
+ * faces world `+Y` in its natural order; the ceiling reverses that winding to face
+ * world `-Y` (down into the room) and draws the `base` role.
  */
 function buildCeilingMesh(
   node: RoomSceneNode,
@@ -168,7 +169,11 @@ function buildCeilingMesh(
 ): THREE.Mesh {
   // The ceiling bounds the clear interior, not the full slab footprint that now reaches the wall outer faces.
   const cap = roomCapGeometry(node.clearPolygon, node.holes)
-  const positions = slabCapPositions(cap.points, cap.triangles, ceilingHeight(node))
+  const positions = slabCapPositions(
+    cap.points,
+    reverseTriangleWinding(cap.triangles),
+    ceilingHeight(node),
+  )
   const geometry = geometryFromPositions(positions)
   geometry.computeVertexNormals()
   return new THREE.Mesh(geometry, materials.material('base', { kind: 'ceiling', floorId }))

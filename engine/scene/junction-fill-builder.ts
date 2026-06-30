@@ -55,13 +55,13 @@ function sidePositions(polygon: Point[], height: number): number[] {
 /** The fill's three contiguous sections, in geometry order: top, base, sides. */
 function fillSections(polygon: Point[], height: number): WallSection[] {
   const triangles = capTriangles(polygon)
-  // The triangulation winds the caps to face down after the orientation-flipping
-  // axis map, so the upward (top) cap reverses its winding to face `+Y` while the
-  // downward (base) cap keeps the order to face `-Y`.
-  const topTriangles = reverseTriangleWinding(triangles)
+  // The axis map is orientation-preserving, so the natural triangulation already
+  // winds the caps to face up: the top cap keeps that order to face `+Y` while the
+  // downward (base) cap reverses its winding to face `-Y`.
+  const baseTriangles = reverseTriangleWinding(triangles)
   return [
-    { role: 'top', positions: capPositions(polygon, topTriangles, height) },
-    { role: 'base', positions: capPositions(polygon, triangles, FILL_BASE_Y) },
+    { role: 'top', positions: capPositions(polygon, triangles, height) },
+    { role: 'base', positions: capPositions(polygon, baseTriangles, FILL_BASE_Y) },
     { role: 'junction', positions: sidePositions(polygon, height) },
   ]
 }

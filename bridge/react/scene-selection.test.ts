@@ -56,10 +56,11 @@ function centreClick(): PointerEvent {
 }
 
 // A camera above the room centre looking straight down at the floor slab top.
+// The room centre sits at world z = -1000 (plan y maps to world -z).
 function topDownCamera(): THREE.PerspectiveCamera {
   const camera = new THREE.PerspectiveCamera(50, 1, 1, 100000)
-  camera.position.set(1000, 5000, 1000)
-  camera.lookAt(1000, 0, 1000)
+  camera.position.set(1000, 5000, -1000)
+  camera.lookAt(1000, 0, -1000)
   camera.updateMatrixWorld(true)
   return camera
 }

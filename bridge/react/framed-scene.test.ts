@@ -289,8 +289,9 @@ describe('buildFramedScene', () => {
     const fadedOpacity = 0.1
     const { root, nearWallTargets } = buildFramedScene(squareRoomWithSouthWindow(height))
 
-    // Camera outside the south wall (world z < 0): it fades, and its window with it.
-    updateNearWallTransparency(nearWallTargets, { x: 2000, z: -3000 })
+    // Camera outside the south wall (world z > 0, since plan y maps to world -z): it
+    // fades, and its window with it.
+    updateNearWallTransparency(nearWallTargets, { x: 2000, z: 3000 })
 
     const group = findByEntityId(root, 'opening:window')
     expect(group).not.toBeNull()

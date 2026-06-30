@@ -52,7 +52,10 @@ describe('openingMotion swing doors', () => {
     expect(motion.pivot).toEqual({ x: -450, y: 0, z: 0 })
     // Vertical (world Y) hinge axis, the way a door turns on its hinges.
     expect(motion.axis).toEqual({ x: 0, y: 1, z: 0 })
-    expect(motion.openAngle).toBeCloseTo(QUARTER_TURN, PRECISION)
+    // The axis map is orientation-preserving, so a positive-facing swing turns the
+    // negative way about world +Y to read as the same plan-space turn (see the
+    // openAngle note in opening-motion.ts).
+    expect(motion.openAngle).toBeCloseTo(-QUARTER_TURN, PRECISION)
     expect(motion.partCount).toBe(1)
   })
 
@@ -67,7 +70,9 @@ describe('openingMotion swing doors', () => {
     expect(motion.kind).toBe('hinge')
     if (motion.kind !== 'hinge') return
     expect(motion.pivot).toEqual({ x: 450, y: 0, z: 0 })
-    expect(motion.openAngle).toBeCloseTo(-QUARTER_TURN, PRECISION)
+    // Negative facing reverses the swing; under the orientation-preserving map that
+    // reads as a positive turn about world +Y (see openAngle note in opening-motion.ts).
+    expect(motion.openAngle).toBeCloseTo(QUARTER_TURN, PRECISION)
   })
 
   it('reports two moving parts for a double door', () => {
