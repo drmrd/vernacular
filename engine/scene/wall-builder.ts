@@ -4,6 +4,7 @@ import {
   WALL_NODE_PREFIX,
   distance,
   dot,
+  effectiveWallThickness,
   junctionFills,
   openingVoidContour,
   planToWorld,
@@ -51,9 +52,10 @@ export interface WallBuildInput {
 export function buildWalls(input: WallBuildInput): THREE.Group {
   const group = new THREE.Group()
   const wallsByModelId = indexWallsByModelId(input.walls)
-  const thicknessByEdge = input.graph.edges.map(
-    (edge) => wallsByModelId.get(edge.wallId)?.thickness ?? 0,
-  )
+  const thicknessByEdge = input.graph.edges.map((edge) => {
+    const node = wallsByModelId.get(edge.wallId)
+    return node === undefined ? 0 : effectiveWallThickness(node)
+  })
   const footprints = wallFootprints(input.graph, thicknessByEdge)
   input.graph.edges.forEach((edge, index) => {
     const node = edgeWallNode(edge, input.graph.vertices, wallsByModelId)
