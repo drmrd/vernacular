@@ -50,6 +50,11 @@ export interface WallSceneNode {
    * `DEFAULT_CEILING_HEIGHT_MM` fallback for those literal-built nodes.
    */
   height?: number
+  /**
+   * The wall's ConstructionProfileRegistry id when it carries one; resolved to a
+   * footprint thickness by `effectiveWallThickness`.
+   */
+  constructionProfile?: string
 }
 
 export interface RoomSceneNode {
@@ -181,6 +186,9 @@ export function deriveWallNode(floor: Floor, wall: Wall): WallSceneNode {
     end: wall.end,
     thickness: wall.thickness,
     height: floor.defaultCeilingHeight,
+    ...(wall.constructionProfile === undefined
+      ? {}
+      : { constructionProfile: wall.constructionProfile }),
   }
 }
 
