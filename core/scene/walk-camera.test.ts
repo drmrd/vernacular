@@ -31,8 +31,8 @@ const noInput: WalkInput = {
 }
 
 describe('WALK_EYE_HEIGHT_MM', () => {
-  it('stands the eye at a representative 1600mm standing height', () => {
-    expect(WALK_EYE_HEIGHT_MM).toBe(1600)
+  it('stands the eye at a representative 1700mm standing height', () => {
+    expect(WALK_EYE_HEIGHT_MM).toBe(1700)
   })
 })
 
