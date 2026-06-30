@@ -1,4 +1,4 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   cameraPresetPose,
@@ -11,7 +11,6 @@ import {
 } from '../../core'
 import {
   createSceneRenderer,
-  updateNearWallTransparency,
   type EntityScreenPosition,
   type NearWallTarget,
   type SceneRoot,
@@ -21,6 +20,7 @@ import { CameraControlsHint } from './camera-controls-hint'
 import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { FurnitureModelSignals } from './furniture-model-signals'
+import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -188,17 +188,6 @@ function useDoorwayOpening(
     const selected = openings.find((entry) => selectedIds.has(entry.id))
     return selected ?? openings[0] ?? null
   }, [openings, selectedIds])
-}
-
-// Fades the prepared exterior walls each frame from the live camera, so a wall the
-// camera is outside of turns transparent and the interior shows through it (issue #122).
-// It reads the live camera through useFrame rather than reframing, so it never moves the
-// camera; it only sets material opacity. The fade is gated to orbit: while walking on the
-// floor the camera is inside the building, where fading the surrounding walls would be
-// wrong, so `enabled` goes false and every wall is held at its opaque baseline (issue #256).
-function NearWallFade({ targets, enabled }: { targets: NearWallTarget[]; enabled: boolean }) {
-  useFrame(({ camera }) => updateNearWallTransparency(targets, camera.position, { enabled }))
-  return null
 }
 
 interface LiveSceneCanvasProps {

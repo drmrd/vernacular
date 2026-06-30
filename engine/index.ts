@@ -29,6 +29,7 @@ export type { NearWallTarget } from './scene/near-wall-transparency'
 export {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
+  restoreNearWallTransparency,
   updateNearWallTransparency,
 } from './scene/near-wall-transparency'
 export type { LightingProvider } from './lighting/lighting-provider'
