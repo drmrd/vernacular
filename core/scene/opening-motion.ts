@@ -147,7 +147,9 @@ function horizontalHinge(opening: OpeningSceneNode, edge: Exclude<HingeEdge, 'ja
     kind: 'hinge',
     edge,
     pivot,
-    axis: { x: opening.along.x, y: 0, z: opening.along.y },
+    // Plan north (+y) maps to world -Z, so the along-wall axis Z negates along.y.
+    // `0 - along.y` rather than `-along.y` keeps an axis-aligned wall's Z a clean +0.
+    axis: { x: opening.along.x, y: 0, z: 0 - opening.along.y },
     // Orientation-preserving axis map: as with the jamb hinge, the world rotation
     // sign flips relative to the old mirrored map to keep the sash cranking toward
     // the side its facing names.
@@ -165,7 +167,9 @@ function alongWallSlide(opening: OpeningSceneNode, partCount: number): SlideMoti
     travel: {
       x: opening.along.x * opening.width,
       y: 0,
-      z: opening.along.y * opening.width,
+      // Plan north (+y) maps to world -Z, so the along-wall travel Z negates along.y.
+      // `0 - ...` rather than negation keeps an axis-aligned wall's Z a clean +0.
+      z: 0 - opening.along.y * opening.width,
     },
     partId: REPRESENTATIVE_PART,
     partCount,
