@@ -78,6 +78,19 @@ export function moveDragReadout(
   return dragReadout(state.origin, pointer, preferences)
 }
 
+/**
+ * The effective point the live readout measures the grab origin against, so the chip
+ * reports the snapped group displacement rather than the raw cursor displacement.
+ */
+export function snappedMovePointer(
+  state: MoveDragState,
+  pointer: Point,
+  snap?: (point: Point) => Point,
+): Point {
+  if (state.phase !== 'dragging') return pointer
+  return translatePoint(state.origin, snappedDragDelta(state, pointer, snap))
+}
+
 export function endMoveDrag(
   state: MoveDragState,
   pointer: Point,
