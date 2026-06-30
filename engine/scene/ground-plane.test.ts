@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 
-import type { SceneGraph } from '../../core'
+import type { RoomSceneNode, SceneGraph } from '../../core'
 import { findByEntityId } from '../testing'
 
 import { buildScene } from './build-scene'
@@ -109,5 +109,73 @@ describe('buildScene ground plane', () => {
     // through the ground surface, so its above-grade portion shows above the lawn.
     expect(foundationBox.min.y).toBeLessThan(GRADE_ELEVATION_MM)
     expect(foundationBox.max.y).toBeGreaterThan(GRADE_ELEVATION_MM)
+  })
+})
+
+const SLAB_TOP_ROLE = 'top'
+
+// A single rectangular room seated on the ground floor: the built tree then
+// holds both a room slab (whose top cap material is named `top`) and the ground
+// plane, the two coincident at-grade surfaces this bias resolves.
+const roomOnGroundGraph = (): SceneGraph => {
+  const rectangle = [
+    { x: 0, y: 0 },
+    { x: FOOTPRINT_WIDTH_MM, y: 0 },
+    { x: FOOTPRINT_WIDTH_MM, y: FOOTPRINT_DEPTH_MM },
+    { x: 0, y: FOOTPRINT_DEPTH_MM },
+  ]
+  const room: RoomSceneNode = {
+    id: 'room:r1',
+    kind: 'room',
+    floorId: 'ground',
+    polygon: rectangle,
+    clearPolygon: rectangle,
+    area: FOOTPRINT_WIDTH_MM * FOOTPRINT_DEPTH_MM,
+  }
+  return {
+    nodes: [{ id: 'floor:ground', kind: 'floor', name: 'Ground', elevation: 0 }],
+    walls: [],
+    rooms: [room],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+// The floor slab is the only surface carrying an upward `top` cap; that cap's
+// entry is the finished-floor material whose backward depth bias the ground
+// plane must exceed.
+const slabTopMaterial = (root: THREE.Object3D): THREE.MeshStandardMaterial | undefined => {
+  let found: THREE.MeshStandardMaterial | undefined
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !Array.isArray(object.material)) return
+    const materials = object.material as THREE.Material[]
+    const top = materials.find((material) => material.name === SLAB_TOP_ROLE)
+    if (top) found = top as THREE.MeshStandardMaterial
+  })
+  return found
+}
+
+describe('buildScene ground plane depth bias', () => {
+  it('biases the ground plane farther back than the coincident floor slab top so the finished floor wins', () => {
+    const root = buildScene(roomOnGroundGraph())
+
+    const ground = root.children.find(isGroundPlane)
+    expect(ground).toBeDefined()
+    if (!ground) return
+    const groundMaterial = (ground as THREE.Mesh).material as THREE.MeshStandardMaterial
+
+    const slabTop = slabTopMaterial(root)
+    expect(slabTop).toBeDefined()
+    if (!slabTop) return
+
+    // A larger positive polygon offset pushes the ground plane farther back in
+    // depth than the slab top, so the lawn loses the contest and the finished
+    // floor draws over it where the two coplanar surfaces overlap.
+    expect(groundMaterial.polygonOffset).toBe(true)
+    expect(groundMaterial.polygonOffsetFactor).toBeGreaterThan(slabTop.polygonOffsetFactor)
+    expect(groundMaterial.polygonOffsetUnits).toBeGreaterThan(slabTop.polygonOffsetUnits)
   })
 })
