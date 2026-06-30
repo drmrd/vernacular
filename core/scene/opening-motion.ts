@@ -78,6 +78,8 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
       return jambHinge(opening, SINGLE_PART)
     case 'slide':
       return alongWallSlide(opening, partCountOf(params))
+    case 'window-hung':
+      return verticalSlide(opening, PAIRED_PARTS)
     default:
       return NO_MOTION
   }
@@ -123,6 +125,17 @@ function alongWallSlide(opening: OpeningSceneNode, partCount: number): SlideMoti
       y: 0,
       z: opening.along.y * opening.width,
     },
+    partId: REPRESENTATIVE_PART,
+    partCount,
+  }
+}
+
+/** A slide straight up (world +Y) by the opening height, the way a sash raises. */
+function verticalSlide(opening: OpeningSceneNode, partCount: number): SlideMotion {
+  return {
+    kind: 'slide',
+    axis: 'vertical',
+    travel: { x: 0, y: opening.height, z: 0 },
     partId: REPRESENTATIVE_PART,
     partCount,
   }
