@@ -44,6 +44,28 @@ export function slabTopDepthBiasParameters(): THREE.MeshStandardMaterialParamete
 }
 
 /**
+ * The ground plane and the finished-floor slab top both sit at the Y = 0 datum facing up and
+ * overlap in plan under the whole footprint, so they z-fight. The ordering is layered: the slab
+ * top is pushed back so the coincident wall base wins (SLAB_TOP_DEPTH_BIAS, ADR-0102), and the
+ * ground plane is pushed back farther still, so the floor slab top wins over the lawn and the
+ * finished floor draws over the grass where the two coplanar faces meet. Both fields stay strictly
+ * greater than the slab top's so the ground plane always loses to the floor it sits beneath.
+ */
+export const GROUND_PLANE_DEPTH_BIAS = { factor: 2, units: 2 } as const
+
+/**
+ * The polygon-offset fields that push the ground plane back in depth (see GROUND_PLANE_DEPTH_BIAS),
+ * mirroring slabTopDepthBiasParameters so the convention lives in one place per surface.
+ */
+export function groundPlaneDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: GROUND_PLANE_DEPTH_BIAS.factor,
+    polygonOffsetUnits: GROUND_PLANE_DEPTH_BIAS.units,
+  }
+}
+
+/**
  * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
  * it blends without occluding the room behind it; the fill parts are thin boxes whose face
  * orientation depends on the opening normal sign, so leaf and glass render double-sided rather than

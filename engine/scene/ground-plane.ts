@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 
+import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
+
 /**
  * Grade (ground-surface) elevation in millimeters: the vertical datum the ground
  * plane sits at. The model carries no explicit grade field today. It treats a
@@ -64,7 +66,10 @@ function groundFootprint(sceneRoot: THREE.Object3D): GroundFootprint {
 
 function groundMesh(footprint: GroundFootprint): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(footprint.width, footprint.depth)
-  const material = new THREE.MeshStandardMaterial({ color: GRASS_COLOR })
+  const material = new THREE.MeshStandardMaterial({
+    color: GRASS_COLOR,
+    ...groundPlaneDepthBiasParameters(),
+  })
   const mesh = new THREE.Mesh(geometry, material)
   mesh.name = GROUND_PLANE_NAME
   mesh.userData.ground = true
