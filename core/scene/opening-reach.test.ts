@@ -34,6 +34,28 @@ function pocketDoorAtZ2000(id: string): OpeningSceneNode {
   }
 }
 
+// An opening on a wall running off the axes, so along.y and normal.y are nonzero
+// and the plan-y to world -Z mapping is exercised. The leaf rectangle spans 900mm
+// along the wall and 2000mm tall, centered at the plan origin (world {x:0, y:1000,
+// z:0}).
+function angledOpening(id: string): OpeningSceneNode {
+  return {
+    id,
+    kind: 'opening',
+    floorId: 'floor-1',
+    type: 'single-swing-door',
+    center: { x: 0, y: 0 },
+    along: { x: 0.6, y: 0.8 },
+    normal: { x: -0.8, y: 0.6 },
+    width: 900,
+    height: 2000,
+    sillHeight: 0,
+    hostThickness: 120,
+    orientation: { hinge: 'start', facing: 'positive' },
+    hostWallId: 'angled',
+  }
+}
+
 const REACH_MM = 1500
 
 // An eye 1000mm in front of the door (world z = -1000) at standing height, looking
@@ -48,6 +70,23 @@ describe('openingUnderReach', () => {
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
 
     expect(hit).toBe('opening:front-door')
+  })
+
+  it('returns an opening on an angled wall viewed along its true world normal', () => {
+    const opening = angledOpening('opening:bay-window')
+    // Plan north (+y) maps to world -Z, so the plan normal (-0.8, 0.6) becomes the
+    // true world normal (-0.8, 0, -0.6) and the world along is (0.6, 0, -0.8). The
+    // leaf center sits at world {x:0, y:1000, z:0}. Stand 1000mm out along the true
+    // normal, offset 400mm along the leaf (inside its 450mm half-width), and look
+    // straight back: the ray crosses the leaf rectangle 1000mm out, within reach.
+    // With the old mirrored (+Z) frame the same ray points away from the leaf, so
+    // it is missed.
+    const eye: Vector3 = { x: -560, y: 1000, z: -920 }
+    const towardLeaf: Vector3 = { x: 0.8, y: 0, z: 0.6 }
+
+    const hit = openingUnderReach(eye, towardLeaf, [opening], { reachMm: REACH_MM })
+
+    expect(hit).toBe('opening:bay-window')
   })
 
   it('returns null when the walker looks away from the opening', () => {
