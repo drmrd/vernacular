@@ -47,7 +47,7 @@ function resolveMove(
   if (collision === undefined) {
     return proposed
   }
-  return sweepWalkCollision(from, proposed, collision.segments, collision.radius)
+  return sweepWalkCollision(from, proposed, collision)
 }
 
 /**

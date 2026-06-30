@@ -112,9 +112,9 @@ export function resolveWalkCollision(
 export function sweepWalkCollision(
   from: PlanarPoint,
   to: PlanarPoint,
-  segments: readonly WallSegment[],
-  radius: number,
+  world: WalkCollisionWorld,
 ): PlanarPoint {
+  const { segments, radius } = world
   const spanX = to.x - from.x
   const spanZ = to.z - from.z
   const distance = Math.hypot(spanX, spanZ)

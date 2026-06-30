@@ -111,11 +111,9 @@ describe('sweepWalkCollision', () => {
     // The swept resolver inspects the whole path, so the wall lying between the
     // endpoints stops the walker on the near (-z) side at the radius standoff
     // rather than letting it cross.
-    const result = sweepWalkCollision(from, to, [wallAlongX], radius)
+    const result = sweepWalkCollision(from, to, { segments: [wallAlongX], radius })
     expect(result.x).toBeCloseTo(0, 5)
     expect(result.z).toBeCloseTo(-radius, 5)
-    // Make the no-tunnel intent explicit: the walker never reaches the far side.
-    expect(result.z).toBeLessThan(0)
   })
 })
 
