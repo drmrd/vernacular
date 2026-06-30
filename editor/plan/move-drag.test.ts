@@ -9,6 +9,7 @@ import {
   IDLE_MOVE_DRAG,
   moveDragGhost,
   moveDragReadout,
+  snappedMovePointer,
 } from './move-drag'
 
 const ORIGIN = { x: 100, y: 100 }
@@ -54,6 +55,28 @@ describe('moveDragGhost', () => {
       { start: { x: 50, y: 0 }, end: { x: 250, y: 0 } },
       { start: { x: 50, y: 300 }, end: { x: 50, y: 500 } },
     ])
+  })
+})
+
+describe('snappedMovePointer', () => {
+  it('returns the pointer unchanged while idle', () => {
+    expect(snappedMovePointer(IDLE_MOVE_DRAG, { x: 130, y: 100 })).toEqual({ x: 130, y: 100 })
+  })
+
+  it('returns the raw pointer while dragging without a snap resolver', () => {
+    const dragging = beginMoveDrag(ORIGIN, SEGMENTS)
+
+    expect(snappedMovePointer(dragging, { x: 130, y: 100 })).toEqual({ x: 130, y: 100 })
+  })
+
+  it('shifts the pointer by the snapped representative-anchor delta while dragging', () => {
+    const dragging = beginMoveDrag(ORIGIN, SEGMENTS)
+
+    // Raw delta {30,0} → proposed anchor {30,0} snaps to {50,0} → effective delta {50,0}.
+    expect(snappedMovePointer(dragging, { x: 130, y: 100 }, snapToFifties)).toEqual({
+      x: 150,
+      y: 100,
+    })
   })
 })
 
