@@ -9,6 +9,7 @@ import type { Floor, Project } from '../model/types'
 import type { SceneGraph } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
 import { sceneGraphForFloor } from './scene-graph-for-floor'
+import { emptySceneGraph } from './scene-graph-test-fixtures'
 
 function twoFloorProject(): Project {
   const project = createEmptyProject({
@@ -41,21 +42,6 @@ function floorWithFurniture(name: string, id: string, instanceId: string): Floor
         footprint: { width: 1000, depth: 600 },
       }),
     ],
-  }
-}
-
-// A scene graph with every entity collection empty, for fixtures that only need a
-// grade datum and a single floor node.
-function emptyGraph(): SceneGraph {
-  return {
-    nodes: [],
-    walls: [],
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
   }
 }
 
@@ -138,7 +124,7 @@ describe('sceneGraphForFloor', () => {
 
   it('preserves the grade elevation when narrowing to a floor', () => {
     const graph: SceneGraph = {
-      ...emptyGraph(),
+      ...emptySceneGraph(),
       gradeElevation: -600,
       nodes: [{ id: 'floor:a', kind: 'floor', name: 'A', elevation: 0 }],
     }

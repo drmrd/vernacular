@@ -8,7 +8,7 @@ import {
 
 /** Options controlling which floors the whole-building view includes. */
 export interface BuildingViewOptions {
-  /** Include floors below grade (negative elevation), such as a basement. */
+  /** Include floors below the model grade datum (`gradeElevation`), such as a basement. */
   includeUnderground: boolean
 }
 
