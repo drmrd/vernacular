@@ -68,6 +68,25 @@ describe('buildWalls', () => {
     expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: profileHalfSpan })
   })
 
+  it('sizes an opening wall footprint from its construction profile total thickness', () => {
+    // The opening path places the long faces from the edge frame's thickness. The
+    // footprint already sizes from the 231mm solid-masonry-brick total, but the
+    // frame must too, or the faces land at the raw 120mm (cross-wall span [-60, 60])
+    // instead of the profile's [-115.5, 115.5].
+    const PROFILE_TOTAL = 231
+    const profileHalfSpan: [number, number] = [-PROFILE_TOTAL / 2, PROFILE_TOTAL / 2]
+    const group = buildWalls({
+      graph: oneEdgeGraph(),
+      walls: [horizontalWall({ constructionProfile: 'solid-masonry-brick' })],
+      openingsByWall: new Map([['w1', [centeredOpening()]]]),
+      materials: new NeutralMaterialProvider(),
+    })
+    const mesh = meshesOf(group).find((m) => m.userData.entityId === 'wall:w1')
+    expect(mesh).toBeDefined()
+    if (mesh === undefined) return
+    expectBoxSpan(mesh, { x: [0, WALL_LENGTH], y: [0, HEIGHT], z: profileHalfSpan })
+  })
+
   it('builds one box per edge for a split wall, both carrying the wall node id', () => {
     const meshes = meshesOf(wallGroup([], splitEdgeGraph()))
     expect(meshes).toHaveLength(2)
