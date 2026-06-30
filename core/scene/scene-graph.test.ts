@@ -16,6 +16,7 @@ import {
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_WALL_THICKNESS_MM,
 } from '../model/factories'
+import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
 import type { Floor, Project, RoomOverride, Underlay, Wall } from '../model/types'
 import { deriveRooms, ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
@@ -65,7 +66,7 @@ describe('deriveSceneGraph', () => {
   it('defaults the scene-graph grade to the datum when no site grade is set', () => {
     const project = projectWithFloors()
 
-    expect(deriveSceneGraph(project).gradeElevation).toBe(0)
+    expect(deriveSceneGraph(project).gradeElevation).toBe(DEFAULT_GRADE_ELEVATION_MM)
   })
 })
 

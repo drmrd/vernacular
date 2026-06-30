@@ -1,6 +1,7 @@
 import { dimensionLength } from '../geometry/dimension'
 import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
+import { resolveGradeElevation } from '../model/site'
 import type {
   Dimension,
   Floor,
@@ -16,7 +17,6 @@ import type {
   UnderlaySource,
   Wall,
 } from '../model/types'
-import { resolveGradeElevation } from '../model/site'
 import { deriveOpeningGeometry } from '../topology/openings'
 import { applyRoomOverrides, deriveRooms } from '../topology/rooms'
 
@@ -170,7 +170,8 @@ export interface SceneGraph {
   /**
    * Ground-surface grade datum in millimeters for this projection. Optional so
    * hand-built literals omit it; `deriveSceneGraph` always sets it and readers
-   * default to the 0 datum. Forwarded by the floor and building filters.
+   * default to the 0 datum. Callers that narrow the graph forward this field so
+   * the underground filter and the engine ground plane read the right datum.
    */
   gradeElevation?: number
 }
