@@ -5,6 +5,7 @@ import {
   kelvinToLinearRgb,
   type FurnitureSceneNode,
   type OpeningSceneNode,
+  type Point,
   type RoomSceneNode,
   type SceneGraph,
   type SceneNode,
@@ -128,11 +129,25 @@ function furnitureReadySignature(
     .join('|')
 }
 
+/** The inputs a floor root is assembled and framed from, including its room outlines. */
+interface FrameFloorInput {
+  floorNode: SceneNode
+  wall: WallBuild
+  subgroups: SceneRoot[]
+  roomPolygons: readonly (readonly Point[])[]
+}
+
 /** Assembles a floor root from its wall and entity sub-groups, recomputing bounds and pose. */
-function frameFloor(floorNode: SceneNode, wall: WallBuild, subgroups: SceneRoot[]): FramedScene {
+function frameFloor({ floorNode, wall, subgroups, roomPolygons }: FrameFloorInput): FramedScene {
   const root = assembleFloorRoot(floorNode, [wall.group, ...subgroups])
   const bounds = sceneBounds(root)
-  return { root, pose: frameSceneCamera(bounds), bounds, nearWallTargets: wall.nearWallTargets }
+  return {
+    root,
+    pose: frameSceneCamera(bounds),
+    bounds,
+    nearWallTargets: wall.nearWallTargets,
+    roomPolygons,
+  }
 }
 
 /** Builds a per-id map of one sub-group build per node, keeping each node for reuse. */
@@ -330,13 +345,14 @@ function buildFloorBuild({
       reuseOrBuildFurniture({ node, materials, prev, models }),
     ]),
   )
-  const framed = frameFloor(floorNode, wall, collectSubgroupGroups(rooms, openings, furniture))
-  const wallNodes = entities.walls
+  const subgroups = collectSubgroupGroups(rooms, openings, furniture)
+  const roomPolygons = entities.rooms.map((room) => room.polygon)
+  const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons })
   return {
     floorNode,
     paint,
     wall,
-    wallNodes,
+    wallNodes: entities.walls,
     wallOpeningNodes,
     rooms,
     openings,

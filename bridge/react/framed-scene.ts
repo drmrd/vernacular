@@ -7,6 +7,7 @@ import {
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
+  type Point,
   type SceneGraph,
   type SurfaceTreatment,
 } from '../../core'
@@ -25,6 +26,9 @@ export interface FramedScene {
   pose: CameraPose
   bounds: Bounds3 | null
   nearWallTargets: NearWallTarget[]
+  // The floor's room outlines, in plan millimeters, so the per-frame near-wall
+  // fade can tell whether the orbit camera sits inside the building footprint.
+  roomPolygons: readonly (readonly Point[])[]
 }
 
 /**
@@ -51,5 +55,6 @@ export function buildFramedScene(
   )
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
-  return { root, pose, bounds, nearWallTargets }
+  const roomPolygons = graph.rooms.map((room) => room.polygon)
+  return { root, pose, bounds, nearWallTargets, roomPolygons }
 }

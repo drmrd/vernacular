@@ -7,6 +7,7 @@ import {
   type Bounds3,
   type CameraPose,
   type OpeningSceneNode,
+  type Point,
   type SceneGraph,
 } from '../../core'
 import {
@@ -203,6 +204,7 @@ interface LiveSceneCanvasProps {
   opening: OpeningSceneNode | null
   presetRequest: PresetRequest | null
   nearWallTargets: NearWallTarget[]
+  roomPolygons: readonly (readonly Point[])[]
 }
 
 // The interactive React Three Fiber canvas: the keyed scene primitive, the framed
@@ -223,6 +225,7 @@ function LiveSceneCanvas({
   opening,
   presetRequest,
   nearWallTargets,
+  roomPolygons,
 }: LiveSceneCanvasProps) {
   return (
     <Canvas
@@ -248,7 +251,11 @@ function LiveSceneCanvas({
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
-      <NearWallFade targets={nearWallTargets} enabled={mode === 'orbit'} />
+      <NearWallFade
+        targets={nearWallTargets}
+        enabled={mode === 'orbit'}
+        roomPolygons={roomPolygons}
+      />
       <OrbitCameraControls
         enabled={mode === 'orbit'}
         target={pose.target}
@@ -311,7 +318,7 @@ export function WebGPUSceneView() {
   // scene instead of rebuilding on every edit (foundation spec 5.5).
   const reconcilerRef = useRef(createFramedSceneReconciler())
   const models = useFurnitureModelCache(graph)
-  const { root, pose, bounds, nearWallTargets } = useMemo(
+  const { root, pose, bounds, nearWallTargets, roomPolygons } = useMemo(
     () => reconcilerRef.current.reconcile(graph, paint, models.lookup),
     [graph, paint, models],
   )
@@ -361,6 +368,7 @@ export function WebGPUSceneView() {
           opening={doorwayOpening}
           presetRequest={presetRequest}
           nearWallTargets={nearWallTargets}
+          roomPolygons={roomPolygons}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
