@@ -114,10 +114,12 @@ function PresetCamera({
 function useSceneNavigation() {
   const [mode, setMode] = useState<NavMode>('orbit')
   const [selectionEnabled, setSelectionEnabled] = useState(false)
+  const [revealInterior, setRevealInterior] = useState(true)
   const [userControlled, setUserControlled] = useState(false)
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
   const toggleSelection = useCallback(() => setSelectionEnabled((value) => !value), [])
+  const toggleRevealInterior = useCallback(() => setRevealInterior((value) => !value), [])
   // Reset leaves the last presetRequest in place on purpose: a stale request cannot
   // re-fire because PresetCamera's effect depends on the request's identity, which does
   // not change on reset.
@@ -133,6 +135,8 @@ function useSceneNavigation() {
     setMode,
     selectionEnabled,
     toggleSelection,
+    revealInterior,
+    toggleRevealInterior,
     userControlled,
     markUserControlled,
     resetView,
@@ -197,6 +201,7 @@ interface LiveSceneCanvasProps {
   bounds: Bounds3 | null
   mode: NavMode
   selectionEnabled: boolean
+  revealInterior: boolean
   userControlled: boolean
   onUserControl: () => void
   colorTemperatureK: number
@@ -218,6 +223,7 @@ function LiveSceneCanvas({
   bounds,
   mode,
   selectionEnabled,
+  revealInterior,
   userControlled,
   onUserControl,
   colorTemperatureK,
@@ -253,7 +259,7 @@ function LiveSceneCanvas({
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
       <NearWallFade
         targets={nearWallTargets}
-        enabled={mode === 'orbit'}
+        enabled={mode === 'orbit' && revealInterior}
         roomPolygons={roomPolygons}
       />
       <OrbitCameraControls
@@ -327,6 +333,8 @@ export function WebGPUSceneView() {
     setMode,
     selectionEnabled,
     toggleSelection,
+    revealInterior,
+    toggleRevealInterior,
     userControlled,
     markUserControlled,
     resetView,
@@ -344,6 +352,8 @@ export function WebGPUSceneView() {
         onModeChange={setMode}
         selectionEnabled={selectionEnabled}
         onToggleSelection={toggleSelection}
+        revealInterior={revealInterior}
+        onToggleRevealInterior={toggleRevealInterior}
         onReset={resetView}
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={setColorTemperatureK}
@@ -361,6 +371,7 @@ export function WebGPUSceneView() {
           bounds={bounds}
           mode={mode}
           selectionEnabled={selectionEnabled}
+          revealInterior={revealInterior}
           userControlled={userControlled}
           onUserControl={markUserControlled}
           colorTemperatureK={colorTemperatureK}

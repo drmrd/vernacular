@@ -50,6 +50,8 @@ interface SceneNavToolbarProps {
   onColorTemperatureChange: (kelvin: number) => void
   selectionEnabled?: boolean
   onToggleSelection?: () => void
+  revealInterior?: boolean
+  onToggleRevealInterior?: () => void
   onPreset?: (preset: PresetChoice) => void
   canDoorway?: boolean
   scope?: SceneScope
@@ -154,6 +156,28 @@ function SelectionToggle({ selectionEnabled, onToggleSelection }: SelectionToggl
   )
 }
 
+interface RevealInteriorToggleProps {
+  revealInterior: boolean
+  onToggleRevealInterior: () => void
+}
+
+/** The near-wall fade is on by default: a pressed toggle reflects whether it is currently on. */
+function RevealInteriorToggle({
+  revealInterior,
+  onToggleRevealInterior,
+}: RevealInteriorToggleProps) {
+  return (
+    <button
+      type="button"
+      className="scene-nav-toolbar__btn"
+      aria-pressed={revealInterior}
+      onClick={onToggleRevealInterior}
+    >
+      Reveal interior
+    </button>
+  )
+}
+
 interface CameraPresetButtonsProps {
   onPreset: ((preset: PresetChoice) => void) | undefined
   canDoorway: boolean | undefined
@@ -234,6 +258,8 @@ interface PrimaryClusterProps {
   onModeChange: (mode: NavMode) => void
   selectionEnabled: boolean
   onToggleSelection: () => void
+  revealInterior: boolean
+  onToggleRevealInterior: () => void
   onReset: () => void
 }
 
@@ -255,6 +281,10 @@ function PrimaryCluster(props: PrimaryClusterProps) {
       <SelectionToggle
         selectionEnabled={props.selectionEnabled}
         onToggleSelection={props.onToggleSelection}
+      />
+      <RevealInteriorToggle
+        revealInterior={props.revealInterior}
+        onToggleRevealInterior={props.onToggleRevealInterior}
       />
       <button type="button" className="scene-nav-toolbar__btn" onClick={props.onReset}>
         Reset view
@@ -280,6 +310,8 @@ export function SceneNavToolbar({
   onColorTemperatureChange,
   selectionEnabled = false,
   onToggleSelection = () => {},
+  revealInterior = true,
+  onToggleRevealInterior = () => {},
   onPreset,
   canDoorway,
   scope = 'floor',
@@ -298,6 +330,8 @@ export function SceneNavToolbar({
         onModeChange={onModeChange}
         selectionEnabled={selectionEnabled}
         onToggleSelection={onToggleSelection}
+        revealInterior={revealInterior}
+        onToggleRevealInterior={onToggleRevealInterior}
         onReset={onReset}
       />
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
