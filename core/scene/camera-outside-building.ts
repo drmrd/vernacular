@@ -1,7 +1,7 @@
 import type { Point } from '../model/types'
 import type { Vector3 } from './vector3'
-import { worldToPlan } from './plan-to-world'
 import { isInteriorViewpoint } from './interior-viewpoint'
+import { worldToPlan } from './plan-to-world'
 
 /**
  * Reports whether the orbit camera lies outside the building footprint, which is
@@ -13,11 +13,12 @@ import { isInteriorViewpoint } from './interior-viewpoint'
  * boundary count as inside, and an empty footprint reports outside.
  *
  * The `enabled` / view-mode guard lives in the bridge, not here, so this
- * predicate is intentionally flag-free. Composes {@link worldToPlan} and
- * {@link isInteriorViewpoint}.
+ * predicate is intentionally flag-free.
  *
  * @param cameraWorld The orbit camera position, in Three.js world millimeters.
  * @param roomPolygons The floor's room outlines, in plan millimeters.
+ * @see worldToPlan for the ground-plane projection this predicate applies.
+ * @see isInteriorViewpoint for the containment test it negates.
  */
 export function cameraOutsideBuilding(
   cameraWorld: Vector3,
