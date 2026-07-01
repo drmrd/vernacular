@@ -55,7 +55,9 @@ export function openingFill(
       return doorLeafParts(node, double)
     }
     case 'window-sash':
-      return windowSashParts(node)
+      return fixedWindowSashParts(node)
+    case 'window-sash-hung':
+      return hungWindowSashParts(node)
     // A further fill kind (a glazed door, a curved sash) is a new case here, the
     // way a new void shape is a new case in openingVoidContour.
     default:
@@ -89,25 +91,24 @@ function doorLeafParts(node: OpeningSceneNode, double: boolean): OpeningFillPart
 }
 
 /**
- * A sash window filling the opening rectangle: a perimeter frame of four sash bars
- * (head, sill, and two jambs) ringing one glass pane inset by the frame width.
+ * One sash filling a vertical band of the opening: a perimeter frame of four sash
+ * bars (head, sill, and two jambs) ringing one glass pane inset by the frame width.
+ * The band is the sash's own `[min, max]` height range, so a fixed window passes the
+ * whole opening and a hung window passes each of its two bands.
  */
-function windowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
-  const halfWidth = node.width / 2
-  const sill = node.sillHeight
-  const top = node.sillHeight + node.height
+function sashAssembly(halfWidth: number, band: OpeningFillExtent): OpeningFillPart[] {
   const fw = SASH_FRAME_WIDTH_MM
-  const innerUp: OpeningFillExtent = { min: sill + fw, max: top - fw }
+  const innerUp: OpeningFillExtent = { min: band.min + fw, max: band.max - fw }
+  const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
   const bar = (along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPart => ({
     role: 'leaf',
     along,
     up,
     thickness: SASH_FRAME_THICKNESS_MM,
   })
-  const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
   return [
-    bar(span, { min: top - fw, max: top }),
-    bar(span, { min: sill, max: sill + fw }),
+    bar(span, { min: band.max - fw, max: band.max }),
+    bar(span, { min: band.min, max: band.min + fw }),
     bar({ min: -halfWidth, max: -halfWidth + fw }, innerUp),
     bar({ min: halfWidth - fw, max: halfWidth }, innerUp),
     {
@@ -116,5 +117,36 @@ function windowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
       up: innerUp,
       thickness: GLASS_THICKNESS_MM,
     },
+  ]
+}
+
+/** A fixed or single-pane sash window: one sash spanning the whole opening. */
+function fixedWindowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
+  return sashAssembly(node.width / 2, { min: node.sillHeight, max: node.sillHeight + node.height })
+}
+
+/**
+ * A hung window as two stacked sashes: a lower and an upper sash meeting at a
+ * full-width meeting rail that straddles the opening's vertical midpoint. Each sash
+ * fills its own band, so the window reads as two panes rather than one.
+ */
+function hungWindowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
+  const halfWidth = node.width / 2
+  const sill = node.sillHeight
+  const top = sill + node.height
+  const mid = sill + node.height / 2
+  const railHalf = SASH_FRAME_WIDTH_MM / 2
+  const railBottom = mid - railHalf
+  const railTop = mid + railHalf
+  const meetingRail: OpeningFillPart = {
+    role: 'leaf',
+    along: { min: -halfWidth, max: halfWidth },
+    up: { min: railBottom, max: railTop },
+    thickness: SASH_FRAME_THICKNESS_MM,
+  }
+  return [
+    ...sashAssembly(halfWidth, { min: sill, max: railBottom }),
+    meetingRail,
+    ...sashAssembly(halfWidth, { min: railTop, max: top }),
   ]
 }

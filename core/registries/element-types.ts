@@ -13,7 +13,7 @@ export interface Plan2DSymbol {
 export type VoidContourKind = 'rectangular' | 'round' | 'arched' | 'lancet'
 
 /** The named body an opening renders in its void. Open to further variants additively. */
-export type OpeningFillKind = 'door-leaf' | 'window-sash'
+export type OpeningFillKind = 'door-leaf' | 'window-sash' | 'window-sash-hung'
 
 export interface Scene3DReference {
   /** Identifier of the 3D builder routine or asset-reference key. */
@@ -55,7 +55,7 @@ export interface ElementType extends RegistryEntry {
   opening?: OpeningTypeParameters
 }
 
-export const ELEMENT_TYPE_REGISTRY_VERSION = 6
+export const ELEMENT_TYPE_REGISTRY_VERSION = 7
 
 export const builtinElementTypes: Registry<ElementType> = createRegistry(
   ELEMENT_TYPE_REGISTRY_VERSION,
@@ -207,7 +207,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'double-hung-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash-hung' },
       opening: {
         family: 'window-hung',
         defaultWidth: 900,
@@ -222,7 +222,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       id: 'single-hung-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
-      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash' },
+      scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash-hung' },
       opening: {
         family: 'window-hung',
         defaultWidth: 900,
