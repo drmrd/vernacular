@@ -220,8 +220,8 @@ describe('openingMotion fixed openings', () => {
 })
 
 describe('openingMotion registry coverage', () => {
-  it('resolves every built-in opening type to a defined motion at version 6', () => {
-    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(6)
+  it('resolves every built-in opening type to a defined motion at version 7', () => {
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(7)
     const openings = Object.values(builtinElementTypes.entries).filter(
       (entry) => entry.category === 'opening',
     )

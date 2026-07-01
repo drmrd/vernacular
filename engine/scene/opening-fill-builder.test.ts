@@ -33,12 +33,12 @@ function singleSwingDoor(): OpeningSceneNode {
   }
 }
 
-function doubleHungWindow(): OpeningSceneNode {
+function fixedWindow(): OpeningSceneNode {
   return {
     id: 'opening:test-window',
     kind: 'opening',
     floorId: 'floor-1',
-    type: 'double-hung-window',
+    type: 'picture-window',
     center: { x: 1000, y: 0 },
     along: { x: 1, y: 0 },
     normal: { x: 0, y: 1 },
@@ -83,7 +83,7 @@ describe('buildOpeningFill', () => {
   })
 
   it('builds four leaf sash bars and one transparent glass pane for a window', () => {
-    const group = buildOpeningFill(doubleHungWindow(), new NeutralMaterialProvider())
+    const group = buildOpeningFill(fixedWindow(), new NeutralMaterialProvider())
 
     const meshes = meshesOf(group)
     const materialNames = meshes.map(materialNameOf)
