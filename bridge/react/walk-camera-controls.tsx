@@ -43,6 +43,9 @@ const MOVEMENT_KEYS = new Map<string, 'forward' | 'back' | 'left' | 'right'>([
 // interact action so other interactables (lights, drawers) can hook in here later.
 const INTERACT_KEY = 'KeyE'
 
+// The reset key: clears every opened opening so they animate shut.
+const RESET_KEY = 'KeyR'
+
 // The subset of the three camera this wrapper reads and writes, declared structurally
 // so the file types the camera without importing three (rules.md rule 1).
 interface WalkCamera {
@@ -114,9 +117,8 @@ export function walkKeyHandlers(session: WalkSession): {
       onUserControl()
       return
     }
-    if (event.code === 'KeyR') {
-      // R resets every opened opening back to closed; the per-frame tick then
-      // animates each one shut from its current openness.
+    if (event.code === RESET_KEY) {
+      // The per-frame tick animates each opening shut from its current openness.
       interaction.current = emptyOpeningInteraction()
       onUserControl()
       return
