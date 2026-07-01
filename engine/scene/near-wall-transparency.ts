@@ -69,12 +69,15 @@ function findNodeBy(
   return found
 }
 
-/** The first descendant mesh of `root` whose entity id matches, or null. */
-function findMeshByEntityId(root: THREE.Object3D, entityId: string): THREE.Mesh | null {
-  return findNodeBy(
-    root,
-    (node) => node instanceof THREE.Mesh && node.userData.entityId === entityId,
-  ) as THREE.Mesh | null
+/** Every descendant mesh of `root` (or `root` itself) whose entity id matches. */
+function findMeshesByEntityId(root: THREE.Object3D, entityId: string): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = []
+  root.traverse((node) => {
+    if (node instanceof THREE.Mesh && node.userData.entityId === entityId) {
+      meshes.push(node)
+    }
+  })
+  return meshes
 }
 
 /** The materials of a mesh as an array, whether it holds one material or several. */
@@ -146,6 +149,38 @@ function enrollJunctionFills(
 }
 
 /**
+ * Builds one fade target covering every segment mesh of `wall` plus its hosted
+ * openings, or none if no mesh in `root` carries the wall's id. A split wall yields
+ * several sibling meshes sharing its entity id; each is privatized so they all fade
+ * together. The segments are collinear, so the fade point is the center of a box
+ * expanded over every segment mesh, keeping the point on the wall's plane.
+ */
+function buildWallTarget(root: THREE.Object3D, wall: ExteriorWall): NearWallTarget[] {
+  const meshes = findMeshesByEntityId(root, wall.wallId)
+  if (meshes.length === 0) {
+    return []
+  }
+  const bounds = new THREE.Box3()
+  const materials: FadeMaterial[] = []
+  for (const mesh of meshes) {
+    bounds.expandByObject(mesh)
+    materials.push(...privatizeMeshMaterials(mesh))
+  }
+  materials.push(...wall.openingIds.flatMap((openingId) => cloneEntityMaterials(root, openingId)))
+  const center = bounds.getCenter(new THREE.Vector3())
+  return [
+    {
+      materials,
+      point: { x: center.x, z: center.z },
+      // The wall's outward normal is a plan-space direction; it maps to world the
+      // same way `planToWorld` maps points, so plan y becomes world -z. Negating
+      // keeps the normal pointing the same way as the (z-flipped) wall geometry.
+      outwardNormal: { x: wall.outwardNormal.x, z: -wall.outwardNormal.y },
+    },
+  ]
+}
+
+/**
  * Clones each exterior wall's materials, plus those of its hosted openings, into
  * private instances so the wall and its openings fade together while their opacity
  * animates independently of the rest of the scene. Records the world point and
@@ -160,27 +195,7 @@ export function prepareNearWallTransparency(
   exterior: ExteriorWall[],
   fadeGroups: JunctionFadeGroup[] = [],
 ): NearWallTarget[] {
-  const wallTargets = exterior.flatMap((wall) => {
-    const mesh = findMeshByEntityId(root, wall.wallId)
-    if (mesh === null) {
-      return []
-    }
-    const materials = [
-      ...privatizeMeshMaterials(mesh),
-      ...wall.openingIds.flatMap((openingId) => cloneEntityMaterials(root, openingId)),
-    ]
-    const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
-    return [
-      {
-        materials,
-        point: { x: center.x, z: center.z },
-        // The wall's outward normal is a plan-space direction; it maps to world the
-        // same way `planToWorld` maps points, so plan y becomes world -z. Negating
-        // keeps the normal pointing the same way as the (z-flipped) wall geometry.
-        outwardNormal: { x: wall.outwardNormal.x, z: -wall.outwardNormal.y },
-      },
-    ]
-  })
+  const wallTargets = exterior.flatMap((wall) => buildWallTarget(root, wall))
   return [...wallTargets, ...enrollJunctionFills(root, fadeGroups)]
 }
 
