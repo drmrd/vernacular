@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planToWorld } from './plan-to-world'
+import { planToWorld, worldToPlan } from './plan-to-world'
 
 describe('planToWorld', () => {
   it('maps plan x to world X and plan north (+y) to world -Z at the given height', () => {
@@ -25,5 +25,34 @@ describe('planToWorld', () => {
     const n = { x: north.x - origin.x, z: north.z - origin.z }
     const crossUp = e.z * n.x - e.x * n.z // +Y component of east x north
     expect(crossUp).toBeGreaterThan(0)
+  })
+})
+
+describe('worldToPlan', () => {
+  it('maps a world point back to its plan point, dropping height and negating Z', () => {
+    // World X is plan x, world -Z is plan north (+y), and world Y (height) is
+    // discarded: worldToPlan is the ground-plane inverse of planToWorld.
+    expect(worldToPlan({ x: 100, y: 2500, z: -300 })).toEqual({ x: 100, y: 300 })
+  })
+
+  it('round-trips a plan point through planToWorld at an arbitrary height', () => {
+    const point = { x: 42, y: 900 }
+    expect(worldToPlan(planToWorld(point, 2700))).toEqual(point)
+  })
+
+  it('round-trips a point on the floor line (plan y = 0) back to plan y = 0', () => {
+    // The naive -point.y would yield world z = -0 when plan y = 0; planToWorld
+    // uses 0 - point.y instead to land on a clean +0. Negating that with 0 -
+    // world.z also gives +0, so the round-trip compares equal to 0.
+    const onFloorLine = { x: 5, y: 0 }
+    expect(worldToPlan(planToWorld(onFloorLine, 0))).toEqual(onFloorLine)
+  })
+
+  it('locks the sign both ways: negative plan y maps through positive world Z', () => {
+    // A plan point south of the origin (y < 0) becomes world z > 0, and mapping
+    // it back must restore the negative plan y.
+    const world = planToWorld({ x: -7, y: -50 }, 1200)
+    expect(world.z).toBeGreaterThan(0)
+    expect(worldToPlan(world)).toEqual({ x: -7, y: -50 })
   })
 })
