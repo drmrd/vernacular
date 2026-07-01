@@ -55,7 +55,7 @@ export function openingFill(
       return doorLeafParts(node, double)
     }
     case 'window-sash':
-      return fixedWindowSashParts(node)
+      return wholeSashParts(node)
     case 'window-sash-hung':
       return hungWindowSashParts(node)
     // A further fill kind (a glazed door, a curved sash) is a new case here, the
@@ -90,38 +90,37 @@ function doorLeafParts(node: OpeningSceneNode, double: boolean): OpeningFillPart
   return [leaf({ min: leftEdge, max: rightEdge })]
 }
 
+/** A single leaf-role bar (a sash frame member or a meeting rail) at frame thickness. */
+function leafBar(along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPart {
+  return { role: 'leaf', along, up, thickness: SASH_FRAME_THICKNESS_MM }
+}
+
 /**
- * One sash filling a vertical band of the opening: a perimeter frame of four sash
- * bars (head, sill, and two jambs) ringing one glass pane inset by the frame width.
- * The band is the sash's own `[min, max]` height range, so a fixed window passes the
- * whole opening and a hung window passes each of its two bands.
+ * One sash filling a vertical band of the opening: a perimeter of four frame members
+ * (a top rail, a bottom rail, and two stiles) ringing one glass pane inset by the
+ * frame width. The band is the sash's own `[min, max]` height range, so an undivided
+ * sash passes the whole opening and a hung window passes each of its two bands.
  */
 function sashAssembly(halfWidth: number, band: OpeningFillExtent): OpeningFillPart[] {
-  const fw = SASH_FRAME_WIDTH_MM
-  const innerUp: OpeningFillExtent = { min: band.min + fw, max: band.max - fw }
+  const frameWidth = SASH_FRAME_WIDTH_MM
+  const innerUp: OpeningFillExtent = { min: band.min + frameWidth, max: band.max - frameWidth }
   const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
-  const bar = (along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPart => ({
-    role: 'leaf',
-    along,
-    up,
-    thickness: SASH_FRAME_THICKNESS_MM,
-  })
   return [
-    bar(span, { min: band.max - fw, max: band.max }),
-    bar(span, { min: band.min, max: band.min + fw }),
-    bar({ min: -halfWidth, max: -halfWidth + fw }, innerUp),
-    bar({ min: halfWidth - fw, max: halfWidth }, innerUp),
+    leafBar(span, { min: band.max - frameWidth, max: band.max }),
+    leafBar(span, { min: band.min, max: band.min + frameWidth }),
+    leafBar({ min: -halfWidth, max: -halfWidth + frameWidth }, innerUp),
+    leafBar({ min: halfWidth - frameWidth, max: halfWidth }, innerUp),
     {
       role: 'glass',
-      along: { min: -halfWidth + fw, max: halfWidth - fw },
+      along: { min: -halfWidth + frameWidth, max: halfWidth - frameWidth },
       up: innerUp,
       thickness: GLASS_THICKNESS_MM,
     },
   ]
 }
 
-/** A fixed or single-pane sash window: one sash spanning the whole opening. */
-function fixedWindowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
+/** An undivided sash window: one sash spanning the whole opening. */
+function wholeSashParts(node: OpeningSceneNode): OpeningFillPart[] {
   return sashAssembly(node.width / 2, { min: node.sillHeight, max: node.sillHeight + node.height })
 }
 
@@ -138,12 +137,10 @@ function hungWindowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
   const railHalf = SASH_FRAME_WIDTH_MM / 2
   const railBottom = mid - railHalf
   const railTop = mid + railHalf
-  const meetingRail: OpeningFillPart = {
-    role: 'leaf',
-    along: { min: -halfWidth, max: halfWidth },
-    up: { min: railBottom, max: railTop },
-    thickness: SASH_FRAME_THICKNESS_MM,
-  }
+  const meetingRail = leafBar(
+    { min: -halfWidth, max: halfWidth },
+    { min: railBottom, max: railTop },
+  )
   return [
     ...sashAssembly(halfWidth, { min: sill, max: railBottom }),
     meetingRail,
