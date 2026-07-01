@@ -69,11 +69,14 @@ function findNodeBy(
   return found
 }
 
-/** Every descendant mesh of `root` (or `root` itself) whose entity id matches. */
-function findMeshesByEntityId(root: THREE.Object3D, entityId: string): THREE.Mesh[] {
+/** Every descendant mesh of `root` (or `root` itself) satisfying `predicate`. */
+function findMeshesBy(
+  root: THREE.Object3D,
+  predicate: (node: THREE.Object3D) => boolean,
+): THREE.Mesh[] {
   const meshes: THREE.Mesh[] = []
   root.traverse((node) => {
-    if (node instanceof THREE.Mesh && node.userData.entityId === entityId) {
+    if (node instanceof THREE.Mesh && predicate(node)) {
       meshes.push(node)
     }
   })
@@ -107,17 +110,6 @@ function cloneEntityMaterials(root: THREE.Object3D, entityId: string): FadeMater
   return cloned
 }
 
-/** Every descendant mesh of `root` carrying the given `userData.junctionKey`. */
-function findFillMeshesByJunctionKey(root: THREE.Object3D, junctionKey: string): THREE.Mesh[] {
-  const meshes: THREE.Mesh[] = []
-  root.traverse((node) => {
-    if (node instanceof THREE.Mesh && node.userData.junctionKey === junctionKey) {
-      meshes.push(node)
-    }
-  })
-  return meshes
-}
-
 /**
  * Privatizes (clones) the materials of every junction fill whose `junctionKey`
  * matches an opaque-holding fade group, records them as hold-opaque members so the
@@ -134,7 +126,7 @@ function enrollJunctionFills(
       return []
     }
     const junctionKey = group.edgeIndexes.join(':')
-    return findFillMeshesByJunctionKey(root, junctionKey).map((mesh) => {
+    return findMeshesBy(root, (node) => node.userData.junctionKey === junctionKey).map((mesh) => {
       const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3())
       return {
         materials: privatizeMeshMaterials(mesh).map((record) => ({ ...record, holdOpaque: true })),
@@ -156,7 +148,7 @@ function enrollJunctionFills(
  * expanded over every segment mesh, keeping the point on the wall's plane.
  */
 function buildWallTarget(root: THREE.Object3D, wall: ExteriorWall): NearWallTarget[] {
-  const meshes = findMeshesByEntityId(root, wall.wallId)
+  const meshes = findMeshesBy(root, (node) => node.userData.entityId === wall.wallId)
   if (meshes.length === 0) {
     return []
   }
