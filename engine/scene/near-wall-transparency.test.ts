@@ -77,6 +77,21 @@ const wallMaterials = (root: THREE.Group, entityId: string): THREE.Material[] =>
   return (mesh as THREE.Mesh).material as THREE.Material[]
 }
 
+/**
+ * Every mesh under `root` carrying `entityId`, in traversal order. A split wall
+ * (one WallSceneNode spanning several graph edges) yields one mesh per edge, all
+ * sharing the wall's entity id, so `findByEntityId` (first match) is not enough.
+ */
+const allMeshesByEntityId = (root: THREE.Group, entityId: string): THREE.Mesh[] => {
+  const meshes: THREE.Mesh[] = []
+  root.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.userData.entityId === entityId) {
+      meshes.push(object)
+    }
+  })
+  return meshes
+}
+
 const door = (): SceneGraph['openings'][number] => ({
   id: 'opening:door',
   kind: 'opening',
@@ -363,6 +378,33 @@ describe('updateNearWallTransparency', () => {
     expect(glass.opacity).toBe(GLASS_OPACITY)
     expect(glass.transparent).toBe(true)
     expect(glass.depthWrite).toBe(false)
+  })
+
+  it('fades every segment mesh of a split exterior wall, not only the first', () => {
+    const graph = tJunctionGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+
+    // `buildWallGraph` splits the bar at the tee foot, so the one bar WallSceneNode
+    // yields one mesh per edge, both carrying `userData.entityId === 'wall:bar'` (per
+    // the wall builder's JSDoc). Pin that split precondition before fading: if the bar
+    // is not rendered as at least two sibling meshes, the fixture assumption is wrong.
+    const barMeshes = allMeshesByEntityId(root, 'wall:bar')
+    expect(barMeshes.length).toBeGreaterThanOrEqual(2)
+
+    // The bar runs along world z=0 with its outward normal to positive Z (open air to
+    // the south, since plan y maps to world -z), so a camera on the positive-Z side
+    // sees the whole bar from outside. Every segment mesh must fade, not only the first.
+    updateNearWallTransparency(targets, { x: BAR_MIDPOINT_MM, z: 3000 })
+
+    for (const mesh of barMeshes) {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      for (const material of materials) {
+        expect(material.opacity).toBe(FADED_OPACITY)
+        expect(material.transparent).toBe(true)
+        expect(material.depthWrite).toBe(false)
+      }
+    }
   })
 
   it('holds a hold-opaque fill material at its solid baseline while its target fades the bar wall', () => {
