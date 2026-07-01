@@ -68,6 +68,12 @@ export const UNCOVERED_COMPONENTS: {
       'requires a live R3F Canvas and a Three.js camera; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'FrameCamera / PresetCamera',
+    file: 'bridge/react/scene-camera-effects.tsx',
+    reason:
+      'hosts the R3F camera-effect helpers (frame-on-bounds and preset snapping) that read the live camera through useThree and render no DOM; they require a live R3F Canvas and a Three.js camera, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'SceneCanvas',
     file: 'bridge/react/scene-canvas.tsx',
     reason:
