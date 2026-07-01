@@ -41,8 +41,9 @@ describe('worldToPlan', () => {
   })
 
   it('round-trips a point on the floor line (plan y = 0) back to plan y = 0', () => {
-    // planToWorld deliberately uses 0 - point.y, so plan y = 0 becomes world
-    // z = -0. Negating that must land back on a plan y equal to 0.
+    // The naive -point.y would yield world z = -0 when plan y = 0; planToWorld
+    // uses 0 - point.y instead to land on a clean +0. Negating that with 0 -
+    // world.z also gives +0, so the round-trip compares equal to 0.
     const onFloorLine = { x: 5, y: 0 }
     expect(worldToPlan(planToWorld(onFloorLine, 0))).toEqual(onFloorLine)
   })
