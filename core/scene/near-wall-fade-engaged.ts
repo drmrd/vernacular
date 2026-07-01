@@ -8,8 +8,7 @@ import { isInteriorViewpoint } from './interior-viewpoint'
  * solid walls rather than have the nearest one fade away, so this suppresses the
  * fade whenever the orbit camera is dollied inside the footprint, alongside the
  * existing walk-mode restore. Composes {@link isInteriorViewpoint} for the
- * boundary-inclusive inside test, so a point exactly on a room edge counts as
- * indoors and keeps the walls solid.
+ * inside test.
  *
  * @param enabled Whether the caller's view mode enables the near-wall fade.
  * @param planPoint The viewpoint, in plan millimeters.
