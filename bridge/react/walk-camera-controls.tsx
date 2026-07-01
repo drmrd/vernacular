@@ -95,7 +95,8 @@ interface WalkSession {
 // opening under the walker's gaze and every other code to its movement flag;
 // keyup clears the movement flag. The interact key takes no movement flag, so it
 // never leaves a key stuck down.
-function walkKeyHandlers(session: WalkSession): {
+// eslint-disable-next-line react-refresh/only-export-components -- the keyboard handler builder ships beside the component that installs it and this slice's test imports walkKeyHandlers from ./walk-camera-controls.
+export function walkKeyHandlers(session: WalkSession): {
   onKeyDown: (event: KeyboardEvent) => void
   onKeyUp: (event: KeyboardEvent) => void
 } {
@@ -110,6 +111,13 @@ function walkKeyHandlers(session: WalkSession): {
         interaction.current,
         openness.current,
       )
+      onUserControl()
+      return
+    }
+    if (event.code === 'KeyR') {
+      // R resets every opened opening back to closed; the per-frame tick then
+      // animates each one shut from its current openness.
+      interaction.current = emptyOpeningInteraction()
       onUserControl()
       return
     }
