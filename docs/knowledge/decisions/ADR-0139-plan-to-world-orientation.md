@@ -29,7 +29,7 @@ sourceFiles:
     engine/scene/near-wall-transparency.ts,
   ]
 status: accepted
-updated: 2026-06-30
+updated: 2026-07-01
 ---
 
 # ADR-0139: Map plan north to world -Z so the 3D view is not a mirror of the plan
@@ -117,6 +117,12 @@ ADR is the record of that spec correction.
   opening on a wall that is not axis-aligned (an awning or hopper crank, a sliding or
   pocket door) resolves on the right axis. A test for an angled-wall opening pins the Z
   term that the axis-aligned cases had left at zero.
+- `plan-to-world.ts` now also exports `worldToPlan`, the ground-plane inverse of the
+  corrected map. It drops the world height, carries world `x` straight to plan `x`, and
+  negates world `Z` to recover plan `y`, so a 3D world point such as an orbit camera
+  position can be tested against the 2D plan-space room polygons. It is the exact inverse
+  of the plan-north = world `-Z` mapping this ADR records, which is why it lives beside
+  the forward map.
 
 ## References
 
