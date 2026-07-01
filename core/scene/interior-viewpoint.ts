@@ -7,7 +7,7 @@ import { pointInPolygon } from '../geometry/polygon'
  * transparency fade while the viewer stands indoors: a viewer already inside the
  * footprint should see solid walls rather than have the nearest one fade away.
  *
- * @param planPoint The viewpoint, in plan millimeters (see the `Point` type).
+ * @param planPoint The viewpoint, in plan millimeters.
  * @param roomPolygons The floor's room outlines, in plan millimeters. An empty
  *   set reports the point as outside.
  */
