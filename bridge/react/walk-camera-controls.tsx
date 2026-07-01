@@ -43,6 +43,9 @@ const MOVEMENT_KEYS = new Map<string, 'forward' | 'back' | 'left' | 'right'>([
 // interact action so other interactables (lights, drawers) can hook in here later.
 const INTERACT_KEY = 'KeyE'
 
+// The reset key: clears every opened opening so they animate shut.
+const RESET_KEY = 'KeyR'
+
 // The subset of the three camera this wrapper reads and writes, declared structurally
 // so the file types the camera without importing three (rules.md rule 1).
 interface WalkCamera {
@@ -95,7 +98,8 @@ interface WalkSession {
 // opening under the walker's gaze and every other code to its movement flag;
 // keyup clears the movement flag. The interact key takes no movement flag, so it
 // never leaves a key stuck down.
-function walkKeyHandlers(session: WalkSession): {
+// eslint-disable-next-line react-refresh/only-export-components -- the keyboard handler builder ships beside the component that installs it and this slice's test imports walkKeyHandlers from ./walk-camera-controls.
+export function walkKeyHandlers(session: WalkSession): {
   onKeyDown: (event: KeyboardEvent) => void
   onKeyUp: (event: KeyboardEvent) => void
 } {
@@ -110,6 +114,12 @@ function walkKeyHandlers(session: WalkSession): {
         interaction.current,
         openness.current,
       )
+      onUserControl()
+      return
+    }
+    if (event.code === RESET_KEY) {
+      // The per-frame tick animates each opening shut from its current openness.
+      interaction.current = emptyOpeningInteraction()
       onUserControl()
       return
     }
