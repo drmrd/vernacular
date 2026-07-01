@@ -22,6 +22,7 @@ sourceFiles:
     bridge/react/framed-scene.ts,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/near-wall-fade.tsx,
+    bridge/react/scene-nav-toolbar.tsx,
     e2e/tests/scene-near-wall-transparency.spec.ts,
   ]
 status: current
@@ -120,5 +121,12 @@ camera is grounded (issue #256).
   baseline of it through the deterministic harness is deferred, because that baseline is
   per-platform and cannot be regenerated across targets in this pass; the unit and engine
   tests cover the logic in the meantime.
-- The front-facing trigger, the binary fade, opening-body fading, and a user toggle are
-  deferred, recorded in the spec.
+- The front-facing trigger, the binary fade, and opening-body fading are deferred,
+  recorded in the spec.
+- The deferred user toggle shipped (issue #257). A "Reveal interior" control sits in the
+  primary cluster of the three-dimensional scene navigation toolbar and defaults to on; its
+  `revealInterior` state threads through `useSceneNavigation` in
+  `bridge/react/webgpu-scene-view.tsx` and gates the fade at
+  `<NearWallFade enabled={mode === 'orbit' && revealInterior}>`. The shared `ToolbarToggle`
+  in `bridge/react/scene-nav-toolbar.tsx` renders it, and it stays inert while walking
+  because the fade still needs orbit mode.

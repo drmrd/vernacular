@@ -1,8 +1,6 @@
-import { Canvas, useThree } from '@react-three/fiber'
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  cameraPresetPose,
-  doorwayPose,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
@@ -18,11 +16,11 @@ import {
 } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
 import { CameraControlsHint } from './camera-controls-hint'
-import { applyCameraPose, fitCameraToBounds, fovToRadians, type FittableCamera } from './fit-camera'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
+import { FrameCamera, PresetCamera, type PresetRequest } from './scene-camera-effects'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
@@ -37,76 +35,6 @@ import { useSceneGraph } from './use-scene-graph'
 import { useViewSceneGraph } from './use-view-scene-graph'
 import { WalkCameraControls } from './walk-camera-controls'
 
-// Frames the camera on the scene bounds, fitting the model to the live canvas
-// aspect ratio and field of view (ADR-0075), while the user has not taken control
-// of the camera. It reruns when the canvas size changes, so a pane resize or a move
-// between full and split view refits the model instead of leaving a stale frame.
-// Once the user orbits or walks, `active` goes false and the fit stops being
-// applied, so an edit no longer yanks a navigated camera; clearing user control
-// (the reset button) makes `active` true again, which reframes. The live Canvas is
-// set to frameloop="always" so interactive camera moves render continuously.
-function FrameCamera({ bounds, active }: { bounds: Bounds3 | null; active: boolean }) {
-  const camera = useThree((state) => state.camera)
-  const size = useThree((state) => state.size)
-  useLayoutEffect(() => {
-    if (!active) return
-    fitCameraToBounds(camera, bounds, size)
-  }, [camera, bounds, active, size])
-  return null
-}
-
-// A request to snap the camera to a named preset. The nonce changes on every request
-// so re-selecting the same preset re-applies it.
-interface PresetRequest {
-  preset: PresetChoice
-  nonce: number
-}
-
-// The live inputs a preset pose needs, captured in a ref so PresetCamera reads the
-// latest without the effect re-firing on every change.
-interface PresetView {
-  bounds: Bounds3 | null
-  opening: OpeningSceneNode | null
-  size: { width: number; height: number }
-  camera: FittableCamera
-}
-
-// Derives the pose for a preset request: the doorway view needs the resolved opening
-// (none means no pose), and the axis-aligned views fit the live viewport.
-function poseForRequest(request: PresetRequest, view: PresetView): CameraPose | null {
-  if (view.bounds === null) return null
-  if (request.preset === 'doorway') {
-    return view.opening === null ? null : doorwayPose(view.opening, view.bounds)
-  }
-  const aspect = view.size.width / view.size.height
-  const fovRadians = fovToRadians(view.camera)
-  return cameraPresetPose(request.preset, view.bounds, { aspect, fovRadians })
-}
-
-// Snaps the live camera to a preset whenever a new request arrives. It reads the
-// latest bounds, opening, size, and camera from a ref so the effect fires only on a
-// new request, not on a resize (a resize must not yank the camera onto a preset).
-function PresetCamera({
-  request,
-  bounds,
-  opening,
-}: {
-  request: PresetRequest | null
-  bounds: Bounds3 | null
-  opening: OpeningSceneNode | null
-}) {
-  const camera = useThree((state) => state.camera)
-  const size = useThree((state) => state.size)
-  const latest = useRef<PresetView>({ camera, size, bounds, opening })
-  latest.current = { camera, size, bounds, opening }
-  useLayoutEffect(() => {
-    if (request === null) return
-    const pose = poseForRequest(request, latest.current)
-    if (pose !== null) applyCameraPose(latest.current.camera, pose)
-  }, [request])
-  return null
-}
-
 // The per-view camera navigation state: the active mode and whether the user has
 // taken control of the camera. Session state held in the view layer, never in the
 // model or undo. Reset clears user control, which lets FrameCamera refit the model
@@ -114,10 +42,12 @@ function PresetCamera({
 function useSceneNavigation() {
   const [mode, setMode] = useState<NavMode>('orbit')
   const [selectionEnabled, setSelectionEnabled] = useState(false)
+  const [revealInterior, setRevealInterior] = useState(true)
   const [userControlled, setUserControlled] = useState(false)
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
   const markUserControlled = useCallback(() => setUserControlled(true), [])
   const toggleSelection = useCallback(() => setSelectionEnabled((value) => !value), [])
+  const toggleRevealInterior = useCallback(() => setRevealInterior((value) => !value), [])
   // Reset leaves the last presetRequest in place on purpose: a stale request cannot
   // re-fire because PresetCamera's effect depends on the request's identity, which does
   // not change on reset.
@@ -133,6 +63,8 @@ function useSceneNavigation() {
     setMode,
     selectionEnabled,
     toggleSelection,
+    revealInterior,
+    toggleRevealInterior,
     userControlled,
     markUserControlled,
     resetView,
@@ -197,6 +129,7 @@ interface LiveSceneCanvasProps {
   bounds: Bounds3 | null
   mode: NavMode
   selectionEnabled: boolean
+  revealInterior: boolean
   userControlled: boolean
   onUserControl: () => void
   colorTemperatureK: number
@@ -218,6 +151,7 @@ function LiveSceneCanvas({
   bounds,
   mode,
   selectionEnabled,
+  revealInterior,
   userControlled,
   onUserControl,
   colorTemperatureK,
@@ -253,7 +187,7 @@ function LiveSceneCanvas({
       <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
       <NearWallFade
         targets={nearWallTargets}
-        enabled={mode === 'orbit'}
+        enabled={mode === 'orbit' && revealInterior}
         roomPolygons={roomPolygons}
       />
       <OrbitCameraControls
@@ -327,6 +261,8 @@ export function WebGPUSceneView() {
     setMode,
     selectionEnabled,
     toggleSelection,
+    revealInterior,
+    toggleRevealInterior,
     userControlled,
     markUserControlled,
     resetView,
@@ -344,6 +280,8 @@ export function WebGPUSceneView() {
         onModeChange={setMode}
         selectionEnabled={selectionEnabled}
         onToggleSelection={toggleSelection}
+        revealInterior={revealInterior}
+        onToggleRevealInterior={toggleRevealInterior}
         onReset={resetView}
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={setColorTemperatureK}
@@ -361,6 +299,7 @@ export function WebGPUSceneView() {
           bounds={bounds}
           mode={mode}
           selectionEnabled={selectionEnabled}
+          revealInterior={revealInterior}
           userControlled={userControlled}
           onUserControl={markUserControlled}
           colorTemperatureK={colorTemperatureK}

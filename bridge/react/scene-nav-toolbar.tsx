@@ -50,6 +50,8 @@ interface SceneNavToolbarProps {
   onColorTemperatureChange: (kelvin: number) => void
   selectionEnabled?: boolean
   onToggleSelection?: () => void
+  revealInterior?: boolean
+  onToggleRevealInterior?: () => void
   onPreset?: (preset: PresetChoice) => void
   canDoorway?: boolean
   scope?: SceneScope
@@ -106,50 +108,27 @@ function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   )
 }
 
-interface UndergroundToggleProps {
-  showUnderground: boolean
-  onToggleUnderground: () => void
-  disabled: boolean
+interface ToolbarToggleProps {
+  label: string
+  pressed: boolean
+  onToggle: () => void
+  disabled?: boolean
 }
 
 /**
- * Shows or hides the building's below-grade levels (a basement). It applies only to
- * the whole-building view, so it is disabled in the active-floor scope; a pressed
- * toggle means the underground levels are currently in the model.
+ * A single pressable toolbar action. The label doubles as the accessible name, `pressed`
+ * drives `aria-pressed`, and an omitted `disabled` leaves the button enabled.
  */
-function UndergroundToggle({
-  showUnderground,
-  onToggleUnderground,
-  disabled,
-}: UndergroundToggleProps) {
+function ToolbarToggle({ label, pressed, onToggle, disabled }: ToolbarToggleProps) {
   return (
     <button
       type="button"
       className="scene-nav-toolbar__btn"
-      aria-pressed={showUnderground}
+      aria-pressed={pressed}
       disabled={disabled}
-      onClick={onToggleUnderground}
+      onClick={onToggle}
     >
-      Underground levels
-    </button>
-  )
-}
-
-interface SelectionToggleProps {
-  selectionEnabled: boolean
-  onToggleSelection: () => void
-}
-
-/** Click-to-select is opt-in: a pressed toggle reflects whether selecting is currently on. */
-function SelectionToggle({ selectionEnabled, onToggleSelection }: SelectionToggleProps) {
-  return (
-    <button
-      type="button"
-      className="scene-nav-toolbar__btn"
-      aria-pressed={selectionEnabled}
-      onClick={onToggleSelection}
-    >
-      Select
+      {label}
     </button>
   )
 }
@@ -234,27 +213,45 @@ interface PrimaryClusterProps {
   onModeChange: (mode: NavMode) => void
   selectionEnabled: boolean
   onToggleSelection: () => void
+  revealInterior: boolean
+  onToggleRevealInterior: () => void
   onReset: () => void
 }
 
 /**
  * The primary navigation tier: the view-scope toggle and its underground control, the
- * orbit/walk camera modes, click-to-select, and the reset action, gathered into one
- * tight cluster so they read as the dominant controls.
+ * orbit/walk camera modes, click-to-select, the reveal-interior toggle (which sits between
+ * select and reset), and the reset action, gathered into one tight cluster so they read as
+ * the dominant controls.
  */
 function PrimaryCluster(props: PrimaryClusterProps) {
   return (
     <div className="scene-nav-toolbar__primary">
       <ScopeToggle scope={props.scope} onScopeChange={props.onScopeChange} />
-      <UndergroundToggle
-        showUnderground={props.showUnderground}
-        onToggleUnderground={props.onToggleUnderground}
+      {/*
+        Shows or hides the building's below-grade levels (a basement). It applies only to the
+        whole-building view, so it is disabled in the active-floor scope; a pressed toggle
+        means the underground levels are currently in the model.
+      */}
+      <ToolbarToggle
+        label="Underground levels"
+        pressed={props.showUnderground}
+        onToggle={props.onToggleUnderground}
         disabled={props.scope === 'floor'}
       />
       <ModeToggle mode={props.mode} onModeChange={props.onModeChange} />
-      <SelectionToggle
-        selectionEnabled={props.selectionEnabled}
-        onToggleSelection={props.onToggleSelection}
+      {/* Click-to-select is opt-in: a pressed toggle reflects whether selecting is currently on. */}
+      <ToolbarToggle
+        label="Select"
+        pressed={props.selectionEnabled}
+        onToggle={props.onToggleSelection}
+      />
+      {/* The near-wall fade defaults on because that is the expected-always-on state; a pressed
+          toggle reflects whether it is currently on. */}
+      <ToolbarToggle
+        label="Reveal interior"
+        pressed={props.revealInterior}
+        onToggle={props.onToggleRevealInterior}
       />
       <button type="button" className="scene-nav-toolbar__btn" onClick={props.onReset}>
         Reset view
@@ -280,6 +277,8 @@ export function SceneNavToolbar({
   onColorTemperatureChange,
   selectionEnabled = false,
   onToggleSelection = () => {},
+  revealInterior = true,
+  onToggleRevealInterior = () => {},
   onPreset,
   canDoorway,
   scope = 'floor',
@@ -298,6 +297,8 @@ export function SceneNavToolbar({
         onModeChange={onModeChange}
         selectionEnabled={selectionEnabled}
         onToggleSelection={onToggleSelection}
+        revealInterior={revealInterior}
+        onToggleRevealInterior={onToggleRevealInterior}
         onReset={onReset}
       />
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />

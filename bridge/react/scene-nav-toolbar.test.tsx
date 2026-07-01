@@ -332,3 +332,53 @@ describe('SceneNavToolbar styling hooks', () => {
     )
   })
 })
+
+describe('SceneNavToolbar reveal-interior toggle', () => {
+  it('renders a reveal-interior toggle pressed by default so near walls fade while orbiting', () => {
+    render(<SceneNavToolbar {...baseProps} />)
+
+    expect(screen.getByRole('button', { name: 'Reveal interior' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('marks the reveal-interior toggle unpressed when the fade is turned off', () => {
+    render(<SceneNavToolbar {...baseProps} revealInterior={false} />)
+
+    expect(screen.getByRole('button', { name: 'Reveal interior' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('reports a toggle when clicked without flipping its own pressed state', async () => {
+    const onToggleRevealInterior = vi.fn()
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        revealInterior
+        onToggleRevealInterior={onToggleRevealInterior}
+      />,
+    )
+
+    const toggle = screen.getByRole('button', { name: 'Reveal interior' })
+    await userEvent.click(toggle)
+
+    expect(onToggleRevealInterior).toHaveBeenCalledTimes(1)
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('places the reveal-interior toggle in the primary cluster and styles it as a toolbar button', () => {
+    const { container } = render(
+      <SceneNavToolbar {...baseProps} onToggleRevealInterior={vi.fn()} />,
+    )
+
+    const toggle = screen.getByRole('button', { name: 'Reveal interior' })
+    expect(toggle).toHaveClass('scene-nav-toolbar__btn')
+
+    const primary = container.querySelector('.scene-nav-toolbar__primary')
+    expect(primary).not.toBeNull()
+    expect(primary).toContainElement(toggle)
+  })
+})
