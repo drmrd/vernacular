@@ -24,3 +24,18 @@ export function planToWorld(point: Point, height: number): Vector3 {
   // yields, so floor-line world coordinates compare equal to a plain 0.
   return { x: point.x, y: height, z: 0 - point.y }
 }
+
+/**
+ * Ground-plane inverse of `planToWorld`: recovers the plan point from a world
+ * position, dropping its height (world Y). World X returns to plan x and world -Z
+ * returns to plan north (+y). This shares the single axis mapping documented on
+ * `planToWorld` (foundation spec section 2.1).
+ *
+ * @param world Three.js world position (right-handed, Y-up), in millimeters.
+ */
+export function worldToPlan(world: Vector3): Point {
+  // `0 - world.z` rather than `-world.z`: mirrors the `+0` convention in
+  // `planToWorld`, so a world z of +0 round-trips back to a plan y of 0 instead
+  // of negative zero.
+  return { x: world.x, y: 0 - world.z }
+}
