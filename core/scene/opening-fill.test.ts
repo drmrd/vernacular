@@ -60,10 +60,10 @@ describe('openingFill', () => {
     ])
   })
 
-  it('fills a window with four sash bars framing one glass pane', () => {
+  it('fills a fixed window with four sash bars framing one glass pane', () => {
     const window: OpeningSceneNode = {
       ...baseOpening,
-      type: 'double-hung-window',
+      type: 'picture-window',
       width: 900,
       height: 1200,
       sillHeight: 900,
@@ -113,6 +113,41 @@ describe('openingFill', () => {
     )
     expect(parts.filter((p) => p.role === 'leaf')).toHaveLength(4)
     expect(parts.filter((p) => p.role === 'glass')).toHaveLength(1)
+  })
+
+  it('fills a hung window as two stacked sashes split by a meeting rail', () => {
+    for (const type of ['double-hung-window', 'single-hung-window'] as const) {
+      const window: OpeningSceneNode = {
+        ...baseOpening,
+        type,
+        width: 900,
+        height: 1200,
+        sillHeight: 900,
+      }
+
+      const parts = openingFill(window)
+      const glass = parts.filter((p) => p.role === 'glass')
+
+      // Two stacked panes, one per sash, that do not overlap in height.
+      expect(glass).toHaveLength(2)
+      const lowerPaneTop = Math.min(...glass.map((p) => p.up.max))
+      const upperPaneBottom = Math.max(...glass.map((p) => p.up.min))
+      expect(lowerPaneTop).toBeLessThanOrEqual(upperPaneBottom)
+
+      // A full-width meeting rail straddles the midpoint, sitting in the gap between the panes.
+      const midpoint = window.sillHeight + window.height / 2
+      const rail = parts.find(
+        (p) =>
+          p.role === 'leaf' &&
+          p.along.min === -(window.width / 2) &&
+          p.along.max === window.width / 2 &&
+          p.up.min < midpoint &&
+          p.up.max > midpoint,
+      )
+      expect(rail).toBeDefined()
+      expect(rail?.up.min).toBeGreaterThanOrEqual(lowerPaneTop)
+      expect(rail?.up.max).toBeLessThanOrEqual(upperPaneBottom)
+    }
   })
 
   it('renders no body for an opening whose type omits a fill or is unrecognized', () => {
