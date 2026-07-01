@@ -17,6 +17,7 @@ import type { Vector3 } from './vector3'
  * @param point Plan point, in millimeters (see the `Point` type).
  * @param height Elevation above the finished-floor datum, in millimeters
  *   (the same millimeter unit policy noted on `Vector3`).
+ * @see worldToPlan for the ground-plane inverse in this file.
  */
 export function planToWorld(point: Point, height: number): Vector3 {
   // `0 - point.y` rather than `-point.y`: a point on the floor line (plan y = 0)
