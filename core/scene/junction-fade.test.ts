@@ -65,16 +65,17 @@ describe('junctionFadeGroups', () => {
     expect([...group.exteriorWallIds].sort()).toEqual(['wall:bar'])
   })
 
-  it('marks the junction fill opaque while any incident exterior wall fades', () => {
+  it('holds a mixed junction fill unconditionally when a non-fading interior wall meets it', () => {
     // Same T-junction fixture: an exterior "bar" wall and an interior "leg"
     // partition meet at a three-way tee with two rooms north of the bar.
     //
-    // The chosen rule (issue #227): the junction fill that covers the leg's
-    // mitered end and divides the two rooms must STAY at its solid baseline
-    // whenever a member exterior wall fades for the see-through camera view.
-    // The fade group therefore exposes a "fill stays opaque" policy. The group
-    // still enumerates its member exterior wall ids, so the engine can read the
-    // policy without re-deriving membership.
+    // Near-wall transparency only fades exterior walls, so the interior leg
+    // never fades at any camera angle. The junction therefore always keeps a
+    // solid neighbor whose mitered end the fill covers and whose mass divides
+    // the two rooms, so the fill must hold opaque no matter the camera (issue
+    // #227). The fade group records that structural fact, and it still
+    // enumerates its member exterior wall ids so the engine can read the policy
+    // without re-deriving membership.
     const graph = buildWallGraph([
       { id: 'bar', start: point(0, 0), end: point(2000, 0), thickness: WALL_THICKNESS },
       { id: 'leg', start: point(1000, 0), end: point(1000, 1000), thickness: WALL_THICKNESS },
@@ -94,12 +95,57 @@ describe('junctionFadeGroups', () => {
     expect(groups).toHaveLength(1)
     const [group] = groups as [JunctionFadeGroup]
 
-    // This junction has an incident exterior wall (the bar), so its fill must
-    // hold opaque while that wall fades.
+    // The interior leg never fades, so this junction always keeps a solid
+    // neighbor and its fill holds opaque unconditionally.
     expect(group.exteriorWallIds.length).toBeGreaterThanOrEqual(1)
-    expect(group.fillStaysOpaque).toBe(true)
+    expect(group.fillHoldsUnconditionally).toBe(true)
 
     // The member exterior wall ids stay available alongside the policy.
     expect([...group.exteriorWallIds].sort()).toEqual(['wall:bar'])
+  })
+
+  it('leaves a pure-exterior junction fill hold conditional on the live camera', () => {
+    // Three separate exterior walls meet at the corner (1000,0): a "west" wall
+    // and an "east" wall running along the x-axis, plus a "north" wall rising
+    // from the corner. Two rooms touch only at that corner, each bordering the
+    // walls on one side, so every incident wall has open air on its other side
+    // and classifies as exterior:
+    //
+    //   - 'west' bounds room A to its north, open air to the south.
+    //   - 'north' bounds room A to its west, open air to the east.
+    //   - 'east' bounds room B to its south, open air to the north.
+    //
+    // No incident wall is an interior partition, so a camera can sit outside all
+    // three at once and fade every one. With no non-fading neighbor guaranteed,
+    // the fill's hold cannot be unconditional; whether it holds is decided later
+    // per-frame by the engine against the live camera. The group still
+    // enumerates all three incident exterior walls the engine tracks.
+    const graph = buildWallGraph([
+      { id: 'west', start: point(0, 0), end: point(1000, 0), thickness: WALL_THICKNESS },
+      { id: 'east', start: point(1000, 0), end: point(2000, 0), thickness: WALL_THICKNESS },
+      { id: 'north', start: point(1000, 0), end: point(1000, 1000), thickness: WALL_THICKNESS },
+    ])
+
+    const walls = [
+      wall('wall:west', point(0, 0), point(1000, 0)),
+      wall('wall:east', point(1000, 0), point(2000, 0)),
+      wall('wall:north', point(1000, 0), point(1000, 1000)),
+    ]
+    const rooms = [
+      room('room:a', [point(0, 0), point(1000, 0), point(1000, 1000), point(0, 1000)]),
+      room('room:b', [point(1000, 0), point(2000, 0), point(2000, -1000), point(1000, -1000)]),
+    ]
+
+    const groups: JunctionFadeGroup[] = junctionFadeGroups(graph, walls, rooms)
+
+    expect(groups).toHaveLength(1)
+    const [group] = groups as [JunctionFadeGroup]
+
+    // Every incident wall is exterior, so no neighbor is guaranteed solid and
+    // the fill's hold stays conditional on the camera.
+    expect(group.fillHoldsUnconditionally).toBe(false)
+
+    // All three incident exterior walls are enumerated for the engine to test.
+    expect([...group.exteriorWallIds].sort()).toEqual(['wall:east', 'wall:north', 'wall:west'])
   })
 })
