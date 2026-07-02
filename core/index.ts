@@ -606,17 +606,20 @@ export type {
   RemoveObstructionParams,
   SetSiteLocationParams,
   SetSiteNorthBearingParams,
+  SetSiteTimezoneParams,
 } from './commands/handlers/site-commands'
 export {
   ADD_OBSTRUCTION,
   REMOVE_OBSTRUCTION,
   SET_SITE_LOCATION,
   SET_SITE_NORTH_BEARING,
+  SET_SITE_TIMEZONE,
   addObstruction,
   registerSiteCommands,
   removeObstruction,
   setSiteLocation,
   setSiteNorthBearing,
+  setSiteTimezone,
 } from './commands/handlers/site-commands'
 export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
 export type {
