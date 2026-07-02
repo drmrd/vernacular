@@ -43,6 +43,7 @@ import {
 } from '../commands'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { LibraryLauncherPanel } from '../library/library-launcher-panel'
+import { SiteEditor } from '../metadata/site-editor'
 import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
@@ -62,7 +63,7 @@ import { EditLayerPanel } from '../tools/edit-layer-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame, BannerRegion, IconButton, ToastRegion } from '../design-system'
+import { AppFrame, BannerRegion, IconButton, SectionLabel, ToastRegion } from '../design-system'
 import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
@@ -230,6 +231,12 @@ function railPeriodLabel(period: string): string | undefined {
   return entry.approximateRange ? `${name}, ${entry.approximateRange}` : name
 }
 
+// The SiteEditor seeds its inputs at mount, so remount it (via key) whenever the persisted
+// site identity changes, for example after undo, so the fields reflect the model.
+function siteEditorKey(site: Project['site']): string {
+  return JSON.stringify(site ?? {})
+}
+
 // The tool rail content: the project identity block above the drawing and editing
 // tools. It subscribes to the scene graph so the block refreshes on project edits.
 function ToolRail() {
@@ -260,6 +267,14 @@ function ToolRail() {
       <OverallDimensions extent={overall} />
       <LibraryLauncherPanel />
       <UnderlayMenuPanel />
+      <section aria-label="Site">
+        <SectionLabel>Site</SectionLabel>
+        <SiteEditor
+          key={siteEditorKey(project.site)}
+          site={project.site ?? {}}
+          dispatch={session.dispatch}
+        />
+      </section>
     </div>
   )
 }
