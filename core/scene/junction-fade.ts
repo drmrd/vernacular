@@ -37,6 +37,11 @@ export interface JunctionFadeGroup {
    * one or more incident exterior walls is opaque-holding.
    */
   fillStaysOpaque: boolean
+  /**
+   * True when a non-fading (non-exterior) wall is incident, so the fill holds opaque no
+   * matter the camera; false for a pure-exterior junction whose hold is conditional.
+   */
+  fillHoldsUnconditionally: boolean
 }
 
 /**
@@ -58,9 +63,11 @@ export function junctionFadeGroups(
   const groups: JunctionFadeGroup[] = []
   for (const edgeIndexes of vertexIncidence(graph).values()) {
     if (edgeIndexes.length < MIN_FADE_INCIDENCE) continue
+    const incidentWallIds = new Set<string>()
     const incidentExteriorWallIds = new Set<string>()
     for (const edgeIndex of edgeIndexes) {
       const wallNodeId = wallSceneNodeId((graph.edges[edgeIndex] as GraphEdge).wallId)
+      incidentWallIds.add(wallNodeId)
       if (exteriorWallIds.has(wallNodeId)) incidentExteriorWallIds.add(wallNodeId)
     }
     const memberExteriorWallIds = [...incidentExteriorWallIds]
@@ -68,6 +75,7 @@ export function junctionFadeGroups(
       edgeIndexes,
       exteriorWallIds: memberExteriorWallIds,
       fillStaysOpaque: memberExteriorWallIds.length >= 1,
+      fillHoldsUnconditionally: incidentWallIds.size > incidentExteriorWallIds.size,
     })
   }
   return groups
