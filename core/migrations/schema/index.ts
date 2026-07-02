@@ -7,6 +7,7 @@ import { addPalettesPaintAndSiteMigration } from './add-palettes-paint-and-site'
 import { addPeriodAndStyleMigration } from './add-period-and-style'
 import { addRoomOverridesMigration } from './add-room-overrides'
 import { addSiteGradeElevationMigration } from './add-site-grade-elevation'
+import { addSiteTimezoneMigration } from './add-site-timezone'
 import { addStairsMigration } from './add-stairs'
 import { addSurfaceTreatmentMigration } from './add-surface-treatment'
 import { addUnderlayKindMigration } from './add-underlay-kind'
@@ -25,4 +26,5 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addFurnitureHeightMigration,
   addWallConstructionProfileMigration,
   addSiteGradeElevationMigration,
+  addSiteTimezoneMigration,
 ]

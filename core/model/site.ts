@@ -38,6 +38,12 @@ export interface Site {
    * 0 datum, decoupling grade from the finished-floor-zero convention only when set.
    */
   gradeElevation?: number
+  /**
+   * IANA time-zone identifier for the site, for example `America/New_York`. Used
+   * with the site location and an observation instant to place the sun (slice 1a).
+   * Absent means the timezone has not been set.
+   */
+  timezone?: string
 }
 
 /** The site's explicit grade elevation, or the default datum when none is set. */
