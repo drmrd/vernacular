@@ -2,8 +2,8 @@
  * A civil (wall-clock) observation moment: the calendar date and the time of day a
  * scene is observed at. Timezone lives on the `Site` (the "where"), not here (the
  * "when"), so a scene's wall-clock time reads the same wherever the project sits.
- * Slice 0 shows this as a readout only; slice 1a combines it with the site latitude,
- * longitude, and timezone to place the sun (ADR-0141).
+ * It is read-only for display today; a later extension combines it with the site
+ * latitude, longitude, and timezone to place the sun.
  */
 export interface ObservationInstant {
   /** ISO 8601 calendar date, `YYYY-MM-DD`. */
@@ -25,11 +25,11 @@ export const DEFAULT_OBSERVATION_INSTANT: ObservationInstant = {
   minutesSinceMidnight: NOON_MINUTES,
 }
 
-const ISO_TIME_RADIX = 10
+const DECIMAL_RADIX = 10
 const ISO_FIELD_WIDTH = 2
 
 function twoDigits(value: number): string {
-  return value.toString(ISO_TIME_RADIX).padStart(ISO_FIELD_WIDTH, '0')
+  return value.toString(DECIMAL_RADIX).padStart(ISO_FIELD_WIDTH, '0')
 }
 
 function hoursAndMinutes(minutesSinceMidnight: number): { hours: number; minutes: number } {
@@ -50,7 +50,7 @@ export function parseObservationInstant(iso: string): ObservationInstant {
   const [date = '', time = ''] = iso.split('T')
   const [hours = 0, minutes = 0] = time
     .split(':')
-    .map((field) => Number.parseInt(field, ISO_TIME_RADIX))
+    .map((field) => Number.parseInt(field, DECIMAL_RADIX))
   return { date, minutesSinceMidnight: hours * MINUTES_PER_HOUR + minutes }
 }
 
