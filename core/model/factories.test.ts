@@ -37,6 +37,15 @@ describe('createEmptyProject', () => {
   })
 })
 
+describe('createEmptyProject environment scenes', () => {
+  it('initializes an empty environment-scenes array', () => {
+    expect(
+      createEmptyProject({ name: 'H', units: 'metric', period: 'victorian', appVersion: '0.1.0' })
+        .environmentScenes,
+    ).toEqual([])
+  })
+})
+
 describe('createFloor', () => {
   it('uses the supplied id and defaults the ceiling height and elevation', () => {
     const floor = createFloor('Ground', { id: 'floor-1' })
@@ -97,8 +106,8 @@ describe('createFloor dimensions', () => {
 })
 
 describe('CURRENT_SCHEMA_VERSION', () => {
-  it('is 14', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(14)
+  it('is 15', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBe(15)
   })
 })
 
