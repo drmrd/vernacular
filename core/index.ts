@@ -618,6 +618,21 @@ export {
   setSiteLocation,
   setSiteNorthBearing,
 } from './commands/handlers/site-commands'
+export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
+export type {
+  AddEnvironmentSceneParams,
+  RemoveEnvironmentSceneParams,
+  RenameEnvironmentSceneParams,
+} from './commands/handlers/environment-scene-commands'
+export {
+  ADD_ENVIRONMENT_SCENE,
+  REMOVE_ENVIRONMENT_SCENE,
+  RENAME_ENVIRONMENT_SCENE,
+  addEnvironmentScene,
+  registerEnvironmentSceneCommands,
+  removeEnvironmentScene,
+  renameEnvironmentScene,
+} from './commands/handlers/environment-scene-commands'
 export {
   createDocumentValidator,
   createLoadValidationGate,
