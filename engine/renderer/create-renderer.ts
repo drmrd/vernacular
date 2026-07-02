@@ -12,6 +12,12 @@ export interface SceneRendererOptions {
    * render that never collides with a future WebGPU baseline.
    */
   forceWebGL?: boolean
+  /**
+   * Tone-mapping exposure multiplier applied before the Khronos PBR Neutral operator.
+   * Defaults to 1 (no exposure change). Realistic daylight scenes tune this later; the
+   * schematic baseline leaves it at 1.
+   */
+  toneMappingExposure?: number
 }
 
 /**
@@ -24,7 +30,12 @@ export interface SceneRendererOptions {
 export async function createSceneRenderer(
   options: SceneRendererOptions = {},
 ): Promise<WebGPURenderer> {
-  const { WebGPURenderer: Renderer, PCFSoftShadowMap } = await import('three/webgpu')
+  const {
+    WebGPURenderer: Renderer,
+    PCFSoftShadowMap,
+    NeutralToneMapping,
+    SRGBColorSpace,
+  } = await import('three/webgpu')
   const renderer = new Renderer({
     canvas: options.canvas,
     antialias: options.antialias ?? true,
@@ -35,6 +46,12 @@ export async function createSceneRenderer(
   // edges over the cheaper hard-edged basic map.
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
+  // Color management: render output is sRGB and tone mapping is Khronos PBR Neutral, which
+  // preserves base color and compresses only highlights, so paint hue is not skewed the way a
+  // filmic operator would. Exposure defaults to 1 (no change).
+  renderer.outputColorSpace = SRGBColorSpace
+  renderer.toneMapping = NeutralToneMapping
+  renderer.toneMappingExposure = options.toneMappingExposure ?? 1
   await renderer.init()
   return renderer
 }
