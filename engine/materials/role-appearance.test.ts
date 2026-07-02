@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   roleMaterialParameters,
+  slabTopDepthBiasParameters,
+  groundPlaneDepthBiasParameters,
+  furnitureBaseDepthBiasParameters,
   FURNITURE_COLOR,
   FURNITURE_OPACITY,
   FURNITURE_FAILED_COLOR,
@@ -51,5 +54,27 @@ describe('roleMaterialParameters', () => {
     expect(loading.transparent).toBe(true)
     expect(loading.opacity).toBe(FURNITURE_LOADING_OPACITY)
     expect(loading.name).toBe('furnitureLoading')
+  })
+})
+
+describe('depth-bias ladder', () => {
+  it('orders the furniture base one rung behind the ground plane, keeping slab top < ground plane < furniture base', () => {
+    const slabTop = slabTopDepthBiasParameters()
+    const groundPlane = groundPlaneDepthBiasParameters()
+    const furnitureBase = furnitureBaseDepthBiasParameters()
+
+    // The base cap reads the depth buffer without writing it, so it must be a
+    // polygon-offset participant for the depth test to order it behind the floor.
+    expect(furnitureBase.polygonOffset).toBe(true)
+
+    // Front to back the ladder is strictly increasing: slab top, then ground
+    // plane, then furniture base. Each rung is biased farther than the surface it
+    // must lose to, so the base cap sits behind both the slab top and the ground
+    // plane it can rest on.
+    expect(groundPlane.polygonOffsetFactor).toBeGreaterThan(slabTop.polygonOffsetFactor ?? 0)
+    expect(furnitureBase.polygonOffsetFactor).toBeGreaterThan(groundPlane.polygonOffsetFactor ?? 0)
+
+    expect(groundPlane.polygonOffsetUnits).toBeGreaterThan(slabTop.polygonOffsetUnits ?? 0)
+    expect(furnitureBase.polygonOffsetUnits).toBeGreaterThan(groundPlane.polygonOffsetUnits ?? 0)
   })
 })
