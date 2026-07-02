@@ -5,6 +5,7 @@ import {
   removeObstruction,
   setSiteLocation,
   setSiteNorthBearing,
+  setSiteTimezone,
 } from './site-commands'
 import { CommandRegistry } from '../command-registry'
 import { Dispatcher } from '../dispatcher'
@@ -58,6 +59,14 @@ describe('setSiteNorthBearing', () => {
     const project = newProject()
     dispatcherFor(project).dispatch(setSiteNorthBearing(0.5))
     expect(project.site?.northBearing).toBe(0.5)
+  })
+})
+
+describe('setSiteTimezone', () => {
+  it('records an IANA timezone', () => {
+    const project = newProject()
+    dispatcherFor(project).dispatch(setSiteTimezone('America/New_York'))
+    expect(project.site?.timezone).toBe('America/New_York')
   })
 })
 
