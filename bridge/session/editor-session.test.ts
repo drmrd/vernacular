@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { createEditorSession } from './editor-session'
 import {
+  addEnvironmentScene,
   addFloor,
   addWall,
   assignSurfacePaint,
   colorFromHex,
   createEmptyProject,
   resolveSurfacePaint,
+  setSiteTimezone,
   solidTreatment,
+  type EnvironmentScene,
   type Project,
 } from '../../core'
 
@@ -122,5 +125,28 @@ describe('createEditorSession subscription', () => {
 
     const treatment = resolveSurfacePaint(session.getProject(), ref)
     expect(treatment).toEqual(solidTreatment(colorFromHex('#9aa583'), 'matte'))
+  })
+})
+
+function newSession() {
+  return createEditorSession(
+    createEmptyProject({ name: 'H', units: 'metric', period: 'victorian', appVersion: '0.1.0' }),
+  )
+}
+
+describe('createEditorSession command wiring', () => {
+  it('dispatches a site command through the live registry', () => {
+    const session = newSession()
+    session.dispatch(setSiteTimezone('America/New_York'))
+    expect(session.getProject().site?.timezone).toBe('America/New_York')
+    session.undo()
+    expect(session.getProject().site?.timezone).toBeUndefined()
+  })
+
+  it('dispatches an environment-scene command through the live registry', () => {
+    const session = newSession()
+    const scene: EnvironmentScene = { id: 's1', name: 'Noon', observedAt: '2026-06-21T12:00' }
+    session.dispatch(addEnvironmentScene(scene))
+    expect(session.getProject().environmentScenes).toEqual([scene])
   })
 })
