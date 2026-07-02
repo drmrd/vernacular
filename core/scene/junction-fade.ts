@@ -32,12 +32,6 @@ export interface JunctionFadeGroup {
   /** Scene-node ids (`wall:`-prefixed) of the exterior walls incident to the junction. */
   exteriorWallIds: string[]
   /**
-   * True when the junction fill must hold at its solid baseline while any member
-   * exterior wall fades (keeps the room divider and the leg-end cover). A group with
-   * one or more incident exterior walls is opaque-holding.
-   */
-  fillStaysOpaque: boolean
-  /**
    * True when a non-fading (non-exterior) wall is incident, so the fill holds opaque no
    * matter the camera; false for a pure-exterior junction whose hold is conditional.
    */
@@ -74,7 +68,6 @@ export function junctionFadeGroups(
     groups.push({
       edgeIndexes,
       exteriorWallIds: memberExteriorWallIds,
-      fillStaysOpaque: memberExteriorWallIds.length >= 1,
       fillHoldsUnconditionally: incidentWallIds.size > incidentExteriorWallIds.size,
     })
   }

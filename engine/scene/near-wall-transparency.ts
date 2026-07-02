@@ -42,9 +42,10 @@ export interface NearWallTarget {
   materials: FadeMaterial[]
   point: WorldXZ
   /**
-   * Only meaningful for members whose materials lack `holdOpaque`. For hold-opaque
-   * fill members the camera-facing test is always masked, so this is unused and the
-   * outward direction is left zero because it is undefined for a planar fill.
+   * Meaningful only for ordinary wall targets, whose own camera-facing test reads it.
+   * Both junction-fill kinds leave it zero and unused: an unconditional-hold fill masks
+   * the facing test with `holdOpaque`, and a conditional fill decides its fade from
+   * `incidentFacings` instead. The outward direction is undefined for a planar fill anyway.
    */
   outwardNormal: WorldXZ
   /**
@@ -148,6 +149,10 @@ function enrollFillMesh(
     materials: privatizeMeshMaterials(mesh),
     point,
     outwardNormal: { x: 0, z: 0 },
+    // One facing per incident exterior wall actually built into `root`. An empty array
+    // (every incident wall absent from the built scene) leaves the update with no facing
+    // to test, and `hasConditionalFade` reports false, so the fill never fades: the safe
+    // hold when none of the walls it stood in for are present.
     incidentFacings: group.exteriorWallIds
       .map((wallId) => facingByWallId.get(wallId))
       .filter((facing): facing is WallFacing => facing !== undefined),
@@ -213,13 +218,18 @@ function wallFacingMap(root: THREE.Object3D, exterior: ExteriorWall[]): Map<stri
 
 /**
  * Builds one fade target covering every segment mesh of `wall` plus its hosted
- * openings, or none if no mesh in `root` carries the wall's id. A split wall yields
- * several sibling meshes sharing its entity id; each is privatized so they all fade
- * together.
+ * openings, or none if `wall` has no facing (its mesh is absent from `root`). A split
+ * wall yields several sibling meshes sharing its entity id; each is privatized so they
+ * all fade together. The facing is read from the map `prepareNearWallTransparency`
+ * already built, so the wall's geometry is traversed once, not again here.
  */
-function buildWallTarget(root: THREE.Object3D, wall: ExteriorWall): NearWallTarget[] {
-  const facing = wallFacing(root, wall)
-  if (facing === null) {
+function buildWallTarget(
+  root: THREE.Object3D,
+  wall: ExteriorWall,
+  facingByWallId: Map<string, WallFacing>,
+): NearWallTarget[] {
+  const facing = facingByWallId.get(wall.wallId)
+  if (facing === undefined) {
     return []
   }
   const materials = findMeshesBy(root, (node) => node.userData.entityId === wall.wallId).flatMap(
@@ -234,10 +244,14 @@ function buildWallTarget(root: THREE.Object3D, wall: ExteriorWall): NearWallTarg
  * private instances so the wall and its openings fade together while their opacity
  * animates independently of the rest of the scene. Records the world point and
  * outward normal that decide whether the camera sees the wall from outside. Walls
- * whose mesh is not found in `root` are skipped. Each opaque-holding junction fade
- * group's tagged fill mesh is enrolled as a privatized, hold-opaque member so the
- * fill stays solid (covering the leg-end miter and dividing the rooms) while its
- * incident walls fade.
+ * whose mesh is not found in `root` are skipped. Each junction fade group with an
+ * incident exterior wall also enrolls its tagged fill mesh, privatized so holding or
+ * fading one fill never pins another, by one of two paths (see {@link enrollFillMesh}):
+ * an unconditional-hold group enrolls a hold-opaque fill member that stays solid,
+ * covering the leg-end miter and dividing the rooms, while its incident walls fade
+ * (ADR-0103); a pure-exterior group enrolls a conditional fill member carrying its
+ * incident wall facings, which fades only once the camera is outside every one of them
+ * (ADR-0140).
  */
 export function prepareNearWallTransparency(
   root: THREE.Object3D,
@@ -245,8 +259,19 @@ export function prepareNearWallTransparency(
   fadeGroups: JunctionFadeGroup[] = [],
 ): NearWallTarget[] {
   const facingByWallId = wallFacingMap(root, exterior)
-  const wallTargets = exterior.flatMap((wall) => buildWallTarget(root, wall))
+  const wallTargets = exterior.flatMap((wall) => buildWallTarget(root, wall, facingByWallId))
   return [...wallTargets, ...enrollJunctionFills(root, fadeGroups, facingByWallId)]
+}
+
+/**
+ * True when `target` is a conditional junction fill (ADR-0140): it carries at least one
+ * incident wall facing, so its fade is decided by whether the camera is outside every one
+ * of those walls rather than by the target's own `outwardNormal`.
+ */
+function hasConditionalFade(
+  target: NearWallTarget,
+): target is NearWallTarget & { incidentFacings: WallFacing[] } {
+  return target.incidentFacings !== undefined && target.incidentFacings.length > 0
 }
 
 /**
@@ -258,12 +283,11 @@ export function updateNearWallTransparency(
   cameraPosition: WorldXZ,
 ): void {
   for (const target of targets) {
-    const faded =
-      target.incidentFacings && target.incidentFacings.length > 0
-        ? target.incidentFacings.every((facing) =>
-            cameraFacesWallOutside(cameraPosition, facing.point, facing.outwardNormal),
-          )
-        : cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
+    const faded = hasConditionalFade(target)
+      ? target.incidentFacings.every((facing) =>
+          cameraFacesWallOutside(cameraPosition, facing.point, facing.outwardNormal),
+        )
+      : cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
     for (const { material, baseline, holdOpaque } of target.materials) {
       const fade = faded && holdOpaque !== true
       material.transparent = fade ? true : baseline.transparent
