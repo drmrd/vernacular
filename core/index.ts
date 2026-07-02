@@ -545,6 +545,14 @@ export {
   MAX_COLOR_TEMPERATURE_K,
   DEFAULT_COLOR_TEMPERATURE_K,
 } from './color/color-temperature'
+export type { ObservationInstant } from './environment/observation-time'
+export {
+  DEFAULT_OBSERVATION_INSTANT,
+  MINUTES_PER_DAY,
+  formatObservationDateTime,
+  observationInstantToIso,
+  parseObservationInstant,
+} from './environment/observation-time'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
