@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import { FURNITURE_NODE_PREFIX, type FurnitureSceneNode, type Point, planToWorld } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
+import { furnitureBaseDepthBiasParameters } from '../materials/role-appearance'
 
 import {
   geometryFromSections,
@@ -72,6 +73,26 @@ function boxSections(
 }
 
 /**
+ * The base-cap variant of the furniture material: the same state appearance carrying the
+ * furniture-base depth bias, mirroring how the painted slab top spreads its bias. The cap alone
+ * loses the depth test to the floor it rests on, so the box sides and top stay unbiased (ADR-0141).
+ */
+function furnitureBaseMaterial(material: THREE.Material): THREE.Material {
+  const biased = material.clone()
+  biased.setValues(furnitureBaseDepthBiasParameters())
+  return biased
+}
+
+/**
+ * Materials for the box's `[top, base, sides]` sections in the order {@link boxSections} emits them,
+ * so the base cap carries the furniture-base bias while the shared box material draws the top and
+ * the sides unbiased.
+ */
+function boxMaterials(boxMaterial: THREE.Material): THREE.Material[] {
+  return [boxMaterial, furnitureBaseMaterial(boxMaterial), boxMaterial]
+}
+
+/**
  * Builds a furniture instance's massing as a solid box rising from its elevation to
  * elevationZ + height over the rotated footprint corners. Every vertex passes through
  * planToWorld, so the box shares the walls' axis map; the single neutral 'furniture'
@@ -80,7 +101,8 @@ function boxSections(
  * furniture on the raw id, so the generic 3D pick and outline select in step with the plan.
  * userData.furnitureMassing flags the group as a placeholder box, so a loaded model
  * sub-group is distinguishable from it now that the edge overlay (which used to mark the
- * box) is an opt-in view toggle, off by default (ADR-0132).
+ * box) is an opt-in view toggle, off by default (ADR-0132). The box is multi-material: the
+ * base cap carries the furniture-base depth bias, the sides and top stay unbiased (ADR-0141).
  */
 export function buildFurnitureMassing(
   node: FurnitureSceneNode,
@@ -90,7 +112,7 @@ export function buildFurnitureMassing(
   const base = node.elevationZ
   const top = node.elevationZ + node.height
   const geometry = geometryFromSections(boxSections(node.footprintCorners, base, top, role))
-  const mesh = new THREE.Mesh(geometry, materials.material(role))
+  const mesh = new THREE.Mesh(geometry, boxMaterials(materials.material(role)))
   const group = new THREE.Group()
   group.add(mesh)
   group.name = node.id

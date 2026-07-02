@@ -70,6 +70,34 @@ export function groundPlaneDepthBiasParameters(): THREE.MeshStandardMaterialPara
 }
 
 /**
+ * A furniture massing box rests its base cap on the Y = 0 datum, coplanar with the slab top and,
+ * on grade, with the ground plane. The cap is transparent and writes no depth, so it never wins a
+ * depth write; a positive polygon offset instead raises its tested depth so it loses the depth test
+ * to whichever opaque surface it sits on. It is the last rung of the Y = 0 ladder, pushed one rung
+ * past the ground plane so it loses to every opaque surface it can rest on (the unbiased wall base,
+ * the slab top, and the ground plane). Both fields stay strictly greater than the ground plane's,
+ * so the derivation keeps the whole ladder one strictly increasing sequence (ADR-0141).
+ */
+export const FURNITURE_BASE_DEPTH_BIAS = {
+  factor: GROUND_PLANE_DEPTH_BIAS.factor + 1,
+  units: GROUND_PLANE_DEPTH_BIAS.units + 1,
+} as const
+
+/**
+ * The polygon-offset fields that push the furniture base cap back in depth (see
+ * FURNITURE_BASE_DEPTH_BIAS), mirroring slabTopDepthBiasParameters so the convention lives in one
+ * place. The furniture builder spreads these into the base-cap material alongside its state
+ * appearance, so only the cap is biased and the box sides and top stay unbiased.
+ */
+export function furnitureBaseDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: FURNITURE_BASE_DEPTH_BIAS.factor,
+    polygonOffsetUnits: FURNITURE_BASE_DEPTH_BIAS.units,
+  }
+}
+
+/**
  * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
  * it blends without occluding the room behind it; the fill parts are thin boxes whose face
  * orientation depends on the opening normal sign, so leaf and glass render double-sided rather than
