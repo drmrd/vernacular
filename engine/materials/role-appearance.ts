@@ -98,6 +98,33 @@ export function furnitureBaseDepthBiasParameters(): THREE.MeshStandardMaterialPa
 }
 
 /**
+ * A window sash frame fills the opening flush with the wall reveal faces, so the two coplanar,
+ * back-to-back faces z-fight. The sash frame is the finished element the viewer should see, so the
+ * unbiased 'leaf' sash wins and the 'reveal' role is pushed back one rung. This is the last rung of
+ * the ladder, derived from the furniture base plus one so the whole ladder stays one strictly
+ * increasing sequence with a single source of truth. The reveal contest sits on its own plane
+ * inside the wall thickness and never shares depth with the Y = 0 surfaces, so its absolute rung
+ * only has to beat the unbiased sash leaf, which any positive rung does (ADR-0141).
+ */
+export const REVEAL_DEPTH_BIAS = {
+  factor: FURNITURE_BASE_DEPTH_BIAS.factor + 1,
+  units: FURNITURE_BASE_DEPTH_BIAS.units + 1,
+} as const
+
+/**
+ * The polygon-offset fields that push the window reveal back in depth (see REVEAL_DEPTH_BIAS),
+ * mirroring slabTopDepthBiasParameters so the convention lives in one place. The reveal role spreads
+ * these into its material spec so only the reveal faces are biased and the flush sash leaf wins.
+ */
+export function revealDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: REVEAL_DEPTH_BIAS.factor,
+    polygonOffsetUnits: REVEAL_DEPTH_BIAS.units,
+  }
+}
+
+/**
  * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
  * it blends without occluding the room behind it; the fill parts are thin boxes whose face
  * orientation depends on the opening normal sign, so leaf and glass render double-sided rather than
@@ -152,6 +179,13 @@ export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMat
       color: NEUTRAL_COLOR,
       name: role,
       ...slabTopDepthBiasParameters(),
+    }
+  }
+  if (role === 'reveal') {
+    return {
+      color: NEUTRAL_COLOR,
+      name: role,
+      ...revealDepthBiasParameters(),
     }
   }
   return { color: NEUTRAL_COLOR, name: role }
