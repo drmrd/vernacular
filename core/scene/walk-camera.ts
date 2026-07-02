@@ -2,7 +2,7 @@ import type { Vector3 } from './vector3'
 import { sweepWalkCollision, type PlanarPoint, type WalkCollisionWorld } from './walk-collision'
 
 /** Eye height above the floor datum, in millimeters. */
-export const WALK_EYE_HEIGHT_MM = 1600
+export const WALK_EYE_HEIGHT_MM = 1700
 
 /** Walking speed, in millimeters per second. */
 export const WALK_SPEED_MM_PER_S = 3000

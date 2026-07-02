@@ -59,7 +59,7 @@ describe('builtin element types', () => {
       expect(entry?.opening).toMatchObject(expected.opening)
     }
 
-    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(6)
+    expect(ELEMENT_TYPE_REGISTRY_VERSION).toBe(7)
   })
 
   it('marks every conventional opening element type with a rectangular void contour', () => {
@@ -96,7 +96,11 @@ describe('builtin element types', () => {
       expect(getEntry(builtinElementTypes, id)?.scene3D.fill).toBe('door-leaf')
     }
 
-    for (const id of ['double-hung-window', 'casement-window'] as const) {
+    for (const id of ['double-hung-window', 'single-hung-window'] as const) {
+      expect(getEntry(builtinElementTypes, id)?.scene3D.fill).toBe('window-sash-hung')
+    }
+
+    for (const id of ['casement-window', 'picture-window'] as const) {
       expect(getEntry(builtinElementTypes, id)?.scene3D.fill).toBe('window-sash')
     }
 

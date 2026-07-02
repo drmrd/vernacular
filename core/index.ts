@@ -384,6 +384,7 @@ export { sceneGraphForFloor } from './scene/scene-graph-for-floor'
 export { sceneGraphHasGeometry } from './scene/scene-graph-empty'
 export type { Vector3, Bounds3 } from './scene/vector3'
 export { planToWorld } from './scene/plan-to-world'
+export { cameraOutsideBuilding } from './scene/camera-outside-building'
 export type { CameraPose, CameraViewport } from './scene/camera-framing'
 export {
   cameraDepthRange,

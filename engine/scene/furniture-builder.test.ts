@@ -28,8 +28,9 @@ const HALF_DEPTH = FOOTPRINT.depth / 2
 
 const EXPECTED_MIN_X = POSITION.x - HALF_WIDTH
 const EXPECTED_MAX_X = POSITION.x + HALF_WIDTH
-const EXPECTED_MIN_Z = POSITION.y - HALF_DEPTH
-const EXPECTED_MAX_Z = POSITION.y + HALF_DEPTH
+// Plan y maps to world -z, so the footprint's z span is the negated y span.
+const EXPECTED_MIN_Z = -(POSITION.y + HALF_DEPTH)
+const EXPECTED_MAX_Z = -(POSITION.y - HALF_DEPTH)
 const EXPECTED_MIN_Y = ELEVATION_Z
 const EXPECTED_MAX_Y = ELEVATION_Z + HEIGHT
 

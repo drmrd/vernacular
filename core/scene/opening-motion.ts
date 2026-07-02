@@ -113,7 +113,11 @@ function jambHinge(opening: OpeningSceneNode, partCount: number): HingeMotion {
     edge: 'jamb',
     pivot,
     axis: WORLD_UP,
-    openAngle: QUARTER_TURN_RAD * facingSign,
+    // The axis map is orientation-preserving (a proper rotation onto the ground
+    // plane), so a world rotation about +Y reads in plan as the opposite turn the
+    // old mirrored map produced. Negating the angle keeps the leaf swinging toward
+    // the same plan-space side its facing names.
+    openAngle: -QUARTER_TURN_RAD * facingSign,
     partId: REPRESENTATIVE_PART,
     partCount,
   }
@@ -143,8 +147,13 @@ function horizontalHinge(opening: OpeningSceneNode, edge: Exclude<HingeEdge, 'ja
     kind: 'hinge',
     edge,
     pivot,
-    axis: { x: opening.along.x, y: 0, z: opening.along.y },
-    openAngle: QUARTER_TURN_RAD * facingSign * edgeSense,
+    // Plan north (+y) maps to world -Z, so the along-wall axis Z negates along.y.
+    // `0 - along.y` rather than `-along.y` keeps an axis-aligned wall's Z a clean +0.
+    axis: { x: opening.along.x, y: 0, z: 0 - opening.along.y },
+    // Orientation-preserving axis map: as with the jamb hinge, the world rotation
+    // sign flips relative to the old mirrored map to keep the sash cranking toward
+    // the side its facing names.
+    openAngle: -QUARTER_TURN_RAD * facingSign * edgeSense,
     partId: REPRESENTATIVE_PART,
     partCount: SINGLE_PART,
   }
@@ -158,7 +167,9 @@ function alongWallSlide(opening: OpeningSceneNode, partCount: number): SlideMoti
     travel: {
       x: opening.along.x * opening.width,
       y: 0,
-      z: opening.along.y * opening.width,
+      // Plan north (+y) maps to world -Z, so the along-wall travel Z negates along.y.
+      // `0 - ...` rather than negation keeps an axis-aligned wall's Z a clean +0.
+      z: 0 - opening.along.y * opening.width,
     },
     partId: REPRESENTATIVE_PART,
     partCount,

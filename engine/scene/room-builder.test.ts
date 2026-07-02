@@ -17,8 +17,9 @@ const ORIGIN = 0
 
 const HOLE_MIN = 1000
 const HOLE_MAX = 2000
-const HOLE_CENTROID = { x: 1500, z: 1500 }
-const RING_SAMPLE = { x: 500, z: 500 }
+// Plan y maps to world -z, so the cap samples take a negated z.
+const HOLE_CENTROID = { x: 1500, z: -1500 }
+const RING_SAMPLE = { x: 500, z: -500 }
 
 const RECTANGLE = [
   { x: ORIGIN, y: ORIGIN },
@@ -130,8 +131,9 @@ describe('buildRoomShell', () => {
     const aabb = new THREE.Box3().setFromObject(slab as THREE.Mesh)
     expect(aabb.min.x).toBeCloseTo(ORIGIN, PRECISION)
     expect(aabb.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
-    expect(aabb.min.z).toBeCloseTo(ORIGIN, PRECISION)
-    expect(aabb.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+    // Plan y in [0, ROOM_DEPTH] maps to world z in [-ROOM_DEPTH, 0].
+    expect(aabb.min.z).toBeCloseTo(-ROOM_DEPTH, PRECISION)
+    expect(aabb.max.z).toBeCloseTo(ORIGIN, PRECISION)
     expect(aabb.max.y).toBeCloseTo(FLOOR_DATUM_Y, PRECISION)
     expect(aabb.min.y).toBeCloseTo(-floorSlabThickness(), PRECISION)
   })
@@ -236,11 +238,11 @@ describe('buildRoomShell', () => {
     // A flat horizontal plane: no thickness, both faces at the ceiling height.
     expect(ceilingBox.min.y).toBeCloseTo(CEILING_HEIGHT, PRECISION)
     expect(ceilingBox.max.y).toBeCloseTo(CEILING_HEIGHT, PRECISION)
-    // It spans the room's clear polygon in x and z.
+    // It spans the room's clear polygon in x and z (plan y maps to world -z).
     expect(ceilingBox.min.x).toBeCloseTo(ORIGIN, PRECISION)
     expect(ceilingBox.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
-    expect(ceilingBox.min.z).toBeCloseTo(ORIGIN, PRECISION)
-    expect(ceilingBox.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+    expect(ceilingBox.min.z).toBeCloseTo(-ROOM_DEPTH, PRECISION)
+    expect(ceilingBox.max.z).toBeCloseTo(ORIGIN, PRECISION)
 
     const geometry = ceilingMesh.geometry as THREE.BufferGeometry
     const normals = readNormals(geometry)
@@ -298,11 +300,12 @@ describe('buildRoomShell floor slab under the walls', () => {
     expect(slab).toBeDefined()
 
     const aabb = new THREE.Box3().setFromObject(slab as THREE.Mesh)
-    // The slab footprint reaches the outer rectangle at the wall outer faces.
+    // The slab footprint reaches the outer rectangle at the wall outer faces
+    // (plan y maps to world -z).
     expect(aabb.min.x).toBeCloseTo(ORIGIN - OUTSET, PRECISION)
     expect(aabb.max.x).toBeCloseTo(ROOM_WIDTH + OUTSET, PRECISION)
-    expect(aabb.min.z).toBeCloseTo(ORIGIN - OUTSET, PRECISION)
-    expect(aabb.max.z).toBeCloseTo(ROOM_DEPTH + OUTSET, PRECISION)
+    expect(aabb.min.z).toBeCloseTo(-(ROOM_DEPTH + OUTSET), PRECISION)
+    expect(aabb.max.z).toBeCloseTo(-(ORIGIN - OUTSET), PRECISION)
     // Widening the footprint does not move either cap in Y.
     expect(aabb.max.y).toBeCloseTo(FLOOR_DATUM_Y, PRECISION)
     expect(aabb.min.y).toBeCloseTo(-floorSlabThickness(), PRECISION)
@@ -321,11 +324,11 @@ describe('buildRoomShell floor slab under the walls', () => {
     expect(ceiling).toBeDefined()
 
     const ceilingBox = new THREE.Box3().setFromObject(ceiling as THREE.Mesh)
-    // The ceiling spans the clear polygon, not the wider outer one.
+    // The ceiling spans the clear polygon, not the wider outer one (plan y maps to world -z).
     expect(ceilingBox.min.x).toBeCloseTo(ORIGIN, PRECISION)
     expect(ceilingBox.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
-    expect(ceilingBox.min.z).toBeCloseTo(ORIGIN, PRECISION)
-    expect(ceilingBox.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+    expect(ceilingBox.min.z).toBeCloseTo(-ROOM_DEPTH, PRECISION)
+    expect(ceilingBox.max.z).toBeCloseTo(ORIGIN, PRECISION)
   })
 
   it('falls back to the clear polygon for the slab when no outer polygon is given', () => {
@@ -339,8 +342,9 @@ describe('buildRoomShell floor slab under the walls', () => {
     const aabb = new THREE.Box3().setFromObject(slab as THREE.Mesh)
     expect(aabb.min.x).toBeCloseTo(ORIGIN, PRECISION)
     expect(aabb.max.x).toBeCloseTo(ROOM_WIDTH, PRECISION)
-    expect(aabb.min.z).toBeCloseTo(ORIGIN, PRECISION)
-    expect(aabb.max.z).toBeCloseTo(ROOM_DEPTH, PRECISION)
+    // Plan y in [0, ROOM_DEPTH] maps to world z in [-ROOM_DEPTH, 0].
+    expect(aabb.min.z).toBeCloseTo(-ROOM_DEPTH, PRECISION)
+    expect(aabb.max.z).toBeCloseTo(ORIGIN, PRECISION)
   })
 })
 

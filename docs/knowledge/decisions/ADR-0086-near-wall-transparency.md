@@ -15,12 +15,18 @@ sourceFiles:
     docs/specs/2026-06-15-near-wall-transparency.md,
     docs/plans/2026-06-15-near-wall-transparency.md,
     core/topology/exterior-walls.ts,
+    core/scene/interior-viewpoint.ts,
+    core/scene/camera-outside-building.ts,
     engine/scene/near-wall-transparency.ts,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/framed-scene.ts,
+    bridge/react/framed-scene-reconciler.ts,
+    bridge/react/near-wall-fade.tsx,
+    bridge/react/scene-nav-toolbar.tsx,
     e2e/tests/scene-near-wall-transparency.spec.ts,
   ]
 status: current
-updated: 2026-06-15
+updated: 2026-07-01
 ---
 
 # ADR-0086: Near-wall transparency in the three-dimensional preview
@@ -101,6 +107,12 @@ camera is grounded (issue #256).
 - The near exterior walls fade when the camera is outside them and return to solid from
   the other side, so the interior is visible from outside. This closes issue #122 for
   the front-facing case.
+- The front-facing side test is now additionally gated by whether the orbit camera lies
+  outside the building footprint. `cameraOutsideBuilding` in core inverts the camera's
+  world position back to plan space and tests it against the room polygons, and the bridge
+  wires that gate to the fade, so a near wall fades only when the camera is genuinely
+  outside the rooms rather than merely on the wall's outward side. This advances the issue
+  #256 plan for transparency that follows whether the camera is grounded.
 - The exterior decision and the camera-side decision are pure, unit-tested core, so the
   rule for which walls fade is verified without the renderer.
 - Only exterior walls carry private materials; interior walls keep the shared materials,
@@ -109,5 +121,12 @@ camera is grounded (issue #256).
   baseline of it through the deterministic harness is deferred, because that baseline is
   per-platform and cannot be regenerated across targets in this pass; the unit and engine
   tests cover the logic in the meantime.
-- The front-facing trigger, the binary fade, opening-body fading, and a user toggle are
-  deferred, recorded in the spec.
+- The front-facing trigger, the binary fade, and opening-body fading are deferred,
+  recorded in the spec.
+- The deferred user toggle shipped (issue #257). A "Reveal interior" control sits in the
+  primary cluster of the three-dimensional scene navigation toolbar and defaults to on; its
+  `revealInterior` state threads through `useSceneNavigation` in
+  `bridge/react/webgpu-scene-view.tsx` and gates the fade at
+  `<NearWallFade enabled={mode === 'orbit' && revealInterior}>`. The shared `ToolbarToggle`
+  in `bridge/react/scene-nav-toolbar.tsx` renders it, and it stays inert while walking
+  because the fade still needs orbit mode.

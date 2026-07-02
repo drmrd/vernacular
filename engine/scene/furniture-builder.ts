@@ -51,9 +51,9 @@ function sidePositions(polygon: readonly Point[], base: number, top: number): nu
   return positions
 }
 
-// Top cap reverses its winding to face +Y after planToWorld's orientation-flipping axis map; the base
-// keeps the triangulation order to face -Y; the sides span base to top. Mirrors junction-fill so the
-// box reads solid from outside under front-side culling.
+// planToWorld is orientation-preserving, so the natural triangulation already faces +Y: the top cap
+// keeps that order while the base reverses its winding to face -Y; the sides span base to top. Mirrors
+// junction-fill so the box reads solid from outside under front-side culling.
 function boxSections(
   corners: readonly Point[],
   base: number,
@@ -64,9 +64,9 @@ function boxSections(
   return [
     {
       role,
-      positions: capPositions(corners, reverseTriangleWinding(triangles), top),
+      positions: capPositions(corners, triangles, top),
     },
-    { role, positions: capPositions(corners, triangles, base) },
+    { role, positions: capPositions(corners, reverseTriangleWinding(triangles), base) },
     { role, positions: sidePositions(corners, base, top) },
   ]
 }

@@ -108,8 +108,9 @@ function prismSections(footprint: WallFootprint, height: number, wallId: string)
 
 /**
  * The top and base cap sections wound from the footprint's signed area, or none for
- * a degenerate footprint. A clockwise perimeter (negative area) winds the top cap so
- * its normal faces +Y; the base reverses that to face -Y.
+ * a degenerate footprint. The axis map is orientation-preserving, so a counter-clockwise
+ * perimeter (positive area) winds the top cap so its normal faces +Y; the base reverses
+ * that to face -Y.
  */
 function capSections(footprint: WallFootprint, height: number): WallSection[] {
   const { aPlus, aMinus, bPlus, bMinus } = footprint
@@ -118,7 +119,7 @@ function capSections(footprint: WallFootprint, height: number): WallSection[] {
   if (Math.abs(area) < CAP_AREA_EPSILON) {
     return []
   }
-  const topCorners = area < 0 ? perimeter : reverseCorners(perimeter)
+  const topCorners = area < 0 ? reverseCorners(perimeter) : perimeter
   const baseCorners = reverseCorners(topCorners)
   return [
     { role: 'top', positions: capQuad(topCorners, height) },

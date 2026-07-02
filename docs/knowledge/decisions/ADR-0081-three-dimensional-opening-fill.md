@@ -54,7 +54,7 @@ sourceFiles:
     e2e/tests/scene-visual-regression.spec.ts,
   ]
 status: current
-updated: 2026-06-14
+updated: 2026-06-30
 ---
 
 # ADR-0081: Opening fill as box parts, the fill-kind resolver, and the opening-bodied scene
@@ -179,6 +179,47 @@ a filled door and a glazed window, and the committed `scene-shell-webgl` baselin
 refreshed once. The assertion stays pixel-approximate, because a graphics-processor
 render is not pixel-stable across drivers and antialiasing. No new dependency is
 added.
+
+## Amendment (2026-06-30): the hung-window fill kind
+
+The original slice named `fill` a string-keyed kind open to further variants and
+promised that a new sash "is a new kind, a new generator, and a new resolver case,
+with no change to the builder that calls it." The hung-window slice is the first time
+that promise is exercised. `OpeningFillKind` gains a third value, `window-sash-hung`,
+beside `door-leaf` and `window-sash`, and the element-type registry version bumps 6 to
+7, the same kind of bump `voidContour` and the first `fill` key made. Both
+`double-hung-window` and `single-hung-window` now carry `fill: 'window-sash-hung'`,
+while the undivided windows (`sliding-window`, `picture-window`, `transom-window`,
+`sidelight-window`) keep the plain `fill: 'window-sash'`.
+
+Single-hung and double-hung render the same static two-sash fill. The static body
+shows two stacked panes and a meeting rail; it does not animate which sash slides, so
+the geometry is operation-agnostic and cannot on its own tell an operable lower sash
+from a fixed one. Which sash moves belongs to a later slide-animation seam and to the
+2D symbol, not to the static body, the same way the closed-flat leaf renders the
+zero-angle case and leaves the swing to a later seam. The two hung types differing
+only in their operation is a conscious simplification of the static tier, recorded
+here rather than forced into the geometry.
+
+The resolver renders `window-sash-hung` as two stacked sashes meeting at a full-width
+meeting rail that straddles the opening's vertical midpoint. The rail is a leaf-role
+bar spanning the full opening width, centered on `sill + height / 2`, half a
+sash-frame-width above and below that line, so its total height is one
+`SASH_FRAME_WIDTH_MM`. The lower sash fills the band below the rail and the upper sash
+fills the band above it; because the rail sits at the midpoint, the two bands are
+equal. Each sash is a full four-member perimeter (a top rail, a bottom rail, and two
+stiles) ringing its own glass pane inset by the frame width, the same assembly the
+undivided sash uses, only over a shorter band.
+
+A refactor lifted the shared shape out of the two window cases. `sashAssembly(halfWidth,
+band)` builds one sash over an arbitrary `[min, max]` height band; `leafBar(along, up)`
+builds one frame member at `SASH_FRAME_THICKNESS_MM`; `wholeSashParts` (renamed from
+`windowSashParts`) is the undivided `window-sash` case, one sash over the whole opening;
+and `hungWindowSashParts` is the new `window-sash-hung` case that stacks two
+`sashAssembly` bands around the meeting rail. `buildOpeningFill` needed no change: it
+builds one box per returned part regardless of count, so a hung window is just more
+parts through the same primitive. The original slice claimed this additive property,
+and the hung window is the first case that puts it to work.
 
 ## Consequences
 

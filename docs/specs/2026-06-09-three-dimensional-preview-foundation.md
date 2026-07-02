@@ -56,25 +56,27 @@ silently contradicts an earlier one.
 
 ### 2.1 Axes and the plan-to-world mapping
 
-The two-dimensional plan world is screen-style y-down: `worldToScreen` maps plan
-`(x, y)` to screen `(x, y)` with `+y` downward (`editor/plan/viewport.ts`).
+The two-dimensional plan world is y-up: `worldToScreen` negates plan `y`
+(`y: -point.y`, `editor/plan/viewport.ts`), so a larger plan `y` is higher on
+screen, which is north, matching the `Point` type's y-increases-upward convention.
 
 Three.js is right-handed and Y-up. The mapping is:
 
 - plan `x` maps to world `X`
-- plan `y` maps to world `Z`
+- plan `y` (north) maps to world `-Z`
 - the vertical axis is world `Y` (up)
 
 So a plan point `(x, y)` at vertical height `v` within a floor is world
-`(x, v, y)`. This map is orientation-flipping: the plan frame is y-down while the
-world ground plane is y-up, so the sense of a polygon loop reverses between the
-two. To keep faces from rendering inside-out or mirrored, the foundation fixes a
-single winding convention for local-frame outward loops (and the opposite sense for
-holes, section 3.2) such that, after the flip, floor faces carry `+Y` (upward)
-normals and wall exterior faces point away from the room interior. The slice-0
-conventions test (not a later geometry slice) asserts the exact triangle order
-against this rule, so slices 1, 2, and 4 all inherit one fixed convention rather
-than each choosing their own.
+`(x, v, -y)`. This map is orientation-preserving: it lays the y-up plan onto the
+y-up ground as a proper rotation. The 3D scene then reads the same way as the plan
+rather than as a mirror of it, and it agrees with the camera-preset axis map (plan
+north is world `-Z`). The foundation fixes a single winding convention for
+local-frame outward loops (and the opposite sense for holes, section 3.2) such that
+floor faces carry `+Y` (upward) normals and wall exterior faces point away from the
+room interior. The slice-0 conventions test (not a later geometry slice) asserts the
+exact triangle order against this rule, so slices 1, 2, and 4 all inherit one fixed
+convention rather than each choosing their own. See ADR-0139 for the correction from
+the earlier y-down and plan-`y`-to-`+Z` statement.
 
 ### 2.2 Floor datum and vertical stacking
 

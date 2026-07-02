@@ -77,6 +77,21 @@ const wallMaterials = (root: THREE.Group, entityId: string): THREE.Material[] =>
   return (mesh as THREE.Mesh).material as THREE.Material[]
 }
 
+/**
+ * Every mesh under `root` carrying `entityId`, in traversal order. A split wall
+ * (one WallSceneNode spanning several graph edges) yields one mesh per edge, all
+ * sharing the wall's entity id, so `findByEntityId` (first match) is not enough.
+ */
+const allMeshesByEntityId = (root: THREE.Group, entityId: string): THREE.Mesh[] => {
+  const meshes: THREE.Mesh[] = []
+  root.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.userData.entityId === entityId) {
+      meshes.push(object)
+    }
+  })
+  return meshes
+}
+
 const door = (): SceneGraph['openings'][number] => ({
   id: 'opening:door',
   kind: 'opening',
@@ -289,10 +304,10 @@ describe('updateNearWallTransparency', () => {
     const root = buildScene(graph, new NeutralMaterialProvider())
     const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
 
-    // Camera well to the negative-Z side: outside the bottom wall (world z=0,
-    // outward normal world (0,0,-1)), inside the top wall (world z=4000,
-    // outward normal world (0,0,+1)).
-    updateNearWallTransparency(targets, { x: 2000, z: -3000 })
+    // Camera well to the positive-Z side: outside the bottom wall (world z=0,
+    // outward normal world (0,0,+1)), inside the top wall (world z=-4000,
+    // outward normal world (0,0,-1)). Plan y maps to world -z.
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
 
     for (const material of wallMaterials(root, 'wall:bottom')) {
       expect(material.transparent).toBe(true)
@@ -309,10 +324,10 @@ describe('updateNearWallTransparency', () => {
     const root = buildScene(graph, new NeutralMaterialProvider())
     const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
 
-    // Camera well to the negative-Z side: outside the bottom wall (world z=0,
-    // outward normal world (0,0,-1)). This is the camera position that fades the
-    // bottom wall.
-    const outsideBottomWall = { x: 2000, z: -3000 }
+    // Camera well to the positive-Z side: outside the bottom wall (world z=0,
+    // outward normal world (0,0,+1)). This is the camera position that fades the
+    // bottom wall (plan y maps to world -z).
+    const outsideBottomWall = { x: 2000, z: 3000 }
 
     // Fade the bottom wall the normal way first, so the restore has a faded
     // material to clear rather than one that happened to be solid all along.
@@ -338,8 +353,8 @@ describe('updateNearWallTransparency', () => {
       exteriorWalls(graph.walls, graph.rooms, graph.openings),
     )
 
-    // Camera outside the bottom wall (world z=0, outward normal world (0,0,-1)).
-    updateNearWallTransparency(targets, { x: 2000, z: -3000 })
+    // Camera outside the bottom wall (world z=0, outward normal world (0,0,+1)).
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
 
     const leaf = openingMesh(root, 'opening:door', 'leaf')
     expect(Array.isArray(leaf.material)).toBe(false)
@@ -356,13 +371,40 @@ describe('updateNearWallTransparency', () => {
     )
     const glass = openingMesh(root, 'opening:window', 'glass').material as THREE.Material
 
-    updateNearWallTransparency(targets, { x: 2000, z: -3000 }) // outside: fade
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 }) // outside: fade
     expect(glass.opacity).toBe(FADED_OPACITY)
 
-    updateNearWallTransparency(targets, { x: 2000, z: 3000 }) // inside: restore
+    updateNearWallTransparency(targets, { x: 2000, z: -3000 }) // inside: restore
     expect(glass.opacity).toBe(GLASS_OPACITY)
     expect(glass.transparent).toBe(true)
     expect(glass.depthWrite).toBe(false)
+  })
+
+  it('fades every segment mesh of a split exterior wall, not only the first', () => {
+    const graph = tJunctionGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+
+    // `buildWallGraph` splits the bar at the tee foot, so the one bar WallSceneNode
+    // yields one mesh per edge, both carrying `userData.entityId === 'wall:bar'` (per
+    // the wall builder's JSDoc). Pin that split precondition before fading: if the bar
+    // is not rendered as at least two sibling meshes, the fixture assumption is wrong.
+    const barMeshes = allMeshesByEntityId(root, 'wall:bar')
+    expect(barMeshes.length).toBeGreaterThanOrEqual(2)
+
+    // The bar runs along world z=0 with its outward normal to positive Z (open air to
+    // the south, since plan y maps to world -z), so a camera on the positive-Z side
+    // sees the whole bar from outside. Every segment mesh must fade, not only the first.
+    updateNearWallTransparency(targets, { x: BAR_MIDPOINT_MM, z: 3000 })
+
+    for (const mesh of barMeshes) {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      for (const material of materials) {
+        expect(material.opacity).toBe(FADED_OPACITY)
+        expect(material.transparent).toBe(true)
+        expect(material.depthWrite).toBe(false)
+      }
+    }
   })
 
   it('holds a hold-opaque fill material at its solid baseline while its target fades the bar wall', () => {
@@ -383,12 +425,13 @@ describe('updateNearWallTransparency', () => {
       .filter((record) => record.holdOpaque === true)
     expect(fillRecords.length).toBeGreaterThan(0)
 
-    // The bar runs along world z=0 with its outward normal to negative Z (open air to the
-    // south), so a camera on the negative-Z side sees it from outside and its target fades.
-    // Carry the fill's hold-opaque records on that SAME fading target so that honoring
-    // `holdOpaque` per material is the only thing that can keep the fill solid. (The fill
-    // covers the leg's mitered end and divides the rooms; it must not fade with the bar.)
-    const barTarget = prepared.find((target) => target.outwardNormal.z < 0)
+    // The bar runs along world z=0 with its outward normal to positive Z (open air to the
+    // south, since plan y maps to world -z), so a camera on the positive-Z side sees it from
+    // outside and its target fades. Carry the fill's hold-opaque records on that SAME fading
+    // target so that honoring `holdOpaque` per material is the only thing that can keep the
+    // fill solid. (The fill covers the leg's mitered end and divides the rooms; it must not
+    // fade with the bar.)
+    const barTarget = prepared.find((target) => target.outwardNormal.z > 0)
     expect(barTarget).toBeDefined()
     const fadingTarget: NearWallTarget = {
       point: (barTarget as NearWallTarget).point,
@@ -398,7 +441,7 @@ describe('updateNearWallTransparency', () => {
 
     const fillBaselines = fillRecords.map((record) => ({ ...record.baseline }))
 
-    updateNearWallTransparency([fadingTarget], { x: BAR_MIDPOINT_MM, z: -3000 })
+    updateNearWallTransparency([fadingTarget], { x: BAR_MIDPOINT_MM, z: 3000 })
 
     // The bar wall fades as before.
     for (const material of wallMaterials(root, 'wall:bar')) {
@@ -463,10 +506,11 @@ describe('updateNearWallTransparency', () => {
     })
 
     // Condition A: bar faded, leg solid. The bar runs along world z=0 with its outward
-    // normal to negative Z, so a camera to the south sees it from outside and it fades.
-    updateNearWallTransparency([fillTarget({ x: BAR_MIDPOINT_MM, z: 0 }, { x: 0, z: -1 })], {
+    // normal to positive Z (plan y maps to world -z), so a camera to the south sees it
+    // from outside and it fades.
+    updateNearWallTransparency([fillTarget({ x: BAR_MIDPOINT_MM, z: 0 }, { x: 0, z: 1 })], {
       x: BAR_MIDPOINT_MM,
-      z: -3000,
+      z: 3000,
     })
     expectFillSolid('bar faded, leg solid')
 

@@ -14,7 +14,7 @@ import { interactFromWalk, tickOpenings } from './walk-interaction'
 
 const DOOR_ID = 'opening:front-door'
 
-// A door whose wall runs along world X at world Z = 2000 (plan y maps to world z).
+// A door whose wall runs along world X at world Z = -2000 (plan y maps to world -z).
 function frontDoor(): OpeningSceneNode {
   return {
     id: DOOR_ID,
@@ -46,9 +46,9 @@ function graphWith(door: OpeningSceneNode): SceneGraph {
   }
 }
 
-// Standing 1000mm in front of the door, eye at standing height, yawed a half turn
-// so the look direction points down +Z straight at the door.
-const facingDoor: WalkState = { position: { x: 1000, y: 1700, z: 1000 }, yaw: Math.PI, pitch: 0 }
+// Standing 1000mm in front of the door, eye at standing height, looking down -Z
+// straight at the door at world z = -2000 (plan y maps to world -z).
+const facingDoor: WalkState = { position: { x: 1000, y: 1700, z: -1000 }, yaw: 0, pitch: 0 }
 
 // A whole-second tick covers the full swing in one step.
 const FULL_STEP = 1
@@ -102,7 +102,8 @@ describe('walk interaction', () => {
 
   it('leaves every opening shut when the walker looks at none within reach', () => {
     const door = frontDoor()
-    const lookingAway: WalkState = { ...facingDoor, yaw: 0 }
+    // facingDoor looks down -Z at the door, so a half turn (yaw PI) looks away.
+    const lookingAway: WalkState = { ...facingDoor, yaw: Math.PI }
 
     const result = interactFromWalk(lookingAway, [door], emptyOpeningInteraction())
 
@@ -113,20 +114,20 @@ describe('walk interaction', () => {
     const door = frontDoor()
 
     // frontDoor: hinge `start`, facing `positive`, wall along world X at world
-    // Z = 2000, width 900, height 2032, sill 0.
-    // - SHUT, the leaf lies in the world plane z = 2000.
+    // Z = -2000, width 900, height 2032, sill 0 (plan y maps to world -z).
+    // - SHUT, the leaf lies in the world plane z = -2000.
     // - At openness 1 the leaf has swung a quarter turn about its hinge jamb to
-    //   stand in the world plane x = 550, centered at {x:550, y:1016, z:1550},
-    //   spanning z in [1100, 2000] and y in [0, 2032].
+    //   stand in the world plane x = 550, centered at {x:550, y:1016, z:-1550},
+    //   spanning z in [-2000, -1100] and y in [0, 2032].
     //
-    // A walker standing at {x:200, y:1700, z:1550} looking due +x. With this
+    // A walker standing at {x:200, y:1700, z:-1550} looking due +x. With this
     // codebase's yaw convention (walkLookDirection: x = sin(yaw)cos(pitch),
     // z = -cos(yaw)cos(pitch)), looking +x is yaw: PI/2, pitch: 0. That ray
     // crosses the OPEN leaf plane (x=550) at 350mm (within reach) inside the
-    // leaf, but runs exactly PARALLEL to the shut aperture plane (z=2000), so
+    // leaf, but runs exactly PARALLEL to the shut aperture plane (z=-2000), so
     // the shut leaf is missed.
     const aimedAtSwungLeaf: WalkState = {
-      position: { x: 200, y: 1700, z: 1550 },
+      position: { x: 200, y: 1700, z: -1550 },
       yaw: Math.PI / 2,
       pitch: 0,
     }
@@ -139,7 +140,7 @@ describe('walk interaction', () => {
     const closed = interactFromWalk(aimedAtSwungLeaf, [door], open, new Map([[DOOR_ID, 1]]))
     expect(isOpeningOpen(closed, DOOR_ID)).toBe(false)
 
-    // Without openness, the ray only tests the shut aperture plane (z=2000),
+    // Without openness, the ray only tests the shut aperture plane (z=-2000),
     // which it runs parallel to, so it misses the swung leaf and toggles nothing.
     const stillOpen = interactFromWalk(aimedAtSwungLeaf, [door], open)
     expect(isOpeningOpen(stillOpen, DOOR_ID)).toBe(true)
