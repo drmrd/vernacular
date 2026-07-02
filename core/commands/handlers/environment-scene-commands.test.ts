@@ -56,6 +56,15 @@ describe('removeEnvironmentScene', () => {
     dispatcher.dispatch(removeEnvironmentScene('scene-1'))
     expect(project.environmentScenes).toEqual([])
   })
+
+  it('restores the removed scene on undo', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(addEnvironmentScene(NOON))
+    dispatcher.dispatch(removeEnvironmentScene('scene-1'))
+    dispatcher.undo()
+    expect(project.environmentScenes).toEqual([NOON])
+  })
 })
 
 describe('renameEnvironmentScene', () => {
@@ -65,5 +74,14 @@ describe('renameEnvironmentScene', () => {
     dispatcher.dispatch(addEnvironmentScene(NOON))
     dispatcher.dispatch(renameEnvironmentScene('scene-1', 'Summer midday'))
     expect(project.environmentScenes?.[0]?.name).toBe('Summer midday')
+  })
+
+  it('restores the prior name on undo', () => {
+    const project = newProject()
+    const dispatcher = dispatcherFor(project)
+    dispatcher.dispatch(addEnvironmentScene(NOON))
+    dispatcher.dispatch(renameEnvironmentScene('scene-1', 'Summer midday'))
+    dispatcher.undo()
+    expect(project.environmentScenes?.[0]?.name).toBe('Summer noon')
   })
 })
