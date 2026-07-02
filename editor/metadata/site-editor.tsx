@@ -70,46 +70,56 @@ function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledText
   )
 }
 
-interface SiteFieldsProps {
-  latitude: number
-  longitude: number
-  bearingDegrees: number
-  timezone: string
-  onLatitudeChange: (value: number) => void
-  onLongitudeChange: (value: number) => void
-  onBearingChange: (value: number) => void
-  onTimezoneChange: (value: string) => void
-  commitLocation: () => void
-  commitBearing: () => void
-  commitTimezone: () => void
+// A single self-committing field: its current value, a change handler, and the
+// commit that fires on Enter.
+interface FieldControl<T> {
+  value: T
+  onValueChange: (value: T) => void
+  onCommit: () => void
 }
 
-function SiteFields(props: SiteFieldsProps) {
+// Latitude and longitude dispatch together, so the two coordinates share one
+// commit rather than each carrying its own.
+interface LocationControls {
+  latitude: number
+  longitude: number
+  onLatitudeChange: (value: number) => void
+  onLongitudeChange: (value: number) => void
+  onCommit: () => void
+}
+
+interface SiteFieldsProps {
+  location: LocationControls
+  bearing: FieldControl<number>
+  timezone: FieldControl<string>
+}
+
+function SiteFields({ location, bearing, timezone }: SiteFieldsProps) {
   return (
     <Stack>
       <LabeledNumberInput
         label="Latitude"
-        value={props.latitude}
-        onValueChange={props.onLatitudeChange}
-        onCommit={props.commitLocation}
+        value={location.latitude}
+        onValueChange={location.onLatitudeChange}
+        onCommit={location.onCommit}
       />
       <LabeledNumberInput
         label="Longitude"
-        value={props.longitude}
-        onValueChange={props.onLongitudeChange}
-        onCommit={props.commitLocation}
+        value={location.longitude}
+        onValueChange={location.onLongitudeChange}
+        onCommit={location.onCommit}
       />
       <LabeledNumberInput
         label="North bearing (degrees)"
-        value={props.bearingDegrees}
-        onValueChange={props.onBearingChange}
-        onCommit={props.commitBearing}
+        value={bearing.value}
+        onValueChange={bearing.onValueChange}
+        onCommit={bearing.onCommit}
       />
       <LabeledTextInput
         label="Timezone"
-        value={props.timezone}
-        onValueChange={props.onTimezoneChange}
-        onCommit={props.commitTimezone}
+        value={timezone.value}
+        onValueChange={timezone.onValueChange}
+        onCommit={timezone.onCommit}
       />
     </Stack>
   )
@@ -135,17 +145,15 @@ export function SiteEditor({ site, dispatch }: SiteEditorProps) {
 
   return (
     <SiteFields
-      latitude={latitude}
-      longitude={longitude}
-      bearingDegrees={bearingDegrees}
-      timezone={timezone}
-      onLatitudeChange={setLatitude}
-      onLongitudeChange={setLongitude}
-      onBearingChange={setBearingDegrees}
-      onTimezoneChange={setTimezone}
-      commitLocation={commitLocation}
-      commitBearing={commitBearing}
-      commitTimezone={commitTimezone}
+      location={{
+        latitude,
+        longitude,
+        onLatitudeChange: setLatitude,
+        onLongitudeChange: setLongitude,
+        onCommit: commitLocation,
+      }}
+      bearing={{ value: bearingDegrees, onValueChange: setBearingDegrees, onCommit: commitBearing }}
+      timezone={{ value: timezone, onValueChange: setTimezone, onCommit: commitTimezone }}
     />
   )
 }
