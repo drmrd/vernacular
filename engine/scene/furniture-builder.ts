@@ -13,6 +13,13 @@ import {
 
 const FURNITURE_ROLE: SurfaceRole = 'furniture'
 
+/**
+ * Position of the base cap within both {@link boxSections} and {@link boxMaterials}. The base cap is
+ * the one face that carries the furniture-base depth bias, so its section order and its material
+ * order pin it to this single index rather than repeating a bare literal in two places (ADR-0141).
+ */
+const BOX_BASE_SECTION_INDEX = 1
+
 /** Pushes a plan polygon point, at the given world height, as a world position. */
 function pushWorldPoint(positions: number[], point: Point, height: number): void {
   const world = planToWorld(point, height)
@@ -62,14 +69,18 @@ function boxSections(
   role: SurfaceRole,
 ): WallSection[] {
   const triangles = capTriangles(corners)
-  return [
-    {
-      role,
-      positions: capPositions(corners, triangles, top),
-    },
-    { role, positions: capPositions(corners, reverseTriangleWinding(triangles), base) },
+  const baseCap: WallSection = {
+    role,
+    positions: capPositions(corners, reverseTriangleWinding(triangles), base),
+  }
+  // Top cap and sides bracket the base cap, which is spliced in at its canonical index so the
+  // depth-biased material picked out by boxMaterials lines up with exactly this face.
+  const sections: WallSection[] = [
+    { role, positions: capPositions(corners, triangles, top) },
     { role, positions: sidePositions(corners, base, top) },
   ]
+  sections.splice(BOX_BASE_SECTION_INDEX, 0, baseCap)
+  return sections
 }
 
 /**
@@ -89,7 +100,9 @@ function furnitureBaseMaterial(material: THREE.Material): THREE.Material {
  * the sides unbiased.
  */
 function boxMaterials(boxMaterial: THREE.Material): THREE.Material[] {
-  return [boxMaterial, furnitureBaseMaterial(boxMaterial), boxMaterial]
+  const materials: THREE.Material[] = [boxMaterial, boxMaterial, boxMaterial]
+  materials[BOX_BASE_SECTION_INDEX] = furnitureBaseMaterial(boxMaterial)
+  return materials
 }
 
 /**
