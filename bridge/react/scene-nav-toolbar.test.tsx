@@ -382,3 +382,25 @@ describe('SceneNavToolbar reveal-interior toggle', () => {
     expect(primary).toContainElement(toggle)
   })
 })
+
+describe('SceneNavToolbar observation datetime', () => {
+  it('shows the observation datetime and reports changes parsed to an instant', () => {
+    const onObservationChange = vi.fn()
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        observationInstant={{ date: '2026-06-21', minutesSinceMidnight: 720 }}
+        onObservationChange={onObservationChange}
+      />,
+    )
+
+    const input = screen.getByLabelText(/observation date and time/i)
+    expect(input).toHaveValue('2026-06-21T12:00')
+
+    fireEvent.change(input, { target: { value: '2026-12-04T16:00' } })
+    expect(onObservationChange).toHaveBeenCalledWith({
+      date: '2026-12-04',
+      minutesSinceMidnight: 960,
+    })
+  })
+})
