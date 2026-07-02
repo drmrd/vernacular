@@ -125,68 +125,65 @@ export function revealDepthBiasParameters(): THREE.MeshStandardMaterialParameter
 }
 
 /**
- * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
- * it blends without occluding the room behind it; the fill parts are thin boxes whose face
- * orientation depends on the opening normal sign, so leaf and glass render double-sided rather than
- * pinning a per-opening winding.
+ * The standard-material parameters for each surface role that departs from the neutral default.
+ * Glass is transparent and writes no depth so it blends without occluding the room behind it; the
+ * fill parts are thin boxes whose face orientation depends on the opening normal sign, so leaf and
+ * glass render double-sided rather than pinning a per-opening winding. The 'top' and 'reveal' roles
+ * spread in their depth-bias offsets so the coincident faces they sit behind win the depth contest.
+ * The depth-bias helpers are pure and constant-derived, so this table is evaluated once at load.
  */
-export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMaterialParameters {
-  if (role === 'glass') {
-    return {
+const ROLE_MATERIAL_PARAMETERS: Partial<Record<SurfaceRole, THREE.MeshStandardMaterialParameters>> =
+  {
+    glass: {
       color: GLASS_COLOR,
-      name: role,
+      name: 'glass',
       transparent: true,
       opacity: GLASS_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'furniture') {
-    return {
+    },
+    furniture: {
       color: FURNITURE_COLOR,
-      name: role,
+      name: 'furniture',
       transparent: true,
       opacity: FURNITURE_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'furnitureFailed') {
-    return {
+    },
+    furnitureFailed: {
       color: FURNITURE_FAILED_COLOR,
-      name: role,
+      name: 'furnitureFailed',
       transparent: true,
       opacity: FURNITURE_FAILED_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'furnitureLoading') {
-    return {
+    },
+    furnitureLoading: {
       color: FURNITURE_LOADING_COLOR,
-      name: role,
+      name: 'furnitureLoading',
       transparent: true,
       opacity: FURNITURE_LOADING_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'leaf') {
-    return { color: LEAF_COLOR, name: role, side: THREE.DoubleSide }
-  }
-  if (role === 'top') {
-    return {
+    },
+    leaf: { color: LEAF_COLOR, name: 'leaf', side: THREE.DoubleSide },
+    top: {
       color: NEUTRAL_COLOR,
-      name: role,
+      name: 'top',
       ...slabTopDepthBiasParameters(),
-    }
-  }
-  if (role === 'reveal') {
-    return {
+    },
+    reveal: {
       color: NEUTRAL_COLOR,
-      name: role,
+      name: 'reveal',
       ...revealDepthBiasParameters(),
-    }
+    },
   }
-  return { color: NEUTRAL_COLOR, name: role }
+
+/**
+ * The standard-material parameters for a surface role: a table lookup for the roles that depart from
+ * the neutral appearance (see ROLE_MATERIAL_PARAMETERS), falling through to the light warm gray for
+ * every other role.
+ */
+export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMaterialParameters {
+  return ROLE_MATERIAL_PARAMETERS[role] ?? { color: NEUTRAL_COLOR, name: role }
 }
