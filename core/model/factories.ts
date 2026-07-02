@@ -35,8 +35,9 @@ import type {
 // v11 adds a per-furniture `height` field (an absent-by-default backfill migration);
 // v12 adds an optional `Wall.constructionProfile` registry-id field (a passthrough migration);
 // v13 adds an optional `Site.gradeElevation` field (a passthrough migration);
-// v14 adds an optional `Site.timezone` field (a passthrough migration).
-export const CURRENT_SCHEMA_VERSION = 14
+// v14 adds an optional `Site.timezone` field (a passthrough migration);
+// v15 adds the optional top-level `environmentScenes` array (a backfill migration).
+export const CURRENT_SCHEMA_VERSION = 15
 
 /** MVP default ceiling height: eight feet (2438.4 mm), rounded to the nearest whole millimeter. */
 export const DEFAULT_CEILING_HEIGHT_MM = 2438
@@ -62,6 +63,7 @@ export function createEmptyProject(options: NewProjectOptions): Project {
     },
     floors: [],
     stairs: [],
+    environmentScenes: [],
   }
 }
 

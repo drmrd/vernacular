@@ -1,5 +1,6 @@
 import type { NamedColor } from '../color/color'
 import type { AssetReference } from './asset-reference'
+import type { EnvironmentScene } from './environment-scene'
 import type { SurfaceTreatment } from './paint'
 import type { Site } from './site'
 
@@ -292,6 +293,14 @@ export interface Project {
    * floors; see the design specification, sections 3.1 and 3.2.
    */
   stairs: Stair[]
+  /**
+   * Saved environment scenes (named observation conditions). Optional and empty by
+   * default: `createEmptyProject` initializes it and the version-15 migration backfills
+   * it, so it is present on every version-15-and-later project. Reassigned whole by an
+   * undoable command so the inverse-capture proxy records the root-level change. Absent
+   * means no saved scenes.
+   */
+  environmentScenes?: EnvironmentScene[]
   /**
    * Per-room user metadata keyed by `roomKey(room)`. A sibling of `meta` and
    * `floors` so an undoable command can reassign it whole (the inverse-capture

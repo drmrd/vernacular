@@ -1,5 +1,6 @@
 import type { SchemaMigration } from '../types'
 import { addFloorDimensionsMigration } from './add-floor-dimensions'
+import { addEnvironmentScenesMigration } from './add-environment-scenes'
 import { addFloorFurnitureMigration } from './add-floor-furniture'
 import { addFloorOpeningsMigration } from './add-floor-openings'
 import { addFurnitureHeightMigration } from './add-furniture-height'
@@ -27,4 +28,5 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addWallConstructionProfileMigration,
   addSiteGradeElevationMigration,
   addSiteTimezoneMigration,
+  addEnvironmentScenesMigration,
 ]
