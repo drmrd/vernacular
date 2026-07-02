@@ -33,6 +33,10 @@ non-pickable and carries no entity id, and near-wall transparency
 ([[ADR-0086-near-wall-transparency]]) builds its fade membership entirely from exterior
 wall entity ids. This issue forces the two to meet.
 
+Refined by [[ADR-0140-conditional-junction-fill-fade]], which keeps the hold below for any
+junction that still has a solid neighbor but lets the fill fade once every incident wall has
+faded, so a pure-exterior corner leaves no opaque sliver behind.
+
 ## Context
 
 At a T-junction the leg wall's end is mitered so it tucks behind the through (bar) wall
