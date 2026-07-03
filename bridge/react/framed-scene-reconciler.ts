@@ -21,6 +21,7 @@ import {
   buildWallSubgroup,
   PaintMaterialProvider,
   sceneBounds,
+  type EdgeOverlayOptions,
   type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
@@ -165,12 +166,21 @@ function sameRefs<T>(a: readonly T[], b: readonly T[]): boolean {
   return a.length === b.length && a.every((item, index) => item === b[index])
 }
 
-/** The wall and hosted-opening nodes a wall sub-group is built from, and the prior build. */
-interface WallBuildInput {
+/**
+ * The shared per-floor build context the sub-group reuse helpers read: the materials,
+ * the view options (the edge-overlay toggle, fixed for the reconciler's lifetime), and
+ * the prior build to reuse from.
+ */
+interface SubgroupBuildContext {
+  materials: PaintMaterials
+  view: EdgeOverlayOptions
+  prev: CachedFloorBuild | undefined
+}
+
+/** The wall and hosted-opening nodes a wall sub-group is built from, with the build context. */
+interface WallBuildInput extends SubgroupBuildContext {
   entities: FloorEntities
   wallOpeningNodes: OpeningSceneNode[]
-  materials: PaintMaterials
-  prev: CachedFloorBuild | undefined
 }
 
 /**
@@ -182,6 +192,7 @@ function reuseOrBuildWall({
   entities,
   wallOpeningNodes,
   materials,
+  view,
   prev,
 }: WallBuildInput): WallBuild {
   if (
@@ -191,36 +202,26 @@ function reuseOrBuildWall({
   ) {
     return prev.wall
   }
-  return buildWallSubgroup({ ...entities, materials })
+  return buildWallSubgroup({ ...entities, materials, ...view })
 }
 
 /** Reuses a cached room sub-group when its derived node is unchanged in value, else rebuilds. */
-function reuseOrBuildRoom(
-  node: RoomSceneNode,
-  materials: PaintMaterials,
-  prev: CachedFloorBuild | undefined,
-): SceneRoot {
-  const cached = prev?.rooms.get(node.id)
+function reuseOrBuildRoom(node: RoomSceneNode, context: SubgroupBuildContext): SceneRoot {
+  const cached = context.prev?.rooms.get(node.id)
   if (cached !== undefined && roomSceneNodeEqual(cached.node, node)) return cached.group
-  return buildRoomSubgroup(node, materials)
+  return buildRoomSubgroup(node, context.materials, context.view)
 }
 
 /** Reuses a cached opening sub-group when its derived node reference is unchanged, else rebuilds. */
-function reuseOrBuildOpening(
-  node: OpeningSceneNode,
-  materials: PaintMaterials,
-  prev: CachedFloorBuild | undefined,
-): SceneRoot {
-  const cached = prev?.openings.get(node.id)
+function reuseOrBuildOpening(node: OpeningSceneNode, context: SubgroupBuildContext): SceneRoot {
+  const cached = context.prev?.openings.get(node.id)
   if (cached !== undefined && cached.node === node) return cached.group
-  return buildOpeningSubgroup(node, materials)
+  return buildOpeningSubgroup(node, context.materials, context.view)
 }
 
 /** The inputs a furniture sub-group is reused or built from, including the model lookup. */
-interface FurnitureBuildInput {
+interface FurnitureBuildInput extends SubgroupBuildContext {
   node: FurnitureSceneNode
-  materials: PaintMaterials
-  prev: CachedFloorBuild | undefined
   models: FurnitureModelLookup
 }
 
@@ -250,23 +251,23 @@ function furnitureBuildKind(entry: ReturnType<FurnitureModelLookup['get']>): Fur
 
 /**
  * Builds a furniture sub-group from the real model when one is ready, the failed box when its load
- * failed, the loading box while its model is fetching, and the plain massing box otherwise.
+ * failed, the loading box while its model is fetching, and the plain massing box otherwise. The
+ * boxes take the view's edge-overlay option; a loaded model never carries the overlay (ADR-0132).
  */
 function buildFurnitureGroup(
-  node: FurnitureSceneNode,
-  materials: PaintMaterials,
+  { node, materials, view }: FurnitureBuildInput,
   entry: ReturnType<FurnitureModelLookup['get']>,
 ): SceneRoot {
   if (providesReadyModel(entry)) {
     return buildFurnitureModelGroup(entry.template.clone(true), node)
   }
   if (entry?.status === 'failed') {
-    return buildFurnitureSubgroup(node, materials, { role: 'furnitureFailed' })
+    return buildFurnitureSubgroup(node, materials, { role: 'furnitureFailed', ...view })
   }
   if (entry?.status === 'loading') {
-    return buildFurnitureSubgroup(node, materials, { role: 'furnitureLoading' })
+    return buildFurnitureSubgroup(node, materials, { role: 'furnitureLoading', ...view })
   }
-  return buildFurnitureSubgroup(node, materials)
+  return buildFurnitureSubgroup(node, materials, view)
 }
 
 /**
@@ -276,19 +277,15 @@ function buildFurnitureGroup(
  * otherwise. The build kind distinguishes a loading box from a failed box so the loading->failed
  * transition rebuilds the one sub-group rather than reusing the stale loading box.
  */
-function reuseOrBuildFurniture({
-  node,
-  materials,
-  prev,
-  models,
-}: FurnitureBuildInput): FurnitureSubgroupBuild {
+function reuseOrBuildFurniture(input: FurnitureBuildInput): FurnitureSubgroupBuild {
+  const { node, prev, models } = input
   const entry = models.get(node.assetRef.contentHash)
   const buildKind = furnitureBuildKind(entry)
   const cached = prev?.furniture.get(node.id)
   if (cached !== undefined && cached.node === node && cached.buildKind === buildKind) {
     return cached
   }
-  return { node, group: buildFurnitureGroup(node, materials, entry), buildKind }
+  return { node, group: buildFurnitureGroup(input, entry), buildKind }
 }
 
 /**
@@ -312,6 +309,7 @@ interface FloorBuildInput {
   floorNode: SceneNode
   entities: FloorEntities
   paint: Record<string, SurfaceTreatment>
+  view: EdgeOverlayOptions
   prev: CachedFloorBuild | undefined
   models: FurnitureModelLookup
   readySignature: string
@@ -325,6 +323,7 @@ function buildFloorBuild({
   floorNode,
   entities,
   paint,
+  view,
   prev,
   models,
   readySignature,
@@ -333,16 +332,15 @@ function buildFloorBuild({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
   })
+  const context: SubgroupBuildContext = { materials, view, prev }
   const wallOpeningNodes = entities.openings.filter((opening) => opening.hostWallId !== undefined)
-  const wall = reuseOrBuildWall({ entities, wallOpeningNodes, materials, prev })
-  const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, materials, prev))
-  const openings = subgroupMap(entities.openings, (node) =>
-    reuseOrBuildOpening(node, materials, prev),
-  )
+  const wall = reuseOrBuildWall({ entities, wallOpeningNodes, ...context })
+  const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, context))
+  const openings = subgroupMap(entities.openings, (node) => reuseOrBuildOpening(node, context))
   const furniture = new Map(
     entities.furniture.map((node): [string, FurnitureSubgroupBuild] => [
       node.id,
-      reuseOrBuildFurniture({ node, materials, prev, models }),
+      reuseOrBuildFurniture({ node, models, ...context }),
     ]),
   )
   const subgroups = collectSubgroupGroups(rooms, openings, furniture)
@@ -370,8 +368,13 @@ function buildFloorBuild({
  * an earlier floor's build survive reconciling a different floor, so switching back to it
  * is a cache hit. Reuse of the unchanged sub-groups within a rebuilt floor layers on top
  * of this build in the reuse tiers.
+ *
+ * The view options (the surface-edge overlay toggle, ADR-0132) are fixed for the
+ * reconciler's lifetime, so every cached sub-group was built with the same setting; the
+ * scene view constructs a fresh reconciler when the toggle flips, which discards the
+ * stale builds rather than reusing groups that baked the other setting in.
  */
-export function createFramedSceneReconciler(): FramedSceneReconciler {
+export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
 
   return {
@@ -380,7 +383,7 @@ export function createFramedSceneReconciler(): FramedSceneReconciler {
       // No active floor (a transient empty graph): build a throwaway scene without
       // caching, since there is no floor id to key it by.
       if (floorNode === undefined) {
-        return buildFramedScene(graph, paint)
+        return buildFramedScene(graph, paint, view)
       }
       const entities = floorEntities(graph, floorNode)
       const readySignature = furnitureReadySignature(entities.furniture, models)
@@ -396,7 +399,15 @@ export function createFramedSceneReconciler(): FramedSceneReconciler {
       // A paint edit changes the paint reference, so prev is undefined and the floor rebuilds
       // whole; otherwise the prior build's unchanged room sub-groups are reused.
       const prev = cached !== undefined && cached.paint === paint ? cached : undefined
-      const build = buildFloorBuild({ floorNode, entities, paint, prev, models, readySignature })
+      const build = buildFloorBuild({
+        floorNode,
+        entities,
+        paint,
+        view,
+        prev,
+        models,
+        readySignature,
+      })
       buildsByFloorId.set(floorNode.id, build)
       return build.framed
     },

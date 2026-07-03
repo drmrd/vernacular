@@ -17,6 +17,7 @@ import {
   prepareNearWallTransparency,
   PaintMaterialProvider,
   sceneBounds,
+  type EdgeOverlayOptions,
   type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
@@ -36,17 +37,19 @@ export interface FramedScene {
  * meshes as shadow casters and receivers, and frames a camera on its world bounds.
  * Lighting is no longer added here: the lights live on the persistent render scene via
  * <SceneLighting> so the color-temperature slider updates them without a rebuild, and
- * keeping the lights out of the build keeps them out of the framed bounds.
+ * keeping the lights out of the build keeps them out of the framed bounds. The view
+ * options carry the surface-edge overlay toggle, off by default (ADR-0132).
  */
 export function buildFramedScene(
   graph: SceneGraph,
   paint: Record<string, SurfaceTreatment> = {},
+  view: EdgeOverlayOptions = {},
 ): FramedScene {
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
   })
-  const root = buildScene(graph, materials)
+  const root = buildScene(graph, materials, view)
   markShadowCasters(root)
   const nearWallTargets = prepareNearWallTransparency(
     root,
