@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import { FURNITURE_NODE_PREFIX, type FurnitureSceneNode, type Point, planToWorld } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
+import { furnitureBaseDepthBiasParameters } from '../materials/role-appearance'
 
 import {
   geometryFromSections,
@@ -11,6 +12,13 @@ import {
 } from './geometry-utils'
 
 const FURNITURE_ROLE: SurfaceRole = 'furniture'
+
+/**
+ * Position of the base cap within both {@link boxSections} and {@link boxMaterials}. The base cap is
+ * the one face that carries the furniture-base depth bias, so its section order and its material
+ * order pin it to this single index rather than repeating a bare literal in two places (ADR-0141).
+ */
+const BOX_BASE_SECTION_INDEX = 1
 
 /** Pushes a plan polygon point, at the given world height, as a world position. */
 function pushWorldPoint(positions: number[], point: Point, height: number): void {
@@ -61,14 +69,40 @@ function boxSections(
   role: SurfaceRole,
 ): WallSection[] {
   const triangles = capTriangles(corners)
-  return [
-    {
-      role,
-      positions: capPositions(corners, triangles, top),
-    },
-    { role, positions: capPositions(corners, reverseTriangleWinding(triangles), base) },
+  const baseCap: WallSection = {
+    role,
+    positions: capPositions(corners, reverseTriangleWinding(triangles), base),
+  }
+  // Top cap and sides bracket the base cap, which is spliced in at its canonical index so the
+  // depth-biased material picked out by boxMaterials lines up with exactly this face.
+  const sections: WallSection[] = [
+    { role, positions: capPositions(corners, triangles, top) },
     { role, positions: sidePositions(corners, base, top) },
   ]
+  sections.splice(BOX_BASE_SECTION_INDEX, 0, baseCap)
+  return sections
+}
+
+/**
+ * The base-cap variant of the furniture material: the same state appearance carrying the
+ * furniture-base depth bias, mirroring how the painted slab top spreads its bias. The cap alone
+ * loses the depth test to the floor it rests on, so the box sides and top stay unbiased (ADR-0141).
+ */
+function furnitureBaseMaterial(material: THREE.Material): THREE.Material {
+  const biased = material.clone()
+  biased.setValues(furnitureBaseDepthBiasParameters())
+  return biased
+}
+
+/**
+ * Materials for the box's `[top, base, sides]` sections in the order {@link boxSections} emits them,
+ * so the base cap carries the furniture-base bias while the shared box material draws the top and
+ * the sides unbiased.
+ */
+function boxMaterials(boxMaterial: THREE.Material): THREE.Material[] {
+  const materials: THREE.Material[] = [boxMaterial, boxMaterial, boxMaterial]
+  materials[BOX_BASE_SECTION_INDEX] = furnitureBaseMaterial(boxMaterial)
+  return materials
 }
 
 /**
@@ -80,7 +114,8 @@ function boxSections(
  * furniture on the raw id, so the generic 3D pick and outline select in step with the plan.
  * userData.furnitureMassing flags the group as a placeholder box, so a loaded model
  * sub-group is distinguishable from it now that the edge overlay (which used to mark the
- * box) is an opt-in view toggle, off by default (ADR-0132).
+ * box) is an opt-in view toggle, off by default (ADR-0132). The box is multi-material: the
+ * base cap carries the furniture-base depth bias, the sides and top stay unbiased (ADR-0141).
  */
 export function buildFurnitureMassing(
   node: FurnitureSceneNode,
@@ -90,7 +125,7 @@ export function buildFurnitureMassing(
   const base = node.elevationZ
   const top = node.elevationZ + node.height
   const geometry = geometryFromSections(boxSections(node.footprintCorners, base, top, role))
-  const mesh = new THREE.Mesh(geometry, materials.material(role))
+  const mesh = new THREE.Mesh(geometry, boxMaterials(materials.material(role)))
   const group = new THREE.Group()
   group.add(mesh)
   group.name = node.id

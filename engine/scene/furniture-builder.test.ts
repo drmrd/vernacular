@@ -6,6 +6,7 @@ import type { FurnitureInstance, FurnitureSceneNode } from '../../core'
 import type { SurfaceRole } from '../materials/material-provider'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 import {
+  FURNITURE_BASE_DEPTH_BIAS,
   FURNITURE_COLOR,
   FURNITURE_FAILED_COLOR,
   FURNITURE_FAILED_OPACITY,
@@ -152,5 +153,31 @@ describe('buildFurnitureMassing', () => {
       expect(material.transparent).toBe(true)
       expect(material.opacity).toBe(FURNITURE_LOADING_OPACITY)
     }
+  })
+
+  it('biases only the base-cap section back in depth so the box loses the depth test to the floor it rests on', () => {
+    const group = buildFurnitureMassing(buildNode(buildInstance()), new NeutralMaterialProvider())
+
+    const materials = firstMeshMaterials(group)
+
+    // The base cap is its own material section apart from the sides and top, so the
+    // box is a multi-material mesh, the same one-material-per-section shape the wall
+    // builders already use.
+    expect(materials.length).toBeGreaterThan(1)
+
+    // Exactly the base-cap section carries the furniture-base rung, pushed back far
+    // enough to lose the depth test to the slab top and the ground plane beneath it.
+    const biased = materials.filter(
+      (material) =>
+        material.polygonOffset === true &&
+        material.polygonOffsetFactor === FURNITURE_BASE_DEPTH_BIAS.factor &&
+        material.polygonOffsetUnits === FURNITURE_BASE_DEPTH_BIAS.units,
+    )
+    expect(biased).toHaveLength(1)
+
+    // The sides and top stay unbiased at the furniture role's default, so only the
+    // coincident base cap loses the contest.
+    const unbiased = materials.filter((material) => material.polygonOffset !== true)
+    expect(unbiased).toHaveLength(materials.length - 1)
   })
 })

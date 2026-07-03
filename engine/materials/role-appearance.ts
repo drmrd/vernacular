@@ -70,61 +70,120 @@ export function groundPlaneDepthBiasParameters(): THREE.MeshStandardMaterialPara
 }
 
 /**
- * The standard-material parameters for a surface role. Glass is transparent and writes no depth so
- * it blends without occluding the room behind it; the fill parts are thin boxes whose face
- * orientation depends on the opening normal sign, so leaf and glass render double-sided rather than
- * pinning a per-opening winding.
+ * A furniture massing box rests its base cap on the Y = 0 datum, coplanar with the slab top and,
+ * on grade, with the ground plane. The cap is transparent and writes no depth, so it never wins a
+ * depth write; a positive polygon offset instead raises its tested depth so it loses the depth test
+ * to whichever opaque surface it sits on. It is the last rung of the Y = 0 ladder, pushed one rung
+ * past the ground plane so it loses to every opaque surface it can rest on (the unbiased wall base,
+ * the slab top, and the ground plane). Both fields stay strictly greater than the ground plane's,
+ * so the derivation keeps the whole ladder one strictly increasing sequence (ADR-0141).
  */
-export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMaterialParameters {
-  if (role === 'glass') {
-    return {
+export const FURNITURE_BASE_DEPTH_BIAS = {
+  factor: GROUND_PLANE_DEPTH_BIAS.factor + 1,
+  units: GROUND_PLANE_DEPTH_BIAS.units + 1,
+} as const
+
+/**
+ * The polygon-offset fields that push the furniture base cap back in depth (see
+ * FURNITURE_BASE_DEPTH_BIAS), mirroring slabTopDepthBiasParameters so the convention lives in one
+ * place. The furniture builder spreads these into the base-cap material alongside its state
+ * appearance, so only the cap is biased and the box sides and top stay unbiased.
+ */
+export function furnitureBaseDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: FURNITURE_BASE_DEPTH_BIAS.factor,
+    polygonOffsetUnits: FURNITURE_BASE_DEPTH_BIAS.units,
+  }
+}
+
+/**
+ * A window sash frame fills the opening flush with the wall reveal faces, so the two coplanar,
+ * back-to-back faces z-fight. The sash frame is the finished element the viewer should see, so the
+ * unbiased 'leaf' sash wins and the 'reveal' role is pushed back one rung. This is the last rung of
+ * the ladder, derived from the furniture base plus one so the whole ladder stays one strictly
+ * increasing sequence with a single source of truth. The reveal contest sits on its own plane
+ * inside the wall thickness and never shares depth with the Y = 0 surfaces, so its absolute rung
+ * only has to beat the unbiased sash leaf, which any positive rung does (ADR-0141).
+ */
+export const REVEAL_DEPTH_BIAS = {
+  factor: FURNITURE_BASE_DEPTH_BIAS.factor + 1,
+  units: FURNITURE_BASE_DEPTH_BIAS.units + 1,
+} as const
+
+/**
+ * The polygon-offset fields that push the window reveal back in depth (see REVEAL_DEPTH_BIAS),
+ * mirroring slabTopDepthBiasParameters so the convention lives in one place. The reveal role spreads
+ * these into its material spec so only the reveal faces are biased and the flush sash leaf wins.
+ */
+export function revealDepthBiasParameters(): THREE.MeshStandardMaterialParameters {
+  return {
+    polygonOffset: true,
+    polygonOffsetFactor: REVEAL_DEPTH_BIAS.factor,
+    polygonOffsetUnits: REVEAL_DEPTH_BIAS.units,
+  }
+}
+
+/**
+ * The standard-material parameters for each surface role that departs from the neutral default.
+ * Glass is transparent and writes no depth so it blends without occluding the room behind it; the
+ * fill parts are thin boxes whose face orientation depends on the opening normal sign, so leaf and
+ * glass render double-sided rather than pinning a per-opening winding. The 'top' and 'reveal' roles
+ * spread in their depth-bias offsets so the coincident faces they sit behind win the depth contest.
+ * The depth-bias helpers are pure and constant-derived, so this table is evaluated once at load.
+ */
+const ROLE_MATERIAL_PARAMETERS: Partial<Record<SurfaceRole, THREE.MeshStandardMaterialParameters>> =
+  {
+    glass: {
       color: GLASS_COLOR,
-      name: role,
+      name: 'glass',
       transparent: true,
       opacity: GLASS_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'furniture') {
-    return {
+    },
+    furniture: {
       color: FURNITURE_COLOR,
-      name: role,
+      name: 'furniture',
       transparent: true,
       opacity: FURNITURE_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'furnitureFailed') {
-    return {
+    },
+    furnitureFailed: {
       color: FURNITURE_FAILED_COLOR,
-      name: role,
+      name: 'furnitureFailed',
       transparent: true,
       opacity: FURNITURE_FAILED_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'furnitureLoading') {
-    return {
+    },
+    furnitureLoading: {
       color: FURNITURE_LOADING_COLOR,
-      name: role,
+      name: 'furnitureLoading',
       transparent: true,
       opacity: FURNITURE_LOADING_OPACITY,
       depthWrite: false,
       side: THREE.DoubleSide,
-    }
-  }
-  if (role === 'leaf') {
-    return { color: LEAF_COLOR, name: role, side: THREE.DoubleSide }
-  }
-  if (role === 'top') {
-    return {
+    },
+    leaf: { color: LEAF_COLOR, name: 'leaf', side: THREE.DoubleSide },
+    top: {
       color: NEUTRAL_COLOR,
-      name: role,
+      name: 'top',
       ...slabTopDepthBiasParameters(),
-    }
+    },
+    reveal: {
+      color: NEUTRAL_COLOR,
+      name: 'reveal',
+      ...revealDepthBiasParameters(),
+    },
   }
-  return { color: NEUTRAL_COLOR, name: role }
+
+/**
+ * The standard-material parameters for a surface role: a table lookup for the roles that depart from
+ * the neutral appearance (see ROLE_MATERIAL_PARAMETERS), falling through to the light warm gray for
+ * every other role.
+ */
+export function roleMaterialParameters(role: SurfaceRole): THREE.MeshStandardMaterialParameters {
+  return ROLE_MATERIAL_PARAMETERS[role] ?? { color: NEUTRAL_COLOR, name: role }
 }
