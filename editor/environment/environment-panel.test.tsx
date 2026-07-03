@@ -261,3 +261,42 @@ describe('EnvironmentPanel cloud cover', () => {
     expect(onEnvironmentChange).toHaveBeenCalledWith({ ...environment, cloudCover: 0.6 })
   })
 })
+
+describe('EnvironmentPanel color check', () => {
+  it('renders the color-check toggle pressed when environment.colorCheck is true', () => {
+    render(
+      <EnvironmentPanel
+        site={SITE_WITH_TIMEZONE}
+        environment={{ ...DEFAULT_ENVIRONMENT_STATE, colorCheck: true }}
+        onEnvironmentChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /color check/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('reports the flipped colorCheck with every other field preserved when the color-check toggle is clicked', async () => {
+    const environment: EnvironmentState = {
+      ...DEFAULT_ENVIRONMENT_STATE,
+      cloudCover: 0.4,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 600 },
+      colorCheck: false,
+    }
+    const onEnvironmentChange = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentPanel
+        site={SITE_WITH_TIMEZONE}
+        environment={environment}
+        onEnvironmentChange={onEnvironmentChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /color check/i }))
+
+    expect(onEnvironmentChange).toHaveBeenCalledWith({ ...environment, colorCheck: true })
+  })
+})
