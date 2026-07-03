@@ -170,6 +170,33 @@ describe('EnvironmentPanel observation date and time', () => {
     expect(onEnvironmentChange).not.toHaveBeenCalled()
   })
 
+  it('does not call onEnvironmentChange for a malformed observation datetime value', () => {
+    const environment: EnvironmentState = {
+      ...DEFAULT_ENVIRONMENT_STATE,
+      observedAt: { date: '2026-06-21', minutesSinceMidnight: 720 },
+    }
+    const onEnvironmentChange = vi.fn()
+    render(
+      <EnvironmentPanel
+        site={SITE_WITH_TIMEZONE}
+        environment={environment}
+        onEnvironmentChange={onEnvironmentChange}
+      />,
+    )
+
+    // A browser without native datetime-local support renders this input as
+    // plain text, so it can emit a value that does not match the
+    // YYYY-MM-DDThh:mm shape. jsdom sanitizes malformed datetime-local values
+    // before a change ever reaches React, so the input's type is switched to
+    // text here to exercise that fallback path.
+    const input = screen.getByLabelText(/observation date and time/i)
+    input.setAttribute('type', 'text')
+
+    fireEvent.change(input, { target: { value: 'not-a-datetime' } })
+
+    expect(onEnvironmentChange).not.toHaveBeenCalled()
+  })
+
   it('seeds a time-of-day slider from minutesSinceMidnight and preserves the date when it changes', () => {
     const environment: EnvironmentState = {
       ...DEFAULT_ENVIRONMENT_STATE,
