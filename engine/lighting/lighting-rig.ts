@@ -121,6 +121,13 @@ export function setSunAndSkyColor(
   }
 }
 
+/** Sets the sun's intensity directly, e.g. to fade it toward the horizon or extinguish it below. */
+export function setSunIntensity(scene: THREE.Object3D, intensity: number): void {
+  const sun = findSun(scene)
+  if (sun === undefined) return
+  sun.intensity = intensity
+}
+
 /**
  * Positions the sun along its fixed direction outside the scene bounds and sizes its
  * orthographic shadow camera to cover them, so the shell casts a shadow without wasting

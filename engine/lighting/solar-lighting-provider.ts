@@ -9,6 +9,7 @@ import {
   disposeLightingRig,
   fitSunShadowToDirection,
   setSunAndSkyColor,
+  setSunIntensity,
   type LightingRig,
 } from './lighting-rig'
 
@@ -36,9 +37,7 @@ export class SolarLightingProvider implements LightingProvider {
     if (bounds !== null) {
       fitSunShadowToDirection(scene, lighting.sunDirection, bounds)
     }
-    if (this.rig !== null) {
-      this.rig.sun.intensity = DAYLIGHT_SUN_INTENSITY * lighting.sunIntensity
-    }
+    setSunIntensity(scene, DAYLIGHT_SUN_INTENSITY * lighting.sunIntensity)
   }
 
   dispose(scene: THREE.Object3D): void {

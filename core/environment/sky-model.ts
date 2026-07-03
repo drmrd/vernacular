@@ -1,10 +1,10 @@
 import type { LinearRgb } from '../color/oklab'
 
 /**
- * The light an outdoor scene needs: the direct sun tint, its intensity scale, and
- * the ambient sky tint, all colors in linear-light sRGB. The sun warms toward the
- * horizon in `sunColor` while `sunIntensity` carries the horizon dimming and the
- * below-horizon extinction; the sky stays cooler (bluer) than the sun.
+ * The light an outdoor scene needs: the direct sun tint and the ambient sky tint,
+ * both colors in linear-light sRGB, plus the sun's intensity scale. The sun warms
+ * toward the horizon in `sunColor` while `sunIntensity` carries the horizon dimming
+ * and the below-horizon extinction; the sky stays cooler (bluer) than the sun.
  */
 export interface SkyLighting {
   /** Direct sun tint, warmer near the horizon; the dimming lives in sunIntensity, not here. */
