@@ -28,7 +28,7 @@ sourceFiles:
     engine/scene/wall-prism.ts,
     engine/scene/near-wall-transparency.ts,
   ]
-status: accepted
+status: current
 updated: 2026-07-01
 ---
 

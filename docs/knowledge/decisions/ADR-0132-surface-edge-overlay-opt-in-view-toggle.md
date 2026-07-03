@@ -18,7 +18,7 @@ sourceFiles:
     engine/scene/furniture-builder.ts,
     bridge/react/furniture-model-signals.tsx,
   ]
-status: accepted
+status: current
 updated: 2026-06-29
 ---
 

@@ -29,7 +29,7 @@ sourceFiles:
     core/scene/opening-motion.ts,
     engine/scene/opening-motion.ts,
   ]
-status: accepted
+status: current
 updated: 2026-06-28
 ---
 
