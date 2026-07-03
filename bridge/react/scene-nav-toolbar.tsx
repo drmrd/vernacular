@@ -241,8 +241,8 @@ export function SceneNavToolbar({
   onScopeChange = () => {},
   showUnderground = true,
   onToggleUnderground = () => {},
-  edgeOverlay,
-  onToggleEdgeOverlay,
+  edgeOverlay = false,
+  onToggleEdgeOverlay = () => {},
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
