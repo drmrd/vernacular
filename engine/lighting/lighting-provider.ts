@@ -12,7 +12,9 @@ export interface LightingProvider {
   /**
    * Re-aims and re-tints an already-applied rig for a computed environment,
    * which varies with the observation time. Providers whose lighting is static
-   * may ignore it.
+   * may ignore it. The bounds are the scene content's bounds, used to refit the
+   * sun's shadow frustum after a re-aim; null means an empty scene, and a
+   * provider must treat the shadow refit as a no-op in that case.
    */
   update(scene: THREE.Object3D, lighting: EnvironmentLighting, bounds: Bounds3 | null): void
 }
