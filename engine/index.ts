@@ -34,7 +34,13 @@ export {
 } from './scene/near-wall-transparency'
 export type { LightingProvider } from './lighting/lighting-provider'
 export { BasicLightingProvider } from './lighting/basic-lighting-provider'
-export { setLightingColor, removeLighting, fitSunShadowToBounds } from './lighting/lighting-rig'
+export {
+  setLightingColor,
+  setSunAndSkyColor,
+  removeLighting,
+  fitSunShadowToBounds,
+  fitSunShadowToDirection,
+} from './lighting/lighting-rig'
 export type { RenderBackend } from './renderer/detect-backend'
 export { detectRenderBackend } from './renderer/detect-backend'
 export type { SceneRendererOptions } from './renderer/create-renderer'

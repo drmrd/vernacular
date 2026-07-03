@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { Bounds3, LinearRgb } from '../../core'
+import type { Bounds3, LinearRgb, Vector3 } from '../../core'
 
 import { SUN_DIRECTION } from './basic-lighting-provider'
 
@@ -40,11 +40,51 @@ export function removeLighting(scene: THREE.Object3D): void {
 }
 
 /**
+ * Tints the directional sun and the hemisphere sky to two independent linear-light colors,
+ * so a solar model can dim and redden the sun while the sky keeps its own tint.
+ */
+export function setSunAndSkyColor(
+  scene: THREE.Object3D,
+  sunColor: LinearRgb,
+  skyColor: LinearRgb,
+): void {
+  for (const child of scene.children) {
+    if (child instanceof THREE.DirectionalLight) {
+      child.color.setRGB(sunColor.r, sunColor.g, sunColor.b, THREE.LinearSRGBColorSpace)
+    } else if (child instanceof THREE.HemisphereLight) {
+      child.color.setRGB(skyColor.r, skyColor.g, skyColor.b, THREE.LinearSRGBColorSpace)
+    }
+  }
+}
+
+/**
  * Positions the sun along its fixed direction outside the scene bounds and sizes its
  * orthographic shadow camera to cover them, so the shell casts a shadow without wasting
  * shadow-map resolution. The light direction is preserved.
  */
 export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | null): void {
+  fitSunShadowAlongUnitDirection(scene, SUN_DIRECTION_NORMALIZED, bounds)
+}
+
+/**
+ * Positions the sun along an explicit direction (a unit vector pointing from the scene
+ * toward the sun) outside the scene bounds and sizes its orthographic shadow camera to
+ * cover them, so a solar model can steer the light while keeping the shadow fit.
+ */
+export function fitSunShadowToDirection(
+  scene: THREE.Object3D,
+  direction: Vector3,
+  bounds: Bounds3 | null,
+): void {
+  const unitDirection = new THREE.Vector3(direction.x, direction.y, direction.z).normalize()
+  fitSunShadowAlongUnitDirection(scene, unitDirection, bounds)
+}
+
+function fitSunShadowAlongUnitDirection(
+  scene: THREE.Object3D,
+  direction: THREE.Vector3,
+  bounds: Bounds3 | null,
+): void {
   if (bounds === null) return
   const sun = scene.children.find((child) => child instanceof THREE.DirectionalLight) as
     | THREE.DirectionalLight
@@ -64,7 +104,7 @@ export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | nu
     ) / 2
   const distance = radius * SHADOW_DISTANCE_FACTOR
 
-  sun.position.copy(center).addScaledVector(SUN_DIRECTION_NORMALIZED, distance)
+  sun.position.copy(center).addScaledVector(direction, distance)
   sun.target.position.copy(center)
   sun.target.updateMatrixWorld()
 
