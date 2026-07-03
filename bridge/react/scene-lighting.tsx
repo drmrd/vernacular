@@ -66,8 +66,8 @@ function useSolarLightingUpdate({
   const scene = useThree((state) => state.scene)
   const { latLong, northBearing, timezone } = site ?? {}
   const utcOffsetMinutes = useMemo(
-    () => utcOffsetMinutesFor(timezone, observedAt.date),
-    [timezone, observedAt.date],
+    () => utcOffsetMinutesFor(timezone, observedAt.date, latLong?.longitude),
+    [timezone, observedAt.date, latLong?.longitude],
   )
   useLayoutEffect(() => {
     if (latLong === undefined) return
