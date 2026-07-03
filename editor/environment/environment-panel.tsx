@@ -2,10 +2,21 @@ import type { ReactElement } from 'react'
 import type { EnvironmentState, LightingMode, Site } from '../../core'
 import { Segmented, Stack, type SegmentedOption } from '../design-system'
 
-const LIGHTING_MODE_OPTIONS: SegmentedOption[] = [
-  { value: 'schematic', label: 'Schematic' },
-  { value: 'realistic', label: 'Realistic' },
-]
+const LIGHTING_MODES: readonly LightingMode[] = ['schematic', 'realistic']
+
+const LIGHTING_MODE_LABELS: Record<LightingMode, string> = {
+  schematic: 'Schematic',
+  realistic: 'Realistic',
+}
+
+const LIGHTING_MODE_OPTIONS: SegmentedOption[] = LIGHTING_MODES.map((value) => ({
+  value,
+  label: LIGHTING_MODE_LABELS[value],
+}))
+
+function isLightingMode(value: string): value is LightingMode {
+  return (LIGHTING_MODES as readonly string[]).includes(value)
+}
 
 // Shown when realistic lighting is requested but the site has no coordinates to
 // place the sun; the bridge falls back to schematic lighting until they are set.
@@ -48,10 +59,18 @@ function EnvironmentNotices({
     return null
   }
   if (site?.latLong === undefined) {
-    return <p>{MISSING_LOCATION_NOTICE}</p>
+    return (
+      <p role="status" aria-live="polite">
+        {MISSING_LOCATION_NOTICE}
+      </p>
+    )
   }
   if (site.timezone === undefined) {
-    return <p>{MISSING_TIMEZONE_NOTICE}</p>
+    return (
+      <p role="status" aria-live="polite">
+        {MISSING_TIMEZONE_NOTICE}
+      </p>
+    )
   }
   return null
 }
@@ -62,7 +81,7 @@ export function EnvironmentPanel({
   onEnvironmentChange,
 }: EnvironmentPanelProps): ReactElement {
   const handleModeSelect = (value: string) => {
-    onEnvironmentChange({ ...environment, mode: value as LightingMode })
+    if (isLightingMode(value)) onEnvironmentChange({ ...environment, mode: value })
   }
   return (
     <Stack>
