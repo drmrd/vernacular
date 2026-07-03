@@ -9,6 +9,8 @@ export interface HarnessEnvironmentState {
   site: Site
   observedAt: ObservationInstant
   realistic: true
+  cloudCover?: number
+  colorCheck?: boolean
 }
 
 // The one canonical harness site (40 N, 75 W, plan-up as true north, Eastern time).
@@ -21,6 +23,8 @@ const CANONICAL_SITE: Site = {
 
 const CIVIL_NOON_MINUTES = 720
 const MID_AFTERNOON_MINUTES = 960
+// Fully overcast: the sky model's cloud-cover fraction saturates at 1.
+const FULLY_OVERCAST_CLOUD_COVER = 1
 
 /**
  * The named canonical environment states, keyed by the harness `scene` parameter.
@@ -45,6 +49,24 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       site: CANONICAL_SITE,
       observedAt: { date: '2026-12-21', minutesSinceMidnight: MID_AFTERNOON_MINUTES },
       realistic: true,
+    },
+  ],
+  [
+    'color-check',
+    {
+      site: CANONICAL_SITE,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: CIVIL_NOON_MINUTES },
+      realistic: true,
+      colorCheck: true,
+    },
+  ],
+  [
+    'overcast-noon',
+    {
+      site: CANONICAL_SITE,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: CIVIL_NOON_MINUTES },
+      realistic: true,
+      cloudCover: FULLY_OVERCAST_CLOUD_COVER,
     },
   ],
 ])

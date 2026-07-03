@@ -226,6 +226,8 @@ export interface HarnessEnvironment {
   site: Site
   observedAt: ObservationInstant
   realistic: boolean
+  cloudCover?: number
+  colorCheck?: boolean
 }
 
 // Forwards the canonical environment override, when present, so its site and
@@ -247,6 +249,8 @@ function HarnessLighting({
       realistic={environment?.realistic}
       site={environment?.site}
       observedAt={environment?.observedAt}
+      cloudCover={environment?.cloudCover}
+      colorCheck={environment?.colorCheck}
     />
   )
 }
