@@ -114,7 +114,7 @@ export function SceneLighting({
   const scene = useThree((state) => state.scene)
   const renderer = useThree((state) => state.gl)
   // Realistic mode without a site location falls back to the schematic provider; the
-  // slice-1b environment panel owns the missing-location UX (ADR-0144).
+  // missing-location UX lives in editor/environment/environment-panel.tsx (ADR-0144).
   const solar = realistic && site?.latLong !== undefined
   const provider = useMemo(
     () => (solar ? new SolarLightingProvider() : new BasicLightingProvider()),

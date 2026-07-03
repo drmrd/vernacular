@@ -17,6 +17,7 @@ import {
   SurfaceSelectionProvider,
   useActiveFloorId,
   useEditorSession,
+  useEnvironmentSession,
   useSceneGraph,
   useSelection,
   useSetActiveFloorId,
@@ -44,6 +45,7 @@ import {
   type CommandContext,
 } from '../commands'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
+import { EnvironmentPanel } from '../environment/environment-panel'
 import { LibraryLauncherPanel } from '../library/library-launcher-panel'
 import { SiteEditor } from '../metadata/site-editor'
 import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
@@ -239,6 +241,22 @@ function siteEditorKey(site: Project['site']): string {
   return JSON.stringify(site ?? {})
 }
 
+// The rail's Environment section: the panel reads and writes the shared
+// environment session so the 3D viewport reflects the controls live.
+function EnvironmentRailSection({ site }: { site: Project['site'] }) {
+  const { environment, setEnvironment } = useEnvironmentSession()
+  return (
+    <section aria-label="Environment">
+      <SectionLabel>Environment</SectionLabel>
+      <EnvironmentPanel
+        site={site}
+        environment={environment}
+        onEnvironmentChange={setEnvironment}
+      />
+    </section>
+  )
+}
+
 // The tool rail content: the project identity block above the drawing and editing
 // tools. It subscribes to the scene graph so the block refreshes on project edits.
 function ToolRail() {
@@ -277,6 +295,7 @@ function ToolRail() {
           dispatch={session.dispatch}
         />
       </section>
+      <EnvironmentRailSection site={project.site} />
     </div>
   )
 }
