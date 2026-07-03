@@ -107,5 +107,5 @@ prefix before the lookup.
   are sibling sub-groups there, so neither enrolls in that path today; the wall
   itself still fades. Closing that gap needs enrollment over the assembled floor
   root, plus material privatization that survives sub-group reuse without capturing
-  a faded state as the restore baseline. That is deferred to a follow-up issue
+  a faded state as the restore baseline. That is deferred to follow-up issue #437
   covering openings and furniture together.
