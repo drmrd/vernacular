@@ -36,16 +36,24 @@ function gmtOffsetTokenAt(timezone: string, instant: Date): string | undefined {
  * for an undefined or unrecognized timezone id instead of throwing, and uses
  * only the built-in `Intl` machinery, so `core` takes no timezone-database
  * dependency.
+ *
+ * Layer placement: the slice-1a plan sketched this resolution "at the boundary"
+ * (the bridge), but it lives in core deliberately. The plan's locked decision
+ * guards against a bundled timezone-data dependency, and `Intl` is a
+ * zero-dependency ECMA-402 built-in that runs identically under Node, so the
+ * resolution is unit-testable here and every caller shares one implementation.
+ * ADR-0144 records the deviation.
  */
 export function utcOffsetMinutesFor(timezone: string | undefined, date: string): number {
   if (timezone === undefined) return UTC_OFFSET_MINUTES
   const [year = 0, month = 1, day = 1] = date.split('-').map(Number)
   const instant = new Date(Date.UTC(year, month - 1, day, NOON_HOUR_UTC))
+  let token: string | undefined
   try {
-    const token = gmtOffsetTokenAt(timezone, instant)
-    if (token === undefined) return UTC_OFFSET_MINUTES
-    return parseGmtOffsetMinutes(token) ?? UTC_OFFSET_MINUTES
+    token = gmtOffsetTokenAt(timezone, instant)
   } catch {
     return UTC_OFFSET_MINUTES
   }
+  if (token === undefined) return UTC_OFFSET_MINUTES
+  return parseGmtOffsetMinutes(token) ?? UTC_OFFSET_MINUTES
 }
