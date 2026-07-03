@@ -559,6 +559,8 @@ export {
   observationInstantToIso,
   parseObservationInstant,
 } from './environment/observation-time'
+export type { SolarAngles, SolarPositionInput } from './environment/solar-position'
+export { solarPosition } from './environment/solar-position'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
