@@ -11,6 +11,7 @@ import {
   toneMappingOperatorFor,
   utcOffsetMinutesFor,
   type Bounds3,
+  type LightingMode,
   type ObservationInstant,
   type Site,
 } from '../../core'
@@ -128,12 +129,10 @@ export function SceneLighting({
   // The renderer's tone-mapping operator follows the effective mode: `solar` is what the
   // render actually shows, so a realistic request that falls back to schematic keeps the
   // Neutral operator. The color check overrides both with Neutral (ADR-0142).
+  const effectiveMode: LightingMode = solar ? 'realistic' : 'schematic'
   useLayoutEffect(() => {
-    applyToneMappingOperator(
-      renderer,
-      toneMappingOperatorFor(solar ? 'realistic' : 'schematic', colorCheck),
-    )
-  }, [renderer, solar, colorCheck])
+    applyToneMappingOperator(renderer, toneMappingOperatorFor(effectiveMode, colorCheck))
+  }, [renderer, effectiveMode, colorCheck])
 
   useLayoutEffect(() => {
     if (solar) return

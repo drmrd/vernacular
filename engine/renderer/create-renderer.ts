@@ -1,5 +1,7 @@
 import type { WebGPURenderer } from 'three/webgpu'
 
+import { applyToneMappingOperator } from './tone-mapping'
+
 /** Options for constructing the WebGPU scene renderer. */
 export interface SceneRendererOptions {
   canvas?: HTMLCanvasElement
@@ -33,7 +35,6 @@ export async function createSceneRenderer(
   const {
     WebGPURenderer: Renderer,
     PCFSoftShadowMap,
-    NeutralToneMapping,
     SRGBColorSpace,
   } = await import('three/webgpu')
   const renderer = new Renderer({
@@ -47,11 +48,12 @@ export async function createSceneRenderer(
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
   // Color management: render output is sRGB. Creation seeds Khronos PBR Neutral as the
-  // tone-mapping operator, but the operator is now chosen per mode at runtime by the scene
-  // lighting (applyToneMappingOperator): realistic daylight swaps in AgX, while schematic
+  // tone-mapping operator through the shared applyToneMappingOperator helper, which owns
+  // the one domain-to-constant translation; the scene lighting calls the same helper to
+  // switch operators per mode at runtime: realistic daylight swaps in AgX, while schematic
   // and the color check keep hue-preserving Neutral (ADR-0142). Exposure defaults to 1.
   renderer.outputColorSpace = SRGBColorSpace
-  renderer.toneMapping = NeutralToneMapping
+  applyToneMappingOperator(renderer, 'neutral')
   renderer.toneMappingExposure = options.toneMappingExposure ?? 1
   await renderer.init()
   return renderer
