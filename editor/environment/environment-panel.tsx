@@ -3,6 +3,7 @@ import type { EnvironmentState, LightingMode, ObservationInstant, Site } from '.
 import {
   MINUTES_PER_DAY,
   formatObservationDateTime,
+  isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
 } from '../../core'
@@ -99,12 +100,6 @@ const OBSERVATION_DATE_TIME_INPUT_ID = 'environment-observation-date-time'
 const TIME_OF_DAY_INPUT_ID = 'environment-time-of-day'
 const CLOUD_COVER_INPUT_ID = 'environment-cloud-cover'
 
-// The exact shape `datetime-local` inputs report for a real instant. Matching against
-// it (rather than just rejecting the empty string) also guards the fallback text input
-// browsers without native `datetime-local` support render, which can emit arbitrary
-// strings that would otherwise reach `parseObservationInstant` as garbage.
-const OBSERVATION_DATETIME_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
-
 /** The `hh:mm` portion of `formatObservationDateTime`, for a slider's `aria-valuetext`. */
 function formatTimeOfDay(observedAt: ObservationInstant): string {
   const [, time = ''] = formatObservationDateTime(observedAt).split(' ')
@@ -124,7 +119,7 @@ function ObservationDateTimeControl({
 }: ObservationControlProps): ReactElement {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
-    if (!OBSERVATION_DATETIME_SHAPE.test(value)) return
+    if (!isObservationInstantIso(value)) return
     onObservationChange(parseObservationInstant(value))
   }
   return (

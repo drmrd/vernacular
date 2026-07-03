@@ -556,6 +556,7 @@ export {
   DEFAULT_OBSERVATION_INSTANT,
   MINUTES_PER_DAY,
   formatObservationDateTime,
+  isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
 } from './environment/observation-time'
