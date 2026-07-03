@@ -33,12 +33,17 @@ const ZENITH_SKY_TINT: LinearRgb = { r: 0.35, g: 0.55, b: 1 }
 const HORIZON_SUN_INTENSITY = 0.35
 /** Radians below the horizon over which direct sunlight fades to nothing. */
 const HORIZON_EXTINCTION_RADIANS = 0.1
-/** Fraction of overall light a fully overcast sky removes. */
+/**
+ * Fraction of overall light a fully overcast sky removes, gently flattening and
+ * dimming both the sun and sky colors. The direct beam's own extinction under
+ * cloud cover is steeper still; see `directBeamCloudTransmission`.
+ */
 const OVERCAST_DIMMING = 0.3
 /**
  * Exponent of the Kasten-Czeplak direct-beam cloud transmission curve: convex,
  * so light cloud cover barely dims the direct sun while heavy cover extinguishes
- * it almost entirely by full overcast.
+ * it almost entirely by full overcast. This is the direct beam's own dimming,
+ * steeper than and independent of the color dimming in `OVERCAST_DIMMING`.
  */
 const DIRECT_BEAM_CLOUD_EXPONENT = 3.4
 const RGB_CHANNEL_COUNT = 3
@@ -77,7 +82,7 @@ function overcastAdjusted(color: LinearRgb, cloudCover: number): LinearRgb {
  * falling away to 0 at full overcast, when only the ambient sky remains lit.
  */
 function directBeamCloudTransmission(cloudCover: number): number {
-  return 1 - cloudCover ** DIRECT_BEAM_CLOUD_EXPONENT
+  return clampToUnitInterval(1 - clampToUnitInterval(cloudCover) ** DIRECT_BEAM_CLOUD_EXPONENT)
 }
 
 /**
