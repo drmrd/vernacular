@@ -26,6 +26,14 @@ const MID_AFTERNOON_MINUTES = 960
 // Fully overcast: the sky model's cloud-cover fraction saturates at 1.
 const FULLY_OVERCAST_CLOUD_COVER = 1
 
+// The March-equinox-at-civil-noon instant, shared by the equinox-noon, color-check,
+// and overcast-noon states: all three pin the same sun and differ only in cloud
+// cover or the color-check flag, so they share one observation instant.
+const EQUINOX_NOON_OBSERVATION: ObservationInstant = {
+  date: '2026-03-20',
+  minutesSinceMidnight: CIVIL_NOON_MINUTES,
+}
+
 /**
  * The named canonical environment states, keyed by the harness `scene` parameter.
  * The dates and times match the core solar reference cases (the March equinox at
@@ -39,7 +47,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     'equinox-noon',
     {
       site: CANONICAL_SITE,
-      observedAt: { date: '2026-03-20', minutesSinceMidnight: CIVIL_NOON_MINUTES },
+      observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
     },
   ],
@@ -55,7 +63,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     'color-check',
     {
       site: CANONICAL_SITE,
-      observedAt: { date: '2026-03-20', minutesSinceMidnight: CIVIL_NOON_MINUTES },
+      observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
       colorCheck: true,
     },
@@ -64,7 +72,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     'overcast-noon',
     {
       site: CANONICAL_SITE,
-      observedAt: { date: '2026-03-20', minutesSinceMidnight: CIVIL_NOON_MINUTES },
+      observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
       cloudCover: FULLY_OVERCAST_CLOUD_COVER,
     },
