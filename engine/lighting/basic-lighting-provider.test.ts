@@ -73,7 +73,7 @@ describe('BasicLightingProvider', () => {
       sunDirection: { x: 0, y: 1, z: 0 },
       sunColor: { r: 1, g: 0, b: 0 },
       skyColor: { r: 0, g: 0, b: 1 },
-      sunUp: true,
+      sunIntensity: 1,
     }
     const anyBounds: Bounds3 = {
       min: { x: 0, y: 0, z: 0 },

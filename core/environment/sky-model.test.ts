@@ -12,15 +12,24 @@ import { relativeLuminance } from '../color/contrast'
 const HIGH_SUN_ALTITUDE = Math.PI / 2
 const MODERATE_SUN_ALTITUDE = 0.7
 const HORIZON_SUN_ALTITUDE = 0.05
+const ON_HORIZON_ALTITUDE = 0
+const JUST_BELOW_HORIZON_ALTITUDE = -0.02
+const EXTINCTION_LIMIT_ALTITUDE = -0.1
 const BELOW_HORIZON_ALTITUDE = -0.2
+// The altitudes a sun descending through the horizon band passes through, in order.
+const DESCENDING_ALTITUDES_THROUGH_HORIZON_BAND = [
+  0.2, 0.1, 0.05, 0, -0.02, -0.05, -0.08, -0.1, -0.2,
+]
 
 const CLEAR_SKY = 0
 const HEAVY_OVERCAST = 0.9
 
 // Near-white means the brightest channel exceeds the dimmest by at most 15%.
 const NEAR_WHITE_CHANNEL_RATIO = 1.15
-// Below the horizon the direct sun should carry almost no luminance.
-const EXTINGUISHED_SUN_LUMINANCE = 0.05
+// Full sun intensity, and (coincidentally) the horizon tint's saturated red channel.
+const FULL_SUN_INTENSITY = 1
+// Fraction of full sun intensity the design documents for the sun exactly on the horizon.
+const HORIZON_SUN_INTENSITY_FRACTION = 0.35
 
 function luminance(color: LinearRgb): number {
   return relativeLuminance({
@@ -59,9 +68,34 @@ describe('skyLighting', () => {
     expect(summedIntensity(horizonSun)).toBeLessThan(summedIntensity(highSun))
   })
 
-  it('extinguishes the direct sun below the horizon', () => {
-    const { sunColor } = skyLighting(BELOW_HORIZON_ALTITUDE, CLEAR_SKY)
-    expect(luminance(sunColor)).toBeLessThan(EXTINGUISHED_SUN_LUMINANCE)
+  it('reaches full sunIntensity at the zenith and 0.35 of full sun exactly on the horizon', () => {
+    const zenith = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY)
+    const horizon = skyLighting(ON_HORIZON_ALTITUDE, CLEAR_SKY)
+    expect(zenith.sunIntensity).toBe(FULL_SUN_INTENSITY)
+    expect(horizon.sunIntensity).toBeCloseTo(HORIZON_SUN_INTENSITY_FRACTION, 5)
+  })
+
+  it('extinguishes sunIntensity once the sun passes the extinction limit below the horizon', () => {
+    const justBelowHorizon = skyLighting(JUST_BELOW_HORIZON_ALTITUDE, CLEAR_SKY)
+    const atExtinctionLimit = skyLighting(EXTINCTION_LIMIT_ALTITUDE, CLEAR_SKY)
+    const wellBelowExtinctionLimit = skyLighting(BELOW_HORIZON_ALTITUDE, CLEAR_SKY)
+    expect(justBelowHorizon.sunIntensity).toBeGreaterThan(0)
+    expect(atExtinctionLimit.sunIntensity).toBe(0)
+    expect(wellBelowExtinctionLimit.sunIntensity).toBe(0)
+  })
+
+  it('never lets sunIntensity increase as the sun descends through the horizon band', () => {
+    let previousIntensity = Number.POSITIVE_INFINITY
+    for (const altitude of DESCENDING_ALTITUDES_THROUGH_HORIZON_BAND) {
+      const { sunIntensity } = skyLighting(altitude, CLEAR_SKY)
+      expect(sunIntensity).toBeLessThanOrEqual(previousIntensity)
+      previousIntensity = sunIntensity
+    }
+  })
+
+  it('keeps sunColor at full strength on the horizon, leaving the dimming to sunIntensity', () => {
+    const { sunColor } = skyLighting(ON_HORIZON_ALTITUDE, CLEAR_SKY)
+    expect(sunColor.r).toBeCloseTo(FULL_SUN_INTENSITY, 5)
   })
 
   it('tints the clear sky cooler than the direct sun', () => {

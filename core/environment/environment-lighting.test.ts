@@ -64,14 +64,14 @@ describe('computeEnvironmentLighting', () => {
     expect(skyColor.b).toBeCloseTo(expected.skyColor.b, COMPOSITION_DECIMAL_PLACES)
   })
 
-  it('reports the sun up at local noon and down at local midnight', () => {
+  it('reports a positive sunIntensity at local noon and none at local midnight', () => {
     const noon = computeEnvironmentLighting(equinoxNoonInput())
     const midnight = computeEnvironmentLighting({
       ...equinoxNoonInput(),
       observedAt: { date: '2026-03-20', minutesSinceMidnight: LOCAL_MIDNIGHT_MINUTES },
     })
-    expect(noon.sunUp).toBe(true)
-    expect(midnight.sunUp).toBe(false)
+    expect(noon.sunIntensity).toBeGreaterThan(0)
+    expect(midnight.sunIntensity).toBe(0)
   })
 
   it('leaves a frozen input untouched', () => {
