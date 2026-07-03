@@ -22,17 +22,13 @@ function isRigLight(
 
 /** Tints the sun and the hemisphere sky to a linear-light color. */
 export function setLightingColor(scene: THREE.Object3D, color: LinearRgb): void {
-  for (const child of scene.children) {
-    if (isRigLight(child)) {
-      child.color.setRGB(color.r, color.g, color.b, THREE.LinearSRGBColorSpace)
-    }
-  }
+  setSunAndSkyColor(scene, color, color)
 }
 
 /** Removes the rig's lights so a remount re-applies cleanly rather than stacking them. */
 export function removeLighting(scene: THREE.Object3D): void {
   // Snapshot the targets before removing, so the removal does not mutate the array
-  // being iterated, and so the intent mirrors the for-of guard in setLightingColor.
+  // being iterated.
   const lights = scene.children.filter(isRigLight)
   for (const light of lights) {
     scene.remove(light)
@@ -67,9 +63,10 @@ export function fitSunShadowToBounds(scene: THREE.Object3D, bounds: Bounds3 | nu
 }
 
 /**
- * Positions the sun along an explicit direction (a unit vector pointing from the scene
- * toward the sun) outside the scene bounds and sizes its orthographic shadow camera to
- * cover them, so a solar model can steer the light while keeping the shadow fit.
+ * Positions the sun along an explicit direction (pointing from the scene toward the sun,
+ * normalized internally so callers need not pre-normalize) outside the scene bounds and
+ * sizes its orthographic shadow camera to cover them, so a solar model can steer the
+ * light while keeping the shadow fit.
  */
 export function fitSunShadowToDirection(
   scene: THREE.Object3D,
@@ -80,6 +77,7 @@ export function fitSunShadowToDirection(
   fitSunShadowAlongUnitDirection(scene, unitDirection, bounds)
 }
 
+// Invariant: `direction` must be pre-normalized by the caller; a non-unit vector silently mis-fits the shadow.
 function fitSunShadowAlongUnitDirection(
   scene: THREE.Object3D,
   direction: THREE.Vector3,
