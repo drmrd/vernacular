@@ -383,6 +383,36 @@ describe('SceneNavToolbar reveal-interior toggle', () => {
   })
 })
 
+describe('SceneNavToolbar surface-edges toggle', () => {
+  it('renders a surface-edges toggle in a display-options group, off by default', () => {
+    render(<SceneNavToolbar {...baseProps} />)
+
+    const toggle = screen.getByRole('button', { name: 'Surface edges' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('group', { name: /display options/i })).toContainElement(toggle)
+  })
+
+  it('marks the surface-edges toggle pressed when the overlay is on', () => {
+    render(<SceneNavToolbar {...baseProps} edgeOverlay />)
+
+    expect(screen.getByRole('button', { name: 'Surface edges' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('reports a toggle when clicked without flipping its own pressed state', async () => {
+    const onToggleEdgeOverlay = vi.fn()
+    render(<SceneNavToolbar {...baseProps} onToggleEdgeOverlay={onToggleEdgeOverlay} />)
+
+    const toggle = screen.getByRole('button', { name: 'Surface edges' })
+    await userEvent.click(toggle)
+
+    expect(onToggleEdgeOverlay).toHaveBeenCalledTimes(1)
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
 describe('SceneNavToolbar observation datetime', () => {
   it('shows the observation datetime and reports changes parsed to an instant', () => {
     const onObservationChange = vi.fn()

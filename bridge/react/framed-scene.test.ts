@@ -350,3 +350,30 @@ describe('buildFramedScene', () => {
     expect(topHex).toBe('aa5500')
   })
 })
+
+// Counts the edge-overlay lines under a built group, structurally so the bridge test
+// does not import three. The surface edge overlay is the only build step that adds
+// LineSegments to the scene.
+function edgeLineCount(root: unknown): number {
+  let count = 0
+  ;(root as { traverse(cb: (object: { type: string }) => void): void }).traverse((object) => {
+    if (object.type === 'LineSegments') count += 1
+  })
+  return count
+}
+
+describe('buildFramedScene edge overlay', () => {
+  const ceiling = 2400
+
+  it('draws no surface edge overlay by default (an opt-in view toggle, ADR-0132)', () => {
+    const { root } = buildFramedScene(squareRoomWithSouthWindow(ceiling))
+
+    expect(edgeLineCount(root)).toBe(0)
+  })
+
+  it('draws the surface edge overlay when the view option turns it on', () => {
+    const { root } = buildFramedScene(squareRoomWithSouthWindow(ceiling), {}, { edgeOverlay: true })
+
+    expect(edgeLineCount(root)).toBeGreaterThan(0)
+  })
+})

@@ -1,24 +1,15 @@
 import { Canvas } from '@react-three/fiber'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   DEFAULT_OBSERVATION_INSTANT,
-  type Bounds3,
-  type CameraPose,
   type ObservationInstant,
   type OpeningSceneNode,
-  type Point,
   type SceneGraph,
 } from '../../core'
-import {
-  createSceneRenderer,
-  type EntityScreenPosition,
-  type NearWallTarget,
-  type SceneRoot,
-} from '../../engine'
-import { useActiveFloorId } from './active-floor-context'
+import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { CameraControlsHint } from './camera-controls-hint'
-import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
@@ -30,11 +21,8 @@ import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
-import { useFurnitureModelCache } from './use-furniture-model-cache'
-import { useBuildingViewState } from './use-building-view-state'
-import { useProjectPaint } from './use-project-paint'
-import { useSceneGraph } from './use-scene-graph'
-import { useViewSceneGraph } from './use-view-scene-graph'
+import type { BuildingViewState } from './use-building-view-state'
+import { useFramedScene } from './use-framed-scene'
 import { WalkCameraControls } from './walk-camera-controls'
 
 // The per-view camera navigation state: the active mode and whether the user has
@@ -74,6 +62,10 @@ function useSceneNavigation() {
     applyPreset,
   }
 }
+
+// The grouped result of useSceneNavigation, so the toolbar wiring can take the whole
+// navigation state as one prop instead of re-listing each field.
+type SceneNavigationState = ReturnType<typeof useSceneNavigation>
 
 // Per-view color-temperature session state, held in the view component (foundation
 // section 5.3), never in the model or undo. It feeds the toolbar slider and, once
@@ -136,9 +128,7 @@ function useDoorwayOpening(
 }
 
 interface LiveSceneCanvasProps {
-  root: SceneRoot
-  pose: CameraPose
-  bounds: Bounds3 | null
+  framed: FramedScene
   mode: NavMode
   selectionEnabled: boolean
   revealInterior: boolean
@@ -148,8 +138,6 @@ interface LiveSceneCanvasProps {
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   opening: OpeningSceneNode | null
   presetRequest: PresetRequest | null
-  nearWallTargets: NearWallTarget[]
-  roomPolygons: readonly (readonly Point[])[]
 }
 
 // The interactive React Three Fiber canvas: the keyed scene primitive, the framed
@@ -158,9 +146,7 @@ interface LiveSceneCanvasProps {
 // so interactive camera moves and color-temperature changes show continuously, not only
 // when React remounts the scene.
 function LiveSceneCanvas({
-  root,
-  pose,
-  bounds,
+  framed,
   mode,
   selectionEnabled,
   revealInterior,
@@ -170,9 +156,8 @@ function LiveSceneCanvas({
   onProxyPositions,
   opening,
   presetRequest,
-  nearWallTargets,
-  roomPolygons,
 }: LiveSceneCanvasProps) {
+  const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
   return (
     <Canvas
       frameloop="always"
@@ -247,40 +232,68 @@ function ScenePaneShell({ mode, children }: { mode: NavMode; children: ReactNode
   )
 }
 
+interface SceneViewToolbarProps {
+  nav: SceneNavigationState
+  buildingView: BuildingViewState
+  edgeOverlay: boolean
+  onToggleEdgeOverlay: () => void
+  colorTemperatureK: number
+  onColorTemperatureChange: (kelvin: number) => void
+  observationInstant: ObservationInstant
+  onObservationChange: (instant: ObservationInstant) => void
+  canDoorway: boolean
+}
+
+// Feeds the navigation toolbar from the view's grouped session state: the camera
+// navigation, the building-view scope, the edge-overlay display option, and the
+// environment settings, plus whether the doorway preset has a target. The toolbar's
+// own props stay flat so it can be exercised in isolation.
+function SceneViewToolbar({
+  nav,
+  buildingView,
+  edgeOverlay,
+  onToggleEdgeOverlay,
+  colorTemperatureK,
+  onColorTemperatureChange,
+  observationInstant,
+  onObservationChange,
+  canDoorway,
+}: SceneViewToolbarProps) {
+  return (
+    <SceneNavToolbar
+      mode={nav.mode}
+      onModeChange={nav.setMode}
+      selectionEnabled={nav.selectionEnabled}
+      onToggleSelection={nav.toggleSelection}
+      revealInterior={nav.revealInterior}
+      onToggleRevealInterior={nav.toggleRevealInterior}
+      onReset={nav.resetView}
+      colorTemperatureK={colorTemperatureK}
+      onColorTemperatureChange={onColorTemperatureChange}
+      observationInstant={observationInstant}
+      onObservationChange={onObservationChange}
+      onPreset={nav.applyPreset}
+      canDoorway={canDoorway}
+      scope={buildingView.scope}
+      onScopeChange={buildingView.setScope}
+      showUnderground={buildingView.showUnderground}
+      onToggleUnderground={buildingView.toggleUnderground}
+      edgeOverlay={edgeOverlay}
+      onToggleEdgeOverlay={onToggleEdgeOverlay}
+    />
+  )
+}
+
 // Mounts the React Three Fiber canvas with the WebGPU renderer, with a navigation toolbar
 // above it and the accessibility proxy overlay beside it. It is rendered only when WebGPU
 // is available, so it never executes under jsdom; the renderer is constructed in the engine
-// layer. The pane subscribes to the live scene graph scoped to the active floor, so it
-// rebuilds and reframes as the plan is edited.
+// layer. The framed-scene wiring lives in useFramedScene, which subscribes to the live
+// scene graph scoped to the active floor, so the pane rebuilds and reframes as the plan
+// is edited.
 export function WebGPUSceneView() {
-  const rawGraph = useSceneGraph()
-  const activeFloorId = useActiveFloorId()
-  const buildingView = useBuildingViewState()
-  // Scope to the active floor or the whole building stacked at its elevations (issue
-  // #206); the scoped graph is memoized so the scene rebuilds only when it changes.
-  const graph = useViewSceneGraph(rawGraph, activeFloorId, buildingView)
-  const paint = useProjectPaint()
-  // One reconciler for the life of the view; it reuses an unchanged floor's built
-  // scene instead of rebuilding on every edit (foundation spec 5.5).
-  const reconcilerRef = useRef(createFramedSceneReconciler())
-  const models = useFurnitureModelCache(graph)
-  const { root, pose, bounds, nearWallTargets, roomPolygons } = useMemo(
-    () => reconcilerRef.current.reconcile(graph, paint, models.lookup),
-    [graph, paint, models],
-  )
-  const {
-    mode,
-    setMode,
-    selectionEnabled,
-    toggleSelection,
-    revealInterior,
-    toggleRevealInterior,
-    userControlled,
-    markUserControlled,
-    resetView,
-    presetRequest,
-    applyPreset,
-  } = useSceneNavigation()
+  const { graph, buildingView, edgeOverlay, toggleEdgeOverlay, framed, modelsVersion } =
+    useFramedScene()
+  const nav = useSceneNavigation()
   const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
   const { observationInstant, setObservationInstant } = useObservationDateTime()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
@@ -288,45 +301,33 @@ export function WebGPUSceneView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <SceneNavToolbar
-        mode={mode}
-        onModeChange={setMode}
-        selectionEnabled={selectionEnabled}
-        onToggleSelection={toggleSelection}
-        revealInterior={revealInterior}
-        onToggleRevealInterior={toggleRevealInterior}
-        onReset={resetView}
+      <SceneViewToolbar
+        nav={nav}
+        buildingView={buildingView}
+        edgeOverlay={edgeOverlay}
+        onToggleEdgeOverlay={toggleEdgeOverlay}
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={setColorTemperatureK}
         observationInstant={observationInstant}
         onObservationChange={setObservationInstant}
-        onPreset={applyPreset}
         canDoorway={doorwayOpening !== null}
-        scope={buildingView.scope}
-        onScopeChange={buildingView.setScope}
-        showUnderground={buildingView.showUnderground}
-        onToggleUnderground={buildingView.toggleUnderground}
       />
-      <ScenePaneShell mode={mode}>
+      <ScenePaneShell mode={nav.mode}>
         <LiveSceneCanvas
-          root={root}
-          pose={pose}
-          bounds={bounds}
-          mode={mode}
-          selectionEnabled={selectionEnabled}
-          revealInterior={revealInterior}
-          userControlled={userControlled}
-          onUserControl={markUserControlled}
+          framed={framed}
+          mode={nav.mode}
+          selectionEnabled={nav.selectionEnabled}
+          revealInterior={nav.revealInterior}
+          userControlled={nav.userControlled}
+          onUserControl={nav.markUserControlled}
           colorTemperatureK={colorTemperatureK}
           onProxyPositions={setPositions}
           opening={doorwayOpening}
-          presetRequest={presetRequest}
-          nearWallTargets={nearWallTargets}
-          roomPolygons={roomPolygons}
+          presetRequest={nav.presetRequest}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
-      <FurnitureModelSignals root={root} version={models.version} />
+      <FurnitureModelSignals root={framed.root} version={modelsVersion} />
     </div>
   )
 }

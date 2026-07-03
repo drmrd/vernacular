@@ -86,6 +86,12 @@ export const UNCOVERED_COMPONENTS: {
       'mounts the R3F Canvas and WebGPU renderer directly; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'SceneDisplayOptions',
+    file: 'bridge/react/scene-display-options.tsx',
+    reason:
+      'the display-options group (the surface-edge overlay toggle) that sits beside the environment controls extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'SceneHarnessView',
     file: 'bridge/react/scene-harness-view.tsx',
     reason:
