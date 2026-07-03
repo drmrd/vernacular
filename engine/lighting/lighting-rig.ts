@@ -38,11 +38,22 @@ const MIN_SHADOW_NEAR = 1
 const SUN_DIRECTION_NORMALIZED = SUN_DIRECTION.clone().normalize()
 
 /**
+ * The lights a single rig owns. A provider keeps this reference from `apply` so it can
+ * dispose exactly what it built, rather than rediscovering lights by instanceof scans as
+ * the rig grows (a moon sun, non-rig light types).
+ */
+export interface LightingRig {
+  sun: THREE.DirectionalLight
+  fill: THREE.HemisphereLight
+}
+
+/**
  * Builds the rig and adds it to the scene: a shadow-casting directional sun aimed along
  * SUN_DIRECTION plus a hemisphere fill. Providers own the sun's intensity policy, so it
- * arrives as a parameter; everything else about the rig is shared.
+ * arrives as a parameter; everything else about the rig is shared. Returns the lights so
+ * the caller can dispose them by reference.
  */
-export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): void {
+export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): LightingRig {
   const sun = new THREE.DirectionalLight(WHITE, sunIntensity)
   sun.position.copy(SUN_DIRECTION)
   sun.castShadow = true
@@ -50,6 +61,7 @@ export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): v
   sun.shadow.bias = SHADOW_BIAS
   const fill = new THREE.HemisphereLight(WHITE, GROUND_FILL, FILL_INTENSITY)
   scene.add(sun, fill)
+  return { sun, fill }
 }
 
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */

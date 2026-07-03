@@ -9,6 +9,7 @@ import {
   findSun,
   fitSunShadowToDirection,
   setSunAndSkyColor,
+  type LightingRig,
 } from './lighting-rig'
 
 /** The sun switches fully off once below the horizon; the sky fill then carries the scene. */
@@ -21,8 +22,10 @@ const NIGHT_SUN_INTENSITY = 0
  * intensity switches off with `sunUp`, so night scenes stay lit by the sky fill alone.
  */
 export class SolarLightingProvider implements LightingProvider {
+  private rig: LightingRig | null = null
+
   apply(scene: THREE.Object3D): void {
-    buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
+    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
   }
 
   /**
@@ -39,5 +42,13 @@ export class SolarLightingProvider implements LightingProvider {
     if (sun !== undefined) {
       sun.intensity = lighting.sunUp ? DAYLIGHT_SUN_INTENSITY : NIGHT_SUN_INTENSITY
     }
+  }
+
+  dispose(scene: THREE.Object3D): void {
+    if (this.rig === null) return
+    scene.remove(this.rig.sun, this.rig.fill)
+    this.rig.sun.dispose()
+    this.rig.fill.dispose()
+    this.rig = null
   }
 }

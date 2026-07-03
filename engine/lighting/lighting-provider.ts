@@ -17,4 +17,10 @@ export interface LightingProvider {
    * provider must treat the shadow refit as a no-op in that case.
    */
   update(scene: THREE.Object3D, lighting: EnvironmentLighting, bounds: Bounds3 | null): void
+  /**
+   * Removes the lights this provider applied from the scene and frees their GPU
+   * resources (a directional sun's shadow map is a 2048x2048 texture), so a provider
+   * swap does not leak. A provider that never applied, or already disposed, is a no-op.
+   */
+  dispose(scene: THREE.Object3D): void
 }

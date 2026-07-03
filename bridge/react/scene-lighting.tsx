@@ -14,7 +14,6 @@ import {
 import {
   BasicLightingProvider,
   fitSunShadowToBounds,
-  removeLighting,
   setLightingColor,
   SolarLightingProvider,
   type LightingProvider,
@@ -89,7 +88,7 @@ export function SceneLighting({
 
   useLayoutEffect(() => {
     provider.apply(scene)
-    return () => removeLighting(scene)
+    return () => provider.dispose(scene)
   }, [provider, scene])
 
   useLayoutEffect(() => {
