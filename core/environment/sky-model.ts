@@ -35,6 +35,12 @@ const HORIZON_SUN_INTENSITY = 0.35
 const HORIZON_EXTINCTION_RADIANS = 0.1
 /** Fraction of overall light a fully overcast sky removes. */
 const OVERCAST_DIMMING = 0.3
+/**
+ * Exponent of the Kasten-Czeplak direct-beam cloud transmission curve: convex,
+ * so light cloud cover barely dims the direct sun while heavy cover extinguishes
+ * it almost entirely by full overcast.
+ */
+const DIRECT_BEAM_CLOUD_EXPONENT = 3.4
 const RGB_CHANNEL_COUNT = 3
 
 function clampToUnitInterval(value: number): number {
@@ -66,19 +72,32 @@ function overcastAdjusted(color: LinearRgb, cloudCover: number): LinearRgb {
 }
 
 /**
+ * Fraction of the direct beam that reaches the ground through cloud cover, on a
+ * Kasten-Czeplak-style convex curve: near 1 until cloud cover thickens, then
+ * falling away to 0 at full overcast, when only the ambient sky remains lit.
+ */
+function directBeamCloudTransmission(cloudCover: number): number {
+  return 1 - cloudCover ** DIRECT_BEAM_CLOUD_EXPONENT
+}
+
+/**
  * Analytic clear-sky lighting model. `altitude` is the sun's height above the
  * horizon in radians (negative once it has set); `cloudCover` is a 0..1
  * fraction (0 clear, 1 fully overcast). Both colors interpolate between named
  * horizon and zenith tints on the sun's elevation; `sunIntensity` carries the
  * direct sun's dimming toward the horizon and its extinction just below, so the
  * tint stays at full strength and the scale does the fading. Cloud cover
- * flattens both colors toward grey while dimming them.
+ * flattens both colors toward grey while dimming them, and also attenuates
+ * `sunIntensity` through the cloud transmission curve, extinguishing the
+ * direct beam entirely at full overcast while leaving the ambient sky lit.
  */
 export function skyLighting(altitude: number, cloudCover: number): SkyLighting {
   const elevation = clampToUnitInterval(Math.sin(altitude))
   const extinction = clampToUnitInterval(1 + altitude / HORIZON_EXTINCTION_RADIANS)
   const sunIntensity =
-    extinction * (HORIZON_SUN_INTENSITY + (1 - HORIZON_SUN_INTENSITY) * elevation)
+    extinction *
+    (HORIZON_SUN_INTENSITY + (1 - HORIZON_SUN_INTENSITY) * elevation) *
+    directBeamCloudTransmission(cloudCover)
   const clearSun = mixLinearRgb(HORIZON_SUN_TINT, ZENITH_SUN_TINT, elevation)
   const clearSky = mixLinearRgb(HORIZON_SKY_TINT, ZENITH_SKY_TINT, elevation)
   return {
