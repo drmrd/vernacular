@@ -95,7 +95,7 @@ function useSolarLightingUpdate({
 /**
  * View-layer glue: applies the engine lighting rig to the persistent render scene once
  * per provider, then keeps it current without rebuilding geometry. Realistic mode swaps
- * in the solar provider (remove + apply, keyed on the provider instance) and drives its
+ * in the solar provider (dispose + apply, keyed on the provider instance) and drives its
  * sun from the site and observation instant; the schematic default keeps the fixed rig
  * tinted from the color temperature with its shadow fit to the scene bounds. The lights
  * live on the render scene rather than on the keyed geometry group, so a rebuild does

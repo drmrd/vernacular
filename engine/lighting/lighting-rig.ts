@@ -82,25 +82,9 @@ export function findSun(scene: THREE.Object3D): THREE.DirectionalLight | undefin
   )
 }
 
-function isRigLight(
-  child: THREE.Object3D,
-): child is THREE.DirectionalLight | THREE.HemisphereLight {
-  return child instanceof THREE.DirectionalLight || child instanceof THREE.HemisphereLight
-}
-
 /** Tints the sun and the hemisphere sky to a linear-light color. */
 export function setLightingColor(scene: THREE.Object3D, color: LinearRgb): void {
   setSunAndSkyColor(scene, color, color)
-}
-
-/** Removes the rig's lights so a remount re-applies cleanly rather than stacking them. */
-export function removeLighting(scene: THREE.Object3D): void {
-  // Snapshot the targets before removing, so the removal does not mutate the array
-  // being iterated.
-  const lights = scene.children.filter(isRigLight)
-  for (const light of lights) {
-    scene.remove(light)
-  }
 }
 
 /**

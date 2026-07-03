@@ -38,7 +38,6 @@ export { SolarLightingProvider } from './lighting/solar-lighting-provider'
 export {
   setLightingColor,
   setSunAndSkyColor,
-  removeLighting,
   fitSunShadowToBounds,
   fitSunShadowToDirection,
 } from './lighting/lighting-rig'
