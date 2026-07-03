@@ -186,30 +186,55 @@ function CloudCoverDial({ cloudCover, onCloudCoverChange }: CloudCoverDialProps)
   )
 }
 
-export function EnvironmentPanel({
-  site,
+interface ColorCheckToggleProps {
+  colorCheck: boolean
+  onColorCheckChange: (colorCheck: boolean) => void
+}
+
+/**
+ * The neutral color-check toggle: pressed renders every surface under the white-balanced
+ * reference tint (`NEUTRAL_REFERENCE_WHITE`) instead of the sun and sky colors, mirroring
+ * the toolbar's pressed-button idiom.
+ */
+function ColorCheckToggle({ colorCheck, onColorCheckChange }: ColorCheckToggleProps): ReactElement {
+  return (
+    <div>
+      <button
+        type="button"
+        aria-pressed={colorCheck}
+        onClick={() => onColorCheckChange(!colorCheck)}
+      >
+        Color check
+      </button>
+      <p>Renders the scene under a white-balanced reference light.</p>
+    </div>
+  )
+}
+
+interface EnvironmentControlsProps {
+  environment: EnvironmentState
+  onEnvironmentChange: (next: EnvironmentState) => void
+}
+
+/**
+ * The observation time, cloud-cover, and color-check controls, grouped so `EnvironmentPanel`
+ * stays a thin composition of panel sections.
+ */
+function EnvironmentControls({
   environment,
   onEnvironmentChange,
-}: EnvironmentPanelProps): ReactElement {
-  const handleModeSelect = (value: string) => {
-    if (isLightingMode(value)) onEnvironmentChange({ ...environment, mode: value })
-  }
+}: EnvironmentControlsProps): ReactElement {
   const handleObservationChange = (observedAt: ObservationInstant) => {
     onEnvironmentChange({ ...environment, observedAt })
   }
   const handleCloudCoverChange = (cloudCover: number) => {
     onEnvironmentChange({ ...environment, cloudCover })
   }
+  const handleColorCheckChange = (colorCheck: boolean) => {
+    onEnvironmentChange({ ...environment, colorCheck })
+  }
   return (
-    <Stack>
-      <Segmented
-        label="Lighting mode"
-        options={LIGHTING_MODE_OPTIONS}
-        value={environment.mode}
-        onSelect={handleModeSelect}
-      />
-      <LocationReadout site={site} />
-      <EnvironmentNotices mode={environment.mode} site={site} />
+    <>
       <ObservationDateTimeControl
         observedAt={environment.observedAt}
         onObservationChange={handleObservationChange}
@@ -222,6 +247,33 @@ export function EnvironmentPanel({
         cloudCover={environment.cloudCover}
         onCloudCoverChange={handleCloudCoverChange}
       />
+      <ColorCheckToggle
+        colorCheck={environment.colorCheck}
+        onColorCheckChange={handleColorCheckChange}
+      />
+    </>
+  )
+}
+
+export function EnvironmentPanel({
+  site,
+  environment,
+  onEnvironmentChange,
+}: EnvironmentPanelProps): ReactElement {
+  const handleModeSelect = (value: string) => {
+    if (isLightingMode(value)) onEnvironmentChange({ ...environment, mode: value })
+  }
+  return (
+    <Stack>
+      <Segmented
+        label="Lighting mode"
+        options={LIGHTING_MODE_OPTIONS}
+        value={environment.mode}
+        onSelect={handleModeSelect}
+      />
+      <LocationReadout site={site} />
+      <EnvironmentNotices mode={environment.mode} site={site} />
+      <EnvironmentControls environment={environment} onEnvironmentChange={onEnvironmentChange} />
     </Stack>
   )
 }
