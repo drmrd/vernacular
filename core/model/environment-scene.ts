@@ -8,6 +8,8 @@ import type { Extensions } from './types'
 export interface WeatherConditions {
   /** Free-text summary, for example `'clear'` or `'overcast'`. Absent means unspecified. */
   summary?: string
+  /** Cloud-cover fraction, 0 (clear) to 1 (fully overcast). Absent means unspecified. */
+  cloudCover?: number
   /** Third-party extension data; see {@link Extensions}. */
   extensions?: Extensions
 }

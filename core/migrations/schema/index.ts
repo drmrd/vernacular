@@ -13,6 +13,7 @@ import { addStairsMigration } from './add-stairs'
 import { addSurfaceTreatmentMigration } from './add-surface-treatment'
 import { addUnderlayKindMigration } from './add-underlay-kind'
 import { addWallConstructionProfileMigration } from './add-wall-construction-profile'
+import { addWeatherCloudCoverMigration } from './add-weather-cloud-cover'
 
 export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addRoomOverridesMigration,
@@ -29,4 +30,5 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addSiteGradeElevationMigration,
   addSiteTimezoneMigration,
   addEnvironmentScenesMigration,
+  addWeatherCloudCoverMigration,
 ]
