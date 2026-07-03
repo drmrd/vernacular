@@ -227,6 +227,12 @@ export const UNCOVERED_COMPONENTS: {
     reason:
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
+  {
+    component: 'ToolRail',
+    file: 'editor/shell/tool-rail.tsx',
+    reason:
+      'assembles the tool rail from the editor-session, scene-graph, active-floor, active-tool, and environment-session contexts; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
 
   // --- editor/tools -------------------------------------------------------
   {

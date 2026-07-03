@@ -17,22 +17,12 @@ import {
   SurfaceSelectionProvider,
   useActiveFloorId,
   useEditorSession,
-  useEnvironmentSession,
   useSceneGraph,
   useSelection,
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
-import {
-  addFloor,
-  builtinPeriods,
-  formatAdaptiveLength,
-  preferencesForUnits,
-  renameFloor,
-  sceneGraphForFloor,
-  setUnits,
-  type Project,
-} from '../../core'
+import { addFloor, renameFloor, setUnits, type Project } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -45,14 +35,8 @@ import {
   type CommandContext,
 } from '../commands'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
-import { EnvironmentPanel } from '../environment/environment-panel'
-import { LibraryLauncherPanel } from '../library/library-launcher-panel'
-import { SiteEditor } from '../metadata/site-editor'
 import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
-import { OpeningTypeChooser } from '../plan/opening-type-chooser'
-import { UnderlayMenuPanel } from '../plan/underlay-menu-panel'
-import { planExtent } from '../plan/fit'
 import { PlanView } from '../plan/plan-view'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
@@ -62,17 +46,13 @@ import { ViewportProvider } from '../plan/viewport-context'
 import { PointerReadoutProvider } from '../plan/pointer-readout'
 import { useActiveTool } from '../tools/active-tool-context'
 import { toolLabel } from '../tools/tool-label'
-import { ToolsPanel } from '../tools/tools-panel'
-import { EditLayerPanel } from '../tools/edit-layer-panel'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame, BannerRegion, IconButton, SectionLabel, ToastRegion } from '../design-system'
+import { AppFrame, BannerRegion, IconButton, ToastRegion } from '../design-system'
 import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
-import { OverallDimensions } from './overall-dimensions'
-import { ProjectIdentity } from './project-identity'
 import { SnapStatus } from './snap-status'
 import { StatusBar } from './status-bar'
 import { CoordsReadout } from './coords-readout'
@@ -81,6 +61,7 @@ import { ZoomControl } from './zoom-control'
 import { RecoveryPrompt, type ProjectControlsProps } from './project-controls'
 import { ProjectMenu } from './project-menu'
 import { ScenePane } from './scene-pane'
+import { ToolRail } from './tool-rail'
 import { useSaveFailureToast } from './use-save-failure-toast'
 import { ImportDropTarget } from './import-drop-target'
 import { UnitToggle } from './unit-toggle'
@@ -100,18 +81,6 @@ const SAVE_STATUS_ICONS: Record<AutosaveStatus, Icon> = {
   pending: CircleNotch,
   saved: CheckCircle,
   error: WarningCircle,
-}
-
-// The tools nav: the tool buttons, plus the opening-type chooser surfaced only
-// while the place-opening tool is active so the user picks what to place.
-function ToolsNav() {
-  const { tool } = useActiveTool()
-  return (
-    <nav className="editor-shell__tools" aria-label="Tools">
-      <ToolsPanel />
-      {tool === 'place-opening' ? <OpeningTypeChooser /> : null}
-    </nav>
-  )
 }
 
 // A render-nothing layer that assembles the command context from the editor
@@ -222,82 +191,6 @@ function floorSummaries(project: Project): { id: string; name: string; elevation
     name: floor.name,
     elevation: floor.elevation,
   }))
-}
-
-// The italic period subtitle for the rail project block: the era's display name
-// and its approximate range, drawn from the period registry.
-function railPeriodLabel(period: string): string | undefined {
-  const entry = builtinPeriods.entries[period]
-  if (entry === undefined) {
-    return undefined
-  }
-  const name = entry.displayName?.['en-US'] ?? period
-  return entry.approximateRange ? `${name}, ${entry.approximateRange}` : name
-}
-
-// The SiteEditor seeds its inputs at mount, so remount it (via key) whenever the persisted
-// site identity changes, for example after undo, so the fields reflect the model.
-function siteEditorKey(site: Project['site']): string {
-  return JSON.stringify(site ?? {})
-}
-
-// The rail's Environment section: the panel reads and writes the shared
-// environment session so the 3D viewport reflects the controls live.
-function EnvironmentRailSection({ site }: { site: Project['site'] }) {
-  const { environment, setEnvironment } = useEnvironmentSession()
-  return (
-    <section aria-label="Environment">
-      <SectionLabel>Environment</SectionLabel>
-      <EnvironmentPanel
-        site={site}
-        environment={environment}
-        onEnvironmentChange={setEnvironment}
-      />
-    </section>
-  )
-}
-
-// The tool rail content: the project identity block above the drawing and editing
-// tools. It subscribes to the scene graph so the block refreshes on project edits.
-function ToolRail() {
-  const session = useEditorSession()
-  const fullGraph = useSceneGraph()
-  const floorId = useActiveFloorId()
-  const project = session.getProject()
-  // Narrow to the active floor so the readout measures the same content the canvas
-  // draws, not every floor stacked together.
-  const graph = sceneGraphForFloor(fullGraph, floorId)
-  const extent = planExtent(graph.walls, graph.rooms)
-  const preferences = preferencesForUnits(project.meta.units)
-  const overall =
-    extent === null
-      ? null
-      : {
-          width: formatAdaptiveLength(extent.width, preferences),
-          height: formatAdaptiveLength(extent.height, preferences),
-        }
-  return (
-    <div className="editor-shell__rail">
-      <ProjectIdentity
-        name={project.meta.name}
-        periodLabel={railPeriodLabel(project.meta.period)}
-      />
-      <ToolsNav />
-      <EditLayerPanel />
-      <OverallDimensions extent={overall} />
-      <LibraryLauncherPanel />
-      <UnderlayMenuPanel />
-      <section aria-label="Site">
-        <SectionLabel>Site</SectionLabel>
-        <SiteEditor
-          key={siteEditorKey(project.site)}
-          site={project.site ?? {}}
-          dispatch={session.dispatch}
-        />
-      </section>
-      <EnvironmentRailSection site={project.site} />
-    </div>
-  )
 }
 
 function EditorStatusBar() {
