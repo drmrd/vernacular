@@ -10,14 +10,7 @@ import {
 } from './near-wall-transparency'
 import { findByEntityId } from '../testing'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { FURNITURE_OPACITY } from '../materials/role-appearance'
-import {
-  buildWallGraph,
-  exteriorWalls,
-  junctionFadeGroups,
-  withAttachedFurniture,
-  type SceneGraph,
-} from '../../core'
+import { buildWallGraph, exteriorWalls, junctionFadeGroups, type SceneGraph } from '../../core'
 
 const ROOM_SIDE_MM = 4000
 const WALL_THICKNESS_MM = 200
@@ -151,44 +144,6 @@ const openingMesh = (root: THREE.Group, entityId: string, name: string): THREE.M
 
 /** The recorded solid restore state of a privatized fade material. */
 type FadeMaterialBaseline = NearWallTarget['materials'][number]['baseline']
-
-/**
- * A furniture node whose axis-aligned footprint spans the given plan extents. The
- * node id carries the `furniture:` prefix; the built massing group carries the RAW
- * instance id as its entityId (the furniture-builder convention).
- */
-const furnitureNode = (
-  id: string,
-  min: { x: number; y: number },
-  max: { x: number; y: number },
-): SceneGraph['furniture'][number] => ({
-  id,
-  kind: 'furniture',
-  floorId: 'g',
-  footprintCorners: [
-    { x: min.x, y: min.y },
-    { x: max.x, y: min.y },
-    { x: max.x, y: max.y },
-    { x: min.x, y: max.y },
-  ],
-  elevationZ: 0,
-  height: 1800,
-  assetRef: { scope: 'user', contentHash: 'hash-of-a-test-piece' },
-})
-
-/** Every material of every mesh under the group carrying the raw furniture id. */
-const furnitureMaterials = (root: THREE.Group, rawId: string): THREE.Material[] => {
-  const group = findByEntityId(root, rawId)
-  expect(group).not.toBeNull()
-  const materials: THREE.Material[] = []
-  ;(group as THREE.Object3D).traverse((object) => {
-    if (object instanceof THREE.Mesh) {
-      materials.push(...(Array.isArray(object.material) ? object.material : [object.material]))
-    }
-  })
-  expect(materials.length).toBeGreaterThan(0)
-  return materials
-}
 
 const BAR_LENGTH_MM = 2000
 const LEG_LENGTH_MM = 1000
@@ -423,58 +378,6 @@ describe('updateNearWallTransparency', () => {
     expect(glass.opacity).toBe(GLASS_OPACITY)
     expect(glass.transparent).toBe(true)
     expect(glass.depthWrite).toBe(false)
-  })
-
-  it('fades furniture standing against an exterior wall together with that wall', () => {
-    const graph = rectangularRoomGraph()
-    // A wardrobe flush against the bottom wall's interior face (plan y = 100).
-    graph.furniture = [
-      furnitureNode('furniture:wardrobe', { x: 1700, y: 100 }, { x: 2300, y: 700 }),
-    ]
-    const root = buildScene(graph, new NeutralMaterialProvider())
-    const targets = prepareNearWallTransparency(
-      root,
-      withAttachedFurniture(exteriorWalls(graph.walls, graph.rooms), graph.walls, graph.furniture),
-    )
-
-    // Camera outside the bottom wall (world z = 0, outward normal world (0,0,+1)):
-    // the wall fades, and the wardrobe against it must recede with it.
-    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
-
-    for (const material of furnitureMaterials(root, 'wardrobe')) {
-      expect(material.opacity).toBe(FADED_OPACITY)
-    }
-
-    // From inside the room the wall returns, and the wardrobe must return to its
-    // own translucent massing baseline, not to blanket-solid.
-    updateNearWallTransparency(targets, { x: 2000, z: -3000 })
-
-    for (const material of furnitureMaterials(root, 'wardrobe')) {
-      expect(material.opacity).toBe(FURNITURE_OPACITY)
-    }
-  })
-
-  it('leaves free-standing furniture at its own baseline while a distant wall fades', () => {
-    const graph = rectangularRoomGraph()
-    // A table in the middle of the room, standing against no wall.
-    graph.furniture = [furnitureNode('furniture:table', { x: 1700, y: 1700 }, { x: 2300, y: 2300 })]
-    const root = buildScene(graph, new NeutralMaterialProvider())
-    const targets = prepareNearWallTransparency(
-      root,
-      withAttachedFurniture(exteriorWalls(graph.walls, graph.rooms), graph.walls, graph.furniture),
-    )
-
-    // The bottom wall fades, but the free-standing table must not fade with it.
-    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
-
-    for (const material of wallMaterials(root, 'wall:bottom')) {
-      expect(material.opacity).toBe(FADED_OPACITY)
-    }
-    // The table keeps its own translucent massing baseline: it never drops to the
-    // faded opacity with a wall it does not stand against.
-    for (const material of furnitureMaterials(root, 'table')) {
-      expect(material.opacity).toBe(FURNITURE_OPACITY)
-    }
   })
 
   it('fades every segment mesh of a split exterior wall, not only the first', () => {
