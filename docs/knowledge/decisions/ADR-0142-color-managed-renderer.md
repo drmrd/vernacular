@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0141-color-managed-renderer
-title: 'ADR-0141: Color-managed renderer with Khronos PBR Neutral tone mapping'
+slug: decisions/ADR-0142-color-managed-renderer
+title: 'ADR-0142: Color-managed renderer with Khronos PBR Neutral tone mapping'
 type: decision
 tags:
   [
@@ -25,7 +25,7 @@ status: current
 updated: 2026-07-02
 ---
 
-# ADR-0141: Color-managed renderer with Khronos PBR Neutral tone mapping
+# ADR-0142: Color-managed renderer with Khronos PBR Neutral tone mapping
 
 ## Status
 

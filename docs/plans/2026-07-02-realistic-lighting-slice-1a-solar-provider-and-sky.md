@@ -1,5 +1,11 @@
 # Realistic Environmental Lighting, Slice 1a (Solar Provider and Sky) Implementation Plan
 
+> Correction (post-authoring): a concurrent branch claimed ADR-0141 (per-section depth bias),
+> so the slice-0 records this plan cites shifted: the color-managed renderer is ADR-0142 and
+> the environment-model foundations are ADR-0143. The solar-provider record this plan calls
+> "ADR-0143" therefore takes the next free number, ADR-0144, subject to the same
+> confirm-before-writing step in Task 10.
+
 > **For agentic workers:** This project runs its own red-green-blue TDD cycle through
 > role-separated subagents dispatched from the MAIN thread: `/test-first` (test-author, commits
 > `test:`), `/implement` (implementer, commits `feat:`), `/clean-code-review`, `/refactor`

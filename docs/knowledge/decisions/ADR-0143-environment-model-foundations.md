@@ -1,6 +1,6 @@
 ---
-slug: decisions/ADR-0142-environment-model-foundations
-title: 'ADR-0142: Environment model foundations: observation time, environment scenes, timezone, and schema versions 14 and 15'
+slug: decisions/ADR-0143-environment-model-foundations
+title: 'ADR-0143: Environment model foundations: observation time, environment scenes, timezone, and schema versions 14 and 15'
 type: decision
 tags:
   [
@@ -40,7 +40,7 @@ status: current
 updated: 2026-07-02
 ---
 
-# ADR-0142: Environment model foundations
+# ADR-0143: Environment model foundations
 
 ## Status
 

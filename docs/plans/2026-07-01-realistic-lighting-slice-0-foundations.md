@@ -1,10 +1,11 @@
 # Realistic Environmental Lighting, Slice 0 (Foundations) Implementation Plan
 
-> Correction (post-authoring): ADR-0140 was claimed by a concurrent branch, so the ADR numbers
-> below shifted up by one. The renderer color-management record landed as ADR-0141, and the
+> Correction (post-authoring, updated twice): concurrent branches claimed ADR-0140 (junction
+> fill fade) and then ADR-0141 (per-section depth bias), so the ADR numbers below shifted up
+> by two. The renderer color-management record landed as ADR-0142, and the
 > environment-model-foundations record (which holds the optional-`environmentScenes` and
-> timezone-on-`Site` deviations) landed as ADR-0142. Wherever the text below cites "ADR-0140"
-> read ADR-0141, and wherever it cites "ADR-0141" read ADR-0142.
+> timezone-on-`Site` deviations) landed as ADR-0143. Wherever the text below cites "ADR-0140"
+> read ADR-0142, and wherever it cites "ADR-0141" read ADR-0143.
 
 > **For agentic workers:** This project runs its own red-green-blue TDD cycle through
 > role-separated subagents dispatched from the MAIN thread: `/test-first` (test-author writes
