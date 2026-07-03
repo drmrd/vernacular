@@ -419,4 +419,20 @@ describe('EditorShell', () => {
     // editable from the shell.
     expect(screen.getByLabelText(/timezone/i)).toBeInTheDocument()
   })
+
+  it('mounts the environment panel in the tool rail', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    // The Environment section hosts the environment panel's Schematic/Realistic mode
+    // toggle, confirming the panel is mounted in the tool rail alongside Site.
+    const environmentSection = screen.getByRole('region', { name: /environment/i })
+    expect(
+      within(environmentSection).getByRole('button', { name: 'Schematic' }),
+    ).toBeInTheDocument()
+    expect(
+      within(environmentSection).getByRole('button', { name: 'Realistic' }),
+    ).toBeInTheDocument()
+  })
 })
