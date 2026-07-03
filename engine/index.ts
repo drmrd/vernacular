@@ -34,6 +34,7 @@ export {
 } from './scene/near-wall-transparency'
 export type { LightingProvider } from './lighting/lighting-provider'
 export { BasicLightingProvider } from './lighting/basic-lighting-provider'
+export { SolarLightingProvider } from './lighting/solar-lighting-provider'
 export {
   setLightingColor,
   setSunAndSkyColor,
