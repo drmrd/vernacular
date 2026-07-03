@@ -99,6 +99,12 @@ const OBSERVATION_DATE_TIME_INPUT_ID = 'environment-observation-date-time'
 const TIME_OF_DAY_INPUT_ID = 'environment-time-of-day'
 const CLOUD_COVER_INPUT_ID = 'environment-cloud-cover'
 
+// The exact shape `datetime-local` inputs report for a real instant. Matching against
+// it (rather than just rejecting the empty string) also guards the fallback text input
+// browsers without native `datetime-local` support render, which can emit arbitrary
+// strings that would otherwise reach `parseObservationInstant` as garbage.
+const OBSERVATION_DATETIME_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+
 /** The `hh:mm` portion of `formatObservationDateTime`, for a slider's `aria-valuetext`. */
 function formatTimeOfDay(observedAt: ObservationInstant): string {
   const [, time = ''] = formatObservationDateTime(observedAt).split(' ')
@@ -106,9 +112,11 @@ function formatTimeOfDay(observedAt: ObservationInstant): string {
 }
 
 /**
- * The observation date/time scrubber. A cleared `datetime-local` input reports an empty
- * string; that clears the field visually but is not a real instant, so the change is
- * swallowed rather than parsed into a garbage `ObservationInstant`.
+ * The observation date/time scrubber. This guards the parse boundary against both a
+ * cleared `datetime-local` input (which reports an empty string) and the arbitrary
+ * strings a text-fallback input can emit in browsers without native `datetime-local`
+ * support; neither is a real instant, so the change is swallowed rather than parsed
+ * into a garbage `ObservationInstant`.
  */
 function ObservationDateTimeControl({
   observedAt,
@@ -116,7 +124,7 @@ function ObservationDateTimeControl({
 }: ObservationControlProps): ReactElement {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
-    if (value === '') return
+    if (!OBSERVATION_DATETIME_SHAPE.test(value)) return
     onObservationChange(parseObservationInstant(value))
   }
   return (
