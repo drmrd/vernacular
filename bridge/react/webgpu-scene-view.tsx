@@ -6,6 +6,7 @@ import {
   type ObservationInstant,
   type OpeningSceneNode,
   type SceneGraph,
+  type Site,
 } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { CameraControlsHint } from './camera-controls-hint'
@@ -23,6 +24,7 @@ import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
 import { useFramedScene } from './use-framed-scene'
+import { useProjectSite } from './use-project-site'
 import { WalkCameraControls } from './walk-camera-controls'
 
 // The per-view camera navigation state: the active mode and whether the user has
@@ -76,14 +78,44 @@ function useColorTemperature() {
 }
 
 // Per-view observation date/time session state, held in the view component (foundation
-// section 5.3), never in the model or undo. It feeds the toolbar readout and, once wired in
-// a later slice, the solar lighting. This slice does not drive lighting from it.
+// section 5.3), never in the model or undo. It feeds the toolbar readout and, under
+// realistic lighting, drives the solar sun.
 function useObservationDateTime() {
   const [observationInstant, setObservationInstant] = useState<ObservationInstant>(
     DEFAULT_OBSERVATION_INSTANT,
   )
   return { observationInstant, setObservationInstant }
 }
+
+// Per-view realistic-lighting session state, held in the view component (foundation
+// section 5.3), never in the model or undo. It feeds the display-options toggle and
+// selects the scene's lighting provider (solar when on and the site has a location).
+function useRealisticLighting() {
+  const [realisticLighting, setRealisticLighting] = useState(false)
+  const toggleRealisticLighting = useCallback(() => setRealisticLighting((value) => !value), [])
+  return { realisticLighting, toggleRealisticLighting }
+}
+
+// The grouped per-view environment session state (color temperature, observation
+// date/time, and the realistic-lighting mode), so the toolbar and canvas wiring take
+// it as one prop, the same way the navigation state travels.
+function useEnvironmentSession() {
+  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+  const { observationInstant, setObservationInstant } = useObservationDateTime()
+  const { realisticLighting, toggleRealisticLighting } = useRealisticLighting()
+  return {
+    colorTemperatureK,
+    setColorTemperatureK,
+    observationInstant,
+    setObservationInstant,
+    realisticLighting,
+    toggleRealisticLighting,
+  }
+}
+
+// The grouped result of useEnvironmentSession, so the toolbar and canvas wiring can
+// take the whole environment state as one prop instead of re-listing each field.
+type EnvironmentSessionState = ReturnType<typeof useEnvironmentSession>
 
 // A short, stable label per selectable entity for the accessibility proxies, derived from
 // the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Labels live in the
@@ -134,7 +166,8 @@ interface LiveSceneCanvasProps {
   revealInterior: boolean
   userControlled: boolean
   onUserControl: () => void
-  colorTemperatureK: number
+  environment: EnvironmentSessionState
+  site: Site | undefined
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   opening: OpeningSceneNode | null
   presetRequest: PresetRequest | null
@@ -152,7 +185,8 @@ function LiveSceneCanvas({
   revealInterior,
   userControlled,
   onUserControl,
-  colorTemperatureK,
+  environment,
+  site,
   onProxyPositions,
   opening,
   presetRequest,
@@ -177,7 +211,13 @@ function LiveSceneCanvas({
           React Three Fiber does not re-attach a <primitive> when its object prop
           changes in place, only when the element remounts. */}
       <primitive key={root.uuid} object={root} />
-      <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
+      <SceneLighting
+        colorTemperatureK={environment.colorTemperatureK}
+        bounds={bounds}
+        realistic={environment.realisticLighting}
+        site={site}
+        observedAt={environment.observationInstant}
+      />
       <SceneSelection root={root} enabled={selectionAllowed({ enabled: selectionEnabled, mode })} />
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
       <FrameCamera bounds={bounds} active={!userControlled} />
@@ -237,10 +277,7 @@ interface SceneViewToolbarProps {
   buildingView: BuildingViewState
   edgeOverlay: boolean
   onToggleEdgeOverlay: () => void
-  colorTemperatureK: number
-  onColorTemperatureChange: (kelvin: number) => void
-  observationInstant: ObservationInstant
-  onObservationChange: (instant: ObservationInstant) => void
+  environment: EnvironmentSessionState
   canDoorway: boolean
 }
 
@@ -253,10 +290,7 @@ function SceneViewToolbar({
   buildingView,
   edgeOverlay,
   onToggleEdgeOverlay,
-  colorTemperatureK,
-  onColorTemperatureChange,
-  observationInstant,
-  onObservationChange,
+  environment,
   canDoorway,
 }: SceneViewToolbarProps) {
   return (
@@ -268,10 +302,12 @@ function SceneViewToolbar({
       revealInterior={nav.revealInterior}
       onToggleRevealInterior={nav.toggleRevealInterior}
       onReset={nav.resetView}
-      colorTemperatureK={colorTemperatureK}
-      onColorTemperatureChange={onColorTemperatureChange}
-      observationInstant={observationInstant}
-      onObservationChange={onObservationChange}
+      colorTemperatureK={environment.colorTemperatureK}
+      onColorTemperatureChange={environment.setColorTemperatureK}
+      observationInstant={environment.observationInstant}
+      onObservationChange={environment.setObservationInstant}
+      realisticLighting={environment.realisticLighting}
+      onToggleRealisticLighting={environment.toggleRealisticLighting}
       onPreset={nav.applyPreset}
       canDoorway={canDoorway}
       scope={buildingView.scope}
@@ -294,8 +330,8 @@ export function WebGPUSceneView() {
   const { graph, buildingView, edgeOverlay, toggleEdgeOverlay, framed, modelsVersion } =
     useFramedScene()
   const nav = useSceneNavigation()
-  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
-  const { observationInstant, setObservationInstant } = useObservationDateTime()
+  const environment = useEnvironmentSession()
+  const site = useProjectSite()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
   const doorwayOpening = useDoorwayOpening(graph.openings, selectedIds)
 
@@ -306,10 +342,7 @@ export function WebGPUSceneView() {
         buildingView={buildingView}
         edgeOverlay={edgeOverlay}
         onToggleEdgeOverlay={toggleEdgeOverlay}
-        colorTemperatureK={colorTemperatureK}
-        onColorTemperatureChange={setColorTemperatureK}
-        observationInstant={observationInstant}
-        onObservationChange={setObservationInstant}
+        environment={environment}
         canDoorway={doorwayOpening !== null}
       />
       <ScenePaneShell mode={nav.mode}>
@@ -320,7 +353,8 @@ export function WebGPUSceneView() {
           revealInterior={nav.revealInterior}
           userControlled={nav.userControlled}
           onUserControl={nav.markUserControlled}
-          colorTemperatureK={colorTemperatureK}
+          environment={environment}
+          site={site}
           onProxyPositions={setPositions}
           opening={doorwayOpening}
           presetRequest={nav.presetRequest}

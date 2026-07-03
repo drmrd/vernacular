@@ -564,7 +564,7 @@ export { solarPosition } from './environment/solar-position'
 export { utcOffsetMinutesFor } from './environment/timezone-offset'
 export { sunWorldDirection } from './environment/sun-world-direction'
 export type { SkyLighting } from './environment/sky-model'
-export { skyLighting } from './environment/sky-model'
+export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
 export type {
   EnvironmentLighting,
   EnvironmentLightingInput,

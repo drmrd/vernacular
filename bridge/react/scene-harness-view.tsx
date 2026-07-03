@@ -2,6 +2,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  DEFAULT_OBSERVATION_INSTANT,
   furnitureFootprintCorners,
   type Bounds3,
   type FurnitureSceneNode,
@@ -215,6 +216,26 @@ function StaticFrame({ bounds }: { bounds: Bounds3 | null }) {
   return null
 }
 
+// The harness pins the schematic lighting default (realistic off, no site); a
+// realistic-mode fixture lands with the harness-params cycle.
+function HarnessLighting({
+  colorTemperatureK,
+  bounds,
+}: {
+  colorTemperatureK: number
+  bounds: Bounds3 | null
+}) {
+  return (
+    <SceneLighting
+      colorTemperatureK={colorTemperatureK}
+      bounds={bounds}
+      realistic={false}
+      site={undefined}
+      observedAt={DEFAULT_OBSERVATION_INSTANT}
+    />
+  )
+}
+
 /**
  * A deterministic, test-only three-dimensional render harness. It boots the same
  * scene-plus-basic-lighting pipeline production uses against a fixed wall-shell fixture,
@@ -257,7 +278,7 @@ export function SceneHarnessView({
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
         <primitive object={root} />
-        <SceneLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
+        <HarnessLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
         <StaticFrame bounds={bounds} />
       </Canvas>
     </div>

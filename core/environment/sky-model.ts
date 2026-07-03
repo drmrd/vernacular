@@ -12,6 +12,12 @@ export interface SkyLighting {
   skyColor: LinearRgb
 }
 
+/**
+ * The cloud-cover fraction the solar path assumes until weather lands: a clear sky.
+ * The slice-1b weather layer owns a real cloud-cover control.
+ */
+export const DEFAULT_CLOUD_COVER = 0
+
 /** Direct sun tint with the sun on the horizon: strongly reddened by the long air path. */
 const HORIZON_SUN_TINT: LinearRgb = { r: 1, g: 0.55, b: 0.25 }
 /** Direct sun tint with the sun overhead: near-white with a faint residual warmth. */
