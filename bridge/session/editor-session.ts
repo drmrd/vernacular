@@ -3,11 +3,13 @@ import {
   Dispatcher,
   createSceneGraphDeriver,
   registerDimensionCommands,
+  registerEnvironmentSceneCommands,
   registerFurnitureCommands,
   registerOpeningCommands,
   registerPaintCommands,
   registerProjectCommands,
   registerRoomCommands,
+  registerSiteCommands,
   registerStairCommands,
   registerTransformCommands,
   registerUnderlayCommands,
@@ -95,6 +97,8 @@ function createCommandRegistry(): CommandRegistry<Project> {
   registerStairCommands(registry)
   registerTransformCommands(registry)
   registerPaintCommands(registry)
+  registerSiteCommands(registry)
+  registerEnvironmentSceneCommands(registry)
   return registry
 }
 

@@ -545,6 +545,14 @@ export {
   MAX_COLOR_TEMPERATURE_K,
   DEFAULT_COLOR_TEMPERATURE_K,
 } from './color/color-temperature'
+export type { ObservationInstant } from './environment/observation-time'
+export {
+  DEFAULT_OBSERVATION_INSTANT,
+  MINUTES_PER_DAY,
+  formatObservationDateTime,
+  observationInstantToIso,
+  parseObservationInstant,
+} from './environment/observation-time'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
@@ -598,18 +606,36 @@ export type {
   RemoveObstructionParams,
   SetSiteLocationParams,
   SetSiteNorthBearingParams,
+  SetSiteTimezoneParams,
 } from './commands/handlers/site-commands'
 export {
   ADD_OBSTRUCTION,
   REMOVE_OBSTRUCTION,
   SET_SITE_LOCATION,
   SET_SITE_NORTH_BEARING,
+  SET_SITE_TIMEZONE,
   addObstruction,
   registerSiteCommands,
   removeObstruction,
   setSiteLocation,
   setSiteNorthBearing,
+  setSiteTimezone,
 } from './commands/handlers/site-commands'
+export type { EnvironmentScene, WeatherConditions } from './model/environment-scene'
+export type {
+  AddEnvironmentSceneParams,
+  RemoveEnvironmentSceneParams,
+  RenameEnvironmentSceneParams,
+} from './commands/handlers/environment-scene-commands'
+export {
+  ADD_ENVIRONMENT_SCENE,
+  REMOVE_ENVIRONMENT_SCENE,
+  RENAME_ENVIRONMENT_SCENE,
+  addEnvironmentScene,
+  registerEnvironmentSceneCommands,
+  removeEnvironmentScene,
+  renameEnvironmentScene,
+} from './commands/handlers/environment-scene-commands'
 export {
   createDocumentValidator,
   createLoadValidationGate,

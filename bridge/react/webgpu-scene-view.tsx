@@ -2,8 +2,10 @@ import { Canvas } from '@react-three/fiber'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  DEFAULT_OBSERVATION_INSTANT,
   type Bounds3,
   type CameraPose,
+  type ObservationInstant,
   type OpeningSceneNode,
   type Point,
   type SceneGraph,
@@ -79,6 +81,16 @@ function useSceneNavigation() {
 function useColorTemperature() {
   const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
   return { colorTemperatureK, setColorTemperatureK }
+}
+
+// Per-view observation date/time session state, held in the view component (foundation
+// section 5.3), never in the model or undo. It feeds the toolbar readout and, once wired in
+// a later slice, the solar lighting. This slice does not drive lighting from it.
+function useObservationDateTime() {
+  const [observationInstant, setObservationInstant] = useState<ObservationInstant>(
+    DEFAULT_OBSERVATION_INSTANT,
+  )
+  return { observationInstant, setObservationInstant }
 }
 
 // A short, stable label per selectable entity for the accessibility proxies, derived from
@@ -270,6 +282,7 @@ export function WebGPUSceneView() {
     applyPreset,
   } = useSceneNavigation()
   const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+  const { observationInstant, setObservationInstant } = useObservationDateTime()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
   const doorwayOpening = useDoorwayOpening(graph.openings, selectedIds)
 
@@ -285,6 +298,8 @@ export function WebGPUSceneView() {
         onReset={resetView}
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={setColorTemperatureK}
+        observationInstant={observationInstant}
+        onObservationChange={setObservationInstant}
         onPreset={applyPreset}
         canDoorway={doorwayOpening !== null}
         scope={buildingView.scope}

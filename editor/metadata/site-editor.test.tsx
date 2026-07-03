@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import {
   setSiteLocation,
   setSiteNorthBearing,
+  setSiteTimezone,
   type Command,
   type SetSiteNorthBearingParams,
   type Site,
@@ -93,5 +94,17 @@ describe('SiteEditor', () => {
     await user.type(latitude, '40{Enter}')
 
     expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('dispatches setSiteTimezone on commit', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={{}} dispatch={dispatch} />)
+
+    await user.type(screen.getByLabelText(/timezone/i), 'America/New_York{Enter}')
+
+    const command = dispatch.mock.calls.at(-1)?.[0]
+    expect(command?.type).toBe(setSiteTimezone('America/New_York').type)
+    expect(command?.params).toEqual({ timezone: 'America/New_York' })
   })
 })

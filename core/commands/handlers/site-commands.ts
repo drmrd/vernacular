@@ -42,6 +42,22 @@ const setSiteNorthBearingHandler: CommandHandler<Project, SetSiteNorthBearingPar
   },
 }
 
+export const SET_SITE_TIMEZONE = 'site/set-timezone'
+
+export interface SetSiteTimezoneParams {
+  timezone: string
+}
+
+export function setSiteTimezone(timezone: string): Command<SetSiteTimezoneParams> {
+  return { type: SET_SITE_TIMEZONE, params: { timezone }, description: 'Set site timezone' }
+}
+
+const setSiteTimezoneHandler: CommandHandler<Project, SetSiteTimezoneParams> = {
+  apply(state, params) {
+    state.site = { ...state.site, timezone: params.timezone }
+  },
+}
+
 export const ADD_OBSTRUCTION = 'site/add-obstruction'
 
 export interface AddObstructionParams {
@@ -93,6 +109,7 @@ export function registerSiteCommands(registry: CommandRegistry<Project>): Comman
   return registry
     .register(SET_SITE_LOCATION, setSiteLocationHandler)
     .register(SET_SITE_NORTH_BEARING, setSiteNorthBearingHandler)
+    .register(SET_SITE_TIMEZONE, setSiteTimezoneHandler)
     .register(ADD_OBSTRUCTION, addObstructionHandler)
     .register(REMOVE_OBSTRUCTION, removeObstructionHandler)
 }

@@ -50,6 +50,12 @@ export const UNCOVERED_COMPONENTS: {
       'root editor-session context provider; it only has meaning wrapping the full editor and scene tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'EnvironmentControls',
+    file: 'bridge/react/environment-controls.tsx',
+    reason:
+      'the environment control group (color-temperature slider and observation date and time scrubber) split out of scene-nav-toolbar.tsx to keep that module under its size budget; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'FurnitureModelSignals',
     file: 'bridge/react/furniture-model-signals.tsx',
     reason:

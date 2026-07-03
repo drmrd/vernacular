@@ -408,4 +408,15 @@ describe('EditorShell', () => {
     expect(screen.getByRole('navigation', { name: /floors/i })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: /inspector/i })).toBeInTheDocument()
   })
+
+  it('mounts the site editor in the tool rail', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    // The Timezone field is unique to the SiteEditor among the rail panels, so it is a
+    // reliable marker that the site editor is mounted and the project's site fields are
+    // editable from the shell.
+    expect(screen.getByLabelText(/timezone/i)).toBeInTheDocument()
+  })
 })
