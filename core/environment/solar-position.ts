@@ -50,6 +50,12 @@ function clampCosine(value: number): number {
   return Math.min(1, Math.max(-1, value))
 }
 
+/**
+ * How close `|cos(zenith)|` may get to 1 before the sun counts as directly
+ * overhead or underfoot, where the azimuth denominator `sin(zenith)` vanishes.
+ */
+const ZENITH_ALIGNMENT_COSINE_EPSILON = 1e-12
+
 interface SunGeometry {
   readonly declinationDegrees: number
   readonly equationOfTimeMinutes: number
@@ -136,7 +142,12 @@ function hourAngleDegrees(trueSolarTime: number): number {
   return degrees < -HALF_TURN_DEGREES ? degrees + FULL_TURN_DEGREES : degrees
 }
 
-/** Resolves the horizontal-frame angles from latitude, declination, and hour angle (degrees). */
+/**
+ * Resolves the horizontal-frame angles from latitude, declination, and hour
+ * angle (degrees). When the sun sits at the zenith or nadir the azimuth is
+ * conventionally undefined; this returns 0 (true north) for stability instead
+ * of dividing by the vanishing `sin(zenith)`.
+ */
 function horizontalAngles(
   latitudeDegrees: number,
   declinationDegrees: number,
@@ -144,10 +155,14 @@ function horizontalAngles(
 ): SolarAngles {
   const latitude = toRadians(latitudeDegrees)
   const declination = toRadians(declinationDegrees)
-  const zenithCosine =
+  const zenithCosine = clampCosine(
     Math.sin(latitude) * Math.sin(declination) +
-    Math.cos(latitude) * Math.cos(declination) * Math.cos(toRadians(hourAngle))
-  const zenith = Math.acos(clampCosine(zenithCosine))
+      Math.cos(latitude) * Math.cos(declination) * Math.cos(toRadians(hourAngle)),
+  )
+  const zenith = Math.acos(zenithCosine)
+  if (1 - Math.abs(zenithCosine) < ZENITH_ALIGNMENT_COSINE_EPSILON) {
+    return { azimuth: 0, altitude: QUARTER_TURN_RADIANS - zenith }
+  }
   const azimuthCosine =
     (Math.sin(latitude) * Math.cos(zenith) - Math.sin(declination)) /
     (Math.cos(latitude) * Math.sin(zenith))
@@ -163,7 +178,9 @@ function horizontalAngles(
  * Computes the sun's direction for a site and a civil observation instant using
  * the NOAA solar calculator formulas. Returns radians: azimuth clockwise from
  * true north, and geometric altitude above the horizon with no
- * atmospheric-refraction correction (negative once the sun has set).
+ * atmospheric-refraction correction (negative once the sun has set). With the
+ * sun effectively at the zenith or nadir the azimuth is undefined, and this
+ * function returns 0 by convention.
  */
 export function solarPosition(input: SolarPositionInput): SolarAngles {
   const utcMinutesSinceMidnight = input.observedAt.minutesSinceMidnight - input.utcOffsetMinutes
