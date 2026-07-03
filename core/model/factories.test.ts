@@ -106,8 +106,8 @@ describe('createFloor dimensions', () => {
 })
 
 describe('CURRENT_SCHEMA_VERSION', () => {
-  it('is 15', () => {
-    expect(CURRENT_SCHEMA_VERSION).toBe(15)
+  it('is 16', () => {
+    expect(CURRENT_SCHEMA_VERSION).toBe(16)
   })
 })
 
