@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 
+import type { Bounds3, EnvironmentLighting } from '../../core'
 import type { LightingProvider } from './lighting-provider'
 
 /** Pure white light; the color-temperature tint is applied at the material in a later phase. */
@@ -38,5 +39,12 @@ export class BasicLightingProvider implements LightingProvider {
     sun.shadow.bias = SHADOW_BIAS
     const fill = new THREE.HemisphereLight(WHITE, GROUND_FILL, FILL_INTENSITY)
     scene.add(sun, fill)
+  }
+
+  /** The schematic rig is static by design, so environment updates change nothing. */
+  update(_scene: THREE.Object3D, _lighting: EnvironmentLighting, _bounds: Bounds3 | null): void {
+    void _scene
+    void _lighting
+    void _bounds
   }
 }
