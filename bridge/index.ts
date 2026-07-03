@@ -63,3 +63,12 @@ export {
 } from './react/surface-selection-context'
 export type { SurfaceSelectionProviderProps } from './react/surface-selection-provider'
 export { SurfaceSelectionProvider } from './react/surface-selection-provider'
+export type { EnvironmentSessionStore } from './environment/environment-session-store'
+export { createEnvironmentSessionStore } from './environment/environment-session-store'
+export {
+  EnvironmentSessionContext,
+  useEnvironmentSessionStore,
+  useEnvironmentSession,
+} from './react/environment-session-context'
+export type { EnvironmentSessionProviderProps } from './react/environment-session-provider'
+export { EnvironmentSessionProvider } from './react/environment-session-provider'
