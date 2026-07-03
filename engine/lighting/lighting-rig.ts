@@ -64,6 +64,17 @@ export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): L
   return { sun, fill }
 }
 
+/**
+ * Tears down a rig a provider built with `buildLightingRig`: removes its two lights from
+ * the scene and disposes each, freeing GPU resources. `dispose()` on the sun is what frees
+ * its shadow map, so a provider must call this rather than just detaching the lights.
+ */
+export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): void {
+  scene.remove(rig.sun, rig.fill)
+  rig.sun.dispose()
+  rig.fill.dispose()
+}
+
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */
 export function findSun(scene: THREE.Object3D): THREE.DirectionalLight | undefined {
   return scene.children.find(

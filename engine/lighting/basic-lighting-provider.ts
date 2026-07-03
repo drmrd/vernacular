@@ -2,7 +2,12 @@ import type * as THREE from 'three'
 
 import type { Bounds3, EnvironmentLighting } from '../../core'
 import type { LightingProvider } from './lighting-provider'
-import { buildLightingRig, DAYLIGHT_SUN_INTENSITY, type LightingRig } from './lighting-rig'
+import {
+  buildLightingRig,
+  DAYLIGHT_SUN_INTENSITY,
+  disposeLightingRig,
+  type LightingRig,
+} from './lighting-rig'
 
 /** MVP lighting: one directional sun at a fixed angle plus a hemisphere fill. */
 export class BasicLightingProvider implements LightingProvider {
@@ -21,9 +26,7 @@ export class BasicLightingProvider implements LightingProvider {
 
   dispose(scene: THREE.Object3D): void {
     if (this.rig === null) return
-    scene.remove(this.rig.sun, this.rig.fill)
-    this.rig.sun.dispose()
-    this.rig.fill.dispose()
+    disposeLightingRig(scene, this.rig)
     this.rig = null
   }
 }

@@ -6,6 +6,7 @@ import type { LightingProvider } from './lighting-provider'
 import {
   buildLightingRig,
   DAYLIGHT_SUN_INTENSITY,
+  disposeLightingRig,
   findSun,
   fitSunShadowToDirection,
   setSunAndSkyColor,
@@ -46,9 +47,7 @@ export class SolarLightingProvider implements LightingProvider {
 
   dispose(scene: THREE.Object3D): void {
     if (this.rig === null) return
-    scene.remove(this.rig.sun, this.rig.fill)
-    this.rig.sun.dispose()
-    this.rig.fill.dispose()
+    disposeLightingRig(scene, this.rig)
     this.rig = null
   }
 }
