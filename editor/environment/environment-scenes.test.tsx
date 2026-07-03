@@ -56,6 +56,63 @@ describe('EnvironmentScenes saving the current conditions', () => {
   })
 })
 
+describe('EnvironmentScenes requiring a non-blank name to save a scene', () => {
+  it('does not dispatch when Save scene is pressed with an empty name', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /save scene/i }))
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('does not dispatch when Save scene is pressed with a whitespace-only name', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/scene name/i), '   ')
+    await user.click(screen.getByRole('button', { name: /save scene/i }))
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('trims surrounding whitespace from the name before saving', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/scene name/i), '  Winter dusk  ')
+    await user.click(screen.getByRole('button', { name: /save scene/i }))
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = dispatch.mock.calls[0]?.[0] as AddEnvironmentSceneCommand
+    expect(command.params.scene.name).toBe('Winter dusk')
+  })
+})
+
 describe('EnvironmentScenes applying a saved scene', () => {
   it('calls onEnvironmentChange with the scene instant and cloud cover, leaving mode and colorCheck untouched, when Apply is pressed', async () => {
     const environment: EnvironmentState = {
