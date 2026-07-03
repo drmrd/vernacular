@@ -28,13 +28,17 @@ interface SaveSceneFormProps {
 // freshly generated id (the factories convention) and dispatched to the model.
 function SaveSceneForm({ environment, dispatch }: SaveSceneFormProps): ReactElement {
   const [name, setName] = useState('')
+  const trimmedName = name.trim()
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setName(event.target.value)
   }
   const handleSave = () => {
+    if (trimmedName === '') {
+      return
+    }
     const scene = captureEnvironmentScene(environment, {
       id: globalThis.crypto.randomUUID(),
-      name,
+      name: trimmedName,
     })
     dispatch(addEnvironmentScene(scene))
     setName('')
@@ -44,7 +48,7 @@ function SaveSceneForm({ environment, dispatch }: SaveSceneFormProps): ReactElem
       <Field htmlFor={SCENE_NAME_INPUT_ID} label="Scene name">
         <input id={SCENE_NAME_INPUT_ID} type="text" value={name} onChange={handleChange} />
       </Field>
-      <Button type="button" onClick={handleSave}>
+      <Button type="button" onClick={handleSave} disabled={trimmedName === ''}>
         Save scene
       </Button>
     </Stack>
