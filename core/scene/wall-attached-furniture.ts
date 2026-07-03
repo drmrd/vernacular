@@ -12,9 +12,6 @@ import type { FurnitureSceneNode, WallSceneNode } from './scene-graph'
  */
 export const WALL_ATTACHMENT_TOLERANCE_MM = 100
 
-/** Halves a wall's thickness to reach a face from its centerline. */
-const HALF = 2
-
 /** The plan-space geometry of one wall: its centerline endpoints and thickness. */
 export interface WallPlanSegment {
   start: Point
@@ -34,7 +31,7 @@ export function furnitureAttachedToWall(
   wall: WallPlanSegment,
   tolerance: number = WALL_ATTACHMENT_TOLERANCE_MM,
 ): boolean {
-  const reach = wall.thickness / HALF + tolerance
+  const reach = wall.thickness / 2 + tolerance
   if (footprintCorners.some((corner) => pointOnSegment(corner, wall.start, wall.end, reach))) {
     return true
   }

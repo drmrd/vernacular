@@ -219,12 +219,11 @@ function wallFacingMap(root: THREE.Object3D, exterior: ExteriorWall[]): Map<stri
 /**
  * The entity id a built furniture group carries: the raw instance id, with the
  * `furniture:` node prefix stripped (the furniture-builder convention, unlike walls
- * and openings whose groups carry the full node id).
+ * and openings whose groups carry the full node id). Furniture node ids always
+ * carry the prefix, so the slice is unconditional, matching the builders.
  */
 function furnitureEntityId(nodeId: string): string {
-  return nodeId.startsWith(FURNITURE_NODE_PREFIX)
-    ? nodeId.slice(FURNITURE_NODE_PREFIX.length)
-    : nodeId
+  return nodeId.slice(FURNITURE_NODE_PREFIX.length)
 }
 
 /**
