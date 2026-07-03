@@ -570,6 +570,16 @@ export type {
   EnvironmentLightingInput,
 } from './environment/environment-lighting'
 export { computeEnvironmentLighting } from './environment/environment-lighting'
+export type {
+  LightingMode,
+  EnvironmentState,
+  EnvironmentSceneIdentity,
+} from './environment/environment-state'
+export {
+  DEFAULT_ENVIRONMENT_STATE,
+  captureEnvironmentScene,
+  applyEnvironmentScene,
+} from './environment/environment-state'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
