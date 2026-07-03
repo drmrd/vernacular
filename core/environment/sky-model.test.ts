@@ -22,7 +22,17 @@ const DESCENDING_ALTITUDES_THROUGH_HORIZON_BAND = [
 ]
 
 const CLEAR_SKY = 0
+const LIGHT_CLOUD_COVER = 0.3
 const HEAVY_OVERCAST = 0.9
+const FULL_OVERCAST = 1
+// Cloud cover values a thickening sky passes through, in order.
+const ASCENDING_CLOUD_COVER_SEQUENCE = [0, 0.25, 0.5, 0.75, 1]
+// Full overcast must leave at most this fraction of the clear-sky sunIntensity,
+// so the direct beam (and the crisp shadows it casts) is effectively gone.
+const OVERCAST_SUN_INTENSITY_FRACTION_LIMIT = 0.05
+// Light cloud must keep at least this fraction of the clear-sky sunIntensity,
+// pinning the convex attenuation curve's mild low-cloud-cover response.
+const LIGHT_CLOUD_INTENSITY_RETENTION_MINIMUM = 0.9
 
 // Near-white means the brightest channel exceeds the dimmest by at most 15%.
 const NEAR_WHITE_CHANNEL_RATIO = 1.15
@@ -114,5 +124,30 @@ describe('skyLighting', () => {
     const clear = skyLighting(MODERATE_SUN_ALTITUDE, CLEAR_SKY)
     const overcast = skyLighting(MODERATE_SUN_ALTITUDE, HEAVY_OVERCAST)
     expect(luminance(overcast.skyColor)).toBeLessThanOrEqual(luminance(clear.skyColor))
+  })
+
+  it('extinguishes sunIntensity once the sky is fully overcast', () => {
+    const clear = skyLighting(MODERATE_SUN_ALTITUDE, CLEAR_SKY)
+    const overcast = skyLighting(MODERATE_SUN_ALTITUDE, FULL_OVERCAST)
+    expect(overcast.sunIntensity).toBeLessThan(
+      clear.sunIntensity * OVERCAST_SUN_INTENSITY_FRACTION_LIMIT,
+    )
+  })
+
+  it('never lets sunIntensity rise as cloud cover thickens at a fixed altitude', () => {
+    let previousIntensity = Number.POSITIVE_INFINITY
+    for (const cloudCover of ASCENDING_CLOUD_COVER_SEQUENCE) {
+      const { sunIntensity } = skyLighting(MODERATE_SUN_ALTITUDE, cloudCover)
+      expect(sunIntensity).toBeLessThan(previousIntensity)
+      previousIntensity = sunIntensity
+    }
+  })
+
+  it('barely dims sunIntensity under light cloud cover', () => {
+    const clear = skyLighting(MODERATE_SUN_ALTITUDE, CLEAR_SKY)
+    const lightCloud = skyLighting(MODERATE_SUN_ALTITUDE, LIGHT_CLOUD_COVER)
+    expect(lightCloud.sunIntensity).toBeGreaterThanOrEqual(
+      clear.sunIntensity * LIGHT_CLOUD_INTENSITY_RETENTION_MINIMUM,
+    )
   })
 })
