@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SceneNavToolbar } from './scene-nav-toolbar'
 import {
@@ -411,56 +411,27 @@ describe('SceneNavToolbar surface-edges toggle', () => {
     expect(onToggleEdgeOverlay).toHaveBeenCalledTimes(1)
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
   })
-})
 
-describe('SceneNavToolbar realistic-lighting toggle', () => {
-  it('renders a realistic-lighting toggle in the display-options group, off by default', () => {
+  it('holds only the surface-edges toggle now that realistic lighting lives in the environment panel', () => {
     render(<SceneNavToolbar {...baseProps} />)
 
-    const toggle = screen.getByRole('button', { name: /realistic lighting/i })
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByRole('group', { name: /display options/i })).toContainElement(toggle)
-  })
-
-  it('marks the realistic-lighting toggle pressed when realistic mode is active', () => {
-    render(<SceneNavToolbar {...baseProps} realisticLighting />)
-
-    expect(screen.getByRole('button', { name: /realistic lighting/i })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-  })
-
-  it('reports a toggle when clicked without flipping its own pressed state', async () => {
-    const onToggleRealisticLighting = vi.fn()
-    render(<SceneNavToolbar {...baseProps} onToggleRealisticLighting={onToggleRealisticLighting} />)
-
-    const toggle = screen.getByRole('button', { name: /realistic lighting/i })
-    await userEvent.click(toggle)
-
-    expect(onToggleRealisticLighting).toHaveBeenCalledTimes(1)
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    const group = screen.getByRole('group', { name: /display options/i })
+    expect(within(group).getAllByRole('button')).toHaveLength(1)
   })
 })
 
-describe('SceneNavToolbar observation datetime', () => {
-  it('shows the observation datetime and reports changes parsed to an instant', () => {
-    const onObservationChange = vi.fn()
-    render(
-      <SceneNavToolbar
-        {...baseProps}
-        observationInstant={{ date: '2026-06-21', minutesSinceMidnight: 720 }}
-        onObservationChange={onObservationChange}
-      />,
-    )
+describe('SceneNavToolbar without the realistic-lighting control', () => {
+  it('renders no realistic-lighting button now that it lives in the environment panel', () => {
+    render(<SceneNavToolbar {...baseProps} />)
 
-    const input = screen.getByLabelText(/observation date and time/i)
-    expect(input).toHaveValue('2026-06-21T12:00')
+    expect(screen.queryByRole('button', { name: /realistic lighting/i })).toBeNull()
+  })
+})
 
-    fireEvent.change(input, { target: { value: '2026-12-04T16:00' } })
-    expect(onObservationChange).toHaveBeenCalledWith({
-      date: '2026-12-04',
-      minutesSinceMidnight: 960,
-    })
+describe('SceneNavToolbar without the observation scrubber', () => {
+  it('renders no observation date-and-time control now that it lives in the environment panel', () => {
+    render(<SceneNavToolbar {...baseProps} />)
+
+    expect(screen.queryByLabelText(/observation date and time/i)).toBeNull()
   })
 })
