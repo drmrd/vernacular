@@ -56,6 +56,12 @@ export const UNCOVERED_COMPONENTS: {
       'the environment control group (color-temperature slider and observation date and time scrubber) split out of scene-nav-toolbar.tsx to keep that module under its size budget; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
   },
   {
+    component: 'EnvironmentSessionProvider',
+    file: 'bridge/react/environment-session-provider.tsx',
+    reason:
+      'environment-session context provider that only has meaning wrapping the tool rail and the scene view; an isolated browser-mode story is not feasible, so it is a permanent allowlist candidate (see ADR-0111).',
+  },
+  {
     component: 'FurnitureModelSignals',
     file: 'bridge/react/furniture-model-signals.tsx',
     reason:
@@ -220,6 +226,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/shell/scene-pane.tsx',
     reason:
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'ToolRail',
+    file: 'editor/shell/tool-rail.tsx',
+    reason:
+      'assembles the tool rail from the editor-session, scene-graph, active-floor, active-tool, and environment-session contexts; it requires the full editor provider tree, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
 
   // --- editor/tools -------------------------------------------------------

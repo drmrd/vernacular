@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import type { Bounds3, EnvironmentLighting } from '../../core'
 import { SolarLightingProvider } from './solar-lighting-provider'
+import { DAYLIGHT_SUN_INTENSITY } from './lighting-rig'
 
 // Fabricated environments: a deliberately loud warm sun under a cool sky. The
 // solar math that would produce real values is core-tested; here we only care
@@ -10,9 +11,10 @@ const overheadSunLighting: EnvironmentLighting = {
   sunDirection: { x: 0, y: 1, z: 0 },
   sunColor: { r: 1, g: 0.5, b: 0.25 },
   skyColor: { r: 0.2, g: 0.4, b: 0.9 },
-  sunUp: true,
+  sunIntensity: 1,
 }
-const sunDownLighting: EnvironmentLighting = { ...overheadSunLighting, sunUp: false }
+const duskSunLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0.5 }
+const sunDownLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0 }
 
 const bounds: Bounds3 = { min: { x: 0, y: 0, z: 0 }, max: { x: 4000, y: 2600, z: 3000 } }
 const boundsRadius = Math.hypot(4000, 2600, 3000) / 2
@@ -57,7 +59,18 @@ describe('SolarLightingProvider', () => {
     expect(sky.color.r).toBeCloseTo(0.2, precision)
     expect(sky.color.g).toBeCloseTo(0.4, precision)
     expect(sky.color.b).toBeCloseTo(0.9, precision)
-    expect(sun.intensity).toBeGreaterThan(0)
+    expect(sun.intensity).toBeCloseTo(DAYLIGHT_SUN_INTENSITY, precision)
+  })
+
+  it('scales the sun intensity by the environment sunIntensity fraction', () => {
+    const scene = new THREE.Scene()
+    const provider = new SolarLightingProvider()
+    provider.apply(scene)
+
+    provider.update(scene, duskSunLighting, bounds)
+
+    const precision = 5
+    expect(findSun(scene).intensity).toBeCloseTo(DAYLIGHT_SUN_INTENSITY * 0.5, precision)
   })
 
   it('dims the direct sun to near zero when the sun is down, keeping the sky lit', () => {

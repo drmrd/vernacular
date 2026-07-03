@@ -38,7 +38,6 @@ export { SolarLightingProvider } from './lighting/solar-lighting-provider'
 export {
   setLightingColor,
   setSunAndSkyColor,
-  removeLighting,
   fitSunShadowToBounds,
   fitSunShadowToDirection,
 } from './lighting/lighting-rig'
@@ -46,6 +45,7 @@ export type { RenderBackend } from './renderer/detect-backend'
 export { detectRenderBackend } from './renderer/detect-backend'
 export type { SceneRendererOptions } from './renderer/create-renderer'
 export { createSceneRenderer } from './renderer/create-renderer'
+export { applyToneMappingOperator } from './renderer/tone-mapping'
 export type { MaterialProvider, SurfaceRole } from './materials/material-provider'
 export { NeutralMaterialProvider } from './materials/neutral-material-provider'
 export type { PaintMaterialOptions } from './materials/paint-material-provider'

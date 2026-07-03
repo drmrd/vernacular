@@ -556,6 +556,7 @@ export {
   DEFAULT_OBSERVATION_INSTANT,
   MINUTES_PER_DAY,
   formatObservationDateTime,
+  isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
 } from './environment/observation-time'
@@ -570,6 +571,19 @@ export type {
   EnvironmentLightingInput,
 } from './environment/environment-lighting'
 export { computeEnvironmentLighting } from './environment/environment-lighting'
+export type {
+  LightingMode,
+  EnvironmentState,
+  EnvironmentSceneIdentity,
+} from './environment/environment-state'
+export {
+  DEFAULT_ENVIRONMENT_STATE,
+  captureEnvironmentScene,
+  applyEnvironmentScene,
+} from './environment/environment-state'
+export { NEUTRAL_REFERENCE_WHITE, colorCheckLighting } from './environment/color-check'
+export type { ToneMappingOperator } from './environment/tone-mapping'
+export { toneMappingOperatorFor } from './environment/tone-mapping'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'

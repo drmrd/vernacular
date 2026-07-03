@@ -45,6 +45,21 @@ export function observationInstantToIso(instant: ObservationInstant): string {
   return `${instant.date}T${twoDigits(hours)}:${twoDigits(minutes)}`
 }
 
+// The exact shape `observationInstantToIso` produces and `parseObservationInstant`
+// expects: `YYYY-MM-DDThh:mm`. Owned here so every caller that needs to guard the
+// parse boundary (a UI input, a future importer, ...) validates against the domain's
+// own contract instead of re-deriving the shape itself.
+const OBSERVATION_INSTANT_ISO_SHAPE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+
+/**
+ * Reports whether `value` has the exact `YYYY-MM-DDThh:mm` shape `parseObservationInstant`
+ * expects. `parseObservationInstant` itself stays non-validating (it tolerates and
+ * defaults malformed input) so callers that need a hard boundary check here first.
+ */
+export function isObservationInstantIso(value: string): boolean {
+  return OBSERVATION_INSTANT_ISO_SHAPE.test(value)
+}
+
 /** Parses an ISO 8601 civil datetime `YYYY-MM-DDThh:mm` back into an `ObservationInstant`. */
 export function parseObservationInstant(iso: string): ObservationInstant {
   const [date = '', time = ''] = iso.split('T')

@@ -38,11 +38,22 @@ const MIN_SHADOW_NEAR = 1
 const SUN_DIRECTION_NORMALIZED = SUN_DIRECTION.clone().normalize()
 
 /**
+ * The lights a single rig owns. A provider keeps this reference from `apply` so it can
+ * dispose exactly what it built, rather than rediscovering lights by instanceof scans as
+ * the rig grows (a moon sun, non-rig light types).
+ */
+export interface LightingRig {
+  sun: THREE.DirectionalLight
+  fill: THREE.HemisphereLight
+}
+
+/**
  * Builds the rig and adds it to the scene: a shadow-casting directional sun aimed along
  * SUN_DIRECTION plus a hemisphere fill. Providers own the sun's intensity policy, so it
- * arrives as a parameter; everything else about the rig is shared.
+ * arrives as a parameter; everything else about the rig is shared. Returns the lights so
+ * the caller can dispose them by reference.
  */
-export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): void {
+export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): LightingRig {
   const sun = new THREE.DirectionalLight(WHITE, sunIntensity)
   sun.position.copy(SUN_DIRECTION)
   sun.castShadow = true
@@ -50,6 +61,18 @@ export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): v
   sun.shadow.bias = SHADOW_BIAS
   const fill = new THREE.HemisphereLight(WHITE, GROUND_FILL, FILL_INTENSITY)
   scene.add(sun, fill)
+  return { sun, fill }
+}
+
+/**
+ * Tears down a rig a provider built with `buildLightingRig`: removes its two lights from
+ * the scene and disposes each, freeing GPU resources. `dispose()` on the sun is what frees
+ * its shadow map, so a provider must call this rather than just detaching the lights.
+ */
+export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): void {
+  scene.remove(rig.sun, rig.fill)
+  rig.sun.dispose()
+  rig.fill.dispose()
 }
 
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */
@@ -59,25 +82,9 @@ export function findSun(scene: THREE.Object3D): THREE.DirectionalLight | undefin
   )
 }
 
-function isRigLight(
-  child: THREE.Object3D,
-): child is THREE.DirectionalLight | THREE.HemisphereLight {
-  return child instanceof THREE.DirectionalLight || child instanceof THREE.HemisphereLight
-}
-
 /** Tints the sun and the hemisphere sky to a linear-light color. */
 export function setLightingColor(scene: THREE.Object3D, color: LinearRgb): void {
   setSunAndSkyColor(scene, color, color)
-}
-
-/** Removes the rig's lights so a remount re-applies cleanly rather than stacking them. */
-export function removeLighting(scene: THREE.Object3D): void {
-  // Snapshot the targets before removing, so the removal does not mutate the array
-  // being iterated.
-  const lights = scene.children.filter(isRigLight)
-  for (const light of lights) {
-    scene.remove(light)
-  }
 }
 
 /**
@@ -96,6 +103,13 @@ export function setSunAndSkyColor(
       child.color.setRGB(skyColor.r, skyColor.g, skyColor.b, THREE.LinearSRGBColorSpace)
     }
   }
+}
+
+/** Sets the sun's intensity directly, e.g. to fade it toward the horizon or extinguish it below. */
+export function setSunIntensity(scene: THREE.Object3D, intensity: number): void {
+  const sun = findSun(scene)
+  if (sun === undefined) return
+  sun.intensity = intensity
 }
 
 /**

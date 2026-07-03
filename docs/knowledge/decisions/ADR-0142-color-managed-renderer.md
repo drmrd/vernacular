@@ -18,6 +18,7 @@ related:
   [
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
     decisions/ADR-0079-three-dimensional-lighting-legibility,
+    decisions/ADR-0147-per-mode-tone-mapping,
   ]
 sourceFiles:
   [docs/specs/2026-07-01-realistic-environmental-lighting.md, engine/renderer/create-renderer.ts]
@@ -62,8 +63,10 @@ import is added, so the WebGPU build stays out of the test and server import gra
 why that import is lazy in the first place.
 
 A new optional field, `SceneRendererOptions.toneMappingExposure`, exposes exposure to callers
-and defaults to 1. The output color space and the tone-mapping operator are fixed; only exposure
-is left configurable.
+and defaults to 1. The output color space is fixed and only exposure is left configurable.
+The tone-mapping operator was fixed when this was written; since
+[[ADR-0147-per-mode-tone-mapping]] it is chosen per lighting mode at runtime, and creation
+seeds Neutral through the same shared setter.
 
 ## Rationale
 

@@ -219,18 +219,22 @@ function StaticFrame({ bounds }: { bounds: Bounds3 | null }) {
 
 /**
  * A canonical environment override for the harness: a site, an observation instant,
- * and the realistic-lighting flag. Structurally matches the app layer's named
+ * the realistic-lighting flag, and the optional cloud-cover fraction and color-check
+ * flag that some named states set. Structurally matches the app layer's named
  * environment states without the bridge importing from app/.
  */
 export interface HarnessEnvironment {
   site: Site
   observedAt: ObservationInstant
   realistic: boolean
+  cloudCover?: number
+  colorCheck?: boolean
 }
 
-// Forwards the canonical environment override, when present, so its site and
-// observation instant drive the realistic solar provider. Without one, SceneLighting's
-// own schematic defaults apply (realistic off, no site).
+// Forwards the canonical environment override, when present, so its site,
+// observation instant, cloud cover, and color-check flag drive the realistic solar
+// provider. Without one, SceneLighting's own schematic defaults apply (realistic
+// off, no site).
 function HarnessLighting({
   colorTemperatureK,
   bounds,
@@ -247,6 +251,8 @@ function HarnessLighting({
       realistic={environment?.realistic}
       site={environment?.site}
       observedAt={environment?.observedAt}
+      cloudCover={environment?.cloudCover}
+      colorCheck={environment?.colorCheck}
     />
   )
 }

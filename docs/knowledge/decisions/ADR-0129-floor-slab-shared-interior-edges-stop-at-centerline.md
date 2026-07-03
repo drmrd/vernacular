@@ -18,7 +18,7 @@ sourceFiles:
     core/geometry/polygon.ts,
     engine/scene/room-builder.ts,
   ]
-status: accepted
+status: current
 updated: 2026-06-29
 ---
 
