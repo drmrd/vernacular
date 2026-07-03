@@ -564,6 +564,11 @@ export { solarPosition } from './environment/solar-position'
 export { sunWorldDirection } from './environment/sun-world-direction'
 export type { SkyLighting } from './environment/sky-model'
 export { skyLighting } from './environment/sky-model'
+export type {
+  EnvironmentLighting,
+  EnvironmentLightingInput,
+} from './environment/environment-lighting'
+export { computeEnvironmentLighting } from './environment/environment-lighting'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'

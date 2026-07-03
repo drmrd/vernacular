@@ -1,0 +1,58 @@
+import type { LinearRgb } from '../color/oklab'
+import type { LatLong } from '../model/site'
+import type { Vector3 } from '../scene/vector3'
+import type { ObservationInstant } from './observation-time'
+import { skyLighting } from './sky-model'
+import { solarPosition } from './solar-position'
+import { sunWorldDirection } from './sun-world-direction'
+
+/** Everything the outdoor-lighting rig needs for one site, instant, and sky. */
+export interface EnvironmentLighting {
+  /** Unit world-space direction pointing from the scene toward the sun. */
+  sunDirection: Vector3
+  /** Direct sun tint in linear-light sRGB. */
+  sunColor: LinearRgb
+  /** Ambient/hemisphere sky tint in linear-light sRGB. */
+  skyColor: LinearRgb
+  /** Whether the sun's geometric altitude is strictly above the horizon. */
+  sunUp: boolean
+}
+
+/** The site, civil observation instant, and weather that drive the lighting. */
+export interface EnvironmentLightingInput {
+  /** Site location in decimal degrees. */
+  latLong: LatLong
+  /** Site north bearing in radians, plan-up to true north. */
+  northBearing: number
+  /** Offset from UTC in minutes; local civil time = UTC + this offset. */
+  utcOffsetMinutes: number
+  /** The civil date and wall-clock minutes the scene is observed at. */
+  observedAt: ObservationInstant
+  /** Cloud-cover fraction, 0 (clear) to 1 (fully overcast). */
+  cloudCover: number
+}
+
+/**
+ * Composes the full outdoor lighting state for one observation: `solarPosition`
+ * resolves the sun's horizontal-frame angles for the site and civil instant,
+ * `sunWorldDirection` rotates them through the site north bearing into the
+ * y-up world frame (ADR-0139), and `skyLighting` derives the sun and sky tints
+ * from the solar altitude and cloud cover. The sun counts as up only while its
+ * geometric altitude is strictly above the horizon. Frame and unit conventions
+ * follow those piece functions.
+ */
+export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
+  const angles = solarPosition({
+    latitude: input.latLong.latitude,
+    longitude: input.latLong.longitude,
+    observedAt: input.observedAt,
+    utcOffsetMinutes: input.utcOffsetMinutes,
+  })
+  const { sunColor, skyColor } = skyLighting(angles.altitude, input.cloudCover)
+  return {
+    sunDirection: sunWorldDirection(angles, input.northBearing),
+    sunColor,
+    skyColor,
+    sunUp: angles.altitude > 0,
+  }
+}
