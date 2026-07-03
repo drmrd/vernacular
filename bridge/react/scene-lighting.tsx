@@ -2,10 +2,12 @@ import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 
 import {
+  colorCheckLighting,
   computeEnvironmentLighting,
   DEFAULT_CLOUD_COVER,
   DEFAULT_OBSERVATION_INSTANT,
   kelvinToLinearRgb,
+  NEUTRAL_REFERENCE_WHITE,
   utcOffsetMinutesFor,
   type Bounds3,
   type ObservationInstant,
@@ -24,11 +26,14 @@ interface SceneLightingProps {
   bounds: Bounds3 | null
   // The environment props admit undefined (not just absent) so callers can forward
   // optional overrides under exactOptionalPropertyTypes; the schematic defaults
-  // (realistic off, the fixed observation instant) apply either way. A site has no
-  // default: without one the schematic provider is the only choice.
+  // (realistic off, the fixed observation instant, a clear sky, no color check) apply
+  // either way. A site has no default: without one the schematic provider is the only
+  // choice.
   realistic?: boolean | undefined
   site: Site | undefined
   observedAt?: ObservationInstant | undefined
+  cloudCover?: number | undefined
+  colorCheck?: boolean | undefined
 }
 
 interface SolarLightingUpdateInput {
@@ -36,28 +41,52 @@ interface SolarLightingUpdateInput {
   site: Site | undefined
   observedAt: ObservationInstant
   bounds: Bounds3 | null
+  cloudCover: number
+  colorCheck: boolean
 }
 
 /**
- * Drives an applied lighting rig from the site and the observation instant: computes
- * the environment lighting (a clear sky for now; the slice-1b weather layer owns cloud
- * cover) and hands it to the provider. The schematic provider's update is a no-op by
- * contract, so this runs safely in either mode; without a site location it does nothing.
+ * Drives an applied lighting rig from the site, the observation instant, and the
+ * cloud cover: computes the environment lighting and hands it to the provider, neutralized
+ * to the color-check reference white when the color check is on. The schematic provider's
+ * update is a no-op by contract, so this runs safely in either mode; without a site
+ * location it does nothing.
  */
-function useSolarLightingUpdate({ provider, site, observedAt, bounds }: SolarLightingUpdateInput) {
+function useSolarLightingUpdate({
+  provider,
+  site,
+  observedAt,
+  bounds,
+  cloudCover,
+  colorCheck,
+}: SolarLightingUpdateInput) {
   const scene = useThree((state) => state.scene)
   const { latLong, northBearing, timezone } = site ?? {}
+  const utcOffsetMinutes = useMemo(
+    () => utcOffsetMinutesFor(timezone, observedAt.date),
+    [timezone, observedAt.date],
+  )
   useLayoutEffect(() => {
     if (latLong === undefined) return
     const lighting = computeEnvironmentLighting({
       latLong,
       northBearing: northBearing ?? 0,
-      utcOffsetMinutes: utcOffsetMinutesFor(timezone, observedAt.date),
+      utcOffsetMinutes,
       observedAt,
-      cloudCover: DEFAULT_CLOUD_COVER,
+      cloudCover,
     })
-    provider.update(scene, lighting, bounds)
-  }, [provider, scene, latLong, northBearing, timezone, observedAt, bounds])
+    provider.update(scene, colorCheck ? colorCheckLighting(lighting) : lighting, bounds)
+  }, [
+    provider,
+    scene,
+    latLong,
+    northBearing,
+    utcOffsetMinutes,
+    observedAt,
+    bounds,
+    cloudCover,
+    colorCheck,
+  ])
 }
 
 /**
@@ -76,6 +105,8 @@ export function SceneLighting({
   realistic = false,
   site,
   observedAt = DEFAULT_OBSERVATION_INSTANT,
+  cloudCover = DEFAULT_CLOUD_COVER,
+  colorCheck = false,
 }: SceneLightingProps) {
   const scene = useThree((state) => state.scene)
   // Realistic mode without a site location falls back to the schematic provider; the
@@ -93,15 +124,18 @@ export function SceneLighting({
 
   useLayoutEffect(() => {
     if (solar) return
-    setLightingColor(scene, kelvinToLinearRgb(colorTemperatureK))
-  }, [solar, scene, colorTemperatureK])
+    setLightingColor(
+      scene,
+      colorCheck ? NEUTRAL_REFERENCE_WHITE : kelvinToLinearRgb(colorTemperatureK),
+    )
+  }, [solar, scene, colorTemperatureK, colorCheck])
 
   useLayoutEffect(() => {
     if (solar) return
     fitSunShadowToBounds(scene, bounds)
   }, [solar, scene, bounds])
 
-  useSolarLightingUpdate({ provider, site, observedAt, bounds })
+  useSolarLightingUpdate({ provider, site, observedAt, bounds, cloudCover, colorCheck })
 
   return null
 }

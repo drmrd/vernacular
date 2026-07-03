@@ -16,8 +16,10 @@ export interface SkyLighting {
 }
 
 /**
- * The cloud-cover fraction the solar path assumes until weather lands: a clear sky.
- * The slice-1b weather layer owns a real cloud-cover control.
+ * The cloud-cover fraction the solar path assumes when no weather is specified: a
+ * clear sky. This is the absent-weather default, not a placeholder awaiting a future
+ * weather layer; `EnvironmentState.cloudCover` and saved environment scenes carry the
+ * real, user-set value.
  */
 export const DEFAULT_CLOUD_COVER = 0
 
