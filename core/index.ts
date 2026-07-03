@@ -561,6 +561,7 @@ export {
 } from './environment/observation-time'
 export type { SolarAngles, SolarPositionInput } from './environment/solar-position'
 export { solarPosition } from './environment/solar-position'
+export { utcOffsetMinutesFor } from './environment/timezone-offset'
 export { sunWorldDirection } from './environment/sun-world-direction'
 export type { SkyLighting } from './environment/sky-model'
 export { skyLighting } from './environment/sky-model'
