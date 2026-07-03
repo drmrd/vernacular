@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { ExteriorWall, JunctionFadeGroup } from '../../core'
+import { FURNITURE_NODE_PREFIX, type ExteriorWall, type JunctionFadeGroup } from '../../core'
 
 /** Opacity of a wall the camera looks at from outside, so the interior reads through it. */
 const FADED_OPACITY = 0.1
@@ -217,11 +217,23 @@ function wallFacingMap(root: THREE.Object3D, exterior: ExteriorWall[]): Map<stri
 }
 
 /**
+ * The entity id a built furniture group carries: the raw instance id, with the
+ * `furniture:` node prefix stripped (the furniture-builder convention, unlike walls
+ * and openings whose groups carry the full node id).
+ */
+function furnitureEntityId(nodeId: string): string {
+  return nodeId.startsWith(FURNITURE_NODE_PREFIX)
+    ? nodeId.slice(FURNITURE_NODE_PREFIX.length)
+    : nodeId
+}
+
+/**
  * Builds one fade target covering every segment mesh of `wall` plus its hosted
- * openings, or none if `wall` has no facing (its mesh is absent from `root`). A split
- * wall yields several sibling meshes sharing its entity id; each is privatized so they
- * all fade together. The facing is read from the map `prepareNearWallTransparency`
- * already built, so the wall's geometry is traversed once, not again here.
+ * openings and the furniture standing against it, or none if `wall` has no facing
+ * (its mesh is absent from `root`). A split wall yields several sibling meshes
+ * sharing its entity id; each is privatized so they all fade together. The facing is
+ * read from the map `prepareNearWallTransparency` already built, so the wall's
+ * geometry is traversed once, not again here.
  */
 function buildWallTarget(
   root: THREE.Object3D,
@@ -236,14 +248,21 @@ function buildWallTarget(
     (mesh) => privatizeMeshMaterials(mesh),
   )
   materials.push(...wall.openingIds.flatMap((openingId) => cloneEntityMaterials(root, openingId)))
+  materials.push(
+    ...(wall.furnitureIds ?? []).flatMap((furnitureId) =>
+      cloneEntityMaterials(root, furnitureEntityId(furnitureId)),
+    ),
+  )
   return [{ materials, point: facing.point, outwardNormal: facing.outwardNormal }]
 }
 
 /**
- * Clones each exterior wall's materials, plus those of its hosted openings, into
- * private instances so the wall and its openings fade together while their opacity
- * animates independently of the rest of the scene. Records the world point and
- * outward normal that decide whether the camera sees the wall from outside. Walls
+ * Clones each exterior wall's materials, plus those of its hosted openings and of
+ * the furniture standing against it (`furnitureIds`, filled in by the core pairing;
+ * each piece belongs to at most one wall, so a corner piece never enrolls twice),
+ * into private instances so the wall and its dependents fade together while their
+ * opacity animates independently of the rest of the scene. Records the world point
+ * and outward normal that decide whether the camera sees the wall from outside. Walls
  * whose mesh is not found in `root` are skipped. Each junction fade group with an
  * incident exterior wall also enrolls its tagged fill mesh, privatized so holding or
  * fading one fill never pins another, by one of two paths (see {@link enrollFillMesh}):
