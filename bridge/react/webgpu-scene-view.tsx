@@ -159,38 +159,53 @@ function useDoorwayOpening(
   }, [openings, selectedIds])
 }
 
+interface SceneCameraRigProps {
+  nav: SceneNavigationState
+  framed: FramedScene
+  opening: OpeningSceneNode | null
+}
+
+// The camera behaviors of the live canvas, grouped because they all steer the one
+// default camera: the automatic model framing, the preset applier, and the orbit and
+// walk controls. The navigation state decides which control is active and whether the
+// user has taken over from the automatic framing.
+function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
+  const { root, pose, bounds } = framed
+  return (
+    <>
+      <FrameCamera bounds={bounds} active={!nav.userControlled} />
+      <PresetCamera request={nav.presetRequest} bounds={bounds} opening={opening} />
+      <OrbitCameraControls
+        enabled={nav.mode === 'orbit'}
+        target={pose.target}
+        onUserControl={nav.markUserControlled}
+      />
+      <WalkCameraControls
+        enabled={nav.mode === 'walk'}
+        onUserControl={nav.markUserControlled}
+        root={root}
+      />
+    </>
+  )
+}
+
 interface LiveSceneCanvasProps {
   framed: FramedScene
-  mode: NavMode
-  selectionEnabled: boolean
-  revealInterior: boolean
-  userControlled: boolean
-  onUserControl: () => void
+  nav: SceneNavigationState
   environment: EnvironmentSessionState
   site: Site | undefined
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   opening: OpeningSceneNode | null
-  presetRequest: PresetRequest | null
 }
 
-// The interactive React Three Fiber canvas: the keyed scene primitive, the framed
-// camera, the lighting, and the orbit and walk controls. Extracted from WebGPUSceneView
+// The interactive React Three Fiber canvas: the keyed scene primitive, the lighting,
+// the selection and proxy wiring, and the camera rig. Extracted from WebGPUSceneView
 // so each function stays within the length limit. frameloop="always" renders every frame
 // so interactive camera moves and color-temperature changes show continuously, not only
-// when React remounts the scene.
-function LiveSceneCanvas({
-  framed,
-  mode,
-  selectionEnabled,
-  revealInterior,
-  userControlled,
-  onUserControl,
-  environment,
-  site,
-  onProxyPositions,
-  opening,
-  presetRequest,
-}: LiveSceneCanvasProps) {
+// when React remounts the scene. Props arrive unflattened (the navigation state travels
+// whole, as it does into SceneViewToolbar) and are destructured in the body.
+function LiveSceneCanvas(props: LiveSceneCanvasProps) {
+  const { framed, nav, environment, site, onProxyPositions, opening } = props
   const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
   return (
     <Canvas
@@ -218,21 +233,17 @@ function LiveSceneCanvas({
         site={site}
         observedAt={environment.observationInstant}
       />
-      <SceneSelection root={root} enabled={selectionAllowed({ enabled: selectionEnabled, mode })} />
+      <SceneSelection
+        root={root}
+        enabled={selectionAllowed({ enabled: nav.selectionEnabled, mode: nav.mode })}
+      />
       <SceneProxyProjector root={root} onPositions={onProxyPositions} />
-      <FrameCamera bounds={bounds} active={!userControlled} />
-      <PresetCamera request={presetRequest} bounds={bounds} opening={opening} />
       <NearWallFade
         targets={nearWallTargets}
-        enabled={mode === 'orbit' && revealInterior}
+        enabled={nav.mode === 'orbit' && nav.revealInterior}
         roomPolygons={roomPolygons}
       />
-      <OrbitCameraControls
-        enabled={mode === 'orbit'}
-        target={pose.target}
-        onUserControl={onUserControl}
-      />
-      <WalkCameraControls enabled={mode === 'walk'} onUserControl={onUserControl} root={root} />
+      <SceneCameraRig nav={nav} framed={framed} opening={opening} />
     </Canvas>
   )
 }
@@ -348,16 +359,11 @@ export function WebGPUSceneView() {
       <ScenePaneShell mode={nav.mode}>
         <LiveSceneCanvas
           framed={framed}
-          mode={nav.mode}
-          selectionEnabled={nav.selectionEnabled}
-          revealInterior={nav.revealInterior}
-          userControlled={nav.userControlled}
-          onUserControl={nav.markUserControlled}
+          nav={nav}
           environment={environment}
           site={site}
           onProxyPositions={setPositions}
           opening={doorwayOpening}
-          presetRequest={nav.presetRequest}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
