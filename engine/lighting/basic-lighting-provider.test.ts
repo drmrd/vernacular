@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
+import type { Bounds3, EnvironmentLighting } from '../../core'
 import { BasicLightingProvider } from './basic-lighting-provider'
 
 describe('BasicLightingProvider', () => {
@@ -63,5 +64,46 @@ describe('BasicLightingProvider', () => {
     expect(sun.castShadow).toBe(true)
     expect(sun.shadow.mapSize.width).toBeGreaterThan(0)
     expect(sun.shadow.mapSize.height).toBeGreaterThan(0)
+  })
+
+  describe('receiving environment lighting updates', () => {
+    // A deliberately loud environment: a red noon sun and a blue sky. If the schematic
+    // rig reacted to updates at all, this would visibly change the lights.
+    const fabricatedLighting: EnvironmentLighting = {
+      sunDirection: { x: 0, y: 1, z: 0 },
+      sunColor: { r: 1, g: 0, b: 0 },
+      skyColor: { r: 0, g: 0, b: 1 },
+      sunUp: true,
+    }
+    const anyBounds: Bounds3 = {
+      min: { x: 0, y: 0, z: 0 },
+      max: { x: 10, y: 3, z: 8 },
+    }
+
+    it('keeps the schematic rig static: an update after apply changes nothing', () => {
+      const scene = new THREE.Scene()
+      const provider = new BasicLightingProvider()
+      provider.apply(scene)
+      const sun = scene.children.find(
+        (child) => child instanceof THREE.DirectionalLight,
+      ) as THREE.DirectionalLight
+      const childCountAfterApply = scene.children.length
+      const sunColorAfterApply = sun.color.clone()
+      const sunPositionAfterApply = sun.position.clone()
+
+      expect(() => provider.update(scene, fabricatedLighting, anyBounds)).not.toThrow()
+
+      expect(scene.children).toHaveLength(childCountAfterApply)
+      expect(sun.color.equals(sunColorAfterApply)).toBe(true)
+      expect(sun.position.equals(sunPositionAfterApply)).toBe(true)
+    })
+
+    it('tolerates an update before apply without throwing', () => {
+      const scene = new THREE.Scene()
+
+      expect(() =>
+        new BasicLightingProvider().update(scene, fabricatedLighting, null),
+      ).not.toThrow()
+    })
   })
 })
