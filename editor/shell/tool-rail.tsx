@@ -56,7 +56,9 @@ function siteEditorKey(site: Project['site']): string {
 }
 
 // The rail's Environment section: the panel reads and writes the shared
-// environment session so the 3D viewport reflects the controls live.
+// environment session so the 3D viewport reflects the controls live, while the
+// scene list below it reads the project's saved scenes and dispatches
+// save/apply/remove commands so they persist with the project.
 function EnvironmentRailSection({ site }: { site: Project['site'] }) {
   const session = useEditorSession()
   const { environment, setEnvironment } = useEnvironmentSession()
