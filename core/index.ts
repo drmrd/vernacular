@@ -581,6 +581,8 @@ export {
   applyEnvironmentScene,
 } from './environment/environment-state'
 export { NEUTRAL_REFERENCE_WHITE, colorCheckLighting } from './environment/color-check'
+export type { ToneMappingOperator } from './environment/tone-mapping'
+export { toneMappingOperatorFor } from './environment/tone-mapping'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'

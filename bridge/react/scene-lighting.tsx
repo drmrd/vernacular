@@ -8,12 +8,14 @@ import {
   DEFAULT_OBSERVATION_INSTANT,
   kelvinToLinearRgb,
   NEUTRAL_REFERENCE_WHITE,
+  toneMappingOperatorFor,
   utcOffsetMinutesFor,
   type Bounds3,
   type ObservationInstant,
   type Site,
 } from '../../core'
 import {
+  applyToneMappingOperator,
   BasicLightingProvider,
   fitSunShadowToBounds,
   setLightingColor,
@@ -109,6 +111,7 @@ export function SceneLighting({
   colorCheck = false,
 }: SceneLightingProps) {
   const scene = useThree((state) => state.scene)
+  const renderer = useThree((state) => state.gl)
   // Realistic mode without a site location falls back to the schematic provider; the
   // slice-1b environment panel owns the missing-location UX (ADR-0144).
   const solar = realistic && site?.latLong !== undefined
@@ -121,6 +124,16 @@ export function SceneLighting({
     provider.apply(scene)
     return () => provider.dispose(scene)
   }, [provider, scene])
+
+  // The renderer's tone-mapping operator follows the effective mode: `solar` is what the
+  // render actually shows, so a realistic request that falls back to schematic keeps the
+  // Neutral operator. The color check overrides both with Neutral (ADR-0142).
+  useLayoutEffect(() => {
+    applyToneMappingOperator(
+      renderer,
+      toneMappingOperatorFor(solar ? 'realistic' : 'schematic', colorCheck),
+    )
+  }, [renderer, solar, colorCheck])
 
   useLayoutEffect(() => {
     if (solar) return

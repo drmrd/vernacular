@@ -46,9 +46,10 @@ export async function createSceneRenderer(
   // edges over the cheaper hard-edged basic map.
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
-  // Color management: render output is sRGB and tone mapping is Khronos PBR Neutral, which
-  // preserves base color and compresses only highlights, so paint hue is not skewed the way a
-  // filmic operator would. Exposure defaults to 1 (no change).
+  // Color management: render output is sRGB. Creation seeds Khronos PBR Neutral as the
+  // tone-mapping operator, but the operator is now chosen per mode at runtime by the scene
+  // lighting (applyToneMappingOperator): realistic daylight swaps in AgX, while schematic
+  // and the color check keep hue-preserving Neutral (ADR-0142). Exposure defaults to 1.
   renderer.outputColorSpace = SRGBColorSpace
   renderer.toneMapping = NeutralToneMapping
   renderer.toneMappingExposure = options.toneMappingExposure ?? 1
