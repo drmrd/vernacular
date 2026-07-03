@@ -36,6 +36,7 @@ import {
   type SurfaceTreatment,
 } from '../core'
 import { createInitialProject } from './create-initial-project'
+import { harnessEnvironmentState } from './harness-environment'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
@@ -146,6 +147,10 @@ export function App(props: AppProps) {
         colorTemperatureK={requestedColorTemperature()}
         paint={requestedHarnessPaint()}
         scene={requestedHarnessScene()}
+        // Named canonical environments (`?scene=equinox-noon` and friends) resolve to a
+        // realistic-lighting override over the default shell fixture; the geometry scene
+        // names above resolve to none, so their baselines are untouched.
+        environment={harnessEnvironmentState(searchParam('scene'))}
       />
     )
   }

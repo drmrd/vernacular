@@ -6,10 +6,12 @@ import {
   furnitureFootprintCorners,
   type Bounds3,
   type FurnitureSceneNode,
+  type ObservationInstant,
   type OpeningSceneNode,
   type Point,
   type RoomSceneNode,
   type SceneGraph,
+  type Site,
   type SurfaceTreatment,
 } from '../../core'
 import { createSceneRenderer } from '../../engine'
@@ -216,22 +218,36 @@ function StaticFrame({ bounds }: { bounds: Bounds3 | null }) {
   return null
 }
 
-// The harness pins the schematic lighting default (realistic off, no site); a
-// realistic-mode fixture lands with the harness-params cycle.
+/**
+ * A canonical environment override for the harness: a site, an observation instant,
+ * and the realistic-lighting flag. Structurally matches the app layer's named
+ * environment states without the bridge importing from app/.
+ */
+export interface HarnessEnvironment {
+  site: Site
+  observedAt: ObservationInstant
+  realistic: boolean
+}
+
+// The harness pins the schematic lighting default (realistic off, no site) unless a
+// canonical environment override is present, in which case its site and observation
+// instant drive the realistic solar provider.
 function HarnessLighting({
   colorTemperatureK,
   bounds,
+  environment,
 }: {
   colorTemperatureK: number
   bounds: Bounds3 | null
+  environment?: HarnessEnvironment | undefined
 }) {
   return (
     <SceneLighting
       colorTemperatureK={colorTemperatureK}
       bounds={bounds}
-      realistic={false}
-      site={undefined}
-      observedAt={DEFAULT_OBSERVATION_INSTANT}
+      realistic={environment?.realistic ?? false}
+      site={environment?.site}
+      observedAt={environment?.observedAt ?? DEFAULT_OBSERVATION_INSTANT}
     />
   )
 }
@@ -244,17 +260,21 @@ function HarnessLighting({
  * It is mounted only when the `?fixture=scene-harness` query parameter is present (see
  * the App), so a normal page load never reaches it.
  */
-export function SceneHarnessView({
-  colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
-  paint = {},
-  scene = 'shell',
-}: {
+interface SceneHarnessViewProps {
   // Admits undefined (not just absent) so the App can forward an optional query
   // parameter under exactOptionalPropertyTypes; the default applies either way.
   colorTemperatureK?: number | undefined
   paint?: Record<string, SurfaceTreatment> | undefined
   scene?: HarnessScene | undefined
-} = {}) {
+  environment?: HarnessEnvironment | undefined
+}
+
+export function SceneHarnessView({
+  colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
+  paint = {},
+  scene = 'shell',
+  environment,
+}: SceneHarnessViewProps = {}) {
   const fixture = HARNESS_FIXTURES[scene]
   const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
 
@@ -278,7 +298,11 @@ export function SceneHarnessView({
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
         <primitive object={root} />
-        <HarnessLighting colorTemperatureK={colorTemperatureK} bounds={bounds} />
+        <HarnessLighting
+          colorTemperatureK={colorTemperatureK}
+          bounds={bounds}
+          environment={environment}
+        />
         <StaticFrame bounds={bounds} />
       </Canvas>
     </div>
