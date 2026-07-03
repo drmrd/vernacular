@@ -14,8 +14,8 @@ export interface EnvironmentLighting {
   sunColor: LinearRgb
   /** Ambient/hemisphere sky tint in linear-light sRGB. */
   skyColor: LinearRgb
-  /** Whether the sun's geometric altitude is strictly above the horizon. */
-  sunUp: boolean
+  /** Direct-sun intensity scale, 0 (extinguished) to 1 (full sun), carrying the horizon extinction ramp. */
+  sunIntensity: number
 }
 
 /** The site, civil observation instant, and weather that drive the lighting. */
@@ -37,9 +37,9 @@ export interface EnvironmentLightingInput {
  * resolves the sun's horizontal-frame angles for the site and civil instant,
  * `sunWorldDirection` rotates them through the site north bearing into the
  * y-up world frame (ADR-0139), and `skyLighting` derives the sun and sky tints
- * from the solar altitude and cloud cover. The sun counts as up only while its
- * geometric altitude is strictly above the horizon. Frame and unit conventions
- * follow those piece functions.
+ * from the solar altitude and cloud cover. `sunIntensity` passes straight through
+ * from `skyLighting`, carrying the horizon extinction ramp so the direct sun fades
+ * to nothing as it sets. Frame and unit conventions follow those piece functions.
  */
 export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
   const angles = solarPosition({
@@ -48,11 +48,11 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
     observedAt: input.observedAt,
     utcOffsetMinutes: input.utcOffsetMinutes,
   })
-  const { sunColor, skyColor } = skyLighting(angles.altitude, input.cloudCover)
+  const { sunColor, skyColor, sunIntensity } = skyLighting(angles.altitude, input.cloudCover)
   return {
     sunDirection: sunWorldDirection(angles, input.northBearing),
     sunColor,
     skyColor,
-    sunUp: angles.altitude > 0,
+    sunIntensity,
   }
 }

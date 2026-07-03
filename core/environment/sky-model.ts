@@ -1,13 +1,16 @@
 import type { LinearRgb } from '../color/oklab'
 
 /**
- * The two light colors an outdoor scene needs: the direct sun tint and the
- * ambient sky tint, both in linear-light sRGB. The sun warms and dims toward
- * the horizon; the sky stays cooler (bluer) than the sun.
+ * The light an outdoor scene needs: the direct sun tint, its intensity scale, and
+ * the ambient sky tint, all colors in linear-light sRGB. The sun warms toward the
+ * horizon in `sunColor` while `sunIntensity` carries the horizon dimming and the
+ * below-horizon extinction; the sky stays cooler (bluer) than the sun.
  */
 export interface SkyLighting {
-  /** Direct sun tint, warmer and dimmer near the horizon. */
+  /** Direct sun tint, warmer near the horizon; the dimming lives in sunIntensity, not here. */
   sunColor: LinearRgb
+  /** Direct-sun intensity scale, 0 (extinguished below the horizon) to 1 (full sun overhead). */
+  sunIntensity: number
   /** Ambient/hemisphere sky tint, cooler than the sun. */
   skyColor: LinearRgb
 }
@@ -66,8 +69,9 @@ function overcastAdjusted(color: LinearRgb, cloudCover: number): LinearRgb {
  * Analytic clear-sky lighting model. `altitude` is the sun's height above the
  * horizon in radians (negative once it has set); `cloudCover` is a 0..1
  * fraction (0 clear, 1 fully overcast). Both colors interpolate between named
- * horizon and zenith tints on the sun's elevation; the direct sun additionally
- * dims toward the horizon and extinguishes just below it, and cloud cover
+ * horizon and zenith tints on the sun's elevation; `sunIntensity` carries the
+ * direct sun's dimming toward the horizon and its extinction just below, so the
+ * tint stays at full strength and the scale does the fading. Cloud cover
  * flattens both colors toward grey while dimming them.
  */
 export function skyLighting(altitude: number, cloudCover: number): SkyLighting {
@@ -75,13 +79,11 @@ export function skyLighting(altitude: number, cloudCover: number): SkyLighting {
   const extinction = clampToUnitInterval(1 + altitude / HORIZON_EXTINCTION_RADIANS)
   const sunIntensity =
     extinction * (HORIZON_SUN_INTENSITY + (1 - HORIZON_SUN_INTENSITY) * elevation)
-  const clearSun = scaleLinearRgb(
-    mixLinearRgb(HORIZON_SUN_TINT, ZENITH_SUN_TINT, elevation),
-    sunIntensity,
-  )
+  const clearSun = mixLinearRgb(HORIZON_SUN_TINT, ZENITH_SUN_TINT, elevation)
   const clearSky = mixLinearRgb(HORIZON_SKY_TINT, ZENITH_SKY_TINT, elevation)
   return {
     sunColor: overcastAdjusted(clearSun, cloudCover),
+    sunIntensity,
     skyColor: overcastAdjusted(clearSky, cloudCover),
   }
 }
