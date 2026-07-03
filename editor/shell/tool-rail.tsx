@@ -2,6 +2,7 @@ import {
   useActiveFloorId,
   useEditorSession,
   useEnvironmentSession,
+  useProjectEnvironmentScenes,
   useSceneGraph,
 } from '../../bridge'
 import {
@@ -12,6 +13,7 @@ import {
   type Project,
 } from '../../core'
 import { EnvironmentPanel } from '../environment/environment-panel'
+import { EnvironmentScenes } from '../environment/environment-scenes'
 import { LibraryLauncherPanel } from '../library/library-launcher-panel'
 import { SiteEditor } from '../metadata/site-editor'
 import { OpeningTypeChooser } from '../plan/opening-type-chooser'
@@ -56,7 +58,9 @@ function siteEditorKey(site: Project['site']): string {
 // The rail's Environment section: the panel reads and writes the shared
 // environment session so the 3D viewport reflects the controls live.
 function EnvironmentRailSection({ site }: { site: Project['site'] }) {
+  const session = useEditorSession()
   const { environment, setEnvironment } = useEnvironmentSession()
+  const scenes = useProjectEnvironmentScenes()
   return (
     <section aria-label="Environment">
       <SectionLabel>Environment</SectionLabel>
@@ -64,6 +68,12 @@ function EnvironmentRailSection({ site }: { site: Project['site'] }) {
         site={site}
         environment={environment}
         onEnvironmentChange={setEnvironment}
+      />
+      <EnvironmentScenes
+        scenes={scenes}
+        environment={environment}
+        onEnvironmentChange={setEnvironment}
+        dispatch={session.dispatch}
       />
     </section>
   )

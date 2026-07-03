@@ -72,3 +72,4 @@ export {
 } from './react/environment-session-context'
 export type { EnvironmentSessionProviderProps } from './react/environment-session-provider'
 export { EnvironmentSessionProvider } from './react/environment-session-provider'
+export { useProjectEnvironmentScenes } from './react/use-project-environment-scenes'
