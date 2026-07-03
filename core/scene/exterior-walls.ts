@@ -23,6 +23,11 @@ export interface ExteriorWall {
   outwardNormal: Point
   /** Ids of openings hosted on this wall (its `hostWallId` matches the raw wall id). */
   openingIds: readonly string[]
+  /**
+   * Node ids of furniture standing against this wall in plan space, filled in by
+   * `withAttachedFurniture`; absent when the caller has not run that pairing.
+   */
+  furnitureIds?: readonly string[]
 }
 
 /** A plan-space sample point just past one face of the wall. */

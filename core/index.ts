@@ -376,6 +376,12 @@ export {
 } from './scene/scene-graph'
 export type { ExteriorWall } from './scene/exterior-walls'
 export { exteriorWalls } from './scene/exterior-walls'
+export type { WallPlanSegment } from './scene/wall-attached-furniture'
+export {
+  furnitureAttachedToWall,
+  withAttachedFurniture,
+  WALL_ATTACHMENT_TOLERANCE_MM,
+} from './scene/wall-attached-furniture'
 export { rawWallId } from './scene/wall-id'
 export type { JunctionFadeGroup } from './scene/junction-fade'
 export { junctionFadeGroups } from './scene/junction-fade'

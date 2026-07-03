@@ -1,6 +1,8 @@
 import { pointInPolygon } from '../geometry/polygon'
 import { pointOnSegment, segmentIntersection } from '../geometry/segment'
 import type { Point } from '../model/types'
+import type { ExteriorWall } from './exterior-walls'
+import type { FurnitureSceneNode, WallSceneNode } from './scene-graph'
 
 /**
  * Plan-space gap, in millimeters, between a wall face and a furniture footprint that
@@ -42,6 +44,36 @@ export function furnitureAttachedToWall(
   // No corner in reach and no edge crossing or near an endpoint: the footprint can
   // only touch the wall by containing its centerline outright.
   return pointInPolygon(wall.start, footprintCorners)
+}
+
+/**
+ * The exterior walls with their `furnitureIds` filled in: each furniture piece joins
+ * the first exterior wall (in `exterior` order) whose plan segment it stands against.
+ * Joining exactly one wall means a corner piece never enrolls in two fade targets,
+ * so two walls' opposite fade decisions cannot tug it both ways in one frame.
+ */
+export function withAttachedFurniture(
+  exterior: ExteriorWall[],
+  walls: WallSceneNode[],
+  furniture: FurnitureSceneNode[],
+): ExteriorWall[] {
+  const wallsById = new Map(walls.map((wall) => [wall.id, wall]))
+  const furnitureIdsByWallId = new Map<string, string[]>()
+  for (const piece of furniture) {
+    const host = exterior.find((candidate) => {
+      const wall = wallsById.get(candidate.wallId)
+      return wall !== undefined && furnitureAttachedToWall(piece.footprintCorners, wall)
+    })
+    if (host !== undefined) {
+      const ids = furnitureIdsByWallId.get(host.wallId) ?? []
+      ids.push(piece.id)
+      furnitureIdsByWallId.set(host.wallId, ids)
+    }
+  }
+  return exterior.map((wall) => ({
+    ...wall,
+    furnitureIds: furnitureIdsByWallId.get(wall.wallId) ?? [],
+  }))
 }
 
 /**
