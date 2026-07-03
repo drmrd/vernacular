@@ -1,6 +1,7 @@
 import type { CameraPreset, ObservationInstant } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
+import { SceneDisplayOptions } from './scene-display-options'
 import type { SceneScope } from './view-scene-graph'
 
 import './scene-nav-toolbar.css'
@@ -45,6 +46,8 @@ interface SceneNavToolbarProps {
   onScopeChange?: (scope: SceneScope) => void
   showUnderground?: boolean
   onToggleUnderground?: () => void
+  edgeOverlay?: boolean
+  onToggleEdgeOverlay?: () => void
 }
 
 interface ScopeToggleProps {
@@ -214,9 +217,10 @@ function PrimaryCluster(props: PrimaryClusterProps) {
  * Navigation chrome for the three-dimensional scene view. It exposes a toggle between
  * viewing the active floor and the whole building stacked (with a control to show or
  * hide underground levels such as a basement), a toggle between the orbit and walk
- * camera modes, a control that returns the camera to its framed starting view, and a
+ * camera modes, a control that returns the camera to its framed starting view, a
  * group of camera presets (a top-down view, the four elevations, and a view from a
- * doorway). Pressed states are reflected through `aria-pressed` so assistive technology
+ * doorway), and a display-options group holding the surface-edge overlay toggle.
+ * Pressed states are reflected through `aria-pressed` so assistive technology
  * announces the active view and camera mode.
  */
 export function SceneNavToolbar({
@@ -237,6 +241,8 @@ export function SceneNavToolbar({
   onScopeChange = () => {},
   showUnderground = true,
   onToggleUnderground = () => {},
+  edgeOverlay,
+  onToggleEdgeOverlay,
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
@@ -254,6 +260,7 @@ export function SceneNavToolbar({
         onReset={onReset}
       />
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
+      <SceneDisplayOptions edgeOverlay={edgeOverlay} onToggleEdgeOverlay={onToggleEdgeOverlay} />
       <EnvironmentControls
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={onColorTemperatureChange}

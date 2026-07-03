@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   DEFAULT_OBSERVATION_INSTANT,
@@ -81,6 +81,15 @@ function useSceneNavigation() {
 function useColorTemperature() {
   const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
   return { colorTemperatureK, setColorTemperatureK }
+}
+
+// Per-view surface-edge overlay session state, held in the view component, never in the
+// model or undo. Off by default in Orbit (ADR-0132); it feeds the toolbar toggle and the
+// reconciler's view options.
+function useEdgeOverlay() {
+  const [edgeOverlay, setEdgeOverlay] = useState(false)
+  const toggleEdgeOverlay = useCallback(() => setEdgeOverlay((value) => !value), [])
+  return { edgeOverlay, toggleEdgeOverlay }
 }
 
 // Per-view observation date/time session state, held in the view component (foundation
@@ -260,13 +269,16 @@ export function WebGPUSceneView() {
   // #206); the scoped graph is memoized so the scene rebuilds only when it changes.
   const graph = useViewSceneGraph(rawGraph, activeFloorId, buildingView)
   const paint = useProjectPaint()
-  // One reconciler for the life of the view; it reuses an unchanged floor's built
-  // scene instead of rebuilding on every edit (foundation spec 5.5).
-  const reconcilerRef = useRef(createFramedSceneReconciler())
+  const { edgeOverlay, toggleEdgeOverlay } = useEdgeOverlay()
+  // One reconciler per overlay setting; it reuses an unchanged floor's built scene
+  // instead of rebuilding on every edit (foundation spec 5.5). Flipping the edge
+  // overlay constructs a fresh reconciler, since every cached sub-group baked the
+  // previous setting in.
+  const reconciler = useMemo(() => createFramedSceneReconciler({ edgeOverlay }), [edgeOverlay])
   const models = useFurnitureModelCache(graph)
   const { root, pose, bounds, nearWallTargets, roomPolygons } = useMemo(
-    () => reconcilerRef.current.reconcile(graph, paint, models.lookup),
-    [graph, paint, models],
+    () => reconciler.reconcile(graph, paint, models.lookup),
+    [reconciler, graph, paint, models],
   )
   const {
     mode,
@@ -306,6 +318,8 @@ export function WebGPUSceneView() {
         onScopeChange={buildingView.setScope}
         showUnderground={buildingView.showUnderground}
         onToggleUnderground={buildingView.toggleUnderground}
+        edgeOverlay={edgeOverlay}
+        onToggleEdgeOverlay={toggleEdgeOverlay}
       />
       <ScenePaneShell mode={mode}>
         <LiveSceneCanvas

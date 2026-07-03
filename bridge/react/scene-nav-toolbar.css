@@ -97,6 +97,15 @@
   gap: var(--space-1);
 }
 
+/* The display-options cluster (the surface-edge overlay toggle) sits beside the
+   presets as another secondary-tier group of view-only toggles. */
+.scene-nav-toolbar__display {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 /* Reset and the camera presets share the shell's labeled icon-button styling:
    transparent until hovered, then seated on the active surface. */
 .scene-nav-toolbar__btn {
