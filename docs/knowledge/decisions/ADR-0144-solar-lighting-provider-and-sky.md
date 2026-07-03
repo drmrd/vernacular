@@ -75,8 +75,9 @@ Everything computable without a renderer lives in `core/environment/`. `solarPos
 and returns azimuth clockwise from true north plus the sun's altitude. `sunWorldDirection` turns
 those angles into a unit world-space vector. `skyLighting` (`core/environment/sky-model.ts`)
 derives the sun and sky tints from the altitude and a cloud-cover fraction. The value object
-`EnvironmentLighting` (sun direction, sun color, sky color, and a `sunUp` flag that is true only
-strictly above the horizon) is composed by `computeEnvironmentLighting` from a site, an
+`EnvironmentLighting` (sun direction, sun color, sky color, and a `sunIntensity` scalar that
+carries the horizon dimming and falls to zero below the horizon) is composed by
+`computeEnvironmentLighting` from a site, an
 observation instant, a UTC offset, and cloud cover. All of it is unit-tested in Node with no
 GPU; the engine provider applies the finished values and does nothing else.
 
@@ -117,9 +118,9 @@ already-applied rig for a computed `EnvironmentLighting`; the bounds are the sce
 bounds, used to refit the sun's shadow frustum after a re-aim, and a null bounds (an empty
 scene) makes the refit a no-op by contract. `BasicLightingProvider.update` is a documented
 no-op, because the schematic rig is static by design. `SolarLightingProvider.update` sets the
-sun and sky colors independently, refits the shadow along the computed direction, and switches
-the direct sun's intensity to zero when `sunUp` is false, so a night scene stays lit by the
-hemisphere sky alone rather than going black. Rig construction is shared: `buildLightingRig`
+sun and sky colors independently, refits the shadow along the computed direction, and scales
+the direct sun's intensity by the computed `sunIntensity`, so the sun fades through the horizon
+band and a night scene stays lit by the hemisphere sky alone rather than going black. Rig construction is shared: `buildLightingRig`
 and `findSun` live in `engine/lighting/lighting-rig.ts`, and both providers build the same rig
 at the one `DAYLIGHT_SUN_INTENSITY`, so the two modes cannot drift apart structurally.
 
