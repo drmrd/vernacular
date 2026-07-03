@@ -1,8 +1,23 @@
-import type { ReactElement } from 'react'
-import type { EnvironmentState, LightingMode, Site } from '../../core'
+import type { ChangeEvent, ReactElement } from 'react'
+import type { EnvironmentState, LightingMode, ObservationInstant, Site } from '../../core'
+import {
+  MINUTES_PER_DAY,
+  formatObservationDateTime,
+  observationInstantToIso,
+  parseObservationInstant,
+} from '../../core'
 import { Segmented, Stack, type SegmentedOption } from '../design-system'
 
 const LIGHTING_MODES: readonly LightingMode[] = ['schematic', 'realistic']
+
+// The last addressable minute of a civil day (`MINUTES_PER_DAY` is the exclusive bound).
+const LAST_MINUTE_OF_DAY = MINUTES_PER_DAY - 1
+const TIME_OF_DAY_MIN = 0
+
+const CLOUD_COVER_MIN = 0
+const CLOUD_COVER_MAX = 1
+const CLOUD_COVER_STEP = 0.05
+const PERCENT = 100
 
 const LIGHTING_MODE_LABELS: Record<LightingMode, string> = {
   schematic: 'Schematic',
@@ -32,6 +47,11 @@ export interface EnvironmentPanelProps {
   site: Site | undefined
   environment: EnvironmentState
   onEnvironmentChange: (next: EnvironmentState) => void
+}
+
+interface ObservationControlProps {
+  observedAt: ObservationInstant
+  onObservationChange: (instant: ObservationInstant) => void
 }
 
 function LocationReadout({ site }: { site: Site | undefined }): ReactElement {
@@ -75,6 +95,86 @@ function EnvironmentNotices({
   return null
 }
 
+/**
+ * The observation date/time scrubber. A cleared `datetime-local` input reports an empty
+ * string; that clears the field visually but is not a real instant, so the change is
+ * swallowed rather than parsed into a garbage `ObservationInstant`.
+ */
+function ObservationDateTimeControl({
+  observedAt,
+  onObservationChange,
+}: ObservationControlProps): ReactElement {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    if (value === '') return
+    onObservationChange(parseObservationInstant(value))
+  }
+  return (
+    <label>
+      Observation date and time
+      <input
+        type="datetime-local"
+        value={observationInstantToIso(observedAt)}
+        aria-label="Observation date and time"
+        onChange={handleChange}
+      />
+      <output>{formatObservationDateTime(observedAt)}</output>
+    </label>
+  )
+}
+
+/** The time-of-day slider: the same civil date, a different minute of it. */
+function TimeOfDaySlider({
+  observedAt,
+  onObservationChange,
+}: ObservationControlProps): ReactElement {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onObservationChange({ date: observedAt.date, minutesSinceMidnight: Number(event.target.value) })
+  }
+  return (
+    <label>
+      Time of day
+      <input
+        type="range"
+        min={TIME_OF_DAY_MIN}
+        max={LAST_MINUTE_OF_DAY}
+        value={observedAt.minutesSinceMidnight}
+        aria-label="Time of day"
+        onChange={handleChange}
+      />
+    </label>
+  )
+}
+
+interface CloudCoverDialProps {
+  cloudCover: number
+  onCloudCoverChange: (cloudCover: number) => void
+}
+
+/** The cloud-cover dial, with a live percentage readout announced through `aria-valuetext`. */
+function CloudCoverDial({ cloudCover, onCloudCoverChange }: CloudCoverDialProps): ReactElement {
+  const percent = Math.round(cloudCover * PERCENT)
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onCloudCoverChange(Number(event.target.value))
+  }
+  return (
+    <label>
+      Cloud cover
+      <input
+        type="range"
+        min={CLOUD_COVER_MIN}
+        max={CLOUD_COVER_MAX}
+        step={CLOUD_COVER_STEP}
+        value={cloudCover}
+        aria-label="Cloud cover"
+        aria-valuetext={`${percent}%`}
+        onChange={handleChange}
+      />
+      <output>{percent}%</output>
+    </label>
+  )
+}
+
 export function EnvironmentPanel({
   site,
   environment,
@@ -82,6 +182,12 @@ export function EnvironmentPanel({
 }: EnvironmentPanelProps): ReactElement {
   const handleModeSelect = (value: string) => {
     if (isLightingMode(value)) onEnvironmentChange({ ...environment, mode: value })
+  }
+  const handleObservationChange = (observedAt: ObservationInstant) => {
+    onEnvironmentChange({ ...environment, observedAt })
+  }
+  const handleCloudCoverChange = (cloudCover: number) => {
+    onEnvironmentChange({ ...environment, cloudCover })
   }
   return (
     <Stack>
@@ -93,6 +199,18 @@ export function EnvironmentPanel({
       />
       <LocationReadout site={site} />
       <EnvironmentNotices mode={environment.mode} site={site} />
+      <ObservationDateTimeControl
+        observedAt={environment.observedAt}
+        onObservationChange={handleObservationChange}
+      />
+      <TimeOfDaySlider
+        observedAt={environment.observedAt}
+        onObservationChange={handleObservationChange}
+      />
+      <CloudCoverDial
+        cloudCover={environment.cloudCover}
+        onCloudCoverChange={handleCloudCoverChange}
+      />
     </Stack>
   )
 }
