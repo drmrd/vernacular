@@ -1,19 +1,25 @@
 interface SceneDisplayOptionsProps {
   edgeOverlay?: boolean | undefined
   onToggleEdgeOverlay?: (() => void) | undefined
+  realisticLighting?: boolean | undefined
+  onToggleRealisticLighting?: (() => void) | undefined
 }
 
 /**
  * The display-options group: view-only styling toggles for the three-dimensional
- * scene, session state that is never saved to the project. Today it holds one
- * control, the surface-edge overlay toggle (ADR-0132): pressed means the dark
- * hidden-line edges draw over every surface, and the default is off in Orbit. The
- * props are optional; this group supplies their session defaults so the toolbar can
- * forward them straight through.
+ * scene, session state that is never saved to the project. It holds the
+ * surface-edge overlay toggle (ADR-0132): pressed means the dark hidden-line
+ * edges draw over every surface, and the default is off in Orbit. It also holds
+ * the realistic-lighting toggle: pressed means realistic solar lighting, and
+ * unpressed means the schematic default. The props are optional; this group
+ * supplies their session defaults so the toolbar can forward them straight
+ * through.
  */
 export function SceneDisplayOptions({
   edgeOverlay = false,
   onToggleEdgeOverlay = () => {},
+  realisticLighting = false,
+  onToggleRealisticLighting = () => {},
 }: SceneDisplayOptionsProps) {
   return (
     <div
@@ -28,6 +34,14 @@ export function SceneDisplayOptions({
         onClick={onToggleEdgeOverlay}
       >
         Surface edges
+      </button>
+      <button
+        type="button"
+        className="scene-nav-toolbar__btn"
+        aria-pressed={realisticLighting}
+        onClick={onToggleRealisticLighting}
+      >
+        Realistic lighting
       </button>
     </div>
   )

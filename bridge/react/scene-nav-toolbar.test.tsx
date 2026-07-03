@@ -413,6 +413,36 @@ describe('SceneNavToolbar surface-edges toggle', () => {
   })
 })
 
+describe('SceneNavToolbar realistic-lighting toggle', () => {
+  it('renders a realistic-lighting toggle in the display-options group, off by default', () => {
+    render(<SceneNavToolbar {...baseProps} />)
+
+    const toggle = screen.getByRole('button', { name: /realistic lighting/i })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('group', { name: /display options/i })).toContainElement(toggle)
+  })
+
+  it('marks the realistic-lighting toggle pressed when realistic mode is active', () => {
+    render(<SceneNavToolbar {...baseProps} realisticLighting />)
+
+    expect(screen.getByRole('button', { name: /realistic lighting/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('reports a toggle when clicked without flipping its own pressed state', async () => {
+    const onToggleRealisticLighting = vi.fn()
+    render(<SceneNavToolbar {...baseProps} onToggleRealisticLighting={onToggleRealisticLighting} />)
+
+    const toggle = screen.getByRole('button', { name: /realistic lighting/i })
+    await userEvent.click(toggle)
+
+    expect(onToggleRealisticLighting).toHaveBeenCalledTimes(1)
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
 describe('SceneNavToolbar observation datetime', () => {
   it('shows the observation datetime and reports changes parsed to an instant', () => {
     const onObservationChange = vi.fn()

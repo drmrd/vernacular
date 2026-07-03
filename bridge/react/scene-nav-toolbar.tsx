@@ -48,6 +48,8 @@ interface SceneNavToolbarProps {
   onToggleUnderground?: () => void
   edgeOverlay?: boolean
   onToggleEdgeOverlay?: () => void
+  realisticLighting?: boolean
+  onToggleRealisticLighting?: () => void
 }
 
 interface ScopeToggleProps {
@@ -219,7 +221,8 @@ function PrimaryCluster(props: PrimaryClusterProps) {
  * hide underground levels such as a basement), a toggle between the orbit and walk
  * camera modes, a control that returns the camera to its framed starting view, a
  * group of camera presets (a top-down view, the four elevations, and a view from a
- * doorway), and a display-options group holding the surface-edge overlay toggle.
+ * doorway), and a display-options group holding the surface-edge overlay and
+ * realistic-lighting toggles.
  * Pressed states are reflected through `aria-pressed` so assistive technology
  * announces the active view and camera mode.
  */
@@ -241,8 +244,10 @@ export function SceneNavToolbar({
   onScopeChange = () => {},
   showUnderground = true,
   onToggleUnderground = () => {},
-  edgeOverlay = false,
-  onToggleEdgeOverlay = () => {},
+  edgeOverlay,
+  onToggleEdgeOverlay,
+  realisticLighting,
+  onToggleRealisticLighting,
 }: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
@@ -260,7 +265,12 @@ export function SceneNavToolbar({
         onReset={onReset}
       />
       <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
-      <SceneDisplayOptions edgeOverlay={edgeOverlay} onToggleEdgeOverlay={onToggleEdgeOverlay} />
+      <SceneDisplayOptions
+        edgeOverlay={edgeOverlay}
+        onToggleEdgeOverlay={onToggleEdgeOverlay}
+        realisticLighting={realisticLighting}
+        onToggleRealisticLighting={onToggleRealisticLighting}
+      />
       <EnvironmentControls
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={onColorTemperatureChange}
