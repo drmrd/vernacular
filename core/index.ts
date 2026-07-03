@@ -580,6 +580,7 @@ export {
   captureEnvironmentScene,
   applyEnvironmentScene,
 } from './environment/environment-state'
+export { NEUTRAL_REFERENCE_WHITE, colorCheckLighting } from './environment/color-check'
 export { formatHex, parseHex } from './color/hex'
 export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
