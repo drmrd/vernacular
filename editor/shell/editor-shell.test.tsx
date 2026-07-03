@@ -435,4 +435,19 @@ describe('EditorShell', () => {
       within(environmentSection).getByRole('button', { name: 'Realistic' }),
     ).toBeInTheDocument()
   })
+
+  it('renders the saved-scenes UI in the Environment rail section', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    // The saved-scenes UI (the Save scene control and the empty-list message) lives
+    // in the same Environment region as the mode toggle, confirming it is wired into
+    // the rail rather than mounted in isolation.
+    const environmentSection = screen.getByRole('region', { name: /environment/i })
+    expect(
+      within(environmentSection).getByRole('button', { name: /save scene/i }),
+    ).toBeInTheDocument()
+    expect(within(environmentSection).getByText(/no saved scenes/i)).toBeInTheDocument()
+  })
 })
