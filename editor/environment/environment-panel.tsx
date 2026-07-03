@@ -6,7 +6,7 @@ import {
   observationInstantToIso,
   parseObservationInstant,
 } from '../../core'
-import { Segmented, Stack, type SegmentedOption } from '../design-system'
+import { Field, Segmented, Stack, type SegmentedOption } from '../design-system'
 
 const LIGHTING_MODES: readonly LightingMode[] = ['schematic', 'realistic']
 
@@ -95,6 +95,16 @@ function EnvironmentNotices({
   return null
 }
 
+const OBSERVATION_DATE_TIME_INPUT_ID = 'environment-observation-date-time'
+const TIME_OF_DAY_INPUT_ID = 'environment-time-of-day'
+const CLOUD_COVER_INPUT_ID = 'environment-cloud-cover'
+
+/** The `hh:mm` portion of `formatObservationDateTime`, for a slider's `aria-valuetext`. */
+function formatTimeOfDay(observedAt: ObservationInstant): string {
+  const [, time = ''] = formatObservationDateTime(observedAt).split(' ')
+  return time
+}
+
 /**
  * The observation date/time scrubber. A cleared `datetime-local` input reports an empty
  * string; that clears the field visually but is not a real instant, so the change is
@@ -110,16 +120,15 @@ function ObservationDateTimeControl({
     onObservationChange(parseObservationInstant(value))
   }
   return (
-    <label>
-      Observation date and time
+    <Field htmlFor={OBSERVATION_DATE_TIME_INPUT_ID} label="Observation date and time">
       <input
+        id={OBSERVATION_DATE_TIME_INPUT_ID}
         type="datetime-local"
         value={observationInstantToIso(observedAt)}
-        aria-label="Observation date and time"
         onChange={handleChange}
       />
       <output>{formatObservationDateTime(observedAt)}</output>
-    </label>
+    </Field>
   )
 }
 
@@ -132,17 +141,17 @@ function TimeOfDaySlider({
     onObservationChange({ date: observedAt.date, minutesSinceMidnight: Number(event.target.value) })
   }
   return (
-    <label>
-      Time of day
+    <Field htmlFor={TIME_OF_DAY_INPUT_ID} label="Time of day">
       <input
+        id={TIME_OF_DAY_INPUT_ID}
         type="range"
         min={TIME_OF_DAY_MIN}
         max={LAST_MINUTE_OF_DAY}
         value={observedAt.minutesSinceMidnight}
-        aria-label="Time of day"
+        aria-valuetext={formatTimeOfDay(observedAt)}
         onChange={handleChange}
       />
-    </label>
+    </Field>
   )
 }
 
@@ -158,20 +167,19 @@ function CloudCoverDial({ cloudCover, onCloudCoverChange }: CloudCoverDialProps)
     onCloudCoverChange(Number(event.target.value))
   }
   return (
-    <label>
-      Cloud cover
+    <Field htmlFor={CLOUD_COVER_INPUT_ID} label="Cloud cover">
       <input
+        id={CLOUD_COVER_INPUT_ID}
         type="range"
         min={CLOUD_COVER_MIN}
         max={CLOUD_COVER_MAX}
         step={CLOUD_COVER_STEP}
         value={cloudCover}
-        aria-label="Cloud cover"
         aria-valuetext={`${percent}%`}
         onChange={handleChange}
       />
       <output>{percent}%</output>
-    </label>
+    </Field>
   )
 }
 
