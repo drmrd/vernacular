@@ -47,4 +47,32 @@ describe('harnessEnvironmentState', () => {
     expect(winterAfternoon?.observedAt).not.toEqual(equinoxNoon?.observedAt)
     expect({ ...equinoxNoon, observedAt: winterAfternoon?.observedAt }).toEqual(winterAfternoon)
   })
+
+  it('resolves color-check to equinox-noon at the canonical site with the color check on', () => {
+    expect(harnessEnvironmentState('color-check')).toEqual({
+      site: canonicalSite,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+      realistic: true,
+      colorCheck: true,
+    })
+  })
+
+  it('resolves overcast-noon to equinox-noon at the canonical site with full cloud cover', () => {
+    expect(harnessEnvironmentState('overcast-noon')).toEqual({
+      site: canonicalSite,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+      realistic: true,
+      cloudCover: 1,
+    })
+  })
+
+  it('resolves the existing named states without the new cloud-cover or color-check fields', () => {
+    const equinoxNoon = harnessEnvironmentState('equinox-noon')
+    const winterAfternoon = harnessEnvironmentState('winter-afternoon')
+
+    expect(equinoxNoon?.cloudCover).toBeUndefined()
+    expect(equinoxNoon?.colorCheck).toBeUndefined()
+    expect(winterAfternoon?.cloudCover).toBeUndefined()
+    expect(winterAfternoon?.colorCheck).toBeUndefined()
+  })
 })
