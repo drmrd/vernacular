@@ -211,7 +211,7 @@ function ColorCheckToggle({ colorCheck, onColorCheckChange }: ColorCheckTogglePr
   )
 }
 
-interface EnvironmentControlsProps {
+interface EnvironmentPanelControlsProps {
   environment: EnvironmentState
   onEnvironmentChange: (next: EnvironmentState) => void
 }
@@ -220,10 +220,10 @@ interface EnvironmentControlsProps {
  * The observation time, cloud-cover, and color-check controls, grouped so `EnvironmentPanel`
  * stays a thin composition of panel sections.
  */
-function EnvironmentControls({
+function EnvironmentPanelControls({
   environment,
   onEnvironmentChange,
-}: EnvironmentControlsProps): ReactElement {
+}: EnvironmentPanelControlsProps): ReactElement {
   const handleObservationChange = (observedAt: ObservationInstant) => {
     onEnvironmentChange({ ...environment, observedAt })
   }
@@ -273,7 +273,10 @@ export function EnvironmentPanel({
       />
       <LocationReadout site={site} />
       <EnvironmentNotices mode={environment.mode} site={site} />
-      <EnvironmentControls environment={environment} onEnvironmentChange={onEnvironmentChange} />
+      <EnvironmentPanelControls
+        environment={environment}
+        onEnvironmentChange={onEnvironmentChange}
+      />
     </Stack>
   )
 }
