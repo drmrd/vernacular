@@ -11,7 +11,9 @@ import {
   type Icon,
 } from '@phosphor-icons/react'
 import {
+  createEnvironmentSessionStore,
   createSurfaceSelectionStore,
+  EnvironmentSessionProvider,
   SurfaceSelectionProvider,
   useActiveFloorId,
   useEditorSession,
@@ -349,6 +351,10 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // The surface-selection store is created once so the paint inspector and the
   // viewport share one active-surface source across the frame.
   const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
+  // The environment session store is created once so the tool rail's Environment panel
+  // and the 3D viewport share one EnvironmentState (mode, observation instant, cloud
+  // cover, color check) across the frame.
+  const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
   // The snap-preferences store is created once so the keybinding layer, the command
   // palette, the snap panel, and the plan's snapping all read one source, persisted
   // to localStorage as an editor preference.
@@ -380,26 +386,28 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                       ) : null}
                       <SurfaceSelectionProvider store={surfaceSelection}>
                         <EntitySurfaceBridge />
-                        <AppFrame
-                          header={
-                            <ShellHeader
-                              saveStatus={saveStatus}
-                              projectControls={projectControls}
-                            />
-                          }
-                          banner={<BannerRegion />}
-                          railLabel="Tool rail"
-                          rail={<ToolRail />}
-                          mainLabel="Viewport"
-                          main={
-                            <ViewportArea
-                              onImportDroppedFile={projectControls.onImportDroppedFile}
-                            />
-                          }
-                          inspectorLabel="Inspector"
-                          inspector={<Inspector />}
-                          statusBar={<EditorStatusBar />}
-                        />
+                        <EnvironmentSessionProvider store={environmentSession}>
+                          <AppFrame
+                            header={
+                              <ShellHeader
+                                saveStatus={saveStatus}
+                                projectControls={projectControls}
+                              />
+                            }
+                            banner={<BannerRegion />}
+                            railLabel="Tool rail"
+                            rail={<ToolRail />}
+                            mainLabel="Viewport"
+                            main={
+                              <ViewportArea
+                                onImportDroppedFile={projectControls.onImportDroppedFile}
+                              />
+                            }
+                            inspectorLabel="Inspector"
+                            inspector={<Inspector />}
+                            statusBar={<EditorStatusBar />}
+                          />
+                        </EnvironmentSessionProvider>
                       </SurfaceSelectionProvider>
                     </FurniturePlacementProvider>
                   </OpeningToolProvider>
