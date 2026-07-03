@@ -117,6 +117,21 @@ function glassOpacityOf(group: unknown): number | undefined {
   return opacity
 }
 
+// The distinct material opacities under a built furniture group, structurally so the
+// bridge test does not import three. Covers single- and multi-material meshes.
+function furnitureOpacitiesOf(group: unknown): number[] {
+  const opacities = new Set<number>()
+  ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
+    const mesh = object as { material?: { opacity?: number } | { opacity?: number }[] }
+    if (mesh.material === undefined) return
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const material of materials) {
+      if (typeof material.opacity === 'number') opacities.add(material.opacity)
+    }
+  })
+  return [...opacities]
+}
+
 describe('buildFramedScene', () => {
   const wallLength = 2000
   const thickness = 120
@@ -296,6 +311,56 @@ describe('buildFramedScene', () => {
     const group = findByEntityId(root, 'opening:window')
     expect(group).not.toBeNull()
     expect(glassOpacityOf(group)).toBe(fadedOpacity)
+  })
+
+  it('folds furniture standing against an exterior wall into its wall fade target', () => {
+    const fadedOpacity = 0.1
+    const graph = squareRoomWithSouthWindow(height)
+    // A wardrobe flush against the south wall's interior face (plan y = 100), plus a
+    // free-standing table mid-room that must not join any wall's fade target.
+    graph.furniture = [
+      {
+        id: 'furniture:wardrobe',
+        kind: 'furniture',
+        floorId: 'g',
+        footprintCorners: [
+          { x: 500, y: 100 },
+          { x: 1100, y: 100 },
+          { x: 1100, y: 700 },
+          { x: 500, y: 700 },
+        ],
+        elevationZ: 0,
+        height: 1800,
+        assetRef: { scope: 'user', contentHash: 'hash-of-a-wardrobe' },
+      },
+      {
+        id: 'furniture:table',
+        kind: 'furniture',
+        floorId: 'g',
+        footprintCorners: [
+          { x: 1700, y: 1700 },
+          { x: 2300, y: 1700 },
+          { x: 2300, y: 2300 },
+          { x: 1700, y: 2300 },
+        ],
+        elevationZ: 0,
+        height: 750,
+        assetRef: { scope: 'user', contentHash: 'hash-of-a-table' },
+      },
+    ]
+    const { root, nearWallTargets } = buildFramedScene(graph)
+
+    // Camera outside the south wall: the wall fades and the wardrobe against it
+    // recedes with it, while the free-standing table keeps its own opacity.
+    updateNearWallTransparency(nearWallTargets, { x: 2000, z: 3000 })
+
+    // Furniture groups carry the RAW instance id (the furniture-builder convention).
+    const wardrobe = findByEntityId(root, 'wardrobe')
+    const table = findByEntityId(root, 'table')
+    expect(wardrobe).not.toBeNull()
+    expect(table).not.toBeNull()
+    expect(furnitureOpacitiesOf(wardrobe)).toEqual([fadedOpacity])
+    expect(furnitureOpacitiesOf(table)).not.toContain(fadedOpacity)
   })
 
   it('paints a room floor from the supplied paint store', () => {
