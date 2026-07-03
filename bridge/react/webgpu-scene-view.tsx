@@ -286,8 +286,10 @@ interface SceneViewToolbarProps {
 
 // Feeds the navigation toolbar from the view's grouped session state: the camera
 // navigation, the building-view scope, the edge-overlay display option, and the
-// environment settings, plus whether the doorway preset has a target. The toolbar's
-// own props stay flat so it can be exercised in isolation.
+// view-local color temperature, plus whether the doorway preset has a target. The
+// toolbar's own props stay flat so it can be exercised in isolation. The shared
+// environment session (mode, observation instant, cloud cover, color check) no longer
+// reaches the toolbar; it is read and written by the editor's Environment panel.
 function SceneViewToolbar({
   nav,
   buildingView,
@@ -296,11 +298,6 @@ function SceneViewToolbar({
   viewEnvironment,
   canDoorway,
 }: SceneViewToolbarProps) {
-  // Transitional toolbar wiring: the environment session moved to the shared store, so
-  // the toolbar's realistic-lighting and observation props (removed in a later slice)
-  // now read and write that session instead of the retired per-view state.
-  const { environment, setEnvironment } = viewEnvironment
-  const toggledMode = environment.mode === 'realistic' ? 'schematic' : 'realistic'
   return (
     <SceneNavToolbar
       mode={nav.mode}
@@ -312,10 +309,6 @@ function SceneViewToolbar({
       onReset={nav.resetView}
       colorTemperatureK={viewEnvironment.colorTemperatureK}
       onColorTemperatureChange={viewEnvironment.setColorTemperatureK}
-      observationInstant={environment.observedAt}
-      onObservationChange={(instant) => setEnvironment({ ...environment, observedAt: instant })}
-      realisticLighting={environment.mode === 'realistic'}
-      onToggleRealisticLighting={() => setEnvironment({ ...environment, mode: toggledMode })}
       onPreset={nav.applyPreset}
       canDoorway={canDoorway}
       scope={buildingView.scope}

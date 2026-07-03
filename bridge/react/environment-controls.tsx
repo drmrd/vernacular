@@ -3,12 +3,7 @@ import {
   MAX_COLOR_TEMPERATURE_K,
   formatColorTemperature,
   colorTemperatureLabel,
-  DEFAULT_OBSERVATION_INSTANT,
-  formatObservationDateTime,
-  observationInstantToIso,
-  parseObservationInstant,
 } from '../../core'
-import type { ObservationInstant } from '../../core'
 
 const COLOR_TEMPERATURE_STEP_K = 100
 
@@ -57,63 +52,25 @@ function ColorTemperatureControl({
   )
 }
 
-interface ObservationDateTimeControlProps {
-  observationInstant: ObservationInstant
-  onObservationChange: (instant: ObservationInstant) => void
-}
-
-/**
- * The observation date/time scrubber with a live readout. Session view state only: it shows
- * the instant and reports changes, and does not drive the lighting yet.
- */
-function ObservationDateTimeControl({
-  observationInstant,
-  onObservationChange,
-}: ObservationDateTimeControlProps) {
-  return (
-    <label className="scene-nav-toolbar__observation">
-      Observation date and time
-      <input
-        type="datetime-local"
-        value={observationInstantToIso(observationInstant)}
-        aria-label="Observation date and time"
-        onChange={(event) => onObservationChange(parseObservationInstant(event.target.value))}
-      />
-      <output className="scene-nav-toolbar__observation-readout">
-        {formatObservationDateTime(observationInstant)}
-      </output>
-    </label>
-  )
-}
-
 interface EnvironmentControlsProps {
   colorTemperatureK: number
   onColorTemperatureChange: (kelvin: number) => void
-  observationInstant?: ObservationInstant | undefined
-  onObservationChange?: ((instant: ObservationInstant) => void) | undefined
 }
 
 /**
- * The environment group: the color-temperature slider paired with the observation
- * date/time scrubber, gathered into one section of the toolbar. The observation instant
- * and its change handler are optional; this group supplies their session defaults so the
- * toolbar can forward them straight through.
+ * The environment group: the color-temperature slider, the schematic rig's only session
+ * control now that the observation scrubber and the realistic-lighting toggle live in the
+ * editor's Environment panel.
  */
 export function EnvironmentControls({
   colorTemperatureK,
   onColorTemperatureChange,
-  observationInstant = DEFAULT_OBSERVATION_INSTANT,
-  onObservationChange = () => {},
 }: EnvironmentControlsProps) {
   return (
     <div className="scene-nav-toolbar__environment">
       <ColorTemperatureControl
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={onColorTemperatureChange}
-      />
-      <ObservationDateTimeControl
-        observationInstant={observationInstant}
-        onObservationChange={onObservationChange}
       />
     </div>
   )
