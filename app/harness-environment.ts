@@ -28,6 +28,8 @@ const MID_AFTERNOON_MINUTES = 960
  * civil noon and the December solstice in mid-afternoon), so the sun the harness
  * renders is the same sun those cases pin.
  */
+// These keys share the `scene` query-param namespace with the harness geometry
+// fixtures (junctions, furniture) and must stay disjoint from them (see the App).
 const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
   [
     'equinox-noon',

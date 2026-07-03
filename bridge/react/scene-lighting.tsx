@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo } from 'react'
 import {
   computeEnvironmentLighting,
   DEFAULT_CLOUD_COVER,
+  DEFAULT_OBSERVATION_INSTANT,
   kelvinToLinearRgb,
   utcOffsetMinutesFor,
   type Bounds3,
@@ -22,9 +23,13 @@ import {
 interface SceneLightingProps {
   colorTemperatureK: number
   bounds: Bounds3 | null
-  realistic: boolean
+  // The environment props admit undefined (not just absent) so callers can forward
+  // optional overrides under exactOptionalPropertyTypes; the schematic defaults
+  // (realistic off, the fixed observation instant) apply either way. A site has no
+  // default: without one the schematic provider is the only choice.
+  realistic?: boolean | undefined
   site: Site | undefined
-  observedAt: ObservationInstant
+  observedAt?: ObservationInstant | undefined
 }
 
 interface SolarLightingUpdateInput {
@@ -69,9 +74,9 @@ function useSolarLightingUpdate({ provider, site, observedAt, bounds }: SolarLig
 export function SceneLighting({
   colorTemperatureK,
   bounds,
-  realistic,
+  realistic = false,
   site,
-  observedAt,
+  observedAt = DEFAULT_OBSERVATION_INSTANT,
 }: SceneLightingProps) {
   const scene = useThree((state) => state.scene)
   // Realistic mode without a site location falls back to the schematic provider; the

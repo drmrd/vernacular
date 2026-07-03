@@ -2,7 +2,6 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useMemo } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
-  DEFAULT_OBSERVATION_INSTANT,
   furnitureFootprintCorners,
   type Bounds3,
   type FurnitureSceneNode,
@@ -229,9 +228,9 @@ export interface HarnessEnvironment {
   realistic: boolean
 }
 
-// The harness pins the schematic lighting default (realistic off, no site) unless a
-// canonical environment override is present, in which case its site and observation
-// instant drive the realistic solar provider.
+// Forwards the canonical environment override, when present, so its site and
+// observation instant drive the realistic solar provider. Without one, SceneLighting's
+// own schematic defaults apply (realistic off, no site).
 function HarnessLighting({
   colorTemperatureK,
   bounds,
@@ -245,9 +244,9 @@ function HarnessLighting({
     <SceneLighting
       colorTemperatureK={colorTemperatureK}
       bounds={bounds}
-      realistic={environment?.realistic ?? false}
+      realistic={environment?.realistic}
       site={environment?.site}
-      observedAt={environment?.observedAt ?? DEFAULT_OBSERVATION_INSTANT}
+      observedAt={environment?.observedAt}
     />
   )
 }
