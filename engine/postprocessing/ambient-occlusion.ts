@@ -8,6 +8,27 @@ import type { AmbientOcclusionPipeline } from './render-scene-frame'
 // records what a static import cost the startup bundle); a source-reading guard test keeps a
 // static import from creeping back in.
 
+type AmbientOcclusionModules = [
+  typeof import('three/webgpu'),
+  typeof import('three/tsl'),
+  typeof import('three/addons/tsl/display/GTAONode.js'),
+]
+
+// The three lazily loaded modules above are cached the same way sky-environment.ts's
+// loadSkyMeshModule caches the sky mesh module: repeated pipeline activations (every
+// realistic-mode toggle) share one module load, while buildAmbientOcclusionPipeline below still
+// builds a fresh RenderPipeline and GTAONode per call.
+let ambientOcclusionModules: Promise<AmbientOcclusionModules> | undefined
+
+function loadAmbientOcclusionModules(): Promise<AmbientOcclusionModules> {
+  ambientOcclusionModules ??= Promise.all([
+    import('three/webgpu'),
+    import('three/tsl'),
+    import('three/addons/tsl/display/GTAONode.js'),
+  ])
+  return ambientOcclusionModules
+}
+
 // A type-only alias for the WebGPU renderer, derived from the lazily loaded three/webgpu
 // module's own type via `typeof import(...)` rather than a static `import type { ... } from ...`
 // statement. That statement's `from '<specifier>'` text is exactly what the guard test checks
@@ -22,7 +43,10 @@ type WebGPURenderer = InstanceType<WebGpuModule['WebGPURenderer']>
  * slice spec's backend-parity posture). The pipeline's default output handling carries the
  * renderer's active tone-mapping operator, so realistic AgX (ADR-0147) still applies after
  * the pass takes over the draw. three/webgpu, three/tsl, and the GTAONode addon load through
- * a lazy dynamic import so the WebGPU build stays off the entry chunk.
+ * loadAmbientOcclusionModules's cached lazy dynamic import so the WebGPU build stays off the
+ * entry chunk and repeated calls (every realistic-mode toggle) share one module load; this
+ * function still builds a fresh RenderPipeline and GTAONode per call, and the returned
+ * dispose releases all three (the aoNode's render target and material included).
  */
 // eslint-disable-next-line max-params -- renderer, scene, and camera are the RenderPipeline's irreducible construction inputs and params is the GTAONode tuning; splitting them would only wrap the same four values in a throwaway object
 export async function buildAmbientOcclusionPipeline(
@@ -31,11 +55,7 @@ export async function buildAmbientOcclusionPipeline(
   camera: THREE.Camera,
   params: AmbientOcclusionParams,
 ): Promise<AmbientOcclusionPipeline> {
-  const [{ RenderPipeline }, { pass, vec3, vec4 }, { ao }] = await Promise.all([
-    import('three/webgpu'),
-    import('three/tsl'),
-    import('three/addons/tsl/display/GTAONode.js'),
-  ])
+  const [{ RenderPipeline }, { pass, vec3, vec4 }, { ao }] = await loadAmbientOcclusionModules()
 
   const scenePass = pass(scene, camera)
   const sceneColor = scenePass.getTextureNode('output')
@@ -71,6 +91,7 @@ export async function buildAmbientOcclusionPipeline(
     dispose: () => {
       pipeline.dispose()
       scenePass.dispose()
+      aoNode.dispose()
     },
   }
 }
