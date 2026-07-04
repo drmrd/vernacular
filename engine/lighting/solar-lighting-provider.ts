@@ -12,6 +12,7 @@ import {
   setSunIntensity,
   type LightingRig,
 } from './lighting-rig'
+import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
 
 /**
  * Solar-aware lighting under the LightingProvider contract: `apply` builds the same
@@ -25,6 +26,7 @@ export class SolarLightingProvider implements LightingProvider {
 
   apply(scene: THREE.Object3D): void {
     this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
+    attachSkyEnvironment(scene, this.rig)
   }
 
   /**
@@ -33,11 +35,14 @@ export class SolarLightingProvider implements LightingProvider {
    * and scales the sun's intensity by the environment `sunIntensity` fraction.
    */
   update(scene: THREE.Object3D, lighting: EnvironmentLighting, bounds: Bounds3 | null): void {
+    const rig = this.rig
+    if (rig === null) return
     setSunAndSkyColor(scene, lighting.sunColor, lighting.skyColor)
     if (bounds !== null) {
       fitSunShadowToDirection(scene, lighting.sunDirection, bounds)
     }
     setSunIntensity(scene, DAYLIGHT_SUN_INTENSITY * lighting.sunIntensity)
+    updateSkyEnvironment(rig, lighting)
   }
 
   dispose(scene: THREE.Object3D): void {
