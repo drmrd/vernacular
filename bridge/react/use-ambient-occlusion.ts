@@ -3,21 +3,23 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react'
 
 import { type Site } from '../../core'
 import {
+  AO_DEFAULT_PARAMS,
   ambientOcclusionParamsFor,
   buildAmbientOcclusionPipeline,
   renderSceneFrame,
   type AmbientOcclusionPipeline,
 } from '../../engine'
 
+import { effectiveLightingMode } from './effective-lighting-mode'
+
 /**
  * Whether the ambient-occlusion pass runs for a view: true only in realistic mode with a
- * located site, mirroring scene-lighting.tsx's effective-mode predicate so AO, the solar
- * provider, and AgX turn on together. A realistic request without a located site, and any
- * schematic view, fall back to the plain renderer draw.
+ * located site. Routes the request through the effectiveLightingMode predicate shared with
+ * scene-lighting.tsx so AO, the solar provider, and AgX turn on together. A realistic request
+ * without a located site, and any schematic view, fall back to the plain renderer draw.
  */
 export function ambientOcclusionActiveFor(realistic: boolean, site: Site | undefined): boolean {
-  const effectiveMode = realistic && site?.latLong !== undefined ? 'realistic' : 'schematic'
-  return ambientOcclusionParamsFor(effectiveMode) !== null
+  return ambientOcclusionParamsFor(effectiveLightingMode(realistic, site)) !== null
 }
 
 /**
@@ -65,14 +67,11 @@ function warnBuildFailedOnce(warnedRef: RefObject<boolean>, reason: unknown): vo
 // Builds the pipeline and installs it, unless a newer build or a teardown has since bumped the
 // token, in which case the freshly built pipeline is disposed rather than installed. The token
 // is bumped up front so a teardown that runs before this build resolves already invalidates it.
+// This runs only when the active gate is already true, so the tuning is unconditionally the
+// realistic defaults (AO_DEFAULT_PARAMS); onSettled fires once the build promise settles below.
 function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
-  const params = ambientOcclusionParamsFor('realistic')
-  if (params === null) {
-    build.onSettled()
-    return
-  }
   const buildToken = (build.buildTokenRef.current += 1)
-  void buildAmbientOcclusionPipeline(build.renderer, build.scene, build.camera, params)
+  void buildAmbientOcclusionPipeline(build.renderer, build.scene, build.camera, AO_DEFAULT_PARAMS)
     .then((pipeline) => {
       if (buildToken !== build.buildTokenRef.current) {
         pipeline.dispose()
@@ -133,6 +132,10 @@ export function useAmbientOcclusion(active: boolean, onSettled?: () => void): Re
     }
   }, [active, gl, scene, camera, onSettled])
 
+  // Presently inert on r184: the pipeline's setSize is a no-op because its PassNode
+  // self-reconciles its render target to the renderer size every frame. Kept as the call
+  // site for the pipeline's size contract, so a three bump that restores a real setSize needs
+  // no new wiring here.
   useEffect(() => {
     pipelineRef.current?.setSize(width, height)
   }, [width, height])
