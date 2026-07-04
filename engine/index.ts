@@ -55,3 +55,5 @@ export {
   AO_DEFAULT_PARAMS,
   ambientOcclusionParamsFor,
 } from './postprocessing/ambient-occlusion-params'
+export type { AmbientOcclusionPipeline } from './postprocessing/render-scene-frame'
+export { renderSceneFrame } from './postprocessing/render-scene-frame'
