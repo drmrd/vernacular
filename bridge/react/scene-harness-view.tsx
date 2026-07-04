@@ -15,7 +15,8 @@ import {
   type SurfaceTreatment,
 } from '../../core'
 import { createSceneRenderer } from '../../engine'
-import { fitCameraToBounds } from './fit-camera'
+import { ADJACENT_ROOMS_CAMERA_POSE, buildAdjacentRoomsFixture } from './adjacent-rooms-fixture'
+import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { SceneLighting } from './scene-lighting'
 
@@ -194,15 +195,35 @@ const FURNITURE_FIXTURE: SceneGraph = {
   furniture: [SHELL_FURNITURE],
 }
 
-/** The harness fixtures, selected by the `scene` prop / `?scene=` query parameter. */
+/**
+ * The harness fixtures, selected by the `scene` prop / `?scene=` query parameter.
+ * `adjacent-rooms` is two rooms sharing an interior wall, built through the real
+ * derive pipeline so the rendered slabs meet at the wall centerline (ADR-0129) and
+ * step their side faces off the shared plane (ADR-0150); a companion camera pose
+ * (see `harnessCameraOverride`) views that shared slab boundary from below the
+ * floor, the one place a static frame can witness the formerly z-fighting pair
+ * (issue #402).
+ */
 const HARNESS_FIXTURES = {
   shell: SHELL_FIXTURE,
   junctions: JUNCTION_FIXTURE,
   furniture: FURNITURE_FIXTURE,
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- scene id is a URL query value matching the baseline filename, not a code identifier
+  'adjacent-rooms': buildAdjacentRoomsFixture(),
 } as const
 
 /** Which harness fixture to render; defaults to the wall-shell room. */
 export type HarnessScene = keyof typeof HARNESS_FIXTURES
+
+/**
+ * The camera pose for a harness state whose subject the standing auto-frame would
+ * not expose, or undefined to auto-frame. The adjacent-rooms state looks up at the
+ * shared slab underside from below the floor datum, which the standing auto frame
+ * does not show (ADR-0150); every other state frames its own bounds.
+ */
+function harnessCameraOverride(scene: HarnessScene): CameraPose | undefined {
+  return scene === 'adjacent-rooms' ? ADJACENT_ROOMS_CAMERA_POSE : undefined
+}
 
 // Fits the camera to the bounds for the pinned canvas size, then renders one frame on
 // mount and one more when the lighting reports ready, so the screenshot is deterministic
@@ -212,18 +233,30 @@ export type HarnessScene = keyof typeof HARNESS_FIXTURES
 // capture, awaited through the wrapper's data-harness-ready attribute. Fitting here
 // (rather than only at scene build) frames the model to the harness aspect ratio and
 // field of view, matching the live preview (ADR-0075).
+/**
+ * How to place the harness camera before rendering: fit the scene `bounds` to the
+ * pinned canvas, unless a state supplies its own `cameraOverride` pose (the
+ * adjacent-rooms below-datum vantage), in which case snap to that pose instead.
+ */
+interface HarnessFraming {
+  bounds: Bounds3 | null
+  cameraOverride: CameraPose | undefined
+}
+
 function StaticFrame({
-  bounds,
+  framing,
   lightingReady,
 }: {
-  bounds: Bounds3 | null
+  framing: HarnessFraming
   lightingReady: boolean
 }) {
+  const { bounds, cameraOverride } = framing
   const { gl, scene, camera, size } = useThree()
   useLayoutEffect(() => {
-    fitCameraToBounds(camera, bounds, size)
+    if (cameraOverride === undefined) fitCameraToBounds(camera, bounds, size)
+    else applyCameraPose(camera, cameraOverride)
     gl.render(scene, camera)
-  }, [gl, scene, camera, bounds, size, lightingReady])
+  }, [gl, scene, camera, bounds, cameraOverride, size, lightingReady])
   return null
 }
 
@@ -316,6 +349,7 @@ export function SceneHarnessView({
 }: SceneHarnessViewProps = {}) {
   const fixture = HARNESS_FIXTURES[scene]
   const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
+  const cameraOverride = harnessCameraOverride(scene)
   const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
 
   return (
@@ -326,7 +360,7 @@ export function SceneHarnessView({
     >
       <Canvas
         frameloop="never"
-        camera={harnessCameraProps(pose)}
+        camera={harnessCameraProps(cameraOverride ?? pose)}
         // Force the WebGL 2 backend so the committed baseline is a hardware-WebGL render
         // that never collides with a future WebGPU baseline.
         gl={(defaultProps) =>
@@ -344,7 +378,7 @@ export function SceneHarnessView({
           environment={environment}
           onReady={handleLightingReady}
         />
-        <StaticFrame bounds={bounds} lightingReady={lightingReady} />
+        <StaticFrame framing={{ bounds, cameraOverride }} lightingReady={lightingReady} />
       </Canvas>
     </div>
   )

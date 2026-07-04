@@ -75,4 +75,17 @@ test.describe('Three-dimensional scene visual baseline', () => {
   test('renders a furniture massing box in the room to a stable canvas', async ({ page }) => {
     await captureShell(page, '&scene=furniture', 'scene-furniture-webgl.png')
   })
+
+  // The adjacent-rooms fixture (ADR-0129, ADR-0150) renders two rooms sharing an interior
+  // wall, built through the real derive pipeline and viewed from below the floor datum so
+  // the shared slab boundary the wall normally hides is exposed. This is the one place a
+  // static frame can witness the formerly z-fighting pair: from below, both rooms' base
+  // caps are front facing and drawn, so a regression that reopens the ADR-0129 overlap
+  // would z-fight the two coincident caps right here in the baseline. The four-corner shell
+  // has no shared interior wall and so does not exercise this pair.
+  test('renders the adjacent-rooms shared slab boundary from below to a stable canvas', async ({
+    page,
+  }) => {
+    await captureShell(page, '&scene=adjacent-rooms', 'scene-adjacent-rooms-webgl.png')
+  })
 })
