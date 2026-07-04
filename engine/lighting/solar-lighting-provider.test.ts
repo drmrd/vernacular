@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import * as THREE from 'three'
 import { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 import {
@@ -67,7 +67,7 @@ describe('SolarLightingProvider', () => {
     expect((directional[0] as THREE.DirectionalLight).castShadow).toBe(true)
   })
 
-  it('lights the scene from a visible sky mesh and a probe, zeroing the hemisphere fill', () => {
+  it('lights the scene from a visible sky mesh and a probe, zeroing the hemisphere fill', async () => {
     const scene = new THREE.Scene()
 
     new SolarLightingProvider().apply(scene)
@@ -75,9 +75,13 @@ describe('SolarLightingProvider', () => {
     // Realistic mode is lit by its own visible sky: the sky mesh is the far-field
     // background and the probe carries the diffuse ambient, so the flat hemisphere fill
     // is zeroed (running both would double-count the sky ambient; locked decision 2).
-    expect(findSkyMesh(scene)?.isSkyMesh).toBe(true)
+    // The probe and the zeroed fill land synchronously; the visible sky mesh loads lazily
+    // off the startup path (dynamic import), so poll for it to appear.
     expect(findProbe(scene)).toBeInstanceOf(THREE.LightProbe)
     expect(findSky(scene).intensity).toBe(0)
+    await vi.waitFor(() => {
+      expect(findSkyMesh(scene)?.isSkyMesh).toBe(true)
+    })
   })
 
   it('aims the sun along the environment direction and applies the sun and sky colors', () => {
@@ -115,10 +119,12 @@ describe('SolarLightingProvider', () => {
     expect(findSun(scene).intensity).toBeCloseTo(DAYLIGHT_SUN_INTENSITY * 0.5, precision)
   })
 
-  it("aims the sky's sun position at the environment sun direction", () => {
+  it("aims the sky's sun position at the environment sun direction", async () => {
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
+    // The sky mesh loads lazily; wait for it before driving it from an update.
+    await vi.waitFor(() => expect(findSkyMesh(scene)).toBeDefined())
 
     provider.update(scene, skyLitLighting, bounds)
 
@@ -173,10 +179,12 @@ describe('SolarLightingProvider', () => {
     expect(findSky(scene).color.b).toBeCloseTo(0.9, precision)
   })
 
-  it('leaves no sky, probe, or lights in the scene after dispose', () => {
+  it('leaves no sky, probe, or lights in the scene after dispose', async () => {
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
+    // Let the lazily loaded sky finish attaching, then confirm dispose clears it too.
+    await vi.waitFor(() => expect(findSkyMesh(scene)).toBeDefined())
 
     provider.dispose(scene)
 
