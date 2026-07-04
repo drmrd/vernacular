@@ -111,6 +111,24 @@ describe('attachSkyEnvironment', () => {
     // lighting and replay it: the resolved sky carries that same sun aim and clouds.
     expectSkyMatchesLighting(rig)
   })
+
+  it('clears the stashed pending lighting once it has been replayed onto the resolved sky', async () => {
+    const { scene, rig } = makeAppliedRig()
+
+    const attached = attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+
+    // While the sky is still loading there is nowhere to write the update, so it is
+    // stashed on the rig for replay the moment the sky arrives.
+    expect(rig.pendingLighting).toBeDefined()
+
+    await attached
+
+    // The stash only holds lighting seen BEFORE the sky arrived. Once the attach replays
+    // it onto the freshly built sky the stash is consumed, so it must be cleared: a later
+    // update after the sky exists writes straight through, never through the stash.
+    expect(rig.pendingLighting).toBeUndefined()
+  })
 })
 
 describe('updateSkyEnvironment', () => {
