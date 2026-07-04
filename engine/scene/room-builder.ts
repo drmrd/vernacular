@@ -5,7 +5,9 @@ import {
   canonicalOuterLoop,
   ceilingHeight,
   floorSlabThickness,
+  leftNormal,
   planToWorld,
+  shift,
   type Point,
   type RoomSceneNode,
 } from '../../core'
@@ -30,18 +32,15 @@ const FLOOR_DATUM_Y = 0
  */
 const SLAB_SIDE_FACE_INSET_MM = 0.1
 
-/** The inward unit normal of a canonical (plan counterclockwise) boundary edge. */
+/**
+ * The inward unit normal of a canonical (plan counterclockwise) boundary edge:
+ * the interior lies to the left, so `leftNormal` points into the slab. A
+ * degenerate zero-length edge has no direction, so it stays put rather than
+ * feeding `leftNormal` a divide by zero.
+ */
 function inwardEdgeNormal(start: Point, end: Point): Point {
-  const dx = end.x - start.x
-  const dy = end.y - start.y
-  const length = Math.hypot(dx, dy)
-  if (length === 0) return { x: 0, y: 0 }
-  return { x: -dy / length, y: dx / length }
-}
-
-/** `point` moved `distance` along `normal`, both in the plan frame. */
-function offsetPoint(point: Point, normal: Point, distance: number): Point {
-  return { x: point.x + normal.x * distance, y: point.y + normal.y * distance }
+  if (start.x === end.x && start.y === end.y) return { x: 0, y: 0 }
+  return leftNormal(start, end)
 }
 
 /** One contiguous geometry section paired with the surface role it draws. */
@@ -70,8 +69,10 @@ function slabCapPositions(points: Point[], triangles: Triangle[], height: number
 /**
  * Positions for the vertical sides connecting the top and bottom caps. Each side
  * face is pulled `SLAB_SIDE_FACE_INSET_MM` inboard of its boundary edge, so two
- * adjacent rooms' faces along a shared wall centerline never share a plane. The
- * top and base caps still reach the boundary, so the footprint is unchanged.
+ * adjacent rooms' faces along a shared wall centerline never share a plane. Each
+ * edge is offset along its own inward normal with no corner miter, since the
+ * corner divergence at a sub-millimeter offset is invisible. The top and base
+ * caps still reach the boundary, so the footprint is unchanged.
  */
 function slabSidePositions(boundary: Point[], thickness: number): number[] {
   const positions: number[] = []
@@ -80,8 +81,8 @@ function slabSidePositions(boundary: Point[], thickness: number): number[] {
     const start = boundary[i] as Point
     const end = boundary[(i + 1) % boundary.length] as Point
     const inward = inwardEdgeNormal(start, end)
-    const insetStart = offsetPoint(start, inward, SLAB_SIDE_FACE_INSET_MM)
-    const insetEnd = offsetPoint(end, inward, SLAB_SIDE_FACE_INSET_MM)
+    const insetStart = shift(start, inward, SLAB_SIDE_FACE_INSET_MM)
+    const insetEnd = shift(end, inward, SLAB_SIDE_FACE_INSET_MM)
     pushWorldPoint(positions, insetEnd, bottomY)
     pushWorldPoint(positions, insetEnd, FLOOR_DATUM_Y)
     pushWorldPoint(positions, insetStart, FLOOR_DATUM_Y)

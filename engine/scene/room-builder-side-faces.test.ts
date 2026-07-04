@@ -77,17 +77,22 @@ function adjacentRoom(sharedX: number, width: number, depth: number): RoomSceneN
   }
 }
 
-// The constant world-x of each vertical slab side face: the faces whose six
-// vertices share one x. The horizontal-in-plan runs are excluded by their wide
-// x spread.
-function verticalSideFaceXs(mesh: THREE.Mesh): number[] {
+// The world positions of the slab's `exteriorFace` side faces, in draw order.
+function sideFacePositions(mesh: THREE.Mesh): Vector3[] {
   const geometry = mesh.geometry as THREE.BufferGeometry
   const materials = mesh.material as THREE.Material[]
   const side = materialGroups(geometry).find(
     (group) => materials[group.materialIndex]?.name === 'exteriorFace',
   )
   if (side === undefined) return []
-  const points = readPositions(geometry).slice(side.start, side.start + side.count)
+  return readPositions(geometry).slice(side.start, side.start + side.count)
+}
+
+// The constant world-x of each vertical slab side face: the faces whose six
+// vertices share one x. The horizontal-in-plan runs are excluded by their wide
+// x spread.
+function verticalSideFaceXs(mesh: THREE.Mesh): number[] {
+  const points = sideFacePositions(mesh)
   const xs: number[] = []
   for (
     let base = 0;
@@ -112,7 +117,7 @@ function sideFaceOutwardness(mesh: THREE.Mesh, interior: Point2D): number[] {
     (group) => materials[group.materialIndex]?.name === 'exteriorFace',
   )
   if (side === undefined) return []
-  const points = readPositions(geometry).slice(side.start, side.start + side.count)
+  const points = sideFacePositions(mesh)
   const normals = readNormals(geometry).slice(side.start, side.start + side.count)
   return Array.from({ length: Math.floor(points.length / VERTICES_PER_TRIANGLE) }, (_, t) => {
     const base = t * VERTICES_PER_TRIANGLE
