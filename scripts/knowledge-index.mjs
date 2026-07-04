@@ -12,7 +12,7 @@
 //   tags:        list of strings
 //   related:     list of slug strings; may be empty
 //   sourceFiles: list of repo-relative paths; may be empty
-//   status:      one of: current, superseded, deprecated
+//   status:      one of: proposed, current, superseded, deprecated
 //   updated:     ISO date (YYYY-MM-DD)
 //
 // Exits 0 on success, non-zero on schema violation.
@@ -33,7 +33,7 @@ const ALLOWED_TYPES = new Set([
   'incident',
   'glossary',
 ])
-const ALLOWED_STATUS = new Set(['current', 'superseded', 'deprecated'])
+const ALLOWED_STATUS = new Set(['proposed', 'current', 'superseded', 'deprecated'])
 
 function collapseInlineArrays(block, file) {
   const lines = block.split('\n')
