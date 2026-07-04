@@ -1,0 +1,38 @@
+name: WebGL2 software-rasterizer probe
+
+# Manually dispatched investigation for issue #401's first open question:
+# can headless chromium on this linux runner produce a usable WebGL2 context
+# through a software rasterizer (SwiftShader/ANGLE) with no GPU present, so
+# 3D scene visual baselines could eventually be enforced on CI? Standalone
+# probe only. It does not gate CI and never runs on push or pull_request.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: Probe WebGL2 context creation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Probe WebGL2 context creation
+        run: node scripts/ci-probes/webgl2-probe.mjs
