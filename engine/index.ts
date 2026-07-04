@@ -50,3 +50,8 @@ export type { MaterialProvider, SurfaceRole } from './materials/material-provide
 export { NeutralMaterialProvider } from './materials/neutral-material-provider'
 export type { PaintMaterialOptions } from './materials/paint-material-provider'
 export { PaintMaterialProvider } from './materials/paint-material-provider'
+export type { AmbientOcclusionParams } from './postprocessing/ambient-occlusion-params'
+export {
+  AO_DEFAULT_PARAMS,
+  ambientOcclusionParamsFor,
+} from './postprocessing/ambient-occlusion-params'
