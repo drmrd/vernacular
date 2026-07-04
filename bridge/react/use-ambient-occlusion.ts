@@ -37,7 +37,9 @@ export type RenderFrame = (
 // the engine factory's own parameters so no guarded three specifier is imported here), paired
 // with the refs that guard the async result: buildToken makes a build that resolves after a
 // fast toggle or an unmount dispose itself rather than install over a newer one, and warned
-// keeps the failure warning to once.
+// keeps the failure warning to once. onSettled fires once the build promise settles, however
+// it settles (install, stale-discard, or failure), so a consumer gating work on it (the render
+// harness's captured frame) is never left waiting on a build that will not install.
 interface AmbientOcclusionBuild {
   renderer: Parameters<typeof buildAmbientOcclusionPipeline>[0]
   scene: Parameters<typeof buildAmbientOcclusionPipeline>[1]
@@ -45,6 +47,7 @@ interface AmbientOcclusionBuild {
   pipelineRef: RefObject<AmbientOcclusionPipeline | null>
   buildTokenRef: RefObject<number>
   warnedRef: RefObject<boolean>
+  onSettled: () => void
 }
 
 // Warns once (subsequent build failures stay quiet) that the pipeline build rejected, so a
@@ -64,7 +67,10 @@ function warnBuildFailedOnce(warnedRef: RefObject<boolean>, reason: unknown): vo
 // is bumped up front so a teardown that runs before this build resolves already invalidates it.
 function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
   const params = ambientOcclusionParamsFor('realistic')
-  if (params === null) return
+  if (params === null) {
+    build.onSettled()
+    return
+  }
   const buildToken = (build.buildTokenRef.current += 1)
   void buildAmbientOcclusionPipeline(build.renderer, build.scene, build.camera, params)
     .then((pipeline) => {
@@ -75,6 +81,7 @@ function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
       build.pipelineRef.current = pipeline
     })
     .catch((reason: unknown) => warnBuildFailedOnce(build.warnedRef, reason))
+    .then(() => build.onSettled())
 }
 
 /**
@@ -86,8 +93,14 @@ function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
  * call time, so a caller registers it once and it follows the active state, falling back to a
  * plain renderer draw whenever the pipeline is null (schematic, the no-location realistic
  * fallback, or a failed build).
+ *
+ * The optional `onSettled` fires once the active build's promise settles, however it settles
+ * (install, stale-discard, or failure), so a caller drawing a single deterministic frame (the
+ * render harness under frameloop="never") can defer that frame until the pipeline is installed
+ * rather than capturing it before the async build resolves. A build swap or unmount cancels a
+ * stale build's callback. Live views omit it and rely on their continuous frame loop instead.
  */
-export function useAmbientOcclusion(active: boolean): RenderFrame {
+export function useAmbientOcclusion(active: boolean, onSettled?: () => void): RenderFrame {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -100,6 +113,7 @@ export function useAmbientOcclusion(active: boolean): RenderFrame {
 
   useEffect(() => {
     if (!active) return undefined
+    let cancelled = false
     startAmbientOcclusionBuild({
       renderer: gl as unknown as Parameters<typeof buildAmbientOcclusionPipeline>[0],
       scene,
@@ -107,13 +121,17 @@ export function useAmbientOcclusion(active: boolean): RenderFrame {
       pipelineRef,
       buildTokenRef,
       warnedRef,
+      onSettled: () => {
+        if (!cancelled) onSettled?.()
+      },
     })
     return () => {
+      cancelled = true
       buildTokenRef.current += 1
       pipelineRef.current?.dispose()
       pipelineRef.current = null
     }
-  }, [active, gl, scene, camera])
+  }, [active, gl, scene, camera, onSettled])
 
   useEffect(() => {
     pipelineRef.current?.setSize(width, height)

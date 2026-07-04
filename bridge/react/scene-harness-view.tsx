@@ -249,22 +249,27 @@ interface HarnessFraming {
 
 function StaticFrame({
   framing,
-  lightingReady,
+  harnessReady,
+  onAmbientOcclusionSettled,
 }: {
   framing: HarnessFraming
-  lightingReady: boolean
+  harnessReady: boolean
+  onAmbientOcclusionSettled: () => void
 }) {
   const { bounds, cameraOverride, ambientOcclusionActive } = framing
   const { gl, scene, camera, size } = useThree()
   // The same render seam the live view uses: when the ambient-occlusion pass is active the
   // frame draws through it, otherwise straight through gl.render, so a schematic or
-  // no-location harness state renders exactly as before.
-  const renderFrame = useAmbientOcclusion(ambientOcclusionActive)
+  // no-location harness state renders exactly as before. onAmbientOcclusionSettled bubbles the
+  // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
+  const renderFrame = useAmbientOcclusion(ambientOcclusionActive, onAmbientOcclusionSettled)
+  // Draws the mount frame, then redraws once harnessReady flips: the lazy sky has attached and,
+  // when active, the ambient-occlusion pipeline has settled, so the captured frame carries both.
   useLayoutEffect(() => {
     if (cameraOverride === undefined) fitCameraToBounds(camera, bounds, size)
     else applyCameraPose(camera, cameraOverride)
     renderFrame(gl, scene, camera)
-  }, [renderFrame, gl, scene, camera, bounds, cameraOverride, size, lightingReady])
+  }, [renderFrame, gl, scene, camera, bounds, cameraOverride, size, harnessReady])
   return null
 }
 
@@ -349,6 +354,34 @@ function useHarnessLightingReadiness() {
   return { lightingReady, handleLightingReady }
 }
 
+// Flips once the ambient-occlusion pipeline build settles (install, stale-discard, or
+// failure all count, mirroring the sky slice's settled-not-succeeded contract) so a failed
+// build cannot hang the capture. Only meaningful when the pass is active for the state.
+function useHarnessAmbientOcclusionReadiness() {
+  const [ambientOcclusionSettled, setAmbientOcclusionSettled] = useState(false)
+  const handleAmbientOcclusionSettled = useCallback(() => setAmbientOcclusionSettled(true), [])
+  return { ambientOcclusionSettled, handleAmbientOcclusionSettled }
+}
+
+// Combines the two asynchronous readiness signals into the single gate the captured frame and
+// the data-harness-ready attribute share. When the ambient-occlusion pass is active the frame
+// waits for both the lazy sky and the pipeline build; when it is inactive the gate is lighting
+// readiness alone, so schematic and no-location states keep their existing single-signal
+// contract unchanged.
+function useHarnessReadiness(ambientOcclusionActive: boolean) {
+  const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
+  const { ambientOcclusionSettled, handleAmbientOcclusionSettled } =
+    useHarnessAmbientOcclusionReadiness()
+  const harnessReady = lightingReady && (!ambientOcclusionActive || ambientOcclusionSettled)
+  return { harnessReady, handleLightingReady, handleAmbientOcclusionSettled }
+}
+
+// Whether this state's static frame draws through the ambient-occlusion pass, defaulting the
+// absent realistic flag to schematic. Mirrors the live view's gate (ambientOcclusionActiveFor).
+function harnessAmbientOcclusionActive(environment: HarnessEnvironment | undefined): boolean {
+  return ambientOcclusionActiveFor(environment?.realistic ?? false, environment?.site)
+}
+
 // Constructs the harness renderer, forcing the WebGL 2 backend so the committed baseline is a
 // hardware-WebGL render that never collides with a future WebGPU baseline. Pulled out of the
 // Canvas element as a stable module value so SceneHarnessView stays within the length limit.
@@ -367,15 +400,14 @@ export function SceneHarnessView({
   const fixture = HARNESS_FIXTURES[scene]
   const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
   const cameraOverride = harnessCameraOverride(scene)
-  const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
-  const realistic = environment?.realistic ?? false
-  const ambientOcclusionActive = ambientOcclusionActiveFor(realistic, environment?.site)
-  const framing: HarnessFraming = { bounds, cameraOverride, ambientOcclusionActive }
+  const ambientOcclusionActive = harnessAmbientOcclusionActive(environment)
+  const { harnessReady, handleLightingReady, handleAmbientOcclusionSettled } =
+    useHarnessReadiness(ambientOcclusionActive)
 
   return (
     <div
       data-testid="scene-harness"
-      data-harness-ready={lightingReady ? 'true' : 'false'}
+      data-harness-ready={harnessReady ? 'true' : 'false'}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
       <Canvas
@@ -391,7 +423,11 @@ export function SceneHarnessView({
           environment={environment}
           onReady={handleLightingReady}
         />
-        <StaticFrame framing={framing} lightingReady={lightingReady} />
+        <StaticFrame
+          framing={{ bounds, cameraOverride, ambientOcclusionActive }}
+          harnessReady={harnessReady}
+          onAmbientOcclusionSettled={handleAmbientOcclusionSettled}
+        />
       </Canvas>
     </div>
   )
