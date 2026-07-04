@@ -57,3 +57,4 @@ export {
 } from './postprocessing/ambient-occlusion-params'
 export type { AmbientOcclusionPipeline } from './postprocessing/render-scene-frame'
 export { renderSceneFrame } from './postprocessing/render-scene-frame'
+export { buildAmbientOcclusionPipeline } from './postprocessing/ambient-occlusion'
