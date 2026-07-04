@@ -29,6 +29,8 @@ export class SolarLightingProvider implements LightingProvider {
     this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
     // The visible sky loads off the startup path; fire-and-forget its attach so `apply` stays
     // synchronous. `dispose` marks the rig, which abandons the attach if it is still in flight.
+    // attachSkyEnvironment never rejects: a failed chunk load (e.g. after a redeploy) is caught
+    // and warned about inside it, so `void` here discards nothing but a resolved promise.
     void attachSkyEnvironment(scene, this.rig)
   }
 

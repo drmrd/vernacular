@@ -65,7 +65,10 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
  * added once its lazily imported module resolves, with cloud motion frozen (cloudSpeed 0) so
  * scene baselines stay deterministic. A rig disposed while the module is still loading
  * abandons the attach: the sky never joins the scene and the promise resolves without error.
- * Call once per freshly built rig; a second call would add a second probe.
+ * A failed dynamic import (e.g. a stale chunk URL after a redeploy) is caught here rather than
+ * left to the caller: it warns and returns, leaving rig.sky undefined and the promise resolved,
+ * so the scene stays lit by the probe and fill already applied synchronously above, just without
+ * the visible sky. Call once per freshly built rig; a second call would add a second probe.
  */
 export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingRig): Promise<void> {
   const probe = new THREE.LightProbe()
@@ -73,9 +76,19 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   scene.add(probe)
   rig.probe = probe
 
-  const { SkyMesh } = await loadSkyMeshModule()
+  let loadedModule: SkyMeshModule
+  try {
+    loadedModule = await loadSkyMeshModule()
+  } catch (reason) {
+    console.warn(
+      'Failed to load the visible sky module (three/examples/jsm/objects/SkyMesh.js); realistic lighting continues without it',
+      reason,
+    )
+    return
+  }
   if (rig.disposed === true) return
 
+  const { SkyMesh } = loadedModule
   const sky = new SkyMesh()
   sky.scale.setScalar(SKY_SCALE)
   sky.cloudSpeed.value = FROZEN_CLOUD_SPEED
@@ -89,6 +102,7 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   const stashed = rig.pendingLighting
   if (stashed !== undefined) {
     applySkyLighting(sky, stashed)
+    rig.pendingLighting = undefined
   }
 }
 
