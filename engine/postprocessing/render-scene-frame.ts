@@ -13,6 +13,7 @@ export interface AmbientOcclusionPipeline {
  * Draws one frame: through the AO pipeline when one is supplied, otherwise straight
  * through the renderer. The one seam both canvases call so the takeover has a single owner.
  */
+// eslint-disable-next-line max-params -- renderer and pipeline are the two mutually exclusive draw strategies; scene and camera are what the renderer strategy needs, the same three-plus-one-nullable shape as walk-interaction's disable
 export function renderSceneFrame(
   renderer: FrameRenderer,
   scene: object,
