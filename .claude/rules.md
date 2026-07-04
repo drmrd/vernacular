@@ -12,7 +12,7 @@ These rules apply to every contribution to Vernacular, whether by a human or a C
 
 4. **Asset references are content-addressed.** Every reference is `(scope, contentHash)`. See ADR-0007.
 
-5. **15-day dependency cooldown.** No direct or transitive dependency younger than 15 days. Enforced by `.npmrc` `minimum-release-age=21600`. See ADR-0010.
+5. **30-day dependency cooldown.** No direct or transitive dependency younger than 30 days. Enforced by `.npmrc` `minimum-release-age=43200`. See ADR-0010.
 
 6. **Local knowledge graph.** Significant architectural changes are summarized as ADRs under the local `docs/knowledge/` tree (gitignored) so Claude has fast context recovery in future sessions. ADRs are a Claude-side cache, not a committed artifact; the authoritative source is the design specification.
 
