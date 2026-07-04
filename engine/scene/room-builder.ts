@@ -5,7 +5,9 @@ import {
   canonicalOuterLoop,
   ceilingHeight,
   floorSlabThickness,
+  leftNormal,
   planToWorld,
+  shift,
   type Point,
   type RoomSceneNode,
 } from '../../core'
@@ -15,6 +17,31 @@ import { COMPONENTS_PER_VERTEX, reverseTriangleWinding, type Triangle } from './
 
 /** The finished-floor datum: the slab's top sits at local world Y = 0. */
 const FLOOR_DATUM_Y = 0
+
+/**
+ * How far each slab side face is pulled inboard of its footprint boundary, in
+ * plan millimeters. Two adjacent rooms both reach a shared wall centerline after
+ * ADR-0129, so their side faces there are back to back with opposite normals and
+ * coplanar; the depth-bias ladder cannot break that tie, because both faces draw
+ * the same `exteriorFace` role and so carry the same offset. Pulling every side
+ * face this far toward its own interior separates the two so neither wins by a
+ * coin flip. The distance is far above the float32 geometric resolution at the
+ * maximum plan extent and far below both the wall junction tolerance and any
+ * visible threshold, so it removes the coincidence without reading as a gap
+ * (ADR-0150).
+ */
+const SLAB_SIDE_FACE_INSET_MM = 0.1
+
+/**
+ * The inward unit normal of a canonical (plan counterclockwise) boundary edge:
+ * the interior lies to the left, so `leftNormal` points into the slab. A
+ * degenerate zero-length edge has no direction, so it stays put rather than
+ * feeding `leftNormal` a divide by zero.
+ */
+function inwardEdgeNormal(start: Point, end: Point): Point {
+  if (start.x === end.x && start.y === end.y) return { x: 0, y: 0 }
+  return leftNormal(start, end)
+}
 
 /** One contiguous geometry section paired with the surface role it draws. */
 interface SlabSection {
@@ -39,19 +66,29 @@ function slabCapPositions(points: Point[], triangles: Triangle[], height: number
   return positions
 }
 
-/** Positions for the vertical sides connecting the top and bottom caps. */
+/**
+ * Positions for the vertical sides connecting the top and bottom caps. Each side
+ * face is pulled `SLAB_SIDE_FACE_INSET_MM` inboard of its boundary edge, so two
+ * adjacent rooms' faces along a shared wall centerline never share a plane. Each
+ * edge is offset along its own inward normal with no corner miter, since the
+ * corner divergence at a sub-millimeter offset is invisible. The top and base
+ * caps still reach the boundary, so the footprint is unchanged.
+ */
 function slabSidePositions(boundary: Point[], thickness: number): number[] {
   const positions: number[] = []
   const bottomY = FLOOR_DATUM_Y - thickness
   for (let i = 0; i < boundary.length; i += 1) {
     const start = boundary[i] as Point
     const end = boundary[(i + 1) % boundary.length] as Point
-    pushWorldPoint(positions, end, bottomY)
-    pushWorldPoint(positions, end, FLOOR_DATUM_Y)
-    pushWorldPoint(positions, start, FLOOR_DATUM_Y)
-    pushWorldPoint(positions, start, bottomY)
-    pushWorldPoint(positions, end, bottomY)
-    pushWorldPoint(positions, start, FLOOR_DATUM_Y)
+    const inward = inwardEdgeNormal(start, end)
+    const insetStart = shift(start, inward, SLAB_SIDE_FACE_INSET_MM)
+    const insetEnd = shift(end, inward, SLAB_SIDE_FACE_INSET_MM)
+    pushWorldPoint(positions, insetEnd, bottomY)
+    pushWorldPoint(positions, insetEnd, FLOOR_DATUM_Y)
+    pushWorldPoint(positions, insetStart, FLOOR_DATUM_Y)
+    pushWorldPoint(positions, insetStart, bottomY)
+    pushWorldPoint(positions, insetEnd, bottomY)
+    pushWorldPoint(positions, insetStart, FLOOR_DATUM_Y)
   }
   return positions
 }
