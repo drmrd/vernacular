@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import type { Bounds3, EnvironmentLighting } from '../../core'
+import {
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  type Bounds3,
+  type EnvironmentLighting,
+} from '../../core'
 import { BasicLightingProvider } from './basic-lighting-provider'
 
 describe('BasicLightingProvider', () => {
@@ -69,11 +73,14 @@ describe('BasicLightingProvider', () => {
   describe('receiving environment lighting updates', () => {
     // A deliberately loud environment: a red noon sun and a blue sky. If the schematic
     // rig reacted to updates at all, this would visibly change the lights.
+    const fabricatedCloudCover = 0.3
     const fabricatedLighting: EnvironmentLighting = {
       sunDirection: { x: 0, y: 1, z: 0 },
       sunColor: { r: 1, g: 0, b: 0 },
       skyColor: { r: 0, g: 0, b: 1 },
       sunIntensity: 1,
+      cloudCover: fabricatedCloudCover,
+      skyAmbient: NEUTRAL_DOME_SPHERICAL_HARMONICS,
     }
     const anyBounds: Bounds3 = {
       min: { x: 0, y: 0, z: 0 },

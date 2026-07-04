@@ -1,17 +1,24 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import type { Bounds3, EnvironmentLighting } from '../../core'
+import {
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  type Bounds3,
+  type EnvironmentLighting,
+} from '../../core'
 import { SolarLightingProvider } from './solar-lighting-provider'
 import { DAYLIGHT_SUN_INTENSITY } from './lighting-rig'
 
 // Fabricated environments: a deliberately loud warm sun under a cool sky. The
 // solar math that would produce real values is core-tested; here we only care
 // that the rig faithfully applies whatever environment it is handed.
+const FABRICATED_CLOUD_COVER = 0.3
 const overheadSunLighting: EnvironmentLighting = {
   sunDirection: { x: 0, y: 1, z: 0 },
   sunColor: { r: 1, g: 0.5, b: 0.25 },
   skyColor: { r: 0.2, g: 0.4, b: 0.9 },
   sunIntensity: 1,
+  cloudCover: FABRICATED_CLOUD_COVER,
+  skyAmbient: NEUTRAL_DOME_SPHERICAL_HARMONICS,
 }
 const duskSunLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0.5 }
 const sunDownLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0 }

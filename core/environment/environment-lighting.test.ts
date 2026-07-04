@@ -3,6 +3,9 @@ import { computeEnvironmentLighting, type EnvironmentLightingInput } from './env
 import { solarPosition, type SolarAngles } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
 import { skyLighting } from './sky-model'
+import { evaluateSphericalHarmonics, SH_COEFFICIENT_COUNT } from './spherical-harmonics'
+import type { LinearRgb } from '../color/oklab'
+import type { Vector3 } from '../scene/vector3'
 
 // computeEnvironmentLighting is a pure composition of the three piece
 // functions on this branch: solarPosition turns site and instant into solar
@@ -16,6 +19,10 @@ const COMPOSITION_DECIMAL_PLACES = 10
 
 const LOCAL_NOON_MINUTES = 720
 const LOCAL_MIDNIGHT_MINUTES = 0
+
+// The sky-ambient reconstruction is checked straight overhead, where a setting
+// sun's dimming is least ambiguous.
+const ZENITH_DIRECTION: Vector3 = { x: 0, y: 1, z: 0 }
 
 function equinoxNoonInput(): EnvironmentLightingInput {
   return {
@@ -40,6 +47,10 @@ function deepFreeze(input: EnvironmentLightingInput): EnvironmentLightingInput {
   Object.freeze(input.latLong)
   Object.freeze(input.observedAt)
   return Object.freeze(input)
+}
+
+function summedIntensity(color: LinearRgb): number {
+  return color.r + color.g + color.b
 }
 
 describe('computeEnvironmentLighting', () => {
@@ -77,5 +88,25 @@ describe('computeEnvironmentLighting', () => {
   it('leaves a frozen input untouched', () => {
     const input = deepFreeze(equinoxNoonInput())
     expect(() => computeEnvironmentLighting(input)).not.toThrow()
+  })
+
+  it('carries the input cloud cover through to the computed lighting', () => {
+    const input = equinoxNoonInput()
+    const { cloudCover } = computeEnvironmentLighting(input)
+    expect(cloudCover).toBe(input.cloudCover)
+  })
+
+  it('projects a full sky-ambient spherical harmonic that dims once the sun drops below the horizon', () => {
+    const noon = computeEnvironmentLighting(equinoxNoonInput())
+    const midnight = computeEnvironmentLighting({
+      ...equinoxNoonInput(),
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: LOCAL_MIDNIGHT_MINUTES },
+    })
+
+    expect(noon.skyAmbient).toHaveLength(SH_COEFFICIENT_COUNT)
+
+    const noonZenith = evaluateSphericalHarmonics(noon.skyAmbient, ZENITH_DIRECTION)
+    const midnightZenith = evaluateSphericalHarmonics(midnight.skyAmbient, ZENITH_DIRECTION)
+    expect(summedIntensity(midnightZenith)).toBeLessThan(summedIntensity(noonZenith))
   })
 })
