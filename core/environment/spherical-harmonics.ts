@@ -151,12 +151,22 @@ function uniformDomeBand0(channel: number): number {
 const HIGHER_BAND_COEFFICIENTS = new Array<number>(SH_COEFFICIENT_COUNT - RGB_CHANNEL_COUNT).fill(0)
 
 /**
- * The color-check reference: a uniform white dome (matching color-check's
- * NEUTRAL_REFERENCE_WHITE, r = g = b = 1), band 0 only.
+ * The reference white channel value the color-check dome is built from
+ * (matching color-check's NEUTRAL_REFERENCE_WHITE, r = g = b = 1).
+ *
+ * Do not import NEUTRAL_REFERENCE_WHITE from ./color-check here: color-check.ts
+ * imports NEUTRAL_DOME_SPHERICAL_HARMONICS from this module, and this constant's
+ * top-level eager evaluation would read the not-yet-initialized export, crashing
+ * whenever color-check.ts loads first (see ADR-0148).
+ */
+const NEUTRAL_WHITE_CHANNEL = 1
+
+/**
+ * The color-check reference: a uniform white dome, band 0 only.
  */
 export const NEUTRAL_DOME_SPHERICAL_HARMONICS: readonly number[] = [
-  uniformDomeBand0(1),
-  uniformDomeBand0(1),
-  uniformDomeBand0(1),
+  uniformDomeBand0(NEUTRAL_WHITE_CHANNEL),
+  uniformDomeBand0(NEUTRAL_WHITE_CHANNEL),
+  uniformDomeBand0(NEUTRAL_WHITE_CHANNEL),
   ...HIGHER_BAND_COEFFICIENTS,
 ]

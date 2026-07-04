@@ -6,8 +6,11 @@ import { NEUTRAL_DOME_SPHERICAL_HARMONICS } from './spherical-harmonics'
 export const NEUTRAL_REFERENCE_WHITE: LinearRgb = { r: 1, g: 1, b: 1 }
 
 /**
- * Neutralizes the sun and sky tints to the white-balanced reference; sun direction
- * and sun intensity pass through untouched so shadows and the day/night fade still read.
+ * Neutralizes the sun and sky tints to the white-balanced reference for the color
+ * check: sunColor and skyColor become NEUTRAL_REFERENCE_WHITE, and skyAmbient is
+ * replaced with the neutral uniform-white dome so ambient light reads unbiased too.
+ * sunDirection, sunIntensity, and cloudCover pass through untouched so shadows and
+ * the day/night fade still read.
  */
 export function colorCheckLighting(lighting: EnvironmentLighting): EnvironmentLighting {
   return {
