@@ -5,6 +5,7 @@ import { VIEW_MODES, VIEW_MODE_LABELS } from './view-mode-labels'
 import './view-mode-viewport.css'
 
 const RESIZE_STEP = 5
+const SPLIT_TOTAL = 100
 const SPLIT_DEFAULT = 60
 const SPLIT_MIN = 30
 const SPLIT_MAX = 80
@@ -76,7 +77,9 @@ function SplitBody({ plan, preview }: { plan: ReactNode; preview: ReactNode }) {
         {plan}
       </div>
       <Splitter size={size} min={SPLIT_MIN} max={SPLIT_MAX} onResizeStep={onResizeStep} />
-      <div className="view-mode-viewport__pane">{preview}</div>
+      <div className="view-mode-viewport__pane" style={{ flexBasis: `${SPLIT_TOTAL - size}%` }}>
+        {preview}
+      </div>
     </div>
   )
 }

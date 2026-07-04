@@ -127,4 +127,20 @@ describe('ViewModeViewport', () => {
     await user.keyboard('{ArrowLeft}')
     expect(separator).toHaveAttribute('aria-valuenow', '60')
   })
+
+  it('gives the preview pane the complementary flex-basis to the split position', async () => {
+    const user = userEvent.setup()
+    renderViewport()
+
+    await user.click(screen.getByRole('button', { name: 'Split view' }))
+
+    const previewPane = screen.getByLabelText('3D preview').closest('.view-mode-viewport__pane')
+    expect(previewPane).toHaveStyle({ flexBasis: '40%' })
+
+    const separator = screen.getByRole('separator')
+    separator.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(previewPane).toHaveStyle({ flexBasis: '35%' })
+  })
 })
