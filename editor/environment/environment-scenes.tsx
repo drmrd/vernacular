@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ReactElement } from 'react'
+import { useState, type ChangeEvent, type FormEvent, type ReactElement } from 'react'
 import type { Command, EnvironmentScene, EnvironmentState } from '../../core'
 import {
   addEnvironmentScene,
@@ -7,6 +7,7 @@ import {
   formatObservationDateTime,
   parseObservationInstant,
   removeEnvironmentScene,
+  renameEnvironmentScene,
 } from '../../core'
 import { Button, Field, Stack } from '../design-system'
 
@@ -61,21 +62,29 @@ function sceneRenameInputId(id: string): string {
 
 interface SceneRenameFormProps {
   scene: EnvironmentScene
+  onCommit: (name: string) => void
 }
 
 // The inline rename editor for a saved scene: a text input pre-filled with the
-// scene's current name.
-function SceneRenameForm({ scene }: SceneRenameFormProps): ReactElement {
+// scene's current name, submitted on Enter (form submit).
+function SceneRenameForm({ scene, onCommit }: SceneRenameFormProps): ReactElement {
   const [draft, setDraft] = useState(scene.name)
   const inputId = sceneRenameInputId(scene.id)
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    onCommit(draft)
+  }
   return (
-    <Field htmlFor={inputId} label={`Rename ${scene.name}`}>
-      <input
-        id={inputId}
-        value={draft}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
-      />
-    </Field>
+    <form onSubmit={handleSubmit}>
+      <Field htmlFor={inputId} label={`Rename ${scene.name}`}>
+        <input
+          id={inputId}
+          value={draft}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+        />
+      </Field>
+      <Button type="submit">Save name</Button>
+    </form>
   )
 }
 
@@ -102,10 +111,17 @@ function SceneRow({
   const handleRemove = () => {
     dispatch(removeEnvironmentScene(scene.id))
   }
+  const handleRenameCommit = (name: string) => {
+    const trimmedName = name.trim()
+    if (trimmedName !== '') {
+      dispatch(renameEnvironmentScene(scene.id, trimmedName))
+    }
+    setRenaming(false)
+  }
   if (renaming) {
     return (
       <li>
-        <SceneRenameForm scene={scene} />
+        <SceneRenameForm scene={scene} onCommit={handleRenameCommit} />
       </li>
     )
   }
