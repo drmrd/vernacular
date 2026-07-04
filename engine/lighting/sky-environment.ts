@@ -18,8 +18,18 @@ const SKY_SCALE = 450000
 /** Cloud motion frozen: the addon animates clouds on `time`, which would make every scene
  *  baseline nondeterministic. Static clouds hold the render steady. */
 const FROZEN_CLOUD_SPEED = 0
-/** The solar disc stays drawn in the sky. */
+/** Pinned defensively: an addon default change to showSunDisc cannot silently drift scene
+ *  baselines if this value is named and set explicitly here. */
 const SUN_DISC_ON = 1
+/** Pinned defensively: matches the r184 addon's own cloudScale default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const CLOUD_SCALE = 0.0002
+/** Pinned defensively: matches the r184 addon's own cloudDensity default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const CLOUD_DENSITY = 0.4
+/** Pinned defensively: matches the r184 addon's own cloudElevation default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const CLOUD_ELEVATION = 0.5
 
 /**
  * Adds the visible sky and its light probe to an applied rig and zeroes the
@@ -31,6 +41,9 @@ export function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingRig): v
   sky.scale.setScalar(SKY_SCALE)
   sky.cloudSpeed.value = FROZEN_CLOUD_SPEED
   sky.showSunDisc.value = SUN_DISC_ON
+  sky.cloudScale.value = CLOUD_SCALE
+  sky.cloudDensity.value = CLOUD_DENSITY
+  sky.cloudElevation.value = CLOUD_ELEVATION
 
   const probe = new THREE.LightProbe()
 
