@@ -184,6 +184,30 @@ describe('EnvironmentScenes renaming a saved scene', () => {
       SAVED_SCENE.name,
     )
   })
+
+  it('dispatches environment-scene/rename with the id and the edited name when the rename form is submitted', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+    const input = screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })
+    await user.clear(input)
+    await user.type(input, 'Summer noon{Enter}')
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'environment-scene/rename',
+      params: { id: SAVED_SCENE.id, name: 'Summer noon' },
+      description: expect.any(String),
+    })
+  })
 })
 
 describe('EnvironmentScenes with no saved scenes', () => {
