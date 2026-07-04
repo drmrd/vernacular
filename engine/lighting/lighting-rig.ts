@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 
-import type { Bounds3, LinearRgb, Vector3 } from '../../core'
+import type { Bounds3, EnvironmentLighting, LinearRgb, Vector3 } from '../../core'
 
 /**
  * The shared sun-plus-sky lighting rig: construction plus the operations on a rig
@@ -50,6 +50,16 @@ export interface LightingRig {
   sky?: SkyMesh
   /** The sky's diffuse image-based light, solar mode only; replaces the fill. */
   probe?: THREE.LightProbe
+  /**
+   * Set true by `disposeLightingRig` so a lazy sky attach still in flight becomes a no-op:
+   * the sky loads off the startup path, so a rig can be disposed before its module resolves.
+   */
+  disposed?: boolean
+  /**
+   * The latest lighting seen before the lazy sky arrived. `updateSkyEnvironment` stashes it
+   * here (latest wins) so the attach can replay it onto the sky the moment it is constructed.
+   */
+  pendingLighting?: EnvironmentLighting | undefined
 }
 
 /**
@@ -74,9 +84,12 @@ export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): L
  * the scene and disposes each, freeing GPU resources. `dispose()` on the sun is what frees
  * its shadow map, so a provider must call this rather than just detaching the lights. A
  * solar rig also carries a visible sky and its light probe; both are removed and disposed
- * when present, and the teardown still works on a rig that never attached them.
+ * when present, and the teardown still works on a rig that never attached them. Marking the
+ * rig disposed abandons a sky whose module is still loading so it never joins the scene.
  */
 export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): void {
+  rig.disposed = true
+  rig.pendingLighting = undefined
   scene.remove(rig.sun, rig.fill)
   rig.sun.dispose()
   rig.fill.dispose()

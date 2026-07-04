@@ -27,7 +27,9 @@ export class SolarLightingProvider implements LightingProvider {
 
   apply(scene: THREE.Object3D): void {
     this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
-    attachSkyEnvironment(scene, this.rig)
+    // The visible sky loads off the startup path; fire-and-forget its attach so `apply` stays
+    // synchronous. `dispose` marks the rig, which abandons the attach if it is still in flight.
+    void attachSkyEnvironment(scene, this.rig)
   }
 
   /**
