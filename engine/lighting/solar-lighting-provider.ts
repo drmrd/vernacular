@@ -24,14 +24,24 @@ import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
  */
 export class SolarLightingProvider implements LightingProvider {
   private rig: LightingRig | null = null
+  private skyAttachmentReady: Promise<void> | null = null
 
   apply(scene: THREE.Object3D): void {
     this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
-    // The visible sky loads off the startup path; fire-and-forget its attach so `apply` stays
-    // synchronous. `dispose` marks the rig, which abandons the attach if it is still in flight.
-    // attachSkyEnvironment never rejects: a failed chunk load (e.g. after a redeploy) is caught
-    // and warned about inside it, so `void` here discards nothing but a resolved promise.
-    void attachSkyEnvironment(scene, this.rig)
+    // The visible sky loads off the startup path, so `apply` stores its attach promise rather
+    // than awaiting it, which keeps `apply` synchronous. `dispose` clears the stored promise,
+    // which abandons the attach if it is still in flight. attachSkyEnvironment never rejects: a
+    // failed chunk load (e.g. after a redeploy) is caught and warned about inside it, so callers
+    // that skip `whenReady` discard nothing but a resolved promise.
+    this.skyAttachmentReady = attachSkyEnvironment(scene, this.rig)
+  }
+
+  /**
+   * Resolves once the lazily loaded visible sky has attached to the scene, or immediately
+   * if `apply` has not run yet or the provider has since been disposed.
+   */
+  whenReady(): Promise<void> {
+    return this.skyAttachmentReady ?? Promise.resolve()
   }
 
   /**
@@ -54,5 +64,6 @@ export class SolarLightingProvider implements LightingProvider {
     if (this.rig === null) return
     disposeLightingRig(scene, this.rig)
     this.rig = null
+    this.skyAttachmentReady = null
   }
 }

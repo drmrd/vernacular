@@ -5,8 +5,10 @@ import { test, expect, type Page } from '@playwright/test'
 // query parameter. The named states resolve in app/harness-environment.ts to a fixed
 // site (latitude 40 north, longitude 75 west, America/New_York) and a fixed observation
 // instant, driving the SolarLightingProvider deterministically so each baseline pins one
-// sun position. Baselines render on the CI runner via the visual workflow (there is no
-// local GPU tier), so this spec self-skips until the committed baseline lands.
+// sun position. Baselines are darwin renders from the development Mac's Metal tier,
+// regenerated locally with --update-snapshots=all; continuous integration neither renders
+// nor checks them, because the CI end-to-end job ignores scene specs (ADR-0149 records
+// the convention and why the plans' CI-runner assumption was wrong).
 //
 // Self-skip policy: unlike the absent-WebGPU case, the harness renders via whatever
 // backend the runner provides and only self-skips when no WebGL 2 context can be created
@@ -42,6 +44,12 @@ async function captureShell(page: Page, query: string, snapshot: string): Promis
       message: 'waiting for the harness canvas to size its backing store',
     })
     .toBeGreaterThan(0)
+
+  // The visible sky arrives through a lazily loaded chunk, so the mount frame renders
+  // without it. The harness draws a second frame once the lighting reports ready and
+  // marks data-harness-ready in the same commit pass, so awaiting the attribute
+  // guarantees the screenshot captures the sky-lit frame, not the placeholder background.
+  await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
 
   await expect(canvas).toHaveScreenshot(snapshot, {
     threshold: SHELL_THRESHOLD,

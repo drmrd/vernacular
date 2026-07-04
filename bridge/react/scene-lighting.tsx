@@ -37,6 +37,12 @@ interface SceneLightingProps {
   observedAt?: ObservationInstant | undefined
   cloudCover?: number | undefined
   colorCheck?: boolean | undefined
+  // Invoked once the applied provider's asynchronous lighting resources (the solar
+  // provider's lazily loaded visible sky) have finished attaching; providers without
+  // async resources settle immediately. The render harness draws its static frame on
+  // this signal so the captured baseline includes the sky; live views rely on the
+  // frame loop instead and can omit it.
+  onReady?: (() => void) | undefined
 }
 
 interface SolarLightingUpdateInput {
@@ -92,6 +98,28 @@ function useSolarLightingUpdate({
   ])
 }
 
+// Settles the optional readiness callback from the provider once its asynchronous
+// resources (the solar provider's lazily loaded sky) finish attaching; a provider with
+// none reports ready in a microtask. Declared after the caller's apply effect, so the
+// readiness it reports is the applied provider's. A provider swap or unmount cancels
+// the stale callback: readiness from a disposed provider must not mark the new one.
+// Settled, not succeeded, is the contract: a rejected readiness still reports ready,
+// so a consumer gating work on the callback (the harness frame) is never left waiting.
+function useLightingReadiness(provider: LightingProvider, onReady: (() => void) | undefined) {
+  useLayoutEffect(() => {
+    if (onReady === undefined) return undefined
+    let cancelled = false
+    void (provider.whenReady?.() ?? Promise.resolve())
+      .catch(() => undefined)
+      .then(() => {
+        if (!cancelled) onReady()
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [provider, onReady])
+}
+
 /**
  * View-layer glue: applies the engine lighting rig to the persistent render scene once
  * per provider, then keeps it current without rebuilding geometry. Realistic mode swaps
@@ -99,8 +127,10 @@ function useSolarLightingUpdate({
  * sun from the site and observation instant; the schematic default keeps the fixed rig
  * tinted from the color temperature with its shadow fit to the scene bounds. The lights
  * live on the render scene rather than on the keyed geometry group, so a rebuild does
- * not discard them and a lighting change does not rebuild the geometry. Runs only under
- * a real render; coverage-excluded, proven by the scene-webgl tier.
+ * not discard them and a lighting change does not rebuild the geometry. Reports the
+ * provider's readiness through the optional onReady callback (the harness gates its
+ * captured frame on it). Runs only under a real render; coverage-excluded, proven by
+ * the scene-webgl tier.
  */
 export function SceneLighting({
   colorTemperatureK,
@@ -110,13 +140,14 @@ export function SceneLighting({
   observedAt = DEFAULT_OBSERVATION_INSTANT,
   cloudCover = DEFAULT_CLOUD_COVER,
   colorCheck = false,
+  onReady,
 }: SceneLightingProps) {
   const scene = useThree((state) => state.scene)
   const renderer = useThree((state) => state.gl)
   // Realistic mode without a site location falls back to the schematic provider; the
   // missing-location UX lives in editor/environment/environment-panel.tsx (ADR-0144).
   const solar = realistic && site?.latLong !== undefined
-  const provider = useMemo(
+  const provider = useMemo<LightingProvider>(
     () => (solar ? new SolarLightingProvider() : new BasicLightingProvider()),
     [solar],
   )
@@ -125,6 +156,8 @@ export function SceneLighting({
     provider.apply(scene)
     return () => provider.dispose(scene)
   }, [provider, scene])
+
+  useLightingReadiness(provider, onReady)
 
   // The renderer's tone-mapping operator follows the effective mode: `solar` is what the
   // render actually shows, so a realistic request that falls back to schematic keeps the

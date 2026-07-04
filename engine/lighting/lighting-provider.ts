@@ -23,4 +23,10 @@ export interface LightingProvider {
    * swap does not leak. A provider that never applied, or already disposed, is a no-op.
    */
   dispose(scene: THREE.Object3D): void
+  /**
+   * Resolves once any asynchronous lighting resources this provider loads (for the
+   * solar provider, the lazily imported visible sky) have finished attaching.
+   * Absent or immediately resolved for providers with no async resources.
+   */
+  whenReady?(): Promise<void>
 }

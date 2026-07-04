@@ -1,9 +1,10 @@
 import { Canvas, useThree } from '@react-three/fiber'
-import { useLayoutEffect, useMemo } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   furnitureFootprintCorners,
   type Bounds3,
+  type CameraPose,
   type FurnitureSceneNode,
   type ObservationInstant,
   type OpeningSceneNode,
@@ -203,17 +204,26 @@ const HARNESS_FIXTURES = {
 /** Which harness fixture to render; defaults to the wall-shell room. */
 export type HarnessScene = keyof typeof HARNESS_FIXTURES
 
-// Fits the camera to the bounds for the pinned canvas size, then renders exactly one
-// frame on mount and never again, so the screenshot is deterministic and never races
-// an animation tick (the Canvas runs in `frameloop="never"`). Fitting here (rather
-// than only at scene build) frames the model to the harness aspect ratio and field
-// of view, matching the live preview (ADR-0075).
-function StaticFrame({ bounds }: { bounds: Bounds3 | null }) {
+// Fits the camera to the bounds for the pinned canvas size, then renders one frame on
+// mount and one more when the lighting reports ready, so the screenshot is deterministic
+// and never races an animation tick (the Canvas runs in `frameloop="never"`). The mount
+// frame keeps the canvas from sitting blank while asynchronous lighting (the solar
+// provider's lazily loaded sky) attaches; the ready frame is the one the baselines
+// capture, awaited through the wrapper's data-harness-ready attribute. Fitting here
+// (rather than only at scene build) frames the model to the harness aspect ratio and
+// field of view, matching the live preview (ADR-0075).
+function StaticFrame({
+  bounds,
+  lightingReady,
+}: {
+  bounds: Bounds3 | null
+  lightingReady: boolean
+}) {
   const { gl, scene, camera, size } = useThree()
   useLayoutEffect(() => {
     fitCameraToBounds(camera, bounds, size)
     gl.render(scene, camera)
-  }, [gl, scene, camera, bounds, size])
+  }, [gl, scene, camera, bounds, size, lightingReady])
   return null
 }
 
@@ -234,15 +244,18 @@ export interface HarnessEnvironment {
 // Forwards the canonical environment override, when present, so its site,
 // observation instant, cloud cover, and color-check flag drive the realistic solar
 // provider. Without one, SceneLighting's own schematic defaults apply (realistic
-// off, no site).
+// off, no site). The readiness callback bubbles up so the harness can render its
+// captured frame only after asynchronous lighting (the lazy sky) has attached.
 function HarnessLighting({
   colorTemperatureK,
   bounds,
   environment,
+  onReady,
 }: {
   colorTemperatureK: number
   bounds: Bounds3 | null
   environment?: HarnessEnvironment | undefined
+  onReady: () => void
 }) {
   return (
     <SceneLighting
@@ -253,6 +266,7 @@ function HarnessLighting({
       observedAt={environment?.observedAt}
       cloudCover={environment?.cloudCover}
       colorCheck={environment?.colorCheck}
+      onReady={onReady}
     />
   )
 }
@@ -274,6 +288,26 @@ interface SceneHarnessViewProps {
   environment?: HarnessEnvironment | undefined
 }
 
+// The framed pose as the Canvas camera props: the fitted position with the near and
+// far planes the framing computed (ADR-0075).
+function harnessCameraProps(pose: CameraPose) {
+  return {
+    position: [pose.position.x, pose.position.y, pose.position.z] as [number, number, number],
+    near: pose.near,
+    far: pose.far,
+  }
+}
+
+// Flips once the lighting provider's asynchronous resources (the lazy sky) attach.
+// The wrapper advertises it as data-harness-ready, which the visual specs await
+// before screenshotting: React commits the attribute in the same pass whose layout
+// effect renders the ready frame, so an observable "true" implies the frame exists.
+function useHarnessLightingReadiness() {
+  const [lightingReady, setLightingReady] = useState(false)
+  const handleLightingReady = useCallback(() => setLightingReady(true), [])
+  return { lightingReady, handleLightingReady }
+}
+
 export function SceneHarnessView({
   colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
   paint = {},
@@ -282,16 +316,17 @@ export function SceneHarnessView({
 }: SceneHarnessViewProps = {}) {
   const fixture = HARNESS_FIXTURES[scene]
   const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
+  const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
 
   return (
-    <div data-testid="scene-harness" style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}>
+    <div
+      data-testid="scene-harness"
+      data-harness-ready={lightingReady ? 'true' : 'false'}
+      style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
+    >
       <Canvas
         frameloop="never"
-        camera={{
-          position: [pose.position.x, pose.position.y, pose.position.z],
-          near: pose.near,
-          far: pose.far,
-        }}
+        camera={harnessCameraProps(pose)}
         // Force the WebGL 2 backend so the committed baseline is a hardware-WebGL render
         // that never collides with a future WebGPU baseline.
         gl={(defaultProps) =>
@@ -307,8 +342,9 @@ export function SceneHarnessView({
           colorTemperatureK={colorTemperatureK}
           bounds={bounds}
           environment={environment}
+          onReady={handleLightingReady}
         />
-        <StaticFrame bounds={bounds} />
+        <StaticFrame bounds={bounds} lightingReady={lightingReady} />
       </Canvas>
     </div>
   )
