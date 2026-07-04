@@ -16,6 +16,11 @@
   background: var(--color-surface-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  /* Overrides the flex item's automatic minimum size (its wrapped content height) so
+     it can shrink to whatever the camera pane's min-height share leaves it, with the
+     overflow reachable by scrolling instead of clipped or pushing the canvas away. */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 /* The primary cluster gathers the mode toggle, reset, and select into one tight
