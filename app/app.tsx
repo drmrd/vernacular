@@ -84,11 +84,14 @@ const DEMO_WALL_IDS = ['south', 'east', 'north', 'west']
 
 // Selects the harness fixture (`?fixture=scene-harness&scene=junctions`); the default
 // renders the wall-shell room, `junctions` renders the T-junction and acute-bay fixture
-// for the junction-geometry baseline (ADR-0080), and `furniture` renders the wall shell
-// with one massing box for the furniture baseline (ADR-0094).
+// for the junction-geometry baseline (ADR-0080), `furniture` renders the wall shell with
+// one massing box for the furniture baseline (ADR-0094), and `adjacent-rooms` renders two
+// rooms sharing a wall, viewed from below, for the shared-slab-boundary baseline (ADR-0150).
 function requestedHarnessScene(): HarnessScene | undefined {
   const scene = searchParam('scene')
-  return scene === 'junctions' || scene === 'furniture' ? scene : undefined
+  return scene === 'junctions' || scene === 'furniture' || scene === 'adjacent-rooms'
+    ? scene
+    : undefined
 }
 
 function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
