@@ -43,6 +43,14 @@ describe('scene-nav-toolbar.css', () => {
     expect(clusterCss).not.toMatch(/gap:\s*\d/)
   })
 
+  it('lets the toolbar shrink below its content height and scroll internally, so the camera pane below it can keep its min-height share', () => {
+    const toolbar = css.match(/\.scene-nav-toolbar\s*\{[^}]*\}/)?.[0] ?? ''
+
+    expect(toolbar).not.toBe('')
+    expect(toolbar).toMatch(/min-height:\s*0/)
+    expect(toolbar).toMatch(/overflow-y:\s*auto/)
+  })
+
   it('gives the 3D nav buttons and mode pills a 40px minimum target height', () => {
     const btn = css.match(/\.scene-nav-toolbar__btn\s*\{[^}]*\}/)?.[0] ?? ''
     const mode = css.match(/\.scene-nav-toolbar__mode\s*\{[^}]*\}/)?.[0] ?? ''
