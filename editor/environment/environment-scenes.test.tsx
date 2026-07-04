@@ -166,6 +166,95 @@ describe('EnvironmentScenes removing a saved scene', () => {
   })
 })
 
+describe('EnvironmentScenes renaming a saved scene', () => {
+  it('shows an inline rename input pre-filled with the current name when Rename is pressed', async () => {
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+
+    expect(screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })).toHaveValue(
+      SAVED_SCENE.name,
+    )
+  })
+
+  it('dispatches environment-scene/rename with the id and the edited name when the rename form is submitted', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+    const input = screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })
+    await user.clear(input)
+    await user.type(input, 'Summer noon{Enter}')
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'environment-scene/rename',
+      params: { id: SAVED_SCENE.id, name: 'Summer noon' },
+      description: expect.any(String),
+    })
+  })
+
+  it('disables Save name and does not dispatch when the rename input is blank or whitespace-only', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+    const input = screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })
+    await user.clear(input)
+    await user.type(input, '   ')
+
+    expect(screen.getByRole('button', { name: 'Save name' })).toBeDisabled()
+
+    await user.type(input, '{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('cancels the rename and restores Apply and Remove when Escape is pressed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+    const input = screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })
+    await user.type(input, '{Escape}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: `Apply ${SAVED_SCENE.name}` })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: `Remove ${SAVED_SCENE.name}` })).toBeInTheDocument()
+  })
+})
+
 describe('EnvironmentScenes with no saved scenes', () => {
   it('renders a short empty message', () => {
     render(

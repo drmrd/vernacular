@@ -1,4 +1,10 @@
-import { useState, type ChangeEvent, type ReactElement } from 'react'
+import {
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactElement,
+} from 'react'
 import type { Command, EnvironmentScene, EnvironmentState } from '../../core'
 import {
   addEnvironmentScene,
@@ -7,6 +13,7 @@ import {
   formatObservationDateTime,
   parseObservationInstant,
   removeEnvironmentScene,
+  renameEnvironmentScene,
 } from '../../core'
 import { Button, Field, Stack } from '../design-system'
 
@@ -55,6 +62,79 @@ function SaveSceneForm({ environment, dispatch }: SaveSceneFormProps): ReactElem
   )
 }
 
+function sceneRenameInputId(id: string): string {
+  return `environment-scene-rename-${id}`
+}
+
+interface SceneRenameFormProps {
+  scene: EnvironmentScene
+  onCommit: (name: string) => void
+  onCancel: () => void
+}
+
+// The inline rename editor for a saved scene: a text input pre-filled with the
+// scene's current name. Enter (form submit) commits the draft; Escape abandons
+// it and restores the row's normal Apply and Remove buttons.
+function SceneRenameForm({ scene, onCommit, onCancel }: SceneRenameFormProps): ReactElement {
+  const [draft, setDraft] = useState(scene.name)
+  const trimmedDraft = draft.trim()
+  const inputId = sceneRenameInputId(scene.id)
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    onCommit(draft)
+  }
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') {
+      onCancel()
+    }
+  }
+  return (
+    <form onSubmit={handleSubmit}>
+      <Field htmlFor={inputId} label={`Rename ${scene.name}`}>
+        <input
+          id={inputId}
+          value={draft}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+      </Field>
+      <Button type="submit" disabled={trimmedDraft === ''}>
+        Save name
+      </Button>
+    </form>
+  )
+}
+
+interface SceneRowActionsProps {
+  scene: EnvironmentScene
+  onApply: () => void
+  onRename: () => void
+  onRemove: () => void
+}
+
+// The saved-scene row's actions: apply recalls the scene's when-and-weather,
+// rename starts the inline editor, and remove drops the scene.
+function SceneRowActions({
+  scene,
+  onApply,
+  onRename,
+  onRemove,
+}: SceneRowActionsProps): ReactElement {
+  return (
+    <>
+      <Button type="button" onClick={onApply}>
+        Apply {scene.name}
+      </Button>
+      <Button type="button" onClick={onRename}>
+        Rename {scene.name}
+      </Button>
+      <Button type="button" variant="destructive" onClick={onRemove}>
+        Remove {scene.name}
+      </Button>
+    </>
+  )
+}
+
 interface SceneRowProps {
   scene: EnvironmentScene
   environment: EnvironmentState
@@ -62,30 +142,43 @@ interface SceneRowProps {
   dispatch: (command: Command) => void
 }
 
-// A saved scene: its name, the observation instant it captured, and the apply and
-// remove actions. Apply recalls the scene's when-and-weather; remove drops it.
+// A saved scene: its name, the observation instant it captured, and the apply,
+// rename, and remove actions. Rename swaps the row for an inline editor.
 function SceneRow({
   scene,
   environment,
   onEnvironmentChange,
   dispatch,
 }: SceneRowProps): ReactElement {
-  const handleApply = () => {
-    onEnvironmentChange(applyEnvironmentScene(environment, scene))
+  const [renaming, setRenaming] = useState(false)
+  const handleRenameCommit = (name: string) => {
+    const trimmedName = name.trim()
+    if (trimmedName !== '') {
+      dispatch(renameEnvironmentScene(scene.id, trimmedName))
+    }
+    setRenaming(false)
   }
-  const handleRemove = () => {
-    dispatch(removeEnvironmentScene(scene.id))
+  if (renaming) {
+    return (
+      <li>
+        <SceneRenameForm
+          scene={scene}
+          onCommit={handleRenameCommit}
+          onCancel={() => setRenaming(false)}
+        />
+      </li>
+    )
   }
   return (
     <li>
       <span>{scene.name}</span>
       <span>{formatObservationDateTime(parseObservationInstant(scene.observedAt))}</span>
-      <Button type="button" onClick={handleApply}>
-        Apply {scene.name}
-      </Button>
-      <Button type="button" variant="destructive" onClick={handleRemove}>
-        Remove {scene.name}
-      </Button>
+      <SceneRowActions
+        scene={scene}
+        onApply={() => onEnvironmentChange(applyEnvironmentScene(environment, scene))}
+        onRename={() => setRenaming(true)}
+        onRemove={() => dispatch(removeEnvironmentScene(scene.id))}
+      />
     </li>
   )
 }
