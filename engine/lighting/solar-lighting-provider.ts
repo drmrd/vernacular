@@ -24,7 +24,7 @@ import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
  */
 export class SolarLightingProvider implements LightingProvider {
   private rig: LightingRig | null = null
-  private skyAttachment: Promise<void> | null = null
+  private skyAttachmentReady: Promise<void> | null = null
 
   apply(scene: THREE.Object3D): void {
     this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
@@ -33,7 +33,7 @@ export class SolarLightingProvider implements LightingProvider {
     // which abandons the attach if it is still in flight. attachSkyEnvironment never rejects: a
     // failed chunk load (e.g. after a redeploy) is caught and warned about inside it, so callers
     // that skip `whenReady` discard nothing but a resolved promise.
-    this.skyAttachment = attachSkyEnvironment(scene, this.rig)
+    this.skyAttachmentReady = attachSkyEnvironment(scene, this.rig)
   }
 
   /**
@@ -41,7 +41,7 @@ export class SolarLightingProvider implements LightingProvider {
    * if `apply` has not run yet or the provider has since been disposed.
    */
   whenReady(): Promise<void> {
-    return this.skyAttachment ?? Promise.resolve()
+    return this.skyAttachmentReady ?? Promise.resolve()
   }
 
   /**
@@ -64,6 +64,6 @@ export class SolarLightingProvider implements LightingProvider {
     if (this.rig === null) return
     disposeLightingRig(scene, this.rig)
     this.rig = null
-    this.skyAttachment = null
+    this.skyAttachmentReady = null
   }
 }
