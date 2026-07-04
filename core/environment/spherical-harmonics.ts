@@ -1,6 +1,5 @@
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
-import { NEUTRAL_REFERENCE_WHITE } from './color-check'
 import { skyDomeRadiance } from './sky-dome'
 
 /*
@@ -151,10 +150,13 @@ function uniformDomeBand0(channel: number): number {
 /** Coefficients above band 0 that a uniform dome leaves at zero. */
 const HIGHER_BAND_COEFFICIENTS = new Array<number>(SH_COEFFICIENT_COUNT - RGB_CHANNEL_COUNT).fill(0)
 
-/** The color-check reference: a uniform NEUTRAL_REFERENCE_WHITE dome, band 0 only. */
+/**
+ * The color-check reference: a uniform white dome (matching color-check's
+ * NEUTRAL_REFERENCE_WHITE, r = g = b = 1), band 0 only.
+ */
 export const NEUTRAL_DOME_SPHERICAL_HARMONICS: readonly number[] = [
-  uniformDomeBand0(NEUTRAL_REFERENCE_WHITE.r),
-  uniformDomeBand0(NEUTRAL_REFERENCE_WHITE.g),
-  uniformDomeBand0(NEUTRAL_REFERENCE_WHITE.b),
+  uniformDomeBand0(1),
+  uniformDomeBand0(1),
+  uniformDomeBand0(1),
   ...HIGHER_BAND_COEFFICIENTS,
 ]
