@@ -38,6 +38,12 @@ export const UNCOVERED_COMPONENTS: {
       'context provider for the active floor that only has meaning inside the editor session and scene tree; an isolated browser-mode story is not feasible, so it is a permanent allowlist candidate (see ADR-0111).',
   },
   {
+    component: 'AmbientOcclusionRenderTakeover',
+    file: 'bridge/react/ambient-occlusion-render-takeover.tsx',
+    reason:
+      'registers the live view per-frame render takeover through useFrame and renders no DOM (it returns null); it requires a live R3F Canvas, a Three.js scene and camera, and the WebGPU renderer to build the ambient-occlusion pass, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'CameraControlsHint',
     file: 'bridge/react/camera-controls-hint.tsx',
     reason:

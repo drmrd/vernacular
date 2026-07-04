@@ -1,0 +1,125 @@
+import { useThree } from '@react-three/fiber'
+import { useCallback, useEffect, useRef, type RefObject } from 'react'
+
+import { type Site } from '../../core'
+import {
+  ambientOcclusionParamsFor,
+  buildAmbientOcclusionPipeline,
+  renderSceneFrame,
+  type AmbientOcclusionPipeline,
+} from '../../engine'
+
+/**
+ * Whether the ambient-occlusion pass runs for a view: true only in realistic mode with a
+ * located site, mirroring scene-lighting.tsx's effective-mode predicate so AO, the solar
+ * provider, and AgX turn on together. A realistic request without a located site, and any
+ * schematic view, fall back to the plain renderer draw.
+ */
+export function ambientOcclusionActiveFor(realistic: boolean, site: Site | undefined): boolean {
+  const effectiveMode = realistic && site?.latLong !== undefined ? 'realistic' : 'schematic'
+  return ambientOcclusionParamsFor(effectiveMode) !== null
+}
+
+/**
+ * Draws one scene frame through the active ambient-occlusion pipeline, or straight through
+ * the renderer when none is active. Both canvases share this one function: the live view
+ * registers it as its per-frame render takeover, and the harness calls it for its static
+ * frame. Parameters follow renderSceneFrame's so a caller's renderer, scene, and camera pass
+ * straight through.
+ */
+export type RenderFrame = (
+  renderer: Parameters<typeof renderSceneFrame>[0],
+  scene: Parameters<typeof renderSceneFrame>[1],
+  camera: Parameters<typeof renderSceneFrame>[2],
+) => void
+
+// The inputs a pipeline build draws from (the canvas's renderer, scene, and camera, typed as
+// the engine factory's own parameters so no guarded three specifier is imported here), paired
+// with the refs that guard the async result: buildToken makes a build that resolves after a
+// fast toggle or an unmount dispose itself rather than install over a newer one, and warned
+// keeps the failure warning to once.
+interface AmbientOcclusionBuild {
+  renderer: Parameters<typeof buildAmbientOcclusionPipeline>[0]
+  scene: Parameters<typeof buildAmbientOcclusionPipeline>[1]
+  camera: Parameters<typeof buildAmbientOcclusionPipeline>[2]
+  pipelineRef: RefObject<AmbientOcclusionPipeline | null>
+  buildTokenRef: RefObject<number>
+  warnedRef: RefObject<boolean>
+}
+
+// Warns once (subsequent build failures stay quiet) that the pipeline build rejected, so a
+// stale chunk URL after a redeploy leaves realistic lighting on the plain gl.render fallback
+// instead of throwing, mirroring the sky slice's graceful degradation.
+function warnBuildFailedOnce(warnedRef: RefObject<boolean>, reason: unknown): void {
+  if (warnedRef.current) return
+  warnedRef.current = true
+  console.warn(
+    'Failed to build the ambient-occlusion render pipeline; realistic lighting continues without it',
+    reason,
+  )
+}
+
+// Builds the pipeline and installs it, unless a newer build or a teardown has since bumped the
+// token, in which case the freshly built pipeline is disposed rather than installed. The token
+// is bumped up front so a teardown that runs before this build resolves already invalidates it.
+function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
+  const params = ambientOcclusionParamsFor('realistic')
+  if (params === null) return
+  const buildToken = (build.buildTokenRef.current += 1)
+  void buildAmbientOcclusionPipeline(build.renderer, build.scene, build.camera, params)
+    .then((pipeline) => {
+      if (buildToken !== build.buildTokenRef.current) {
+        pipeline.dispose()
+        return
+      }
+      build.pipelineRef.current = pipeline
+    })
+    .catch((reason: unknown) => warnBuildFailedOnce(build.warnedRef, reason))
+}
+
+/**
+ * Owns the ambient-occlusion pipeline's React lifecycle for one canvas. When `active` flips
+ * true it builds the pipeline from the canvas's renderer, scene, and camera through the engine
+ * factory; when it flips false, or the component unmounts, it disposes the pipeline and bumps
+ * the build token so any in-flight build cannot install a now-stale pipeline. It calls setSize
+ * on canvas-size changes. The returned renderFrame is stable and reads the live pipeline at
+ * call time, so a caller registers it once and it follows the active state, falling back to a
+ * plain renderer draw whenever the pipeline is null (schematic, the no-location realistic
+ * fallback, or a failed build).
+ */
+export function useAmbientOcclusion(active: boolean): RenderFrame {
+  const scene = useThree((state) => state.scene)
+  const camera = useThree((state) => state.camera)
+  const gl = useThree((state) => state.gl)
+  const width = useThree((state) => state.size.width)
+  const height = useThree((state) => state.size.height)
+
+  const pipelineRef = useRef<AmbientOcclusionPipeline | null>(null)
+  const buildTokenRef = useRef(0)
+  const warnedRef = useRef(false)
+
+  useEffect(() => {
+    if (!active) return undefined
+    startAmbientOcclusionBuild({
+      renderer: gl as unknown as Parameters<typeof buildAmbientOcclusionPipeline>[0],
+      scene,
+      camera,
+      pipelineRef,
+      buildTokenRef,
+      warnedRef,
+    })
+    return () => {
+      buildTokenRef.current += 1
+      pipelineRef.current?.dispose()
+      pipelineRef.current = null
+    }
+  }, [active, gl, scene, camera])
+
+  useEffect(() => {
+    pipelineRef.current?.setSize(width, height)
+  }, [width, height])
+
+  return useCallback<RenderFrame>((renderer, frameScene, frameCamera) => {
+    renderSceneFrame(renderer, frameScene, frameCamera, pipelineRef.current)
+  }, [])
+}
