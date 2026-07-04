@@ -198,4 +198,16 @@ describe('SolarLightingProvider', () => {
 
     expect(() => new SolarLightingProvider().update(scene, overheadSunLighting, null)).not.toThrow()
   })
+
+  it('resolves whenReady only once the lazily loaded sky mesh has attached to the scene', async () => {
+    const scene = new THREE.Scene()
+    const provider = new SolarLightingProvider()
+
+    provider.apply(scene)
+    await provider.whenReady()
+
+    // whenReady settles after the fire-and-forget sky-mesh attach completes, so the mesh
+    // must already be in the scene with no need to poll for it.
+    expect(findSkyMesh(scene)?.isSkyMesh).toBe(true)
+  })
 })
