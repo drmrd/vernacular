@@ -46,6 +46,62 @@ function findFloorSlab(group: THREE.Object3D): THREE.Mesh | undefined {
   )
 }
 
+const VERTICES_PER_SIDE_FACE = 6
+// A vertical side face runs along world z at a fixed world x, so its vertices
+// share one x. A horizontal-in-plan edge (a top or bottom boundary run) instead
+// spans the room width in x, so its spread is thousands of millimeters. One
+// millimeter cleanly separates the two without depending on the inset size.
+const CONSTANT_X_FACE_SPREAD_MM = 1
+
+// A second adjacent room whose slab reaches the same shared wall centerline from
+// the far side. Its left edge sits on `sharedX`, where room A's right edge also
+// lands, so before any inset the two rooms' side faces there are coincident.
+function adjacentRoom(sharedX: number, width: number, depth: number): RoomSceneNode {
+  return {
+    id: 'room:r2',
+    kind: 'room',
+    floorId: 'g',
+    polygon: [
+      { x: sharedX, y: ORIGIN },
+      { x: sharedX + width, y: ORIGIN },
+      { x: sharedX + width, y: depth },
+      { x: sharedX, y: depth },
+    ],
+    clearPolygon: [
+      { x: sharedX, y: ORIGIN },
+      { x: sharedX + width, y: ORIGIN },
+      { x: sharedX + width, y: depth },
+      { x: sharedX, y: depth },
+    ],
+    area: width * depth,
+  }
+}
+
+// The constant world-x of each vertical slab side face: the faces whose six
+// vertices share one x. The horizontal-in-plan runs are excluded by their wide
+// x spread.
+function verticalSideFaceXs(mesh: THREE.Mesh): number[] {
+  const geometry = mesh.geometry as THREE.BufferGeometry
+  const materials = mesh.material as THREE.Material[]
+  const side = materialGroups(geometry).find(
+    (group) => materials[group.materialIndex]?.name === 'exteriorFace',
+  )
+  if (side === undefined) return []
+  const points = readPositions(geometry).slice(side.start, side.start + side.count)
+  const xs: number[] = []
+  for (
+    let base = 0;
+    base + VERTICES_PER_SIDE_FACE <= points.length;
+    base += VERTICES_PER_SIDE_FACE
+  ) {
+    const face = points.slice(base, base + VERTICES_PER_SIDE_FACE) as Vector3[]
+    const faceXs = face.map((vertex) => vertex.x)
+    const spread = Math.max(...faceXs) - Math.min(...faceXs)
+    if (spread < CONSTANT_X_FACE_SPREAD_MM) xs.push(faceXs[0] as number)
+  }
+  return xs
+}
+
 // Per side triangle of the slab, the dot of its outward direction (face centroid
 // minus the interior reference) with its XZ face normal. The slab is flat-shaded
 // and non-indexed, so each triangle's first-vertex normal is its face normal.
@@ -88,5 +144,30 @@ describe('buildRoomShell floor slab side faces', () => {
 
     expect(dots.length).toBeGreaterThan(0)
     for (const dot of dots) expect(dot).toBeGreaterThan(0)
+  })
+
+  it('keeps two adjacent rooms slab side faces off the shared wall centerline plane', () => {
+    // Room A reaches the shared centerline at x = ROOM_WIDTH from its side, and
+    // room B reaches the same centerline from the far side. After ADR-0129 moved
+    // the shared slab edge to the centerline, their side faces there are back to
+    // back with opposite normals. Left unbiased they are coplanar and z-fight the
+    // moment any cutaway, below-floor, transparent, or selected material draws
+    // both, so the builder must keep the two faces off one shared plane.
+    const materials = new NeutralMaterialProvider()
+    const roomA = buildRoomShell(rectangularRoom(), materials)
+    const roomB = buildRoomShell(adjacentRoom(ROOM_WIDTH, ROOM_WIDTH, ROOM_DEPTH), materials)
+
+    const slabA = findFloorSlab(roomA)
+    const slabB = findFloorSlab(roomB)
+    expect(slabA).toBeDefined()
+    expect(slabB).toBeDefined()
+
+    // Room A spans x in [0, ROOM_WIDTH], so its shared side face is the farthest
+    // in x; room B spans [ROOM_WIDTH, 2 * ROOM_WIDTH], so its shared side face is
+    // the nearest in x. The two must land on different planes.
+    const sharedFaceA = Math.max(...verticalSideFaceXs(slabA as THREE.Mesh))
+    const sharedFaceB = Math.min(...verticalSideFaceXs(slabB as THREE.Mesh))
+
+    expect(sharedFaceB).toBeGreaterThan(sharedFaceA)
   })
 })
