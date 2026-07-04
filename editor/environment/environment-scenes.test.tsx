@@ -166,6 +166,26 @@ describe('EnvironmentScenes removing a saved scene', () => {
   })
 })
 
+describe('EnvironmentScenes renaming a saved scene', () => {
+  it('shows an inline rename input pre-filled with the current name when Rename is pressed', async () => {
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+
+    expect(screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })).toHaveValue(
+      SAVED_SCENE.name,
+    )
+  })
+})
+
 describe('EnvironmentScenes with no saved scenes', () => {
   it('renders a short empty message', () => {
     render(
