@@ -19,7 +19,8 @@ import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
  * sun-plus-sky rig as the basic provider, and `update` re-aims and re-tints it from a
  * computed EnvironmentLighting so the light follows the site, date, and time. The sun's
  * intensity fades with the environment `sunIntensity` scalar, which carries the horizon
- * extinction ramp, so night scenes stay lit by the sky fill alone.
+ * extinction ramp, so night scenes stay lit by the sky's light probe ambient rather than
+ * the fill, which realistic mode zeroes.
  */
 export class SolarLightingProvider implements LightingProvider {
   private rig: LightingRig | null = null
