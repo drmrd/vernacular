@@ -209,6 +209,30 @@ describe('EnvironmentScenes renaming a saved scene', () => {
     })
   })
 
+  it('disables Save name and does not dispatch when the rename input is blank or whitespace-only', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <EnvironmentScenes
+        scenes={[SAVED_SCENE]}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+        dispatch={dispatch}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `Rename ${SAVED_SCENE.name}` }))
+    const input = screen.getByRole('textbox', { name: `Rename ${SAVED_SCENE.name}` })
+    await user.clear(input)
+    await user.type(input, '   ')
+
+    expect(screen.getByRole('button', { name: 'Save name' })).toBeDisabled()
+
+    await user.type(input, '{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
   it('cancels the rename and restores Apply and Remove when Escape is pressed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
