@@ -10,6 +10,7 @@ const GROUND_DOME_TINT: LinearRgb = { r: 0.12, g: 0.1, b: 0.08 }
 const HORIZON_DOME_SCALE = 0.35
 /** Fraction of dome brightness a fully overcast sky removes, alongside flattening it toward grey. */
 const OVERCAST_DOME_DIMMING = 0.3
+// Mirrors sky-model.ts's private RGB-blend helpers; kept private on purpose so the two models can tune independently.
 const RGB_CHANNEL_COUNT = 3
 
 function clampToUnitInterval(value: number): number {
