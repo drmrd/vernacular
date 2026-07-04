@@ -4,6 +4,7 @@ import type { Vector3 } from '../scene/vector3'
 import type { ObservationInstant } from './observation-time'
 import { skyLighting } from './sky-model'
 import { solarPosition } from './solar-position'
+import { projectDomeToSphericalHarmonics } from './spherical-harmonics'
 import { sunWorldDirection } from './sun-world-direction'
 
 /** Everything the outdoor-lighting rig needs for one site, instant, and sky. */
@@ -16,6 +17,10 @@ export interface EnvironmentLighting {
   skyColor: LinearRgb
   /** Direct-sun intensity scale, 0 (extinguished) to 1 (full sun), carrying the horizon extinction ramp. */
   sunIntensity: number
+  /** Cloud-cover fraction the sky was computed with; the visible sky mesh reads it. */
+  cloudCover: number
+  /** Nine RGB spherical-harmonic triples of the sky dome, SphericalHarmonics3 order. */
+  skyAmbient: readonly number[]
 }
 
 /** The site, civil observation instant, and weather that drive the lighting. */
@@ -39,7 +44,10 @@ export interface EnvironmentLightingInput {
  * y-up world frame (ADR-0139), and `skyLighting` derives the sun and sky tints
  * from the solar altitude and cloud cover. `sunIntensity` passes straight through
  * from `skyLighting`, carrying the horizon extinction ramp so the direct sun fades
- * to nothing as it sets. Frame and unit conventions follow those piece functions.
+ * to nothing as it sets. `skyAmbient` projects the same analytic sky dome into
+ * spherical-harmonic coefficients for the ambient probe, and `cloudCover` passes
+ * straight through so the visible sky mesh can read the value it was computed with.
+ * Frame and unit conventions follow those piece functions.
  */
 export function computeEnvironmentLighting(input: EnvironmentLightingInput): EnvironmentLighting {
   const angles = solarPosition({
@@ -54,5 +62,7 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
     sunColor,
     skyColor,
     sunIntensity,
+    cloudCover: input.cloudCover,
+    skyAmbient: projectDomeToSphericalHarmonics(angles.altitude, input.cloudCover),
   }
 }

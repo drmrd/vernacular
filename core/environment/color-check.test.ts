@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { colorCheckLighting, NEUTRAL_REFERENCE_WHITE } from './color-check'
+import {
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  projectDomeToSphericalHarmonics,
+} from './spherical-harmonics'
 import type { EnvironmentLighting } from './environment-lighting'
 
 // A deliberately non-axis direction, so a test that forgets to pass the
@@ -13,12 +17,21 @@ const PARTIAL_SUN_INTENSITY = 0.42
 
 const NIGHT_SUN_INTENSITY = 0
 
+// A non-neutral cloud cover and its projected sky ambient, so a test that
+// forgets to neutralize skyAmbient cannot pass by coincidence with an
+// already-neutral fixture.
+const TINTED_CLOUD_COVER = 0.6
+const TINTED_SUN_ALTITUDE = 0.7
+const TINTED_SKY_AMBIENT = projectDomeToSphericalHarmonics(TINTED_SUN_ALTITUDE, TINTED_CLOUD_COVER)
+
 function tintedLighting(sunIntensity: number): EnvironmentLighting {
   return {
     sunDirection: TINTED_SUN_DIRECTION,
     sunColor: { r: 1, g: 0.6, b: 0.3 },
     skyColor: { r: 0.4, g: 0.5, b: 0.9 },
     sunIntensity,
+    cloudCover: TINTED_CLOUD_COVER,
+    skyAmbient: TINTED_SKY_AMBIENT,
   }
 }
 
@@ -46,6 +59,12 @@ describe('colorCheckLighting', () => {
     const neutralized = colorCheckLighting(tintedLighting(NIGHT_SUN_INTENSITY))
 
     expect(neutralized.sunIntensity).toBe(NIGHT_SUN_INTENSITY)
+  })
+
+  it('replaces the sky ambient with the neutral dome spherical harmonics', () => {
+    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_INTENSITY))
+
+    expect(neutralized.skyAmbient).toEqual(NEUTRAL_DOME_SPHERICAL_HARMONICS)
   })
 })
 

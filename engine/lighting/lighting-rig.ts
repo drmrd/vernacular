@@ -1,6 +1,7 @@
 import * as THREE from 'three'
+import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 
-import type { Bounds3, LinearRgb, Vector3 } from '../../core'
+import type { Bounds3, EnvironmentLighting, LinearRgb, Vector3 } from '../../core'
 
 /**
  * The shared sun-plus-sky lighting rig: construction plus the operations on a rig
@@ -45,6 +46,20 @@ const SUN_DIRECTION_NORMALIZED = SUN_DIRECTION.clone().normalize()
 export interface LightingRig {
   sun: THREE.DirectionalLight
   fill: THREE.HemisphereLight
+  /** The visible sky, solar mode only. */
+  sky?: SkyMesh
+  /** The sky's diffuse image-based light, solar mode only; replaces the fill. */
+  probe?: THREE.LightProbe
+  /**
+   * Set true by `disposeLightingRig` so a lazy sky attach still in flight becomes a no-op:
+   * the sky loads off the startup path, so a rig can be disposed before its module resolves.
+   */
+  disposed?: boolean
+  /**
+   * The latest lighting seen before the lazy sky arrived. `updateSkyEnvironment` stashes it
+   * here (latest wins) so the attach can replay it onto the sky the moment it is constructed.
+   */
+  pendingLighting?: EnvironmentLighting | undefined
 }
 
 /**
@@ -67,12 +82,26 @@ export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): L
 /**
  * Tears down a rig a provider built with `buildLightingRig`: removes its two lights from
  * the scene and disposes each, freeing GPU resources. `dispose()` on the sun is what frees
- * its shadow map, so a provider must call this rather than just detaching the lights.
+ * its shadow map, so a provider must call this rather than just detaching the lights. A
+ * solar rig also carries a visible sky and its light probe; both are removed and disposed
+ * when present, and the teardown still works on a rig that never attached them. Marking the
+ * rig disposed abandons a sky whose module is still loading so it never joins the scene.
  */
 export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): void {
+  rig.disposed = true
+  rig.pendingLighting = undefined
   scene.remove(rig.sun, rig.fill)
   rig.sun.dispose()
   rig.fill.dispose()
+  if (rig.sky !== undefined) {
+    scene.remove(rig.sky)
+    rig.sky.geometry.dispose()
+    rig.sky.material.dispose()
+  }
+  if (rig.probe !== undefined) {
+    scene.remove(rig.probe)
+    rig.probe.dispose()
+  }
 }
 
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */

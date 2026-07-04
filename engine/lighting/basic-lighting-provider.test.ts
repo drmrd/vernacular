@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import type { Bounds3, EnvironmentLighting } from '../../core'
+import { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
+import {
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  type Bounds3,
+  type EnvironmentLighting,
+} from '../../core'
 import { BasicLightingProvider } from './basic-lighting-provider'
 
 describe('BasicLightingProvider', () => {
@@ -66,14 +71,33 @@ describe('BasicLightingProvider', () => {
     expect(sun.shadow.mapSize.height).toBeGreaterThan(0)
   })
 
+  it('adds no visible sky and no light probe, keeping the schematic fill lit', () => {
+    const scene = new THREE.Scene()
+
+    new BasicLightingProvider().apply(scene)
+
+    const fill = scene.children.find(
+      (child) => child instanceof THREE.HemisphereLight,
+    ) as THREE.HemisphereLight
+    // Realistic mode lights itself from a visible sky and a light probe; schematic mode
+    // stays a flat legibility rig (ADR-0079), so neither the sky mesh nor the probe appears
+    // and the hemisphere fill keeps its own intensity rather than deferring to a probe.
+    expect(scene.children.some((child) => child instanceof SkyMesh)).toBe(false)
+    expect(scene.children.some((child) => child instanceof THREE.LightProbe)).toBe(false)
+    expect(fill.intensity).toBeGreaterThan(0)
+  })
+
   describe('receiving environment lighting updates', () => {
     // A deliberately loud environment: a red noon sun and a blue sky. If the schematic
     // rig reacted to updates at all, this would visibly change the lights.
+    const fabricatedCloudCover = 0.3
     const fabricatedLighting: EnvironmentLighting = {
       sunDirection: { x: 0, y: 1, z: 0 },
       sunColor: { r: 1, g: 0, b: 0 },
       skyColor: { r: 0, g: 0, b: 1 },
       sunIntensity: 1,
+      cloudCover: fabricatedCloudCover,
+      skyAmbient: NEUTRAL_DOME_SPHERICAL_HARMONICS,
     }
     const anyBounds: Bounds3 = {
       min: { x: 0, y: 0, z: 0 },

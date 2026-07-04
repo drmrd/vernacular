@@ -566,6 +566,13 @@ export { utcOffsetMinutesFor } from './environment/timezone-offset'
 export { sunWorldDirection } from './environment/sun-world-direction'
 export type { SkyLighting } from './environment/sky-model'
 export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
+export { skyDomeRadiance } from './environment/sky-dome'
+export {
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  SH_COEFFICIENT_COUNT,
+  evaluateSphericalHarmonics,
+  projectDomeToSphericalHarmonics,
+} from './environment/spherical-harmonics'
 export type {
   EnvironmentLighting,
   EnvironmentLightingInput,
