@@ -1,4 +1,10 @@
-import { useState, type ChangeEvent, type FormEvent, type ReactElement } from 'react'
+import {
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactElement,
+} from 'react'
 import type { Command, EnvironmentScene, EnvironmentState } from '../../core'
 import {
   addEnvironmentScene,
@@ -63,16 +69,23 @@ function sceneRenameInputId(id: string): string {
 interface SceneRenameFormProps {
   scene: EnvironmentScene
   onCommit: (name: string) => void
+  onCancel: () => void
 }
 
 // The inline rename editor for a saved scene: a text input pre-filled with the
-// scene's current name, submitted on Enter (form submit).
-function SceneRenameForm({ scene, onCommit }: SceneRenameFormProps): ReactElement {
+// scene's current name. Enter (form submit) commits the draft; Escape abandons
+// it and restores the row's normal Apply and Remove buttons.
+function SceneRenameForm({ scene, onCommit, onCancel }: SceneRenameFormProps): ReactElement {
   const [draft, setDraft] = useState(scene.name)
   const inputId = sceneRenameInputId(scene.id)
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     onCommit(draft)
+  }
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') {
+      onCancel()
+    }
   }
   return (
     <form onSubmit={handleSubmit}>
@@ -81,6 +94,7 @@ function SceneRenameForm({ scene, onCommit }: SceneRenameFormProps): ReactElemen
           id={inputId}
           value={draft}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
         />
       </Field>
       <Button type="submit">Save name</Button>
@@ -121,7 +135,11 @@ function SceneRow({
   if (renaming) {
     return (
       <li>
-        <SceneRenameForm scene={scene} onCommit={handleRenameCommit} />
+        <SceneRenameForm
+          scene={scene}
+          onCommit={handleRenameCommit}
+          onCancel={() => setRenaming(false)}
+        />
       </li>
     )
   }
