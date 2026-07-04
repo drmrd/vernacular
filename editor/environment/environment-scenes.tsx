@@ -77,6 +77,7 @@ interface SceneRenameFormProps {
 // it and restores the row's normal Apply and Remove buttons.
 function SceneRenameForm({ scene, onCommit, onCancel }: SceneRenameFormProps): ReactElement {
   const [draft, setDraft] = useState(scene.name)
+  const trimmedDraft = draft.trim()
   const inputId = sceneRenameInputId(scene.id)
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -97,7 +98,9 @@ function SceneRenameForm({ scene, onCommit, onCancel }: SceneRenameFormProps): R
           onKeyDown={handleKeyDown}
         />
       </Field>
-      <Button type="submit">Save name</Button>
+      <Button type="submit" disabled={trimmedDraft === ''}>
+        Save name
+      </Button>
     </form>
   )
 }
