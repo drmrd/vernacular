@@ -12,7 +12,8 @@ import type { LightingRig } from './lighting-rig'
  */
 
 /** Half-extent the unit sky box scales to, large enough to enclose the scene as a far-field
- *  background; matches the scale three's own SkyMesh example applies. */
+ *  background. This is the classic three.js sky example's scale; the addon's own JSDoc example
+ *  uses a smaller 10000, so the exact value is a far-field choice, not an addon default. */
 const SKY_SCALE = 450000
 /** Cloud motion frozen: the addon animates clouds on `time`, which would make every scene
  *  baseline nondeterministic. Static clouds hold the render steady. */
@@ -41,6 +42,22 @@ function loadSkyMeshModule(): Promise<typeof import('three/examples/jsm/objects/
   return skyMeshModule
 }
 
+// A type-only alias for the resolved sky mesh, derived from the lazily loaded module's own
+// type via `typeof import(...)` rather than a static `import type { SkyMesh } from ...`
+// statement: the latter's `from '<specifier>'` text is exactly what the guard test below
+// checks for, so this keeps the module's only reference to the specifier inside a dynamic
+// `import(...)`, matching how `loadSkyMeshModule` above already refers to it.
+type SkyMeshModule = typeof import('three/examples/jsm/objects/SkyMesh.js')
+type SkyMesh = InstanceType<SkyMeshModule['SkyMesh']>
+
+/** Applies the lighting's sun aim and cloud coverage to a resolved sky. Shared by the attach
+ *  replay and updateSkyEnvironment so the two writers cannot drift out of lockstep. */
+function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
+  const { x, y, z } = lighting.sunDirection
+  sky.sunPosition.value.set(x, y, z)
+  sky.cloudCoverage.value = lighting.cloudCover
+}
+
 /**
  * Adds the visible sky and its light probe to an applied rig and zeroes the hemisphere fill
  * (the probe carries the ambient; running both double-counts it). The probe attaches and the
@@ -48,6 +65,7 @@ function loadSkyMeshModule(): Promise<typeof import('three/examples/jsm/objects/
  * added once its lazily imported module resolves, with cloud motion frozen (cloudSpeed 0) so
  * scene baselines stay deterministic. A rig disposed while the module is still loading
  * abandons the attach: the sky never joins the scene and the promise resolves without error.
+ * Call once per freshly built rig; a second call would add a second probe.
  */
 export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingRig): Promise<void> {
   const probe = new THREE.LightProbe()
@@ -70,9 +88,7 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
 
   const stashed = rig.pendingLighting
   if (stashed !== undefined) {
-    const { x, y, z } = stashed.sunDirection
-    sky.sunPosition.value.set(x, y, z)
-    sky.cloudCoverage.value = stashed.cloudCover
+    applySkyLighting(sky, stashed)
   }
 }
 
@@ -84,9 +100,7 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
 export function updateSkyEnvironment(rig: LightingRig, lighting: EnvironmentLighting): void {
   const { sky, probe } = rig
   if (sky !== undefined) {
-    const { x, y, z } = lighting.sunDirection
-    sky.sunPosition.value.set(x, y, z)
-    sky.cloudCoverage.value = lighting.cloudCover
+    applySkyLighting(sky, lighting)
   } else {
     rig.pendingLighting = lighting
   }
