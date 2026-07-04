@@ -51,3 +51,6 @@ blob-report/
 # Stryker
 reports/stryker/
 .stryker-tmp/
+
+# Local output from scripts/ci-probes/ (CI uploads these as workflow artifacts)
+ci-probe-output/

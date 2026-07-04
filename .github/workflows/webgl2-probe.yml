@@ -1,10 +1,16 @@
 name: WebGL2 software-rasterizer probe
 
-# Manually dispatched investigation for issue #401's first open question:
-# can headless chromium on this linux runner produce a usable WebGL2 context
-# through a software rasterizer (SwiftShader/ANGLE) with no GPU present, so
-# 3D scene visual baselines could eventually be enforced on CI? Standalone
-# probe only. It does not gate CI and never runs on push or pull_request.
+# Manually dispatched investigation for issue #401's two open questions.
+# Standalone probe only. It does not gate CI and never runs on push or
+# pull_request.
+#
+# 1. Can headless chromium on this linux runner produce a usable WebGL2 context
+#    through a software rasterizer (SwiftShader/ANGLE) with no GPU present?
+#    Answered by the `probe` job below: yes, with default launch flags.
+# 2. Given that context, is the software rasterizer's rendered output
+#    deterministic from one browser launch to the next, exercised through the
+#    app's real deterministic scene harness rather than a synthetic clear-color
+#    canvas? Investigated by the `determinism` job below.
 
 on:
   workflow_dispatch:
@@ -36,3 +42,39 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Probe WebGL2 context creation
         run: node scripts/ci-probes/webgl2-probe.mjs
+
+  determinism:
+    name: Probe scene harness render determinism
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build production bundle
+        run: pnpm build
+      - name: Probe scene harness render determinism
+        run: node scripts/ci-probes/webgl2-determinism-probe.mjs
+      - name: Upload captured renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webgl2-determinism-renders
+          path: ci-probe-output/webgl2-determinism
+          retention-days: 7
