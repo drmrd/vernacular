@@ -1,16 +1,22 @@
 import { describe, it, expect, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { frameSceneCamera } from '../../core'
 import type { Bounds3, CameraPose } from '../../core'
 import { fitCameraToBounds, applyCameraPose } from './fit-camera'
+
+// Vitest 4 types vi.fn() as Mock<Procedure | Constructable>, which no longer
+// structurally satisfies a plain (x, y, z) => void field. Name the recorded
+// signatures so the mock camera stays assignable to the real camera parameter.
+type Vec3Recorder = Mock<(x: number, y: number, z: number) => void>
 
 interface RecordingCamera {
   fov?: number | undefined
   near: number
   far: number
-  position: { set: ReturnType<typeof vi.fn> }
-  up: { set: ReturnType<typeof vi.fn> }
-  lookAt: ReturnType<typeof vi.fn>
-  updateProjectionMatrix: ReturnType<typeof vi.fn>
+  position: { set: Vec3Recorder }
+  up: { set: Vec3Recorder }
+  lookAt: Vec3Recorder
+  updateProjectionMatrix: Mock<() => void>
 }
 
 function makeCamera(fov?: number): RecordingCamera {
@@ -28,7 +34,7 @@ function makeCamera(fov?: number): RecordingCamera {
 // The x, y, z arguments of a spy's first call. A fixed three-tuple keeps the
 // destructured components definite numbers under the strict tsconfig, and the
 // zero fallback keeps a never-called spy from throwing here.
-function firstCallXyz(spy: ReturnType<typeof vi.fn>): [number, number, number] {
+function firstCallXyz(spy: Vec3Recorder): [number, number, number] {
   const [call] = spy.mock.calls
   return (call ?? [0, 0, 0]) as [number, number, number]
 }
