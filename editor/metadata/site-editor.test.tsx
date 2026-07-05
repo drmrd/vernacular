@@ -135,4 +135,29 @@ describe('SiteEditor', () => {
     expect(command?.type).toBe(setSiteTimezone('America/New_York').type)
     expect(command?.params).toEqual({ timezone: 'America/New_York' })
   })
+
+  it('dispatches setSiteTimezone when the timezone field loses focus', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={{}} dispatch={dispatch} />)
+
+    await user.type(screen.getByLabelText(/timezone/i), 'America/New_York')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = dispatch.mock.calls[0]?.[0]
+    expect(command?.type).toBe(setSiteTimezone('America/New_York').type)
+    expect(command?.params).toEqual({ timezone: 'America/New_York' })
+  })
+
+  it('does not dispatch again when the timezone field blurs right after Enter already committed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={{}} dispatch={dispatch} />)
+
+    await user.type(screen.getByLabelText(/timezone/i), 'America/New_York{Enter}')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+  })
 })
