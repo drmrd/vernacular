@@ -110,6 +110,20 @@ describe('SiteEditor', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('does not dispatch a bearing update when the field is cleared and blurred', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={dispatch} />,
+    )
+
+    const bearing = screen.getByLabelText(/north bearing/i)
+    await user.clear(bearing)
+    await user.tab()
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
   it('does not dispatch a location update when the partner coordinate is cleared', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
