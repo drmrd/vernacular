@@ -13,9 +13,14 @@ related:
     decisions/ADR-0138-explicit-grade-elevation-field,
   ]
 sourceFiles:
-  [engine/scene/ground-plane.ts, engine/scene/build-scene.ts, engine/scene/scene-bounds.ts]
+  [
+    engine/scene/ground-plane.ts,
+    engine/scene/build-scene.ts,
+    engine/scene/scene-bounds.ts,
+    bridge/react/framed-scene-reconciler.ts,
+  ]
 status: current
-updated: 2026-06-29
+updated: 2026-07-05
 ---
 
 # ADR-0131: Ground plane sits at the zero-elevation grade datum
@@ -44,7 +49,10 @@ sits on, opaque enough to read as the ground the below-grade portion disappears 
 ## Decision
 
 A new engine module, `engine/scene/ground-plane.ts`, builds the ground surface and `buildScene` adds it
-from a single call after the floors and the edge overlay. `GRADE_ELEVATION_MM` names the datum at 0, where
+from a single call after the floors and the edge overlay. The live view's caching reconciler
+(`bridge/react/framed-scene-reconciler.ts`) seats the same plane per scene during `reconcile`, keyed only
+on the grade so a grade edit refreshes the ground without discarding cached floor sub-groups; it was a
+missed second consumer of this decision until issue #477. `GRADE_ELEVATION_MM` names the datum at 0, where
 the model places ground level. The plane is a horizontal `PlaneGeometry` at that elevation, sized to the
 horizontal extent of the built geometry plus a fixed site margin so the lawn surrounds the building rather
 than stopping at its walls, and centered on that footprint. An empty plan falls back to a default square so
