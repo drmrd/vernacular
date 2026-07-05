@@ -79,8 +79,10 @@ accident: CI neither renders nor checks scene baselines today. The story tier ke
 linux-on-the-runner convention from ADR-0117; the two tiers differ because story rendering is
 DOM-deterministic while the scene tier needs a real GPU, which the runners do not have.
 
-Nobody has built a GPU-capable CI path for the scene tier yet. Until someone does, a
-scene-baseline change means a local regeneration with
+[[ADR-0152-linux-scene-baseline-lane]] has since built a GPU-capable CI path for the scene tier, a
+SwiftShader `-linux` baseline family rendered and checked on the ubuntu runner, though the
+authoritative `-darwin` family stays a development-Mac render with no CI gate of its own. Until
+someone does, a scene-baseline change means a local regeneration with
 `pnpm exec playwright test e2e/tests/<spec> --project=scene-webgl --update-snapshots=all`.
 
 ## Consequences
