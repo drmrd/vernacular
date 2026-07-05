@@ -357,8 +357,18 @@ describe('App unsaved-changes guard', () => {
     await userEvent.click(await screen.findByRole('button', { name: /project/i }))
     await userEvent.click(await screen.findByRole('menuitem', { name: /new project/i }))
 
-    // A discard confirmation names the dirty project and offers Cancel.
-    const dialog = await screen.findByRole('alertdialog')
+    // A discard confirmation names the dirty project and offers Cancel. The dialog's
+    // open path is synchronous (the menu click resolves confirmDiscard's promise
+    // executor, which sets state before any await; see
+    // bridge/session/discard-guard.ts and app/use-discard-confirmation.ts), so there
+    // is no async precondition here to await deterministically instead of polling.
+    // This test has been observed to time out on findByRole's default 1000ms budget
+    // only under a full-suite run (#472), never in isolation: the signature of the
+    // test runner's scheduler losing a race against the clock under heavy parallel
+    // CPU load, not a dialog race a real single click could ever hit. A wider budget
+    // absorbs that contention without masking a real regression, since the dialog
+    // still has to actually open within it.
+    const dialog = await screen.findByRole('alertdialog', {}, { timeout: 5000 })
     expect(dialog).toHaveTextContent(/discard unsaved changes to drafthouse/i)
 
     await userEvent.click(within(dialog).getByRole('button', { name: /cancel/i }))
