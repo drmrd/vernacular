@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import {
   setSiteLocation,
   setSiteNorthBearing,
@@ -17,6 +17,47 @@ export interface SiteEditorProps {
   dispatch: (command: Command) => void
 }
 
+interface PendingEditCommitOptions {
+  // Whether the field's current value may be dispatched at all; number
+  // fields pass false while cleared so an empty field never commits.
+  isCommittable: boolean
+  applyChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onCommit: () => void
+}
+
+// Enter and blur both commit, but only an edit the user actually made. A ref
+// tracks whether an uncommitted edit is pending: set on value change, cleared
+// by any commit. Blur without a pending edit is a no-op, which keeps an
+// untouched field's focus traversal from re-dispatching its unchanged value
+// and keeps a blur right after Enter from dispatching the same value twice.
+// Returning a single spreadable handlers object means a field wires the
+// change, Enter, and blur paths together or not at all.
+function useCommitOnBlur({ isCommittable, applyChange, onCommit }: PendingEditCommitOptions) {
+  const hasPendingEditRef = useRef(false)
+  const commitPendingEdit = () => {
+    onCommit()
+    hasPendingEditRef.current = false
+  }
+  return {
+    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+      applyChange(event)
+      hasPendingEditRef.current = true
+    },
+    onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+      // Enter is the explicit accelerator: it commits even without a pending
+      // edit, so a user can deliberately re-dispatch the shown value.
+      if (event.key === 'Enter' && isCommittable) {
+        commitPendingEdit()
+      }
+    },
+    onBlur: () => {
+      if (hasPendingEditRef.current && isCommittable) {
+        commitPendingEdit()
+      }
+    },
+  }
+}
+
 interface LabeledNumberInputProps {
   label: string
   value: number
@@ -25,21 +66,16 @@ interface LabeledNumberInputProps {
 }
 
 function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNumberInputProps) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const commitHandlers = useCommitOnBlur({
     // A cleared number input reads back as NaN; never commit an empty field.
-    if (event.key === 'Enter' && !Number.isNaN(value)) {
-      onCommit()
-    }
-  }
+    isCommittable: !Number.isNaN(value),
+    applyChange: (event) => onValueChange(event.target.valueAsNumber),
+    onCommit,
+  })
   return (
     <label>
       {label}
-      <input
-        type="number"
-        value={value}
-        onChange={(event) => onValueChange(event.target.valueAsNumber)}
-        onKeyDown={handleKeyDown}
-      />
+      <input type="number" value={value} {...commitHandlers} />
     </label>
   )
 }
@@ -52,20 +88,15 @@ interface LabeledTextInputProps {
 }
 
 function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledTextInputProps) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      onCommit()
-    }
-  }
+  const commitHandlers = useCommitOnBlur({
+    isCommittable: true,
+    applyChange: (event) => onValueChange(event.target.value),
+    onCommit,
+  })
   return (
     <label>
       {label}
-      <input
-        type="text"
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-      />
+      <input type="text" value={value} {...commitHandlers} />
     </label>
   )
 }

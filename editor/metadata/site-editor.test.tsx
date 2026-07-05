@@ -17,13 +17,20 @@ const RADIANS_PER_DEGREE = Math.PI / 180
 
 afterEach(cleanup)
 
-describe('SiteEditor', () => {
+describe('SiteEditor display', () => {
   it('shows the current latitude and longitude', () => {
     render(<SiteEditor site={SITE} dispatch={vi.fn()} />)
     expect(screen.getByLabelText(/latitude/i)).toHaveValue(42.36)
     expect(screen.getByLabelText(/longitude/i)).toHaveValue(-71.06)
   })
 
+  it('shows the current north bearing in degrees', () => {
+    render(<SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={vi.fn()} />)
+    expect(screen.getByLabelText(/north bearing/i)).toHaveValue(90)
+  })
+})
+
+describe('SiteEditor location', () => {
   it('dispatches a location update when the coordinates are committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
@@ -37,11 +44,78 @@ describe('SiteEditor', () => {
     expect(sent.type).toBe(setSiteLocation({ latitude: 40, longitude: -71.06 }).type)
   })
 
-  it('shows the current north bearing in degrees', () => {
-    render(<SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={vi.fn()} />)
-    expect(screen.getByLabelText(/north bearing/i)).toHaveValue(90)
+  it('dispatches a location update when the latitude field loses focus', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const sent = dispatch.mock.calls[0]?.[0] as Command
+    expect(sent.type).toBe(setSiteLocation({ latitude: 40, longitude: -71.06 }).type)
   })
 
+  it('does not dispatch again when a coordinate field blurs right after Enter already committed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40{Enter}')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+  })
+
+  it('dispatches exactly once when an edited latitude tabs through the untouched longitude', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40')
+    await user.tab()
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const sent = dispatch.mock.calls[0]?.[0] as Command
+    expect(sent.type).toBe(setSiteLocation({ latitude: 40, longitude: -71.06 }).type)
+  })
+
+  it('does not dispatch a location update when a coordinate field is cleared', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.keyboard('{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('does not dispatch a location update when the partner coordinate is cleared', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    await user.clear(screen.getByLabelText(/longitude/i))
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+})
+
+describe('SiteEditor north bearing', () => {
   it('dispatches a north bearing update in radians when committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
@@ -70,32 +144,71 @@ describe('SiteEditor', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
-  it('does not dispatch a location update when a coordinate field is cleared', async () => {
+  it('does not dispatch a bearing update when the field is cleared and blurred', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
-    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+    render(
+      <SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={dispatch} />,
+    )
 
-    const latitude = screen.getByLabelText(/latitude/i)
-    await user.clear(latitude)
-    await user.keyboard('{Enter}')
+    const bearing = screen.getByLabelText(/north bearing/i)
+    await user.clear(bearing)
+    await user.tab()
 
     expect(dispatch).not.toHaveBeenCalled()
   })
 
-  it('does not dispatch a location update when the partner coordinate is cleared', async () => {
+  it('dispatches a north bearing update in radians when the field loses focus', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
     render(<SiteEditor site={SITE} dispatch={dispatch} />)
 
-    await user.clear(screen.getByLabelText(/longitude/i))
+    const bearing = screen.getByLabelText(/north bearing/i)
+    await user.clear(bearing)
+    await user.type(bearing, '45')
+    await user.tab()
 
-    const latitude = screen.getByLabelText(/latitude/i)
-    await user.clear(latitude)
-    await user.type(latitude, '40{Enter}')
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const sent = dispatch.mock.calls[0]?.[0] as Command<SetSiteNorthBearingParams>
+    expect(sent.type).toBe(setSiteNorthBearing(0).type)
+    expect(sent.params.northBearing).toBeCloseTo(45 * RADIANS_PER_DEGREE)
+  })
+
+  it('does not dispatch again when the bearing field blurs right after Enter already committed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const bearing = screen.getByLabelText(/north bearing/i)
+    await user.clear(bearing)
+    await user.type(bearing, '45{Enter}')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('SiteEditor untouched fields', () => {
+  it('does not dispatch anything when tabbing through fields without editing them', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <SiteEditor
+        site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS, timezone: 'America/New_York' }}
+        dispatch={dispatch}
+      />,
+    )
+
+    const tabsToTraverseEveryField = 5
+    for (let step = 0; step < tabsToTraverseEveryField; step += 1) {
+      await user.tab()
+    }
 
     expect(dispatch).not.toHaveBeenCalled()
   })
+})
 
+describe('SiteEditor timezone', () => {
   it('dispatches setSiteTimezone on commit', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
@@ -106,5 +219,30 @@ describe('SiteEditor', () => {
     const command = dispatch.mock.calls.at(-1)?.[0]
     expect(command?.type).toBe(setSiteTimezone('America/New_York').type)
     expect(command?.params).toEqual({ timezone: 'America/New_York' })
+  })
+
+  it('dispatches setSiteTimezone when the timezone field loses focus', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={{}} dispatch={dispatch} />)
+
+    await user.type(screen.getByLabelText(/timezone/i), 'America/New_York')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const command = dispatch.mock.calls[0]?.[0]
+    expect(command?.type).toBe(setSiteTimezone('America/New_York').type)
+    expect(command?.params).toEqual({ timezone: 'America/New_York' })
+  })
+
+  it('does not dispatch again when the timezone field blurs right after Enter already committed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={{}} dispatch={dispatch} />)
+
+    await user.type(screen.getByLabelText(/timezone/i), 'America/New_York{Enter}')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
   })
 })
