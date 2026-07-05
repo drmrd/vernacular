@@ -69,10 +69,26 @@ interface LabeledTextInputProps {
 }
 
 function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledTextInputProps) {
+  // Enter already commits; blur must not repeat that dispatch when nothing
+  // changed in between, so track whether the pending value is Enter-fresh.
+  const committedByEnterRef = useRef(false)
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onValueChange(event.target.value)
+    committedByEnterRef.current = false
+  }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       onCommit()
+      committedByEnterRef.current = true
     }
+  }
+  const handleBlur = () => {
+    if (committedByEnterRef.current) {
+      committedByEnterRef.current = false
+      return
+    }
+    onCommit()
   }
   return (
     <label>
@@ -80,8 +96,9 @@ function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledText
       <input
         type="text"
         value={value}
-        onChange={(event) => onValueChange(event.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
       />
     </label>
   )
