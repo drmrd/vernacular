@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import type { Site } from '../core'
-import { harnessEnvironmentState } from './harness-environment'
+import {
+  harnessEnvironmentState,
+  resolveHarnessScene,
+  HARNESS_GEOMETRY_SCENE_KEYS,
+} from './harness-environment'
 
 // The canonical site pins latitude 40, longitude -75 to match the solar-position
 // reference cases in core/environment/solar-position.test.ts, and the
@@ -74,5 +78,54 @@ describe('harnessEnvironmentState', () => {
     expect(equinoxNoon?.colorCheck).toBeUndefined()
     expect(winterAfternoon?.cloudCover).toBeUndefined()
     expect(winterAfternoon?.colorCheck).toBeUndefined()
+  })
+
+  it('resolves ambient-occlusion to equinox-noon at the canonical site with the furniture fixture', () => {
+    expect(harnessEnvironmentState('ambient-occlusion')).toEqual({
+      site: canonicalSite,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+      realistic: true,
+      scene: 'furniture',
+    })
+  })
+
+  it('resolves the existing named states without the new scene fixture field', () => {
+    const equinoxNoon = harnessEnvironmentState('equinox-noon')
+    const winterAfternoon = harnessEnvironmentState('winter-afternoon')
+
+    expect(equinoxNoon?.scene).toBeUndefined()
+    expect(winterAfternoon?.scene).toBeUndefined()
+  })
+})
+
+describe('resolveHarnessScene', () => {
+  it('resolves a geometry fixture key to itself', () => {
+    expect(resolveHarnessScene('junctions')).toBe('junctions')
+    expect(resolveHarnessScene('furniture')).toBe('furniture')
+    expect(resolveHarnessScene('adjacent-rooms')).toBe('adjacent-rooms')
+  })
+
+  it('resolves an environment state name to its paired geometry fixture', () => {
+    expect(resolveHarnessScene('ambient-occlusion')).toBe('furniture')
+  })
+
+  it('resolves an environment state without a paired fixture to undefined', () => {
+    expect(resolveHarnessScene('equinox-noon')).toBeUndefined()
+  })
+
+  it('resolves an unknown scene name to undefined', () => {
+    expect(resolveHarnessScene('no-such-scene')).toBeUndefined()
+  })
+
+  it('resolves an absent scene param to undefined', () => {
+    expect(resolveHarnessScene(undefined)).toBeUndefined()
+  })
+})
+
+describe('HARNESS_GEOMETRY_SCENE_KEYS', () => {
+  it('shares no key with the named environment states, so the scene query param stays unambiguous', () => {
+    for (const geometryKey of HARNESS_GEOMETRY_SCENE_KEYS) {
+      expect(harnessEnvironmentState(geometryKey)).toBeUndefined()
+    }
   })
 })

@@ -11,7 +11,6 @@ import {
   toneMappingOperatorFor,
   utcOffsetMinutesFor,
   type Bounds3,
-  type LightingMode,
   type ObservationInstant,
   type Site,
 } from '../../core'
@@ -23,6 +22,7 @@ import {
   SolarLightingProvider,
   type LightingProvider,
 } from '../../engine'
+import { effectiveLightingMode } from './effective-lighting-mode'
 
 interface SceneLightingProps {
   colorTemperatureK: number
@@ -144,9 +144,12 @@ export function SceneLighting({
 }: SceneLightingProps) {
   const scene = useThree((state) => state.scene)
   const renderer = useThree((state) => state.gl)
-  // Realistic mode without a site location falls back to the schematic provider; the
-  // missing-location UX lives in editor/environment/environment-panel.tsx (ADR-0144).
-  const solar = realistic && site?.latLong !== undefined
+  // Realistic mode without a site location falls back to the schematic provider (the
+  // effectiveLightingMode predicate is shared with the ambient-occlusion gate so the two
+  // render seams stay in lockstep); the missing-location UX lives in
+  // editor/environment/environment-panel.tsx (ADR-0144).
+  const effectiveMode = effectiveLightingMode(realistic, site)
+  const solar = effectiveMode === 'realistic'
   const provider = useMemo<LightingProvider>(
     () => (solar ? new SolarLightingProvider() : new BasicLightingProvider()),
     [solar],
@@ -159,10 +162,9 @@ export function SceneLighting({
 
   useLightingReadiness(provider, onReady)
 
-  // The renderer's tone-mapping operator follows the effective mode: `solar` is what the
-  // render actually shows, so a realistic request that falls back to schematic keeps the
+  // The renderer's tone-mapping operator follows the effective mode: `effectiveMode` is what
+  // the render actually shows, so a realistic request that falls back to schematic keeps the
   // Neutral operator. The color check overrides both with Neutral (ADR-0142).
-  const effectiveMode: LightingMode = solar ? 'realistic' : 'schematic'
   useLayoutEffect(() => {
     applyToneMappingOperator(renderer, toneMappingOperatorFor(effectiveMode, colorCheck))
   }, [renderer, effectiveMode, colorCheck])

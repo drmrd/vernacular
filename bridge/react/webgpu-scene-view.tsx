@@ -7,6 +7,7 @@ import {
   type Site,
 } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
+import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { useEnvironmentSession } from './environment-session-context'
 import type { FramedScene } from './framed-scene'
@@ -236,6 +237,10 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         roomPolygons={roomPolygons}
       />
       <SceneCameraRig nav={nav} framed={framed} opening={opening} />
+      <AmbientOcclusionRenderTakeover
+        realistic={viewEnvironment.environment.mode === 'realistic'}
+        site={site}
+      />
     </Canvas>
   )
 }

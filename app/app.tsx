@@ -4,7 +4,6 @@ import {
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
-  type HarnessScene,
   createEditorSession,
   loadOrCreateProject,
   type EditorSession,
@@ -36,7 +35,7 @@ import {
   type SurfaceTreatment,
 } from '../core'
 import { createInitialProject } from './create-initial-project'
-import { harnessEnvironmentState } from './harness-environment'
+import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
@@ -81,18 +80,6 @@ const DEMO_WALL_HEX = '#3f7f5f'
 // The harness room's four walls (model ids, the scene `wall:` prefix stripped). South
 // hosts the door (an opening wall), so painting all four exercises both wall mesh paths.
 const DEMO_WALL_IDS = ['south', 'east', 'north', 'west']
-
-// Selects the harness fixture (`?fixture=scene-harness&scene=junctions`); the default
-// renders the wall-shell room, `junctions` renders the T-junction and acute-bay fixture
-// for the junction-geometry baseline (ADR-0080), `furniture` renders the wall shell with
-// one massing box for the furniture baseline (ADR-0094), and `adjacent-rooms` renders two
-// rooms sharing a wall, viewed from below, for the shared-slab-boundary baseline (ADR-0150).
-function requestedHarnessScene(): HarnessScene | undefined {
-  const scene = searchParam('scene')
-  return scene === 'junctions' || scene === 'furniture' || scene === 'adjacent-rooms'
-    ? scene
-    : undefined
-}
 
 function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
   if (searchParam('paint') !== 'demo') return undefined
@@ -145,15 +132,17 @@ export interface AppProps {
 
 export function App(props: AppProps) {
   if (requestedFixture() === SCENE_HARNESS_FIXTURE) {
+    // The `?scene=` param names either a harness geometry fixture or a named
+    // environment state; see resolveHarnessScene in harness-environment.ts for the
+    // shared keyspace and resolution precedence between the two.
+    const sceneParam = searchParam('scene')
+    const environment = harnessEnvironmentState(sceneParam)
     return (
       <SceneHarnessView
         colorTemperatureK={requestedColorTemperature()}
         paint={requestedHarnessPaint()}
-        scene={requestedHarnessScene()}
-        // Named canonical environments (`?scene=equinox-noon` and friends) resolve to a
-        // realistic-lighting override over the default shell fixture; the geometry scene
-        // names above resolve to none, so their baselines are untouched.
-        environment={harnessEnvironmentState(searchParam('scene'))}
+        scene={resolveHarnessScene(sceneParam ?? undefined)}
+        environment={environment}
       />
     )
   }
