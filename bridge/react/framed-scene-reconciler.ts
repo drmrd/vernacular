@@ -20,6 +20,9 @@ import {
   buildOpeningSubgroup,
   buildRoomSubgroup,
   buildWallSubgroup,
+  disposeObject,
+  GRADE_ELEVATION_MM,
+  isGroundPlane,
   PaintMaterialProvider,
   sceneBounds,
   type EdgeOverlayOptions,
@@ -76,14 +79,15 @@ interface FurnitureSubgroupBuild {
 }
 
 /**
- * The identity a cached floor build is keyed on: the active floor node, the paint set, the
- * site grade elevation, and the furniture readiness signature. A later reconcile that matches
- * all four reuses the cached build untouched (isCachedBuildFresh); any difference rebuilds.
+ * The identity a cached floor build is keyed on: the active floor node, the paint set, and
+ * the furniture readiness signature. A later reconcile that matches all three reuses the
+ * cached build untouched (isCachedBuildFresh); any difference rebuilds. The site grade is
+ * deliberately not part of the key: the ground plane is per-scene, refreshed on the
+ * assembled root after the cache lookup, so a grade-only edit stays a cache hit.
  */
 interface FloorRequest {
   floorNode: SceneNode
   paint: Record<string, SurfaceTreatment>
-  gradeElevation: number | undefined
   readySignature: string
 }
 
@@ -159,6 +163,26 @@ function frameFloor({ floorNode, wall, subgroups, roomPolygons }: FrameFloorInpu
     nearWallTargets: wall.nearWallTargets,
     roomPolygons,
   }
+}
+
+/**
+ * Seats the assembled root on the site ground plane at the graph's grade (issue #477;
+ * ADR-0131, ADR-0138). The ground is per-scene, so it lives beside the floor group on the
+ * root, never inside a cached floor sub-group, and this runs after the cache lookup: a
+ * grade-only edit refreshes the plane in place while the whole floor build stays a cache
+ * hit. A plane already seated at the requested grade is kept; otherwise every ground plane
+ * on the root is removed and disposed before the fresh one is added, so no stale copy
+ * survives reuse. Camera framing keeps ignoring it (sceneBounds skips isGroundPlane).
+ */
+function refreshGroundPlane(root: SceneRoot, gradeElevation: number | undefined): void {
+  const grade = gradeElevation ?? GRADE_ELEVATION_MM
+  const planes = root.children.filter(isGroundPlane)
+  if (planes.length === 1 && planes[0]?.position.y === grade) return
+  for (const plane of planes) {
+    root.remove(plane)
+    disposeObject(plane)
+  }
+  addGroundPlane(root, grade)
 }
 
 /** Builds a per-id map of one sub-group build per node, keeping each node for reuse. */
@@ -331,11 +355,11 @@ interface FloorBuildInput extends FloorRequest {
 /**
  * Builds a floor's sub-groups and frames it into a cached build. Rooms whose derived node is
  * unchanged in value reuse their prior sub-group; changed rooms, walls, and openings rebuild.
- * The site ground plane is seated on the framed root at grade as a per-scene sibling of the
- * floor group (issue #477; ADR-0131, ADR-0138); camera framing already excludes it.
+ * The site ground plane is not built here: reconcile seats it on the assembled root after
+ * the cache lookup, since it is per-scene state rather than part of any floor build.
  */
 function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
-  const { floorNode, entities, paint, view, prev, models, readySignature, gradeElevation } = input
+  const { floorNode, entities, paint, view, prev, models, readySignature } = input
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
@@ -349,11 +373,9 @@ function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
   const subgroups = subgroupGroups(rooms, openings, furniture)
   const roomPolygons = entities.rooms.map((room) => room.polygon)
   const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons })
-  addGroundPlane(framed.root, gradeElevation)
   return {
     floorNode,
     paint,
-    gradeElevation,
     readySignature,
     wall,
     wallNodes: entities.walls,
@@ -384,7 +406,6 @@ function isCachedBuildFresh(cached: CachedFloorBuild, request: FloorRequest): bo
   return (
     cached.floorNode === request.floorNode &&
     cached.paint === request.paint &&
-    cached.gradeElevation === request.gradeElevation &&
     cached.readySignature === request.readySignature
   )
 }
@@ -404,19 +425,19 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
       const request: FloorRequest = {
         floorNode,
         paint,
-        gradeElevation: graph.gradeElevation,
         readySignature: furnitureReadySignature(entities.furniture, models),
       }
       const cached = buildsByFloorId.get(floorNode.id)
       if (cached !== undefined && isCachedBuildFresh(cached, request)) {
+        refreshGroundPlane(cached.framed.root, graph.gradeElevation)
         return cached.framed
       }
       // A paint edit changes the paint reference, so prev is undefined and the floor rebuilds
-      // whole; otherwise the prior build's unchanged room sub-groups are reused. A grade
-      // change alone still reuses those sub-groups, refreshing only the site ground plane.
+      // whole; otherwise the prior build's unchanged room sub-groups are reused.
       const prev = cached !== undefined && cached.paint === paint ? cached : undefined
       const build = buildFloorBuild({ ...request, entities, view, prev, models })
       buildsByFloorId.set(floorNode.id, build)
+      refreshGroundPlane(build.framed.root, graph.gradeElevation)
       return build.framed
     },
   }
