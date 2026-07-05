@@ -37,6 +37,34 @@ describe('SiteEditor', () => {
     expect(sent.type).toBe(setSiteLocation({ latitude: 40, longitude: -71.06 }).type)
   })
 
+  it('dispatches a location update when the latitude field loses focus', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    const sent = dispatch.mock.calls[0]?.[0] as Command
+    expect(sent.type).toBe(setSiteLocation({ latitude: 40, longitude: -71.06 }).type)
+  })
+
+  it('does not dispatch again when a coordinate field blurs right after Enter already committed', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40{Enter}')
+    await user.tab()
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+  })
+
   it('shows the current north bearing in degrees', () => {
     render(<SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={vi.fn()} />)
     expect(screen.getByLabelText(/north bearing/i)).toHaveValue(90)
