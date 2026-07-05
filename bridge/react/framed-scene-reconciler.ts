@@ -326,7 +326,7 @@ function reuseOrBuildFurniture(input: FurnitureBuildInput): FurnitureSubgroupBui
  * Flattens the per-entity sub-group maps into one ordered group list, preserving the argument
  * order (rooms first, then openings, then furniture) a floor root is assembled from.
  */
-function subgroupGroups(...maps: Map<string, { group: SceneRoot }>[]): SceneRoot[] {
+function collectSubgroupGroups(...maps: Map<string, { group: SceneRoot }>[]): SceneRoot[] {
   return maps.flatMap((map) => [...map.values()].map((build) => build.group))
 }
 
@@ -370,7 +370,7 @@ function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
   const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, context))
   const openings = subgroupMap(entities.openings, (node) => reuseOrBuildOpening(node, context))
   const furniture = furnitureMap(entities.furniture, models, context)
-  const subgroups = subgroupGroups(rooms, openings, furniture)
+  const subgroups = collectSubgroupGroups(rooms, openings, furniture)
   const roomPolygons = entities.rooms.map((room) => room.polygon)
   const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons })
   return {
@@ -387,6 +387,15 @@ function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
   }
 }
 
+/** Whether a cached build still matches the request in every keyed field, so it can be reused as-is. */
+function isCachedBuildFresh(cached: CachedFloorBuild, request: FloorRequest): boolean {
+  return (
+    cached.floorNode === request.floorNode &&
+    cached.paint === request.paint &&
+    cached.readySignature === request.readySignature
+  )
+}
+
 /**
  * Builds the preview scene for the active floor through the per-entity sub-group builders
  * and caches the build per floor id. When the active floor node and paint references are
@@ -401,15 +410,6 @@ function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
  * scene view constructs a fresh reconciler when the toggle flips, which discards the
  * stale builds rather than reusing groups that baked the other setting in.
  */
-/** Whether a cached build still matches the request in every keyed field, so it can be reused as-is. */
-function isCachedBuildFresh(cached: CachedFloorBuild, request: FloorRequest): boolean {
-  return (
-    cached.floorNode === request.floorNode &&
-    cached.paint === request.paint &&
-    cached.readySignature === request.readySignature
-  )
-}
-
 export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
 
