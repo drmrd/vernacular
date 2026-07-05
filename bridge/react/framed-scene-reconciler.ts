@@ -76,22 +76,30 @@ interface FurnitureSubgroupBuild {
 }
 
 /**
+ * The identity a cached floor build is keyed on: the active floor node, the paint set, the
+ * site grade elevation, and the furniture readiness signature. A later reconcile that matches
+ * all four reuses the cached build untouched (isCachedBuildFresh); any difference rebuilds.
+ */
+interface FloorRequest {
+  floorNode: SceneNode
+  paint: Record<string, SurfaceTreatment>
+  gradeElevation: number | undefined
+  readySignature: string
+}
+
+/**
  * One floor's built scene, held as its individual sub-groups so a later edit can reuse
  * the ones whose entity did not change. The wall sub-group records the wall and hosted-
  * opening nodes it was built from (it is the floor's non-local unit and must rebuild
  * whole when any of them changes); rooms and openings keep one build per entity id.
  */
-interface CachedFloorBuild {
-  floorNode: SceneNode
-  paint: Record<string, SurfaceTreatment>
-  gradeElevation: number | undefined
+interface CachedFloorBuild extends FloorRequest {
   wall: WallBuild
   wallNodes: WallSceneNode[]
   wallOpeningNodes: OpeningSceneNode[]
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>
   furniture: Map<string, FurnitureSubgroupBuild>
-  readySignature: string
   framed: FramedScene
 }
 
@@ -138,23 +146,11 @@ interface FrameFloorInput {
   wall: WallBuild
   subgroups: SceneRoot[]
   roomPolygons: readonly (readonly Point[])[]
-  gradeElevation: number | undefined
 }
 
 /** Assembles a floor root from its wall and entity sub-groups, recomputing bounds and pose. */
-function frameFloor({
-  floorNode,
-  wall,
-  subgroups,
-  roomPolygons,
-  gradeElevation,
-}: FrameFloorInput): FramedScene {
+function frameFloor({ floorNode, wall, subgroups, roomPolygons }: FrameFloorInput): FramedScene {
   const root = assembleFloorRoot(floorNode, [wall.group, ...subgroups])
-  // Seat the assembled floor on a grass ground plane at grade, beside the floor group
-  // rather than inside a cached sub-group, so the live view sits on its site the way the
-  // harness render does (issue #477; ADR-0131, ADR-0138). Camera framing keeps excluding
-  // it (sceneBounds skips isGroundPlane), so the pose is unchanged.
-  addGroundPlane(root, gradeElevation)
   const bounds = sceneBounds(root)
   return {
     root,
@@ -303,47 +299,43 @@ function reuseOrBuildFurniture(input: FurnitureBuildInput): FurnitureSubgroupBui
 }
 
 /**
- * Flattens the per-entity sub-group maps into the ordered group list a floor root is assembled
- * from: rooms first, then openings, then furniture.
+ * Flattens the per-entity sub-group maps into one ordered group list, preserving the argument
+ * order (rooms first, then openings, then furniture) a floor root is assembled from.
  */
-function collectSubgroupGroups(
-  rooms: Map<string, SubgroupBuild<RoomSceneNode>>,
-  openings: Map<string, SubgroupBuild<OpeningSceneNode>>,
-  furniture: Map<string, FurnitureSubgroupBuild>,
-): SceneRoot[] {
-  return [
-    ...[...rooms.values()].map((build) => build.group),
-    ...[...openings.values()].map((build) => build.group),
-    ...[...furniture.values()].map((build) => build.group),
-  ]
+function subgroupGroups(...maps: Map<string, { group: SceneRoot }>[]): SceneRoot[] {
+  return maps.flatMap((map) => [...map.values()].map((build) => build.group))
+}
+
+/** Builds a per-id map of furniture sub-groups, reusing each unchanged piece and tracking its build kind. */
+function furnitureMap(
+  furniture: FurnitureSceneNode[],
+  models: FurnitureModelLookup,
+  context: SubgroupBuildContext,
+): Map<string, FurnitureSubgroupBuild> {
+  return new Map(
+    furniture.map((node): [string, FurnitureSubgroupBuild] => [
+      node.id,
+      reuseOrBuildFurniture({ node, models, ...context }),
+    ]),
+  )
 }
 
 /** The inputs a single floor build is computed from, including the prior build to reuse. */
-interface FloorBuildInput {
-  floorNode: SceneNode
+interface FloorBuildInput extends FloorRequest {
   entities: FloorEntities
-  paint: Record<string, SurfaceTreatment>
   view: EdgeOverlayOptions
   prev: CachedFloorBuild | undefined
   models: FurnitureModelLookup
-  readySignature: string
-  gradeElevation: number | undefined
 }
 
 /**
  * Builds a floor's sub-groups and frames it into a cached build. Rooms whose derived node is
  * unchanged in value reuse their prior sub-group; changed rooms, walls, and openings rebuild.
+ * The site ground plane is seated on the framed root at grade as a per-scene sibling of the
+ * floor group (issue #477; ADR-0131, ADR-0138); camera framing already excludes it.
  */
-function buildFloorBuild({
-  floorNode,
-  entities,
-  paint,
-  view,
-  prev,
-  models,
-  readySignature,
-  gradeElevation,
-}: FloorBuildInput): CachedFloorBuild {
+function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
+  const { floorNode, entities, paint, view, prev, models, readySignature, gradeElevation } = input
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
@@ -353,26 +345,22 @@ function buildFloorBuild({
   const wall = reuseOrBuildWall({ entities, wallOpeningNodes, ...context })
   const rooms = subgroupMap(entities.rooms, (node) => reuseOrBuildRoom(node, context))
   const openings = subgroupMap(entities.openings, (node) => reuseOrBuildOpening(node, context))
-  const furniture = new Map(
-    entities.furniture.map((node): [string, FurnitureSubgroupBuild] => [
-      node.id,
-      reuseOrBuildFurniture({ node, models, ...context }),
-    ]),
-  )
-  const subgroups = collectSubgroupGroups(rooms, openings, furniture)
+  const furniture = furnitureMap(entities.furniture, models, context)
+  const subgroups = subgroupGroups(rooms, openings, furniture)
   const roomPolygons = entities.rooms.map((room) => room.polygon)
-  const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons, gradeElevation })
+  const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons })
+  addGroundPlane(framed.root, gradeElevation)
   return {
     floorNode,
     paint,
     gradeElevation,
+    readySignature,
     wall,
     wallNodes: entities.walls,
     wallOpeningNodes,
     rooms,
     openings,
     furniture,
-    readySignature,
     framed,
   }
 }
@@ -391,6 +379,16 @@ function buildFloorBuild({
  * scene view constructs a fresh reconciler when the toggle flips, which discards the
  * stale builds rather than reusing groups that baked the other setting in.
  */
+/** Whether a cached build still matches the request in every keyed field, so it can be reused as-is. */
+function isCachedBuildFresh(cached: CachedFloorBuild, request: FloorRequest): boolean {
+  return (
+    cached.floorNode === request.floorNode &&
+    cached.paint === request.paint &&
+    cached.gradeElevation === request.gradeElevation &&
+    cached.readySignature === request.readySignature
+  )
+}
+
 export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): FramedSceneReconciler {
   const buildsByFloorId = new Map<string, CachedFloorBuild>()
 
@@ -403,31 +401,21 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
         return buildFramedScene(graph, paint, view)
       }
       const entities = floorEntities(graph, floorNode)
-      const readySignature = furnitureReadySignature(entities.furniture, models)
+      const request: FloorRequest = {
+        floorNode,
+        paint,
+        gradeElevation: graph.gradeElevation,
+        readySignature: furnitureReadySignature(entities.furniture, models),
+      }
       const cached = buildsByFloorId.get(floorNode.id)
-      if (
-        cached !== undefined &&
-        cached.floorNode === floorNode &&
-        cached.paint === paint &&
-        cached.gradeElevation === graph.gradeElevation &&
-        cached.readySignature === readySignature
-      ) {
+      if (cached !== undefined && isCachedBuildFresh(cached, request)) {
         return cached.framed
       }
       // A paint edit changes the paint reference, so prev is undefined and the floor rebuilds
       // whole; otherwise the prior build's unchanged room sub-groups are reused. A grade
       // change alone still reuses those sub-groups, refreshing only the site ground plane.
       const prev = cached !== undefined && cached.paint === paint ? cached : undefined
-      const build = buildFloorBuild({
-        floorNode,
-        entities,
-        paint,
-        view,
-        prev,
-        models,
-        readySignature,
-        gradeElevation: graph.gradeElevation,
-      })
+      const build = buildFloorBuild({ ...request, entities, view, prev, models })
       buildsByFloorId.set(floorNode.id, build)
       return build.framed
     },
