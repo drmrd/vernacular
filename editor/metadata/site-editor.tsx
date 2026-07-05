@@ -17,25 +17,26 @@ export interface SiteEditorProps {
   dispatch: (command: Command) => void
 }
 
-// Enter and blur both commit, but a blur that immediately follows an Enter
-// which already committed must not dispatch the same value twice. A ref
-// tracks whether the pending value is Enter-fresh; any edit clears it, since
-// an edit means blur now has a new value to commit.
+// Enter and blur both commit, but only an edit the user actually made. A ref
+// tracks whether an uncommitted edit is pending: set on value change, cleared
+// by any commit. Blur without a pending edit is a no-op, which keeps an
+// untouched field's focus traversal from re-dispatching its unchanged value
+// and keeps a blur right after Enter from dispatching the same value twice.
 function useCommitOnBlur(onCommit: () => void) {
-  const committedByEnterRef = useRef(false)
+  const hasPendingEditRef = useRef(false)
   const noteValueChanged = () => {
-    committedByEnterRef.current = false
+    hasPendingEditRef.current = true
   }
   const commitOnEnter = () => {
     onCommit()
-    committedByEnterRef.current = true
+    hasPendingEditRef.current = false
   }
   const commitOnBlur = () => {
-    if (committedByEnterRef.current) {
-      committedByEnterRef.current = false
+    if (!hasPendingEditRef.current) {
       return
     }
     onCommit()
+    hasPendingEditRef.current = false
   }
   return { noteValueChanged, commitOnEnter, commitOnBlur }
 }
