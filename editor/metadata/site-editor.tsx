@@ -17,6 +17,29 @@ export interface SiteEditorProps {
   dispatch: (command: Command) => void
 }
 
+// Enter and blur both commit, but a blur that immediately follows an Enter
+// which already committed must not dispatch the same value twice. A ref
+// tracks whether the pending value is Enter-fresh; any edit clears it, since
+// an edit means blur now has a new value to commit.
+function useCommitOnBlur(onCommit: () => void) {
+  const committedByEnterRef = useRef(false)
+  const noteValueChanged = () => {
+    committedByEnterRef.current = false
+  }
+  const commitOnEnter = () => {
+    onCommit()
+    committedByEnterRef.current = true
+  }
+  const commitOnBlur = () => {
+    if (committedByEnterRef.current) {
+      committedByEnterRef.current = false
+      return
+    }
+    onCommit()
+  }
+  return { noteValueChanged, commitOnEnter, commitOnBlur }
+}
+
 interface LabeledNumberInputProps {
   label: string
   value: number
@@ -25,27 +48,17 @@ interface LabeledNumberInputProps {
 }
 
 function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNumberInputProps) {
-  // Enter already commits; blur must not repeat that dispatch when nothing
-  // changed in between, so track whether the pending value is Enter-fresh.
-  const committedByEnterRef = useRef(false)
+  const { noteValueChanged, commitOnEnter, commitOnBlur } = useCommitOnBlur(onCommit)
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onValueChange(event.target.valueAsNumber)
-    committedByEnterRef.current = false
+    noteValueChanged()
   }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // A cleared number input reads back as NaN; never commit an empty field.
     if (event.key === 'Enter' && !Number.isNaN(value)) {
-      onCommit()
-      committedByEnterRef.current = true
+      commitOnEnter()
     }
-  }
-  const handleBlur = () => {
-    if (committedByEnterRef.current) {
-      committedByEnterRef.current = false
-      return
-    }
-    onCommit()
   }
   return (
     <label>
@@ -55,7 +68,7 @@ function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNu
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
+        onBlur={commitOnBlur}
       />
     </label>
   )
@@ -69,26 +82,16 @@ interface LabeledTextInputProps {
 }
 
 function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledTextInputProps) {
-  // Enter already commits; blur must not repeat that dispatch when nothing
-  // changed in between, so track whether the pending value is Enter-fresh.
-  const committedByEnterRef = useRef(false)
+  const { noteValueChanged, commitOnEnter, commitOnBlur } = useCommitOnBlur(onCommit)
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onValueChange(event.target.value)
-    committedByEnterRef.current = false
+    noteValueChanged()
   }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
-      onCommit()
-      committedByEnterRef.current = true
+      commitOnEnter()
     }
-  }
-  const handleBlur = () => {
-    if (committedByEnterRef.current) {
-      committedByEnterRef.current = false
-      return
-    }
-    onCommit()
   }
   return (
     <label>
@@ -98,7 +101,7 @@ function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledText
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
+        onBlur={commitOnBlur}
       />
     </label>
   )
