@@ -1,0 +1,53 @@
+name: Refresh scene baselines
+
+# Manually dispatched helper that renders the three-dimensional scene visual-regression
+# baselines on the ubuntu runner that gates them, then uploads them as an artifact to
+# download and commit. The scene-webgl Playwright project keys its launch flags on the host
+# platform, so on this runner it renders WebGL 2 through chromium's built-in SwiftShader
+# rasterizer (no GPU present) and writes -linux baselines that coexist with the development
+# Mac's -darwin renders. Run this after an intentional scene change or to seed the lane:
+# download the `scene-baselines` artifact and commit its PNGs under
+# e2e/tests/scene-*.spec.ts-snapshots/. See issue #401 and ADR-0149.
+#
+# workflow_dispatch registers only on the default branch, so this workflow cannot be run
+# until it has merged to main. That is by design: the -linux scene baselines are seeded by
+# dispatching this workflow once after merge, which is why this pull request commits none of
+# them. Until they land, the ci.yml scene-visual job skips (its gate finds no -linux
+# baselines in the tree).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    name: Regenerate scene baselines on the runner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build production bundle
+        run: pnpm build
+      - name: Regenerate scene baselines
+        run: pnpm exec playwright test --project=scene-webgl --update-snapshots=all
+      - name: Upload refreshed baselines
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scene-baselines
+          path: |
+            e2e/tests/scene-visual-regression.spec.ts-snapshots/*-scene-webgl-linux.png
+            e2e/tests/scene-solar.spec.ts-snapshots/*-scene-webgl-linux.png
+          retention-days: 7
