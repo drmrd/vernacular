@@ -13,6 +13,7 @@ import {
   type WallSceneNode,
 } from '../../core'
 import {
+  addGroundPlane,
   assembleFloorRoot,
   buildFurnitureModelGroup,
   buildFurnitureSubgroup,
@@ -83,6 +84,7 @@ interface FurnitureSubgroupBuild {
 interface CachedFloorBuild {
   floorNode: SceneNode
   paint: Record<string, SurfaceTreatment>
+  gradeElevation: number | undefined
   wall: WallBuild
   wallNodes: WallSceneNode[]
   wallOpeningNodes: OpeningSceneNode[]
@@ -136,11 +138,23 @@ interface FrameFloorInput {
   wall: WallBuild
   subgroups: SceneRoot[]
   roomPolygons: readonly (readonly Point[])[]
+  gradeElevation: number | undefined
 }
 
 /** Assembles a floor root from its wall and entity sub-groups, recomputing bounds and pose. */
-function frameFloor({ floorNode, wall, subgroups, roomPolygons }: FrameFloorInput): FramedScene {
+function frameFloor({
+  floorNode,
+  wall,
+  subgroups,
+  roomPolygons,
+  gradeElevation,
+}: FrameFloorInput): FramedScene {
   const root = assembleFloorRoot(floorNode, [wall.group, ...subgroups])
+  // Seat the assembled floor on a grass ground plane at grade, beside the floor group
+  // rather than inside a cached sub-group, so the live view sits on its site the way the
+  // harness render does (issue #477; ADR-0131, ADR-0138). Camera framing keeps excluding
+  // it (sceneBounds skips isGroundPlane), so the pose is unchanged.
+  addGroundPlane(root, gradeElevation)
   const bounds = sceneBounds(root)
   return {
     root,
@@ -313,6 +327,7 @@ interface FloorBuildInput {
   prev: CachedFloorBuild | undefined
   models: FurnitureModelLookup
   readySignature: string
+  gradeElevation: number | undefined
 }
 
 /**
@@ -327,6 +342,7 @@ function buildFloorBuild({
   prev,
   models,
   readySignature,
+  gradeElevation,
 }: FloorBuildInput): CachedFloorBuild {
   const materials = new PaintMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
@@ -345,10 +361,11 @@ function buildFloorBuild({
   )
   const subgroups = collectSubgroupGroups(rooms, openings, furniture)
   const roomPolygons = entities.rooms.map((room) => room.polygon)
-  const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons })
+  const framed = frameFloor({ floorNode, wall, subgroups, roomPolygons, gradeElevation })
   return {
     floorNode,
     paint,
+    gradeElevation,
     wall,
     wallNodes: entities.walls,
     wallOpeningNodes,
@@ -392,12 +409,14 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
         cached !== undefined &&
         cached.floorNode === floorNode &&
         cached.paint === paint &&
+        cached.gradeElevation === graph.gradeElevation &&
         cached.readySignature === readySignature
       ) {
         return cached.framed
       }
       // A paint edit changes the paint reference, so prev is undefined and the floor rebuilds
-      // whole; otherwise the prior build's unchanged room sub-groups are reused.
+      // whole; otherwise the prior build's unchanged room sub-groups are reused. A grade
+      // change alone still reuses those sub-groups, refreshing only the site ground plane.
       const prev = cached !== undefined && cached.paint === paint ? cached : undefined
       const build = buildFloorBuild({
         floorNode,
@@ -407,6 +426,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
         prev,
         models,
         readySignature,
+        gradeElevation: graph.gradeElevation,
       })
       buildsByFloorId.set(floorNode.id, build)
       return build.framed
