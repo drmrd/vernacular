@@ -17,13 +17,20 @@ const RADIANS_PER_DEGREE = Math.PI / 180
 
 afterEach(cleanup)
 
-describe('SiteEditor', () => {
+describe('SiteEditor display', () => {
   it('shows the current latitude and longitude', () => {
     render(<SiteEditor site={SITE} dispatch={vi.fn()} />)
     expect(screen.getByLabelText(/latitude/i)).toHaveValue(42.36)
     expect(screen.getByLabelText(/longitude/i)).toHaveValue(-71.06)
   })
 
+  it('shows the current north bearing in degrees', () => {
+    render(<SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={vi.fn()} />)
+    expect(screen.getByLabelText(/north bearing/i)).toHaveValue(90)
+  })
+})
+
+describe('SiteEditor location', () => {
   it('dispatches a location update when the coordinates are committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
@@ -65,11 +72,34 @@ describe('SiteEditor', () => {
     expect(dispatch).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the current north bearing in degrees', () => {
-    render(<SiteEditor site={{ ...SITE, northBearing: QUARTER_TURN_RADIANS }} dispatch={vi.fn()} />)
-    expect(screen.getByLabelText(/north bearing/i)).toHaveValue(90)
+  it('does not dispatch a location update when a coordinate field is cleared', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.keyboard('{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
   })
 
+  it('does not dispatch a location update when the partner coordinate is cleared', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    render(<SiteEditor site={SITE} dispatch={dispatch} />)
+
+    await user.clear(screen.getByLabelText(/longitude/i))
+
+    const latitude = screen.getByLabelText(/latitude/i)
+    await user.clear(latitude)
+    await user.type(latitude, '40{Enter}')
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+})
+
+describe('SiteEditor north bearing', () => {
   it('dispatches a north bearing update in radians when committed', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
@@ -98,18 +128,6 @@ describe('SiteEditor', () => {
     expect(dispatch).not.toHaveBeenCalled()
   })
 
-  it('does not dispatch a location update when a coordinate field is cleared', async () => {
-    const dispatch = vi.fn()
-    const user = userEvent.setup()
-    render(<SiteEditor site={SITE} dispatch={dispatch} />)
-
-    const latitude = screen.getByLabelText(/latitude/i)
-    await user.clear(latitude)
-    await user.keyboard('{Enter}')
-
-    expect(dispatch).not.toHaveBeenCalled()
-  })
-
   it('does not dispatch a bearing update when the field is cleared and blurred', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
@@ -123,21 +141,9 @@ describe('SiteEditor', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
   })
+})
 
-  it('does not dispatch a location update when the partner coordinate is cleared', async () => {
-    const dispatch = vi.fn()
-    const user = userEvent.setup()
-    render(<SiteEditor site={SITE} dispatch={dispatch} />)
-
-    await user.clear(screen.getByLabelText(/longitude/i))
-
-    const latitude = screen.getByLabelText(/latitude/i)
-    await user.clear(latitude)
-    await user.type(latitude, '40{Enter}')
-
-    expect(dispatch).not.toHaveBeenCalled()
-  })
-
+describe('SiteEditor timezone', () => {
   it('dispatches setSiteTimezone on commit', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
