@@ -260,6 +260,10 @@ describe('createFramedSceneReconciler ground plane', () => {
     )
     expect(groundPlanesOf(first.root)).toHaveLength(1)
     expect(groundPlanesOf(first.root)[0]?.position.y).toBeCloseTo(BELOW_GRADE_MM)
+    // Capture the wall sub-group before the second reconcile: the ground is per-scene,
+    // so a grade-only edit must refresh it without rebuilding any floor sub-group.
+    const wallFirstGroup = findByEntityId(first.root, 'wall:g1')
+    expect(wallFirstGroup).not.toBeNull()
 
     const second = reconciler.reconcile(
       { ...floorGraph(node), gradeElevation: ABOVE_GRADE_MM },
@@ -269,8 +273,9 @@ describe('createFramedSceneReconciler ground plane', () => {
     const grounds = groundPlanesOf(second.root)
     expect(grounds).toHaveLength(1)
     expect(grounds[0]?.position.y).toBeCloseTo(ABOVE_GRADE_MM)
-    // The grade edit rebuilt the scene; it did not return the cached below-grade build.
-    expect(second).not.toBe(first)
+    // The grade edit refreshed only the site ground: the unchanged floor's sub-groups
+    // (here the wall group) are reused by reference, not rebuilt.
+    expect(findByEntityId(second.root, 'wall:g1')).toBe(wallFirstGroup)
   })
 })
 
