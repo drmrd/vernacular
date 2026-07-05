@@ -49,20 +49,21 @@ interface LabeledNumberInputProps {
 
 function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNumberInputProps) {
   const { noteValueChanged, commitOnEnter, commitOnBlur } = useCommitOnBlur(onCommit)
+  // A cleared number input reads back as NaN; never commit an empty field,
+  // on either the Enter or the blur commit path.
+  const isCommittable = !Number.isNaN(value)
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onValueChange(event.target.valueAsNumber)
     noteValueChanged()
   }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    // A cleared number input reads back as NaN; never commit an empty field.
-    if (event.key === 'Enter' && !Number.isNaN(value)) {
+    if (event.key === 'Enter' && isCommittable) {
       commitOnEnter()
     }
   }
   const handleBlur = () => {
-    // A cleared number input reads back as NaN; never commit an empty field.
-    if (!Number.isNaN(value)) {
+    if (isCommittable) {
       commitOnBlur()
     }
   }
