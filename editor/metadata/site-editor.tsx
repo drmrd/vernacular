@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import {
   setSiteLocation,
   setSiteNorthBearing,
@@ -25,11 +25,27 @@ interface LabeledNumberInputProps {
 }
 
 function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNumberInputProps) {
+  // Enter already commits; blur must not repeat that dispatch when nothing
+  // changed in between, so track whether the pending value is Enter-fresh.
+  const committedByEnterRef = useRef(false)
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onValueChange(event.target.valueAsNumber)
+    committedByEnterRef.current = false
+  }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // A cleared number input reads back as NaN; never commit an empty field.
     if (event.key === 'Enter' && !Number.isNaN(value)) {
       onCommit()
+      committedByEnterRef.current = true
     }
+  }
+  const handleBlur = () => {
+    if (committedByEnterRef.current) {
+      committedByEnterRef.current = false
+      return
+    }
+    onCommit()
   }
   return (
     <label>
@@ -37,8 +53,9 @@ function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNu
       <input
         type="number"
         value={value}
-        onChange={(event) => onValueChange(event.target.valueAsNumber)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
       />
     </label>
   )
