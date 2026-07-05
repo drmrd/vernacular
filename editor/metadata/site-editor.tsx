@@ -60,6 +60,12 @@ function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNu
       commitOnEnter()
     }
   }
+  const handleBlur = () => {
+    // A cleared number input reads back as NaN; never commit an empty field.
+    if (!Number.isNaN(value)) {
+      commitOnBlur()
+    }
+  }
   return (
     <label>
       {label}
@@ -68,7 +74,7 @@ function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNu
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onBlur={commitOnBlur}
+        onBlur={handleBlur}
       />
     </label>
   )
