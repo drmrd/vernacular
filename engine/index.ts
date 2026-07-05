@@ -14,6 +14,7 @@ export {
   buildRoomSubgroup,
   buildWallSubgroup,
 } from './scene/floor-subgroups'
+export { addGroundPlane, isGroundPlane } from './scene/ground-plane'
 export { applyOpeningMotion, applyOpeningMotionForNode } from './scene/opening-motion'
 export { sceneBounds } from './scene/scene-bounds'
 export { markShadowCasters } from './scene/shadow-casters'

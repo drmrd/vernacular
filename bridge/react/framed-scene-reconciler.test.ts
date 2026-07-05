@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Point, SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
+import { isGroundPlane, type SceneRoot } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
@@ -223,6 +224,55 @@ function containsEdgeLines(
   })
   return found
 }
+
+const BELOW_GRADE_MM = -600
+const ABOVE_GRADE_MM = 300
+
+// The ground planes seated directly under the assembled root. The site surface is a
+// per-scene sibling of the floor group, not a child of any cached sub-group, so it
+// shows up as a direct child of the root.
+function groundPlanesOf(root: SceneRoot): SceneRoot['children'] {
+  return root.children.filter(isGroundPlane)
+}
+
+describe('createFramedSceneReconciler ground plane', () => {
+  it('seats the assembled root on a ground plane at the graph grade', () => {
+    const reconciler = createFramedSceneReconciler()
+    const graph: SceneGraph = { ...floorGraph(groundFloorNode()), gradeElevation: BELOW_GRADE_MM }
+
+    const framed = reconciler.reconcile(graph, emptyPaint())
+
+    const grounds = groundPlanesOf(framed.root)
+    expect(grounds).toHaveLength(1)
+    expect(grounds[0]?.position.y).toBeCloseTo(BELOW_GRADE_MM)
+  })
+
+  it('refreshes the ground plane to the new grade with no stale copy left behind', () => {
+    const reconciler = createFramedSceneReconciler()
+    // Same floor node and paint across both reconciles, so only the grade changes: the
+    // cached build must refresh its ground rather than return the stale below-grade copy.
+    const node = groundFloorNode()
+    const paint = emptyPaint()
+
+    const first = reconciler.reconcile(
+      { ...floorGraph(node), gradeElevation: BELOW_GRADE_MM },
+      paint,
+    )
+    expect(groundPlanesOf(first.root)).toHaveLength(1)
+    expect(groundPlanesOf(first.root)[0]?.position.y).toBeCloseTo(BELOW_GRADE_MM)
+
+    const second = reconciler.reconcile(
+      { ...floorGraph(node), gradeElevation: ABOVE_GRADE_MM },
+      paint,
+    )
+
+    const grounds = groundPlanesOf(second.root)
+    expect(grounds).toHaveLength(1)
+    expect(grounds[0]?.position.y).toBeCloseTo(ABOVE_GRADE_MM)
+    // The grade edit rebuilt the scene; it did not return the cached below-grade build.
+    expect(second).not.toBe(first)
+  })
+})
 
 describe('createFramedSceneReconciler edge overlay', () => {
   it('draws no surface edge overlay by default (an opt-in view toggle, ADR-0132)', () => {
