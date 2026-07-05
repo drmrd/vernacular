@@ -11,15 +11,16 @@
  * `from` clause, so neither one counts as a static value import: both are the
  * allowed ways to reference a specifier that must stay off the lazy boundary.
  *
- * Known limitation: the static-value match spans the whole source with a lazy
- * `[\s\S]*?`, so it does not anchor per statement. An unrelated static import
- * earlier in the file can still cause a later `import type` of a guarded
- * specifier to be flagged.
+ * The static-value match stops at the next `import` keyword, so it never
+ * crosses into a second import statement. Without that anchor, an unrelated
+ * static import earlier in the file could stitch together with an unrelated
+ * `from '<specifier>'` several statements later (including one behind its own
+ * `import type`), reporting a static import that is not actually there.
  */
 export function importsStaticValueOf(source: string, specifier: string): boolean {
   const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const staticValueImport = new RegExp(
-    String.raw`import\s+(?!type\b)[\s\S]*?from\s*['"]${escaped}['"]`,
+    String.raw`import\s+(?!type\b)(?:(?!import)[\s\S])*?from\s*['"]${escaped}['"]`,
   )
   const bareSideEffectImport = new RegExp(String.raw`import\s+['"]${escaped}['"]`)
   return staticValueImport.test(source) || bareSideEffectImport.test(source)

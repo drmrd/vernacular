@@ -220,8 +220,8 @@ describe('sky-environment module imports', () => {
   // deliberately lazy three.webgpu chunk folded into the entry), and cold startup slowed
   // enough to make e2e/tests/environment-panel.spec.ts flaky on firefox under parallel load.
   // The sky mesh must load lazily at attach time. See engine/testing/import-guards.ts for how
-  // the static-vs-type-vs-dynamic import distinction (and its known regex limitation) is made;
-  // that helper is shared with the equivalent ambient-occlusion.test.ts guard.
+  // the static-vs-type-vs-dynamic import distinction is made; that helper is shared with the
+  // equivalent ambient-occlusion.test.ts guard.
   it('never puts the SkyMesh addon or three/webgpu on the startup path via a static import', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'engine/lighting/sky-environment.ts'),
