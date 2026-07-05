@@ -16,11 +16,21 @@
  * static import earlier in the file could stitch together with an unrelated
  * `from '<specifier>'` several statements later (including one behind its own
  * `import type`), reporting a static import that is not actually there.
+ *
+ * Known limitations: this is a textual scan, not a parser. The anchor stops
+ * only at the word-bounded `import` KEYWORD, so an identifier that merely
+ * contains "import" (say `reimportHelper`) does not end the scan early; but
+ * the bare word `import` inside a comment or string literal sitting between
+ * an import statement's keyword and its `from` clause still would, hiding a
+ * genuine static import. Conversely, import-statement-shaped text inside a
+ * string or comment reads as real code and can be flagged. Both cases stay
+ * theoretical for the engine source files these guards read, whose import
+ * sections carry no such text.
  */
 export function importsStaticValueOf(source: string, specifier: string): boolean {
   const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const staticValueImport = new RegExp(
-    String.raw`import\s+(?!type\b)(?:(?!import)[\s\S])*?from\s*['"]${escaped}['"]`,
+    String.raw`import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?from\s*['"]${escaped}['"]`,
   )
   const bareSideEffectImport = new RegExp(String.raw`import\s+['"]${escaped}['"]`)
   return staticValueImport.test(source) || bareSideEffectImport.test(source)

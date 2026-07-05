@@ -270,6 +270,8 @@ describe('App project actions', () => {
     await userEvent.click(within(alert).getByRole('button', { name: /discard/i }))
 
     // Confirm the dialog the same way the New/Open/Import discard tests do.
+    // Same dialog seam as the #472 flake: if this findBy ever times out under
+    // full-suite load, see the unsaved-changes guard test's timeout note below.
     const dialog = await screen.findByRole('alertdialog')
     await userEvent.click(within(dialog).getByRole('button', { name: /discard/i }))
 

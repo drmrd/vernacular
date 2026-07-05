@@ -34,6 +34,24 @@ describe('importsStaticValueOf', () => {
     expect(importsStaticValueOf(source, GUARDED_SPECIFIER)).toBe(false)
   })
 
+  // Pins the anchor to the `import` KEYWORD, not the bare substring. A tempered
+  // scan that stopped at any "import" text would halt inside `reimportHelper` and
+  // silently fail OPEN on this genuine static import (the guard's worst failure
+  // mode: a real regression reported as clean).
+  it('still flags a static import whose clause identifier contains "import" as a substring', () => {
+    const source = `import { reimportHelper } from '${GUARDED_SPECIFIER}'`
+    expect(importsStaticValueOf(source, GUARDED_SPECIFIER)).toBe(true)
+  })
+
+  // Pins the specifier-escaping step: the dot in '.js' must match only a literal
+  // dot. An unescaped specifier would let `.` match the 'X' in this near-miss
+  // source, so a regression in the escaping actually flips this assertion.
+  it('does not flag a specifier differing from the guarded one only at a regex metacharacter', () => {
+    const specifier = 'three/addons/tsl/display/GTAONode.js'
+    const source = "import { GTAONode } from 'three/addons/tsl/display/GTAONodeXjs'"
+    expect(importsStaticValueOf(source, specifier)).toBe(false)
+  })
+
   // The fixed false positive: sky-environment.ts opens with a genuine static value
   // import of a DIFFERENT specifier ('three'), followed by `import type` lines. The
   // precedent regex spanned the whole source with a lazy `[\s\S]*?`, so it could
@@ -61,9 +79,9 @@ describe('importsStaticValueOf', () => {
   })
 
   // Deliberately-broken fixtures modeled on the two production guards this helper
-  // backs, proving the tightened regex still fails the guard (returns true) when
-  // the module it reads has genuinely regressed back to a static import.
-  it('fails a sky-environment-shaped fixture that reintroduces a static SkyMesh import', () => {
+  // backs, proving the tightened regex still flags a module that has genuinely
+  // regressed back to a static import.
+  it('still flags a sky-environment-shaped fixture that reintroduces a static SkyMesh import', () => {
     const specifier = 'three/examples/jsm/objects/SkyMesh.js'
     const source = [
       "import * as THREE from 'three'",
@@ -74,7 +92,7 @@ describe('importsStaticValueOf', () => {
     expect(importsStaticValueOf(source, specifier)).toBe(true)
   })
 
-  it('fails an ambient-occlusion-shaped fixture that reintroduces a static three/tsl import', () => {
+  it('still flags an ambient-occlusion-shaped fixture that reintroduces a static three/tsl import', () => {
     const specifier = 'three/tsl'
     const source = [
       "import type * as THREE from 'three'",
