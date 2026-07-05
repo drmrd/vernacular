@@ -51,6 +51,24 @@ function fixedWindow(): OpeningSceneNode {
   }
 }
 
+function doubleHungWindow(): OpeningSceneNode {
+  return {
+    id: 'opening:test-double-hung-window',
+    kind: 'opening',
+    floorId: 'floor-1',
+    type: 'double-hung-window',
+    center: { x: 1000, y: 0 },
+    along: { x: 1, y: 0 },
+    normal: { x: 0, y: 1 },
+    width: 900,
+    height: 1200,
+    sillHeight: 900,
+    hostThickness: 120,
+    orientation: { hinge: 'start', facing: 'positive' },
+    hostWallId: 'south',
+  }
+}
+
 function meshesOf(group: THREE.Group): THREE.Mesh[] {
   return group.children.filter((child): child is THREE.Mesh => (child as THREE.Mesh).isMesh)
 }
@@ -95,5 +113,16 @@ describe('buildOpeningFill', () => {
     expect(glass).toBeDefined()
     if (glass === undefined) return
     expect((glass.material as THREE.Material).transparent).toBe(true)
+  })
+
+  it('stamps every built part mesh with its opening-fill role', () => {
+    const group = buildOpeningFill(doubleHungWindow(), new NeutralMaterialProvider())
+
+    const meshes = meshesOf(group)
+    const roles = meshes.map((mesh) => mesh.userData.openingFillRole)
+
+    expect(roles).toContain('glass')
+    expect(roles).toContain('leaf')
+    expect(roles.every((role) => role === 'glass' || role === 'leaf')).toBe(true)
   })
 })
