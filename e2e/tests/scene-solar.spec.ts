@@ -73,4 +73,8 @@ test.describe('Solar environment visual baseline', () => {
   test('renders the overcast-noon environment to its baseline', async ({ page }) => {
     await captureShell(page, '&scene=overcast-noon', 'scene-overcast-noon-webgl.png')
   })
+
+  test('renders the ambient-occlusion interior to its baseline', async ({ page }) => {
+    await captureShell(page, '&scene=ambient-occlusion', 'scene-ambient-occlusion-webgl.png')
+  })
 })
