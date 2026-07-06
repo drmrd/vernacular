@@ -104,12 +104,9 @@ Lessons: "fails at every old revision" fits a latent bug crossed with a slowly g
 
 ## Stale committed docs (do not trust these claims)
 
-| Doc and claim                                                             | Reality as of 2026-07-05                                                                               | Check                            |
-| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------- |
-| `CLAUDE.md`: "source-layer directories ... are placeholders today"        | All six layers (core, editor, bridge, engine, storage, app) carry substantial shipped code             | `ls core/ editor/ engine/`       |
-| `README.md` line 8: "Status: early development (Phase 0). Not yet usable" | v0.3.0 shipped 2026-06-27; the app is a working floor planner                                          | `git tag -l`                     |
-| `.claude/rules.md` rule 6: ADRs are a gitignored Claude-side cache        | `docs/knowledge/decisions/` is committed and authoritative; only the generated index files are ignored | `grep -n "decisions" .gitignore` |
-| ADR-0077 frontmatter `status: current`                                    | ADR-0080 is its stated successor                                                                       | ADR-0080 Status section          |
+| Doc and claim                          | Reality as of 2026-07-05         | Check                   |
+| -------------------------------------- | -------------------------------- | ----------------------- |
+| ADR-0077 frontmatter `status: current` | ADR-0080 is its stated successor | ADR-0080 Status section |
 
 When a task touches one of these, state current reality and flag the stale doc; do not repeat the doc.
 
@@ -132,7 +129,6 @@ All facts verified against the repo and GitHub on 2026-07-05. Every SHA cited he
 - Duplicate and missing ADR numbers: `ls docs/knowledge/decisions/ | grep -E "0076|0081"` and `ls docs/knowledge/decisions/ | grep -E "0002|0008|0009|0010|0011|0013|0014|0015"`
 - Linux scene lane state (was newly merged 2026-07-05): `gh pr view 478 --json state,mergedAt` and `ls e2e/tests/scene-visual-regression.spec.ts-snapshots/ | grep linux`
 - App-visual tier still darwin-only: `ls e2e/tests/visual-regression.spec.ts-snapshots/`
-- Stale-doc claims unchanged: `grep -n "placeholders" CLAUDE.md; sed -n '8p' README.md; sed -n '17p' .claude/rules.md`
 - Crash-recovery duplicate branches still unmerged: `git branch --list "fix/wire-crash-recovery-production" "fix/durable-recent-projects"` and `git log --oneline main..fix/wire-crash-recovery-production | head -3`
 - Live-view fade enrollment gap still open: `gh issue view 437 --json state`
 - Supersession statuses: `grep -H "^status:" docs/knowledge/decisions/ADR-0055-* docs/knowledge/decisions/ADR-0077-*`

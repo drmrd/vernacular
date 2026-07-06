@@ -79,8 +79,6 @@ Implementation follows the role-separated red-green-blue cycle; `pnpm rgb:audit`
 
 The ADR ships in the same PR as the change it records, not as a follow-up. Example: PR #474 (ambient occlusion) carries both the feature commits and `docs: record ADR-0151 for the ambient-occlusion render pipeline`.
 
-Stale-doc flag: `.claude/rules.md` rule 6 still describes ADRs as a gitignored local cache. That is out of date. `docs/knowledge/decisions/` is committed history (146 committed files on main as of 2026-07-05, and `CLAUDE.md`'s knowledge-graph section confirms it); only the generated index files stay local. Trust the committed tree, not rule 6's wording.
-
 ### 7. Ledger: the retire-or-resurrect pattern
 
 The epic tracking issue is the ledger. Issue #451 (realistic lighting) shows the full shape:

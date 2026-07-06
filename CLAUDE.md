@@ -27,7 +27,7 @@ Vernacular is an open-source floor planner for power users, with first-class sup
     └── commands/     project slash commands
 ```
 
-The source-layer directories under the repo root are placeholders today. Only `docs/`, `scripts/`, `src/` (a single placeholder App component), and `.claude/` carry meaningful content right now. New work lands in the appropriate layer once that layer is scaffolded.
+All six source layers are live: `core/`, `storage/`, `engine/`, `bridge/`, `editor/`, and `app/` each carry substantial production code and tests. `src/` holds the Vite entry points (bootstrap, service worker, test setup). New work lands in the appropriate layer; see `ARCHITECTURE.md` for where things live.
 
 ## Hard invariants
 

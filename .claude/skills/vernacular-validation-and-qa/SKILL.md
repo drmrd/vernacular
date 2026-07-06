@@ -131,7 +131,6 @@ pnpm build && pnpm e2e --project=scene-webgl --update-snapshots=all
 
 - `e2e/tests/scene-solar.spec.ts` header comment still says CI neither renders nor checks scene baselines; ADR-0152 made that false on 2026-07-05.
 - ADR-0149's "no CI path gates the scene tier" clause is superseded by ADR-0152.
-- `CLAUDE.md` still calls the source layers placeholders; all six layers carry real code.
 
 ## Self-skip and anti-vacuity patterns
 

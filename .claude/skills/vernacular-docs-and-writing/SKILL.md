@@ -129,7 +129,7 @@ Regenerates `INDEX.md` and `index.json` locally and validates every entry. The `
 | Conventional Commits                                                                                    | Mechanical changelog generation via release-please                                                             | commitlint accepts exactly: `feat fix refactor docs chore test style perf build ci`; subject must not be Start Case, PascalCase, or UPPER CASE (`commitlint.config.js`) |
 | Descriptive branch and file names                                                                       | Same readability principle                                                                                     | `feat/<short-description>`, `fix/...`, `docs/...`                                                                                                                       |
 
-Note: rules.md rule 9 and CONTRIBUTING list only 7 commit types; commitlint is the enforcer and accepts 10. Trust `commitlint.config.js`.
+Note: CONTRIBUTING still lists only 7 commit types; commitlint is the enforcer and accepts 10, and rules.md rule 9 matches it since 2026-07-05. Trust `commitlint.config.js`.
 
 ## The humanizer expectation
 
@@ -178,16 +178,15 @@ All of these must hold, or the claim stays out (or stays labeled open or candida
 
 Verified stale as of 2026-07-05. When you edit one of these files, correct the stale claim in the same change rather than repeating it elsewhere.
 
-| Doc                                                                      | Stale claim                                                                                                | Reality                                                                                               |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `CLAUDE.md` (repo layout)                                                | "source-layer directories under the repo root are placeholders today"; only docs/scripts/src carry content | All six layers are live: core 303, editor 462, bridge 104, storage 91, engine 87, app 29 TS/TSX files |
-| `README.md`                                                              | "Status: early development (Phase 0). Not yet usable as a floor planner."                                  | v0.3.1 shipped 2026-07-05; the 2D editor and 3D preview work                                          |
-| `README.md`, `CONTRIBUTING.md`                                           | "Node.js 20+"                                                                                              | `engines` requires >=22.18.0; `.nvmrc` says 22                                                        |
-| `CONTRIBUTING.md`                                                        | "The smoke test in src/App.test.tsx is the only test in the repository today."                             | Thousands of tests across unit, e2e, stories                                                          |
-| `CONTRIBUTING.md`                                                        | "package.json version stays at 0.0.0 until the first 1.0"                                                  | `package.json` version is 0.3.1                                                                       |
-| `CONTRIBUTING.md`, `.claude/rules.md` rule 9                             | 7 commit types                                                                                             | commitlint enforces 10 (adds `perf`, `build`, `ci`)                                                   |
-| `.claude/rules.md` rule 6                                                | ADRs are a gitignored Claude-side cache, not committed                                                     | `decisions/` is committed durable history (`.gitignore` negation; CLAUDE.md agrees)                   |
-| `.claude/rules.md`, `.npmrc`, `ARCHITECTURE.md`, knowledge-curator agent | Cite ADR-0002/0009/0010/0011/0013                                                                          | Those files are absent from `docs/knowledge/decisions/`                                               |
+| Doc                                                                      | Stale claim                                                                    | Reality                                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `CONTRIBUTING.md`                                                        | "Node.js 20+"                                                                  | `engines` requires >=22.18.0; `.nvmrc` says 22          |
+| `CONTRIBUTING.md`                                                        | "The smoke test in src/App.test.tsx is the only test in the repository today." | Thousands of tests across unit, e2e, stories            |
+| `CONTRIBUTING.md`                                                        | "package.json version stays at 0.0.0 until the first 1.0"                      | `package.json` version is 0.3.1                         |
+| `CONTRIBUTING.md`                                                        | 7 commit types                                                                 | commitlint enforces 10 (adds `perf`, `build`, `ci`)     |
+| `.claude/rules.md`, `.npmrc`, `ARCHITECTURE.md`, knowledge-curator agent | Cite ADR-0002/0009/0010/0011/0013                                              | Those files are absent from `docs/knowledge/decisions/` |
+
+Corrected on 2026-07-05 (no longer stale): CLAUDE.md's repo-layout "placeholders" line, README's "Phase 0" status and Node version, rules.md rule 6 (ADRs are committed) and rule 9 (10 commit types).
 
 Fixing these is a `docs:` change through the normal PR flow; edits to `CLAUDE.md` or `.claude/rules.md` need owner sign-off (see vernacular-change-control).
 
@@ -198,7 +197,7 @@ Fixing these is a `docs:` change through the normal PR flow; edits to `CLAUDE.md
 - Renumbering a duplicated ADR without chasing every `related:` and prose reference; the indexer will not catch a collision for you either way.
 - Running `/knowledge` on a fresh clone and concluding the knowledge graph is empty. Run `pnpm knowledge:index` first; the index is gitignored.
 - Editing a spec without an ADR, or recreating a roadmap file. Both are on the never-do list.
-- Copying stale claims forward (Phase 0 status, Node 20+, 7 commit types, "ADRs are uncommitted"). Check the stale-docs table first.
+- Copying stale CONTRIBUTING.md claims forward (Node 20+, 7 commit types, the version-stays-at-0.0.0 note). Check the stale-docs table first.
 - Leaving the scaffold's `status: current` on an ADR whose body still says "Proposed."
 - Promising stability, SemVer, or compatibility in external text while the project is 0.x.
 - Naming a commercial floor planner in a comparison. Write "mainstream floor planners".
@@ -219,4 +218,4 @@ All facts verified against the repo on 2026-07-05 (version 0.3.1, 146 ADRs, high
 - Current version: `node -p "require('./package.json').version"`
 - Pack license lists: `sed -n '11,43p' core/assets/license-policy.ts`
 - Knowledge cache gitignore split: `sed -n '28,35p' .gitignore`
-- Stale-docs table rows: `grep -n 'placeholders' CLAUDE.md`, `grep -n 'Phase 0' README.md CONTRIBUTING.md`, `grep -n 'Node.js 20' README.md CONTRIBUTING.md`, `grep -n '0.0.0' CONTRIBUTING.md`, `grep -n 'gitignored' .claude/rules.md`
+- Stale-docs table rows: `grep -n 'Node' CONTRIBUTING.md`, `grep -n 'only test' CONTRIBUTING.md`, `grep -n '0.0.0' CONTRIBUTING.md`, `grep -n 'ADR-00' .claude/rules.md .npmrc ARCHITECTURE.md`

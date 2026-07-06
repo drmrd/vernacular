@@ -139,7 +139,6 @@ Verified precisely on 2026-07-05: `playwright.config.ts` routes specs with the u
 
 ## Stale committed docs: trust the configs, not these lines
 
-- CLAUDE.md says the source-layer directories are "placeholders today". Stale: `core/`, `editor/`, `bridge/`, `engine/`, `storage/`, `app/` all carry substantial code as of 2026-07-05.
 - CONTRIBUTING.md says "Node.js 20 or newer" and "the smoke test in src/App.test.tsx is the only test". Both stale: engines require Node >=22.18.0 and the test tree is large.
 - `docs/specs/2026-06-01-vernacular-design.md` describes a 15-day cooldown (21600) with no exclusions. Superseded by `.npmrc`: 43200 minutes and 56 exclusions.
 - `.npmrc` cites ADR-0013 for the exclusions; the ADR file does not exist in `docs/knowledge/decisions/` as of 2026-07-05.
