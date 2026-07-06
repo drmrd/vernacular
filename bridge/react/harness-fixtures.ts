@@ -1,0 +1,195 @@
+import {
+  furnitureFootprintCorners,
+  type FurnitureSceneNode,
+  type OpeningSceneNode,
+  type Point,
+  type RoomSceneNode,
+  type SceneGraph,
+} from '../../core'
+import { buildAdjacentRoomsFixture } from './adjacent-rooms-fixture'
+
+// A fixed four-wall room (a 4000 by 3000 mm rectangle, 120 mm walls, 2600 mm tall) so
+// the harness renders the first lit wall shell rather than an empty scene. The ids and
+// dimensions are fixed, so the framed camera and the rendered frame are deterministic.
+const SHELL_THICKNESS = 120
+const SHELL_HEIGHT = 2600
+const SHELL_WIDTH_X = 4000
+const SHELL_DEPTH_Z = 3000
+// Half the 120 mm wall thickness: the clear floor area sits inset from the
+// centerline rectangle by this much, meeting the inner faces of the walls.
+const SHELL_CLEAR_INSET = 60
+
+function shellWall(id: string, start: Point, end: Point) {
+  return {
+    id,
+    kind: 'wall' as const,
+    floorId: 'demo',
+    start,
+    end,
+    thickness: SHELL_THICKNESS,
+    height: SHELL_HEIGHT,
+  }
+}
+
+// The single room the four walls enclose: its floor slab and ceiling render
+// alongside the walls so the harness baseline covers the room shell. The slab
+// reaches the walls' outer faces (`outerPolygon`, ADR-0076) while the ceiling
+// stays over the clear interior (`clearPolygon`).
+const SHELL_ROOM: RoomSceneNode = {
+  id: 'room:demo',
+  kind: 'room',
+  floorId: 'demo',
+  polygon: [
+    { x: 0, y: 0 },
+    { x: SHELL_WIDTH_X, y: 0 },
+    { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z },
+    { x: 0, y: SHELL_DEPTH_Z },
+  ],
+  clearPolygon: [
+    { x: SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+    { x: SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
+  ],
+  // The centerline rectangle grown outward by the same half-thickness, so the slab
+  // meets the outer faces of the walls rather than their inner faces.
+  outerPolygon: [
+    { x: -SHELL_CLEAR_INSET, y: -SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X + SHELL_CLEAR_INSET, y: -SHELL_CLEAR_INSET },
+    { x: SHELL_WIDTH_X + SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z + SHELL_CLEAR_INSET },
+    { x: -SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z + SHELL_CLEAR_INSET },
+  ],
+  area: (SHELL_WIDTH_X - SHELL_THICKNESS) * (SHELL_DEPTH_Z - SHELL_THICKNESS),
+  ceilingHeight: SHELL_HEIGHT,
+}
+
+// A single-swing door centered in the south wall, so the harness baseline shows a
+// real void cut through a wall (head and jambs lined with reveals, open to the
+// floor). `hostWallId` is the south wall's model id (the `wall:` prefix stripped).
+const DOOR_WIDTH = 900
+const DOOR_HEIGHT = 2032
+const SHELL_DOOR: OpeningSceneNode = {
+  id: 'opening:south-door',
+  kind: 'opening',
+  floorId: 'demo',
+  type: 'single-swing-door',
+  hostWallId: 'south',
+  center: { x: SHELL_WIDTH_X / 2, y: 0 },
+  along: { x: 1, y: 0 },
+  normal: { x: 0, y: 1 },
+  width: DOOR_WIDTH,
+  height: DOOR_HEIGHT,
+  sillHeight: 0,
+  hostThickness: SHELL_THICKNESS,
+  orientation: { hinge: 'start', facing: 'positive' },
+}
+
+// A double-hung window centered in the east wall, so the harness baseline shows a
+// sash frame and a semi-transparent glass pane (the room reading through it). The
+// east wall runs along +y, so `along` is {0, 1} and the wall normal is across it.
+const WINDOW_WIDTH = 1000
+const WINDOW_HEIGHT = 1200
+const WINDOW_SILL = 900
+const SHELL_WINDOW: OpeningSceneNode = {
+  id: 'opening:east-window',
+  kind: 'opening',
+  floorId: 'demo',
+  type: 'double-hung-window',
+  hostWallId: 'east',
+  center: { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z / 2 },
+  along: { x: 0, y: 1 },
+  normal: { x: 1, y: 0 },
+  width: WINDOW_WIDTH,
+  height: WINDOW_HEIGHT,
+  sillHeight: WINDOW_SILL,
+  hostThickness: SHELL_THICKNESS,
+  orientation: { hinge: 'start', facing: 'positive' },
+}
+
+const SHELL_FIXTURE: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [
+    shellWall('wall:south', { x: 0, y: 0 }, { x: SHELL_WIDTH_X, y: 0 }),
+    shellWall('wall:east', { x: SHELL_WIDTH_X, y: 0 }, { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }),
+    shellWall('wall:north', { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }, { x: 0, y: SHELL_DEPTH_Z }),
+    shellWall('wall:west', { x: 0, y: SHELL_DEPTH_Z }, { x: 0, y: 0 }),
+  ],
+  rooms: [SHELL_ROOM],
+  underlays: [],
+  openings: [SHELL_DOOR, SHELL_WINDOW],
+  dimensions: [],
+  stairs: [],
+  furniture: [],
+}
+
+// A second fixture that exercises the generalized junction geometry (ADR-0080): a
+// through-wall with a partition teeing into its middle (a T-junction, which
+// buildWallGraph splits at the tee), whose far end is a three-way apex where two bay
+// walls fan out at an acute angle. The baseline confirms these busier junctions read
+// as one solid with opaque tops and no spikes, which the four-corner shell does not
+// cover. Walls only (no rooms or openings), so the frame is the junction geometry.
+const JUNCTION_APEX: Point = { x: 2000, y: 2000 }
+const JUNCTION_FIXTURE: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [
+    // Through-wall; the partition's foot at (2000, 0) splits it into a T-junction.
+    shellWall('wall:through', { x: 0, y: 0 }, { x: 4000, y: 0 }),
+    shellWall('wall:partition', { x: 2000, y: 0 }, JUNCTION_APEX),
+    // Two bay walls fan from the apex at an acute included angle: a three-way junction.
+    shellWall('wall:bay-left', JUNCTION_APEX, { x: 1500, y: 4000 }),
+    shellWall('wall:bay-right', JUNCTION_APEX, { x: 2500, y: 4000 }),
+  ],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+  furniture: [],
+}
+
+// A third fixture that places one furniture massing box in the middle of the wall
+// shell, so the baseline confirms a placed piece renders as a solid neutral prism
+// standing on the floor at its footprint and height (the massing model, ADR-0094).
+// A 1200 by 600 mm footprint, 1500 mm tall (a cabinet, chosen tall enough to read
+// clearly against the neutral floor), centered in the 4000 by 3000 mm room at
+// elevation 0. The corners come from the same helper the scene graph derives with.
+const FURNITURE_WIDTH = 1200
+const FURNITURE_DEPTH = 600
+const FURNITURE_BOX_HEIGHT = 1500
+const FURNITURE_CENTER: Point = { x: SHELL_WIDTH_X / 2, y: SHELL_DEPTH_Z / 2 }
+const SHELL_FURNITURE: FurnitureSceneNode = {
+  id: 'furniture:demo-piece',
+  kind: 'furniture',
+  floorId: 'demo',
+  footprintCorners: furnitureFootprintCorners(FURNITURE_CENTER, 0, {
+    width: FURNITURE_WIDTH,
+    depth: FURNITURE_DEPTH,
+  }),
+  elevationZ: 0,
+  height: FURNITURE_BOX_HEIGHT,
+  assetRef: { scope: 'project', contentHash: 'harness-only' },
+}
+const FURNITURE_FIXTURE: SceneGraph = {
+  ...SHELL_FIXTURE,
+  furniture: [SHELL_FURNITURE],
+}
+
+/**
+ * The harness fixtures, selected by the `scene` prop / `?scene=` query parameter.
+ * `adjacent-rooms` is two rooms sharing an interior wall, built through the real
+ * derive pipeline so the rendered slabs meet at the wall centerline (ADR-0129) and
+ * step their side faces off the shared plane (ADR-0150); a companion camera pose
+ * (see `resolveHarnessCameraPose`) views that shared slab boundary from below the
+ * floor, the one place a static frame can witness the formerly z-fighting pair
+ * (issue #402).
+ */
+export const HARNESS_FIXTURES = {
+  shell: SHELL_FIXTURE,
+  junctions: JUNCTION_FIXTURE,
+  furniture: FURNITURE_FIXTURE,
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- scene id is a URL query value matching the baseline filename, not a code identifier
+  'adjacent-rooms': buildAdjacentRoomsFixture(),
+} as const
+
+/** Which harness fixture to render; defaults to the wall-shell room. */
+export type HarnessScene = keyof typeof HARNESS_FIXTURES
