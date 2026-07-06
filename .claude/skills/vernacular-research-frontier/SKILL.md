@@ -156,7 +156,6 @@ The spike runs and is judged against ADR-0097's written bar, either way. Clearin
 | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Claiming color accuracy is achieved                         | It is a stated gate. No numeric tolerance exists, the luminance-calibration ADR is owed, and `finishId` has zero readers in `engine/`        |
 | Quoting the design spec's single-era wording                | ADR-0046 split period and style and is authoritative where the spec prose disagrees                                                          |
-| Trusting CLAUDE.md's "source layers are placeholders" line  | Stale. `core/` alone holds about 300 files; state current reality and flag the stale doc                                                     |
 | Claiming IFC or ifcJSON support                             | Reserved seam only. No `core/import/`, no IFC code, as of 2026-07-05                                                                         |
 | Assuming the published schema `$id` resolves                | It 404s after an off-site redirect as of 2026-07-05                                                                                          |
 | Starting the DCEL adoption before #80 or #78 is scheduled   | ADR-0097's decision is defer; the spike is the entry point, and only at the trigger                                                          |

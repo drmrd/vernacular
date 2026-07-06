@@ -225,7 +225,6 @@ Consumed by `.github/workflows/release-please.yml` on push to main. Release oper
 - Widening a suite-level screenshot tolerance to silence one flaky capture.
 - Treating the weekly Stryker `break: 50` as a PR gate (it is not), or treating Lighthouse warn-level scores as failures (only accessibility at 0.9 errors).
 - Expecting crash recovery on the IndexedDB fallback: the `.house-autosave/` sidecar needs OPFS.
-- Trusting CLAUDE.md's line that the source layers are placeholders: stale. All six layers are live code, and that is where these flags live.
 - Citing ADR-0013 for the cooldown exclusions: the file does not exist as of 2026-07-05; the `.npmrc` comments carry the rationale.
 
 ## Provenance and maintenance

@@ -22,8 +22,6 @@ Every recurring failure mode in this repo has a known story, a discriminating ex
 - Measuring instead of eyeballing (probes, readouts, diagnostics): vernacular-diagnostics-and-tooling.
 - Environment setup failures (installs, browsers, docker): vernacular-build-and-env.
 
-Note on stale docs: CLAUDE.md still calls the source-layer directories placeholders. That is wrong; engine/, bridge/, editor/, storage/, app/, core/ are live code and several entries below point into them.
-
 ## Quick reference
 
 | #   | Symptom                                                             | Likely cause                                                 | First experiment                                                      |

@@ -437,8 +437,6 @@ defined from their actual usage sites in this repo.
 - Importing `color-check.ts` from `spherical-harmonics.ts` (circular-import crash).
 - Turning AO, AgX, or the solar provider on independently. All three key on the one effective-
   lighting-mode predicate.
-- Trusting CLAUDE.md's line that source layers are placeholders. All six layers are live code;
-  that line is stale.
 
 ## Provenance and maintenance
 

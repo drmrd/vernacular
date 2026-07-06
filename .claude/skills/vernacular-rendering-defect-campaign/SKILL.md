@@ -185,7 +185,6 @@ The named environment states pin the sun so lighting is the only variable: canon
 - Treating a green harness as certifying the live pane. Different backend (WebGL 2 vs WebGPU), different assembly path (full rebuild vs reconciler), different coverage (pixels vs none).
 - Polling canvas pixels in-page for readiness with `preserveDrawingBuffer` off.
 - Editing tolerance constants during a debugging session "temporarily". They have a way of landing.
-- Believing CLAUDE.md's line that the source layers are placeholders. Stale: `engine/`, `bridge/`, and `editor/` are fully live code as of 2026-07-05.
 
 ## Worked examples
 
