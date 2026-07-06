@@ -2,10 +2,11 @@
 
 Thanks for your interest in contributing. Vernacular is an open-source
 floor planner aimed at power users, with a heavy lean toward homes that
-mainstream floor planners do not represent well. We are in early Phase
-0 development; the surface is small and the bar for help is correspondingly
-low. Issues, design feedback, contributor packs (assets, registries),
-and code contributions are all welcome.
+mainstream floor planners do not represent well. The project is in
+early alpha: the 2D editor and 3D preview are usable, but data formats
+and APIs may change without backwards compatibility before 1.0. Issues,
+design feedback, contributor packs (assets, registries), and code
+contributions are all welcome.
 
 ## Before you start
 
@@ -27,7 +28,9 @@ and code contributions are all welcome.
 
 Prerequisites:
 
-- Node.js 20 or newer (see [`.nvmrc`](.nvmrc)).
+- Node.js 22.18 or newer (the `engines` field in
+  [`package.json`](package.json) has the exact minimum; [`.nvmrc`](.nvmrc)
+  tracks the major version).
 - pnpm 10.33 or newer (see the `packageManager` field in
   [`package.json`](package.json)). If you have corepack enabled (it
   ships with Node 16+), running any `pnpm` command in this repository
@@ -47,8 +50,11 @@ pnpm test
 pnpm build
 ```
 
-Run the dev server with `pnpm dev`. The smoke test in
-`src/App.test.tsx` is the only test in the repository today.
+Run the dev server with `pnpm dev`. There are tests at several tiers:
+Vitest unit tests sit next to the source they exercise and run with
+`pnpm test`, Playwright end-to-end tests live under `e2e/tests/`, and
+visual-regression baselines are committed to the repository. The
+end-to-end and visual tiers have their own sections below.
 
 ## How to file an issue
 
@@ -77,7 +83,7 @@ multiple PRs.
 
 ## Conventions
 
-These will tighten in later phases as the tooling lands. Current state:
+Current state:
 
 - **Dependency cooldown.** This repository enforces a 30-day minimum
   release age on every direct and transitive dependency (configured in
@@ -96,8 +102,9 @@ These will tighten in later phases as the tooling lands. Current state:
   explicitly (and intentionally) to move a version.
 - **Commit messages** follow
   [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-  Common types we use: `feat`, `fix`, `refactor`, `docs`, `chore`,
-  `test`, `style`. Mechanical enforcement via `commitlint`.
+  The allowed types are `feat`, `fix`, `refactor`, `docs`, `chore`,
+  `test`, `style`, `perf`, `build`, and `ci`. Mechanical enforcement
+  via `commitlint`.
 - **Code style** is enforced by ESLint and Prettier. Run
   `pnpm lint` and `pnpm format:check` before pushing; `pnpm format`
   fixes most issues automatically. The Clean Code rule set (function
@@ -110,8 +117,7 @@ These will tighten in later phases as the tooling lands. Current state:
   report. The configured threshold is informational (no CI fail);
   use the report to spot refactor opportunities.
 - **Tests** follow a behavior-first style: assert what the user
-  experiences, not implementation details. The Vitest test in
-  `src/App.test.tsx` is the current model. Red-green-blue TDD is the
+  experiences, not implementation details. Red-green-blue TDD is the
   project-wide discipline for application code.
 
 ## Pull request checklist
@@ -123,8 +129,9 @@ Before requesting review, make sure:
 - [ ] `pnpm e2e --project=chromium` passes locally (or note that baselines need a CI refresh in your PR description).
 - [ ] The PR description explains what changes and why, and includes a
       test plan.
-- [ ] New user-visible strings (when we have them) go through
-      `i18n.t()` (this becomes relevant once the editor surface lands).
+- [ ] New user-visible strings go through `i18n.t()` once
+      internationalization lands; until then plain strings are the
+      norm.
 - [ ] You have read and accept the project's license terms (Apache-2.0;
       see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE)).
 - [ ] If your change touches `core/`, run `pnpm mutate:check` locally to confirm the Stryker scaffold still configures cleanly (a full `pnpm mutate` run is not required; the weekly CI workflow owns that).
@@ -158,13 +165,13 @@ Husky installs three git hooks at `pnpm install` time via the `prepare` script:
 
 If you need to bypass a hook in a clean-up situation, use `git commit --no-verify`. This is allowed but discouraged; CI will catch most issues that the hook would have.
 
-`release-please` watches `main` and opens release PRs as Conventional Commits accumulate. Merging a release PR cuts a tag and refreshes `CHANGELOG.md`. The current pre-release version is tracked in `.release-please-manifest.json`; the package.json `version` stays at `0.0.0` until the first 1.0.
+`release-please` watches `main` and opens release PRs as Conventional Commits accumulate. Merging a release PR cuts a tag and refreshes `CHANGELOG.md`. The current version is tracked in `.release-please-manifest.json` and mirrored in the package.json `version` field.
 
 ## Storybook
 
 The component visual documentation surface runs on [Storybook](https://storybook.js.org/) with the `@storybook/react-vite` framework. Start the dev server with `pnpm storybook` (default port `6006`) and build a static deployable copy with `pnpm build-storybook` (output in `storybook-static/`, gitignored).
 
-Each new presentational component should ship with at least one story (`*.stories.tsx` next to the component) covering the default state. Stories double as visual baselines for later phases of the visual-regression suite.
+Each new presentational component should ship with at least one story (`*.stories.tsx` next to the component) covering the default state. Stories double as visual baselines for the visual-regression suite.
 
 ## End-to-end testing
 
@@ -211,9 +218,9 @@ CI runs Lighthouse on pushes to `main` and on tag pushes; the per-PR loop intent
 Local commands:
 
 - `pnpm mutate:check` verifies the Stryker config without running mutants.
-- `pnpm mutate` runs the full mutation suite. This is slow; expect it to take many minutes once `core/` has real code.
+- `pnpm mutate` runs the full mutation suite. This is slow; expect it to take many minutes.
 
-CI runs Stryker on a weekly schedule (`.github/workflows/mutation.yml`) and on manual dispatch. The workflow skips cleanly when `core/` is empty.
+CI runs Stryker on a weekly schedule (`.github/workflows/mutation.yml`) and on manual dispatch.
 
 ## Working with Claude Code
 
