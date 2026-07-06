@@ -116,6 +116,14 @@ describe('harnessEnvironmentState', () => {
     expect(target?.y).toBeGreaterThanOrEqual(0)
     expect(target?.y).toBeLessThanOrEqual(2600)
   })
+
+  it('resolves the existing named states without the new camera pose field', () => {
+    expect(harnessEnvironmentState('equinox-noon')?.cameraPose).toBeUndefined()
+    expect(harnessEnvironmentState('winter-afternoon')?.cameraPose).toBeUndefined()
+    expect(harnessEnvironmentState('color-check')?.cameraPose).toBeUndefined()
+    expect(harnessEnvironmentState('overcast-noon')?.cameraPose).toBeUndefined()
+    expect(harnessEnvironmentState('ambient-occlusion')?.cameraPose).toBeUndefined()
+  })
 })
 
 describe('resolveHarnessScene', () => {
