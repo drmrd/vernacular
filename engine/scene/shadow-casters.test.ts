@@ -1,22 +1,24 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
+import type { OpeningFillRole } from '../../core'
 import { isGlassPane, markShadowCasters } from './shadow-casters'
 import { OPENING_FILL_ROLE_KEY } from './opening-fill-builder'
+
+const GLASS_ROLE: OpeningFillRole = 'glass'
+const LEAF_ROLE: OpeningFillRole = 'leaf'
+
+function testMesh(): THREE.Mesh {
+  return new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial())
+}
 
 describe('markShadowCasters', () => {
   it('flags every non-glass mesh in the tree as a shadow caster and receiver', () => {
     const root = new THREE.Group()
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial())
+    const mesh = testMesh()
     const nested = new THREE.Group()
-    const deepMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial(),
-    )
-    const leafMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial(),
-    )
-    leafMesh.userData[OPENING_FILL_ROLE_KEY] = 'leaf'
+    const deepMesh = testMesh()
+    const leafMesh = testMesh()
+    leafMesh.userData[OPENING_FILL_ROLE_KEY] = LEAF_ROLE
     nested.add(deepMesh)
     root.add(mesh, nested, leafMesh)
 
@@ -32,11 +34,8 @@ describe('markShadowCasters', () => {
 
   it('keeps a glass-stamped mesh from casting a shadow while it still receives one', () => {
     const root = new THREE.Group()
-    const glassMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial(),
-    )
-    glassMesh.userData[OPENING_FILL_ROLE_KEY] = 'glass'
+    const glassMesh = testMesh()
+    glassMesh.userData[OPENING_FILL_ROLE_KEY] = GLASS_ROLE
     root.add(glassMesh)
 
     markShadowCasters(root)
@@ -48,25 +47,16 @@ describe('markShadowCasters', () => {
 
 describe('isGlassPane', () => {
   it('identifies exactly a mesh stamped with the glass opening-fill role', () => {
-    const glassMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial(),
-    )
-    glassMesh.userData[OPENING_FILL_ROLE_KEY] = 'glass'
+    const glassMesh = testMesh()
+    glassMesh.userData[OPENING_FILL_ROLE_KEY] = GLASS_ROLE
 
-    const leafMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial(),
-    )
-    leafMesh.userData[OPENING_FILL_ROLE_KEY] = 'leaf'
+    const leafMesh = testMesh()
+    leafMesh.userData[OPENING_FILL_ROLE_KEY] = LEAF_ROLE
 
-    const unstampedMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial(),
-    )
+    const unstampedMesh = testMesh()
 
     const glassStampedGroup = new THREE.Group()
-    glassStampedGroup.userData[OPENING_FILL_ROLE_KEY] = 'glass'
+    glassStampedGroup.userData[OPENING_FILL_ROLE_KEY] = GLASS_ROLE
 
     expect(isGlassPane(glassMesh)).toBe(true)
     expect(isGlassPane(leafMesh)).toBe(false)
