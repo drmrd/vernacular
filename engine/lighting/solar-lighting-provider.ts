@@ -27,7 +27,7 @@ export class SolarLightingProvider implements LightingProvider {
   private skyAttachmentReady: Promise<void> | null = null
 
   apply(scene: THREE.Object3D): void {
-    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
+    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY, true)
     // The visible sky loads off the startup path, so `apply` stores its attach promise rather
     // than awaiting it, which keeps `apply` synchronous. `dispose` clears the stored promise,
     // which abandons the attach if it is still in flight. attachSkyEnvironment never rejects: a

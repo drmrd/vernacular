@@ -63,15 +63,19 @@ export interface LightingRig {
 }
 
 /**
- * Builds the rig and adds it to the scene: a shadow-casting directional sun aimed along
- * SUN_DIRECTION plus a hemisphere fill. Providers own the sun's intensity policy, so it
- * arrives as a parameter; everything else about the rig is shared. Returns the lights so
- * the caller can dispose them by reference.
+ * Builds the rig and adds it to the scene: a directional sun aimed along SUN_DIRECTION
+ * plus a hemisphere fill. Providers own the sun's intensity and shadow-casting policies,
+ * so both arrive as parameters. Returns the lights so the caller can dispose them by
+ * reference.
  */
-export function buildLightingRig(scene: THREE.Object3D, sunIntensity: number): LightingRig {
+export function buildLightingRig(
+  scene: THREE.Object3D,
+  sunIntensity: number,
+  castShadow = true,
+): LightingRig {
   const sun = new THREE.DirectionalLight(WHITE, sunIntensity)
   sun.position.copy(SUN_DIRECTION)
-  sun.castShadow = true
+  sun.castShadow = castShadow
   sun.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE)
   sun.shadow.bias = SHADOW_BIAS
   const fill = new THREE.HemisphereLight(WHITE, GROUND_FILL, FILL_INTENSITY)
