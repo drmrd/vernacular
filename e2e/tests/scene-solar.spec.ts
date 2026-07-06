@@ -77,4 +77,8 @@ test.describe('Solar environment visual baseline', () => {
   test('renders the ambient-occlusion interior to its baseline', async ({ page }) => {
     await captureShell(page, '&scene=ambient-occlusion', 'scene-ambient-occlusion-webgl.png')
   })
+
+  test('renders the window-light interior to its baseline', async ({ page }) => {
+    await captureShell(page, '&scene=window-light', 'scene-window-light-webgl.png')
+  })
 })
