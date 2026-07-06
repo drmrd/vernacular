@@ -17,8 +17,8 @@ export interface HarnessEnvironmentState {
   // lighting and the geometry it should light.
   scene?: HarnessScene
   // The pose a state supplies when the default auto-frame would not expose its
-  // subject (e.g. an interior view through a window). The bridge honors it in the
-  // next cycle in preference to the standing auto-frame.
+  // subject (e.g. an interior view through a window). When a state supplies one,
+  // the harness view uses it in preference to the standing auto-frame.
   cameraPose?: CameraPose
 }
 
@@ -60,9 +60,9 @@ const WINDOW_LIGHT_OBSERVATION: ObservationInstant = {
 // The shell room is a 4000 x 3000 mm plan rectangle; planToWorld maps plan (x, y)
 // to world (x, height, -y). The east-wall window is centered at plan (4000, 1500),
 // with glass from 900 to 2100 mm up. This vantage stands inside the room, west of
-// the window, aimed east and slightly down, so the window (with the sun beyond it)
-// and the floor just inside the sill are both in frame at 320x240. Starting values
-// only; tuned against the capture in a later task.
+// and below the window head, aimed east and slightly down, so the window (with the
+// sun beyond it) and the floor just inside the sill are both in frame at 320x240.
+// Starting values only; tuned against the capture in a later task.
 const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
   position: { x: 1100, y: 1500, z: -1500 },
   target: { x: 3900, y: 750, z: -1500 },
@@ -72,9 +72,9 @@ const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
 
 /**
  * The named canonical environment states, keyed by the harness `scene` parameter.
- * The dates and times match the core solar reference cases (the March equinox at
- * civil noon and the December solstice in mid-afternoon), so the sun the harness
- * renders is the same sun those cases pin.
+ * Each state's date and time match a core solar reference case (the March equinox
+ * at civil noon, the December solstice in mid-afternoon, or the June solstice
+ * morning), so the sun the harness renders is the same sun those cases pin.
  */
 // These keys share the `scene` query-param namespace with HARNESS_GEOMETRY_SCENE_KEYS
 // below; see resolveHarnessScene for the shared keyspace and resolution precedence.
