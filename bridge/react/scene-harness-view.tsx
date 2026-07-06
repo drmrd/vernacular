@@ -422,10 +422,13 @@ export function SceneHarnessView({
       data-harness-ready={harnessReady ? 'true' : 'false'}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
+      {/* React Three Fiber overwrites gl.shadowMap.enabled with !!shadows, so this prop
+          keeps create-renderer's shadowMap setup (and its PCFSoftShadowMap type) alive. */}
       <Canvas
         frameloop="never"
         camera={harnessCameraProps(cameraOverride ?? pose)}
         gl={createHarnessRenderer}
+        shadows
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
         <primitive object={root} />

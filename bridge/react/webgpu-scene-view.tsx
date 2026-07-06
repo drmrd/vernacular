@@ -207,8 +207,13 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
   const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
   return (
+    // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
+    // configuring the Canvas, so create-renderer's shadowMap setup goes dead
+    // without this prop. The bare boolean also selects PCFSoftShadowMap,
+    // matching create-renderer's intent.
     <Canvas
       frameloop="always"
+      shadows
       camera={{
         position: [pose.position.x, pose.position.y, pose.position.z],
         near: pose.near,
