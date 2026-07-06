@@ -290,6 +290,7 @@ export interface HarnessEnvironment {
  * failing both, undefined, so the state auto-frames its own bounds. Every other
  * geometry frames its own bounds.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- the pure camera resolver ships beside the component that frames with it and this slice's test imports resolveHarnessCameraPose from ./scene-harness-view
 export function resolveHarnessCameraPose(
   scene: HarnessScene,
   environment?: HarnessEnvironment,
