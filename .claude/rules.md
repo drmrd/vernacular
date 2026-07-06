@@ -14,13 +14,13 @@ These rules apply to every contribution to Vernacular, whether by a human or a C
 
 5. **30-day dependency cooldown.** No direct or transitive dependency younger than 30 days. Enforced by `.npmrc` `minimum-release-age=43200`. See ADR-0010.
 
-6. **Local knowledge graph.** Significant architectural changes are summarized as ADRs under the local `docs/knowledge/` tree (gitignored) so Claude has fast context recovery in future sessions. ADRs are a Claude-side cache, not a committed artifact; the authoritative source is the design specification.
+6. **Knowledge graph.** Significant architectural changes are summarized as ADRs under `docs/knowledge/decisions/`, committed and authoritative alongside the design specification, so future sessions and contributors recover context fast. The generated indices (`INDEX.md`, `index.json`) are a gitignored local cache; regenerate them with `pnpm knowledge:index`.
 
 7. **No Co-Authored-By trailers.** Project setting `includeCoAuthoredBy: false` is the source of truth. Commit messages should never contain `Co-Authored-By: Claude` or similar.
 
 8. **No em-dashes (`—`) in newly composed text.** Rephrase with commas, parentheses, or colons. Downloaded canonical text (Contributor Covenant, license texts) is exempt.
 
-9. **Conventional Commits.** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`. Mechanical enforcement via `commitlint`.
+9. **Conventional Commits.** `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `style`, `perf`, `build`, `ci`. Mechanical enforcement via `commitlint`.
 
 10. **No cryptic internal identifiers in branch names, commit messages, file names, or persisted document text.** Use descriptive English names. Stable cross-industry conventions like `ADR-NNNN` are fine.
 

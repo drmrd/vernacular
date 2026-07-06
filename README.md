@@ -5,7 +5,9 @@ historic and period-vernacular architecture. Built for owners and enthusiasts
 of houses that mainstream floor planners don't represent well: Victorian,
 Edwardian, Craftsman, Mid-Century, and earlier.
 
-> Status: early development (Phase 0). Not yet usable as a floor planner.
+> Status: early alpha. The 2D editor and 3D preview are usable; data formats
+> and APIs may change without backwards compatibility before 1.0 (releases in
+> [`CHANGELOG.md`](CHANGELOG.md)).
 > See [`docs/specs/2026-06-01-vernacular-design.md`](docs/specs/2026-06-01-vernacular-design.md)
 > for the design specification and [`docs/plans/`](docs/plans/) for in-progress
 > implementation plans. The current work and what's next are tracked on the
@@ -32,7 +34,7 @@ Edwardian, Craftsman, Mid-Century, and earlier.
 
 Prerequisites:
 
-- Node.js 20+ (see `.nvmrc`)
+- Node.js 22.18+ (see `.nvmrc` and `engines` in `package.json`)
 - pnpm 10+ (the version is pinned via `packageManager` in `package.json`;
   using corepack means you do not need to install pnpm yourself)
 
