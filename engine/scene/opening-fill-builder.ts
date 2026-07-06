@@ -15,6 +15,9 @@ import type { MaterialProvider } from '../materials/material-provider'
 
 const COMPONENTS_PER_VERTEX = 3
 
+/** The `userData` key under which each built part mesh carries its {@link OpeningFillRole}. */
+export const OPENING_FILL_ROLE_KEY = 'openingFillRole'
+
 /**
  * Builds the solid body for one opening as a group of thin boxes, one per fill
  * part from {@link openingFill}. The group is named with the opening's id and
@@ -47,7 +50,9 @@ function buildPartMesh(
     new THREE.Float32BufferAttribute(boxPositions(node, part), COMPONENTS_PER_VERTEX),
   )
   geometry.computeVertexNormals()
-  return new THREE.Mesh(geometry, materials.material(part.role))
+  const mesh = new THREE.Mesh(geometry, materials.material(part.role))
+  mesh.userData[OPENING_FILL_ROLE_KEY] = part.role
+  return mesh
 }
 
 /** A box corner as a bit per axis: 0 picks the min extent, 1 picks the max. */

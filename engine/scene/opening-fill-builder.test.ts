@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { OpeningSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
 
-import { buildOpeningFill } from './opening-fill-builder'
+import { buildOpeningFill, OPENING_FILL_ROLE_KEY } from './opening-fill-builder'
 
 const PRECISION = 3
 
@@ -15,30 +15,12 @@ const LEAF_MAX_Y = 2022
 const LEAF_MIN_Z = -22
 const LEAF_MAX_Z = 22
 
-function singleSwingDoor(): OpeningSceneNode {
-  return {
-    id: 'opening:test-door',
-    kind: 'opening',
-    floorId: 'floor-1',
-    type: 'single-swing-door',
-    center: { x: 1000, y: 0 },
-    along: { x: 1, y: 0 },
-    normal: { x: 0, y: 1 },
-    width: 900,
-    height: 2032,
-    sillHeight: 0,
-    hostThickness: 120,
-    orientation: { hinge: 'start', facing: 'positive' },
-    hostWallId: 'south',
-  }
-}
+type OpeningNodeOverrides = Partial<OpeningSceneNode> & Pick<OpeningSceneNode, 'id' | 'type'>
 
-function fixedWindow(): OpeningSceneNode {
+function openingNode(overrides: OpeningNodeOverrides): OpeningSceneNode {
   return {
-    id: 'opening:test-window',
     kind: 'opening',
     floorId: 'floor-1',
-    type: 'picture-window',
     center: { x: 1000, y: 0 },
     along: { x: 1, y: 0 },
     normal: { x: 0, y: 1 },
@@ -48,7 +30,25 @@ function fixedWindow(): OpeningSceneNode {
     hostThickness: 120,
     orientation: { hinge: 'start', facing: 'positive' },
     hostWallId: 'south',
+    ...overrides,
   }
+}
+
+function singleSwingDoor(): OpeningSceneNode {
+  return openingNode({
+    id: 'opening:test-door',
+    type: 'single-swing-door',
+    height: 2032,
+    sillHeight: 0,
+  })
+}
+
+function fixedWindow(): OpeningSceneNode {
+  return openingNode({ id: 'opening:test-window', type: 'picture-window' })
+}
+
+function doubleHungWindow(): OpeningSceneNode {
+  return openingNode({ id: 'opening:test-double-hung-window', type: 'double-hung-window' })
 }
 
 function meshesOf(group: THREE.Group): THREE.Mesh[] {
@@ -95,5 +95,16 @@ describe('buildOpeningFill', () => {
     expect(glass).toBeDefined()
     if (glass === undefined) return
     expect((glass.material as THREE.Material).transparent).toBe(true)
+  })
+
+  it('stamps every built part mesh with its opening-fill role', () => {
+    const group = buildOpeningFill(doubleHungWindow(), new NeutralMaterialProvider())
+
+    const meshes = meshesOf(group)
+    const roles = meshes.map((mesh) => mesh.userData[OPENING_FILL_ROLE_KEY])
+
+    expect(roles).toContain('glass')
+    expect(roles).toContain('leaf')
+    expect(roles.every((role) => role === 'glass' || role === 'leaf')).toBe(true)
   })
 })

@@ -14,7 +14,13 @@ export class BasicLightingProvider implements LightingProvider {
   private rig: LightingRig | null = null
 
   apply(scene: THREE.Object3D): void {
-    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY)
+    // Three r184's node renderer self-shadows steep faces wholesale under the schematic
+    // sun angle regardless of bias tuning, on both the Metal and SwiftShader backends.
+    // Casting is therefore scoped to realistic lighting as a provider policy, the same
+    // way sun intensity is already a provider-owned parameter of buildLightingRig.
+    // ADR-0153 records the investigation and the conditions for restoring schematic
+    // shadows.
+    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY, false)
   }
 
   /** The schematic rig is static by design, so environment updates change nothing. */

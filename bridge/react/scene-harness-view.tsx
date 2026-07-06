@@ -2,24 +2,23 @@ import { Canvas, useThree, type GLProps } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
-  furnitureFootprintCorners,
   type Bounds3,
   type CameraPose,
-  type FurnitureSceneNode,
   type ObservationInstant,
-  type OpeningSceneNode,
-  type Point,
-  type RoomSceneNode,
-  type SceneGraph,
   type Site,
   type SurfaceTreatment,
 } from '../../core'
 import { createSceneRenderer } from '../../engine'
-import { ADJACENT_ROOMS_CAMERA_POSE, buildAdjacentRoomsFixture } from './adjacent-rooms-fixture'
+import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
+import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
 import { SceneLighting } from './scene-lighting'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
+
+// Re-exported so the fixtures' own module owns the geometry while every existing
+// import path (the bridge index, and thus app/) keeps resolving HarnessScene here.
+export type { HarnessScene }
 
 // Deterministic fixture canvas size, pinned so the committed baseline is pixel-stable
 // across runs and machines. Kept small to keep the baseline PNG lightweight.
@@ -29,202 +28,6 @@ const HARNESS_HEIGHT = 240
 // An opaque clear color so the rendered frame is a real, non-transparent render rather
 // than a blank alpha=0 canvas.
 const HARNESS_BACKGROUND = 0x1b2a3a
-
-// A fixed four-wall room (a 4000 by 3000 mm rectangle, 120 mm walls, 2600 mm tall) so
-// the harness renders the first lit wall shell rather than an empty scene. The ids and
-// dimensions are fixed, so the framed camera and the rendered frame are deterministic.
-const SHELL_THICKNESS = 120
-const SHELL_HEIGHT = 2600
-const SHELL_WIDTH_X = 4000
-const SHELL_DEPTH_Z = 3000
-// Half the 120 mm wall thickness: the clear floor area sits inset from the
-// centerline rectangle by this much, meeting the inner faces of the walls.
-const SHELL_CLEAR_INSET = 60
-
-function shellWall(id: string, start: Point, end: Point) {
-  return {
-    id,
-    kind: 'wall' as const,
-    floorId: 'demo',
-    start,
-    end,
-    thickness: SHELL_THICKNESS,
-    height: SHELL_HEIGHT,
-  }
-}
-
-// The single room the four walls enclose: its floor slab and ceiling render
-// alongside the walls so the harness baseline covers the room shell. The slab
-// reaches the walls' outer faces (`outerPolygon`, ADR-0076) while the ceiling
-// stays over the clear interior (`clearPolygon`).
-const SHELL_ROOM: RoomSceneNode = {
-  id: 'room:demo',
-  kind: 'room',
-  floorId: 'demo',
-  polygon: [
-    { x: 0, y: 0 },
-    { x: SHELL_WIDTH_X, y: 0 },
-    { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z },
-    { x: 0, y: SHELL_DEPTH_Z },
-  ],
-  clearPolygon: [
-    { x: SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
-    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_CLEAR_INSET },
-    { x: SHELL_WIDTH_X - SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
-    { x: SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z - SHELL_CLEAR_INSET },
-  ],
-  // The centerline rectangle grown outward by the same half-thickness, so the slab
-  // meets the outer faces of the walls rather than their inner faces.
-  outerPolygon: [
-    { x: -SHELL_CLEAR_INSET, y: -SHELL_CLEAR_INSET },
-    { x: SHELL_WIDTH_X + SHELL_CLEAR_INSET, y: -SHELL_CLEAR_INSET },
-    { x: SHELL_WIDTH_X + SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z + SHELL_CLEAR_INSET },
-    { x: -SHELL_CLEAR_INSET, y: SHELL_DEPTH_Z + SHELL_CLEAR_INSET },
-  ],
-  area: (SHELL_WIDTH_X - SHELL_THICKNESS) * (SHELL_DEPTH_Z - SHELL_THICKNESS),
-  ceilingHeight: SHELL_HEIGHT,
-}
-
-// A single-swing door centered in the south wall, so the harness baseline shows a
-// real void cut through a wall (head and jambs lined with reveals, open to the
-// floor). `hostWallId` is the south wall's model id (the `wall:` prefix stripped).
-const DOOR_WIDTH = 900
-const DOOR_HEIGHT = 2032
-const SHELL_DOOR: OpeningSceneNode = {
-  id: 'opening:south-door',
-  kind: 'opening',
-  floorId: 'demo',
-  type: 'single-swing-door',
-  hostWallId: 'south',
-  center: { x: SHELL_WIDTH_X / 2, y: 0 },
-  along: { x: 1, y: 0 },
-  normal: { x: 0, y: 1 },
-  width: DOOR_WIDTH,
-  height: DOOR_HEIGHT,
-  sillHeight: 0,
-  hostThickness: SHELL_THICKNESS,
-  orientation: { hinge: 'start', facing: 'positive' },
-}
-
-// A double-hung window centered in the east wall, so the harness baseline shows a
-// sash frame and a semi-transparent glass pane (the room reading through it). The
-// east wall runs along +y, so `along` is {0, 1} and the wall normal is across it.
-const WINDOW_WIDTH = 1000
-const WINDOW_HEIGHT = 1200
-const WINDOW_SILL = 900
-const SHELL_WINDOW: OpeningSceneNode = {
-  id: 'opening:east-window',
-  kind: 'opening',
-  floorId: 'demo',
-  type: 'double-hung-window',
-  hostWallId: 'east',
-  center: { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z / 2 },
-  along: { x: 0, y: 1 },
-  normal: { x: 1, y: 0 },
-  width: WINDOW_WIDTH,
-  height: WINDOW_HEIGHT,
-  sillHeight: WINDOW_SILL,
-  hostThickness: SHELL_THICKNESS,
-  orientation: { hinge: 'start', facing: 'positive' },
-}
-
-const SHELL_FIXTURE: SceneGraph = {
-  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
-  walls: [
-    shellWall('wall:south', { x: 0, y: 0 }, { x: SHELL_WIDTH_X, y: 0 }),
-    shellWall('wall:east', { x: SHELL_WIDTH_X, y: 0 }, { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }),
-    shellWall('wall:north', { x: SHELL_WIDTH_X, y: SHELL_DEPTH_Z }, { x: 0, y: SHELL_DEPTH_Z }),
-    shellWall('wall:west', { x: 0, y: SHELL_DEPTH_Z }, { x: 0, y: 0 }),
-  ],
-  rooms: [SHELL_ROOM],
-  underlays: [],
-  openings: [SHELL_DOOR, SHELL_WINDOW],
-  dimensions: [],
-  stairs: [],
-  furniture: [],
-}
-
-// A second fixture that exercises the generalized junction geometry (ADR-0080): a
-// through-wall with a partition teeing into its middle (a T-junction, which
-// buildWallGraph splits at the tee), whose far end is a three-way apex where two bay
-// walls fan out at an acute angle. The baseline confirms these busier junctions read
-// as one solid with opaque tops and no spikes, which the four-corner shell does not
-// cover. Walls only (no rooms or openings), so the frame is the junction geometry.
-const JUNCTION_APEX: Point = { x: 2000, y: 2000 }
-const JUNCTION_FIXTURE: SceneGraph = {
-  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
-  walls: [
-    // Through-wall; the partition's foot at (2000, 0) splits it into a T-junction.
-    shellWall('wall:through', { x: 0, y: 0 }, { x: 4000, y: 0 }),
-    shellWall('wall:partition', { x: 2000, y: 0 }, JUNCTION_APEX),
-    // Two bay walls fan from the apex at an acute included angle: a three-way junction.
-    shellWall('wall:bay-left', JUNCTION_APEX, { x: 1500, y: 4000 }),
-    shellWall('wall:bay-right', JUNCTION_APEX, { x: 2500, y: 4000 }),
-  ],
-  rooms: [],
-  underlays: [],
-  openings: [],
-  dimensions: [],
-  stairs: [],
-  furniture: [],
-}
-
-// A third fixture that places one furniture massing box in the middle of the wall
-// shell, so the baseline confirms a placed piece renders as a solid neutral prism
-// standing on the floor at its footprint and height (the massing model, ADR-0094).
-// A 1200 by 600 mm footprint, 1500 mm tall (a cabinet, chosen tall enough to read
-// clearly against the neutral floor), centered in the 4000 by 3000 mm room at
-// elevation 0. The corners come from the same helper the scene graph derives with.
-const FURNITURE_WIDTH = 1200
-const FURNITURE_DEPTH = 600
-const FURNITURE_BOX_HEIGHT = 1500
-const FURNITURE_CENTER: Point = { x: SHELL_WIDTH_X / 2, y: SHELL_DEPTH_Z / 2 }
-const SHELL_FURNITURE: FurnitureSceneNode = {
-  id: 'furniture:demo-piece',
-  kind: 'furniture',
-  floorId: 'demo',
-  footprintCorners: furnitureFootprintCorners(FURNITURE_CENTER, 0, {
-    width: FURNITURE_WIDTH,
-    depth: FURNITURE_DEPTH,
-  }),
-  elevationZ: 0,
-  height: FURNITURE_BOX_HEIGHT,
-  assetRef: { scope: 'project', contentHash: 'harness-only' },
-}
-const FURNITURE_FIXTURE: SceneGraph = {
-  ...SHELL_FIXTURE,
-  furniture: [SHELL_FURNITURE],
-}
-
-/**
- * The harness fixtures, selected by the `scene` prop / `?scene=` query parameter.
- * `adjacent-rooms` is two rooms sharing an interior wall, built through the real
- * derive pipeline so the rendered slabs meet at the wall centerline (ADR-0129) and
- * step their side faces off the shared plane (ADR-0150); a companion camera pose
- * (see `harnessCameraOverride`) views that shared slab boundary from below the
- * floor, the one place a static frame can witness the formerly z-fighting pair
- * (issue #402).
- */
-const HARNESS_FIXTURES = {
-  shell: SHELL_FIXTURE,
-  junctions: JUNCTION_FIXTURE,
-  furniture: FURNITURE_FIXTURE,
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- scene id is a URL query value matching the baseline filename, not a code identifier
-  'adjacent-rooms': buildAdjacentRoomsFixture(),
-} as const
-
-/** Which harness fixture to render; defaults to the wall-shell room. */
-export type HarnessScene = keyof typeof HARNESS_FIXTURES
-
-/**
- * The camera pose for a harness state whose subject the standing auto-frame would
- * not expose, or undefined to auto-frame. The adjacent-rooms state looks up at the
- * shared slab underside from below the floor datum, which the standing auto frame
- * does not show (ADR-0150); every other state frames its own bounds.
- */
-function harnessCameraOverride(scene: HarnessScene): CameraPose | undefined {
-  return scene === 'adjacent-rooms' ? ADJACENT_ROOMS_CAMERA_POSE : undefined
-}
 
 // Fits the camera to the bounds for the pinned canvas size, then renders one frame on
 // mount and one more when the lighting reports ready, so the screenshot is deterministic
@@ -285,6 +88,28 @@ export interface HarnessEnvironment {
   realistic: boolean
   cloudCover?: number
   colorCheck?: boolean
+  // The pose a named environment state supplies when the standing auto-frame would
+  // not expose its subject (an interior view through a window). It structurally
+  // matches the app layer's HarnessEnvironmentState.cameraPose without the bridge
+  // importing from app/.
+  cameraPose?: CameraPose
+}
+
+/**
+ * The single place the harness camera is chosen. Precedence: a named environment
+ * state's own `cameraPose` (an interior view through a window) wins; failing that, a
+ * per-geometry override (the adjacent-rooms view of the shared slab underside from
+ * below the floor datum, which the standing auto-frame does not show, ADR-0150);
+ * failing both, undefined, so the state auto-frames its own bounds. Every other
+ * geometry frames its own bounds.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- the pure camera resolver ships beside the component that frames with it and this slice's test imports resolveHarnessCameraPose from ./scene-harness-view
+export function resolveHarnessCameraPose(
+  scene: HarnessScene,
+  environment?: HarnessEnvironment,
+): CameraPose | undefined {
+  const geometryOverride = scene === 'adjacent-rooms' ? ADJACENT_ROOMS_CAMERA_POSE : undefined
+  return environment?.cameraPose ?? geometryOverride
 }
 
 // Forwards the canonical environment override, when present, so its site,
@@ -391,19 +216,27 @@ const createHarnessRenderer: GLProps = (defaultProps) =>
     forceWebGL: true,
   })
 
+// Builds and frames the selected fixture, memoized on the scene key and paint so the static
+// frame reuses one derived scene graph across re-renders. Pulled out of SceneHarnessView so
+// the component stays within the length limit.
+function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, SurfaceTreatment>) {
+  return useMemo(() => buildFramedScene(HARNESS_FIXTURES[scene], paint), [scene, paint])
+}
+
 export function SceneHarnessView({
   colorTemperatureK = DEFAULT_COLOR_TEMPERATURE_K,
   paint = {},
   scene = 'shell',
   environment,
 }: SceneHarnessViewProps = {}) {
-  const fixture = HARNESS_FIXTURES[scene]
-  const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
-  const cameraOverride = harnessCameraOverride(scene)
+  const { root, pose, bounds } = useFramedHarnessScene(scene, paint)
+  const cameraOverride = resolveHarnessCameraPose(scene, environment)
   const ambientOcclusionActive = harnessAmbientOcclusionActive(environment)
   const { harnessReady, handleLightingReady, handleAmbientOcclusionSettled } =
     useHarnessReadiness(ambientOcclusionActive)
 
+  // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows, so the Canvas
+  // `shadows` prop keeps create-renderer's shadowMap setup (and its PCFSoftShadowMap type) alive.
   return (
     <div
       data-testid="scene-harness"
@@ -414,6 +247,7 @@ export function SceneHarnessView({
         frameloop="never"
         camera={harnessCameraProps(cameraOverride ?? pose)}
         gl={createHarnessRenderer}
+        shadows
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
         <primitive object={root} />

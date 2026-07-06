@@ -58,7 +58,7 @@ describe('BasicLightingProvider', () => {
     expect(Math.abs(towardPlusX - towardPlusZ)).toBeGreaterThan(0.1)
   })
 
-  it('configures the directional sun to cast a shadow with a real shadow map', () => {
+  it('gives the directional sun a real shadow map size', () => {
     const scene = new THREE.Scene()
 
     new BasicLightingProvider().apply(scene)
@@ -66,9 +66,22 @@ describe('BasicLightingProvider', () => {
     const sun = scene.children.find(
       (child) => child instanceof THREE.DirectionalLight,
     ) as THREE.DirectionalLight
-    expect(sun.castShadow).toBe(true)
     expect(sun.shadow.mapSize.width).toBeGreaterThan(0)
     expect(sun.shadow.mapSize.height).toBeGreaterThan(0)
+  })
+
+  it('does not cast shadows from the schematic sun', () => {
+    const scene = new THREE.Scene()
+
+    new BasicLightingProvider().apply(scene)
+
+    const sun = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
+    // Three's node renderer full-face self-shadows steep surfaces under the schematic
+    // sun angle regardless of bias tuning; the schematic rig sidesteps the defect by
+    // not casting shadows from its sun at all (only the realistic rig's sun casts).
+    expect(sun.castShadow).toBe(false)
   })
 
   it('adds no visible sky and no light probe, keeping the schematic fill lit', () => {
