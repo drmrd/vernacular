@@ -4,7 +4,7 @@ import { isGlassPane, markShadowCasters } from './shadow-casters'
 import { OPENING_FILL_ROLE_KEY } from './opening-fill-builder'
 
 describe('markShadowCasters', () => {
-  it('flags every mesh in the tree as a shadow caster and receiver', () => {
+  it('flags every non-glass mesh in the tree as a shadow caster and receiver', () => {
     const root = new THREE.Group()
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial())
     const nested = new THREE.Group()
@@ -12,8 +12,13 @@ describe('markShadowCasters', () => {
       new THREE.BoxGeometry(1, 1, 1),
       new THREE.MeshStandardMaterial(),
     )
+    const leafMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial(),
+    )
+    leafMesh.userData[OPENING_FILL_ROLE_KEY] = 'leaf'
     nested.add(deepMesh)
-    root.add(mesh, nested)
+    root.add(mesh, nested, leafMesh)
 
     markShadowCasters(root)
 
@@ -21,6 +26,23 @@ describe('markShadowCasters', () => {
     expect(mesh.receiveShadow).toBe(true)
     expect(deepMesh.castShadow).toBe(true)
     expect(deepMesh.receiveShadow).toBe(true)
+    expect(leafMesh.castShadow).toBe(true)
+    expect(leafMesh.receiveShadow).toBe(true)
+  })
+
+  it('keeps a glass-stamped mesh from casting a shadow while it still receives one', () => {
+    const root = new THREE.Group()
+    const glassMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial(),
+    )
+    glassMesh.userData[OPENING_FILL_ROLE_KEY] = 'glass'
+    root.add(glassMesh)
+
+    markShadowCasters(root)
+
+    expect(glassMesh.castShadow).toBe(false)
+    expect(glassMesh.receiveShadow).toBe(true)
   })
 })
 
