@@ -201,7 +201,7 @@ const FURNITURE_FIXTURE: SceneGraph = {
  * `adjacent-rooms` is two rooms sharing an interior wall, built through the real
  * derive pipeline so the rendered slabs meet at the wall centerline (ADR-0129) and
  * step their side faces off the shared plane (ADR-0150); a companion camera pose
- * (see `harnessCameraOverride`) views that shared slab boundary from below the
+ * (see `resolveHarnessCameraPose`) views that shared slab boundary from below the
  * floor, the one place a static frame can witness the formerly z-fighting pair
  * (issue #402).
  */
@@ -215,16 +215,6 @@ const HARNESS_FIXTURES = {
 
 /** Which harness fixture to render; defaults to the wall-shell room. */
 export type HarnessScene = keyof typeof HARNESS_FIXTURES
-
-/**
- * The camera pose for a harness state whose subject the standing auto-frame would
- * not expose, or undefined to auto-frame. The adjacent-rooms state looks up at the
- * shared slab underside from below the floor datum, which the standing auto frame
- * does not show (ADR-0150); every other state frames its own bounds.
- */
-function harnessCameraOverride(scene: HarnessScene): CameraPose | undefined {
-  return scene === 'adjacent-rooms' ? ADJACENT_ROOMS_CAMERA_POSE : undefined
-}
 
 // Fits the camera to the bounds for the pinned canvas size, then renders one frame on
 // mount and one more when the lighting reports ready, so the screenshot is deterministic
@@ -285,6 +275,27 @@ export interface HarnessEnvironment {
   realistic: boolean
   cloudCover?: number
   colorCheck?: boolean
+  // The pose a named environment state supplies when the standing auto-frame would
+  // not expose its subject (an interior view through a window). It structurally
+  // matches the app layer's HarnessEnvironmentState.cameraPose without the bridge
+  // importing from app/.
+  cameraPose?: CameraPose
+}
+
+/**
+ * The single place the harness camera is chosen. Precedence: a named environment
+ * state's own `cameraPose` (an interior view through a window) wins; failing that, a
+ * per-geometry override (the adjacent-rooms view of the shared slab underside from
+ * below the floor datum, which the standing auto-frame does not show, ADR-0150);
+ * failing both, undefined, so the state auto-frames its own bounds. Every other
+ * geometry frames its own bounds.
+ */
+export function resolveHarnessCameraPose(
+  scene: HarnessScene,
+  environment?: HarnessEnvironment,
+): CameraPose | undefined {
+  const geometryOverride = scene === 'adjacent-rooms' ? ADJACENT_ROOMS_CAMERA_POSE : undefined
+  return environment?.cameraPose ?? geometryOverride
 }
 
 // Forwards the canonical environment override, when present, so its site,
@@ -399,7 +410,7 @@ export function SceneHarnessView({
 }: SceneHarnessViewProps = {}) {
   const fixture = HARNESS_FIXTURES[scene]
   const { root, pose, bounds } = useMemo(() => buildFramedScene(fixture, paint), [fixture, paint])
-  const cameraOverride = harnessCameraOverride(scene)
+  const cameraOverride = resolveHarnessCameraPose(scene, environment)
   const ambientOcclusionActive = harnessAmbientOcclusionActive(environment)
   const { harnessReady, handleLightingReady, handleAmbientOcclusionSettled } =
     useHarnessReadiness(ambientOcclusionActive)
