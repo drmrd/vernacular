@@ -1,5 +1,5 @@
 import type { HarnessScene } from '../bridge'
-import type { ObservationInstant, Site } from '../core'
+import type { CameraPose, ObservationInstant, Site } from '../core'
 
 /**
  * A named canonical environment for the scene harness: a fixed site, a fixed
@@ -16,6 +16,10 @@ export interface HarnessEnvironmentState {
   // the ambient-occlusion baseline), so a single `?scene=` name selects both the
   // lighting and the geometry it should light.
   scene?: HarnessScene
+  // The pose a state supplies when the default auto-frame would not expose its
+  // subject (e.g. an interior view through a window). The bridge honors it in the
+  // next cycle in preference to the standing auto-frame.
+  cameraPose?: CameraPose
 }
 
 // The one canonical harness site (40 N, 75 W, plan-up as true north, Eastern time).
@@ -30,6 +34,10 @@ const CIVIL_NOON_MINUTES = 720
 const MID_AFTERNOON_MINUTES = 960
 // Fully overcast: the sky model's cloud-cover fraction saturates at 1.
 const FULLY_OVERCAST_CLOUD_COVER = 1
+// 09:00 Eastern, the summer-solstice reference instant from
+// core/environment/solar-position.test.ts, where the sun sits due east (azimuth
+// ~89 deg, altitude ~37 deg).
+const WINDOW_LIGHT_MORNING_MINUTES = 540
 
 // The March-equinox-at-civil-noon instant, shared by the equinox-noon, color-check,
 // overcast-noon, and ambient-occlusion states: all four pin the same sun and differ
@@ -38,6 +46,28 @@ const FULLY_OVERCAST_CLOUD_COVER = 1
 const EQUINOX_NOON_OBSERVATION: ObservationInstant = {
   date: '2026-03-20',
   minutesSinceMidnight: CIVIL_NOON_MINUTES,
+}
+
+// The shell fixture's only window sits in the east wall, and the shared
+// equinox-noon instant above puts the sun almost due south, which grazes that
+// wall and casts no window shadow. This instant instead puts the sun due east,
+// so the window-light state actually shows daylight through the glass.
+const WINDOW_LIGHT_OBSERVATION: ObservationInstant = {
+  date: '2026-06-21',
+  minutesSinceMidnight: WINDOW_LIGHT_MORNING_MINUTES,
+}
+
+// The shell room is a 4000 x 3000 mm plan rectangle; planToWorld maps plan (x, y)
+// to world (x, height, -y). The east-wall window is centered at plan (4000, 1500),
+// with glass from 900 to 2100 mm up. This vantage stands inside the room, west of
+// the window, aimed east and slightly down, so the window (with the sun beyond it)
+// and the floor just inside the sill are both in frame at 320x240. Starting values
+// only; tuned against the capture in a later task.
+const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
+  position: { x: 1100, y: 1500, z: -1500 },
+  target: { x: 3900, y: 750, z: -1500 },
+  near: 100,
+  far: 10000,
 }
 
 /**
@@ -90,6 +120,16 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
       scene: 'furniture',
+    },
+  ],
+  [
+    'window-light',
+    {
+      site: CANONICAL_SITE,
+      observedAt: WINDOW_LIGHT_OBSERVATION,
+      realistic: true,
+      scene: 'shell',
+      cameraPose: WINDOW_LIGHT_CAMERA_POSE,
     },
   ],
 ])
