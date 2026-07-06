@@ -96,6 +96,26 @@ describe('harnessEnvironmentState', () => {
     expect(equinoxNoon?.scene).toBeUndefined()
     expect(winterAfternoon?.scene).toBeUndefined()
   })
+
+  it('resolves window-light to a summer-solstice morning at the canonical site with the shell fixture and an interior camera pose', () => {
+    const windowLight = harnessEnvironmentState('window-light')
+
+    expect(windowLight).toMatchObject({
+      site: canonicalSite,
+      observedAt: { date: '2026-06-21', minutesSinceMidnight: 540 },
+      realistic: true,
+      scene: 'shell',
+    })
+
+    const target = windowLight?.cameraPose?.target
+    expect(target).toBeDefined()
+    expect(target?.x).toBeGreaterThan(0)
+    expect(target?.x).toBeLessThan(4000)
+    expect(target?.z).toBeGreaterThan(-3000)
+    expect(target?.z).toBeLessThan(0)
+    expect(target?.y).toBeGreaterThanOrEqual(0)
+    expect(target?.y).toBeLessThanOrEqual(2600)
+  })
 })
 
 describe('resolveHarnessScene', () => {
