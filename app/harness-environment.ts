@@ -64,8 +64,8 @@ const WINDOW_LIGHT_OBSERVATION: ObservationInstant = {
 // sun beyond it) and the floor just inside the sill are both in frame at 320x240.
 // Starting values only; tuned against the capture in a later task.
 const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
-  position: { x: 1100, y: 1500, z: -1500 },
-  target: { x: 3900, y: 750, z: -1500 },
+  position: { x: 500, y: 1900, z: -1500 },
+  target: { x: 3000, y: 600, z: -1500 },
   near: 100,
   far: 10000,
 }
