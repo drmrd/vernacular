@@ -5,13 +5,25 @@ import { resolve } from 'node:path'
 // This is a source-reading guard, not a behavior test. It pins a *configuration* property no
 // runtime assertion can observe: mounting either Canvas needs a real WebGL context, which jsdom
 // does not provide. The property matters because React Three Fiber 9 unconditionally overwrites
-// the renderer's shadow-map setting during Canvas configuration with
-// `gl.shadowMap.enabled = !!shadows` (verified at @react-three/fiber 9.6.1 dist line ~15795).
+// the renderer's shadow-map setting during Canvas configuration (search the fiber source for the
+// literal `gl.shadowMap.enabled = !!shadows` to find the assignment).
 // engine/renderer/create-renderer.ts sets `renderer.shadowMap.enabled = true` at construction,
 // but without the `shadows` prop on `<Canvas>`, React Three Fiber silently flips that back off
 // and the directional sun's shadows (whose rig, bias, and fitters all exist and are unit-tested
 // elsewhere) never actually render.
 const SOURCE_FILES = ['bridge/react/scene-harness-view.tsx', 'bridge/react/webgpu-scene-view.tsx']
+
+// Finds the `>` that closes the opening tag: the first `>` not preceded by `=`, so the `=>` of
+// an arrow-function prop (like the Canvas `gl` factory) never truncates the tag early. A textual
+// scan, not a parser; a bare `>` inside a string or comment within the tag would still end the
+// scan, but no such text appears in the Canvas tags this guard reads.
+function indexOfTagClose(source: string, from: number): number {
+  let candidate = source.indexOf('>', from)
+  while (candidate !== -1 && source[candidate - 1] === '=') {
+    candidate = source.indexOf('>', candidate + 1)
+  }
+  return candidate
+}
 
 // Extracts the opening `<Canvas ...>` tag from a source file's text, scoping the search so a
 // stray mention of "shadows" in a comment elsewhere in the file cannot produce a false pass.
@@ -20,7 +32,7 @@ function extractCanvasOpeningTag(source: string): string {
   if (start === -1) {
     throw new Error('no <Canvas element found in source')
   }
-  const end = source.indexOf('>', start)
+  const end = indexOfTagClose(source, start)
   if (end === -1) {
     throw new Error('unterminated <Canvas opening tag')
   }
