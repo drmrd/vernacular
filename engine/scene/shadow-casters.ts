@@ -1,8 +1,9 @@
 import * as THREE from 'three'
 
+import type { OpeningFillRole } from '../../core'
 import { OPENING_FILL_ROLE_KEY } from './opening-fill-builder'
 
-const GLASS_ROLE = 'glass'
+const GLASS_ROLE: OpeningFillRole = 'glass'
 
 /** True for exactly a mesh the opening-fill builder stamped with the glass role. */
 export function isGlassPane(object: THREE.Object3D): boolean {
