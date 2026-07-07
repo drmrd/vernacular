@@ -5,6 +5,7 @@ type: decision
 tags: [design-system, visual-language, theming, color, typography, iconography, accessibility]
 related:
   [
+    decisions/ADR-0154-arris-visual-design-language,
     decisions/ADR-0096-design-system-consolidation,
     decisions/ADR-0076-wordmark-typeface,
     decisions/ADR-0048-paint-color-palette-and-site-metadata,
@@ -28,6 +29,11 @@ updated: 2026-06-13
 
 Date: 2026-06-13
 Status: Accepted
+
+Forward pointer (2026-07-06): a proposed successor language, Arris, is recorded in
+[[ADR-0154-arris-visual-design-language]] and
+`docs/specs/2026-07-06-arris-visual-design-language.md`. Draughtsman's Restraint remains the
+current, shipped language; Arris is a target to migrate toward, not an in-force replacement.
 
 ## Context
 
