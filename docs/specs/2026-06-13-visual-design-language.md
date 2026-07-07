@@ -3,6 +3,10 @@
 Date: 2026-06-13
 Status: Approved, pending implementation plan
 
+Successor direction (2026-07-06): a proposed target language, Arris, is recorded in
+`docs/specs/2026-07-06-arris-visual-design-language.md` (ADR-0154). Draughtsman's Restraint remains
+the shipped language until an incremental migration lands.
+
 ## Summary
 
 Vernacular's visual design language is called Draughtsman's Restraint. It targets a specific
