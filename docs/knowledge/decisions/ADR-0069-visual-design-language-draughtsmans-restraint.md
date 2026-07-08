@@ -22,7 +22,7 @@ sourceFiles:
     index.html,
   ]
 status: current
-updated: 2026-06-13
+updated: 2026-07-08
 ---
 
 # ADR-0069: Visual design language -- Draughtsman's Restraint
@@ -30,10 +30,11 @@ updated: 2026-06-13
 Date: 2026-06-13
 Status: Accepted
 
-Forward pointer (2026-07-06): a proposed successor language, Arris, is recorded in
-[[ADR-0154-arris-visual-design-language]] and
-`docs/specs/2026-07-06-arris-visual-design-language.md`. Draughtsman's Restraint remains the
-current, shipped language; Arris is a target to migrate toward, not an in-force replacement.
+Forward pointer (2026-07-08): Arris, recorded in [[ADR-0154-arris-visual-design-language]] and
+`docs/specs/2026-07-06-arris-visual-design-language.md`, has been ratified as the target visual
+and interaction language. Draughtsman's Restraint remains the current, shipped language; the
+migration toward Arris is incremental, and this ADR is superseded only when the app renders
+Arris.
 
 ## Context
 
