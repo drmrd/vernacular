@@ -109,6 +109,9 @@ Adopt Arris as the target visual design language and record it as a spec at prop
 - [[ADR-0069-visual-design-language-draughtsmans-restraint]]: the shipped language Arris targets
   and would eventually supersede; it stays current until the migration lands.
 - `docs/specs/2026-07-06-arris-visual-design-language.md`: the Arris spec this decision adopts.
+- `docs/plans/2026-07-08-arris-migration.md`: the spikes-first migration plan that operationalizes
+  this decision through feasibility spikes, a parallel theme, family-by-family component work, and a
+  coherent cutover.
 - `docs/specs/2026-06-13-visual-design-language.md`: the shipped Draughtsman's Restraint spec.
 - `docs/specs/2026-06-14-editor-visual-design-quality.md`: a quality pass written within
   Draughtsman's Restraint that a migration will need to reconcile.
