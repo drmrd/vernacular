@@ -1,10 +1,18 @@
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
-import { builtinFinishes, colorFromHex, solidTreatment, surfaceKey } from '../../core'
+import {
+  builtinFinishes,
+  colorFromHex,
+  getEntry,
+  patternTreatment,
+  solidTreatment,
+  surfaceKey,
+} from '../../core'
 import { PhysicalMaterialProvider } from './physical-material-provider'
 
 const LIGHT_COLOR = { r: 1, g: 0.8, b: 0.6 }
 const WALL_REF = { kind: 'wall-face', wallId: 'w1', side: 'left' } as const
+const FLOOR_REF = { kind: 'floor', floorId: 'f1' } as const
 const PAINT_HEX = '#3366cc'
 const finishCases = Object.values(builtinFinishes.entries).map(
   (finish) => [finish.id, finish] as const,
@@ -46,5 +54,33 @@ describe('PhysicalMaterialProvider', () => {
     const second = provider.material('interiorFace', WALL_REF)
 
     expect(first).toBe(second)
+  })
+
+  it('renders a solid paint whose finish is unregistered like the matte finish, not a glossy default', () => {
+    const matte = getEntry(builtinFinishes, 'matte')
+    const paint = {
+      [surfaceKey(WALL_REF)]: solidTreatment(colorFromHex(PAINT_HEX), 'no-such-finish'),
+    }
+    const provider = new PhysicalMaterialProvider({ lightColor: LIGHT_COLOR, paint })
+
+    const material = provider.material('interiorFace', WALL_REF)
+
+    expect(material).toBeInstanceOf(THREE.MeshPhysicalMaterial)
+    const physical = material as THREE.MeshPhysicalMaterial
+    expect(physical.roughness).toBe(matte?.roughness)
+    expect(physical.sheen).toBe(matte?.sheen)
+    expect(physical.specularIntensity).toBe(matte?.specular)
+  })
+
+  it('keeps a pattern treatment on the standard material rather than the physical one', () => {
+    const paint = {
+      [surfaceKey(FLOOR_REF)]: patternTreatment('tile-grid', 300, [colorFromHex(PAINT_HEX)]),
+    }
+    const provider = new PhysicalMaterialProvider({ lightColor: LIGHT_COLOR, paint })
+
+    const material = provider.material('top', FLOOR_REF)
+
+    expect(material).toBeInstanceOf(THREE.MeshStandardMaterial)
+    expect(material).not.toBeInstanceOf(THREE.MeshPhysicalMaterial)
   })
 })
