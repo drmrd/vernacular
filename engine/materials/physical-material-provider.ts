@@ -39,6 +39,8 @@ function finishParameters(finishId: string): THREE.MeshPhysicalMaterialParameter
   const finish =
     getEntry(builtinFinishes, finishId) ?? getEntry(builtinFinishes, FALLBACK_FINISH_ID)
   if (finish === undefined) {
+    // Unreachable while matte stays a registered builtin finish. The empty set would
+    // otherwise let three.js reapply the glossy defaults this fallback exists to avoid.
     return {}
   }
   return { roughness: finish.roughness, sheen: finish.sheen, specularIntensity: finish.specular }
