@@ -16,21 +16,25 @@ sourceFiles:
     editor/design-system/tokens.css,
     editor/design-system/tokens.ts,
   ]
-status: proposed
-updated: 2026-07-06
+status: current
+updated: 2026-07-08
 ---
 
 # ADR-0154: Adopt Arris as the target visual design language
 
 ## Status
 
-Proposed. Chosen by the owner on 2026-07-06 as the outcome of a purpose-first UX review of the
-whole product surface. Arris is adopted as the target visual and interaction language and is
-recorded as a spec (`docs/specs/2026-07-06-arris-visual-design-language.md`). It is not yet in
-force. The shipped editor implements Draughtsman's Restraint
-([[ADR-0069-visual-design-language-draughtsmans-restraint]]), which stays current until an
-incremental migration lands. This ADR records the decision to aim for Arris and migrate toward
-it, not a completed replacement.
+Current. Ratified by the owner on 2026-07-08 as the target visual and interaction language, the
+outcome of a purpose-first UX review of the whole product surface. The decision to adopt Arris as
+the destination and migrate toward it incrementally is in force now, and Arris is recorded as a
+spec (`docs/specs/2026-07-06-arris-visual-design-language.md`).
+
+This is a direction decision, not a description of the shipped app. The running editor still
+implements Draughtsman's Restraint
+([[ADR-0069-visual-design-language-draughtsmans-restraint]]), which remains current as the record
+of the shipped language. When the migration slices land and the app renders Arris, ADR-0069 is
+superseded and this ADR becomes the shipped-current language as well. Until then, read the Arris
+spec as the target, not the current state.
 
 ## Context
 
@@ -76,8 +80,10 @@ Adopt Arris as the target visual design language and record it as a spec at prop
   latency, live-geometry performance envelopes, the luminance-adaptive keyline, and assistive-
   technology reach. A behavior graduates from the spec to a build slice only after it is
   measured.
-- **Arris becomes current only when the shipped app implements it.** At that point this ADR flips
-  to current and ADR-0069 flips to superseded, following the repository's supersession practice.
+- **This ADR is current now as the ratified direction; the shipped-language supersession comes
+  later.** ADR-0069 remains current as the record of what the app renders today. Only when the
+  migration slices land and the app renders Arris does ADR-0069 flip to superseded and this ADR
+  also become the shipped-current language, following the repository's supersession practice.
   Until then the spec reads as a target.
 
 ## Consequences
@@ -87,9 +93,9 @@ Adopt Arris as the target visual design language and record it as a spec at prop
 - The shipped app is unchanged by this decision. No tokens, tests, or components move here; this is
   direction-setting, not implementation. A reader who diffs the running editor against the Arris
   spec will find they disagree, and that is expected until migration.
-- Because Arris is proposed and unshipped, no README, release note, or other external text may
-  describe the product as looking like Arris. The shipped language is still Draughtsman's
-  Restraint, and version 0.x makes no visual-stability promise regardless.
+- Because Arris is ratified as a direction but not yet shipped, no README, release note, or other
+  external text may describe the product as looking like Arris. The shipped language is still
+  Draughtsman's Restraint, and version 0.x makes no visual-stability promise regardless.
 - The migration is large: palette, accent doctrine, typefaces, and iconography all change.
   Downstream specs that assume Draughtsman's Restraint (the editor visual-design-quality pass, the
   token contract) will need reconciliation as slices land. Those reconciliations happen with the
@@ -103,6 +109,9 @@ Adopt Arris as the target visual design language and record it as a spec at prop
 - [[ADR-0069-visual-design-language-draughtsmans-restraint]]: the shipped language Arris targets
   and would eventually supersede; it stays current until the migration lands.
 - `docs/specs/2026-07-06-arris-visual-design-language.md`: the Arris spec this decision adopts.
+- `docs/plans/2026-07-08-arris-migration.md`: the spikes-first migration plan that operationalizes
+  this decision through feasibility spikes, a parallel theme, family-by-family component work, and a
+  coherent cutover.
 - `docs/specs/2026-06-13-visual-design-language.md`: the shipped Draughtsman's Restraint spec.
 - `docs/specs/2026-06-14-editor-visual-design-quality.md`: a quality pass written within
   Draughtsman's Restraint that a migration will need to reconcile.
