@@ -3,16 +3,7 @@ slug: decisions/ADR-0156-luminance-calibration-convention
 title: 'ADR-0156: Luminance calibration convention for the color-accuracy gate'
 type: decision
 tags:
-  [
-    architecture,
-    engine,
-    renderer,
-    lighting,
-    color-management,
-    materials,
-    environment,
-    3d-preview,
-  ]
+  [architecture, engine, renderer, lighting, color-management, materials, environment, 3d-preview]
 related:
   [
     decisions/ADR-0142-color-managed-renderer,
