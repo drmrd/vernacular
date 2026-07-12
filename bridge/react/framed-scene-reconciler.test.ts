@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Point, SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
 import { isGroundPlane, type SceneRoot } from '../../engine'
-import { findByEntityId } from '../../engine/testing'
+import { collectEntityIds, findByEntityId } from '../../engine/testing'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
 const WALL_LENGTH_MM = 2000
@@ -118,6 +118,85 @@ describe('createFramedSceneReconciler', () => {
     expect(framed.root).toBeDefined()
     expect(Number.isFinite(framed.pose.near)).toBe(true)
     expect(Number.isFinite(framed.pose.far)).toBe(true)
+  })
+})
+
+// The upper floor's wall runs longer than the ground floor's, so the whole-building
+// footprint (and its ground plane) reaches past the ground floor on its own.
+const UPPER_WALL_LENGTH_MM = 5000
+
+const upperFloorNode = (): SceneNode => ({
+  id: 'floor:u',
+  kind: 'floor',
+  name: 'Upper',
+  elevation: UPPER_FLOOR_ELEVATION_MM,
+})
+
+function floorWall(floorId: string, length: number): SceneGraph['walls'][number] {
+  return {
+    id: `wall:${floorId}1`,
+    kind: 'wall',
+    floorId,
+    start: { x: 0, y: 0 },
+    end: { x: length, y: 0 },
+    thickness: WALL_THICKNESS_MM,
+    height: WALL_HEIGHT_MM,
+  }
+}
+
+// A two-floor whole-building graph (the projection sceneGraphForBuilding feeds the
+// reconciler in building scope): one node per floor, each seated at its own elevation,
+// with a wall on each floor so both floors' geometry is observable.
+function twoFloorBuildingGraph(): SceneGraph {
+  return {
+    nodes: [groundFloorNode(), upperFloorNode()],
+    walls: [floorWall('g', WALL_LENGTH_MM), floorWall('u', UPPER_WALL_LENGTH_MM)],
+    rooms: [],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+describe('createFramedSceneReconciler whole building', () => {
+  it('stacks every floor at its elevation and frames the whole building', () => {
+    const framed = createFramedSceneReconciler().reconcile(twoFloorBuildingGraph(), emptyPaint())
+
+    // Every floor renders, not just the ground floor (issue #479): the upper floor's
+    // wall and floor group are both present.
+    expect(findByEntityId(framed.root, 'wall:g1')).not.toBeNull()
+    expect(findByEntityId(framed.root, 'wall:u1')).not.toBeNull()
+    // Each floor group is seated at its own elevation (millimetres, no scale factor).
+    const upperGroup = findByEntityId(framed.root, 'floor:u')
+    expect(upperGroup).not.toBeNull()
+    expect(upperGroup?.position.y).toBe(UPPER_FLOOR_ELEVATION_MM)
+    // The camera frames the whole building: the bounds reach the upper floor's walls,
+    // above the upper floor's own elevation, rather than being capped at the ground floor.
+    expect(framed.bounds?.max.y ?? 0).toBeGreaterThan(UPPER_FLOOR_ELEVATION_MM)
+  })
+
+  it('seats one shared ground plane sized to the whole-building footprint', () => {
+    const framed = createFramedSceneReconciler().reconcile(twoFloorBuildingGraph(), emptyPaint())
+
+    const grounds = framed.root.children.filter(isGroundPlane)
+    // A single site surface under the whole building, not one plane per floor.
+    expect(grounds).toHaveLength(1)
+    // Centered on the union footprint (reaching the wider upper floor), not on the
+    // narrower ground floor alone.
+    expect(grounds[0]?.position.x).toBeGreaterThan(WALL_LENGTH_MM)
+  })
+
+  it('renders a single-floor graph as exactly one floor group at its elevation (locks #206)', () => {
+    const framed = createFramedSceneReconciler().reconcile(
+      floorGraph(groundFloorNode()),
+      emptyPaint(),
+    )
+
+    const floorIds = collectEntityIds(framed.root).filter((id) => id.startsWith('floor:'))
+    expect(floorIds).toEqual(['floor:g'])
+    expect(findByEntityId(framed.root, 'floor:g')?.position.y).toBe(0)
   })
 })
 

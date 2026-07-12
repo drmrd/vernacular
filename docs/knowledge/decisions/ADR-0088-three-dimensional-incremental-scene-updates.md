@@ -8,6 +8,7 @@ related:
     decisions/ADR-0018-scene-graph-derivation,
     decisions/ADR-0061-three-dimensional-wall-shell,
     decisions/ADR-0067-three-dimensional-painted-preview,
+    decisions/ADR-0127-whole-building-3d-view,
   ]
 sourceFiles:
   [
@@ -15,10 +16,12 @@ sourceFiles:
     docs/plans/2026-06-15-three-dimensional-incremental-scene-updates.md,
     bridge/react/framed-scene-reconciler.ts,
     bridge/react/framed-scene-reconciler.test.ts,
+    bridge/react/floor-build.ts,
+    bridge/react/framed-scene.ts,
     bridge/react/webgpu-scene-view.tsx,
   ]
 status: current
-updated: 2026-06-15
+updated: 2026-07-12
 ---
 
 # ADR-0088: Incremental scene updates in the three-dimensional preview
@@ -107,6 +110,24 @@ glue covered by the end-to-end suite.
 - The slice is behavior-preserving, so it ships with no scene-baseline change. The reuse
   logic is unit tested by reference identity, and the unchanged end-to-end suite is the
   evidence that no visible behavior moved.
-- Reuse within a changed floor, per-floor paint differencing, cache eviction, and showing
-  more than one floor at once are deferred, recorded in the spec. The cache keeps one build
-  per floor a house has shown; floor counts are small, so it is left unbounded for now.
+- Reuse within a changed floor and per-floor paint differencing are deferred, recorded in
+  the spec. Cache eviction and showing more than one floor at once have since landed (see the
+  update below). The cache keeps one build per floor a house has shown; floor counts are
+  small, so it is left unbounded for now.
+
+## Update (issue #479): whole-building stacking and cross-scope eviction
+
+The whole-building preview ([[ADR-0127-whole-building-3d-view]]) shows every floor of a
+scope at once, which this decision had deferred. Two changes landed behind the same seam
+without altering the per-floor reuse above.
+
+The per-floor build and reuse logic moved to `bridge/react/floor-build.ts`, and scene
+assembly and framing to `bridge/react/framed-scene.ts`. The reconciler now keeps a second
+cache keyed on the ordered floor set, so an unchanged whole-building scope returns its
+stacked scene with no rebuild, the way an unchanged single floor already did.
+
+Because the active-floor and whole-building scopes share a floor's build, assembling one
+scene reparents that build's sub-groups and would strand them in the other cached scene. The
+reconciler now evicts any cached scene that shares a just-assembled build, so the stranded
+scope rebuilds on its next reconcile instead of returning a scene missing a floor. That is
+the cache eviction this decision deferred.

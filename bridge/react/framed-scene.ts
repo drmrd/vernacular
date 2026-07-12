@@ -10,12 +10,18 @@ import {
   type CameraPose,
   type Point,
   type SceneGraph,
+  type SceneNode,
   type SurfaceTreatment,
 } from '../../core'
 import {
+  addGroundPlane,
+  assembleFloorRoot,
   buildScene,
+  disposeObject,
+  isGroundPlane,
   markShadowCasters,
   prepareNearWallTransparency,
+  GRADE_ELEVATION_MM,
   PaintMaterialProvider,
   sceneBounds,
   type EdgeOverlayOptions,
@@ -67,4 +73,88 @@ export function buildFramedScene(
   const pose = frameSceneCamera(bounds)
   const roomPolygons = graph.rooms.map((room) => room.polygon)
   return { root, pose, bounds, nearWallTargets, roomPolygons }
+}
+
+/**
+ * One floor's contribution to a stacked scene: the floor node (its id and elevation), the
+ * ordered sub-group list a floor group is assembled from (wall first, then rooms, openings,
+ * furniture), the near-wall fade targets its walls own, and its room outlines. The caching
+ * reconciler builds these from its per-floor sub-group caches.
+ */
+export interface FloorAssembly {
+  node: SceneNode
+  subgroups: SceneRoot[]
+  nearWallTargets: NearWallTarget[]
+  roomPolygons: readonly (readonly Point[])[]
+}
+
+/**
+ * Seats the assembled root on the site ground plane at grade (issue #477; ADR-0131,
+ * ADR-0138). The ground is per-scene, sized to the whole footprint already in `root`, so it
+ * runs after the floors are stacked. A plane already seated at the requested grade is kept;
+ * otherwise every ground plane on the root is removed and disposed before the fresh one is
+ * added, so no stale copy survives a grade edit. Camera framing keeps ignoring it
+ * (sceneBounds skips isGroundPlane).
+ */
+export function refreshGroundPlane(root: SceneRoot, gradeElevation: number | undefined): void {
+  const grade = gradeElevation ?? GRADE_ELEVATION_MM
+  const planes = root.children.filter(isGroundPlane)
+  if (planes.length === 1 && planes[0]?.position.y === grade) return
+  for (const plane of planes) {
+    root.remove(plane)
+    disposeObject(plane)
+  }
+  addGroundPlane(root, grade)
+}
+
+// Stacks every floor group under one root, each seated at its elevation (assembleFloorRoot),
+// reusing the first floor's assembled root as the shared root and reparenting the rest into
+// it, so no Three.js group is constructed in the bridge. The caller passes a non-empty list;
+// the final guard only narrows the type.
+function stackFloorRoot(floors: FloorAssembly[]): SceneRoot {
+  let root: SceneRoot | undefined
+  for (const floor of floors) {
+    const floorRoot = assembleFloorRoot(floor.node, floor.subgroups)
+    if (root === undefined) {
+      root = floorRoot
+      continue
+    }
+    const [floorGroup] = floorRoot.children
+    if (floorGroup !== undefined) root.add(floorGroup)
+  }
+  if (root === undefined) throw new Error('cannot frame a scene with no floors')
+  return root
+}
+
+// A single floor hands back its walls' own targets array unchanged, so an unchanged wall
+// keeps the same array reference across reconciles; a stacked building unions every floor's.
+function stackedNearWallTargets(floors: FloorAssembly[]): NearWallTarget[] {
+  const [only] = floors
+  if (floors.length === 1 && only !== undefined) return only.nearWallTargets
+  return floors.flatMap((floor) => floor.nearWallTargets)
+}
+
+/**
+ * Frames pre-built floors into a FramedScene: the shared root of every floor group seated
+ * at its elevation, a camera framed over the whole building's bounds, and one site ground
+ * plane sized to the whole footprint at the graph grade. Bounds are read before the ground
+ * plane is seated (sceneBounds excludes the ground either way). This is the caching
+ * reconciler's counterpart to buildScene's stacked, grounded root (issue #479).
+ */
+export function frameStackedScene(
+  floors: FloorAssembly[],
+  gradeElevation: number | undefined,
+): FramedScene {
+  const root = stackFloorRoot(floors)
+  // Read the bounds before seating the ground (sceneBounds excludes the ground either way),
+  // then seat the shared ground plane sized to the whole footprint already in the root.
+  const bounds = sceneBounds(root)
+  refreshGroundPlane(root, gradeElevation)
+  return {
+    root,
+    pose: frameSceneCamera(bounds),
+    bounds,
+    nearWallTargets: stackedNearWallTargets(floors),
+    roomPolygons: floors.flatMap((floor) => floor.roomPolygons),
+  }
 }

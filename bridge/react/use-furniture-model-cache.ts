@@ -4,7 +4,7 @@ import type { SceneGraph } from '../../core'
 import { disposeObject, parseFurnitureModel } from '../../engine'
 
 import { useAssetRegistry } from './asset-registry-context'
-import type { FurnitureModelLookup } from './framed-scene-reconciler'
+import type { FurnitureModelLookup } from './floor-build'
 import { createFurnitureModelCache, type FurnitureModelCache } from './furniture-model-cache'
 
 // The parsed-model type the furniture cache holds, derived from the engine loader so the
