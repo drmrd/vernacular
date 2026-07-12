@@ -7,6 +7,7 @@ related:
   [
     decisions/ADR-0069-visual-design-language-draughtsmans-restraint,
     decisions/ADR-0096-design-system-consolidation,
+    decisions/ADR-0155-keyboard-and-command-model,
   ]
 sourceFiles:
   [
