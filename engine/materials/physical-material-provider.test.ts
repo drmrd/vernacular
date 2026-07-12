@@ -37,4 +37,14 @@ describe('PhysicalMaterialProvider', () => {
       expect(physical.color.equals(new THREE.Color(PAINT_HEX))).toBe(true)
     },
   )
+
+  it('caches one physical material per painted surface key', () => {
+    const paint = { [surfaceKey(WALL_REF)]: solidTreatment(colorFromHex(PAINT_HEX), 'satin') }
+    const provider = new PhysicalMaterialProvider({ lightColor: LIGHT_COLOR, paint })
+
+    const first = provider.material('interiorFace', WALL_REF)
+    const second = provider.material('interiorFace', WALL_REF)
+
+    expect(first).toBe(second)
+  })
 })
