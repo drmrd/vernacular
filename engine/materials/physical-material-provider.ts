@@ -2,11 +2,7 @@ import * as THREE from 'three'
 
 import { builtinFinishes, getEntry, type SurfaceTreatment } from '../../core'
 import type { SurfaceRole } from './material-provider'
-import {
-  SurfaceMaterialProvider,
-  basePaintedParameters,
-  patternParameters,
-} from './paint-material-provider'
+import { SurfaceMaterialProvider, basePaintedParameters } from './surface-material-provider'
 
 /**
  * A solid paint that names a finish the registry does not define renders like the
@@ -24,16 +20,13 @@ const FALLBACK_FINISH_ID = 'matte'
  */
 export class PhysicalMaterialProvider extends SurfaceMaterialProvider {
   protected createPaintedMaterial(role: SurfaceRole, treatment: SurfaceTreatment): THREE.Material {
-    if (treatment.kind !== 'solid') {
-      return new THREE.MeshStandardMaterial({
+    if (treatment.kind === 'solid') {
+      return new THREE.MeshPhysicalMaterial({
         ...basePaintedParameters(role, treatment),
-        ...patternParameters(treatment),
+        ...finishParameters(treatment.finishId),
       })
     }
-    return new THREE.MeshPhysicalMaterial({
-      ...basePaintedParameters(role, treatment),
-      ...finishParameters(treatment.finishId),
-    })
+    return this.standardPaintedMaterial(role, treatment)
   }
 }
 
