@@ -18,14 +18,14 @@ export interface PaintMaterialOptions {
 }
 
 /**
- * The color-temperature-responsive paint material (foundation 5.2). It resolves a
- * surface's SurfaceRef to its assigned paint color and uses that as the albedo; an
+ * The shared surface-material machinery for the paint providers. It resolves a
+ * surface's SurfaceRef to its assigned treatment and uses that as the albedo; an
  * unpainted or reference-less surface keeps the neutral gray. The color temperature
  * lives in the light (ADR-0065), so a painted surface is shown under the illuminant
  * rather than tinted twice. Painted materials are cached by surface key and neutral
- * ones by role.
+ * ones by role; the subclass supplies each painted material's construction.
  */
-export class PaintMaterialProvider implements MaterialProvider {
+export abstract class SurfaceMaterialProvider implements MaterialProvider {
   readonly lightColor: LinearRgb
   private readonly paint: Record<string, SurfaceTreatment>
   private readonly neutralByRole = new Map<SurfaceRole, THREE.Material>()
@@ -56,10 +56,7 @@ export class PaintMaterialProvider implements MaterialProvider {
     if (cached) {
       return cached
     }
-    const created = new THREE.MeshStandardMaterial({
-      ...basePaintedParameters(role, treatment),
-      ...patternParameters(treatment),
-    })
+    const created = this.createPaintedMaterial(role, treatment)
     this.paintedByKey.set(key, created)
     return created
   }
@@ -72,6 +69,27 @@ export class PaintMaterialProvider implements MaterialProvider {
     const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
     this.neutralByRole.set(role, created)
     return created
+  }
+
+  /** Build the material for a painted surface; the base caches the result under the surface key. */
+  protected abstract createPaintedMaterial(
+    role: SurfaceRole,
+    treatment: SurfaceTreatment,
+  ): THREE.Material
+}
+
+/**
+ * The color-temperature-responsive paint material (foundation 5.2): a painted surface
+ * renders as a MeshStandardMaterial tinted by its treatment, and a floor pattern adds
+ * its wearing-surface roughness. PhysicalMaterialProvider extends the same base to make
+ * a solid paint's finish live.
+ */
+export class PaintMaterialProvider extends SurfaceMaterialProvider {
+  protected createPaintedMaterial(role: SurfaceRole, treatment: SurfaceTreatment): THREE.Material {
+    return new THREE.MeshStandardMaterial({
+      ...basePaintedParameters(role, treatment),
+      ...patternParameters(treatment),
+    })
   }
 }
 
