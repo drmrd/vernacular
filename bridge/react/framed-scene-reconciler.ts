@@ -19,10 +19,6 @@ import {
   type FramedScene,
 } from './framed-scene'
 
-// The furniture model lookup is defined with the floor-build layer that consumes it; it
-// is re-exported here because the model cache imports it from the reconciler module.
-export type { FurnitureModelLookup }
-
 const BOX_ONLY: FurnitureModelLookup = { get: () => undefined }
 
 // Joins the floor node ids into the key a stacked scene is cached under, so a scene is
