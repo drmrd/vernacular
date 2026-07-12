@@ -30,10 +30,13 @@ const UNKNOWN_FINISH_ROUGHNESS = 0.9
  * reads its finish (roughness, sheen, specular) and emits a MeshPhysicalMaterial,
  * so gloss and flat paints no longer render at one default roughness. A pattern
  * keeps its standard material and an unpainted surface keeps the neutral gray.
+ * Painted materials are cached by surface key and neutral ones by role.
  */
 export class PhysicalMaterialProvider implements MaterialProvider {
   readonly lightColor: LinearRgb
   private readonly paint: Record<string, SurfaceTreatment>
+  private readonly neutralByRole = new Map<SurfaceRole, THREE.Material>()
+  private readonly paintedByKey = new Map<string, THREE.Material>()
 
   constructor(options: PaintMaterialOptions) {
     this.lightColor = options.lightColor
@@ -42,17 +45,42 @@ export class PhysicalMaterialProvider implements MaterialProvider {
 
   material(role: SurfaceRole, ref?: SurfaceRef): THREE.Material {
     if (ref !== undefined) {
-      const treatment = this.paint[surfaceKey(ref)]
+      const key = surfaceKey(ref)
+      const treatment = this.paint[key]
       if (treatment !== undefined) {
-        return paintedMaterial(role, treatment)
+        return this.paintedMaterial(role, key, treatment)
       }
     }
-    return new THREE.MeshStandardMaterial(roleMaterialParameters(role))
+    return this.neutralMaterial(role)
+  }
+
+  private paintedMaterial(
+    role: SurfaceRole,
+    key: string,
+    treatment: SurfaceTreatment,
+  ): THREE.Material {
+    const cached = this.paintedByKey.get(key)
+    if (cached) {
+      return cached
+    }
+    const created = createPaintedMaterial(role, treatment)
+    this.paintedByKey.set(key, created)
+    return created
+  }
+
+  private neutralMaterial(role: SurfaceRole): THREE.Material {
+    const cached = this.neutralByRole.get(role)
+    if (cached) {
+      return cached
+    }
+    const created = new THREE.MeshStandardMaterial(roleMaterialParameters(role))
+    this.neutralByRole.set(role, created)
+    return created
   }
 }
 
 /** A solid paint upgrades to a physical material carrying its finish; a pattern keeps the standard one. */
-function paintedMaterial(role: SurfaceRole, treatment: SurfaceTreatment): THREE.Material {
+function createPaintedMaterial(role: SurfaceRole, treatment: SurfaceTreatment): THREE.Material {
   if (treatment.kind !== 'solid') {
     return new THREE.MeshStandardMaterial({
       ...basePaintedParameters(role, treatment),
