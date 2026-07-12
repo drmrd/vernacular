@@ -22,7 +22,7 @@ sourceFiles:
     engine/renderer/tone-mapping.ts,
     core/registries/finishes.ts,
   ]
-status: proposed
+status: current
 updated: 2026-07-12
 ---
 
@@ -30,11 +30,13 @@ updated: 2026-07-12
 
 ## Status
 
-Proposed, ahead of slice 3 of the realistic-environmental-lighting epic (physically based
+Current, ahead of slice 3 of the realistic-environmental-lighting epic (physically based
 materials and the color-accuracy gate, #449). The epic's headline gate asserts that a painted
 surface reads within tolerance of its reference swatch; that assertion is only meaningful against
 a fixed statement of what the render's luminance means. This ADR records the convention the
-shipped rig already embodies so the gate anchors to it. Awaiting owner ratification.
+shipped rig already embodies so the gate anchors to it. The owner ratified its three normative
+choices on 2026-07-12: anchor to the shipped 3.2:1 sun-to-fill rig, read the gate under Neutral
+tone mapping and never AgX, and treat the calibration as relative rather than photometric.
 
 ## Context
 
