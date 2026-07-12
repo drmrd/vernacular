@@ -2,18 +2,20 @@ import * as THREE from 'three'
 
 import {
   builtinFinishes,
-  builtinFloorPatterns,
   getEntry,
   surfaceKey,
-  surfaceTintHex,
   type Finish,
   type LinearRgb,
   type SurfaceRef,
   type SurfaceTreatment,
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from './material-provider'
-import type { PaintMaterialOptions } from './paint-material-provider'
-import { roleMaterialParameters, slabTopDepthBiasParameters } from './role-appearance'
+import {
+  basePaintedParameters,
+  patternParameters,
+  type PaintMaterialOptions,
+} from './paint-material-provider'
+import { roleMaterialParameters } from './role-appearance'
 
 /**
  * When a solid paint names a finish the registry does not define, its physical
@@ -61,30 +63,6 @@ function paintedMaterial(role: SurfaceRole, treatment: SurfaceTreatment): THREE.
     ...basePaintedParameters(role, treatment),
     ...finishParameters(getEntry(builtinFinishes, treatment.finishId)),
   })
-}
-
-/** Albedo, role name, and the slab-top depth bias for a painted floor top: the params every painted surface shares. */
-function basePaintedParameters(
-  role: SurfaceRole,
-  treatment: SurfaceTreatment,
-): THREE.MeshStandardMaterialParameters {
-  return {
-    color: new THREE.Color(surfaceTintHex(treatment)),
-    name: role,
-    ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
-  }
-}
-
-/** A pattern contributes its wearing-surface roughness and records its id; a solid contributes nothing. */
-function patternParameters(treatment: SurfaceTreatment): THREE.MeshStandardMaterialParameters {
-  if (treatment.kind !== 'pattern') {
-    return {}
-  }
-  const pattern = getEntry(builtinFloorPatterns, treatment.patternId)
-  return {
-    ...(pattern === undefined ? {} : { roughness: pattern.roughness }),
-    userData: { patternId: treatment.patternId },
-  }
 }
 
 /** The physical roughness, sheen, and specular a finish contributes, falling back to matte roughness when unknown. */

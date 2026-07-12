@@ -57,9 +57,7 @@ export class PaintMaterialProvider implements MaterialProvider {
       return cached
     }
     const created = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(surfaceTintHex(treatment)),
-      name: role,
-      ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
+      ...basePaintedParameters(role, treatment),
       ...patternParameters(treatment),
     })
     this.paintedByKey.set(key, created)
@@ -78,12 +76,31 @@ export class PaintMaterialProvider implements MaterialProvider {
 }
 
 /**
+ * The parameters every painted surface shares: the treatment tint as the albedo, the
+ * role name, and the slab-top depth bias for a painted floor top so the coincident wall
+ * base still wins the depth contest. The finish- or pattern-specific fields spread on top.
+ * Shared with PhysicalMaterialProvider so both paths resolve the albedo the same way.
+ */
+export function basePaintedParameters(
+  role: SurfaceRole,
+  treatment: SurfaceTreatment,
+): THREE.MeshStandardMaterialParameters {
+  return {
+    color: new THREE.Color(surfaceTintHex(treatment)),
+    name: role,
+    ...(role === 'top' ? slabTopDepthBiasParameters() : {}),
+  }
+}
+
+/**
  * The extra material parameters a `pattern` treatment contributes: the wearing
  * surface's roughness from the floor-pattern registry and the pattern id as
  * userData so the rendered material stays traceable to its finish. A solid
  * treatment contributes nothing, so its material keeps the prior appearance.
  */
-function patternParameters(treatment: SurfaceTreatment): THREE.MeshStandardMaterialParameters {
+export function patternParameters(
+  treatment: SurfaceTreatment,
+): THREE.MeshStandardMaterialParameters {
   if (treatment.kind !== 'pattern') {
     return {}
   }
