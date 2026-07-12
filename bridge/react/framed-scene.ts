@@ -146,14 +146,15 @@ export function frameStackedScene(
   gradeElevation: number | undefined,
 ): FramedScene {
   const root = stackFloorRoot(floors)
+  // Read the bounds before seating the ground (sceneBounds excludes the ground either way),
+  // then seat the shared ground plane sized to the whole footprint already in the root.
   const bounds = sceneBounds(root)
-  const framed: FramedScene = {
+  refreshGroundPlane(root, gradeElevation)
+  return {
     root,
     pose: frameSceneCamera(bounds),
     bounds,
     nearWallTargets: stackedNearWallTargets(floors),
     roomPolygons: floors.flatMap((floor) => floor.roomPolygons),
   }
-  refreshGroundPlane(root, gradeElevation)
-  return framed
 }
