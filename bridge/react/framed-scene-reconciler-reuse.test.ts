@@ -15,6 +15,7 @@ import type {
   Project,
   RoomSceneNode,
   SceneGraph,
+  SceneNode,
   SurfaceTreatment,
   Wall,
 } from '../../core'
@@ -571,5 +572,98 @@ describe('createFramedSceneReconciler furniture model', () => {
     // The rebuilt A box carries the distinct failed material, not the plain loading box's.
     if (aSecond === null) throw new Error('expected chair A to rebuild a furniture box group')
     expect(firstMeshMaterialName(aSecond)).toBe('furnitureFailed')
+  })
+})
+
+const WHOLE_GROUND_LENGTH_MM = 4000
+const WHOLE_UPPER_LENGTH_MM = 6000
+const WHOLE_UPPER_WIDENED_MM = 8000
+const WHOLE_UPPER_ELEVATION_MM = 3000
+const WHOLE_WALL_THICKNESS_MM = 120
+const WHOLE_WALL_HEIGHT_MM = 2600
+
+function buildingFloorNode(id: string, name: string, elevation: number): SceneNode {
+  return { id, kind: 'floor', name, elevation }
+}
+
+function buildingWall(floorId: string, id: string, length: number): SceneGraph['walls'][number] {
+  return {
+    id,
+    kind: 'wall',
+    floorId,
+    start: { x: 0, y: 0 },
+    end: { x: length, y: 0 },
+    thickness: WHOLE_WALL_THICKNESS_MM,
+    height: WHOLE_WALL_HEIGHT_MM,
+  }
+}
+
+// A whole-building scene graph from explicit floor nodes and walls, so a test owns every
+// reference and can hold one floor fixed while editing another (the projection
+// sceneGraphForBuilding hands the reconciler in building scope).
+function multiFloorGraph(nodes: SceneNode[], walls: SceneGraph['walls']): SceneGraph {
+  return {
+    nodes,
+    walls,
+    rooms: [],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+describe('createFramedSceneReconciler whole-building reuse', () => {
+  it('reuses an unchanged floor group when another floor of the building is edited', () => {
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const ground = buildingFloorNode('floor:g', 'Ground', 0)
+    const upper = buildingFloorNode('floor:u', 'Upper', WHOLE_UPPER_ELEVATION_MM)
+    const groundWall = buildingWall('g', 'wall:g1', WHOLE_GROUND_LENGTH_MM)
+
+    const first = reconciler.reconcile(
+      multiFloorGraph(
+        [ground, upper],
+        [groundWall, buildingWall('u', 'wall:u1', WHOLE_UPPER_LENGTH_MM)],
+      ),
+      paint,
+    )
+    // Capture the ground floor's wall group before the edit: reuse reparents it into the new root.
+    const groundWallFirst = findByEntityId(first.root, 'wall:g1')
+    expect(groundWallFirst).not.toBeNull()
+
+    // Edit only the upper floor (a fresh upper node and a fresh, wider upper wall), keeping the
+    // ground floor node and its wall by reference so the ground floor's build is reused.
+    const upperEdited = buildingFloorNode('floor:u', 'Upper', WHOLE_UPPER_ELEVATION_MM)
+    const second = reconciler.reconcile(
+      multiFloorGraph(
+        [ground, upperEdited],
+        [groundWall, buildingWall('u', 'wall:u1', WHOLE_UPPER_WIDENED_MM)],
+      ),
+      paint,
+    )
+
+    expect(findByEntityId(second.root, 'wall:g1')).toBe(groundWallFirst)
+  })
+
+  it('keeps every floor after a single-floor reconcile reused a shared build (no stranded geometry)', () => {
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const ground = buildingFloorNode('floor:g', 'Ground', 0)
+    const upper = buildingFloorNode('floor:u', 'Upper', WHOLE_UPPER_ELEVATION_MM)
+    const groundWall = buildingWall('g', 'wall:g1', WHOLE_GROUND_LENGTH_MM)
+    const upperWall = buildingWall('u', 'wall:u1', WHOLE_UPPER_LENGTH_MM)
+    const building = (): SceneGraph => multiFloorGraph([ground, upper], [groundWall, upperWall])
+
+    reconciler.reconcile(building(), paint)
+    // The active-floor view of the ground floor reuses the ground build (same ground node and
+    // wall references) and reparents its sub-groups out of the building scene.
+    reconciler.reconcile(multiFloorGraph([ground], [groundWall]), paint)
+    // Switching back to the whole building must not return a stale scene missing the ground floor.
+    const rebuilt = reconciler.reconcile(building(), paint)
+
+    expect(findByEntityId(rebuilt.root, 'wall:g1')).not.toBeNull()
+    expect(findByEntityId(rebuilt.root, 'wall:u1')).not.toBeNull()
   })
 })
