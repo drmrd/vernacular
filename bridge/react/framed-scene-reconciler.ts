@@ -95,6 +95,25 @@ interface AssembledScene {
 }
 
 /**
+ * Drops every other cached scene that shares a floor build with the scene just assembled.
+ * Assembling reparents a reused build's sub-groups into the new root, stranding them in any
+ * earlier scene that also held that build (for instance the active-floor scene of a floor
+ * that also appears in the whole-building scene). Evicting those scenes forces a rebuild on
+ * their next reconcile rather than a cache hit returning a scene missing that floor.
+ */
+function evictScenesSharingBuilds(
+  scenes: Map<string, AssembledScene>,
+  keptKey: string,
+  builds: CachedFloorBuild[],
+): void {
+  for (const [otherKey, scene] of scenes) {
+    if (otherKey !== keptKey && scene.builds.some((build) => builds.includes(build))) {
+      scenes.delete(otherKey)
+    }
+  }
+}
+
+/**
  * Builds the preview scene by stacking every floor of the graph through the per-entity
  * sub-group builders, caching each floor's build per floor id so an unchanged floor is
  * reused across reconciles. A single-floor (active-floor) graph is the one-floor case;
@@ -128,6 +147,7 @@ export function createFramedSceneReconciler(view: EdgeOverlayOptions = {}): Fram
         return cached.framed
       }
       const framed = frameStackedScene(builds.map(floorAssembly), graph.gradeElevation)
+      evictScenesSharingBuilds(scenesByFloorSet, key, builds)
       scenesByFloorSet.set(key, { framed, builds })
       return framed
     },
