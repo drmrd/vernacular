@@ -40,8 +40,9 @@ export interface FramedScene {
 }
 
 /**
- * Builds the Three.js scene from the graph through the PaintMaterial seam, flags its
- * meshes as shadow casters and receivers, and frames a camera on its world bounds.
+ * Builds the Three.js scene from the graph through the material-provider seam
+ * (ADR-0067), flags its meshes as shadow casters and receivers, and frames a
+ * camera on its world bounds.
  * Lighting is no longer added here: the lights live on the persistent render scene via
  * <SceneLighting> so the color-temperature slider updates them without a rebuild, and
  * keeping the lights out of the build keeps them out of the framed bounds. The view
