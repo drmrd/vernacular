@@ -384,19 +384,25 @@ describe('createFramedSceneReconciler edge overlay', () => {
   })
 })
 
-// Reads the roughness of the 'top' material on a painted floor mesh, structurally so
-// the bridge test does not import three.
+// Reads the roughness of the 'top' material on the painted floor slab. The slab mesh is
+// found by its floor surface ref, so an unrelated 'top'-named material (a wall cap, a
+// junction fill) cannot shadow it whatever the subgroup assembly order. Structural so the
+// bridge test does not import three.
 function topRoughnessOf(root: unknown): number | undefined {
   let roughness: number | undefined
   ;(root as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
-    const mesh = object as { material?: unknown }
-    if (Array.isArray(mesh.material)) {
-      const top = (mesh.material as { name: string; roughness: number }[]).find(
-        (material) => material.name === 'top',
-      )
-      if (top !== undefined) {
-        roughness = top.roughness
-      }
+    const mesh = object as {
+      material?: unknown
+      userData?: { surface?: { kind?: string } }
+    }
+    if (mesh.userData?.surface?.kind !== 'floor' || !Array.isArray(mesh.material)) {
+      return
+    }
+    const top = (mesh.material as { name: string; roughness: number }[]).find(
+      (material) => material.name === 'top',
+    )
+    if (top !== undefined) {
+      roughness = top.roughness
     }
   })
   return roughness
