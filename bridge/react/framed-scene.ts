@@ -22,7 +22,7 @@ import {
   markShadowCasters,
   prepareNearWallTransparency,
   GRADE_ELEVATION_MM,
-  PaintMaterialProvider,
+  PhysicalMaterialProvider,
   sceneBounds,
   type EdgeOverlayOptions,
   type NearWallTarget,
@@ -52,7 +52,7 @@ export function buildFramedScene(
   paint: Record<string, SurfaceTreatment> = {},
   view: EdgeOverlayOptions = {},
 ): FramedScene {
-  const materials = new PaintMaterialProvider({
+  const materials = new PhysicalMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
   })
