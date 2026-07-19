@@ -116,4 +116,17 @@ describe('drawFurniture', () => {
       countOp(plainRecorder.ops, 'stroke'),
     )
   })
+
+  it('sets its own textAlign and textBaseline before drawing the label, instead of inheriting a hostile prior context state', () => {
+    const recorder = recordingContext()
+    // Stands in for a previous draw call (e.g. a centered dimension label) that
+    // left the shared context in a state this label must not silently inherit.
+    recorder.ctx.textAlign = 'center'
+    recorder.ctx.textBaseline = 'middle'
+
+    drawFurniture(recorder.ctx, drawable(), RENDER)
+
+    expect(recorder.ctx.textAlign).toBe('left')
+    expect(recorder.ctx.textBaseline).toBe('alphabetic')
+  })
 })
