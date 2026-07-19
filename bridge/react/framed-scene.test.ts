@@ -6,7 +6,14 @@ import { describe, it, expect } from 'vitest'
 import { buildFramedScene } from './framed-scene'
 import { findByEntityId } from '../../engine/testing'
 import { updateNearWallTransparency } from '../../engine'
-import { DEFAULT_CAMERA_POSE, colorFromHex, solidTreatment, surfaceKey } from '../../core'
+import {
+  DEFAULT_CAMERA_POSE,
+  builtinFinishes,
+  colorFromHex,
+  getEntry,
+  solidTreatment,
+  surfaceKey,
+} from '../../core'
 import type { RoomSceneNode, SceneGraph } from '../../core'
 
 // A square room whose south wall hosts a double-hung window. The wall scene-node
@@ -130,6 +137,30 @@ function furnitureOpacitiesOf(group: unknown): number[] {
     }
   })
   return [...opacities]
+}
+
+// Reads the roughness of the 'top' material on the painted floor slab. The slab mesh is
+// found by its floor surface ref, so an unrelated 'top'-named material (a wall cap, a
+// junction fill) cannot shadow it whatever the subgroup assembly order. Structural so the
+// bridge test does not import three.
+function topRoughnessOf(root: unknown): number | undefined {
+  let roughness: number | undefined
+  ;(root as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
+    const mesh = object as {
+      material?: unknown
+      userData?: { surface?: { kind?: string } }
+    }
+    if (mesh.userData?.surface?.kind !== 'floor' || !Array.isArray(mesh.material)) {
+      return
+    }
+    const top = (mesh.material as { name: string; roughness: number }[]).find(
+      (material) => material.name === 'top',
+    )
+    if (top !== undefined) {
+      roughness = top.roughness
+    }
+  })
+  return roughness
 }
 
 describe('buildFramedScene', () => {
@@ -413,6 +444,48 @@ describe('buildFramedScene', () => {
       }
     })
     expect(topHex).toBe('aa5500')
+  })
+
+  it('paints a room floor with the roughness of its gloss finish', () => {
+    const floorId = 'g'
+    const room: RoomSceneNode = {
+      id: 'room:r1',
+      kind: 'room',
+      floorId,
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 2000, y: 0 },
+        { x: 2000, y: 2000 },
+        { x: 0, y: 2000 },
+      ],
+      clearPolygon: [
+        { x: 60, y: 60 },
+        { x: 1940, y: 60 },
+        { x: 1940, y: 1940 },
+        { x: 60, y: 1940 },
+      ],
+      area: 1880 * 1880,
+      ceilingHeight: 2400,
+    }
+    const paintedGraph: SceneGraph = {
+      nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
+      walls: [],
+      rooms: [room],
+      underlays: [],
+      openings: [],
+      dimensions: [],
+      stairs: [],
+      furniture: [],
+    }
+    const hex = '#aa5500'
+    const ref = { kind: 'floor', floorId } as const
+    const paint = { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), 'gloss') }
+    const glossRoughness = getEntry(builtinFinishes, 'gloss')?.roughness
+
+    const { root } = buildFramedScene(paintedGraph, paint)
+
+    expect(glossRoughness).toBeDefined()
+    expect(topRoughnessOf(root)).toBe(glossRoughness)
   })
 })
 

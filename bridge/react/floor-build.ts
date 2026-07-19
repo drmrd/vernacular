@@ -17,14 +17,13 @@ import {
   buildOpeningSubgroup,
   buildRoomSubgroup,
   buildWallSubgroup,
-  PaintMaterialProvider,
+  PhysicalMaterialProvider,
   type EdgeOverlayOptions,
+  type MaterialProvider,
   type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
 import { roomSceneNodeEqual } from './room-scene-node-equal'
-
-type PaintMaterials = InstanceType<typeof PaintMaterialProvider>
 
 type FurnitureModel = Parameters<typeof buildFurnitureModelGroup>[0]
 
@@ -150,7 +149,7 @@ export function sameRefs<T>(a: readonly T[], b: readonly T[]): boolean {
  * the prior build to reuse from.
  */
 interface SubgroupBuildContext {
-  materials: PaintMaterials
+  materials: MaterialProvider
   view: EdgeOverlayOptions
   prev: CachedFloorBuild | undefined
 }
@@ -304,7 +303,7 @@ interface FloorBuildInput extends FloorRequest {
  */
 export function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
   const { floorNode, entities, paint, view, prev, models, readySignature } = input
-  const materials = new PaintMaterialProvider({
+  const materials = new PhysicalMaterialProvider({
     lightColor: kelvinToLinearRgb(DEFAULT_COLOR_TEMPERATURE_K),
     paint,
   })

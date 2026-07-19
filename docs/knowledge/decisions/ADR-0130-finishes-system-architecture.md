@@ -22,6 +22,7 @@ related:
     decisions/ADR-0056-surface-paint-selection-and-treatments,
     decisions/ADR-0048-paint-color-palette-and-site-metadata,
     decisions/ADR-0067-three-dimensional-painted-preview,
+    decisions/ADR-0156-luminance-calibration-convention,
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0044-mvp-delivery-tracks-and-parallel-resequencing,
     decisions/ADR-0029-schema-registry-migration-framework,
@@ -39,10 +40,14 @@ sourceFiles:
     core/scene/exterior-walls.ts,
     core/scene/construction-profile.ts,
     engine/materials/paint-material-provider.ts,
+    engine/materials/surface-material-provider.ts,
+    engine/materials/physical-material-provider.ts,
+    bridge/react/framed-scene.ts,
+    bridge/react/floor-build.ts,
     editor/plan/room-finish-section.tsx,
   ]
 status: proposed
-updated: 2026-06-29
+updated: 2026-07-14
 ---
 
 # ADR-0130: Finishes system architecture
@@ -217,3 +222,28 @@ paint store.
   finish needs and the `tiled-image` variant will not need.
 - Issues #208 (epic), #377 (floor, done), #378 (interior wall), #379 (exterior cladding), and
   the coordinating #205, #364, #365, #380.
+
+## Update (2026-07-14): the finish registry goes live for solid paints
+
+Slice 3 of the realistic-environmental-lighting epic (#449) makes the finish registry
+(`core/registries/finishes.ts`) render-affecting. `PhysicalMaterialProvider` resolves a
+solid paint's `finishId` against the registry and renders the surface as a
+`MeshPhysicalMaterial` whose roughness, sheen, and specular come from that entry, so a
+flat wall and a gloss wall of the same color separate by finish instead of sharing one
+default roughness. An unregistered `finishId` falls back to the matte entry, so an
+unknown finish inherits real wall-paint parameters rather than three.js's glossy material
+defaults.
+
+This is the finish-parameter counterpart to the registry-aware `pattern` lookup this
+decision reserved, on a separate axis. A `finishId` on a `solid` treatment drives the
+physically based material parameters; a `patternId` on a `pattern` treatment names a drawn
+or photographic material. The solid-finish path is delivered here; the merged
+`pattern`-registry lookup this decision describes for wall and cladding materials is still
+the interior-wall slice's to add. The provider swaps in at the material seam
+([[ADR-0067-three-dimensional-painted-preview]]) without touching the geometry builders or
+the store, so no schema, model, or migration change rides along, and the appearance is
+read under the luminance convention of [[ADR-0156-luminance-calibration-convention]].
+
+This decision stays `proposed`. The solid-finish slice is now realized in code, as the
+floor slice already was, but the interior and exterior wall decisions still await owner
+ratification before the wall slices build against them.

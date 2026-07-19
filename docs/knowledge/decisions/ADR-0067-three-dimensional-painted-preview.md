@@ -18,6 +18,8 @@ tags:
     react-three-fiber,
     testing,
     visual-tier,
+    finishes,
+    physically-based-materials,
   ]
 related:
   [
@@ -25,6 +27,8 @@ related:
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
     decisions/ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier,
     decisions/ADR-0056-surface-paint-selection-and-treatments,
+    decisions/ADR-0130-finishes-system-architecture,
+    decisions/ADR-0156-luminance-calibration-convention,
     decisions/ADR-0044-mvp-delivery-tracks-and-parallel-resequencing,
   ]
 sourceFiles:
@@ -37,10 +41,13 @@ sourceFiles:
     engine/scene/wall-builder.ts,
     engine/scene/room-builder.ts,
     bridge/react/framed-scene.ts,
+    bridge/react/floor-build.ts,
     bridge/react/webgpu-scene-view.tsx,
+    engine/materials/surface-material-provider.ts,
+    engine/materials/physical-material-provider.ts,
   ]
 status: current
-updated: 2026-06-13
+updated: 2026-07-14
 ---
 
 # ADR-0067: Painted three-dimensional preview: widen the material seam to a surface identity
@@ -169,3 +176,25 @@ reviewed.
   in the light, so paint is shown under the illuminant.
 - [[ADR-0061-three-dimensional-wall-shell-junctions-and-visual-tier]]: the per-surface
   material groups by role this slice keys paint onto.
+
+## Update (2026-07-14): the physical material provider makes finishId live
+
+Slice 3 of the realistic-environmental-lighting epic (#449) adds a third provider behind
+this seam, `PhysicalMaterialProvider`, and constructs it at the live view's two build
+entry points, `bridge/react/framed-scene.ts` and `bridge/react/floor-build.ts`, in place
+of `PaintMaterialProvider`. The seam signature does not move: the new provider is a
+drop-in substitution behind the same `material(role, ref?)` contract, the additive
+posture this decision took. A solid paint now reads its `finishId` and renders as a
+`MeshPhysicalMaterial` carrying the finish's roughness, sheen, and specular
+([[ADR-0130-finishes-system-architecture]]); a pattern treatment and an unpainted surface
+render as before. Until this slice a solid paint's `finishId` was dead data: the seam
+resolved the color, but every finish rendered at one default roughness.
+
+The whole-building floor builder had typed its provider field to the concrete
+`PaintMaterialProvider`. Retyping it to the `MaterialProvider` interface is what lets the
+substitution stay honest, because the sub-group builders only ever call
+`material(role, ref?)`: the seam is the contract they depend on, not a particular
+provider. Paint appearance is reconciled under the epic's daylight image-based lighting
+and Neutral tone mapping, whose luminance meaning is pinned by
+[[ADR-0156-luminance-calibration-convention]]; the color-accuracy gate that reads against
+that convention is the next slice, not this one.

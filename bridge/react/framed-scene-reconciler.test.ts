@@ -1,4 +1,10 @@
+/* eslint-disable max-lines --
+ * A behavior-organized suite whose cases each own a self-contained SceneGraph
+ * literal (reconcile caching, whole-building stacking, ground plane, edge overlay,
+ * and paint). The file length tracks the number of reconciler cases, not any
+ * single hard-to-read unit. */
 import { describe, it, expect } from 'vitest'
+import { builtinFinishes, colorFromHex, getEntry, solidTreatment, surfaceKey } from '../../core'
 import type { Point, SceneGraph, SceneNode, SurfaceTreatment } from '../../core'
 import { isGroundPlane, type SceneRoot } from '../../engine'
 import { collectEntityIds, findByEntityId } from '../../engine/testing'
@@ -375,5 +381,43 @@ describe('createFramedSceneReconciler edge overlay', () => {
     expect(containsEdgeLines(findByEntityId(framed.root, 'room:r'))).toBe(true)
     expect(containsEdgeLines(findByEntityId(framed.root, 'opening:window'))).toBe(true)
     expect(containsEdgeLines(findByEntityId(framed.root, 'chair'))).toBe(true)
+  })
+})
+
+// Reads the roughness of the 'top' material on the painted floor slab. The slab mesh is
+// found by its floor surface ref, so an unrelated 'top'-named material (a wall cap, a
+// junction fill) cannot shadow it whatever the subgroup assembly order. Structural so the
+// bridge test does not import three.
+function topRoughnessOf(root: unknown): number | undefined {
+  let roughness: number | undefined
+  ;(root as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
+    const mesh = object as {
+      material?: unknown
+      userData?: { surface?: { kind?: string } }
+    }
+    if (mesh.userData?.surface?.kind !== 'floor' || !Array.isArray(mesh.material)) {
+      return
+    }
+    const top = (mesh.material as { name: string; roughness: number }[]).find(
+      (material) => material.name === 'top',
+    )
+    if (top !== undefined) {
+      roughness = top.roughness
+    }
+  })
+  return roughness
+}
+
+describe('createFramedSceneReconciler paint', () => {
+  it('paints a room floor with the roughness of its gloss finish', () => {
+    const hex = '#aa5500'
+    const ref = { kind: 'floor', floorId: 'g' } as const
+    const paint = { [surfaceKey(ref)]: solidTreatment(colorFromHex(hex), 'gloss') }
+    const glossRoughness = getEntry(builtinFinishes, 'gloss')?.roughness
+
+    const framed = createFramedSceneReconciler().reconcile(furnishedRoomGraph(), paint)
+
+    expect(glossRoughness).toBeDefined()
+    expect(topRoughnessOf(framed.root)).toBe(glossRoughness)
   })
 })
