@@ -21,8 +21,6 @@ export interface DrawableOpening {
   head?: VoidContourKind | undefined
 }
 
-// The provisional gap fill that breaks the wall stroke; the slice documents this as a background-color gap.
-const OPENING_GAP_COLOR = '#ffffff'
 const OPENING_INK_WIDTH = 1
 const OPENING_SELECTION_WIDTH = 2
 // The pivot dot radius in screen pixels.
@@ -42,6 +40,8 @@ interface OpeningPainter {
   ink: string
   /** The highlight stroke for a selected opening, from the palette selection color. */
   selection: string
+  /** The wall-break gap fill, from the palette background so it matches the canvas in both themes. */
+  background: string
 }
 
 function add(a: Point, b: Point): Point {
@@ -130,7 +130,7 @@ function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void 
 
 /** Fill the opening footprint in the gap color so the wall stroke is broken, then stroke a jamb cap across the wall at each jamb. */
 function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void {
-  painter.ctx.fillStyle = OPENING_GAP_COLOR
+  painter.ctx.fillStyle = painter.background
   tracePolygon(painter, openingCorners(node))
   painter.ctx.fill()
 
@@ -337,6 +337,7 @@ export function drawOpening(
     viewport: render.viewport,
     ink: render.palette.wall,
     selection: render.palette.selection,
+    background: render.palette.roomFill,
   }
   drawGapAndJambs(painter, opening.node)
   const routine = familyRoutine(opening.symbol)
