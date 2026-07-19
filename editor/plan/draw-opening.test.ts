@@ -235,4 +235,15 @@ describe('drawOpening', () => {
       countOp(plainRecorder.ops, 'stroke'),
     )
   })
+
+  it('fills the wall-break gap with the palette background so it matches the canvas in both themes', () => {
+    const recorder = recordingContext()
+    // A dark-theme palette: the gap fill must track this, not a hardcoded light color.
+    const darkPalette = { ...DEFAULT_PLAN_PALETTE, roomFill: '#23344d' }
+
+    drawOpening(recorder.ctx, drawable('door-swing'), { viewport: VIEWPORT, palette: darkPalette })
+
+    expect(recorder.fills).toContain('#23344d')
+    expect(recorder.fills).not.toContain('#ffffff')
+  })
 })
