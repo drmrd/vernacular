@@ -78,7 +78,7 @@ const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
 // to the default up vector. The floor fills the canvas, so a centre sample patch is
 // unambiguously floor. The camera differs from the color-check state, but the reference
 // lighting (ADR-0156) is unchanged; see ADR-0157.
-const COLOR_ACCURACY_FLOOR_CAMERA: CameraPose = {
+const COLOR_ACCURACY_CAMERA_POSE: CameraPose = {
   position: { x: 2000, y: 2400, z: -1500 },
   target: { x: 2000, y: 0, z: -1500 },
   up: { x: 0, y: 0, z: -1 },
@@ -128,7 +128,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       realistic: true,
       colorCheck: true,
       scene: 'shell',
-      cameraPose: COLOR_ACCURACY_FLOOR_CAMERA,
+      cameraPose: COLOR_ACCURACY_CAMERA_POSE,
     },
   ],
   [
