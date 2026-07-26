@@ -13,9 +13,11 @@ describe('color-accuracy swatches and tolerance', () => {
       '#cc6633',
       '#3f7f5f',
     ])
-    for (const swatch of COLOR_ACCURACY_SWATCHES) {
-      expect(swatch.name.length).toBeGreaterThan(0)
-    }
+    expect(COLOR_ACCURACY_SWATCHES.map((swatch) => swatch.name)).toEqual([
+      'Neutral mid-gray',
+      'Warm saturated',
+      'Cool saturated',
+    ])
   })
 
   it('reports a color within tolerance of itself', () => {
