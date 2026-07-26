@@ -51,14 +51,6 @@ test.describe('Decorating color-accuracy gate', () => {
       const sampled = colorFromOkLab(srgbToOkLab(sampledSrgb))
       const distance = perceptualDistance(sampled, swatch.color)
 
-      // Calibration print (removed once the tolerance is pinned): records the sampled color and
-      // its OKLab distance from the swatch on whichever backend the runner uses, so the linux
-      // SwiftShader spread can be read from the CI log alongside the local darwin numbers.
-      // eslint-disable-next-line no-console -- temporary cross-backend calibration measurement
-      console.log(
-        `COLOR-ACCURACY ${swatch.name}: sampled ${sampled.srgbHex} vs ${swatch.color.srgbHex} = ${distance.toFixed(4)}`,
-      )
-
       expect(
         withinColorTolerance(sampled, swatch.color),
         `${swatch.name}: sampled ${sampled.srgbHex} vs reference ${swatch.color.srgbHex}, ` +

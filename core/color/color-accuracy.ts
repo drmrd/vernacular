@@ -20,13 +20,19 @@ export const COLOR_ACCURACY_SWATCHES: readonly NamedColor[] = [
 
 /**
  * The pass tolerance for the color-accuracy gate, expressed as a maximum OKLab
- * `perceptualDistance` between a rendered sample and its reference swatch. This
- * value is provisional: it is the starting expectation from the design spec
- * ("The tolerance"), not yet the measured cross-backend spread. It is replaced
- * by the empirically measured ceiling, derivation recorded in ADR-0157, once
- * the neutral-gray round-trip is sampled on both render backends.
+ * `perceptualDistance` between a rendered sample and its reference swatch.
+ *
+ * Measured, not guessed (design spec "The tolerance"; ADR-0157). The three
+ * swatches were rendered on the shell floor under the color-check reference
+ * condition and sampled on both render backends the project uses. The sampled
+ * distances were byte-identical across darwin Metal and linux SwiftShader (zero
+ * cross-backend spread, the harness render is deterministic): warm 0.0271, gray
+ * 0.0409, cool 0.0447. The tolerance is the observed maximum (0.0447) plus a
+ * margin for future render drift, rounded to 0.06. This sits at a few
+ * just-noticeable differences, so a real hue error or gross value error fails
+ * while the expected lit-floor value offset passes.
  */
-export const COLOR_ACCURACY_TOLERANCE = 0.05
+export const COLOR_ACCURACY_TOLERANCE = 0.06
 
 /**
  * Whether a sampled color reads as its reference swatch: the OKLab
