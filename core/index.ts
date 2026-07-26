@@ -597,6 +597,11 @@ export { readableTextColor } from './color/readable-text-color'
 export type { Color, NamedColor } from './color/color'
 export { colorFromHex, colorFromOkLab } from './color/color'
 export { mixColors, nearestColor, perceptualDistance } from './color/operations'
+export {
+  COLOR_ACCURACY_SWATCHES,
+  COLOR_ACCURACY_TOLERANCE,
+  withinColorTolerance,
+} from './color/color-accuracy'
 export type { Palette } from './registries/palettes'
 export { PALETTE_REGISTRY_VERSION, builtinPalettes } from './registries/palettes'
 export type { ProjectPalette } from './model/types'
