@@ -124,6 +124,30 @@ describe('harnessEnvironmentState', () => {
     expect(harnessEnvironmentState('overcast-noon')?.cameraPose).toBeUndefined()
     expect(harnessEnvironmentState('ambient-occlusion')?.cameraPose).toBeUndefined()
   })
+
+  it('resolves color-accuracy to the color-check reference lighting with a floor-framing camera', () => {
+    const colorAccuracy = harnessEnvironmentState('color-accuracy')
+
+    expect(colorAccuracy).toMatchObject({
+      site: canonicalSite,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+      realistic: true,
+      colorCheck: true,
+      scene: 'shell',
+    })
+
+    const cameraPose = colorAccuracy?.cameraPose
+    expect(cameraPose).toBeDefined()
+    expect(cameraPose?.position.y).toBeGreaterThan(cameraPose?.target.y ?? Infinity)
+
+    const target = cameraPose?.target
+    expect(target?.x).toBeGreaterThan(0)
+    expect(target?.x).toBeLessThan(4000)
+    expect(target?.z).toBeGreaterThan(-3000)
+    expect(target?.z).toBeLessThan(0)
+    expect(target?.y).toBeGreaterThanOrEqual(0)
+    expect(target?.y).toBeLessThanOrEqual(2600)
+  })
 })
 
 describe('resolveHarnessScene', () => {
@@ -147,6 +171,10 @@ describe('resolveHarnessScene', () => {
 
   it('resolves an absent scene param to undefined', () => {
     expect(resolveHarnessScene(undefined)).toBeUndefined()
+  })
+
+  it('resolves color-accuracy to the shell fixture', () => {
+    expect(resolveHarnessScene('color-accuracy')).toBe('shell')
   })
 })
 
