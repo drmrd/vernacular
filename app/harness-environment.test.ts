@@ -16,6 +16,19 @@ const canonicalSite: Site = {
   timezone: 'America/New_York',
 }
 
+// The shell room's clear floor lives at plan (60,60)..(3940,2940), 2600 mm tall; planToWorld
+// maps plan (x, y) to world (x, height, -y), so a camera target on the floor sits within these
+// world bounds. Shared by the interior-camera states (window-light, color-accuracy).
+function expectTargetOnShellFloor(target: { x: number; y: number; z: number } | undefined): void {
+  expect(target).toBeDefined()
+  expect(target?.x).toBeGreaterThan(0)
+  expect(target?.x).toBeLessThan(4000)
+  expect(target?.z).toBeGreaterThan(-3000)
+  expect(target?.z).toBeLessThan(0)
+  expect(target?.y).toBeGreaterThanOrEqual(0)
+  expect(target?.y).toBeLessThanOrEqual(2600)
+}
+
 describe('harnessEnvironmentState', () => {
   it('resolves equinox-noon to spring-equinox noon at the canonical site in realistic mode', () => {
     expect(harnessEnvironmentState('equinox-noon')).toEqual({
@@ -107,14 +120,7 @@ describe('harnessEnvironmentState', () => {
       scene: 'shell',
     })
 
-    const target = windowLight?.cameraPose?.target
-    expect(target).toBeDefined()
-    expect(target?.x).toBeGreaterThan(0)
-    expect(target?.x).toBeLessThan(4000)
-    expect(target?.z).toBeGreaterThan(-3000)
-    expect(target?.z).toBeLessThan(0)
-    expect(target?.y).toBeGreaterThanOrEqual(0)
-    expect(target?.y).toBeLessThanOrEqual(2600)
+    expectTargetOnShellFloor(windowLight?.cameraPose?.target)
   })
 
   it('resolves the existing named states without the new camera pose field', () => {
@@ -138,15 +144,11 @@ describe('harnessEnvironmentState', () => {
 
     const cameraPose = colorAccuracy?.cameraPose
     expect(cameraPose).toBeDefined()
-    expect(cameraPose?.position.y).toBeGreaterThan(cameraPose?.target.y ?? Infinity)
+    const pose = cameraPose as NonNullable<typeof cameraPose>
 
-    const target = cameraPose?.target
-    expect(target?.x).toBeGreaterThan(0)
-    expect(target?.x).toBeLessThan(4000)
-    expect(target?.z).toBeGreaterThan(-3000)
-    expect(target?.z).toBeLessThan(0)
-    expect(target?.y).toBeGreaterThanOrEqual(0)
-    expect(target?.y).toBeLessThanOrEqual(2600)
+    expect(pose.position.y).toBeGreaterThan(pose.target.y)
+    expect(pose.up).toEqual({ x: 0, y: 0, z: -1 })
+    expectTargetOnShellFloor(pose.target)
   })
 })
 
