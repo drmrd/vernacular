@@ -3,10 +3,10 @@ import {
   COLOR_ACCURACY_SWATCHES,
   COLOR_ACCURACY_TOLERANCE,
   withinColorTolerance,
-} from '../../core/color/color-accuracy'
-import { colorFromOkLab } from '../../core/color/color'
-import { srgbToOkLab } from '../../core/color/oklab'
-import { perceptualDistance } from '../../core/color/operations'
+  colorFromOkLab,
+  srgbToOkLab,
+  perceptualDistance,
+} from '../../core'
 import { sampleCanvasColor } from './scene-helpers'
 
 // The color-accuracy gate, the headline acceptance of the realistic-environmental-lighting
