@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { drawFurniture, furnitureSymbol, type DrawableFurniture } from './draw-furniture'
 import { recordingContext } from './draw-plan-test-fixtures'
-import { DEFAULT_PLAN_PALETTE } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH } from './plan-palette'
 import type { Viewport } from './viewport'
 import { createFurnitureInstance, type FurnitureInstance, type Point } from '../../core'
 
@@ -115,6 +115,14 @@ describe('drawFurniture', () => {
     expect(countOp(selectedRecorder.ops, 'stroke')).toBeGreaterThan(
       countOp(plainRecorder.ops, 'stroke'),
     )
+  })
+
+  it('strokes ink at the fixture weight, the medium role in the plan ink hierarchy', () => {
+    const recorder = recordingContext()
+
+    drawFurniture(recorder.ctx, drawable(), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.fixture)
   })
 
   it('sets its own textAlign and textBaseline before drawing the label, instead of inheriting a hostile prior context state', () => {

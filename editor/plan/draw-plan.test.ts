@@ -11,7 +11,7 @@ import {
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { labelBox, labelsOverlap } from './label-layout'
-import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
 import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
@@ -49,6 +49,15 @@ describe('drawPlan', () => {
     expect(recorder.segments).toHaveLength(1)
     expect(recorder.segments[0]?.from).toEqual([0, 0])
     expect(recorder.segments[0]?.to).toEqual([1000 * DEFAULT_PLAN_SCALE, 0])
+  })
+
+  it('floors the wall stroke width at the cut ink weight, the heaviest role in the plan ink hierarchy, when the wall is too thin to show at scale', () => {
+    const recorder = recordingContext()
+    const hairlineWall: WallSceneNode = { ...wall, thickness: 1 }
+
+    drawPlan(recorder.ctx, planOptions({ walls: [hairlineWall] }))
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
 
   it('strokes a selected wall in a different color than an unselected one', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { drawStair } from './draw-stair'
 import { recordingContext } from './draw-plan-test-fixtures'
-import { DEFAULT_PLAN_PALETTE } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH } from './plan-palette'
 import type { Viewport } from './viewport'
 import type { StairSceneNode } from '../../core'
 
@@ -38,5 +38,13 @@ describe('drawStair', () => {
     expect(countOp(recorder.ops, 'stroke')).toBeGreaterThanOrEqual(1)
     // At least one path is started for the outline or a tread/arrow run line.
     expect(countOp(recorder.ops, 'moveTo')).toBeGreaterThanOrEqual(1)
+  })
+
+  it('strokes ink at the fixture weight, the medium role in the plan ink hierarchy', () => {
+    const recorder = recordingContext()
+
+    drawStair(recorder.ctx, node, RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.fixture)
   })
 })

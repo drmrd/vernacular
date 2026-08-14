@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { recordingContext } from './draw-plan-test-fixtures'
-import { DEFAULT_PLAN_PALETTE } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH } from './plan-palette'
 import type { Viewport } from './viewport'
 import type { OpeningSceneNode, VoidContourKind } from '../../core'
 
@@ -234,6 +234,14 @@ describe('drawOpening', () => {
     expect(countOp(selectedRecorder.ops, 'stroke')).toBeGreaterThan(
       countOp(plainRecorder.ops, 'stroke'),
     )
+  })
+
+  it('strokes ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
 
   it('fills the wall-break gap with the palette background so it matches the canvas in both themes', () => {
