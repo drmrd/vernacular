@@ -44,11 +44,19 @@ label depending on draw order.
 
 ## Decision
 
-1. **Three ink roles, not a per-layer constant.** `editor/plan/plan-ink.ts` exports `PlanInkRole`
+1. **Three ink roles for the wall, opening, stair, furniture, and dimension ink strokes, not a
+   per-layer constant.** `editor/plan/plan-ink.ts` exports `PlanInkRole`
    (`'cut' | 'fixture' | 'annotation'`) and `PLAN_INK_WIDTH`, a lookup table in device-independent
-   pixels: `cut: 2.5`, `fixture: 1.5`, `annotation: 1`. Every draw routine that sets a line weight
-   reads it from this table instead of a local literal, so retuning the hierarchy is a one-file
-   change.
+   pixels: `cut: 2.5`, `fixture: 1.5`, `annotation: 1`. Every wall, opening, stair, furniture, and
+   dimension ink stroke reads its weight from this table instead of a local literal, so retuning
+   the hierarchy is a one-file change for those strokes.
+
+   This promise is scoped to those ink strokes, not to every line width the plan canvas draws. The
+   grid, the wall-draw preview line, the snap-indicator marker, the drag-select marquee, the
+   move-drag ghost, the underlay calibration line, the surface-paint band and highlight widths, and
+   the dimension and furniture selection highlights all remain local literals outside this table.
+   Bringing them into the hierarchy is out of scope here and tracked in issue #524.
+
 2. **Role assignment follows what a stroke represents, not which file draws it.** Walls and the
    jamb caps that close an opening's break in the wall stroke are `cut`: they are the structural
    section line. Stairs and furniture footprints are `fixture`: objects sitting within the cut
@@ -56,12 +64,15 @@ label depending on draw order.
    opening's door leaf, its swing arc, and a curved head are also `annotation`, since they read as
    a motion diagram layered over the cut rather than part of the cut itself.
 3. **Selection and hover emphasis are defined relative to `cut`, not as an independent literal.**
-   The opening selection highlight and the plan-wide hover highlight are each
-   `PLAN_INK_WIDTH.cut + 1`. Before this decision both were separate hardcoded constants (2 and 3)
-   that happened to read heavier than the old uniform 1px ink. Once `cut` moved to 2.5, the opening
-   selection weight of 2 would have read thinner than the ink it was meant to emphasize. Defining
-   emphasis as an offset from `cut` keeps that relationship correct under a future retune instead of
-   requiring every emphasis constant to be hand-checked against it.
+   The opening selection highlight, the selected-room highlight, and the plan-wide hover highlight
+   are each `PLAN_INK_WIDTH.cut + 1`. Before this decision each was its own hardcoded constant (2,
+   2, and 3) that happened to read heavier than the old uniform 1px ink. Once `cut` moved to 2.5,
+   the opening and room selection weight of 2 would have read thinner than the ink they were meant
+   to emphasize. Defining emphasis as an offset from `cut` keeps that relationship correct under a
+   future retune instead of requiring every emphasis constant to be hand-checked against it. The
+   dimension and furniture selection highlights are left as their own literals for now: both still
+   clear their ink weight, so nothing is currently wrong, and deriving them is folded into the
+   issue #524 sweep instead of this ADR.
 4. **`plan-ink.ts` is a module separate from `plan-palette.ts`.** `plan-palette.ts` resolves the
    canvas's colors from the design-system's CSS custom properties, a themed value read at draw time.
    Ink weight is a fixed rendering scale that does not vary by theme. Keeping the two apart keeps
@@ -118,15 +129,21 @@ applied one level up, from the base weights to the derived ones.
 
 ## Consequences
 
-- `editor/plan/plan-ink.ts` is now the single place that defines every plan-canvas line weight. A
-  future theme, including Arris once it reaches the canvas, retunes the hierarchy there.
+- `editor/plan/plan-ink.ts` is now the single place that defines the cut/fixture/annotation ink
+  strokes. A future theme, including Arris once it reaches the canvas, retunes those strokes there;
+  the literals listed in decision 1 still need a per-file edit until issue #524 lands.
 - `editor/plan/plan-palette.ts`'s header claim, that it holds the colors the 2D plan canvas draws
   with, is accurate again now that ink weight lives in its own module.
-- The opening selection highlight widened from 2px to 3.5px and the hover highlight from 3px to
-  3.5px. The door leaf, swing arc, and head arcs narrowed from 2.5px to 1px. No committed visual
-  baseline covers the 2D plan canvas as of this change (checked: the home-page baseline renders an
-  empty new project with no walls; the Storybook and scene-webgl baselines do not render
+- Net against origin/main: the opening selection highlight widened from 2px to 3.5px, the hover
+  highlight from 3px to 3.5px, and the selected-room highlight from 2px to 3.5px. The wall-stroke
+  floor and the opening jamb caps both widened from 1px to 2.5px, so a wall at extreme zoom-out, or
+  an opening's wall-break jamb, now draws 2.5 times heavier than before this branch. No committed
+  visual baseline covers the 2D plan canvas as of this change (checked: the home-page baseline
+  renders an empty new project with no walls; the Storybook and scene-webgl baselines do not render
   `PlanView`), so none needed a refresh.
+- The door leaf, swing arc, and head arcs are net unchanged at 1px. They moved to 2.5px partway
+  through this branch's history and split back out to the annotation weight in a later cycle, so
+  comparing the branch's start and end states shows no change there.
 - ADR-0069 and the visual-design-language spec's icon/wall coupling claim is superseded by this ADR
   for the plan-canvas half of that claim. The icon half is untouched and still governs icon stroke
   width. Neither document is edited by this ADR; a future pass through either can drop the stale
@@ -134,6 +151,9 @@ applied one level up, from the base weights to the derived ones.
 - The wall-break gap fill's known mismatch, on the exterior side of exterior walls and in
   painted-floor rooms, is carried forward as a documented limitation rather than silently accepted.
   Issue #521 tracks the geometric fix that removes the gap-fill approach entirely.
+- The grid, preview, snap-marker, marquee, ghost, underlay calibration, surface-paint, and
+  dimension/furniture selection line widths stay outside `PLAN_INK_WIDTH` for now. Issue #524
+  tracks deriving them from the hierarchy in a later sweep.
 
 ## References
 
@@ -148,3 +168,4 @@ applied one level up, from the base weights to the derived ones.
 - `editor/plan/draw-opening.ts`, `draw-dimension.ts`, `draw-stair.ts`, `draw-furniture.ts`,
   `draw-plan.ts` (the role assignments).
 - Issue #521 (the durable geometric fix for the wall-break gap fill).
+- Issue #524 (the line-weight sweep for the remaining plan-canvas literals).
