@@ -83,7 +83,7 @@ export interface FloorRequest {
  */
 export interface CachedFloorBuild extends FloorRequest {
   wall: WallBuild
-  wallNodes: WallSceneNode[]
+  entities: FloorEntities
   wallOpeningNodes: OpeningSceneNode[]
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>
@@ -91,7 +91,7 @@ export interface CachedFloorBuild extends FloorRequest {
   roomPolygons: readonly (readonly Point[])[]
 }
 
-interface FloorEntities {
+export interface FloorEntities {
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
   openings: OpeningSceneNode[]
@@ -174,7 +174,7 @@ function reuseOrBuildWall({
 }: WallBuildInput): WallBuild {
   if (
     prev !== undefined &&
-    sameRefs(entities.walls, prev.wallNodes) &&
+    sameRefs(entities.walls, prev.entities.walls) &&
     sameRefs(wallOpeningNodes, prev.wallOpeningNodes)
   ) {
     return prev.wall
@@ -318,7 +318,7 @@ export function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
     paint,
     readySignature,
     wall,
-    wallNodes: entities.walls,
+    entities,
     wallOpeningNodes,
     rooms,
     openings,
