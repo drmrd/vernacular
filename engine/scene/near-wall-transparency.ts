@@ -146,25 +146,25 @@ function privatizeMeshMaterials(mesh: THREE.Mesh): FadeMaterial[] {
   return privatized
 }
 
-/** Clones the materials of every mesh under the object carrying `entityId`, or none if absent. */
-function cloneEntityMaterials(root: THREE.Object3D, entityId: string): FadeMaterial[] {
+/** Privatizes the materials of every mesh under the object carrying `entityId`, or none if absent. */
+function privatizeEntityMaterials(root: THREE.Object3D, entityId: string): FadeMaterial[] {
   const anchor = findNodeBy(root, (node) => node.userData.entityId === entityId)
   if (anchor === null) {
     return []
   }
-  const cloned: FadeMaterial[] = []
+  const privatized: FadeMaterial[] = []
   anchor.traverse((descendant) => {
     if (descendant instanceof THREE.Mesh) {
-      cloned.push(...privatizeMeshMaterials(descendant))
+      privatized.push(...privatizeMeshMaterials(descendant))
     }
   })
-  return cloned
+  return privatized
 }
 
 /**
- * Enrolls one privatized fade target for a junction fill mesh. Cloning is required
- * because the fill's side faces share the `junction` role material; pinning the shared
- * instance would pin every junction's material. A fill whose junction has a non-fading
+ * Enrolls one privatized fade target for a junction fill mesh. A private material is
+ * required because the fill's side faces share the `junction` role material; pinning the
+ * shared instance would pin every junction's material. A fill whose junction has a non-fading
  * incident wall holds opaque unconditionally (the ADR-0103 tee, `holdOpaque` on every
  * record). A pure-exterior fill instead carries the facing of each incident wall, so
  * the per-frame update fades it only when the camera is outside all of them (ADR-0140).
@@ -284,10 +284,12 @@ function buildWallTarget(
   const materials = findMeshesBy(root, (node) => node.userData.entityId === wall.wallId).flatMap(
     (mesh) => privatizeMeshMaterials(mesh),
   )
-  materials.push(...wall.openingIds.flatMap((openingId) => cloneEntityMaterials(root, openingId)))
+  materials.push(
+    ...wall.openingIds.flatMap((openingId) => privatizeEntityMaterials(root, openingId)),
+  )
   materials.push(
     ...(wall.furnitureIds ?? []).flatMap((furnitureId) =>
-      cloneEntityMaterials(root, furnitureEntityId(furnitureId)),
+      privatizeEntityMaterials(root, furnitureEntityId(furnitureId)),
     ),
   )
   return [{ materials, point: facing.point, outwardNormal: facing.outwardNormal }]
