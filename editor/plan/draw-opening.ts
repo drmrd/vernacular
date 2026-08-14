@@ -7,6 +7,7 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { openingCorners, swingLeafGeometry } from './opening-geometry'
+import { PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -21,10 +22,14 @@ export interface DrawableOpening {
   head?: VoidContourKind | undefined
 }
 
-// The provisional gap fill that breaks the wall stroke; the slice documents this as a background-color gap.
-const OPENING_GAP_COLOR = '#ffffff'
-const OPENING_INK_WIDTH = 1
-const OPENING_SELECTION_WIDTH = 2
+// The jamb caps close the wall's cut, so they share its cut weight.
+const OPENING_INK_WIDTH = PLAN_INK_WIDTH.cut
+// The door leaf, its swing arc, and a curved head read as drafting motion
+// annotation, lighter than the cut plane the jamb caps sit in.
+const OPENING_SYMBOL_INK_WIDTH = PLAN_INK_WIDTH.annotation
+// Defined relative to the cut weight, not a literal, so a future retune of the
+// cut role keeps the selection highlight reading heavier than the ink it marks.
+const OPENING_SELECTION_WIDTH = PLAN_INK_WIDTH.cut + 1
 // The pivot dot radius in screen pixels.
 const PIVOT_DOT_RADIUS_PX = 3
 const FULL_CIRCLE = Math.PI * 2
@@ -42,6 +47,15 @@ interface OpeningPainter {
   ink: string
   /** The highlight stroke for a selected opening, from the palette selection color. */
   selection: string
+  /**
+   * The wall-break gap fill, sourced from the palette room fill. Exact for an
+   * interior wall between two unpainted rooms; a known mismatch on the exterior
+   * side of an exterior wall and on a room with a floor paint override, since
+   * the gap paints one opaque color regardless of which side or finish is
+   * showing through it. The durable fix is a geometric break in the wall stroke
+   * rather than a painted-over gap (issue #521).
+   */
+  gapFill: string
 }
 
 function add(a: Point, b: Point): Point {
@@ -130,7 +144,7 @@ function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void 
 
 /** Fill the opening footprint in the gap color so the wall stroke is broken, then stroke a jamb cap across the wall at each jamb. */
 function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void {
-  painter.ctx.fillStyle = OPENING_GAP_COLOR
+  painter.ctx.fillStyle = painter.gapFill
   tracePolygon(painter, openingCorners(node))
   painter.ctx.fill()
 
@@ -142,9 +156,10 @@ function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void 
   }
 }
 
+/** Sets the ink for a door/window symbol stroke: the leaf, its swing arc, or a curved head. */
 function setInk(painter: OpeningPainter): void {
   painter.ctx.strokeStyle = painter.ink
-  painter.ctx.lineWidth = OPENING_INK_WIDTH
+  painter.ctx.lineWidth = OPENING_SYMBOL_INK_WIDTH
 }
 
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
@@ -337,6 +352,7 @@ export function drawOpening(
     viewport: render.viewport,
     ink: render.palette.wall,
     selection: render.palette.selection,
+    gapFill: render.palette.roomFill,
   }
   drawGapAndJambs(painter, opening.node)
   const routine = familyRoutine(opening.symbol)

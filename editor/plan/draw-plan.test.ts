@@ -11,6 +11,7 @@ import {
 } from './draw-plan'
 import { recordingContext, rectangleRoom, sampleWall as wall } from './draw-plan-test-fixtures'
 import { labelBox, labelsOverlap } from './label-layout'
+import { PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
@@ -183,6 +184,17 @@ describe('drawPlan', () => {
     // The void is cut from the same fill: the room is still painted with one fill,
     // not a separate fill per ring.
     expect(recorder.ops.filter((op) => op === 'fill')).toHaveLength(1)
+  })
+})
+
+describe('drawPlan wall stroke width', () => {
+  it('floors the wall stroke width at the cut ink weight, the heaviest role in the plan ink hierarchy, when the wall is too thin to show at scale', () => {
+    const recorder = recordingContext()
+    const hairlineWall: WallSceneNode = { ...wall, thickness: 1 }
+
+    drawPlan(recorder.ctx, planOptions({ walls: [hairlineWall] }))
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
 })
 
@@ -569,6 +581,32 @@ describe('drawPlan hover preview', () => {
 
     // A hover target the scene does not contain adds no stroke: the styles match.
     expect([...styles(missing)]).toEqual([...styles(without)])
+  })
+})
+
+describe('drawPlan emphasis relative to cut', () => {
+  it('emphasizes the hover highlight relative to the cut weight so a future retune keeps it heavier', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ hoveredId: 'wall:a' }))
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
+  })
+
+  it('emphasizes the selected-room highlight relative to the cut weight so a future retune keeps it heavier', () => {
+    const recorder = recordingContext()
+    const room = rectangleRoom('room:r')
+
+    drawPlan(recorder.ctx, {
+      walls: [] as WallSceneNode[],
+      rooms: [room],
+      viewport: { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } },
+      width: 800,
+      height: 600,
+      selectedIds: new Set(['room:r']),
+    })
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
   })
 })
 

@@ -1,14 +1,21 @@
 import { rotatePoint, type FurnitureInstance, type Point } from '../../core'
 import { DEG_TO_RAD } from './angles'
 import type { PlanDrawingContext } from './draw-plan'
+import { PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 // Footprint half-extents split the full width and depth about the center.
 const HALF_DIVISOR = 2
-const FURNITURE_INK_WIDTH = 1
+// Furniture is a fixture within the cut plane, drawn at the medium ink weight.
+const FURNITURE_INK_WIDTH = PLAN_INK_WIDTH.fixture
 const FURNITURE_SELECTION_WIDTH = 2
 const FURNITURE_LABEL_FONT = '12px sans-serif'
+// Anchored at the instance position, matching the pre-existing label placement: set
+// explicitly so a prior draw call's textAlign/textBaseline can never leak in and
+// shift the label by half its width.
+const FURNITURE_LABEL_TEXT_ALIGN = 'left' as const
+const FURNITURE_LABEL_TEXT_BASELINE = 'alphabetic' as const
 // Shown when an instance carries no name of its own.
 const DEFAULT_FURNITURE_LABEL = 'Furniture'
 
@@ -91,6 +98,8 @@ export function drawFurniture(
   const labelPos = worldToScreen(furniture.instance.position, render.viewport)
   ctx.font = FURNITURE_LABEL_FONT
   ctx.fillStyle = render.palette.wall
+  ctx.textAlign = FURNITURE_LABEL_TEXT_ALIGN
+  ctx.textBaseline = FURNITURE_LABEL_TEXT_BASELINE
   ctx.fillText(symbol.label, labelPos.x, labelPos.y)
 
   if (furniture.selected) {

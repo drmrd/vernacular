@@ -21,6 +21,7 @@ import { visibleGridLines } from './grid'
 import { centerOf, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
+import { PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport } from './viewport'
@@ -101,9 +102,15 @@ export interface DrawPlanOptions {
   palette?: PlanPalette
 }
 
-const SELECTED_ROOM_LINE_WIDTH = 2
-const HOVER_HIGHLIGHT_LINE_WIDTH = 3
-const MIN_WALL_PIXELS = 1
+// Defined relative to the cut weight, not a literal, so a future retune of the
+// cut role keeps the selected-room highlight reading heavier than the wall ink.
+const SELECTED_ROOM_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
+// Defined relative to the cut weight, not a literal, so a future retune of the
+// cut role keeps the hover highlight reading heavier than the wall ink it marks.
+const HOVER_HIGHLIGHT_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
+// Walls are the plan's cut plane, so their stroke never draws thinner than the
+// cut ink weight, even when the wall's real thickness projects to a hairline.
+const MIN_WALL_PIXELS = PLAN_INK_WIDTH.cut
 const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2

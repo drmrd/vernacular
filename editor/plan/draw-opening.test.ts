@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { drawOpening, type DrawableOpening } from './draw-opening'
 import { recordingContext } from './draw-plan-test-fixtures'
+import { PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { Viewport } from './viewport'
 import type { OpeningSceneNode, VoidContourKind } from '../../core'
@@ -65,7 +66,7 @@ describe('drawOpening', () => {
 
     drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
 
-    // The gap is painted: at least one fill (the footprint in the background
+    // The gap is painted: at least one fill (the footprint in the gap-fill
     // color) so the wall stroke is broken, plus strokes for the jamb caps.
     expect(countOp(recorder.ops, 'fill')).toBeGreaterThanOrEqual(1)
     expect(countOp(recorder.ops, 'stroke')).toBeGreaterThanOrEqual(1)
@@ -234,5 +235,62 @@ describe('drawOpening', () => {
     expect(countOp(selectedRecorder.ops, 'stroke')).toBeGreaterThan(
       countOp(plainRecorder.ops, 'stroke'),
     )
+  })
+})
+
+// A separate describe block so this suite's arrow function stays within the
+// per-function line budget; these cases pin the palette wiring the other block
+// doesn't already cover (gap-fill color, ink-hierarchy weight).
+describe('drawOpening palette wiring', () => {
+  it('keeps the jamb-cap ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
+    const recorder = recordingContext()
+
+    // A cased opening draws only the wall-break gap and jamb caps (no leaf, arc,
+    // or head), so the final line width is the jamb-cap weight, undiluted by any
+    // symbol stroke drawn afterward.
+    drawOpening(recorder.ctx, drawable('cased-opening'), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
+  })
+
+  it('fills the wall-break gap from the palette room fill, tracking the theme instead of a hardcoded light color', () => {
+    const recorder = recordingContext()
+    // A dark-theme palette: the gap fill must track this, not a hardcoded light color.
+    const darkPalette = { ...DEFAULT_PLAN_PALETTE, roomFill: '#23344d' }
+
+    drawOpening(recorder.ctx, drawable('door-swing'), { viewport: VIEWPORT, palette: darkPalette })
+
+    expect(recorder.fills).toContain('#23344d')
+    expect(recorder.fills).not.toContain('#ffffff')
+  })
+})
+
+// Motion strokes (the door leaf, its swing arc, and a curved head) read as
+// drafting annotation, lighter than the cut plane the jamb caps share with the
+// wall. A separate describe block keeps the suite's arrow functions within the
+// per-function line budget.
+describe('drawOpening symbol ink weight', () => {
+  it('draws the door leaf and swing arc at the annotation weight, lighter than the cut plane', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.annotation)
+  })
+
+  it('draws a curved opening head at the annotation weight', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('window-fixed', { head: 'lancet' }), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.annotation)
+  })
+
+  it('emphasizes the selection highlight relative to the cut weight so a future retune keeps it heavier', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing', { selected: true }), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
   })
 })

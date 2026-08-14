@@ -7,6 +7,7 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { midpoint } from './geometry'
+import { PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport, type ScreenPoint } from './viewport'
 
@@ -16,7 +17,8 @@ export interface DrawableDimension {
   selected: boolean
 }
 
-const DIMENSION_INK_WIDTH = 1
+// Dimensions are annotations over the plan, drawn at the lightest ink weight.
+const DIMENSION_INK_WIDTH = PLAN_INK_WIDTH.annotation
 const DIMENSION_SELECTION_WIDTH = 2
 // Each arrowhead vee reaches this many screen pixels back from the line tip.
 const ARROWHEAD_LENGTH_PX = 8
