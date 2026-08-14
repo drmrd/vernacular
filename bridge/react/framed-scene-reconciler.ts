@@ -43,6 +43,8 @@ function floorAssembly(build: CachedFloorBuild): FloorAssembly {
       build.wall.group,
       ...collectSubgroupGroups(build.rooms, build.openings, build.furniture),
     ],
+    // The floor's furniture nodes ride along on build.entities and are dropped by the
+    // narrower enrollment type, which does not read them yet.
     entities: build.entities,
     roomPolygons: build.roomPolygons,
   }
