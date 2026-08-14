@@ -241,10 +241,13 @@ describe('drawOpening', () => {
 // per-function line budget; these cases pin the palette wiring the other block
 // doesn't already cover (gap-fill background color, ink-hierarchy weight).
 describe('drawOpening palette wiring', () => {
-  it('strokes ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
+  it('keeps the jamb-cap ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
+    // A cased opening draws only the wall-break gap and jamb caps (no leaf, arc,
+    // or head), so the final line width is the jamb-cap weight, undiluted by any
+    // symbol stroke drawn afterward.
+    drawOpening(recorder.ctx, drawable('cased-opening'), RENDER)
 
     expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
@@ -258,5 +261,35 @@ describe('drawOpening palette wiring', () => {
 
     expect(recorder.fills).toContain('#23344d')
     expect(recorder.fills).not.toContain('#ffffff')
+  })
+})
+
+// Motion strokes (the door leaf, its swing arc, and a curved head) read as
+// drafting annotation, lighter than the cut plane the jamb caps share with the
+// wall. A separate describe block keeps the suite's arrow functions within the
+// per-function line budget.
+describe('drawOpening symbol ink weight', () => {
+  it('draws the door leaf and swing arc at the annotation weight, lighter than the cut plane', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.annotation)
+  })
+
+  it('draws a curved opening head at the annotation weight', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('window-fixed', { head: 'lancet' }), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.annotation)
+  })
+
+  it('emphasizes the selection highlight relative to the cut weight so a future retune keeps it heavier', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('door-swing', { selected: true }), RENDER)
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
   })
 })

@@ -583,6 +583,16 @@ describe('drawPlan hover preview', () => {
   })
 })
 
+describe('drawPlan hover emphasis', () => {
+  it('emphasizes the hover highlight relative to the cut weight so a future retune keeps it heavier', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ hoveredId: 'wall:a' }))
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
+  })
+})
+
 describe('drawPlan grid and rulers', () => {
   const room = rectangleRoom('room:r')
 
