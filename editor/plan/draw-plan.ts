@@ -102,7 +102,9 @@ export interface DrawPlanOptions {
   palette?: PlanPalette
 }
 
-const SELECTED_ROOM_LINE_WIDTH = 2
+// Defined relative to the cut weight, not a literal, so a future retune of the
+// cut role keeps the selected-room highlight reading heavier than the wall ink.
+const SELECTED_ROOM_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
 // Defined relative to the cut weight, not a literal, so a future retune of the
 // cut role keeps the hover highlight reading heavier than the wall ink it marks.
 const HOVER_HIGHLIGHT_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
