@@ -51,15 +51,6 @@ describe('drawPlan', () => {
     expect(recorder.segments[0]?.to).toEqual([1000 * DEFAULT_PLAN_SCALE, 0])
   })
 
-  it('floors the wall stroke width at the cut ink weight, the heaviest role in the plan ink hierarchy, when the wall is too thin to show at scale', () => {
-    const recorder = recordingContext()
-    const hairlineWall: WallSceneNode = { ...wall, thickness: 1 }
-
-    drawPlan(recorder.ctx, planOptions({ walls: [hairlineWall] }))
-
-    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
-  })
-
   it('strokes a selected wall in a different color than an unselected one', () => {
     const unselected = recordingContext()
     drawPlan(unselected.ctx, {
@@ -192,6 +183,17 @@ describe('drawPlan', () => {
     // The void is cut from the same fill: the room is still painted with one fill,
     // not a separate fill per ring.
     expect(recorder.ops.filter((op) => op === 'fill')).toHaveLength(1)
+  })
+})
+
+describe('drawPlan wall stroke width', () => {
+  it('floors the wall stroke width at the cut ink weight, the heaviest role in the plan ink hierarchy, when the wall is too thin to show at scale', () => {
+    const recorder = recordingContext()
+    const hairlineWall: WallSceneNode = { ...wall, thickness: 1 }
+
+    drawPlan(recorder.ctx, planOptions({ walls: [hairlineWall] }))
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
 })
 

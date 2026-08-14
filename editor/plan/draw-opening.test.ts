@@ -235,7 +235,12 @@ describe('drawOpening', () => {
       countOp(plainRecorder.ops, 'stroke'),
     )
   })
+})
 
+// A separate describe block so this suite's arrow function stays within the
+// per-function line budget; these cases pin the palette wiring the other block
+// doesn't already cover (gap-fill background color, ink-hierarchy weight).
+describe('drawOpening palette wiring', () => {
   it('strokes ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
     const recorder = recordingContext()
 
