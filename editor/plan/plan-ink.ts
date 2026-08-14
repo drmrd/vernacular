@@ -8,8 +8,8 @@ export type PlanInkRole = 'cut' | 'fixture' | 'annotation'
 
 /**
  * The plan canvas ink-weight hierarchy, in device-independent pixels. A single
- * lookup table so a future theme can retune every layer's line weight from one
- * place instead of hunting down a constant per draw routine.
+ * lookup table so a future theme (ADR-0154, Arris) can retune every layer's line
+ * weight from one place instead of hunting down a constant per draw routine.
  */
 export const PLAN_INK_WIDTH: Record<PlanInkRole, number> = {
   /** Walls and openings: the plan's structural cut plane, drawn heaviest. */
