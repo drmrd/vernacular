@@ -18,9 +18,10 @@ sourceFiles:
     engine/scene/wall-scene-helpers.ts,
     bridge/react/room-scene-node-equal.ts,
     bridge/react/framed-scene-reconciler.ts,
+    engine/scene/near-wall-transparency-enrollment.ts,
   ]
 status: current
-updated: 2026-06-15
+updated: 2026-08-14
 ---
 
 # ADR-0089: Within-floor mesh reuse in the three-dimensional preview
@@ -133,3 +134,31 @@ unchanged.
 - Per-floor paint differencing, sharing buffer geometry between entities with identical
   shapes, cache eviction, and showing more than one floor at once remain deferred, carried
   from ADR-0088.
+
+## Update (2026-08-14): near-wall fade enrollment moves off the wall sub-group
+
+The sub-group design above gave the wall sub-group a second job beyond geometry. It also
+prepared the near-wall fade targets for its exterior walls, and the reconciler carried
+those targets forward whenever it reused the wall group. That covered the wall itself and
+nothing else. A wall fades with more than its own meshes: its hosted opening fills go with
+it, and since [[ADR-0145-furniture-fades-with-attached-exterior-wall]] so does the
+furniture standing against it, and both of those are built into sibling sub-groups.
+Enrolling from inside the wall sub-group meant the enrollment could only ever see wall
+meshes, so in the live view a window stayed solid while the wall around it went
+transparent (issue #437).
+
+Enrollment now runs over the assembled floor root, once `frameStackedScene` has put a
+floor's sub-groups under one group, through `enrollNearWallTargets` in
+`engine/scene/near-wall-transparency-enrollment.ts`. `buildFramedScene` calls the same
+function, so the full rebuild and the incremental path no longer keep separate copies of
+the rule. `buildWallSubgroup` returns a plain group again, and a floor's cached build
+carries the entity set to enroll from rather than a finished target list.
+
+Reuse changes in two ways. A rebuilt scene hands back a fresh target array rather than the
+reused wall's array; no consumer depended on that identity, since `NearWallFade` reads the
+array per frame and holds no memo on it. And because a reused sub-group is enrolled again
+on every rebuild, privatization had to stop reading a material's live appearance as its
+restore baseline. A privatized clone stamps its uuid and baseline into `userData`, and
+enrollment takes a material that already carries its own stamp as it stands. Without that,
+a rebuild landing while the camera sat outside would have recorded the fade opacity as the
+appearance to restore, and the wall would never have come back solid.

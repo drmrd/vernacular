@@ -18,7 +18,7 @@ sourceFiles:
     bridge/react/framed-scene.ts,
   ]
 status: current
-updated: 2026-07-03
+updated: 2026-08-14
 ---
 
 # ADR-0145: Furniture fades with the exterior wall it stands against
@@ -109,3 +109,15 @@ prefix before the lookup.
   root, plus material privatization that survives sub-group reuse without capturing
   a faded state as the restore baseline. That is deferred to follow-up issue #437
   covering openings and furniture together.
+
+## Update (2026-08-14): the reconciler path closes
+
+The last consequence above recorded that the incremental reconciler prepared a floor's
+fade targets from the wall sub-group alone, so neither opening fills nor wall-attached
+furniture enrolled there. Issue #437 closes that gap on the terms this decision sketched.
+Enrollment moved onto the assembled floor root, and both scene-assembly paths now reach it
+through one seam, `enrollNearWallTargets`, which runs the `withAttachedFurniture` pairing
+itself rather than leaving each caller to remember it. A piece standing against a faded
+exterior wall recedes with it in the live view the same way it does in a scene built by
+`buildFramedScene`. [[ADR-0089-within-floor-mesh-reuse]] carries the enrollment site and
+the material privatization that had to change with it.
