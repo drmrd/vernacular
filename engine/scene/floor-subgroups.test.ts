@@ -58,14 +58,6 @@ const doorOpening = (): OpeningSceneNode => ({
 
 const ROOM_SIDE = 4000
 
-/** The four corners of the square room's clear polygon, counter-clockwise. */
-const roomSquare = [
-  { x: 0, y: 0 },
-  { x: ROOM_SIDE, y: 0 },
-  { x: ROOM_SIDE, y: ROOM_SIDE },
-  { x: 0, y: ROOM_SIDE },
-]
-
 const closedRoomWall = (
   id: string,
   start: { x: number; y: number },
@@ -87,16 +79,6 @@ const closedRoomWalls = (): WallSceneNode[] => [
   closedRoomWall('wall:top', { x: ROOM_SIDE, y: ROOM_SIDE }, { x: 0, y: ROOM_SIDE }),
   closedRoomWall('wall:left', { x: 0, y: ROOM_SIDE }, { x: 0, y: 0 }),
 ]
-
-const closedRoom = (): RoomSceneNode => ({
-  id: 'room:r1',
-  kind: 'room',
-  floorId: 'g',
-  polygon: roomSquare,
-  clearPolygon: roomSquare,
-  area: ROOM_SIDE * ROOM_SIDE,
-  ceilingHeight: WALL_HEIGHT,
-})
 
 const meshesOf = (group: THREE.Object3D): THREE.Mesh[] => {
   const meshes: THREE.Mesh[] = []
@@ -177,12 +159,10 @@ describe('buildFurnitureSubgroup', () => {
 describe('buildWallSubgroup', () => {
   it('returns a self-decorated wall group for a closed room', () => {
     const walls = closedRoomWalls()
-    const rooms = [closedRoom()]
     const openings: OpeningSceneNode[] = []
 
     const group = buildWallSubgroup({
       walls,
-      rooms,
       openings,
       materials: new NeutralMaterialProvider(),
     })
@@ -223,7 +203,6 @@ describe('floor sub-group edge overlay toggle', () => {
   it('adds an edge overlay to a wall group when the overlay is toggled on', () => {
     const group = buildWallSubgroup({
       walls: closedRoomWalls(),
-      rooms: [closedRoom()],
       openings: [],
       materials: materials(),
       edgeOverlay: true,

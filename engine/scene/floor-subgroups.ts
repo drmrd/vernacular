@@ -18,12 +18,13 @@ import { buildWalls } from './wall-builder'
 import { buildFloorWallGraph, groupOpeningsByHostWall } from './wall-scene-helpers'
 
 /**
- * A floor's wall, room, and opening nodes, with the material provider to build them. The
+ * A floor's wall and opening nodes, with the material provider to build them. The
  * inherited `edgeOverlay` is a view option (off by default), not a construction input.
+ * Rooms are not an input: they told the old in-builder enrollment which walls were
+ * exterior, and enrollment moved to the assembled floor root.
  */
 export interface WallSubgroupInput extends EdgeOverlayOptions {
   walls: WallSceneNode[]
-  rooms: RoomSceneNode[]
   openings: OpeningSceneNode[]
   materials: MaterialProvider
 }

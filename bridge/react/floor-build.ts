@@ -67,12 +67,13 @@ export interface FloorRequest {
 
 /**
  * One floor's built sub-groups, held individually so a later edit can reuse the ones
- * whose entity did not change. The wall sub-group records the wall and hosted-opening
- * nodes it was built from (it is the floor's non-local unit and must rebuild whole when
- * any of them changes); rooms and openings keep one build per entity id. The floor's
- * room outlines ride along so the assembled scene can union them across floors. A build
- * carries no assembled root of its own: reconcile stacks the sub-groups into the scene
- * root, so an unchanged floor's build seats into whichever scene reuses it.
+ * whose entity did not change. The narrowed entity set doubles as the wall sub-group's
+ * reuse key, alongside the hosted-opening nodes (the wall is the floor's non-local unit
+ * and must rebuild whole when any of them changes), and as what the assembled scene
+ * enrolls its fade targets from; rooms and openings keep one build per entity id. The
+ * floor's room outlines ride along so the assembled scene can union them across floors. A
+ * build carries no assembled root of its own: reconcile stacks the sub-groups into the
+ * scene root, so an unchanged floor's build seats into whichever scene reuses it.
  */
 export interface CachedFloorBuild extends FloorRequest {
   wall: SceneRoot
