@@ -15,6 +15,7 @@ sourceFiles:
     core/scene/wall-attached-furniture.ts,
     core/scene/exterior-walls.ts,
     engine/scene/near-wall-transparency.ts,
+    engine/scene/near-wall-transparency-enrollment.ts,
     bridge/react/framed-scene.ts,
   ]
 status: current
