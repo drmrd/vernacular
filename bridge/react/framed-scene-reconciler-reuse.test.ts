@@ -58,6 +58,9 @@ const DOOR_OPENING_ID = 'opening-door'
 const BOTTOM_DOOR_OPENING_ID = 'opening-door-bottom'
 const TOP_DOOR_OPENING_ID = 'opening-door-top'
 
+/** All four walls of the single-room enclosure are exterior, so it enrolls four fade targets. */
+const EXTERIOR_WALL_COUNT = 4
+
 const EDITED_FURNITURE_ID = 'furniture-edited'
 const PRESERVED_FURNITURE_ID = 'furniture-preserved'
 const CHAIR_DIMENSION_MM = 500
@@ -380,9 +383,9 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
 
     // Capture a wall mesh from the first build before editing: reusing the wall
     // group reparents it into the new root, which removes it from this one.
-    // nearWallTargets is a plain array on the FramedScene and is not reparented.
     const wallMeshFirst = findByEntityId(first.root, WALL_NODE_PREFIX + BOTTOM_WALL_ID)
     expect(wallMeshFirst).not.toBeNull()
+    expect(first.nearWallTargets).toHaveLength(EXTERIOR_WALL_COUNT)
 
     // Rename the floor: a new Floor object that keeps the same walls and openings
     // arrays (and their element references), so no wall and no opening changes.
@@ -392,10 +395,12 @@ describe('createFramedSceneReconciler within-floor reuse', () => {
     // The rename produces a new floor node, so the reconciler takes its rebuild
     // path rather than the unchanged-floor fast path.
     expect(second).not.toBe(first)
-    // The whole wall sub-group (and therefore its meshes) is reused, as is the
-    // wall-owned nearWallTargets array.
+    // The whole wall sub-group (and therefore its meshes) is reused. Fade enrollment
+    // runs over each assembled floor root rather than over the wall sub-group (issue
+    // #437), so the rebuilt scene carries its own target list, still one per exterior
+    // wall and still covering the reused meshes.
     expect(findByEntityId(second.root, WALL_NODE_PREFIX + BOTTOM_WALL_ID)).toBe(wallMeshFirst)
-    expect(second.nearWallTargets).toBe(first.nearWallTargets)
+    expect(second.nearWallTargets).toHaveLength(EXTERIOR_WALL_COUNT)
   })
 })
 

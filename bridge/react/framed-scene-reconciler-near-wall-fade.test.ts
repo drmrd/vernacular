@@ -1,0 +1,136 @@
+import { describe, it, expect } from 'vitest'
+
+import type { SceneGraph, SurfaceTreatment } from '../../core'
+import { updateNearWallTransparency } from '../../engine'
+import { findByEntityId } from '../../engine/testing'
+import { createFramedSceneReconciler } from './framed-scene-reconciler'
+
+const FADED_OPACITY = 0.1
+const SPAN_MM = 4000
+const WALL_THICKNESS_MM = 200
+const CEILING_MM = 2400
+
+// Outside the south wall: plan y maps to world -z, so the room sits at negative z and a
+// camera at positive z looks at the south wall from its outside face.
+const CAMERA_OUTSIDE_SOUTH = { x: 2000, z: 3000 }
+
+// A square room whose four walls are all exterior, with a double-hung window in the south
+// wall. The wall scene-node ids carry the `wall:` prefix while the window's hostWallId is
+// the raw id, the convention a derived graph produces.
+function squareRoomWithSouthWindow(): SceneGraph {
+  const corners = [
+    { x: 0, y: 0 },
+    { x: SPAN_MM, y: 0 },
+    { x: SPAN_MM, y: SPAN_MM },
+    { x: 0, y: SPAN_MM },
+  ]
+  return {
+    nodes: [{ id: 'floor:g', kind: 'floor', name: 'G', elevation: 0 }],
+    walls: [
+      wall('wall:s', { x: 0, y: 0 }, { x: SPAN_MM, y: 0 }),
+      wall('wall:e', { x: SPAN_MM, y: 0 }, { x: SPAN_MM, y: SPAN_MM }),
+      wall('wall:n', { x: SPAN_MM, y: SPAN_MM }, { x: 0, y: SPAN_MM }),
+      wall('wall:w', { x: 0, y: SPAN_MM }, { x: 0, y: 0 }),
+    ],
+    rooms: [
+      {
+        id: 'room:r',
+        kind: 'room',
+        floorId: 'g',
+        polygon: corners,
+        clearPolygon: corners,
+        area: SPAN_MM * SPAN_MM,
+        ceilingHeight: CEILING_MM,
+      },
+    ],
+    underlays: [],
+    openings: [
+      {
+        id: 'opening:window',
+        kind: 'opening',
+        floorId: 'g',
+        type: 'double-hung-window',
+        center: { x: 2000, y: 0 },
+        along: { x: 1, y: 0 },
+        normal: { x: 0, y: 1 },
+        width: 900,
+        height: 1200,
+        sillHeight: 900,
+        hostThickness: WALL_THICKNESS_MM,
+        orientation: { hinge: 'start', facing: 'positive' },
+        hostWallId: 's',
+      },
+    ],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
+function wall(
+  id: string,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): SceneGraph['walls'][number] {
+  return {
+    id,
+    kind: 'wall',
+    floorId: 'g',
+    start,
+    end,
+    thickness: WALL_THICKNESS_MM,
+    height: CEILING_MM,
+  }
+}
+
+// Reads the opacity of the 'glass' material under a built opening group, structurally so
+// the bridge test does not import three.
+function glassOpacityOf(group: unknown): number | undefined {
+  let opacity: number | undefined
+  ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
+    const mesh = object as { material?: { name?: string; opacity?: number } }
+    if (
+      mesh.material !== undefined &&
+      !Array.isArray(mesh.material) &&
+      mesh.material.name === 'glass'
+    ) {
+      opacity = mesh.material.opacity
+    }
+  })
+  return opacity
+}
+
+// The distinct material opacities under a built group, structurally so the bridge test
+// does not import three. Covers single- and multi-material meshes.
+function opacitiesOf(group: unknown): number[] {
+  const opacities = new Set<number>()
+  ;(group as { traverse(cb: (object: unknown) => void): void }).traverse((object) => {
+    const mesh = object as { material?: { opacity?: number } | { opacity?: number }[] }
+    if (mesh.material === undefined) return
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const material of materials) {
+      if (typeof material.opacity === 'number') opacities.add(material.opacity)
+    }
+  })
+  return [...opacities]
+}
+
+const emptyPaint = (): Record<string, SurfaceTreatment> => ({})
+
+describe('createFramedSceneReconciler near-wall fade enrollment', () => {
+  it('fades an opening fill on an exterior wall together with its host wall', () => {
+    const reconciler = createFramedSceneReconciler()
+    const { root, nearWallTargets } = reconciler.reconcile(
+      squareRoomWithSouthWindow(),
+      emptyPaint(),
+    )
+
+    updateNearWallTransparency(nearWallTargets, CAMERA_OUTSIDE_SOUTH)
+
+    // The host wall fades in both scene-assembly paths; its window must fade with it.
+    expect(opacitiesOf(findByEntityId(root, 'wall:s'))).toEqual([FADED_OPACITY])
+    const window = findByEntityId(root, 'opening:window')
+    expect(window).not.toBeNull()
+    expect(glassOpacityOf(window)).toBe(FADED_OPACITY)
+  })
+})
