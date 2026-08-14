@@ -102,7 +102,9 @@ export interface DrawPlanOptions {
 }
 
 const SELECTED_ROOM_LINE_WIDTH = 2
-const HOVER_HIGHLIGHT_LINE_WIDTH = 3
+// Defined relative to the cut weight, not a literal, so a future retune of the
+// cut role keeps the hover highlight reading heavier than the wall ink it marks.
+const HOVER_HIGHLIGHT_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
 // Walls are the plan's cut plane, so their stroke never draws thinner than the
 // cut ink weight, even when the wall's real thickness projects to a hairline.
 const MIN_WALL_PIXELS = PLAN_INK_WIDTH.cut

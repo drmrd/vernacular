@@ -21,9 +21,14 @@ export interface DrawableOpening {
   head?: VoidContourKind | undefined
 }
 
-// Openings break the wall stroke, so their ink shares the wall's cut weight.
+// The jamb caps close the wall's cut, so they share its cut weight.
 const OPENING_INK_WIDTH = PLAN_INK_WIDTH.cut
-const OPENING_SELECTION_WIDTH = 2
+// The door leaf, its swing arc, and a curved head read as drafting motion
+// annotation, lighter than the cut plane the jamb caps sit in.
+const OPENING_SYMBOL_INK_WIDTH = PLAN_INK_WIDTH.annotation
+// Defined relative to the cut weight, not a literal, so a future retune of the
+// cut role keeps the selection highlight reading heavier than the ink it marks.
+const OPENING_SELECTION_WIDTH = PLAN_INK_WIDTH.cut + 1
 // The pivot dot radius in screen pixels.
 const PIVOT_DOT_RADIUS_PX = 3
 const FULL_CIRCLE = Math.PI * 2
@@ -143,9 +148,10 @@ function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void 
   }
 }
 
+/** Sets the ink for a door/window symbol stroke: the leaf, its swing arc, or a curved head. */
 function setInk(painter: OpeningPainter): void {
   painter.ctx.strokeStyle = painter.ink
-  painter.ctx.lineWidth = OPENING_INK_WIDTH
+  painter.ctx.lineWidth = OPENING_SYMBOL_INK_WIDTH
 }
 
 function drawDoorSwing(painter: OpeningPainter, opening: DrawableOpening): void {
