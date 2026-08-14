@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import type { SceneGraph, SurfaceTreatment } from '../../core'
-import { updateNearWallTransparency } from '../../engine'
+import { restoreNearWallTransparency, updateNearWallTransparency } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
@@ -117,6 +117,12 @@ function opacitiesOf(group: unknown): number[] {
 
 const emptyPaint = (): Record<string, SurfaceTreatment> => ({})
 
+// The same floor renamed: a fresh floor node over the graph's very same wall, room, and
+// opening node objects, the edit shape that rebuilds a floor while reusing its sub-groups.
+function renamedFloor(graph: SceneGraph): SceneGraph {
+  return { ...graph, nodes: [{ id: 'floor:g', kind: 'floor', name: 'Renamed', elevation: 0 }] }
+}
+
 describe('createFramedSceneReconciler near-wall fade enrollment', () => {
   it('fades an opening fill on an exterior wall together with its host wall', () => {
     const reconciler = createFramedSceneReconciler()
@@ -132,5 +138,33 @@ describe('createFramedSceneReconciler near-wall fade enrollment', () => {
     const window = findByEntityId(root, 'opening:window')
     expect(window).not.toBeNull()
     expect(glassOpacityOf(window)).toBe(FADED_OPACITY)
+  })
+
+  it('keeps the solid baseline when a rebuild re-enrolls a reused, already faded wall', () => {
+    const reconciler = createFramedSceneReconciler()
+    // One paint object across both reconciles: a fresh one would defeat sub-group reuse
+    // and rebuild the wall from unfaded materials, hiding the baseline capture.
+    const paint = emptyPaint()
+    const graph = squareRoomWithSouthWindow()
+    const first = reconciler.reconcile(graph, paint)
+
+    const southWall = findByEntityId(first.root, 'wall:s')
+    expect(southWall).not.toBeNull()
+    const solid = opacitiesOf(southWall)
+    expect(solid).not.toContain(FADED_OPACITY)
+
+    // Orbit outside the south wall, leaving its materials sitting at the fade opacity.
+    updateNearWallTransparency(first.nearWallTargets, CAMERA_OUTSIDE_SOUTH)
+    expect(opacitiesOf(southWall)).toEqual([FADED_OPACITY])
+
+    // Rename the floor mid-fade: a fresh floor node over the very same wall, room, and
+    // opening nodes, so the floor rebuilds while every sub-group and mesh is reused.
+    const second = reconciler.reconcile(renamedFloor(graph), paint)
+    expect(findByEntityId(second.root, 'wall:s')).toBe(southWall)
+
+    // Orbiting back inside restores the appearance the wall was built with, not the
+    // faded state the rebuild happened to find it in.
+    restoreNearWallTransparency(second.nearWallTargets)
+    expect(opacitiesOf(southWall)).toEqual(solid)
   })
 })
