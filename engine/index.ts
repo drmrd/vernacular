@@ -33,6 +33,8 @@ export {
   restoreNearWallTransparency,
   updateNearWallTransparency,
 } from './scene/near-wall-transparency'
+export type { NearWallEnrollmentEntities } from './scene/near-wall-transparency-enrollment'
+export { enrollNearWallTargets } from './scene/near-wall-transparency-enrollment'
 export type { LightingProvider } from './lighting/lighting-provider'
 export { BasicLightingProvider } from './lighting/basic-lighting-provider'
 export { SolarLightingProvider } from './lighting/solar-lighting-provider'

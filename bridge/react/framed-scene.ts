@@ -1,10 +1,6 @@
 import {
-  buildWallGraph,
-  exteriorWalls,
   frameSceneCamera,
-  junctionFadeGroups,
   kelvinToLinearRgb,
-  withAttachedFurniture,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
@@ -18,13 +14,14 @@ import {
   assembleFloorRoot,
   buildScene,
   disposeObject,
+  enrollNearWallTargets,
   isGroundPlane,
   markShadowCasters,
-  prepareNearWallTransparency,
   GRADE_ELEVATION_MM,
   PhysicalMaterialProvider,
   sceneBounds,
   type EdgeOverlayOptions,
+  type NearWallEnrollmentEntities,
   type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
@@ -59,17 +56,10 @@ export function buildFramedScene(
   })
   const root = buildScene(graph, materials, view)
   markShadowCasters(root)
-  const nearWallTargets = prepareNearWallTransparency(
-    root,
-    // Exterior walls carry their hosted openings and, via the plan-space pairing,
-    // the furniture standing against them, so all three fade as one target.
-    withAttachedFurniture(
-      exteriorWalls(graph.walls, graph.rooms, graph.openings),
-      graph.walls,
-      graph.furniture,
-    ),
-    junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms, graph.openings),
-  )
+  // Exterior walls carry their hosted openings and, through the plan-space pairing, the
+  // furniture standing against them, so all three fade as one target. The reconciler
+  // enrolls per assembled floor group through this same seam.
+  const nearWallTargets = enrollNearWallTargets(root, graph)
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
   const roomPolygons = graph.rooms.map((room) => room.polygon)
@@ -79,13 +69,17 @@ export function buildFramedScene(
 /**
  * One floor's contribution to a stacked scene: the floor node (its id and elevation), the
  * ordered sub-group list a floor group is assembled from (wall first, then rooms, openings,
- * furniture), the near-wall fade targets its walls own, and its room outlines. The caching
- * reconciler builds these from its per-floor sub-group caches.
+ * furniture), the entities its near-wall fade targets are enrolled from, and its room
+ * outlines. The caching reconciler builds these from its per-floor sub-group caches.
+ *
+ * The floor carries enrollment inputs rather than finished targets because enrollment
+ * needs the assembled floor group, where a wall stands next to the sub-groups that fade
+ * with it, and only `frameStackedScene` has that (issue #437).
  */
 export interface FloorAssembly {
   node: SceneNode
   subgroups: SceneRoot[]
-  nearWallTargets: NearWallTarget[]
+  entities: NearWallEnrollmentEntities
   roomPolygons: readonly (readonly Point[])[]
 }
 
@@ -108,14 +102,24 @@ export function refreshGroundPlane(root: SceneRoot, gradeElevation: number | und
   addGroundPlane(root, grade)
 }
 
+/** The stacked floor groups under one root, with the fade targets every floor enrolled. */
+interface StackedFloors {
+  root: SceneRoot
+  nearWallTargets: NearWallTarget[]
+}
+
 // Stacks every floor group under one root, each seated at its elevation (assembleFloorRoot),
 // reusing the first floor's assembled root as the shared root and reparenting the rest into
-// it, so no Three.js group is constructed in the bridge. The caller passes a non-empty list;
-// the final guard only narrows the type.
-function stackFloorRoot(floors: FloorAssembly[]): SceneRoot {
+// it, so no Three.js group is constructed in the bridge. Each floor enrolls its fade targets
+// as soon as its group is assembled, while the floor's own sub-groups are the ones under it,
+// and the scene unions them. The caller passes a non-empty list; the final guard only
+// narrows the type.
+function stackFloorRoot(floors: FloorAssembly[]): StackedFloors {
   let root: SceneRoot | undefined
+  const nearWallTargets: NearWallTarget[] = []
   for (const floor of floors) {
     const floorRoot = assembleFloorRoot(floor.node, floor.subgroups)
+    nearWallTargets.push(...enrollNearWallTargets(floorRoot, floor.entities))
     if (root === undefined) {
       root = floorRoot
       continue
@@ -124,15 +128,7 @@ function stackFloorRoot(floors: FloorAssembly[]): SceneRoot {
     if (floorGroup !== undefined) root.add(floorGroup)
   }
   if (root === undefined) throw new Error('cannot frame a scene with no floors')
-  return root
-}
-
-// A single floor hands back its walls' own targets array unchanged, so an unchanged wall
-// keeps the same array reference across reconciles; a stacked building unions every floor's.
-function stackedNearWallTargets(floors: FloorAssembly[]): NearWallTarget[] {
-  const [only] = floors
-  if (floors.length === 1 && only !== undefined) return only.nearWallTargets
-  return floors.flatMap((floor) => floor.nearWallTargets)
+  return { root, nearWallTargets }
 }
 
 /**
@@ -146,7 +142,7 @@ export function frameStackedScene(
   floors: FloorAssembly[],
   gradeElevation: number | undefined,
 ): FramedScene {
-  const root = stackFloorRoot(floors)
+  const { root, nearWallTargets } = stackFloorRoot(floors)
   // Read the bounds before seating the ground (sceneBounds excludes the ground either way),
   // then seat the shared ground plane sized to the whole footprint already in the root.
   const bounds = sceneBounds(root)
@@ -155,7 +151,7 @@ export function frameStackedScene(
     root,
     pose: frameSceneCamera(bounds),
     bounds,
-    nearWallTargets: stackedNearWallTargets(floors),
+    nearWallTargets,
     roomPolygons: floors.flatMap((floor) => floor.roomPolygons),
   }
 }

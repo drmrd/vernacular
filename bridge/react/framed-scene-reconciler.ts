@@ -34,16 +34,13 @@ export interface FramedSceneReconciler {
 }
 
 /** Maps a cached floor build to the assembly input frameStackedScene stacks it from: its
- *  node, its ordered sub-group list (wall first, then rooms, openings, furniture), and the
- *  fade targets and room outlines it contributes. */
+ *  node, its ordered sub-group list (wall first, then rooms, openings, furniture), the
+ *  entities its fade targets enroll from, and the room outlines it contributes. */
 function floorAssembly(build: CachedFloorBuild): FloorAssembly {
   return {
     node: build.floorNode,
-    subgroups: [
-      build.wall.group,
-      ...collectSubgroupGroups(build.rooms, build.openings, build.furniture),
-    ],
-    nearWallTargets: build.wall.nearWallTargets,
+    subgroups: [build.wall, ...collectSubgroupGroups(build.rooms, build.openings, build.furniture)],
+    entities: build.entities,
     roomPolygons: build.roomPolygons,
   }
 }

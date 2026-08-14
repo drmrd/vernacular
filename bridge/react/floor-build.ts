@@ -20,7 +20,6 @@ import {
   PhysicalMaterialProvider,
   type EdgeOverlayOptions,
   type MaterialProvider,
-  type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
 import { roomSceneNodeEqual } from './room-scene-node-equal'
@@ -31,12 +30,6 @@ export interface FurnitureModelLookup {
   get(
     contentHash: string,
   ): { status: 'loading' | 'ready' | 'failed'; template?: FurnitureModel } | undefined
-}
-
-/** A built wall sub-group together with the exterior-wall fade targets it owns. */
-interface WallBuild {
-  group: SceneRoot
-  nearWallTargets: NearWallTarget[]
 }
 
 /** One entity's built sub-group, kept with the node it was built from for reuse. */
@@ -74,16 +67,17 @@ export interface FloorRequest {
 
 /**
  * One floor's built sub-groups, held individually so a later edit can reuse the ones
- * whose entity did not change. The wall sub-group records the wall and hosted-opening
- * nodes it was built from (it is the floor's non-local unit and must rebuild whole when
- * any of them changes); rooms and openings keep one build per entity id. The floor's
- * room outlines ride along so the assembled scene can union them across floors. A build
- * carries no assembled root of its own: reconcile stacks the sub-groups into the scene
- * root, so an unchanged floor's build seats into whichever scene reuses it.
+ * whose entity did not change. The narrowed entity set doubles as the wall sub-group's
+ * reuse key, alongside the hosted-opening nodes (the wall is the floor's non-local unit
+ * and must rebuild whole when any of them changes), and as what the assembled scene
+ * enrolls its fade targets from; rooms and openings keep one build per entity id. The
+ * floor's room outlines ride along so the assembled scene can union them across floors. A
+ * build carries no assembled root of its own: reconcile stacks the sub-groups into the
+ * scene root, so an unchanged floor's build seats into whichever scene reuses it.
  */
 export interface CachedFloorBuild extends FloorRequest {
-  wall: WallBuild
-  wallNodes: WallSceneNode[]
+  wall: SceneRoot
+  entities: FloorEntities
   wallOpeningNodes: OpeningSceneNode[]
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>
   openings: Map<string, SubgroupBuild<OpeningSceneNode>>
@@ -91,7 +85,7 @@ export interface CachedFloorBuild extends FloorRequest {
   roomPolygons: readonly (readonly Point[])[]
 }
 
-interface FloorEntities {
+export interface FloorEntities {
   walls: WallSceneNode[]
   rooms: RoomSceneNode[]
   openings: OpeningSceneNode[]
@@ -171,10 +165,10 @@ function reuseOrBuildWall({
   materials,
   view,
   prev,
-}: WallBuildInput): WallBuild {
+}: WallBuildInput): SceneRoot {
   if (
     prev !== undefined &&
-    sameRefs(entities.walls, prev.wallNodes) &&
+    sameRefs(entities.walls, prev.entities.walls) &&
     sameRefs(wallOpeningNodes, prev.wallOpeningNodes)
   ) {
     return prev.wall
@@ -318,7 +312,7 @@ export function buildFloorBuild(input: FloorBuildInput): CachedFloorBuild {
     paint,
     readySignature,
     wall,
-    wallNodes: entities.walls,
+    entities,
     wallOpeningNodes,
     rooms,
     openings,
