@@ -31,8 +31,15 @@ export const DAYLIGHT_SUN_INTENSITY = 1.6
 const FILL_INTENSITY = 0.5
 /** A 2048px square shadow map: enough resolution for the shell without a large GPU cost. */
 const SHADOW_MAP_SIZE = 2048
-/** A small negative depth bias to keep large flat faces (the floor) from self-shadowing into acne. */
-const SHADOW_BIAS = -0.0005
+/**
+ * The depth bias, in the normalized [0, 1] light-space depth three adds it to (not a world
+ * length). The fitter below stands the sun off at SHADOW_DISTANCE_FACTOR bounding radii, which
+ * makes its orthographic shadow camera span 2 * radius laterally AND in depth, so one texel is
+ * worth 1 / SHADOW_MAP_SIZE of normalized depth at any scene size and the texel diagonal that
+ * `shadowTexelDiagonalMm` measures in world millimeters is Math.SQRT2 of those. Negative because
+ * three adds the bias to the fragment's own depth, and the shallower fragment is the lit one.
+ */
+const SHADOW_BIAS = -Math.SQRT2 / SHADOW_MAP_SIZE
 const SHADOW_DISTANCE_FACTOR = 3
 const MIN_SHADOW_NEAR = 1
 /** The sun direction as a unit vector, normalized once so the per-call fitter does not allocate. */
@@ -169,6 +176,16 @@ export function fitSunShadowToDirection(
   fitSunShadowAlongUnitDirection(scene, unitDirection, bounds)
 }
 
+/**
+ * The world size, in millimeters, of one shadow-map texel's diagonal for a scene fitted at
+ * `radius`. The shadow camera spans 2 * radius across SHADOW_MAP_SIZE texels, and the diagonal
+ * is how far the depth a fragment is compared against can sit from the fragment itself: half a
+ * texel from map quantization, the rest from the PCFSoft neighborhood the renderer samples.
+ */
+function shadowTexelDiagonalMm(radius: number): number {
+  return (Math.SQRT2 * (2 * radius)) / SHADOW_MAP_SIZE
+}
+
 // Invariant: `direction` must be pre-normalized by the caller; a non-unit vector silently mis-fits the shadow.
 function fitSunShadowAlongUnitDirection(
   scene: THREE.Object3D,
@@ -195,6 +212,13 @@ function fitSunShadowAlongUnitDirection(
   sun.position.copy(center).addScaledVector(direction, distance)
   sun.target.position.copy(center)
   sun.target.updateMatrixWorld()
+
+  // Slope compensation, in world millimeters: three offsets the shading point along its world
+  // normal by this much before the shadow lookup. A surface at angle theta to the light suffers
+  // up to `diagonal * sin(theta)` of depth error from that texel-diagonal separation; the normal
+  // offset buys back `diagonal * cos(theta)` and SHADOW_BIAS buys back another full diagonal, and
+  // cos(theta) + 1 >= sin(theta) over the whole range, so no orientation is left uncovered.
+  sun.shadow.normalBias = shadowTexelDiagonalMm(radius)
 
   const camera = sun.shadow.camera
   camera.left = -radius
