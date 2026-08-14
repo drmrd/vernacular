@@ -1,8 +1,16 @@
 import { describe, it, expect } from 'vitest'
 
-import type { SceneGraph, SurfaceTreatment } from '../../core'
+import type { Floor, SceneGraph, SurfaceTreatment } from '../../core'
+import {
+  createEmptyProject,
+  createFloor,
+  createSceneGraphDeriver,
+  createWall,
+  sceneGraphForFloor,
+} from '../../core'
 import { restoreNearWallTransparency, updateNearWallTransparency } from '../../engine'
 import { findByEntityId } from '../../engine/testing'
+import { buildFramedScene } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
 const FADED_OPACITY = 0.1
@@ -147,6 +155,51 @@ function renamedFloor(graph: SceneGraph): SceneGraph {
   return { ...graph, nodes: [{ id: 'floor:g', kind: 'floor', name: 'Renamed', elevation: 0 }] }
 }
 
+const STUB_FLOOR_ID = 'g'
+const ENCLOSURE_DEPTH_MM = 3000
+const ENCLOSURE_RIGHT_MM = 6000
+const STUB_X_MM = 3000
+const STUB_DEPTH_MM = 1500
+/** All four perimeter walls of the enclosure are exterior; the stub inside it is not. */
+const STUB_EXTERIOR_WALL_COUNT = 4
+
+/**
+ * A rectangular enclosure with a stub wall running inward from the bottom wall, derived
+ * through the real deriver rather than hand-built so the wall topology carries a genuine
+ * 3-way junction where the stub meets the perimeter. That junction gets a fill, and
+ * because one of its incident walls is the exterior bottom wall, the fill enrolls as a
+ * fade target on top of the four wall targets. A fade group whose edge indexes addressed
+ * the wrong edges would leave the fill out and the count back at the wall count.
+ */
+function stubJunctionGraph(): SceneGraph {
+  const floor: Floor = createFloor('Ground', {
+    id: STUB_FLOOR_ID,
+    walls: [
+      createWall({ x: 0, y: 0 }, { x: ENCLOSURE_RIGHT_MM, y: 0 }, { id: 'wall-bottom' }),
+      createWall(
+        { x: 0, y: ENCLOSURE_DEPTH_MM },
+        { x: ENCLOSURE_RIGHT_MM, y: ENCLOSURE_DEPTH_MM },
+        { id: 'wall-top' },
+      ),
+      createWall({ x: 0, y: 0 }, { x: 0, y: ENCLOSURE_DEPTH_MM }, { id: 'wall-left' }),
+      createWall(
+        { x: ENCLOSURE_RIGHT_MM, y: 0 },
+        { x: ENCLOSURE_RIGHT_MM, y: ENCLOSURE_DEPTH_MM },
+        { id: 'wall-right' },
+      ),
+      createWall({ x: STUB_X_MM, y: 0 }, { x: STUB_X_MM, y: STUB_DEPTH_MM }, { id: 'wall-stub' }),
+    ],
+  })
+  const base = createEmptyProject({
+    name: 'Parity',
+    units: 'metric',
+    period: 'period',
+    appVersion: '0',
+  })
+  const derive = createSceneGraphDeriver()
+  return sceneGraphForFloor(derive({ ...base, floors: [floor] }), STUB_FLOOR_ID)
+}
+
 describe('createFramedSceneReconciler near-wall fade enrollment', () => {
   it('fades an opening fill on an exterior wall together with its host wall', () => {
     const reconciler = createFramedSceneReconciler()
@@ -182,6 +235,22 @@ describe('createFramedSceneReconciler near-wall fade enrollment', () => {
     // The table keeps its own translucent massing baseline: it never drops to the fade
     // opacity with a wall it does not stand against.
     expect(opacitiesOf(findByEntityId(root, 'table'))).not.toContain(FADED_OPACITY)
+  })
+
+  it('enrolls the same targets through the full rebuild and the reconciler, junction fill included', () => {
+    const graph = stubJunctionGraph()
+    // The stub does not divide the enclosure, so the perimeter still rings one room and
+    // all four of its walls stay exterior.
+    expect(graph.rooms).toHaveLength(1)
+
+    const rebuilt = buildFramedScene(graph)
+    const reconciled = createFramedSceneReconciler().reconcile(graph, emptyPaint())
+
+    // The junction fill enrolls on top of one target per exterior wall.
+    expect(rebuilt.nearWallTargets.length).toBeGreaterThan(STUB_EXTERIOR_WALL_COUNT)
+    // Both scene-assembly paths enroll through one seam, so neither can drift from the
+    // other in what it fades.
+    expect(reconciled.nearWallTargets).toHaveLength(rebuilt.nearWallTargets.length)
   })
 
   it('keeps the solid baseline when a rebuild re-enrolls a reused, already faded wall', () => {
