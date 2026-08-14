@@ -115,6 +115,30 @@ function opacitiesOf(group: unknown): number[] {
   return [...opacities]
 }
 
+// A furniture node whose axis-aligned footprint spans the given plan extents. The node id
+// carries the `furniture:` prefix while the built group carries the raw instance id, the
+// furniture-builder convention.
+function furnitureNode(
+  id: string,
+  min: { x: number; y: number },
+  max: { x: number; y: number },
+): SceneGraph['furniture'][number] {
+  return {
+    id: `furniture:${id}`,
+    kind: 'furniture',
+    floorId: 'g',
+    footprintCorners: [
+      { x: min.x, y: min.y },
+      { x: max.x, y: min.y },
+      { x: max.x, y: max.y },
+      { x: min.x, y: max.y },
+    ],
+    elevationZ: 0,
+    height: 1800,
+    assetRef: { scope: 'user', contentHash: `hash-of-a-${id}` },
+  }
+}
+
 const emptyPaint = (): Record<string, SurfaceTreatment> => ({})
 
 // The same floor renamed: a fresh floor node over the graph's very same wall, room, and
@@ -138,6 +162,26 @@ describe('createFramedSceneReconciler near-wall fade enrollment', () => {
     const window = findByEntityId(root, 'opening:window')
     expect(window).not.toBeNull()
     expect(glassOpacityOf(window)).toBe(FADED_OPACITY)
+  })
+
+  it('fades furniture standing against an exterior wall together with that wall', () => {
+    const reconciler = createFramedSceneReconciler()
+    const graph = squareRoomWithSouthWindow()
+    // A wardrobe flush against the south wall's interior face (plan y = 100), plus a
+    // free-standing table mid-room that stands against no wall.
+    graph.furniture = [
+      furnitureNode('wardrobe', { x: 1700, y: 100 }, { x: 2300, y: 700 }),
+      furnitureNode('table', { x: 1700, y: 1700 }, { x: 2300, y: 2300 }),
+    ]
+    const { root, nearWallTargets } = reconciler.reconcile(graph, emptyPaint())
+
+    updateNearWallTransparency(nearWallTargets, CAMERA_OUTSIDE_SOUTH)
+
+    // Furniture groups carry the raw instance id.
+    expect(opacitiesOf(findByEntityId(root, 'wardrobe'))).toEqual([FADED_OPACITY])
+    // The table keeps its own translucent massing baseline: it never drops to the fade
+    // opacity with a wall it does not stand against.
+    expect(opacitiesOf(findByEntityId(root, 'table'))).not.toContain(FADED_OPACITY)
   })
 
   it('keeps the solid baseline when a rebuild re-enrolls a reused, already faded wall', () => {

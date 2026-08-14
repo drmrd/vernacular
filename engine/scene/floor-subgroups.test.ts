@@ -2,12 +2,7 @@ import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import {
-  createFloor,
-  createFurnitureInstance,
-  deriveFurnitureNode,
-  exteriorWalls,
-} from '../../core'
+import { createFloor, createFurnitureInstance, deriveFurnitureNode } from '../../core'
 import type { OpeningSceneNode, RoomSceneNode, SceneNode, WallSceneNode } from '../../core'
 
 import {
@@ -26,7 +21,6 @@ const WALL_THICKNESS = 200
 const WALL_HEIGHT = 2400
 
 const FLOOR_ELEVATION = 2700
-const EXTERIOR_WALL_COUNT = 4
 
 const RECTANGLE = [
   { x: ORIGIN, y: ORIGIN },
@@ -181,12 +175,12 @@ describe('buildFurnitureSubgroup', () => {
 })
 
 describe('buildWallSubgroup', () => {
-  it('returns a self-decorated wall group plus one near-wall target per exterior wall of a closed room', () => {
+  it('returns a self-decorated wall group for a closed room', () => {
     const walls = closedRoomWalls()
     const rooms = [closedRoom()]
     const openings: OpeningSceneNode[] = []
 
-    const { group, nearWallTargets } = buildWallSubgroup({
+    const group = buildWallSubgroup({
       walls,
       rooms,
       openings,
@@ -202,9 +196,6 @@ describe('buildWallSubgroup', () => {
     expect(edgeLinesOf(group)).toHaveLength(0)
 
     expect(meshes.every((mesh) => mesh.castShadow === true)).toBe(true)
-
-    expect(nearWallTargets).toHaveLength(exteriorWalls(walls, rooms, openings).length)
-    expect(nearWallTargets).toHaveLength(EXTERIOR_WALL_COUNT)
   })
 })
 
@@ -230,7 +221,7 @@ describe('floor sub-group edge overlay toggle', () => {
   })
 
   it('adds an edge overlay to a wall group when the overlay is toggled on', () => {
-    const { group } = buildWallSubgroup({
+    const group = buildWallSubgroup({
       walls: closedRoomWalls(),
       rooms: [closedRoom()],
       openings: [],
