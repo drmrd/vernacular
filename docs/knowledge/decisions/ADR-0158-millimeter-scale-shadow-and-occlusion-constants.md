@@ -7,7 +7,9 @@ related:
   [
     decisions/ADR-0027-units-module-targets-millimeter-storage,
     decisions/ADR-0133-ordered-depth-bias-ladder-for-stacked-coincident-surfaces,
+    decisions/ADR-0142-color-managed-renderer,
     decisions/ADR-0151-ambient-occlusion-render-pipeline,
+    decisions/ADR-0152-linux-scene-baseline-lane,
     decisions/ADR-0153-daylight-through-glass-role-stamp,
     decisions/ADR-0156-luminance-calibration-convention,
   ]
@@ -26,9 +28,10 @@ updated: 2026-08-14
 
 ## Status
 
-Accepted. Answers the last exit criterion of issue #491, which asked for the depth bias constants
-to be re-derived against a working shadow path, and repairs the occlusion radius that shipped with
-[[ADR-0151-ambient-occlusion-render-pipeline]].
+Accepted. Answers the last-listed exit criterion of issue #491 analytically rather than against a
+working shadow path, and repairs the occlusion radius that shipped with
+[[ADR-0151-ambient-occlusion-render-pipeline]]. It does not fix the self-shadowing #491 reports;
+see the consequences.
 
 ## Context
 
@@ -48,7 +51,7 @@ adds it to the fragment's own depth in the normalized [0, 1] light-space range
 stranded in a millimeter scene. What was missing was the knob that does carry world units:
 `normalBias`, which offsets the shading point along its world normal before the lookup and was
 left at zero. A constant depth bias is the one compensation that cannot follow a surface as it
-tilts, so steep faces had nothing holding them off their own shadow.
+tilts, so the rig had no slope compensation of any kind.
 
 ## Decision
 
@@ -61,10 +64,11 @@ bounding sphere and stands the sun off at `SHADOW_DISTANCE_FACTOR` (3) radii, so
 below rest on that.
 
 One texel therefore covers the same world length across the map and through it. The length scale
-both constants derive from is that texel's diagonal, named `TEXEL_DIAGONAL_FRACTION`, because the
-depth a fragment is compared against belongs to a surface point up to one diagonal away: half a
-texel from the map's own quantization and the rest from the PCFSoft neighborhood the renderer
-samples ([[ADR-0142-color-managed-renderer]] pins the shadow filter).
+both constants derive from is that texel's diagonal, named `TEXEL_DIAGONAL_FRACTION`: the depth a
+fragment is compared against belongs to a surface point roughly a diagonal away in the light's
+image plane, the texel's own quantization plus the PCFSoft neighborhood the renderer samples
+([[ADR-0142-color-managed-renderer]] pins the filter). Apportioning the diagonal between those two
+is an estimate, so treat it as the right scale rather than an exact budget.
 
 - `SHADOW_BIAS` is that diagonal expressed in normalized depth, `-Math.SQRT2 / SHADOW_MAP_SIZE`,
   about `-0.00069`. Because the depth range equals the lateral extent, this number is correct at
@@ -72,22 +76,29 @@ samples ([[ADR-0142-color-managed-renderer]] pins the shadow filter).
 - `normalBias` is the same diagonal in world millimeters, so the fitter sets it where the radius
   is known. At the shell the harness renders it works out near 4 mm.
 
-The pair covers every surface orientation, and the argument is short enough to state here. At angle
-theta between the surface normal and the light, a lateral separation of one diagonal is worth
-`diagonal * sin(theta)` of depth error. The normal offset buys back `diagonal * cos(theta)` and
-the constant bias buys back a further full diagonal, and `cos(theta) + 1 >= sin(theta)` holds
-across the whole range, with room to spare everywhere except grazing incidence. A unit test walks
-91 angles and asserts exactly that inequality against values read off the fitted light.
+What the pair buys is a coverage angle rather than blanket coverage. The
+shadow map quantizes position in the light's image plane, the plane perpendicular to the light,
+not along the receiving surface. Displace by `s` in that plane and the surface point you land on
+sits `s * tan(theta)` further away in depth, where theta is the angle between the surface normal
+and the light. Tangent, not sine: the sine form would measure the separation along the surface,
+which is only the same thing at theta = 0. Since tangent is unbounded, no finite pair of constants
+covers every orientation, so what the constants have to state is how steep a surface they reach.
 
-The same arithmetic explains the old constant. `-0.0005` bought about 1.02 texels of depth, which
-is 0.72 diagonals, with no normal offset at all, so the inequality failed once `sin(theta)` passed
-0.72, or beyond roughly 46 degrees. Steep faces acne, shallow ones do not, which is the symptom
-issue #491 reported. The failing test written before the fix broke at 46.4 degrees.
+The condition is `normalBias * cos(theta) + worldBias >= diagonal * tan(theta)`. Both halves being
+one diagonal, it reduces to `cos(theta) + 1 >= tan(theta)`, whose root is about 57.1 degrees. The
+depth bias on its own reaches wherever `tan(theta) <= 1`, which is exactly 45 degrees. So the
+normal offset is worth roughly twelve degrees of additional slope, and that gain is the whole
+argument for carrying it. Under the discarded sine model a full-diagonal constant bias would have
+dominated at every angle, which would have left `normalBias` with nothing to do.
 
-Two consequences of the derivation are worth recording. Peter-panning is bounded at `2 * diagonal`,
-about 8 mm at the harness fit, small against any wall assembly in the registry. And `normalBias`
-stays zero until a fit runs, which is harmless today because the schematic rig does not cast
-([[ADR-0153-daylight-through-glass-role-stamp]]) and the solar rig refits on every update.
+The same arithmetic prices the old constant. `-0.0005` bought about 1.02 texels of depth, which is
+0.72 diagonals, with no normal offset at all, so it held only to about 35.9 degrees.
+
+Two consequences are worth recording. Peter-panning is bounded by `normalBias + worldBias`, two
+diagonals, near 8 mm at the harness fit, and that bound assumes the worst orientation, so the
+typical detachment is smaller. And `normalBias` stays zero until a fit runs, which is harmless
+today because the schematic rig does not cast ([[ADR-0153-daylight-through-glass-role-stamp]]) and
+the solar rig refits on every update.
 
 ### The occlusion radius converts rather than retunes
 
@@ -121,8 +132,8 @@ declaration, so the conversion is visible and testable instead of folded into a 
 
 ## Consequences
 
-- Shadowed faces at any angle now have a derivation behind them, and the two constants move
-  together because both name the same texel diagonal.
+- The shadow constants now have a derivation and a stated reach, about 57 degrees of slope, and
+  they move together through one `calibrateShadowBias` seam because both name the same diagonal.
 - No committed baseline moves. The full scene-webgl suite passes on darwin, all 27 tests, with no
   snapshot refreshed. The shadow change is a fraction of a texel of depth plus a 4 mm normal
   offset, and the occlusion change, though large in the frame, stays inside the scene tier's 0.35
@@ -132,9 +143,31 @@ declaration, so the conversion is visible and testable instead of folded into a 
   ([[ADR-0156-luminance-calibration-convention]]), not with a tolerance edit here.
 - The linux family ([[ADR-0152-linux-scene-baseline-lane]]) was not re-rendered in this lane. The
   darwin result predicts it passes, and CI will say so.
-- Issue #491's remaining exit criteria are untouched. Restoring schematic shadow casting still
-  waits on the r184 node-renderer behavior ADR-0153 describes; this change only ensures that when
-  casting returns, the constants it returns to are defensible.
+- This does not explain or fix the self-shadowing issue #491 reports, and nothing here should be
+  read as a cure for it. That issue's own experiments rule out the mechanism these constants
+  address: the symptom renders identically at bias `-0.0005`, `+0.0005`, and `0`, and is unchanged
+  by `normalBias` at 4 mm and at 30 mm, while a caster bisection showed the walls' own depth
+  renders are what darken them. A defect that survives every bias knob is not texel-scale acne.
+  What this change does deliver is the last-listed exit criterion, constants that are derived
+  rather than guessed, so that whenever schematic casting is restored it returns to a defensible
+  calibration. The self-shadowing itself stays open and unexplained.
 - `SHADOW_BIAS` holds for the current fitter. A change to `SHADOW_DISTANCE_FACTOR` or to the
   symmetric fit breaks the equality between depth range and lateral extent, and the constant would
   have to be re-derived rather than nudged.
+
+## References
+
+- Issue #491 (schematic self-shadowing, and the recorded experiments that rule out texel-scale
+  acne as its mechanism).
+- [[ADR-0027-units-module-targets-millimeter-storage]] (millimeters are the canonical unit).
+- [[ADR-0151-ambient-occlusion-render-pipeline]] (the GTAO pass whose radius this recalibrates).
+- [[ADR-0153-daylight-through-glass-role-stamp]] (shadow casting as a provider policy).
+- [[ADR-0142-color-managed-renderer]] (PCFSoft shadow filtering, output color space).
+- [[ADR-0152-linux-scene-baseline-lane]] (the second baseline family CI renders).
+- [[ADR-0133-ordered-depth-bias-ladder-for-stacked-coincident-surfaces]] (the sibling practice of
+  deriving a depth constant from an ordering rather than picking one).
+- `engine/lighting/lighting-rig.ts` (`TEXEL_DIAGONAL_FRACTION`, `SHADOW_BIAS`,
+  `shadowTexelDiagonalMm`, `calibrateShadowBias`), `engine/lighting/lighting-rig.test.ts` (the
+  coverage-limit assertions).
+- `engine/postprocessing/ambient-occlusion-params.ts` (the converted view-space lengths),
+  `node_modules/three/examples/jsm/tsl/display/GTAONode.js` (the r184 uniform semantics).
