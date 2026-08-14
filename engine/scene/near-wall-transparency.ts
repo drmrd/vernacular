@@ -17,24 +17,61 @@ interface WallFacing {
   outwardNormal: WorldXZ
 }
 
+/** The appearance a faded material is restored to: what it looked like before any fade. */
+interface FadeBaseline {
+  transparent: boolean
+  opacity: number
+  depthWrite: boolean
+}
+
 /** A material paired with the appearance it had before any fade, so the fade can be reversed. */
 interface FadeMaterial {
   material: THREE.Material
-  baseline: { transparent: boolean; opacity: number; depthWrite: boolean }
+  baseline: FadeBaseline
   /** True => `updateNearWallTransparency` holds it at baseline, never dropping it to the fade opacity. */
   holdOpaque?: boolean
 }
 
-/** Captures a freshly cloned material's transparency, opacity, and depth-write as its restore baseline. */
-function fadeMaterial(material: THREE.Material): FadeMaterial {
-  return {
-    material,
-    baseline: {
-      transparent: material.transparent,
-      opacity: material.opacity,
-      depthWrite: material.depthWrite,
-    },
+/**
+ * `userData` key under which a privatized clone carries its own uuid and the baseline it
+ * was cloned at, so a later enrollment can recognize its own work. The uuid is part of the
+ * stamp because `Material.clone` deep-copies `userData`: a clone of a stamped material
+ * carries a stamp naming a different uuid, which reads as unstamped, exactly right since
+ * that copy has never been privatized.
+ */
+const FADE_STAMP = 'nearWallFade'
+
+interface FadeStamp {
+  uuid: string
+  baseline: FadeBaseline
+}
+
+/** The baseline an earlier enrollment stamped on this very material, or none if it privatized nothing. */
+function stampedBaseline(material: THREE.Material): FadeBaseline | undefined {
+  const stamp = material.userData[FADE_STAMP] as FadeStamp | undefined
+  return stamp !== undefined && stamp.uuid === material.uuid ? stamp.baseline : undefined
+}
+
+/**
+ * The private fade clone of `material` with the appearance to restore it to. A material an
+ * earlier enrollment already privatized is handed back untouched, carrying the baseline
+ * stamped on it then: re-enrolling a sub-group reused across reconciles must neither clone
+ * a second time nor read the material's current, possibly mid-fade, appearance as the
+ * appearance to restore (issue #437).
+ */
+function privatizeMaterial(material: THREE.Material): FadeMaterial {
+  const stamped = stampedBaseline(material)
+  if (stamped !== undefined) {
+    return { material, baseline: stamped }
   }
+  const clone = material.clone()
+  const baseline: FadeBaseline = {
+    transparent: material.transparent,
+    opacity: material.opacity,
+    depthWrite: material.depthWrite,
+  }
+  clone.userData[FADE_STAMP] = { uuid: clone.uuid, baseline } satisfies FadeStamp
+  return { material: clone, baseline }
 }
 
 /** An exterior wall's own materials plus the world geometry that decides its fade. */
@@ -101,11 +138,12 @@ function meshMaterials(mesh: THREE.Mesh): THREE.Material[] {
   return Array.isArray(mesh.material) ? mesh.material : [mesh.material]
 }
 
-/** Replaces a mesh's materials with private clones (single stays single) and returns them. */
+/** Replaces a mesh's materials with private ones (single stays single) and returns them. */
 function privatizeMeshMaterials(mesh: THREE.Mesh): FadeMaterial[] {
-  const cloned = meshMaterials(mesh).map((material) => material.clone())
-  mesh.material = Array.isArray(mesh.material) ? cloned : (cloned[0] as THREE.Material)
-  return cloned.map(fadeMaterial)
+  const privatized = meshMaterials(mesh).map(privatizeMaterial)
+  const materials = privatized.map((record) => record.material)
+  mesh.material = Array.isArray(mesh.material) ? materials : (materials[0] as THREE.Material)
+  return privatized
 }
 
 /** Clones the materials of every mesh under the object carrying `entityId`, or none if absent. */
