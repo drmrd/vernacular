@@ -1,6 +1,7 @@
 import { rotatePoint, type Point, type StairSceneNode } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
-import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH } from './plan-ink'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 // Stairs are a fixture within the cut plane, drawn at the medium ink weight.

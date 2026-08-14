@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { drawFurniture, furnitureSymbol, type DrawableFurniture } from './draw-furniture'
 import { recordingContext } from './draw-plan-test-fixtures'
-import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH } from './plan-palette'
+import { PLAN_INK_WIDTH } from './plan-ink'
+import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { Viewport } from './viewport'
 import { createFurnitureInstance, type FurnitureInstance, type Point } from '../../core'
 

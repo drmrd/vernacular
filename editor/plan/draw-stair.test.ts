@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { drawStair } from './draw-stair'
 import { recordingContext } from './draw-plan-test-fixtures'
-import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH } from './plan-palette'
+import { PLAN_INK_WIDTH } from './plan-ink'
+import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 import type { Viewport } from './viewport'
 import type { StairSceneNode } from '../../core'
 

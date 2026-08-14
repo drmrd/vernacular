@@ -1,7 +1,8 @@
 import { rotatePoint, type FurnitureInstance, type Point } from '../../core'
 import { DEG_TO_RAD } from './angles'
 import type { PlanDrawingContext } from './draw-plan'
-import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH } from './plan-ink'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 // Footprint half-extents split the full width and depth about the center.

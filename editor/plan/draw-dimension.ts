@@ -7,7 +7,8 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { midpoint } from './geometry'
-import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH } from './plan-ink'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport, type ScreenPoint } from './viewport'
 
 /** A dimension scene node paired with the render decisions resolved from the selection. */

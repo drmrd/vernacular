@@ -7,7 +7,8 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { openingCorners, swingLeafGeometry } from './opening-geometry'
-import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH } from './plan-ink'
+import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 /** A scene-graph opening node paired with the render decisions resolved from its element type and the selection. */

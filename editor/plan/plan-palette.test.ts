@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolvePlanPalette, DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH } from './plan-palette'
+import { resolvePlanPalette, DEFAULT_PLAN_PALETTE } from './plan-palette'
 
 describe('resolvePlanPalette', () => {
   it('maps each canvas token to its palette field', () => {
@@ -40,13 +40,5 @@ describe('resolvePlanPalette', () => {
 
   it('falls back to the default palette when a variable reads empty', () => {
     expect(resolvePlanPalette(() => '')).toEqual(DEFAULT_PLAN_PALETTE)
-  })
-})
-
-describe('PLAN_INK_WIDTH', () => {
-  it('defines the cut/fixture/annotation ink-weight hierarchy from heaviest to lightest', () => {
-    expect(PLAN_INK_WIDTH).toEqual({ cut: 2.5, fixture: 1.5, annotation: 1 })
-    expect(PLAN_INK_WIDTH.cut).toBeGreaterThan(PLAN_INK_WIDTH.fixture)
-    expect(PLAN_INK_WIDTH.fixture).toBeGreaterThan(PLAN_INK_WIDTH.annotation)
   })
 })
