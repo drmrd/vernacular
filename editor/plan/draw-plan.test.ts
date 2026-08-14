@@ -584,11 +584,27 @@ describe('drawPlan hover preview', () => {
   })
 })
 
-describe('drawPlan hover emphasis', () => {
+describe('drawPlan emphasis relative to cut', () => {
   it('emphasizes the hover highlight relative to the cut weight so a future retune keeps it heavier', () => {
     const recorder = recordingContext()
 
     drawPlan(recorder.ctx, planOptions({ hoveredId: 'wall:a' }))
+
+    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
+  })
+
+  it('emphasizes the selected-room highlight relative to the cut weight so a future retune keeps it heavier', () => {
+    const recorder = recordingContext()
+    const room = rectangleRoom('room:r')
+
+    drawPlan(recorder.ctx, {
+      walls: [] as WallSceneNode[],
+      rooms: [room],
+      viewport: { scale: DEFAULT_PLAN_SCALE, offset: { x: 0, y: 0 } },
+      width: 800,
+      height: 600,
+      selectedIds: new Set(['room:r']),
+    })
 
     expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut + 1)
   })
