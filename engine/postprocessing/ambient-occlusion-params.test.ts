@@ -24,8 +24,7 @@ const EXPECTED_DISTANCE_EXPONENT = 1
 const EXPECTED_DISTANCE_FALL_OFF = 1
 const EXPECTED_SAMPLE_COUNT = 16
 
-// Ambient occlusion for room interiors is conventionally gathered over a quarter to half a
-// metre; below that the term collapses into the contact seam and stops reading as occlusion.
+// The interior gather band, in millimeters. ADR-0158 carries why it is a quarter to half a metre.
 const INTERIOR_RADIUS_FLOOR_MM = 250
 const INTERIOR_RADIUS_CEILING_MM = 500
 
