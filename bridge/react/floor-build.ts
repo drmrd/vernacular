@@ -20,7 +20,6 @@ import {
   PhysicalMaterialProvider,
   type EdgeOverlayOptions,
   type MaterialProvider,
-  type NearWallTarget,
   type SceneRoot,
 } from '../../engine'
 import { roomSceneNodeEqual } from './room-scene-node-equal'
@@ -31,12 +30,6 @@ export interface FurnitureModelLookup {
   get(
     contentHash: string,
   ): { status: 'loading' | 'ready' | 'failed'; template?: FurnitureModel } | undefined
-}
-
-/** A built wall sub-group together with the exterior-wall fade targets it owns. */
-interface WallBuild {
-  group: SceneRoot
-  nearWallTargets: NearWallTarget[]
 }
 
 /** One entity's built sub-group, kept with the node it was built from for reuse. */
@@ -82,7 +75,7 @@ export interface FloorRequest {
  * root, so an unchanged floor's build seats into whichever scene reuses it.
  */
 export interface CachedFloorBuild extends FloorRequest {
-  wall: WallBuild
+  wall: SceneRoot
   entities: FloorEntities
   wallOpeningNodes: OpeningSceneNode[]
   rooms: Map<string, SubgroupBuild<RoomSceneNode>>
@@ -171,7 +164,7 @@ function reuseOrBuildWall({
   materials,
   view,
   prev,
-}: WallBuildInput): WallBuild {
+}: WallBuildInput): SceneRoot {
   if (
     prev !== undefined &&
     sameRefs(entities.walls, prev.entities.walls) &&

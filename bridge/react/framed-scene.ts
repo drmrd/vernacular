@@ -1,10 +1,6 @@
 import {
-  buildWallGraph,
-  exteriorWalls,
   frameSceneCamera,
-  junctionFadeGroups,
   kelvinToLinearRgb,
-  withAttachedFurniture,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
@@ -21,7 +17,6 @@ import {
   enrollNearWallTargets,
   isGroundPlane,
   markShadowCasters,
-  prepareNearWallTransparency,
   GRADE_ELEVATION_MM,
   PhysicalMaterialProvider,
   sceneBounds,
@@ -61,17 +56,10 @@ export function buildFramedScene(
   })
   const root = buildScene(graph, materials, view)
   markShadowCasters(root)
-  const nearWallTargets = prepareNearWallTransparency(
-    root,
-    // Exterior walls carry their hosted openings and, via the plan-space pairing,
-    // the furniture standing against them, so all three fade as one target.
-    withAttachedFurniture(
-      exteriorWalls(graph.walls, graph.rooms, graph.openings),
-      graph.walls,
-      graph.furniture,
-    ),
-    junctionFadeGroups(buildWallGraph(graph.walls), graph.walls, graph.rooms, graph.openings),
-  )
+  // Exterior walls carry their hosted openings and, through the plan-space pairing, the
+  // furniture standing against them, so all three fade as one target. The reconciler
+  // enrolls per assembled floor group through this same seam.
+  const nearWallTargets = enrollNearWallTargets(root, graph)
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
   const roomPolygons = graph.rooms.map((room) => room.polygon)

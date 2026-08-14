@@ -1,20 +1,17 @@
 import * as THREE from 'three'
 
-import {
-  exteriorWalls,
-  junctionFadeGroups,
-  type FurnitureSceneNode,
-  type OpeningSceneNode,
-  type RoomSceneNode,
-  type SceneNode,
-  type WallSceneNode,
+import type {
+  FurnitureSceneNode,
+  OpeningSceneNode,
+  RoomSceneNode,
+  SceneNode,
+  WallSceneNode,
 } from '../../core'
 import type { MaterialProvider, SurfaceRole } from '../materials/material-provider'
 
 import { applyEdgeOverlay, type EdgeOverlayOptions } from './edge-overlay'
 import { buildFurnitureMassing } from './furniture-builder'
 import { buildOpeningFill } from './opening-fill-builder'
-import { prepareNearWallTransparency, type NearWallTarget } from './near-wall-transparency'
 import { buildRoomShell } from './room-builder'
 import { markShadowCasters } from './shadow-casters'
 import { buildWalls } from './wall-builder'
@@ -84,29 +81,25 @@ export function buildFurnitureSubgroup(
 
 /**
  * Builds a floor's self-contained wall sub-group from its wall, room, and opening
- * nodes: the wall meshes, an edge overlay (off unless the view turns it on), shadow
- * flags, and the near-wall fade targets for its exterior walls.
+ * nodes: the wall meshes, an edge overlay (off unless the view turns it on), and
+ * shadow flags.
+ *
+ * Near-wall fade targets are not enrolled here. A wall fades together with its hosted
+ * opening fills and the furniture standing against it, and those live in sibling
+ * sub-groups, so enrollment waits for the assembled floor root and runs over that
+ * instead (`enrollNearWallTargets`, issue #437).
  */
-export function buildWallSubgroup(input: WallSubgroupInput): {
-  group: THREE.Group
-  nearWallTargets: NearWallTarget[]
-} {
-  const { walls, rooms, openings, materials } = input
-  const graph = buildFloorWallGraph(walls)
+export function buildWallSubgroup(input: WallSubgroupInput): THREE.Group {
+  const { walls, openings, materials } = input
   const group = buildWalls({
-    graph,
+    graph: buildFloorWallGraph(walls),
     walls,
     openingsByWall: groupOpeningsByHostWall(openings),
     materials,
   })
   applyEdgeOverlay(group, input)
   markShadowCasters(group)
-  const nearWallTargets = prepareNearWallTransparency(
-    group,
-    exteriorWalls(walls, rooms, openings),
-    junctionFadeGroups(graph, walls, rooms, openings),
-  )
-  return { group, nearWallTargets }
+  return group
 }
 
 /**

@@ -39,12 +39,7 @@ export interface FramedSceneReconciler {
 function floorAssembly(build: CachedFloorBuild): FloorAssembly {
   return {
     node: build.floorNode,
-    subgroups: [
-      build.wall.group,
-      ...collectSubgroupGroups(build.rooms, build.openings, build.furniture),
-    ],
-    // The floor's furniture nodes ride along on build.entities and are dropped by the
-    // narrower enrollment type, which does not read them yet.
+    subgroups: [build.wall, ...collectSubgroupGroups(build.rooms, build.openings, build.furniture)],
     entities: build.entities,
     roomPolygons: build.roomPolygons,
   }
