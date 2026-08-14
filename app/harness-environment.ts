@@ -40,9 +40,9 @@ const FULLY_OVERCAST_CLOUD_COVER = 1
 const WINDOW_LIGHT_MORNING_MINUTES = 540
 
 // The March-equinox-at-civil-noon instant, shared by the equinox-noon, color-check,
-// overcast-noon, and ambient-occlusion states: all four pin the same sun and differ
-// only in cloud cover, the color-check flag, or the paired scene fixture, so they
-// share one observation instant.
+// color-accuracy, overcast-noon, and ambient-occlusion states: all five pin the same
+// sun and differ only in cloud cover, the color-check flag, the paired scene fixture,
+// or the camera pose, so they share one observation instant.
 const EQUINOX_NOON_OBSERVATION: ObservationInstant = {
   date: '2026-03-20',
   minutesSinceMidnight: CIVIL_NOON_MINUTES,
@@ -66,6 +66,22 @@ const WINDOW_LIGHT_OBSERVATION: ObservationInstant = {
 const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
   position: { x: 500, y: 1900, z: -1500 },
   target: { x: 3000, y: 600, z: -1500 },
+  near: 100,
+  far: 10000,
+}
+
+// The color-accuracy gate samples the shell floor under the color-check reference lighting,
+// but the shell is a closed box (floor, four walls, and a ceiling), so the exterior auto-frame
+// hides the floor. This interior camera stands just under the 2600 mm ceiling directly above
+// the floor centre (world (2000, 0, -1500); planToWorld maps plan (x, y) to world (x, height,
+// -y)) and looks straight down, with north as screen-up so the look direction is not parallel
+// to the default up vector. The floor fills the canvas, so a centre sample patch is
+// unambiguously floor. The camera differs from the color-check state, but the reference
+// lighting (ADR-0156) is unchanged; see ADR-0157.
+const COLOR_ACCURACY_CAMERA_POSE: CameraPose = {
+  position: { x: 2000, y: 2400, z: -1500 },
+  target: { x: 2000, y: 0, z: -1500 },
+  up: { x: 0, y: 0, z: -1 },
   near: 100,
   far: 10000,
 }
@@ -102,6 +118,17 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
       colorCheck: true,
+    },
+  ],
+  [
+    'color-accuracy',
+    {
+      site: CANONICAL_SITE,
+      observedAt: EQUINOX_NOON_OBSERVATION,
+      realistic: true,
+      colorCheck: true,
+      scene: 'shell',
+      cameraPose: COLOR_ACCURACY_CAMERA_POSE,
     },
   ],
   [

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test'
+import type { Srgb } from '../../core'
 
 // Shared helpers for the live three-dimensional pane specs (navigation, color
 // temperature, selection). The live view renders through the non-deterministic WebGPU
@@ -100,4 +101,82 @@ export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
   await expect(page.getByRole('option', { name: / wide$/ })).toHaveCount(1)
 
   return settledSceneCanvas(page)
+}
+
+// The side of the square sample patch, in screenshot pixels. Averaging a patch rather than
+// reading one pixel damps per-pixel WebGL nondeterminism.
+const SAMPLE_PATCH_PX = 24
+// The RGBA stride of an ImageData buffer.
+const RGBA_STRIDE = 4
+// The maximum value of an 8-bit sRGB channel, for scaling to a 0..1 fraction.
+const SRGB_MAX = 255
+
+// Runs in the browser (page context): decode a PNG data URL, draw it to a 2D canvas, and
+// average a square patch to one gamma-encoded sRGB triple in 0..1. Kept as a self-contained
+// top-level function (no closure over module scope) so Playwright can serialize it into the
+// page, and so sampleCanvasColor stays at one level of abstraction. The patch is centered on
+// the given (cx, cy) fractions of the image; stride is the RGBA byte stride and max the 8-bit
+// channel maximum.
+async function averageImagePatch({
+  url,
+  patch,
+  stride,
+  max,
+  cx,
+  cy,
+}: {
+  url: string
+  patch: number
+  stride: number
+  max: number
+  cx: number
+  cy: number
+}): Promise<Srgb> {
+  const image = new Image()
+  image.src = url
+  await image.decode()
+  const surface = document.createElement('canvas')
+  surface.width = image.width
+  surface.height = image.height
+  const context = surface.getContext('2d')
+  if (context === null) throw new Error('no 2d context for the sample surface')
+  context.drawImage(image, 0, 0)
+  const originX = Math.round(image.width * cx - patch / 2)
+  const originY = Math.round(image.height * cy - patch / 2)
+  const { data } = context.getImageData(originX, originY, patch, patch)
+  let red = 0
+  let green = 0
+  let blue = 0
+  for (let index = 0; index < data.length; index += stride) {
+    red += data[index]
+    green += data[index + 1]
+    blue += data[index + 2]
+  }
+  const pixels = data.length / stride
+  return { r: red / pixels / max, g: green / pixels / max, b: blue / pixels / max }
+}
+
+// Averages a square patch, centered on the canvas by default, of the settled harness canvas
+// to one gamma-encoded sRGB triple in 0..1 (ready for srgbToOkLab). The harness renderer does
+// not preserve its drawing buffer, so an in-page getImageData on the live canvas reads an
+// already-cleared buffer (see scene-solar.spec.ts); the compositor screenshot is the source
+// of truth. We screenshot the canvas, hand the PNG back to the page as a data URL, and read
+// pixels from the browser's native decode, so no image-decoding dependency is needed. The
+// optional center fractions (0..1 of width and height) place the patch when the sampled
+// surface is not at frame center.
+export async function sampleCanvasColor(
+  page: Page,
+  canvas: Locator,
+  center: { x: number; y: number } = { x: 0.5, y: 0.5 },
+): Promise<Srgb> {
+  const png = await canvas.screenshot()
+  const dataUrl = `data:image/png;base64,${png.toString('base64')}`
+  return page.evaluate(averageImagePatch, {
+    url: dataUrl,
+    patch: SAMPLE_PATCH_PX,
+    stride: RGBA_STRIDE,
+    max: SRGB_MAX,
+    cx: center.x,
+    cy: center.y,
+  })
 }
