@@ -31,8 +31,25 @@ export const DAYLIGHT_SUN_INTENSITY = 1.6
 const FILL_INTENSITY = 0.5
 /** A 2048px square shadow map: enough resolution for the shell without a large GPU cost. */
 const SHADOW_MAP_SIZE = 2048
-/** A small negative depth bias to keep large flat faces (the floor) from self-shadowing into acne. */
-const SHADOW_BIAS = -0.0005
+/**
+ * One shadow-map texel's diagonal, as a fraction of the shadow camera's extent, measured in the
+ * light's image plane. Both shadow constants derive from it, because the depth a fragment is
+ * compared against belongs to a surface point roughly a diagonal away in that plane: the texel's
+ * own quantization plus the PCFSoft neighborhood the renderer samples. The split between those
+ * two is an estimate, so the diagonal is an order-of-magnitude scale rather than an exact budget.
+ * ADR-0158 derives it.
+ */
+const TEXEL_DIAGONAL_FRACTION = Math.SQRT2 / SHADOW_MAP_SIZE
+/**
+ * The depth bias, in the normalized [0, 1] light-space depth three adds it to, not a world
+ * length. The fitter below stands the sun off at SHADOW_DISTANCE_FACTOR bounding radii, which
+ * makes its orthographic shadow camera span 2 * radius in depth as well as laterally (until
+ * MIN_SHADOW_NEAR clamps the near plane, which takes a sub-millimeter scene). One texel
+ * therefore covers the same fraction of both, and this bias needs no scene size to be right.
+ * Negative because three adds it to the fragment's own depth, and the shallower one stays lit.
+ * Half of a pair: `calibrateShadowBias` sets it alongside its world-space partner.
+ */
+const SHADOW_BIAS = -TEXEL_DIAGONAL_FRACTION
 const SHADOW_DISTANCE_FACTOR = 3
 const MIN_SHADOW_NEAR = 1
 /** The sun direction as a unit vector, normalized once so the per-call fitter does not allocate. */
@@ -77,6 +94,9 @@ export function buildLightingRig(
   sun.position.copy(SUN_DIRECTION)
   sun.castShadow = castShadow
   sun.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE)
+  // Only the scene-independent half of the acne calibration can be set here, since the other
+  // half is a world length and no bounds are known yet. `calibrateShadowBias` sets both once the
+  // fitter has a radius; until a fit runs the sun casts with no slope compensation at all.
   sun.shadow.bias = SHADOW_BIAS
   const fill = new THREE.HemisphereLight(WHITE, GROUND_FILL, FILL_INTENSITY)
   scene.add(sun, fill)
@@ -169,6 +189,29 @@ export function fitSunShadowToDirection(
   fitSunShadowAlongUnitDirection(scene, unitDirection, bounds)
 }
 
+/** TEXEL_DIAGONAL_FRACTION in world millimeters, across a shadow camera fitted at `radius`. */
+function shadowTexelDiagonalMm(radius: number): number {
+  return TEXEL_DIAGONAL_FRACTION * (2 * radius)
+}
+
+/**
+ * Sets both halves of the shadow's acne calibration for a camera fitted at `radius`, so the two
+ * are read and changed together (ADR-0158). They are not interchangeable: `bias` is normalized
+ * depth and scene-independent, `normalBias` is world millimeters and scales with the fit.
+ *
+ * The shadow map quantizes position in the light's image plane, so for a surface at angle theta
+ * to the light a texel diagonal of separation there is worth `diagonal * tan(theta)` of depth
+ * error. That grows without bound toward grazing incidence, so no pair covers everything and the
+ * useful question is how steep a surface it reaches. The depth bias alone, being one whole
+ * diagonal, holds to 45 degrees. Adding a normal offset of one diagonal buys back
+ * `diagonal * cos(theta)` on top, extending the reach to about 57 degrees, the root of
+ * `cos(theta) + 1 = tan(theta)`. That gain is why the pair exists rather than a constant alone.
+ */
+function calibrateShadowBias(sun: THREE.DirectionalLight, radius: number): void {
+  sun.shadow.bias = SHADOW_BIAS
+  sun.shadow.normalBias = shadowTexelDiagonalMm(radius)
+}
+
 // Invariant: `direction` must be pre-normalized by the caller; a non-unit vector silently mis-fits the shadow.
 function fitSunShadowAlongUnitDirection(
   scene: THREE.Object3D,
@@ -195,6 +238,8 @@ function fitSunShadowAlongUnitDirection(
   sun.position.copy(center).addScaledVector(direction, distance)
   sun.target.position.copy(center)
   sun.target.updateMatrixWorld()
+
+  calibrateShadowBias(sun, radius)
 
   const camera = sun.shadow.camera
   camera.left = -radius
