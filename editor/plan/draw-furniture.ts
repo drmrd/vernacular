@@ -1,12 +1,13 @@
 import { rotatePoint, type FurnitureInstance, type Point } from '../../core'
 import { DEG_TO_RAD } from './angles'
 import type { PlanDrawingContext } from './draw-plan'
-import type { PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 // Footprint half-extents split the full width and depth about the center.
 const HALF_DIVISOR = 2
-const FURNITURE_INK_WIDTH = 1
+// Furniture is a fixture within the cut plane, drawn at the medium ink weight.
+const FURNITURE_INK_WIDTH = PLAN_INK_WIDTH.fixture
 const FURNITURE_SELECTION_WIDTH = 2
 const FURNITURE_LABEL_FONT = '12px sans-serif'
 // Anchored at the instance position, matching the pre-existing label placement: set

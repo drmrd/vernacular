@@ -1,9 +1,10 @@
 import { rotatePoint, type Point, type StairSceneNode } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
-import type { PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
-const STAIR_INK_WIDTH = 1
+// Stairs are a fixture within the cut plane, drawn at the medium ink weight.
+const STAIR_INK_WIDTH = PLAN_INK_WIDTH.fixture
 // The number of evenly spaced tread lines drawn across a straight run.
 const TREAD_COUNT = 8
 // The direction arrowhead spans this fraction of the run width to each side of the centerline.

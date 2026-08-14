@@ -7,7 +7,7 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { openingCorners, swingLeafGeometry } from './opening-geometry'
-import type { PlanPalette } from './plan-palette'
+import { PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 /** A scene-graph opening node paired with the render decisions resolved from its element type and the selection. */
@@ -21,7 +21,8 @@ export interface DrawableOpening {
   head?: VoidContourKind | undefined
 }
 
-const OPENING_INK_WIDTH = 1
+// Openings break the wall stroke, so their ink shares the wall's cut weight.
+const OPENING_INK_WIDTH = PLAN_INK_WIDTH.cut
 const OPENING_SELECTION_WIDTH = 2
 // The pivot dot radius in screen pixels.
 const PIVOT_DOT_RADIUS_PX = 3

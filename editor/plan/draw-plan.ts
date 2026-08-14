@@ -21,7 +21,7 @@ import { visibleGridLines } from './grid'
 import { centerOf, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
-import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
+import { DEFAULT_PLAN_PALETTE, PLAN_INK_WIDTH, type PlanPalette } from './plan-palette'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -103,7 +103,9 @@ export interface DrawPlanOptions {
 
 const SELECTED_ROOM_LINE_WIDTH = 2
 const HOVER_HIGHLIGHT_LINE_WIDTH = 3
-const MIN_WALL_PIXELS = 1
+// Walls are the plan's cut plane, so their stroke never draws thinner than the
+// cut ink weight, even when the wall's real thickness projects to a hairline.
+const MIN_WALL_PIXELS = PLAN_INK_WIDTH.cut
 const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2
