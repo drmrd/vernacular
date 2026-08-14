@@ -32,14 +32,21 @@ const FILL_INTENSITY = 0.5
 /** A 2048px square shadow map: enough resolution for the shell without a large GPU cost. */
 const SHADOW_MAP_SIZE = 2048
 /**
- * The depth bias, in the normalized [0, 1] light-space depth three adds it to (not a world
- * length). The fitter below stands the sun off at SHADOW_DISTANCE_FACTOR bounding radii, which
- * makes its orthographic shadow camera span 2 * radius laterally AND in depth, so one texel is
- * worth 1 / SHADOW_MAP_SIZE of normalized depth at any scene size and the texel diagonal that
- * `shadowTexelDiagonalMm` measures in world millimeters is Math.SQRT2 of those. Negative because
- * three adds the bias to the fragment's own depth, and the shallower fragment is the lit one.
+ * One shadow-map texel's diagonal, as a fraction of the shadow camera's extent. This is the
+ * length scale both shadow constants below are derived from, because the depth a fragment is
+ * compared against belongs to a surface point up to one diagonal away: half a texel from the
+ * map's own quantization, the rest from the PCFSoft neighborhood the renderer samples.
  */
-const SHADOW_BIAS = -Math.SQRT2 / SHADOW_MAP_SIZE
+const TEXEL_DIAGONAL_FRACTION = Math.SQRT2 / SHADOW_MAP_SIZE
+/**
+ * The depth bias, in the normalized [0, 1] light-space depth three adds it to, not a world
+ * length. The fitter below stands the sun off at SHADOW_DISTANCE_FACTOR bounding radii, which
+ * makes its orthographic shadow camera span 2 * radius in depth as well as laterally (until
+ * MIN_SHADOW_NEAR clamps the near plane, which takes a sub-millimeter scene). One texel
+ * therefore covers the same fraction of both, and this bias needs no scene size to be right.
+ * Negative because three adds it to the fragment's own depth, and the shallower one stays lit.
+ */
+const SHADOW_BIAS = -TEXEL_DIAGONAL_FRACTION
 const SHADOW_DISTANCE_FACTOR = 3
 const MIN_SHADOW_NEAR = 1
 /** The sun direction as a unit vector, normalized once so the per-call fitter does not allocate. */
@@ -176,14 +183,9 @@ export function fitSunShadowToDirection(
   fitSunShadowAlongUnitDirection(scene, unitDirection, bounds)
 }
 
-/**
- * The world size, in millimeters, of one shadow-map texel's diagonal for a scene fitted at
- * `radius`. The shadow camera spans 2 * radius across SHADOW_MAP_SIZE texels, and the diagonal
- * is how far the depth a fragment is compared against can sit from the fragment itself: half a
- * texel from map quantization, the rest from the PCFSoft neighborhood the renderer samples.
- */
+/** TEXEL_DIAGONAL_FRACTION in world millimeters, across a shadow camera fitted at `radius`. */
 function shadowTexelDiagonalMm(radius: number): number {
-  return (Math.SQRT2 * (2 * radius)) / SHADOW_MAP_SIZE
+  return TEXEL_DIAGONAL_FRACTION * (2 * radius)
 }
 
 // Invariant: `direction` must be pre-normalized by the caller; a non-unit vector silently mis-fits the shadow.
@@ -215,9 +217,9 @@ function fitSunShadowAlongUnitDirection(
 
   // Slope compensation, in world millimeters: three offsets the shading point along its world
   // normal by this much before the shadow lookup. A surface at angle theta to the light suffers
-  // up to `diagonal * sin(theta)` of depth error from that texel-diagonal separation; the normal
-  // offset buys back `diagonal * cos(theta)` and SHADOW_BIAS buys back another full diagonal, and
-  // cos(theta) + 1 >= sin(theta) over the whole range, so no orientation is left uncovered.
+  // up to `diagonal * sin(theta)` of depth error, the normal offset buys back
+  // `diagonal * cos(theta)`, and SHADOW_BIAS buys back a further full diagonal, so the pair
+  // covers every orientation: cos(theta) + 1 >= sin(theta) holds over the whole range.
   sun.shadow.normalBias = shadowTexelDiagonalMm(radius)
 
   const camera = sun.shadow.camera
