@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { metersToMillimeters, type LightingMode } from '../../core'
+import type { LightingMode } from '../../core'
 import { AO_DEFAULT_PARAMS, ambientOcclusionParamsFor } from './ambient-occlusion-params'
 
 const AO_PARAM_FIELDS = [
@@ -11,18 +11,14 @@ const AO_PARAM_FIELDS = [
   'sampleCount',
 ] as const
 
-// Pinned to the r184 three.js GTAONode uniform initials
-// (three/examples/jsm/tsl/display/GTAONode.js), with one correction. Two of those six uniforms
-// are lengths the r184 shader measures in view space: `radius` scales a unit view-space
-// direction into the sample offset, and `thickness` is compared against a view-space depth
-// delta to decide whether a sample is a nearby occluder or unrelated geometry behind it. The
-// addon's defaults are authored for the metre world three's own examples use, while this
-// project's world is millimeters (ADR-0027), so those two convert. The other four are unitless
-// (an exponent, a falloff mix factor, a curve exponent, and a sample count) and carry over.
-const AO_RADIUS_METERS = 0.25
-const AO_THICKNESS_METERS = 1
-const EXPECTED_RADIUS = metersToMillimeters(AO_RADIUS_METERS)
-const EXPECTED_THICKNESS = metersToMillimeters(AO_THICKNESS_METERS)
+// The r184 three.js GTAONode uniform initials (three/examples/jsm/tsl/display/GTAONode.js),
+// with the two view-space lengths in this project's millimeters rather than the metre world
+// three's examples are authored for. Which two of the six are lengths, and why, is derived
+// beside the constants in ambient-occlusion-params.ts; these are the magnitudes that
+// derivation has to land on, written out so the expectation does not lean on the same
+// conversion call the implementation makes.
+const EXPECTED_RADIUS = 250 // a quarter metre
+const EXPECTED_THICKNESS = 1000 // one metre
 const EXPECTED_SCALE = 1
 const EXPECTED_DISTANCE_EXPONENT = 1
 const EXPECTED_DISTANCE_FALL_OFF = 1
@@ -30,8 +26,8 @@ const EXPECTED_SAMPLE_COUNT = 16
 
 // Ambient occlusion for room interiors is conventionally gathered over a quarter to half a
 // metre; below that the term collapses into the contact seam and stops reading as occlusion.
-const INTERIOR_RADIUS_FLOOR_MM = metersToMillimeters(0.25)
-const INTERIOR_RADIUS_CEILING_MM = metersToMillimeters(0.5)
+const INTERIOR_RADIUS_FLOOR_MM = 250
+const INTERIOR_RADIUS_CEILING_MM = 500
 
 describe('AO_DEFAULT_PARAMS', () => {
   it('carries exactly the tuning fields the r184 GTAONode surface exposes', () => {
