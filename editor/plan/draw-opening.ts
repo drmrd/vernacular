@@ -46,8 +46,15 @@ interface OpeningPainter {
   ink: string
   /** The highlight stroke for a selected opening, from the palette selection color. */
   selection: string
-  /** The wall-break gap fill, from the palette background so it matches the canvas in both themes. */
-  background: string
+  /**
+   * The wall-break gap fill, sourced from the palette room fill. Exact for an
+   * interior wall between two unpainted rooms; a known mismatch on the exterior
+   * side of an exterior wall and on a room with a floor paint override, since
+   * the gap paints one opaque color regardless of which side or finish is
+   * showing through it. The durable fix is a geometric break in the wall stroke
+   * rather than a painted-over gap (issue #521).
+   */
+  gapFill: string
 }
 
 function add(a: Point, b: Point): Point {
@@ -136,7 +143,7 @@ function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void 
 
 /** Fill the opening footprint in the gap color so the wall stroke is broken, then stroke a jamb cap across the wall at each jamb. */
 function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void {
-  painter.ctx.fillStyle = painter.background
+  painter.ctx.fillStyle = painter.gapFill
   tracePolygon(painter, openingCorners(node))
   painter.ctx.fill()
 
@@ -344,7 +351,7 @@ export function drawOpening(
     viewport: render.viewport,
     ink: render.palette.wall,
     selection: render.palette.selection,
-    background: render.palette.roomFill,
+    gapFill: render.palette.roomFill,
   }
   drawGapAndJambs(painter, opening.node)
   const routine = familyRoutine(opening.symbol)

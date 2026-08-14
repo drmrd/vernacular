@@ -65,7 +65,7 @@ describe('drawOpening', () => {
 
     drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
 
-    // The gap is painted: at least one fill (the footprint in the background
+    // The gap is painted: at least one fill (the footprint in the gap-fill
     // color) so the wall stroke is broken, plus strokes for the jamb caps.
     expect(countOp(recorder.ops, 'fill')).toBeGreaterThanOrEqual(1)
     expect(countOp(recorder.ops, 'stroke')).toBeGreaterThanOrEqual(1)
@@ -239,7 +239,7 @@ describe('drawOpening', () => {
 
 // A separate describe block so this suite's arrow function stays within the
 // per-function line budget; these cases pin the palette wiring the other block
-// doesn't already cover (gap-fill background color, ink-hierarchy weight).
+// doesn't already cover (gap-fill color, ink-hierarchy weight).
 describe('drawOpening palette wiring', () => {
   it('keeps the jamb-cap ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
     const recorder = recordingContext()
@@ -252,7 +252,7 @@ describe('drawOpening palette wiring', () => {
     expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
 
-  it('fills the wall-break gap with the palette background so it matches the canvas in both themes', () => {
+  it('fills the wall-break gap from the palette room fill, tracking the theme instead of a hardcoded light color', () => {
     const recorder = recordingContext()
     // A dark-theme palette: the gap fill must track this, not a hardcoded light color.
     const darkPalette = { ...DEFAULT_PLAN_PALETTE, roomFill: '#23344d' }
