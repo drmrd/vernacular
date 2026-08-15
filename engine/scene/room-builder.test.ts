@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { buildRoomShell } from './room-builder'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { PaintMaterialProvider } from '../materials/paint-material-provider'
+import { PhysicalMaterialProvider } from '../materials/physical-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
 import { colorFromHex, floorSlabThickness, solidTreatment, surfaceKey } from '../../core'
 import type { RoomSceneNode, Vector3 } from '../../core'
@@ -357,7 +357,7 @@ describe('buildRoomShell surface paint', () => {
 
     const group = buildRoomShell(
       node,
-      new PaintMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
+      new PhysicalMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
     )
 
     const slab = findFloorSlab(group) as THREE.Mesh
@@ -384,7 +384,7 @@ describe('buildRoomShell surface paint', () => {
 
     const group = buildRoomShell(
       node,
-      new PaintMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
+      new PhysicalMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
     )
 
     const ceiling = meshesOf(group).find(

@@ -52,7 +52,6 @@ export { applyToneMappingOperator } from './renderer/tone-mapping'
 export type { MaterialProvider, SurfaceRole } from './materials/material-provider'
 export { NeutralMaterialProvider } from './materials/neutral-material-provider'
 export type { SurfaceMaterialOptions } from './materials/surface-material-provider'
-export { PaintMaterialProvider } from './materials/paint-material-provider'
 export { PhysicalMaterialProvider } from './materials/physical-material-provider'
 export type { AmbientOcclusionParams } from './postprocessing/ambient-occlusion-params'
 export {
