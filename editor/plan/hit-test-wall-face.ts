@@ -1,6 +1,6 @@
-import { rawWallId, type Point, type WallSceneNode } from '../../core'
+import { effectiveWallThickness, rawWallId, type Point, type WallSceneNode } from '../../core'
 
-/** Halves a wall's thickness to reach a face from its centerline. */
+/** Halves a wall's effective assembly thickness to reach a face from its centerline. */
 const HALF = 2
 
 /**
@@ -44,8 +44,9 @@ function projectOntoWall(point: Point, wall: WallSceneNode): FaceProjection {
 /**
  * The nearer face of the closest wall a plan pointer addresses, or null when the
  * pointer is past every wall. A pointer within `tolerance` of a face (measured from
- * the offset face line, so the wall's own thickness does not count against the band)
- * and between the wall's endpoints picks that wall; ties resolve to the nearer face.
+ * the offset face line at the wall's effective assembly thickness, so ADR-0160's
+ * poche does not count against the band) and between the wall's endpoints picks
+ * that wall; ties resolve to the nearer face.
  */
 export function hitTestWallFace(
   walls: readonly WallSceneNode[],
@@ -61,7 +62,7 @@ export function hitTestWallFace(
       continue
     }
     const side = signed >= 0 ? 'left' : 'right'
-    const faceDistance = Math.abs(Math.abs(signed) - wall.thickness / HALF)
+    const faceDistance = Math.abs(Math.abs(signed) - effectiveWallThickness(wall) / HALF)
     if (faceDistance <= bestDistance) {
       bestDistance = faceDistance
       best = { wallId: rawWallId(wall), side }
