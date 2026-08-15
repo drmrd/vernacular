@@ -65,8 +65,13 @@ export interface LightingRig {
   fill: THREE.HemisphereLight
   /** The visible sky, solar mode only. */
   sky?: SkyMesh
-  /** The sky's diffuse image-based light, solar mode only; replaces the fill. */
-  probe?: THREE.LightProbe
+  /**
+   * The sky's image-based light, solar mode only: an equirectangular radiance map assigned
+   * to the scene's environment, carrying both the diffuse ambient and the specular
+   * reflection. It replaces the fill, and replaced the light probe that preceded it
+   * (ADR-0161); running any two of the three would count the sky's ambient twice.
+   */
+  environment?: THREE.DataTexture
   /**
    * Set true by `disposeLightingRig` so a lazy sky attach still in flight becomes a no-op:
    * the sky loads off the startup path, so a rig can be disposed before its module resolves.
@@ -107,9 +112,9 @@ export function buildLightingRig(
  * Tears down a rig a provider built with `buildLightingRig`: removes its two lights from
  * the scene and disposes each, freeing GPU resources. `dispose()` on the sun is what frees
  * its shadow map, so a provider must call this rather than just detaching the lights. A
- * solar rig also carries a visible sky and its light probe; both are removed and disposed
- * when present, and the teardown still works on a rig that never attached them. Marking the
- * rig disposed abandons a sky whose module is still loading so it never joins the scene.
+ * solar rig also carries a visible sky, which is removed and disposed when present, and the
+ * teardown still works on a rig that never attached one. Marking the rig disposed abandons
+ * a sky whose module is still loading so it never joins the scene.
  */
 export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): void {
   rig.disposed = true
@@ -121,10 +126,6 @@ export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): voi
     scene.remove(rig.sky)
     rig.sky.geometry.dispose()
     rig.sky.material.dispose()
-  }
-  if (rig.probe !== undefined) {
-    scene.remove(rig.probe)
-    rig.probe.dispose()
   }
 }
 
