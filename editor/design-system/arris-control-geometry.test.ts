@@ -19,11 +19,19 @@ import { ARRIS_SCOPE, leafRules } from './css-token-test-support'
 const designSystem = resolve(process.cwd(), 'editor/design-system')
 
 // The control families this slice migrates. Each draws its impression from the
-// drawn-height token and keeps its layout box on the target-size token.
+// drawn-height token.
 const CONTROL_STYLESHEETS = ['button.css', 'icon-button.css', 'segmented.css', 'field.css']
+
+// The families that owe a hit target. A text field is deliberately absent: an input
+// carries no pseudo-element to draw an impression into, and the shipped layer never
+// held a field at the target, so a field sizes its own box (ADR-0163).
+const HIT_TARGET_STYLESHEETS = ['button.css', 'icon-button.css', 'segmented.css']
 
 const DRAWN_HEIGHT = 'var(--size-control-height)'
 const TARGET_MIN = 'var(--size-target-min)'
+// The icon square's own token, which tokens-arris.css points straight at the target
+// minimum; the assertion below keeps that indirection honest.
+const CONTROL_ICON = 'var(--size-control-icon)'
 const BOX_HEIGHT_PROPERTIES = ['min-height', 'height']
 
 function rulesIn(stylesheet: string) {
@@ -81,47 +89,40 @@ describe('Arris drawn control height', () => {
     ).toEqual([])
   })
 
-  it('never lets the design language shrink a box the shipped layer holds at the target', () => {
-    const shrunk = controlRules
-      .filter(isControlBoxRule)
-      .filter((rule) => promisedTargets.has(baseSelector(rule.selector)))
-      .flatMap((rule) =>
-        boxHeights(rule.body)
-          .filter((value) => value !== TARGET_MIN)
-          .map((value) => `${rule.stylesheet}: ${rule.selector} { ${value} }`),
-      )
+  it('never puts the drawn height on the box of a control that owes a hit target', () => {
+    const shrunk = HIT_TARGET_STYLESHEETS.flatMap((stylesheet) =>
+      rulesIn(stylesheet)
+        .filter(isControlBoxRule)
+        .flatMap((rule) =>
+          boxHeights(rule.body)
+            .filter((value) => value !== TARGET_MIN && value !== CONTROL_ICON)
+            .map((value) => `${rule.stylesheet}: ${rule.selector} { ${value} }`),
+        ),
+    )
 
     expect(
       shrunk,
-      `An Arris-scoped rule may draw a smaller impression, but where the shipped ` +
-        `layer reserves ${TARGET_MIN} the control's own box keeps it, so its hit ` +
-        `area never overlaps a neighbour's. A control the shipped layer never held ` +
-        `at the target (a text field) is free to size its own box. Rules lowering a ` +
-        `promised target:\n${shrunk.join('\n')}`,
+      `An Arris-scoped rule may draw a smaller impression into a pseudo-element, but ` +
+        `the control's own box keeps ${TARGET_MIN} so its hit area never overlaps a ` +
+        `neighbour's. Only ${TARGET_MIN} and ${CONTROL_ICON}, which points at it, may ` +
+        `size these boxes. Rules lowering a hit target:\n${shrunk.join('\n')}`,
     ).toEqual([])
   })
 })
-
-/** The selector with the Arris scope stripped, so a scoped rule can be paired with the rule it retunes. */
-function baseSelector(selector: string): string {
-  return selector.replace(ARRIS_SCOPE, '').trim()
-}
 
 function isControlBoxRule(rule: { selector: string }): boolean {
   // A pseudo-element draws the impression and is not the control's own box.
   return isArrisScoped(rule.selector) && !rule.selector.includes('::')
 }
 
-/** Selectors the shipped layer holds at the ADR-0112 target minimum. */
-const promisedTargets = new Set(
-  controlRules
-    .filter((rule) => !isArrisScoped(rule.selector))
-    .filter((rule) => boxHeights(rule.body).includes(TARGET_MIN))
-    .map((rule) => rule.selector),
-)
-
 describe('the coarse-pointer floor', () => {
   const arrisTokens = readFileSync(join(designSystem, 'tokens-arris.css'), 'utf8')
+
+  it('keeps the icon square pointed at the target minimum', () => {
+    // The guard above lets --size-control-icon size an icon button's box. That is
+    // only safe while the icon token resolves to the target, so it is pinned here.
+    expect(arrisTokens).toMatch(/--size-control-icon:\s*var\(--size-target-min\)/)
+  })
 
   it('collapses the drawn control onto the touch target where a finger has to hit it', () => {
     const coarse = leafRules(arrisTokens).filter(

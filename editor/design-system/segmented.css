@@ -55,7 +55,7 @@
 
 /*
  * Arris draws a 28px control (the Arris spec, section 6) while ADR-0112 promises a
- * 40px hit target on a fine pointer. The reconciliation: the option's own box keeps
+ * 40px hit target on a fine pointer (ADR-0163). The option's own box keeps
  * the target, so no option's hit area reaches into its neighbour's, and a centred
  * pseudo-element draws the impression at the drawn-height token. The pseudo-element
  * carries the fill, the machined border and the 2px chamfer, because only a box of
