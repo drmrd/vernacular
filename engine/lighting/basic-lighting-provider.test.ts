@@ -84,7 +84,7 @@ describe('BasicLightingProvider', () => {
     expect(sun.castShadow).toBe(false)
   })
 
-  it('adds no visible sky and no light probe, keeping the schematic fill lit', () => {
+  it('adds no visible sky and no image-based environment, keeping the schematic fill lit', () => {
     const scene = new THREE.Scene()
 
     new BasicLightingProvider().apply(scene)
@@ -92,11 +92,14 @@ describe('BasicLightingProvider', () => {
     const fill = scene.children.find(
       (child) => child instanceof THREE.HemisphereLight,
     ) as THREE.HemisphereLight
-    // Realistic mode lights itself from a visible sky and a light probe; schematic mode
-    // stays a flat legibility rig (ADR-0079), so neither the sky mesh nor the probe appears
-    // and the hemisphere fill keeps its own intensity rather than deferring to a probe.
+    // Realistic mode lights itself from a visible sky and the sky's environment map;
+    // schematic mode stays a flat legibility rig (ADR-0079), so no sky mesh, no probe, and
+    // no scene environment appear, and the hemisphere fill keeps its own intensity.
+    // Leaving scene.environment untouched here is what keeps every schematic baseline
+    // fixed while realistic mode gains image-based lighting (ADR-0161).
     expect(scene.children.some((child) => child instanceof SkyMesh)).toBe(false)
     expect(scene.children.some((child) => child instanceof THREE.LightProbe)).toBe(false)
+    expect(scene.environment).toBeNull()
     expect(fill.intensity).toBeGreaterThan(0)
   })
 

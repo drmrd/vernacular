@@ -60,10 +60,11 @@ describe('attachSkyEnvironment when the SkyMesh chunk fails to load', () => {
     expect(rig.sky).toBeUndefined()
     expect(sceneHasSkyMesh(scene)).toBe(false)
 
-    // The probe attached and the fill zeroed synchronously, before the import failed, so
-    // the scene stays lit from the probe's ambient even though the visible sky never came.
-    expect(rig.probe).toBeInstanceOf(THREE.LightProbe)
-    expect(scene.children).toContain(rig.probe)
+    // The environment map attached and the fill zeroed synchronously, before the import
+    // failed, so the scene stays lit from the sky's ambient even though the visible sky
+    // never came.
+    expect(rig.environment).toBeInstanceOf(THREE.DataTexture)
+    expect(scene.environment).toBe(rig.environment)
     expect(rig.fill.intensity).toBe(0)
   })
 })

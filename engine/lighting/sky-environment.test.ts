@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as THREE from 'three'
-import { SH_COEFFICIENT_COUNT, type EnvironmentLighting } from '../../core'
+import { NEUTRAL_DOME_SPHERICAL_HARMONICS, type EnvironmentLighting } from '../../core'
 import { importsStaticValueOf } from '../testing'
 import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
 import { buildLightingRig, disposeLightingRig, type LightingRig } from './lighting-rig'
@@ -14,13 +14,14 @@ const SUN_DIRECTION = { x: 0.3, y: 0.8, z: -0.5 }
 /** A cloud fraction distinct from the SkyMesh addon default (0.4), so a passthrough shows. */
 const CLOUD_COVER = 0.72
 /**
- * Twenty-seven distinct spherical-harmonic coefficients, one per flat index, so a
- * round-trip through the probe pins the SphericalHarmonics3.fromArray layout exactly:
- * coefficient `i` reads (array[3i], array[3i+1], array[3i+2]) into (x, y, z).
+ * A uniform dome at a distinctive radiance. Uniform is pure band 0, so it reconstructs to
+ * exactly this value in every direction, which lets these tests assert the map's contents
+ * without restating the texel-to-direction convention. That convention is pinned once, in
+ * sky-environment-map.test.ts, where it is the subject rather than a means.
  */
-const DISTINCT_SKY_AMBIENT: readonly number[] = Array.from(
-  { length: SH_COEFFICIENT_COUNT },
-  (_, index) => (index + 1) / 10,
+const DISTINCT_DOME_RADIANCE = 3
+const DISTINCT_SKY_AMBIENT: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS.map(
+  (coefficient) => coefficient * DISTINCT_DOME_RADIANCE,
 )
 /** Reconstruction and passthrough are exact copies; a loose float tolerance suffices. */
 const PRECISION = 5
@@ -49,11 +50,21 @@ function sceneHasSkyMesh(scene: THREE.Object3D): boolean {
   return scene.children.some((child) => (child as { isSkyMesh?: boolean }).isSkyMesh === true)
 }
 
-/** Asserts the probe carries makeLighting's distinct sky-ambient harmonics in fromArray order. */
-function expectProbeCarriesDistinctAmbient(rig: LightingRig): void {
-  const coefficients = rig.probe?.sh.coefficients
-  expect(coefficients?.[0]?.x).toBeCloseTo(DISTINCT_SKY_AMBIENT[0]!, PRECISION)
-  expect(coefficients?.[8]?.z).toBeCloseTo(DISTINCT_SKY_AMBIENT[26]!, PRECISION)
+/** Reads the map's first texel, in linear radiance. Any texel would do: the fixture dome
+ *  above is uniform, so every one of them carries the same value. */
+function firstTexelRadiance(texture: THREE.DataTexture): number {
+  return THREE.DataUtils.fromHalfFloat((texture.image.data as Uint16Array)[0]!)
+}
+
+/**
+ * Asserts the environment map carries makeLighting's sky ambient. The map replaced the
+ * light probe as the carrier of the sky's ambient (ADR-0161), so this is where those
+ * harmonics now have to land.
+ */
+function expectEnvironmentCarriesDistinctAmbient(rig: LightingRig): void {
+  const texture = rig.environment
+  expect(texture).toBeDefined()
+  expect(firstTexelRadiance(texture!)).toBeCloseTo(DISTINCT_DOME_RADIANCE, 2)
 }
 
 /** Asserts the sky's sun aim and cloud coverage match makeLighting's distinct values. */
@@ -66,17 +77,41 @@ function expectSkyMatchesLighting(rig: LightingRig): void {
 }
 
 describe('attachSkyEnvironment', () => {
-  it('records the probe and zeroes the fill synchronously, before the sky finishes loading', () => {
+  it('assigns the scene environment and zeroes the fill synchronously, before the sky loads', () => {
     const { scene, rig } = makeAppliedRig()
     expect(rig.fill.intensity).toBeGreaterThan(0)
 
     attachSkyEnvironment(scene, rig)
 
-    // The probe attaches and the fill is zeroed synchronously so the scene is never
-    // momentarily unlit; the visible sky mesh may still be loading (asserted below).
-    expect(rig.probe).toBeInstanceOf(THREE.LightProbe)
-    expect(scene.children).toContain(rig.probe)
+    // The environment map attaches and the fill is zeroed synchronously so the scene is
+    // never momentarily unlit; the visible sky mesh may still be loading (asserted below).
+    expect(rig.environment).toBeInstanceOf(THREE.DataTexture)
+    expect(scene.environment).toBe(rig.environment)
     expect(rig.fill.intensity).toBe(0)
+  })
+
+  it('carries the sky ambient as an environment map rather than a light probe', () => {
+    const { scene, rig } = makeAppliedRig()
+
+    attachSkyEnvironment(scene, rig)
+
+    // The environment map supplies BOTH the diffuse irradiance the probe used to carry and
+    // the specular radiance the probe could not, so keeping a probe alongside it would
+    // double-count the sky's diffuse ambient exactly as the hemisphere fill once did
+    // (ADR-0148's reasoning, applied one step further; ADR-0161). The rig stopped
+    // carrying a probe at all, so nothing is left to retire later.
+    expect(scene.children.some((child) => child instanceof THREE.LightProbe)).toBe(false)
+  })
+
+  it('leaves the environment at the unscaled intensity the calibration convention fixes', () => {
+    const { scene, rig } = makeAppliedRig()
+
+    attachSkyEnvironment(scene, rig)
+
+    // The map carries absolute linear radiance, the same quantity the probe carried, so no
+    // scaling stands between it and the render. ADR-0156 fixes the reference condition and
+    // this keeps the environment inside it rather than introducing a second exposure knob.
+    expect(scene.environmentIntensity).toBe(1)
   })
 
   it('resolves once the lazily loaded sky mesh is attached, frozen, and recorded on the rig', async () => {
@@ -102,9 +137,9 @@ describe('attachSkyEnvironment', () => {
     expect(attached).toBeInstanceOf(Promise)
     updateSkyEnvironment(rig, makeLighting())
 
-    // The probe exists synchronously, so the ambient lands immediately even while the
-    // sky is still loading: the harmonics round-trip through the probe right away.
-    expectProbeCarriesDistinctAmbient(rig)
+    // The environment map exists synchronously, so the ambient lands immediately even
+    // while the sky is still loading: the harmonics reconstruct into the map right away.
+    expectEnvironmentCarriesDistinctAmbient(rig)
 
     await attached
 
@@ -154,16 +189,43 @@ describe('updateSkyEnvironment', () => {
     expect(rig.sky?.cloudCoverage.value).toBeCloseTo(CLOUD_COVER, PRECISION)
   })
 
-  it("loads the lighting's sky-ambient harmonics into the probe in fromArray order", async () => {
+  it("reconstructs the lighting's sky-ambient harmonics into the environment map", async () => {
     const { scene, rig } = makeAppliedRig()
     await attachSkyEnvironment(scene, rig)
 
     updateSkyEnvironment(rig, makeLighting())
 
-    const coefficients = rig.probe?.sh.coefficients
-    expect(coefficients?.[0]?.x).toBeCloseTo(DISTINCT_SKY_AMBIENT[0]!, PRECISION)
-    expect(coefficients?.[1]?.y).toBeCloseTo(DISTINCT_SKY_AMBIENT[4]!, PRECISION)
-    expect(coefficients?.[8]?.z).toBeCloseTo(DISTINCT_SKY_AMBIENT[26]!, PRECISION)
+    expectEnvironmentCarriesDistinctAmbient(rig)
+  })
+
+  it('leaves the map alone when an update carries an unchanged sky ambient', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+    const versionAfterFirstWrite = rig.environment!.pmremVersion
+
+    // A fresh array holding the same coefficients: the sky has not moved, so the
+    // comparison has to be on values rather than array identity.
+    updateSkyEnvironment(rig, { ...makeLighting(), skyAmbient: [...DISTINCT_SKY_AMBIENT] })
+
+    // Rewriting would re-run the PMREM filter chain on the GPU for a sky that did not
+    // change. Updates arrive for reasons other than the sky (a bounds refit, a colour
+    // change, a re-render), so the map regenerates on sky state, not on update count.
+    expect(rig.environment!.pmremVersion).toBe(versionAfterFirstWrite)
+  })
+
+  it('regenerates the map when the sky ambient changes', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+    const versionAfterFirstWrite = rig.environment!.pmremVersion
+
+    // Time of day and cloud cover both reach the rig as a different sky ambient, which
+    // is the one input the map is built from, so it is the whole invalidation signal.
+    const duskAmbient = DISTINCT_SKY_AMBIENT.map((coefficient) => coefficient / 2)
+    updateSkyEnvironment(rig, { ...makeLighting(), skyAmbient: duskAmbient })
+
+    expect(rig.environment!.pmremVersion).toBeGreaterThan(versionAfterFirstWrite)
   })
 })
 
@@ -182,25 +244,50 @@ describe('disposeLightingRig', () => {
     expect(rig.sky).toBeUndefined()
   })
 
-  it('removes and disposes the sky and probe when the rig owns them', async () => {
+  it('disposes the environment map and clears it off the scene', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+    const environment = rig.environment!
+    const environmentDispose = vi.spyOn(environment, 'dispose')
+
+    disposeLightingRig(scene, rig)
+
+    // Three keys its filtered PMREM target off this source texture, and the node
+    // renderer never listens for the source's dispose, so the source has to be freed
+    // here and the scene has to stop pointing at a texture that is gone (ADR-0161).
+    expect(environmentDispose).toHaveBeenCalled()
+    expect(scene.environment).toBeNull()
+    expect(rig.environment).toBeUndefined()
+  })
+
+  it('forgets the ambient it held so a rebuilt rig regenerates its map', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+
+    disposeLightingRig(scene, rig)
+
+    // A stale ambient surviving teardown would make the next rig's first update think
+    // its fresh, still-black map already held the right sky and skip the first write.
+    expect(rig.environmentAmbient).toBeUndefined()
+  })
+
+  it('removes and disposes the sky when the rig owns it', async () => {
     const { scene, rig } = makeAppliedRig()
     await attachSkyEnvironment(scene, rig)
     const sky = rig.sky!
-    const probe = rig.probe!
     const geometryDispose = vi.spyOn(sky.geometry, 'dispose')
     const materialDispose = vi.spyOn(sky.material, 'dispose')
-    const probeDispose = vi.spyOn(probe, 'dispose')
 
     disposeLightingRig(scene, rig)
 
     expect(scene.children).not.toContain(sky)
-    expect(scene.children).not.toContain(probe)
     expect(geometryDispose).toHaveBeenCalled()
     expect(materialDispose).toHaveBeenCalled()
-    expect(probeDispose).toHaveBeenCalled()
   })
 
-  it('still tears down a rig that has no sky or probe', () => {
+  it('still tears down a rig that has no sky or environment map', () => {
     const scene = new THREE.Scene()
     const rig = buildLightingRig(scene, RIG_SUN_INTENSITY)
 
