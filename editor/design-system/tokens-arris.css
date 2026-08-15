@@ -13,8 +13,10 @@
  * the dark Arris block carries both attributes and outranks both.
  *
  * Appearance-preference blocks (reduced motion, high contrast, coarse pointer) are
- * restated at the bottom for the same reason: tokens.css declares them against
- * :root, which this scope would otherwise outrank.
+ * restated at the bottom. tokens.css declares those against :root, so they land on
+ * the document element and reach components only by inheritance; a declaration in
+ * this block sits on the wrapper itself and overrides what it inherited. Without
+ * the restatements, previewing Arris would quietly lose all three preferences.
  */
 
 [data-design-language='arris'] {
@@ -74,7 +76,8 @@
      resolves these and threads them into drawPlan; canvas fill styles cannot parse
      color-mix, so every translucent value here is a plain rgba literal.
      These are a direct port of the palette doctrine, not the designed canvas family:
-     the cased mark and the lit-board exception land with the Phase 3 canvas slice. */
+     the cased mark and the lit-board exception land with the canvas family's own
+     slice, which waits on a feasibility spike that has not run. */
   --color-canvas-grid: rgba(35, 39, 43, 0.2);
   --color-canvas-wall: var(--japanned-iron);
   --color-canvas-room-fill: var(--rag-vellum);
@@ -102,7 +105,7 @@
   /* Arris draws controls at 28px, but the WCAG target-size floor (ADR-0112) is a
      hit-area promise, not a paint size, so the target tokens keep their shipped
      values here. Reconciling the drawn height with the hit area belongs to the
-     Phase 3 button and field families. */
+     button and field families that migrate next. */
   --size-target-min: 2.5rem;
   --size-target-min-touch: 2.75rem;
   --size-control-icon: var(--size-target-min);
@@ -214,14 +217,14 @@
 }
 
 @media (prefers-contrast: more) {
+  /* The focus ring is already Layout Blue at full strength in both appearances, so
+     only the ink-derived lines have anywhere left to go. */
   [data-design-language='arris'] {
     --color-border: color-mix(in srgb, var(--japanned-iron) 55%, transparent);
-    --color-focus-ring: var(--layout-blue);
   }
 
   [data-design-language='arris'][data-theme='dark'] {
     --color-border: color-mix(in srgb, var(--bone) 55%, transparent);
-    --color-focus-ring: var(--layout-blue-lifted);
   }
 }
 
