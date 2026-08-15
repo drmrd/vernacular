@@ -3,44 +3,21 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 import { contrastRatio } from '../../core'
+import { blockBodies, declarationsIn, resolveColor } from './css-token-test-support'
 
 const css = readFileSync(resolve(process.cwd(), 'editor/design-system/tokens.css'), 'utf8')
 
 const AA_NORMAL = 4.5
 const AA_UI = 3
 
-function declarationsIn(block: string): Map<string, string> {
-  const map = new Map<string, string>()
-  for (const match of block.matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
-    const [, name, value] = match
-    if (name !== undefined && value !== undefined) {
-      map.set(name, value.trim())
-    }
-  }
-  return map
-}
-
-function blockBody(source: string, selector: string): string {
-  const start = source.indexOf(selector)
-  const open = source.indexOf('{', start)
-  // Assumes the target block has no nested braces: it takes the first '}'
-  // after the selector's '{' as the block's end.
-  const close = source.indexOf('}', open)
-  return source.slice(open + 1, close)
-}
-
-function resolveColor(name: string, vars: Map<string, string>): string {
-  const value = vars.get(name) ?? name
-  const captured = value.match(/var\((--[\w-]+)\)/)?.[1]
-  return captured !== undefined ? resolveColor(captured, vars) : value
-}
+const blockBody = (selector: string): string => blockBodies(css, selector)[0] ?? ''
 
 function paletteFor(theme: 'light' | 'dark'): Map<string, string> {
-  const root = declarationsIn(blockBody(css, ':root'))
+  const root = declarationsIn(blockBody(':root'))
   if (theme === 'light') {
     return root
   }
-  const dark = declarationsIn(blockBody(css, "[data-theme='dark']"))
+  const dark = declarationsIn(blockBody("[data-theme='dark']"))
   return new Map([...root, ...dark])
 }
 

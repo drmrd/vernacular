@@ -37,7 +37,7 @@
 /* The single canonical active treatment that replaces the drifted segmented idioms.
    The label takes the reversed on-fill role rather than the ordinary text ink: this
    language resolves the two to the same color, and Arris reverses the label to the
-   ground so a full ink impression stays readable (ADR-0154 section 8). */
+   ground so a full ink impression stays readable (the Arris spec, section 8). */
 .ds-segmented__option.is-active {
   border-color: var(--color-border);
   background: var(--color-surface-active);
