@@ -86,6 +86,24 @@ export const UNCOVERED_COMPONENTS: {
       'requires a live R3F Canvas and a Three.js camera; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'PerceivedColorProvider',
+    file: 'bridge/react/perceived-color-provider.tsx',
+    reason:
+      'perceived-color context provider that only has meaning wrapping the paint inspector and the scene view; an isolated browser-mode story is not feasible, so it is a permanent allowlist candidate (see ADR-0111).',
+  },
+  {
+    component: 'PerceivedColorReadout',
+    file: 'editor/paint/perceived-color-readout.tsx',
+    reason:
+      'renders the sampled swatch and shift label and could carry a story, but its rendered baseline belongs with the issue #551 family-baseline batch; recording it here keeps the gap tracked instead of hand-rolling an unreviewed story.',
+  },
+  {
+    component: 'PerceivedColorSampler',
+    file: 'bridge/react/perceived-color-sampler.tsx',
+    reason:
+      'reads the drawing buffer inside the per-frame callback to fulfil a pending color sample and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'FrameCamera / PresetCamera',
     file: 'bridge/react/scene-camera-effects.tsx',
     reason:
