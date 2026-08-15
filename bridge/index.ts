@@ -62,6 +62,13 @@ export type {
 } from './perceived-color/perceived-color-store'
 export { createPerceivedColorStore } from './perceived-color/perceived-color-store'
 export {
+  PerceivedColorContext,
+  usePerceivedColorSample,
+  usePerceivedColorStore,
+} from './react/perceived-color-context'
+export type { PerceivedColorProviderProps } from './react/perceived-color-provider'
+export { PerceivedColorProvider } from './react/perceived-color-provider'
+export {
   SurfaceSelectionContext,
   useSurfaceSelection,
   useActiveSurface,
