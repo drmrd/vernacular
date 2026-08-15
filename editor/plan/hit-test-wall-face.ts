@@ -1,7 +1,7 @@
 import { effectiveWallThickness, rawWallId, type Point, type WallSceneNode } from '../../core'
 
-/** Halves a wall's effective assembly thickness to reach a face from its centerline. */
-const HALF = 2
+/** One half, as a multiplier on a wall's effective assembly thickness to reach a face from its centerline. */
+const HALF = 0.5
 
 /**
  * The wall face a plan pointer points at: the raw wall id (no `wall:` prefix) plus
@@ -62,7 +62,7 @@ export function hitTestWallFace(
       continue
     }
     const side = signed >= 0 ? 'left' : 'right'
-    const faceDistance = Math.abs(Math.abs(signed) - effectiveWallThickness(wall) / HALF)
+    const faceDistance = Math.abs(Math.abs(signed) - effectiveWallThickness(wall) * HALF)
     if (faceDistance <= bestDistance) {
       bestDistance = faceDistance
       best = { wallId: rawWallId(wall), side }
