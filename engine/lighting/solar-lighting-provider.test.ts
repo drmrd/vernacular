@@ -191,6 +191,8 @@ describe('SolarLightingProvider', () => {
   })
 
   it('leaves no sky, environment, or lights in the scene after dispose', async () => {
+    // Guards the whole provider swap: flipping to schematic mode must not leave the
+    // previous mode's image-based lighting on the scene.
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
@@ -201,6 +203,7 @@ describe('SolarLightingProvider', () => {
 
     expect(findSkyMesh(scene)).toBeUndefined()
     expect(findProbe(scene)).toBeUndefined()
+    expect(scene.environment).toBeNull()
     expect(scene.children.filter((child) => child instanceof THREE.Light)).toHaveLength(0)
   })
 

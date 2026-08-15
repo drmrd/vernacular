@@ -273,6 +273,35 @@ describe('disposeLightingRig', () => {
     expect(rig.sky).toBeUndefined()
   })
 
+  it('disposes the environment map and clears it off the scene', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+    const environment = rig.environment!
+    const environmentDispose = vi.spyOn(environment, 'dispose')
+
+    disposeLightingRig(scene, rig)
+
+    // Three keys its filtered PMREM target off this source texture, and the node
+    // renderer never listens for the source's dispose, so the source has to be freed
+    // here and the scene has to stop pointing at a texture that is gone (ADR-0161).
+    expect(environmentDispose).toHaveBeenCalled()
+    expect(scene.environment).toBeNull()
+    expect(rig.environment).toBeUndefined()
+  })
+
+  it('forgets the ambient it held so a rebuilt rig regenerates its map', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+
+    disposeLightingRig(scene, rig)
+
+    // A stale ambient surviving teardown would make the next rig's first update think
+    // its fresh, still-black map already held the right sky and skip the first write.
+    expect(rig.environmentAmbient).toBeUndefined()
+  })
+
   it('removes and disposes the sky when the rig owns it', async () => {
     const { scene, rig } = makeAppliedRig()
     await attachSkyEnvironment(scene, rig)
