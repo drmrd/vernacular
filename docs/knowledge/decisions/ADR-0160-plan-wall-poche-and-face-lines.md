@@ -15,12 +15,15 @@ sourceFiles:
     core/geometry/wall-face.ts,
     core/topology/wall-footprint.ts,
     core/scene/construction-profile.ts,
+    core/scene/scene-graph.ts,
     editor/plan/draw-plan.ts,
+    editor/plan/draw-surface-paint.ts,
+    editor/plan/hit-test-wall-face.ts,
     editor/plan/plan-palette.ts,
     editor/design-system/tokens.css,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-08-15
 ---
 
 # ADR-0160: Plan walls draw as poche between two face lines
@@ -173,6 +176,35 @@ place would have buried the bands under an opaque fill.
 - No committed visual baseline covers the 2D plan canvas. The home-page baseline renders an empty
   new project with no walls, and neither the Storybook nor the scene baselines render `PlanView`,
   so no baseline needed refreshing.
+
+## Update (2026-08-15): the three raw-thickness neighbours close
+
+Two consequences above named issue #547, and one of them is now settled. The surface-paint
+band (`editor/plan/draw-surface-paint.ts`), the wall-face hit band
+(`editor/plan/hit-test-wall-face.ts`), and the `hostThickness` a scene-graph opening node
+carries (`core/scene/scene-graph.ts`) all read `effectiveWallThickness`. On a solid masonry
+wall the band, the face hit target, and an opening's jamb caps sat about 4.7 px inside the
+poche at default scale; they now land on the drawn face. The fallback rule is untouched in all
+three: no profile, or a profile id the registry does not carry, still resolves to the raw
+thickness.
+
+`hostThickness` was the one worth tracing before moving it, since the scene graph feeds 3D as
+well as the page. Nothing in `engine/` or `bridge/` reads it. The 3D wall builder sizes its
+own footprints from `effectiveWallThickness` on the wall node, and the void it carves reads
+only an opening's width, height, and sill height, so nothing converts twice. Its production
+readers all draw the page: the plan opening symbol (`editor/plan/draw-opening.ts`,
+`editor/plan/opening-geometry.ts`) and the SVG plan export (`core/export/svg/`). No 3D output
+moved and no scene baseline needed refreshing.
+
+The change does leave a new mismatch inside that export. `renderWalls` in
+`core/export/svg/svg-plan-exporter.ts` still strokes a wall at its raw `thickness`. The canvas
+stopped doing that in this decision, and the exporter's own opening gap has now stopped too, so
+an exported plan of a profiled wall draws a gap wider than the wall it breaks. Putting the
+exporter's wall symbol on the same resolver is its own cycle.
+
+The other #547 consequence stands unchanged. A painted band still takes its endpoints as
+square offsets from the wall's own endpoints, so at a non-collinear junction it still falls
+short of or runs past the mitred corner. Only the thickness half of that issue closed here.
 
 ## References
 
