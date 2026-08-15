@@ -18,6 +18,7 @@ sourceFiles:
     editor/design-system/field.css,
     editor/design-system/arris-control-geometry.test.ts,
     editor/design-system/active-impression.test.ts,
+    editor/design-system/arris-effective-label.test.ts,
   ]
 status: current
 updated: 2026-08-15
@@ -138,13 +139,38 @@ scoped rule may lower a box height the shipped layer holds at the target.
 - Consumer stylesheets outside the design system still pair the active fill with the ordinary
   text ink, so a few surfaces stay illegible under the preview: the opening inspector's fraction
   chips, the 3D navigation toolbar, the inspector count badge, and the project and export menu
-  rows. The scanner's scan root is what closes that, not a second scanner.
+  rows. The scanner's scan root is what closes that, not a second scanner. Tracked as issue #551.
 - `--stroke-icon` still has no consumer. The icons in the chrome come from the icon dependency
   and are drawn with fills rather than strokes, so a stroke width applied from CSS would do
   nothing. The 1.5px alignment lands with the iconography track that replaces them, which the
   migration plan already sequences ahead of the families that consume icons.
 - Nothing here is covered by a rendered baseline yet. The story suite has no flag-scoped story,
-  so the Arris rendering of these families is asserted from the stylesheets alone.
+  so the Arris rendering of these families is asserted from the stylesheets alone. Adding one
+  needs a design-language decorator in the Storybook preview and a baseline refresh on CI, since
+  the story baselines only render there. Tracked with the illegible surfaces above, in issue #551.
+
+## Addendum, 2026-08-15: what the hover state taught us
+
+Pairing a fill with a reversed label inside one rule turned out not to be enough, and the icon
+button proved it during review.
+
+The base hover rule fills with the active surface and reverses the label to match. Arris does not
+want that fill at all, because hover here brightens a border rather than blooming a glow, so the
+scoped rule cancels the background. Cancelling a background says nothing about a label. The
+reversal survived on its own, and the label kept reversing to the ground while the impression
+behind it was that same ground: Rag Vellum on Rag Vellum in light, Japanned Iron on Japanned Iron
+in dark. Both read as an empty button.
+
+So the scoped hover rule also restates `color: var(--color-text)`. That is the general rule this
+slice ends on: a rule that cancels a fill owes an answer about the label, because the declaration
+that reversed it is still in force at a lower specificity.
+
+The first guard could not have caught this. It reads declarations rule by rule, and every rule
+involved was correct on its own terms. The second guard resolves the cascade instead: for each
+control state it works out which `color` and which background actually win under the Arris scope,
+falls through to the impression drawn into the pseudo-element when the control's own box paints
+nothing, and measures the winner against the ground it really lands on, in both appearances. It
+fails on the pre-fix stylesheet at 1.00:1, which is the number that names this defect exactly.
 
 ## References
 
