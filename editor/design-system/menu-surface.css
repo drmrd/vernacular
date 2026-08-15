@@ -26,6 +26,10 @@
   font-size: var(--font-size-sm);
 }
 
+/* The hovered row fills, so its label takes the reversed on-fill role for the same
+   reason the segmented and icon-button active states do: a language whose active
+   fill is the text ink needs the label to move with it. */
 .ds-menu-surface__row:hover {
   background: var(--color-surface-active);
+  color: var(--color-on-surface-active);
 }

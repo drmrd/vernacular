@@ -41,3 +41,65 @@
   background: var(--color-surface-raised);
   color: var(--color-danger);
 }
+
+/*
+ * The drawn-versus-target split (ADR-0163): the button's box keeps the ADR-0112 hit
+ * target, and a centred pseudo-element draws the 28px Arris control with its fill,
+ * its machined border and the 2px chamfer. Horizontal padding stays 12px, which the
+ * space-3 step already is.
+ */
+[data-design-language='arris'] .ds-button {
+  position: relative;
+  isolation: isolate;
+  min-height: var(--size-target-min);
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-design-language='arris'] .ds-button::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--size-control-height)) / 2);
+  inset-inline: 0;
+  border: var(--border-width-resting) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+/* Layout Blue never fills a surface (refusal 2), so the primary action is a
+   black-handled tool: an ink fill with the label reversed to the ground. */
+[data-design-language='arris'] .ds-button--primary {
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-design-language='arris'] .ds-button--primary::before {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-strong);
+}
+
+[data-design-language='arris'] .ds-button--neutral::before {
+  background: var(--color-surface-raised);
+}
+
+[data-design-language='arris'] .ds-button--destructive {
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-design-language='arris'] .ds-button--destructive::before {
+  border-color: var(--color-danger);
+  background: var(--color-surface-raised);
+}
+
+/* Hover brightens a border, never blooms a glow (the Arris spec, section 8). */
+[data-design-language='arris'] .ds-button:hover:not(:disabled)::before {
+  border-width: var(--border-width-active);
+}
+
+/* Pressing translates the label down 1px (the Arris spec, section 8). The
+   impression stays put: the label moves, the tool does not. */
+[data-design-language='arris'] .ds-button:active:not(:disabled) {
+  transform: translateY(1px);
+}

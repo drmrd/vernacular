@@ -45,3 +45,53 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
+
+/*
+ * The Arris field reads as a shallow recess: its top border is one step darker than
+ * its sides, and that is the entire extent of dimensionality the language permits at
+ * rest (the Arris spec, section 7). The recess is drawn with border-top-color rather
+ * than a shadow, because a bevel or an inner glow would be the faux-material
+ * rendering refusal 1 rules out.
+ *
+ * A text field's box is its drawn box: an input element carries no pseudo-element to
+ * draw an impression into, and the shipped layer never held a field at the ADR-0112
+ * target, so the drawn-height token sets the box directly here (ADR-0163).
+ */
+[data-design-language='arris'] .ds-field input,
+[data-design-language='arris'] .ds-field select,
+[data-design-language='arris'] .ds-field__control {
+  min-height: var(--size-control-height);
+  border-top-color: var(--color-ink-instrument);
+  line-height: var(--line-height-panel);
+}
+
+/* Every dimension, coordinate, angle, and area is set in the data face so columns of
+   figures align and a changing value never shifts its neighbours (spec section 4).
+   The value sits on the right edge it shares with the rest of its column. */
+[data-design-language='arris'] .ds-field input[type='number'],
+[data-design-language='arris'] .ds-field input[inputmode='decimal'],
+[data-design-language='arris'] .ds-field input[inputmode='numeric'] {
+  font-family: var(--font-family-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* A stamped label: interface face, tracked, at the ink tier that clears the
+   stamped-label contrast floor (spec sections 4 and 5). */
+[data-design-language='arris'] .ds-field__label {
+  color: var(--color-ink-label);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--letter-spacing-stamped);
+  text-transform: uppercase;
+}
+
+[data-design-language='arris'] .ds-field__hint {
+  color: var(--color-ink-secondary);
+}
+
+/* Invalid entry keeps the text and marks it with a Red Lead underline. Nothing
+   shakes, nothing clears (spec section 8). */
+[data-design-language='arris'] .ds-field input[aria-invalid='true'],
+[data-design-language='arris'] .ds-field__control[aria-invalid='true'] {
+  border-bottom: var(--border-width-focus-ring) solid var(--color-danger);
+}

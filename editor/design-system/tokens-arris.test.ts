@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
+import { ARRIS_DARK_SCOPE, ARRIS_SCOPE, blockBodies, stripComments } from './css-token-test-support'
 import { tokenList } from './tokens'
 
 // The Arris token layer is the alternate design language (ADR-0154) delivered as
@@ -14,9 +15,6 @@ import { tokenList } from './tokens'
 const designSystem = resolve(process.cwd(), 'editor/design-system')
 const shippedCss = readFileSync(resolve(designSystem, 'tokens.css'), 'utf8')
 const arrisCss = readFileSync(resolve(designSystem, 'tokens-arris.css'), 'utf8')
-
-const ARRIS_SCOPE = "[data-design-language='arris']"
-const ARRIS_DARK_SCOPE = `${ARRIS_SCOPE}[data-theme='dark']`
 
 // Semantic tokens are the vocabulary components reach for; the raw ramps beneath
 // them (--vellum-*, --umber-*, --rag-vellum, and friends) live in one file each and
@@ -35,20 +33,6 @@ const SEMANTIC_PREFIXES = [
   '--stroke-',
   '--texture-',
 ]
-
-function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '')
-}
-
-function escapeForRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-/** Bodies of every flat declaration block opened by exactly this selector. */
-function blockBodies(css: string, selector: string): string[] {
-  const pattern = new RegExp(`${escapeForRegExp(selector)}\\s*\\{([^}]*)\\}`, 'g')
-  return [...stripComments(css).matchAll(pattern)].map((match) => match[1] ?? '')
-}
 
 function declaredNames(body: string): string[] {
   return [...body.matchAll(/(--[\w-]+)\s*:/g)].map((match) => match[1] ?? '')
