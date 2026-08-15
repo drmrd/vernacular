@@ -47,14 +47,14 @@ sourceFiles:
     core/scene/scene-graph.ts,
     engine/materials/material-provider.ts,
     engine/materials/neutral-material-provider.ts,
-    engine/materials/paint-material-provider.ts,
+    engine/materials/physical-material-provider.ts,
     engine/scene/opening-fill-builder.ts,
     engine/scene/build-scene.ts,
     bridge/react/scene-harness-view.tsx,
     e2e/tests/scene-visual-regression.spec.ts,
   ]
 status: current
-updated: 2026-06-30
+updated: 2026-08-14
 ---
 
 # ADR-0081: Opening fill as box parts, the fill-kind resolver, and the opening-bodied scene
@@ -298,3 +298,14 @@ and the hung window is the first case that puts it to work.
   registry whose `Scene3DReference` this slice evolves.
 - [[ADR-0004-three-js-r3f-webgpu]]: the renderer stack, the millimeter scene tree,
   and the transparent-material handling the glass uses.
+
+## Update (2026-08-14): PaintMaterialProvider is removed
+
+The Decision section above says `PaintMaterialProvider` falls through to the
+neutral material for the `leaf` and `glass` roles. `PaintMaterialProvider` is
+deleted (issue #513): it had no production callers once the live view moved to
+`PhysicalMaterialProvider`, and the owner chose retirement over reservation. The
+fall-through this record describes is unchanged behavior, not lost with the class:
+neither role carries a `SurfaceRef`, so the shared `SurfaceMaterialProvider` base
+resolves both to the neutral material regardless of which concrete provider is
+asked, `PhysicalMaterialProvider` included.

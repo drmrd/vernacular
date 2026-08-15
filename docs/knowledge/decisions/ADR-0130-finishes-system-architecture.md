@@ -39,7 +39,6 @@ sourceFiles:
     core/registries/trim-profiles.ts,
     core/scene/exterior-walls.ts,
     core/scene/construction-profile.ts,
-    engine/materials/paint-material-provider.ts,
     engine/materials/surface-material-provider.ts,
     engine/materials/physical-material-provider.ts,
     bridge/react/framed-scene.ts,
@@ -246,3 +245,16 @@ read under the luminance convention of [[ADR-0156-luminance-calibration-conventi
 This decision is now `current`. The solid-finish slice is now realized in code, as the
 floor slice already was, and the interior and exterior wall decisions are ratified as the
 architecture the wall slices build against.
+
+## Update (2026-08-14): PaintMaterialProvider is removed
+
+The Decision section above names `engine/materials/paint-material-provider.ts` as the
+file that resolves a `pattern` treatment's `patternId` against the floor-pattern
+registry. That file is gone: `PaintMaterialProvider` had no production callers once the
+prior update wired `PhysicalMaterialProvider` into the live view, and issue #513 tracked
+the resulting retire-or-reserve call, which the owner resolved as retirement. The
+pattern-resolution behavior described here was shared dispatch even before the removal,
+not code specific to `PaintMaterialProvider`; it lives in
+`engine/materials/surface-material-provider.ts` and is exercised today through
+`PhysicalMaterialProvider`, which the registry-aware `pattern` lookup this decision
+reserves for the wall slices will extend.

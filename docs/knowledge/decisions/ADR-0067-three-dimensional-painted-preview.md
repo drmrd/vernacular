@@ -36,7 +36,6 @@ sourceFiles:
     docs/specs/2026-06-13-three-dimensional-painted-preview.md,
     docs/plans/2026-06-13-three-dimensional-painted-preview.md,
     engine/materials/material-provider.ts,
-    engine/materials/paint-material-provider.ts,
     engine/materials/neutral-material-provider.ts,
     engine/scene/wall-builder.ts,
     engine/scene/room-builder.ts,
@@ -47,7 +46,7 @@ sourceFiles:
     engine/materials/physical-material-provider.ts,
   ]
 status: current
-updated: 2026-07-14
+updated: 2026-08-14
 ---
 
 # ADR-0067: Painted three-dimensional preview: widen the material seam to a surface identity
@@ -198,3 +197,16 @@ provider. Paint appearance is reconciled under the epic's daylight image-based l
 and Neutral tone mapping, whose luminance meaning is pinned by
 [[ADR-0156-luminance-calibration-convention]]; the color-accuracy gate that reads against
 that convention is the next slice, not this one.
+
+## Update (2026-08-14): PaintMaterialProvider is removed
+
+Issue #513 tracked the retire-or-reserve decision the prior update left open: once
+`PhysicalMaterialProvider` took over both live-view build entry points,
+`PaintMaterialProvider` had no production callers left. The owner chose retirement.
+The class, its dedicated test file, and its export from `engine/index.ts` are deleted.
+The two scene-builder tests that had used it as a concrete stand-in provider
+(`engine/scene/room-builder.test.ts`, `engine/scene/wall-prism.test.ts`) now construct
+`PhysicalMaterialProvider` instead, so they still exercise the paint-from-store dispatch
+this decision built, through the provider that is actually live. The seam itself, and
+its two remaining providers `NeutralMaterialProvider` and `PhysicalMaterialProvider`,
+are unchanged.

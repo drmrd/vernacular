@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { colorFromHex, solidTreatment, surfaceKey } from '../../core'
 import type { Vector3, WallFootprint } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { PaintMaterialProvider } from '../materials/paint-material-provider'
+import { PhysicalMaterialProvider } from '../materials/physical-material-provider'
 import { materialGroups, readIndex, readNormals, readPositions } from '../testing'
 
 import {
@@ -86,7 +86,7 @@ describe('buildWallMesh', () => {
 
     const mesh = buildWallMesh(
       horizontalWall(),
-      new PaintMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
+      new PhysicalMaterialProvider({ lightColor: { r: 1, g: 1, b: 1 }, paint }),
     )
     const materials = mesh.material as THREE.MeshStandardMaterial[]
     const interiorLongFace = materials[4]
