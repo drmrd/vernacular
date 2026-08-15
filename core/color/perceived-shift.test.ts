@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { colorFromHex, colorFromOkLab, type Color } from './color'
 import { COLOR_ACCURACY_TOLERANCE, withinColorTolerance } from './color-accuracy'
-import { describePerceivedShift, PERCEIVED_AXIS_THRESHOLD } from './perceived-shift'
+import {
+  describePerceivedShift,
+  perceivedShiftLabel,
+  PERCEIVED_AXIS_THRESHOLD,
+  type PerceivedShift,
+} from './perceived-shift'
 
 /**
  * Build a color from explicit OKLab components. `L` is the published OKLab
@@ -107,5 +112,94 @@ describe('describePerceivedShift', () => {
       COLOR_ACCURACY_TOLERANCE,
       10,
     )
+  })
+})
+
+describe('perceivedShiftLabel', () => {
+  it('reads a faithful shift as painted regardless of what the axes say', () => {
+    const shift: PerceivedShift = {
+      distance: 0.02,
+      faithful: true,
+      lightness: 'lighter',
+      warmth: 'warmer',
+    }
+    expect(perceivedShiftLabel(shift)).toBe('Reads as painted')
+  })
+
+  it('names a single lightness axis that crossed the threshold', () => {
+    const lighter: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'lighter',
+      warmth: 'unchanged',
+    }
+    const darker: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'darker',
+      warmth: 'unchanged',
+    }
+    expect(perceivedShiftLabel(lighter)).toBe('Reads lighter')
+    expect(perceivedShiftLabel(darker)).toBe('Reads darker')
+  })
+
+  it('names a single warmth axis that crossed the threshold', () => {
+    const warmer: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'unchanged',
+      warmth: 'warmer',
+    }
+    const cooler: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'unchanged',
+      warmth: 'cooler',
+    }
+    expect(perceivedShiftLabel(warmer)).toBe('Reads warmer')
+    expect(perceivedShiftLabel(cooler)).toBe('Reads cooler')
+  })
+
+  it('names both axes, lightness then warmth, when both crossed the threshold', () => {
+    const lighterAndWarmer: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'lighter',
+      warmth: 'warmer',
+    }
+    const darkerAndCooler: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'darker',
+      warmth: 'cooler',
+    }
+    const lighterAndCooler: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'lighter',
+      warmth: 'cooler',
+    }
+    const darkerAndWarmer: PerceivedShift = {
+      distance: 0.09,
+      faithful: false,
+      lightness: 'darker',
+      warmth: 'warmer',
+    }
+    expect(perceivedShiftLabel(lighterAndWarmer)).toBe('Reads lighter and warmer')
+    expect(perceivedShiftLabel(darkerAndCooler)).toBe('Reads darker and cooler')
+    expect(perceivedShiftLabel(lighterAndCooler)).toBe('Reads lighter and cooler')
+    expect(perceivedShiftLabel(darkerAndWarmer)).toBe('Reads darker and warmer')
+  })
+
+  it('reads slightly different when the shift is unfaithful but neither named axis moved', () => {
+    // The OKLab `a` axis (green-pink) has no phrase of its own: a shift that only shows up
+    // there still needs an honest label rather than the faithful "Reads as painted" copy.
+    const shift: PerceivedShift = {
+      distance: 0.07,
+      faithful: false,
+      lightness: 'unchanged',
+      warmth: 'unchanged',
+    }
+    expect(perceivedShiftLabel(shift)).toBe('Reads slightly different')
   })
 })
