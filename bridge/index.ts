@@ -55,6 +55,12 @@ export { SceneCanvas } from './react/scene-canvas'
 export { SceneHarnessView, type HarnessScene } from './react/scene-harness-view'
 export type { SurfaceSelectionStore } from './selection/surface-selection-store'
 export { createSurfaceSelectionStore } from './selection/surface-selection-store'
+export type {
+  PerceivedColorRequest,
+  PerceivedColorSample,
+  PerceivedColorStore,
+} from './perceived-color/perceived-color-store'
+export { createPerceivedColorStore } from './perceived-color/perceived-color-store'
 export {
   SurfaceSelectionContext,
   useSurfaceSelection,
