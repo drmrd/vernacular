@@ -20,8 +20,11 @@ import { useSurfaceSelection } from './surface-selection-context'
 // land within the click tolerance, so a drag to orbit or pan the camera does not select
 // whatever sat under the press. The selection outline overlay is reconciled whenever the
 // selection or the geometry changes, and lives on the persistent render scene, not the
-// keyed geometry group. Coverage-excluded glue, proven by the scene-webgl tier; the pick,
-// the click discriminator, and the outline logic are unit-tested.
+// keyed geometry group. A click that lands on a paintable surface also requests a
+// perceived-color sample at the picked point for an optional on-screen readout; the
+// request is a no-op when no readout store is mounted. Coverage-excluded glue, proven by
+// the scene-webgl tier; the pick, the click discriminator, and the outline logic are
+// unit-tested.
 
 // A drag of more than a few pixels is a camera move, not a selection click.
 const CLICK_TOLERANCE_PX = 6
