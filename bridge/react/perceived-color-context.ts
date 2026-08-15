@@ -1,11 +1,10 @@
-import { createContext, useContext, useSyncExternalStore, type Context } from 'react'
+import { createContext, useContext, useSyncExternalStore } from 'react'
 import type {
   PerceivedColorSample,
   PerceivedColorStore,
 } from '../perceived-color/perceived-color-store'
 
-export const PerceivedColorContext: Context<PerceivedColorStore | null> =
-  createContext<PerceivedColorStore | null>(null)
+export const PerceivedColorContext = createContext<PerceivedColorStore | null>(null)
 
 // Unlike useSurfaceSelection, this deliberately returns null instead of
 // throwing when there is no provider. The perceived-color readout is an
