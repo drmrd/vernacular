@@ -66,6 +66,21 @@ function asScene(object: THREE.Object3D): THREE.Scene | undefined {
   return (object as THREE.Scene).isScene === true ? (object as THREE.Scene) : undefined
 }
 
+/**
+ * Builds the sky's environment map, records it on the rig, and hands it to the scene at the
+ * calibration convention's unscaled intensity. Only a Scene carries an environment, so a
+ * provider applied to a bare Object3D still gets its lights and the map simply has nowhere
+ * to land; the rig keeps it either way so teardown has exactly one thing to free.
+ */
+function attachEnvironmentMap(scene: THREE.Object3D, rig: LightingRig): void {
+  const environment = createSkyEnvironmentTexture()
+  rig.environment = environment
+  const renderScene = asScene(scene)
+  if (renderScene === undefined) return
+  renderScene.environment = environment
+  renderScene.environmentIntensity = ENVIRONMENT_INTENSITY
+}
+
 /** Applies the lighting's sun aim and cloud coverage to a resolved sky. Shared by the attach
  *  replay and updateSkyEnvironment so the two writers cannot drift out of lockstep. */
 function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
@@ -90,16 +105,8 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
  * light probe it replaced started at zero harmonics.
  */
 export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingRig): Promise<void> {
-  const environment = createSkyEnvironmentTexture()
   rig.fill.intensity = 0
-  rig.environment = environment
-  // Only a Scene carries an environment; a provider applied to a bare Object3D still gets
-  // its lights, and the map simply has nowhere to land.
-  const renderScene = asScene(scene)
-  if (renderScene !== undefined) {
-    renderScene.environment = environment
-    renderScene.environmentIntensity = ENVIRONMENT_INTENSITY
-  }
+  attachEnvironmentMap(scene, rig)
 
   let loadedModule: SkyMeshModule
   try {
