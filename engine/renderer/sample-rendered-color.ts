@@ -40,9 +40,8 @@ function isWithinNdcRange(value: number): boolean {
   return value >= NDC_MIN && value <= NDC_MAX
 }
 
-/** Map an NDC coordinate on one axis to the nearest device pixel index. */
-function deviceCenterPixel(ndcValue: number, extentPx: number, flip: boolean): number {
-  const fraction = flip ? (1 - ndcValue) / 2 : (ndcValue + 1) / 2
+/** Map a 0..1 fraction along one axis to the nearest device pixel index. */
+function fractionToDevicePixel(fraction: number, extentPx: number): number {
   return Math.floor(fraction * extentPx)
 }
 
@@ -83,8 +82,12 @@ export function sampleRenderedColor(
   if (reader.width === 0 || reader.height === 0) return null
   if (!isWithinNdcRange(ndc.x) || !isWithinNdcRange(ndc.y)) return null
 
-  const centerX = deviceCenterPixel(ndc.x, reader.width, false)
-  const centerY = deviceCenterPixel(ndc.y, reader.height, true)
+  // NDC x runs left-to-right, the same direction device pixel columns grow.
+  const centerX = fractionToDevicePixel((ndc.x + 1) / 2, reader.width)
+  // NDC y runs bottom-to-top, but device pixel rows grow top-to-bottom, so
+  // the fraction is inverted here rather than threading a flip flag through
+  // fractionToDevicePixel.
+  const centerY = fractionToDevicePixel((1 - ndc.y) / 2, reader.height)
   const xAxis = clampedAxis(centerX, reader.width)
   const yAxis = clampedAxis(centerY, reader.height)
 
