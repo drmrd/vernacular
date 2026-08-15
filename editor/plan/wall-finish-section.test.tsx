@@ -7,6 +7,12 @@ import {
   createSurfaceSelectionStore,
   type SurfaceSelectionStore,
 } from '../../bridge/selection/surface-selection-store'
+import { PerceivedColorContext } from '../../bridge/react/perceived-color-context'
+import {
+  createPerceivedColorStore,
+  type PerceivedColorStore,
+} from '../../bridge/perceived-color/perceived-color-store'
+import { colorFromHex } from '../../core'
 import { WallFinishSection } from './wall-finish-section'
 
 afterEach(cleanup)
@@ -298,5 +304,57 @@ describe('WallFinishSection reflection of a plan-driven face highlight', () => {
 
     expect(screen.getByRole('button', { name: 'A' })).not.toHaveClass('is-preview')
     expect(screen.getByRole('button', { name: 'B' })).not.toHaveClass('is-preview')
+  })
+})
+
+describe('WallFinishSection perceived-color readout', () => {
+  const sample = colorFromHex('#a1b2c3')
+  const props = { wallId: 'w1', treatmentFor: () => undefined, recent: [], dispatch: vi.fn() }
+
+  function storeWithLeftFaceSample(): PerceivedColorStore {
+    const store = createPerceivedColorStore()
+    store.resolveSample({
+      surface: { kind: 'wall-face', wallId: 'w1', side: 'left' },
+      color: sample,
+    })
+    return store
+  }
+
+  function renderWithPerceivedColor(store: PerceivedColorStore) {
+    return renderWithSurface(
+      <PerceivedColorContext.Provider value={store}>
+        <WallFinishSection {...props} />
+      </PerceivedColorContext.Provider>,
+    )
+  }
+
+  it('renders the perceived-color readout for the currently shown wall face', () => {
+    renderWithPerceivedColor(storeWithLeftFaceSample())
+
+    expect(screen.getByText(sample.srgbHex)).toHaveAttribute('data-perceived', sample.srgbHex)
+  })
+
+  it('follows the selected face, hiding a readout resolved for the face no longer shown', async () => {
+    const user = userEvent.setup()
+    renderWithPerceivedColor(storeWithLeftFaceSample())
+    // Confirms the readout is showing for the left face before the switch,
+    // so the disappearance asserted below is a genuine change.
+    expect(screen.getByText(sample.srgbHex)).toHaveAttribute('data-perceived', sample.srgbHex)
+
+    await user.click(screen.getByRole('button', { name: 'B' }))
+
+    // The sample was resolved for the left ("A") face, no longer shown once
+    // "B" is selected. A readout tied to a fixed surface would still show it.
+    expect(screen.queryByText(sample.srgbHex)).toBeNull()
+  })
+
+  it('renders no perceived-color readout when there is no PerceivedColorContext provider', () => {
+    // Every committed Storybook story for this section renders without a
+    // PerceivedColorContext.Provider, as do the component tests above.
+    // Mounting the readout must not change what renders in that case, or
+    // every one of those story baselines would move.
+    renderWithSurface(<WallFinishSection {...props} />)
+
+    expect(document.querySelector('[data-perceived]')).toBeNull()
   })
 })
