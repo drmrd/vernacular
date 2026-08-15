@@ -7,6 +7,7 @@ related:
   [
     decisions/ADR-0069-visual-design-language-draughtsmans-restraint,
     decisions/ADR-0154-arris-visual-design-language,
+    decisions/ADR-0160-plan-wall-poche-and-face-lines,
   ]
 sourceFiles:
   [

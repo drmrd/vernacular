@@ -146,11 +146,27 @@ place would have buried the bands under an opaque fill.
   `buildWallGraph` is O(n squared) in wall count. This is accepted for now rather than solved,
   because the memoization seam belongs at the plan-scene layer rather than inside the draw pass.
   It will bite first on exactly the plans this product exists to serve, old houses carved into many
-  small rooms, so it should not sit unaddressed for long. Tracked as a follow-up.
+  small rooms, so it should not sit unaddressed for long. Issue #546 carries the memoization.
 - The surface-paint bands still compute their endpoints as square offsets from each wall's own
   endpoints, independent of the mitred corners the faces now use. Under the old uniform stroke that
   mismatch was hidden inside thick ink; against a drawn face line a painted band will visibly fall
-  short of, or run past, the mitred corner at a non-collinear junction. Tracked as a follow-up.
+  short of, or run past, the mitred corner at a non-collinear junction. This folds into issue #547.
+- Only the drawn wall symbol resolves its thickness through the construction profile. Three
+  neighbours still read the raw `thickness` field: the surface-paint band offset
+  (`editor/plan/draw-surface-paint.ts`), the wall-face hit band
+  (`editor/plan/hit-test-wall-face.ts`), and the `hostThickness` a scene-graph opening node carries
+  (`core/scene/scene-graph.ts`). On a wall with a construction profile the drawn faces therefore sit
+  at the assembly half-thickness while a paint band, a face hit target, and an opening's jamb caps
+  sit at the raw half-thickness, so they no longer line up with the ink. Bringing them onto
+  `effectiveWallThickness` is issue #547. It was left out of this change deliberately: each one is a
+  behavior change with its own tests, and hit targets moving is a thing a user feels.
+- Where an opening's jamb stands past a face corner that a miter has pulled back, the material left
+  between the jamb and the corner is a triangle, and a four-corner ring cannot express one. That
+  stretch is dropped rather than returned, so an acute corner with a door hard against it shows a
+  small unfilled wedge. Dropping is the safer of the two available repairs: returning the stretch as
+  a ring with a repeated corner paints 10694 square mm where the real material is 7290, laying 3404
+  square mm of poche across the door opening, and painting into a void reads worse than leaving a
+  notch. The exact fix clips the ring against the miter edge and needs a variable-length ring.
 - The hover cue still strokes the wall centerline, which now runs through the middle of the poche
   rather than along drawn ink. It works and is still tested, but tracing the footprint would read
   better, and that is worth a look in a later pass.
@@ -171,3 +187,6 @@ place would have buried the bands under an opaque fill.
 - `editor/plan/draw-plan.ts` (`drawableWallEdges`, `drawWallPoche`, `drawWallFaces`).
 - Issue #414 (size the 2D plan wall symbol from the construction-profile thickness).
 - Issue #521 (the durable geometric break for the wall-break gap fill).
+- Issue #546 (memoize the plan wall graph so a pan or zoom stops rebuilding topology).
+- Issue #547 (bring the surface-paint band, the wall-face hit band, and an opening's `hostThickness`
+  onto the construction-profile thickness the drawn symbol now uses).
