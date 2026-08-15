@@ -81,6 +81,9 @@
   --color-canvas-grid: rgba(35, 39, 43, 0.2);
   --color-canvas-wall: var(--japanned-iron);
   --color-canvas-room-fill: var(--rag-vellum);
+  /* Beech is the one mid tone between the Rag Vellum sheet and the Japanned Iron
+     face lines, so a cut wall reads as material rather than as more sheet. */
+  --color-canvas-poche: var(--beech);
   --color-canvas-ruler-band: var(--beech);
   --color-canvas-ruler-tick: rgba(35, 39, 43, 0.6);
   --color-canvas-ruler-text: rgba(35, 39, 43, 0.8);
@@ -204,6 +207,10 @@
   --color-canvas-grid: rgba(233, 231, 225, 0.15);
   --color-canvas-wall: var(--bone);
   --color-canvas-room-fill: var(--blued-steel);
+  /* The dark appearance inverts the pairing: Japanned Iron sits lighter than the
+     Blued Steel sheet and far below the Bone face lines, so the cut still reads as
+     a solid mass rather than as a hole in the sheet. */
+  --color-canvas-poche: var(--japanned-iron);
   --color-canvas-ruler-band: var(--japanned-iron);
   --color-canvas-ruler-tick: rgba(233, 231, 225, 0.42);
   --color-canvas-ruler-text: rgba(233, 231, 225, 0.65);
