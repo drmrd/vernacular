@@ -13,7 +13,10 @@ const designSystem = resolve(process.cwd(), 'editor/design-system')
 const shippedCss = readFileSync(resolve(designSystem, 'tokens.css'), 'utf8')
 const arrisCss = readFileSync(resolve(designSystem, 'tokens-arris.css'), 'utf8')
 
-const ARRIS_SCOPE = "[data-design-language='arris']"
+// The base scope has to open a rule of its own. A plain substring search would also
+// match the dark compound selector, so a block that restated only the dark rule and
+// dropped the base one would pass while losing the preference for the light appearance.
+const ARRIS_BASE_RULE = /\[data-design-language='arris'\]\s*\{/
 
 function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -48,7 +51,7 @@ function mediaBody(css: string, query: string): string {
 describe('Arris appearance preferences', () => {
   it('restates every preference block the shipped layer declares', () => {
     const missing = mediaQueries(shippedCss).filter(
-      (query) => !mediaBody(arrisCss, query).includes(ARRIS_SCOPE),
+      (query) => !ARRIS_BASE_RULE.test(mediaBody(arrisCss, query)),
     )
     expect(
       missing,
