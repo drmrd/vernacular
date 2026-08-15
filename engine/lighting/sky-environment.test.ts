@@ -2,14 +2,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as THREE from 'three'
-import {
-  evaluateSphericalHarmonics,
-  SH_COEFFICIENT_COUNT,
-  type EnvironmentLighting,
-} from '../../core'
+import { NEUTRAL_DOME_SPHERICAL_HARMONICS, type EnvironmentLighting } from '../../core'
 import { importsStaticValueOf } from '../testing'
 import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
-import { SKY_ENVIRONMENT_WIDTH, SKY_ENVIRONMENT_HEIGHT } from './sky-environment-map'
 import { buildLightingRig, disposeLightingRig, type LightingRig } from './lighting-rig'
 
 /** The sun intensity the rig is built with; any positive value is fine for these tests. */
@@ -18,17 +13,15 @@ const RIG_SUN_INTENSITY = 1.6
 const SUN_DIRECTION = { x: 0.3, y: 0.8, z: -0.5 }
 /** A cloud fraction distinct from the SkyMesh addon default (0.4), so a passthrough shows. */
 const CLOUD_COVER = 0.72
-/** A band-0 term large enough to hold the reconstructed dome positive everywhere, so the
- *  assertions below read real radiance rather than the zero clamp. */
-const DOMINANT_BAND_0 = 30
 /**
- * Twenty-seven distinct spherical-harmonic coefficients, one per flat index, so the
- * reconstruction reads every band and index rather than only the average. The three
- * band-0 channels dominate (see above); the rest stay distinct.
+ * A uniform dome at a distinctive radiance. Uniform is pure band 0, so it reconstructs to
+ * exactly this value in every direction, which lets these tests assert the map's contents
+ * without restating the texel-to-direction convention. That convention is pinned once, in
+ * sky-environment-map.test.ts, where it is the subject rather than a means.
  */
-const DISTINCT_SKY_AMBIENT: readonly number[] = Array.from(
-  { length: SH_COEFFICIENT_COUNT },
-  (_, index) => (index < 3 ? DOMINANT_BAND_0 : (index + 1) / 10),
+const DISTINCT_DOME_RADIANCE = 3
+const DISTINCT_SKY_AMBIENT: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS.map(
+  (coefficient) => coefficient * DISTINCT_DOME_RADIANCE,
 )
 /** Reconstruction and passthrough are exact copies; a loose float tolerance suffices. */
 const PRECISION = 5
@@ -57,43 +50,21 @@ function sceneHasSkyMesh(scene: THREE.Object3D): boolean {
   return scene.children.some((child) => (child as { isSkyMesh?: boolean }).isSkyMesh === true)
 }
 
-/** A texel roughly at the zenith, where the reconstructed dome is brightest and positive. */
-const ZENITH_ROW = SKY_ENVIRONMENT_HEIGHT - 1
-const ZENITH_COLUMN = 0
-
-/** The direction three samples a texel from, inverting its `equirectUV` (see ADR-0161). */
-function directionOfTexel(column: number, row: number): { x: number; y: number; z: number } {
-  const elevation = ((row + 0.5) / SKY_ENVIRONMENT_HEIGHT - 0.5) * Math.PI
-  const azimuth = ((column + 0.5) / SKY_ENVIRONMENT_WIDTH - 0.5) * 2 * Math.PI
-  const horizontalRadius = Math.cos(elevation)
-  return {
-    x: horizontalRadius * Math.cos(azimuth),
-    y: Math.sin(elevation),
-    z: horizontalRadius * Math.sin(azimuth),
-  }
-}
-
-/** Reads one texel's red channel back out of the environment map's half-float buffer. */
-function texelRed(texture: THREE.DataTexture, column: number, row: number): number {
-  const data = texture.image.data as Uint16Array
-  return THREE.DataUtils.fromHalfFloat(data[(row * SKY_ENVIRONMENT_WIDTH + column) * 4]!)
+/** Reads the map's first texel, in linear radiance. Any texel would do: the fixture dome
+ *  above is uniform, so every one of them carries the same value. */
+function firstTexelRadiance(texture: THREE.DataTexture): number {
+  return THREE.DataUtils.fromHalfFloat((texture.image.data as Uint16Array)[0]!)
 }
 
 /**
- * Asserts the environment map carries makeLighting's distinct sky-ambient harmonics: the
- * zenith texel reconstructs to what those coefficients evaluate to in that direction. The
- * map replaced the light probe as the carrier of the sky's ambient (ADR-0161), so this is
- * where the harmonics now have to land.
+ * Asserts the environment map carries makeLighting's sky ambient. The map replaced the
+ * light probe as the carrier of the sky's ambient (ADR-0161), so this is where those
+ * harmonics now have to land.
  */
 function expectEnvironmentCarriesDistinctAmbient(rig: LightingRig): void {
   const texture = rig.environment
   expect(texture).toBeDefined()
-  const expected = evaluateSphericalHarmonics(
-    DISTINCT_SKY_AMBIENT,
-    directionOfTexel(ZENITH_COLUMN, ZENITH_ROW),
-  )
-  expect(expected.r).toBeGreaterThan(0)
-  expect(texelRed(texture!, ZENITH_COLUMN, ZENITH_ROW)).toBeCloseTo(expected.r, 2)
+  expect(firstTexelRadiance(texture!)).toBeCloseTo(DISTINCT_DOME_RADIANCE, 2)
 }
 
 /** Asserts the sky's sun aim and cloud coverage match makeLighting's distinct values. */
@@ -316,7 +287,7 @@ describe('disposeLightingRig', () => {
     expect(materialDispose).toHaveBeenCalled()
   })
 
-  it('still tears down a rig that has no sky or probe', () => {
+  it('still tears down a rig that has no sky or environment map', () => {
     const scene = new THREE.Scene()
     const rig = buildLightingRig(scene, RIG_SUN_INTENSITY)
 

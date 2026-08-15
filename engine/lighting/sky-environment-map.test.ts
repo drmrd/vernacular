@@ -8,6 +8,8 @@ import {
   writeSkyEnvironmentTexture,
   SKY_ENVIRONMENT_WIDTH,
   SKY_ENVIRONMENT_HEIGHT,
+  PMREM_CUBE_FACE_DIVISOR,
+  PMREM_MIN_CUBE_FACE_TEXELS,
 } from './sky-environment-map'
 
 /** A band-0 term large enough to hold the reconstructed field positive everywhere, so the
@@ -80,7 +82,11 @@ describe('createSkyEnvironmentTexture', () => {
     expect(texture.image.height).toBe(SKY_ENVIRONMENT_HEIGHT)
     // Three sizes the PMREM cube face at width / 4, and its filtered chain needs a
     // face of at least 2^LOD_MIN (16) texels, so the width may not drop below 64.
-    expect(SKY_ENVIRONMENT_WIDTH / 4).toBeGreaterThanOrEqual(16)
+    // Read through the module's own constants, so a drift in either one fails here
+    // rather than leaving this assertion agreeing with a stale copy of the rule.
+    expect(SKY_ENVIRONMENT_WIDTH / PMREM_CUBE_FACE_DIVISOR).toBeGreaterThanOrEqual(
+      PMREM_MIN_CUBE_FACE_TEXELS,
+    )
     // A 2:1 equirectangular aspect: one full turn across, half a turn down.
     expect(SKY_ENVIRONMENT_WIDTH).toBe(SKY_ENVIRONMENT_HEIGHT * 2)
   })

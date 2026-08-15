@@ -14,13 +14,13 @@ import { evaluateSphericalHarmonics } from '../../core'
  */
 
 /** Three sizes the PMREM cube face at a quarter of the equirectangular width. */
-const PMREM_CUBE_FACE_DIVISOR = 4
+export const PMREM_CUBE_FACE_DIVISOR = 4
 /**
  * The smallest cube face three's PMREM chain accepts, `2 ** LOD_MIN` with the r184
  * `LOD_MIN` of 4. Below it the filtered chain (`lodMax - LOD_MIN + 1` levels plus the six
  * extra-sigma levels) runs out of levels to blur into.
  */
-const PMREM_MIN_CUBE_FACE_TEXELS = 16
+export const PMREM_MIN_CUBE_FACE_TEXELS = 16
 /**
  * The map's width in texels, set by three's filter chain rather than by the content. An
  * order-2 harmonic field carries at most two cycles per revolution, which a handful of

@@ -138,10 +138,7 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
  * same sky arrives as a different array, and comparing references would rewrite the map on
  * every update. Twenty-seven numbers is a far cheaper comparison than the rewrite it avoids.
  */
-function sameAmbient(
-  held: readonly number[] | undefined,
-  incoming: readonly number[],
-): held is readonly number[] {
+function sameAmbient(held: readonly number[] | undefined, incoming: readonly number[]): boolean {
   if (held === undefined || held.length !== incoming.length) return false
   return held.every((coefficient, index) => coefficient === incoming[index])
 }
