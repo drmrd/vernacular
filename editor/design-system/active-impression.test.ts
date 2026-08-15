@@ -61,25 +61,47 @@ function paintsActiveFill(body: string): boolean {
   )
 }
 
-interface ActiveFillRule {
+interface StyleRule {
   file: string
   selector: string
-  label?: string
+  label: string | undefined
+  fillsActive: boolean
 }
 
-/** Every design-system rule whose background paints the active-state fill. */
-function activeFillRules(): ActiveFillRule[] {
+function componentRules(): StyleRule[] {
   const componentStylesheets = cssFilesUnder(designSystem).filter(
     (file) => !file.endsWith('tokens.css') && !file.endsWith('tokens-arris.css'),
   )
   return componentStylesheets.flatMap((file) =>
-    leafRules(readFileSync(file, 'utf8'))
-      .filter((rule) => paintsActiveFill(rule.body))
-      .map((rule) => ({
-        file: relative(process.cwd(), file),
-        selector: rule.selector,
-        label: declaredValue(rule.body, 'color'),
-      })),
+    leafRules(readFileSync(file, 'utf8')).map((rule) => ({
+      file: relative(process.cwd(), file),
+      selector: rule.selector,
+      label: declaredValue(rule.body, 'color'),
+      fillsActive: paintsActiveFill(rule.body),
+    })),
+  )
+}
+
+const PSEUDO_ELEMENT = /::[a-z-]+$/
+
+/**
+ * A pseudo-element holds no text, so it cannot carry the reversed label itself.
+ * Where the impression is drawn into one, the label rides the originating element,
+ * and that is the rule the reversal has to appear on.
+ */
+function reversesLabel(rule: StyleRule, rules: StyleRule[]): boolean {
+  if (rule.label === REVERSED_LABEL) {
+    return true
+  }
+  if (!PSEUDO_ELEMENT.test(rule.selector)) {
+    return false
+  }
+  const originating = rule.selector.replace(PSEUDO_ELEMENT, '').trim()
+  return rules.some(
+    (candidate) =>
+      candidate.file === rule.file &&
+      candidate.selector === originating &&
+      candidate.label === REVERSED_LABEL,
   )
 }
 
@@ -94,14 +116,15 @@ function arrisPalette(appearance: 'light' | 'dark'): Map<string, string> {
 }
 
 describe('active-impression label reversal', () => {
-  const filled = activeFillRules()
+  const rules = componentRules()
+  const filled = rules.filter((rule) => rule.fillsActive)
 
   it('finds the active fill in use, so the scan below is not vacuous', () => {
     expect(filled.length).toBeGreaterThan(0)
   })
 
   it('reverses the label on every design-system rule that fills with the active surface', () => {
-    const unreversed = filled.filter((rule) => rule.label !== REVERSED_LABEL)
+    const unreversed = filled.filter((rule) => !reversesLabel(rule, rules))
 
     const report = unreversed
       .map(({ file, selector, label }) => `${file}: ${selector} { color: ${label ?? '<unset>'} }`)
