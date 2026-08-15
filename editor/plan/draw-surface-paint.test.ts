@@ -217,7 +217,7 @@ describe('drawSurfacePaint', () => {
 
 describe('drawSurfacePaint construction-profile thickness', () => {
   // effectiveWallThickness is the resolver ADR-0160 moved the drawn wall faces onto
-  // (issue #365); the painted band should key on that same assembly total rather
+  // (issue #414); the painted band should key on that same assembly total rather
   // than the wall's raw thickness, so it lands on the drawn face instead of inside
   // the poche.
   it('offsets a painted wall face band by half the resolved assembly thickness for a wall with a construction profile', () => {
