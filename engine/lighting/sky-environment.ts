@@ -139,15 +139,17 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
 }
 
 /**
- * Whether the map already holds this sky ambient. Compared by value rather than by array
+ * Whether two sky ambients are the same. Compared by value rather than by array
  * identity: the environment pipeline builds a fresh coefficient array every tick, so the
  * same sky arrives as a different array, and comparing references would rewrite the map on
  * every update. Twenty-seven numbers is a far cheaper comparison than the rewrite it avoids.
  */
-function carriesSameAmbient(rig: LightingRig, skyAmbient: readonly number[]): boolean {
-  const held = rig.environmentAmbient
-  if (held === undefined || held.length !== skyAmbient.length) return false
-  return held.every((coefficient, index) => coefficient === skyAmbient[index])
+function sameAmbient(
+  held: readonly number[] | undefined,
+  incoming: readonly number[],
+): held is readonly number[] {
+  if (held === undefined || held.length !== incoming.length) return false
+  return held.every((coefficient, index) => coefficient === incoming[index])
 }
 
 /**
@@ -163,7 +165,7 @@ export function updateSkyEnvironment(rig: LightingRig, lighting: EnvironmentLigh
   } else {
     rig.pendingLighting = lighting
   }
-  if (environment !== undefined && !carriesSameAmbient(rig, lighting.skyAmbient)) {
+  if (environment !== undefined && !sameAmbient(rig.environmentAmbient, lighting.skyAmbient)) {
     writeSkyEnvironmentTexture(environment, lighting.skyAmbient)
     rig.environmentAmbient = lighting.skyAmbient
   }
