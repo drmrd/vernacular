@@ -1,0 +1,240 @@
+/*
+ * The Arris token layer (ADR-0154, docs/specs/2026-07-06-arris-visual-design-language.md).
+ *
+ * Every declaration here is scoped under [data-design-language='arris'], which the
+ * theme provider stamps only when the preview flag asks for it. Nothing lands at
+ * :root, so a page without the flag renders exactly as it did before this file
+ * existed. The names are the same semantic tokens the shipped layer publishes, so
+ * flipping the attribute retargets every component at once instead of migrating
+ * them one at a time.
+ *
+ * Load order matters. This file is imported after tokens.css because the Arris
+ * light block and tokens.css's [data-theme='dark'] block have equal specificity;
+ * the dark Arris block carries both attributes and outranks both.
+ *
+ * Appearance-preference blocks (reduced motion, high contrast, coarse pointer) are
+ * restated at the bottom for the same reason: tokens.css declares them against
+ * :root, which this scope would otherwise outrank.
+ */
+
+[data-design-language='arris'] {
+  /* Palette (spec section 5). Raw values live only in this block. */
+  --rag-vellum: #f7f6f2;
+  --beech: #dfd9ce;
+  --japanned-iron: #23272b;
+  --blued-steel: #16202c;
+  --bone: #e9e7e1;
+  --layout-blue: #2e55c4;
+  --layout-blue-lifted: #7e98e6;
+  --red-lead: #a6402f;
+  --red-lead-lifted: #ce7b63;
+
+  /* The ink ramp (spec section 5). One published set of intermediate ink values by
+     role, so no surface improvises its own. Expressed as a percentage of the ink
+     over whatever ground it lands on, which is how the spec states each ratio. */
+  --color-ink-body: var(--japanned-iron);
+  --color-ink-emphasis: color-mix(in srgb, var(--japanned-iron) 85%, transparent);
+  --color-ink-label: color-mix(in srgb, var(--japanned-iron) 80%, transparent);
+  --color-ink-secondary: color-mix(in srgb, var(--japanned-iron) 70%, transparent);
+  --color-ink-instrument: color-mix(in srgb, var(--japanned-iron) 60%, transparent);
+  --color-ink-engraved: color-mix(in srgb, var(--japanned-iron) 45%, transparent);
+  --color-ink-dormant: color-mix(in srgb, var(--japanned-iron) 40%, transparent);
+  --color-ink-ghost: color-mix(in srgb, var(--japanned-iron) 20%, transparent);
+
+  /* Surfaces: the sheet and the bench. In light the chrome is visibly darker than
+     the canvas, so the plan reads as the brightest thing on screen. */
+  --color-surface: var(--rag-vellum);
+  --color-surface-raised: var(--rag-vellum);
+  --color-surface-panel: var(--beech);
+
+  --color-text: var(--japanned-iron);
+  --color-text-muted: var(--color-ink-secondary);
+
+  /* Borders rest at 25 percent ink; the kerf line that separates panel sections
+     sits at 20 percent, the one form of separation the bench doctrine allows. */
+  --color-border: color-mix(in srgb, var(--japanned-iron) 25%, transparent);
+  --color-kerf: var(--color-ink-ghost);
+
+  /* Layout Blue is lines and glyphs only and never fills a surface (refusal 2), so
+     the primary button fill is ink, not accent: a black-handled tool. */
+  --color-accent: var(--layout-blue);
+  --color-accent-strong: var(--japanned-iron);
+  --color-on-accent: var(--rag-vellum);
+  --color-focus-ring: var(--layout-blue);
+  --color-indicator: var(--layout-blue);
+
+  /* Active-state doctrine: a selected control fills with ink and reverses its label
+     to the ground, so state reads without color. */
+  --color-surface-active: var(--japanned-iron);
+  --color-on-surface-active: var(--rag-vellum);
+
+  --color-danger: var(--red-lead);
+
+  /* Canvas roles. The 2D plan canvas cannot read custom properties, so PlanPalette
+     resolves these and threads them into drawPlan; canvas fill styles cannot parse
+     color-mix, so every translucent value here is a plain rgba literal.
+     These are a direct port of the palette doctrine, not the designed canvas family:
+     the cased mark and the lit-board exception land with the Phase 3 canvas slice. */
+  --color-canvas-grid: rgba(35, 39, 43, 0.2);
+  --color-canvas-wall: var(--japanned-iron);
+  --color-canvas-room-fill: var(--rag-vellum);
+  --color-canvas-ruler-band: var(--beech);
+  --color-canvas-ruler-tick: rgba(35, 39, 43, 0.6);
+  --color-canvas-ruler-text: rgba(35, 39, 43, 0.8);
+  --color-canvas-selection: var(--layout-blue);
+  --color-canvas-hover: rgba(46, 85, 196, 0.6);
+  --color-canvas-preview: var(--layout-blue);
+  --color-canvas-selection-fill: rgba(46, 85, 196, 0.12);
+  --color-canvas-marquee-fill: rgba(46, 85, 196, 0.12);
+  --color-canvas-ghost: rgba(35, 39, 43, 0.2);
+  --color-canvas-label: var(--japanned-iron);
+
+  /* Density (spec section 6). Base unit 4px; the shipped scale is already on that
+     grid, so the steps carry over unchanged. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Arris draws controls at 28px, but the WCAG target-size floor (ADR-0112) is a
+     hit-area promise, not a paint size, so the target tokens keep their shipped
+     values here. Reconciling the drawn height with the hit area belongs to the
+     Phase 3 button and field families. */
+  --size-target-min: 2.5rem;
+  --size-target-min-touch: 2.75rem;
+  --size-control-icon: var(--size-target-min);
+  --size-control-height: 1.75rem;
+  --size-row-compact: 1.5rem;
+  --size-panel-docked-width: 17.5rem;
+  --size-hero-band: 2.75rem;
+
+  /* Shape (spec section 7): one machined 2px chamfer on interactive controls,
+     square docked panels, and no pill anywhere (refusal 7). */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.125rem;
+  --radius-square: 0;
+  --radius-pill: var(--radius-sm);
+
+  --border-width-resting: 1px;
+  --border-width-active: 1.5px;
+  --border-width-focus-ring: 2px;
+  --border-width-scribe: 2px;
+  /* Icon stroke belongs to the design language in force, not to the plan canvas
+     ink hierarchy; ADR-0159 decoupled the two. */
+  --stroke-icon: 1.5px;
+
+  /* Type (spec section 4): 11, 12, 13, 15, 20, 22, 28. Display starts at 20px
+     because Besley has no floor below it, and no weight sits below 400. */
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.75rem;
+  --font-size-md: 0.8125rem;
+  --font-size-lg: 0.9375rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.375rem;
+  --font-size-3xl: 1.75rem;
+  --line-height-panel: 1.35;
+  --line-height-prose: 1.5;
+  --letter-spacing-stamped: 0.08em;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  /* The three faces are self-hosted by the follow-on slice; until then these stacks
+     name them and fall through to the platform. */
+  --font-family-ui: 'Atkinson Hyperlegible Next', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-heading: 'Besley', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-family-mono: 'B612 Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  /* Elevation (spec section 7): the bench is dead flat and only a picked-up thing
+     casts the one shadow, so there is no third tier for the overlay to reach for. */
+  --elevation-flat: none;
+  --elevation-raised: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --elevation-overlay: var(--elevation-raised);
+
+  /* Motion (spec section 8): a seat, not a bounce. */
+  --motion-duration: 90ms;
+  --motion-duration-max: 140ms;
+  --motion-duration-detent: 50ms;
+  --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+
+  /* The one permitted texture, on chrome surfaces only. */
+  --texture-grain-opacity: 0.015;
+}
+
+[data-design-language='arris'][data-theme='dark'] {
+  /* Bone ink over an iron bench, with the sheet on Blued Steel so it still reads
+     distinct from the chrome. Bone reaches each contrast floor at a lower opacity
+     than iron does, so the ramp's percentages differ while the ratios match. */
+  --color-ink-body: var(--bone);
+  --color-ink-emphasis: color-mix(in srgb, var(--bone) 73%, transparent);
+  --color-ink-label: color-mix(in srgb, var(--bone) 65%, transparent);
+  --color-ink-secondary: color-mix(in srgb, var(--bone) 55%, transparent);
+  --color-ink-instrument: color-mix(in srgb, var(--bone) 42%, transparent);
+  --color-ink-engraved: color-mix(in srgb, var(--bone) 35%, transparent);
+  --color-ink-dormant: color-mix(in srgb, var(--bone) 32%, transparent);
+  --color-ink-ghost: color-mix(in srgb, var(--bone) 15%, transparent);
+
+  --color-surface: var(--blued-steel);
+  --color-surface-raised: var(--japanned-iron);
+  --color-surface-panel: var(--japanned-iron);
+
+  --color-text: var(--bone);
+  --color-text-muted: var(--color-ink-secondary);
+
+  --color-border: color-mix(in srgb, var(--bone) 25%, transparent);
+  --color-kerf: var(--color-ink-ghost);
+
+  --color-accent: var(--layout-blue-lifted);
+  --color-accent-strong: var(--bone);
+  --color-on-accent: var(--japanned-iron);
+  --color-focus-ring: var(--layout-blue-lifted);
+  --color-indicator: var(--layout-blue-lifted);
+
+  --color-surface-active: var(--bone);
+  --color-on-surface-active: var(--japanned-iron);
+
+  --color-danger: var(--red-lead-lifted);
+
+  --color-canvas-grid: rgba(233, 231, 225, 0.15);
+  --color-canvas-wall: var(--bone);
+  --color-canvas-room-fill: var(--blued-steel);
+  --color-canvas-ruler-band: var(--japanned-iron);
+  --color-canvas-ruler-tick: rgba(233, 231, 225, 0.42);
+  --color-canvas-ruler-text: rgba(233, 231, 225, 0.65);
+  --color-canvas-selection: var(--layout-blue-lifted);
+  --color-canvas-hover: rgba(126, 152, 230, 0.6);
+  --color-canvas-preview: var(--layout-blue-lifted);
+  --color-canvas-selection-fill: rgba(126, 152, 230, 0.18);
+  --color-canvas-marquee-fill: rgba(126, 152, 230, 0.18);
+  --color-canvas-ghost: rgba(233, 231, 225, 0.15);
+  --color-canvas-label: var(--bone);
+}
+
+@media (prefers-contrast: more) {
+  [data-design-language='arris'] {
+    --color-border: color-mix(in srgb, var(--japanned-iron) 55%, transparent);
+    --color-focus-ring: var(--layout-blue);
+  }
+
+  [data-design-language='arris'][data-theme='dark'] {
+    --color-border: color-mix(in srgb, var(--bone) 55%, transparent);
+    --color-focus-ring: var(--layout-blue-lifted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-design-language='arris'] {
+    --motion-duration: 0ms;
+    --motion-duration-max: 0ms;
+    --motion-duration-detent: 0ms;
+  }
+}
+
+@media (pointer: coarse) {
+  [data-design-language='arris'] {
+    --size-target-min: var(--size-target-min-touch);
+  }
+}

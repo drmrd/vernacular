@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { DEFAULT_DESIGN_LANGUAGE, type DesignLanguage } from './design-language'
 import { resolveTheme, type ResolvedTheme, type ThemeChoice } from './theme'
 import './tokens.css'
+// Scoped entirely under [data-design-language='arris'], so loading it changes nothing
+// until the attribute above selects it. It must come after tokens.css: the Arris light
+// block and the shipped dark block have equal specificity, so source order decides.
+import './tokens-arris.css'
 
 interface ThemeContextValue {
   choice: ThemeChoice
