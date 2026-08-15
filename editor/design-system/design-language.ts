@@ -22,7 +22,7 @@ export const DESIGN_LANGUAGE_PREVIEW_PARAM = 'theme-preview'
 /** The one value that selects Arris. */
 export const ARRIS_PREVIEW_VALUE = 'arris'
 
-const PREVIEWABLE: Record<string, DesignLanguage> = {
+const DESIGN_LANGUAGES_BY_PREVIEW_VALUE: Record<string, DesignLanguage> = {
   [ARRIS_PREVIEW_VALUE]: 'arris',
   [DEFAULT_DESIGN_LANGUAGE]: DEFAULT_DESIGN_LANGUAGE,
 }
@@ -36,5 +36,5 @@ export function resolveDesignLanguage(preview: string | null | undefined): Desig
   if (preview === null || preview === undefined) {
     return DEFAULT_DESIGN_LANGUAGE
   }
-  return PREVIEWABLE[preview] ?? DEFAULT_DESIGN_LANGUAGE
+  return DESIGN_LANGUAGES_BY_PREVIEW_VALUE[preview] ?? DEFAULT_DESIGN_LANGUAGE
 }
