@@ -129,6 +129,12 @@ applied one level up, from the base weights to the derived ones.
 
 ## Consequences
 
+> Superseded in part by [[ADR-0160-plan-wall-poche-and-face-lines]]. This document's description of
+> how a wall stroke gets its width, including the `wall.thickness * viewport.scale` figure and the
+> cut weight acting as a zoom-out floor, no longer describes the code: walls now fill a poche
+> polygon between two face lines, and both faces ink at the cut weight unconditionally. The ink-role
+> decisions here are otherwise unchanged and still current.
+
 - `editor/plan/plan-ink.ts` is now the single place that defines the cut/fixture/annotation ink
   strokes. A future theme, including Arris once it reaches the canvas, retunes those strokes there;
   the literals listed in decision 1 still need a per-file edit until issue #524 lands.
