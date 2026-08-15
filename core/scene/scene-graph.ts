@@ -2,6 +2,7 @@ import { dimensionLength } from '../geometry/dimension'
 import type { AssetReference } from '../model/asset-reference'
 import { furnitureFootprintCorners } from '../model/furniture-footprint'
 import { resolveGradeElevation } from '../model/site'
+import { effectiveWallThickness } from './construction-profile'
 import type {
   Dimension,
   Floor,
@@ -111,6 +112,11 @@ export interface OpeningSceneNode {
   width: number
   height: number
   sillHeight: number
+  /**
+   * The host wall's effective assembly thickness: resolved through its
+   * construction profile via `effectiveWallThickness`, falling back to the
+   * raw wall thickness when it carries no profile.
+   */
   hostThickness: number
   orientation: OpeningOrientation
   /**
@@ -236,7 +242,7 @@ export function deriveOpeningNode(
     width: geometry.width,
     height: opening.height,
     sillHeight: opening.sillHeight,
-    hostThickness: hostWall.thickness,
+    hostThickness: effectiveWallThickness(hostWall),
     orientation: opening.orientation,
   }
 }
