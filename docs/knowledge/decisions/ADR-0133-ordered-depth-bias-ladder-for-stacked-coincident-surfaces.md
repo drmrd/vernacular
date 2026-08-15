@@ -16,10 +16,11 @@ sourceFiles:
   [
     engine/materials/role-appearance.ts,
     engine/scene/ground-plane.ts,
-    engine/materials/paint-material-provider.ts,
+    engine/materials/surface-material-provider.ts,
+    engine/materials/physical-material-provider.ts,
   ]
 status: current
-updated: 2026-06-29
+updated: 2026-08-14
 ---
 
 # ADR-0133: Ordered depth-bias ladder for stacked coincident surfaces
@@ -156,3 +157,15 @@ floor and an unpainted floor sit on the same rung and both win over the lawn.
   shared finished-floor datum the ladder works within.
 - Issue #391: the coincident-surface z-fighting report this slice fixes the
   ground-plane half of.
+
+## Update (2026-08-14): PaintMaterialProvider is removed
+
+The Decision section above says the painted floor path in `PaintMaterialProvider`
+keeps inheriting the slab-top bias. `PaintMaterialProvider` is deleted (issue #513):
+it had no production callers once the live view moved to `PhysicalMaterialProvider`,
+and the owner chose retirement over reservation. The inheritance this record depends
+on was already shared dispatch, not provider-specific code: `basePaintedParameters`
+in `engine/materials/surface-material-provider.ts` spreads
+`slabTopDepthBiasParameters` for the `top` role regardless of provider. A painted
+floor and an unpainted floor still sit on the same rung and both win over the lawn,
+now through `PhysicalMaterialProvider`.
