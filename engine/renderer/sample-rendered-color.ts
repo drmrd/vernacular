@@ -59,9 +59,14 @@ function averageSrgb(pixels: Uint8ClampedArray): Srgb {
   let greenSum = 0
   let blueSum = 0
   for (let index = 0; index < pixels.length; index += RGBA_CHANNEL_COUNT) {
-    redSum += pixels[index]
-    greenSum += pixels[index + 1]
-    blueSum += pixels[index + 2]
+    // Destructuring one pixel's own slice names the channels at the point they
+    // are summed and reads each byte exactly once. The zero defaults cover only
+    // a buffer whose last pixel is cut short, which no reader produces; treating
+    // the missing bytes as black keeps a malformed buffer from throwing here.
+    const [red = 0, green = 0, blue = 0] = pixels.subarray(index, index + RGBA_CHANNEL_COUNT)
+    redSum += red
+    greenSum += green
+    blueSum += blue
   }
   return {
     r: redSum / pixelCount / SRGB_CHANNEL_MAX,

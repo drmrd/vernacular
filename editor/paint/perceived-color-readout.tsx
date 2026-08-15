@@ -12,7 +12,10 @@ import './perceived-color-readout.css'
 
 export interface PerceivedColorReadoutProps {
   surface: SurfaceRef
-  reference?: Color
+  // Spelled out as `| undefined` so a caller can hand over a color it may or may
+  // not have; `exactOptionalPropertyTypes` otherwise rejects an explicit
+  // undefined and forces every call site into a conditional prop spread.
+  reference?: Color | undefined
 }
 
 // Candidate label colors for the swatch chip, matching ColorChip in
