@@ -125,6 +125,6 @@ The pack-validator and migration-author agents land alongside the pack tooling.
 
 - Design specification: `docs/specs/2026-06-01-vernacular-design.md`.
 - Architecture overview: `ARCHITECTURE.md`.
-- Delivery roadmap (GitHub-native): the [Projects board](https://github.com/users/drmrd/projects/3), the `public-alpha`, `public-beta`, and `1.0` milestones, and issues. Narrative and rationale: `docs/delivery-strategy.md`.
+- Delivery roadmap (GitHub-native): the `public-alpha`, `public-beta`, and `1.0` milestones, and issues. Narrative and rationale: `docs/delivery-strategy.md`.
 - Contributing: `CONTRIBUTING.md`.
 - Rules and Clean Code: `.claude/rules.md`.

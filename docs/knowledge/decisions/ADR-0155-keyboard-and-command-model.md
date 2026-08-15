@@ -10,20 +10,24 @@ sourceFiles:
     docs/specs/2026-07-06-arris-visual-design-language.md,
     docs/specs/2026-06-01-vernacular-design.md,
   ]
-status: proposed
-updated: 2026-07-06
+status: current
+updated: 2026-08-14
 ---
 
 # ADR-0155: Adopt the keyboard and command model as a target
 
 ## Status
 
-Proposed. Chosen by the owner on 2026-07-06 as an outcome of the purpose-first UX review of the
-whole product surface. The keyboard and command model is adopted as the target interaction grammar
-and is recorded as a spec (`docs/specs/2026-07-06-keyboard-and-command-model.md`). It is not yet in
-force and has not been mapped against the shipped editor's current shortcuts. It is the companion
-to the Arris visual language ([[ADR-0154-arris-visual-design-language]]); both are targets, not the
-current state.
+Current. Ratified by the owner on 2026-08-14, chosen originally on 2026-07-06 as an outcome of the
+purpose-first UX review of the whole product surface. The keyboard and command model is adopted as
+the target interaction grammar and is recorded as a spec
+(`docs/specs/2026-07-06-keyboard-and-command-model.md`).
+
+This is a direction decision, not a description of the shipped app. It has not yet been mapped
+against the shipped editor's current shortcuts, and the running editor keeps its existing bindings
+until that reconciliation lands. It is the companion to the Arris visual language
+([[ADR-0154-arris-visual-design-language]]), ratified from the same review; both are now current as
+targets, not yet the shipped state.
 
 ## Context
 
@@ -68,9 +72,11 @@ proposed status.
   snap-candidate cycle, the quantity latch, and entity walking is central to the model and is the
   behavior most at risk under assistive technology. It graduates from the spec to a build slice
   only after the screen-reader spike confirms it or supplies a fallback.
-- **The model becomes current only when the shipped editor implements it.** That step includes the
-  reconciliation against the editor's existing shortcuts and a migration plan for any binding that
-  moves. Until then the spec reads as a target.
+- **This ADR is current now as the ratified target; the shipped-editor reconciliation comes
+  later.** The shipped editor's shortcuts stay authoritative for what the product does today until
+  that reconciliation, which includes mapping this model against the editor's existing bindings and
+  a migration plan for any binding that moves. Until then the spec reads as a target, not a
+  description of the shipped app.
 
 ## Consequences
 
@@ -78,8 +84,8 @@ proposed status.
   on it instead of re-deriving bindings and re-fighting collisions at each tool.
 - The shipped app is unchanged by this decision. A reader who diffs the running editor's shortcuts
   against this model will find they disagree, and that is expected until reconciliation.
-- Because the model is proposed and unshipped, no README, release note, or other external text may
-  describe these as the product's keyboard shortcuts.
+- Because the model is ratified as a direction but not yet shipped, no README, release note, or
+  other external text may describe these as the product's keyboard shortcuts.
 - The model depends on the Arris language target it is the grammar for (ADR-0154), and it carries
   open dependencies recorded as GitHub work: the scoped-Tab spike, the chord-deliverability audit,
   and the numeric-storage decision that the entry grammar assumes.
@@ -89,7 +95,7 @@ proposed status.
 ## References
 
 - [[ADR-0154-arris-visual-design-language]]: the companion visual language this model is the
-  interaction grammar for; both are proposed targets from the same review.
+  interaction grammar for; both are ratified targets from the same review.
 - `docs/specs/2026-07-06-keyboard-and-command-model.md`: the keyboard and command spec this decision
   adopts.
 - `docs/specs/2026-07-06-arris-visual-design-language.md`: the Arris visual language spec.
