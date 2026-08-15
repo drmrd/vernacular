@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { createEmptyProject, createFloor, createOpening, createWall } from '../model/factories'
 import type { Floor } from '../model/types'
-import { OPENING_NODE_PREFIX, deriveOpeningNodesForFloor, deriveSceneGraph } from './scene-graph'
+import { effectiveWallThickness } from './construction-profile'
+import {
+  OPENING_NODE_PREFIX,
+  deriveOpeningNode,
+  deriveOpeningNodesForFloor,
+  deriveSceneGraph,
+} from './scene-graph'
 
 const OPENING_HOST_WALL_LENGTH = 2000
 const OPENING_HOST_WALL_THICKNESS = 114
 const OPENING_POSITION = 1000
 const OPENING_WIDTH = 800
+const MASONRY_BRICK_PROFILE = 'solid-masonry-brick'
 
 function floorWithHostedOpening(): Floor {
   const wall = createWall(
@@ -23,6 +30,31 @@ function floorWithHostedOpening(): Floor {
   })
   return { ...createFloor('Ground', { id: 'g', walls: [wall] }), openings: [opening] }
 }
+
+describe('deriveOpeningNode', () => {
+  it('cuts through the full construction-profile assembly thickness, not the raw wall thickness', () => {
+    const wall = {
+      ...createWall(
+        { x: 0, y: 0 },
+        { x: OPENING_HOST_WALL_LENGTH, y: 0 },
+        { id: 'w1', thickness: OPENING_HOST_WALL_THICKNESS },
+      ),
+      constructionProfile: MASONRY_BRICK_PROFILE,
+    }
+    const floor = createFloor('Ground', { id: 'g', walls: [wall] })
+    const opening = createOpening({
+      type: 'single-swing-door',
+      hostWallId: 'w1',
+      position: OPENING_POSITION,
+      width: OPENING_WIDTH,
+      id: 'o1',
+    })
+
+    const node = deriveOpeningNode(floor, opening, wall)
+
+    expect(node.hostThickness).toBe(effectiveWallThickness(wall))
+  })
+})
 
 describe('deriveOpeningNodesForFloor', () => {
   it('projects each opening into a node with the host-wall geometry and passthrough fields', () => {
