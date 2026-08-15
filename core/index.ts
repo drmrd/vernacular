@@ -610,7 +610,11 @@ export {
   withinColorTolerance,
 } from './color/color-accuracy'
 export type { PerceivedShift } from './color/perceived-shift'
-export { PERCEIVED_AXIS_THRESHOLD, describePerceivedShift } from './color/perceived-shift'
+export {
+  PERCEIVED_AXIS_THRESHOLD,
+  describePerceivedShift,
+  perceivedShiftLabel,
+} from './color/perceived-shift'
 export type { Palette } from './registries/palettes'
 export { PALETTE_REGISTRY_VERSION, builtinPalettes } from './registries/palettes'
 export type { ProjectPalette } from './model/types'

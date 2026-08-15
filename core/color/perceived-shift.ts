@@ -75,3 +75,24 @@ export function describePerceivedShift(sample: Color, reference: Color): Perceiv
     warmth: classifyAxis(sample.oklab.b - reference.oklab.b, 'warmer', 'cooler'),
   }
 }
+
+/**
+ * Phrases a `PerceivedShift` as the short label a readout prints beside a
+ * sampled swatch. The axis values are already the exact words the phrase
+ * needs (`'lighter'`, `'darker'`, `'warmer'`, `'cooler'`), so this reads them
+ * straight off the shift instead of re-deriving them with a lookup table.
+ */
+export function perceivedShiftLabel(shift: PerceivedShift): string {
+  if (shift.faithful) {
+    return 'Reads as painted'
+  }
+  const movedAxes = [shift.lightness, shift.warmth].filter((axis) => axis !== 'unchanged')
+  if (movedAxes.length === 0) {
+    // Neither lightness nor warmth crossed its threshold, yet the shift is
+    // not faithful: the drift lives entirely on the OKLab a axis (green to
+    // pink), which has no phrase of its own. Say something honest rather
+    // than claim the paint reads as chosen.
+    return 'Reads slightly different'
+  }
+  return `Reads ${movedAxes.join(' and ')}`
+}
