@@ -71,13 +71,13 @@ export interface LightingRig {
    * reflection. It replaces the fill, and replaced the light probe that preceded it
    * (ADR-0161); running any two of the three would count the sky's ambient twice.
    */
-  environment?: THREE.DataTexture
+  environment?: THREE.DataTexture | undefined
   /**
    * The sky ambient the environment map currently holds. Rewriting the map re-runs three's
    * PMREM filter chain on the GPU, and updates arrive for reasons other than the sky, so
    * this is compared against each update's ambient to regenerate only on a real sky change.
    */
-  environmentAmbient?: readonly number[]
+  environmentAmbient?: readonly number[] | undefined
   /**
    * Set true by `disposeLightingRig` so a lazy sky attach still in flight becomes a no-op:
    * the sky loads off the startup path, so a rig can be disposed before its module resolves.
@@ -133,6 +133,26 @@ export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): voi
     rig.sky.geometry.dispose()
     rig.sky.material.dispose()
   }
+  disposeEnvironmentMap(scene, rig)
+}
+
+/**
+ * Frees the sky's environment map and takes it off the scene. Three caches the filtered
+ * PMREM target against this source texture, and the node renderer (unlike the classic WebGL
+ * path) never listens for the source's dispose, so nothing else frees it. Clearing
+ * `scene.environment` alongside it keeps the scene from pointing at a disposed texture when
+ * a provider swap replaces the rig (ADR-0161).
+ */
+function disposeEnvironmentMap(scene: THREE.Object3D, rig: LightingRig): void {
+  rig.environmentAmbient = undefined
+  const environment = rig.environment
+  if (environment === undefined) return
+  const renderScene = scene as THREE.Scene
+  if (renderScene.isScene === true && renderScene.environment === environment) {
+    renderScene.environment = null
+  }
+  environment.dispose()
+  rig.environment = undefined
 }
 
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */
