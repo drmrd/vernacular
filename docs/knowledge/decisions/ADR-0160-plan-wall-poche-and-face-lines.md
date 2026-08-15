@@ -186,7 +186,11 @@ carries (`core/scene/scene-graph.ts`) all read `effectiveWallThickness`. On a so
 wall the band, the face hit target, and an opening's jamb caps sat about 4.7 px inside the
 poche at default scale; they now land on the drawn face. The fallback rule is untouched in all
 three: no profile, or a profile id the registry does not carry, still resolves to the raw
-thickness.
+thickness. Three was the count of neighbours that should have followed the ink, not the count
+of raw `thickness` readers left in the tree. Wall topology still nodes the arrangement from the
+raw figure on purpose (`editor/plan/draw-plan.ts`, `core/topology/rooms.ts`), which is what
+decision 5 above describes; the walker's standoff in `core/scene/walk-collision.ts` reads raw
+against 3D walls that render at the assembly total, and that mismatch is issue #552.
 
 `hostThickness` was the one worth tracing before moving it, since the scene graph feeds 3D as
 well as the page. Nothing in `engine/` or `bridge/` reads it. The 3D wall builder sizes its
@@ -222,3 +226,7 @@ short of or runs past the mitred corner. Only the thickness half of that issue c
 - Issue #546 (memoize the plan wall graph so a pan or zoom stops rebuilding topology).
 - Issue #547 (bring the surface-paint band, the wall-face hit band, and an opening's `hostThickness`
   onto the construction-profile thickness the drawn symbol now uses).
+- Issue #550 (bring the SVG plan export's wall stroke onto the same resolver, so an exported
+  opening gap stops outrunning the wall it breaks).
+- Issue #552 (the walk-mode collision standoff, which still stands the walker off a raw
+  half-thickness from walls the 3D view renders at the assembly total).
