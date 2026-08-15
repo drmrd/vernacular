@@ -404,6 +404,9 @@ interface WallEdgeCenterline {
 function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
   const graph = wallGraphOf(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
+  // `wallGraphOf` builds every edge's `wallId` from this same `options.walls` list, so
+  // the lookup always hits and the `?? 0` fallback is unreachable; it exists only to
+  // satisfy noUncheckedIndexedAccess.
   const thicknessByEdge = graph.edges.map((edge) => wallByEdgeId.get(edge.wallId)?.thickness ?? 0)
   const footprints = wallFootprints(graph, thicknessByEdge)
   return graph.edges.map((edge, index) => {
@@ -412,6 +415,9 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     const corners = footprints[index]
     const start = graph.vertices[edge.a]
     const end = graph.vertices[edge.b]
+    // `wallFootprints` returns one footprint per graph edge and every edge references
+    // vertices that exist in `graph.vertices`, so this branch is unreachable; it exists
+    // only to satisfy noUncheckedIndexedAccess.
     if (corners === undefined || start === undefined || end === undefined) {
       return { stretches: [], selected }
     }
