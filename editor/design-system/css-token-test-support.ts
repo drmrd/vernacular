@@ -53,6 +53,28 @@ export function resolveColor(name: string, vars: Map<string, string>): string {
   return captured !== undefined ? resolveColor(captured, vars) : value
 }
 
+/**
+ * A selector's specificity as (ids, classes, elements), comparable position by
+ * position. Attributes and pseudo-classes count with classes, pseudo-elements with
+ * elements. `:not()` counts as one rather than by its argument, a simplification the
+ * design system's selectors never exercise: nothing here nests a more specific
+ * selector inside a negation.
+ */
+export function specificity(selector: string): [number, number, number] {
+  const withoutPseudoElements = selector.replace(/::[a-z-]+/g, '')
+  const count = (pattern: RegExp): number => (withoutPseudoElements.match(pattern) ?? []).length
+  const classes = count(/\.[\w-]+/g) + count(/\[[^\]]*\]/g) + count(/:[a-z-]+(\([^)]*\))?/g)
+  return [count(/#[\w-]+/g), classes, (selector.match(/::[a-z-]+/g) ?? []).length]
+}
+
+/** Negative when a is weaker than b, positive when stronger, zero when equal. */
+export function compareSpecificity(
+  a: [number, number, number],
+  b: [number, number, number],
+): number {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
+}
+
 export interface CssRule {
   selector: string
   body: string
