@@ -77,6 +77,23 @@ const PATCH_COLORS: readonly Rgba[] = [
   [80, 40, 24, 135],
 ]
 
+// noUncheckedIndexedAccess types an index read as possibly undefined. These two
+// helpers narrow it by failing loudly instead, so a sampler that stopped calling
+// readPixels, or a patch index that fell out of range, surfaces as its own error
+// rather than as a baffling assertion against undefined.
+function onlyReadRect(reader: FakeReader): ReadRect {
+  expect(reader.calls).toHaveLength(1)
+  const [rect] = reader.calls
+  if (rect === undefined) throw new Error('the sampler recorded no readPixels call')
+  return rect
+}
+
+function patchColorAt(index: number): Rgba {
+  const color = PATCH_COLORS[index]
+  if (color === undefined) throw new Error(`no patch color at index ${index}`)
+  return color
+}
+
 describe('sampleRenderedColor', () => {
   it('requests a patch that is 2 * SAMPLE_RADIUS_PX + 1 pixels square', () => {
     // Radius 1 is the smallest neighborhood with any averaging effect, and it stays
@@ -87,8 +104,7 @@ describe('sampleRenderedColor', () => {
 
     sampleRenderedColor(reader, { x: 0, y: 0 })
 
-    expect(reader.calls).toHaveLength(1)
-    const [rect] = reader.calls
+    const rect = onlyReadRect(reader)
     expect(rect.width).toBe(2 * SAMPLE_RADIUS_PX + 1)
     expect(rect.height).toBe(2 * SAMPLE_RADIUS_PX + 1)
   })
@@ -98,7 +114,7 @@ describe('sampleRenderedColor', () => {
 
     sampleRenderedColor(reader, { x: 0, y: 0 })
 
-    const [rect] = reader.calls
+    const rect = onlyReadRect(reader)
     expect(rect.x).toBe(50 - SAMPLE_RADIUS_PX)
     expect(rect.y).toBe(40 - SAMPLE_RADIUS_PX)
   })
@@ -108,7 +124,7 @@ describe('sampleRenderedColor', () => {
 
     sampleRenderedColor(reader, { x: -0.5, y: 0.5 })
 
-    const [rect] = reader.calls
+    const rect = onlyReadRect(reader)
     // x = -0.5 sits a quarter of the way in from the left edge (device column 25);
     // y = 0.5 sits a quarter of the way down from the top row (device row 20).
     expect(rect.x).toBe(25 - SAMPLE_RADIUS_PX)
@@ -118,7 +134,7 @@ describe('sampleRenderedColor', () => {
   it('averages the RGB channels of the sampled patch and ignores alpha', () => {
     const reader = createFakeReader(20, 20, (x, y) => {
       if (x >= 9 && x <= 11 && y >= 9 && y <= 11) {
-        return PATCH_COLORS[(y - 9) * 3 + (x - 9)]
+        return patchColorAt((y - 9) * 3 + (x - 9))
       }
       // Outside the expected 3x3 patch; a naive implementation that samples the
       // wrong rectangle would pick up this value and fail the assertions below.
@@ -138,7 +154,7 @@ describe('sampleRenderedColor', () => {
 
     sampleRenderedColor(reader, { x: -1, y: 1 })
 
-    const [rect] = reader.calls
+    const rect = onlyReadRect(reader)
     expect(rect.x).toBeGreaterThanOrEqual(0)
     expect(rect.y).toBeGreaterThanOrEqual(0)
   })
@@ -148,7 +164,7 @@ describe('sampleRenderedColor', () => {
 
     sampleRenderedColor(reader, { x: 1, y: -1 })
 
-    const [rect] = reader.calls
+    const rect = onlyReadRect(reader)
     expect(rect.x + rect.width).toBeLessThanOrEqual(10)
     expect(rect.y + rect.height).toBeLessThanOrEqual(10)
   })
