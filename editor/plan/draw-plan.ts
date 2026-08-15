@@ -1,11 +1,18 @@
 /* eslint-disable max-lines -- the cohesive plan-drawing seam: one small routine per drawable layer (rooms, walls, openings, dimensions, stairs, underlays, handles). Splitting it would scatter the PlanDrawingContext seam this module defines. */
 import {
+  buildWallGraph,
   DEFAULT_METRIC_PREFERENCES,
+  WALL_NODE_PREFIX,
+  wallFaceGeometry,
+  wallFootprints,
   type OpeningSceneNode,
+  type PlanarGraph,
   type Point,
   type RoomSceneNode,
   type StairSceneNode,
   type UnitPreferences,
+  type WallFaceGap,
+  type WallFaceStretch,
   type WallSceneNode,
 } from '../../core'
 import { drawDimension, type DrawableDimension } from './draw-dimension'
@@ -15,7 +22,7 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
-import { openingCorners, openingJambs } from './opening-geometry'
+import { openingCorners, openingJambs, projectPointOntoWall } from './opening-geometry'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { centerOf, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
@@ -108,9 +115,9 @@ const SELECTED_ROOM_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
 // Defined relative to the cut weight, not a literal, so a future retune of the
 // cut role keeps the hover highlight reading heavier than the wall ink it marks.
 const HOVER_HIGHLIGHT_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
-// Walls are the plan's cut plane, so their stroke never draws thinner than the
-// cut ink weight, even when the wall's real thickness projects to a hairline.
-const MIN_WALL_PIXELS = PLAN_INK_WIDTH.cut
+// A wall's two faces are the plan's cut plane, so they ink at the cut weight
+// whatever thickness the wall itself projects to.
+const WALL_FACE_LINE_WIDTH = PLAN_INK_WIDTH.cut
 const PREVIEW_LINE_WIDTH = 2
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2
@@ -170,15 +177,22 @@ export function drawMarquee(ctx: PlanDrawingContext, rect: Bounds, options: Draw
 
 export function drawPlan(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   ctx.clearRect(0, 0, options.width, options.height)
+  // The wall network is resolved once and shared by the two wall passes below.
+  // Both passes read the same mitred, opening-broken geometry, so building the
+  // graph twice would cost the same work and risk the passes disagreeing.
+  const wallEdges = drawableWallEdges(options)
   // Underlays paint first so they sit beneath the grid and the plan.
   drawUnderlays(ctx, options.underlays, options.viewport)
   if (options.grid) drawGrid(ctx, options)
   drawRooms(ctx, options)
   // Stairs sit on top of the floor fills but below the wall strokes, like a room.
   drawStairs(ctx, options)
-  // Surface paint bands sit beneath the wall strokes so the ink reads over them.
+  // The wall pass straddles the surface-paint layer: the poche is the solid the
+  // paint is applied to, so a band reads as a finish laid over the wall's cut
+  // cavity, while the face lines are the cut plane itself and stay on top.
+  drawWallPoche(ctx, wallEdges, options)
   drawSurfacePaintLayer(ctx, options)
-  drawWalls(ctx, options)
+  drawWallFaces(ctx, wallEdges, options)
   // Openings break the wall stroke, so they paint after the walls.
   drawOpenings(ctx, options)
   // Furniture sits above the wall/opening layer but below the interaction overlays.
@@ -292,11 +306,147 @@ function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   }
 }
 
-/** Stroke each wall over the floor fills, stair footprints, and surface-paint bands. */
-function drawWalls(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
-  for (const wall of options.walls) {
-    drawWall(ctx, wall, options)
+/** Fill the cut cavity of every wall stretch beneath the surface-paint bands. */
+function drawWallPoche(
+  ctx: PlanDrawingContext,
+  edges: readonly DrawableWallEdge[],
+  options: DrawPlanOptions,
+): void {
+  const painter = { viewport: options.viewport, poche: paletteOf(options).poche }
+  for (const edge of edges) {
+    for (const stretch of edge.stretches) {
+      fillPocheRing(ctx, stretch.poche, painter)
+    }
   }
+}
+
+/** Fill one stretch's cut cavity as its own closed path. */
+function fillPocheRing(
+  ctx: PlanDrawingContext,
+  ring: readonly Point[],
+  painter: { viewport: Viewport; poche: string },
+): void {
+  ctx.fillStyle = painter.poche
+  ctx.beginPath()
+  traceRingPath(ctx, ring, painter.viewport)
+  ctx.fill()
+}
+
+/** Stroke both face lines of every wall stretch above the surface-paint bands. */
+function drawWallFaces(
+  ctx: PlanDrawingContext,
+  edges: readonly DrawableWallEdge[],
+  options: DrawPlanOptions,
+): void {
+  const palette = paletteOf(options)
+  for (const edge of edges) {
+    const ink = edge.selected ? palette.selection : palette.wall
+    const painter = { viewport: options.viewport, ink }
+    for (const stretch of edge.stretches) {
+      strokeFaceLine(ctx, stretch.plusFace, painter)
+      strokeFaceLine(ctx, stretch.minusFace, painter)
+    }
+  }
+}
+
+/** Stroke one face line as its own path, so the two faces never join at their ends. */
+function strokeFaceLine(
+  ctx: PlanDrawingContext,
+  face: readonly [Point, Point],
+  painter: { viewport: Viewport; ink: string },
+): void {
+  const from = worldToScreen(face[0], painter.viewport)
+  const to = worldToScreen(face[1], painter.viewport)
+  ctx.lineCap = LINE_CAP
+  ctx.lineWidth = WALL_FACE_LINE_WIDTH
+  ctx.strokeStyle = painter.ink
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.lineTo(to.x, to.y)
+  ctx.stroke()
+}
+
+/**
+ * One graph edge of the wall network, ready to draw. The graph edge, not the wall
+ * node, is the unit of drawing: a T junction splits an authored wall into several
+ * edges, and only the per-edge footprint carries the mitred corners that make the
+ * joint tile. The owning wall node is resolved per edge for its selection state.
+ */
+interface DrawableWallEdge {
+  /** The standing stretches the edge's openings leave, in order from its start. */
+  stretches: WallFaceStretch[]
+  /** Whether the wall node this edge came from is selected. */
+  selected: boolean
+}
+
+/** One graph edge's centerline, with the id of the wall it was split from. */
+interface WallEdgeCenterline {
+  start: Point
+  end: Point
+  wallId: string
+}
+
+/** The mitred, opening-broken symbology of every wall edge on the plan. */
+function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
+  const graph = wallGraphOf(options.walls)
+  const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
+  const thicknessByEdge = graph.edges.map((edge) => wallByEdgeId.get(edge.wallId)?.thickness ?? 0)
+  const footprints = wallFootprints(graph, thicknessByEdge)
+  return graph.edges.map((edge, index) => {
+    const wall = wallByEdgeId.get(edge.wallId)
+    const selected = wall !== undefined && options.selectedIds.has(wall.id)
+    const corners = footprints[index]
+    const start = graph.vertices[edge.a]
+    const end = graph.vertices[edge.b]
+    if (corners === undefined || start === undefined || end === undefined) {
+      return { stretches: [], selected }
+    }
+    const centerline = { start, end, wallId: edge.wallId }
+    const gaps = openingGapsAlong(centerline, options.openings ?? [])
+    return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
+  })
+}
+
+/**
+ * The planar graph of the drawn walls. The scene-node prefix is stripped from each
+ * id so that a graph edge's `wallId` matches the raw host id an opening carries.
+ */
+function wallGraphOf(walls: readonly WallSceneNode[]): PlanarGraph {
+  return buildWallGraph(
+    walls.map((wall) => ({
+      id: strippedWallId(wall),
+      start: wall.start,
+      end: wall.end,
+      thickness: wall.thickness,
+    })),
+  )
+}
+
+/** The wall's raw model id, without the scene-node namespace. */
+function strippedWallId(wall: WallSceneNode): string {
+  return wall.id.slice(WALL_NODE_PREFIX.length)
+}
+
+/**
+ * The clear spans the openings hosted by this edge's wall cut out of it, as
+ * centerline distances from the edge's start. An opening that sits on another
+ * sub-edge of the same wall projects outside this one; `wallFaceGeometry` clamps
+ * it to a zero-length gap and drops it, so it needs no filtering here.
+ */
+function openingGapsAlong(
+  edge: WallEdgeCenterline,
+  openings: readonly DrawableOpening[],
+): WallFaceGap[] {
+  const gaps: WallFaceGap[] = []
+  for (const opening of openings) {
+    if (opening.node.hostWallId !== edge.wallId) continue
+    const jambs = openingJambs(opening.node)
+    gaps.push({
+      from: projectPointOntoWall(edge.start, edge.end, jambs.start),
+      to: projectPointOntoWall(edge.start, edge.end, jambs.end),
+    })
+  }
+  return gaps
 }
 
 /** Paint the surface-paint face bands and the active-surface highlight beneath the wall strokes. */
@@ -384,26 +534,13 @@ function drawRoom(ctx: PlanDrawingContext, room: RoomSceneNode, drawing: RoomDra
 }
 
 /** Trace one closed ring as a sub-path within the current path. */
-function traceRingPath(ctx: PlanDrawingContext, ring: Point[], viewport: Viewport): void {
+function traceRingPath(ctx: PlanDrawingContext, ring: readonly Point[], viewport: Viewport): void {
   ring.forEach((point, index) => {
     const screen = worldToScreen(point, viewport)
     if (index === 0) ctx.moveTo(screen.x, screen.y)
     else ctx.lineTo(screen.x, screen.y)
   })
   ctx.closePath()
-}
-
-function drawWall(ctx: PlanDrawingContext, wall: WallSceneNode, options: DrawPlanOptions): void {
-  const palette = paletteOf(options)
-  const from = worldToScreen(wall.start, options.viewport)
-  const to = worldToScreen(wall.end, options.viewport)
-  ctx.lineCap = LINE_CAP
-  ctx.lineWidth = Math.max(MIN_WALL_PIXELS, wall.thickness * options.viewport.scale)
-  ctx.strokeStyle = options.selectedIds.has(wall.id) ? palette.selection : palette.wall
-  ctx.beginPath()
-  ctx.moveTo(from.x, from.y)
-  ctx.lineTo(to.x, to.y)
-  ctx.stroke()
 }
 
 function drawPreview(
