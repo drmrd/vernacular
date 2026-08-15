@@ -2,6 +2,7 @@
 import {
   buildWallGraph,
   DEFAULT_METRIC_PREFERENCES,
+  effectiveWallThickness,
   WALL_NODE_PREFIX,
   wallFaceGeometry,
   wallFootprints,
@@ -405,9 +406,12 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
   const graph = wallGraphOf(options.walls)
   const wallByEdgeId = new Map(options.walls.map((wall) => [strippedWallId(wall), wall]))
   // `wallGraphOf` builds every edge's `wallId` from this same `options.walls` list, so
-  // the lookup always hits and the `?? 0` fallback is unreachable; it exists only to
-  // satisfy noUncheckedIndexedAccess.
-  const thicknessByEdge = graph.edges.map((edge) => wallByEdgeId.get(edge.wallId)?.thickness ?? 0)
+  // the lookup always hits and the `undefined` branch below is unreachable; it exists
+  // only to satisfy noUncheckedIndexedAccess.
+  const thicknessByEdge = graph.edges.map((edge) => {
+    const wall = wallByEdgeId.get(edge.wallId)
+    return wall === undefined ? 0 : effectiveWallThickness(wall)
+  })
   const footprints = wallFootprints(graph, thicknessByEdge)
   return graph.edges.map((edge, index) => {
     const wall = wallByEdgeId.get(edge.wallId)
