@@ -81,26 +81,44 @@ describe('Arris drawn control height', () => {
     ).toEqual([])
   })
 
-  it('never lets the design language shrink the ADR-0112 hit target', () => {
-    const shrunk = controlRules.filter(isArrisScopedRule).flatMap((rule) =>
-      boxHeights(rule.body)
-        .filter((value) => value !== TARGET_MIN && value !== `var(--size-control-icon)`)
-        .map((value) => `${rule.stylesheet}: ${rule.selector} { ${value} }`),
-    )
+  it('never lets the design language shrink a box the shipped layer holds at the target', () => {
+    const shrunk = controlRules
+      .filter(isControlBoxRule)
+      .filter((rule) => promisedTargets.has(baseSelector(rule.selector)))
+      .flatMap((rule) =>
+        boxHeights(rule.body)
+          .filter((value) => value !== TARGET_MIN)
+          .map((value) => `${rule.stylesheet}: ${rule.selector} { ${value} }`),
+      )
 
     expect(
       shrunk,
-      `An Arris-scoped rule may draw a smaller impression, but the control's own ` +
-        `box keeps the ADR-0112 minimum so its hit area never overlaps a neighbour's. ` +
-        `Rules setting a box height off the target token:\n${shrunk.join('\n')}`,
+      `An Arris-scoped rule may draw a smaller impression, but where the shipped ` +
+        `layer reserves ${TARGET_MIN} the control's own box keeps it, so its hit ` +
+        `area never overlaps a neighbour's. A control the shipped layer never held ` +
+        `at the target (a text field) is free to size its own box. Rules lowering a ` +
+        `promised target:\n${shrunk.join('\n')}`,
     ).toEqual([])
   })
 })
 
-function isArrisScopedRule(rule: { selector: string }): boolean {
+/** The selector with the Arris scope stripped, so a scoped rule can be paired with the rule it retunes. */
+function baseSelector(selector: string): string {
+  return selector.replace(ARRIS_SCOPE, '').trim()
+}
+
+function isControlBoxRule(rule: { selector: string }): boolean {
   // A pseudo-element draws the impression and is not the control's own box.
   return isArrisScoped(rule.selector) && !rule.selector.includes('::')
 }
+
+/** Selectors the shipped layer holds at the ADR-0112 target minimum. */
+const promisedTargets = new Set(
+  controlRules
+    .filter((rule) => !isArrisScoped(rule.selector))
+    .filter((rule) => boxHeights(rule.body).includes(TARGET_MIN))
+    .map((rule) => rule.selector),
+)
 
 describe('the coarse-pointer floor', () => {
   const arrisTokens = readFileSync(join(designSystem, 'tokens-arris.css'), 'utf8')
