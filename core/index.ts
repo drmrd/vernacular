@@ -516,6 +516,13 @@ export { dimensionGeometry, dimensionLength } from './geometry/dimension'
 export { insetPolygon, pointInPolygon, polygonArea, polygonCentroid } from './geometry/polygon'
 export { lineIntersection, pointOnSegment, segmentIntersection } from './geometry/segment'
 export { dot, leftNormal, leftPerp, shift, subtract, unit } from './geometry/vector'
+export type {
+  WallFaceCorners,
+  WallFaceGap,
+  WallFaceRun,
+  WallFaceStretch,
+} from './geometry/wall-face'
+export { wallFaceGeometry } from './geometry/wall-face'
 export type { OpeningGeometry } from './topology/openings'
 export { deriveOpeningGeometry, openingFootprint, MIN_OPENING_WIDTH_MM } from './topology/openings'
 export type { GraphEdge, PlanarGraph } from './topology/wall-graph'

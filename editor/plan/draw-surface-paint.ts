@@ -60,7 +60,7 @@ function rawWallId(wall: WallSceneNode): string {
   return wall.id.slice(WALL_NODE_PREFIX.length)
 }
 
-/** Stroke a single screen-space segment from `from` to `to`, like `drawWall` in draw-plan.ts. */
+/** Stroke a single screen-space segment from `from` to `to`, like `strokeFaceLine` in draw-plan.ts. */
 function strokeSegment(painter: SurfacePainter, from: Point, to: Point): void {
   const a = worldToScreen(from, painter.viewport)
   const b = worldToScreen(to, painter.viewport)

@@ -17,12 +17,19 @@ import { RULER_THICKNESS_PX } from './ruler'
 import type { DrawableOpening } from './draw-opening'
 import type { DrawableDimension } from './draw-dimension'
 import type { DrawableFurniture } from './draw-furniture'
-import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
+import { DEFAULT_PLAN_SCALE, worldToScreen, type ScreenPoint } from './viewport'
 import { computeFitViewport, contentBounds, planContentPoints, type Bounds } from './fit'
-import { DEFAULT_METRIC_PREFERENCES, createFurnitureInstance } from '../../core'
+import {
+  DEFAULT_METRIC_PREFERENCES,
+  colorFromHex,
+  createFurnitureInstance,
+  effectiveWallThickness,
+  solidTreatment,
+} from '../../core'
 import type {
   DimensionSceneNode,
   OpeningSceneNode,
+  Point,
   RoomSceneNode,
   StairSceneNode,
   WallSceneNode,
@@ -40,38 +47,93 @@ function planOptions(overrides: Partial<Parameters<typeof drawPlan>[1]> = {}) {
   }
 }
 
+// The viewport every wall-symbology expectation projects through: the same one
+// `planOptions` hands drawPlan, with the world origin on the screen origin.
+const PLAN_VIEWPORT = { scale: DEFAULT_PLAN_SCALE }
+
+/** A line in screen space, as the two points it runs between. */
+type ScreenLine = readonly [ScreenPoint, ScreenPoint]
+
+/**
+ * The sample wall's face line `offsetMm` from its centerline, in screen space.
+ *
+ * The wall runs along +x, so its left-hand normal points +y: the `+normal` face sits
+ * half a thickness north of the centerline and the `-normal` face the same distance
+ * south. It is free-standing, so both ends are square and each face spans the run.
+ */
+function sampleWallFace(offsetMm: number): ScreenLine {
+  return [
+    worldToScreen({ x: wall.start.x, y: wall.start.y + offsetMm }, PLAN_VIEWPORT),
+    worldToScreen({ x: wall.end.x, y: wall.end.y + offsetMm }, PLAN_VIEWPORT),
+  ]
+}
+
+const HALF_SAMPLE_THICKNESS = wall.thickness / 2
+const PLUS_FACE = sampleWallFace(HALF_SAMPLE_THICKNESS)
+const MINUS_FACE = sampleWallFace(-HALF_SAMPLE_THICKNESS)
+const CENTERLINE = sampleWallFace(0)
+
+type PlanRecorder = ReturnType<typeof recordingContext>
+type RecordedSegment = PlanRecorder['segments'][number]
+
+// Screen coordinates are world millimeters times a fractional scale, so they are
+// compared within a tolerance: the vector form of toBeCloseTo.
+const SCREEN_TOLERANCE_PX = 1e-6
+
+function samePoint(recorded: readonly [number, number], point: ScreenPoint): boolean {
+  return (
+    Math.abs(recorded[0] - point.x) < SCREEN_TOLERANCE_PX &&
+    Math.abs(recorded[1] - point.y) < SCREEN_TOLERANCE_PX
+  )
+}
+
+/** Whether `segment` runs between `line`'s endpoints, in either direction. */
+function runsAlong(segment: RecordedSegment, line: ScreenLine): boolean {
+  return (
+    (samePoint(segment.from, line[0]) && samePoint(segment.to, line[1])) ||
+    (samePoint(segment.from, line[1]) && samePoint(segment.to, line[0]))
+  )
+}
+
+/** The stroke styles of every recorded segment drawn along `line`. */
+function stylesAlong(recorder: PlanRecorder, line: ScreenLine): string[] {
+  return recorder.segments
+    .filter((segment) => runsAlong(segment, line))
+    .map((segment) => segment.style)
+}
+
+/** The fills painted in the poche neutral, one per solid stretch of wall. */
+function pocheFills(recorder: PlanRecorder): string[] {
+  return recorder.fills.filter((fill) => fill === DEFAULT_PLAN_PALETTE.poche)
+}
+
 describe('drawPlan', () => {
-  it('clears the surface and strokes each wall projected to screen space', () => {
+  it('clears the surface and draws each wall as poche filled between two face lines', () => {
     const recorder = recordingContext()
 
     drawPlan(recorder.ctx, planOptions())
 
     expect(recorder.clearCount()).toBe(1)
-    expect(recorder.segments).toHaveLength(1)
-    expect(recorder.segments[0]?.from).toEqual([0, 0])
-    expect(recorder.segments[0]?.to).toEqual([1000 * DEFAULT_PLAN_SCALE, 0])
+    // One solid wall reads as one filled cut cavity bounded by its two face lines,
+    // each stroked in the wall ink at its half-thickness offset from the centerline.
+    expect(pocheFills(recorder)).toHaveLength(1)
+    expect(stylesAlong(recorder, PLUS_FACE)).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, MINUS_FACE)).toContain(DEFAULT_PLAN_PALETTE.wall)
   })
 
-  it('strokes a selected wall in a different color than an unselected one', () => {
+  it('strokes the faces of a selected wall in the selection color and those of an unselected wall in the wall color', () => {
     const unselected = recordingContext()
-    drawPlan(unselected.ctx, {
-      walls: [wall],
-      viewport: { scale: DEFAULT_PLAN_SCALE },
-      width: 800,
-      height: 600,
-      selectedIds: new Set(),
-    })
+    drawPlan(unselected.ctx, planOptions())
 
     const selected = recordingContext()
-    drawPlan(selected.ctx, {
-      walls: [wall],
-      viewport: { scale: DEFAULT_PLAN_SCALE },
-      width: 800,
-      height: 600,
-      selectedIds: new Set(['wall:a']),
-    })
+    drawPlan(selected.ctx, planOptions({ selectedIds: new Set(['wall:a']) }))
 
-    expect(selected.segments[0]?.style).not.toBe(unselected.segments[0]?.style)
+    // Selection swaps the ink of the cut lines themselves, so both faces change color.
+    for (const face of [PLUS_FACE, MINUS_FACE]) {
+      expect(stylesAlong(unselected, face)).toContain(DEFAULT_PLAN_PALETTE.wall)
+      expect(stylesAlong(unselected, face)).not.toContain(DEFAULT_PLAN_PALETTE.selection)
+      expect(stylesAlong(selected, face)).toContain(DEFAULT_PLAN_PALETTE.selection)
+    }
   })
 
   it('draws a preview guide line and a start marker when a preview segment is provided', () => {
@@ -187,14 +249,167 @@ describe('drawPlan', () => {
   })
 })
 
-describe('drawPlan wall stroke width', () => {
-  it('floors the wall stroke width at the cut ink weight, the heaviest role in the plan ink hierarchy, when the wall is too thin to show at scale', () => {
+describe('drawPlan wall face ink', () => {
+  /** The line width left on the context after drawing a lone wall of `thickness`. */
+  function faceInkWidth(thickness: number): number {
     const recorder = recordingContext()
-    const hairlineWall: WallSceneNode = { ...wall, thickness: 1 }
+    drawPlan(recorder.ctx, planOptions({ walls: [{ ...wall, thickness }] }))
+    return recorder.ctx.lineWidth
+  }
 
-    drawPlan(recorder.ctx, planOptions({ walls: [hairlineWall] }))
+  it('inks both wall faces at the cut weight whatever thickness the wall projects to', () => {
+    // The poche between the faces carries the thickness now, so the face lines are
+    // pure cut ink: a hairline partition and a 1 m thick foundation wall (80 px at
+    // this scale) both stroke at the heaviest role in the plan ink hierarchy.
+    expect(faceInkWidth(1)).toBe(PLAN_INK_WIDTH.cut)
+    expect(faceInkWidth(1000)).toBe(PLAN_INK_WIDTH.cut)
+  })
+})
 
-    expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
+describe('drawPlan wall symbology', () => {
+  // A door centered on the sample wall clearing 800 of its 1000 mm run, so solid
+  // stretches are left at both ends. hostWallId is the RAW wall id: the scene node
+  // id 'wall:a' with its 'wall:' prefix stripped.
+  // prettier-ignore
+  const doorNode: OpeningSceneNode = {
+    id: 'opening:a', kind: 'opening', floorId: 'g', type: 'single-swing-door',
+    center: { x: 500, y: 0 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+    width: 800, height: 2032, sillHeight: 0, hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' }, hostWallId: 'a',
+  }
+  // prettier-ignore
+  const door: DrawableOpening = {
+    node: doorNode, symbol: 'door-swing', double: false, selected: false,
+  }
+
+  // A muted sage finish for the painted faces; colorFromHex normalizes it to the
+  // same lowercase hex the painted band carries as its stroke style.
+  const SAGE_HEX = '#9aa583'
+  const paintEveryFace = () => solidTreatment(colorFromHex(SAGE_HEX), 'matte')
+
+  /** The `ops` index of the op that recorded `segments[wanted]`: the fake pushes one `lineTo` op per recorded segment, in order. */
+  function opIndexOfSegment(ops: readonly string[], wanted: number): number {
+    let seen = 0
+    for (const [index, op] of ops.entries()) {
+      if (op !== 'lineTo') continue
+      if (seen === wanted) return index
+      seen += 1
+    }
+    return -1
+  }
+
+  it('leaves the wall centerline unstroked, the two faces carrying the cut line instead', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions())
+
+    expect(stylesAlong(recorder, CENTERLINE)).toEqual([])
+  })
+
+  it('breaks the poche into one fill per solid stretch of a wall an opening cuts', () => {
+    const solid = recordingContext()
+    drawPlan(solid.ctx, planOptions())
+
+    const broken = recordingContext()
+    drawPlan(broken.ctx, planOptions({ openings: [door] }))
+
+    // The door clears the middle of the run, leaving a stub of standing wall at each
+    // end, so the cut cavity is filled twice rather than straight through the door.
+    expect(pocheFills(solid)).toHaveLength(1)
+    expect(pocheFills(broken)).toHaveLength(2)
+  })
+
+  it('paints the poche beneath the surface-paint bands and the face lines above them', () => {
+    const recorder = recordingContext()
+
+    drawPlan(
+      recorder.ctx,
+      planOptions({
+        surfacePaint: { treatmentForFace: paintEveryFace, activeSurface: null },
+      }),
+    )
+
+    // A painted face has to stay visible between the wall's fill and its ink, so the
+    // band is sandwiched: poche fill, then band, then the face line over both.
+    const styles = recorder.segments.map((segment) => segment.style)
+    expect(recorder.fills).toContain(DEFAULT_PLAN_PALETTE.poche)
+    expect(styles).toContain(SAGE_HEX)
+    expect(styles).toContain(DEFAULT_PLAN_PALETTE.wall)
+
+    const pocheFill = recorder.ops.indexOf('fill')
+    const band = opIndexOfSegment(recorder.ops, styles.indexOf(SAGE_HEX))
+    const faceLine = opIndexOfSegment(recorder.ops, styles.lastIndexOf(DEFAULT_PLAN_PALETTE.wall))
+    expect(pocheFill).toBeLessThan(band)
+    expect(band).toBeLessThan(faceLine)
+  })
+
+  it('mitres the poche where two walls meet at a right angle so the joint tiles', () => {
+    const east: WallSceneNode = { ...wall, id: 'wall:east' }
+    const north: WallSceneNode = {
+      ...wall,
+      id: 'wall:north',
+      start: { x: 1000, y: 0 },
+      end: { x: 1000, y: 1000 },
+    }
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions({ walls: [east, north] }))
+
+    // Both runs are 114 thick, so the corner mitres to the inner point where the two
+    // inner faces cross and the outer point where the outer faces cross. Square caps
+    // would stop at the centerline crossings instead, leaving the joint open.
+    const visited = recorder.segments.flatMap((segment) => [segment.from, segment.to])
+    const traced = (corner: Point) =>
+      visited.some((point) => samePoint(point, worldToScreen(corner, PLAN_VIEWPORT)))
+
+    expect(traced({ x: 943, y: 57 })).toBe(true)
+    expect(traced({ x: 1057, y: -57 })).toBe(true)
+    expect(traced({ x: 1000, y: 57 })).toBe(false)
+    expect(traced({ x: 1000, y: -57 })).toBe(false)
+  })
+})
+
+describe('drawPlan wall symbology construction-profile thickness', () => {
+  // effectiveWallThickness is the resolver these expectations lean on: the same
+  // rule the 3D wall builder already draws footprints from (issue #365), applied
+  // here to what the face-line offset in the 2D plan symbol should be.
+  it('offsets a wall with a known construction profile by half the assembly total, not half its raw thickness', () => {
+    const masonryWall: WallSceneNode = { ...wall, constructionProfile: 'solid-masonry-brick' }
+    const halfAssembly = effectiveWallThickness(masonryWall) / 2
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions({ walls: [masonryWall] }))
+
+    // The resolved assembly (231 mm) is double the wall's raw thickness (114 mm),
+    // so a draw pass still keyed on raw thickness cannot land a face here.
+    expect(stylesAlong(recorder, sampleWallFace(halfAssembly))).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, sampleWallFace(-halfAssembly))).toContain(
+      DEFAULT_PLAN_PALETTE.wall,
+    )
+  })
+
+  it('still offsets a wall with no construction profile by half its raw thickness', () => {
+    const halfRaw = effectiveWallThickness(wall) / 2
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions())
+
+    expect(stylesAlong(recorder, sampleWallFace(halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, sampleWallFace(-halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
+  })
+
+  it('falls back to half the raw thickness, not a zero-width wall, when the construction profile id is not in the registry', () => {
+    const unlistedProfileWall: WallSceneNode = {
+      ...wall,
+      constructionProfile: 'not-a-real-profile',
+    }
+    const halfRaw = effectiveWallThickness(unlistedProfileWall) / 2
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions({ walls: [unlistedProfileWall] }))
+
+    expect(stylesAlong(recorder, sampleWallFace(halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, sampleWallFace(-halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
   })
 })
 
@@ -284,9 +499,9 @@ describe('drawPlan ghost', () => {
     const withGhost = recordingContext()
     drawPlan(withGhost.ctx, planOptions({ ghost }))
 
-    // The wall-only plan strokes just its single wall; a two-segment ghost adds
-    // exactly two more stroked segments on top of it.
-    expect(without.segments).toHaveLength(1)
+    // Whatever the wall itself strokes, a two-segment ghost adds exactly two more
+    // stroked segments on top of it.
+    expect(without.segments.length).toBeGreaterThan(0)
     expect(withGhost.segments).toHaveLength(without.segments.length + ghost.length)
   })
 })
@@ -635,18 +850,16 @@ describe('drawPlan grid and rulers', () => {
 
   it('omits grid and rulers when the flags are absent', () => {
     const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions())
 
-    drawPlan(recorder.ctx, {
-      walls: [wall],
-      viewport: { scale: DEFAULT_PLAN_SCALE },
-      width: 800,
-      height: 600,
-      selectedIds: new Set<string>(),
-    })
+    const enabled = recordingContext()
+    drawPlan(enabled.ctx, planOptions({ grid: true, rulers: true }))
 
     expect(recorder.ops).not.toContain('fillText')
     expect(recorder.ops).not.toContain('fillRect')
-    expect(recorder.segments).toHaveLength(1)
+    // Only the wall itself is painted: none of the grid lines the flagged call
+    // strokes over the same viewport show up.
+    expect(recorder.segments.length).toBeLessThan(enabled.segments.length)
   })
 })
 
@@ -856,6 +1069,7 @@ describe('drawPlan palette', () => {
     grid: '#101010',
     wall: '#202020',
     roomFill: '#303030',
+    poche: '#353535',
     rulerBand: '#404040',
     rulerTick: '#505050',
     rulerText: '#606060',
