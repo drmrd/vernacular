@@ -2,7 +2,7 @@
 
 Vernacular is built as a set of parallel delivery tracks that converge on three release milestones: a public alpha, a public beta, and 1.0. This page is the durable narrative behind that plan: the track model, the order the work runs in, and what each milestone contains. The live status of any single piece of work lives on GitHub, not here.
 
-**Live status.** Every work item is tracked on the [delivery roadmap board](https://github.com/users/drmrd/projects/3), grouped by Track and Status, with release scope on the [milestones page](https://github.com/drmrd/vernacular/milestones). The board and the milestones are the source of truth for what has shipped and what is planned; this document does not repeat per-item status. The design reasoning behind the track model is in [ADR-0044](knowledge/decisions/ADR-0044-mvp-delivery-tracks-and-parallel-resequencing.md), and the authoritative product design is the [design specification](specs/2026-06-01-vernacular-design.md).
+**Live status.** Every work item is tracked on GitHub: release scope on the [milestones page](https://github.com/drmrd/vernacular/milestones) and per-item status on issues. Milestones and issues are the source of truth for what has shipped and what is planned; this document does not repeat per-item status. The design reasoning behind the track model is in [ADR-0044](knowledge/decisions/ADR-0044-mvp-delivery-tracks-and-parallel-resequencing.md), and the authoritative product design is the [design specification](specs/2026-06-01-vernacular-design.md).
 
 ## Why parallel tracks
 
