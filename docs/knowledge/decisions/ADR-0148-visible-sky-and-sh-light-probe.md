@@ -9,6 +9,7 @@ related:
     decisions/ADR-0146-environment-panel-and-session-contract,
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0079-three-dimensional-lighting-legibility,
+    decisions/ADR-0161-sky-specular-environment-map,
   ]
 sourceFiles:
   [
@@ -17,11 +18,12 @@ sourceFiles:
     core/environment/environment-lighting.ts,
     core/environment/color-check.ts,
     engine/lighting/sky-environment.ts,
+    engine/lighting/sky-environment-map.ts,
     engine/lighting/lighting-rig.ts,
     engine/lighting/solar-lighting-provider.ts,
   ]
 status: current
-updated: 2026-07-03
+updated: 2026-08-14
 ---
 
 # ADR-0148: The visible sky and its spherical-harmonics light probe
@@ -146,3 +148,30 @@ unchanged: `apply` stays synchronous and fire-and-forgets the attach.
 - [[ADR-0144-solar-lighting-provider-and-sky]] (the staging this resolves).
 - [[ADR-0147-per-mode-tone-mapping]] (AgX renders the sky's dynamic range).
 - [[ADR-0146-environment-panel-and-session-contract]] (the dial that drives `cloudCover`).
+
+## Update (2026-08-14): the environment map retires the light probe
+
+The deferral this decision recorded has been taken up, and the answer changed one of its two
+lighting choices. Issue #520 assigns `scene.environment`, and
+[[ADR-0161-sky-specular-environment-map]] has the reasoning. Read that one for current behavior;
+what follows is what it changes here.
+
+`THREE.LightProbe` is gone from the engine. The sky's ambient is now carried by an
+equirectangular radiance map that three filters through PMREM, and because that map supplies
+diffuse irradiance as well as the specular reflection the probe could never provide, keeping the
+probe beside it would have double counted the diffuse ambient. So the argument this ADR used to
+retire the hemisphere fill applied once more, to the probe itself: fill, then probe, then map,
+each replacing the last because all three model the sky's diffuse ambient.
+
+What holds unchanged is most of this decision. The analytic dome and its order-2 projection in
+`core/environment/` are untouched, `SH_COEFFICIENT_COUNT` is still the cross-layer contract, and
+`skyAmbient` is still what the engine receives. The map is reconstructed from those same
+twenty-seven coefficients rather than from a second sky derivation, which is what keeps the
+specular environment and the diffuse ambient the same field and lets the color check keep working
+through `colorCheckLighting` with no special case. The visible sky mesh, its lazy import, and the
+frozen cloud uniforms are all as described above.
+
+The fork this ADR settled is therefore better read as settled in both directions rather than
+reversed: harmonics remained the right way to compute and carry the sky's ambient, and PMREM
+became the right way to present it to the materials once there were materials with a specular
+response to present it to.
