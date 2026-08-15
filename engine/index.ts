@@ -49,6 +49,12 @@ export { detectRenderBackend } from './renderer/detect-backend'
 export type { SceneRendererOptions } from './renderer/create-renderer'
 export { createSceneRenderer } from './renderer/create-renderer'
 export { applyToneMappingOperator } from './renderer/tone-mapping'
+export type { RenderedPixelReader } from './renderer/sample-rendered-color'
+export {
+  SAMPLE_RADIUS_PX,
+  createCanvasPixelReader,
+  sampleRenderedColor,
+} from './renderer/sample-rendered-color'
 export type { MaterialProvider, SurfaceRole } from './materials/material-provider'
 export { NeutralMaterialProvider } from './materials/neutral-material-provider'
 export type { SurfaceMaterialOptions } from './materials/surface-material-provider'

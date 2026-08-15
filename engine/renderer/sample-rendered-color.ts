@@ -1,0 +1,121 @@
+import type { Srgb } from '../../core'
+
+/*
+ * The renderer never sets `preserveDrawingBuffer`, so the drawing buffer only
+ * holds a frame's pixels for the duration of that frame's callback; by the
+ * time any later code could grab the canvas, the buffer may already be
+ * cleared or repainted. `RenderedPixelReader` is the injected seam that lets
+ * a caller hand this module a live view of "whatever the buffer holds right
+ * now" without this module reaching for a canvas itself. That indirection is
+ * also what keeps the NDC-to-pixel mapping and channel averaging below pure
+ * and unit-testable in Node, with no GPU or DOM required.
+ */
+
+/** A source of device-pixel RGBA rectangles from whatever is currently rendered. */
+export interface RenderedPixelReader {
+  readonly width: number
+  readonly height: number
+  /** RGBA bytes, row-major, for a device-pixel rectangle. */
+  readPixels(x: number, y: number, width: number, height: number): Uint8ClampedArray
+}
+
+/**
+ * Radius, in device pixels, of the square neighborhood averaged around the
+ * sampled point. 1 is the smallest radius that averages anything at all: it
+ * damps a stray antialiased edge pixel to at most one ninth of the reading
+ * (a 3x3 patch), and a 3x3 patch stays well inside the 6px tolerance the 3D
+ * view already uses to decide two pointer positions are "the same click," so
+ * the patch cannot wander onto a surface the raycast did not resolve. The
+ * value is derived from those two constraints, not tuned by eye.
+ */
+export const SAMPLE_RADIUS_PX = 1
+
+const PATCH_SIDE_PX = 2 * SAMPLE_RADIUS_PX + 1
+const RGBA_CHANNEL_COUNT = 4
+const SRGB_CHANNEL_MAX = 255
+const NDC_MIN = -1
+const NDC_MAX = 1
+
+function isWithinNdcRange(value: number): boolean {
+  return value >= NDC_MIN && value <= NDC_MAX
+}
+
+/** Map an NDC coordinate on one axis to the nearest device pixel index. */
+function deviceCenterPixel(ndcValue: number, extentPx: number, flip: boolean): number {
+  const fraction = flip ? (1 - ndcValue) / 2 : (ndcValue + 1) / 2
+  return Math.floor(fraction * extentPx)
+}
+
+/** Center a patch on `center`, clamped fully inside `[0, extentPx)`. */
+function clampedAxis(center: number, extentPx: number): { origin: number; side: number } {
+  const side = Math.min(PATCH_SIDE_PX, extentPx)
+  const origin = Math.max(0, Math.min(center - SAMPLE_RADIUS_PX, extentPx - side))
+  return { origin, side }
+}
+
+/** Average the R, G, B channels of an RGBA buffer, ignoring alpha. */
+function averageSrgb(pixels: Uint8ClampedArray): Srgb {
+  const pixelCount = pixels.length / RGBA_CHANNEL_COUNT
+  let redSum = 0
+  let greenSum = 0
+  let blueSum = 0
+  for (let index = 0; index < pixels.length; index += RGBA_CHANNEL_COUNT) {
+    redSum += pixels[index]
+    greenSum += pixels[index + 1]
+    blueSum += pixels[index + 2]
+  }
+  return {
+    r: redSum / pixelCount / SRGB_CHANNEL_MAX,
+    g: greenSum / pixelCount / SRGB_CHANNEL_MAX,
+    b: blueSum / pixelCount / SRGB_CHANNEL_MAX,
+  }
+}
+
+/**
+ * Sample the gamma-encoded sRGB color rendered at an NDC point, averaged
+ * over a small neighborhood. Returns `null` for an empty buffer or an NDC
+ * point outside the -1..1 viewport range on either axis.
+ */
+export function sampleRenderedColor(
+  reader: RenderedPixelReader,
+  ndc: { x: number; y: number },
+): Srgb | null {
+  if (reader.width === 0 || reader.height === 0) return null
+  if (!isWithinNdcRange(ndc.x) || !isWithinNdcRange(ndc.y)) return null
+
+  const centerX = deviceCenterPixel(ndc.x, reader.width, false)
+  const centerY = deviceCenterPixel(ndc.y, reader.height, true)
+  const xAxis = clampedAxis(centerX, reader.width)
+  const yAxis = clampedAxis(centerY, reader.height)
+
+  const pixels = reader.readPixels(xAxis.origin, yAxis.origin, xAxis.side, yAxis.side)
+  return averageSrgb(pixels)
+}
+
+/**
+ * Build a `RenderedPixelReader` backed by an on-screen `<canvas>`. This is
+ * the browser-only glue proven at the end-to-end tier rather than here: it
+ * copies only the requested rectangle onto a scratch canvas sized to match,
+ * which keeps each on-demand read cheap regardless of the full canvas size.
+ */
+export function createCanvasPixelReader(canvas: HTMLCanvasElement): RenderedPixelReader | null {
+  const context = canvas.getContext('2d')
+  if (context === null) return null
+
+  return {
+    width: canvas.width,
+    height: canvas.height,
+    // eslint-disable-next-line max-params -- signature mirrors the canvas 2D drawImage/getImageData rectangle API (x, y, width, height)
+    readPixels(x, y, width, height) {
+      const scratch = document.createElement('canvas')
+      scratch.width = width
+      scratch.height = height
+      const scratchContext = scratch.getContext('2d')
+      if (scratchContext === null) {
+        throw new Error('createCanvasPixelReader: 2D canvas context unavailable')
+      }
+      scratchContext.drawImage(canvas, x, y, width, height, 0, 0, width, height)
+      return scratchContext.getImageData(0, 0, width, height).data
+    },
+  }
+}
