@@ -13,7 +13,7 @@ const FALLBACK_FINISH_ID = 'matte'
 
 /**
  * A finish-aware paint material provider. It shares the surface-material dispatch and
- * cache with PaintMaterialProvider, but a solid paint additionally reads its finish
+ * cache with SurfaceMaterialProvider, but a solid paint additionally reads its finish
  * (roughness, sheen, specular) and emits a MeshPhysicalMaterial, so gloss and flat
  * paints no longer render at one default roughness. A pattern keeps its standard
  * material and an unpainted surface keeps the neutral gray.

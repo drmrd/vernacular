@@ -16,6 +16,13 @@ export { ThemeProvider, useTheme } from './theme-provider'
 export type { ThemeProviderProps } from './theme-provider'
 export { resolveTheme } from './theme'
 export type { ThemeChoice, ResolvedTheme } from './theme'
+export {
+  resolveDesignLanguage,
+  ARRIS_PREVIEW_VALUE,
+  DEFAULT_DESIGN_LANGUAGE,
+  DESIGN_LANGUAGE_PREVIEW_PARAM,
+} from './design-language'
+export type { DesignLanguage } from './design-language'
 export { tokens, tokenList } from './tokens'
 export type { Token } from './tokens'
 export { AppFrame } from './app-frame'

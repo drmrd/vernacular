@@ -68,6 +68,43 @@ describe('ThemeProvider', () => {
     expect(container.querySelector('[data-theme]')?.getAttribute('data-theme')).toBe('dark')
   })
 
+  // The design language is the second theming axis (ADR-0154). It rides the same
+  // wrapper as data-theme so one attribute swap retargets the whole custom-property
+  // layer, and it stays on the shipped language unless the preview flag says otherwise.
+  it('stamps the shipped design language by default', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <p>hello</p>
+      </ThemeProvider>,
+    )
+    expect(
+      container.querySelector('[data-design-language]')?.getAttribute('data-design-language'),
+    ).toBe('draughtsmans-restraint')
+  })
+
+  it('stamps Arris when the preview language is selected', () => {
+    const { container } = render(
+      <ThemeProvider designLanguage="arris">
+        <p>hello</p>
+      </ThemeProvider>,
+    )
+    expect(
+      container.querySelector('[data-design-language]')?.getAttribute('data-design-language'),
+    ).toBe('arris')
+  })
+
+  it('carries both theming axes on the same wrapper element', () => {
+    mockMatchMedia(true)
+    const { container } = render(
+      <ThemeProvider designLanguage="arris">
+        <p>hello</p>
+      </ThemeProvider>,
+    )
+    const wrapper = container.querySelector('[data-theme]')
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark')
+    expect(wrapper?.getAttribute('data-design-language')).toBe('arris')
+  })
+
   it('applies the chosen theme when setChoice is called', async () => {
     const { container } = render(
       <ThemeProvider>

@@ -39,27 +39,25 @@ sourceFiles:
     core/registries/trim-profiles.ts,
     core/scene/exterior-walls.ts,
     core/scene/construction-profile.ts,
-    engine/materials/paint-material-provider.ts,
     engine/materials/surface-material-provider.ts,
     engine/materials/physical-material-provider.ts,
     bridge/react/framed-scene.ts,
     bridge/react/floor-build.ts,
     editor/plan/room-finish-section.tsx,
   ]
-status: proposed
-updated: 2026-07-14
+status: current
+updated: 2026-08-14
 ---
 
 # ADR-0130: Finishes system architecture
 
 ## Status
 
-Proposed on 2026-06-29, from the finishes epic (#208) and its children
-(#377 floor, #378 interior wall, #379 exterior wall types and cladding). It awaits owner
-ratification before it is treated as accepted. It records the architecture of the finishes
-system: the seam reuse, the exterior-face addressing decision, the floor-first sequencing
-already realized, and the two cross-cutting open questions, resolved. The full design is in
-`docs/specs/2026-06-29-finishes-system.md`.
+Current. Ratified by the owner on 2026-08-14. Proposed on 2026-06-29, from the finishes epic
+(#208) and its children (#377 floor, #378 interior wall, #379 exterior wall types and cladding),
+it records the architecture of the finishes system: the seam reuse, the exterior-face addressing
+decision, the floor-first sequencing already realized, and the two cross-cutting open questions,
+resolved. The full design is in `docs/specs/2026-06-29-finishes-system.md`.
 
 ## Context
 
@@ -203,8 +201,8 @@ paint store.
 - The finishes system composes with the old-house vocabulary track (#364 features, #365
   profiles, #380 renderings) without absorbing it. Finishes own color and texture; features and
   profiles own geometry and structure.
-- This ADR is `proposed`. The floor slice it describes is already accepted in code; the interior
-  and exterior decisions await owner ratification before the wall slices build against them.
+- This ADR is `current`. The floor slice it describes is already accepted in code, and the
+  interior and exterior decisions are ratified as the architecture the wall slices build against.
 
 ## References
 
@@ -244,6 +242,19 @@ the interior-wall slice's to add. The provider swaps in at the material seam
 the store, so no schema, model, or migration change rides along, and the appearance is
 read under the luminance convention of [[ADR-0156-luminance-calibration-convention]].
 
-This decision stays `proposed`. The solid-finish slice is now realized in code, as the
-floor slice already was, but the interior and exterior wall decisions still await owner
-ratification before the wall slices build against them.
+This decision is now `current`. The solid-finish slice is now realized in code, as the
+floor slice already was, and the interior and exterior wall decisions are ratified as the
+architecture the wall slices build against.
+
+## Update (2026-08-14): PaintMaterialProvider is removed
+
+The Decision section above names `engine/materials/paint-material-provider.ts` as the
+file that resolves a `pattern` treatment's `patternId` against the floor-pattern
+registry. That file is gone: `PaintMaterialProvider` had no production callers once the
+prior update wired `PhysicalMaterialProvider` into the live view, and issue #513 tracked
+the resulting retire-or-reserve call, which the owner resolved as retirement. The
+pattern-resolution behavior described here was shared dispatch even before the removal,
+not code specific to `PaintMaterialProvider`; it lives in
+`engine/materials/surface-material-provider.ts` and is exercised today through
+`PhysicalMaterialProvider`, which the registry-aware `pattern` lookup this decision
+reserves for the wall slices will extend.

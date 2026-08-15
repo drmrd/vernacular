@@ -55,6 +55,24 @@
   --color-indicator: var(--brass-500);
   /* Danger label/border color. Clears WCAG AA (4.5:1) as a label on the raised surface. */
   --color-danger: var(--brick-600);
+  /* The label color on an active fill. This language keeps the label ink; Arris
+     reverses it, which is why the role is named rather than assumed. */
+  --color-on-surface-active: var(--color-text);
+  /* Section separator. This language separates with the border color; Arris cuts a
+     lighter kerf line, so the role is named here too. */
+  --color-kerf: var(--color-border);
+
+  /* Ink ramp roles (introduced by the Arris language, ADR-0154, and given values
+     here so both languages publish the same vocabulary). Nothing consumes these
+     yet; the component families adopt them as they migrate. */
+  --color-ink-body: var(--umber-900);
+  --color-ink-emphasis: color-mix(in srgb, var(--umber-900) 85%, transparent);
+  --color-ink-label: color-mix(in srgb, var(--umber-900) 80%, transparent);
+  --color-ink-secondary: color-mix(in srgb, var(--umber-900) 70%, transparent);
+  --color-ink-instrument: color-mix(in srgb, var(--umber-900) 60%, transparent);
+  --color-ink-engraved: color-mix(in srgb, var(--umber-900) 45%, transparent);
+  --color-ink-dormant: color-mix(in srgb, var(--umber-900) 40%, transparent);
+  --color-ink-ghost: color-mix(in srgb, var(--umber-900) 20%, transparent);
 
   /* Canvas role tokens. The 2D plan canvas cannot read CSS variables directly, so the
      PlanPalette resolver reads these and threads them into drawPlan. Warm light-theme
@@ -89,11 +107,27 @@
   --size-target-min: 2.5rem;
   --size-target-min-touch: 2.75rem;
   --size-control-icon: var(--size-target-min);
+  /* Drawn control sizes. This language draws a control at its target minimum; Arris
+     draws tighter and treats the target size as a hit-area promise instead. */
+  --size-control-height: var(--size-target-min);
+  --size-row-compact: 2rem;
+  --size-panel-docked-width: 15rem;
+  --size-hero-band: var(--size-target-min-touch);
 
   /* Radius scale. */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-pill: 9999px;
+  --radius-square: 0;
+
+  /* Stroke and border weights. */
+  --border-width-resting: 1px;
+  --border-width-active: 1px;
+  --border-width-focus-ring: 2px;
+  --border-width-scribe: 2px;
+  /* Icon stroke is owned by the visual design language in force, not by the plan
+     canvas ink hierarchy (ADR-0159). This language strokes at 2px. */
+  --stroke-icon: 2px;
 
   /* Type scale. */
   --font-size-xs: 0.7rem;
@@ -101,17 +135,35 @@
   --font-size-md: 1rem;
   --font-size-lg: 1.25rem;
   --font-size-xl: 1.5rem;
+  --font-size-2xl: 1.75rem;
+  --font-size-3xl: 2rem;
+  /* This language sets no explicit leading, so the named roles resolve to the
+     browser default rather than inventing a number no shipped surface uses. */
+  --line-height-panel: normal;
+  --line-height-prose: normal;
+  --letter-spacing-stamped: 0.09em;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
   --font-family-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-family-heading:
     'EB Garamond', 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font-family-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 
   /* Elevation. */
+  --elevation-flat: none;
   --elevation-raised: 0 2px 8px rgba(35, 52, 77, 0.1);
   --elevation-overlay: 0 12px 32px rgba(35, 52, 77, 0.18);
 
+  /* Texture. This language carries none; Arris allows a faint chrome grain. */
+  --texture-grain-opacity: 0;
+
   /* Motion. */
   --motion-duration: 150ms;
+  --motion-duration-max: var(--motion-duration);
+  --motion-duration-detent: var(--motion-duration);
+  --motion-easing: ease;
 }
 
 [data-theme='dark'] {
@@ -128,6 +180,18 @@
   --color-on-accent: var(--umber-900);
   --color-focus-ring: var(--brass-500);
   --color-danger: var(--brick-300);
+  /* Custom properties substitute on the element that declares them, so a role
+     pointing at another role has to be restated here rather than inherited. */
+  --color-on-surface-active: var(--color-text);
+  --color-kerf: var(--color-border);
+  --color-ink-body: var(--vellum-50);
+  --color-ink-emphasis: color-mix(in srgb, var(--vellum-50) 73%, transparent);
+  --color-ink-label: color-mix(in srgb, var(--vellum-50) 65%, transparent);
+  --color-ink-secondary: color-mix(in srgb, var(--vellum-50) 55%, transparent);
+  --color-ink-instrument: color-mix(in srgb, var(--vellum-50) 42%, transparent);
+  --color-ink-engraved: color-mix(in srgb, var(--vellum-50) 35%, transparent);
+  --color-ink-dormant: color-mix(in srgb, var(--vellum-50) 32%, transparent);
+  --color-ink-ghost: color-mix(in srgb, var(--vellum-50) 15%, transparent);
   /* Dark canvas: ink surfaces matching the chrome, with a light wall poche and warm
      brass accents (selection, hover, preview, and marquee inherit the warm :root values). */
   --color-canvas-grid: var(--ink-800);

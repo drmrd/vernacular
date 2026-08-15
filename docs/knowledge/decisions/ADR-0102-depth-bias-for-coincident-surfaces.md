@@ -16,13 +16,14 @@ related:
 sourceFiles:
   [
     engine/materials/role-appearance.ts,
-    engine/materials/paint-material-provider.ts,
+    engine/materials/surface-material-provider.ts,
+    engine/materials/physical-material-provider.ts,
     engine/materials/neutral-material-provider.ts,
     engine/scene/room-builder.ts,
     core/scene/vertical-datum.ts,
   ]
 status: current
-updated: 2026-06-18
+updated: 2026-08-14
 ---
 
 # ADR-0102: Depth bias for surfaces that are coincident by design
@@ -160,3 +161,15 @@ depth bias is pure render appearance.
 - [[ADR-0099-2d-plan-renderer-y-up-coordinate-convention]]: the y-up coordinate
   convention the Y = 0 finished-floor datum and this depth direction sit inside.
 - Issue #224: the wall-base z-fighting report this slice fixes.
+
+## Update (2026-08-14): PaintMaterialProvider is removed
+
+The Decision section above credits `PaintMaterialProvider.paintedMaterial` with
+spreading the slab-top bias on the painted branch. `PaintMaterialProvider` is deleted
+(issue #513): it had no production callers once the live view moved to
+`PhysicalMaterialProvider`, and the owner chose retirement over reservation. The bias
+spreading this record describes had already moved into shared dispatch by the time of
+removal: `basePaintedParameters` in `engine/materials/surface-material-provider.ts`
+applies `slabTopDepthBiasParameters` for the `top` role for every painted material,
+regardless of provider. A painted floor and an unpainted floor still carry the
+identical bias, now through `PhysicalMaterialProvider`.

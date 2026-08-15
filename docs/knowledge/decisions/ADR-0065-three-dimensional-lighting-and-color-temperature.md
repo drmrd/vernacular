@@ -43,7 +43,7 @@ sourceFiles:
     core/color/color-temperature.ts,
     engine/lighting/basic-lighting-provider.ts,
     engine/lighting/light-color.ts,
-    engine/materials/paint-material-provider.ts,
+    engine/materials/physical-material-provider.ts,
     engine/scene/shadow-casters.ts,
     engine/renderer/create-renderer.ts,
     bridge/react/scene-lighting.tsx,

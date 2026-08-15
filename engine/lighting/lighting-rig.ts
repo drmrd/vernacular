@@ -65,8 +65,19 @@ export interface LightingRig {
   fill: THREE.HemisphereLight
   /** The visible sky, solar mode only. */
   sky?: SkyMesh
-  /** The sky's diffuse image-based light, solar mode only; replaces the fill. */
-  probe?: THREE.LightProbe
+  /**
+   * The sky's image-based light, solar mode only: an equirectangular radiance map assigned
+   * to the scene's environment, carrying both the diffuse ambient and the specular
+   * reflection. It replaces the fill, and replaced the light probe that preceded it
+   * (ADR-0161); running any two of the three would count the sky's ambient twice.
+   */
+  environment?: THREE.DataTexture | undefined
+  /**
+   * The sky ambient the environment map currently holds. Rewriting the map re-runs three's
+   * PMREM filter chain on the GPU, and updates arrive for reasons other than the sky, so
+   * this is compared against each update's ambient to regenerate only on a real sky change.
+   */
+  environmentAmbient?: readonly number[] | undefined
   /**
    * Set true by `disposeLightingRig` so a lazy sky attach still in flight becomes a no-op:
    * the sky loads off the startup path, so a rig can be disposed before its module resolves.
@@ -107,9 +118,9 @@ export function buildLightingRig(
  * Tears down a rig a provider built with `buildLightingRig`: removes its two lights from
  * the scene and disposes each, freeing GPU resources. `dispose()` on the sun is what frees
  * its shadow map, so a provider must call this rather than just detaching the lights. A
- * solar rig also carries a visible sky and its light probe; both are removed and disposed
- * when present, and the teardown still works on a rig that never attached them. Marking the
- * rig disposed abandons a sky whose module is still loading so it never joins the scene.
+ * solar rig also carries a visible sky, which is removed and disposed when present, and the
+ * teardown still works on a rig that never attached one. Marking the rig disposed abandons
+ * a sky whose module is still loading so it never joins the scene.
  */
 export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): void {
   rig.disposed = true
@@ -122,10 +133,36 @@ export function disposeLightingRig(scene: THREE.Object3D, rig: LightingRig): voi
     rig.sky.geometry.dispose()
     rig.sky.material.dispose()
   }
-  if (rig.probe !== undefined) {
-    scene.remove(rig.probe)
-    rig.probe.dispose()
+  disposeEnvironmentMap(scene, rig)
+}
+
+/**
+ * Frees the sky's environment map and takes it off the scene. Three caches the filtered
+ * PMREM target against this source texture, and the node renderer (unlike the classic WebGL
+ * path) never listens for the source's dispose, so nothing else frees it. Clearing
+ * `scene.environment` alongside it keeps the scene from pointing at a disposed texture when
+ * a provider swap replaces the rig (ADR-0161).
+ */
+function disposeEnvironmentMap(scene: THREE.Object3D, rig: LightingRig): void {
+  rig.environmentAmbient = undefined
+  const environment = rig.environment
+  if (environment === undefined) return
+  const renderScene = asScene(scene)
+  if (renderScene?.environment === environment) {
+    renderScene.environment = null
   }
+  environment.dispose()
+  rig.environment = undefined
+}
+
+/**
+ * Narrows an Object3D to a Scene, the only one that carries an environment. Uses three's own
+ * marker flag rather than `instanceof`, which a duplicated three module would defeat.
+ * Providers are handed an Object3D, so a rig applied to a bare group still gets its lights
+ * and simply has nowhere to put an environment.
+ */
+export function asScene(object: THREE.Object3D): THREE.Scene | undefined {
+  return (object as THREE.Scene).isScene === true ? (object as THREE.Scene) : undefined
 }
 
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */
