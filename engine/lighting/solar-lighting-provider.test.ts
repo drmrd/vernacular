@@ -3,7 +3,6 @@ import * as THREE from 'three'
 import { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 import {
   NEUTRAL_DOME_SPHERICAL_HARMONICS,
-  SH_COEFFICIENT_COUNT,
   type Bounds3,
   type EnvironmentLighting,
 } from '../../core'
@@ -25,13 +24,14 @@ const overheadSunLighting: EnvironmentLighting = {
 const duskSunLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0.5 }
 const sunDownLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0 }
 
-// A sky-lit environment with an off-axis sun and a distinct value at every
-// spherical-harmonic index, so the probe round-trip pins the fromArray layout:
-// coefficient i reads (array[3i], array[3i+1], array[3i+2]) into (x, y, z).
+// A sky-lit environment with an off-axis sun and a uniform dome at a distinctive level.
+// A uniform dome is pure band 0, so it reconstructs to exactly that level in every
+// direction: the environment map's texels can then be asserted exactly, with no
+// order-2 ringing and no dependence on which texel is read.
 const skyLitSunDirection = { x: 0.3, y: 0.8, z: -0.5 }
-const distinctSkyAmbient: readonly number[] = Array.from(
-  { length: SH_COEFFICIENT_COUNT },
-  (_, index) => (index + 1) / 10,
+const DISTINCT_DOME_RADIANCE = 7
+const distinctSkyAmbient: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS.map(
+  (coefficient) => coefficient * DISTINCT_DOME_RADIANCE,
 )
 const skyLitLighting: EnvironmentLighting = {
   ...overheadSunLighting,
@@ -54,6 +54,13 @@ const findSkyMesh = (scene: THREE.Object3D): SkyMesh | undefined =>
 const findProbe = (scene: THREE.Object3D): THREE.LightProbe | undefined =>
   scene.children.find((child): child is THREE.LightProbe => child instanceof THREE.LightProbe)
 
+/** The first texel of the scene's environment map, in linear radiance. */
+const firstEnvironmentTexel = (scene: THREE.Scene): number => {
+  const texture = scene.environment as THREE.DataTexture | null
+  if (texture === null) return 0
+  return THREE.DataUtils.fromHalfFloat((texture.image.data as Uint16Array)[0]!)
+}
+
 describe('SolarLightingProvider', () => {
   it('adds a shadow-casting directional sun and a hemisphere sky to the scene', () => {
     const scene = new THREE.Scene()
@@ -67,17 +74,19 @@ describe('SolarLightingProvider', () => {
     expect((directional[0] as THREE.DirectionalLight).castShadow).toBe(true)
   })
 
-  it('lights the scene from a visible sky mesh and a probe, zeroing the hemisphere fill', async () => {
+  it('lights the scene from a visible sky mesh and an environment map, zeroing the fill', async () => {
     const scene = new THREE.Scene()
 
     new SolarLightingProvider().apply(scene)
 
     // Realistic mode is lit by its own visible sky: the sky mesh is the far-field
-    // background and the probe carries the diffuse ambient, so the flat hemisphere fill
-    // is zeroed (running both would double-count the sky ambient; locked decision 2).
-    // The probe and the zeroed fill land synchronously; the visible sky mesh loads lazily
-    // off the startup path (dynamic import), so poll for it to appear.
-    expect(findProbe(scene)).toBeInstanceOf(THREE.LightProbe)
+    // background and the environment map carries the diffuse ambient AND the specular
+    // reflection, so the flat hemisphere fill is zeroed and no light probe is added
+    // (running any two of them would double-count the sky ambient; ADR-0161).
+    // The environment and the zeroed fill land synchronously; the visible sky mesh loads
+    // lazily off the startup path (dynamic import), so poll for it to appear.
+    expect(scene.environment).toBeInstanceOf(THREE.DataTexture)
+    expect(findProbe(scene)).toBeUndefined()
     expect(findSky(scene).intensity).toBe(0)
     await vi.waitFor(() => {
       expect(findSkyMesh(scene)?.isSkyMesh).toBe(true)
@@ -135,31 +144,33 @@ describe('SolarLightingProvider', () => {
     expect(sunPosition?.z).toBeCloseTo(skyLitSunDirection.z, precision)
   })
 
-  it('loads the environment sky-ambient harmonics into the probe in fromArray order', () => {
+  it("reconstructs the environment's sky-ambient harmonics into the scene environment map", () => {
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
 
     provider.update(scene, skyLitLighting, bounds)
 
-    const precision = 5
-    const coefficients = findProbe(scene)?.sh.coefficients
-    expect(coefficients?.[0]?.x).toBeCloseTo(distinctSkyAmbient[0]!, precision)
-    expect(coefficients?.[8]?.z).toBeCloseTo(distinctSkyAmbient[26]!, precision)
+    // The provider's own lighting reaches the map: a uniform dome at this level
+    // reconstructs to exactly that radiance everywhere. Which texel holds which
+    // direction is pinned in the environment map's own tests, not here.
+    const precision = 2
+    expect(firstEnvironmentTexel(scene)).toBeCloseTo(DISTINCT_DOME_RADIANCE, precision)
   })
 
-  it('dims the direct sun to near zero when the sun is down, keeping the probe ambient lit', () => {
+  it('dims the direct sun to near zero when the sun is down, keeping the sky ambient lit', () => {
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
 
     provider.update(scene, sunDownLighting, bounds)
 
-    // At night or in twilight the direct sun contributes nothing, but the sky's light
-    // probe still carries the diffuse ambient so the scene does not go black (the probe
-    // replaces the old hemisphere fill as the ambient source in realistic mode).
+    // At night or in twilight the direct sun contributes nothing, but the sky's
+    // environment map still carries the diffuse ambient so the scene does not go black
+    // (it replaces the light probe, which replaced the hemisphere fill, as the ambient
+    // source in realistic mode).
     expect(findSun(scene).intensity).toBeLessThan(0.01)
-    expect(findProbe(scene)?.sh.coefficients[0]?.length()).toBeGreaterThan(0)
+    expect(firstEnvironmentTexel(scene)).toBeGreaterThan(0)
   })
 
   it('applies colors but leaves the sun unmoved when the scene bounds are null', () => {
@@ -179,7 +190,7 @@ describe('SolarLightingProvider', () => {
     expect(findSky(scene).color.b).toBeCloseTo(0.9, precision)
   })
 
-  it('leaves no sky, probe, or lights in the scene after dispose', async () => {
+  it('leaves no sky, environment, or lights in the scene after dispose', async () => {
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
