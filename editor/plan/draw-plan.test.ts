@@ -23,6 +23,7 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   colorFromHex,
   createFurnitureInstance,
+  effectiveWallThickness,
   solidTreatment,
 } from '../../core'
 import type {
@@ -365,6 +366,50 @@ describe('drawPlan wall symbology', () => {
     expect(traced({ x: 1057, y: -57 })).toBe(true)
     expect(traced({ x: 1000, y: 57 })).toBe(false)
     expect(traced({ x: 1000, y: -57 })).toBe(false)
+  })
+})
+
+describe('drawPlan wall symbology construction-profile thickness', () => {
+  // effectiveWallThickness is the resolver these expectations lean on: the same
+  // rule the 3D wall builder already draws footprints from (issue #365), applied
+  // here to what the face-line offset in the 2D plan symbol should be.
+  it('offsets a wall with a known construction profile by half the assembly total, not half its raw thickness', () => {
+    const masonryWall: WallSceneNode = { ...wall, constructionProfile: 'solid-masonry-brick' }
+    const halfAssembly = effectiveWallThickness(masonryWall) / 2
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions({ walls: [masonryWall] }))
+
+    // The resolved assembly (231 mm) is double the wall's raw thickness (114 mm),
+    // so a draw pass still keyed on raw thickness cannot land a face here.
+    expect(stylesAlong(recorder, sampleWallFace(halfAssembly))).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, sampleWallFace(-halfAssembly))).toContain(
+      DEFAULT_PLAN_PALETTE.wall,
+    )
+  })
+
+  it('still offsets a wall with no construction profile by half its raw thickness', () => {
+    const halfRaw = effectiveWallThickness(wall) / 2
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions())
+
+    expect(stylesAlong(recorder, sampleWallFace(halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, sampleWallFace(-halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
+  })
+
+  it('falls back to half the raw thickness, not a zero-width wall, when the construction profile id is not in the registry', () => {
+    const unlistedProfileWall: WallSceneNode = {
+      ...wall,
+      constructionProfile: 'not-a-real-profile',
+    }
+    const halfRaw = effectiveWallThickness(unlistedProfileWall) / 2
+
+    const recorder = recordingContext()
+    drawPlan(recorder.ctx, planOptions({ walls: [unlistedProfileWall] }))
+
+    expect(stylesAlong(recorder, sampleWallFace(halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
+    expect(stylesAlong(recorder, sampleWallFace(-halfRaw))).toContain(DEFAULT_PLAN_PALETTE.wall)
   })
 })
 
