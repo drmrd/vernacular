@@ -1,7 +1,7 @@
 import type { Point } from '../model/types'
 
 import { lineIntersection } from './segment'
-import { leftPerp, shift, subtract, unit } from './vector'
+import { dot, leftPerp, shift, subtract, unit } from './vector'
 
 /**
  * Lengths at or below this many millimeters count as zero. A run this short has no
@@ -42,6 +42,8 @@ export interface WallFaceGap {
  * strokes as cut lines, and the closed poche ring filled between them. The poche
  * traces the plus face from the stretch's start to its end, then the minus face
  * back, so its four corners wind consistently and carry no repeated closing point.
+ * Both faces of a returned stretch stand and run the same way along the run, so the
+ * ring stays a simple quadrilateral that a fill routine can paint.
  */
 export interface WallFaceStretch {
   plusFace: readonly [Point, Point]
@@ -66,12 +68,27 @@ interface SolidSpan {
   to: number
 }
 
-/** One face line of a run, with the centerline frame needed to cut it. */
-interface FaceCut {
-  face: readonly [Point, Point]
+/** The centerline of one run: where it starts, which way it runs, and how long it is. */
+interface CenterlineFrame {
   origin: Point
   along: Point
   length: number
+}
+
+/**
+ * How far along the run axis a face line reaches, measured from the run's `start`
+ * the same way a gap's distances are. A miter slides a face's corner along the axis,
+ * so this is the face's own reach and not the run's `[0, length]`.
+ */
+interface FaceExtent {
+  from: number
+  to: number
+}
+
+/** One face line of a run, with the centerline frame needed to cut it. */
+interface FaceCut extends CenterlineFrame {
+  face: readonly [Point, Point]
+  extent: FaceExtent
 }
 
 /** The plus and minus face lines of one run, ready to cut. */
@@ -84,7 +101,10 @@ interface RunFaces {
  * The plan symbology of one wall run: a face pair and a poche ring per solid
  * stretch, in order from the run's start. A run with no gaps yields a single
  * stretch spanning the whole run; each gap splits the run further, and a gap that
- * swallows an end or the whole run drops the stretches it leaves empty.
+ * swallows an end or the whole run drops the stretches it leaves empty. A stretch
+ * that a miter has pinched down to one standing face goes with them: the ring holds
+ * four corners, so it cannot carry the triangle left where one face runs out before
+ * the stretch does.
  *
  * The corners are passed through untouched wherever a stretch reaches an end of the
  * run, rather than recomputed from the centerline and a half-thickness. The corners
@@ -96,12 +116,47 @@ export function wallFaceGeometry(run: WallFaceRun): WallFaceStretch[] {
   const runLength = Math.hypot(axis.x, axis.y)
   if (runLength <= DEGENERATE_LENGTH_MM) return []
 
-  const frame = { origin: run.start, along: unit(axis), length: runLength }
+  const frame: CenterlineFrame = { origin: run.start, along: unit(axis), length: runLength }
   const faces: RunFaces = {
-    plus: { face: [run.corners.aPlus, run.corners.bPlus], ...frame },
-    minus: { face: [run.corners.aMinus, run.corners.bMinus], ...frame },
+    plus: faceCut(frame, [run.corners.aPlus, run.corners.bPlus]),
+    minus: faceCut(frame, [run.corners.aMinus, run.corners.bMinus]),
   }
-  return solidSpans(runLength, run.gaps ?? []).map((span) => stretchFor(faces, span))
+  return solidSpans(runLength, run.gaps ?? [])
+    .map((span) => stretchFor(faces, span))
+    .filter(hasTwoStandingFaces)
+}
+
+/** One face line paired with `frame`, carrying where its own corners fall on the axis. */
+function faceCut(frame: CenterlineFrame, face: readonly [Point, Point]): FaceCut {
+  return {
+    ...frame,
+    face,
+    extent: { from: distanceAlongAxis(frame, face[0]), to: distanceAlongAxis(frame, face[1]) },
+  }
+}
+
+/** How far along the run axis `point` sits, measured from the frame's origin. */
+function distanceAlongAxis(frame: CenterlineFrame, point: Point): number {
+  return dot(subtract(point, frame.origin), frame.along)
+}
+
+/**
+ * True while both faces of `stretch` still stand. A stretch pressed up against an
+ * acute miter can lose one of them: the miter takes that face's corner back past the
+ * stretch, so the face cuts down to a point and the material left is a triangle
+ * rather than the quadrilateral a poche ring can hold.
+ */
+function hasTwoStandingFaces(stretch: WallFaceStretch): boolean {
+  return (
+    faceLength(stretch.plusFace) > DEGENERATE_LENGTH_MM &&
+    faceLength(stretch.minusFace) > DEGENERATE_LENGTH_MM
+  )
+}
+
+/** How long one cut face line is. */
+function faceLength(face: readonly [Point, Point]): number {
+  const endToEnd = subtract(face[1], face[0])
+  return Math.hypot(endToEnd.x, endToEnd.y)
 }
 
 /** The face pair and poche ring of one solid span. */
@@ -129,16 +184,31 @@ function stretchFor(faces: RunFaces, span: SolidSpan): WallFaceStretch {
  * half-thickness offset (mitring slides its corners along it without tilting it),
  * so the crossing is exact and no half-thickness has to be recovered here. Distances
  * at either end return the incoming corner itself, keeping mitred joints closed.
+ *
+ * In between, the distance is held inside this face's own extent rather than inside
+ * the run's length. A miter pulls one face's corner back along the axis and pushes
+ * the other's past the run end, so the two faces cover different stretches of the
+ * axis and only the face's own reach says where its material stops. Clamped to the
+ * run's length instead, a cut standing past a pulled-back corner would land beyond
+ * the end of that face, turning it back on itself against its partner and folding
+ * the poche into a bow tie. Clamped to the face's own reach it lands on the corner,
+ * which is where the wall really is pinched out on the inside of an acute turn.
  */
 function facePointAt(cut: FaceCut, distanceAlong: number): Point {
   if (distanceAlong <= 0) return cut.face[0]
   if (distanceAlong >= cut.length) return cut.face[1]
 
-  const centerlinePoint = shift(cut.origin, cut.along, distanceAlong)
+  const onFace = clampToExtent(distanceAlong, cut.extent)
+  const centerlinePoint = shift(cut.origin, cut.along, onFace)
   const crossing = lineIntersection(cut.face[0], cut.along, centerlinePoint, leftPerp(cut.along))
   // A direction and its own perpendicular never run parallel, so the crossing
   // always exists; the fallback only satisfies the nullable return type.
   return crossing ?? centerlinePoint
+}
+
+/** `distanceAlong` held inside the stretch of axis one face line actually covers. */
+function clampToExtent(distanceAlong: number, extent: FaceExtent): number {
+  return Math.min(Math.max(distanceAlong, extent.from), extent.to)
 }
 
 /** The solid material left between the run's gaps, dropping degenerate stretches. */
