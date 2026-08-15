@@ -34,6 +34,8 @@ export const SKY_ENVIRONMENT_HEIGHT = SKY_ENVIRONMENT_WIDTH / 2
 
 /** Channels per texel in the RGBA buffer three uploads. */
 const RGBA_CHANNELS = 4
+/** The alpha channel's offset within a texel: the last of the four. */
+const ALPHA_CHANNEL = RGBA_CHANNELS - 1
 /** Samples each texel at its own centre rather than its corner. */
 const TEXEL_CENTER = 0.5
 /** One full revolution, the azimuth a row of texels spans. */
@@ -44,6 +46,8 @@ const HALF_TURN_RAD = Math.PI
 const OPAQUE_ALPHA = 1
 /** Radiance has no negative values, so a ringing reconstruction clamps here. */
 const MIN_RADIANCE = 0
+/** The alpha every texel carries, converted once rather than per texel. */
+const OPAQUE_ALPHA_HALF_FLOAT = THREE.DataUtils.toHalfFloat(OPAQUE_ALPHA)
 
 /**
  * Allocates the environment map, zero-filled. One texture is allocated per rig and then
@@ -113,7 +117,7 @@ export function writeSkyEnvironmentTexture(
       texels[offset] = toRadianceHalfFloat(radiance.r)
       texels[offset + 1] = toRadianceHalfFloat(radiance.g)
       texels[offset + 2] = toRadianceHalfFloat(radiance.b)
-      texels[offset + RGBA_CHANNELS - 1] = THREE.DataUtils.toHalfFloat(OPAQUE_ALPHA)
+      texels[offset + ALPHA_CHANNEL] = OPAQUE_ALPHA_HALF_FLOAT
       offset += RGBA_CHANNELS
     }
   }
