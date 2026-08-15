@@ -226,6 +226,36 @@ describe('updateSkyEnvironment', () => {
 
     expectEnvironmentCarriesDistinctAmbient(rig)
   })
+
+  it('leaves the map alone when an update carries an unchanged sky ambient', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+    const versionAfterFirstWrite = rig.environment!.pmremVersion
+
+    // A fresh array holding the same coefficients: the sky has not moved, so the
+    // comparison has to be on values rather than array identity.
+    updateSkyEnvironment(rig, { ...makeLighting(), skyAmbient: [...DISTINCT_SKY_AMBIENT] })
+
+    // Rewriting would re-run the PMREM filter chain on the GPU for a sky that did not
+    // change. Updates arrive for reasons other than the sky (a bounds refit, a colour
+    // change, a re-render), so the map regenerates on sky state, not on update count.
+    expect(rig.environment!.pmremVersion).toBe(versionAfterFirstWrite)
+  })
+
+  it('regenerates the map when the sky ambient changes', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLighting())
+    const versionAfterFirstWrite = rig.environment!.pmremVersion
+
+    // Time of day and cloud cover both reach the rig as a different sky ambient, which
+    // is the one input the map is built from, so it is the whole invalidation signal.
+    const duskAmbient = DISTINCT_SKY_AMBIENT.map((coefficient) => coefficient / 2)
+    updateSkyEnvironment(rig, { ...makeLighting(), skyAmbient: duskAmbient })
+
+    expect(rig.environment!.pmremVersion).toBeGreaterThan(versionAfterFirstWrite)
+  })
 })
 
 describe('disposeLightingRig', () => {
