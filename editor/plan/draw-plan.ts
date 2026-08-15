@@ -306,16 +306,23 @@ function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   }
 }
 
+/** The viewport and poche fill color bundled so `fillPocheRing` stays within the parameter limit. */
+interface PochePainter {
+  viewport: Viewport
+  /** The palette's poche fill color for this draw. */
+  poche: string
+}
+
 /** Fill the cut cavity of every wall stretch beneath the surface-paint bands. */
 function drawWallPoche(
   ctx: PlanDrawingContext,
   edges: readonly DrawableWallEdge[],
   options: DrawPlanOptions,
 ): void {
-  const painter = { viewport: options.viewport, poche: paletteOf(options).poche }
+  const pochePainter: PochePainter = { viewport: options.viewport, poche: paletteOf(options).poche }
   for (const edge of edges) {
     for (const stretch of edge.stretches) {
-      fillPocheRing(ctx, stretch.poche, painter)
+      fillPocheRing(ctx, stretch.poche, pochePainter)
     }
   }
 }
@@ -324,12 +331,19 @@ function drawWallPoche(
 function fillPocheRing(
   ctx: PlanDrawingContext,
   ring: readonly Point[],
-  painter: { viewport: Viewport; poche: string },
+  painter: PochePainter,
 ): void {
   ctx.fillStyle = painter.poche
   ctx.beginPath()
   traceRingPath(ctx, ring, painter.viewport)
   ctx.fill()
+}
+
+/** The viewport and face-line ink color bundled so `strokeFaceLine` stays within the parameter limit. */
+interface FacePainter {
+  viewport: Viewport
+  /** The wall or selection ink to stroke the face line with, resolved per edge. */
+  ink: string
 }
 
 /** Stroke both face lines of every wall stretch above the surface-paint bands. */
@@ -341,10 +355,10 @@ function drawWallFaces(
   const palette = paletteOf(options)
   for (const edge of edges) {
     const ink = edge.selected ? palette.selection : palette.wall
-    const painter = { viewport: options.viewport, ink }
+    const facePainter: FacePainter = { viewport: options.viewport, ink }
     for (const stretch of edge.stretches) {
-      strokeFaceLine(ctx, stretch.plusFace, painter)
-      strokeFaceLine(ctx, stretch.minusFace, painter)
+      strokeFaceLine(ctx, stretch.plusFace, facePainter)
+      strokeFaceLine(ctx, stretch.minusFace, facePainter)
     }
   }
 }
@@ -353,7 +367,7 @@ function drawWallFaces(
 function strokeFaceLine(
   ctx: PlanDrawingContext,
   face: readonly [Point, Point],
-  painter: { viewport: Viewport; ink: string },
+  painter: FacePainter,
 ): void {
   const from = worldToScreen(face[0], painter.viewport)
   const to = worldToScreen(face[1], painter.viewport)
