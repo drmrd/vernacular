@@ -230,8 +230,8 @@ describe('drawSurfacePaint construction-profile thickness', () => {
       layer({ walls: [masonryWall], treatmentForFace: paintEveryFace }),
     )
 
-    // The resolved assembly (231 mm) is double the wall's raw thickness (114 mm), so
-    // a band still keyed on raw thickness cannot land here.
+    // The resolved assembly (231 mm) is a little over double the wall's raw
+    // thickness (114 mm), so a band still keyed on raw thickness cannot land here.
     const band = faceBandAtOffset('left', halfAssembly)
     expect(
       recorder.segments.some((segment) => segment.style === SAGE_HEX && matchesBand(segment, band)),
