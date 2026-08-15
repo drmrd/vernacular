@@ -12,6 +12,12 @@ import { fulfillPerceivedColorSample } from './fulfill-perceived-color-sample'
 // sample the previous frame's pixels instead of the one just composited.
 const SAMPLE_PRIORITY = 2
 
+// This component exists apart from `PerceivedColorSampler` below because
+// `useThree`, `useMemo`, and `useFrame` must run on every render: React
+// forbids calling hooks conditionally, so the null check for `store` has to
+// live in that outer wrapper instead of guarding these hooks directly. Do
+// not fold the two components back together.
+//
 // The read happens inside the frame callback because the renderer does not
 // preserve its drawing buffer: the buffer holds a frame's pixels only until
 // the compositor takes it, so a readback from outside the frame reads an
@@ -34,6 +40,9 @@ function ActivePerceivedColorSampler({ store }: { store: PerceivedColorStore }) 
  * live canvas at whatever point was last requested. Renders nothing; it
  * only registers the per-frame read, and registers no work at all when
  * there is no store to read requests from.
+ *
+ * The null check lives here rather than inside `ActivePerceivedColorSampler`
+ * so that component's hooks are never called conditionally.
  */
 export function PerceivedColorSampler({ store }: { store: PerceivedColorStore | null }) {
   if (store === null) return null
