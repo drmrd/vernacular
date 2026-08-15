@@ -19,7 +19,7 @@
 
 .ds-icon-button:hover {
   background: var(--color-surface-active);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .ds-icon-button:focus-visible {
@@ -27,12 +27,13 @@
   outline-offset: 1px;
 }
 
-/* A pressed toggle reads as active without brass: a filled surface and an
-   indicator border, matching the retired shell toggle treatment. */
+/* A pressed toggle reads as active without brass: a filled surface, an indicator
+   border, and the reversed on-fill label so the impression survives a language
+   whose active fill is the text ink itself. */
 .ds-icon-button[aria-pressed='true'] {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .ds-icon-button:disabled {
