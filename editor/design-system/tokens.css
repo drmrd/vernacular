@@ -62,6 +62,7 @@
   --color-canvas-grid: #dccfb2;
   --color-canvas-wall: #2f2615;
   --color-canvas-room-fill: #fbf7ef;
+  --color-canvas-poche: #d9cdb4;
   --color-canvas-ruler-band: #f4efe4;
   --color-canvas-ruler-tick: #d9cdb4;
   --color-canvas-ruler-text: #6e5a3c;
@@ -132,6 +133,7 @@
   --color-canvas-grid: var(--ink-800);
   --color-canvas-wall: var(--vellum-100);
   --color-canvas-room-fill: var(--ink-900);
+  --color-canvas-poche: var(--ink-600);
   --color-canvas-ruler-band: var(--ink-900);
   --color-canvas-ruler-tick: var(--ink-600);
   --color-canvas-ruler-text: var(--brass-300);

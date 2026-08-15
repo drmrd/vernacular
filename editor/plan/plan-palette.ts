@@ -7,6 +7,8 @@ export interface PlanPalette {
   grid: string
   wall: string
   roomFill: string
+  /** The solid neutral filling a wall's cut cavity between its two face lines. */
+  poche: string
   rulerBand: string
   rulerTick: string
   rulerText: string
@@ -31,6 +33,7 @@ export const DEFAULT_PLAN_PALETTE: PlanPalette = {
   grid: '#dccfb2',
   wall: '#2f2615',
   roomFill: '#fbf7ef',
+  poche: '#d9cdb4',
   rulerBand: '#f4efe4',
   rulerTick: '#d9cdb4',
   rulerText: '#6e5a3c',
@@ -47,6 +50,7 @@ const CANVAS_TOKENS: Record<keyof PlanPalette, string> = {
   grid: '--color-canvas-grid',
   wall: '--color-canvas-wall',
   roomFill: '--color-canvas-room-fill',
+  poche: '--color-canvas-poche',
   rulerBand: '--color-canvas-ruler-band',
   rulerTick: '--color-canvas-ruler-tick',
   rulerText: '--color-canvas-ruler-text',
@@ -73,6 +77,7 @@ export function resolvePlanPalette(readVar: (name: string) => string): PlanPalet
     grid: resolve('grid'),
     wall: resolve('wall'),
     roomFill: resolve('roomFill'),
+    poche: resolve('poche'),
     rulerBand: resolve('rulerBand'),
     rulerTick: resolve('rulerTick'),
     rulerText: resolve('rulerText'),
