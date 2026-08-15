@@ -12,8 +12,10 @@ import {
 } from '@phosphor-icons/react'
 import {
   createEnvironmentSessionStore,
+  createPerceivedColorStore,
   createSurfaceSelectionStore,
   EnvironmentSessionProvider,
+  PerceivedColorProvider,
   SurfaceSelectionProvider,
   useActiveFloorId,
   useEditorSession,
@@ -267,6 +269,9 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // and the 3D viewport share one EnvironmentState (mode, observation instant, cloud
   // cover, color check) across the frame.
   const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
+  // The perceived-color store is created once so the paint inspector's readout and the
+  // 3D viewport's sampler share one sampled color across the frame.
+  const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
   // The snap-preferences store is created once so the keybinding layer, the command
   // palette, the snap panel, and the plan's snapping all read one source, persisted
   // to localStorage as an editor preference.
@@ -298,28 +303,30 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                       ) : null}
                       <SurfaceSelectionProvider store={surfaceSelection}>
                         <EntitySurfaceBridge />
-                        <EnvironmentSessionProvider store={environmentSession}>
-                          <AppFrame
-                            header={
-                              <ShellHeader
-                                saveStatus={saveStatus}
-                                projectControls={projectControls}
-                              />
-                            }
-                            banner={<BannerRegion />}
-                            railLabel="Tool rail"
-                            rail={<ToolRail />}
-                            mainLabel="Viewport"
-                            main={
-                              <ViewportArea
-                                onImportDroppedFile={projectControls.onImportDroppedFile}
-                              />
-                            }
-                            inspectorLabel="Inspector"
-                            inspector={<Inspector />}
-                            statusBar={<EditorStatusBar />}
-                          />
-                        </EnvironmentSessionProvider>
+                        <PerceivedColorProvider store={perceivedColor}>
+                          <EnvironmentSessionProvider store={environmentSession}>
+                            <AppFrame
+                              header={
+                                <ShellHeader
+                                  saveStatus={saveStatus}
+                                  projectControls={projectControls}
+                                />
+                              }
+                              banner={<BannerRegion />}
+                              railLabel="Tool rail"
+                              rail={<ToolRail />}
+                              mainLabel="Viewport"
+                              main={
+                                <ViewportArea
+                                  onImportDroppedFile={projectControls.onImportDroppedFile}
+                                />
+                              }
+                              inspectorLabel="Inspector"
+                              inspector={<Inspector />}
+                              statusBar={<EditorStatusBar />}
+                            />
+                          </EnvironmentSessionProvider>
+                        </PerceivedColorProvider>
                       </SurfaceSelectionProvider>
                     </FurniturePlacementProvider>
                   </OpeningToolProvider>

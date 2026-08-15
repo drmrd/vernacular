@@ -14,6 +14,8 @@ import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
+import { usePerceivedColorStore } from './perceived-color-context'
+import { PerceivedColorSampler } from './perceived-color-sampler'
 import { FrameCamera, PresetCamera, type PresetRequest } from './scene-camera-effects'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -206,6 +208,7 @@ interface LiveSceneCanvasProps {
 function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
   const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
+  const perceivedColor = usePerceivedColorStore()
   return (
     // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
     // configuring the Canvas, so create-renderer's shadowMap setup goes dead
@@ -246,6 +249,11 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         realistic={viewEnvironment.environment.mode === 'realistic'}
         site={site}
       />
+      {/* The sampler must live inside the Canvas because it reads the drawing
+          buffer from within the per-frame callback, and it runs at a later
+          frame priority than the ambient-occlusion takeover above so it reads
+          a frame that has already been drawn and composited. */}
+      <PerceivedColorSampler store={perceivedColor} />
     </Canvas>
   )
 }

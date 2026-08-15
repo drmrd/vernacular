@@ -5,6 +5,7 @@ import { SectionLabel, Segmented } from '../design-system'
 import { useWallFaceHighlight } from './use-wall-face-highlight'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
+import { PerceivedColorReadout } from '../paint/perceived-color-readout'
 import './finish-section.css'
 
 // The finish handed to ColorPicker before the user has chosen one, matching the
@@ -68,6 +69,7 @@ export function WallFinishSection({
   const ref: SurfaceRef = { kind: 'wall-face', wallId, side }
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
+  const reference = treatment?.kind === 'solid' ? treatment.color : undefined
   return (
     <section className="finish-section">
       <SectionLabel>Finish</SectionLabel>
@@ -83,6 +85,7 @@ export function WallFinishSection({
         onHover={onHoverFace}
       />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
+      <PerceivedColorReadout surface={ref} {...(reference ? { reference } : {})} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker
           surface={ref}

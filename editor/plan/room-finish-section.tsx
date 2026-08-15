@@ -3,6 +3,7 @@ import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
 import { SectionLabel, Segmented } from '../design-system'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker, FloorPatternPicker } from '../paint/finish-picker'
+import { PerceivedColorReadout } from '../paint/perceived-color-readout'
 import './finish-section.css'
 
 const DEFAULT_FINISH_ID = 'matte'
@@ -46,6 +47,7 @@ export function RoomFinishSection({
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
   const patternId = treatment?.kind === 'pattern' ? treatment.patternId : undefined
+  const reference = treatment?.kind === 'solid' ? treatment.color : undefined
   return (
     <section className="finish-section">
       <SectionLabel>Finish</SectionLabel>
@@ -58,6 +60,7 @@ export function RoomFinishSection({
         }}
       />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
+      <PerceivedColorReadout surface={ref} {...(reference ? { reference } : {})} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker
           surface={ref}
