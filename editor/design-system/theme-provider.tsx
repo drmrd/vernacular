@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { DEFAULT_DESIGN_LANGUAGE, type DesignLanguage } from './design-language'
 import { resolveTheme, type ResolvedTheme, type ThemeChoice } from './theme'
 import './tokens.css'
 
@@ -33,14 +34,27 @@ function usePrefersDark(): boolean {
 export interface ThemeProviderProps {
   children: ReactNode
   defaultChoice?: ThemeChoice
+  /** The visual language to mount. Defaults to the shipped one; see ADR-0154. */
+  designLanguage?: DesignLanguage
 }
 
-export function ThemeProvider({ children, defaultChoice = 'system' }: ThemeProviderProps) {
+export function ThemeProvider({
+  children,
+  defaultChoice = 'system',
+  designLanguage = DEFAULT_DESIGN_LANGUAGE,
+}: ThemeProviderProps) {
   const [choice, setChoice] = useState<ThemeChoice>(defaultChoice)
   const resolved = resolveTheme(choice, usePrefersDark())
   return (
     <ThemeContext.Provider value={{ choice, resolved, setChoice }}>
-      <div className="design-system-theme" data-theme={resolved}>
+      {/* Both theming axes ride this one wrapper: the appearance (light or dark) and
+          the design language. Swapping either attribute retargets the CSS custom-property
+          layer beneath it, so no component reads or branches on the language itself. */}
+      <div
+        className="design-system-theme"
+        data-theme={resolved}
+        data-design-language={designLanguage}
+      >
         {children}
       </div>
     </ThemeContext.Provider>

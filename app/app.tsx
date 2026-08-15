@@ -16,7 +16,13 @@ import {
   initialToolForProject,
 } from '../editor'
 import { AssetProviders } from './asset-providers'
-import { NotificationProvider, ThemeProvider } from '../editor/design-system'
+import {
+  DESIGN_LANGUAGE_PREVIEW_PARAM,
+  NotificationProvider,
+  ThemeProvider,
+  resolveDesignLanguage,
+  type DesignLanguage,
+} from '../editor/design-system'
 import {
   InMemoryAssetCache,
   InMemoryRecentProjectStore,
@@ -69,6 +75,14 @@ function requestedColorTemperature(): number | undefined {
 
 function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
   return resolveHarnessPaint(searchParam('paint'))
+}
+
+// Preview seam for the in-progress Arris visual language (ADR-0154): `?theme-preview=arris`
+// mounts the Arris token layer instead of the shipped one. A normal page load carries no
+// such parameter, so the shipped language is what every real user gets; the migration plan
+// flips the default only once every component family has moved.
+export function requestedDesignLanguage(): DesignLanguage {
+  return resolveDesignLanguage(searchParam(DESIGN_LANGUAGE_PREVIEW_PARAM))
 }
 
 // Resolve the durable {store, assets} pair to boot against. An injected
@@ -298,7 +312,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const sessionKey = useSessionKey(session)
 
   return (
-    <ThemeProvider>
+    <ThemeProvider designLanguage={requestedDesignLanguage()}>
       <EditorSessionProvider session={session}>
         <AssetProviders assets={assets} library={ws.assetLibrary}>
           <SelectionProvider store={ws.selection}>
