@@ -52,3 +52,51 @@
 .ds-segmented__option.is-preview {
   border-color: var(--color-focus-ring);
 }
+
+/*
+ * Arris draws a 28px control (the Arris spec, section 6) while ADR-0112 promises a
+ * 40px hit target on a fine pointer. The reconciliation: the option's own box keeps
+ * the target, so no option's hit area reaches into its neighbour's, and a centred
+ * pseudo-element draws the impression at the drawn-height token. The pseudo-element
+ * carries the fill, the machined border and the 2px chamfer, because only a box of
+ * its own can hold a radius the padded control cannot. On a coarse pointer both
+ * tokens resolve to the touch floor and the impression fills its box again.
+ */
+[data-design-language='arris'] .ds-segmented__option {
+  position: relative;
+  /* A stacking context of the control's own, so the impression can sit behind the
+     label without falling behind the group's background. */
+  isolation: isolate;
+}
+
+[data-design-language='arris'] .ds-segmented__option::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--size-control-height)) / 2);
+  inset-inline: 0;
+  border: var(--border-width-resting) solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+/* The impression moves to the pseudo-element, so the control's own box paints
+   nothing and the reversed label rides the element that holds the text. */
+[data-design-language='arris'] .ds-segmented__option.is-active {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-on-surface-active);
+}
+
+[data-design-language='arris'] .ds-segmented__option.is-active::before {
+  border-width: var(--border-width-active);
+  border-color: var(--color-border);
+  background: var(--color-surface-active);
+}
+
+[data-design-language='arris'] .ds-segmented__option.is-preview {
+  border-color: transparent;
+}
+
+[data-design-language='arris'] .ds-segmented__option.is-preview::before {
+  border-color: var(--color-focus-ring);
+}

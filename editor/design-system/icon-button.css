@@ -60,3 +60,53 @@
 .ds-icon-button--readout {
   padding: 0 var(--space-1);
 }
+
+/*
+ * The icon square keeps its ADR-0112 target box and draws the Arris impression
+ * inside it (ADR-0163). The square is sized from --size-control-icon, which points
+ * at the target minimum, so the drawn impression is the one that shrinks.
+ */
+[data-design-language='arris'] .ds-icon-button {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-design-language='arris'] .ds-icon-button::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--size-control-height)) / 2);
+  inset-inline: calc((100% - var(--size-control-height)) / 2);
+  border: var(--border-width-resting) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+/* A labeled or readout variant is wider than it is tall, so only its height is
+   drawn down to the control height; the inline edges follow the box. */
+[data-design-language='arris'] .ds-icon-button--labeled::before,
+[data-design-language='arris'] .ds-icon-button--readout::before {
+  inset-inline: 0;
+}
+
+[data-design-language='arris'] .ds-icon-button:hover {
+  background: transparent;
+}
+
+[data-design-language='arris'] .ds-icon-button:hover::before {
+  border-width: var(--border-width-active);
+}
+
+[data-design-language='arris'] .ds-icon-button[aria-pressed='true'] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-on-surface-active);
+}
+
+[data-design-language='arris'] .ds-icon-button[aria-pressed='true']::before {
+  border-width: var(--border-width-active);
+  border-color: var(--color-indicator);
+  background: var(--color-surface-active);
+}
