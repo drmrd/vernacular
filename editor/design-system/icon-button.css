@@ -91,8 +91,13 @@
   inset-inline: 0;
 }
 
+/* Hover brightens a border, never blooms a glow (the Arris spec, section 8), so the
+   fill goes away here. The label has to come back with it: the base hover rule
+   reverses the label for the fill it paints, and a reversed label over the resting
+   impression is the same ink on the same ground. */
 [data-design-language='arris'] .ds-icon-button:hover {
   background: transparent;
+  color: var(--color-text);
 }
 
 [data-design-language='arris'] .ds-icon-button:hover::before {
