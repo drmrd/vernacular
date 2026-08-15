@@ -15,12 +15,15 @@ sourceFiles:
     core/geometry/wall-face.ts,
     core/topology/wall-footprint.ts,
     core/scene/construction-profile.ts,
+    core/scene/scene-graph.ts,
     editor/plan/draw-plan.ts,
+    editor/plan/draw-surface-paint.ts,
+    editor/plan/hit-test-wall-face.ts,
     editor/plan/plan-palette.ts,
     editor/design-system/tokens.css,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-08-15
 ---
 
 # ADR-0160: Plan walls draw as poche between two face lines
@@ -174,6 +177,39 @@ place would have buried the bands under an opaque fill.
   new project with no walls, and neither the Storybook nor the scene baselines render `PlanView`,
   so no baseline needed refreshing.
 
+## Update (2026-08-15): the three raw-thickness neighbours close
+
+Two consequences above named issue #547, and one of them is now settled. The surface-paint
+band (`editor/plan/draw-surface-paint.ts`), the wall-face hit band
+(`editor/plan/hit-test-wall-face.ts`), and the `hostThickness` a scene-graph opening node
+carries (`core/scene/scene-graph.ts`) all read `effectiveWallThickness`. On a solid masonry
+wall the band, the face hit target, and an opening's jamb caps sat about 4.7 px inside the
+poche at default scale; they now land on the drawn face. The fallback rule is untouched in all
+three: no profile, or a profile id the registry does not carry, still resolves to the raw
+thickness. Three was the count of neighbours that should have followed the ink, not the count
+of raw `thickness` readers left in the tree. Wall topology still nodes the arrangement from the
+raw figure on purpose (`editor/plan/draw-plan.ts`, `core/topology/rooms.ts`), which is what
+decision 5 above describes; the walker's standoff in `core/scene/walk-collision.ts` reads raw
+against 3D walls that render at the assembly total, and that mismatch is issue #552.
+
+`hostThickness` was the one worth tracing before moving it, since the scene graph feeds 3D as
+well as the page. Nothing in `engine/` or `bridge/` reads it. The 3D wall builder sizes its
+own footprints from `effectiveWallThickness` on the wall node, and the void it carves reads
+only an opening's width, height, and sill height, so nothing converts twice. Its production
+readers all draw the page: the plan opening symbol (`editor/plan/draw-opening.ts`,
+`editor/plan/opening-geometry.ts`) and the SVG plan export (`core/export/svg/`). No 3D output
+moved and no scene baseline needed refreshing.
+
+The change does leave a new mismatch inside that export. `renderWalls` in
+`core/export/svg/svg-plan-exporter.ts` still strokes a wall at its raw `thickness`. The canvas
+stopped doing that in this decision, and the exporter's own opening gap has now stopped too, so
+an exported plan of a profiled wall draws a gap wider than the wall it breaks. Putting the
+exporter's wall symbol on the same resolver is its own cycle.
+
+The other #547 consequence stands unchanged. A painted band still takes its endpoints as
+square offsets from the wall's own endpoints, so at a non-collinear junction it still falls
+short of or runs past the mitred corner. Only the thickness half of that issue closed here.
+
 ## References
 
 - [[ADR-0159-plan-ink-weight-hierarchy]] (the ink roles this builds on; its wall-stroke-width claim
@@ -190,3 +226,7 @@ place would have buried the bands under an opaque fill.
 - Issue #546 (memoize the plan wall graph so a pan or zoom stops rebuilding topology).
 - Issue #547 (bring the surface-paint band, the wall-face hit band, and an opening's `hostThickness`
   onto the construction-profile thickness the drawn symbol now uses).
+- Issue #550 (bring the SVG plan export's wall stroke onto the same resolver, so an exported
+  opening gap stops outrunning the wall it breaks).
+- Issue #552 (the walk-mode collision standoff, which still stands the walker off a raw
+  half-thickness from walls the 3D view renders at the assembly total).

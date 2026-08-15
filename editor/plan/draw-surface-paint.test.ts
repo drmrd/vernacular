@@ -4,8 +4,8 @@ import type { SurfacePaintLayer } from './draw-surface-paint'
 import { recordingContext, sampleWall } from './draw-plan-test-fixtures'
 import { DEFAULT_PLAN_SCALE, worldToScreen } from './viewport'
 import type { Viewport } from './viewport'
-import { colorFromHex, solidTreatment } from '../../core'
-import type { Point, SurfaceTreatment } from '../../core'
+import { colorFromHex, effectiveWallThickness, solidTreatment } from '../../core'
+import type { Point, SurfaceTreatment, WallSceneNode } from '../../core'
 
 // A muted sage finish; colorFromHex normalizes so its srgbHex round-trips to the
 // same lowercase hex, which is the value the painted band's stroke style carries.
@@ -17,27 +17,37 @@ const ACCENT_HEX = '#b5894a'
 // The shared viewport: the world origin maps to the screen origin (no pan).
 const VIEWPORT: Viewport = { scale: DEFAULT_PLAN_SCALE }
 
+// Halves a thickness into the perpendicular reach a face band offsets from centerline.
+const HALF = 0.5
+
 /**
- * The screen endpoints of the face-offset band for one side of `sampleWall`.
- *
- * The band runs parallel to the wall, offset by half the wall thickness along the
- * perpendicular of the wall direction: `dir = unit(start -> end)`,
- * `perpendicular = { x: -dir.y, y: dir.x }`, and
- * `reach = (side === 'left' ? 1 : -1) * thickness * 0.5`. The band endpoints are
- * `start + perpendicular * reach` and `end + perpendicular * reach`, in world space,
- * projected with the layer viewport.
+ * The screen endpoints of a face-offset band for one side of `sampleWall`, offset by
+ * `halfThickness` along the perpendicular of the wall direction: `dir = unit(start
+ * -> end)`, `perpendicular = { x: -dir.y, y: dir.x }`, and `reach = (side === 'left'
+ * ? 1 : -1) * halfThickness`. The band endpoints are `start + perpendicular * reach`
+ * and `end + perpendicular * reach`, in world space, projected with the layer
+ * viewport. Taking the offset directly, rather than deriving it from a wall's raw
+ * thickness, lets a case drive the band from `effectiveWallThickness` instead.
  */
-function faceBand(side: 'left' | 'right'): { from: Point; to: Point } {
-  const { start, end, thickness } = sampleWall
+function faceBandAtOffset(
+  side: 'left' | 'right',
+  halfThickness: number,
+): { from: Point; to: Point } {
+  const { start, end } = sampleWall
   const length = Math.hypot(end.x - start.x, end.y - start.y)
   const dir = { x: (end.x - start.x) / length, y: (end.y - start.y) / length }
   const perpendicular = { x: -dir.y, y: dir.x }
-  const reach = (side === 'left' ? 1 : -1) * thickness * 0.5
+  const reach = (side === 'left' ? 1 : -1) * halfThickness
   const offset = { x: perpendicular.x * reach, y: perpendicular.y * reach }
   return {
     from: worldToScreen({ x: start.x + offset.x, y: start.y + offset.y }, VIEWPORT),
     to: worldToScreen({ x: end.x + offset.x, y: end.y + offset.y }, VIEWPORT),
   }
+}
+
+/** The face-offset band for one side of `sampleWall`, offset by half its raw thickness. */
+function faceBand(side: 'left' | 'right'): { from: Point; to: Point } {
+  return faceBandAtOffset(side, sampleWall.thickness * HALF)
 }
 
 /** Whether a recorded segment runs between the two endpoints of `band` (either direction). */
@@ -201,6 +211,30 @@ describe('drawSurfacePaint', () => {
       recorder.segments.some(
         (segment) => segment.style === ACCENT_HEX && matchesBand(segment, band),
       ),
+    ).toBe(true)
+  })
+})
+
+describe('drawSurfacePaint construction-profile thickness', () => {
+  // effectiveWallThickness is the resolver ADR-0160 moved the drawn wall faces onto
+  // (issue #414); the painted band should key on that same assembly total rather
+  // than the wall's raw thickness, so it lands on the drawn face instead of inside
+  // the poche.
+  it('offsets a painted wall face band by half the resolved assembly thickness for a wall with a construction profile', () => {
+    const masonryWall: WallSceneNode = { ...sampleWall, constructionProfile: 'solid-masonry-brick' }
+    const halfAssembly = effectiveWallThickness(masonryWall) * HALF
+
+    const recorder = recordingContext()
+    drawSurfacePaint(
+      recorder.ctx,
+      layer({ walls: [masonryWall], treatmentForFace: paintEveryFace }),
+    )
+
+    // The resolved assembly (231 mm) is a little over double the wall's raw
+    // thickness (114 mm), so a band still keyed on raw thickness cannot land here.
+    const band = faceBandAtOffset('left', halfAssembly)
+    expect(
+      recorder.segments.some((segment) => segment.style === SAGE_HEX && matchesBand(segment, band)),
     ).toBe(true)
   })
 })

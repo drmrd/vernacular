@@ -1,5 +1,6 @@
 import {
   WALL_NODE_PREFIX,
+  effectiveWallThickness,
   type Point,
   type SurfaceRef,
   type SurfaceTreatment,
@@ -77,11 +78,11 @@ interface PaintedFace {
   treatment: SurfaceTreatment
 }
 
-/** The wall's endpoints offset perpendicular toward `side` by half the wall thickness. */
+/** The wall's endpoints offset perpendicular toward `side` by half the resolved assembly thickness. */
 function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point; to: Point } {
   const direction = unitDirection(wall.start, wall.end)
   const perpendicular = { x: -direction.y, y: direction.x }
-  const reach = (side === 'left' ? 1 : -1) * wall.thickness * HALF
+  const reach = (side === 'left' ? 1 : -1) * effectiveWallThickness(wall) * HALF
   const offset = { x: perpendicular.x * reach, y: perpendicular.y * reach }
   return {
     from: { x: wall.start.x + offset.x, y: wall.start.y + offset.y },

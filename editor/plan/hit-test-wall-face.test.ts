@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import type { WallSceneNode } from '../../core'
+import { effectiveWallThickness, type WallSceneNode } from '../../core'
 import { hitTestWallFace } from './hit-test-wall-face'
 
 const WALL_THICKNESS_MM = 200
 const HALF_THICKNESS_MM = WALL_THICKNESS_MM / 2
 const TOLERANCE_MM = 150
+
+// Matches the sample wall in draw-plan-test-fixtures.ts, whose 'solid-masonry-brick'
+// assembly (231 mm) is the construction-profile fixture ADR-0160's follow-up covers.
+const MASONRY_WALL_RAW_THICKNESS_MM = 114
+const MASONRY_HIT_TOLERANCE_MM = 5
 
 // A horizontal wall running left to right along the x axis through the origin.
 // Its direction is +x, so the perpendicular is +y: the `left` face sits above
@@ -62,5 +67,20 @@ describe('hitTestWallFace', () => {
     const hit = hitTestWallFace([], { x: 500, y: HALF_THICKNESS_MM }, TOLERANCE_MM)
 
     expect(hit).toBeNull()
+  })
+})
+
+describe('hitTestWallFace on a wall with a construction profile', () => {
+  it('resolves the face at the assembly thickness ADR-0160 draws, not the raw wall thickness', () => {
+    const wall: WallSceneNode = {
+      ...horizontalWall(),
+      thickness: MASONRY_WALL_RAW_THICKNESS_MM,
+      constructionProfile: 'solid-masonry-brick',
+    }
+    const halfAssembly = effectiveWallThickness(wall) / 2
+
+    const hit = hitTestWallFace([wall], { x: 500, y: halfAssembly }, MASONRY_HIT_TOLERANCE_MM)
+
+    expect(hit).toEqual({ wallId: 'w1', side: 'left' })
   })
 })
