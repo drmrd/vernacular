@@ -73,6 +73,12 @@ export interface LightingRig {
    */
   environment?: THREE.DataTexture
   /**
+   * The sky ambient the environment map currently holds. Rewriting the map re-runs three's
+   * PMREM filter chain on the GPU, and updates arrive for reasons other than the sky, so
+   * this is compared against each update's ambient to regenerate only on a real sky change.
+   */
+  environmentAmbient?: readonly number[]
+  /**
    * Set true by `disposeLightingRig` so a lazy sky attach still in flight becomes a no-op:
    * the sky loads off the startup path, so a rig can be disposed before its module resolves.
    */
