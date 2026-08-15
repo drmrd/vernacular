@@ -60,4 +60,16 @@ describe('dark canvas palette', () => {
       resolveColor('--color-canvas-ruler-band', root),
     )
   })
+
+  it('keeps the wall poche a solid mass distinct from the room fill in both themes', () => {
+    expect(lightness('--color-canvas-poche', root)).toBeLessThan(
+      lightness('--color-canvas-room-fill', root),
+    )
+    expect(lightness('--color-canvas-poche', dark)).toBeGreaterThan(
+      lightness('--color-canvas-room-fill', dark),
+    )
+    expect(resolveColor('--color-canvas-poche', dark)).not.toBe(
+      resolveColor('--color-canvas-poche', root),
+    )
+  })
 })

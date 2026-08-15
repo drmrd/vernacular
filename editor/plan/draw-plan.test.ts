@@ -856,6 +856,7 @@ describe('drawPlan palette', () => {
     grid: '#101010',
     wall: '#202020',
     roomFill: '#303030',
+    poche: '#353535',
     rulerBand: '#404040',
     rulerTick: '#505050',
     rulerText: '#606060',
