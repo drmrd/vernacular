@@ -2,7 +2,7 @@ import * as THREE from 'three'
 
 import type { EnvironmentLighting } from '../../core'
 
-import type { LightingRig } from './lighting-rig'
+import { asScene, type LightingRig } from './lighting-rig'
 import { createSkyEnvironmentTexture, writeSkyEnvironmentTexture } from './sky-environment-map'
 
 /**
@@ -59,12 +59,6 @@ function loadSkyMeshModule(): Promise<typeof import('three/examples/jsm/objects/
 // `import(...)`, matching how `loadSkyMeshModule` above already refers to it.
 type SkyMeshModule = typeof import('three/examples/jsm/objects/SkyMesh.js')
 type SkyMesh = InstanceType<SkyMeshModule['SkyMesh']>
-
-/** Narrows to a Scene, the only Object3D that carries an environment, without an
- *  `instanceof` check that a duplicated three module would defeat. */
-function asScene(object: THREE.Object3D): THREE.Scene | undefined {
-  return (object as THREE.Scene).isScene === true ? (object as THREE.Scene) : undefined
-}
 
 /**
  * Builds the sky's environment map, records it on the rig, and hands it to the scene at the

@@ -147,12 +147,22 @@ function disposeEnvironmentMap(scene: THREE.Object3D, rig: LightingRig): void {
   rig.environmentAmbient = undefined
   const environment = rig.environment
   if (environment === undefined) return
-  const renderScene = scene as THREE.Scene
-  if (renderScene.isScene === true && renderScene.environment === environment) {
+  const renderScene = asScene(scene)
+  if (renderScene?.environment === environment) {
     renderScene.environment = null
   }
   environment.dispose()
   rig.environment = undefined
+}
+
+/**
+ * Narrows an Object3D to a Scene, the only one that carries an environment. Uses three's own
+ * marker flag rather than `instanceof`, which a duplicated three module would defeat.
+ * Providers are handed an Object3D, so a rig applied to a bare group still gets its lights
+ * and simply has nowhere to put an environment.
+ */
+export function asScene(object: THREE.Object3D): THREE.Scene | undefined {
+  return (object as THREE.Scene).isScene === true ? (object as THREE.Scene) : undefined
 }
 
 /** Finds the rig's directional sun on the scene, or undefined when no rig is applied. */
