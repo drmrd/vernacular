@@ -335,4 +335,25 @@ describe('createFramedSceneReconciler near-wall fade enrollment', () => {
     restoreUnenrolledNearWallTargets(first.nearWallTargets, second.nearWallTargets)
     expect(opacitiesOf(southWall)).toEqual(solid)
   })
+
+  it('leaves a wall the rebuild still enrolls at its faded opacity', () => {
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const graph = squareRoomWithSouthWindow()
+    const first = reconciler.reconcile(graph, paint)
+
+    const southWall = findByEntityId(first.root, 'wall:s')
+    updateNearWallTransparency(first.nearWallTargets, CAMERA_OUTSIDE_SOUTH)
+    expect(opacitiesOf(southWall)).toEqual([FADED_OPACITY])
+
+    // A rename leaves every wall exterior, so the rebuild enrolls the south wall again over
+    // the very same materials, and the camera still sits outside it.
+    const second = reconciler.reconcile(renamedFloor(graph), paint)
+    expect(findByEntityId(second.root, 'wall:s')).toBe(southWall)
+
+    // The sweep covers what left the set, so a target that is still enrolled keeps the
+    // appearance the frame gave it rather than being reset behind the update's back.
+    restoreUnenrolledNearWallTargets(first.nearWallTargets, second.nearWallTargets)
+    expect(opacitiesOf(southWall)).toEqual([FADED_OPACITY])
+  })
 })
