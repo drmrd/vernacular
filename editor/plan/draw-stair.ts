@@ -33,7 +33,9 @@ function footprintPoint(stair: StairSceneNode, acrossMm: number, alongMm: number
  * `width`, length runs 0 to `length`, each corner rotated about the stair
  * position.
  */
-function footprintCorners(stair: StairSceneNode): readonly [Point, Point, Point, Point] {
+export function stairFootprintCorners(
+  stair: StairSceneNode,
+): readonly [Point, Point, Point, Point] {
   return [
     footprintPoint(stair, 0, 0),
     footprintPoint(stair, stair.width, 0),
@@ -108,7 +110,7 @@ export function drawStair(
   render: { viewport: Viewport; palette: PlanPalette },
 ): void {
   const painter: StairPainter = { ctx, viewport: render.viewport, ink: render.palette.wall }
-  drawFootprint(painter, footprintCorners(stair))
+  drawFootprint(painter, stairFootprintCorners(stair))
   if (stair.runType === 'straight') {
     drawTreads(painter, stair)
   }
