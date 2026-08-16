@@ -67,19 +67,27 @@ export function PresetCamera({
   request,
   bounds,
   opening,
+  onApplied,
 }: {
   request: PresetRequest | null
   bounds: Bounds3 | null
   opening: OpeningSceneNode | null
+  onApplied: (pose: CameraPose) => void
 }) {
   const camera = useThree((state) => state.camera)
   const size = useThree((state) => state.size)
   const latest = useRef<PresetView>({ camera, size, bounds, opening })
   latest.current = { camera, size, bounds, opening }
+  // Held in a ref alongside the view inputs so reporting the applied pose cannot become a
+  // reason the effect re-fires; only a new request may move the camera.
+  const report = useRef(onApplied)
+  report.current = onApplied
   useLayoutEffect(() => {
     if (request === null) return
     const pose = poseForRequest(request, latest.current)
-    if (pose !== null) applyCameraPose(latest.current.camera, pose)
+    if (pose === null) return
+    applyCameraPose(latest.current.camera, pose)
+    report.current(pose)
   }, [request])
   return null
 }

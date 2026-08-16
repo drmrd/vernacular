@@ -18,9 +18,9 @@ import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
-import { FrameCamera, PresetCamera, type PresetRequest } from './scene-camera-effects'
+import { FrameCamera, PresetCamera } from './scene-camera-effects'
 import { SceneLighting } from './scene-lighting'
-import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
+import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
@@ -30,49 +30,8 @@ import type { BuildingViewState } from './use-building-view-state'
 import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useProjectSite } from './use-project-site'
+import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
-
-// The per-view camera navigation state: the active mode and whether the user has
-// taken control of the camera. Session state held in the view layer, never in the
-// model or undo. Reset clears user control, which lets FrameCamera refit the model
-// to the viewport through its `active` transition.
-function useSceneNavigation() {
-  const [mode, setMode] = useState<NavMode>('orbit')
-  const [selectionEnabled, setSelectionEnabled] = useState(false)
-  const [revealInterior, setRevealInterior] = useState(true)
-  const [userControlled, setUserControlled] = useState(false)
-  const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
-  const markUserControlled = useCallback(() => setUserControlled(true), [])
-  const toggleSelection = useCallback(() => setSelectionEnabled((value) => !value), [])
-  const toggleRevealInterior = useCallback(() => setRevealInterior((value) => !value), [])
-  // Reset leaves the last presetRequest in place on purpose: a stale request cannot
-  // re-fire because PresetCamera's effect depends on the request's identity, which does
-  // not change on reset.
-  const resetView = useCallback(() => setUserControlled(false), [])
-  // Applying a preset takes camera control (so the framing does not override it) and
-  // bumps the nonce so PresetCamera reapplies even when the same preset is re-picked.
-  const applyPreset = useCallback((preset: PresetChoice) => {
-    setUserControlled(true)
-    setPresetRequest((previous) => ({ preset, nonce: (previous?.nonce ?? 0) + 1 }))
-  }, [])
-  return {
-    mode,
-    setMode,
-    selectionEnabled,
-    toggleSelection,
-    revealInterior,
-    toggleRevealInterior,
-    userControlled,
-    markUserControlled,
-    resetView,
-    presetRequest,
-    applyPreset,
-  }
-}
-
-// The grouped result of useSceneNavigation, so the toolbar wiring can take the whole
-// navigation state as one prop instead of re-listing each field.
-type SceneNavigationState = ReturnType<typeof useSceneNavigation>
 
 // The grouped per-view environment inputs the toolbar and canvas share: the view-local
 // color temperature (foundation section 5.3, held here and never in the model or undo)
@@ -134,10 +93,18 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
   return (
     <>
       <FrameCamera bounds={bounds} active={!nav.userControlled} />
-      <PresetCamera request={nav.presetRequest} bounds={bounds} opening={opening} />
+      <PresetCamera
+        request={nav.presetRequest}
+        bounds={bounds}
+        opening={opening}
+        onApplied={nav.notePresetApplied}
+      />
+      {/* An applied preset owns the pivot until the view is reset, so the first drag after
+          one turns around what the preset framed instead of snapping back to the model's
+          own framing. */}
       <OrbitCameraControls
         enabled={nav.mode === 'orbit'}
-        target={pose.target}
+        target={nav.presetPose?.target ?? pose.target}
         onUserControl={nav.markUserControlled}
       />
       <WalkCameraControls
