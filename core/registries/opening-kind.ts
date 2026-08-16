@@ -25,12 +25,13 @@ export function openingKindOfType(typeId: string): OpeningKind | undefined {
 }
 
 /**
- * Whether the opening type hangs a movable body (a door leaf or a window sash) in
- * its void, which is the `scene3D.fill` the 3D builder renders there. A type
+ * Whether the opening type hangs a body in its void: the `scene3D.fill` the 3D
+ * builder renders there, a door leaf on a door and a sash on a window. A type
  * without one, such as a cased opening, is a trimmed hole with nothing in it to
- * open or shut. Returns `false` for an unknown id or a type that is not an
- * opening, neither of which has a leaf to speak of.
+ * open or shut. Named for the `fill` field rather than for the leaf, since the
+ * predicate answers for windows too. Returns `false` for an unknown id or a type
+ * that is not an opening, neither of which has a body to speak of.
  */
-export function openingTypeHasLeaf(typeId: string): boolean {
+export function openingTypeHasFill(typeId: string): boolean {
   return getEntry(builtinElementTypes, typeId)?.scene3D.fill !== undefined
 }

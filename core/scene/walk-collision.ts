@@ -1,5 +1,5 @@
 import type { Point } from '../model/types'
-import { openingKindOfType, openingTypeHasLeaf } from '../registries/opening-kind'
+import { openingKindOfType, openingTypeHasFill } from '../registries/opening-kind'
 import { effectiveWallThickness } from './construction-profile'
 import {
   WALL_NODE_PREFIX,
@@ -245,10 +245,11 @@ function splitWall(
 
 /**
  * Builds the collision segments a walker is blocked by on the active floor. Each
- * wall contributes its centerline. A closed opening (a shut door or any window)
- * leaves its host wall solid so the walker cannot pass through it; only an opening
- * named in `passableOpeningIds` (an open, walkable door) cuts a gap in the wall.
- * {@link passableDoorIds} derives that set from the live open-door state.
+ * wall contributes its centerline. Only an opening named in `passableOpeningIds`
+ * cuts a gap in its host wall; every other opening leaves the wall solid, so the
+ * walker cannot pass through it. This function does not decide which openings
+ * qualify. {@link passableDoorIds} builds that set, and {@link isWalkableOpening}
+ * carries the rule, which is not a plain open-or-shut test.
  */
 export function wallSegmentsForWalk(
   walls: readonly WallSceneNode[],
@@ -261,15 +262,17 @@ export function wallSegmentsForWalk(
 /**
  * Whether the walker can step through this opening right now. Only a door is ever
  * walkable, since you cannot walk through a window, and an unknown or non-opening
- * type is not a door. A door with a leaf hung in it has to be opened first, so it
- * has to appear in `openIds`; a leafless door, such as a cased opening, is a bare
- * hole in the wall with nothing to open, so it passes whatever the open state says.
+ * type is not a door. The door check has to come first: it is what keeps a window
+ * that happens to carry no fill body out of the leafless case below. A door with a
+ * leaf hung in it has to be opened first, so it has to appear in `openIds`. A
+ * leafless door, such as a cased opening, is a bare hole in the wall with nothing
+ * to open, so it passes regardless of the open state.
  */
 function isWalkableOpening(opening: OpeningSceneNode, openIds: ReadonlySet<string>): boolean {
   if (openingKindOfType(opening.type) !== 'door') {
     return false
   }
-  return !openingTypeHasLeaf(opening.type) || openIds.has(opening.id)
+  return !openingTypeHasFill(opening.type) || openIds.has(opening.id)
 }
 
 /**
