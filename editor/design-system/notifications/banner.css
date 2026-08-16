@@ -44,3 +44,15 @@
 .ds-banner__dismiss {
   color: var(--color-text-muted);
 }
+
+/*
+ * The banner is the notification tier that does not float: it is a row of the app
+ * frame, above the canvas rather than over it. That makes it bench, and the bench is
+ * dead flat and square (the Arris spec, sections 6 and 7). Holding the two tiers apart
+ * is what makes the elevation doctrine legible on screen: the toast has been picked
+ * up, the banner is part of the frame.
+ */
+[data-design-language='arris'] .ds-banner {
+  border-radius: var(--radius-square);
+  box-shadow: var(--elevation-flat);
+}

@@ -109,6 +109,30 @@
   }
 }
 
+/*
+ * Arris refuses anything that floats over the canvas uninvited, and names toasts in
+ * the refusal (the Arris spec, section 14). The carve-out is for a thing the user
+ * summoned that leaves on Escape, which reads as a picked-up thing under section 7. A
+ * toast is not that. While the tier exists it is at least held to the raised-object
+ * doctrine: the one shadow the language allows, a resting border, the machined 2px
+ * chamfer, and the raised material rather than the bench it is not sitting on.
+ *
+ * The severity stripe goes with it. A 4px colored left edge codes state by hue, which
+ * the language answers with inversion first and hue second (principle 6); neither
+ * accent has a lawful role here, since Layout Blue is confined to an enumerated set of
+ * lines and glyphs and Red Lead is destructive and data-loss only (section 5).
+ *
+ * And it stops sliding in. Nothing moves unless the user moved it (principle 5), and
+ * an arriving toast is the one thing on screen the user did not touch.
+ */
+[data-design-language='arris'] .ds-toast {
+  border-left: var(--border-width-resting) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-raised);
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ds-toast {
     animation: none;
