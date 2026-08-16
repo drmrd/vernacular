@@ -216,7 +216,13 @@ describe('SceneNavToolbar color-temperature readout', () => {
 
 describe('SceneNavToolbar camera presets', () => {
   it('renders a camera-preset group with the six named view buttons', () => {
-    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        onPreset={vi.fn()}
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     const presets = screen.getByRole('group', { name: /camera presets/i })
     expect(presets).toBeInTheDocument()
@@ -236,7 +242,13 @@ describe('SceneNavToolbar camera presets', () => {
     ['West', 'west'],
   ])('reports the %s preset when its button is clicked', async (label, tag) => {
     const onPreset = vi.fn()
-    render(<SceneNavToolbar {...baseProps} onPreset={onPreset} canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        onPreset={onPreset}
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     await userEvent.click(screen.getByRole('button', { name: label }))
 
@@ -246,7 +258,13 @@ describe('SceneNavToolbar camera presets', () => {
 
   it('reports the doorway preset when the doorway button is enabled and clicked', async () => {
     const onPreset = vi.fn()
-    render(<SceneNavToolbar {...baseProps} onPreset={onPreset} canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        onPreset={onPreset}
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     await userEvent.click(screen.getByRole('button', { name: 'Doorway' }))
 
@@ -255,13 +273,19 @@ describe('SceneNavToolbar camera presets', () => {
   })
 
   it('disables the doorway button when no doorway is available', () => {
-    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway={false} />)
+    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} doorway={null} />)
 
     expect(screen.getByRole('button', { name: 'Doorway' })).toBeDisabled()
   })
 
   it('enables the doorway button when a doorway is available', () => {
-    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        onPreset={vi.fn()}
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     expect(screen.getByRole('button', { name: 'Doorway' })).toBeEnabled()
   })
@@ -285,7 +309,13 @@ describe('SceneNavToolbar styling hooks', () => {
   })
 
   it('styles the reset control and the preset buttons as toolbar buttons', () => {
-    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        onPreset={vi.fn()}
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     expect(screen.getByRole('button', { name: 'Reset view' })).toHaveClass('scene-nav-toolbar__btn')
     expect(screen.getByRole('button', { name: 'Top down' })).toHaveClass('scene-nav-toolbar__btn')
@@ -305,7 +335,13 @@ describe('SceneNavToolbar styling hooks', () => {
   })
 
   it('marks the camera presets as the secondary tier while keeping the six named buttons', () => {
-    render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        onPreset={vi.fn()}
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     const presets = screen.getByRole('group', { name: /camera presets/i })
     expect(presets).toHaveClass('scene-nav-toolbar__presets')

@@ -65,13 +65,19 @@ describe('SceneNavToolbar orbit-only toggles in walk mode', () => {
 })
 
 describe('SceneNavToolbar camera controls in walk mode', () => {
-  // canDoorway is passed throughout so Doorway's walk-mode disablement proves the new
+  // doorway is passed throughout so Doorway's walk-mode disablement proves the new
   // reason (the walk frame loop overwrites any pose these buttons set), not the
-  // pre-existing canDoorway={false} reason.
+  // pre-existing doorway={null} reason.
   const cameraControlNames = ['Top down', 'North', 'South', 'East', 'West', 'Doorway', 'Reset view']
 
   it('disables the camera-preset and reset-view buttons in walk mode, where the walk frame loop overwrites any pose they set', () => {
-    render(<SceneNavToolbar {...baseProps} mode="walk" canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        mode="walk"
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     cameraControlNames.forEach((name) => {
       const button = screen.getByRole('button', { name })
@@ -81,10 +87,54 @@ describe('SceneNavToolbar camera controls in walk mode', () => {
   })
 
   it('keeps the camera-preset and reset-view buttons live in orbit mode, where each still reaches the render', () => {
-    render(<SceneNavToolbar {...baseProps} mode="orbit" canDoorway />)
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        mode="orbit"
+        doorway={{ name: 'single swing door', selected: false }}
+      />,
+    )
 
     cameraControlNames.forEach((name) => {
       expect(screen.getByRole('button', { name })).toBeEnabled()
     })
+  })
+})
+
+describe('SceneNavToolbar doorway preset self-explanation', () => {
+  it('names the available door in the Doorway button title when a door is found', () => {
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        mode="orbit"
+        doorway={{ name: 'french door', selected: false }}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Doorway' })
+    expect(button).toBeEnabled()
+    expect(button.getAttribute('title')).toMatch(/french door/)
+  })
+
+  it("credits the user's own selection in the Doorway button title when framing follows it", () => {
+    render(
+      <SceneNavToolbar
+        {...baseProps}
+        mode="orbit"
+        doorway={{ name: 'pocket door', selected: true }}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Doorway' })
+    expect(button.getAttribute('title')).toMatch(/pocket door/)
+    expect(button.getAttribute('title')).toMatch(/selected/i)
+  })
+
+  it('explains in the Doorway button title that no door exists in the view when it is disabled', () => {
+    render(<SceneNavToolbar {...baseProps} mode="orbit" doorway={null} />)
+
+    const button = screen.getByRole('button', { name: 'Doorway' })
+    expect(button).toBeDisabled()
+    expect(button.getAttribute('title')).toMatch(/no door/i)
   })
 })
