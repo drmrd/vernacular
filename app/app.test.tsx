@@ -187,6 +187,24 @@ describe('App async store resolution', () => {
     expect(resolveStore).toHaveBeenCalledTimes(1)
   })
 
+  it('retries only the failed load and leaves the resolved storage alone', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    // Storage resolves normally; only the first load fails.
+    vi.spyOn(store, 'load').mockRejectedValueOnce(new Error('disk fault'))
+    const resolveStore = vi.fn(() => Promise.resolve(store))
+
+    render(<App resolveStore={resolveStore} />)
+
+    await screen.findByRole('alert')
+    await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    // Resolving again would hand the live session a different store object, and a
+    // resolution that failed the second time would throw away a working boot.
+    expect(resolveStore).toHaveBeenCalledTimes(1)
+  })
+
   it('renders the error state when async store resolution rejects', async () => {
     stubCapableStorage()
     const resolveStore = vi.fn(() => Promise.reject(new Error('no storage backend')))

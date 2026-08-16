@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useProjectActions, type ProjectActionsContext } from './use-project-actions'
-import { useRecentProjectsAndRecovery, type RecentAndRecoveryContext } from './use-workspace-state'
 import { type NotificationApi } from '../editor/design-system'
-import type { SnapshotsPort } from './app'
 import { createEditorSession } from '../bridge'
 import { createEmptyProject } from '../core'
 import { serializeProjectJson } from '../storage/folder/project-json'
@@ -478,107 +476,5 @@ describe('useProjectActions export actions', () => {
       result.current.onExportPlan()
     })
     expect(notifications.success).toHaveBeenCalledWith(expect.stringMatching(/Exported/))
-  })
-})
-
-describe('useRecentProjectsAndRecovery discard confirmation', () => {
-  function recoverableSnapshots(): SnapshotsPort & { prune: ReturnType<typeof vi.fn> } {
-    return {
-      writeSnapshot: vi.fn(() => Promise.resolve()),
-      prune: vi.fn(() => Promise.resolve()),
-      isRecoverable: vi.fn(() => Promise.resolve(true)),
-      restore: vi.fn(() => Promise.resolve(sampleProject())),
-    }
-  }
-
-  function recoveryContext(
-    overrides: Pick<RecentAndRecoveryContext, 'snapshots'> & {
-      confirmDiscard: () => boolean | Promise<boolean>
-      isDirty?: boolean
-      onSession?: RecentAndRecoveryContext['onSession']
-    },
-  ): RecentAndRecoveryContext {
-    return {
-      recentProjects: new InMemoryRecentProjectStore(),
-      snapshots: overrides.snapshots,
-      onSession: overrides.onSession ?? vi.fn(),
-      confirmDiscard: overrides.confirmDiscard,
-      isDirty: overrides.isDirty ?? false,
-    } as RecentAndRecoveryContext
-  }
-
-  it('prunes recovered snapshots and clears recovery once discard is confirmed', async () => {
-    const snapshots = recoverableSnapshots()
-    const confirmDiscard = vi.fn(() => true)
-    const context = recoveryContext({ snapshots, confirmDiscard })
-
-    const { result } = renderHook(() => useRecentProjectsAndRecovery(context))
-
-    await waitFor(() => expect(result.current.recovery).not.toBeNull())
-
-    await act(async () => {
-      await result.current.recovery?.onDiscard()
-    })
-
-    expect(confirmDiscard).toHaveBeenCalledOnce()
-    expect(snapshots.prune).toHaveBeenCalledOnce()
-    expect(result.current.recovery).toBeNull()
-  })
-
-  // Restore replaces the live session with the recovered project, so it is as
-  // destructive as New or Open and prompts through the same seam.
-  it('holds a restore of recovered work until the dirty session confirms the discard', async () => {
-    const snapshots = recoverableSnapshots()
-    const confirmDiscard = vi.fn(() => false)
-    const onSession = vi.fn()
-    const context = recoveryContext({ snapshots, confirmDiscard, isDirty: true, onSession })
-
-    const { result } = renderHook(() => useRecentProjectsAndRecovery(context))
-
-    await waitFor(() => expect(result.current.recovery).not.toBeNull())
-
-    await act(async () => {
-      await result.current.recovery?.onRestore()
-    })
-
-    expect(confirmDiscard).toHaveBeenCalledOnce()
-    expect(snapshots.restore).not.toHaveBeenCalled()
-    expect(onSession).not.toHaveBeenCalled()
-  })
-
-  it('restores recovered work once the dirty session confirms the discard', async () => {
-    const snapshots = recoverableSnapshots()
-    const confirmDiscard = vi.fn(() => true)
-    const onSession = vi.fn()
-    const context = recoveryContext({ snapshots, confirmDiscard, isDirty: true, onSession })
-
-    const { result } = renderHook(() => useRecentProjectsAndRecovery(context))
-
-    await waitFor(() => expect(result.current.recovery).not.toBeNull())
-
-    await act(async () => {
-      await result.current.recovery?.onRestore()
-    })
-
-    expect(confirmDiscard).toHaveBeenCalledOnce()
-    expect(onSession).toHaveBeenCalledOnce()
-  })
-
-  it('keeps recovered snapshots and the recovery state when discard is cancelled', async () => {
-    const snapshots = recoverableSnapshots()
-    const confirmDiscard = vi.fn(() => false)
-    const context = recoveryContext({ snapshots, confirmDiscard })
-
-    const { result } = renderHook(() => useRecentProjectsAndRecovery(context))
-
-    await waitFor(() => expect(result.current.recovery).not.toBeNull())
-
-    await act(async () => {
-      await result.current.recovery?.onDiscard()
-    })
-
-    expect(confirmDiscard).toHaveBeenCalledOnce()
-    expect(snapshots.prune).not.toHaveBeenCalled()
-    expect(result.current.recovery).not.toBeNull()
   })
 })
