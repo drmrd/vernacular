@@ -30,9 +30,9 @@ updated: 2026-08-15
 
 ## Status
 
-Proposed. Implements issue #450, the second half of the decorating acceptance path from the
-realistic-environmental-lighting epic. The first half, the neutral color-check reference, shipped
-with the Environment panel. The owner ratifies.
+Current. The implementation ships with this record. It closes issue #450, the second half of the
+decorating acceptance path from the realistic-environmental-lighting epic. The first half, the
+neutral color-check reference, shipped with the Environment panel.
 
 ## Context
 
@@ -182,5 +182,14 @@ The WebGPU and WebGL 2 backends are treated identically. Nothing in the sampling
 backend-specific, because it reads the composited canvas rather than any renderer-internal surface.
 That is also why it should survive the eventual WebGPU default without change.
 
-Disposal is trivial by construction. The adapter holds one scratch 2D canvas sized to the patch and
-no GPU resources, so it is collected with the reader and there is nothing to release.
+Disposal is trivial by construction, though not because the adapter pools anything. The reader holds
+only a reference to the live canvas. Each read allocates its own scratch 2D canvas sized to the
+requested rectangle, which for a 3 by 3 patch is a few dozen bytes, and drops it when the call
+returns. No GPU resource is ever acquired, so there is nothing to release.
+
+Two properties of the adapter are load-bearing and were both wrong in an earlier draft of this
+change, so they are recorded here. It must never ask the source canvas for a 2D context: the live
+source is the WebGL canvas, which refuses one, and a guard on that probe disables the whole feature
+while looking like ordinary defensive code. And it must read the canvas extents live on every access
+rather than snapshotting them, because the reader is memoized on the canvas element and therefore
+outlives a resize that would otherwise misplace every later sample.
