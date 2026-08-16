@@ -13,9 +13,11 @@ import {
 import {
   createEmptyProject,
   createFloor,
+  createStair,
   createWall,
   deriveRooms,
   ROOM_ID_PREFIX,
+  STAIR_NODE_PREFIX,
   type Project,
   type Wall,
 } from '../../core'
@@ -23,7 +25,11 @@ import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
 
-function renderInspector(walls: Wall[] = [], roomOverrides?: Project['roomOverrides']) {
+function renderInspector(
+  walls: Wall[] = [],
+  roomOverrides?: Project['roomOverrides'],
+  stairs: Project['stairs'] = [],
+) {
   const project = createEmptyProject({
     name: 'T',
     units: 'imperial',
@@ -32,6 +38,7 @@ function renderInspector(walls: Wall[] = [], roomOverrides?: Project['roomOverri
   })
   project.floors = [createFloor('G', { id: 'g', walls })]
   project.roomOverrides = roomOverrides
+  project.stairs = stairs
   const session = createEditorSession(project)
   const selection = createSelectionStore()
   const activeFloor = createActiveFloorStore('g')
@@ -173,6 +180,20 @@ describe('Inspector', () => {
       selection.select(`wall:${wall.id}`)
     })
     expect(screen.getByText('Transform')).toBeInTheDocument()
+  })
+})
+
+describe('Inspector with a stair selected', () => {
+  it("renders the stair inspector's angle field when exactly one stair is selected", () => {
+    const stair = createStair({
+      id: 's1',
+      connection: { fromFloorId: 'g', toFloorId: 'upper' },
+    })
+    const { selection } = renderInspector([], undefined, [stair])
+    act(() => {
+      selection.select(`${STAIR_NODE_PREFIX}${stair.id}`)
+    })
+    expect(screen.getByLabelText('Angle (deg)')).toBeInTheDocument()
   })
 })
 
