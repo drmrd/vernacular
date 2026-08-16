@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { commitProject, createEditorSession, guardDestructive, type EditorSession } from '../bridge'
 import {
   DirectoryHandleStore,
   FileSystemFolderProjectStore,
-  orderRecentProjects,
   recentEntryFor,
   type AssetCache,
   type ProjectBackend,
@@ -27,13 +26,6 @@ export interface RecentEntry {
   id: string
   name: string
   backend: ProjectBackend
-}
-
-export interface Recovery {
-  // Callers fire-and-forget (both are wired straight to an onClick); the Promise
-  // arm only lets hook-level tests await the restore or the prune.
-  onRestore: () => void | Promise<void>
-  onDiscard: () => void | Promise<void>
 }
 
 /**
@@ -290,123 +282,4 @@ function openFolderRecent(context: OpenFolderRecentContext): void {
     const project = await reopenedStore.load(projectId)
     onSession(createEditorSession(project))
   })
-}
-
-export interface RecentAndRecoveryContext {
-  recentProjects: RecentProjectStore
-  snapshots: SnapshotsPort | undefined
-  onSession: (session: EditorSession) => void
-
-  /** Prompt the user before discarding recovered snapshots. Returns or resolves
-   *  true to prune, false to keep them. Sync or async, mirroring the ADR-0104
-   *  ProjectActionsContext.confirmDiscard seam. Discard never prunes when omitted. */
-  confirmDiscard?: () => boolean | Promise<boolean>
-
-  /** Whether the live session has unsaved changes. Restore replaces that session
-   *  with the recovered project, so it prompts through the same seam as New and
-   *  Open. Treated as clean (false) when omitted. */
-  isDirty?: boolean
-}
-
-export function useRecentProjectsAndRecovery(context: RecentAndRecoveryContext): {
-  recentEntries: RecentEntry[]
-  recovery: Recovery | null
-} {
-  const { recentProjects, snapshots, onSession, confirmDiscard, isDirty } = context
-  const [recentEntries, setRecentEntries] = useState<RecentEntry[]>([])
-  const [recovery, setRecovery] = useState<Recovery | null>(null)
-
-  // The restore handler reads the dirty flag through a ref rather than an effect
-  // dependency: re-running the effect on every edit would re-list recents and
-  // could resurrect a recovery banner the user has already dealt with.
-  const isDirtyRef = useRef(false)
-  useEffect(() => {
-    isDirtyRef.current = isDirty ?? false
-  }, [isDirty])
-
-  useEffect(() => {
-    let cancelled = false
-    const isLive = () => !cancelled
-
-    void recentProjects.list().then((entries) => {
-      if (isLive()) {
-        setRecentEntries(
-          orderRecentProjects(entries).map(({ id, name, backend }) => ({ id, name, backend })),
-        )
-      }
-    })
-
-    if (snapshots) {
-      void snapshots.isRecoverable().then((recoverable) => {
-        if (isLive() && recoverable) {
-          setRecovery(
-            buildRecovery({
-              snapshots,
-              onSession,
-              setRecovery,
-              isLive,
-              confirmDiscard,
-              isDirty: () => isDirtyRef.current,
-            }),
-          )
-        }
-      })
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [recentProjects, snapshots, onSession, confirmDiscard])
-
-  return { recentEntries, recovery }
-}
-
-interface RecoveryHandlersContext {
-  snapshots: SnapshotsPort
-  onSession: (session: EditorSession) => void
-  setRecovery: (recovery: Recovery | null) => void
-  isLive: () => boolean
-  confirmDiscard: (() => boolean | Promise<boolean>) | undefined
-  isDirty: () => boolean
-}
-
-// Builds the restore/discard handlers, each guarded so they never touch React state
-// after the owning effect has been torn down.
-function buildRecovery(context: RecoveryHandlersContext): Recovery {
-  const { snapshots, onSession, setRecovery, isLive, confirmDiscard, isDirty } = context
-  return {
-    // Restoring swaps the recovered project in over the live one, so unsaved work
-    // goes through the same prompt New and Open use before it is replaced.
-    onRestore: () =>
-      guardSessionSwap({ isDirty: isDirty(), confirmDiscard }, () =>
-        snapshots.restore().then((project) => {
-          if (!isLive()) {
-            return
-          }
-          if (project) {
-            onSession(createEditorSession(project))
-          }
-          setRecovery(null)
-        }),
-      ),
-    // Pruning deletes every autosave file including session-start, so it is
-    // gated behind the ADR-0104 confirm seam: prune (and clear recovery) only
-    // when the user confirms, otherwise leave the recovered snapshots intact.
-    onDiscard: () =>
-      Promise.resolve(confirmDiscard ? confirmDiscard() : false)
-        .then((confirmed) => {
-          if (!confirmed) {
-            return
-          }
-          return snapshots.prune().then(() => {
-            if (isLive()) {
-              setRecovery(null)
-            }
-          })
-        })
-        // A prune I/O failure (disk full, OPFS error, permission loss) is logged
-        // rather than swallowed; the recovered snapshots survive so the user can
-        // retry the discard. Mirrors the 'reopen folder failed' pattern above.
-        .catch((error: unknown) => console.error('discard snapshots failed', error)),
-  }
 }

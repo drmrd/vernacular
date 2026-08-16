@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import {
-  useProjectActions,
-  useRecentProjectsAndRecovery,
-  type ProjectActionsContext,
-  type RecentAndRecoveryContext,
-} from './use-project-actions'
+import { useProjectActions, type ProjectActionsContext } from './use-project-actions'
+import { useRecentProjectsAndRecovery, type RecentAndRecoveryContext } from './use-workspace-state'
 import { type NotificationApi } from '../editor/design-system'
 import type { SnapshotsPort } from './app'
 import { createEditorSession } from '../bridge'
