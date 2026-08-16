@@ -121,3 +121,66 @@ describe('the Arris 3D navigation toolbar', () => {
     ).toBe('var(--color-text)')
   })
 })
+
+/*
+ * The rule above cancels the hover fill, and it outranks the pressed rule it shares
+ * every property with, so on its own it takes the impression away from a toggle that
+ * is both pressed and hovered: the ink fill, the indicator border, and the reversed
+ * label all go, and an active toggle becomes indistinguishable from an inactive one
+ * under the pointer. A declaration read on its own terms cannot show that. These
+ * resolve the cascade for a state instead, the way the design system's scanner does,
+ * and assert on what actually wins.
+ */
+
+/** Specificity as one number, since these selectors carry no ids or element names. */
+function specificity(selector: string): number {
+  const count = (pattern: RegExp): number => (selector.match(pattern) ?? []).length
+  return count(/\.[\w-]+/g) + count(/\[[^\]]*\]/g) + count(/:[a-z-]+(\([^)]*\))?/g)
+}
+
+/** Every rule in the stylesheet, in source order. */
+function allRules(): { selector: string; body: string }[] {
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  return [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selector: (match[1] ?? '').trim(),
+    body: match[2] ?? '',
+  }))
+}
+
+/**
+ * The declaration the cascade lands on for a state: the strongest specificity among
+ * the rules that apply, and the last one in source order on a tie.
+ */
+function winning(applying: string[], property: string): string | undefined {
+  let winner: string | undefined
+  let strongest = -1
+  for (const rule of allRules().filter((candidate) => applying.includes(candidate.selector))) {
+    const value = declaredValue(rule.body, property)
+    if (value !== undefined && specificity(rule.selector) >= strongest) {
+      strongest = specificity(rule.selector)
+      winner = value
+    }
+  }
+  return winner
+}
+
+// Every rule that applies to a toggle which is pressed and hovered at once.
+const PRESSED_AND_HOVERED = [
+  '.scene-nav-toolbar__btn',
+  '.scene-nav-toolbar__btn:hover:not(:disabled)',
+  ".scene-nav-toolbar__btn[aria-pressed='true']",
+  HOVERED_TOGGLE,
+  `${ARRIS_SCOPE} .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled)`,
+]
+
+describe('an Arris toggle that is pressed and hovered at once', () => {
+  it('keeps the impression the pressed state paints', () => {
+    expect(
+      winning(PRESSED_AND_HOVERED, 'background'),
+      `The scoped hover rule cancels the fill and outranks the pressed rule, so a ` +
+        `pressed toggle under the pointer loses the impression that says it is active.`,
+    ).toBe('var(--color-surface-active)')
+    expect(winning(PRESSED_AND_HOVERED, 'border-color')).toBe('var(--color-indicator)')
+    expect(winning(PRESSED_AND_HOVERED, 'color')).toBe('var(--color-on-surface-active)')
+  })
+})
