@@ -203,38 +203,56 @@ function useNewProjectAction(context: ProjectActionsContext): () => void | Promi
 // renders no control, so the handler is omitted rather than rendered inert.
 function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: () => void } {
   const { projectId, recentProjects, capabilities, onSession, notifications } = context
+  const { isDirty, confirmDiscard } = context
   const onOpenFolder = useCallback(() => {
-    runWithErrorToast(notifications, 'Open', async () => {
-      const store = await FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore())
-      const project = await store.load(projectId)
-      onSession(createEditorSession(project))
-      recordRecent(recentProjects, {
-        id: projectId,
-        name: project.meta.name,
-        backend: 'file-system-folder',
-      })
+    void guardDestructive({
+      isDirty: isDirty ?? false,
+      confirm: confirmDiscard ?? (() => true),
+      run: () =>
+        runWithErrorToast(notifications, 'Open', async () => {
+          const store = await FileSystemFolderProjectStore.open(
+            projectId,
+            new DirectoryHandleStore(),
+          )
+          const project = await store.load(projectId)
+          onSession(createEditorSession(project))
+          recordRecent(recentProjects, {
+            id: projectId,
+            name: project.meta.name,
+            backend: 'file-system-folder',
+          })
+        }),
     })
-  }, [projectId, recentProjects, onSession, notifications])
+  }, [projectId, recentProjects, onSession, notifications, isDirty, confirmDiscard])
   return capabilities.fileSystemAccess ? { onOpenFolder } : {}
 }
 
 function useOpenRecentAction(context: ProjectActionsContext): (id: string) => void {
   const { store, projectId, recentEntries, onSession, notifications } = context
+  const { isDirty, confirmDiscard } = context
   return useCallback(
     (id: string) => {
-      const entry = recentEntries.find((candidate) => candidate.id === id)
-      if (entry?.backend === 'file-system-folder') {
-        openFolderRecent({ id, projectId, onSession, fallback: store, notifications })
-        return
-      }
-      // OPFS, zip-bundle, or no recorded backend route through the default store
-      // load; per-backend reopen for the others is deferred (plan Open questions).
-      runWithErrorToast(notifications, 'Open', async () => {
-        const project = await store.load(id)
-        onSession(createEditorSession(project))
+      // Guarding here rather than inside each branch keeps the prompt to one per
+      // click: openFolderRecent is only ever reached through this handler.
+      void guardDestructive({
+        isDirty: isDirty ?? false,
+        confirm: confirmDiscard ?? (() => true),
+        run: () => {
+          const entry = recentEntries.find((candidate) => candidate.id === id)
+          if (entry?.backend === 'file-system-folder') {
+            openFolderRecent({ id, projectId, onSession, fallback: store, notifications })
+            return
+          }
+          // OPFS, zip-bundle, or no recorded backend route through the default store
+          // load; per-backend reopen for the others is deferred (plan Open questions).
+          runWithErrorToast(notifications, 'Open', async () => {
+            const project = await store.load(id)
+            onSession(createEditorSession(project))
+          })
+        },
       })
     },
-    [store, projectId, recentEntries, onSession, notifications],
+    [store, projectId, recentEntries, onSession, notifications, isDirty, confirmDiscard],
   )
 }
 
