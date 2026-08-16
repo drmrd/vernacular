@@ -48,3 +48,32 @@
   border-radius: var(--radius-sm);
   box-shadow: var(--elevation-raised);
 }
+
+/*
+ * A row is a design-system button, so the Arris button family draws an impression
+ * behind it: a bordered box of the raised material (ADR-0163). A menu is a stack of
+ * rows cut from one piece rather than a column of separate tools, so the resting row
+ * keeps the material and drops the border. Naming the material here also states the
+ * ground the label actually lands on, which is what the cascade scanner measures.
+ */
+[data-design-language='arris'] .ds-menu-surface__row::before {
+  border-color: transparent;
+  background: var(--color-surface-raised);
+  transition: border-color var(--motion-duration) var(--motion-easing);
+}
+
+/*
+ * Hover brightens a border and never blooms a glow (the Arris spec, section 8), so the
+ * fill goes away. The label has to be restated with it: the rule above reverses the
+ * label for a fill that is no longer painted, and a reversed label over the resting
+ * material would be the same ink on the same ground (the ADR-0163 addendum).
+ */
+[data-design-language='arris'] .ds-menu-surface__row:hover {
+  background: transparent;
+  color: var(--color-text);
+}
+
+[data-design-language='arris'] .ds-menu-surface__row:hover::before {
+  border-width: var(--border-width-active);
+  border-color: var(--color-border);
+}
