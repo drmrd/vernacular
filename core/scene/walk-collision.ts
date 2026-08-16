@@ -1,5 +1,5 @@
 import type { Point } from '../model/types'
-import { openingKindOfType } from '../registries/opening-kind'
+import { openingKindOfType, openingTypeHasLeaf } from '../registries/opening-kind'
 import { effectiveWallThickness } from './construction-profile'
 import {
   WALL_NODE_PREFIX,
@@ -259,11 +259,24 @@ export function wallSegmentsForWalk(
 }
 
 /**
- * Narrows a set of open opening ids to just the doors. An open door is walkable,
- * so it cuts a gap in its host wall; an open window is not, since you cannot walk
- * through a window. An opening counts as a door when `openingKindOfType` of its
- * type is `'door'`; an unknown or non-opening type is excluded. The result feeds
- * `wallSegmentsForWalk` as its passable set.
+ * Whether the walker can step through this opening right now. Only a door is ever
+ * walkable, since you cannot walk through a window, and an unknown or non-opening
+ * type is not a door. A door with a leaf hung in it has to be opened first, so it
+ * has to appear in `openIds`; a leafless door, such as a cased opening, is a bare
+ * hole in the wall with nothing to open, so it passes whatever the open state says.
+ */
+function isWalkableOpening(opening: OpeningSceneNode, openIds: ReadonlySet<string>): boolean {
+  if (openingKindOfType(opening.type) !== 'door') {
+    return false
+  }
+  return !openingTypeHasLeaf(opening.type) || openIds.has(opening.id)
+}
+
+/**
+ * Narrows a set of openings to the ones the walker can pass through, given the ids
+ * currently open. Open doors and leafless doorways qualify; shut doors with a leaf,
+ * every window, and unknown types do not. See {@link isWalkableOpening} for the
+ * per-opening rule. The result feeds `wallSegmentsForWalk` as its passable set.
  */
 export function passableDoorIds(
   openings: readonly OpeningSceneNode[],
@@ -271,7 +284,7 @@ export function passableDoorIds(
 ): Set<string> {
   const passable = new Set<string>()
   for (const opening of openings) {
-    if (openIds.has(opening.id) && openingKindOfType(opening.type) === 'door') {
+    if (isWalkableOpening(opening, openIds)) {
       passable.add(opening.id)
     }
   }
