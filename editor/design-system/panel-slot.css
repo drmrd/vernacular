@@ -15,9 +15,10 @@
  * it would land against the panel's own top edge, where there is no earlier section
  * to separate from and the line would read as a stray rule under the panel header.
  *
- * The cluster gap is restated even though the shipped language happens to resolve to
- * the same 8px today. Arris names 8px as its gutter, and the shipped scale is free to
- * move; without this line a change over there would quietly retune Arris density.
+ * The cluster gap is restated even though it resolves to the same 8px the base rule
+ * already produces. The Arris token layer redeclares the whole spacing scale, so the
+ * step itself is safe; what the restatement pins is which step a section clusters on,
+ * because the base rule is free to be re-pointed at a different one.
  */
 [data-design-language='arris'] .ds-panel-slot {
   gap: var(--space-2);

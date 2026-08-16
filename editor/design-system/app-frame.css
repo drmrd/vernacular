@@ -54,7 +54,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* The fallback is what a pane the user has not resized renders at, and that
+  /* AppFrame writes the custom property on every render, so this fallback only
+     serves a consumer that uses the class without the component. Even there the
      default belongs to the visual language rather than to this stylesheet. */
   width: var(--ds-inspector-size, var(--size-panel-docked-width));
   background: var(--color-surface-panel);
