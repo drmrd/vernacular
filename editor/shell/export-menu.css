@@ -64,8 +64,13 @@
 }
 
 /* A row is cut from the surface it sits on, so its impression keeps the surface
-   material and drops the border the Arris button family draws behind it. */
+   material and drops the border the Arris button family draws behind it. An
+   export-menu row carries a title and a wrapped description, two lines rather
+   than the button family's single centred one, and the row itself is the hit
+   target, so the impression is re-anchored to the row's own full box instead
+   of the drawn-control band the button rule centres inside it. */
 [data-design-language='arris'] .export-menu__row::before {
+  inset-block: 0;
   border-color: transparent;
   background: var(--color-surface-raised);
   transition: border-color var(--motion-duration) var(--motion-easing);
