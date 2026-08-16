@@ -10,13 +10,13 @@ const EXPECTED_ANGLE_RADIANS = (45 * Math.PI) / 180
 const QUARTER_TURN_RADIANS = Math.PI / 2
 const QUARTER_TURN_DEGREES = '90'
 
-function renderInspector(dispatch: (command: unknown) => void, rotation = 0) {
+function renderInspector(dispatch: (command: Command) => void, rotation = 0) {
   const stair = createStair({
     id: STAIR_ID,
     rotation,
     connection: { fromFloorId: 'ground', toFloorId: 'upper' },
   })
-  render(<StairInspector stair={stair} dispatch={dispatch as never} />)
+  render(<StairInspector stair={stair} dispatch={dispatch} />)
 }
 
 function commandOfType<P>(

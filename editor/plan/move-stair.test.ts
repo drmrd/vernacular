@@ -9,6 +9,8 @@ import {
 import { stairMoveCommand } from './move-stair'
 
 const STAIR_ORIGIN = { x: 1000, y: 2000 }
+const GRAB_POINT = { x: 500, y: 500 }
+const DROP_POINT = { x: 800, y: 900 }
 
 function stairNode(): StairSceneNode {
   return {
@@ -24,16 +26,24 @@ function stairNode(): StairSceneNode {
   }
 }
 
+// Fail here on a null command rather than handing back an undefined dressed as
+// MoveStairParams, which would surface as a confusing property read downstream.
 function paramsOf(command: Command | null): MoveStairParams {
-  return command?.params as MoveStairParams
+  if (command === null) {
+    throw new Error('expected stairMoveCommand to build a command, but it returned null')
+  }
+  return command.params as MoveStairParams
 }
 
 describe('stairMoveCommand', () => {
   it('translates the stair by the displacement of the cursor from the grab point', () => {
-    const command = stairMoveCommand(stairNode(), { x: 500, y: 500 }, { x: 800, y: 900 })
+    const command = stairMoveCommand(stairNode(), GRAB_POINT, DROP_POINT)
 
     expect(command?.type).toBe(MOVE_STAIR)
-    expect(paramsOf(command).position).toEqual({ x: 1300, y: 2400 })
+    expect(paramsOf(command).position).toEqual({
+      x: STAIR_ORIGIN.x + (DROP_POINT.x - GRAB_POINT.x),
+      y: STAIR_ORIGIN.y + (DROP_POINT.y - GRAB_POINT.y),
+    })
   })
 
   it('addresses the stair by its raw model id, without the scene-node prefix', () => {
@@ -43,6 +53,6 @@ describe('stairMoveCommand', () => {
   })
 
   it('returns null when the cursor never left the grab point, so a bare click moves nothing', () => {
-    expect(stairMoveCommand(stairNode(), { x: 500, y: 500 }, { x: 500, y: 500 })).toBeNull()
+    expect(stairMoveCommand(stairNode(), GRAB_POINT, GRAB_POINT)).toBeNull()
   })
 })
