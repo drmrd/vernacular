@@ -189,12 +189,14 @@ Left to right:
 2. **Breadcrumb:** Inter 400, umber-500. Separator is a forward slash. The active
    segment (Floor Plan Editor) uses umber-700.
 3. **Zoom controls:** minus, percentage readout, plus. Percentage in Inter 500.
-4. **View toggles:** Grid and Dimensions as icon-only buttons with tooltips ("Grid (G)"
-   and "Dimensions (D)"). No Layers toggle: the current data model has no user-defined
-   layers, so this is deferred until layers exist. Active state: `--color-surface-active`
-   fill with a brass border, matching the tool chip active treatment. Inactive: transparent
-   background, umber-500 icon. Tooltips surface the keyboard shortcuts so users can
-   discover them without hunting through the command palette.
+4. **View toggles:** Grid and Dimensions as icon-only buttons with plain "Grid" and
+   "Dimensions" tooltips. The tooltips carry no keyboard hints: no G or D binding is
+   registered, and ADR-0155 holds new bindings back until the deliverability audit
+   lands. When the keyboard track ships those bindings, the hints return with them.
+   No Layers toggle: the current data model has no user-defined layers, so this is
+   deferred until layers exist. Active state: `--color-surface-active` fill with a
+   brass border, matching the tool chip active treatment. Inactive: transparent
+   background, umber-500 icon.
 5. **Undo / Redo:** icon buttons using `ArrowCounterClockwise` and `ArrowClockwise`
    from Phosphor.
 6. **Export:** primary Button variant (brass background), text "Export".

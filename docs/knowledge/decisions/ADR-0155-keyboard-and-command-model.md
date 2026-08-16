@@ -11,7 +11,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # ADR-0155: Adopt the keyboard and command model as a target
@@ -111,4 +111,7 @@ that were never registered. The fix drops those parenthetical hints, so the butt
 read "Grid" and "Dimensions" with no shortcut claim. This only cleans up stale UI text;
 it does not decide anything about the keyboard model itself. Any future G or D binding
 still has to clear this ADR's chord-deliverability audit before it can be promoted, and
-only then would it belong back on the toolbar.
+only then would it belong back on the toolbar. The visual-design-language spec
+(docs/specs/2026-06-13-visual-design-language.md, header section) prescribed the same
+phantom tooltip text; the same change rewrites that passage to match, so the spec no
+longer instructs the hints this update removed.
