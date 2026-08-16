@@ -19,13 +19,17 @@
   color: var(--color-text);
 }
 
+/* The badge fills with the active surface, so its label takes the reversed on-fill
+   role rather than the ordinary text ink. The shipped language resolves the two to
+   the same color, which is what kept this invisible; Arris fills with the text ink
+   itself, and a label left on --color-text renders the count as a solid slab. */
 .inspector__count-badge {
   display: inline-flex;
   align-items: center;
   padding: 1px var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--color-surface-active);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
 }
