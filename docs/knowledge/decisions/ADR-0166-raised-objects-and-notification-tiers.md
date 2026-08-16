@@ -17,6 +17,7 @@ sourceFiles:
     editor/design-system/notifications/toast.css,
     editor/shell/project-menu.css,
     editor/shell/export-menu.css,
+    editor/shell/export-menu.css.test.ts,
     editor/design-system/arris-effective-label.test.ts,
   ]
 status: current
@@ -91,6 +92,13 @@ menu reads as a stack of rows cut from one piece instead of a column of separate
 brings the border back at the active weight and cancels the fill, which is the Arris hover doctrine
 applied to a row: brighten a border, never bloom a glow.
 
+The row also re-anchors the impression's geometry. The band the button family centres is sized for
+a single line, and an export-menu row stacks a title over a description: 40px tall, 53px when the
+description wraps. A 28px band hovered on such a row draws its border through the title and leaves
+the wrapped line outside. The export row therefore sets `inset-block: 0` on its impression, winning
+the same stylesheet-order tie the color overrides already lean on. The drawn height stays a
+control-band concept; a menu row's impression describes the row, because the row is the hit target.
+
 Cancelling that fill obliges the rule to restate the label, which is the general lesson the
 ADR-0163 addendum ended on. The declaration that reversed the label to the ground is still in force
 at a lower specificity, and a reversed label over the resting material is the same ink on the same
@@ -149,6 +157,10 @@ which is still open.
 - The raised-tier rule is stated three times, because the project and export dropdowns still copy
   the shared menu surface's chrome instead of wearing its class. Consolidating them is a component
   change, and this slice stayed in the stylesheets.
+- The project menu and the shared menu surface keep the centred band, because their rows are single
+  lines and the browser probe passed them as drawn. A row that grows a second line needs the export
+  menu's re-anchor, and the issue #567 consolidation should carry it onto `.ds-menu-surface__row`
+  when the dropdowns move there.
 - `.ds-menu-surface` is also worn by the furniture library panel, which is docked and should be
   square and flat by the same section that raises a menu. The shared class already carried the
   overlay shadow, so nothing about that surface changed here, but the raised doctrine now reaches a
