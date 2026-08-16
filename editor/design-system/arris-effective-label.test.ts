@@ -29,6 +29,14 @@ import {
 // own box paints nothing, the ground is the impression drawn into its pseudo-element.
 
 const designSystem = resolve(process.cwd(), 'editor/design-system')
+
+// A probe names either a design-system stylesheet by its bare filename or any other
+// stylesheet in the repo by its repo-relative path. The scan root is what closes the
+// gap ADR-0163 left open: consumer stylesheets outside the design system paint the
+// same active fill and were never measured.
+const stylesheetPath = (name: string) =>
+  name.includes('/') ? resolve(process.cwd(), name) : join(designSystem, name)
+
 const AA_NORMAL = 4.5
 const IMPRESSION = '::before'
 const NO_PAINT = new Set(['transparent', 'none'])
@@ -65,6 +73,12 @@ const PROBES: Probe[] = [
     base: '.ds-button',
     state: ':hover',
   },
+  {
+    name: 'inspector count badge',
+    stylesheet: 'editor/shell/inspector.css',
+    base: '.inspector__count-badge',
+    state: '',
+  },
 ]
 
 function declaredValue(body: string, property: string): string | undefined {
@@ -100,7 +114,7 @@ function winning(rules: CssRule[], property: string): string | undefined {
 }
 
 function arrisPalette(appearance: 'light' | 'dark'): Map<string, string> {
-  const arrisCss = readFileSync(join(designSystem, 'tokens-arris.css'), 'utf8')
+  const arrisCss = readFileSync(stylesheetPath('tokens-arris.css'), 'utf8')
   const light = declarationsIn(blockBodies(arrisCss, ARRIS_SCOPE)[0] ?? '')
   if (appearance === 'light') {
     return light
@@ -117,7 +131,7 @@ describe.each(['light', 'dark'] as const)('Arris %s effective label', (appearanc
   const vars = arrisPalette(appearance)
 
   it.each(PROBES)('keeps the $name label readable on the ground it lands on', (probe) => {
-    const rules = leafRules(readFileSync(join(designSystem, probe.stylesheet), 'utf8'))
+    const rules = leafRules(readFileSync(stylesheetPath(probe.stylesheet), 'utf8'))
 
     const label = winning(rulesMatching(rules, probe, ''), 'color')
     const boxFill = winning(rulesMatching(rules, probe, ''), 'background')
