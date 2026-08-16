@@ -607,6 +607,9 @@ export { mixColors, nearestColor, perceptualDistance } from './color/operations'
 export {
   COLOR_ACCURACY_SWATCHES,
   COLOR_ACCURACY_TOLERANCE,
+  TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND,
+  TONE_MAP_EXTREME_SWATCHES,
+  TONE_MAP_EXTREME_TOLERANCE,
   withinColorTolerance,
 } from './color/color-accuracy'
 export type { PerceivedShift } from './color/perceived-shift'
