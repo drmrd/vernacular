@@ -13,9 +13,14 @@ describe('cameraControlsHint', () => {
     ])
   })
 
-  it('describes walk mode as drag to look and W A S D to move', () => {
+  it('describes walk mode as drag to look, W A S D to move, E to open or close, and R to shut every opening', () => {
     const mode: NavMode = 'walk'
-    expect(cameraControlsHint(mode)).toEqual(['Drag to look', 'W A S D to move'])
+    expect(cameraControlsHint(mode)).toEqual([
+      'Drag to look',
+      'W A S D to move',
+      'E to open or close',
+      'R to shut every opening',
+    ])
   })
 })
 
@@ -36,6 +41,8 @@ describe('CameraControlsHint', () => {
 
     expect(screen.getByText('Drag to look')).toBeInTheDocument()
     expect(screen.getByText('W A S D to move')).toBeInTheDocument()
+    expect(screen.getByText('E to open or close')).toBeInTheDocument()
+    expect(screen.getByText('R to shut every opening')).toBeInTheDocument()
     expect(screen.queryByText('Drag to orbit')).toBeNull()
   })
 })
