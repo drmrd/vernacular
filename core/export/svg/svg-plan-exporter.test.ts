@@ -6,6 +6,7 @@ import {
   OPENING_NODE_PREFIX,
   deriveSceneGraph,
   dimensionGeometry,
+  effectiveWallThickness,
   formatArea,
   formatLength,
   lengthFormatOptions,
@@ -47,6 +48,19 @@ function projectWithFloor(floor: Project['floors'][number]): Project {
  */
 function createSingleWallProject(): Project {
   const wall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'wall-a' })
+  return projectWithFloor(createFloor('Ground Floor', { id: 'floor-a', walls: [wall] }))
+}
+
+/**
+ * Build a deterministic project with one floor and a single horizontal wall that
+ * carries a construction profile whose assembly total (231 mm, solid masonry
+ * brick) differs from the wall's raw thickness (114 mm, the factory default).
+ */
+function createConstructionProfiledWallProject(): Project {
+  const wall = {
+    ...createWall({ x: 0, y: 0 }, { x: 4000, y: 0 }, { id: 'wall-a' }),
+    constructionProfile: 'solid-masonry-brick',
+  }
   return projectWithFloor(createFloor('Ground Floor', { id: 'floor-a', walls: [wall] }))
 }
 
@@ -296,6 +310,24 @@ describe('SvgPlanExporter emitting walls', () => {
       expect(nodeId).not.toBeNull()
       expect(nodeId?.startsWith('wall:')).toBe(true)
     }
+  })
+
+  it('strokes a construction-profiled wall at its assembly thickness, not its raw thickness', () => {
+    const project = createConstructionProfiledWallProject()
+    const wall = project.floors[0]?.walls[0]
+    if (wall === undefined) {
+      throw new Error('expected the fixture to carry one wall')
+    }
+    const expectedThickness = effectiveWallThickness(wall)
+    // Sanity: the fixture only proves the point if the assembly and raw figures differ.
+    expect(expectedThickness).not.toBe(wall.thickness)
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const line = document.querySelector('line[data-node-id^="wall:"]')
+
+    expect(line).not.toBeNull()
+    expect(Number(line?.getAttribute('stroke-width'))).toBe(expectedThickness)
   })
 
   it('is deterministic: equal projects yield byte-identical SVG', () => {
