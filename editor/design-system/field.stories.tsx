@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, expect } from 'storybook/test'
 import { Field } from './index'
+import { expectArrisWrapper } from './arris-story-support'
 
 const meta: Meta<typeof Field> = {
   title: 'Design System/Field',
@@ -36,9 +37,8 @@ export const WithHint: Story = {
   },
 }
 
-// A compact, static states sheet for the Arris visual tier: a filled field
-// beside a disabled one, so a single frame captures both states. Field's
-// public props expose no invalid state, so this sheet omits one.
+// A filled field beside a disabled one. Field's public props expose no
+// invalid state, so this sheet omits one.
 function ArrisFieldStates() {
   return (
     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -52,19 +52,20 @@ function ArrisFieldStates() {
   )
 }
 
-async function expectArrisWrapper(canvasElement: HTMLElement) {
-  const wrapper = canvasElement.querySelector('[data-design-language="arris"]')
-  await expect(wrapper).toBeInTheDocument()
+async function playArrisFieldStates(canvasElement: HTMLElement) {
+  await expectArrisWrapper(canvasElement)
+  const screen = within(canvasElement)
+  await expect(screen.getByLabelText('Email')).toBeDisabled()
 }
 
 export const ArrisLight: Story = {
   globals: { designLanguage: 'arris', appearance: 'light' },
   render: () => <ArrisFieldStates />,
-  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+  play: async ({ canvasElement }) => playArrisFieldStates(canvasElement),
 }
 
 export const ArrisDark: Story = {
   globals: { designLanguage: 'arris', appearance: 'dark' },
   render: () => <ArrisFieldStates />,
-  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+  play: async ({ canvasElement }) => playArrisFieldStates(canvasElement),
 }

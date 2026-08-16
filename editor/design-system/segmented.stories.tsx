@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, expect, userEvent } from 'storybook/test'
 import { Segmented } from './index'
+import { expectArrisWrapper } from './arris-story-support'
 
 const meta: Meta<typeof Segmented> = {
   title: 'Design System/Segmented',
@@ -49,25 +50,25 @@ export const Previewed: Story = {
   },
 }
 
-// A compact, static states sheet for the Arris visual tier: a non-first option
-// is active, so the frame proves selection styling beyond the first chip.
+// A non-first option is active, proving selection styling beyond the first chip.
 function ArrisSegmentedStates() {
   return <Segmented value="two" options={OPTIONS} onSelect={() => {}} />
 }
 
-async function expectArrisWrapper(canvasElement: HTMLElement) {
-  const wrapper = canvasElement.querySelector('[data-design-language="arris"]')
-  await expect(wrapper).toBeInTheDocument()
+async function playArrisSegmentedStates(canvasElement: HTMLElement) {
+  await expectArrisWrapper(canvasElement)
+  const screen = within(canvasElement)
+  await expect(screen.getByRole('button', { name: 'Two', pressed: true })).toBeInTheDocument()
 }
 
 export const ArrisLight: Story = {
   globals: { designLanguage: 'arris', appearance: 'light' },
   render: () => <ArrisSegmentedStates />,
-  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+  play: async ({ canvasElement }) => playArrisSegmentedStates(canvasElement),
 }
 
 export const ArrisDark: Story = {
   globals: { designLanguage: 'arris', appearance: 'dark' },
   render: () => <ArrisSegmentedStates />,
-  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+  play: async ({ canvasElement }) => playArrisSegmentedStates(canvasElement),
 }

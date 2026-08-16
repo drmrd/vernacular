@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, expect, userEvent } from 'storybook/test'
 import { Button } from './index'
+import { expectArrisWrapper } from './arris-story-support'
 
 const meta: Meta<typeof Button> = {
   title: 'Design System/Button',
@@ -52,8 +53,7 @@ export const AccessibilityGate: Story = {
   },
 }
 
-// A compact, static states sheet for the Arris visual tier: a default button
-// beside a disabled one, so a single frame captures both states.
+// A default button beside a disabled one.
 function ArrisButtonStates() {
   return (
     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -63,19 +63,20 @@ function ArrisButtonStates() {
   )
 }
 
-async function expectArrisWrapper(canvasElement: HTMLElement) {
-  const wrapper = canvasElement.querySelector('[data-design-language="arris"]')
-  await expect(wrapper).toBeInTheDocument()
+async function playArrisButtonStates(canvasElement: HTMLElement) {
+  await expectArrisWrapper(canvasElement)
+  const screen = within(canvasElement)
+  await expect(screen.getAllByRole('button', { name: 'Save' })[1]).toBeDisabled()
 }
 
 export const ArrisLight: Story = {
   globals: { designLanguage: 'arris', appearance: 'light' },
   render: () => <ArrisButtonStates />,
-  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+  play: async ({ canvasElement }) => playArrisButtonStates(canvasElement),
 }
 
 export const ArrisDark: Story = {
   globals: { designLanguage: 'arris', appearance: 'dark' },
   render: () => <ArrisButtonStates />,
-  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+  play: async ({ canvasElement }) => playArrisButtonStates(canvasElement),
 }
