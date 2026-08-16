@@ -10,6 +10,9 @@ import { useFurniturePlacement } from '../plan/furniture-placement-context'
 import { importFurnitureGlb } from './use-furniture-import'
 import { LibraryLauncher } from './library-launcher'
 
+// The tool that turns an armed item into a placed one on the next canvas click.
+const PLACE_FURNITURE_TOOL = 'place-furniture'
+
 // Toast copy for one import attempt. The failure text follows the shared
 // "<Action> failed: <reason>" convention the file-action hooks use.
 function importMessages(fileName: string): PromiseMessages<LibraryItem> {
@@ -70,7 +73,7 @@ function useLibraryImport(userSource: UserSource | null): LibraryImport {
 // without the user source the import action stays disabled.
 export function LibraryLauncherPanel(): ReactElement {
   const { armItem, armed } = useFurniturePlacement()
-  const { setTool } = useActiveTool()
+  const { tool, setTool } = useActiveTool()
   const userSource = useUserAssetSource()
   const { canImport, libraryRevision, onFileChange } = useLibraryImport(userSource)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -87,12 +90,17 @@ export function LibraryLauncherPanel(): ReactElement {
     inputRef.current?.click()
   }, [])
 
+  // The armed item outlives a tool switch, so that a return to the tool resumes
+  // where the user left off. Only the tool that consumes it should say so: under
+  // any other tool the canvas will not place it, and the panel stays quiet.
+  const awaitingPlacement = tool === PLACE_FURNITURE_TOOL ? armed : null
+
   return (
     <>
       <LibraryLauncher
         onPick={onPick}
         onImport={onImport}
-        armed={armed}
+        armed={awaitingPlacement}
         canImport={canImport}
         libraryRevision={libraryRevision}
       />
