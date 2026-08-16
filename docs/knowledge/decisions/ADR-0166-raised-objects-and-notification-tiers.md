@@ -117,18 +117,35 @@ because it falls below the label floor. The alarm is the rule and the dot; the l
 ink. Both notification tiers obey it, because the custody doctrine is stated once for every surface
 that touches saving, storage, import, or export.
 
-### The scanner reaches outside the design system
+### The cascade probes reach outside the design system
 
 `arris-effective-label.test.ts` resolved probe stylesheets against `editor/design-system`, which is
 why the consumer surfaces ADR-0163 listed were out of its reach. A probe now names a design-system
-stylesheet by bare file name and anything else by its repo-relative path. That is the scan-root
-widening ADR-0163 asked for rather than a second scanner, and it closes the menu-row half of issue
-#551.
+stylesheet by bare file name and anything else by its repo-relative path, and the project and
+export menu rows are probed that way.
+
+This is narrower than the scan-root widening ADR-0163 asked for, and worth stating plainly. What
+moved is the named probe list in the cascade guard, one entry per surface someone thought to add.
+The other scanner, the one in `active-impression.test.ts` that walks a directory looking for any
+rule pairing the active fill with the wrong label, still walks `editor/design-system` alone. A
+consumer stylesheet that grows a new unpaired fill tomorrow is caught only if somebody also writes
+its probe. Closing that properly means giving the walker a scan root that spans the consumers,
+which is still open.
 
 ## Consequences
 
 - The preview is legible for menus, dropdowns, and notifications in both appearances. The four
-  scoped families and the two consumer stylesheets are all under the cascade scanner now.
+  scoped families and the two consumer stylesheets are all probed by the cascade guard now, though
+  only the design system is walked automatically.
+- The custody treatment is written twice, once in `banner.css` and once in `toast.css`, and the two
+  blocks differ only in their class names and in one border-color line the banner needs and the
+  toast does not. Hoisting it into a stylesheet both import was the alternative. It was not taken,
+  because the two tiers are already diverging on everything except this warning (one is raised and
+  one is bench, one animates and one does not), and a shared file that carries a single agreeing
+  rule between two surfaces that otherwise disagree invites the next contributor to put the
+  disagreeing rules in it too. The duplication is the cheaper of the two mistakes, and each copy is
+  pinned to the same doctrine values by its own stylesheet's guard, so editing one without the
+  other surfaces as a failing test rather than as silent drift.
 - The raised-tier rule is stated three times, because the project and export dropdowns still copy
   the shared menu surface's chrome instead of wearing its class. Consolidating them is a component
   change, and this slice stayed in the stylesheets.
@@ -141,6 +158,13 @@ widening ADR-0163 asked for rather than a second scanner, and it closes the menu
   stylesheet order. Every consumer imports the design system before its own stylesheet, which is
   the same ordering `project-menu.css` already depended on for its trigger hover. A future import
   reshuffle would break it quietly, and only the rendered baselines would notice.
+- The specificity relationship cuts the other way for one state, and review caught it. The button
+  family guards its hover bump with `:not(:disabled)` at a specificity a row rule does not reach,
+  so a row rule that restated the border on plain `:hover` was the only rule left standing over a
+  disabled row: the row would have brightened under a pointer that cannot use it. Every row hover
+  rule here mirrors the guard, which also puts it on equal footing with the button rule and hands
+  the tie back to stylesheet order. Any future rule that restates a state the button family already
+  conditions has the same trap waiting in it.
 - The toast still floats. Refusal 4's actual endpoint is that this tier does not exist and custody
   lives permanently in the status rail, which is a save-and-storage change rather than a stylesheet
   one. Nothing here commits to keeping the tier.

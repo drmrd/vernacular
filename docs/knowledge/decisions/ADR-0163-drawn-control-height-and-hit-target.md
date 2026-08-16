@@ -9,6 +9,7 @@ related:
     decisions/ADR-0162-parallel-design-language-theme,
     decisions/ADR-0154-arris-visual-design-language,
     decisions/ADR-0096-design-system-consolidation,
+    decisions/ADR-0166-raised-objects-and-notification-tiers,
   ]
 sourceFiles:
   [
@@ -21,7 +22,7 @@ sourceFiles:
     editor/design-system/arris-effective-label.test.ts,
   ]
 status: current
-updated: 2026-08-15
+updated: 2026-08-16
 ---
 
 # ADR-0163: The drawn control height and the hit target are two measurements
@@ -140,6 +141,11 @@ scoped rule may lower a box height the shipped layer holds at the target.
   text ink, so a few surfaces stay illegible under the preview: the opening inspector's fraction
   chips, the 3D navigation toolbar, the inspector count badge, and the project and export menu
   rows. The scanner's scan root is what closes that, not a second scanner. Tracked as issue #551.
+  Updated 2026-08-16: the project and export menu rows are done, in
+  [[ADR-0166-raised-objects-and-notification-tiers]], which also taught the cascade guard to name a
+  stylesheet by repo-relative path. That gave those two rows a probe rather than moving the walker
+  in `active-impression.test.ts`, so the other three surfaces are still uncovered and the scan root
+  is still the real fix.
 - `--stroke-icon` still has no consumer. The icons in the chrome come from the icon dependency
   and are drawn with fills rather than strokes, so a stroke width applied from CSS would do
   nothing. The 1.5px alignment lands with the iconography track that replaces them, which the
