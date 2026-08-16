@@ -159,6 +159,20 @@ describe('EditorShell', () => {
     ).toBeInTheDocument()
   })
 
+  it('does not advertise unregistered keyboard shortcuts on the Grid and Dimensions toggles', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    const dimensionsBtn = screen.getByRole('button', { name: /dimensions/i })
+
+    // ADR-0155 withholds new keybindings pending the deliverability audit, so the
+    // toolbar must not hint at a Grid or Dimensions shortcut that isn't registered.
+    expect(gridBtn.getAttribute('title')).not.toMatch(/\(g\)/i)
+    expect(dimensionsBtn.getAttribute('title')).not.toMatch(/\(d\)/i)
+  })
+
   it('toggles the Grid button aria-pressed on click', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
