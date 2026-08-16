@@ -27,6 +27,7 @@ import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
+import { useDoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useProjectSite } from './use-project-site'
 import { WalkCameraControls } from './walk-camera-controls'
@@ -116,18 +117,6 @@ function useSceneProxies(graph: SceneGraph) {
     [selection],
   )
   return { proxies, selectedIds, onSelect, setPositions }
-}
-
-// Resolves the opening the doorway preset frames: the selected one when an opening is
-// selected, otherwise the first opening on the active floor (none disables the control).
-function useDoorwayOpening(
-  openings: OpeningSceneNode[],
-  selectedIds: ReadonlySet<string>,
-): OpeningSceneNode | null {
-  return useMemo(() => {
-    const selected = openings.find((entry) => selectedIds.has(entry.id))
-    return selected ?? openings[0] ?? null
-  }, [openings, selectedIds])
 }
 
 interface SceneCameraRigProps {
@@ -366,7 +355,7 @@ export function WebGPUSceneView() {
   const viewEnvironment = useSceneEnvironment()
   const site = useProjectSite()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
-  const doorwayOpening = useDoorwayOpening(graph.openings, selectedIds)
+  const doorway = useDoorwayTarget(graph.openings, selectedIds)
   // The toolbar reads the mode the render resolves to, not the requested one, so a
   // realistic request without a site location keeps the schematic controls live.
   const lightingMode = effectiveLightingMode(viewEnvironment.environment.mode === 'realistic', site)
@@ -379,7 +368,7 @@ export function WebGPUSceneView() {
         edgeOverlay={edgeOverlay}
         onToggleEdgeOverlay={toggleEdgeOverlay}
         viewEnvironment={viewEnvironment}
-        canDoorway={doorwayOpening !== null}
+        canDoorway={doorway !== null}
         lightingMode={lightingMode}
       />
       <ScenePaneShell mode={nav.mode}>
@@ -389,7 +378,7 @@ export function WebGPUSceneView() {
           viewEnvironment={viewEnvironment}
           site={site}
           onProxyPositions={setPositions}
-          opening={doorwayOpening}
+          opening={doorway?.opening ?? null}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>
