@@ -23,7 +23,7 @@ sourceFiles:
     editor/design-system/tokens.css,
   ]
 status: current
-updated: 2026-08-15
+updated: 2026-08-17
 ---
 
 # ADR-0160: Plan walls draw as poche between two face lines
@@ -209,6 +209,13 @@ exporter's wall symbol on the same resolver is its own cycle.
 The other #547 consequence stands unchanged. A painted band still takes its endpoints as
 square offsets from the wall's own endpoints, so at a non-collinear junction it still falls
 short of or runs past the mitred corner. Only the thickness half of that issue closed here.
+
+## Update (2026-08-17): the svg export wall stroke closes
+
+`renderWalls` in `core/export/svg/svg-plan-exporter.ts` now reads a wall's stroke width through
+`effectiveWallThickness`, the same resolver its opening gap and jamb caps already used. A
+construction-profiled wall now strokes at its assembly total, so an exported opening gap no
+longer outruns the wall it breaks. Issue #550 is closed.
 
 ## References
 
