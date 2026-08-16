@@ -48,3 +48,26 @@ export const Previewed: Story = {
     await expect(screen.getByRole('button', { name: 'One', pressed: true })).toBeInTheDocument()
   },
 }
+
+// A compact, static states sheet for the Arris visual tier: a non-first option
+// is active, so the frame proves selection styling beyond the first chip.
+function ArrisSegmentedStates() {
+  return <Segmented value="two" options={OPTIONS} onSelect={() => {}} />
+}
+
+async function expectArrisWrapper(canvasElement: HTMLElement) {
+  const wrapper = canvasElement.querySelector('[data-design-language="arris"]')
+  await expect(wrapper).toBeInTheDocument()
+}
+
+export const ArrisLight: Story = {
+  globals: { designLanguage: 'arris', appearance: 'light' },
+  render: () => <ArrisSegmentedStates />,
+  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+}
+
+export const ArrisDark: Story = {
+  globals: { designLanguage: 'arris', appearance: 'dark' },
+  render: () => <ArrisSegmentedStates />,
+  play: async ({ canvasElement }) => expectArrisWrapper(canvasElement),
+}
