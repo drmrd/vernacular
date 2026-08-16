@@ -33,10 +33,10 @@ export function chooseDoorwayTarget(
   selectedIds: ReadonlySet<string>,
 ): DoorwayTarget | null {
   const doors = openings.filter(isDoor)
-  const selected = doors.find((door) => selectedIds.has(door.id))
-  const opening = selected ?? doors[0]
+  const selectedDoor = doors.find((door) => selectedIds.has(door.id))
+  const opening = selectedDoor ?? doors[0]
   if (opening === undefined) return null
-  return { opening, name: humanizeType(opening.type), selected: selected !== undefined }
+  return { opening, name: humanizeType(opening.type), selected: selectedDoor !== undefined }
 }
 
 /**
