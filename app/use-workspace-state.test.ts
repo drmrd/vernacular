@@ -86,3 +86,25 @@ describe('useWorkspaceState crash recovery', () => {
     expect(onSession).not.toHaveBeenCalled()
   })
 })
+
+describe('useWorkspaceState session swap', () => {
+  // A New or an Open replaces the session with a project the old selection ids know
+  // nothing about, so the inspector would otherwise report a selection that is not
+  // there any more.
+  it('drops the selection when a new session replaces the project', () => {
+    const props = workspaceProps({ session: createEditorSession(sampleProject('Drafthouse')) })
+    const { result, rerender } = renderHook(
+      (current: EditorWorkspaceProps) => useWorkspaceState(current),
+      { initialProps: props, wrapper: NotificationProvider },
+    )
+
+    act(() => {
+      result.current.selection.select('wall-from-the-old-project')
+    })
+    expect(result.current.selection.getSelectedIds().size).toBe(1)
+
+    rerender({ ...props, session: createEditorSession(sampleProject('Fresh')) })
+
+    expect(result.current.selection.getSelectedIds().size).toBe(0)
+  })
+})
