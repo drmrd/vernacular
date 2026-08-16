@@ -135,8 +135,10 @@ either. Both halves of the mark wait on work outside this slice.
 
 - The rack reads under the preview: the slot, the glyph, the impression, and the scribe are all
   drawn, and the active slot is legible in both appearances.
-- Two of the surfaces ADR-0163 listed as illegible are now closed, and the mechanism that closes
-  the rest is in place rather than pending. The remaining surfaces on that list are enrolled by
+- One of the four surfaces ADR-0163 listed as illegible, the 3D navigation toolbar, is now
+  closed, and the mechanism that closes the rest is in place rather than pending. The rack itself
+  was never on that list; it already wore the segmented option class ADR-0163 repaired, and what
+  this slice added for it was scanner coverage. The remaining surfaces on the list are enrolled by
   adding a probe, not by building anything.
 - The rack is less dense than the language describes, for the reason ADR-0163 already accepted: a
   32px slot inside a 40px hit box makes the pitch 44px on a fine pointer, not the 36px the spec
