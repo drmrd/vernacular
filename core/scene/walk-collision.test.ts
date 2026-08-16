@@ -147,6 +147,20 @@ describe('passableDoorIds', () => {
     // not in the open set, and an unrecognized type is treated as not a door.
     expect(passable).toEqual(new Set([openDoor.id]))
   })
+
+  // A cased opening is a trimmed hole in the wall with no leaf hung in it. There is
+  // nothing there to open, so waiting for it to appear in the open set leaves the
+  // walker stopped by thin air in a doorway that plainly reads as walk-through.
+  it('passes a leafless opening even when nothing has been opened', () => {
+    const casedOpening = openingNode({ id: 'opening:cased', type: 'cased-opening' })
+    const shutDoor = openingNode({ id: 'opening:door-shut', type: 'single-swing-door' })
+
+    const passable = passableDoorIds([casedOpening, shutDoor], new Set())
+
+    // The cased opening passes on its own; the swing door has a leaf in the way and
+    // still waits to be opened, so its passability is unchanged.
+    expect(passable).toEqual(new Set([casedOpening.id]))
+  })
 })
 
 describe('wallSegmentsForWalk', () => {
