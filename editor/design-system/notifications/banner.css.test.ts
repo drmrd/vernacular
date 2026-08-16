@@ -37,3 +37,51 @@ describe('the Arris banner', () => {
     ).not.toContain('var(--elevation-raised)')
   })
 })
+
+// Section 12 states the warning treatment once, for every surface that touches saving,
+// storage, import, or export: the words render at full ink and carry a 2px Red Lead
+// rule beneath and a Red Lead dot. Red Lead running text below the label floor is
+// retired, so the alarm is the rule and the dot while the legibility is the ink.
+
+const CUSTODY_RULE = 'border-bottom: var(--border-width-focus-ring) solid var(--color-danger)'
+
+describe('the Arris custody warning', () => {
+  it('renders the words at full ink and puts the alarm in a Red Lead rule', () => {
+    const error = arris(".ds-banner[data-severity='error']")
+
+    expect(error).toContain(CUSTODY_RULE)
+    expect(
+      error,
+      `Red Lead running text falls below the label floor and is retired, so the words ` +
+        `stay at full ink and the rule carries the alarm.`,
+    ).toContain('color: var(--color-text)')
+  })
+
+  it('keeps the rest of the frame on the ordinary border', () => {
+    expect(
+      arris(".ds-banner[data-severity='error']"),
+      `Red Lead appears on perhaps one control per screen (the Arris spec, section 5), ` +
+        `so it draws the one rule rather than tinting the whole box.`,
+    ).toContain('border-color: var(--color-border)')
+  })
+
+  it('marks the row with a Red Lead dot', () => {
+    const dot = arris(".ds-banner[data-severity='error']::before")
+
+    expect(dot).toContain("content: ''")
+    expect(dot).toContain('background: var(--color-danger)')
+    expect(
+      dot,
+      `Nothing is ever a pill (refusal 7), so the dot is a small machined square ` +
+        `rather than a rounded capsule.`,
+    ).toContain('border-radius: var(--radius-sm)')
+  })
+
+  it('holds the warning severity off Red Lead', () => {
+    expect(
+      arris(".ds-banner[data-severity='warning']"),
+      `Red Lead is destructive and data-loss only (the Arris spec, section 5), so a ` +
+        `warning cannot borrow the custody alarm.`,
+    ).not.toContain('var(--color-danger)')
+  })
+})

@@ -90,6 +90,18 @@ const PROBES: Probe[] = [
     base: '.export-menu__row',
     state: ':hover',
   },
+  {
+    name: 'banner, custody warning',
+    stylesheet: 'editor/design-system/notifications/banner.css',
+    base: '.ds-banner',
+    state: "[data-severity='error']",
+  },
+  {
+    name: 'toast, custody warning',
+    stylesheet: 'editor/design-system/notifications/toast.css',
+    base: '.ds-toast',
+    state: "[data-severity='error']",
+  },
 ]
 
 function declaredValue(body: string, property: string): string | undefined {

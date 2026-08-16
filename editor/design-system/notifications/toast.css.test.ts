@@ -57,3 +57,40 @@ describe('the Arris toast', () => {
     ).toContain('animation: none')
   })
 })
+
+// The custody doctrine is stated once and every surface that touches saving, storage,
+// import, or export obeys it (the Arris spec, section 12), so the toast carries the
+// same alarm the banner does: full-ink words, a 2px Red Lead rule beneath, a Red Lead
+// dot, and nothing else borrowing the color.
+
+describe('the Arris toast custody warning', () => {
+  it('renders the words at full ink and puts the alarm in a Red Lead rule', () => {
+    const error = arris(".ds-toast[data-severity='error']")
+
+    expect(error).toContain(
+      'border-bottom: var(--border-width-focus-ring) solid var(--color-danger)',
+    )
+    expect(error).toContain('color: var(--color-text)')
+  })
+
+  it('marks the toast with a Red Lead dot', () => {
+    const dot = arris(".ds-toast[data-severity='error']::before")
+
+    expect(dot).toContain("content: ''")
+    expect(dot).toContain('background: var(--color-danger)')
+    expect(dot).toContain('border-radius: var(--radius-sm)')
+  })
+
+  it('holds the other severities off Red Lead', () => {
+    const others = [
+      arris(".ds-toast[data-severity='success']"),
+      arris(".ds-toast[data-severity='warning']"),
+    ].join('\n')
+
+    expect(
+      others.includes('var(--color-danger)'),
+      `Red Lead is destructive and data-loss only (the Arris spec, section 5), so no ` +
+        `other severity borrows the custody alarm.`,
+    ).toBe(false)
+  })
+})
