@@ -23,16 +23,18 @@ const INSPECTOR_BOUNDS = { initial: 15, min: 10, max: 28 }
 const RESIZE_STEP_REM = 1
 const PANE_BOUNDS = { rail: RAIL_BOUNDS, inspector: INSPECTOR_BOUNDS } as const
 
+type PaneArea = 'rail' | 'inspector'
+
 /**
  * What a pane is wide before the user has an opinion. The inspector is a docked
  * panel, and the width of one belongs to the visual language, so its default is
  * the published token rather than a number spelled out here. The rail is the tool
- * rack's home and sizes to its slots, so it keeps its own width.
+ * rack's home and sizes to its slots, so it opens at its own initial size.
  */
-const PANE_DEFAULT_WIDTH = {
-  rail: '11rem',
+const PANE_DEFAULT_WIDTH: Record<PaneArea, string> = {
+  rail: `${RAIL_BOUNDS.initial}rem`,
   inspector: 'var(--size-panel-docked-width)',
-} as const
+}
 
 interface PaneWidth {
   size: number
@@ -46,7 +48,7 @@ interface PaneWidth {
  * never take a default from the language; this hands the token over until the first
  * resize and the user's own number from then on.
  */
-function usePaneWidth(area: 'rail' | 'inspector'): PaneWidth {
+function usePaneWidth(area: PaneArea): PaneWidth {
   const { size, onResizeStep } = usePaneResize(PANE_BOUNDS[area])
   const [resized, setResized] = useState(false)
   return {
@@ -60,7 +62,7 @@ function usePaneWidth(area: 'rail' | 'inspector'): PaneWidth {
 }
 
 interface CollapsiblePaneProps {
-  area: 'rail' | 'inspector'
+  area: PaneArea
   label: string
   id?: string
   children: ReactNode
