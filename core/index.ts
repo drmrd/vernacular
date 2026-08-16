@@ -706,3 +706,6 @@ export type {
   ExtensionSchemaRegistry,
   LoadValidationGateOptions,
 } from './format'
+
+export type { RotateStairParams } from './commands/handlers/stair-commands'
+export { ROTATE_STAIR, rotateStair } from './commands/handlers/stair-commands'
