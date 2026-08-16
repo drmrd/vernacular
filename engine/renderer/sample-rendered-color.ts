@@ -105,8 +105,11 @@ export function sampleRenderedColor(
  * canvas holds a WebGL context, so this never asks it for a 2D context; it
  * draws the requested rectangle onto a scratch 2D canvas sized to match,
  * which keeps each on-demand read cheap regardless of the full canvas size.
- * A fake source canvas covers this path in the unit tests, and an end-to-end
- * journey covers it against a real WebGL canvas.
+ * A fake source canvas covers this path in the unit tests. The journey spec
+ * `e2e/tests/journeys/perceived-color-readout.spec.ts` exercises it against a
+ * real drawing buffer, but it self-skips wherever the live pane's WebGPU gate
+ * goes unmet (issue #476), which is every runner measured so far. Treat the
+ * real-canvas path as unit-covered and end-to-end pending, not proven.
  */
 export function createCanvasPixelReader(canvas: HTMLCanvasElement): RenderedPixelReader {
   return {
