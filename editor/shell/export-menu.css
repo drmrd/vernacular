@@ -41,3 +41,15 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
+
+/*
+ * The dropdown is a picked-up thing, so under Arris it casts the raised tier, the one
+ * shadow that language allows, over a resting border and the machined 2px chamfer (the
+ * Arris spec, section 7). The shared menu surface states the same rule; this list still
+ * draws its own chrome, so it has to say it for itself.
+ */
+[data-design-language='arris'] .export-menu__list {
+  border-width: var(--border-width-resting);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-raised);
+}

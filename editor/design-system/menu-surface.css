@@ -33,3 +33,18 @@
   background: var(--color-surface-active);
   color: var(--color-on-surface-active);
 }
+
+/*
+ * Arris keeps two elevation tiers and no third (the Arris spec, section 7): the bench
+ * is dead flat and only a thing the user picked up casts a shadow. A menu is such a
+ * thing, so it names the raised tier here rather than trusting the overlay role, which
+ * this language happens to alias onto the same shadow and the shipped one does not.
+ *
+ * The square rule in that section is written for what is docked. A surface the user
+ * summoned and dismisses with Escape keeps the machined 2px chamfer.
+ */
+[data-design-language='arris'] .ds-menu-surface {
+  border-width: var(--border-width-resting);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--elevation-raised);
+}
