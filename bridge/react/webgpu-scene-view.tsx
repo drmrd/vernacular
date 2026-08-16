@@ -73,21 +73,13 @@ function useSceneNavigation() {
 // navigation state as one prop instead of re-listing each field.
 type SceneNavigationState = ReturnType<typeof useSceneNavigation>
 
-// Per-view color-temperature session state, held in the view component (foundation
-// section 5.3), never in the model or undo. It feeds the toolbar slider and, once
-// wired, the scene lighting.
-function useColorTemperature() {
-  const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
-  return { colorTemperatureK, setColorTemperatureK }
-}
-
 // The grouped per-view environment inputs the toolbar and canvas share: the view-local
 // color temperature (foundation section 5.3, held here and never in the model or undo)
 // paired with the shared environment session (mode, observation instant, cloud cover,
 // color check) that the tool rail and this view both read and write. Grouped so both
 // consumers take it as one prop, the same way the navigation state travels.
 function useSceneEnvironment() {
-  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+  const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
   const { environment, setEnvironment } = useEnvironmentSession()
   return { colorTemperatureK, setColorTemperatureK, environment, setEnvironment }
 }

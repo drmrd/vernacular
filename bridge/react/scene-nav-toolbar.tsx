@@ -215,6 +215,76 @@ function PrimaryCluster(props: PrimaryClusterProps) {
   )
 }
 
+/** The optional toolbar props that carry a stand-in when a caller omits them. */
+type DefaultedToolbarProps = Required<
+  Pick<
+    SceneNavToolbarProps,
+    | 'lightingMode'
+    | 'colorCheck'
+    | 'selectionEnabled'
+    | 'onToggleSelection'
+    | 'revealInterior'
+    | 'onToggleRevealInterior'
+    | 'scope'
+    | 'onScopeChange'
+    | 'showUnderground'
+    | 'onToggleUnderground'
+  >
+>
+
+/**
+ * The stand-ins themselves, applied by spread rather than by per-parameter initializers:
+ * a default per parameter counts as a branch, which pushed the toolbar over the
+ * complexity budget as the prop list grew.
+ */
+const TOOLBAR_DEFAULTS: DefaultedToolbarProps = {
+  lightingMode: 'schematic',
+  colorCheck: false,
+  selectionEnabled: false,
+  onToggleSelection: () => {},
+  revealInterior: true,
+  onToggleRevealInterior: () => {},
+  scope: 'floor',
+  onScopeChange: () => {},
+  showUnderground: true,
+  onToggleUnderground: () => {},
+}
+
+/** The toolbar props with every defaulted one resolved to a value. */
+type ResolvedToolbarProps = SceneNavToolbarProps & DefaultedToolbarProps
+
+/** The toolbar's four clusters, in reading order: primary, presets, display, environment. */
+function ToolbarClusters(props: ResolvedToolbarProps) {
+  return (
+    <>
+      <PrimaryCluster
+        scope={props.scope}
+        onScopeChange={props.onScopeChange}
+        showUnderground={props.showUnderground}
+        onToggleUnderground={props.onToggleUnderground}
+        mode={props.mode}
+        onModeChange={props.onModeChange}
+        selectionEnabled={props.selectionEnabled}
+        onToggleSelection={props.onToggleSelection}
+        revealInterior={props.revealInterior}
+        onToggleRevealInterior={props.onToggleRevealInterior}
+        onReset={props.onReset}
+      />
+      <CameraPresetButtons onPreset={props.onPreset} canDoorway={props.canDoorway} />
+      <SceneDisplayOptions
+        edgeOverlay={props.edgeOverlay}
+        onToggleEdgeOverlay={props.onToggleEdgeOverlay}
+      />
+      <EnvironmentControls
+        colorTemperatureK={props.colorTemperatureK}
+        onColorTemperatureChange={props.onColorTemperatureChange}
+        lightingMode={props.lightingMode}
+        colorCheck={props.colorCheck}
+      />
+    </>
+  )
+}
+
 /**
  * Navigation chrome for the three-dimensional scene view. It exposes a toggle between
  * viewing the active floor and the whole building stacked (with a control to show or
@@ -225,50 +295,10 @@ function PrimaryCluster(props: PrimaryClusterProps) {
  * Pressed states are reflected through `aria-pressed` so assistive technology
  * announces the active view and camera mode.
  */
-export function SceneNavToolbar({
-  mode,
-  onModeChange,
-  onReset,
-  colorTemperatureK,
-  onColorTemperatureChange,
-  lightingMode = 'schematic',
-  colorCheck = false,
-  selectionEnabled = false,
-  onToggleSelection = () => {},
-  revealInterior = true,
-  onToggleRevealInterior = () => {},
-  onPreset,
-  canDoorway,
-  scope = 'floor',
-  onScopeChange = () => {},
-  showUnderground = true,
-  onToggleUnderground = () => {},
-  edgeOverlay,
-  onToggleEdgeOverlay,
-}: SceneNavToolbarProps) {
+export function SceneNavToolbar(props: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <PrimaryCluster
-        scope={scope}
-        onScopeChange={onScopeChange}
-        showUnderground={showUnderground}
-        onToggleUnderground={onToggleUnderground}
-        mode={mode}
-        onModeChange={onModeChange}
-        selectionEnabled={selectionEnabled}
-        onToggleSelection={onToggleSelection}
-        revealInterior={revealInterior}
-        onToggleRevealInterior={onToggleRevealInterior}
-        onReset={onReset}
-      />
-      <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
-      <SceneDisplayOptions edgeOverlay={edgeOverlay} onToggleEdgeOverlay={onToggleEdgeOverlay} />
-      <EnvironmentControls
-        colorTemperatureK={colorTemperatureK}
-        onColorTemperatureChange={onColorTemperatureChange}
-        lightingMode={lightingMode}
-        colorCheck={colorCheck}
-      />
+      <ToolbarClusters {...TOOLBAR_DEFAULTS} {...props} />
     </div>
   )
 }
