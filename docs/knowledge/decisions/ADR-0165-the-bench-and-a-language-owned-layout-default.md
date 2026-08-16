@@ -172,11 +172,19 @@ entry. A story would need a rendered baseline, and those render only on CI, whic
 this slice is not in a position to refresh. The component belongs with the story
 work already tracked in issue #551.
 
+The stack is the other listed piece this slice leaves alone, for a duller reason:
+`stack.css` reads nothing but the spacing scale, and the Arris scale redeclares the
+same numeric steps, so there is no value for a scoped rule to change today. If the
+Arris spacing scale ever diverges, the stack picks the change up through the tokens
+without a rule of its own.
+
 ## Consequences
 
 - Previewing Arris shows a frame that reads as one bench. With the flag off nothing
-  moves: every new rule is scoped, and the three unscoped edits are token-role swaps
-  the shipped layer resolves to what was there before.
+  moves: every new rule is scoped, and the four unscoped edits resolve to what was
+  there before. Three are token-role swaps (the reversed label role resolves to the
+  ordinary text ink in the shipped layer), and the fourth trades the docked width's
+  literal fallback for the token the shipped layer resolves to the same 15rem.
 - The resize model does not know the language set the width the pane started from,
   and that shows twice under the flag. The separator announces the pre-resize number
   in `aria-valuenow` while the pane renders wider, and the first press of the grow
