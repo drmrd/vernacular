@@ -1,3 +1,6 @@
+// A test-support module: fixtures and queries the library specs share. Nothing
+// under editor/ imports it outside a test, so the testing-library import here
+// never reaches the shipped bundle.
 import { screen } from '@testing-library/react'
 
 import { AssetRegistry, type AssetSource, type LibraryItem } from '../../storage'
@@ -16,7 +19,7 @@ export function libraryItem(overrides: Partial<LibraryItem> = {}): LibraryItem {
     reference: { scope: PACK_SCOPE, contentHash: 'h1' },
     name: MID_CENTURY_CHAIR_NAME,
     kind: 'furniture',
-    categories: ['seating'],
+    categories: [],
     eras: ['mid-century'],
     footprint: FOOTPRINT_MM,
     height: HEIGHT_MM,
@@ -31,7 +34,8 @@ export function listingSource(id: string, items: LibraryItem[]): AssetSource {
 
 /**
  * A registry listing two pack items that no single filter keeps together: one
- * mid-century chair and one Victorian table.
+ * mid-century chair and one Victorian table. Both spell out their name and era
+ * rather than leaning on the builder's defaults, so the pair reads as a pair.
  */
 export function stockedRegistry(): AssetRegistry {
   const items = [

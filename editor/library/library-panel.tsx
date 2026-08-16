@@ -23,6 +23,11 @@ import './library-panel.css'
 export interface LibraryPanelProps {
   onPick: (item: LibraryItem) => void
   onImport: () => void
+  /**
+   * The item the next canvas click will place. The host gates this on the
+   * place-furniture tool being active: the panel captions it and names the key
+   * that turns it, and both only hold true under that tool.
+   */
   armed?: LibraryItem | null
   /** Whether an asset source is available to receive an imported model. */
   canImport?: boolean

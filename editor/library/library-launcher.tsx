@@ -11,6 +11,7 @@ import './library-launcher.css'
 export interface LibraryLauncherProps {
   onPick: (item: LibraryItem) => void
   onImport: () => void
+  /** The item the next canvas click will place; the host gates it on the placing tool. */
   armed?: LibraryItem | null
   /** Whether an asset source is available to receive an imported model. */
   canImport?: boolean

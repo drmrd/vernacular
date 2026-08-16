@@ -24,6 +24,7 @@ const GLB_BYTES = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 0, 0, 0, 9, 9, 9)
 const ZIP_BYTES = Uint8Array.of(0x50, 0x4b, 3, 4)
 const IMPORT_ACTION = /import a 3d model/i
 const IMPORTED_NAME = 'Mid Century Chair'
+const PLACEMENT_HINT = /click the canvas to place/i
 
 function makeUserSource(): UserSource {
   const items: LibraryItem[] = []
@@ -81,6 +82,11 @@ function fileInput(): HTMLInputElement {
   return input
 }
 
+async function armTheChair(user: UserEvent): Promise<void> {
+  await openPanel(user)
+  await user.click(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME }))
+}
+
 afterEach(cleanup)
 
 describe('LibraryLauncherPanel import feedback', () => {
@@ -123,19 +129,12 @@ describe('LibraryLauncherPanel import feedback', () => {
   })
 })
 
-const PLACEMENT_HINT = /click the canvas to place/i
-
-async function armFirstItem(user: UserEvent): Promise<void> {
-  await openPanel(user)
-  await user.click(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME }))
-}
-
 describe('LibraryLauncherPanel placement hint', () => {
   it('prompts for the canvas click while the place-furniture tool is active', async () => {
     const user = userEvent.setup()
     renderConnectedPanel({ registry: stockedRegistry(), tool: 'place-furniture' })
 
-    await armFirstItem(user)
+    await armTheChair(user)
 
     expect(screen.getByText(PLACEMENT_HINT)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toHaveAttribute(
@@ -144,11 +143,11 @@ describe('LibraryLauncherPanel placement hint', () => {
     )
   })
 
-  it('drops the prompt and the pressed row once another tool takes over', async () => {
+  it('stays quiet while a tool that does not place is the active one', async () => {
     const user = userEvent.setup()
     renderConnectedPanel({ registry: stockedRegistry(), tool: 'select' })
 
-    await armFirstItem(user)
+    await armTheChair(user)
 
     expect(screen.queryByText(PLACEMENT_HINT)).toBeNull()
     expect(screen.getByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toHaveAttribute(
