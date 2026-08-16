@@ -8,6 +8,7 @@ import {
   type WallSceneNode,
 } from '../../core'
 import { requiredContentBounds as spanOf, type Bounds } from './fit'
+import { hitTestStairs, stairBounds } from './hit-test-stair'
 import { openingCorners } from './opening-geometry'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
@@ -111,6 +112,7 @@ function indexEntities(scene: SceneGraph): IndexedEntity[] {
       id: dimension.id,
       bounds: dimensionBounds(dimension),
     })),
+    ...scene.stairs.map((stair) => ({ id: stair.id, bounds: stairBounds(stair) })),
     ...scene.rooms.map((room) => ({ id: room.id, bounds: roomBounds(room) })),
   ]
 }
@@ -130,8 +132,10 @@ function withId<Entity extends { id: string }>(
 /**
  * Broad phase then narrow phase: the spatial index supplies candidate ids near
  * the point. Openings, then walls, then dimensions are tried in priority order,
- * and only when none is in range does the search fall back to the room whose
- * polygon contains the point.
+ * then stairs, and only when none is in range does the search fall back to the
+ * room whose polygon contains the point. Stairs rank where they paint, over the
+ * floor fills but under the wall strokes, so a click where a run meets the wall
+ * it lands on still selects the wall.
  */
 export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
   const ids = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
@@ -139,6 +143,7 @@ export function hitTest(scene: SceneGraph, point: Point, tolerance: number): str
     hitTestOpenings(withId(scene.openings, ids), point, tolerance) ??
     hitTestWalls(withId(scene.walls, ids), point, tolerance) ??
     hitTestDimensions(withId(scene.dimensions, ids), point, tolerance) ??
+    hitTestStairs(withId(scene.stairs, ids), point) ??
     containingRoomId(withId(scene.rooms, ids), point)
   )
 }
