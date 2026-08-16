@@ -14,11 +14,12 @@ export type PresetChoice = CameraPreset | 'doorway'
  * The door the Doorway preset would frame: what to call it, and whether it is there because
  * the user selected it rather than because it was the first door found. Absent (null) means
  * the view holds no door at all, which is the one case that disables the preset outright.
+ *
+ * `DoorwayTarget` in use-doorway-target.ts is what the live view actually passes here. The
+ * two are matched structurally rather than by a shared import, so the meaning of these
+ * fields has to be changed in both places at once.
  */
-interface DoorwayChoice {
-  name: string
-  selected: boolean
-}
+type DoorwayChoice = { name: string; selected: boolean }
 
 const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
   { label: 'Orbit', mode: 'orbit' },
@@ -172,6 +173,11 @@ const ORBIT_ONLY_TITLES = {
 const NO_DOORWAY_TITLE =
   'No door in view to frame. Add a door, or show the floor its doors are on, to use this preset.'
 
+/** No door in the view, the one state that disables the Doorway preset on its own. */
+function doorwayMissing(doorway: DoorwayChoice | null | undefined): doorway is null | undefined {
+  return doorway === null || doorway === undefined
+}
+
 /**
  * What the Doorway preset will frame, or why it can frame nothing. Walk mode answers first
  * because it overrides every camera control; a missing door answers next because it is the
@@ -180,7 +186,7 @@ const NO_DOORWAY_TITLE =
  */
 function doorwayTitle(doorway: DoorwayChoice | null | undefined, inertInWalk: boolean): string {
   if (inertInWalk) return ORBIT_ONLY_TITLES.preset
-  if (doorway === null || doorway === undefined) return NO_DOORWAY_TITLE
+  if (doorwayMissing(doorway)) return NO_DOORWAY_TITLE
   if (doorway.selected) return `Frames the view from inside the ${doorway.name} you selected.`
   return `Frames the view from inside the first ${doorway.name} in view.`
 }
@@ -193,7 +199,6 @@ interface CameraPresetButtonsProps {
 
 function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsProps) {
   const inertInWalk = walkCameraDriving(mode)
-  const presetTitle = inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined
   return (
     <div
       role="group"
@@ -206,7 +211,7 @@ function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsPro
           type="button"
           className="scene-nav-toolbar__btn"
           disabled={inertInWalk}
-          title={presetTitle}
+          title={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
           onClick={() => onPreset?.(preset)}
         >
           {label}
@@ -220,7 +225,7 @@ function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsPro
       <button
         type="button"
         className="scene-nav-toolbar__btn"
-        disabled={inertInWalk || doorway === null || doorway === undefined}
+        disabled={inertInWalk || doorwayMissing(doorway)}
         title={doorwayTitle(doorway, inertInWalk)}
         onClick={() => onPreset?.('doorway')}
       >

@@ -2,7 +2,13 @@ import { useMemo } from 'react'
 
 import { openingKindOfType, type OpeningSceneNode } from '../../core'
 
-/** The door the doorway camera preset frames, with what to call it in the interface. */
+/**
+ * The door the doorway camera preset frames, with what to call it in the interface.
+ *
+ * `name` and `selected` are what the nav toolbar reads, through its own `DoorwayChoice`
+ * (scene-nav-toolbar.tsx) rather than an import of this type, so the two have to keep
+ * agreeing on what those two fields mean.
+ */
 export interface DoorwayTarget {
   opening: OpeningSceneNode
   /** The door's element type humanized for display, e.g. 'single swing door'. */
