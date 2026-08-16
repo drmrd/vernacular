@@ -284,7 +284,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     if (store === null || session !== null || error !== null) return
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => !cancelled && setSession(createEditorSession(checkedProject(project))))
+      .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
       .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
       cancelled = true
@@ -304,7 +304,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
 }
 
 // Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
-function checkedProject(project: Project): Project {
+function validatedProject(project: Project): Project {
   validateLoadedProject(project)
   return project
 }

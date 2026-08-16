@@ -216,8 +216,15 @@ function useNewProjectAction(context: ProjectActionsContext): () => void | Promi
 // Open folder is gated on the native picker capability; without it the shell
 // renders no control, so the handler is omitted rather than rendered inert.
 function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: () => void } {
-  const { projectId, recentProjects, capabilities, onSession, notifications } = context
-  const { isDirty, confirmDiscard } = context
+  const {
+    projectId,
+    recentProjects,
+    capabilities,
+    onSession,
+    notifications,
+    isDirty,
+    confirmDiscard,
+  } = context
   const onOpenFolder = useCallback(() => {
     void guardSessionSwap({ isDirty, confirmDiscard }, () =>
       runWithErrorToast(notifications, 'Open', async () => {
@@ -236,8 +243,8 @@ function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: (
 }
 
 function useOpenRecentAction(context: ProjectActionsContext): (id: string) => void {
-  const { store, projectId, recentEntries, onSession, notifications } = context
-  const { isDirty, confirmDiscard } = context
+  const { store, projectId, recentEntries, onSession, notifications, isDirty, confirmDiscard } =
+    context
   return useCallback(
     (id: string) => {
       // Guarding here rather than inside each branch keeps the prompt to one per
