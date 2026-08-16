@@ -27,7 +27,7 @@ import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
-import { useDoorwayTarget } from './use-doorway-target'
+import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useProjectSite } from './use-project-site'
 import { WalkCameraControls } from './walk-camera-controls'
@@ -296,7 +296,7 @@ interface SceneViewToolbarProps {
   edgeOverlay: boolean
   onToggleEdgeOverlay: () => void
   viewEnvironment: SceneEnvironmentState
-  canDoorway: boolean
+  doorway: DoorwayTarget | null
   lightingMode: LightingMode
 }
 
@@ -314,7 +314,7 @@ function SceneViewToolbar({
   edgeOverlay,
   onToggleEdgeOverlay,
   viewEnvironment,
-  canDoorway,
+  doorway,
   lightingMode,
 }: SceneViewToolbarProps) {
   return (
@@ -331,7 +331,7 @@ function SceneViewToolbar({
       colorTemperatureK={viewEnvironment.colorTemperatureK}
       onColorTemperatureChange={viewEnvironment.setColorTemperatureK}
       onPreset={nav.applyPreset}
-      canDoorway={canDoorway}
+      doorway={doorway}
       scope={buildingView.scope}
       onScopeChange={buildingView.setScope}
       showUnderground={buildingView.showUnderground}
@@ -368,7 +368,7 @@ export function WebGPUSceneView() {
         edgeOverlay={edgeOverlay}
         onToggleEdgeOverlay={toggleEdgeOverlay}
         viewEnvironment={viewEnvironment}
-        canDoorway={doorway !== null}
+        doorway={doorway}
         lightingMode={lightingMode}
       />
       <ScenePaneShell mode={nav.mode}>

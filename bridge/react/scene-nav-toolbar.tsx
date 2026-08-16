@@ -10,6 +10,16 @@ export type NavMode = 'orbit' | 'walk'
 
 export type PresetChoice = CameraPreset | 'doorway'
 
+/**
+ * The door the Doorway preset would frame: what to call it, and whether it is there because
+ * the user selected it rather than because it was the first door found. Absent (null) means
+ * the view holds no door at all, which is the one case that disables the preset outright.
+ */
+interface DoorwayChoice {
+  name: string
+  selected: boolean
+}
+
 const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
   { label: 'Orbit', mode: 'orbit' },
   { label: 'Walk', mode: 'walk' },
@@ -43,7 +53,7 @@ interface SceneNavToolbarProps {
   revealInterior?: boolean
   onToggleRevealInterior?: () => void
   onPreset?: (preset: PresetChoice) => void
-  canDoorway?: boolean
+  doorway?: DoorwayChoice | null
   scope?: SceneScope
   onScopeChange?: (scope: SceneScope) => void
   showUnderground?: boolean
@@ -154,13 +164,34 @@ const ORBIT_ONLY_TITLES = {
     'Refits the orbit camera to the model. Walk mode would overwrite the framing on the next frame.',
 } as const
 
+/**
+ * Shown when the view holds no door. The preset stands the camera in the opening and looks
+ * inward, which only reads as a doorway for a door, so a plan of windows leaves it nothing
+ * to frame. It names the fix rather than only reporting the block.
+ */
+const NO_DOORWAY_TITLE =
+  'No door in view to frame. Add a door, or show the floor its doors are on, to use this preset.'
+
+/**
+ * What the Doorway preset will frame, or why it can frame nothing. Walk mode answers first
+ * because it overrides every camera control; a missing door answers next because it is the
+ * harder block to guess at; otherwise the text names the door so the user knows which of a
+ * plan's doors the camera is about to stand in.
+ */
+function doorwayTitle(doorway: DoorwayChoice | null | undefined, inertInWalk: boolean): string {
+  if (inertInWalk) return ORBIT_ONLY_TITLES.preset
+  if (doorway === null || doorway === undefined) return NO_DOORWAY_TITLE
+  if (doorway.selected) return `Frames the view from inside the ${doorway.name} you selected.`
+  return `Frames the view from inside the first ${doorway.name} in view.`
+}
+
 interface CameraPresetButtonsProps {
   onPreset: ((preset: PresetChoice) => void) | undefined
-  canDoorway: boolean | undefined
+  doorway: DoorwayChoice | null | undefined
   mode: NavMode
 }
 
-function CameraPresetButtons({ onPreset, canDoorway, mode }: CameraPresetButtonsProps) {
+function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsProps) {
   const inertInWalk = walkCameraDriving(mode)
   const presetTitle = inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined
   return (
@@ -181,16 +212,16 @@ function CameraPresetButtons({ onPreset, canDoorway, mode }: CameraPresetButtons
           {label}
         </button>
       ))}
-      {/* Doorway carries a second, older reason to sit out: a floor with no framable opening
-          leaves it nothing to aim at. Walk mode is checked first so its explanation wins while
-          the walk camera is driving. Its hover text is resolved here beside its own `disabled`
-          rather than borrowed from the five fixed presets, which answer to the camera mode
-          alone, so the two reasons stay paired with the text that explains them. */}
+      {/* Doorway answers to two reasons rather than the five fixed presets' one: the walk
+          camera driving, and a view holding no door to stand in. Its hover text is resolved
+          alongside its own `disabled` so the two reasons stay paired with the text that
+          explains them, and it speaks even when enabled, because which door the preset picks
+          is not something the button's label can show. */}
       <button
         type="button"
         className="scene-nav-toolbar__btn"
-        disabled={inertInWalk || !canDoorway}
-        title={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
+        disabled={inertInWalk || doorway === null || doorway === undefined}
+        title={doorwayTitle(doorway, inertInWalk)}
         onClick={() => onPreset?.('doorway')}
       >
         Doorway
@@ -334,11 +365,7 @@ function ToolbarClusters(props: ResolvedToolbarProps) {
         onToggleRevealInterior={props.onToggleRevealInterior}
         onReset={props.onReset}
       />
-      <CameraPresetButtons
-        onPreset={props.onPreset}
-        canDoorway={props.canDoorway}
-        mode={props.mode}
-      />
+      <CameraPresetButtons onPreset={props.onPreset} doorway={props.doorway} mode={props.mode} />
       <SceneDisplayOptions
         edgeOverlay={props.edgeOverlay}
         onToggleEdgeOverlay={props.onToggleEdgeOverlay}
