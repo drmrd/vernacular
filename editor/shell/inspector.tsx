@@ -16,6 +16,7 @@ import {
   resolveSurfacePaint,
   ROOM_ID_PREFIX,
   selectionCenter,
+  STAIR_NODE_PREFIX,
   WALL_NODE_PREFIX,
   type Command,
   type DimensionSceneNode,
@@ -25,6 +26,7 @@ import {
   type RoomOverride,
   type RoomSceneNode,
   type SceneGraph,
+  type Stair,
   type UnitPreferences,
   type UnitSystem,
   type WallSceneNode,
@@ -44,6 +46,7 @@ import { selectedEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
 import { singleSelectedDimension } from '../plan/selected-dimension'
 import { RoomFinishSection } from '../plan/room-finish-section'
+import { StairInspector } from '../plan/stair-inspector'
 import { WallFinishSection } from '../plan/wall-finish-section'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 
@@ -127,6 +130,27 @@ function singleSelectedOpening(
     }
   }
   return null
+}
+
+/**
+ * The single selected raw `Stair`, or null. Unlike an opening or a wall, a stair
+ * lives on the project rather than a floor (it spans floors), so the selection
+ * carries the namespaced scene-node id with no floor id to recover; this strips
+ * `STAIR_NODE_PREFIX` and finds the raw project stair by its bare id.
+ */
+function singleSelectedStair(
+  selectedIds: ReadonlySet<string>,
+  project: Readonly<Project>,
+): Stair | null {
+  if (selectedIds.size !== 1) {
+    return null
+  }
+  const [onlyId] = selectedIds
+  if (onlyId === undefined || !onlyId.startsWith(STAIR_NODE_PREFIX)) {
+    return null
+  }
+  const rawId = onlyId.slice(STAIR_NODE_PREFIX.length)
+  return project.stairs.find((stair) => stair.id === rawId) ?? null
 }
 
 interface SelectedFurniture {
@@ -389,6 +413,19 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
         floorId={selectedFurniture.floorId}
         furniture={furniture}
         units={project.meta.units}
+        dispatch={session.dispatch}
+      />
+    )
+  }
+  const selectedStair = singleSelectedStair(selectedIds, project)
+  if (selectedStair !== null) {
+    return (
+      // Key on the stair id and rotation so the inspector remounts when the
+      // selection changes or an undo restores a different rotation; its angle
+      // field seeds at mount.
+      <StairInspector
+        key={`${selectedStair.id}:${selectedStair.rotation}`}
+        stair={selectedStair}
         dispatch={session.dispatch}
       />
     )
