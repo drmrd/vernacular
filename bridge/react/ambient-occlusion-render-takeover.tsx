@@ -6,7 +6,8 @@ import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-oc
 
 // Any nonzero useFrame priority disables React Three Fiber's automatic render for a canvas,
 // so this hands the live view its per-frame draw. The exact value only orders manual frame
-// callbacks against each other, and this is the canvas's sole one.
+// callbacks against each other. The perceived-color sampler registers a second one at a
+// higher number so it reads a frame this callback has already drawn and composited.
 const AO_RENDER_PRIORITY = 1
 
 /**

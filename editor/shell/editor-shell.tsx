@@ -277,6 +277,10 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // to localStorage as an editor preference.
   const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
   useSaveFailureToast(saveStatus, projectControls.onSave)
+  // Hoisted out of the frame below so the provider pyramid stays readable at its
+  // depth: inline, prettier wraps each of these across four or five lines.
+  const header = <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
+  const main = <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
   return (
     // The command-palette provider wraps everything so the keybinding layer, the
     // command bar, and the palette dialog all share one open/close state. The
@@ -306,21 +310,12 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                         <PerceivedColorProvider store={perceivedColor}>
                           <EnvironmentSessionProvider store={environmentSession}>
                             <AppFrame
-                              header={
-                                <ShellHeader
-                                  saveStatus={saveStatus}
-                                  projectControls={projectControls}
-                                />
-                              }
+                              header={header}
                               banner={<BannerRegion />}
                               railLabel="Tool rail"
                               rail={<ToolRail />}
                               mainLabel="Viewport"
-                              main={
-                                <ViewportArea
-                                  onImportDroppedFile={projectControls.onImportDroppedFile}
-                                />
-                              }
+                              main={main}
                               inspectorLabel="Inspector"
                               inspector={<Inspector />}
                               statusBar={<EditorStatusBar />}
