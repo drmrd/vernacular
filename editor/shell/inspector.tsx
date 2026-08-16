@@ -478,6 +478,7 @@ function componentTitleFor(
   if (id.startsWith(ROOM_ID_PREFIX) || graph.rooms.some((r) => r.id === id)) return 'Room'
   if (id.startsWith(DIMENSION_NODE_PREFIX)) return 'Dimension'
   if (id.startsWith(OPENING_NODE_PREFIX)) return 'Opening'
+  if (id.startsWith(STAIR_NODE_PREFIX)) return 'Stair'
   if (project.floors.some((floor) => floor.furniture.some((item) => item.id === id)))
     return 'Furniture'
   return null
