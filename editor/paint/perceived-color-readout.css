@@ -1,0 +1,19 @@
+.perceived-readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.perceived-readout__chip {
+  display: inline-block;
+  align-self: flex-start;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.perceived-readout__shift {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

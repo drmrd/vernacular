@@ -14,6 +14,8 @@ import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
+import { usePerceivedColorStore } from './perceived-color-context'
+import { PerceivedColorSampler } from './perceived-color-sampler'
 import { FrameCamera, PresetCamera, type PresetRequest } from './scene-camera-effects'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
@@ -188,6 +190,17 @@ function ViewSceneLighting({ viewEnvironment, site, bounds }: ViewSceneLightingP
   )
 }
 
+// The camera the canvas opens on, read off the framed scene's pose. The tuple
+// annotation is what React Three Fiber's camera prop expects; an inferred
+// number[] would not satisfy it.
+function initialCamera(pose: FramedScene['pose']) {
+  return {
+    position: [pose.position.x, pose.position.y, pose.position.z] as [number, number, number],
+    near: pose.near,
+    far: pose.far,
+  }
+}
+
 interface LiveSceneCanvasProps {
   framed: FramedScene
   nav: SceneNavigationState
@@ -206,6 +219,7 @@ interface LiveSceneCanvasProps {
 function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
   const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
+  const perceivedColor = usePerceivedColorStore()
   return (
     // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
     // configuring the Canvas, so create-renderer's shadowMap setup goes dead
@@ -214,11 +228,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
     <Canvas
       frameloop="always"
       shadows
-      camera={{
-        position: [pose.position.x, pose.position.y, pose.position.z],
-        near: pose.near,
-        far: pose.far,
-      }}
+      camera={initialCamera(pose)}
       // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
       // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
       // path), so narrowing the cast away from OffscreenCanvas is safe.
@@ -246,6 +256,11 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         realistic={viewEnvironment.environment.mode === 'realistic'}
         site={site}
       />
+      {/* The sampler must live inside the Canvas because it reads the drawing
+          buffer from within the per-frame callback, and it runs at a later
+          frame priority than the ambient-occlusion takeover above so it reads
+          a frame that has already been drawn and composited. */}
+      <PerceivedColorSampler store={perceivedColor} />
     </Canvas>
   )
 }

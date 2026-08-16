@@ -5,6 +5,7 @@ import { SectionLabel, Segmented } from '../design-system'
 import { useWallFaceHighlight } from './use-wall-face-highlight'
 import { ColorPicker } from '../paint/color-picker'
 import { FinishPicker } from '../paint/finish-picker'
+import { PerceivedColorReadout } from '../paint/perceived-color-readout'
 import './finish-section.css'
 
 // The finish handed to ColorPicker before the user has chosen one, matching the
@@ -55,6 +56,34 @@ function previewedSide(
   return highlighted.side
 }
 
+interface WallFaceSwitchProps {
+  side: 'left' | 'right'
+  preview: 'left' | 'right' | undefined
+  onSelect: (side: 'left' | 'right') => void
+  onHover: (hovered: string | null) => void
+}
+
+/**
+ * The A/B face switch. It owns the narrowing from Segmented's string option value
+ * back to a face side, so the section body deals only in sides, and it drops the
+ * previewValue prop entirely when there is no preview, which is what
+ * `exactOptionalPropertyTypes` requires of Segmented's optional prop.
+ */
+function WallFaceSwitch({ side, preview, onSelect, onHover }: WallFaceSwitchProps) {
+  return (
+    <Segmented
+      label="Wall face"
+      options={FACE_OPTIONS}
+      value={side}
+      {...(preview ? { previewValue: preview } : {})}
+      onSelect={(value) => {
+        if (isFaceSide(value)) onSelect(value)
+      }}
+      onHover={onHover}
+    />
+  )
+}
+
 export function WallFinishSection({
   wallId,
   treatmentFor,
@@ -68,21 +97,14 @@ export function WallFinishSection({
   const ref: SurfaceRef = { kind: 'wall-face', wallId, side }
   const treatment = treatmentFor(ref)
   const finishId = treatment?.kind === 'solid' ? treatment.finishId : DEFAULT_FINISH_ID
+  const reference = treatment?.kind === 'solid' ? treatment.color : undefined
   return (
     <section className="finish-section">
       <SectionLabel>Finish</SectionLabel>
       <p className="finish-section__hint">A and B are the wall&apos;s two paintable faces.</p>
-      <Segmented
-        label="Wall face"
-        options={FACE_OPTIONS}
-        value={side}
-        {...(preview ? { previewValue: preview } : {})}
-        onSelect={(value) => {
-          if (isFaceSide(value)) setSide(value)
-        }}
-        onHover={onHoverFace}
-      />
+      <WallFaceSwitch side={side} preview={preview} onSelect={setSide} onHover={onHoverFace} />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
+      <PerceivedColorReadout surface={ref} reference={reference} />
       {treatment?.kind === 'solid' ? (
         <FinishPicker
           surface={ref}

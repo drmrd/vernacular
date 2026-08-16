@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { PerceivedColorContext } from '../../bridge/react/perceived-color-context'
+import { createPerceivedColorStore } from '../../bridge/perceived-color/perceived-color-store'
+import { colorFromHex } from '../../core'
 import { RoomFinishSection } from './room-finish-section'
 
 afterEach(cleanup)
@@ -75,5 +78,46 @@ describe('RoomFinishSection', () => {
     expect(ceiling).toHaveClass('is-active')
     expect(ceiling).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Floor' })).not.toHaveClass('is-active')
+  })
+})
+
+describe('RoomFinishSection perceived-color readout', () => {
+  it('renders the perceived-color readout for the currently shown floor surface', () => {
+    const perceivedColorStore = createPerceivedColorStore()
+    const sample = colorFromHex('#a1b2c3')
+    perceivedColorStore.resolveSample({
+      surface: { kind: 'floor', floorId: 'g' },
+      color: sample,
+    })
+
+    render(
+      <PerceivedColorContext.Provider value={perceivedColorStore}>
+        <RoomFinishSection
+          floorId="g"
+          treatmentFor={() => undefined}
+          recent={[]}
+          dispatch={vi.fn()}
+        />
+      </PerceivedColorContext.Provider>,
+    )
+
+    expect(screen.getByText(sample.srgbHex)).toHaveAttribute('data-perceived', sample.srgbHex)
+  })
+
+  it('renders no perceived-color readout when there is no PerceivedColorContext provider', () => {
+    // The tests above and every committed Storybook story for this section
+    // render without a PerceivedColorContext.Provider. If mounting the
+    // readout changed what is rendered in that unwrapped case, every one of
+    // those story baselines would move the moment the readout landed.
+    render(
+      <RoomFinishSection
+        floorId="g"
+        treatmentFor={() => undefined}
+        recent={[]}
+        dispatch={vi.fn()}
+      />,
+    )
+
+    expect(document.querySelector('[data-perceived]')).toBeNull()
   })
 })

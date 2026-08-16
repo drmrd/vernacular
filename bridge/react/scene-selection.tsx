@@ -8,7 +8,9 @@ import {
   reconcileSelectionOutline,
   type SceneRoot,
 } from '../../engine'
+import type { PerceivedColorStore } from '../perceived-color/perceived-color-store'
 import { isClick, type PointerPoint } from './pointer-click'
+import { usePerceivedColorStore } from './perceived-color-context'
 import { useSelection, useSelectionIds } from './selection-context'
 import { useSurfaceSelection } from './surface-selection-context'
 
@@ -18,8 +20,11 @@ import { useSurfaceSelection } from './surface-selection-context'
 // land within the click tolerance, so a drag to orbit or pan the camera does not select
 // whatever sat under the press. The selection outline overlay is reconciled whenever the
 // selection or the geometry changes, and lives on the persistent render scene, not the
-// keyed geometry group. Coverage-excluded glue, proven by the scene-webgl tier; the pick,
-// the click discriminator, and the outline logic are unit-tested.
+// keyed geometry group. A click that lands on a paintable surface also requests a
+// perceived-color sample at the picked point for an optional on-screen readout; the
+// request is a no-op when no readout store is mounted. Coverage-excluded glue, proven by
+// the scene-webgl tier; the pick, the click discriminator, and the outline logic are
+// unit-tested.
 
 // A drag of more than a few pixels is a camera move, not a selection click.
 const CLICK_TOLERANCE_PX = 6
@@ -35,6 +40,7 @@ interface PointerSelectionDeps {
   root: SceneRoot
   selection: ReturnType<typeof useSelection>
   surfaceSelection: ReturnType<typeof useSurfaceSelection>
+  perceivedColor?: PerceivedColorStore | null
 }
 
 // Picks the entity under the release point and writes the shared selection: a modifier
@@ -42,14 +48,20 @@ interface PointerSelectionDeps {
 // lands on a paintable surface (a room floor today) also targets that surface, so the
 // active paint target stays consistent across the 2D plan and the 3D model (ADR-0056).
 export function commitSelectionAt(event: PointerEvent, deps: PointerSelectionDeps): void {
-  const { domElement, camera, raycaster, root, selection, surfaceSelection } = deps
+  const { domElement, camera, raycaster, root, selection, surfaceSelection, perceivedColor } = deps
   const rect = domElement.getBoundingClientRect()
   const ndc = {
     x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
     y: -((event.clientY - rect.top) / rect.height) * 2 + 1,
   }
   const surface = pickSurfaceAt({ raycaster, camera, root, ndc })
-  if (surface !== null) surfaceSelection.select(surface)
+  if (surface !== null) {
+    surfaceSelection.select(surface)
+    // The readout is an optional enhancement to click-to-select, not a required
+    // dependency of it, so selection must keep working when no store is mounted
+    // (isolated tests and any host that skips the perceived-color provider).
+    perceivedColor?.requestSample(surface, ndc)
+  }
   const id = pickEntityIdAt({ raycaster, camera, root, ndc })
   const additive = event.shiftKey || event.metaKey || event.ctrlKey
   if (id === null) {
@@ -96,6 +108,7 @@ export function SceneSelection({ root, enabled = true }: { root: SceneRoot; enab
   const domElement = useThree((state) => state.gl.domElement)
   const selection = useSelection()
   const surfaceSelection = useSurfaceSelection()
+  const perceivedColor = usePerceivedColorStore()
   const selectedIds = useSelectionIds()
   const outlineGroup = useMemo(() => createSelectionOutlineGroup(), [])
 
@@ -111,8 +124,8 @@ export function SceneSelection({ root, enabled = true }: { root: SceneRoot; enab
   }, [root, selectedIds, outlineGroup])
 
   const pointerDeps = useMemo<PointerSelectionDeps>(
-    () => ({ domElement, camera, raycaster, root, selection, surfaceSelection }),
-    [domElement, camera, raycaster, root, selection, surfaceSelection],
+    () => ({ domElement, camera, raycaster, root, selection, surfaceSelection, perceivedColor }),
+    [domElement, camera, raycaster, root, selection, surfaceSelection, perceivedColor],
   )
   useScenePointerSelection(pointerDeps, enabled)
 
