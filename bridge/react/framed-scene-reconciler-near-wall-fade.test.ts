@@ -12,6 +12,7 @@ import { restoreNearWallTransparency, updateNearWallTransparency } from '../../e
 import { findByEntityId } from '../../engine/testing'
 import { buildFramedScene } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { restoreUnenrolledNearWallTargets } from './near-wall-fade'
 
 const FADED_OPACITY = 0.1
 const SPAN_MM = 4000
@@ -155,6 +156,34 @@ function renamedFloor(graph: SceneGraph): SceneGraph {
   return { ...graph, nodes: [{ id: 'floor:g', kind: 'floor', name: 'Renamed', elevation: 0 }] }
 }
 
+// The same floor with a second room laid against the outside face of the south wall, so
+// that wall now has a room on both faces and is an interior partition rather than an
+// exterior wall. The floor is renamed as well, since the reconciler keys a floor's cached
+// build on its node and would otherwise hand the previous build back untouched.
+function roomAddedOutsideSouthWall(graph: SceneGraph): SceneGraph {
+  const corners = [
+    { x: 0, y: -SPAN_MM },
+    { x: SPAN_MM, y: -SPAN_MM },
+    { x: SPAN_MM, y: 0 },
+    { x: 0, y: 0 },
+  ]
+  return renamedFloor({
+    ...graph,
+    rooms: [
+      ...graph.rooms,
+      {
+        id: 'room:outside',
+        kind: 'room',
+        floorId: 'g',
+        polygon: corners,
+        clearPolygon: corners,
+        area: SPAN_MM * SPAN_MM,
+        ceilingHeight: CEILING_MM,
+      },
+    ],
+  })
+}
+
 const STUB_FLOOR_ID = 'g'
 const ENCLOSURE_DEPTH_MM = 3000
 const ENCLOSURE_RIGHT_MM = 6000
@@ -278,6 +307,32 @@ describe('createFramedSceneReconciler near-wall fade enrollment', () => {
     // Orbiting back inside restores the appearance the wall was built with, not the
     // faded state the rebuild happened to find it in.
     restoreNearWallTransparency(second.nearWallTargets)
+    expect(opacitiesOf(southWall)).toEqual(solid)
+  })
+
+  it('restores a wall that leaves the enrollment set while it is faded', () => {
+    const reconciler = createFramedSceneReconciler()
+    const paint = emptyPaint()
+    const graph = squareRoomWithSouthWindow()
+    const first = reconciler.reconcile(graph, paint)
+
+    const southWall = findByEntityId(first.root, 'wall:s')
+    expect(southWall).not.toBeNull()
+    const solid = opacitiesOf(southWall)
+    expect(solid).not.toContain(FADED_OPACITY)
+
+    // Orbit outside the south wall, leaving its materials sitting at the fade opacity.
+    updateNearWallTransparency(first.nearWallTargets, CAMERA_OUTSIDE_SOUTH)
+    expect(opacitiesOf(southWall)).toEqual([FADED_OPACITY])
+
+    // An edit that puts a room on the far side of the south wall reclassifies it as an
+    // interior partition, so it drops out of enrollment while its meshes stay in the scene.
+    const second = reconciler.reconcile(roomAddedOutsideSouthWall(graph), paint)
+    expect(findByEntityId(second.root, 'wall:s')).toBe(southWall)
+    expect(opacitiesOf(southWall)).toEqual([FADED_OPACITY])
+
+    // Nothing enrolled can restore the wall now, so the sweep over what left the set has to.
+    restoreUnenrolledNearWallTargets(first.nearWallTargets, second.nearWallTargets)
     expect(opacitiesOf(southWall)).toEqual(solid)
   })
 })
