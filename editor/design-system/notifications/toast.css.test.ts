@@ -94,3 +94,22 @@ describe('the Arris toast custody warning', () => {
     ).toBe(false)
   })
 })
+
+// Layout Blue exists as lines and glyphs in an enumerated set of roles, and nothing
+// else borrows it (the Arris spec, section 5). A notification's action is a word the
+// user has to read and act on, which puts it in the 7:1 body tier rather than the 3:1
+// accent tier, so it is stamped plainly in ink. The dismiss control keeps the
+// secondary tier, since its meaning survives on position and its label.
+
+describe('the Arris toast action', () => {
+  it('stamps the action label in ink rather than borrowing the accent', () => {
+    const action = arris('.ds-toast__action')
+
+    expect(action).toContain('color: var(--color-text)')
+    expect(action).not.toContain('var(--color-accent)')
+  })
+
+  it('holds the dismiss control at the secondary tier', () => {
+    expect(arris('.ds-toast__dismiss')).toContain('color: var(--color-ink-secondary)')
+  })
+})
