@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   SAMPLE_RADIUS_PX,
   createCanvasPixelReader,
@@ -193,13 +193,82 @@ describe('sampleRenderedColor', () => {
   })
 })
 
-describe('createCanvasPixelReader', () => {
-  it('returns null when a 2D context cannot be obtained', () => {
-    // jsdom has no canvas backend, so getContext('2d') yields null here. The populated
-    // path (a real reader backed by a live 2D context drawing the WebGPU canvas) is
-    // browser-only glue, proven at the end-to-end tier instead.
-    const canvas = document.createElement('canvas')
+interface FakeSourceCanvas {
+  width: number
+  height: number
+  getContext(contextId: string): null
+}
 
-    expect(createCanvasPixelReader(canvas)).toBeNull()
+/**
+ * A stand-in for the live view's canvas. That canvas already holds a WebGL context,
+ * so a 2D request on it always comes back null; refusing one here proves the reader
+ * never depends on getting a 2D context out of the canvas it samples.
+ */
+function createFakeSourceCanvas(width: number, height: number): FakeSourceCanvas {
+  return { width, height, getContext: () => null }
+}
+
+/**
+ * Stands in for the scratch canvas the reader draws onto, since jsdom has no 2D
+ * backend of its own. Returns the argument list of every `drawImage` call the reader
+ * makes, so a test can check which rectangle was copied off the source canvas.
+ */
+function stubScratchCanvas(bytes: Uint8ClampedArray): unknown[][] {
+  const drawImageCalls: unknown[][] = []
+  const context = {
+    drawImage: (...args: unknown[]): void => {
+      drawImageCalls.push(args)
+    },
+    getImageData: (): { data: Uint8ClampedArray } => ({ data: bytes }),
+  }
+  const scratch = {
+    width: 0,
+    height: 0,
+    getContext: (contextId: string): unknown => (contextId === '2d' ? context : null),
+  }
+  vi.spyOn(document, 'createElement').mockReturnValue(scratch as unknown as HTMLCanvasElement)
+  return drawImageCalls
+}
+
+describe('createCanvasPixelReader', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('reads pixels through a scratch canvas when the source canvas refuses a 2D context', () => {
+    const bytes = new Uint8ClampedArray([12, 34, 56, 255])
+    stubScratchCanvas(bytes)
+    const source = createFakeSourceCanvas(100, 80)
+
+    const reader = createCanvasPixelReader(source as unknown as HTMLCanvasElement)
+
+    expect(reader.readPixels(10, 20, 1, 1)).toEqual(bytes)
+  })
+
+  it('copies the requested rectangle off the source canvas onto the scratch canvas', () => {
+    const drawImageCalls = stubScratchCanvas(new Uint8ClampedArray(3 * 3 * 4))
+    const canvas = createFakeSourceCanvas(100, 80) as unknown as HTMLCanvasElement
+
+    createCanvasPixelReader(canvas).readPixels(10, 20, 3, 3)
+
+    expect(drawImageCalls).toEqual([[canvas, 10, 20, 3, 3, 0, 0, 3, 3]])
+  })
+
+  it('reports the canvas dimensions it has right now, not the ones it had when built', () => {
+    // The sampler keeps one reader per canvas identity, so a reader that snapshotted
+    // the extents when it was built would go on mapping NDC through the pre-resize
+    // size and silently sample the wrong pixel for the rest of the session.
+    stubScratchCanvas(new Uint8ClampedArray([0, 0, 0, 255]))
+    const source = createFakeSourceCanvas(100, 80)
+
+    const reader = createCanvasPixelReader(source as unknown as HTMLCanvasElement)
+    expect(reader.width).toBe(100)
+    expect(reader.height).toBe(80)
+
+    source.width = 640
+    source.height = 360
+
+    expect(reader.width).toBe(640)
+    expect(reader.height).toBe(360)
   })
 })
