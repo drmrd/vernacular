@@ -49,8 +49,12 @@
   font-size: var(--font-size-sm);
 }
 
+/* The label takes the reversed on-fill role rather than the ordinary text ink: this
+   language resolves the two to the same color, and Arris reverses the label to the
+   ground so a full ink impression stays readable (the Arris spec, section 8). */
 .project-menu__row:hover {
   background: var(--color-surface-active);
+  color: var(--color-on-surface-active);
 }
 
 /*
@@ -63,4 +67,33 @@
   border-width: var(--border-width-resting);
   border-radius: var(--radius-sm);
   box-shadow: var(--elevation-raised);
+}
+
+/* The trigger is deliberately slim and borderless. The Arris icon button draws its
+   impression into a pseudo-element (ADR-0163), which would otherwise hand this
+   trigger the bordered box the idiom does without. */
+[data-design-language='arris'] .project-menu__trigger-shape::before {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* A row is cut from the surface it sits on, so its impression keeps the surface
+   material and drops the border the Arris button family draws behind it. */
+[data-design-language='arris'] .project-menu__row::before {
+  border-color: transparent;
+  background: var(--color-surface-raised);
+  transition: border-color var(--motion-duration) var(--motion-easing);
+}
+
+/* Hover brightens a border and never blooms a glow (the Arris spec, section 8), so the
+   fill goes away and the label is restated with it: the reversal above is still in
+   force at a lower specificity and would leave ink on its own ground (ADR-0163). */
+[data-design-language='arris'] .project-menu__row:hover {
+  background: transparent;
+  color: var(--color-text);
+}
+
+[data-design-language='arris'] .project-menu__row:hover::before {
+  border-width: var(--border-width-active);
+  border-color: var(--color-border);
 }
