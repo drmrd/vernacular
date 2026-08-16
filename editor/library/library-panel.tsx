@@ -22,11 +22,19 @@ export interface LibraryPanelProps {
   onPick: (item: LibraryItem) => void
   onImport: () => void
   armed?: LibraryItem | null
+  /** Whether an asset source is available to receive an imported model. */
+  canImport?: boolean
+  /** Changing this re-lists the registry, so a just-imported item appears without a reopen. */
+  libraryRevision?: number
 }
 
-// Load the registry's library items once, guarding against a state update after
-// the panel unmounts. A null result marks the still-loading state.
-function useLibraryItems(registry: AssetRegistry): LibraryItem[] | null {
+const IMPORT_LABEL = 'Import a 3D model'
+
+// Load the registry's library items, guarding against a state update after the
+// panel unmounts. A null result marks the still-loading state. Re-lists whenever
+// the registry identity or the revision changes, keeping the items already shown
+// on screen while the fresh listing arrives.
+function useLibraryItems(registry: AssetRegistry, revision: number): LibraryItem[] | null {
   const [items, setItems] = useState<LibraryItem[] | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -38,7 +46,7 @@ function useLibraryItems(registry: AssetRegistry): LibraryItem[] | null {
     return () => {
       cancelled = true
     }
-  }, [registry])
+  }, [registry, revision])
   return items
 }
 
@@ -194,13 +202,13 @@ function LibraryBody({ items, onPick, armed }: LibraryBodyProps): ReactElement |
 }
 
 export function LibraryPanel(props: LibraryPanelProps): ReactElement {
-  const { onPick, onImport, armed = null } = props
+  const { onPick, onImport, armed = null, canImport = true, libraryRevision = 0 } = props
   const registry = useAssetRegistry()
-  const items = useLibraryItems(registry)
+  const items = useLibraryItems(registry, libraryRevision)
   return (
     <section className="library-panel ds-menu-surface" aria-label="Furniture library">
-      <Button className="library-panel__import" onClick={onImport}>
-        Import GLB
+      <Button className="library-panel__import" onClick={onImport} disabled={!canImport}>
+        {IMPORT_LABEL}
       </Button>
       <LibraryBody items={items} onPick={onPick} armed={armed} />
     </section>
