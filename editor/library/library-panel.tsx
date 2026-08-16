@@ -28,8 +28,6 @@ export interface LibraryPanelProps {
   libraryRevision?: number
 }
 
-const IMPORT_LABEL = 'Import a 3D model'
-
 // Load the registry's library items, guarding against a state update after the
 // panel unmounts. A null result marks the still-loading state. Re-lists whenever
 // the registry identity or the revision changes, keeping the items already shown
@@ -52,6 +50,9 @@ function useLibraryItems(registry: AssetRegistry, revision: number): LibraryItem
 
 const EMPTY_MESSAGE = 'Your library is empty'
 const LOADING_MESSAGE = 'Loading furniture...'
+// The picker's accept filter carries the format detail, so the action names the
+// outcome rather than the container.
+const IMPORT_LABEL = 'Import a 3D model'
 
 interface LibraryGridProps {
   items: LibraryItem[]
