@@ -15,7 +15,9 @@ import { AssetRegistryProvider } from '../../bridge/react/asset-registry-context
 import { UserAssetSourceProvider } from '../../bridge/react/user-asset-source-context'
 import { NotificationProvider, ToastRegion } from '../design-system'
 import { ActiveToolContext, type ToolId } from '../tools/active-tool-context'
+import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 
+import { MID_CENTURY_CHAIR_NAME, stockedRegistry } from './library-test-support'
 import { LibraryLauncherPanel } from './library-launcher-panel'
 
 const GLB_BYTES = Uint8Array.of(0x67, 0x6c, 0x54, 0x46, 1, 0, 0, 0, 9, 9, 9)
@@ -53,7 +55,9 @@ function renderConnectedPanel(options: HarnessOptions = {}): void {
   const panel = (
     <AssetRegistryProvider registry={registry}>
       <ActiveToolContext.Provider value={{ tool, setTool: vi.fn() }}>
-        <LibraryLauncherPanel />
+        <FurniturePlacementProvider>
+          <LibraryLauncherPanel />
+        </FurniturePlacementProvider>
       </ActiveToolContext.Provider>
     </AssetRegistryProvider>
   )
@@ -116,5 +120,40 @@ describe('LibraryLauncherPanel import feedback', () => {
     await openPanel(user)
 
     expect(screen.getByRole('button', { name: IMPORT_ACTION })).toBeEnabled()
+  })
+})
+
+const PLACEMENT_HINT = /click the canvas to place/i
+
+async function armFirstItem(user: UserEvent): Promise<void> {
+  await openPanel(user)
+  await user.click(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME }))
+}
+
+describe('LibraryLauncherPanel placement hint', () => {
+  it('prompts for the canvas click while the place-furniture tool is active', async () => {
+    const user = userEvent.setup()
+    renderConnectedPanel({ registry: stockedRegistry(), tool: 'place-furniture' })
+
+    await armFirstItem(user)
+
+    expect(screen.getByText(PLACEMENT_HINT)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('drops the prompt and the pressed row once another tool takes over', async () => {
+    const user = userEvent.setup()
+    renderConnectedPanel({ registry: stockedRegistry(), tool: 'select' })
+
+    await armFirstItem(user)
+
+    expect(screen.queryByText(PLACEMENT_HINT)).toBeNull()
+    expect(screen.getByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 })

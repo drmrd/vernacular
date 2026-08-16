@@ -1,36 +1,20 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AssetRegistry, type AssetSource, type LibraryItem } from '../../storage'
+import { AssetRegistry, type LibraryItem } from '../../storage'
 import { AssetRegistryProvider } from '../../bridge/react/asset-registry-context'
-import type { AssetKind } from '../../core'
+import {
+  MID_CENTURY_CHAIR_NAME,
+  PACK_SCOPE,
+  libraryItem,
+  listingSource,
+} from './library-test-support'
 import { LibraryPanel } from './library-panel'
 
-const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
-const PACK_ITEM_NAME = 'Mid-century chair'
+const PACK_ITEM_NAME = MID_CENTURY_CHAIR_NAME
 const USER_ITEM_NAME = 'Inherited armchair'
 const EMPTY_STATE = 'Your library is empty'
 const IMPORT_ACTION = /import a 3d model/i
-
-const FOOTPRINT_WIDTH_MM = 600
-const FOOTPRINT_DEPTH_MM = 600
-
-function libraryItem(overrides: Partial<LibraryItem> = {}): LibraryItem {
-  return {
-    reference: { scope: PACK_SCOPE, contentHash: 'h1' },
-    name: PACK_ITEM_NAME,
-    kind: 'furniture' as AssetKind,
-    categories: ['seating'],
-    eras: ['mid-century'],
-    footprint: { width: FOOTPRINT_WIDTH_MM, depth: FOOTPRINT_DEPTH_MM },
-    height: 750,
-    ...overrides,
-  }
-}
-
-function listingSource(id: string, items: LibraryItem[]): AssetSource {
-  return { id, read: async () => undefined, list: async () => items }
-}
 
 function registryOf(packItems: LibraryItem[], userItems: LibraryItem[]): AssetRegistry {
   return new AssetRegistry([
@@ -285,6 +269,21 @@ describe('LibraryPanel thumbnail placeholders', () => {
 })
 
 describe('LibraryPanel placement feedback', () => {
+  it('names the key that turns the ghost while the placement hint shows', async () => {
+    const armed = libraryItem({
+      name: EAMES_NAME,
+      reference: { scope: PACK_SCOPE, contentHash: 'p1' },
+    })
+    render(
+      <AssetRegistryProvider registry={packAndUserRegistry()}>
+        <LibraryPanel onPick={vi.fn()} onImport={vi.fn()} armed={armed} />
+      </AssetRegistryProvider>,
+    )
+    await screen.findByRole('button', { name: EAMES_NAME })
+
+    expect(screen.getByText(/\bR to rotate\b/)).toBeInTheDocument()
+  })
+
   it('captions the armed item and marks only its button pressed', async () => {
     const armed = libraryItem({
       name: EAMES_NAME,

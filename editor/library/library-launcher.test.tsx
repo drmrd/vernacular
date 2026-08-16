@@ -3,7 +3,12 @@ import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AssetRegistry } from '../../storage'
 import { AssetRegistryProvider } from '../../bridge/react/asset-registry-context'
-import { MID_CENTURY_CHAIR, VICTORIAN_TABLE, stockedRegistry } from './library-item-fixtures'
+import {
+  MID_CENTURY_CHAIR_NAME,
+  VICTORIAN_TABLE_NAME,
+  searchBox,
+  stockedRegistry,
+} from './library-test-support'
 import { LibraryLauncher } from './library-launcher'
 
 const SEARCH_TERM = 'chair'
@@ -14,10 +19,6 @@ function renderLauncher(registry: AssetRegistry = new AssetRegistry([])): void {
       <LibraryLauncher onPick={vi.fn()} onImport={vi.fn()} />
     </AssetRegistryProvider>,
   )
-}
-
-function searchBox(): HTMLElement {
-  return screen.getByRole('searchbox', { name: /search furniture/i })
 }
 
 function furnitureTrigger(): HTMLElement {
@@ -67,7 +68,7 @@ describe('LibraryLauncher browsing state', () => {
     const user = userEvent.setup()
     renderLauncher(stockedRegistry())
     await user.click(furnitureTrigger())
-    await screen.findByRole('button', { name: MID_CENTURY_CHAIR })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
     await user.type(searchBox(), SEARCH_TERM)
 
     await user.click(furnitureTrigger())
@@ -82,13 +83,13 @@ describe('LibraryLauncher browsing state', () => {
     const user = userEvent.setup()
     renderLauncher(stockedRegistry())
     await user.click(furnitureTrigger())
-    await screen.findByRole('button', { name: MID_CENTURY_CHAIR })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
     await user.click(screen.getByRole('button', { name: 'victorian' }))
 
     await user.click(furnitureTrigger())
     await user.click(furnitureTrigger())
 
-    expect(await screen.findByRole('button', { name: VICTORIAN_TABLE })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: MID_CENTURY_CHAIR })).toBeNull()
+    expect(await screen.findByRole('button', { name: VICTORIAN_TABLE_NAME })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toBeNull()
   })
 })

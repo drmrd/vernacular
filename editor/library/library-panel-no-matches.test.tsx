@@ -5,7 +5,12 @@ import userEvent from '@testing-library/user-event'
 import { AssetRegistry } from '../../storage'
 import { AssetRegistryProvider } from '../../bridge/react/asset-registry-context'
 
-import { MID_CENTURY_CHAIR, VICTORIAN_TABLE, stockedRegistry } from './library-item-fixtures'
+import {
+  MID_CENTURY_CHAIR_NAME,
+  VICTORIAN_TABLE_NAME,
+  searchBox,
+  stockedRegistry,
+} from './library-test-support'
 import { LibraryPanel } from './library-panel'
 
 const EMPTY_LIBRARY = 'Your library is empty'
@@ -21,17 +26,13 @@ function renderPanel(registry: AssetRegistry = stockedRegistry()): void {
   )
 }
 
-function searchBox(): HTMLElement {
-  return screen.getByRole('searchbox', { name: /search furniture/i })
-}
-
 afterEach(cleanup)
 
 describe('LibraryPanel with a filter that matches nothing', () => {
   it('names the active filters instead of leaving a bare gap', async () => {
     const user = userEvent.setup()
     renderPanel()
-    await screen.findByRole('button', { name: MID_CENTURY_CHAIR })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
 
     await user.type(searchBox(), UNMATCHED_TERM)
 
@@ -42,7 +43,7 @@ describe('LibraryPanel with a filter that matches nothing', () => {
   it('keeps the filter controls reachable so the search can be edited in place', async () => {
     const user = userEvent.setup()
     renderPanel()
-    await screen.findByRole('button', { name: MID_CENTURY_CHAIR })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
 
     await user.type(searchBox(), UNMATCHED_TERM)
 
@@ -52,20 +53,20 @@ describe('LibraryPanel with a filter that matches nothing', () => {
   it('restores the whole library and empties the search when the clear action is used', async () => {
     const user = userEvent.setup()
     renderPanel()
-    await screen.findByRole('button', { name: MID_CENTURY_CHAIR })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
     await user.type(searchBox(), UNMATCHED_TERM)
 
     await user.click(screen.getByRole('button', { name: CLEAR_FILTERS }))
 
-    expect(await screen.findByRole('button', { name: MID_CENTURY_CHAIR })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: VICTORIAN_TABLE })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: VICTORIAN_TABLE_NAME })).toBeInTheDocument()
     expect(searchBox()).toHaveValue('')
   })
 
   it('names every active filter when a chip and the search rule each other out', async () => {
     const user = userEvent.setup()
     renderPanel()
-    await screen.findByRole('button', { name: MID_CENTURY_CHAIR })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
 
     await user.type(searchBox(), 'oak')
     await user.click(screen.getByRole('button', { name: 'mid-century' }))
