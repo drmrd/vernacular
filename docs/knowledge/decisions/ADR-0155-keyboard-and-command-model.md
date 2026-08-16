@@ -102,3 +102,13 @@ proposed status.
 - `docs/specs/2026-06-01-vernacular-design.md`: the governing design specification.
 - GitHub follow-ups this model depends on: issue #497 (scoped Tab under screen readers), issue #498
   (chord-deliverability audit), issue #496 (numeric storage model).
+
+## Update (2026-08-17): phantom shell hints removed
+
+Issue #561 found that the editor shell's Grid and Dimensions toolbar buttons carried
+tooltip text reading "Grid (G)" and "Dimensions (D)", which implied G and D keybindings
+that were never registered. The fix drops those parenthetical hints, so the buttons now
+read "Grid" and "Dimensions" with no shortcut claim. This only cleans up stale UI text;
+it does not decide anything about the keyboard model itself. Any future G or D binding
+still has to clear this ADR's chord-deliverability audit before it can be promoted, and
+only then would it belong back on the toolbar.
