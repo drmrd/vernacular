@@ -98,6 +98,30 @@ export interface ProjectActionsContext {
   reportSaved?: () => void
 }
 
+/** The unsaved-work half of an actions context: what the discard guard reads. */
+export interface DiscardGuardSeam {
+  isDirty: boolean | undefined
+  confirmDiscard: (() => boolean | Promise<boolean>) | undefined
+}
+
+/**
+ * Replace the live session behind the ADR-0104 unsaved-work prompt. Every action
+ * that swaps the session (New, Open folder, Open recent, Open file, restore)
+ * routes through here, so one destructive click prompts at most once. A context
+ * carrying neither half of the seam (hook-level tests, hosts that track no dirty
+ * state) reads as clean and runs the swap straight away.
+ */
+export function guardSessionSwap(
+  seam: DiscardGuardSeam,
+  run: () => void | Promise<void>,
+): Promise<void> {
+  return guardDestructive({
+    isDirty: seam.isDirty ?? false,
+    confirm: seam.confirmDiscard ?? (() => true),
+    run,
+  })
+}
+
 // Runs an async file operation and, on failure, raises an error toast whose
 // Retry re-invokes the same operation through this helper (so Retry retries).
 // The action label produces the unified "<Action> failed: <reason>" prefix.
@@ -190,11 +214,9 @@ function useNewProjectAction(context: ProjectActionsContext): () => void | Promi
   const { onSession, isDirty, confirmDiscard } = context
   return useCallback(
     () =>
-      guardDestructive({
-        isDirty: isDirty ?? false,
-        confirm: confirmDiscard ?? (() => true),
-        run: () => onSession(createEditorSession(createInitialProject())),
-      }),
+      guardSessionSwap({ isDirty, confirmDiscard }, () =>
+        onSession(createEditorSession(createInitialProject())),
+      ),
     [onSession, isDirty, confirmDiscard],
   )
 }
@@ -205,24 +227,18 @@ function useOpenFolderAction(context: ProjectActionsContext): { onOpenFolder?: (
   const { projectId, recentProjects, capabilities, onSession, notifications } = context
   const { isDirty, confirmDiscard } = context
   const onOpenFolder = useCallback(() => {
-    void guardDestructive({
-      isDirty: isDirty ?? false,
-      confirm: confirmDiscard ?? (() => true),
-      run: () =>
-        runWithErrorToast(notifications, 'Open', async () => {
-          const store = await FileSystemFolderProjectStore.open(
-            projectId,
-            new DirectoryHandleStore(),
-          )
-          const project = await store.load(projectId)
-          onSession(createEditorSession(project))
-          recordRecent(recentProjects, {
-            id: projectId,
-            name: project.meta.name,
-            backend: 'file-system-folder',
-          })
-        }),
-    })
+    void guardSessionSwap({ isDirty, confirmDiscard }, () =>
+      runWithErrorToast(notifications, 'Open', async () => {
+        const store = await FileSystemFolderProjectStore.open(projectId, new DirectoryHandleStore())
+        const project = await store.load(projectId)
+        onSession(createEditorSession(project))
+        recordRecent(recentProjects, {
+          id: projectId,
+          name: project.meta.name,
+          backend: 'file-system-folder',
+        })
+      }),
+    )
   }, [projectId, recentProjects, onSession, notifications, isDirty, confirmDiscard])
   return capabilities.fileSystemAccess ? { onOpenFolder } : {}
 }
@@ -234,22 +250,18 @@ function useOpenRecentAction(context: ProjectActionsContext): (id: string) => vo
     (id: string) => {
       // Guarding here rather than inside each branch keeps the prompt to one per
       // click: openFolderRecent is only ever reached through this handler.
-      void guardDestructive({
-        isDirty: isDirty ?? false,
-        confirm: confirmDiscard ?? (() => true),
-        run: () => {
-          const entry = recentEntries.find((candidate) => candidate.id === id)
-          if (entry?.backend === 'file-system-folder') {
-            openFolderRecent({ id, projectId, onSession, fallback: store, notifications })
-            return
-          }
-          // OPFS, zip-bundle, or no recorded backend route through the default store
-          // load; per-backend reopen for the others is deferred (plan Open questions).
-          runWithErrorToast(notifications, 'Open', async () => {
-            const project = await store.load(id)
-            onSession(createEditorSession(project))
-          })
-        },
+      void guardSessionSwap({ isDirty, confirmDiscard }, () => {
+        const entry = recentEntries.find((candidate) => candidate.id === id)
+        if (entry?.backend === 'file-system-folder') {
+          openFolderRecent({ id, projectId, onSession, fallback: store, notifications })
+          return
+        }
+        // OPFS, zip-bundle, or no recorded backend route through the default store
+        // load; per-backend reopen for the others is deferred (plan Open questions).
+        runWithErrorToast(notifications, 'Open', async () => {
+          const project = await store.load(id)
+          onSession(createEditorSession(project))
+        })
       })
     },
     [store, projectId, recentEntries, onSession, notifications, isDirty, confirmDiscard],
