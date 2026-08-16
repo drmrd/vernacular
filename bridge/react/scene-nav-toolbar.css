@@ -82,11 +82,14 @@
 
 /* The active mode is marked by the brass indicator, matching the pressed state of
    the 2D shell's icon buttons. The transparent baseline border keeps the segment
-   the same size whether or not it carries the indicator. */
+   the same size whether or not it carries the indicator. The label takes the
+   reversed on-fill role rather than the ordinary text ink: this language resolves
+   the two to the same color, and Arris reverses the label to the ground so a full
+   ink impression stays readable. */
 .scene-nav-toolbar__mode[aria-pressed='true'] {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .scene-nav-toolbar__mode:focus-visible {
@@ -133,15 +136,16 @@
 
 .scene-nav-toolbar__btn:hover:not(:disabled) {
   background: var(--color-surface-active);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 /* A pressed toggle button (such as the click-select toggle) carries the brass
-   indicator, matching the active mode segment and the 2D shell's pressed icon buttons. */
+   indicator, matching the active mode segment and the 2D shell's pressed icon buttons.
+   Its label reverses onto the fill for the same reason the mode segment's does. */
 .scene-nav-toolbar__btn[aria-pressed='true'] {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .scene-nav-toolbar__btn:focus-visible {
