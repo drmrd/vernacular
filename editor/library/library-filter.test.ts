@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LibraryItem } from '../../storage'
 import {
   DEFAULT_FILTERS,
+  activeFilterLabels,
   distinctStyles,
   nextStyle,
   visibleLibraryItems,
@@ -66,5 +67,35 @@ describe('visibleLibraryItems style filtering', () => {
   it('keeps only items declaring the selected style', () => {
     const filters: LibraryFilters = { ...DEFAULT_FILTERS, style: 'queen-anne' }
     expect(visibleLibraryItems(items, filters)).toEqual([QUEEN_ANNE_CHAIR])
+  })
+})
+
+describe('activeFilterLabels', () => {
+  it('names no filter when every control sits at its default', () => {
+    expect(activeFilterLabels(DEFAULT_FILTERS)).toEqual([])
+  })
+
+  it('quotes the search term so the reader recognizes what they typed', () => {
+    expect(activeFilterLabels({ ...DEFAULT_FILTERS, query: 'chair' })).toEqual(['search "chair"'])
+  })
+
+  it('names the chosen source by the label on its control', () => {
+    expect(activeFilterLabels({ ...DEFAULT_FILTERS, source: 'yours' })).toEqual(['source Yours'])
+  })
+
+  it('names an active era and style alongside the other choices in control order', () => {
+    const filters: LibraryFilters = {
+      query: 'settle',
+      source: 'sample',
+      era: 'victorian',
+      style: 'queen-anne',
+    }
+
+    expect(activeFilterLabels(filters)).toEqual([
+      'search "settle"',
+      'source Sample',
+      'era victorian',
+      'style queen-anne',
+    ])
   })
 })
