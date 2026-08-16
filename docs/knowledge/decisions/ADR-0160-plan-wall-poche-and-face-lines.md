@@ -189,8 +189,9 @@ three: no profile, or a profile id the registry does not carry, still resolves t
 thickness. Three was the count of neighbours that should have followed the ink, not the count
 of raw `thickness` readers left in the tree. Wall topology still nodes the arrangement from the
 raw figure on purpose (`editor/plan/draw-plan.ts`, `core/topology/rooms.ts`), which is what
-decision 5 above describes; the walker's standoff in `core/scene/walk-collision.ts` reads raw
-against 3D walls that render at the assembly total, and that mismatch is issue #552.
+decision 5 above describes; the walker's standoff in `core/scene/walk-collision.ts` read raw
+against 3D walls that render at the assembly total. That mismatch was issue #552, fixed on
+2026-08-17: the walker now stands off the same resolved assembly face (see ADR-0135's update).
 
 `hostThickness` was the one worth tracing before moving it, since the scene graph feeds 3D as
 well as the page. Nothing in `engine/` or `bridge/` reads it. The 3D wall builder sizes its
@@ -235,5 +236,5 @@ longer outruns the wall it breaks. Issue #550 is closed.
   onto the construction-profile thickness the drawn symbol now uses).
 - Issue #550 (bring the SVG plan export's wall stroke onto the same resolver, so an exported
   opening gap stops outrunning the wall it breaks).
-- Issue #552 (the walk-mode collision standoff, which still stands the walker off a raw
-  half-thickness from walls the 3D view renders at the assembly total).
+- Issue #552 (the walk-mode collision standoff, fixed on 2026-08-17: the walker now stands
+  off the resolved assembly face the 3D view renders; ADR-0135 carries the record).
