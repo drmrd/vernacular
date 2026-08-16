@@ -3,6 +3,7 @@ import { useState, type ReactElement } from 'react'
 import { Button } from '../design-system'
 import type { LibraryItem } from '../../storage'
 
+import { DEFAULT_FILTERS, type LibraryFilters } from './library-filter'
 import { LibraryPanel } from './library-panel'
 
 import './library-launcher.css'
@@ -23,6 +24,9 @@ export interface LibraryLauncherProps {
 export function LibraryLauncher(props: LibraryLauncherProps): ReactElement {
   const { onPick, onImport, armed, canImport = true, libraryRevision = 0 } = props
   const [open, setOpen] = useState(false)
+  // Held here rather than in the panel: the panel unmounts on every close, and a
+  // search term the user typed should still be there when they come back.
+  const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS)
   return (
     <div className="library-launcher">
       <Button
@@ -39,6 +43,8 @@ export function LibraryLauncher(props: LibraryLauncherProps): ReactElement {
           armed={armed ?? null}
           canImport={canImport}
           libraryRevision={libraryRevision}
+          filters={filters}
+          onFiltersChange={setFilters}
         />
       ) : null}
     </div>

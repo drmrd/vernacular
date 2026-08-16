@@ -20,6 +20,34 @@ export const DEFAULT_FILTERS: LibraryFilters = {
   style: NO_STYLE,
 }
 
+const ALL_SOURCES: SourceFilter = 'all'
+
+const SOURCE_LABELS: Record<SourceFilter, string> = {
+  all: 'All',
+  sample: 'Sample',
+  yours: 'Yours',
+}
+
+// Each filter that is narrowing the list, named the way its own control reads
+// and ordered as the controls are, so a listing with nothing in it can say what
+// is holding the items back.
+export function activeFilterLabels(filters: LibraryFilters): string[] {
+  const labels: string[] = []
+  if (filters.query !== EMPTY_QUERY) {
+    labels.push(`search "${filters.query}"`)
+  }
+  if (filters.source !== ALL_SOURCES) {
+    labels.push(`source ${SOURCE_LABELS[filters.source]}`)
+  }
+  if (filters.era !== NO_ERA) {
+    labels.push(`era ${filters.era}`)
+  }
+  if (filters.style !== NO_STYLE) {
+    labels.push(`style ${filters.style}`)
+  }
+  return labels
+}
+
 // The distinct eras across the loaded items, de-duplicated and sorted, so the
 // era chips read in a stable order.
 export function distinctEras(items: LibraryItem[]): string[] {
