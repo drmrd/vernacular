@@ -44,6 +44,12 @@ const MISSING_LOCATION_NOTICE =
 const MISSING_TIMEZONE_NOTICE =
   'The site has no timezone, so solar time is estimated from its longitude. Set the timezone in the Site panel for exact sun angles.'
 
+// Shown in schematic mode, where the fixed rig ignores the sun: the observation instant and
+// the cloud cover reach `SceneLighting` but its schematic provider's update is a documented
+// no-op, so scrubbing them would change nothing. They go inert rather than lie.
+const SCHEMATIC_LIGHTING_NOTICE =
+  'Schematic lighting uses a fixed rig, so the observation time and cloud cover change nothing. Switch to realistic lighting to scrub the sun.'
+
 export interface EnvironmentPanelProps {
   site: Site | undefined
   environment: EnvironmentState
@@ -53,6 +59,8 @@ export interface EnvironmentPanelProps {
 interface ObservationControlProps {
   observedAt: ObservationInstant
   onObservationChange: (instant: ObservationInstant) => void
+  /** True in schematic mode, where the fixed rig ignores the observation instant. */
+  disabled: boolean
 }
 
 function LocationReadout({ site }: { site: Site | undefined }): ReactElement {
@@ -77,7 +85,11 @@ function EnvironmentNotices({
   site: Site | undefined
 }): ReactElement | null {
   if (mode !== 'realistic') {
-    return null
+    return (
+      <p role="status" aria-live="polite">
+        {SCHEMATIC_LIGHTING_NOTICE}
+      </p>
+    )
   }
   if (site?.latLong === undefined) {
     return (
@@ -116,6 +128,7 @@ function formatTimeOfDay(observedAt: ObservationInstant): string {
 function ObservationDateTimeControl({
   observedAt,
   onObservationChange,
+  disabled,
 }: ObservationControlProps): ReactElement {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
@@ -128,6 +141,7 @@ function ObservationDateTimeControl({
         id={OBSERVATION_DATE_TIME_INPUT_ID}
         type="datetime-local"
         value={observationInstantToIso(observedAt)}
+        disabled={disabled}
         onChange={handleChange}
       />
       <output>{formatObservationDateTime(observedAt)}</output>
@@ -139,6 +153,7 @@ function ObservationDateTimeControl({
 function TimeOfDaySlider({
   observedAt,
   onObservationChange,
+  disabled,
 }: ObservationControlProps): ReactElement {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onObservationChange({ date: observedAt.date, minutesSinceMidnight: Number(event.target.value) })
@@ -152,6 +167,7 @@ function TimeOfDaySlider({
         max={LAST_MINUTE_OF_DAY}
         value={observedAt.minutesSinceMidnight}
         aria-valuetext={formatTimeOfDay(observedAt)}
+        disabled={disabled}
         onChange={handleChange}
       />
     </Field>
@@ -161,10 +177,16 @@ function TimeOfDaySlider({
 interface CloudCoverDialProps {
   cloudCover: number
   onCloudCoverChange: (cloudCover: number) => void
+  /** True in schematic mode, where the fixed rig ignores the sky. */
+  disabled: boolean
 }
 
 /** The cloud-cover dial, with a live percentage readout announced through `aria-valuetext`. */
-function CloudCoverDial({ cloudCover, onCloudCoverChange }: CloudCoverDialProps): ReactElement {
+function CloudCoverDial({
+  cloudCover,
+  onCloudCoverChange,
+  disabled,
+}: CloudCoverDialProps): ReactElement {
   const percent = Math.round(cloudCover * PERCENT)
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onCloudCoverChange(Number(event.target.value))
@@ -179,6 +201,7 @@ function CloudCoverDial({ cloudCover, onCloudCoverChange }: CloudCoverDialProps)
         step={CLOUD_COVER_STEP}
         value={cloudCover}
         aria-valuetext={`${percent}%`}
+        disabled={disabled}
         onChange={handleChange}
       />
       <output>{percent}%</output>
@@ -218,12 +241,15 @@ interface EnvironmentPanelControlsProps {
 
 /**
  * The observation time, cloud-cover, and color-check controls, grouped so `EnvironmentPanel`
- * stays a thin composition of panel sections.
+ * stays a thin composition of panel sections. The sun controls go inert in schematic mode,
+ * where the fixed rig throws their values away; the color check stays live because it
+ * neutralizes either rig.
  */
 function EnvironmentPanelControls({
   environment,
   onEnvironmentChange,
 }: EnvironmentPanelControlsProps): ReactElement {
+  const sunControlsInert = environment.mode !== 'realistic'
   const handleObservationChange = (observedAt: ObservationInstant) => {
     onEnvironmentChange({ ...environment, observedAt })
   }
@@ -238,14 +264,17 @@ function EnvironmentPanelControls({
       <ObservationDateTimeControl
         observedAt={environment.observedAt}
         onObservationChange={handleObservationChange}
+        disabled={sunControlsInert}
       />
       <TimeOfDaySlider
         observedAt={environment.observedAt}
         onObservationChange={handleObservationChange}
+        disabled={sunControlsInert}
       />
       <CloudCoverDial
         cloudCover={environment.cloudCover}
         onCloudCoverChange={handleCloudCoverChange}
+        disabled={sunControlsInert}
       />
       <ColorCheckToggle
         colorCheck={environment.colorCheck}

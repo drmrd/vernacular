@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  type LightingMode,
   type OpeningSceneNode,
   type SceneGraph,
   type Site,
@@ -9,6 +10,7 @@ import {
 import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
+import { effectiveLightingMode } from './effective-lighting-mode'
 import { useEnvironmentSession } from './environment-session-context'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
@@ -314,14 +316,17 @@ interface SceneViewToolbarProps {
   onToggleEdgeOverlay: () => void
   viewEnvironment: SceneEnvironmentState
   canDoorway: boolean
+  lightingMode: LightingMode
 }
 
 // Feeds the navigation toolbar from the view's grouped session state: the camera
 // navigation, the building-view scope, the edge-overlay display option, and the
 // view-local color temperature, plus whether the doorway preset has a target. The
 // toolbar's own props stay flat so it can be exercised in isolation. The shared
-// environment session (mode, observation instant, cloud cover, color check) no longer
-// reaches the toolbar; it is read and written by the editor's Environment panel.
+// environment session (observation instant, cloud cover) is still written by the editor's
+// Environment panel; the toolbar sees only the two fields that decide whether the
+// color-temperature slider reaches the render, the effective lighting mode and the color
+// check.
 function SceneViewToolbar({
   nav,
   buildingView,
@@ -329,11 +334,14 @@ function SceneViewToolbar({
   onToggleEdgeOverlay,
   viewEnvironment,
   canDoorway,
+  lightingMode,
 }: SceneViewToolbarProps) {
   return (
     <SceneNavToolbar
       mode={nav.mode}
       onModeChange={nav.setMode}
+      lightingMode={lightingMode}
+      colorCheck={viewEnvironment.environment.colorCheck}
       selectionEnabled={nav.selectionEnabled}
       onToggleSelection={nav.toggleSelection}
       revealInterior={nav.revealInterior}
@@ -367,6 +375,9 @@ export function WebGPUSceneView() {
   const site = useProjectSite()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
   const doorwayOpening = useDoorwayOpening(graph.openings, selectedIds)
+  // The toolbar reads the mode the render resolves to, not the requested one, so a
+  // realistic request without a site location keeps the schematic controls live.
+  const lightingMode = effectiveLightingMode(viewEnvironment.environment.mode === 'realistic', site)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -377,6 +388,7 @@ export function WebGPUSceneView() {
         onToggleEdgeOverlay={toggleEdgeOverlay}
         viewEnvironment={viewEnvironment}
         canDoorway={doorwayOpening !== null}
+        lightingMode={lightingMode}
       />
       <ScenePaneShell mode={nav.mode}>
         <LiveSceneCanvas

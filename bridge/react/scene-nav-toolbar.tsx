@@ -1,4 +1,4 @@
-import type { CameraPreset } from '../../core'
+import type { CameraPreset, LightingMode } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
 import { SceneDisplayOptions } from './scene-display-options'
@@ -34,6 +34,10 @@ interface SceneNavToolbarProps {
   onReset: () => void
   colorTemperatureK: number
   onColorTemperatureChange: (kelvin: number) => void
+  // The mode the view actually renders in, not the requested one, so a realistic request
+  // that fell back to schematic keeps the color-temperature slider live.
+  lightingMode?: LightingMode
+  colorCheck?: boolean
   selectionEnabled?: boolean
   onToggleSelection?: () => void
   revealInterior?: boolean
@@ -227,6 +231,8 @@ export function SceneNavToolbar({
   onReset,
   colorTemperatureK,
   onColorTemperatureChange,
+  lightingMode = 'schematic',
+  colorCheck = false,
   selectionEnabled = false,
   onToggleSelection = () => {},
   revealInterior = true,
@@ -260,6 +266,8 @@ export function SceneNavToolbar({
       <EnvironmentControls
         colorTemperatureK={colorTemperatureK}
         onColorTemperatureChange={onColorTemperatureChange}
+        lightingMode={lightingMode}
+        colorCheck={colorCheck}
       />
     </div>
   )
