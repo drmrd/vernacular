@@ -209,11 +209,14 @@ describe('AppFrame docked width', () => {
     separator.focus()
     await user.keyboard('{ArrowRight}')
 
+    // One step up from the resize model's initial 15rem. Under Arris the pane was
+    // rendering at the wider docked default, so this first step visibly narrows it:
+    // the resize model does not know the language set the width it started from.
     expect(
       screen
         .getByRole('complementary', { name: 'Inspector' })
         .style.getPropertyValue('--ds-inspector-size'),
-    ).toMatch(/^\d+(\.\d+)?rem$/)
+    ).toBe('16rem')
   })
 
   it('leaves the tool rail on its own width, which the docked-panel default does not govern', () => {

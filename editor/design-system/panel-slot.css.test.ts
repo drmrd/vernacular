@@ -41,6 +41,7 @@ describe('panel-slot.css under Arris', () => {
     // is nothing to separate. The adjacent-sibling combinator is what rules that
     // out, so the separation may not be expressed as a plain rule on every slot.
     const everySlot = bodyOf(`${ARRIS_SCOPE} .ds-panel-slot`)
+    expect(everySlot, 'no Arris-scoped rule reaches the panel slot').not.toBe('')
     expect(everySlot).not.toMatch(/border-top:/)
   })
 

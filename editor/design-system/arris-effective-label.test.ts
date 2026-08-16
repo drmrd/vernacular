@@ -46,6 +46,13 @@ interface Probe {
   stylesheet: string
   base: string
   state: string
+  /**
+   * A second state the control carries at the same time. A control in two states at
+   * once is matched by the rules for each state separately as well as by the rule for
+   * both, and leaving the single-state rules out of the candidate set hides the case
+   * where one of them outranks the combination and wins a property nobody meant it to.
+   */
+  also?: string
 }
 
 const PROBES: Probe[] = [
@@ -91,6 +98,13 @@ const PROBES: Probe[] = [
     base: '.opening-inspector__fraction-chip',
     state: '--active',
   },
+  {
+    name: 'opening fraction chip, active and hovered',
+    stylesheet: 'editor/plan/opening-inspector.css',
+    base: '.opening-inspector__fraction-chip',
+    state: '--active',
+    also: ':hover',
+  },
 ]
 
 function declaredValue(body: string, property: string): string | undefined {
@@ -103,10 +117,18 @@ function withoutScope(selector: string): string {
   return selector.startsWith(ARRIS_SCOPE) ? selector.slice(ARRIS_SCOPE.length).trim() : selector
 }
 
+/** Every state the probed element is in, singly and in combination. */
+function statesOf(probe: Probe): string[] {
+  if (probe.also === undefined) {
+    return [probe.state]
+  }
+  return [probe.state, probe.also, `${probe.state}${probe.also}`]
+}
+
 function rulesMatching(rules: CssRule[], probe: Probe, pseudoElement: string): CssRule[] {
   const wanted = new Set([
     `${probe.base}${pseudoElement}`,
-    `${probe.base}${probe.state}${pseudoElement}`,
+    ...statesOf(probe).map((state) => `${probe.base}${state}${pseudoElement}`),
   ])
   return rules.filter((rule) => wanted.has(withoutScope(rule.selector)))
 }

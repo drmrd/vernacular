@@ -95,10 +95,11 @@ describe('app-frame.css', () => {
   })
 
   it('falls back to the docked-panel width token rather than a hand-typed literal', () => {
-    // The pane's width comes from an inline custom property, and its fallback is
-    // what a pane the user has not resized renders at. That default belongs to the
-    // visual language, which publishes it as --size-panel-docked-width; the shipped
-    // language resolves the token to the same 15rem the literal spelled out.
+    // AppFrame writes the inline custom property on every render, so this fallback
+    // never fires through the component; it is what a bare-class consumer of the
+    // stylesheet would get. Even there the default belongs to the visual language,
+    // which publishes it as --size-panel-docked-width, and the shipped language
+    // resolves that token to the same 15rem the literal spelled out.
     const inspector = css.match(/\.ds-app-frame__inspector\s*\{[^}]*\}/)?.[0] ?? ''
     expect(inspector).not.toBe('')
     expect(inspector).toMatch(
