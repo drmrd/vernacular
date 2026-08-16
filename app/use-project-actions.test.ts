@@ -498,13 +498,16 @@ describe('useRecentProjectsAndRecovery discard confirmation', () => {
   function recoveryContext(
     overrides: Pick<RecentAndRecoveryContext, 'snapshots'> & {
       confirmDiscard: () => boolean | Promise<boolean>
+      isDirty?: boolean
+      onSession?: RecentAndRecoveryContext['onSession']
     },
   ): RecentAndRecoveryContext {
     return {
       recentProjects: new InMemoryRecentProjectStore(),
       snapshots: overrides.snapshots,
-      onSession: vi.fn(),
+      onSession: overrides.onSession ?? vi.fn(),
       confirmDiscard: overrides.confirmDiscard,
+      isDirty: overrides.isDirty ?? false,
     } as RecentAndRecoveryContext
   }
 
@@ -524,6 +527,45 @@ describe('useRecentProjectsAndRecovery discard confirmation', () => {
     expect(confirmDiscard).toHaveBeenCalledOnce()
     expect(snapshots.prune).toHaveBeenCalledOnce()
     expect(result.current.recovery).toBeNull()
+  })
+
+  // Restore replaces the live session with the recovered project, so it is as
+  // destructive as New or Open and prompts through the same seam.
+  it('holds a restore of recovered work until the dirty session confirms the discard', async () => {
+    const snapshots = recoverableSnapshots()
+    const confirmDiscard = vi.fn(() => false)
+    const onSession = vi.fn()
+    const context = recoveryContext({ snapshots, confirmDiscard, isDirty: true, onSession })
+
+    const { result } = renderHook(() => useRecentProjectsAndRecovery(context))
+
+    await waitFor(() => expect(result.current.recovery).not.toBeNull())
+
+    await act(async () => {
+      await result.current.recovery?.onRestore()
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(snapshots.restore).not.toHaveBeenCalled()
+    expect(onSession).not.toHaveBeenCalled()
+  })
+
+  it('restores recovered work once the dirty session confirms the discard', async () => {
+    const snapshots = recoverableSnapshots()
+    const confirmDiscard = vi.fn(() => true)
+    const onSession = vi.fn()
+    const context = recoveryContext({ snapshots, confirmDiscard, isDirty: true, onSession })
+
+    const { result } = renderHook(() => useRecentProjectsAndRecovery(context))
+
+    await waitFor(() => expect(result.current.recovery).not.toBeNull())
+
+    await act(async () => {
+      await result.current.recovery?.onRestore()
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).toHaveBeenCalledOnce()
   })
 
   it('keeps recovered snapshots and the recovery state when discard is cancelled', async () => {
