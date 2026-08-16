@@ -263,16 +263,14 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const [resolved, setResolved] = useState<ProjectStorage | null>(null)
   const [session, setSession] = useState<EditorSession | null>(null)
   const [error, setError] = useState<Error | null>(null)
-  // Bumped by a retry: both boot steps key off it, so a failed boot re-runs.
-  const [attempt, setAttempt] = useState(0)
   const fallbackAssets = useMemo(() => new InMemoryAssetCache(), [])
   const store = providedStore ?? resolved?.store ?? null
   const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
 
+  // Both steps stand down while an error is showing and pick up again the moment it
+  // clears, which is what makes Retry a one-liner: clearing the error re-runs the boot.
   useEffect(() => {
-    if (providedStore) {
-      return
-    }
+    if (providedStore || error !== null) return
     let cancelled = false
     void resolveBootStorage(resolveStore)
       .then((it) => !cancelled && setResolved(it))
@@ -280,47 +278,35 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     return () => {
       cancelled = true
     }
-  }, [providedStore, resolveStore, attempt])
+  }, [providedStore, resolveStore, error])
 
   useEffect(() => {
-    if (store === null || session !== null) {
-      return
-    }
+    if (store === null || session !== null || error !== null) return
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => {
-        if (cancelled) {
-          return
-        }
-        // Non-fatal dev gate: warn if the migrated Document fails CORE shape (VFPF sections 7, 8).
-        validateLoadedProject(project)
-        setSession(createEditorSession(project))
-      })
+      .then((project) => !cancelled && setSession(createEditorSession(checkedProject(project))))
       .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
       cancelled = true
     }
-  }, [store, projectId, session, attempt])
+  }, [store, projectId, session, error])
 
-  return {
-    store,
-    assets,
-    session,
-    setSession,
-    error,
-    retryBoot: () => {
-      setError(null)
-      setAttempt((previous) => previous + 1)
-    },
-    startFreshProject: () => {
-      setError(null)
-      // A failed storage resolution leaves no store at all; an in-memory pair keeps
-      // the fresh project workable. Nothing is written over the stored project
-      // either way: only an explicit save replaces it.
-      setResolved((current) => current ?? freshStorage())
-      setSession(createEditorSession(createInitialProject()))
-    },
+  const startFreshProject = () => {
+    setError(null)
+    // A failed storage resolution leaves no store at all; an in-memory pair keeps the
+    // fresh project workable. The stored project is untouched either way: only an
+    // explicit save replaces it.
+    setResolved((current) => current ?? freshStorage())
+    setSession(createEditorSession(createInitialProject()))
   }
+  const retryBoot = () => setError(null)
+  return { store, assets, session, setSession, error, retryBoot, startFreshProject }
+}
+
+// Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
+function checkedProject(project: Project): Project {
+  validateLoadedProject(project)
+  return project
 }
 
 function freshStorage(): ProjectStorage {
