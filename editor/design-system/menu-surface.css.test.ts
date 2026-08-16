@@ -85,6 +85,12 @@ function arrisRow(state: string): string {
   return arrisBody(MENU_SURFACE, `${ROW}${state}`)
 }
 
+// A disabled row must not brighten. The button family guards its own hover bump with
+// :not(:disabled) at a specificity these row rules do not reach, so a row rule that
+// restates the border for every :hover is the only rule left standing over a disabled
+// row, and the row would light up under a pointer that cannot use it. Mirroring the
+// guard puts the two rules on equal footing and lets the disabled row stay quiet.
+
 describe('the Arris menu row', () => {
   it('drops the impression border while keeping the surface material under it', () => {
     const resting = arrisRow('::before')
@@ -109,8 +115,11 @@ describe('the Arris menu row', () => {
     ).toBe('var(--color-text)')
   })
 
-  it('brightens the border on hover instead', () => {
-    expect(declaredValue(arrisRow(':hover::before'), 'border-color')).toBe('var(--color-border)')
+  it('brightens the border on hover instead, and only where the row is usable', () => {
+    const hover = arrisRow(':hover:not(:disabled)::before')
+
+    expect(declaredValue(hover, 'border-color')).toBe('var(--color-border)')
+    expect(declaredValue(hover, 'border-width')).toBe('var(--border-width-active)')
   })
 
   it('seats that border with the one duration and the one easing curve', () => {

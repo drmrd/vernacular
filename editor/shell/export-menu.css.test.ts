@@ -30,6 +30,12 @@ function arris(selector: string): string {
   return found ?? ''
 }
 
+// A disabled row must not brighten. The button family guards its own hover bump with
+// :not(:disabled) at a specificity these row rules do not reach, so a row rule that
+// restates the border for every :hover is the only rule left standing over a disabled
+// row, and the row would light up under a pointer that cannot use it. Mirroring the
+// guard puts the two rules on equal footing and lets the disabled row stay quiet.
+
 describe('the export menu row', () => {
   it('pairs its hover fill with the reversed label role', () => {
     const hover = body('.export-menu__row:hover')
@@ -56,10 +62,11 @@ describe('the export menu row', () => {
     expect(declaredValue(hover, 'color')).toBe('var(--color-text)')
   })
 
-  it('brightens the row border on hover instead', () => {
-    expect(declaredValue(arris('.export-menu__row:hover::before'), 'border-color')).toBe(
-      'var(--color-border)',
-    )
+  it('brightens the row border on hover instead, and only where the row is usable', () => {
+    const hover = arris('.export-menu__row:hover:not(:disabled)::before')
+
+    expect(declaredValue(hover, 'border-color')).toBe('var(--color-border)')
+    expect(declaredValue(hover, 'border-width')).toBe('var(--border-width-active)')
   })
 
   it('leaves every scoped row box at the hit target it inherits', () => {
