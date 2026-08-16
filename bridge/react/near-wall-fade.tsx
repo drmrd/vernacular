@@ -24,7 +24,17 @@ export function restoreUnenrolledNearWallTargets(
   if (previous === current) {
     return
   }
-  restoreNearWallTransparency(previous)
+  // A rebuild hands back fresh target objects over reused materials, so what survived
+  // enrollment is read off the material instances rather than off target identity.
+  const stillEnrolled = new Set(
+    current.flatMap((target) => target.materials.map((record) => record.material)),
+  )
+  restoreNearWallTransparency(
+    previous.map((target) => ({
+      ...target,
+      materials: target.materials.filter((record) => !stillEnrolled.has(record.material)),
+    })),
+  )
 }
 
 // Fades the prepared exterior walls each frame from the live camera, so a wall the
