@@ -64,3 +64,60 @@ describe('scene-nav-toolbar.css', () => {
     expect(mode).toMatch(/min-height:\s*var\(--size-target-min\)/)
   })
 })
+
+/*
+ * Arris hover states brighten a border rather than blooming a glow (the Arris spec,
+ * section 8), so the scoped hover rule cancels the fill the shipped language paints.
+ * Cancelling a background says nothing about a label, and the declaration that
+ * reversed the label onto that fill is still in force at a lower specificity. Left
+ * alone, the label keeps reversing to the ground while the ground behind it is that
+ * same ground, which reads as an empty control. This is the lesson ADR-0163's
+ * addendum ends on: a rule that cancels a fill owes an answer about the label.
+ *
+ * The design system's cascade scanner cannot catch this one. It resolves the ground
+ * from the control's own box or from the impression drawn into its pseudo-element,
+ * and a toolbar button that cancels its fill has neither: what shows through is the
+ * toolbar surface. So the pairing is asserted here instead.
+ *
+ * This file reads the stylesheet as text rather than importing a design-system
+ * helper, because bridge/ may not import from editor/ (rule 1).
+ */
+
+const ARRIS_SCOPE = "[data-design-language='arris']"
+const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not(:disabled)`
+
+/** The body of the rule opened by exactly this selector, comments stripped. */
+function ruleBody(selector: string): string | undefined {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  return withoutComments.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1]
+}
+
+function declaredValue(body: string, property: string): string | undefined {
+  const match = body.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`))
+  return match?.[1]?.trim()
+}
+
+describe('the Arris 3D navigation toolbar', () => {
+  it('brightens the hovered button border instead of blooming its fill', () => {
+    const hover = ruleBody(HOVERED_TOGGLE)
+
+    expect(hover, `no Arris-scoped rule for ${HOVERED_TOGGLE}`).toBeDefined()
+    expect(
+      declaredValue(hover ?? '', 'background'),
+      'hover brightens a border and never blooms a fill (the spec, section 8)',
+    ).toBe('transparent')
+    expect(declaredValue(hover ?? '', 'border-color')).toBe('var(--color-text)')
+  })
+
+  it('restates the label on the rule that cancels the hover fill', () => {
+    const hover = ruleBody(HOVERED_TOGGLE) ?? ''
+
+    expect(
+      declaredValue(hover, 'color'),
+      `The shipped hover rule reverses the label onto the fill it paints. This rule ` +
+        `takes the fill away, so it owes an answer about the label: without one the ` +
+        `label keeps reversing to the ground it is now sitting on.`,
+    ).toBe('var(--color-text)')
+  })
+})
