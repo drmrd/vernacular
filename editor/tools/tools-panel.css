@@ -93,7 +93,12 @@
 /* The active slot is a full impression: it fills with ink and the glyph and label
    reverse to the ground (the spec, section 8). The fill moves to the pseudo-element,
    so the chip's own box paints nothing and the reversed label rides the element that
-   actually holds the text. */
+   actually holds the text.
+   A chip carries the segmented-option class too, and that stylesheet states the same
+   treatment at the same specificity, so this pair looks redundant in a browser. It is
+   deliberate: the rack owns its own slot geometry, and the cascade-legibility scanner
+   resolves one stylesheet at a time, so a rack that borrowed its fill from another
+   file would leave the scanner with no ground to measure the label against. */
 [data-design-language='arris'] .tools-panel__chip.is-active {
   border-color: transparent;
   background: transparent;
