@@ -98,10 +98,6 @@ In scope:
   small amount of perspective rather than the parallel projection of a true
   architectural drawing. A dedicated orthographic projection is a larger change to the
   render pipeline and is left for later.
-- **Orbit target stays the model center.** After a preset the orbit controls still
-  turn around the center of the model, so orbiting away from the doorway view swings
-  around the building rather than around the standing point. The preset view itself is
-  exact; only the subsequent orbit pivot is simplified.
 - **Top-down orbit pole.** Orbiting immediately after the top-down view starts from
   the straight-down pole, which the orbit controls treat as a singular pose, so the
   first drag can snap. The applied top-down pose is exact; this only affects the first
@@ -124,3 +120,11 @@ In scope:
   right preset, and the doorway button is disabled when no opening is available.
 - An end-to-end check in the hardware-GPU project: clicking a preset moves the camera,
   observed through the projected accessibility proxies shifting from the framed view.
+
+## Update (2026-08-17)
+
+The deferred orbit-pivot simplification is resolved: the orbit controls now pivot
+on the pose an applied preset hands them, so orbiting out of the doorway view
+turns around the standing point instead of the whole building. The axis-aligned
+presets pivot on the model center as before, since that is the pose they apply.
+ADR-0083's dated update records the decision; the other deferrals above stand.
