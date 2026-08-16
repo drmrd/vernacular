@@ -6,9 +6,11 @@ import { describe, it, expect } from 'vitest'
 import {
   ARRIS_SCOPE,
   arrisRule,
+  compareSpecificity,
   declaredValue,
   leafRules,
   scopedBoxHeights,
+  specificity,
 } from '../design-system/css-token-test-support'
 
 // The export menu is the other consumer surface ADR-0163 left illegible under the
@@ -75,5 +77,48 @@ describe('the export menu row', () => {
       `A menu row's own box keeps the ADR-0112 target it gets from the button family, ` +
         `so its hit area never reaches into its neighbour's.`,
     ).toEqual([])
+  })
+
+  it("spans the impression across the row's own full box, not the button family's drawn-control band", () => {
+    const buttonCss = readFileSync(
+      resolve(process.cwd(), 'editor/design-system/button.css'),
+      'utf8',
+    )
+    const buttonImpression = arrisRule(buttonCss, '.ds-button::before')
+    expect(
+      buttonImpression,
+      `button.css declares no "${ARRIS_SCOPE} .ds-button::before" rule`,
+    ).toBeDefined()
+
+    const rowImpression = arris('.export-menu__row::before')
+
+    // The row wears both .ds-button and .export-menu__row, so both Arris-scoped
+    // ::before rules reach the same element and tie on specificity. Every consumer
+    // imports the design system before its own stylesheet, so the row's rule should
+    // win that tie: it comes later in cascade order.
+    const candidates: Array<{ selector: string; body: string }> = [
+      { selector: `${ARRIS_SCOPE} .ds-button::before`, body: buttonImpression ?? '' },
+      { selector: `${ARRIS_SCOPE} .export-menu__row::before`, body: rowImpression },
+    ]
+
+    let winner: string | undefined
+    let strongest: [number, number, number] = [-1, -1, -1]
+    for (const candidate of candidates) {
+      const value = declaredValue(candidate.body, 'inset-block')
+      const rank = specificity(candidate.selector)
+      if (value !== undefined && compareSpecificity(rank, strongest) >= 0) {
+        strongest = rank
+        winner = value
+      }
+    }
+
+    expect(
+      winner,
+      `ADR-0166: a menu row is cut from the surface it sits on, not a control band ` +
+        `stacked on top of it. An export-menu row carries two lines of text, a title and ` +
+        `a wrapped description, so its impression has to describe the row's own full box ` +
+        `(inset-block: 0) rather than the drawn-control band button.css centers at ` +
+        `calc((100% - var(--size-control-height)) / 2). The cascade lands on ${winner ?? 'nothing'}.`,
+    ).toBe('0')
   })
 })
