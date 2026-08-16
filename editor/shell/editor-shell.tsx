@@ -148,7 +148,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       />
       <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
-        <IconButton labeled aria-pressed={showGrid} onClick={toggleGrid} title="Grid (G)">
+        <IconButton labeled aria-pressed={showGrid} onClick={toggleGrid} title="Grid">
           <GridFour size={16} aria-hidden="true" />
           <span>Grid</span>
         </IconButton>
@@ -156,7 +156,7 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           labeled
           aria-pressed={showDimensions}
           onClick={toggleDimensions}
-          title="Dimensions (D)"
+          title="Dimensions"
         >
           <Ruler size={16} aria-hidden="true" />
           <span>Dimensions</span>
