@@ -86,11 +86,27 @@ describe('scene-nav-toolbar.css', () => {
 const ARRIS_SCOPE = "[data-design-language='arris']"
 const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not(:disabled)`
 
-/** The body of the rule opened by exactly this selector, comments stripped. */
+// Every rule in this stylesheet is introduced by a comment, and a comment reads as
+// part of the next rule's selector to any regex simple enough to live here.
+const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+/**
+ * Every rule in the stylesheet, in source order.
+ *
+ * This is a reader, not a parser. It assumes what this stylesheet actually contains:
+ * single ungrouped selectors, no ids, no pseudo-elements, and no at-rules. A grouped
+ * selector or an id would be read or scored wrongly and nothing here would say so.
+ */
+function allRules(): { selector: string; body: string }[] {
+  return [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selector: (match[1] ?? '').trim(),
+    body: match[2] ?? '',
+  }))
+}
+
+/** The body of the rule opened by exactly this selector. */
 function ruleBody(selector: string): string | undefined {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  return withoutComments.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1]
+  return allRules().find((rule) => rule.selector === selector)?.body
 }
 
 function declaredValue(body: string, property: string): string | undefined {
@@ -136,15 +152,6 @@ describe('the Arris 3D navigation toolbar', () => {
 function specificity(selector: string): number {
   const count = (pattern: RegExp): number => (selector.match(pattern) ?? []).length
   return count(/\.[\w-]+/g) + count(/\[[^\]]*\]/g) + count(/:[a-z-]+(\([^)]*\))?/g)
-}
-
-/** Every rule in the stylesheet, in source order. */
-function allRules(): { selector: string; body: string }[] {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
-  return [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
-    selector: (match[1] ?? '').trim(),
-    body: match[2] ?? '',
-  }))
 }
 
 /**
