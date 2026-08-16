@@ -9,9 +9,11 @@ import { resolveThemeChoice } from '../editor/design-system/theme'
 
 /**
  * Opt-in Storybook decorator for the parallel design-language theme (ADR-0162).
- * When the resolved language is the shipped default, the story renders exactly as
- * it always has, with no wrapper element, so committed visual baselines stay valid.
- * Only an explicit `arris` selection mounts `ThemeProvider`.
+ * When the resolved language is the shipped default, the story renders with no
+ * wrapper element. Only an explicit `arris` selection mounts `ThemeProvider`.
+ * Importing that provider pulls the token layer into every story, which is
+ * deliberate: the running editor always mounts it, so a story without the
+ * tokens shows a state the app cannot produce (see ADR-0162's addendum).
  */
 export const withDesignLanguage: Decorator = (story, context: StoryContext) => {
   const designLanguage = resolveDesignLanguage(context.globals.designLanguage)
