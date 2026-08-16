@@ -68,8 +68,9 @@ even where a declaration resolves to what the shipped language already renders. 
 elevation of `none` on a pane that casts no shadow today is not bookkeeping: it puts
 the flatness in the stylesheet, so a later shadow has to argue with a line someone
 wrote on purpose rather than land in a gap. The same reasoning restates the section
-gutter at 8px. Arris names that number, the shipped spacing scale is free to move,
-and without the restatement a change over there would quietly retune Arris density.
+gutter at 8px. The Arris layer redeclares the whole spacing scale, so the step itself
+was never at risk; what the restatement pins is which step a section clusters on,
+because the base rule is free to be re-pointed at another one.
 
 ### Letting the sheet reach the edge moves the frame onto the bench
 
@@ -135,6 +136,26 @@ impression paints the bench it sits on rather than staying transparent. A cancel
 fill leaves the label sitting on something, and the scanner can only measure a ground
 the stylesheet is willing to name.
 
+### A control can be in two states at once
+
+The chip taught the addendum's lesson a second time, in a form the guard could not
+see. Selecting a chip and then hovering it put both rules in play, and the scoped
+hover rule is the more specific of the two, so it took the label while the active
+fill sat on a pseudo-element hover never touches. That is the reversed label landing
+back on the fill it was reversed away from, at 1.00:1 in both appearances again.
+
+Two things follow. The fix is to restate the reversal at the hover rule's own
+specificity and later in the file, which hands the selected chip its label back
+without weakening the plain hover state. And the guard now takes a second state per
+probe, because a control in two states is matched by the rule for each state as well
+as by the rule for both, and a candidate set built from only the base and one state
+leaves out the rule that actually wins.
+
+The design system escaped this by luck rather than by design. Its pressed state is an
+attribute selector, which ties `:hover` on specificity and wins on source order; a
+modifier class loses. Any family that signals a selected state with a class inherits
+this problem, so the probe belongs with the family, not with the chip.
+
 ### No panel-header component
 
 The migration plan lists a panel header alongside the four existing pieces. It is
@@ -156,10 +177,13 @@ work already tracked in issue #551.
 - Previewing Arris shows a frame that reads as one bench. With the flag off nothing
   moves: every new rule is scoped, and the three unscoped edits are token-role swaps
   the shipped layer resolves to what was there before.
-- The inspector pane's separator reports the pre-resize number in `aria-valuenow`
-  while Arris renders the wider default, so the two disagree until the first resize.
-  It is a preview-only mismatch, and closing it means teaching the resize hook about
-  a default it does not currently own.
+- The resize model does not know the language set the width the pane started from,
+  and that shows twice under the flag. The separator announces the pre-resize number
+  in `aria-valuenow` while the pane renders wider, and the first press of the grow
+  key takes the inspector from 17.5rem to 16rem, so growing it narrows it once. Both
+  close the same way, by teaching the resize hook about a default it does not own,
+  and both are preview-only: with the flag off the token resolves to the number the
+  hook already starts at. Tracked as a follow-up alongside issue #551.
 - The remaining families have a pattern to copy when they hit the same wall. The
   status rail and the tool rack both carry a size the language wants to set.
 - The Arris ink ramp is still not measured against its true grounds. The stamped
@@ -168,6 +192,19 @@ work already tracked in issue #551.
   the contrast helper reads hex and the ramp is expressed as `color-mix`.
 - The fraction chips keep the interface face. Setting an increment in the data face
   is the instruments family's call, not this one's.
+- The chip is the fourth copy of the drawn-control idiom, after the push button, the
+  icon button, and the segmented option, and re-typing it is what carried the
+  specificity bug above: the shared idiom's ordering guarantee did not come with it.
+  The icon button escapes the same trap only by accident, because an attribute
+  selector ties `:hover` on specificity and wins on source order where a modifier
+  class loses. Issue #551 schedules at least two more copies, and extracting the
+  idiom crosses the design-system and plan stylesheets, so it wants deciding before
+  copy five.
+- `PanelSlot` has no consumer in the running app today. The panel sections in the
+  inspector and the tool rail compose a section label with their own markup, so the
+  kerf line separates nothing on a live surface yet. It is the design system's
+  statement of what a section boundary is, and the surfaces adopt it when they are
+  migrated.
 - Nothing here is covered by a rendered baseline, for the same reason ADR-0163 gave:
   there is no flag-scoped story yet, so the Arris rendering of these families is
   asserted from the stylesheets alone.
