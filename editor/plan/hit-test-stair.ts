@@ -1,6 +1,6 @@
 import { pointInPolygon, type Point, type StairSceneNode } from '../../core'
 import { stairFootprintCorners } from './draw-stair'
-import { contentBounds, type Bounds } from './fit'
+import { requiredContentBounds, type Bounds } from './fit'
 
 /**
  * The id of the topmost placed stair whose rotated footprint contains the point,
@@ -20,9 +20,5 @@ export function hitTestStairs(stairs: readonly StairSceneNode[], point: Point): 
 
 /** Axis-aligned bounds spanning a stair's four rotated footprint corners. */
 export function stairBounds(stair: StairSceneNode): Bounds {
-  const bounds = contentBounds(stairFootprintCorners(stair))
-  if (bounds === null) {
-    throw new Error('cannot compute bounds of an empty point set')
-  }
-  return bounds
+  return requiredContentBounds(stairFootprintCorners(stair))
 }

@@ -7,21 +7,12 @@ import {
   type SceneGraph,
   type WallSceneNode,
 } from '../../core'
-import { contentBounds, type Bounds } from './fit'
+import { requiredContentBounds as spanOf, type Bounds } from './fit'
 import { openingCorners } from './opening-geometry'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
 /** A click within this many millimeters of a wall centerline selects it. */
 export const DEFAULT_HIT_TOLERANCE_MM = 150
-
-/** The single non-null result `contentBounds` returns for any non-empty point set. */
-function spanOf(points: readonly Point[]): Bounds {
-  const bounds = contentBounds(points)
-  if (bounds === null) {
-    throw new Error('cannot compute bounds of an empty point set')
-  }
-  return bounds
-}
 
 /** Axis-aligned bounds spanning a wall's two endpoints, normalized over direction. */
 export function wallBounds(wall: WallSceneNode): Bounds {
