@@ -119,6 +119,7 @@ export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
     snapshots,
     onSession,
     confirmDiscard,
+    isDirty,
   })
   const { saveStatus, actions } = useWorkspaceActions({
     props,
