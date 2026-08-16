@@ -38,3 +38,28 @@ describe('SceneNavToolbar color-temperature honesty', () => {
     expect(screen.queryByText(/sun and sky/i)).toBeNull()
   })
 })
+
+describe('SceneNavToolbar orbit-only toggles in walk mode', () => {
+  it('disables the select toggle in walk mode, where a canvas click only engages mouse-look', () => {
+    render(<SceneNavToolbar {...baseProps} mode="walk" selectionEnabled />)
+
+    const toggle = screen.getByRole('button', { name: 'Select' })
+    expect(toggle).toBeDisabled()
+    expect(toggle.getAttribute('title')).toMatch(/orbit camera/i)
+  })
+
+  it('disables the reveal-interior toggle in walk mode, where the near-wall fade never runs', () => {
+    render(<SceneNavToolbar {...baseProps} mode="walk" revealInterior />)
+
+    const toggle = screen.getByRole('button', { name: 'Reveal interior' })
+    expect(toggle).toBeDisabled()
+    expect(toggle.getAttribute('title')).toMatch(/orbit camera/i)
+  })
+
+  it('keeps both toggles live in orbit mode, where each reaches the render', () => {
+    render(<SceneNavToolbar {...baseProps} mode="orbit" />)
+
+    expect(screen.getByRole('button', { name: 'Select' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Reveal interior' })).toBeEnabled()
+  })
+})
