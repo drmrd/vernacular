@@ -42,6 +42,16 @@
  *
  * The square rule in that section is written for what is docked. A surface the user
  * summoned and dismisses with Escape keeps the machined 2px chamfer.
+ *
+ * The border width and the radius are restated deliberately and resolve the same today.
+ * The unscoped rule types its border width as a literal and reaches for --radius-md, so
+ * naming the resting-border and chamfer tokens is what makes this rule read as the
+ * whole doctrine section 7 states rather than one third of it.
+ *
+ * Caveat at the point of use: .ds-menu-surface is also worn by the docked furniture
+ * library panel (editor/library/library-panel.tsx), which the same section wants flat
+ * and square. That surface already carried the overlay shadow, so nothing about it
+ * changes here, but this rule does reach it. ADR-0166 records the same caveat.
  */
 [data-design-language='arris'] .ds-menu-surface {
   border-width: var(--border-width-resting);

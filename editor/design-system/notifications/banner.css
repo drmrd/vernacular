@@ -51,6 +51,10 @@
  * dead flat and square (the Arris spec, sections 6 and 7). Holding the two tiers apart
  * is what makes the elevation doctrine legible on screen: the toast has been picked
  * up, the banner is part of the frame.
+ *
+ * The flat elevation is restated deliberately and resolves the same today, since the
+ * unscoped rule casts nothing either. Saying it here is what makes the pairing with the
+ * toast's raised tier readable as one decision rather than as an omission.
  */
 [data-design-language='arris'] .ds-banner {
   border-radius: var(--radius-square);
@@ -71,8 +75,10 @@
   color: var(--color-text);
 }
 
-/* The dot. Nothing is ever a pill (refusal 7), so it is a small machined square rather
-   than a rounded capsule, and it leads the row as the first flex item. */
+/* The dot section 12 asks for, leading the row as the first flex item. The mark is a
+   4px square carrying the machined 2px chamfer, and at that size the chamfer takes the
+   whole side, so the language's own radius token is what rounds it. There is no 4px
+   size token, so the mark borrows the base spacing step for its dimensions. */
 [data-design-language='arris'] .ds-banner[data-severity='error']::before {
   content: '';
   flex: 0 0 auto;
@@ -92,8 +98,9 @@
   color: var(--color-text);
 }
 
-/* Dismissal is recoverable from position and label, so it sits at the secondary tier
-   the ink ramp names for hints and captions. */
+/* Dismissal is recoverable from position and label, so it sits at the secondary tier.
+   Restated deliberately and resolves the same today: the unscoped rule reaches for the
+   muted alias, and this names the ink-ramp tier the contrast floor is argued from. */
 [data-design-language='arris'] .ds-banner__dismiss {
   color: var(--color-ink-secondary);
 }

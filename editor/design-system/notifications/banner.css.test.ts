@@ -3,7 +3,12 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 
-import { ARRIS_SCOPE, leafRules } from '../css-token-test-support'
+import {
+  ARRIS_SCOPE,
+  arrisRule,
+  arrisSelectorsUsing,
+  declaredValue,
+} from '../css-token-test-support'
 
 // The banner is the notification tier that does not float: it is a row of the app
 // frame, above the canvas rather than over it. That makes it bench, and the bench is
@@ -15,26 +20,27 @@ const css = readFileSync(
   resolve(process.cwd(), 'editor/design-system/notifications/banner.css'),
   'utf8',
 )
-const rules = leafRules(css)
+
+const ERROR = ".ds-banner[data-severity='error']"
+const DANGER = 'var(--color-danger)'
 
 function arris(selector: string): string {
-  return rules.find((rule) => rule.selector === `${ARRIS_SCOPE} ${selector}`)?.body ?? ''
+  const found = arrisRule(css, selector)
+  expect(found, `banner.css declares no "${ARRIS_SCOPE} ${selector}" rule`).toBeDefined()
+  return found ?? ''
 }
 
 describe('the Arris banner', () => {
   it('is square, because a docked surface is not a picked-up thing', () => {
-    expect(arris('.ds-banner')).toContain('border-radius: var(--radius-square)')
+    expect(declaredValue(arris('.ds-banner'), 'border-radius')).toBe('var(--radius-square)')
   })
 
   it('stays dead flat', () => {
-    const banner = arris('.ds-banner')
-
-    expect(banner).toContain('box-shadow: var(--elevation-flat)')
     expect(
-      banner,
+      declaredValue(arris('.ds-banner'), 'box-shadow'),
       `Only a raised object casts a shadow, and the bench is separated by kerf lines ` +
         `alone (the Arris spec, section 7).`,
-    ).not.toContain('var(--elevation-raised)')
+    ).toBe('var(--elevation-flat)')
   })
 })
 
@@ -43,46 +49,49 @@ describe('the Arris banner', () => {
 // rule beneath and a Red Lead dot. Red Lead running text below the label floor is
 // retired, so the alarm is the rule and the dot while the legibility is the ink.
 
-const CUSTODY_RULE = 'border-bottom: var(--border-width-focus-ring) solid var(--color-danger)'
-
 describe('the Arris custody warning', () => {
   it('renders the words at full ink and puts the alarm in a Red Lead rule', () => {
-    const error = arris(".ds-banner[data-severity='error']")
+    const error = arris(ERROR)
 
-    expect(error).toContain(CUSTODY_RULE)
+    expect(declaredValue(error, 'border-bottom')).toBe(
+      `var(--border-width-focus-ring) solid ${DANGER}`,
+    )
     expect(
-      error,
+      declaredValue(error, 'color'),
       `Red Lead running text falls below the label floor and is retired, so the words ` +
         `stay at full ink and the rule carries the alarm.`,
-    ).toContain('color: var(--color-text)')
+    ).toBe('var(--color-text)')
   })
 
   it('keeps the rest of the frame on the ordinary border', () => {
     expect(
-      arris(".ds-banner[data-severity='error']"),
-      `Red Lead appears on perhaps one control per screen (the Arris spec, section 5), ` +
-        `so it draws the one rule rather than tinting the whole box.`,
-    ).toContain('border-color: var(--color-border)')
+      declaredValue(arris(ERROR), 'border-color'),
+      `The unscoped error rule tints all four sides with Red Lead. Undoing that here ` +
+        `is what leaves the alarm to the one rule beneath (the Arris spec, section 5).`,
+    ).toBe('var(--color-border)')
   })
 
-  it('marks the row with a Red Lead dot', () => {
-    const dot = arris(".ds-banner[data-severity='error']::before")
+  it('marks the row with a round Red Lead dot', () => {
+    const dot = arris(`${ERROR}::before`)
 
-    expect(dot).toContain("content: ''")
-    expect(dot).toContain('background: var(--color-danger)')
+    expect(declaredValue(dot, 'content')).toBe("''")
+    expect(declaredValue(dot, 'background')).toBe(DANGER)
+    expect(declaredValue(dot, 'width')).toBe(declaredValue(dot, 'height'))
     expect(
-      dot,
-      `Nothing is ever a pill (refusal 7), so the dot is a small machined square ` +
-        `rather than a rounded capsule.`,
-    ).toContain('border-radius: var(--radius-sm)')
+      declaredValue(dot, 'border-radius'),
+      `Section 12 asks for a dot. The machined 2px chamfer on a 4px square mark takes ` +
+        `the whole side, so the language's own radius token is what rounds it.`,
+    ).toBe('var(--radius-sm)')
   })
 
-  it('holds the warning severity off Red Lead', () => {
+  it('spends Red Lead on the custody warning and nowhere else', () => {
     expect(
-      arris(".ds-banner[data-severity='warning']"),
-      `Red Lead is destructive and data-loss only (the Arris spec, section 5), so a ` +
-        `warning cannot borrow the custody alarm.`,
-    ).not.toContain('var(--color-danger)')
+      arrisSelectorsUsing(css, DANGER),
+      `Red Lead is destructive and data-loss only, on perhaps one control per screen ` +
+        `(the Arris spec, section 5). This fails if a severity picks the color up and ` +
+        `if the custody warning drops it, which asking a missing rule to avoid it ` +
+        `could never do.`,
+    ).toEqual([`${ARRIS_SCOPE} ${ERROR}`, `${ARRIS_SCOPE} ${ERROR}::before`])
   })
 })
 
@@ -94,13 +103,10 @@ describe('the Arris custody warning', () => {
 
 describe('the Arris notification action', () => {
   it('stamps the action label in ink rather than borrowing the accent', () => {
-    const action = arris('.ds-banner__action')
-
-    expect(action).toContain('color: var(--color-text)')
-    expect(action).not.toContain('var(--color-accent)')
+    expect(declaredValue(arris('.ds-banner__action'), 'color')).toBe('var(--color-text)')
   })
 
   it('holds the dismiss control at the secondary tier', () => {
-    expect(arris('.ds-banner__dismiss')).toContain('color: var(--color-ink-secondary)')
+    expect(declaredValue(arris('.ds-banner__dismiss'), 'color')).toBe('var(--color-ink-secondary)')
   })
 })

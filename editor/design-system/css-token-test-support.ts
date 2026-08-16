@@ -75,9 +75,62 @@ export function compareSpecificity(
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
 }
 
+/**
+ * The value a declaration block gives a property, or undefined when it sets none.
+ *
+ * Anchored on the property boundary, so `background-color` never answers a question
+ * about `background` and an assertion cannot be satisfied by a longhand it did not ask
+ * for. A substring search over the whole body has that hole; this does not.
+ */
+export function declaredValue(body: string, property: string): string | undefined {
+  const match = body.match(new RegExp(`(?:^|;)\\s*${escapeForRegExp(property)}\\s*:\\s*([^;]+)`))
+  return match?.[1]?.trim()
+}
+
 export interface CssRule {
   selector: string
   body: string
+}
+
+/**
+ * The body of the rule a selector opens under the Arris scope, or undefined when the
+ * stylesheet declares none. Callers decide what a missing rule means; the guards in
+ * this directory assert it is present rather than letting an empty body satisfy an
+ * assertion by coercion.
+ */
+export function arrisRule(css: string, selector: string): string | undefined {
+  return leafRules(css).find((rule) => rule.selector === `${ARRIS_SCOPE} ${selector}`)?.body
+}
+
+/**
+ * Every Arris-scoped selector in a stylesheet whose body mentions a value, sorted.
+ *
+ * A guard that asks "does this rule avoid the value" passes for free when the rule is
+ * absent. Asking which selectors spend a value instead fails both ways: on a rule that
+ * drops it and on a rule that picks it up.
+ */
+export function arrisSelectorsUsing(css: string, value: string): string[] {
+  return leafRules(css)
+    .filter((rule) => rule.selector.includes(ARRIS_SCOPE) && rule.body.includes(value))
+    .map((rule) => rule.selector)
+    .sort()
+}
+
+/**
+ * Every box height an Arris-scoped rule puts on a control's own box, reported with the
+ * selector that set it. Pseudo-elements are excluded because the impression drawn into
+ * one is allowed to be smaller; the box that carries the hit target is not
+ * ([[ADR-0112]] via ADR-0163). An empty result is the passing case.
+ */
+export function scopedBoxHeights(css: string): string[] {
+  return leafRules(css)
+    .filter((rule) => rule.selector.includes(ARRIS_SCOPE) && !rule.selector.includes('::'))
+    .flatMap((rule) =>
+      ['height', 'min-height']
+        .map((property) => declaredValue(rule.body, property))
+        .filter((value): value is string => value !== undefined)
+        .map((value) => `${rule.selector} { ${value} }`),
+    )
 }
 
 /**

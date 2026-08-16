@@ -3,7 +3,12 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 
-import { ARRIS_SCOPE, leafRules } from '../css-token-test-support'
+import {
+  ARRIS_SCOPE,
+  arrisRule,
+  arrisSelectorsUsing,
+  declaredValue,
+} from '../css-token-test-support'
 
 // A toast is pinned over the canvas, which is exactly what refusal 4 refuses: nothing
 // floats over the canvas uninvited. The refusal carves out one exception, a thing the
@@ -19,42 +24,44 @@ const css = readFileSync(
   resolve(process.cwd(), 'editor/design-system/notifications/toast.css'),
   'utf8',
 )
-const rules = leafRules(css)
+
+const ERROR = ".ds-toast[data-severity='error']"
+const DANGER = 'var(--color-danger)'
 
 function arris(selector: string): string {
-  return rules.find((rule) => rule.selector === `${ARRIS_SCOPE} ${selector}`)?.body ?? ''
+  const found = arrisRule(css, selector)
+  expect(found, `toast.css declares no "${ARRIS_SCOPE} ${selector}" rule`).toBeDefined()
+  return found ?? ''
 }
 
 describe('the Arris toast', () => {
   it('carries the raised-object surface', () => {
     const toast = arris('.ds-toast')
 
-    expect(toast).toContain('box-shadow: var(--elevation-raised)')
-    expect(toast).toContain('border-radius: var(--radius-sm)')
+    expect(declaredValue(toast, 'box-shadow')).toBe('var(--elevation-raised)')
+    expect(declaredValue(toast, 'border-radius')).toBe('var(--radius-sm)')
     expect(
-      toast,
+      declaredValue(toast, 'background'),
       `A picked-up thing is not the bench, so it takes the raised material rather ` +
         `than the panel surface it borrows today.`,
-    ).toContain('background: var(--color-surface-raised)')
+    ).toBe('var(--color-surface-raised)')
   })
 
   it('retires the severity stripe for the one resting border', () => {
-    const toast = arris('.ds-toast')
-
     expect(
-      toast,
+      declaredValue(arris('.ds-toast'), 'border-left'),
       `The 4px left stripe codes severity by hue. Layout Blue is lines and glyphs in ` +
         `an enumerated set that does not include a severity stripe, and Red Lead is ` +
         `destructive and data-loss only (the Arris spec, section 5).`,
-    ).toContain('border-left: var(--border-width-resting) solid var(--color-border)')
+    ).toBe('var(--border-width-resting) solid var(--color-border)')
   })
 
   it('does not slide in', () => {
     expect(
-      arris('.ds-toast'),
+      declaredValue(arris('.ds-toast'), 'animation'),
       `Nothing moves unless the user moved it (principle 5), and an arriving toast ` +
         `is the one thing on screen the user did not touch.`,
-    ).toContain('animation: none')
+    ).toBe('none')
   })
 })
 
@@ -65,33 +72,35 @@ describe('the Arris toast', () => {
 
 describe('the Arris toast custody warning', () => {
   it('renders the words at full ink and puts the alarm in a Red Lead rule', () => {
-    const error = arris(".ds-toast[data-severity='error']")
+    const error = arris(ERROR)
 
-    expect(error).toContain(
-      'border-bottom: var(--border-width-focus-ring) solid var(--color-danger)',
+    expect(declaredValue(error, 'border-bottom')).toBe(
+      `var(--border-width-focus-ring) solid ${DANGER}`,
     )
-    expect(error).toContain('color: var(--color-text)')
+    expect(declaredValue(error, 'color')).toBe('var(--color-text)')
   })
 
-  it('marks the toast with a Red Lead dot', () => {
-    const dot = arris(".ds-toast[data-severity='error']::before")
+  it('marks the toast with a round Red Lead dot', () => {
+    const dot = arris(`${ERROR}::before`)
 
-    expect(dot).toContain("content: ''")
-    expect(dot).toContain('background: var(--color-danger)')
-    expect(dot).toContain('border-radius: var(--radius-sm)')
-  })
-
-  it('holds the other severities off Red Lead', () => {
-    const others = [
-      arris(".ds-toast[data-severity='success']"),
-      arris(".ds-toast[data-severity='warning']"),
-    ].join('\n')
-
+    expect(declaredValue(dot, 'content')).toBe("''")
+    expect(declaredValue(dot, 'background')).toBe(DANGER)
+    expect(declaredValue(dot, 'width')).toBe(declaredValue(dot, 'height'))
     expect(
-      others.includes('var(--color-danger)'),
-      `Red Lead is destructive and data-loss only (the Arris spec, section 5), so no ` +
-        `other severity borrows the custody alarm.`,
-    ).toBe(false)
+      declaredValue(dot, 'border-radius'),
+      `Section 12 asks for a dot. The machined 2px chamfer on a 4px square mark takes ` +
+        `the whole side, so the language's own radius token is what rounds it.`,
+    ).toBe('var(--radius-sm)')
+  })
+
+  it('spends Red Lead on the custody warning and nowhere else', () => {
+    expect(
+      arrisSelectorsUsing(css, DANGER),
+      `Red Lead is destructive and data-loss only, on perhaps one control per screen ` +
+        `(the Arris spec, section 5). This fails if a severity picks the color up and ` +
+        `if the custody warning drops it, which asking a missing rule to avoid it ` +
+        `could never do.`,
+    ).toEqual([`${ARRIS_SCOPE} ${ERROR}`, `${ARRIS_SCOPE} ${ERROR}::before`])
   })
 })
 
@@ -103,13 +112,10 @@ describe('the Arris toast custody warning', () => {
 
 describe('the Arris toast action', () => {
   it('stamps the action label in ink rather than borrowing the accent', () => {
-    const action = arris('.ds-toast__action')
-
-    expect(action).toContain('color: var(--color-text)')
-    expect(action).not.toContain('var(--color-accent)')
+    expect(declaredValue(arris('.ds-toast__action'), 'color')).toBe('var(--color-text)')
   })
 
   it('holds the dismiss control at the secondary tier', () => {
-    expect(arris('.ds-toast__dismiss')).toContain('color: var(--color-ink-secondary)')
+    expect(declaredValue(arris('.ds-toast__dismiss'), 'color')).toBe('var(--color-ink-secondary)')
   })
 })

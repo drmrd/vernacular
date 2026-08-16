@@ -3,7 +3,14 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 
-import { ARRIS_SCOPE, blockBodies, declarationsIn, leafRules } from './css-token-test-support'
+import {
+  ARRIS_SCOPE,
+  arrisRule,
+  blockBodies,
+  declarationsIn,
+  declaredValue,
+  scopedBoxHeights,
+} from './css-token-test-support'
 
 // Arris publishes two elevation tiers and no third (the Arris spec, section 7). The
 // bench is dead flat, and only a thing the user has physically picked up casts a
@@ -21,10 +28,6 @@ import { ARRIS_SCOPE, blockBodies, declarationsIn, leafRules } from './css-token
 // chamfer the language gives everything else.
 
 const RAISED_SHADOW = '0 2px 8px rgba(0, 0, 0, 0.25)'
-const RAISED_TIER = 'var(--elevation-raised)'
-const RESTING_BORDER = 'var(--border-width-resting)'
-const CHAMFER = 'var(--radius-sm)'
-const SQUARE = 'var(--radius-square)'
 
 const RAISED_SURFACES = [
   { stylesheet: 'editor/design-system/menu-surface.css', selector: '.ds-menu-surface' },
@@ -36,9 +39,11 @@ function read(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8')
 }
 
-function arrisRuleBody(stylesheet: string, selector: string): string | undefined {
-  return leafRules(read(stylesheet)).find((rule) => rule.selector === `${ARRIS_SCOPE} ${selector}`)
-    ?.body
+/** The Arris rule for a selector, asserted present rather than coerced to an empty body. */
+function arrisBody(stylesheet: string, selector: string): string {
+  const body = arrisRule(read(stylesheet), selector)
+  expect(body, `${stylesheet} declares no "${ARRIS_SCOPE} ${selector}" rule`).toBeDefined()
+  return body ?? ''
 }
 
 describe('the Arris raised object', () => {
@@ -48,27 +53,22 @@ describe('the Arris raised object', () => {
   })
 
   it.each(RAISED_SURFACES)('casts the raised tier on $selector', ({ stylesheet, selector }) => {
-    const body = arrisRuleBody(stylesheet, selector)
+    const body = arrisBody(stylesheet, selector)
 
     expect(
-      body,
-      `${stylesheet} declares no "${ARRIS_SCOPE} ${selector}" rule. A picked-up thing ` +
-        `casts the raised tier by name, rather than trusting an overlay role that only ` +
-        `happens to alias it in this language.`,
-    ).toBeDefined()
-    expect(body).toContain(`box-shadow: ${RAISED_TIER}`)
-    expect(body).toContain(`border-width: ${RESTING_BORDER}`)
+      declaredValue(body, 'box-shadow'),
+      `A picked-up thing casts the raised tier by name, rather than trusting an ` +
+        `overlay role that only happens to alias it in this language.`,
+    ).toBe('var(--elevation-raised)')
+    expect(declaredValue(body, 'border-width')).toBe('var(--border-width-resting)')
   })
 
   it.each(RAISED_SURFACES)('keeps the chamfer on $selector', ({ stylesheet, selector }) => {
-    const body = arrisRuleBody(stylesheet, selector) ?? ''
-
-    expect(body).toContain(`border-radius: ${CHAMFER}`)
     expect(
-      body,
+      declaredValue(arrisBody(stylesheet, selector), 'border-radius'),
       `${selector} is summoned and leaves on Escape, so it is not one of the docked ` +
         `surfaces section 7 squares off.`,
-    ).not.toContain(SQUARE)
+    ).toBe('var(--radius-sm)')
   })
 })
 
@@ -78,60 +78,55 @@ describe('the Arris raised object', () => {
 // separate tools, so the resting row keeps the material and drops the border, and hover
 // brings the border back instead of blooming a fill (the Arris spec, section 8).
 
-const ROW = '.ds-menu-surface__row'
 const MENU_SURFACE = 'editor/design-system/menu-surface.css'
+const ROW = '.ds-menu-surface__row'
 
 function arrisRow(state: string): string {
-  return arrisRuleBody(MENU_SURFACE, `${ROW}${state}`) ?? ''
+  return arrisBody(MENU_SURFACE, `${ROW}${state}`)
 }
 
 describe('the Arris menu row', () => {
   it('drops the impression border while keeping the surface material under it', () => {
     const resting = arrisRow('::before')
 
-    expect(resting).toContain('border-color: transparent')
+    expect(declaredValue(resting, 'border-color')).toBe('transparent')
     expect(
-      resting,
+      declaredValue(resting, 'background'),
       `The row's ground is the surface it sits on. Naming it here is what lets the ` +
         `cascade scanner measure the label against the ground it really lands on.`,
-    ).toContain('background: var(--color-surface-raised)')
+    ).toBe('var(--color-surface-raised)')
   })
 
   it('cancels the hover fill and restates the label the cancelled fill had reversed', () => {
     const hover = arrisRow(':hover')
 
-    expect(hover).toContain('background: transparent')
+    expect(declaredValue(hover, 'background')).toBe('transparent')
     expect(
-      hover,
+      declaredValue(hover, 'color'),
       `A rule that cancels a fill owes an answer about the label, because the ` +
         `declaration that reversed it is still in force at a lower specificity ` +
         `(the ADR-0163 addendum).`,
-    ).toContain('color: var(--color-text)')
+    ).toBe('var(--color-text)')
   })
 
   it('brightens the border on hover instead', () => {
-    const hover = arrisRow(':hover::before')
-
-    expect(hover).toContain('border-width: var(--border-width-active)')
-    expect(hover).toContain('border-color: var(--color-border)')
+    expect(declaredValue(arrisRow(':hover::before'), 'border-color')).toBe('var(--color-border)')
   })
 
   it('seats that border with the one duration and the one easing curve', () => {
     expect(
-      arrisRow('::before'),
+      declaredValue(arrisRow('::before'), 'transition'),
       `Section 8 allows 90ms with cubic-bezier(0.2, 0, 0, 1), a seat rather than a ` +
         `bounce, and the Arris token layer zeroes the duration under reduced motion.`,
-    ).toContain('transition: border-color var(--motion-duration) var(--motion-easing)')
+    ).toBe('border-color var(--motion-duration) var(--motion-easing)')
   })
 
-  it('leaves the row box at the hit target it inherits', () => {
-    const boxes = [arrisRow(''), arrisRow(':hover')].join('\n')
-
+  it('leaves every scoped row box at the hit target it inherits', () => {
     expect(
-      /(?:^|;)\s*(?:min-)?height\s*:/.test(boxes),
-      `The impression shrinks to the drawn height; the row's own box keeps the ` +
-        `ADR-0112 target it gets from the button family, so a menu row's hit area ` +
-        `never reaches into its neighbour's.`,
-    ).toBe(false)
+      scopedBoxHeights(read(MENU_SURFACE)),
+      `The impression shrinks to the drawn height; a row's own box keeps the ADR-0112 ` +
+        `target it gets from the button family, so a menu row's hit area never reaches ` +
+        `into its neighbour's.`,
+    ).toEqual([])
   })
 })

@@ -51,6 +51,11 @@
  * shadow that language allows, over a resting border and the machined 2px chamfer (the
  * Arris spec, section 7). The shared menu surface states the same rule; this list still
  * draws its own chrome, so it has to say it for itself.
+ *
+ * The border width and the radius are restated deliberately and resolve the same today.
+ * The unscoped rule types its border width as a literal and reaches for --radius-md, so
+ * naming the resting-border and chamfer tokens is what makes this rule read as the
+ * whole doctrine section 7 states rather than one third of it.
  */
 [data-design-language='arris'] .export-menu__list {
   border-width: var(--border-width-resting);
