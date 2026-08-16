@@ -80,6 +80,49 @@ describe('App boot and storage warnings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not open the project/i)
   })
 
+  it('names the underlying failure in the boot error notice', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'load').mockRejectedValue(new Error('stored project is corrupt'))
+
+    render(<App store={store} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/stored project is corrupt/i)
+  })
+
+  it('boots into the shell when the failed boot is retried', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    // Fails once, then loads normally: Retry has to re-run the boot, not just
+    // repaint the notice.
+    vi.spyOn(store, 'load').mockRejectedValueOnce(new Error('disk fault'))
+
+    render(<App store={store} />)
+
+    await screen.findByRole('alert')
+    await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /vernacular/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('starts a new project from a failed boot without overwriting the stored one', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'load').mockRejectedValue(new Error('stored project is corrupt'))
+    const save = vi.spyOn(store, 'save')
+
+    render(<App store={store} />)
+
+    await screen.findByRole('alert')
+    await userEvent.click(screen.getByRole('button', { name: /start a new project/i }))
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    // The stored bytes survive: they are only replaced by an explicit save.
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('raises a banner when booting into a storage-degraded environment', async () => {
     vi.stubGlobal('navigator', {})
     vi.stubGlobal('indexedDB', undefined)
