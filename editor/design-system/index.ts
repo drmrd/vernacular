@@ -14,7 +14,7 @@ export { EmptyState, LoadingState } from './status'
 export type { EmptyStateProps, LoadingStateProps } from './status'
 export { ThemeProvider, useTheme } from './theme-provider'
 export type { ThemeProviderProps } from './theme-provider'
-export { resolveTheme } from './theme'
+export { resolveTheme, resolveThemeChoice, isThemeChoice, THEME_CHOICES } from './theme'
 export type { ThemeChoice, ResolvedTheme } from './theme'
 export {
   resolveDesignLanguage,

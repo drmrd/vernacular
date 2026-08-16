@@ -5,14 +5,7 @@ import {
   resolveDesignLanguage,
 } from '../editor/design-system/design-language'
 import { ThemeProvider } from '../editor/design-system/theme-provider'
-import type { ThemeChoice } from '../editor/design-system/theme'
-
-const APPEARANCE_CHOICES: ThemeChoice[] = ['system', 'light', 'dark']
-const DEFAULT_APPEARANCE: ThemeChoice = 'system'
-
-function resolveAppearance(appearance: unknown): ThemeChoice {
-  return APPEARANCE_CHOICES.find((choice) => choice === appearance) ?? DEFAULT_APPEARANCE
-}
+import { resolveThemeChoice } from '../editor/design-system/theme'
 
 /**
  * Opt-in Storybook decorator for the parallel design-language theme (ADR-0162).
@@ -28,7 +21,7 @@ export const withDesignLanguage: Decorator = (story, context: StoryContext) => {
   return (
     <ThemeProvider
       designLanguage={designLanguage}
-      defaultChoice={resolveAppearance(context.globals.appearance)}
+      defaultChoice={resolveThemeChoice(context.globals.appearance)}
     >
       {story()}
     </ThemeProvider>
