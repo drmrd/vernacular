@@ -1,5 +1,6 @@
 import type { Point } from '../model/types'
 import { openingKindOfType } from '../registries/opening-kind'
+import { effectiveWallThickness } from './construction-profile'
 import {
   WALL_NODE_PREFIX,
   type FurnitureSceneNode,
@@ -141,12 +142,17 @@ export function sweepWalkCollision(
   return resolved
 }
 
-/** The wall centerline as a world-plane segment: plan x to X, plan y to Z. */
+/**
+ * The wall centerline as a world-plane segment: plan x to X, plan y to Z. The
+ * standoff thickness is the resolved assembly total, the same figure the 3D wall
+ * builder extrudes its footprint from, so the walker clears the face it can see
+ * rather than a thinner raw thickness the renderer never draws.
+ */
 function wallToSegment(wall: WallSceneNode): WallSegment {
   return {
     start: { x: wall.start.x, z: wall.start.y },
     end: { x: wall.end.x, z: wall.end.y },
-    thickness: wall.thickness,
+    thickness: effectiveWallThickness(wall),
   }
 }
 
