@@ -19,9 +19,10 @@ sourceFiles:
     bridge/react/room-scene-node-equal.ts,
     bridge/react/framed-scene-reconciler.ts,
     engine/scene/near-wall-transparency-enrollment.ts,
+    bridge/react/near-wall-fade.tsx,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-08-17
 ---
 
 # ADR-0089: Within-floor mesh reuse in the three-dimensional preview
@@ -162,3 +163,13 @@ restore baseline. A privatized clone stamps its uuid and baseline into `userData
 enrollment takes a material that already carries its own stamp as it stands. Without that,
 a rebuild landing while the camera sat outside would have recorded the fade opacity as the
 appearance to restore, and the wall would never have come back solid.
+
+## Update (2026-08-17): a shrinking enrollment set restores what it drops
+
+Enrollment keys on the exterior wall set, so an edit that changes room topology can move a
+wall out of that set while it is mid-fade, and the wall then leaves the target list with
+its materials still at the fade opacity, where no update or restore reaches them again
+(issue #526). `NearWallFade` now keeps the list it last drove and restores whatever left
+it, comparing by material instance so a wall the rebuild enrolls again keeps the appearance
+the frame gave it. The update above says no consumer depends on that list's identity. This
+one now does, for the length of a single rebuild.
