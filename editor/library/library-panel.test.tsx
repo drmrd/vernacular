@@ -10,6 +10,7 @@ const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
 const PACK_ITEM_NAME = 'Mid-century chair'
 const USER_ITEM_NAME = 'Inherited armchair'
 const EMPTY_STATE = 'Your library is empty'
+const IMPORT_ACTION = /import a 3d model/i
 
 const FOOTPRINT_WIDTH_MM = 600
 const FOOTPRINT_DEPTH_MM = 600
@@ -80,12 +81,12 @@ describe('LibraryPanel', () => {
     expect(onPick).toHaveBeenCalledWith(packItem)
   })
 
-  it('calls onImport once when the Import GLB action is clicked', async () => {
+  it('calls onImport once when the import action is clicked', async () => {
     const user = userEvent.setup()
     const onImport = vi.fn()
     renderPanel(registryOf([libraryItem()], []), vi.fn(), onImport)
 
-    await user.click(screen.getByRole('button', { name: /import glb/i }))
+    await user.click(screen.getByRole('button', { name: IMPORT_ACTION }))
 
     expect(onImport).toHaveBeenCalledTimes(1)
   })
@@ -226,10 +227,10 @@ describe('LibraryPanel design-system primitives', () => {
     }
   })
 
-  it('routes the Import GLB button through the Button primitive', async () => {
+  it('routes the import button through the Button primitive', async () => {
     renderPanel(registryOf([libraryItem()], []))
 
-    expect(screen.getByRole('button', { name: /import glb/i })).toHaveClass('ds-button')
+    expect(screen.getByRole('button', { name: IMPORT_ACTION })).toHaveClass('ds-button')
   })
 
   it('still updates the visible items when a source segmented option is selected', async () => {
@@ -242,12 +243,12 @@ describe('LibraryPanel design-system primitives', () => {
     expect(screen.getByRole('button', { name: OAK_NAME })).toBeInTheDocument()
   })
 
-  it('still fires onImport when the Import GLB button is clicked', async () => {
+  it('still fires onImport when the import button is clicked', async () => {
     const user = userEvent.setup()
     const onImport = vi.fn()
     renderPanel(registryOf([libraryItem()], []), vi.fn(), onImport)
 
-    await user.click(screen.getByRole('button', { name: /import glb/i }))
+    await user.click(screen.getByRole('button', { name: IMPORT_ACTION }))
 
     expect(onImport).toHaveBeenCalledTimes(1)
   })
