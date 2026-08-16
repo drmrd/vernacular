@@ -253,11 +253,12 @@ interface ProjectBootInputs {
   projectId: string
 }
 
-// Boots the project: uses an injected store directly, otherwise resolves the
-// durable {store, assets} pair asynchronously exactly once, then loads or creates
-// the project. An injected store pairs with the injected asset cache or a fresh
-// in-memory one. Each async step is guarded against writes after unmount, and the
-// store and load errors surface through a single error channel.
+// Boots the project in two steps: resolve the durable {store, assets} pair (skipped
+// for an injected store, which pairs with the injected asset cache or a fresh
+// in-memory one), then load or create the project. Both steps report through one
+// error channel and are guarded against writes after unmount. Each stands down once
+// it holds its own result, so Retry (which just clears the error) re-runs only the
+// step that failed rather than swapping a resolved store under a live session.
 function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const { providedStore, providedAssets, resolveStore, projectId } = inputs
   const [resolved, setResolved] = useState<ProjectStorage | null>(null)
@@ -267,12 +268,6 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const store = providedStore ?? resolved?.store ?? null
   const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
 
-  // Both steps stand down while an error is showing and pick up again the moment it
-  // clears, which is what makes Retry a one-liner: clearing the error re-runs the boot.
-  // Each step also stands down once it has produced its own result, so a retry re-runs
-  // only the step that actually failed. Resolving storage a second time would hand the
-  // live session a different store object, and a second resolution that failed would
-  // throw away a boot that had already succeeded.
   useEffect(() => {
     if (providedStore || resolved !== null || error !== null) return
     let cancelled = false
