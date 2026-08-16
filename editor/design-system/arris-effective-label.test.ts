@@ -78,6 +78,18 @@ const PROBES: Probe[] = [
     base: '.ds-menu-surface__row',
     state: ':hover',
   },
+  {
+    name: 'project menu row, hovered',
+    stylesheet: 'editor/shell/project-menu.css',
+    base: '.project-menu__row',
+    state: ':hover',
+  },
+  {
+    name: 'export menu row, hovered',
+    stylesheet: 'editor/shell/export-menu.css',
+    base: '.export-menu__row',
+    state: ':hover',
+  },
 ]
 
 function declaredValue(body: string, property: string): string | undefined {
