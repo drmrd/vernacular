@@ -218,3 +218,41 @@
     'inspector'
     'statusbar';
 }
+
+/*
+ * The bench doctrine (the Arris spec, sections 6 and 7). Everything docked is one
+ * bench, dead flat, and the canvas is the sheet lying on it. So the frame stops
+ * insetting the sheet, the gutter drops to the 8px the language asks for, and the
+ * panes lose the rounding that made them read as separate cards.
+ *
+ * Separation comes from a kerf line, a 1px cut at 20 percent ink, rather than from
+ * a heavier border or a tonal step. The elevation declaration is not decorative
+ * bookkeeping: it states in the stylesheet that a docked pane is flat, so a later
+ * shadow has to argue with it rather than land quietly.
+ */
+[data-design-language='arris'] .ds-app-frame {
+  gap: var(--space-2);
+  padding: 0;
+}
+
+[data-design-language='arris'] .ds-app-frame__rail,
+[data-design-language='arris'] .ds-app-frame__inspector {
+  border-radius: var(--radius-square);
+  border-color: var(--color-kerf);
+  box-shadow: var(--elevation-flat);
+}
+
+/* Panel padding is 12px, and it belongs to the panel rather than to whatever the
+   panel happens to be showing, so a pane full of one component and a pane full of
+   another sit their content on the same inset. */
+[data-design-language='arris'] .ds-app-frame__pane-body {
+  padding: var(--space-3);
+}
+
+/* The narrow-width notice is structural chrome the frame draws for itself, not a
+   picked-up thing, so it squares off with the rest of the bench. */
+[data-design-language='arris']
+  .ds-app-frame[data-breakpoint='narrow']
+  .ds-app-frame__narrow-notice {
+  border-radius: var(--radius-square);
+}
