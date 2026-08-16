@@ -339,6 +339,105 @@ describe('useProjectActions import action discard guard', () => {
   })
 })
 
+describe('useProjectActions open actions discard guard', () => {
+  function openContext(
+    overrides: GuardedContextOverrides & Partial<ProjectActionsContext>,
+  ): ProjectActionsContext {
+    return {
+      session: createEditorSession(sampleProject()),
+      store: new InMemoryProjectStore(),
+      assets: new InMemoryAssetCache(),
+      projectId: 'current',
+      snapshots: undefined,
+      recentProjects: new InMemoryRecentProjectStore(),
+      capabilities: capableStorage,
+      recentEntries: [],
+      notifications: fakeNotifications(),
+      ...overrides,
+    } as ProjectActionsContext
+  }
+
+  it('does not open a recent project into a dirty session until the discard is confirmed', async () => {
+    const store = new InMemoryProjectStore()
+    await store.save('house', sampleProject())
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => false)
+
+    const context = openContext({ onSession, isDirty: true, confirmDiscard, store })
+    const { result } = renderHook(() => useProjectActions(context))
+
+    await act(async () => {
+      result.current.onOpenRecent('house')
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).not.toHaveBeenCalled()
+  })
+
+  it('opens the recent project once the dirty session confirms the discard', async () => {
+    const store = new InMemoryProjectStore()
+    await store.save('house', sampleProject())
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => true)
+
+    const context = openContext({ onSession, isDirty: true, confirmDiscard, store })
+    const { result } = renderHook(() => useProjectActions(context))
+
+    await act(async () => {
+      result.current.onOpenRecent('house')
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).toHaveBeenCalledOnce()
+  })
+
+  it('does not reopen a recent folder project into a dirty session until the discard is confirmed', async () => {
+    const notifications = fakeNotifications()
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => false)
+
+    const context = openContext({
+      onSession,
+      isDirty: true,
+      confirmDiscard,
+      notifications,
+      recentEntries: [{ id: 'house', name: 'My House', backend: 'file-system-folder' }],
+    })
+    const { result } = renderHook(() => useProjectActions(context))
+
+    await act(async () => {
+      result.current.onOpenRecent('house')
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).not.toHaveBeenCalled()
+    expect(notifications.error).not.toHaveBeenCalled()
+  })
+
+  it('does not open a picked folder into a dirty session until the discard is confirmed', async () => {
+    const notifications = fakeNotifications()
+    const onSession = vi.fn()
+    const confirmDiscard = vi.fn(() => false)
+
+    const context = openContext({
+      onSession,
+      isDirty: true,
+      confirmDiscard,
+      notifications,
+      capabilities: { ...capableStorage, fileSystemAccess: true },
+    })
+    const { result } = renderHook(() => useProjectActions(context))
+
+    await act(async () => {
+      result.current.onOpenFolder?.()
+    })
+
+    expect(confirmDiscard).toHaveBeenCalledOnce()
+    expect(onSession).not.toHaveBeenCalled()
+    expect(notifications.error).not.toHaveBeenCalled()
+  })
+})
+
 describe('useProjectActions export actions', () => {
   // jsdom does not implement URL.createObjectURL/revokeObjectURL. The download helpers
   // (downloadText/downloadBytes) call them, so stub both; otherwise the sync plan export
