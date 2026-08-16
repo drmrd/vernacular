@@ -9,6 +9,7 @@ import type { PlanSelection } from './use-plan-selection'
 import type { PlanUnderlayLayer } from './use-underlay'
 import type { FurnitureEditing } from './use-furniture-editing'
 import type { FurniturePlacementHandlers } from './use-furniture-layer'
+import type { StairEditing } from './use-stair-editing'
 import type { StairPlacement } from './use-stair-placement'
 import type { SelectionMove } from './use-selection-move'
 import type { UnderlayMove } from './use-underlay-move'
@@ -30,6 +31,7 @@ export interface PointerSources {
   openingResizing: OpeningResizing
   openingEditing: OpeningEditing
   furnitureEditing: FurnitureEditing
+  stairEditing: StairEditing
   selectionMove: SelectionMove
   // A press on an already-selected underlay drags it; sits beneath the entity
   // move-drag so a selected wall over the image still group-moves.
@@ -51,7 +53,8 @@ export interface PointerSources {
 }
 
 // The select-tool footprint grabs, in priority order: an opening jamb resize beats
-// an opening move, and either beats a furniture move.
+// an opening move, either beats a furniture move, and a stair move sits last,
+// under the furniture that paints over it.
 function entityPointerDown(
   sources: PointerSources,
   event: PointerEvent<HTMLCanvasElement>,
@@ -59,7 +62,8 @@ function entityPointerDown(
   return (
     sources.openingResizing.onPointerDown(event) ||
     sources.openingEditing.onPointerDown(event) ||
-    sources.furnitureEditing.onPointerDown(event)
+    sources.furnitureEditing.onPointerDown(event) ||
+    sources.stairEditing.onPointerDown(event)
   )
 }
 
@@ -70,7 +74,8 @@ function entityPointerMove(
   return (
     sources.openingResizing.onPointerMove(event) ||
     sources.openingEditing.onPointerMove(event) ||
-    sources.furnitureEditing.onPointerMove(event)
+    sources.furnitureEditing.onPointerMove(event) ||
+    sources.stairEditing.onPointerMove(event)
   )
 }
 
@@ -140,6 +145,7 @@ export function composePointerHandlers(sources: PointerSources): ComposedPointer
       openingResizing.onPointerUp(event)
       openingEditing.onPointerUp(event)
       furnitureEditing.onPointerUp(event)
+      sources.stairEditing.onPointerUp(event)
       if (selectionMove.onPointerUp(event) || sources.underlayMove.onPointerUp(event)) return
       selection.onPointerUp(event)
     },

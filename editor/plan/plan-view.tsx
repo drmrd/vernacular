@@ -58,7 +58,9 @@ import { useFurniturePlacement } from './furniture-placement-context'
 import { useSelectionMove, type SelectionMove } from './use-selection-move'
 import { useUnderlayMove, type UnderlayMove } from './use-underlay-move'
 import { useWallEditing, type WallEditing } from './use-wall-editing'
+import { useStairEditing, type StairEditing } from './use-stair-editing'
 import { useStairPlacement, type StairPlacement } from './use-stair-placement'
+import { singleSelectedStair } from './selected-stair'
 import {
   eventToCanvas,
   useFitToContent,
@@ -109,6 +111,7 @@ interface PlanLayers {
   openingLayer: OpeningLayer
   furnitureLayer: FurnitureLayer
   stairPlacement: StairPlacement
+  stairEditing: StairEditing
   authoring: PlanAuthoringResult
 }
 
@@ -291,6 +294,11 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     selectedIds,
   })
   const stairPlacement = useStairPlacement({ session, tool, viewport, activeFloorId })
+  const stairEditing = useStairEditing({
+    session,
+    selectedStair: singleSelectedStair(tool, selectedIds, graph.stairs),
+    viewport,
+  })
   return {
     graph,
     tool,
@@ -315,6 +323,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     openingLayer,
     furnitureLayer,
     stairPlacement,
+    stairEditing,
     authoring,
   }
 }
@@ -392,6 +401,7 @@ function usePlanController(canvasRef: CanvasRef, traceEnabled: boolean): PlanCon
       openingResizing: openingLayer.resizing,
       openingEditing: openingLayer.editing,
       furnitureEditing: layers.furnitureLayer.editing,
+      stairEditing: layers.stairEditing,
       selectionMove,
       underlayMove,
       interaction,
