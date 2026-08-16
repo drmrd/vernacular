@@ -3,3 +3,24 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+
+/*
+ * Sections in Arris are cut, not boxed (the Arris spec, sections 6 and 7). A panel
+ * is one piece of material, so the boundary between two sections is a kerf line, a
+ * single 1px cut at 20 percent ink with 12px of air on each side of it. Giving a
+ * section a card or a second background would be the tonal patchwork the bench
+ * doctrine refuses.
+ *
+ * The cut hangs off the adjacent-sibling combinator on purpose. Drawn on every slot
+ * it would land against the panel's own top edge, where there is no earlier section
+ * to separate from and the line would read as a stray rule under the panel header.
+ */
+[data-design-language='arris'] .ds-panel-slot {
+  gap: var(--space-2);
+}
+
+[data-design-language='arris'] .ds-panel-slot + .ds-panel-slot {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width-resting) solid var(--color-kerf);
+}
