@@ -80,7 +80,12 @@
   color: var(--color-text);
 }
 
-[data-design-language='arris'] .export-menu__row:hover::before {
+/* The button family guards its own hover bump with :not(:disabled) at a specificity
+   this rule cannot reach, so without the same guard this would be the only rule left
+   standing over a disabled row and the row would brighten under a pointer that cannot
+   use it. Mirroring the guard also puts the two rules on equal footing, which the
+   stylesheet order then settles in this file's favour. */
+[data-design-language='arris'] .export-menu__row:hover:not(:disabled)::before {
   border-width: var(--border-width-active);
   border-color: var(--color-border);
 }
