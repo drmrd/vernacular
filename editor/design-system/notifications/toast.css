@@ -156,6 +156,23 @@
   background: var(--color-danger);
 }
 
+/*
+ * Layout Blue exists as lines and glyphs in an enumerated set of roles and nothing else
+ * borrows it (the Arris spec, section 5). An action here is a word the user has to read
+ * and act on, which puts it in the body tier rather than the accent tier, so it is
+ * stamped plainly in ink. The determinate progress fill keeps the accent, because a
+ * progress tick is one of the roles the set does name.
+ */
+[data-design-language='arris'] .ds-toast__action {
+  color: var(--color-text);
+}
+
+/* Dismissal is recoverable from position and label, so it sits at the secondary tier
+   the ink ramp names for hints and captions. */
+[data-design-language='arris'] .ds-toast__dismiss {
+  color: var(--color-ink-secondary);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ds-toast {
     animation: none;
