@@ -651,6 +651,26 @@ describe('drawPlan stairs', () => {
     // only thing that can stroke, so a recorded stroke is the stair being drawn.
     expect(recorder.ops).toContain('stroke')
   })
+
+  it('adds a highlight stroke to the stair the selection names', () => {
+    const base = {
+      walls: [] as WallSceneNode[],
+      rooms: [],
+      viewport: { scale: DEFAULT_PLAN_SCALE },
+      width: 800,
+      height: 600,
+      stairs: [straightStair],
+    }
+    const strokes = (ops: readonly string[]): number => ops.filter((op) => op === 'stroke').length
+
+    const unselected = recordingContext()
+    drawPlan(unselected.ctx, { ...base, selectedIds: new Set<string>() })
+
+    const selected = recordingContext()
+    drawPlan(selected.ctx, { ...base, selectedIds: new Set(['stair:s1']) })
+
+    expect(strokes(selected.ops)).toBeGreaterThan(strokes(unselected.ops))
+  })
 })
 
 describe('drawPlan selection overlays', () => {

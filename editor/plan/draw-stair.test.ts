@@ -48,4 +48,24 @@ describe('drawStair', () => {
 
     expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.fixture)
   })
+
+  it('emits an extra highlight stroke when the stair is selected', () => {
+    const plainRecorder = recordingContext()
+    const selectedRecorder = recordingContext()
+
+    drawStair(plainRecorder.ctx, node, RENDER)
+    drawStair(selectedRecorder.ctx, node, { ...RENDER, selected: true })
+
+    expect(countOp(selectedRecorder.ops, 'stroke')).toBeGreaterThan(
+      countOp(plainRecorder.ops, 'stroke'),
+    )
+  })
+
+  it('leaves the selection highlight in the palette selection color', () => {
+    const recorder = recordingContext()
+
+    drawStair(recorder.ctx, node, { ...RENDER, selected: true })
+
+    expect(recorder.ctx.strokeStyle).toBe(DEFAULT_PLAN_PALETTE.selection)
+  })
 })
