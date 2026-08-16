@@ -149,14 +149,20 @@ const ORBIT_ONLY_TITLES = {
   select: 'Picks with the orbit camera. A walk-mode click engages mouse-look instead.',
   revealInterior:
     'Thins the walls between the orbit camera and the rooms. Walk mode is already inside them.',
+  preset: 'Poses the orbit camera. Walk mode would overwrite the pose on the next frame.',
+  resetView:
+    'Refits the orbit camera to the model. Walk mode would overwrite the framing on the next frame.',
 } as const
 
 interface CameraPresetButtonsProps {
   onPreset: ((preset: PresetChoice) => void) | undefined
   canDoorway: boolean | undefined
+  mode: NavMode
 }
 
-function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps) {
+function CameraPresetButtons({ onPreset, canDoorway, mode }: CameraPresetButtonsProps) {
+  const inertInWalk = walkCameraDriving(mode)
+  const presetTitle = inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined
   return (
     <div
       role="group"
@@ -168,20 +174,47 @@ function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps)
           key={preset}
           type="button"
           className="scene-nav-toolbar__btn"
+          disabled={inertInWalk}
+          title={presetTitle}
           onClick={() => onPreset?.(preset)}
         >
           {label}
         </button>
       ))}
+      {/* Doorway carries a second, older reason to sit out: a floor with no framable opening
+          leaves it nothing to aim at. Walk mode is checked first so its explanation wins while
+          the walk camera is driving. */}
       <button
         type="button"
         className="scene-nav-toolbar__btn"
-        disabled={!canDoorway}
+        disabled={inertInWalk || !canDoorway}
+        title={presetTitle}
         onClick={() => onPreset?.('doorway')}
       >
         Doorway
       </button>
     </div>
+  )
+}
+
+interface ResetViewButtonProps {
+  mode: NavMode
+  onReset: () => void
+}
+
+/** Returns the camera to the framed starting view it opened on. */
+function ResetViewButton({ mode, onReset }: ResetViewButtonProps) {
+  const inertInWalk = walkCameraDriving(mode)
+  return (
+    <button
+      type="button"
+      className="scene-nav-toolbar__btn"
+      disabled={inertInWalk}
+      title={inertInWalk ? ORBIT_ONLY_TITLES.resetView : undefined}
+      onClick={onReset}
+    >
+      Reset view
+    </button>
   )
 }
 
@@ -239,9 +272,7 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         disabled={inertInWalk}
         title={inertInWalk ? ORBIT_ONLY_TITLES.revealInterior : undefined}
       />
-      <button type="button" className="scene-nav-toolbar__btn" onClick={props.onReset}>
-        Reset view
-      </button>
+      <ResetViewButton mode={props.mode} onReset={props.onReset} />
     </div>
   )
 }
@@ -301,7 +332,11 @@ function ToolbarClusters(props: ResolvedToolbarProps) {
         onToggleRevealInterior={props.onToggleRevealInterior}
         onReset={props.onReset}
       />
-      <CameraPresetButtons onPreset={props.onPreset} canDoorway={props.canDoorway} />
+      <CameraPresetButtons
+        onPreset={props.onPreset}
+        canDoorway={props.canDoorway}
+        mode={props.mode}
+      />
       <SceneDisplayOptions
         edgeOverlay={props.edgeOverlay}
         onToggleEdgeOverlay={props.onToggleEdgeOverlay}
