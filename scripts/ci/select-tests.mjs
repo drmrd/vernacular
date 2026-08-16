@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { affectedLayers, layerOf } from './layers.mjs'
 
 const DEFAULT_BASE = 'origin/main'
-const EXTRA_TEST_DIRS = ['tests', 'scripts']
+const EXTRA_TEST_DIRS = ['tests', 'scripts', '.storybook']
 
 /**
  * @typedef {object} SelectDeps
