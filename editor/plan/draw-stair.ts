@@ -107,7 +107,8 @@ function drawDirectionArrow(painter: StairPainter, stair: StairSceneNode): void 
  * Paint one stair in screen space: the closed footprint outline, then the run.
  * A straight run gets evenly spaced tread lines; non-straight run types draw
  * only the centerline arrow because the turning and curved tread layouts are a
- * deferred 2D refinement.
+ * deferred 2D refinement. A selected run is then re-outlined in the selection
+ * color, the cue `drawFurniture` paints for a selected piece.
  */
 export function drawStair(
   ctx: PlanDrawingContext,
