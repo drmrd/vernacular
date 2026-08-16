@@ -101,18 +101,25 @@ export function sampleRenderedColor(
 }
 
 /**
- * Build a `RenderedPixelReader` backed by an on-screen `<canvas>`. This is
- * the browser-only glue proven at the end-to-end tier rather than here: it
- * copies only the requested rectangle onto a scratch canvas sized to match,
+ * Build a `RenderedPixelReader` backed by an on-screen `<canvas>`. The source
+ * canvas holds a WebGL context, so this never asks it for a 2D context; it
+ * draws the requested rectangle onto a scratch 2D canvas sized to match,
  * which keeps each on-demand read cheap regardless of the full canvas size.
+ * A fake source canvas covers this path in the unit tests, and an end-to-end
+ * journey covers it against a real WebGL canvas.
  */
-export function createCanvasPixelReader(canvas: HTMLCanvasElement): RenderedPixelReader | null {
-  const context = canvas.getContext('2d')
-  if (context === null) return null
-
+export function createCanvasPixelReader(canvas: HTMLCanvasElement): RenderedPixelReader {
   return {
-    width: canvas.width,
-    height: canvas.height,
+    // The extents are read on every access rather than snapshotted because the
+    // reader is memoized on the canvas element and so outlives any resize: a
+    // snapshot taken at construction would silently map every later sample's
+    // NDC point onto the wrong device pixel.
+    get width() {
+      return canvas.width
+    },
+    get height() {
+      return canvas.height
+    },
     // eslint-disable-next-line max-params -- signature mirrors the canvas 2D drawImage/getImageData rectangle API (x, y, width, height)
     readPixels(x, y, width, height) {
       const scratch = document.createElement('canvas')
