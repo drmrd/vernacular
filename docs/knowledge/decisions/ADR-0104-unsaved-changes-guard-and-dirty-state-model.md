@@ -41,7 +41,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-06-23
+updated: 2026-08-17
 ---
 
 # ADR-0104: Unsaved-changes guard and dirty-state model
@@ -205,3 +205,13 @@ open and import specification already describes.
 - ADR-0001 (the six-layer architecture: the tracker and guard stay
   framework-free in `bridge/`, the dialog lives in `editor/`, and the wiring
   lives in `app/`).
+
+## Update (2026-08-17): every session-swap path now routes through the guard
+
+A UX audit found the guard covering only New project and Open file, while Open
+folder, Open recent, and crash-recovery Restore replaced the session directly.
+All five call sites now share one `guardSessionSwap` seam in
+`app/use-project-actions.ts`, and the boot path gained a step-scoped retry so a
+failed project load cannot re-run a storage resolution that already succeeded.
+The workspace also keys its selection store on the session, closing the stale
+selection the swap-reset note above relies on.
