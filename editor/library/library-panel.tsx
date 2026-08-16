@@ -7,7 +7,8 @@ import { useAssetRegistry } from '../../bridge/react/asset-registry-context'
 
 import {
   DEFAULT_FILTERS,
-  activeFilterLabels,
+  SOURCE_LABELS,
+  activeFiltersDescription,
   distinctEras,
   distinctStyles,
   visibleLibraryItems,
@@ -27,26 +28,22 @@ export interface LibraryPanelProps {
   canImport?: boolean
   /** Changing this re-lists the registry, so a just-imported item appears without a reopen. */
   libraryRevision?: number
-  /** Browsing filters held by the host. Omit to let the panel hold its own. */
-  filters?: LibraryFilters
-  /** Called with the filters a control just produced. Required for `filters` to have any effect. */
-  onFiltersChange?: (filters: LibraryFilters) => void
+  /** Filter state held by a host that outlives the panel. Omit to let the panel hold its own. */
+  filterState?: LibraryFilterState
 }
 
-interface FilterState {
+/** The browsing filters and the one way to change them, kept together so neither travels alone. */
+export interface LibraryFilterState {
   filters: LibraryFilters
   setFilters: (filters: LibraryFilters) => void
 }
 
-// The panel keeps its own browsing filters unless the host supplies them, which
-// is how the launcher keeps a search term alive across a close: the panel that
-// holds the state unmounts, the launcher does not.
-function useFilterState(props: LibraryPanelProps): FilterState {
+// The panel keeps its own browsing filters unless a host supplies them, which is
+// how the launcher keeps a search term alive across a close: the panel holding
+// the state unmounts, the launcher does not.
+function useFilterState(hostState: LibraryFilterState | undefined): LibraryFilterState {
   const [ownFilters, setOwnFilters] = useState<LibraryFilters>(DEFAULT_FILTERS)
-  return {
-    filters: props.filters ?? ownFilters,
-    setFilters: props.onFiltersChange ?? setOwnFilters,
-  }
+  return hostState ?? { filters: ownFilters, setFilters: setOwnFilters }
 }
 
 // Load the registry's library items, guarding against a state update after the
@@ -72,7 +69,6 @@ function useLibraryItems(registry: AssetRegistry, revision: number): LibraryItem
 const EMPTY_MESSAGE = 'Your library is empty'
 const LOADING_MESSAGE = 'Loading furniture...'
 const NO_MATCHES_MESSAGE = 'No matches'
-const ACTIVE_FILTERS_PREFIX = 'Active filters: '
 const CLEAR_FILTERS_LABEL = 'Clear filters'
 // The picker's accept filter carries the format detail, so the action names the
 // outcome rather than the container.
@@ -108,11 +104,12 @@ function LibraryGrid({ items, onPick, armed }: LibraryGridProps): ReactElement {
   )
 }
 
-const SOURCE_OPTIONS = [
-  { value: 'all', label: 'All' },
-  { value: 'sample', label: 'Sample' },
-  { value: 'yours', label: 'Yours' },
-] satisfies SegmentedOption[]
+// Built from the shared label table so the control and the named active filter
+// always read the same, in the order the table declares.
+const SOURCE_OPTIONS = Object.entries(SOURCE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+})) satisfies SegmentedOption[]
 
 // The era segmented control always carries a default-active option that maps to
 // the unfiltered (no-era) state, so exactly one option stays selected even when
@@ -196,18 +193,18 @@ function LibraryControls(props: LibraryControlsProps): ReactElement {
 
 // A library that holds items but shows none: the filters, not the library, are
 // what emptied the grid, so the state names them and offers a way out.
-function NoMatchesState({ filters, setFilters }: FilterState): ReactElement {
+function NoMatchesState({ filters, setFilters }: LibraryFilterState): ReactElement {
   return (
     <EmptyState
       title={NO_MATCHES_MESSAGE}
-      description={`${ACTIVE_FILTERS_PREFIX}${activeFilterLabels(filters).join(', ')}`}
+      description={activeFiltersDescription(filters)}
       action={<Button onClick={() => setFilters(DEFAULT_FILTERS)}>{CLEAR_FILTERS_LABEL}</Button>}
       asRegion={false}
     />
   )
 }
 
-interface LibraryBodyProps extends FilterState {
+interface LibraryBodyProps extends LibraryFilterState {
   items: LibraryItem[] | null
   onPick: (item: LibraryItem) => void
   armed: LibraryItem | null
@@ -249,7 +246,7 @@ export function LibraryPanel(props: LibraryPanelProps): ReactElement {
   const { onPick, onImport, armed = null, canImport = true, libraryRevision = 0 } = props
   const registry = useAssetRegistry()
   const items = useLibraryItems(registry, libraryRevision)
-  const { filters, setFilters } = useFilterState(props)
+  const { filters, setFilters } = useFilterState(props.filterState)
   return (
     <section className="library-panel ds-menu-surface" aria-label="Furniture library">
       <Button className="library-panel__import" onClick={onImport} disabled={!canImport}>

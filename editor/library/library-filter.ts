@@ -10,19 +10,23 @@ export interface LibraryFilters {
 }
 
 const EMPTY_QUERY = ''
+const ANY_SOURCE: SourceFilter = 'all'
 const NO_ERA = null
 const NO_STYLE = null
 
 export const DEFAULT_FILTERS: LibraryFilters = {
   query: EMPTY_QUERY,
-  source: 'all',
+  source: ANY_SOURCE,
   era: NO_ERA,
   style: NO_STYLE,
 }
 
-const ALL_SOURCES: SourceFilter = 'all'
-
-const SOURCE_LABELS: Record<SourceFilter, string> = {
+/**
+ * The label each source carries on its control, declared in the order the
+ * control presents them. The panel builds its segmented options from this, so a
+ * relabelled control and a named active filter cannot drift apart.
+ */
+export const SOURCE_LABELS: Record<SourceFilter, string> = {
   all: 'All',
   sample: 'Sample',
   yours: 'Yours',
@@ -36,7 +40,7 @@ export function activeFilterLabels(filters: LibraryFilters): string[] {
   if (filters.query !== EMPTY_QUERY) {
     labels.push(`search "${filters.query}"`)
   }
-  if (filters.source !== ALL_SOURCES) {
+  if (filters.source !== ANY_SOURCE) {
     labels.push(`source ${SOURCE_LABELS[filters.source]}`)
   }
   if (filters.era !== NO_ERA) {
@@ -46,6 +50,13 @@ export function activeFilterLabels(filters: LibraryFilters): string[] {
     labels.push(`style ${filters.style}`)
   }
   return labels
+}
+
+const ACTIVE_FILTERS_PREFIX = 'Active filters: '
+
+/** One line naming every filter currently narrowing the listing. */
+export function activeFiltersDescription(filters: LibraryFilters): string {
+  return `${ACTIVE_FILTERS_PREFIX}${activeFilterLabels(filters).join(', ')}`
 }
 
 // The distinct eras across the loaded items, de-duplicated and sorted, so the
@@ -77,7 +88,7 @@ function matchesQuery(item: LibraryItem, query: string): boolean {
 }
 
 function matchesSource(item: LibraryItem, source: SourceFilter): boolean {
-  if (source === 'all') {
+  if (source === ANY_SOURCE) {
     return true
   }
   if (source === 'sample') {

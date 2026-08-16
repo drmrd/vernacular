@@ -43,8 +43,7 @@ export function LibraryLauncher(props: LibraryLauncherProps): ReactElement {
           armed={armed ?? null}
           canImport={canImport}
           libraryRevision={libraryRevision}
-          filters={filters}
-          onFiltersChange={setFilters}
+          filterState={{ filters, setFilters }}
         />
       ) : null}
     </div>
