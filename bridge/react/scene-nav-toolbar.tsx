@@ -183,12 +183,14 @@ function CameraPresetButtons({ onPreset, canDoorway, mode }: CameraPresetButtons
       ))}
       {/* Doorway carries a second, older reason to sit out: a floor with no framable opening
           leaves it nothing to aim at. Walk mode is checked first so its explanation wins while
-          the walk camera is driving. */}
+          the walk camera is driving. Its hover text is resolved here beside its own `disabled`
+          rather than borrowed from the five fixed presets, which answer to the camera mode
+          alone, so the two reasons stay paired with the text that explains them. */}
       <button
         type="button"
         className="scene-nav-toolbar__btn"
         disabled={inertInWalk || !canDoorway}
-        title={presetTitle}
+        title={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
         onClick={() => onPreset?.('doorway')}
       >
         Doorway
