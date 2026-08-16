@@ -14,6 +14,10 @@
  * The cut hangs off the adjacent-sibling combinator on purpose. Drawn on every slot
  * it would land against the panel's own top edge, where there is no earlier section
  * to separate from and the line would read as a stray rule under the panel header.
+ *
+ * The cluster gap is restated even though the shipped language happens to resolve to
+ * the same 8px today. Arris names 8px as its gutter, and the shipped scale is free to
+ * move; without this line a change over there would quietly retune Arris density.
  */
 [data-design-language='arris'] .ds-panel-slot {
   gap: var(--space-2);
