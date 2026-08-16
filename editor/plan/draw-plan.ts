@@ -303,7 +303,11 @@ function drawRooms(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
 function drawStairs(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   const palette = paletteOf(options)
   for (const stair of options.stairs ?? []) {
-    drawStair(ctx, stair, { viewport: options.viewport, palette })
+    drawStair(ctx, stair, {
+      viewport: options.viewport,
+      palette,
+      selected: options.selectedIds.has(stair.id),
+    })
   }
 }
 
