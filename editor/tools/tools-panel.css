@@ -76,7 +76,9 @@
   position: absolute;
   z-index: -1;
   inset-block: calc((100% - var(--tools-panel-slot)) / 2);
-  inset-inline: 0;
+  /* The inline start clears the gutter the active slot's scribe line is drawn in.
+     Every slot reserves it, active or not, so marking one does not shift the rack. */
+  inset-inline: var(--border-width-scribe) 0;
   border: var(--border-width-resting) solid transparent;
   border-radius: var(--radius-sm);
 }
@@ -109,4 +111,20 @@
   border-width: var(--border-width-active);
   border-color: var(--color-border);
   background: var(--color-surface-active);
+}
+
+/* The scribe line: the one persistent mark of the screen's primary rack (the spec,
+   section 8). Layout Blue is lawful here because a scribe is a line and never a
+   fill (refusal 2), but a line still owes 3:1 against its ground, and the accent
+   measures 2.30:1 on the light ink fill and 2.26:1 on the dark one. So it is drawn
+   in the gutter the impression reserves, on the bench, where it clears the floor in
+   both appearances. */
+[data-design-language='arris'] .tools-panel__chip.is-active::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--tools-panel-slot)) / 2);
+  inset-inline-start: 0;
+  width: var(--border-width-scribe);
+  background: var(--color-accent);
 }
