@@ -54,7 +54,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  width: var(--ds-inspector-size, 15rem);
+  /* The fallback is what a pane the user has not resized renders at, and that
+     default belongs to the visual language rather than to this stylesheet. */
+  width: var(--ds-inspector-size, var(--size-panel-docked-width));
   background: var(--color-surface-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
