@@ -269,8 +269,12 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
 
   // Both steps stand down while an error is showing and pick up again the moment it
   // clears, which is what makes Retry a one-liner: clearing the error re-runs the boot.
+  // Each step also stands down once it has produced its own result, so a retry re-runs
+  // only the step that actually failed. Resolving storage a second time would hand the
+  // live session a different store object, and a second resolution that failed would
+  // throw away a boot that had already succeeded.
   useEffect(() => {
-    if (providedStore || error !== null) return
+    if (providedStore || resolved !== null || error !== null) return
     let cancelled = false
     void resolveBootStorage(resolveStore)
       .then((it) => !cancelled && setResolved(it))
@@ -278,7 +282,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     return () => {
       cancelled = true
     }
-  }, [providedStore, resolveStore, error])
+  }, [providedStore, resolveStore, resolved, error])
 
   useEffect(() => {
     if (store === null || session !== null || error !== null) return
