@@ -56,3 +56,28 @@
   border-radius: var(--radius-square);
   box-shadow: var(--elevation-flat);
 }
+
+/*
+ * The custody doctrine states one warning treatment for every surface that touches
+ * saving, storage, import, or export (the Arris spec, section 12): the words render at
+ * full ink and carry a 2px Red Lead rule beneath and a Red Lead dot. Red Lead running
+ * text falls below the label floor and is retired, so the alarm is the rule and the
+ * dot while the legibility is the ink. The rest of the frame stays on the ordinary
+ * border, because Red Lead appears on perhaps one control per screen (section 5).
+ */
+[data-design-language='arris'] .ds-banner[data-severity='error'] {
+  border-color: var(--color-border);
+  border-bottom: var(--border-width-focus-ring) solid var(--color-danger);
+  color: var(--color-text);
+}
+
+/* The dot. Nothing is ever a pill (refusal 7), so it is a small machined square rather
+   than a rounded capsule, and it leads the row as the first flex item. */
+[data-design-language='arris'] .ds-banner[data-severity='error']::before {
+  content: '';
+  flex: 0 0 auto;
+  width: var(--space-1);
+  height: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger);
+}

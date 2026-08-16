@@ -133,6 +133,29 @@
   animation: none;
 }
 
+/*
+ * The custody doctrine is stated once and every surface that touches saving, storage,
+ * import, or export obeys it (the Arris spec, section 12), so a failure here carries
+ * the same alarm the banner does: full-ink words over a 2px Red Lead rule, with the
+ * rest of the frame left on the ordinary border.
+ */
+[data-design-language='arris'] .ds-toast[data-severity='error'] {
+  border-color: var(--color-border);
+  border-bottom: var(--border-width-focus-ring) solid var(--color-danger);
+  color: var(--color-text);
+}
+
+/* The dot. Nothing is ever a pill (refusal 7), so it is a small machined square rather
+   than a rounded capsule, and it leads the row as the first flex item. */
+[data-design-language='arris'] .ds-toast[data-severity='error']::before {
+  content: '';
+  flex: 0 0 auto;
+  width: var(--space-1);
+  height: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ds-toast {
     animation: none;
