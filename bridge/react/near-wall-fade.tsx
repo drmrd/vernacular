@@ -16,7 +16,7 @@ import {
  * and restore runs over the current set. Sweeping what left the set before tracking is
  * dropped puts those materials back on their baseline (issue #526).
  */
-// eslint-disable-next-line react-refresh/only-export-components -- the pure sweep ships beside the component that runs it each frame and this slice's test imports restoreUnenrolledNearWallTargets from ./near-wall-fade.
+// eslint-disable-next-line react-refresh/only-export-components -- the restore sweep ships beside the component that runs it each frame and this slice's test imports restoreUnenrolledNearWallTargets from ./near-wall-fade.
 export function restoreUnenrolledNearWallTargets(
   previous: NearWallTarget[],
   current: NearWallTarget[],
@@ -55,10 +55,10 @@ export function NearWallFade({
   roomPolygons: readonly (readonly Point[])[]
 }) {
   // The set this component last drove, so a rebuild that drops a wall can be seen here.
-  const enrolled = useRef(targets)
+  const previousTargets = useRef(targets)
   useFrame(({ camera }) => {
-    restoreUnenrolledNearWallTargets(enrolled.current, targets)
-    enrolled.current = targets
+    restoreUnenrolledNearWallTargets(previousTargets.current, targets)
+    previousTargets.current = targets
     if (enabled && cameraOutsideBuilding(camera.position, roomPolygons)) {
       updateNearWallTransparency(targets, camera.position)
     } else {
