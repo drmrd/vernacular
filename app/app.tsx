@@ -20,11 +20,13 @@ import {
   DESIGN_LANGUAGE_PREVIEW_PARAM,
   NotificationProvider,
   ThemeProvider,
+  humanMessage,
   resolveDesignLanguage,
   type DesignLanguage,
 } from '../editor/design-system'
 import {
   InMemoryAssetCache,
+  InMemoryProjectStore,
   InMemoryRecentProjectStore,
   probeStorageCapabilities,
   type AssetCache,
@@ -153,12 +155,8 @@ function AppWorkspace({
   snapshots: providedSnapshots,
   resolveSnapshots,
 }: AppProps) {
-  const { store, assets, session, setSession, error } = useProjectBoot({
-    providedStore,
-    providedAssets,
-    resolveStore,
-    projectId,
-  })
+  const { store, assets, session, setSession, error, retryBoot, startFreshProject } =
+    useProjectBoot({ providedStore, providedAssets, resolveStore, projectId })
   const snapshots = useResolvedSnapshots(providedSnapshots, resolveSnapshots)
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
@@ -167,10 +165,11 @@ function AppWorkspace({
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
 
-  const booting = store === null || assets === null || session === null || capabilities === null
-  if (error !== null || booting) {
-    // bootStatusView renders the error notice when error is set, otherwise the loading notice.
-    return bootStatusView(error)
+  if (error !== null) {
+    return bootErrorView(error, retryBoot, startFreshProject)
+  }
+  if (store === null || assets === null || session === null || capabilities === null) {
+    return bootLoadingView()
   }
 
   return (
@@ -207,19 +206,30 @@ function useStorageCapabilities(): StorageCapabilities | null {
   return capabilities
 }
 
-// The pre-shell placeholder: the error notice when boot failed, otherwise the
-// loading notice while the store or project is still resolving.
-function bootStatusView(error: Error | null) {
-  if (error !== null) {
-    return (
-      <main aria-label="Error">
-        <p role="alert">Could not open the project. Reload the page to try again.</p>
-      </main>
-    )
-  }
+// The pre-shell placeholder while the store or the project is still resolving.
+function bootLoadingView() {
   return (
     <main aria-label="Loading">
       <p role="status">Loading project...</p>
+    </main>
+  )
+}
+
+// The pre-shell failure notice: why the boot failed and the two ways out of it.
+// A stored document that fails every load (corrupt bytes, a broken migration)
+// would otherwise lock the user out on every reload. Plain elements, because this
+// renders above the editor's provider tree.
+function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => void) {
+  return (
+    <main aria-label="Error">
+      <p role="alert">Could not open the project: {humanMessage(error)}</p>
+      <button type="button" onClick={onRetry}>
+        Retry
+      </button>
+      <button type="button" onClick={onStartFresh}>
+        Start a new project
+      </button>
+      <p>A new project leaves the saved one where it is until you save over it.</p>
     </main>
   )
 }
@@ -230,6 +240,10 @@ interface ProjectBoot {
   session: EditorSession | null
   setSession: (session: EditorSession) => void
   error: Error | null
+  /** Re-run the failed boot from the top (a transient I/O fault deserves a second go). */
+  retryBoot: () => void
+  /** Leave the unreadable stored project alone and work in a fresh empty one. */
+  startFreshProject: () => void
 }
 
 interface ProjectBootInputs {
@@ -249,6 +263,8 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const [resolved, setResolved] = useState<ProjectStorage | null>(null)
   const [session, setSession] = useState<EditorSession | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  // Bumped by a retry: both boot steps key off it, so a failed boot re-runs.
+  const [attempt, setAttempt] = useState(0)
   const fallbackAssets = useMemo(() => new InMemoryAssetCache(), [])
   const store = providedStore ?? resolved?.store ?? null
   const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
@@ -264,10 +280,10 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     return () => {
       cancelled = true
     }
-  }, [providedStore, resolveStore])
+  }, [providedStore, resolveStore, attempt])
 
   useEffect(() => {
-    if (store === null) {
+    if (store === null || session !== null) {
       return
     }
     let cancelled = false
@@ -284,9 +300,31 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     return () => {
       cancelled = true
     }
-  }, [store, projectId])
+  }, [store, projectId, session, attempt])
 
-  return { store, assets, session, setSession, error }
+  return {
+    store,
+    assets,
+    session,
+    setSession,
+    error,
+    retryBoot: () => {
+      setError(null)
+      setAttempt((previous) => previous + 1)
+    },
+    startFreshProject: () => {
+      setError(null)
+      // A failed storage resolution leaves no store at all; an in-memory pair keeps
+      // the fresh project workable. Nothing is written over the stored project
+      // either way: only an explicit save replaces it.
+      setResolved((current) => current ?? freshStorage())
+      setSession(createEditorSession(createInitialProject()))
+    },
+  }
+}
+
+function freshStorage(): ProjectStorage {
+  return { store: new InMemoryProjectStore(), assets: new InMemoryAssetCache() }
 }
 
 function asError(cause: unknown): Error {
