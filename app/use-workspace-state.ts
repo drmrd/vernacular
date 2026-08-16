@@ -250,7 +250,11 @@ function useWorkspaceActions(options: WorkspaceActionsOptions): {
 
 export function useWorkspaceState(props: EditorWorkspaceProps): WorkspaceState {
   const { session, assets, recentProjects, snapshots, onSession } = props
-  const selection = useMemo(() => createSelectionStore(), [])
+  // A selection names walls and openings inside one project, so the store belongs to
+  // one session: New, Open, and restore all swap in a project those ids mean nothing
+  // in, and a surviving store would leave the inspector describing a phantom object.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the session is this memo's key, not an input the factory reads.
+  const selection = useMemo(() => createSelectionStore(), [session])
   const activeFloorStore = useMemo(
     () => createActiveFloorStore(session.getProject().floors[0]?.id ?? null),
     [session],
