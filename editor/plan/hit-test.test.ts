@@ -15,6 +15,7 @@ import type {
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
+  StairSceneNode,
   WallSceneNode,
 } from '../../core'
 
@@ -121,6 +122,7 @@ describe('roomBounds', () => {
 interface SceneExtras {
   openings?: OpeningSceneNode[]
   dimensions?: DimensionSceneNode[]
+  stairs?: StairSceneNode[]
 }
 
 function scene(
@@ -135,7 +137,7 @@ function scene(
     underlays: [],
     openings: extras.openings ?? [],
     dimensions: extras.dimensions ?? [],
-    stairs: [],
+    stairs: extras.stairs ?? [],
     furniture: [],
   }
 }
@@ -298,5 +300,55 @@ describe('hitTest dimension priority', () => {
     expect(
       hitTest(wallRoomAndDimensionScene(), { x: 2000, y: 1000 }, DEFAULT_HIT_TOLERANCE_MM),
     ).toBe('room:a')
+  })
+})
+
+// A run 1000 mm across by 3000 mm long whose base sits on the wall along y = 0,
+// so the footprint spans x 1000..2000 and y 0..3000 inside the room.
+function stairNode(id: string): StairSceneNode {
+  return {
+    id,
+    kind: 'stair',
+    floorId: 'g',
+    wellFloorId: 'upper',
+    runType: 'straight',
+    position: { x: 1000, y: 0 },
+    width: 1000,
+    length: 3000,
+    rotation: 0,
+  }
+}
+
+describe('hitTest stair priority', () => {
+  const stairInRoomScene = (): SceneGraph =>
+    scene(
+      [wall('wall:edge', { x: 0, y: 0 }, { x: 4000, y: 0 })],
+      [
+        room('room:a', [
+          { x: 0, y: 0 },
+          { x: 4000, y: 0 },
+          { x: 4000, y: 4000 },
+          { x: 0, y: 4000 },
+        ]),
+      ],
+      { stairs: [stairNode('stair:s1')] },
+    )
+
+  it('returns the stair id when the click lands on a stair drawn over a room', () => {
+    expect(hitTest(stairInRoomScene(), { x: 1500, y: 2000 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'stair:s1',
+    )
+  })
+
+  it('prefers the wall over a stair where the run meets the wall it lands on', () => {
+    expect(hitTest(stairInRoomScene(), { x: 1500, y: 50 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'wall:edge',
+    )
+  })
+
+  it('falls back to the containing room when the click misses the stair footprint', () => {
+    expect(hitTest(stairInRoomScene(), { x: 3000, y: 2000 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
+      'room:a',
+    )
   })
 })
