@@ -196,3 +196,14 @@
   border-color: var(--color-text);
   color: var(--color-text);
 }
+
+/* A pressed toggle keeps its impression under the pointer. The rule above cancels the
+   hover fill and shares every property with the pressed rule while outranking it, so
+   without this a hovered active toggle would read exactly like an inactive one. The
+   shipped language reaches the same place by painting the same fill for both states;
+   this restates it where the two have been pulled apart. */
+[data-design-language='arris'] .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--color-surface-active);
+  border-color: var(--color-indicator);
+  color: var(--color-on-surface-active);
+}
