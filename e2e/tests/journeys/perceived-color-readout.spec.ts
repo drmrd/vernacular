@@ -42,15 +42,19 @@ function selectionStatusOf(page: Page): Locator {
 }
 
 // The live pane renders only where WebGPU exists, and the readout samples a real 3D drawing
-// buffer, so both capabilities gate this journey.
+// buffer, so both capabilities gate this journey. Presence of navigator.gpu is not enough:
+// headless builds can expose the API while refusing every adapter, which mounts a pane that
+// never renders a frame, so the guard asks for a real adapter.
 async function skipWithoutLiveSceneSupport(page: Page): Promise<void> {
-  const support = await page.evaluate(() => {
+  const support = await page.evaluate(async () => {
     const probe = document.createElement('canvas')
-    return { webGpu: 'gpu' in navigator, webGl2: probe.getContext('webgl2') !== null }
+    const gpu = (navigator as { gpu?: { requestAdapter(): Promise<unknown | null> } }).gpu
+    const adapter = gpu === undefined ? null : await gpu.requestAdapter().catch(() => null)
+    return { webGpuAdapter: adapter !== null, webGl2: probe.getContext('webgl2') !== null }
   })
   test.skip(
-    !support.webGpu,
-    'The live 3D preview requires WebGPU; the perceived-color readout self-skips without navigator.gpu.',
+    !support.webGpuAdapter,
+    'The live 3D preview requires a working WebGPU adapter; the perceived-color readout self-skips without one.',
   )
   test.skip(
     !support.webGl2,
