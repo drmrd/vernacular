@@ -151,6 +151,15 @@ describe('app-frame.css under Arris', () => {
     expect(frame).toMatch(/padding:\s*0/)
   })
 
+  it('seats the frame itself on the bench, not on the sheet', () => {
+    // Dropping the frame's padding exposes its own ground in the gutters between
+    // regions. The frame is chrome, so that ground has to be the bench surface: on
+    // the canvas surface the gutters would read as strips of paper between panels,
+    // which is the opposite of what the sheet-and-bench doctrine says (spec
+    // section 5). The plan view paints the sheet itself, so nothing loses it.
+    expect(arrisBody('.ds-app-frame')).toMatch(/background:\s*var\(--color-surface-panel\)/)
+  })
+
   it('gives the panel its own 12px padding rather than leaving it to the content', () => {
     expect(arrisBody('.ds-app-frame__pane-body')).toMatch(/padding:\s*var\(--space-3\)/)
   })
