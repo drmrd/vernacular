@@ -90,6 +90,18 @@
   border-width: var(--border-width-active);
 }
 
+/*
+ * A selected chip under the pointer is in both states at once, and the hover rule
+ * above is the more specific of the two, so it takes the label while the active fill
+ * stays put on the pseudo-element it never touches. That is the reversed label landing
+ * on the fill it was reversed away from, at 1.00:1 in both appearances. Restating the
+ * reversal at the hover rule's own specificity, later in the file, gives the selected
+ * chip its label back without weakening the plain hover state.
+ */
+[data-design-language='arris'] .opening-inspector__fraction-chip--active:hover {
+  color: var(--color-on-surface-active);
+}
+
 /* The selected chip is a full impression: the fill moves to the pseudo-element and
    the label rides the element that holds the text, reversed to the ground. */
 [data-design-language='arris'] .opening-inspector__fraction-chip--active {
