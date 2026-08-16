@@ -7,7 +7,7 @@ import {
   type SceneGraph,
   type WallSceneNode,
 } from '../../core'
-import { requiredContentBounds as spanOf, type Bounds } from './fit'
+import { requiredContentBounds, type Bounds } from './fit'
 import { hitTestStairs, stairBounds } from './hit-test-stair'
 import { openingCorners } from './opening-geometry'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
@@ -17,22 +17,22 @@ export const DEFAULT_HIT_TOLERANCE_MM = 150
 
 /** Axis-aligned bounds spanning a wall's two endpoints, normalized over direction. */
 export function wallBounds(wall: WallSceneNode): Bounds {
-  return spanOf([wall.start, wall.end])
+  return requiredContentBounds([wall.start, wall.end])
 }
 
 /** Axis-aligned bounds spanning every vertex of a room polygon. */
 export function roomBounds(room: RoomSceneNode): Bounds {
-  return spanOf(room.polygon)
+  return requiredContentBounds(room.polygon)
 }
 
 /** Axis-aligned bounds spanning an opening's footprint corners. */
 export function openingBounds(opening: OpeningSceneNode): Bounds {
-  return spanOf(openingCorners(opening))
+  return requiredContentBounds(openingCorners(opening))
 }
 
 /** Axis-aligned bounds spanning a dimension's two endpoints. */
 export function dimensionBounds(dimension: DimensionSceneNode): Bounds {
-  return spanOf([dimension.start, dimension.end])
+  return requiredContentBounds([dimension.start, dimension.end])
 }
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {

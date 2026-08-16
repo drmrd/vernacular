@@ -179,17 +179,20 @@ export type {
   AddStairParams,
   MoveStairParams,
   RemoveStairParams,
+  RotateStairParams,
   SetStairRunTypeParams,
 } from './commands/handlers/stair-commands'
 export {
   ADD_STAIR,
   MOVE_STAIR,
   REMOVE_STAIR,
+  ROTATE_STAIR,
   SET_STAIR_RUN_TYPE,
   addStair,
   moveStair,
   registerStairCommands,
   removeStair,
+  rotateStair,
   setStairRunType,
 } from './commands/handlers/stair-commands'
 export type {
@@ -706,6 +709,3 @@ export type {
   ExtensionSchemaRegistry,
   LoadValidationGateOptions,
 } from './format'
-
-export type { RotateStairParams } from './commands/handlers/stair-commands'
-export { ROTATE_STAIR, rotateStair } from './commands/handlers/stair-commands'

@@ -22,6 +22,12 @@ export interface AngleFieldProps {
  * degrees, since that is what people type, and commits it back in radians, the
  * unit the model and the rotation commands carry. An entry that does not parse
  * as a finite number commits nothing, leaving the last good angle standing.
+ *
+ * Seed-once contract, which both the stair and furniture inspectors depend on:
+ * the text seeds from `rotation` at mount and never re-seeds, so a half-typed
+ * entry survives an unrelated re-render. A caller that needs the field to pick
+ * up a new angle (the selection changed, or an undo restored a different one)
+ * must remount it with a React key over the selected entity and its rotation.
  */
 export function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElement {
   const [text, setText] = useState(formatDegrees(rotation))
