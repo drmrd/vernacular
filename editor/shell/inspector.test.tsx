@@ -195,6 +195,19 @@ describe('Inspector with a stair selected', () => {
     })
     expect(screen.getByLabelText('Angle (deg)')).toBeInTheDocument()
   })
+
+  it('shows a Stair component title when exactly one stair is selected', () => {
+    const stair = createStair({
+      id: 's1',
+      connection: { fromFloorId: 'g', toFloorId: 'upper' },
+    })
+    const { selection } = renderInspector([], undefined, [stair])
+    act(() => {
+      selection.select(`${STAIR_NODE_PREFIX}${stair.id}`)
+    })
+    const title = screen.getByRole('heading', { level: 3 })
+    expect(title).toHaveTextContent(/stair/i)
+  })
 })
 
 describe('PeriodTags', () => {
