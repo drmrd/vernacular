@@ -63,3 +63,28 @@ describe('SceneNavToolbar orbit-only toggles in walk mode', () => {
     expect(screen.getByRole('button', { name: 'Reveal interior' })).toBeEnabled()
   })
 })
+
+describe('SceneNavToolbar camera controls in walk mode', () => {
+  // canDoorway is passed throughout so Doorway's walk-mode disablement proves the new
+  // reason (the walk frame loop overwrites any pose these buttons set), not the
+  // pre-existing canDoorway={false} reason.
+  const cameraControlNames = ['Top down', 'North', 'South', 'East', 'West', 'Doorway', 'Reset view']
+
+  it('disables the camera-preset and reset-view buttons in walk mode, where the walk frame loop overwrites any pose they set', () => {
+    render(<SceneNavToolbar {...baseProps} mode="walk" canDoorway />)
+
+    cameraControlNames.forEach((name) => {
+      const button = screen.getByRole('button', { name })
+      expect(button).toBeDisabled()
+      expect(button.getAttribute('title')).toMatch(/orbit camera/i)
+    })
+  })
+
+  it('keeps the camera-preset and reset-view buttons live in orbit mode, where each still reaches the render', () => {
+    render(<SceneNavToolbar {...baseProps} mode="orbit" canDoorway />)
+
+    cameraControlNames.forEach((name) => {
+      expect(screen.getByRole('button', { name })).toBeEnabled()
+    })
+  })
+})
