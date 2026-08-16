@@ -29,6 +29,13 @@ import {
 // own box paints nothing, the ground is the impression drawn into its pseudo-element.
 
 const designSystem = resolve(process.cwd(), 'editor/design-system')
+
+// A probe names a design-system stylesheet by bare file name and anything else by its
+// repo-relative path, so the scan reaches the consumer stylesheets outside this
+// directory that paint the same fills (ADR-0163 left those uncovered, issue #551).
+const stylesheetPath = (name: string) =>
+  name.includes('/') ? resolve(process.cwd(), name) : join(designSystem, name)
+
 const AA_NORMAL = 4.5
 const IMPRESSION = '::before'
 const NO_PAINT = new Set(['transparent', 'none'])
@@ -63,6 +70,12 @@ const PROBES: Probe[] = [
     name: 'push button, hovered',
     stylesheet: 'button.css',
     base: '.ds-button',
+    state: ':hover',
+  },
+  {
+    name: 'menu surface row, hovered',
+    stylesheet: 'menu-surface.css',
+    base: '.ds-menu-surface__row',
     state: ':hover',
   },
 ]
@@ -100,7 +113,7 @@ function winning(rules: CssRule[], property: string): string | undefined {
 }
 
 function arrisPalette(appearance: 'light' | 'dark'): Map<string, string> {
-  const arrisCss = readFileSync(join(designSystem, 'tokens-arris.css'), 'utf8')
+  const arrisCss = readFileSync(stylesheetPath('tokens-arris.css'), 'utf8')
   const light = declarationsIn(blockBodies(arrisCss, ARRIS_SCOPE)[0] ?? '')
   if (appearance === 'light') {
     return light
@@ -117,7 +130,7 @@ describe.each(['light', 'dark'] as const)('Arris %s effective label', (appearanc
   const vars = arrisPalette(appearance)
 
   it.each(PROBES)('keeps the $name label readable on the ground it lands on', (probe) => {
-    const rules = leafRules(readFileSync(join(designSystem, probe.stylesheet), 'utf8'))
+    const rules = leafRules(readFileSync(stylesheetPath(probe.stylesheet), 'utf8'))
 
     const label = winning(rulesMatching(rules, probe, ''), 'color')
     const boxFill = winning(rulesMatching(rules, probe, ''), 'background')

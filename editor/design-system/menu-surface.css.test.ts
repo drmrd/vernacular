@@ -71,3 +71,67 @@ describe('the Arris raised object', () => {
     ).not.toContain(SQUARE)
   })
 })
+
+// A row on this surface is a design-system button, so the Arris button family draws an
+// impression behind it into a pseudo-element (ADR-0163): a bordered box of the raised
+// material. A menu is a stack of rows cut from one piece rather than a column of
+// separate tools, so the resting row keeps the material and drops the border, and hover
+// brings the border back instead of blooming a fill (the Arris spec, section 8).
+
+const ROW = '.ds-menu-surface__row'
+const MENU_SURFACE = 'editor/design-system/menu-surface.css'
+
+function arrisRow(state: string): string {
+  return arrisRuleBody(MENU_SURFACE, `${ROW}${state}`) ?? ''
+}
+
+describe('the Arris menu row', () => {
+  it('drops the impression border while keeping the surface material under it', () => {
+    const resting = arrisRow('::before')
+
+    expect(resting).toContain('border-color: transparent')
+    expect(
+      resting,
+      `The row's ground is the surface it sits on. Naming it here is what lets the ` +
+        `cascade scanner measure the label against the ground it really lands on.`,
+    ).toContain('background: var(--color-surface-raised)')
+  })
+
+  it('cancels the hover fill and restates the label the cancelled fill had reversed', () => {
+    const hover = arrisRow(':hover')
+
+    expect(hover).toContain('background: transparent')
+    expect(
+      hover,
+      `A rule that cancels a fill owes an answer about the label, because the ` +
+        `declaration that reversed it is still in force at a lower specificity ` +
+        `(the ADR-0163 addendum).`,
+    ).toContain('color: var(--color-text)')
+  })
+
+  it('brightens the border on hover instead', () => {
+    const hover = arrisRow(':hover::before')
+
+    expect(hover).toContain('border-width: var(--border-width-active)')
+    expect(hover).toContain('border-color: var(--color-border)')
+  })
+
+  it('seats that border with the one duration and the one easing curve', () => {
+    expect(
+      arrisRow('::before'),
+      `Section 8 allows 90ms with cubic-bezier(0.2, 0, 0, 1), a seat rather than a ` +
+        `bounce, and the Arris token layer zeroes the duration under reduced motion.`,
+    ).toContain('transition: border-color var(--motion-duration) var(--motion-easing)')
+  })
+
+  it('leaves the row box at the hit target it inherits', () => {
+    const boxes = [arrisRow(''), arrisRow(':hover')].join('\n')
+
+    expect(
+      /(?:^|;)\s*(?:min-)?height\s*:/.test(boxes),
+      `The impression shrinks to the drawn height; the row's own box keeps the ` +
+        `ADR-0112 target it gets from the button family, so a menu row's hit area ` +
+        `never reaches into its neighbour's.`,
+    ).toBe(false)
+  })
+})
