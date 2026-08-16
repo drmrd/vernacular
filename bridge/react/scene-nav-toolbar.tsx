@@ -105,19 +105,23 @@ interface ToolbarToggleProps {
   pressed: boolean
   onToggle: () => void
   disabled?: boolean
+  title?: string | undefined
 }
 
 /**
- * A single pressable toolbar action. The label doubles as the accessible name, `pressed`
- * drives `aria-pressed`, and an omitted `disabled` leaves the button enabled.
+ * A single pressable toolbar action. The label doubles as the accessible name (button
+ * content outranks `title` in the accessible-name calculation, so the hover text explains
+ * without renaming), `pressed` drives `aria-pressed`, and an omitted `disabled` leaves the
+ * button enabled.
  */
-function ToolbarToggle({ label, pressed, onToggle, disabled }: ToolbarToggleProps) {
+function ToolbarToggle({ label, pressed, onToggle, disabled, title }: ToolbarToggleProps) {
   return (
     <button
       type="button"
       className="scene-nav-toolbar__btn"
       aria-pressed={pressed}
       disabled={disabled}
+      title={title}
       onClick={onToggle}
     >
       {label}
@@ -174,12 +178,25 @@ interface PrimaryClusterProps {
 }
 
 /**
+ * Hover text for the two toggles that only reach the render under the orbit camera, saying
+ * what each one steers so a walk-mode user knows why it sits inert rather than assuming it
+ * is broken. A walk-mode canvas click engages mouse-look instead of picking, and the
+ * near-wall fade is skipped outright while the camera stands inside the rooms.
+ */
+const ORBIT_ONLY_TITLES = {
+  select: 'Picks with the orbit camera. A walk-mode click engages mouse-look instead.',
+  revealInterior:
+    'Thins the walls between the orbit camera and the rooms. Walk mode is already inside them.',
+} as const
+
+/**
  * The primary navigation tier: the view-scope toggle and its underground control, the
  * orbit/walk camera modes, click-to-select, the reveal-interior toggle (which sits between
  * select and reset), and the reset action, gathered into one tight cluster so they read as
  * the dominant controls.
  */
 function PrimaryCluster(props: PrimaryClusterProps) {
+  const inWalk = props.mode === 'walk'
   return (
     <div className="scene-nav-toolbar__primary">
       <ScopeToggle scope={props.scope} onScopeChange={props.onScopeChange} />
@@ -200,6 +217,8 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         label="Select"
         pressed={props.selectionEnabled}
         onToggle={props.onToggleSelection}
+        disabled={inWalk}
+        title={inWalk ? ORBIT_ONLY_TITLES.select : undefined}
       />
       {/* The near-wall fade defaults on because that is the expected-always-on state; a pressed
           toggle reflects whether it is currently on. */}
@@ -207,6 +226,8 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         label="Reveal interior"
         pressed={props.revealInterior}
         onToggle={props.onToggleRevealInterior}
+        disabled={inWalk}
+        title={inWalk ? ORBIT_ONLY_TITLES.revealInterior : undefined}
       />
       <button type="button" className="scene-nav-toolbar__btn" onClick={props.onReset}>
         Reset view
