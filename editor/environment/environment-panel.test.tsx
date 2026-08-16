@@ -21,6 +21,14 @@ const MISSING_TIMEZONE_NOTICE =
   'The site has no timezone, so solar time is estimated from its longitude. Set the timezone ' +
   'in the Site panel for exact sun angles.'
 
+const SCHEMATIC_LIGHTING_NOTICE =
+  'Schematic lighting uses a fixed rig, so the observation time and cloud cover change nothing. ' +
+  'Switch to realistic lighting to scrub the sun.'
+
+// The observation and cloud controls only reach the render under realistic lighting, so the
+// cases that drive them start from a realistic environment on a located site.
+const REALISTIC_ENVIRONMENT: EnvironmentState = { ...DEFAULT_ENVIRONMENT_STATE, mode: 'realistic' }
+
 afterEach(cleanup)
 
 describe('EnvironmentPanel', () => {
@@ -123,10 +131,54 @@ describe('EnvironmentPanel', () => {
   })
 })
 
+describe('EnvironmentPanel sun controls under schematic lighting', () => {
+  it('disables the observation and cloud controls in schematic mode, where scrubbing the sun changes nothing', () => {
+    render(
+      <EnvironmentPanel
+        site={SITE_WITH_TIMEZONE}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText(/observation date and time/i)).toBeDisabled()
+    expect(screen.getByRole('slider', { name: /time of day/i })).toBeDisabled()
+    expect(screen.getByRole('slider', { name: /cloud cover/i })).toBeDisabled()
+    expect(screen.getByText(SCHEMATIC_LIGHTING_NOTICE)).toBeInTheDocument()
+  })
+
+  it('leaves the observation and cloud controls live under realistic lighting, with no schematic notice', () => {
+    render(
+      <EnvironmentPanel
+        site={SITE_WITH_TIMEZONE}
+        environment={REALISTIC_ENVIRONMENT}
+        onEnvironmentChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText(/observation date and time/i)).toBeEnabled()
+    expect(screen.getByRole('slider', { name: /time of day/i })).toBeEnabled()
+    expect(screen.getByRole('slider', { name: /cloud cover/i })).toBeEnabled()
+    expect(screen.queryByText(SCHEMATIC_LIGHTING_NOTICE)).toBeNull()
+  })
+
+  it('keeps the color check live in schematic mode, where it still neutralizes the fixed rig', () => {
+    render(
+      <EnvironmentPanel
+        site={SITE_WITH_TIMEZONE}
+        environment={DEFAULT_ENVIRONMENT_STATE}
+        onEnvironmentChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /color check/i })).toBeEnabled()
+  })
+})
+
 describe('EnvironmentPanel observation date and time', () => {
   it('seeds the observation date-and-time input from observedAt and reports the parsed instant on change', () => {
     const environment: EnvironmentState = {
-      ...DEFAULT_ENVIRONMENT_STATE,
+      ...REALISTIC_ENVIRONMENT,
       observedAt: { date: '2026-06-21', minutesSinceMidnight: 720 },
     }
     const onEnvironmentChange = vi.fn()
@@ -151,7 +203,7 @@ describe('EnvironmentPanel observation date and time', () => {
 
   it('does not call onEnvironmentChange when the observation date-and-time input is cleared', () => {
     const environment: EnvironmentState = {
-      ...DEFAULT_ENVIRONMENT_STATE,
+      ...REALISTIC_ENVIRONMENT,
       observedAt: { date: '2026-06-21', minutesSinceMidnight: 720 },
     }
     const onEnvironmentChange = vi.fn()
@@ -172,7 +224,7 @@ describe('EnvironmentPanel observation date and time', () => {
 
   it('does not call onEnvironmentChange for a malformed observation datetime value', () => {
     const environment: EnvironmentState = {
-      ...DEFAULT_ENVIRONMENT_STATE,
+      ...REALISTIC_ENVIRONMENT,
       observedAt: { date: '2026-06-21', minutesSinceMidnight: 720 },
     }
     const onEnvironmentChange = vi.fn()
@@ -199,7 +251,7 @@ describe('EnvironmentPanel observation date and time', () => {
 
   it('seeds a time-of-day slider from minutesSinceMidnight and preserves the date when it changes', () => {
     const environment: EnvironmentState = {
-      ...DEFAULT_ENVIRONMENT_STATE,
+      ...REALISTIC_ENVIRONMENT,
       observedAt: { date: '2026-06-21', minutesSinceMidnight: 720 },
     }
     const onEnvironmentChange = vi.fn()
@@ -227,7 +279,7 @@ describe('EnvironmentPanel observation date and time', () => {
 
 describe('EnvironmentPanel cloud cover', () => {
   it('renders a cloud-cover dial seeded from cloudCover with a percentage readout', () => {
-    const environment: EnvironmentState = { ...DEFAULT_ENVIRONMENT_STATE, cloudCover: 0.6 }
+    const environment: EnvironmentState = { ...REALISTIC_ENVIRONMENT, cloudCover: 0.6 }
     render(
       <EnvironmentPanel
         site={SITE_WITH_TIMEZONE}
@@ -244,7 +296,7 @@ describe('EnvironmentPanel cloud cover', () => {
   })
 
   it('reports a cloud-cover change when the dial moves', () => {
-    const environment: EnvironmentState = { ...DEFAULT_ENVIRONMENT_STATE, cloudCover: 0.4 }
+    const environment: EnvironmentState = { ...REALISTIC_ENVIRONMENT, cloudCover: 0.4 }
     const onEnvironmentChange = vi.fn()
     render(
       <EnvironmentPanel

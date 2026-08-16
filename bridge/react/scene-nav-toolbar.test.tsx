@@ -214,6 +214,29 @@ describe('SceneNavToolbar color-temperature readout', () => {
   })
 })
 
+describe('SceneNavToolbar color-temperature honesty', () => {
+  it('disables the color-temperature slider under realistic lighting, where the sun and sky set the light color', () => {
+    render(<SceneNavToolbar {...baseProps} lightingMode="realistic" />)
+
+    expect(screen.getByRole('slider', { name: /color temperature/i })).toBeDisabled()
+    expect(screen.getByText(/sun and sky/i)).toBeInTheDocument()
+  })
+
+  it('disables the color-temperature slider while the color check holds the light at the reference white', () => {
+    render(<SceneNavToolbar {...baseProps} colorCheck />)
+
+    expect(screen.getByRole('slider', { name: /color temperature/i })).toBeDisabled()
+    expect(screen.getByText(/reference white/i)).toBeInTheDocument()
+  })
+
+  it('keeps the slider live in schematic mode, the one mode whose rig it tints', () => {
+    render(<SceneNavToolbar {...baseProps} lightingMode="schematic" />)
+
+    expect(screen.getByRole('slider', { name: /color temperature/i })).toBeEnabled()
+    expect(screen.queryByText(/sun and sky/i)).toBeNull()
+  })
+})
+
 describe('SceneNavToolbar camera presets', () => {
   it('renders a camera-preset group with the six named view buttons', () => {
     render(<SceneNavToolbar {...baseProps} onPreset={vi.fn()} canDoorway />)
