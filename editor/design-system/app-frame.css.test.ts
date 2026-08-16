@@ -3,7 +3,25 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 
+import { ARRIS_SCOPE, leafRules } from './css-token-test-support'
+
 const css = readFileSync(resolve(process.cwd(), 'editor/design-system/app-frame.css'), 'utf8')
+
+const rules = leafRules(css)
+
+/**
+ * The selectors a rule lists, split apart and normalised to single spaces, since a
+ * selector long enough to wrap arrives here carrying the newline and indent.
+ */
+function selectorsOf(selector: string): string[] {
+  return selector.split(',').map((part) => part.trim().replace(/\s+/g, ' '))
+}
+
+/** The body of the Arris-scoped rule opened by exactly this selector, or ''. */
+function arrisBody(selector: string): string {
+  const scoped = `${ARRIS_SCOPE} ${selector}`
+  return rules.find((rule) => selectorsOf(rule.selector).includes(scoped))?.body ?? ''
+}
 
 describe('app-frame.css', () => {
   it('widens the pane resize handle to a 40px pointer hit area without growing the visible bar', () => {
@@ -92,5 +110,55 @@ describe('app-frame.css', () => {
       )?.[0] ?? ''
     expect(narrowNotice).not.toBe('')
     expect(narrowNotice).toMatch(/display:\s*block/)
+  })
+})
+
+// The bench doctrine (the Arris spec, sections 6 and 7). Everything docked is one
+// flat bench: no elevation on a panel or on the frame, square edges, and separation
+// carried by a 1px kerf line at 20 percent ink rather than by tonal patchwork. The
+// canvas runs edge to edge, and the 8px gutter is the only air between regions.
+//
+// jsdom applies no stylesheets, so this reads the CSS as text, the idiom the design
+// system's other guards already use.
+describe('app-frame.css under Arris', () => {
+  it('lays the docked panes out as one dead flat bench', () => {
+    const panes = arrisBody('.ds-app-frame__rail')
+    expect(panes, 'no Arris-scoped rule reaches the docked panes').not.toBe('')
+    expect(selectorsOf(rules.find((rule) => rule.body === panes)?.selector ?? '')).toContain(
+      `${ARRIS_SCOPE} .ds-app-frame__inspector`,
+    )
+    expect(panes).toMatch(/border-radius:\s*var\(--radius-square\)/)
+    expect(panes).toMatch(/border-color:\s*var\(--color-kerf\)/)
+    expect(panes).toMatch(/box-shadow:\s*var\(--elevation-flat\)/)
+  })
+
+  it('runs the canvas edge to edge behind an 8px gutter', () => {
+    const frame = arrisBody('.ds-app-frame')
+    expect(frame, 'no Arris-scoped rule reaches the frame itself').not.toBe('')
+    expect(frame).toMatch(/gap:\s*var\(--space-2\)/)
+    expect(frame).toMatch(/padding:\s*0/)
+  })
+
+  it('gives the panel its own 12px padding rather than leaving it to the content', () => {
+    expect(arrisBody('.ds-app-frame__pane-body')).toMatch(/padding:\s*var\(--space-3\)/)
+  })
+
+  it('squares the structural chrome the frame draws for itself', () => {
+    const notice = arrisBody(".ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__narrow-notice")
+    expect(notice).toMatch(/border-radius:\s*var\(--radius-square\)/)
+  })
+
+  it('keeps every bench declaration behind the preview flag', () => {
+    const benchTokens = /var\(--(radius-square|color-kerf|elevation-flat|texture-grain-opacity)\)/
+    const unscoped = rules
+      .filter((rule) => benchTokens.test(rule.body) && !rule.selector.includes(ARRIS_SCOPE))
+      .map((rule) => rule.selector)
+
+    expect(
+      unscoped,
+      `The bench doctrine is Arris's, not the shipped language's, so every rule that ` +
+        `reads a bench token must sit under ${ARRIS_SCOPE} and the flag stays a no-op. ` +
+        `Unscoped rules:\n${unscoped.join('\n')}`,
+    ).toEqual([])
   })
 })
