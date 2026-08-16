@@ -160,6 +160,40 @@ describe('app-frame.css under Arris', () => {
     expect(notice).toMatch(/border-radius:\s*var\(--radius-square\)/)
   })
 
+  it('carries the one permitted texture on the docked panes', () => {
+    const grain = arrisBody('.ds-app-frame__rail::after')
+    expect(grain, 'no grain layer is drawn on a docked pane').not.toBe('')
+    expect(grain).toMatch(/content:\s*''/)
+    expect(grain).toMatch(/opacity:\s*var\(--texture-grain-opacity\)/)
+    expect(grain).toMatch(/pointer-events:\s*none/)
+    expect(grain).toMatch(/background-image:\s*url\(/)
+
+    // The grain has to paint above the pane's own background and below its content.
+    // A negative layer alone would fall behind an ancestor's background, so the pane
+    // becomes a stacking context of its own, the idiom the migrated controls use.
+    expect(grain).toMatch(/z-index:\s*-1/)
+    expect(arrisBody('.ds-app-frame__rail')).toMatch(/isolation:\s*isolate/)
+  })
+
+  it('lands the grain on chrome only, never on the canvas or a text container', () => {
+    const painted = new Set([
+      `${ARRIS_SCOPE} .ds-app-frame__rail::after`,
+      `${ARRIS_SCOPE} .ds-app-frame__inspector::after`,
+    ])
+    const grained = rules
+      .filter((rule) => rule.body.includes('var(--texture-grain-opacity)'))
+      .flatMap((rule) => selectorsOf(rule.selector))
+
+    expect(grained.length, 'nothing reads the grain opacity').toBeGreaterThan(0)
+    const strayed = grained.filter((selector) => !painted.has(selector))
+
+    expect(
+      strayed,
+      `The grain is chrome's alone: it never touches the canvas, a control, or a text ` +
+        `container (the Arris spec, section 7). Surfaces it strayed onto:\n${strayed.join('\n')}`,
+    ).toEqual([])
+  })
+
   it('keeps every bench declaration behind the preview flag', () => {
     const benchTokens = /var\(--(radius-square|color-kerf|elevation-flat|texture-grain-opacity)\)/
     const unscoped = rules
