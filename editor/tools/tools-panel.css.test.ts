@@ -3,13 +3,29 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 
-import { ARRIS_SCOPE, leafRules } from '../design-system/css-token-test-support'
+import { contrastRatio } from '../../core'
+import {
+  ARRIS_DARK_SCOPE,
+  ARRIS_SCOPE,
+  blockBodies,
+  declarationsIn,
+  leafRules,
+  resolveColor,
+} from '../design-system/css-token-test-support'
 
 const css = readFileSync(resolve(process.cwd(), 'editor/tools/tools-panel.css'), 'utf8')
+const arrisTokens = readFileSync(
+  resolve(process.cwd(), 'editor/design-system/tokens-arris.css'),
+  'utf8',
+)
 
 const DRAWN_HEIGHT = 'var(--size-control-height)'
 const TARGET_MIN = 'var(--size-target-min)'
 const SLOT = 'var(--tools-panel-slot)'
+const SCRIBE_WIDTH = 'var(--border-width-scribe)'
+// Accent and instrument marks hold 3:1 against their ground (the Arris spec,
+// section 5).
+const ACCENT_FLOOR = 3
 
 /** A declared value with its formatting collapsed, since the formatter is free to
  * wrap a long one across lines. */
@@ -26,6 +42,15 @@ function declaredValue(body: string, property: string): string | undefined {
 function targetsChipBox(selector: string): boolean {
   const last = selector.trim().split(/\s+/).pop() ?? ''
   return last.startsWith('.tools-panel__chip') && !last.includes('::')
+}
+
+/** The Arris palette as one appearance resolves it. */
+function arrisPalette(appearance: 'light' | 'dark'): Map<string, string> {
+  const light = declarationsIn(blockBodies(arrisTokens, ARRIS_SCOPE)[0] ?? '')
+  if (appearance === 'light') {
+    return light
+  }
+  return new Map([...light, ...declarationsIn(blockBodies(arrisTokens, ARRIS_DARK_SCOPE)[0] ?? '')])
 }
 
 describe('tools-panel.css', () => {
@@ -117,5 +142,49 @@ describe('the Arris tool rack', () => {
         `minimum only by coincidence, so every rule reading it stays under ` +
         `${ARRIS_SCOPE} and the flag stays a no-op. Unscoped rules:\n${unscoped.join('\n')}`,
     ).toEqual([])
+  })
+})
+
+// The active slot of the primary rack carries a 2px Layout Blue scribe line down its
+// left edge (the Arris spec, sections 8 and 10). The accent is lawful here because a
+// scribe is a line, never a fill (refusal 2), but a line still owes 3:1 against the
+// ground it crosses, and the ground the slot offers is the ink fill it marks. The
+// accent does not clear the floor there in either appearance, so the rack reserves a
+// gutter at the inline start and the scribe is drawn on the bench beside the
+// impression rather than on top of it.
+describe.each(['light', 'dark'] as const)('the Arris rack scribe, %s', (appearance) => {
+  const vars = arrisPalette(appearance)
+  const ink = (token: string): string => resolveColor(token, vars)
+  const scoped = leafRules(css).filter((rule) => rule.selector.includes(ARRIS_SCOPE))
+
+  it('marks the active slot with an accent line the bench can carry', () => {
+    const scribe = scoped.find((rule) =>
+      rule.selector.endsWith('.tools-panel__chip.is-active::after'),
+    )
+
+    expect(scribe, 'the active slot carries a scribe line').toBeDefined()
+    expect(declaredValue(scribe?.body ?? '', 'width')).toBe(SCRIBE_WIDTH)
+    expect(declaredValue(scribe?.body ?? '', 'background')).toBe('var(--color-accent)')
+
+    const impression = scoped.find((rule) => rule.selector.endsWith('.tools-panel__chip::before'))
+    expect(
+      declaredValue(impression?.body ?? '', 'inset-inline'),
+      `The impression reserves the scribe's gutter at its inline start, so the accent ` +
+        `lands on the bench instead of on the fill it marks.`,
+    ).toBe(`${SCRIBE_WIDTH} 0`)
+
+    const onBench = contrastRatio(ink('--color-accent'), ink('--color-surface-panel'))
+    const onFill = contrastRatio(ink('--color-accent'), ink('--color-surface-active'))
+
+    expect(
+      onBench,
+      `the scribe reads against the bench at ${onBench.toFixed(2)}:1`,
+    ).toBeGreaterThanOrEqual(ACCENT_FLOOR)
+    expect(
+      onFill,
+      `The accent measures ${onFill.toFixed(2)}:1 on the active fill, under the 3:1 ` +
+        `floor, which is the reason the scribe is drawn beside the impression and ` +
+        `not inside it. If this ever clears the floor the gutter can go.`,
+    ).toBeLessThan(ACCENT_FLOOR)
   })
 })
