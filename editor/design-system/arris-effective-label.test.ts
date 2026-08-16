@@ -33,6 +33,13 @@ const AA_NORMAL = 4.5
 const IMPRESSION = '::before'
 const NO_PAINT = new Set(['transparent', 'none'])
 
+// The design system is not the only place an active fill is painted. Consumer
+// stylesheets pair the same fill with the ordinary text ink and go illegible under
+// the preview in exactly the same way, so a probe may name any stylesheet in the
+// repository by its path. A bare file name still resolves against the design system.
+const stylesheetPath = (name: string) =>
+  name.includes('/') ? resolve(process.cwd(), name) : join(designSystem, name)
+
 interface Probe {
   name: string
   stylesheet: string
@@ -64,6 +71,12 @@ const PROBES: Probe[] = [
     stylesheet: 'button.css',
     base: '.ds-button',
     state: ':hover',
+  },
+  {
+    name: 'tool rack slot, active',
+    stylesheet: 'editor/tools/tools-panel.css',
+    base: '.tools-panel__chip',
+    state: '.is-active',
   },
 ]
 
@@ -117,7 +130,7 @@ describe.each(['light', 'dark'] as const)('Arris %s effective label', (appearanc
   const vars = arrisPalette(appearance)
 
   it.each(PROBES)('keeps the $name label readable on the ground it lands on', (probe) => {
-    const rules = leafRules(readFileSync(join(designSystem, probe.stylesheet), 'utf8'))
+    const rules = leafRules(readFileSync(stylesheetPath(probe.stylesheet), 'utf8'))
 
     const label = winning(rulesMatching(rules, probe, ''), 'color')
     const boxFill = winning(rulesMatching(rules, probe, ''), 'background')
