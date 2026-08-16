@@ -79,6 +79,18 @@ const PROBES: Probe[] = [
     base: '.inspector__count-badge',
     state: '',
   },
+  {
+    name: 'opening fraction chip, hovered',
+    stylesheet: 'editor/plan/opening-inspector.css',
+    base: '.opening-inspector__fraction-chip',
+    state: ':hover',
+  },
+  {
+    name: 'opening fraction chip, active',
+    stylesheet: 'editor/plan/opening-inspector.css',
+    base: '.opening-inspector__fraction-chip',
+    state: '--active',
+  },
 ]
 
 function declaredValue(body: string, property: string): string | undefined {
