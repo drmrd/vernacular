@@ -100,27 +100,30 @@ const removeStairHandler: CommandHandler<Project, RemoveStairParams> = {
   },
 }
 
+// Applies `patch` to the stair whose id matches `stairId`, leaving every other
+// stair reference-equal. Reassigns the slice for the same undo reason as above,
+// mirroring `mapTargetFloor`.
+function mapTargetStair(state: Project, stairId: string, patch: Partial<Stair>): void {
+  state.stairs = state.stairs.map((stair) =>
+    stair.id === stairId ? { ...stair, ...patch } : stair,
+  )
+}
+
 const moveStairHandler: CommandHandler<Project, MoveStairParams> = {
   apply(state, params) {
-    state.stairs = state.stairs.map((stair) =>
-      stair.id === params.stairId ? { ...stair, position: params.position } : stair,
-    )
+    mapTargetStair(state, params.stairId, { position: params.position })
   },
 }
 
 const rotateStairHandler: CommandHandler<Project, RotateStairParams> = {
   apply(state, params) {
-    state.stairs = state.stairs.map((stair) =>
-      stair.id === params.stairId ? { ...stair, rotation: params.rotation } : stair,
-    )
+    mapTargetStair(state, params.stairId, { rotation: params.rotation })
   },
 }
 
 const setStairRunTypeHandler: CommandHandler<Project, SetStairRunTypeParams> = {
   apply(state, params) {
-    state.stairs = state.stairs.map((stair) =>
-      stair.id === params.stairId ? { ...stair, runType: params.runType } : stair,
-    )
+    mapTargetStair(state, params.stairId, { runType: params.runType })
   },
 }
 
