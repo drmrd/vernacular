@@ -189,6 +189,42 @@ describe('AppFrame resize', () => {
   })
 })
 
+// A docked panel's default width belongs to the visual language: the shipped one
+// docks at 240px, Arris at 280px (its spec, section 6). CSS cannot express "the
+// default until the user says otherwise" on its own, because an inline custom
+// property outranks every stylesheet rule. So the inline property carries the
+// token until a resize happens, and the user's own number afterwards.
+describe('AppFrame docked width', () => {
+  it('leaves the inspector width to the design language until the user resizes it', async () => {
+    const user = userEvent.setup()
+    renderFrame()
+
+    expect(
+      screen
+        .getByRole('complementary', { name: 'Inspector' })
+        .style.getPropertyValue('--ds-inspector-size'),
+    ).toBe('var(--size-panel-docked-width)')
+
+    const separator = screen.getByRole('separator', { name: /resize inspector/i })
+    separator.focus()
+    await user.keyboard('{ArrowRight}')
+
+    expect(
+      screen
+        .getByRole('complementary', { name: 'Inspector' })
+        .style.getPropertyValue('--ds-inspector-size'),
+    ).toMatch(/^\d+(\.\d+)?rem$/)
+  })
+
+  it('leaves the tool rail on its own width, which the docked-panel default does not govern', () => {
+    renderFrame()
+
+    expect(
+      screen.getByRole('complementary', { name: 'Tools' }).style.getPropertyValue('--ds-rail-size'),
+    ).toBe('11rem')
+  })
+})
+
 describe('AppFrame banner slot', () => {
   it('renders banner content under the header when provided', () => {
     render(
