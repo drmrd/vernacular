@@ -23,10 +23,13 @@ export interface WallSegment {
   start: PlanarPoint
   end: PlanarPoint
   /**
-   * The wall's full thickness in millimeters. The walker stands off the
-   * centerline by `radius + thickness / 2`, so half the thickness widens the
-   * standoff to clear the wall face. Optional: a footprint-perimeter segment is
-   * the exact solid boundary and omits it, keeping the plain `radius` standoff.
+   * The solid width the segment stands for, in millimeters. The walker stands off
+   * the centerline by `radius + thickness / 2`, so half the width widens the
+   * standoff to clear the face. On a wall-derived segment this is the resolved
+   * construction assembly total rather than the wall node's raw `thickness`
+   * field, which is what the 3D wall builder extrudes and so what the walker
+   * sees. Optional: a footprint-perimeter segment is the exact solid boundary and
+   * omits it, keeping the plain `radius` standoff.
    */
   thickness?: number
 }
