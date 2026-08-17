@@ -369,6 +369,10 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
           treatmentFor={(ref) => resolveSurfacePaint(session.getProject(), ref)}
           recent={[]}
           dispatch={dispatch}
+          // Floor and ceiling finishes are storey-scoped (see RoomFinishSection), so
+          // the section needs the storey's room count to warn before a "room" edit
+          // repaints every room sharing that storey.
+          roomsOnFloor={graph.rooms.filter((room) => room.floorId === roomNode.floorId).length}
         />
       </>
     )
