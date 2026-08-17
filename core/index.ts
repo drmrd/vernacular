@@ -603,7 +603,7 @@ export { contrastRatio, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
 export type { Color, NamedColor } from './color/color'
 export { colorFromHex, colorFromOkLab } from './color/color'
-export { mixColors, nearestColor, perceptualDistance } from './color/operations'
+export { mixColors, nearestColor, oklabChroma, perceptualDistance } from './color/operations'
 export {
   COLOR_ACCURACY_SWATCHES,
   COLOR_ACCURACY_TOLERANCE,
@@ -611,6 +611,7 @@ export {
   TONE_MAP_EXTREME_SWATCHES,
   TONE_MAP_EXTREME_TOLERANCE,
   withinColorTolerance,
+  withinNeutralChroma,
 } from './color/color-accuracy'
 export type { PerceivedShift } from './color/perceived-shift'
 export {

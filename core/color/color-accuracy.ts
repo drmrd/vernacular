@@ -1,5 +1,5 @@
 import { colorFromHex, type Color, type NamedColor } from './color'
-import { perceptualDistance } from './operations'
+import { oklabChroma, perceptualDistance } from './operations'
 
 /**
  * The three known mid-range paint swatches the color-accuracy gate renders and
@@ -121,3 +121,16 @@ export const TONE_MAP_EXTREME_TOLERANCE = 0.04
  * ADR-0168).
  */
 export const TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND = 0.01
+
+/**
+ * Whether a sampled color reads as neutral: its OKLab chroma is at or under
+ * the given bound (default `TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND`). The
+ * pure predicate behind the tone-map-extreme gate's neutral-hue check
+ * (issue #512, ADR-0168), the chroma sibling of `withinColorTolerance`.
+ */
+export function withinNeutralChroma(
+  sample: Color,
+  bound: number = TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND,
+): boolean {
+  return oklabChroma(sample) <= bound
+}

@@ -23,6 +23,15 @@ export function perceptualDistance(from: Color, to: Color): number {
 }
 
 /**
+ * The OKLab chroma of a color: the Euclidean length of its a and b axes,
+ * zero for an achromatic gray and larger for a more saturated hue. Backs the
+ * tone-map-extreme gate's neutral-hue check (issue #512, ADR-0168).
+ */
+export function oklabChroma(color: Color): number {
+  return Math.hypot(color.oklab.a, color.oklab.b)
+}
+
+/**
  * Find the candidate with the smallest perceptual distance to the target by
  * linear scan. Returns undefined (never null) for an empty candidate list.
  */
