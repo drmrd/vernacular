@@ -49,6 +49,16 @@ describe('snapAnnouncement', () => {
     const snap: SnapResult = { point: ORIGIN, kind: 'grid' }
     expect(snapAnnouncement(snap)).toBe('Snapped to grid')
   })
+
+  it('names a trace snap the way the snapping panel names it', () => {
+    const snap: SnapResult = { point: ORIGIN, kind: 'trace' }
+    expect(snapAnnouncement(snap)).toBe('Snapped to underlay corners')
+  })
+
+  it('names an angle snap as the lock the panel offers', () => {
+    const snap: SnapResult = { point: ORIGIN, kind: 'angle' }
+    expect(snapAnnouncement(snap)).toBe('Snapped to angle lock')
+  })
 })
 
 describe('angleLockAnnouncement', () => {
@@ -68,6 +78,16 @@ describe('snapStatusLabel', () => {
 
   it('names the engaged snap kind for a visible status readout', () => {
     const snap: SnapResult = { point: ORIGIN, kind: 'endpoint' }
-    expect(snapStatusLabel(snap)).toBe('Snap: endpoint')
+    expect(snapStatusLabel(snap)).toBe('Snap: Endpoint')
+  })
+
+  it('reads a trace snap as the underlay corners the panel offers, not the raw id', () => {
+    const snap: SnapResult = { point: ORIGIN, kind: 'trace' }
+    expect(snapStatusLabel(snap)).toBe('Snap: Underlay corners')
+  })
+
+  it('title-cases the label the way the snapping panel does', () => {
+    const snap: SnapResult = { point: ORIGIN, kind: 'perpendicular' }
+    expect(snapStatusLabel(snap)).toBe('Snap: Perpendicular')
   })
 })
