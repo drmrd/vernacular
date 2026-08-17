@@ -17,6 +17,7 @@ import { EditorSessionContext } from '../../bridge/react/editor-session-context'
 import { SectionLabel } from '../design-system'
 import { useActiveTool, type ToolId } from './active-tool-context'
 import { useOpeningTool } from '../plan/opening-tool-context'
+import { placementRefusalMessage } from '../plan/overlay-announce'
 import { hasFloorAbove } from '../plan/place-stair'
 import { useRovingRadioGroup } from './roving-radio-group'
 import '../design-system/segmented.css'
@@ -54,7 +55,18 @@ interface ChipProps {
   unavailableReason?: string
 }
 
-function Chip({ toolId, label, unavailable, icon, fallbackTabStop, unavailableReason }: ChipProps) {
+// The tooltip an unavailable chip carries: the caller's reason when it has one,
+// otherwise the planned-tool wording the placeholder chips share. An available chip
+// carries no tooltip at all.
+function chipTitle({ unavailable, unavailableReason }: ChipProps): string | undefined {
+  if (unavailable !== true) {
+    return undefined
+  }
+  return unavailableReason ?? PLANNED_TOOL_REASON
+}
+
+function Chip(props: ChipProps) {
+  const { toolId, label, unavailable, icon, fallbackTabStop } = props
   const { tool, setTool } = useActiveTool()
   const isActive = toolId !== undefined && tool === toolId
   const IconComponent = icon
@@ -66,7 +78,7 @@ function Chip({ toolId, label, unavailable, icon, fallbackTabStop, unavailableRe
       aria-disabled={unavailable || undefined}
       tabIndex={isActive || fallbackTabStop ? 0 : -1}
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      title={unavailable ? (unavailableReason ?? PLANNED_TOOL_REASON) : undefined}
+      title={chipTitle(props)}
       onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
     >
       {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
@@ -148,9 +160,31 @@ function useStairsUnavailable(): boolean {
   return session !== null && !hasFloorAbove(floors, activeFloorId)
 }
 
+// The period-detail chips. Stairs is the one chip the project can withhold: a stair
+// spans two floors, so it is offered only while a floor sits above the one in hand,
+// and it borrows the refusal the placement glue would otherwise raise on a click.
+function PeriodSection() {
+  const stairsUnavailable = useStairsUnavailable()
+  return (
+    <section className="tools-panel__section">
+      <SectionLabel className="tools-panel__section-heading">Period</SectionLabel>
+      <div className="tools-panel__grid">
+        <Chip label="Fireplace" icon={Flame} unavailable />
+        <Chip label="Chimney" icon={Buildings} unavailable />
+        <Chip
+          toolId="place-stair"
+          label="Stairs"
+          icon={Stairs}
+          unavailable={stairsUnavailable}
+          unavailableReason={placementRefusalMessage('no-floor-above')}
+        />
+      </div>
+    </section>
+  )
+}
+
 function ToolRailSections() {
   const { tool } = useActiveTool()
-  const stairsUnavailable = useStairsUnavailable()
   // A radiogroup with no checked option would leave every chip at tabindex -1 and
   // drop the whole rack out of the tab order, so the first chip holds the tab stop
   // until a chip is checked again.
@@ -171,20 +205,7 @@ function ToolRailSections() {
         </div>
       </section>
 
-      <section className="tools-panel__section">
-        <SectionLabel className="tools-panel__section-heading">Period</SectionLabel>
-        <div className="tools-panel__grid">
-          <Chip label="Fireplace" icon={Flame} unavailable />
-          <Chip label="Chimney" icon={Buildings} unavailable />
-          <Chip
-            toolId="place-stair"
-            label="Stairs"
-            icon={Stairs}
-            unavailable={stairsUnavailable}
-            unavailableReason="Add a floor above to place stairs"
-          />
-        </div>
-      </section>
+      <PeriodSection />
 
       <section className="tools-panel__section">
         <SectionLabel className="tools-panel__section-heading">Annotate</SectionLabel>
