@@ -22,6 +22,10 @@ interface RoomFinishSectionProps {
 
 const SHARED_HINT = 'Floor and ceiling finishes cover the whole storey, not just the selected room.'
 
+// The note borrows the hint's muted styling and adds its own class as the semantic
+// hook; the shared stylesheet carries no rule for the note class on its own.
+const NOTE_CLASS = 'finish-section__hint finish-section__note'
+
 // Floor and ceiling are floor-level surfaces in the model, so all rooms on a floor
 // share them; selecting a room is the natural place to reach the floor it sits on.
 function surfaceRef(kind: 'floor' | 'ceiling', floorId: string): SurfaceRef {
@@ -146,7 +150,7 @@ export function RoomFinishSection({
       <SectionLabel>Floor finish (whole storey)</SectionLabel>
       <p className="finish-section__hint">{SHARED_HINT}</p>
       {sharedAcrossRooms ? (
-        <p className="finish-section__note">{sharedRoomsNote(roomsOnFloor)}</p>
+        <p className={NOTE_CLASS}>{sharedRoomsNote(roomsOnFloor)}</p>
       ) : (
         <RoomFinishControls
           surface={ref}

@@ -100,6 +100,13 @@ function singleSelectedRoomNode(
   return graph.rooms.find((room) => room.id === onlyId) ?? null
 }
 
+// How many rooms sit on one storey. Floor and ceiling finishes are storey-scoped,
+// so the finish section needs this count to warn before a room-driven edit repaints
+// every room sharing that storey.
+function roomsSharingFloor(rooms: readonly RoomSceneNode[], floorId: string): number {
+  return rooms.filter((room) => room.floorId === floorId).length
+}
+
 interface SelectedOpening {
   floorId: string
   opening: Opening
@@ -369,10 +376,7 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
           treatmentFor={(ref) => resolveSurfacePaint(session.getProject(), ref)}
           recent={[]}
           dispatch={dispatch}
-          // Floor and ceiling finishes are storey-scoped (see RoomFinishSection), so
-          // the section needs the storey's room count to warn before a "room" edit
-          // repaints every room sharing that storey.
-          roomsOnFloor={graph.rooms.filter((room) => room.floorId === roomNode.floorId).length}
+          roomsOnFloor={roomsSharingFloor(graph.rooms, roomNode.floorId)}
         />
       </>
     )
