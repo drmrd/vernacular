@@ -71,12 +71,19 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   const { placementType, setPlacementType } = useOpeningTool()
   const defaultType = kind === 'door' ? DEFAULT_DOOR_TYPE : DEFAULT_WINDOW_TYPE
   const isWindow = isWindowPlacementType(placementType)
-  const isActive = tool === 'place-opening' && (kind === 'window' ? isWindow : !isWindow)
+  const armedKind: OpeningChipProps['kind'] = isWindow ? 'window' : 'door'
+  const isActive = tool === 'place-opening' && armedKind === kind
   const IconComponent = icon
 
+  // Arming this chip's kind only reaches for the default type when the armed type
+  // belongs to the other kind. A pocket door stays a pocket door when the Door chip
+  // is pressed again, so a press never silently discards the variant the user chose
+  // in the type chooser.
   function handleClick() {
     setTool('place-opening')
-    setPlacementType(defaultType)
+    if (armedKind !== kind) {
+      setPlacementType(defaultType)
+    }
   }
 
   return (
