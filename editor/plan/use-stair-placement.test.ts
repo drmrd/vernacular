@@ -1,8 +1,9 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { renderHook, cleanup } from '@testing-library/react'
+import { act, renderHook, cleanup } from '@testing-library/react'
 import { ADD_STAIR, createFloor, type AddStairParams, type Command, type Floor } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
+import { OpeningToolProvider, useOpeningTool } from './opening-tool-context'
 import { useStairPlacement } from './use-stair-placement'
 import type { Viewport } from './viewport'
 
@@ -40,14 +41,24 @@ function clickAt(x: number, y: number) {
   >[0]
 }
 
-function placeStair(tool: ToolId, floors: readonly Floor[], activeFloorId: string | null) {
+function clickStairTool(tool: ToolId, floors: readonly Floor[], activeFloorId: string | null) {
   const dispatch = vi.fn()
   const session = sessionWithFloors(floors, dispatch)
-  const { result } = renderHook(() =>
-    useStairPlacement({ session, tool, viewport: VIEWPORT, activeFloorId }),
+  const { result } = renderHook(
+    () => ({
+      placement: useStairPlacement({ session, tool, viewport: VIEWPORT, activeFloorId }),
+      opening: useOpeningTool(),
+    }),
+    { wrapper: OpeningToolProvider },
   )
-  result.current.onPointerDown(clickAt(CLICK_X, CLICK_Y))
-  return dispatch
+  act(() => {
+    result.current.placement.onPointerDown(clickAt(CLICK_X, CLICK_Y))
+  })
+  return { dispatch, refusal: () => result.current.opening.placementRefusal }
+}
+
+function placeStair(tool: ToolId, floors: readonly Floor[], activeFloorId: string | null) {
+  return clickStairTool(tool, floors, activeFloorId).dispatch
 }
 
 function paramsOf(command: Command): AddStairParams {
@@ -78,5 +89,23 @@ describe('useStairPlacement', () => {
     const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
 
     expect(placeStair('place-stair', floors, 'upper')).not.toHaveBeenCalled()
+  })
+
+  it('says why the click on the topmost floor placed nothing', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    expect(clickStairTool('place-stair', floors, 'upper').refusal()).toBe('no-floor-above')
+  })
+
+  it('refuses nothing when the stair lands', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    expect(clickStairTool('place-stair', floors, 'ground').refusal()).toBeNull()
+  })
+
+  it('refuses nothing under another tool', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM)]
+
+    expect(clickStairTool('select', floors, 'ground').refusal()).toBeNull()
   })
 })
