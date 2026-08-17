@@ -10,12 +10,15 @@ import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
 import { scopeSceneToLayer } from './edit-layer-scope'
 import { EntityProxy } from './entity-proxy'
+import { useOpeningTool } from './opening-tool-context'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
 import {
   angleLockAnnouncement,
+  placementRefusalMessage,
   selectionAnnouncement,
   snapAnnouncement,
   snapStatusLabel,
+  type PlacementRefusal,
 } from './overlay-announce'
 import type { SnapResult } from './snap'
 import { Compass } from './compass'
@@ -72,6 +75,17 @@ const CREATIVE_AUTHORING_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
 
 function isCreativeAuthoringTool(tool: ToolId): boolean {
   return CREATIVE_AUTHORING_TOOLS.has(tool)
+}
+
+// The tools whose pointer clicks can be turned down. A refusal belongs to the tool
+// that raised it, so putting that tool down clears the notice instead of leaving
+// stale text over the plan.
+const PLACEMENT_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>(['place-opening', 'place-stair'])
+
+// Why the last placement click put nothing on the plan, while the tool that raised
+// it is still in hand. Empty when nothing has been refused.
+function refusalText(tool: ToolId, refusal: PlacementRefusal | null): string {
+  return refusal !== null && PLACEMENT_TOOLS.has(tool) ? placementRefusalMessage(refusal) : ''
 }
 
 interface PillProps {
@@ -222,12 +236,20 @@ function ProxyListbox({
 
 // The live-region text. A keyboard authoring step ("Wall vertex dropped") wins
 // while authoring, so the user hears the geometry they just dropped rather than a
-// snap. Otherwise an engaged angle lock reads as its bearing ("Locked to 90
-// degrees"), then the active snap, then the current selection.
-function liveAnnouncement(props: PlanOverlayProps, selected: readonly OverlayEntity[]): string {
+// snap. A refused placement comes next, since a click that put nothing down is the
+// thing the user most needs told. Otherwise an engaged angle lock reads as its
+// bearing ("Locked to 90 degrees"), then the active snap, then the current selection.
+function liveAnnouncement(
+  props: PlanOverlayProps,
+  selected: readonly OverlayEntity[],
+  refusal: string,
+): string {
   const { authoringAnnouncement, snap, preview } = props
   if (authoringAnnouncement !== undefined && authoringAnnouncement !== '') {
     return authoringAnnouncement
+  }
+  if (refusal !== '') {
+    return refusal
   }
   if (snap?.kind === 'angle' && preview) {
     return angleLockAnnouncement(segmentReadout(preview).bearingDeg)
@@ -318,7 +340,9 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const [focused, setFocused] = useState(false)
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
-  const announcement = liveAnnouncement(props, selected)
+  const { placementRefusal } = useOpeningTool()
+  const refusal = refusalText(tool, placementRefusal)
+  const announcement = liveAnnouncement(props, selected, refusal)
   const snapStatus = snapStatusLabel(snap)
 
   return (
@@ -342,6 +366,11 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
         <Compass northBearing={props.northBearing} />
         <ScaleBar viewport={viewport} preferences={preferences} />
       </div>
+      {refusal ? (
+        <div className="plan-overlay__refusal" aria-hidden="true">
+          {refusal}
+        </div>
+      ) : null}
       {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
       <div className="plan-overlay__live" role="status" aria-live="polite">
         {announcement}

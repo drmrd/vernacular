@@ -35,6 +35,25 @@ export function snapAnnouncement(snap: SnapResult | null): string {
   return `Snapped to ${snapLabel(snap)}`
 }
 
+/** Why a pointer placement put nothing on the plan. */
+export type PlacementRefusal = 'no-host-wall' | 'opening-overlap' | 'no-floor-above'
+
+/**
+ * Plain text for a refused placement, naming the cause rather than the rule, so
+ * the two ways an opening can be refused do not read alike and the stair refusal
+ * names the floor that would fix it. Shown on the canvas and announced.
+ */
+export function placementRefusalMessage(refusal: PlacementRefusal): string {
+  switch (refusal) {
+    case 'no-host-wall':
+      return 'No wall here to host the opening'
+    case 'opening-overlap':
+      return 'That would overlap an opening already in this wall'
+    case 'no-floor-above':
+      return 'Add a floor above to place stairs'
+  }
+}
+
 /** Screen-reader text naming the angle the drawn wall is locked to. */
 export function angleLockAnnouncement(bearingDeg: number): string {
   return `Locked to ${Math.round(bearingDeg)} degrees`
