@@ -46,6 +46,24 @@ describe('DiscardDialog', () => {
     expect(dialog.parentElement).toHaveClass('discard-dialog__backdrop')
   })
 
+  it('asks the caller-supplied question in place of the unsaved-changes default', () => {
+    // The recovery banner's Discard deletes recovered snapshots, not the open
+    // document, so the seam it shares with New and Open has to be able to say so.
+    render(
+      <DiscardDialog
+        open
+        projectName="Hubbard House"
+        message="Delete the recovered copy of Hubbard House?"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog).toHaveTextContent('Delete the recovered copy of Hubbard House?')
+    expect(dialog).not.toHaveTextContent(/discard unsaved changes/i)
+  })
+
   it('opens with focus on Cancel and keeps Tab inside the prompt', async () => {
     // An alertdialog that leaves focus behind it is answerable only with the
     // mouse, and Tab walks away into a frame the prompt is blocking. Cancel takes

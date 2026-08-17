@@ -334,6 +334,13 @@ describe('App project actions', () => {
     // Same dialog seam as the #472 flake: if this findBy ever times out under
     // full-suite load, see the unsaved-changes guard test's timeout note below.
     const dialog = await screen.findByRole('alertdialog')
+
+    // What this confirmation deletes is the recovered snapshots, not the changes
+    // in the open document, so it must not borrow the unsaved-changes wording the
+    // New and Open guards use.
+    expect(dialog).toHaveTextContent(/delete the recovered copy of current\?/i)
+    expect(dialog).not.toHaveTextContent(/discard unsaved changes/i)
+
     await userEvent.click(within(dialog).getByRole('button', { name: /discard/i }))
 
     // Only after the confirmation does pruning happen and the prompt dismiss.
