@@ -7,11 +7,13 @@ import {
   TONE_MAP_EXTREME_SWATCHES,
   TONE_MAP_EXTREME_TOLERANCE,
   withinColorTolerance,
+  withinNeutralChroma,
 } from './color-accuracy'
 import {
   TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND as BARREL_TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND,
   TONE_MAP_EXTREME_SWATCHES as BARREL_TONE_MAP_EXTREME_SWATCHES,
   TONE_MAP_EXTREME_TOLERANCE as BARREL_TONE_MAP_EXTREME_TOLERANCE,
+  withinNeutralChroma as BARREL_withinNeutralChroma,
 } from '../index'
 
 describe('color-accuracy swatches and tolerance', () => {
@@ -85,6 +87,22 @@ describe('tone-map-extreme swatches and tolerance', () => {
     expect(TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND).toBeGreaterThan(0)
   })
 
+  it('reports a neutral gray within the default neutral-chroma bound', () => {
+    expect(withinNeutralChroma(colorFromHex('#080808'))).toBe(true)
+  })
+
+  it('reports a two-LSB blue excursion within the default neutral-chroma bound', () => {
+    expect(withinNeutralChroma(colorFromHex('#08080a'))).toBe(true)
+  })
+
+  it('reports the six-LSB blue cast from ADR-0168 outside the default neutral-chroma bound', () => {
+    expect(withinNeutralChroma(colorFromHex('#08080e'))).toBe(false)
+  })
+
+  it('honors an explicit bound argument', () => {
+    expect(withinNeutralChroma(colorFromHex('#08080e'), 0.02)).toBe(true)
+  })
+
   it('re-exports the tone-map-extreme constants from the core barrel', () => {
     expect(BARREL_TONE_MAP_EXTREME_SWATCHES).toBeDefined()
     expect(BARREL_TONE_MAP_EXTREME_SWATCHES).toBe(TONE_MAP_EXTREME_SWATCHES)
@@ -92,6 +110,11 @@ describe('tone-map-extreme swatches and tolerance', () => {
     expect(BARREL_TONE_MAP_EXTREME_TOLERANCE).toBe(TONE_MAP_EXTREME_TOLERANCE)
     expect(BARREL_TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND).toBeDefined()
     expect(BARREL_TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND).toBe(TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND)
+  })
+
+  it('re-exports withinNeutralChroma from the core barrel', () => {
+    expect(BARREL_withinNeutralChroma).toBeDefined()
+    expect(BARREL_withinNeutralChroma).toBe(withinNeutralChroma)
   })
 
   it('finds the pinned near-black reference far outside the tone-map-extreme tolerance of its raw-albedo paint', () => {
