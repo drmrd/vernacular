@@ -323,6 +323,33 @@ function ScaleBar({
   )
 }
 
+interface StatusLayerProps {
+  overlay: PlanOverlayProps
+  selected: readonly OverlayEntity[]
+  refusal: string
+}
+
+// The status readouts stacked over the plan: the refused-placement notice along the
+// top, the engaged snap in the lower left, and the polite live region carrying
+// whichever sentence assistive technology should hear. The notice is aria-hidden
+// because the live region already speaks it, so a screen reader hears it once.
+function StatusLayer({ overlay, selected, refusal }: StatusLayerProps): ReactElement {
+  const snapStatus = snapStatusLabel(overlay.snap)
+  return (
+    <>
+      {refusal ? (
+        <div className="plan-overlay__refusal" aria-hidden="true">
+          {refusal}
+        </div>
+      ) : null}
+      {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
+      <div className="plan-overlay__live" role="status" aria-live="polite">
+        {liveAnnouncement(overlay, selected, refusal)}
+      </div>
+    </>
+  )
+}
+
 /**
  * The accessibility overlay layered over the plan Canvas: one keyboard/AT proxy per
  * selectable entity (positioned via worldToScreen), the dimension chips, a focus
@@ -333,7 +360,7 @@ function ScaleBar({
  * end-to-end specs.
  */
 export function PlanOverlay(props: PlanOverlayProps): ReactElement {
-  const { viewport, graph, selectedIds, selection, preferences, snap, preview, readout } = props
+  const { viewport, graph, selectedIds, selection, preferences, preview, readout } = props
   const { tool, authoringCandidate, layer } = props
   const entities = overlayEntities(scopeSceneToLayer(graph, layer), selectedIds, preferences)
   const keyboard = useOverlayKeyboard(entities.length, selection)
@@ -342,8 +369,6 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const selected = entities.filter((entity) => entity.selected)
   const { placementRefusal } = useOpeningTool()
   const refusal = refusalText(tool, placementRefusal)
-  const announcement = liveAnnouncement(props, selected, refusal)
-  const snapStatus = snapStatusLabel(snap)
 
   return (
     <div className="plan-overlay">
@@ -366,15 +391,7 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
         <Compass northBearing={props.northBearing} />
         <ScaleBar viewport={viewport} preferences={preferences} />
       </div>
-      {refusal ? (
-        <div className="plan-overlay__refusal" aria-hidden="true">
-          {refusal}
-        </div>
-      ) : null}
-      {snapStatus ? <output className="plan-overlay__snap-status">{snapStatus}</output> : null}
-      <div className="plan-overlay__live" role="status" aria-live="polite">
-        {announcement}
-      </div>
+      <StatusLayer overlay={props} selected={selected} refusal={refusal} />
     </div>
   )
 }
