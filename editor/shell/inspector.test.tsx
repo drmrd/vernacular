@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   EditorSessionProvider,
   SelectionProvider,
@@ -11,13 +12,16 @@ import {
   createSurfaceSelectionStore,
 } from '../../bridge'
 import {
+  createDimension,
   createEmptyProject,
   createFloor,
   createStair,
   createWall,
   deriveRooms,
+  DIMENSION_NODE_PREFIX,
   ROOM_ID_PREFIX,
   STAIR_NODE_PREFIX,
+  type Dimension,
   type Project,
   type Wall,
 } from '../../core'
@@ -25,18 +29,30 @@ import { Inspector, PeriodTags } from './inspector'
 
 afterEach(cleanup)
 
-function renderInspector(
-  walls: Wall[] = [],
-  roomOverrides?: Project['roomOverrides'],
-  stairs: Project['stairs'] = [],
-) {
+interface InspectorFixture {
+  walls?: Wall[]
+  roomOverrides?: Project['roomOverrides']
+  stairs?: Project['stairs']
+  dimensions?: Dimension[]
+}
+
+function renderInspector({
+  walls = [],
+  roomOverrides,
+  stairs = [],
+  dimensions = [],
+}: InspectorFixture = {}) {
   const project = createEmptyProject({
     name: 'T',
     units: 'imperial',
     period: 'modern',
     appVersion: '0.0.0',
   })
-  project.floors = [createFloor('G', { id: 'g', walls })]
+  // createFloor always starts a floor with no dimensions, so a fixture that needs
+  // them attaches them to the built floor rather than through the factory options.
+  const floor = createFloor('G', { id: 'g', walls })
+  floor.dimensions = dimensions
+  project.floors = [floor]
   project.roomOverrides = roomOverrides
   project.stairs = stairs
   const session = createEditorSession(project)
@@ -71,7 +87,7 @@ describe('Inspector', () => {
   })
 
   it('shows a quiet hint when nothing is selected', () => {
-    renderInspector([createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })])
+    renderInspector({ walls: [createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })] })
     expect(screen.getByText('Nothing selected yet')).toBeInTheDocument()
   })
 
@@ -141,7 +157,7 @@ describe('Inspector', () => {
       createWall({ x: 1000, y: 1000 }, { x: 0, y: 1000 }),
       createWall({ x: 0, y: 1000 }, { x: 0, y: 0 }),
     ]
-    const { selection } = renderInspector(walls)
+    const { selection } = renderInspector({ walls })
     const [room] = deriveRooms(walls)
     if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
     act(() => {
@@ -160,8 +176,11 @@ describe('Inspector', () => {
     const [room] = deriveRooms(walls)
     if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
     const roomKey = room.id.slice(ROOM_ID_PREFIX.length)
-    const { selection } = renderInspector(walls, {
-      [roomKey]: { styleOverride: { styleId: 'craftsman' } },
+    const { selection } = renderInspector({
+      walls,
+      roomOverrides: {
+        [roomKey]: { styleOverride: { styleId: 'craftsman' } },
+      },
     })
     act(() => {
       selection.select(room.id)
@@ -172,6 +191,18 @@ describe('Inspector', () => {
     expect(screen.queryByText('[object Object]')).toBeNull()
   })
 
+  it('shows a Transform section header when a transformable entity is selected', () => {
+    const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
+    const { selection } = renderInspector({ walls: [wall] })
+    expect(screen.queryByText('Transform')).toBeNull()
+    act(() => {
+      selection.select(`wall:${wall.id}`)
+    })
+    expect(screen.getByText('Transform')).toBeInTheDocument()
+  })
+})
+
+describe('Inspector with a room selected', () => {
   it('shows a whole-storey note instead of the Floor chip when a selected room shares its storey with another room', () => {
     const walls = [
       createWall({ x: 0, y: 0 }, { x: 2000, y: 0 }),
@@ -184,7 +215,7 @@ describe('Inspector', () => {
     expect(rooms).toHaveLength(2)
     const [room] = rooms
     if (room === undefined) throw new Error('expected the split wall loop to derive two rooms')
-    const { selection } = renderInspector(walls)
+    const { selection } = renderInspector({ walls })
     act(() => {
       selection.select(room.id)
     })
@@ -196,16 +227,6 @@ describe('Inspector', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Floor' })).toBeNull()
   })
-
-  it('shows a Transform section header when a transformable entity is selected', () => {
-    const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
-    const { selection } = renderInspector([wall])
-    expect(screen.queryByText('Transform')).toBeNull()
-    act(() => {
-      selection.select(`wall:${wall.id}`)
-    })
-    expect(screen.getByText('Transform')).toBeInTheDocument()
-  })
 })
 
 describe('Inspector with a stair selected', () => {
@@ -214,7 +235,7 @@ describe('Inspector with a stair selected', () => {
       id: 's1',
       connection: { fromFloorId: 'g', toFloorId: 'upper' },
     })
-    const { selection } = renderInspector([], undefined, [stair])
+    const { selection } = renderInspector({ stairs: [stair] })
     act(() => {
       selection.select(`${STAIR_NODE_PREFIX}${stair.id}`)
     })
@@ -226,12 +247,42 @@ describe('Inspector with a stair selected', () => {
       id: 's1',
       connection: { fromFloorId: 'g', toFloorId: 'upper' },
     })
-    const { selection } = renderInspector([], undefined, [stair])
+    const { selection } = renderInspector({ stairs: [stair] })
     act(() => {
       selection.select(`${STAIR_NODE_PREFIX}${stair.id}`)
     })
     const title = screen.getByRole('heading', { level: 3 })
     expect(title).toHaveTextContent(/stair/i)
+  })
+})
+
+describe('Inspector with a dimension selected', () => {
+  it('shows Remove unarmed for a newly selected dimension, even after arming Remove on a different one', async () => {
+    const user = userEvent.setup()
+    const dimensionA = createDimension({
+      id: 'dim-a',
+      start: { x: 0, y: 0 },
+      end: { x: 1000, y: 0 },
+    })
+    const dimensionB = createDimension({
+      id: 'dim-b',
+      start: { x: 0, y: 500 },
+      end: { x: 1000, y: 500 },
+    })
+    const { selection } = renderInspector({ dimensions: [dimensionA, dimensionB] })
+
+    act(() => {
+      selection.select(`${DIMENSION_NODE_PREFIX}${dimensionA.id}`)
+    })
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(screen.getByRole('button', { name: 'Confirm remove' })).toBeInTheDocument()
+
+    act(() => {
+      selection.select(`${DIMENSION_NODE_PREFIX}${dimensionB.id}`)
+    })
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirm remove' })).toBeNull()
   })
 })
 
