@@ -5,7 +5,6 @@ import {
   Door,
   Flame,
   FrameCorners,
-  Hand,
   Minus,
   Ruler,
   Stairs,
@@ -101,7 +100,6 @@ function ToolRailSections() {
       <section className="tools-panel__section">
         <SectionLabel className="tools-panel__section-heading">Select</SectionLabel>
         <Chip toolId="select" label="Select" icon={CursorClick} />
-        <Chip toolId="pan" label="Pan" icon={Hand} />
       </section>
 
       <section className="tools-panel__section">
