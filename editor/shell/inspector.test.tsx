@@ -15,13 +15,16 @@ import {
   createDimension,
   createEmptyProject,
   createFloor,
+  createOpening,
   createStair,
   createWall,
   deriveRooms,
   DIMENSION_NODE_PREFIX,
+  OPENING_NODE_PREFIX,
   ROOM_ID_PREFIX,
   STAIR_NODE_PREFIX,
   type Dimension,
+  type Opening,
   type Project,
   type Wall,
 } from '../../core'
@@ -34,6 +37,7 @@ interface InspectorFixture {
   roomOverrides?: Project['roomOverrides']
   stairs?: Project['stairs']
   dimensions?: Dimension[]
+  openings?: Opening[]
 }
 
 function renderInspector({
@@ -41,6 +45,7 @@ function renderInspector({
   roomOverrides,
   stairs = [],
   dimensions = [],
+  openings = [],
 }: InspectorFixture = {}) {
   const project = createEmptyProject({
     name: 'T',
@@ -48,10 +53,12 @@ function renderInspector({
     period: 'modern',
     appVersion: '0.0.0',
   })
-  // createFloor always starts a floor with no dimensions, so a fixture that needs
-  // them attaches them to the built floor rather than through the factory options.
+  // createFloor always starts a floor with no dimensions or openings, so a fixture
+  // that needs them attaches them to the built floor rather than through the
+  // factory options.
   const floor = createFloor('G', { id: 'g', walls })
   floor.dimensions = dimensions
+  floor.openings = openings
   project.floors = [floor]
   project.roomOverrides = roomOverrides
   project.stairs = stairs
@@ -197,6 +204,29 @@ describe('Inspector', () => {
     expect(screen.queryByText('Transform')).toBeNull()
     act(() => {
       selection.select(`wall:${wall.id}`)
+    })
+    expect(screen.getByText('Transform')).toBeInTheDocument()
+  })
+})
+
+describe('Inspector with an opening selected', () => {
+  const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
+  const opening = createOpening({ type: 'single-swing-door', hostWallId: wall.id, position: 500 })
+
+  it('shows no Transform section when only an opening is selected, since an opening rides its host wall and cannot be moved or rotated directly', () => {
+    const { selection } = renderInspector({ walls: [wall], openings: [opening] })
+    act(() => {
+      selection.select(`${OPENING_NODE_PREFIX}${opening.id}`)
+    })
+    expect(screen.queryByText('Transform')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Rotate clockwise' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Rotate counter-clockwise' })).toBeNull()
+  })
+
+  it('shows the Transform section when a wall and an opening are selected together, since the wall is still transformable', () => {
+    const { selection } = renderInspector({ walls: [wall], openings: [opening] })
+    act(() => {
+      selection.setSelection([`wall:${wall.id}`, `${OPENING_NODE_PREFIX}${opening.id}`])
     })
     expect(screen.getByText('Transform')).toBeInTheDocument()
   })
