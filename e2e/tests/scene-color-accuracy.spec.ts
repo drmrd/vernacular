@@ -6,6 +6,8 @@ import {
   TONE_MAP_EXTREME_SWATCHES,
   TONE_MAP_EXTREME_TOLERANCE,
   withinColorTolerance,
+  withinNeutralChroma,
+  oklabChroma,
   colorFromOkLab,
   srgbToOkLab,
   perceptualDistance,
@@ -82,16 +84,24 @@ test.describe('Tone-map-extreme color gate', () => {
         `${swatch.name}: sampled ${sampled.srgbHex} vs reference ${swatch.reference.srgbHex}, ` +
           `OKLab distance ${distance.toFixed(4)} > tolerance ${TONE_MAP_EXTREME_TOLERANCE}`,
       ).toBe(true)
+    })
 
-      if (swatch.neutralHue) {
-        const chroma = Math.hypot(sampled.oklab.a, sampled.oklab.b)
+    if (swatch.neutralHue) {
+      test(`the ${swatch.name} swatch render stays achromatic`, async ({ page }) => {
+        const hex = swatch.paint.srgbHex.slice(1)
+        const canvas = await gotoPaintedReference(page, hex)
+
+        const sampledSrgb = await sampleCanvasColor(page, canvas, FLOOR_SAMPLE_CENTER)
+        const sampled = colorFromOkLab(srgbToOkLab(sampledSrgb))
+        const chroma = oklabChroma(sampled)
+
         expect(
-          chroma <= TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND,
+          withinNeutralChroma(sampled),
           `${swatch.name}: measured chroma ${chroma.toFixed(4)} exceeds the neutral bound ` +
             `${TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND}; a neutral swatch's render must stay ` +
             `achromatic`,
         ).toBe(true)
-      }
-    })
+      })
+    }
   }
 })
