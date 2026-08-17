@@ -26,6 +26,15 @@ export function stairPlacementCommand(
   return addStair(createStair({ position: world, connection }))
 }
 
+/**
+ * Whether a stair started on the active floor has a floor to rise to. The tool rack
+ * asks this before offering the stair tool, so a project with nowhere to rise says
+ * so on the chip instead of leaving it to a click that places nothing.
+ */
+export function hasFloorAbove(floors: readonly Floor[], activeFloorId: string | null): boolean {
+  return stairConnectionAbove(floors, activeFloorId) !== null
+}
+
 function stairConnectionAbove(
   floors: readonly Floor[],
   activeFloorId: string | null,

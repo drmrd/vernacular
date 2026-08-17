@@ -10,10 +10,14 @@ import {
   Stairs,
   Tag,
 } from '@phosphor-icons/react'
-import { builtinElementTypes, openingKindOfType } from '../../core'
+import { useContext, useSyncExternalStore } from 'react'
+import { builtinElementTypes, openingKindOfType, type Floor } from '../../core'
+import { ActiveFloorContext } from '../../bridge'
+import { EditorSessionContext } from '../../bridge/react/editor-session-context'
 import { SectionLabel } from '../design-system'
 import { useActiveTool, type ToolId } from './active-tool-context'
 import { useOpeningTool } from '../plan/opening-tool-context'
+import { hasFloorAbove } from '../plan/place-stair'
 import { useRovingRadioGroup } from './roving-radio-group'
 import '../design-system/segmented.css'
 import './tools-panel.css'
@@ -37,6 +41,8 @@ const DEFAULT_DOOR_TYPE: string =
 const DEFAULT_WINDOW_TYPE: string =
   openingEntries().find((t) => openingKindOfType(t.id) === 'window')?.id ?? 'double-hung-window'
 
+const PLANNED_TOOL_REASON = 'Planned, not yet available'
+
 interface ChipProps {
   toolId?: ToolId
   label: string
@@ -44,9 +50,11 @@ interface ChipProps {
   icon?: Icon
   /** Takes the group's single tab stop when no chip is checked. See `orphanTool`. */
   fallbackTabStop?: boolean
+  /** Why an unavailable chip cannot be used; defaults to the planned-tool wording. */
+  unavailableReason?: string
 }
 
-function Chip({ toolId, label, unavailable, icon, fallbackTabStop }: ChipProps) {
+function Chip({ toolId, label, unavailable, icon, fallbackTabStop, unavailableReason }: ChipProps) {
   const { tool, setTool } = useActiveTool()
   const isActive = toolId !== undefined && tool === toolId
   const IconComponent = icon
@@ -58,7 +66,7 @@ function Chip({ toolId, label, unavailable, icon, fallbackTabStop }: ChipProps) 
       aria-disabled={unavailable || undefined}
       tabIndex={isActive || fallbackTabStop ? 0 : -1}
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
-      title={unavailable ? 'Planned, not yet available' : undefined}
+      title={unavailable ? (unavailableReason ?? PLANNED_TOOL_REASON) : undefined}
       onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
     >
       {IconComponent ? <IconComponent size={16} aria-hidden="true" /> : null}
@@ -118,8 +126,31 @@ const CHIP_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
   'dimension',
 ])
 
+const NO_FLOORS: readonly Floor[] = []
+const IGNORE_CHANGES = () => () => {}
+
+// The rack renders bare in stories and isolated tests, outside the editor session
+// and active-floor providers. Reading both contexts directly, rather than through
+// the hooks that throw without a provider, keeps that bare render working: with no
+// project in scope the panel cannot know the floor stack, so it does not withhold a
+// tool over a question it cannot answer.
+function useStairsUnavailable(): boolean {
+  const session = useContext(EditorSessionContext)
+  const activeFloor = useContext(ActiveFloorContext)
+  const floors = useSyncExternalStore(
+    session?.subscribe ?? IGNORE_CHANGES,
+    session === null ? () => NO_FLOORS : () => session.getProject().floors,
+  )
+  const activeFloorId = useSyncExternalStore(
+    activeFloor?.subscribe ?? IGNORE_CHANGES,
+    activeFloor === null ? () => null : activeFloor.getActiveFloorId,
+  )
+  return session !== null && !hasFloorAbove(floors, activeFloorId)
+}
+
 function ToolRailSections() {
   const { tool } = useActiveTool()
+  const stairsUnavailable = useStairsUnavailable()
   // A radiogroup with no checked option would leave every chip at tabindex -1 and
   // drop the whole rack out of the tab order, so the first chip holds the tab stop
   // until a chip is checked again.
@@ -145,7 +176,13 @@ function ToolRailSections() {
         <div className="tools-panel__grid">
           <Chip label="Fireplace" icon={Flame} unavailable />
           <Chip label="Chimney" icon={Buildings} unavailable />
-          <Chip toolId="place-stair" label="Stairs" icon={Stairs} />
+          <Chip
+            toolId="place-stair"
+            label="Stairs"
+            icon={Stairs}
+            unavailable={stairsUnavailable}
+            unavailableReason="Add a floor above to place stairs"
+          />
         </div>
       </section>
 
