@@ -3,7 +3,7 @@ import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ActiveToolProvider } from './active-tool-provider'
 import { useActiveTool } from './active-tool-context'
-import { OpeningToolProvider } from '../plan/opening-tool-context'
+import { OpeningToolProvider, useOpeningTool } from '../plan/opening-tool-context'
 import { ToolsPanel } from './tools-panel'
 
 afterEach(cleanup)
@@ -180,6 +180,78 @@ describe('ToolsPanel', () => {
 
     expect(stairsChip).toHaveAttribute('aria-checked', 'true')
     expect(stairsChip).toHaveClass('is-active')
+  })
+})
+
+// Shows the shared placement type and can preset it, so a test can arm a specific
+// opening variant the way the type chooser does and then read what a chip press
+// left behind.
+function PlacementTypeProbe({ preset }: { preset: string }) {
+  const { placementType, setPlacementType } = useOpeningTool()
+  return (
+    <>
+      <button type="button" onClick={() => setPlacementType(preset)}>
+        arm variant
+      </button>
+      <output data-testid="placement-type">{placementType}</output>
+    </>
+  )
+}
+
+function renderPanelWithProbe(preset: string) {
+  return render(
+    <ActiveToolProvider>
+      <OpeningToolProvider>
+        <ToolsPanel />
+        <PlacementTypeProbe preset={preset} />
+      </OpeningToolProvider>
+    </ActiveToolProvider>,
+  )
+}
+
+async function armVariant(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'arm variant' }))
+}
+
+describe('ToolsPanel opening variant', () => {
+  it('keeps a chosen window variant when its own chip is pressed again', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('sliding-window')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /window/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('sliding-window')
+  })
+
+  it('keeps a chosen door variant when its own chip is pressed again', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('pocket-door')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /door/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('pocket-door')
+  })
+
+  it('switches to the default door when the chosen variant is a window', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('sliding-window')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /door/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('single-swing-door')
+  })
+
+  it('switches to the default window when the chosen variant is a door', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('pocket-door')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /window/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('double-hung-window')
   })
 })
 
