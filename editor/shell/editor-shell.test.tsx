@@ -365,6 +365,20 @@ describe('EditorShell', () => {
     expect(screen.queryByRole('button', { name: /discard/i })).toBeNull()
   })
 
+  it('seats the recovery prompt in the frame banner slot rather than above the frame', () => {
+    // Rendered as a sibling before the frame, the prompt pushes a viewport-tall
+    // frame down by its own height, so the status bar leaves the window. The
+    // frame already reserves a banner row for exactly this kind of notice and
+    // reflows the rest of the layout around it.
+    vi.stubGlobal('navigator', {})
+
+    const { container } = renderShell({ recovery: { onRestore: vi.fn(), onDiscard: vi.fn() } })
+
+    const banner = container.querySelector('.ds-app-frame__banner')
+    expect(banner).not.toBeNull()
+    expect(banner).toContainElement(screen.getByRole('alert'))
+  })
+
   it('shows the open-file menu item and a viewport drop target', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
