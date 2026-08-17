@@ -22,8 +22,13 @@ function openingEntries() {
   return Object.values(builtinElementTypes.entries).filter((t) => t.category === 'opening')
 }
 
-function isWindowPlacementType(id: string): boolean {
-  return openingKindOfType(id) === 'window'
+/** The kind of chip an armed placement type belongs to. */
+type OpeningChipKind = 'door' | 'window'
+
+// The chip kind an armed placement type belongs to. An unknown or non-opening id
+// reads as a door, matching the door-first default the panel arms.
+function armedOpeningKind(id: string): OpeningChipKind {
+  return openingKindOfType(id) === 'window' ? 'window' : 'door'
 }
 
 const DEFAULT_DOOR_TYPE: string =
@@ -61,7 +66,7 @@ function Chip({ toolId, label, unavailable, icon }: ChipProps) {
 }
 
 interface OpeningChipProps {
-  kind: 'door' | 'window'
+  kind: OpeningChipKind
   icon: Icon
   label: string
 }
@@ -70,8 +75,7 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   const { tool, setTool } = useActiveTool()
   const { placementType, setPlacementType } = useOpeningTool()
   const defaultType = kind === 'door' ? DEFAULT_DOOR_TYPE : DEFAULT_WINDOW_TYPE
-  const isWindow = isWindowPlacementType(placementType)
-  const armedKind: OpeningChipProps['kind'] = isWindow ? 'window' : 'door'
+  const armedKind = armedOpeningKind(placementType)
   const isActive = tool === 'place-opening' && armedKind === kind
   const IconComponent = icon
 
