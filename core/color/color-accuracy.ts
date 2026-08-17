@@ -115,7 +115,7 @@ export const TONE_MAP_EXTREME_TOLERANCE = 0.04
  * sample of a `neutralHue` tone-map-extreme swatch.
  *
  * Measured chroma at the near-black render is exactly 0 on both backends; a
- * 2-LSB single-channel excursion measures 0.0047 (passes), a 6-LSB blue
+ * two-LSB blue excursion (#08080a) measures 0.0047 (passes), a 6-LSB blue
  * shift (#08080e) measures 0.0134 (fails). Catches an illuminant tint the
  * distance check alone could miss inside a 0.04 ball (issue #512,
  * ADR-0168).

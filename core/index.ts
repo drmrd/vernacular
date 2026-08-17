@@ -604,6 +604,7 @@ export { readableTextColor } from './color/readable-text-color'
 export type { Color, NamedColor } from './color/color'
 export { colorFromHex, colorFromOkLab } from './color/color'
 export { mixColors, nearestColor, oklabChroma, perceptualDistance } from './color/operations'
+export type { ToneMapExtremeSwatch } from './color/color-accuracy'
 export {
   COLOR_ACCURACY_SWATCHES,
   COLOR_ACCURACY_TOLERANCE,
