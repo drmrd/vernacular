@@ -86,6 +86,36 @@ describe('DiscardDialog', () => {
     expect(cancel).toHaveFocus()
   })
 
+  it('survives a click on the shaded surround with its modality intact', async () => {
+    // Clicking the shade is an ordinary dismissal reflex. With the trap and the
+    // Escape handler bound to the inner panel alone, that click left focus on the
+    // body: Escape stopped answering and the next Tab reached a control behind the
+    // prompt, which is how a live prompt could be answered by proxy.
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+
+    render(
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={onCancel} />,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+    const backdrop = dialog.parentElement as HTMLElement
+    await user.click(backdrop)
+
+    // The shade has to be part of the prompt's focus surface. A shade that cannot
+    // hold focus hands it to the document body instead, and from there neither the
+    // trap nor the Escape handler, both bound inside the prompt, ever see another
+    // key.
+    expect(backdrop).toHaveFocus()
+
+    // Tab still lands inside the prompt rather than on the frame behind it.
+    await user.tab()
+    expect(within(dialog).getByRole('button', { name: /cancel/i })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+
   it('marks itself modal so assistive technology ignores the frame behind it', () => {
     render(
       <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />,
