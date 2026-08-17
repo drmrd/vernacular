@@ -29,25 +29,32 @@ export function DiscardDialog({ open, ...prompt }: DiscardDialogProps) {
 // value would never re-run it, and the second and later prompts would open with
 // focus still behind them.
 function DiscardPrompt({ projectName, message, onConfirm, onCancel }: DiscardPromptProps) {
-  const dialogRef = useFocusTrap<HTMLDivElement>()
+  const promptRef = useFocusTrap<HTMLDivElement>()
   const question = message ?? `Discard unsaved changes to ${projectName}?`
   return (
-    <div className="discard-dialog__backdrop">
+    // The trap and the Escape handler sit on the shade rather than the panel, and
+    // the shade carries a tabindex so it can hold focus itself. A shade that cannot
+    // hold focus hands it to the document body when clicked, and a handler bound
+    // inside the prompt then never sees another keystroke: Escape stops answering
+    // and Tab walks off into the frame this prompt exists to block.
+    <div
+      ref={promptRef}
+      tabIndex={-1}
+      className="discard-dialog__backdrop"
+      // Escape answers the prompt the safe way. The keystroke stops here so it does
+      // not also reach the editor behind the prompt, which reads Escape as deselect.
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+          onCancel()
+        }
+      }}
+    >
       <div
-        ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="discard-dialog-message"
         className="discard-dialog"
-        // Escape answers the prompt the safe way. The keystroke stops here so it
-        // does not also reach the editor behind the prompt, which reads Escape as
-        // deselect.
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.stopPropagation()
-            onCancel()
-          }
-        }}
       >
         <p id="discard-dialog-message" className="discard-dialog__message">
           {question}
