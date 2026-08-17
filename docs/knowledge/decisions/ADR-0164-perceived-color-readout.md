@@ -12,6 +12,7 @@ related:
     decisions/ADR-0142-color-managed-renderer,
     decisions/ADR-0056-surface-paint-selection-and-treatments,
     decisions/ADR-0045-three-dimensional-render-harness-and-conventions,
+    decisions/ADR-0168-tone-map-extreme-color-gate,
   ]
 sourceFiles:
   [
@@ -23,7 +24,7 @@ sourceFiles:
     editor/paint/perceived-color-readout.tsx,
   ]
 status: current
-updated: 2026-08-15
+updated: 2026-08-17
 ---
 
 # ADR-0164: Perceived-color readout: sample the drawing buffer inside the frame callback
@@ -156,11 +157,14 @@ the surface reads as painted, and it says so on exactly the evidence the gate ac
 instead of duplicating means the two cannot drift apart if the gate's rule ever moves.
 
 This inherits the gate's stated limits. [[ADR-0156-luminance-calibration-convention]] promises the
-raw-albedo round trip for the mid-range only, and the near-white and near-black shoulder and toe of
-the tone-mapping operator are deferred (issue #512). A readout on a near-white paint may therefore
-report a shift that is a known property of the operator rather than a property of the light. That is
-documented behavior rather than a defect, and it is one more reason the readout reports what it
-sampled instead of claiming the render is correct.
+raw-albedo round trip for the mid-range only. The shoulder and toe, deferred as issue #512 when
+this was written, are now measured and gated by [[ADR-0168-tone-map-extreme-color-gate]]:
+near-white round-trips (the shift stays inside even the extreme tolerance), while near-black
+cannot round-trip at all, because the operator's toe moves `#262626` to `#080808` by design. A
+readout on a near-black paint therefore reports a real shift that is a known property of the
+operator rather than a property of the light. That is documented behavior rather than a defect,
+and it is one more reason the readout reports what it sampled instead of claiming the render is
+correct.
 
 ## Consequences
 

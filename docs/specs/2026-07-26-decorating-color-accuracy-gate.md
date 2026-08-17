@@ -35,7 +35,8 @@ In scope:
   `paint=demo` baseline.
 - A `scene-webgl` end-to-end gate that renders each swatch under `scene=color-check`, samples the
   lit floor, converts the sample to OKLab, and asserts the difference is within tolerance. It
-  self-skips without WebGPU, like the other live-view specs.
+  renders through the deterministic scene harness and self-skips only where no WebGL 2 context
+  exists (the running gate's refinement, recorded in ADR-0157).
 - ADR-0157, recording the gate's mechanism, metric, tolerance derivation, and swatch set, and
   citing ADR-0156 for the reference condition it measures under.
 
@@ -47,7 +48,9 @@ Out of scope:
 - Tone-mapping extremes. Near-white and near-black swatches sit where the operator's shoulder and
   toe compress value, so a raw-albedo round-trip is not promised there (ADR-0156 promises it for the
   mid-range). Exercising the shoulder and toe is a separate, harder assertion and is deferred to a
-  follow-up issue.
+  follow-up issue. That follow-up has since landed: ADR-0168 extends the gate with a
+  tone-map-extreme tier, a two-tier reference (raw albedo at the white end, a pinned measured
+  render at the toe), and its own tighter tolerance.
 - A committed pixel baseline of the swatches. The gate asserts a color value within a tolerance, not
   an unchanged image, so it commits no new screenshot.
 - CIELAB and the deltaE2000 metric. The gate uses the repo-native OKLab metric; the reasoning and
@@ -86,7 +89,8 @@ The warm and cool swatches reuse the two colors the shipped `paint=demo` harness
 the matrix stays grounded in colors the project has rendered before; the neutral gray is added for
 the white-balance check. All three sit in the tone-mapping operator's roughly linear mid-range, so
 "the sample reads as the swatch" is a fair statement for every member of the set. Near-white and
-near-black are deliberately left out, per the scope note above.
+near-black are deliberately left out of this matrix, per the scope note above; the tone-map-extreme
+tier that ADR-0168 adds covers them against their own references.
 
 Each swatch is painted with a matte finish. A glossy finish would add a specular highlight that
 skews the sampled color away from the diffuse albedo the gate is checking, and finish accuracy is a
