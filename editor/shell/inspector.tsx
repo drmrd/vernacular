@@ -404,8 +404,10 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   if (dimensionNode !== null) {
     return (
       // Key on the node id so the inspector remounts when the selected dimension
-      // changes, matching the opening branch above; without it, an armed remove
-      // control could survive the selection change and delete the new target.
+      // changes, matching the opening branch above. RemoveControl also disarms
+      // itself from its targetId, so this key is not the only guard against an
+      // armed confirm retargeting; it covers whatever local state this subtree
+      // grows later, without every future caller having to remember the keying.
       <SelectedDimensionInspector
         key={dimensionNode.id}
         node={dimensionNode}

@@ -13,7 +13,7 @@ export default meta
 type Story = StoryObj<typeof RemoveControl>
 
 export const Default: Story = {
-  args: { onConfirm: fn() },
+  args: { targetId: 'story-target', onConfirm: fn() },
   play: async ({ args, canvasElement }) => {
     const screen = within(canvasElement)
 
@@ -29,7 +29,7 @@ export const Default: Story = {
 }
 
 export const Cancelled: Story = {
-  args: { onConfirm: fn() },
+  args: { targetId: 'story-target', onConfirm: fn() },
   play: async ({ args, canvasElement }) => {
     const screen = within(canvasElement)
 
