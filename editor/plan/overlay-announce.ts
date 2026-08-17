@@ -1,5 +1,19 @@
+import { SNAP_KIND_LABELS } from '../commands/snap-commands'
 import type { OverlayEntity } from './overlay-entities'
 import type { SnapResult } from './snap'
+
+// The readouts name a snap through the same label map the snapping panel and the
+// snap commands read, so the plan never calls a source by an id the panel does not
+// use ("trace" against the panel's "Underlay corners").
+function snapLabel(snap: SnapResult): string {
+  return SNAP_KIND_LABELS[snap.kind]
+}
+
+// Sentence case for the visible pill, matching how the panel presents the same
+// label beside its checkbox.
+function titleCase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
 
 /** Screen-reader text describing the current selection state. */
 export function selectionAnnouncement(selected: readonly OverlayEntity[]): string {
@@ -18,7 +32,7 @@ export function snapAnnouncement(snap: SnapResult | null): string {
   if (snap === null) {
     return ''
   }
-  return `Snapped to ${snap.kind}`
+  return `Snapped to ${snapLabel(snap)}`
 }
 
 /** Screen-reader text naming the angle the drawn wall is locked to. */
@@ -31,5 +45,5 @@ export function snapStatusLabel(snap: SnapResult | null): string {
   if (snap === null) {
     return ''
   }
-  return `Snap: ${snap.kind}`
+  return `Snap: ${titleCase(snapLabel(snap))}`
 }
