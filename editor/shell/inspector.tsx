@@ -403,7 +403,11 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const dimensionNode = singleSelectedDimension(selectedIds, graph)
   if (dimensionNode !== null) {
     return (
+      // Key on the node id so the inspector remounts when the selected dimension
+      // changes, matching the opening branch above; without it, an armed remove
+      // control could survive the selection change and delete the new target.
       <SelectedDimensionInspector
+        key={dimensionNode.id}
         node={dimensionNode}
         units={project.meta.units}
         session={session}

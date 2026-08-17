@@ -184,7 +184,10 @@ function OpeningControls({ floorId, openingId, dispatch }: OpeningControlsProps)
           Flip swing
         </Button>
       </Stack>
-      <RemoveControl onConfirm={() => dispatch(removeOpening(floorId, openingId))} />
+      <RemoveControl
+        targetId={openingId}
+        onConfirm={() => dispatch(removeOpening(floorId, openingId))}
+      />
     </Stack>
   )
 }

@@ -40,7 +40,10 @@ export function DimensionInspector({
       <p>
         Length: <span>{formatted}</span>
       </p>
-      <RemoveControl onConfirm={() => dispatch(removeDimension(floorId, dimensionId))} />
+      <RemoveControl
+        targetId={dimensionId}
+        onConfirm={() => dispatch(removeDimension(floorId, dimensionId))}
+      />
     </div>
   )
 }
