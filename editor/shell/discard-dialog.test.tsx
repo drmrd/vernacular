@@ -33,6 +33,19 @@ describe('DiscardDialog', () => {
     expect(onCancel).toHaveBeenCalledOnce()
   })
 
+  it('lifts the prompt out of page flow into a backdrop wrapper', () => {
+    // The prompt renders as a sibling of the AppFrame, whose root fills the
+    // viewport and hides its overflow. Left in page flow the prompt lays out a
+    // whole viewport below the fold, so New with unsaved work reads as a dead
+    // click. A backdrop wrapper is what the stylesheet pins to the viewport.
+    render(
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog.parentElement).toHaveClass('discard-dialog__backdrop')
+  })
+
   it('renders nothing while closed', () => {
     render(
       <DiscardDialog
