@@ -172,6 +172,31 @@ describe('Inspector', () => {
     expect(screen.queryByText('[object Object]')).toBeNull()
   })
 
+  it('shows a whole-storey note instead of the Floor chip when a selected room shares its storey with another room', () => {
+    const walls = [
+      createWall({ x: 0, y: 0 }, { x: 2000, y: 0 }),
+      createWall({ x: 2000, y: 0 }, { x: 2000, y: 1000 }),
+      createWall({ x: 2000, y: 1000 }, { x: 0, y: 1000 }),
+      createWall({ x: 0, y: 1000 }, { x: 0, y: 0 }),
+      createWall({ x: 1000, y: 0 }, { x: 1000, y: 1000 }),
+    ]
+    const rooms = deriveRooms(walls)
+    expect(rooms).toHaveLength(2)
+    const [room] = rooms
+    if (room === undefined) throw new Error('expected the split wall loop to derive two rooms')
+    const { selection } = renderInspector(walls)
+    act(() => {
+      selection.select(room.id)
+    })
+
+    expect(
+      screen.getByText(
+        'This storey holds 2 rooms, so a finish here would repaint every one of them. Per-room floor and ceiling finishes are not available yet.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Floor' })).toBeNull()
+  })
+
   it('shows a Transform section header when a transformable entity is selected', () => {
     const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
     const { selection } = renderInspector([wall])
