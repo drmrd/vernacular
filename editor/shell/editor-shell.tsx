@@ -281,6 +281,18 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
   // depth: inline, prettier wraps each of these across four or five lines.
   const header = <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
   const main = <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
+  // The recovery prompt rides the frame's banner row with the notification banners.
+  // Rendered outside the frame it displaced a viewport-tall layout downwards and
+  // pushed the status bar out of the window; the banner row is a real grid row the
+  // rest of the frame reflows around, and it collapses again once nothing fills it.
+  const banner = (
+    <>
+      <BannerRegion />
+      {recovery ? (
+        <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
+      ) : null}
+    </>
+  )
   return (
     // The command-palette provider wraps everything so the keybinding layer, the
     // command bar, and the palette dialog all share one open/close state. The
@@ -299,19 +311,13 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                       <KeybindingLayer onSave={projectControls.onSave} />
                       <CommandPalette />
                       <ToastRegion />
-                      {recovery ? (
-                        <RecoveryPrompt
-                          onRestore={recovery.onRestore}
-                          onDiscard={recovery.onDiscard}
-                        />
-                      ) : null}
                       <SurfaceSelectionProvider store={surfaceSelection}>
                         <EntitySurfaceBridge />
                         <PerceivedColorProvider store={perceivedColor}>
                           <EnvironmentSessionProvider store={environmentSession}>
                             <AppFrame
                               header={header}
-                              banner={<BannerRegion />}
+                              banner={banner}
                               railLabel="Tool rail"
                               rail={<ToolRail />}
                               mainLabel="Viewport"
