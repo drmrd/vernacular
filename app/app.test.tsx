@@ -328,7 +328,7 @@ describe('App project actions', () => {
     // destructive (prune deletes every autosave file), so it routes through the
     // same confirm seam as New/Open/Import (ADR-0104).
     const alert = await screen.findByRole('alert')
-    await userEvent.click(within(alert).getByRole('button', { name: /discard/i }))
+    await userEvent.click(within(alert).getByRole('button', { name: /delete recovered copy/i }))
 
     // Confirm the dialog the same way the New/Open/Import discard tests do.
     // Same dialog seam as the #472 flake: if this findBy ever times out under

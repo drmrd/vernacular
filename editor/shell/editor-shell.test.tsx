@@ -353,7 +353,7 @@ describe('EditorShell', () => {
 
     const alert = screen.getByRole('alert')
     await user.click(within(alert).getByRole('button', { name: /restore/i }))
-    await user.click(within(alert).getByRole('button', { name: /discard/i }))
+    await user.click(within(alert).getByRole('button', { name: /delete recovered copy/i }))
 
     expect(onRestore).toHaveBeenCalledTimes(1)
     expect(onDiscard).toHaveBeenCalledTimes(1)
@@ -362,7 +362,7 @@ describe('EditorShell', () => {
     renderShell()
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByRole('button', { name: /restore/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /discard/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /delete recovered copy/i })).toBeNull()
   })
 
   it('seats the recovery prompt in the frame banner slot rather than above the frame', () => {
