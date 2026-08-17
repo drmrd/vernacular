@@ -341,7 +341,8 @@ describe('App project actions', () => {
     expect(dialog).toHaveTextContent(/delete the recovered copy of current\?/i)
     expect(dialog).not.toHaveTextContent(/discard unsaved changes/i)
 
-    await userEvent.click(within(dialog).getByRole('button', { name: /discard/i }))
+    // The button is what the user aims at, so it names the deletion too.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete recovered copy' }))
 
     // Only after the confirmation does pruning happen and the prompt dismiss.
     await waitFor(() => expect(snapshots.prune).toHaveBeenCalled())

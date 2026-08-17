@@ -27,6 +27,7 @@ describe('useDiscardPrompt', () => {
 
     expect(onDiscard).toHaveBeenCalledOnce()
     expect(result.current.message).toBe('Delete the recovered copy of Hubbard House?')
+    expect(result.current.confirmLabel).toBe('Delete recovered copy')
   })
 
   it('never relabels a prompt that is already open', () => {
@@ -74,5 +75,6 @@ describe('useDiscardPrompt', () => {
 
     expect(resolveDiscard).toHaveBeenCalledWith(false)
     expect(result.current.message).toBeUndefined()
+    expect(result.current.confirmLabel).toBeUndefined()
   })
 })

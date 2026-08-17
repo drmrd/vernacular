@@ -64,6 +64,39 @@ describe('DiscardDialog', () => {
     expect(dialog).not.toHaveTextContent(/discard unsaved changes/i)
   })
 
+  it('lets the caller name the destructive answer as well as the question', async () => {
+    // The button is what the user aims at, so it carries the same ambiguity the
+    // banner's bare "Discard" did: next to a recovery question it reads as throwing
+    // away the unsaved edits rather than the recovered copy.
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+
+    render(
+      <DiscardDialog
+        open
+        projectName="Hubbard House"
+        message="Delete the recovered copy of Hubbard House?"
+        confirmLabel="Delete recovered copy"
+        onConfirm={onConfirm}
+        onCancel={() => {}}
+      />,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+    expect(within(dialog).queryByRole('button', { name: 'Discard' })).toBeNull()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete recovered copy' }))
+    expect(onConfirm).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to Discard when the caller names no destructive answer', () => {
+    render(
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument()
+  })
+
   it('opens with focus on Cancel and keeps Tab inside the prompt', async () => {
     // An alertdialog that leaves focus behind it is answerable only with the
     // mouse, and Tab walks away into a frame the prompt is blocking. Cancel takes
