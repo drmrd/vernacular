@@ -42,9 +42,11 @@ interface ChipProps {
   label: string
   unavailable?: boolean
   icon?: Icon
+  /** Takes the group's single tab stop when no chip is checked. See `orphanTool`. */
+  fallbackTabStop?: boolean
 }
 
-function Chip({ toolId, label, unavailable, icon }: ChipProps) {
+function Chip({ toolId, label, unavailable, icon, fallbackTabStop }: ChipProps) {
   const { tool, setTool } = useActiveTool()
   const isActive = toolId !== undefined && tool === toolId
   const IconComponent = icon
@@ -54,7 +56,7 @@ function Chip({ toolId, label, unavailable, icon }: ChipProps) {
       role="radio"
       aria-checked={isActive}
       aria-disabled={unavailable || undefined}
-      tabIndex={isActive ? 0 : -1}
+      tabIndex={isActive || fallbackTabStop ? 0 : -1}
       className={`ds-segmented__option tools-panel__chip${isActive ? ' is-active' : ''}`}
       title={unavailable ? 'Planned, not yet available' : undefined}
       onClick={toolId !== undefined && !unavailable ? () => setTool(toolId) : undefined}
@@ -105,12 +107,28 @@ function OpeningChip({ kind, icon, label }: OpeningChipProps) {
   )
 }
 
+// The tools the rack shows a chip for. Some tools are armed from elsewhere in the
+// editor (the library panel arms place-furniture, the underlay panel arms
+// calibrate), and while one of those runs no chip is checked.
+const CHIP_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
+  'select',
+  'draw-wall',
+  'place-opening',
+  'place-stair',
+  'dimension',
+])
+
 function ToolRailSections() {
+  const { tool } = useActiveTool()
+  // A radiogroup with no checked option would leave every chip at tabindex -1 and
+  // drop the whole rack out of the tab order, so the first chip holds the tab stop
+  // until a chip is checked again.
+  const orphanTool = !CHIP_TOOLS.has(tool)
   return (
     <>
       <section className="tools-panel__section">
         <SectionLabel className="tools-panel__section-heading">Select</SectionLabel>
-        <Chip toolId="select" label="Select" icon={CursorClick} />
+        <Chip toolId="select" label="Select" icon={CursorClick} fallbackTabStop={orphanTool} />
       </section>
 
       <section className="tools-panel__section">
