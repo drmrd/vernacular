@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ActiveToolProvider } from './active-tool-provider'
-import { useActiveTool } from './active-tool-context'
+import { useActiveTool, type ToolId } from './active-tool-context'
 import { OpeningToolProvider, useOpeningTool } from '../plan/opening-tool-context'
 import { ToolsPanel } from './tools-panel'
 
@@ -252,6 +252,48 @@ describe('ToolsPanel opening variant', () => {
     await user.click(screen.getByRole('radio', { name: /window/i }))
 
     expect(screen.getByTestId('placement-type')).toHaveTextContent('double-hung-window')
+  })
+})
+
+function renderPanelWithTool(initialTool: ToolId) {
+  return render(
+    <ActiveToolProvider initialTool={initialTool}>
+      <OpeningToolProvider>
+        <ToolsPanel />
+      </OpeningToolProvider>
+    </ActiveToolProvider>,
+  )
+}
+
+function tabbableChips() {
+  return screen.getAllByRole('radio').filter((chip) => chip.getAttribute('tabindex') === '0')
+}
+
+describe('ToolsPanel tab order under a tool the rack does not show', () => {
+  it('keeps the first chip tabbable while place-furniture is active', () => {
+    renderPanelWithTool('place-furniture')
+
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '0')
+  })
+
+  it('keeps the first chip tabbable while calibrate is active', () => {
+    renderPanelWithTool('calibrate')
+
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '0')
+  })
+
+  it('leaves exactly one chip in the tab order', () => {
+    renderPanelWithTool('place-furniture')
+
+    expect(tabbableChips()).toHaveLength(1)
+  })
+
+  it('still gives the tab stop to the checked chip when one matches', () => {
+    renderPanelWithTool('dimension')
+
+    expect(tabbableChips()).toHaveLength(1)
+    expect(screen.getByRole('radio', { name: /dimension/i })).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '-1')
   })
 })
 
