@@ -1,8 +1,31 @@
-.discard-dialog {
+/*
+ * The prompt is rendered as a sibling of the AppFrame, and the frame's root is a
+ * full-viewport grid that hides its overflow. In page flow the prompt lands one
+ * whole viewport below the fold, where nobody ever sees it, so New with unsaved
+ * work reads as a click that did nothing. The backdrop takes the prompt out of
+ * flow and covers the viewport with it, the same treatment the command palette
+ * uses, which also gives the alertdialog the shaded, click-blocking surround its
+ * role promises.
+ */
+.discard-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.discard-dialog {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  max-width: 32rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
@@ -11,7 +34,10 @@
   font-size: var(--font-size-sm);
 }
 
+/* Full width so the question reads on its own line and the two answers sit
+   together under it, rather than the question and its answers competing for one
+   cramped row. */
 .discard-dialog__message {
-  flex: 1;
+  min-width: 100%;
   margin: 0;
 }

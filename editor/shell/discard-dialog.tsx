@@ -14,14 +14,16 @@ export function DiscardDialog({ open, projectName, onConfirm, onCancel }: Discar
     return null
   }
   return (
-    <div role="alertdialog" aria-labelledby="discard-dialog-message" className="discard-dialog">
-      <p id="discard-dialog-message" className="discard-dialog__message">
-        Discard unsaved changes to {projectName}?
-      </p>
-      <Button onClick={onCancel}>Cancel</Button>
-      <Button variant="primary" onClick={onConfirm}>
-        Discard
-      </Button>
+    <div className="discard-dialog__backdrop">
+      <div role="alertdialog" aria-labelledby="discard-dialog-message" className="discard-dialog">
+        <p id="discard-dialog-message" className="discard-dialog__message">
+          Discard unsaved changes to {projectName}?
+        </p>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" onClick={onConfirm}>
+          Discard
+        </Button>
+      </div>
     </div>
   )
 }
