@@ -78,12 +78,16 @@ interface RecoveryPromptProps {
   onDiscard: () => void
 }
 
+// Both answers here are consequential and neither used to say so: Restore drops the
+// document currently open in favour of the recovered one, and the destructive answer
+// deletes the recovered copy rather than the changes on screen, which a bare
+// "Discard" beside a recovery notice reads as exactly backwards.
 export function RecoveryPrompt({ onRestore, onDiscard }: RecoveryPromptProps) {
   return (
     <div className="editor-shell__recovery" role="alert">
-      <p>Unsaved changes were recovered.</p>
+      <p>Unsaved changes were recovered. Restore replaces the document you have open.</p>
       <Button onClick={onRestore}>Restore</Button>
-      <Button onClick={onDiscard}>Discard</Button>
+      <Button onClick={onDiscard}>Delete recovered copy</Button>
     </div>
   )
 }
