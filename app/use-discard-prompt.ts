@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { WorkspaceState } from './use-workspace-state'
 
 /** The wording a staged prompt asks with, question and destructive answer together. */
@@ -40,23 +40,25 @@ export interface DiscardPrompt {
 // belongs with the seam in app/use-workspace-state.ts.
 export function useDiscardPrompt(workspace: WorkspaceState, projectName: string): DiscardPrompt {
   const [wording, setWording] = useState<PromptWording | undefined>(undefined)
-  const recovery = workspace.recovery
+  const { recovery, resolveDiscard } = workspace
   const isPromptOpen = workspace.discardRequest !== null
-  const answer = (ok: boolean) => {
-    setWording(undefined)
-    workspace.resolveDiscard(ok)
-  }
-  const staged = {
-    message: wording?.message,
-    confirmLabel: wording?.confirmLabel,
-    answer,
-  }
-  if (recovery === null) {
-    return { ...staged, recovery: null }
-  }
-  return {
-    ...staged,
-    recovery: {
+
+  const answer = useCallback(
+    (ok: boolean) => {
+      setWording(undefined)
+      resolveDiscard(ok)
+    },
+    [resolveDiscard],
+  )
+
+  // Memoized so the handlers keep the identity the effect that built them gives
+  // them: rebuilding the pair every render would hand the shell a fresh recovery
+  // prop on each keystroke, throwing away that stability for nothing.
+  const labelledRecovery = useMemo(() => {
+    if (recovery === null) {
+      return null
+    }
+    return {
       onRestore: recovery.onRestore,
       onDiscard: () => {
         if (!isPromptOpen) {
@@ -64,6 +66,13 @@ export function useDiscardPrompt(workspace: WorkspaceState, projectName: string)
         }
         return recovery.onDiscard()
       },
-    },
+    }
+  }, [recovery, isPromptOpen, projectName])
+
+  return {
+    message: wording?.message,
+    confirmLabel: wording?.confirmLabel,
+    recovery: labelledRecovery,
+    answer,
   }
 }

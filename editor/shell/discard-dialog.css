@@ -10,6 +10,9 @@
 .discard-dialog__backdrop {
   position: fixed;
   inset: 0;
+  /* Above the command palette's 1000, deliberately. While a prompt is open this
+     shade is the only thing keeping the banner and the file menu unclickable, so
+     anything that slips over it reopens a way to answer the prompt by proxy. */
   z-index: 1100;
   display: flex;
   align-items: center;
