@@ -10,7 +10,7 @@ function isWindow(type: ElementType): boolean {
 
 // A readable label from the element-type id: kebab-case to Title Case so the
 // option text reads as English without a separate label store.
-export function humanizeId(id: string): string {
+function humanizeId(id: string): string {
   return id
     .split('-')
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
