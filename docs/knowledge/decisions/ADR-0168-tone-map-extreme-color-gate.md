@@ -97,8 +97,8 @@ the record of that correction.
 
 4. Neutral swatches must stay neutral: `TONE_MAP_EXTREME_NEUTRAL_CHROMA_BOUND = 0.01` caps the
    OKLab chroma (`hypot(a, b)`) of a sample whose swatch is marked `neutralHue`. The measured
-   chroma at the near-black render is exactly zero on both backends. A two-LSB single-channel
-   excursion measures 0.0047 and passes; a six-LSB blue cast (`#08080e`) measures 0.0134 and
+   chroma at the near-black render is exactly zero on both backends. A two-LSB blue excursion
+   (`#08080a`) measures 0.0047 and passes; a six-LSB blue cast (`#08080e`) measures 0.0134 and
    fails. The bound exists because a 0.04 distance ball around `#080808` has room for a visible
    tint that the distance check alone would pass, and hue neutrality is the strongest signal the
    toe leaves intact.
