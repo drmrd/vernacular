@@ -46,6 +46,51 @@ describe('DiscardDialog', () => {
     expect(dialog.parentElement).toHaveClass('discard-dialog__backdrop')
   })
 
+  it('opens with focus on Cancel and keeps Tab inside the prompt', async () => {
+    // An alertdialog that leaves focus behind it is answerable only with the
+    // mouse, and Tab walks away into a frame the prompt is blocking. Cancel takes
+    // first focus because it is the non-destructive answer.
+    const user = userEvent.setup()
+
+    render(
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />,
+    )
+
+    const dialog = screen.getByRole('alertdialog')
+    const cancel = within(dialog).getByRole('button', { name: /cancel/i })
+    const discard = within(dialog).getByRole('button', { name: /discard/i })
+    expect(cancel).toHaveFocus()
+
+    await user.tab()
+    expect(discard).toHaveFocus()
+
+    await user.tab()
+    expect(cancel).toHaveFocus()
+  })
+
+  it('marks itself modal so assistive technology ignores the frame behind it', () => {
+    render(
+      <DiscardDialog open projectName="Hubbard House" onConfirm={() => {}} onCancel={() => {}} />,
+    )
+
+    expect(screen.getByRole('alertdialog')).toHaveAttribute('aria-modal', 'true')
+  })
+
+  it('treats Escape as cancel', async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+
+    render(
+      <DiscardDialog open projectName="Hubbard House" onConfirm={onConfirm} onCancel={onCancel} />,
+    )
+
+    await user.keyboard('{Escape}')
+
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
   it('renders nothing while closed', () => {
     render(
       <DiscardDialog
