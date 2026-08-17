@@ -3,6 +3,7 @@ import type { OverlayEntity } from './overlay-entities'
 import type { SnapResult } from './snap'
 import {
   angleLockAnnouncement,
+  placementRefusalMessage,
   selectionAnnouncement,
   snapAnnouncement,
   snapStatusLabel,
@@ -58,6 +59,22 @@ describe('snapAnnouncement', () => {
   it('names an angle snap as the lock the panel offers', () => {
     const snap: SnapResult = { point: ORIGIN, kind: 'angle' }
     expect(snapAnnouncement(snap)).toBe('Snapped to angle lock')
+  })
+})
+
+describe('placementRefusalMessage', () => {
+  it('tells a click that missed every wall what the opening needed', () => {
+    expect(placementRefusalMessage('no-host-wall')).toBe('No wall here to host the opening')
+  })
+
+  it('distinguishes an overlap from a miss', () => {
+    expect(placementRefusalMessage('opening-overlap')).toBe(
+      'That would overlap an opening already in this wall',
+    )
+  })
+
+  it('names the missing floor a stair would rise to, and what to do about it', () => {
+    expect(placementRefusalMessage('no-floor-above')).toBe('Add a floor above to place stairs')
   })
 })
 
