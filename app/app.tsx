@@ -360,6 +360,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                     open={ws.discardRequest !== null}
                     projectName={projectName}
                     message={prompt.message}
+                    confirmLabel={prompt.confirmLabel}
                     onConfirm={() => prompt.answer(true)}
                     onCancel={() => prompt.answer(false)}
                   />

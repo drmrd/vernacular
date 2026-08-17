@@ -11,6 +11,12 @@ interface DiscardDialogProps {
    * document alone, supplies its own.
    */
   message?: string | undefined
+  /**
+   * What to call the destructive answer, when "Discard" is wrong for it. The button
+   * is what the user aims at, so a prompt asking about a recovered copy needs its
+   * answer named too, not just its question.
+   */
+  confirmLabel?: string | undefined
   onConfirm: () => void
   onCancel: () => void
 }
@@ -28,7 +34,13 @@ export function DiscardDialog({ open, ...prompt }: DiscardDialogProps) {
 // effect: a component that stayed mounted and merely re-rendered with a new `open`
 // value would never re-run it, and the second and later prompts would open with
 // focus still behind them.
-function DiscardPrompt({ projectName, message, onConfirm, onCancel }: DiscardPromptProps) {
+function DiscardPrompt({
+  projectName,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: DiscardPromptProps) {
   const promptRef = useFocusTrap<HTMLDivElement>()
   const question = message ?? `Discard unsaved changes to ${projectName}?`
   return (
@@ -61,7 +73,7 @@ function DiscardPrompt({ projectName, message, onConfirm, onCancel }: DiscardPro
         </p>
         <Button onClick={onCancel}>Cancel</Button>
         <Button variant="primary" onClick={onConfirm}>
-          Discard
+          {confirmLabel ?? 'Discard'}
         </Button>
       </div>
     </div>

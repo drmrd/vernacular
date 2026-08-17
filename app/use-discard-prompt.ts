@@ -1,9 +1,24 @@
 import { useState } from 'react'
 import type { WorkspaceState } from './use-workspace-state'
 
+/** The wording a staged prompt asks with, question and destructive answer together. */
+interface PromptWording {
+  message: string
+  confirmLabel: string
+}
+
+function deleteRecoveredCopy(projectName: string): PromptWording {
+  return {
+    message: `Delete the recovered copy of ${projectName}?`,
+    confirmLabel: 'Delete recovered copy',
+  }
+}
+
 export interface DiscardPrompt {
   /** The question to ask, or undefined for the default unsaved-changes wording. */
   message: string | undefined
+  /** What to call the destructive answer, or undefined for the default "Discard". */
+  confirmLabel: string | undefined
   /** The recovery handlers to hand the shell, with Discard labelled on the way. */
   recovery: WorkspaceState['recovery']
   answer: (ok: boolean) => void
@@ -24,27 +39,31 @@ export interface DiscardPrompt {
 // Carrying the wording through the seam with the request would retire the staging, and
 // belongs with the seam in app/use-workspace-state.ts.
 export function useDiscardPrompt(workspace: WorkspaceState, projectName: string): DiscardPrompt {
-  const [message, setMessage] = useState<string | undefined>(undefined)
+  const [wording, setWording] = useState<PromptWording | undefined>(undefined)
   const recovery = workspace.recovery
   const isPromptOpen = workspace.discardRequest !== null
   const answer = (ok: boolean) => {
-    setMessage(undefined)
+    setWording(undefined)
     workspace.resolveDiscard(ok)
   }
+  const staged = {
+    message: wording?.message,
+    confirmLabel: wording?.confirmLabel,
+    answer,
+  }
   if (recovery === null) {
-    return { message, recovery: null, answer }
+    return { ...staged, recovery: null }
   }
   return {
-    message,
+    ...staged,
     recovery: {
       onRestore: recovery.onRestore,
       onDiscard: () => {
         if (!isPromptOpen) {
-          setMessage(`Delete the recovered copy of ${projectName}?`)
+          setWording(deleteRecoveredCopy(projectName))
         }
         return recovery.onDiscard()
       },
     },
-    answer,
   }
 }
