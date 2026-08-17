@@ -27,6 +27,7 @@ sourceFiles:
     docs/specs/2026-06-15-open-import-project.md,
     bridge/session/create-dirty-tracker.ts,
     bridge/session/discard-guard.ts,
+    app/app.tsx,
     bridge/react/use-dirty-state.ts,
     bridge/react/use-autosave.ts,
     bridge/autosave/create-autosave.ts,

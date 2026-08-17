@@ -18,11 +18,12 @@ sourceFiles:
     bridge/environment/environment-session-store.ts,
     bridge/react/environment-session-context.ts,
     editor/environment/environment-panel.tsx,
+    bridge/react/environment-controls.tsx,
     editor/environment/environment-scenes.tsx,
     editor/shell/tool-rail.tsx,
   ]
 status: current
-updated: 2026-07-03
+updated: 2026-08-17
 ---
 
 # ADR-0146: Environment panel and the session-state contract behind it
@@ -138,3 +139,17 @@ command-only, tracked as a follow-up issue.
 - Implementation plan (`docs/plans/2026-07-03-realistic-lighting-slice-1b-environment-panel.md`).
 - [[ADR-0143-environment-model-foundations]], [[ADR-0144-solar-lighting-provider-and-sky]],
   [[ADR-0147-per-mode-tone-mapping]], [[ADR-0065-three-dimensional-lighting-and-color-temperature]].
+
+## Update (2026-08-17): mode-inert controls now say so
+
+A UX audit found both halves of the mode split presenting live controls the
+active mode ignored: in the default schematic mode the panel's observation
+date, time-of-day, and cloud-cover inputs scrubbed a sun that never moved, and
+under realistic lighting or the color check the toolbar's color-temperature
+slider kept a live Kelvin readout that the solar provider discarded.
+
+Both sides now disable the controls the current mode does not read and explain
+why in a short status note, following this record's existing missing-location
+notice pattern. The contract itself is unchanged: the panel still owns the
+shared session and the toolbar still keeps only the color-temperature slider,
+which now also receives the effective lighting mode.

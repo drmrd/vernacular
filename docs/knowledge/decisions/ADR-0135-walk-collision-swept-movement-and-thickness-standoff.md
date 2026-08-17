@@ -100,5 +100,3 @@ wall builder extrudes, so a wall carrying a construction profile no longer lets 
 into the face it renders (issue #552). Passability also gained a second case: an opening with
 no fill body, such as a cased opening, is walkable whether or not it is in the open set,
 because there is nothing in it to open (issue #532).
-</content>
-</invoke>
