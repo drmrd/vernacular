@@ -5,6 +5,7 @@ import {
   useState,
   type Dispatch,
   type PointerEvent,
+  type RefObject,
   type SetStateAction,
 } from 'react'
 import type { Point, SceneGraph } from '../../core'
@@ -298,6 +299,25 @@ interface WallGesture {
   onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
 }
 
+// Abandons an open run and reports whether there was one, so the Escape ladder
+// knows whether this rung answered the key. A sibling of useSegmentStepBack: both
+// read the live run through the ref so the callback identity survives corners.
+function useWallRunCancel(deps: {
+  snapping: WallGestureDeps['snapping']
+  setToolState: WallGestureDeps['setToolState']
+  setPointer: WallGestureDeps['setPointer']
+  run: RefObject<WallToolState>
+}): () => boolean {
+  const { snapping, setToolState, setPointer, run } = deps
+  return useCallback(() => {
+    const wasDrawing = run.current.phase === 'drawing'
+    setToolState(cancelWallTool)
+    setPointer(null)
+    snapping.clear()
+    return wasDrawing
+  }, [snapping, setToolState, setPointer, run])
+}
+
 /**
  * Owns a wall run's whole commit lifecycle: a click drops a corner and commits the
  * segment behind it, Backspace steps that segment back, and Enter or a double-click
@@ -340,16 +360,7 @@ function useWallGesture({
   }, [snapping, setToolState, setPointer])
 
   const backspace = useSegmentStepBack({ session, setToolState, run: toolStateRef, history })
-
-  // Abandons an open run and reports whether there was one, so the Escape ladder
-  // knows whether this rung answered the key.
-  const cancel = useCallback(() => {
-    const wasDrawing = toolStateRef.current.phase === 'drawing'
-    setToolState(cancelWallTool)
-    setPointer(null)
-    snapping.clear()
-    return wasDrawing
-  }, [snapping, setToolState, setPointer])
+  const cancel = useWallRunCancel({ snapping, setToolState, setPointer, run: toolStateRef })
 
   useWallKeyboard({ tool, finish, backspace, cancel })
 
