@@ -1,16 +1,20 @@
-import { useCallback, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { Point } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import {
   advanceDimensionTool,
+  cancelDimensionTool,
   dimensionPreview,
   IDLE_DIMENSION_TOOL,
   type DimensionToolState,
 } from './dimension-tool'
 import type { PreviewSegment } from './draw-plan'
+import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
+
+const ESCAPE_KEY = 'Escape'
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
   return screenToWorld(eventToCanvas(event, event.currentTarget), viewport)
@@ -45,6 +49,48 @@ function applyPointer(world: Point, context: DimensionPointerContext): Dimension
   return result.state
 }
 
+interface DimensionCancelDeps {
+  tool: ToolId
+  toolState: DimensionToolState
+  setToolState: (state: DimensionToolState) => void
+}
+
+/**
+ * The ladder's first rung for the pointer half of the tool: Escape abandons a
+ * measurement whose start point is already down, claims the keystroke so the tool
+ * stays armed, and leaves an Escape at rest to the rung that returns to select.
+ *
+ * The state is read through a ref refreshed every render, so the window listener
+ * subscribes once per tool change rather than on every render. A render-scoped
+ * subscription would re-add the listener mid-keystroke whenever a sibling hook
+ * updates state inside the same keydown, and the DOM drops a listener re-added
+ * during dispatch, which would swallow the cancel. This mirrors useWallKeyboard.
+ */
+function useDimensionCancel({ tool, toolState, setToolState }: DimensionCancelDeps): void {
+  const measurementRef = useRef({ toolState, setToolState })
+  measurementRef.current = { toolState, setToolState }
+  useEffect(() => {
+    if (tool !== 'dimension') {
+      return undefined
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (ownsKeystroke(event.target, event.key) || event.key !== ESCAPE_KEY) {
+        return
+      }
+      const measurement = measurementRef.current
+      if (measurement.toolState.phase !== 'measuring') {
+        return
+      }
+      claimKeystroke(event)
+      measurement.setToolState(cancelDimensionTool(measurement.toolState))
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [tool])
+}
+
 export interface DimensionToolDeps {
   session: EditorSession
   tool: ToolId
@@ -70,6 +116,7 @@ export function useDimensionTool({
 }: DimensionToolDeps): DimensionTool {
   const [toolState, setToolState] = useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
+  useDimensionCancel({ tool, toolState, setToolState })
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
