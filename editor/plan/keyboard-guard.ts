@@ -1,26 +1,24 @@
-// The tags whose elements handle their own keystrokes: typing into a name,
-// thickness, or angle field, choosing from a menu, and pressing a focused button
-// all belong to the control, never to a tool shortcut.
-const INTERACTIVE_TAGS: ReadonlySet<string> = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'])
+// Fields that swallow whatever is typed into them: editing a name, a thickness,
+// or an angle, and choosing from a menu, all belong to the control rather than to
+// a tool shortcut.
+const TEXT_ENTRY_TAGS: ReadonlySet<string> = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
 
-/**
- * The editor's single keyboard guard: true when the keystroke landed on a control
- * that owns it, so every window-level shortcut can ignore it and no tool hijacks a
- * field, a menu, or a focused button. Buttons matter as much as text fields here,
- * because the tool rail and the tools panel are buttons: an arrow key aimed at them
- * roves the group rather than nudging the selection.
- */
-export function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-  return INTERACTIVE_TAGS.has(target.tagName) || isEditableRegion(target)
-}
+// The keys a focused button answers to itself. The tool rail and the tools panel
+// are radiogroups built from buttons, so the arrows and Home/End rove between
+// options; every other key passes through to the editor.
+const CONTROL_NAVIGATION_KEYS: ReadonlySet<string> = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+  'Home',
+  'End',
+])
 
 // isContentEditable covers a keystroke anywhere inside an editable region, but
-// jsdom leaves the property undefined, which made the old guard answer undefined
-// instead of false. Reading the attribute off the nearest editable ancestor gives
-// the same answer under the test environment and the browser alike.
+// jsdom leaves the property undefined, which made the earlier guard answer
+// undefined instead of false. Reading the attribute off the nearest editable
+// ancestor gives the same answer under the test environment and the browser alike.
 const EDITABLE_SELECTOR = '[contenteditable]:not([contenteditable="false"])'
 
 function isEditableRegion(element: HTMLElement): boolean {
@@ -28,7 +26,30 @@ function isEditableRegion(element: HTMLElement): boolean {
 }
 
 /**
- * The name the plan's authoring and furniture hooks still import. It is the same
- * guard; those two files are the last callers waiting to move to the new name.
+ * True when the keystroke landed in a field that consumes everything typed into
+ * it, so no tool shortcut hijacks a name, a thickness, or an angle being edited.
+ * Buttons are deliberately absent: a focused button consumes only the keys it
+ * navigates with, which is what `ownsKeystroke` answers.
  */
-export const isTextEntry = isInteractiveTarget
+export function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+  return TEXT_ENTRY_TAGS.has(target.tagName) || isEditableRegion(target)
+}
+
+/**
+ * The editor's keyboard guard: true when the focused control owns this particular
+ * keystroke, so every window-level shortcut can leave it alone. A field owns every
+ * key; a button owns only the arrows and Home/End it roves with, which keeps
+ * Escape, Delete, and the rest alive while a tool chip still holds focus after a
+ * click.
+ */
+export function ownsKeystroke(target: EventTarget | null, key: string): boolean {
+  if (isTextEntry(target)) {
+    return true
+  }
+  return (
+    target instanceof HTMLElement && target.tagName === 'BUTTON' && CONTROL_NAVIGATION_KEYS.has(key)
+  )
+}

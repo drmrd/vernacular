@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import { isInteractiveTarget } from '../plan/keyboard-guard'
+import { ownsKeystroke } from '../plan/keyboard-guard'
 import { type CommandContext, type EditorCommand, resolveCommandForEvent } from './command'
 
 /** True when the running platform looks like macOS. */
@@ -20,7 +20,7 @@ export function useKeybindings(commands: EditorCommand[], context: CommandContex
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent): void {
-      if (isInteractiveTarget(event.target)) {
+      if (ownsKeystroke(event.target, event.key)) {
         return
       }
       const command = resolveCommandForEvent(

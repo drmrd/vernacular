@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { ToolId } from '../tools/active-tool-context'
-import { isInteractiveTarget } from './keyboard-guard'
+import { ownsKeystroke } from './keyboard-guard'
 
 // The placement tools that the Escape key leaves to return to the select tool.
 const PLACEMENT_TOOLS: readonly ToolId[] = [
@@ -33,7 +33,7 @@ export function useEscapeToSelect(deps: EscapeToSelectDeps): void {
       return undefined
     }
     const listener = (event: KeyboardEvent): void => {
-      if (isInteractiveTarget(event.target)) {
+      if (ownsKeystroke(event.target, event.key)) {
         return
       }
       if (event.key === ESCAPE_KEY) {
