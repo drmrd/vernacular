@@ -1,14 +1,13 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type Dispatch,
   type PointerEvent,
   type SetStateAction,
 } from 'react'
-import type { Point } from '../../core'
+import type { Point, SceneGraph } from '../../core'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
@@ -85,33 +84,26 @@ interface HistoryOwnership {
 
 /**
  * Tracks whether the newest entry in history is still the segment this run
- * committed. A history entry carries no identity the editor can read, so the run
- * counts change notifications instead: it notes the count right after committing a
- * segment, and any later change (a delete under the select tool, an undo, another
- * tool's command) moves the count past that mark. Backspace steps a segment back
- * only while the mark still holds, so a run can never undo somebody else's work.
+ * committed. A history entry carries no identity the editor can read, but the
+ * session's scene graph is memoized by an internal version, so its reference
+ * survives exactly as long as nothing new is recorded. The run keeps the graph it
+ * saw right after committing a segment; any later change (a delete under the select
+ * tool, an undo, another tool's command) replaces that reference. Backspace steps a
+ * segment back only while the reference still matches, so a run can never undo, or
+ * step off, somebody else's work.
  */
 function useHistoryOwnership(session: EditorSession): HistoryOwnership {
-  const changeCount = useRef(0)
-  const committedAt = useRef<number | null>(null)
-  useEffect(
-    () =>
-      session.subscribe(() => {
-        changeCount.current += 1
-      }),
-    [session],
-  )
-  // Only refs are read, so one stable object survives every render and keeps the
-  // pointer and keyboard callbacks that list it from being rebuilt.
-  return useMemo(
-    () => ({
-      markCommitted: () => {
-        committedAt.current = changeCount.current
-      },
-      ownsNewestChange: () => committedAt.current === changeCount.current,
-    }),
-    [],
-  )
+  const committedGraph = useRef<SceneGraph | null>(null)
+  // One object for the hook's lifetime: both methods read the ref, so the pointer
+  // and keyboard callbacks that list it are never rebuilt.
+  const ownership = useRef<HistoryOwnership>({
+    markCommitted: () => {
+      committedGraph.current = session.getSceneGraph()
+    },
+    ownsNewestChange: () =>
+      committedGraph.current !== null && committedGraph.current === session.getSceneGraph(),
+  })
+  return ownership.current
 }
 
 export interface PlanInteractionDeps {
@@ -273,14 +265,21 @@ interface SegmentStepBackDeps {
 
 /**
  * Backspace steps the draw-from corner back one and undoes the segment that corner
- * committed; an anchor-only run (one corner, no segment) just cancels. The undo is
- * withheld once anything else has been recorded since, so the corner still steps
- * back while nobody else's work is rolled back with it.
+ * committed; an anchor-only run (one corner, no segment) just cancels.
+ *
+ * A run that has committed a segment but no longer owns the newest change does
+ * nothing at all. Stepping the corner back there would leave the run drawing from a
+ * corner whose wall is still standing, so the next click would fork a segment off a
+ * stale anchor instead of continuing the run.
  */
 function useSegmentStepBack({ session, setToolState, run, history }: SegmentStepBackDeps) {
   return useCallback(() => {
     const state = run.current
-    if (state.phase === 'drawing' && state.vertices.length >= 2 && history.ownsNewestChange()) {
+    const hasCommittedSegment = state.phase === 'drawing' && state.vertices.length >= 2
+    if (hasCommittedSegment) {
+      if (!history.ownsNewestChange()) {
+        return
+      }
       session.undo()
       // The segment this run drew before it, if any, is now the newest change.
       history.markCommitted()
