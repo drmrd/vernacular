@@ -58,10 +58,28 @@ export interface PlanScene {
 export type OverlayVisibility = Pick<ViewOverlayValue, 'showGrid' | 'showDimensions'>
 
 /**
+ * The overlays the plan carries only while they are live: the pointer's hover, the
+ * in-progress preview, the snap indicator, the marquee, the two handle sets, the
+ * calibration measurement, and the move-drag ghost. Each is spread in only when
+ * present, so an absent one stays off under exactOptionalPropertyTypes.
+ */
+function liveOverlays(scene: PlanScene): Partial<DrawPlanOptions> {
+  return {
+    ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
+    ...(scene.hoveredId !== undefined ? { hoveredId: scene.hoveredId } : {}),
+    ...(scene.preview ? { preview: scene.preview } : {}),
+    ...(scene.snap ? { snap: scene.snap } : {}),
+    ...(scene.marquee ? { marquee: scene.marquee } : {}),
+    ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
+    ...(scene.openingResizeHandles ? { openingResizeHandles: scene.openingResizeHandles } : {}),
+    ...(scene.calibration ? { calibration: scene.calibration } : {}),
+    ...(scene.ghost.length > 0 ? { ghost: scene.ghost } : {}),
+  }
+}
+
+/**
  * Assembles the drawPlan options from the flattened scene leaves, the resolved
- * canvas palette, and what the header's view toggles show. Optional overlays
- * (preview, snap, marquee, endpoint handles, calibration) are spread in only when
- * present so an absent one stays off under exactOptionalPropertyTypes.
+ * canvas palette, and what the header's view toggles show.
  */
 export function buildDrawOptions(
   scene: PlanScene,
@@ -89,15 +107,7 @@ export function buildDrawOptions(
     dimensions: overlay.showDimensions ? scene.dimensions : [],
     stairs: scene.stairs,
     surfacePaint: scene.surfacePaint,
-    ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
-    ...(scene.hoveredId !== undefined ? { hoveredId: scene.hoveredId } : {}),
-    ...(scene.preview ? { preview: scene.preview } : {}),
-    ...(scene.snap ? { snap: scene.snap } : {}),
-    ...(scene.marquee ? { marquee: scene.marquee } : {}),
-    ...(scene.endpointHandles ? { endpointHandles: scene.endpointHandles } : {}),
-    ...(scene.openingResizeHandles ? { openingResizeHandles: scene.openingResizeHandles } : {}),
-    ...(scene.calibration ? { calibration: scene.calibration } : {}),
-    ...(scene.ghost.length > 0 ? { ghost: scene.ghost } : {}),
+    ...liveOverlays(scene),
   }
 }
 
