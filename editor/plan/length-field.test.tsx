@@ -202,6 +202,9 @@ describe('LengthField rejection handling', () => {
     expect(hint).toHaveTextContent('Enter a number, or a length such as 2.4 m or 8 ft 6 in.')
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(onCommitMm).not.toHaveBeenCalled()
+    // The rejected text stays in the field so the user can fix it in place
+    // instead of retyping the whole value from scratch.
+    expect(input).toHaveValue('twelve')
   })
 
   it('clears the hint and the invalid flag once a rejected entry is corrected to a valid length', async () => {
