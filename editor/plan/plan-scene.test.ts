@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { createElement } from 'react'
 import { act, cleanup, render } from '@testing-library/react'
-import { DEFAULT_METRIC_PREFERENCES } from '../../core'
+import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode } from '../../core'
 import {
   ViewOverlayProvider,
   useViewOverlay,
@@ -124,5 +124,47 @@ describe('the header Grid toggle', () => {
     // The toggle is labeled Grid alone, and the spec lists the rulers as their own
     // canvas-chrome layer, so they stay whatever the grid does.
     expect(rulerBandCount(probe.lastDraw())).toBeGreaterThan(0)
+  })
+})
+
+// A horizontal one-meter dimension offset from what it measures, the fixture shape
+// draw-dimension's own tests use. In a scene holding nothing else, its line, two
+// extension lines, and two arrowheads are the only strokes carrying the wall ink.
+const DIMENSION_LENGTH_MM = 1000
+const DIMENSION_OFFSET_MM = 200
+
+function sceneWithDimension(): PlanScene {
+  const node: DimensionSceneNode = {
+    id: 'dimension:d1',
+    kind: 'dimension',
+    floorId: 'g',
+    start: { x: 0, y: 0 },
+    end: { x: DIMENSION_LENGTH_MM, y: 0 },
+    offset: DIMENSION_OFFSET_MM,
+    length: DIMENSION_LENGTH_MM,
+  }
+  return { ...emptyScene(), dimensions: [{ node, selected: false }] }
+}
+
+function dimensionMarkCount(recorder: Recorder): number {
+  return recorder.segments.filter((segment) => segment.style === PROBE_PALETTE.wall).length
+}
+
+function dimensionLabelCount(recorder: Recorder): number {
+  return recorder.texts.filter((text) => text.style === PROBE_PALETTE.label).length
+}
+
+describe('the header Dimensions toggle', () => {
+  afterEach(cleanup)
+
+  it('leaves the dimension pass out of the next draw', () => {
+    const probe = renderRedraw(sceneWithDimension())
+    expect(dimensionMarkCount(probe.lastDraw())).toBeGreaterThan(0)
+    expect(dimensionLabelCount(probe.lastDraw())).toBeGreaterThan(0)
+
+    act(() => probe.overlay().toggleDimensions())
+
+    expect(dimensionMarkCount(probe.lastDraw())).toBe(0)
+    expect(dimensionLabelCount(probe.lastDraw())).toBe(0)
   })
 })
