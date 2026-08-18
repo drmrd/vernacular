@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, renderHook } from '@testing-library/react'
 import { createClipboardStore, createEditorSession, createSelectionStore } from '../../bridge'
 import { addFloor, addWall, createEmptyProject } from '../../core'
+import type { ToolId } from '../tools/active-tool-context'
 import type { CommandContext } from '../commands/command'
 import { createEditorCommands } from '../commands/editor-commands'
 import { useKeybindings } from '../commands/use-keybindings'
@@ -71,6 +72,31 @@ function mountSelectionKeyboard({ session, selection, floorId }: Editor): void {
     }),
   )
 }
+
+describe('leaving the select tool', () => {
+  it('drops the selection, so the editor-wide Delete cannot fire under a placement tool', () => {
+    const editor = buildEditorWithSelectedWall()
+    const clipboard = createClipboardStore()
+    const { rerender } = renderHook(
+      ({ tool }: { tool: ToolId }) =>
+        useSelectionKeyboard({
+          session: editor.session,
+          selection: editor.selection,
+          clipboard,
+          selectedIds: editor.selection.getSelectedIds(),
+          tool,
+          activeFloorId: editor.floorId,
+          furniture: [],
+        }),
+      { initialProps: { tool: 'select' as ToolId } },
+    )
+    expect(editor.selection.getSelectedIds().size).toBe(1)
+
+    rerender({ tool: 'draw-wall' })
+
+    expect(editor.selection.getSelectedIds().size).toBe(0)
+  })
+})
 
 describe('nudging a selection with the arrow keys', () => {
   it('leaves the selection alone when the arrow key is aimed at a control', () => {
