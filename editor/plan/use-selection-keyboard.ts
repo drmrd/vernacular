@@ -6,7 +6,6 @@ import {
   instantiateClipboard,
   OPENING_NODE_PREFIX,
   pasteEntities,
-  removeFurniture,
   translateEntities,
   WALL_NODE_PREFIX,
   type Floor,
@@ -38,9 +37,6 @@ interface SelectionKeyboardContext {
   clipboard: ClipboardStore
   selectedIds: ReadonlySet<string>
   activeFloorId: string | null
-  // The active floor's furniture, so a Delete can remove selected pieces; furniture
-  // is not in the scene graph, so the generic deleteEntities never reaches it.
-  furniture: readonly FurnitureInstance[]
 }
 
 // The floor the keyboard actions target: the active floor, falling back to the
@@ -124,40 +120,15 @@ function handleClipboardKey({ event, ctx, floor, ids }: KeyAction): void {
   }
 }
 
-function handleEditKey({ event, ctx, floor, ids }: KeyAction): void {
-  if (event.key === 'Delete' || event.key === 'Backspace') {
-    event.preventDefault()
-    deleteSelection(ctx, floor.id, ids)
-    return
-  }
+// Delete and Backspace belong to the delete-selection command, which owns them
+// for the whole editor. A second claim here would dispatch the same removal a
+// second time and cost the user an extra undo, so this hook only nudges.
+function handleNudgeKey({ event, ctx, floor, ids }: KeyAction): void {
   const delta = nudgeDelta(event.key, event.shiftKey ? NUDGE_SHIFT_STEP_MM : NUDGE_STEP_MM)
   if (delta !== null) {
     event.preventDefault()
     ctx.session.dispatch(translateEntities(floor.id, ids, delta))
   }
-}
-
-// The ids of the selected furniture pieces, found by intersecting the raw
-// selection with the floor's furniture (furniture carries raw, unprefixed ids).
-function selectedFurnitureIds(ctx: SelectionKeyboardContext): string[] {
-  return ctx.furniture.filter((item) => ctx.selectedIds.has(item.id)).map((item) => item.id)
-}
-
-// Remove each selected furniture piece from the model.
-function removeSelectedFurniture(
-  ctx: SelectionKeyboardContext,
-  floorId: string,
-  ids: string[],
-): void {
-  for (const id of ids) {
-    ctx.session.dispatch(removeFurniture(floorId, id))
-  }
-}
-
-// Drop the removed furniture ids from the selection, keeping anything else.
-function deselectFurniture(ctx: SelectionKeyboardContext, ids: string[]): void {
-  const removed = new Set(ids)
-  ctx.selection.setSelection([...ctx.selectedIds].filter((id) => !removed.has(id)))
 }
 
 function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): void {
@@ -173,18 +144,8 @@ function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): voi
     handleClipboardKey(action)
     return
   }
-  const furnitureIds = selectedFurnitureIds(ctx)
-  if ((event.key === 'Delete' || event.key === 'Backspace') && furnitureIds.length > 0) {
-    event.preventDefault()
-    removeSelectedFurniture(ctx, floor.id, furnitureIds)
-    // When graph entities are also selected, the generic delete below clears the
-    // whole selection; otherwise drop just the removed furniture ids here.
-    if (action.ids.length === 0) {
-      deselectFurniture(ctx, furnitureIds)
-    }
-  }
   if (action.ids.length > 0) {
-    handleEditKey(action)
+    handleNudgeKey(action)
   }
 }
 
@@ -197,19 +158,24 @@ interface SelectionKeyboardDeps {
   // The floor the keyboard actions target (the active floor); null before any
   // floor is selected.
   activeFloorId: string | null
-  // The active floor's furniture, so a Delete can remove selected pieces.
+  /**
+   * The active floor's furniture. The delete path that read it now lives in the
+   * delete-selection command, which resolves furniture from the session itself,
+   * so nothing here consumes it; the field stays until the plan view drops the
+   * argument.
+   */
   furniture: readonly FurnitureInstance[]
 }
 
 /**
- * Binds the select-tool editing keystrokes to the window: Delete and Backspace
- * delete the selected graph entities and furniture, the arrow keys nudge the graph
- * entities, and the platform copy, cut, and paste shortcuts drive the clipboard.
- * Inert under any tool but `select`, and ignored while a form control is focused so
- * inspector typing is untouched.
+ * Binds the select-tool editing keystrokes to the window: the arrow keys nudge the
+ * selected graph entities and the platform copy, cut, and paste shortcuts drive the
+ * clipboard. Delete and Backspace belong to the delete-selection command, which owns
+ * them editor-wide. Inert under any tool but `select`, and ignored while a form
+ * control is focused so inspector typing is untouched.
  */
 export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
-  const { session, selection, clipboard, selectedIds, tool, activeFloorId, furniture } = deps
+  const { session, selection, clipboard, selectedIds, tool, activeFloorId } = deps
   useEffect(() => {
     if (tool !== 'select') {
       return undefined
@@ -220,7 +186,6 @@ export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
       clipboard,
       selectedIds,
       activeFloorId,
-      furniture,
     }
     const listener = (event: KeyboardEvent): void => {
       handleKeyDown(event, ctx)
@@ -229,5 +194,5 @@ export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
     return () => {
       window.removeEventListener('keydown', listener)
     }
-  }, [session, selection, clipboard, selectedIds, tool, activeFloorId, furniture])
+  }, [session, selection, clipboard, selectedIds, tool, activeFloorId])
 }
