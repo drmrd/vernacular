@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react'
-import type { OpeningSceneNode, UnitPreferences, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, SceneGraph, UnitPreferences, WallSceneNode } from '../../core'
 import { useViewOverlay, type ViewOverlayValue } from '../viewport/view-overlay-context'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
@@ -56,6 +56,19 @@ export interface PlanScene {
 
 /** What the header's view toggles currently show, as the draw reads it. */
 export type OverlayVisibility = Pick<ViewOverlayValue, 'showGrid' | 'showDimensions'>
+
+/**
+ * The scene graph as the plan's DOM overlay should read it. The overlay lays out a
+ * measurement chip and a focusable proxy per dimension from the graph, not from the
+ * draw options, so a Dimensions toggle that reached only the canvas would leave the
+ * numbers on screen over nothing and keep them in the tab order.
+ */
+export function scopeSceneToShownAnnotations(
+  graph: SceneGraph,
+  overlay: OverlayVisibility,
+): SceneGraph {
+  return overlay.showDimensions ? graph : { ...graph, dimensions: [] }
+}
 
 /**
  * The overlays the plan carries only while they are live: the pointer's hover, the

@@ -70,10 +70,12 @@ import {
 import {
   PLAN_HEIGHT,
   PLAN_WIDTH,
+  scopeSceneToShownAnnotations,
   usePlanRedraw,
   type CanvasRef,
   type PlanScene,
 } from './plan-scene'
+import { useViewOverlay } from '../viewport/view-overlay-context'
 import { screenToWorld, type Viewport } from './viewport'
 import { useViewport } from './viewport-context'
 import { useReportPointer } from './pointer-readout'
@@ -89,6 +91,8 @@ const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
 
 interface PlanLayers {
   graph: SceneGraph
+  // The graph the DOM overlay reads, with annotations the view toggles hide removed.
+  overlayGraph: SceneGraph
   tool: ToolId
   layer: EditLayer
   selectedIds: ReadonlySet<string>
@@ -209,6 +213,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const { tool, setTool } = useActiveTool()
   const { layer } = useActiveEditLayer()
   const { viewport, setViewport } = useViewport()
+  const viewOverlay = useViewOverlay()
   const selectedIds = useSelectionIds()
   const selectedWall = singleSelectedWall(tool, selectedIds, graph)
   const preferences = PREFERENCES_BY_UNITS[session.getProject().meta.units]
@@ -301,6 +306,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   })
   return {
     graph,
+    overlayGraph: scopeSceneToShownAnnotations(graph, viewOverlay),
     tool,
     layer,
     selectedIds,
@@ -362,7 +368,9 @@ function buildOverlayProps(layers: PlanLayers, readout: DragReadout | undefined)
   const { interaction } = layers
   return {
     viewport: layers.viewport,
-    graph: layers.graph,
+    // Narrowed by the view toggles, so the measurement chips and their focusable
+    // proxies come and go with the dimension pass on the canvas beneath them.
+    graph: layers.overlayGraph,
     selectedIds: layers.selectedIds,
     selection: layers.selection,
     preferences: layers.preferences,
