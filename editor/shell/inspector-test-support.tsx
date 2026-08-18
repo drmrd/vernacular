@@ -33,7 +33,8 @@ export interface InspectorFixture {
 /**
  * Render the Inspector over a one-floor project (floor id `g`) wired through the
  * real session, selection, active-floor, and surface-selection stores, so tests
- * drive it the way the editor does. Returns the selection store to drive it with.
+ * drive it the way the editor does. Returns the selection store to drive it with
+ * and the editor session, so a test can undo or redo the way the editor does.
  */
 export function renderInspector({
   walls = [],
@@ -72,5 +73,5 @@ export function renderInspector({
       </SelectionProvider>
     </EditorSessionProvider>,
   )
-  return { selection }
+  return { selection, session }
 }

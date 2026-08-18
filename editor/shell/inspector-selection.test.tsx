@@ -38,6 +38,38 @@ describe('Inspector with an opening selected', () => {
   })
 })
 
+describe('Inspector after an opening resize is undone', () => {
+  it('shows the restored width in the Width field, not the width the undo threw away', async () => {
+    const user = userEvent.setup()
+    const wall = createWall({ x: 0, y: 0 }, { x: 4000, y: 0 })
+    // The fixture project is imperial and a length field defaults to feet, so a
+    // 914.4 mm opening reads as a clean "3".
+    const opening = createOpening({
+      type: 'single-swing-door',
+      hostWallId: wall.id,
+      position: 2000,
+      width: 914.4,
+    })
+    const { selection, session } = renderInspector({ walls: [wall], openings: [opening] })
+    act(() => {
+      selection.select(`${OPENING_NODE_PREFIX}${opening.id}`)
+    })
+
+    const widthInput = screen.getByLabelText('Width')
+    expect(widthInput).toHaveValue('3')
+
+    await user.clear(widthInput)
+    await user.type(widthInput, '4{Enter}')
+    expect(widthInput).toHaveValue('4')
+
+    act(() => {
+      session.undo()
+    })
+
+    expect(screen.getByLabelText('Width')).toHaveValue('3')
+  })
+})
+
 describe('Inspector with a room selected', () => {
   it('shows a whole-storey note instead of the Floor chip when a selected room shares its storey with another room', () => {
     const walls = [

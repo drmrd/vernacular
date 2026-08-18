@@ -29,6 +29,24 @@ function renderField(
   )
 }
 
+// A notice is an explanation the field's owner attaches to a legitimate value,
+// not a complaint about what the user typed.
+const NOTICE = 'Limited to 1.20 m by a neighbouring opening on this wall.'
+const UNPARSEABLE_HINT = 'Enter a number, or a length such as 2.4 m or 8 ft 6 in.'
+
+function renderFieldWithNotice(notice: string, onCommitMm: (mm: number) => void = vi.fn()) {
+  render(
+    <LengthField
+      inputId={INPUT_ID}
+      label={LABEL}
+      valueMm={CURRENT_MM}
+      preferences={DEFAULT_METRIC_PREFERENCES}
+      onCommitMm={onCommitMm}
+      notice={notice}
+    />,
+  )
+}
+
 function unitPicker() {
   return screen.getByRole('group', { name: `${LABEL} unit` })
 }
@@ -224,6 +242,47 @@ describe('LengthField rejection handling', () => {
     expect(document.querySelector('.ds-field__hint')).toBeNull()
     expect(input).not.toHaveAttribute('aria-invalid')
     expect(onCommitMm).toHaveBeenCalledWith(1200)
+  })
+})
+
+describe('LengthField owner notices', () => {
+  it('explains a legitimate value through the hint below the input when its owner supplies a notice', () => {
+    renderFieldWithNotice(NOTICE)
+    const input = screen.getByLabelText(LABEL)
+
+    const hint = document.querySelector('.ds-field__hint')
+    expect(hint).not.toBeNull()
+    expect(hint).toHaveTextContent(NOTICE)
+    // The explanation is announced with the control, not left floating beside it.
+    expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
+  })
+
+  it('leaves the control valid while a notice is showing, because the value it explains is accepted', () => {
+    renderFieldWithNotice(NOTICE)
+
+    expect(screen.getByText(NOTICE)).toBeInTheDocument()
+    expect(screen.getByLabelText(LABEL)).not.toHaveAttribute('aria-invalid')
+  })
+
+  it('gives the hint over to a rejected entry and returns it to the notice once the entry parses again', async () => {
+    const user = userEvent.setup()
+    renderFieldWithNotice(NOTICE)
+    const input = screen.getByLabelText(LABEL)
+
+    await user.clear(input)
+    await user.type(input, 'twelve')
+    await user.tab()
+
+    // What the user just typed is the more urgent thing to say, so it wins the slot.
+    expect(document.querySelector('.ds-field__hint')).toHaveTextContent(UNPARSEABLE_HINT)
+    expect(screen.queryByText(NOTICE)).toBeNull()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+
+    await user.clear(input)
+    await user.type(input, '1.2{Enter}')
+
+    expect(document.querySelector('.ds-field__hint')).toHaveTextContent(NOTICE)
+    expect(input).not.toHaveAttribute('aria-invalid')
   })
 })
 

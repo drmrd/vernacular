@@ -49,6 +49,42 @@ function buildOpening(): Opening {
   })
 }
 
+function buildOpeningOfWidth(width: number): Opening {
+  return createOpening({
+    type: 'single-swing-door',
+    hostWallId: 'w1',
+    position: 1000,
+    width,
+    height: HEIGHT_MM,
+    sillHeight: SILL_HEIGHT_MM,
+    id: OPENING_ID,
+  })
+}
+
+function buildNeighbor(hostWallId: string, position: number, width: number): Opening {
+  return createOpening({
+    type: 'single-swing-door',
+    hostWallId,
+    position,
+    width,
+    height: HEIGHT_MM,
+    sillHeight: SILL_HEIGHT_MM,
+    id: 'o2',
+  })
+}
+
+function renderInspectorForOpening(opening: Opening, siblingOpenings: readonly Opening[]) {
+  render(
+    <OpeningInspector
+      floorId={FLOOR_ID}
+      opening={opening}
+      units={UNITS}
+      siblingOpenings={siblingOpenings}
+      dispatch={vi.fn() as never}
+    />,
+  )
+}
+
 function renderInspector(
   dispatch: (command: unknown) => void,
   units: 'metric' | 'imperial' = UNITS,
@@ -176,6 +212,44 @@ describe('OpeningInspector', () => {
     const command = onlyCommand<FlipOpeningParams>(dispatch)
     expect(command.type).toBe(FLIP_OPENING)
     expect(command.params.axis).toBe('facing')
+  })
+})
+
+describe('OpeningInspector width limit notice', () => {
+  // A same-wall neighbor centered at 1700 with width 200 has its near edge at
+  // 1600. From the selected opening's center at 1000 that leaves a 600 mm gap,
+  // so the widest centered span clear of the neighbor is 1200 mm. An opening
+  // already 1200 mm wide is sitting on that limit.
+  const NEIGHBOR_POSITION_MM = 1700
+  const NEIGHBOR_WIDTH_MM = 200
+  const LIMIT_MM = 1200
+  const LIMIT_NOTICE = 'Limited to 1.20 m by a neighbouring opening on this wall.'
+
+  it('names the neighbouring opening that caps the width when the opening is already as wide as it can be', () => {
+    renderInspectorForOpening(buildOpeningOfWidth(LIMIT_MM), [
+      buildNeighbor('w1', NEIGHBOR_POSITION_MM, NEIGHBOR_WIDTH_MM),
+    ])
+
+    const notice = screen.getByText(LIMIT_NOTICE)
+    // The explanation belongs to the Width field, so it is announced with it.
+    expect(screen.getByLabelText(/width/i)).toHaveAttribute(
+      'aria-describedby',
+      notice.getAttribute('id') ?? '',
+    )
+  })
+
+  it('says nothing about a limit when no other opening shares the host wall', () => {
+    renderInspectorForOpening(buildOpeningOfWidth(LIMIT_MM), [])
+
+    expect(screen.queryByText(/Limited to/i)).toBeNull()
+  })
+
+  it('says nothing about a limit for an opening on another wall, which cannot crowd this one', () => {
+    renderInspectorForOpening(buildOpeningOfWidth(LIMIT_MM), [
+      buildNeighbor('w2', NEIGHBOR_POSITION_MM, NEIGHBOR_WIDTH_MM),
+    ])
+
+    expect(screen.queryByText(/Limited to/i)).toBeNull()
   })
 })
 
