@@ -7,7 +7,14 @@ afterEach(cleanup)
 
 function Probe({ commands, context }: { commands: EditorCommand[]; context: CommandContext }) {
   useKeybindings(commands, context)
-  return <input data-testid="field" />
+  return (
+    <>
+      <input data-testid="field" />
+      <button type="button" data-testid="control">
+        Draw wall
+      </button>
+    </>
+  )
 }
 
 describe('useKeybindings', () => {
@@ -41,6 +48,23 @@ describe('useKeybindings', () => {
     render(<Probe commands={[command]} context={context} />)
 
     fireEvent.keyDown(screen.getByTestId('field'), { key: 'k', ctrlKey: true })
+
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('ignores keystrokes aimed at a focused control, which owns its own keys', () => {
+    const context = {} as CommandContext
+    const run = vi.fn()
+    const command: EditorCommand = {
+      id: 'delete-selection',
+      label: 'Delete selection',
+      keybindings: ['Backspace'],
+      isEnabled: () => true,
+      run,
+    }
+    render(<Probe commands={[command]} context={context} />)
+
+    fireEvent.keyDown(screen.getByTestId('control'), { key: 'Backspace' })
 
     expect(run).not.toHaveBeenCalled()
   })

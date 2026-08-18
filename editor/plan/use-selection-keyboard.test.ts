@@ -56,6 +56,48 @@ function mountKeyboardOwners({ session, selection, floorId }: Editor): void {
   })
 }
 
+// Mounts only the plan's selection keyboard, the owner of the arrow-key nudge.
+function mountSelectionKeyboard({ session, selection, floorId }: Editor): void {
+  const clipboard = createClipboardStore()
+  renderHook(() =>
+    useSelectionKeyboard({
+      session,
+      selection,
+      clipboard,
+      selectedIds: selection.getSelectedIds(),
+      tool: 'select',
+      activeFloorId: floorId,
+      furniture: [],
+    }),
+  )
+}
+
+describe('nudging a selection with the arrow keys', () => {
+  it('leaves the selection alone when the arrow key is aimed at a control', () => {
+    const editor = buildEditorWithSelectedWall()
+    mountSelectionKeyboard(editor)
+    const before = editor.session.getProject().floors[0]!.walls[0]!
+
+    const toolButton = document.createElement('button')
+    document.body.appendChild(toolButton)
+    toolButton.focus()
+    toolButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    toolButton.remove()
+
+    expect(editor.session.getProject().floors[0]!.walls[0]).toEqual(before)
+  })
+
+  it('still nudges when the arrow key lands on the drawing surface', () => {
+    const editor = buildEditorWithSelectedWall()
+    mountSelectionKeyboard(editor)
+    const before = editor.session.getProject().floors[0]!.walls[0]!
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+
+    expect(editor.session.getProject().floors[0]!.walls[0]).not.toEqual(before)
+  })
+})
+
 describe('deleting a selection from the keyboard', () => {
   it('records one history entry per Delete, so a single undo restores the wall', () => {
     const editor = buildEditorWithSelectedWall()
