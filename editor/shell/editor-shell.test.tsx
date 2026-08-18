@@ -186,6 +186,31 @@ describe('EditorShell', () => {
     expect(gridBtn).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('makes the Grid and Dimensions toggles inert while the 3D view holds the viewport', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    const dimensionsBtn = screen.getByRole('button', { name: /dimensions/i })
+
+    await user.click(screen.getByRole('button', { name: '3D view' }))
+
+    // Both toggles describe layers of the 2D plan, which the 3D view mode does not
+    // show, so they steer nothing there and say why on hover.
+    expect(gridBtn).toBeDisabled()
+    expect(dimensionsBtn).toBeDisabled()
+    expect(gridBtn.getAttribute('title')).toMatch(/plan/i)
+    expect(dimensionsBtn.getAttribute('title')).toMatch(/plan/i)
+
+    await user.click(screen.getByRole('button', { name: 'Plan view' }))
+
+    expect(gridBtn).toBeEnabled()
+    expect(dimensionsBtn).toBeEnabled()
+    expect(gridBtn.getAttribute('title')).toBe('Grid')
+    expect(dimensionsBtn.getAttribute('title')).toBe('Dimensions')
+  })
+
   it('routes the Grid, Dimensions, Undo, and Redo header buttons through the IconButton primitive', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
