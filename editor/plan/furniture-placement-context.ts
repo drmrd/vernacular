@@ -1,7 +1,18 @@
-import { createContext, createElement, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
 import type { LibraryItem } from '../../storage'
+import { ActiveToolContext } from '../tools/active-tool-context'
 import { FURNITURE_ROTATION_STEP_DEGREES, rotatedBy } from './place-furniture'
+
+const PLACE_FURNITURE_TOOL = 'place-furniture'
 
 export interface FurniturePlacementValue {
   /** The library item armed for placement, or null when nothing is armed. */
@@ -38,6 +49,26 @@ export interface FurniturePlacementProviderProps {
 }
 
 /**
+ * Disarms whenever the editor leaves the place-furniture tool, so an armed item
+ * never outlives the tool that places it. Only that tool acts on the arm state, and
+ * a ghost still armed under the wall tool is state the user cannot see or reach.
+ *
+ * The active tool is read straight from its context rather than through
+ * `useActiveTool`, so a bare render with no tool provider (a story, an isolated
+ * test) keeps working: with no tool to leave, there is nothing to disarm.
+ */
+function useDisarmOffTool(disarm: () => void): void {
+  const activeTool = useContext(ActiveToolContext)
+  const tool = activeTool?.tool
+  useEffect(() => {
+    if (tool !== undefined && tool !== PLACE_FURNITURE_TOOL) {
+      disarm()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- disarm is rebuilt whenever the arm state changes, so listing it would re-run this on every arm; the tool leaving is the only trigger
+  }, [tool])
+}
+
+/**
  * Holds the shared furniture-placement arm state so the library browser and the
  * placement glue read and write one source. Mirrors the opening-tool provider: a
  * memoized value keeps the context referentially stable across renders that do
@@ -63,5 +94,6 @@ export function FurniturePlacementProvider({ children }: FurniturePlacementProvi
     }),
     [armed, rotation],
   )
+  useDisarmOffTool(value.disarm)
   return createElement(FurniturePlacementContext.Provider, { value }, children)
 }
