@@ -13,14 +13,15 @@ interface RoomFinishSectionProps {
   treatmentFor: (ref: SurfaceRef) => SurfaceTreatment | undefined
   recent: Color[]
   dispatch: (command: Command) => void
-  // Floor and ceiling finishes are storey-scoped, not room-scoped (see surfaceRef
+  // Floor and ceiling finishes are floor-scoped, not room-scoped (see surfaceRef
   // below), so the section needs to know how many rooms share that scope to warn
-  // before a "room" edit silently repaints every room on the storey. Defaults to a
+  // before a "room" edit silently repaints every room on the floor. Defaults to a
   // single room, which is the only count where a room-driven paint is unambiguous.
   roomsOnFloor?: number
 }
 
-const SHARED_HINT = 'Floor and ceiling finishes cover the whole storey, not just the selected room.'
+const SHARED_HINT =
+  'Floor and ceiling finishes cover every room on this floor, not just the selected one.'
 
 // The note borrows the hint's muted styling and adds its own class as the semantic
 // hook; the shared stylesheet carries no rule for the note class on its own.
@@ -67,7 +68,7 @@ interface RoomSurfaceSwitchProps {
 function RoomSurfaceSwitch({ kind, onSelect }: RoomSurfaceSwitchProps) {
   return (
     <Segmented
-      label="Storey surface"
+      label="Surface"
       options={SURFACE_OPTIONS}
       value={kind}
       onSelect={(value) => {
@@ -77,12 +78,12 @@ function RoomSurfaceSwitch({ kind, onSelect }: RoomSurfaceSwitchProps) {
   )
 }
 
-// The whole-storey warning shown in place of the paint controls once a floor
+// The shared-scope warning shown in place of the paint controls once a floor
 // holds more than one room, since a room-driven edit there has no single room
 // to attach to; the room count grounds the warning in what the user is looking at.
 function sharedRoomsNote(roomsOnFloor: number): string {
   return (
-    `This storey holds ${roomsOnFloor} rooms, so a finish here would repaint every ` +
+    `This floor holds ${roomsOnFloor} rooms, so a finish here would repaint every ` +
     'one of them. Per-room floor and ceiling finishes are not available yet.'
   )
 }
@@ -97,7 +98,7 @@ interface RoomFinishControlsProps {
 }
 
 // The surface switch and paint controls, only meaningful while the selected
-// room is the storey's only room (see RoomFinishSection); split out so that
+// room is the floor's only room (see RoomFinishSection); split out so that
 // case can be rendered without smuggling an unattributable "room" edit past
 // the roomsOnFloor guard.
 function RoomFinishControls({
@@ -147,7 +148,7 @@ export function RoomFinishSection({
   const sharedAcrossRooms = roomsOnFloor > 1
   return (
     <section className="finish-section">
-      <SectionLabel>Floor finish (whole storey)</SectionLabel>
+      <SectionLabel>Finish (all rooms on this floor)</SectionLabel>
       <p className="finish-section__hint">{SHARED_HINT}</p>
       {sharedAcrossRooms ? (
         <p className={NOTE_CLASS}>{sharedRoomsNote(roomsOnFloor)}</p>

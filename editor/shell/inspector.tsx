@@ -100,9 +100,9 @@ function singleSelectedRoomNode(
   return graph.rooms.find((room) => room.id === onlyId) ?? null
 }
 
-// How many rooms sit on one storey. Floor and ceiling finishes are storey-scoped,
+// How many rooms sit on one floor. Floor and ceiling finishes are floor-scoped,
 // so the finish section needs this count to warn before a room-driven edit repaints
-// every room sharing that storey.
+// every room sharing that floor.
 function roomsSharingFloor(rooms: readonly RoomSceneNode[], floorId: string): number {
   return rooms.filter((room) => room.floorId === floorId).length
 }

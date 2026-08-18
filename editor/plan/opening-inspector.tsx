@@ -117,7 +117,7 @@ function widthLimitNotice(
   if (!Number.isFinite(limitMm) || opening.width < limitMm) {
     return undefined
   }
-  return `Limited to ${formatAdaptiveLength(limitMm, preferences)} by a neighbouring opening on this wall.`
+  return `Limited to ${formatAdaptiveLength(limitMm, preferences)} by a neighboring opening on this wall.`
 }
 
 interface DimensionFieldsProps {
