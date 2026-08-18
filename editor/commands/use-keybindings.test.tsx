@@ -52,21 +52,38 @@ describe('useKeybindings', () => {
     expect(run).not.toHaveBeenCalled()
   })
 
-  it('ignores keystrokes aimed at a focused control, which owns its own keys', () => {
+  it('ignores an arrow key aimed at a focused button, which roves its own group', () => {
     const context = {} as CommandContext
     const run = vi.fn()
     const command: EditorCommand = {
-      id: 'delete-selection',
-      label: 'Delete selection',
-      keybindings: ['Backspace'],
+      id: 'nudge',
+      label: 'Nudge',
+      keybindings: ['ArrowRight'],
       isEnabled: () => true,
       run,
     }
     render(<Probe commands={[command]} context={context} />)
 
-    fireEvent.keyDown(screen.getByTestId('control'), { key: 'Backspace' })
+    fireEvent.keyDown(screen.getByTestId('control'), { key: 'ArrowRight' })
 
     expect(run).not.toHaveBeenCalled()
+  })
+
+  it('still runs a shortcut a focused button does not own, such as Delete', () => {
+    const context = {} as CommandContext
+    const run = vi.fn()
+    const command: EditorCommand = {
+      id: 'delete-selection',
+      label: 'Delete selection',
+      keybindings: ['Delete'],
+      isEnabled: () => true,
+      run,
+    }
+    render(<Probe commands={[command]} context={context} />)
+
+    fireEvent.keyDown(screen.getByTestId('control'), { key: 'Delete' })
+
+    expect(run).toHaveBeenCalledTimes(1)
   })
 
   it('does nothing when no command matches', () => {

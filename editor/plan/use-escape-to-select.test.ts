@@ -36,6 +36,19 @@ describe('useEscapeToSelect', () => {
     expect(setTool).not.toHaveBeenCalled()
   })
 
+  it('still returns to select when the tool chip that armed the tool holds focus', () => {
+    const setTool = vi.fn()
+    renderHook(() => useEscapeToSelect({ tool: 'draw-wall', setTool }))
+
+    const chip = document.createElement('button')
+    document.body.appendChild(chip)
+    chip.focus()
+    chip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    chip.remove()
+
+    expect(setTool).toHaveBeenCalledWith('select')
+  })
+
   it('ignores Escape while a form control is focused', () => {
     const setTool = vi.fn()
     renderHook(() => useEscapeToSelect({ tool: 'draw-wall', setTool }))
