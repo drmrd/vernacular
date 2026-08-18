@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { ADD_DIMENSION } from '../../core'
-import { advanceDimensionTool, dimensionPreview, IDLE_DIMENSION_TOOL } from './dimension-tool'
+import {
+  advanceDimensionTool,
+  cancelDimensionTool,
+  dimensionPreview,
+  IDLE_DIMENSION_TOOL,
+} from './dimension-tool'
 
 describe('advanceDimensionTool', () => {
   it('records the start on the first click without emitting a command', () => {
@@ -29,6 +34,18 @@ describe('advanceDimensionTool', () => {
 
     expect(result.state).toEqual(IDLE_DIMENSION_TOOL)
     expect(result.command).toBeUndefined()
+  })
+})
+
+describe('cancelDimensionTool', () => {
+  it('abandons a half-measured dimension without recording it', () => {
+    const measuring = advanceDimensionTool(IDLE_DIMENSION_TOOL, { x: 100, y: 100 }, 'floor-1').state
+
+    expect(cancelDimensionTool(measuring)).toEqual(IDLE_DIMENSION_TOOL)
+  })
+
+  it('leaves an idle tool idle', () => {
+    expect(cancelDimensionTool(IDLE_DIMENSION_TOOL)).toEqual(IDLE_DIMENSION_TOOL)
   })
 })
 
