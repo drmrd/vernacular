@@ -1,14 +1,19 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { createElement } from 'react'
 import { act, cleanup, render } from '@testing-library/react'
-import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode } from '../../core'
+import { DEFAULT_METRIC_PREFERENCES, type DimensionSceneNode, type SceneGraph } from '../../core'
 import {
   ViewOverlayProvider,
   useViewOverlay,
   type ViewOverlayValue,
 } from '../viewport/view-overlay-context'
 import { recordingContext } from './draw-plan-test-fixtures'
-import { buildDrawOptions, usePlanRedraw, type PlanScene } from './plan-scene'
+import {
+  buildDrawOptions,
+  scopeSceneToShownAnnotations,
+  usePlanRedraw,
+  type PlanScene,
+} from './plan-scene'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import { DEFAULT_PLAN_SCALE } from './viewport'
 
@@ -133,8 +138,8 @@ describe('the header Grid toggle', () => {
 const DIMENSION_LENGTH_MM = 1000
 const DIMENSION_OFFSET_MM = 200
 
-function sceneWithDimension(): PlanScene {
-  const node: DimensionSceneNode = {
+function dimensionNode(): DimensionSceneNode {
+  return {
     id: 'dimension:d1',
     kind: 'dimension',
     floorId: 'g',
@@ -143,7 +148,10 @@ function sceneWithDimension(): PlanScene {
     offset: DIMENSION_OFFSET_MM,
     length: DIMENSION_LENGTH_MM,
   }
-  return { ...emptyScene(), dimensions: [{ node, selected: false }] }
+}
+
+function sceneWithDimension(): PlanScene {
+  return { ...emptyScene(), dimensions: [{ node: dimensionNode(), selected: false }] }
 }
 
 function dimensionMarkCount(recorder: Recorder): number {
@@ -153,6 +161,34 @@ function dimensionMarkCount(recorder: Recorder): number {
 function dimensionLabelCount(recorder: Recorder): number {
   return recorder.texts.filter((text) => text.style === PROBE_PALETTE.label).length
 }
+
+describe('scopeSceneToShownAnnotations', () => {
+  // The plan's DOM overlay reads its measurement chips and their focusable proxies
+  // off the scene graph rather than the draw options, so hiding the dimensions has
+  // to reach the graph the overlay sees or the numbers stay on screen alone.
+  const graph: SceneGraph = {
+    nodes: [],
+    walls: [],
+    rooms: [],
+    underlays: [],
+    openings: [],
+    dimensions: [dimensionNode()],
+    stairs: [],
+    furniture: [],
+  }
+
+  it('empties the dimensions the Dimensions toggle hides', () => {
+    const scoped = scopeSceneToShownAnnotations(graph, { showGrid: true, showDimensions: false })
+
+    expect(scoped.dimensions).toEqual([])
+  })
+
+  it('hands back the graph untouched while the dimensions show', () => {
+    const scoped = scopeSceneToShownAnnotations(graph, { showGrid: true, showDimensions: true })
+
+    expect(scoped).toBe(graph)
+  })
+})
 
 describe('the header Dimensions toggle', () => {
   afterEach(cleanup)
