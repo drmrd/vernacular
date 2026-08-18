@@ -45,6 +45,24 @@ export function isTextEntry(target: EventTarget | null): boolean {
  * Escape, Delete, and the rest alive while a tool chip still holds focus after a
  * click.
  */
+// The keystrokes a tool has already answered. Held weakly, so an event is
+// forgotten as soon as the browser is done with it.
+const claimedKeystrokes = new WeakSet<KeyboardEvent>()
+
+/**
+ * Record that a tool has answered this keystroke, so the later rungs of the Escape
+ * ladder stand down. A tool claims only when it actually did something: cancelling
+ * an open run claims, pressing Escape at rest does not.
+ */
+export function claimKeystroke(event: KeyboardEvent): void {
+  claimedKeystrokes.add(event)
+}
+
+/** Whether any tool has already answered this keystroke. */
+export function wasKeystrokeClaimed(event: KeyboardEvent): boolean {
+  return claimedKeystrokes.has(event)
+}
+
 export function ownsKeystroke(target: EventTarget | null, key: string): boolean {
   if (isTextEntry(target)) {
     return true

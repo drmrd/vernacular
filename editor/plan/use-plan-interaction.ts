@@ -12,7 +12,7 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
-import { ownsKeystroke } from './keyboard-guard'
+import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
 import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
@@ -131,9 +131,8 @@ interface WallKeyboardDeps {
   tool: ToolId
   finish: () => void
   backspace: () => void
-  snapping: Snapping
-  setToolState: (updater: (state: WallToolState) => WallToolState) => void
-  setPointer: (pointer: Point | null) => void
+  // Abandons a run in progress; reports whether there was one to abandon.
+  cancel: () => boolean
 }
 
 /**
@@ -188,16 +187,9 @@ function useReresolveOnFreeAngleToggle({
  * would silently swallow this run-control key. The stable subscription keeps the
  * wall run controllable no matter what else listens on the window.
  */
-function useWallKeyboard({
-  tool,
-  finish,
-  backspace,
-  snapping,
-  setToolState,
-  setPointer,
-}: WallKeyboardDeps): void {
-  const handlersRef = useRef({ finish, backspace, snapping, setToolState, setPointer })
-  handlersRef.current = { finish, backspace, snapping, setToolState, setPointer }
+function useWallKeyboard({ tool, finish, backspace, cancel }: WallKeyboardDeps): void {
+  const handlersRef = useRef({ finish, backspace, cancel })
+  handlersRef.current = { finish, backspace, cancel }
   useEffect(() => {
     if (tool !== 'draw-wall') {
       return
@@ -208,9 +200,11 @@ function useWallKeyboard({
       }
       const handlers = handlersRef.current
       if (event.key === 'Escape') {
-        handlers.setToolState(cancelWallTool)
-        handlers.setPointer(null)
-        handlers.snapping.clear()
+        // Claim the key only when there was a run to abandon; at rest the ladder
+        // moves on and Escape returns to the select tool.
+        if (handlers.cancel()) {
+          claimKeystroke(event)
+        }
       } else if (event.key === 'Enter') {
         handlers.finish()
       } else if (event.key === 'Backspace') {
@@ -347,7 +341,17 @@ function useWallGesture({
 
   const backspace = useSegmentStepBack({ session, setToolState, run: toolStateRef, history })
 
-  useWallKeyboard({ tool, finish, backspace, snapping, setToolState, setPointer })
+  // Abandons an open run and reports whether there was one, so the Escape ladder
+  // knows whether this rung answered the key.
+  const cancel = useCallback(() => {
+    const wasDrawing = toolStateRef.current.phase === 'drawing'
+    setToolState(cancelWallTool)
+    setPointer(null)
+    snapping.clear()
+    return wasDrawing
+  }, [snapping, setToolState, setPointer])
+
+  useWallKeyboard({ tool, finish, backspace, cancel })
 
   const onDoubleClick = useCallback(() => {
     if (tool === 'draw-wall') {
