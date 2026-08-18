@@ -128,9 +128,21 @@ function Breadcrumb({ projectName }: { projectName: string }) {
   )
 }
 
+// Shown on a view toggle the 3D-only view mode has made inert. Each names the plan
+// layer it draws and the modes that put that plan on screen, the way the 3D
+// toolbar's own inert controls explain themselves.
+const PLAN_ONLY_TITLES = {
+  grid: 'Draws the grid under the plan. Switch to plan or split view to use it.',
+  dimensions:
+    'Draws the dimension annotations over the plan. Switch to plan or split view to use it.',
+} as const
+
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const session = useEditorSession()
   const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
+  // The 3D-only mode leaves the plan off screen, so neither toggle changes anything
+  // a reader can see until a mode showing the plan comes back.
+  const planHidden = useViewMode().mode === 'preview'
   const StatusIcon = SAVE_STATUS_ICONS[saveStatus]
   return (
     <div className="editor-shell__toolbar">
@@ -148,7 +160,13 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
       />
       <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
-        <IconButton labeled aria-pressed={showGrid} onClick={toggleGrid} title="Grid">
+        <IconButton
+          labeled
+          aria-pressed={showGrid}
+          onClick={toggleGrid}
+          disabled={planHidden}
+          title={planHidden ? PLAN_ONLY_TITLES.grid : 'Grid'}
+        >
           <GridFour size={16} aria-hidden="true" />
           <span>Grid</span>
         </IconButton>
@@ -156,7 +174,8 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           labeled
           aria-pressed={showDimensions}
           onClick={toggleDimensions}
-          title="Dimensions"
+          disabled={planHidden}
+          title={planHidden ? PLAN_ONLY_TITLES.dimensions : 'Dimensions'}
         >
           <Ruler size={16} aria-hidden="true" />
           <span>Dimensions</span>
