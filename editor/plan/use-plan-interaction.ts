@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -12,6 +13,7 @@ import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawPlanOptions } from './draw-plan'
 import type { SnapResult } from './snap'
+import { ownsKeystroke } from './keyboard-guard'
 import { useHeldAltKey } from './use-held-alt-key'
 import { useSnapping, type Snapping } from './use-snapping'
 import { eventToCanvas } from './use-viewport-controls'
@@ -55,18 +57,61 @@ function drawFloorId(context: PointerContext): string | undefined {
   return context.activeFloorId ?? context.session.getProject().floors[0]?.id
 }
 
+/** The next wall-tool state after a click, and whether that click committed a segment. */
+interface PointerOutcome {
+  state: WallToolState
+  committed: boolean
+}
+
 /** Applies a wall-tool click and returns the next wall-tool state; other tools are inert here. */
-function applyPointer(world: Point, context: PointerContext): WallToolState {
+function applyPointer(world: Point, context: PointerContext): PointerOutcome {
   if (context.tool !== 'draw-wall') {
-    return context.toolState
+    return { state: context.toolState, committed: false }
   }
   const floorId = drawFloorId(context)
   if (floorId === undefined) {
-    return context.toolState
+    return { state: context.toolState, committed: false }
   }
   const result = advanceWallTool(context.toolState, world, floorId)
   result.commands?.forEach((command) => context.session.dispatch(command))
-  return result.state
+  return { state: result.state, committed: (result.commands?.length ?? 0) > 0 }
+}
+
+/** Whether the run still owns the newest recorded change, and a way to claim it. */
+interface HistoryOwnership {
+  markCommitted: () => void
+  ownsNewestChange: () => boolean
+}
+
+/**
+ * Tracks whether the newest entry in history is still the segment this run
+ * committed. A history entry carries no identity the editor can read, so the run
+ * counts change notifications instead: it notes the count right after committing a
+ * segment, and any later change (a delete under the select tool, an undo, another
+ * tool's command) moves the count past that mark. Backspace steps a segment back
+ * only while the mark still holds, so a run can never undo somebody else's work.
+ */
+function useHistoryOwnership(session: EditorSession): HistoryOwnership {
+  const changeCount = useRef(0)
+  const committedAt = useRef<number | null>(null)
+  useEffect(
+    () =>
+      session.subscribe(() => {
+        changeCount.current += 1
+      }),
+    [session],
+  )
+  // Only refs are read, so one stable object survives every render and keeps the
+  // pointer and keyboard callbacks that list it from being rebuilt.
+  return useMemo(
+    () => ({
+      markCommitted: () => {
+        committedAt.current = changeCount.current
+      },
+      ownsNewestChange: () => committedAt.current === changeCount.current,
+    }),
+    [],
+  )
 }
 
 export interface PlanInteractionDeps {
@@ -166,6 +211,9 @@ function useWallKeyboard({
       return
     }
     const onKeyDown = (event: KeyboardEvent) => {
+      if (ownsKeystroke(event.target, event.key)) {
+        return
+      }
       const handlers = handlersRef.current
       if (event.key === 'Escape') {
         handlers.setToolState(cancelWallTool)
@@ -215,6 +263,32 @@ function wallSnappingInputs({
   }
 }
 
+interface SegmentStepBackDeps {
+  session: EditorSession
+  setToolState: Dispatch<SetStateAction<WallToolState>>
+  // The live run, read through the ref the gesture hook refreshes every render.
+  run: { current: WallToolState }
+  history: HistoryOwnership
+}
+
+/**
+ * Backspace steps the draw-from corner back one and undoes the segment that corner
+ * committed; an anchor-only run (one corner, no segment) just cancels. The undo is
+ * withheld once anything else has been recorded since, so the corner still steps
+ * back while nobody else's work is rolled back with it.
+ */
+function useSegmentStepBack({ session, setToolState, run, history }: SegmentStepBackDeps) {
+  return useCallback(() => {
+    const state = run.current
+    if (state.phase === 'drawing' && state.vertices.length >= 2 && history.ownsNewestChange()) {
+      session.undo()
+      // The segment this run drew before it, if any, is now the newest change.
+      history.markCommitted()
+    }
+    setToolState((current) => backspaceWallTool(current))
+  }, [session, setToolState, run, history])
+}
+
 interface WallGestureDeps {
   session: EditorSession
   tool: ToolId
@@ -222,14 +296,23 @@ interface WallGestureDeps {
   toolState: WallToolState
   setToolState: Dispatch<SetStateAction<WallToolState>>
   setPointer: (pointer: Point | null) => void
+  viewport: Viewport
+  activeFloorId: string | null
+}
+
+interface WallGesture {
+  onDoubleClick: () => void
+  onPointerDown: (event: PointerEvent<HTMLCanvasElement>) => void
 }
 
 /**
- * Owns the finishing gestures of a wall run: it commits the open run (Enter via the
- * keyboard hook, or a double-click) and clears the cursor and snap indicator. The
- * latest tool state is read through a ref that is updated every render, so `finish`
- * reads the current run without listing `toolState` in its deps and without
- * re-subscribing the keyboard effect on every dropped corner.
+ * Owns a wall run's whole commit lifecycle: a click drops a corner and commits the
+ * segment behind it, Backspace steps that segment back, and Enter or a double-click
+ * ends the run and clears the cursor and snap indicator. Keeping the commit and the
+ * step-back in one hook is what lets the run know whether it still owns the newest
+ * entry in history. The latest tool state is read through a ref that is updated
+ * every render, so `finish` reads the current run without listing `toolState` in its
+ * deps and without re-subscribing the keyboard effect on every dropped corner.
  */
 function useWallGesture({
   session,
@@ -238,9 +321,24 @@ function useWallGesture({
   toolState,
   setToolState,
   setPointer,
-}: WallGestureDeps): { onDoubleClick: () => void } {
+  viewport,
+  activeFloorId,
+}: WallGestureDeps): WallGesture {
   const toolStateRef = useRef(toolState)
   toolStateRef.current = toolState
+  const history = useHistoryOwnership(session)
+
+  const onPointerDown = useCallback(
+    (event: PointerEvent<HTMLCanvasElement>) => {
+      const world = snapping.resolve(eventToWorld(event, viewport))
+      const outcome = applyPointer(world, { session, tool, toolState, activeFloorId })
+      if (outcome.committed) {
+        history.markCommitted()
+      }
+      setToolState(outcome.state)
+    },
+    [session, tool, toolState, viewport, snapping, activeFloorId, history, setToolState],
+  )
 
   const finish = useCallback(() => {
     setToolState((state) => finishWallTool(state).state)
@@ -248,15 +346,7 @@ function useWallGesture({
     snapping.clear()
   }, [snapping, setToolState, setPointer])
 
-  // Backspace steps the draw-from corner back one and undoes the segment that
-  // corner committed; an anchor-only run (one corner, no segment) just cancels.
-  const backspace = useCallback(() => {
-    const state = toolStateRef.current
-    if (state.phase === 'drawing' && state.vertices.length >= 2) {
-      session.undo()
-    }
-    setToolState((current) => backspaceWallTool(current))
-  }, [session, setToolState])
+  const backspace = useSegmentStepBack({ session, setToolState, run: toolStateRef, history })
 
   useWallKeyboard({ tool, finish, backspace, snapping, setToolState, setPointer })
 
@@ -266,7 +356,7 @@ function useWallGesture({
     }
   }, [tool, finish])
 
-  return { onDoubleClick }
+  return { onDoubleClick, onPointerDown }
 }
 
 /** Translates pointer events into wall-tool actions, the live preview, and the snap indicator. */
@@ -281,15 +371,7 @@ export function usePlanInteraction(deps: PlanInteractionDeps): PlanInteraction {
   const recordRawCursor = useReresolveOnFreeAngleToggle({ tool, freeAngle, snapping, setPointer })
 
   const gesture = { session, tool, snapping, toolState, setToolState, setPointer }
-  const { onDoubleClick } = useWallGesture(gesture)
-
-  const onPointerDown = useCallback(
-    (event: PointerEvent<HTMLCanvasElement>) => {
-      const world = snapping.resolve(eventToWorld(event, viewport))
-      setToolState(applyPointer(world, { session, tool, toolState, activeFloorId }))
-    },
-    [session, tool, toolState, viewport, snapping, activeFloorId],
-  )
+  const { onDoubleClick, onPointerDown } = useWallGesture({ ...gesture, viewport, activeFloorId })
 
   // Track the cursor only while the wall tool is active; this drives the live
   // rubber-band preview and the snap indicator. The select tool needs neither.
