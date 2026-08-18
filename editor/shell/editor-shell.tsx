@@ -22,7 +22,7 @@ import {
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
-import { addFloor, renameFloor, setUnits, type Project } from '../../core'
+import { addFloor, renameFloor, setUnits } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -32,7 +32,6 @@ import {
   createViewCommands,
   useCommandPalette,
   useKeybindings,
-  type CommandContext,
 } from '../commands'
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
@@ -103,14 +102,7 @@ function KeybindingLayer({ onSave }: { onSave?: (() => void) | undefined }) {
     ],
     [view, snapStore, onSave],
   )
-  const context: CommandContext = {
-    session,
-    selection,
-    graph,
-    activeFloorId,
-    openPalette: palette.open,
-  }
-  useKeybindings(commands, context)
+  useKeybindings(commands, { session, selection, graph, activeFloorId, openPalette: palette.open })
   return null
 }
 
@@ -145,9 +137,14 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         <BrandMark />
         <h1 className="editor-shell__wordmark">Vernacular</h1>
       </div>
-      {/* Each menu declares the handlers it offers and reads them out of the one
-          control set, rather than the header restating that list twice. */}
-      <ProjectMenu {...projectControls} />
+      <ProjectMenu
+        onNewProject={projectControls.onNewProject}
+        onSave={projectControls.onSave}
+        onOpenFile={projectControls.onOpenFile}
+        onOpenFolder={projectControls.onOpenFolder}
+        onOpenRecent={projectControls.onOpenRecent}
+        recentProjects={projectControls.recentProjects}
+      />
       <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
         <ViewToggles />
@@ -159,22 +156,16 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           <ArrowClockwise size={16} aria-hidden="true" />
         </IconButton>
         <ThemeToggle />
-        <ExportMenu {...projectControls} />
+        <ExportMenu
+          onExportBundle={projectControls.onExportBundle}
+          onExportPlan={projectControls.onExportPlan}
+          onExportImage={projectControls.onExportImage}
+          onExportPdf={projectControls.onExportPdf}
+        />
       </div>
       <SaveStatusReadout status={saveStatus} />
     </div>
   )
-}
-
-// The floor rows the switcher renders: each floor's raw id, name, and elevation
-// (not the scene-node prefixed id). Elevation lets the switcher order floors and
-// place newly added ones above or below the existing stack.
-function floorSummaries(project: Project): { id: string; name: string; elevation: number }[] {
-  return project.floors.map((floor) => ({
-    id: floor.id,
-    name: floor.name,
-    elevation: floor.elevation,
-  }))
 }
 
 function EditorStatusBar() {
@@ -185,7 +176,13 @@ function EditorStatusBar() {
   useSceneGraph()
   return (
     <StatusBar
-      floors={floorSummaries(session.getProject())}
+      // The switcher's rows carry each floor's raw id (not the scene-node prefixed
+      // one) plus the elevation it orders and places new floors by.
+      floors={session.getProject().floors.map(({ id, name, elevation }) => ({
+        id,
+        name,
+        elevation,
+      }))}
       activeFloorId={activeFloorId}
       onSelectFloor={setActiveFloorId}
       onAddFloor={(placement) =>
@@ -208,11 +205,7 @@ function EditorStatusBar() {
 // The central area: the view-mode viewport, which shows the 2D plan view and/or
 // the 3D preview region depending on the active view mode. A drop target wraps it
 // so a project file dragged onto the plan loads as the active project.
-function ViewportArea({
-  onImportDroppedFile,
-}: {
-  onImportDroppedFile?: ((file: File) => void) | undefined
-}) {
+function ViewportArea({ onImportDroppedFile }: Pick<EditorShellProps, 'onImportDroppedFile'>) {
   return (
     <ImportDropTarget onImportDroppedFile={onImportDroppedFile}>
       <ViewModeViewport

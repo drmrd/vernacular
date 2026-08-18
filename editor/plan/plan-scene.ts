@@ -71,12 +71,13 @@ export function scopeSceneToShownAnnotations(
 }
 
 /**
- * The overlays the plan carries only while they are live: the pointer's hover, the
- * in-progress preview, the snap indicator, the marquee, the two handle sets, the
- * calibration measurement, and the move-drag ghost. Each is spread in only when
- * present, so an absent one stays off under exactOptionalPropertyTypes.
+ * The draw options the plan carries only when the scene has them set: the active
+ * floor's paint color, the pointer's hover, the in-progress preview, the snap
+ * indicator, the marquee, the two handle sets, the calibration measurement, and the
+ * move-drag ghost. Each is spread in only when present, so an unset one stays absent
+ * rather than explicitly undefined, which exactOptionalPropertyTypes refuses.
  */
-function liveOverlays(scene: PlanScene): Partial<DrawPlanOptions> {
+function optionalDrawOptions(scene: PlanScene): Partial<DrawPlanOptions> {
   return {
     ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
     ...(scene.hoveredId !== undefined ? { hoveredId: scene.hoveredId } : {}),
@@ -120,7 +121,7 @@ export function buildDrawOptions(
     dimensions: overlay.showDimensions ? scene.dimensions : [],
     stairs: scene.stairs,
     surfacePaint: scene.surfacePaint,
-    ...liveOverlays(scene),
+    ...optionalDrawOptions(scene),
   }
 }
 
