@@ -90,11 +90,9 @@ function commitText(text: string, entryUnit: AssumedUnit, sinks: CommitSinks): v
     sinks.onCommitMm(parseLength(text, { assumeUnit: entryUnit }))
     sinks.setError(null)
   } catch (err) {
-    // A rejected command or unparseable entry keeps the text without dispatching.
-    const message = lengthRejectionMessage(err)
-    if (message) {
-      sinks.setError(message)
-    }
+    // A rejected command or unparseable entry keeps the text without dispatching,
+    // but the field still surfaces why so the user isn't left guessing.
+    sinks.setError(lengthRejectionMessage(err))
   }
 }
 
