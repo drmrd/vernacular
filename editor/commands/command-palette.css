@@ -33,3 +33,14 @@
   flex-direction: column;
   gap: var(--space-1);
 }
+
+/*
+ * The shortcut sits at the trailing edge of its row, quieter than the command
+ * name: it is there to be learned in passing, not read first.
+ */
+.command-palette__binding {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}

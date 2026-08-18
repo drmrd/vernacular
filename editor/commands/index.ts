@@ -6,5 +6,10 @@ export { createEditorCommands } from './editor-commands'
 export { createViewCommands } from './view-commands'
 export { createSnapCommands } from './snap-commands'
 export { createSaveCommand } from './save-command'
+// The one place the editor's command set is assembled. Prefer this over the
+// per-area factories above, so the keys and the palette can never drift apart.
+export { createCommandSet } from './command-set'
+export type { CommandSetDeps } from './command-set'
+export { formatKeybinding } from './keybinding'
 export { resolveCommandForEvent } from './command'
 export type { CommandContext, EditorCommand } from './command'

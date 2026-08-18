@@ -4,10 +4,10 @@ import { useEditorSession, useSelection, useActiveFloorId, useSceneGraph } from 
 import { useViewMode } from '../viewport/view-mode'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import type { CommandContext, EditorCommand } from './command'
-import { createEditorCommands } from './editor-commands'
-import { createViewCommands } from './view-commands'
-import { createSnapCommands } from './snap-commands'
-import { useCommandPalette } from './command-context'
+import { createCommandSet } from './command-set'
+import { OPEN_PALETTE_COMMAND_ID } from './editor-commands'
+import { formatKeybinding, isMacPlatform } from './keybinding'
+import { useCommandPalette, type CommandRegistration } from './command-context'
 import '../design-system/field.css'
 import '../design-system/menu-surface.css'
 import './command-palette.css'
@@ -18,6 +18,18 @@ interface CommandPaletteDialogProps {
   onClose: () => void
 }
 
+/** The shortcut printed on a command's row: its first binding, or none. */
+function primaryBinding(command: EditorCommand): string | undefined {
+  const binding = command.keybindings[0]
+  return binding === undefined ? undefined : formatKeybinding(binding, isMacPlatform())
+}
+
+// A command is found by what the reader can see on its row: its name and the
+// shortcut printed beside it, so searching for the chord finds the command.
+function searchText(command: EditorCommand): string {
+  return `${command.label} ${primaryBinding(command) ?? ''}`.toLowerCase()
+}
+
 function filterCommands(
   commands: EditorCommand[],
   context: CommandContext,
@@ -25,8 +37,9 @@ function filterCommands(
 ): EditorCommand[] {
   const needle = query.toLowerCase()
   return commands
+    .filter((command) => command.id !== OPEN_PALETTE_COMMAND_ID)
     .filter((command) => command.isEnabled(context))
-    .filter((command) => command.label.toLowerCase().includes(needle))
+    .filter((command) => searchText(command).includes(needle))
 }
 
 function useFocusRestoringClose(onClose: () => void): () => void {
@@ -62,13 +75,27 @@ interface CommandListProps {
   onRun: (command: EditorCommand) => void
 }
 
+function CommandRow({ command, onRun }: { command: EditorCommand; onRun: () => void }) {
+  const binding = primaryBinding(command)
+  return (
+    <Button className="ds-menu-surface__row" onClick={onRun} aria-keyshortcuts={binding}>
+      {command.label}
+      {/* The chord is already on the button as aria-keyshortcuts, so the printed
+          copy is decorative and stays out of the row's accessible name. */}
+      {binding ? (
+        <span className="command-palette__binding" aria-hidden="true">
+          {binding}
+        </span>
+      ) : null}
+    </Button>
+  )
+}
+
 function CommandList({ commands, onRun }: CommandListProps) {
   return (
     <div className="command-palette__list">
       {commands.map((command) => (
-        <Button key={command.id} className="ds-menu-surface__row" onClick={() => onRun(command)}>
-          {command.label}
-        </Button>
+        <CommandRow key={command.id} command={command} onRun={() => onRun(command)} />
       ))}
     </div>
   )
@@ -116,31 +143,32 @@ export function CommandPaletteDialog({ commands, context, onClose }: CommandPale
   )
 }
 
-export function CommandPalette() {
-  const { isOpen, close } = useCommandPalette()
+/**
+ * The command set to show where nothing binds keys, such as a story or an isolated
+ * mount. It comes from the same factory the keybinding layer uses, so the two can
+ * never list different commands; only Save is missing, because saving belongs to
+ * the editor that owns the project.
+ */
+function useUnboundCommandSet(): CommandRegistration {
   const session = useEditorSession()
   const selection = useSelection()
   const activeFloorId = useActiveFloorId()
   const graph = useSceneGraph()
   const view = useViewMode()
   const snapStore = useSnapPreferencesStore()
-  const commands = useMemo(
-    () => [
-      ...createEditorCommands(),
-      ...createViewCommands(view),
-      ...createSnapCommands(snapStore),
-    ],
-    [view, snapStore],
-  )
+  const commands = useMemo(() => createCommandSet({ view, snapStore }), [view, snapStore])
+  return {
+    commands,
+    context: { session, selection, graph, activeFloorId, openPalette: () => {} },
+  }
+}
+
+export function CommandPalette() {
+  const { isOpen, close, readCommands } = useCommandPalette()
+  const unbound = useUnboundCommandSet()
   if (!isOpen) {
     return null
   }
-  const context: CommandContext = {
-    session,
-    selection,
-    graph,
-    activeFloorId,
-    openPalette: () => {},
-  }
+  const { commands, context } = readCommands() ?? unbound
   return <CommandPaletteDialog commands={commands} context={context} onClose={close} />
 }

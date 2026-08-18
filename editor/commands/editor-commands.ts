@@ -79,8 +79,11 @@ const deselectCommand: EditorCommand = {
   },
 }
 
+/** The palette's own opener, which the open palette leaves out of its list. */
+export const OPEN_PALETTE_COMMAND_ID = 'open-command-palette'
+
 const openCommandPaletteCommand: EditorCommand = {
-  id: 'open-command-palette',
+  id: OPEN_PALETTE_COMMAND_ID,
   label: 'Command palette',
   keybindings: ['Mod+K'],
   isEnabled: () => true,
