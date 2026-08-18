@@ -216,3 +216,13 @@ All five call sites now share one `guardSessionSwap` seam in
 failed project load cannot re-run a storage resolution that already succeeded.
 The workspace also keys its selection store on the session, closing the stale
 selection the swap-reset note above relies on.
+
+## Update (2026-08-17): the prompt carries per-caller wording and one request at a time
+
+The confirm seam now takes an optional message and confirm label, staged per
+request, so crash recovery can ask "Delete the recovered copy of {name}?" with a
+button naming that act instead of borrowing the unsaved-changes wording. Staging
+is guarded against relabeling a prompt that is already open, and a second
+concurrent confirmation is turned away instead of orphaning the first parked
+resolver. The dialog itself became modal under ADR-0106's update of the same
+date.
