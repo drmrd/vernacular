@@ -91,6 +91,28 @@ function useDimensionCancel({ tool, toolState, setToolState }: DimensionCancelDe
   }, [tool])
 }
 
+interface DiscardOnLeaveDeps {
+  tool: ToolId
+  setToolState: (state: DimensionToolState) => void
+  setPointer: (point: Point | null) => void
+}
+
+/**
+ * A measurement does not outlive the tool that took it. Leaving the dimension tool
+ * discards the half-taken start and the cursor it was tracking, so the next arm
+ * begins clean instead of pairing a start the user walked away from with the first
+ * click of the next measurement. Both setters come from useState, so they are
+ * stable and the tool change is the only thing that runs this.
+ */
+function useDiscardOnLeave({ tool, setToolState, setPointer }: DiscardOnLeaveDeps): void {
+  useEffect(() => {
+    if (tool !== 'dimension') {
+      setToolState(IDLE_DIMENSION_TOOL)
+      setPointer(null)
+    }
+  }, [tool, setToolState, setPointer])
+}
+
 export interface DimensionToolDeps {
   session: EditorSession
   tool: ToolId
@@ -117,6 +139,7 @@ export function useDimensionTool({
   const [toolState, setToolState] = useState<DimensionToolState>(IDLE_DIMENSION_TOOL)
   const [pointer, setPointer] = useState<Point | null>(null)
   useDimensionCancel({ tool, toolState, setToolState })
+  useDiscardOnLeave({ tool, setToolState, setPointer })
 
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
