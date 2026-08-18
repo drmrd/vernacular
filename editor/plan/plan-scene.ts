@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import type { OpeningSceneNode, UnitPreferences, WallSceneNode } from '../../core'
+import { useViewOverlay, type ViewOverlayValue } from '../viewport/view-overlay-context'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import type { DrawableFurniture } from './draw-furniture'
@@ -53,13 +54,20 @@ export interface PlanScene {
   roomFillColor: string | undefined
 }
 
+/** What the header's view toggles currently show, as the draw reads it. */
+export type OverlayVisibility = Pick<ViewOverlayValue, 'showGrid' | 'showDimensions'>
+
 /**
- * Assembles the drawPlan options from the flattened scene leaves and the resolved
- * canvas palette. Optional overlays (preview, snap, marquee, endpoint handles,
- * calibration) are spread in only when present so an absent one stays off under
- * exactOptionalPropertyTypes.
+ * Assembles the drawPlan options from the flattened scene leaves, the resolved
+ * canvas palette, and what the header's view toggles show. Optional overlays
+ * (preview, snap, marquee, endpoint handles, calibration) are spread in only when
+ * present so an absent one stays off under exactOptionalPropertyTypes.
  */
-export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPlanOptions {
+export function buildDrawOptions(
+  scene: PlanScene,
+  palette: PlanPalette,
+  overlay: OverlayVisibility,
+): DrawPlanOptions {
   return {
     walls: scene.walls,
     rooms: scene.rooms,
@@ -67,7 +75,9 @@ export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPl
     width: PLAN_WIDTH,
     height: PLAN_HEIGHT,
     selectedIds: scene.selectedIds,
-    grid: true,
+    grid: overlay.showGrid,
+    // The rulers are their own canvas-chrome layer in the design language, and the
+    // header toggle is labeled Grid alone, so hiding the grid leaves them standing.
     rulers: true,
     palette,
     roomLabels: { preferences: scene.preferences },
@@ -96,7 +106,8 @@ export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPl
  * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
  */
 export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: PlanPalette): void {
-  const options = buildDrawOptions(scene, palette)
+  const overlay = useViewOverlay()
+  const options = buildDrawOptions(scene, palette, overlay)
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx) {
@@ -125,6 +136,7 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: P
     scene.ghost,
     scene.surfacePaint,
     scene.roomFillColor,
+    overlay.showGrid,
     palette,
   ])
 }
