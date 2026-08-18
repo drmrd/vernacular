@@ -223,9 +223,9 @@ describe('OpeningInspector width limit notice', () => {
   const NEIGHBOR_POSITION_MM = 1700
   const NEIGHBOR_WIDTH_MM = 200
   const LIMIT_MM = 1200
-  const LIMIT_NOTICE = 'Limited to 1.20 m by a neighbouring opening on this wall.'
+  const LIMIT_NOTICE = 'Limited to 1.20 m by a neighboring opening on this wall.'
 
-  it('names the neighbouring opening that caps the width when the opening is already as wide as it can be', () => {
+  it('names the neighboring opening that caps the width when the opening is already as wide as it can be', () => {
     renderInspectorForOpening(buildOpeningOfWidth(LIMIT_MM), [
       buildNeighbor('w1', NEIGHBOR_POSITION_MM, NEIGHBOR_WIDTH_MM),
     ])

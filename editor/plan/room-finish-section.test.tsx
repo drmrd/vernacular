@@ -22,7 +22,7 @@ describe('RoomFinishSection', () => {
     expect(screen.getByRole('button', { name: 'Ceiling' })).toBeInTheDocument()
   })
 
-  it('labels the section as the floor finish for the whole storey, not just the selected room', () => {
+  it('labels the section as covering every room on the floor, not just the selected one', () => {
     render(
       <RoomFinishSection
         floorId="g"
@@ -31,12 +31,12 @@ describe('RoomFinishSection', () => {
         dispatch={vi.fn()}
       />,
     )
-    const label = screen.getByText('Floor finish (whole storey)')
+    const label = screen.getByText('Finish (all rooms on this floor)')
     expect(label).toHaveClass('ds-section-label')
     expect(label).not.toHaveClass('finish-section__label')
   })
 
-  it('always shows a hint that floor and ceiling finishes cover the whole storey, not just the selected room', () => {
+  it('always shows a hint that floor and ceiling finishes cover every room on the floor', () => {
     render(
       <RoomFinishSection
         floorId="g"
@@ -46,7 +46,7 @@ describe('RoomFinishSection', () => {
       />,
     )
     const hint = screen.getByText(
-      'Floor and ceiling finishes cover the whole storey, not just the selected room.',
+      'Floor and ceiling finishes cover every room on this floor, not just the selected one.',
     )
     expect(hint).toHaveClass('finish-section__hint')
   })
@@ -61,7 +61,7 @@ describe('RoomFinishSection', () => {
       />,
     )
 
-    expect(screen.getByRole('group', { name: 'Storey surface' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Surface' })).toBeInTheDocument()
 
     const floor = screen.getByRole('button', { name: 'Floor' })
     const ceiling = screen.getByRole('button', { name: 'Ceiling' })
@@ -137,7 +137,7 @@ describe('RoomFinishSection perceived-color readout', () => {
   })
 })
 
-describe('RoomFinishSection when the storey holds more than one room', () => {
+describe('RoomFinishSection when the floor holds more than one room', () => {
   it('hides the surface switch and paint controls and shows a note that painting here would repaint every room', () => {
     render(
       <RoomFinishSection
@@ -149,17 +149,17 @@ describe('RoomFinishSection when the storey holds more than one room', () => {
       />,
     )
 
-    expect(screen.queryByRole('group', { name: 'Storey surface' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Surface' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Floor' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Ceiling' })).toBeNull()
 
     const note = screen.getByText(
-      'This storey holds 2 rooms, so a finish here would repaint every one of them. Per-room floor and ceiling finishes are not available yet.',
+      'This floor holds 2 rooms, so a finish here would repaint every one of them. Per-room floor and ceiling finishes are not available yet.',
     )
     expect(note).toHaveClass('finish-section__note')
   })
 
-  it('still shows the whole-storey hint even when the note replaces the paint controls', () => {
+  it('still shows the shared-scope hint even when the note replaces the paint controls', () => {
     render(
       <RoomFinishSection
         floorId="g"
@@ -172,7 +172,7 @@ describe('RoomFinishSection when the storey holds more than one room', () => {
 
     expect(
       screen.getByText(
-        'Floor and ceiling finishes cover the whole storey, not just the selected room.',
+        'Floor and ceiling finishes cover every room on this floor, not just the selected one.',
       ),
     ).toBeInTheDocument()
   })

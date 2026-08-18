@@ -31,7 +31,7 @@ function renderField(
 
 // A notice is an explanation the field's owner attaches to a legitimate value,
 // not a complaint about what the user typed.
-const NOTICE = 'Limited to 1.20 m by a neighbouring opening on this wall.'
+const NOTICE = 'Limited to 1.20 m by a neighboring opening on this wall.'
 const UNPARSEABLE_HINT = 'Enter a number, or a length such as 2.4 m or 8 ft 6 in.'
 
 function renderFieldWithNotice(notice: string, onCommitMm: (mm: number) => void = vi.fn()) {

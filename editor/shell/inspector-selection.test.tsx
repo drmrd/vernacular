@@ -71,7 +71,7 @@ describe('Inspector after an opening resize is undone', () => {
 })
 
 describe('Inspector with a room selected', () => {
-  it('shows a whole-storey note instead of the Floor chip when a selected room shares its storey with another room', () => {
+  it('shows a shared-floor note instead of the Floor chip when a selected room shares its floor with another room', () => {
     const walls = [
       createWall({ x: 0, y: 0 }, { x: 2000, y: 0 }),
       createWall({ x: 2000, y: 0 }, { x: 2000, y: 1000 }),
@@ -90,7 +90,7 @@ describe('Inspector with a room selected', () => {
 
     expect(
       screen.getByText(
-        'This storey holds 2 rooms, so a finish here would repaint every one of them. Per-room floor and ceiling finishes are not available yet.',
+        'This floor holds 2 rooms, so a finish here would repaint every one of them. Per-room floor and ceiling finishes are not available yet.',
       ),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Floor' })).toBeNull()
