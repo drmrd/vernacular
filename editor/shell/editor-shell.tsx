@@ -1,12 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
   CheckCircle,
   Circle,
   CircleNotch,
-  GridFour,
-  Ruler,
   WarningCircle,
   type Icon,
 } from '@phosphor-icons/react'
@@ -49,7 +47,7 @@ import { PointerReadoutProvider } from '../plan/pointer-readout'
 import { useActiveTool } from '../tools/active-tool-context'
 import { toolLabel } from '../tools/tool-label'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
-import { ViewOverlayProvider, useViewOverlay } from '../viewport/view-overlay-context'
+import { ViewOverlayProvider } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
 import { AppFrame, BannerRegion, IconButton, ToastRegion } from '../design-system'
 import { BrandMark } from './brand-mark'
@@ -67,6 +65,7 @@ import { ToolRail } from './tool-rail'
 import { useSaveFailureToast } from './use-save-failure-toast'
 import { ImportDropTarget } from './import-drop-target'
 import { UnitToggle } from './unit-toggle'
+import { ViewToggles } from './view-toggles'
 import './editor-shell.css'
 
 const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
@@ -128,58 +127,30 @@ function Breadcrumb({ projectName }: { projectName: string }) {
   )
 }
 
-// Shown on a view toggle the 3D-only view mode has made inert. Each names the plan
-// layer it draws and the modes that put that plan on screen, the way the 3D
-// toolbar's own inert controls explain themselves.
-const PLAN_ONLY_TITLES = {
-  grid: 'Draws the grid under the plan. Switch to plan or split view to use it.',
-  dimensions:
-    'Draws the dimension annotations over the plan. Switch to plan or split view to use it.',
-} as const
+function SaveStatusReadout({ status }: { status: AutosaveStatus }) {
+  const StatusIcon = SAVE_STATUS_ICONS[status]
+  return (
+    <span role="status" className="editor-shell__save-status">
+      <StatusIcon size={14} aria-hidden="true" />
+      {SAVE_STATUS_LABELS[status]}
+    </span>
+  )
+}
 
 function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
   const session = useEditorSession()
-  const { showGrid, showDimensions, toggleGrid, toggleDimensions } = useViewOverlay()
-  // The 3D-only mode leaves the plan off screen, so neither toggle changes anything
-  // a reader can see until a mode showing the plan comes back.
-  const planHidden = useViewMode().mode === 'preview'
-  const StatusIcon = SAVE_STATUS_ICONS[saveStatus]
   return (
     <div className="editor-shell__toolbar">
       <div className="editor-shell__brand">
         <BrandMark />
         <h1 className="editor-shell__wordmark">Vernacular</h1>
       </div>
-      <ProjectMenu
-        onNewProject={projectControls.onNewProject}
-        onSave={projectControls.onSave}
-        onOpenFile={projectControls.onOpenFile}
-        onOpenFolder={projectControls.onOpenFolder}
-        onOpenRecent={projectControls.onOpenRecent}
-        recentProjects={projectControls.recentProjects}
-      />
+      {/* Each menu declares the handlers it offers and reads them out of the one
+          control set, rather than the header restating that list twice. */}
+      <ProjectMenu {...projectControls} />
       <Breadcrumb projectName={session.getProject().meta.name} />
       <div className="editor-shell__toolbar-actions">
-        <IconButton
-          labeled
-          aria-pressed={showGrid}
-          onClick={toggleGrid}
-          disabled={planHidden}
-          title={planHidden ? PLAN_ONLY_TITLES.grid : 'Grid'}
-        >
-          <GridFour size={16} aria-hidden="true" />
-          <span>Grid</span>
-        </IconButton>
-        <IconButton
-          labeled
-          aria-pressed={showDimensions}
-          onClick={toggleDimensions}
-          disabled={planHidden}
-          title={planHidden ? PLAN_ONLY_TITLES.dimensions : 'Dimensions'}
-        >
-          <Ruler size={16} aria-hidden="true" />
-          <span>Dimensions</span>
-        </IconButton>
+        <ViewToggles />
         <ZoomControl />
         <IconButton aria-label="Undo" onClick={() => session.undo()}>
           <ArrowCounterClockwise size={16} aria-hidden="true" />
@@ -188,17 +159,9 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
           <ArrowClockwise size={16} aria-hidden="true" />
         </IconButton>
         <ThemeToggle />
-        <ExportMenu
-          onExportBundle={projectControls.onExportBundle}
-          onExportPlan={projectControls.onExportPlan}
-          onExportImage={projectControls.onExportImage}
-          onExportPdf={projectControls.onExportPdf}
-        />
+        <ExportMenu {...projectControls} />
       </div>
-      <span role="status" className="editor-shell__save-status">
-        <StatusIcon size={14} aria-hidden="true" />
-        {SAVE_STATUS_LABELS[saveStatus]}
-      </span>
+      <SaveStatusReadout status={saveStatus} />
     </div>
   )
 }
@@ -280,31 +243,12 @@ export interface EditorShellProps extends ProjectControlsProps {
   recovery?: { onRestore: () => void; onDiscard: () => void }
 }
 
-export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
-  // The surface-selection store is created once so the paint inspector and the
-  // viewport share one active-surface source across the frame.
-  const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
-  // The environment session store is created once so the tool rail's Environment panel
-  // and the 3D viewport share one EnvironmentState (mode, observation instant, cloud
-  // cover, color check) across the frame.
-  const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
-  // The perceived-color store is created once so the paint inspector's readout and the
-  // 3D viewport's sampler share one sampled color across the frame.
-  const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
-  // The snap-preferences store is created once so the keybinding layer, the command
-  // palette, the snap panel, and the plan's snapping all read one source, persisted
-  // to localStorage as an editor preference.
-  const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
-  useSaveFailureToast(saveStatus, projectControls.onSave)
-  // Hoisted out of the frame below so the provider pyramid stays readable at its
-  // depth: inline, prettier wraps each of these across four or five lines.
-  const header = <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
-  const main = <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
-  // The recovery prompt rides the frame's banner row with the notification banners.
-  // Rendered outside the frame it displaced a viewport-tall layout downwards and
-  // pushed the status bar out of the window; the banner row is a real grid row the
-  // rest of the frame reflows around, and it collapses again once nothing fills it.
-  const banner = (
+// The recovery prompt rides the frame's banner row with the notification banners.
+// Rendered outside the frame it displaced a viewport-tall layout downwards and
+// pushed the status bar out of the window; the banner row is a real grid row the
+// rest of the frame reflows around, and it collapses again once nothing fills it.
+function ShellBanner({ recovery }: { recovery: EditorShellProps['recovery'] }) {
+  return (
     <>
       <BannerRegion />
       {recovery ? (
@@ -312,12 +256,54 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
       ) : null}
     </>
   )
+}
+
+interface ProviderLayerProps {
+  onSave?: (() => void) | undefined
+  children: ReactNode
+}
+
+/**
+ * The stores the frame's panels share, and the render-nothing layers that ride them.
+ * Each store is created once: the surface selection joins the paint inspector to the
+ * viewport, the perceived color joins that viewport's sampler to the inspector
+ * readout, and the environment session joins the tool rail's Environment panel to the
+ * 3D viewport.
+ */
+function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
+  const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
+  const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
+  const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
   return (
-    // The command-palette provider wraps everything so the keybinding layer, the
-    // command bar, and the palette dialog all share one open/close state. The
-    // underlay and opening-tool providers then wrap the frame so the shared underlay
-    // state and the opening placement type reach the canvas glue and the
-    // inspector/tools panels from one source.
+    <>
+      <KeybindingLayer onSave={onSave} />
+      <CommandPalette />
+      <ToastRegion />
+      <SurfaceSelectionProvider store={surfaceSelection}>
+        <EntitySurfaceBridge />
+        <PerceivedColorProvider store={perceivedColor}>
+          <EnvironmentSessionProvider store={environmentSession}>
+            {children}
+          </EnvironmentSessionProvider>
+        </PerceivedColorProvider>
+      </SurfaceSelectionProvider>
+    </>
+  )
+}
+
+/**
+ * The editor's provider pyramid, wrapped around whatever frame it is given. The
+ * command-palette provider sits outermost so the keybinding layer, the command bar,
+ * and the palette dialog share one open/close state. The snap preferences are created
+ * once here and read by the keybinding layer, the command palette, the snap panel, and
+ * the plan's snapping, persisted to localStorage as an editor preference. The underlay
+ * and opening-tool providers wrap the frame so the shared underlay state and the
+ * opening placement type reach the canvas glue and the inspector and tools panels from
+ * one source.
+ */
+function ShellProviders({ onSave, children }: ProviderLayerProps) {
+  const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
+  return (
     <CommandPaletteProvider>
       <SnapPreferencesProvider store={snapPreferences}>
         <ViewModeProvider>
@@ -327,27 +313,7 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
                 <UnderlayProvider>
                   <OpeningToolProvider>
                     <FurniturePlacementProvider>
-                      <KeybindingLayer onSave={projectControls.onSave} />
-                      <CommandPalette />
-                      <ToastRegion />
-                      <SurfaceSelectionProvider store={surfaceSelection}>
-                        <EntitySurfaceBridge />
-                        <PerceivedColorProvider store={perceivedColor}>
-                          <EnvironmentSessionProvider store={environmentSession}>
-                            <AppFrame
-                              header={header}
-                              banner={banner}
-                              railLabel="Tool rail"
-                              rail={<ToolRail />}
-                              mainLabel="Viewport"
-                              main={main}
-                              inspectorLabel="Inspector"
-                              inspector={<Inspector />}
-                              statusBar={<EditorStatusBar />}
-                            />
-                          </EnvironmentSessionProvider>
-                        </PerceivedColorProvider>
-                      </SurfaceSelectionProvider>
+                      <SessionStateProviders onSave={onSave}>{children}</SessionStateProviders>
                     </FurniturePlacementProvider>
                   </OpeningToolProvider>
                 </UnderlayProvider>
@@ -357,5 +323,28 @@ export function EditorShell({ saveStatus, recovery, ...projectControls }: Editor
         </ViewModeProvider>
       </SnapPreferencesProvider>
     </CommandPaletteProvider>
+  )
+}
+
+export function EditorShell({ saveStatus, recovery, ...projectControls }: EditorShellProps) {
+  useSaveFailureToast(saveStatus, projectControls.onSave)
+  // Hoisted out of the frame below so it stays readable: inline, prettier wraps each
+  // of these across four or five lines.
+  const header = <ShellHeader saveStatus={saveStatus} projectControls={projectControls} />
+  const main = <ViewportArea onImportDroppedFile={projectControls.onImportDroppedFile} />
+  return (
+    <ShellProviders onSave={projectControls.onSave}>
+      <AppFrame
+        header={header}
+        banner={<ShellBanner recovery={recovery} />}
+        railLabel="Tool rail"
+        rail={<ToolRail />}
+        mainLabel="Viewport"
+        main={main}
+        inspectorLabel="Inspector"
+        inspector={<Inspector />}
+        statusBar={<EditorStatusBar />}
+      />
+    </ShellProviders>
   )
 }
