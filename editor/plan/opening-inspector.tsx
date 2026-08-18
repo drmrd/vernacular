@@ -5,6 +5,7 @@ import {
   DEFAULT_IMPERIAL_PREFERENCES,
   DEFAULT_METRIC_PREFERENCES,
   flipOpening,
+  formatAdaptiveLength,
   removeOpening,
   resizeOpening,
   setOpeningType,
@@ -101,11 +102,31 @@ function openingDimensions(opening: Opening): OpeningDimensions {
   return { width: opening.width, height: opening.height, sillHeight: opening.sillHeight }
 }
 
+/**
+ * The explanation the width field carries when a same-wall neighbor is what keeps
+ * the opening from growing, and nothing when the opening can still grow freely.
+ * Derived from the model on every render rather than remembered from the last
+ * resize, so it survives the remount an edit to the opening triggers.
+ */
+function widthLimitNotice(
+  opening: Opening,
+  siblingOpenings: readonly Opening[],
+  preferences: UnitPreferences,
+): string | undefined {
+  const limitMm = clampOpeningWidth(opening, Number.POSITIVE_INFINITY, siblingOpenings)
+  if (!Number.isFinite(limitMm) || opening.width < limitMm) {
+    return undefined
+  }
+  return `Limited to ${formatAdaptiveLength(limitMm, preferences)} by a neighbouring opening on this wall.`
+}
+
 interface DimensionFieldsProps {
   opening: Opening
   preferences: UnitPreferences
   units: UnitSystem
   onResize: (dimensions: OpeningDimensions) => void
+  // Only the width is clamped against neighbors, so only its field is given a notice.
+  widthNotice?: string | undefined
 }
 
 function DimensionFields({
@@ -113,6 +134,7 @@ function DimensionFields({
   preferences,
   units,
   onResize,
+  widthNotice,
 }: DimensionFieldsProps): ReactElement {
   const current = openingDimensions(opening)
   return (
@@ -125,6 +147,7 @@ function DimensionFields({
             valueMm={current[key]}
             preferences={preferences}
             onCommitMm={(value) => onResize({ ...current, [key]: value })}
+            {...(key === 'width' && widthNotice !== undefined ? { notice: widthNotice } : {})}
           />
           {units === 'imperial' ? (
             <FractionChips
@@ -211,6 +234,7 @@ export function OpeningInspector({
         opening={opening}
         preferences={preferences}
         units={units}
+        widthNotice={widthLimitNotice(opening, siblingOpenings, preferences)}
         onResize={(dimensions) =>
           dispatch(
             resizeOpening(floorId, opening.id, {

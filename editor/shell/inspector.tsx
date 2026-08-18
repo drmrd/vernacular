@@ -388,10 +388,11 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
     // widened opening against same-wall neighbors (filtered inside the component).
     const siblingOpenings = floorOpenings(project, selectedOpening.floorId)
     return (
-      // Key on the opening id so the inspector remounts when the selected opening
-      // changes; its dimension fields seed from the opening at mount.
+      // Key on the opening's editable values so the inspector remounts when the
+      // selected opening changes or an undo restores different ones; its dimension
+      // fields seed from the opening at mount and never re-read it afterwards.
       <OpeningInspector
-        key={selectedOpening.opening.id}
+        key={`${selectedOpening.opening.id}:${selectedOpening.opening.width}:${selectedOpening.opening.height}:${selectedOpening.opening.sillHeight}:${selectedOpening.opening.type}`}
         floorId={selectedOpening.floorId}
         opening={selectedOpening.opening}
         units={project.meta.units}

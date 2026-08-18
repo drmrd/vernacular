@@ -63,6 +63,12 @@ export interface LengthFieldProps {
   valueMm: number
   preferences: UnitPreferences
   onCommitMm: (mm: number) => void
+  /**
+   * An explanation of the accepted value from the field's owner, such as a limit
+   * the owner applies. It is not a validation failure, so it never marks the
+   * control invalid, and a rejected entry takes the hint slot away from it.
+   */
+  notice?: string
 }
 
 interface LengthEntry {
@@ -161,6 +167,7 @@ export function LengthField({
   valueMm,
   preferences,
   onCommitMm,
+  notice,
 }: LengthFieldProps): ReactElement {
   const system = preferences.system
   const entry = useLengthEntry(system, valueMm, onCommitMm)
@@ -173,7 +180,10 @@ export function LengthField({
 
   return (
     <div className="length-field">
-      <Field htmlFor={inputId} label={label} hint={entry.error ?? undefined}>
+      {/* A rejection wins the hint slot while it lasts, because an entry the field
+          cannot use is more urgent than an explanation of one it can. Only the
+          rejection marks the control invalid; a noticed value is still accepted. */}
+      <Field htmlFor={inputId} label={label} hint={entry.error ?? notice}>
         <input
           id={inputId}
           type="text"
