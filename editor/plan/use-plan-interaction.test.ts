@@ -67,12 +67,18 @@ function pressBackspace(target: EventTarget = window): void {
   })
 }
 
-// A run of one committed segment, drawn from two dropped corners.
-function drawOneSegment(editor: Editor): void {
+// A run of one committed segment, drawn from two dropped corners. The open run is
+// returned so a caller can keep drawing on it.
+function drawOneSegment(editor: Editor): { interaction: Interaction; canvas: HTMLCanvasElement } {
   const canvas = buildCanvas()
   const interaction = mountWallTool(editor)
   dropCorner(interaction, canvas, { x: 100, y: 100 })
   dropCorner(interaction, canvas, { x: 400, y: 100 })
+  return { interaction, canvas }
+}
+
+function wallsOf(editor: Editor) {
+  return editor.session.getProject().floors[0]!.walls
 }
 
 describe('the wall tool Backspace', () => {
@@ -108,5 +114,32 @@ describe('the wall tool Backspace', () => {
     pressBackspace()
 
     expect(editor.session.getSceneGraph().walls).toHaveLength(2)
+  })
+
+  it('keeps drawing from the real last corner after a Backspace it could not honour', () => {
+    const editor = buildEditor()
+    const { interaction, canvas } = drawOneSegment(editor)
+    editor.session.dispatch(addWall(editor.floorId, { x: 9000, y: 0 }, { x: 9000, y: 500 }))
+
+    pressBackspace()
+    dropCorner(interaction, canvas, { x: 400, y: 400 })
+
+    // The corner the run is drawing from is still the one it actually committed,
+    // so the next segment continues the run rather than forking off the anchor.
+    const drawn = wallsOf(editor).at(-1)!
+    expect(drawn.start).toEqual({ x: 400, y: -100 })
+  })
+
+  it('steps back each segment of a longer run on consecutive presses', () => {
+    const editor = buildEditor()
+    const { interaction, canvas } = drawOneSegment(editor)
+    dropCorner(interaction, canvas, { x: 400, y: 400 })
+    expect(editor.session.getSceneGraph().walls).toHaveLength(2)
+
+    pressBackspace()
+    expect(editor.session.getSceneGraph().walls).toHaveLength(1)
+
+    pressBackspace()
+    expect(editor.session.getSceneGraph().walls).toHaveLength(0)
   })
 })
