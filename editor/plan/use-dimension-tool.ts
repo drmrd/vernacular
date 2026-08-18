@@ -60,15 +60,17 @@ interface DimensionCancelDeps {
  * measurement whose start point is already down, claims the keystroke so the tool
  * stays armed, and leaves an Escape at rest to the rung that returns to select.
  *
- * The state is read through a ref refreshed every render, so the window listener
- * subscribes once per tool change rather than on every render. A render-scoped
- * subscription would re-add the listener mid-keystroke whenever a sibling hook
- * updates state inside the same keydown, and the DOM drops a listener re-added
- * during dispatch, which would swallow the cancel. This mirrors useWallKeyboard.
+ * The measurement is read through a ref refreshed every render, so the window
+ * listener subscribes once per tool change rather than on every render. A
+ * render-scoped subscription would re-add the listener mid-keystroke whenever a
+ * sibling hook updates state inside the same keydown, and the DOM drops a listener
+ * re-added during dispatch, which would swallow the cancel. This mirrors
+ * useWallKeyboard. setToolState comes from useState, so it is stable and never
+ * re-subscribes.
  */
 function useDimensionCancel({ tool, toolState, setToolState }: DimensionCancelDeps): void {
-  const measurementRef = useRef({ toolState, setToolState })
-  measurementRef.current = { toolState, setToolState }
+  const measurementRef = useRef(toolState)
+  measurementRef.current = toolState
   useEffect(() => {
     if (tool !== 'dimension') {
       return undefined
@@ -78,17 +80,17 @@ function useDimensionCancel({ tool, toolState, setToolState }: DimensionCancelDe
         return
       }
       const measurement = measurementRef.current
-      if (measurement.toolState.phase !== 'measuring') {
+      if (measurement.phase !== 'measuring') {
         return
       }
       claimKeystroke(event)
-      measurement.setToolState(cancelDimensionTool(measurement.toolState))
+      setToolState(cancelDimensionTool(measurement))
     }
     window.addEventListener('keydown', onKeyDown)
     return () => {
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [tool])
+  }, [tool, setToolState])
 }
 
 interface DiscardOnLeaveDeps {
