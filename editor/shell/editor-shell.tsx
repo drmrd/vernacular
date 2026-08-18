@@ -26,10 +26,7 @@ import { addFloor, renameFloor, setUnits } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
-  createEditorCommands,
-  createSaveCommand,
-  createSnapCommands,
-  createViewCommands,
+  createCommandSet,
   useCommandPalette,
   useKeybindings,
 } from '../commands'
@@ -94,12 +91,7 @@ function KeybindingLayer({ onSave }: { onSave?: (() => void) | undefined }) {
   const view = useViewMode()
   const snapStore = useSnapPreferencesStore()
   const commands = useMemo(
-    () => [
-      ...createEditorCommands(),
-      ...createViewCommands(view),
-      ...createSnapCommands(snapStore),
-      ...(onSave ? [createSaveCommand(onSave)] : []),
-    ],
+    () => createCommandSet({ view, snapStore, onSave }),
     [view, snapStore, onSave],
   )
   useKeybindings(commands, { session, selection, graph, activeFloorId, openPalette: palette.open })
