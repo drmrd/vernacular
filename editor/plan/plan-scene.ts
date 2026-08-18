@@ -84,7 +84,9 @@ export function buildDrawOptions(
     underlays: scene.underlays,
     openings: scene.openings,
     furniture: scene.furniture,
-    dimensions: scene.dimensions,
+    // A hidden dimension is not drawn and not hover-highlighted either, both of
+    // which the draw reads off this one list.
+    dimensions: overlay.showDimensions ? scene.dimensions : [],
     stairs: scene.stairs,
     surfacePaint: scene.surfacePaint,
     ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
@@ -137,6 +139,7 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: P
     scene.surfacePaint,
     scene.roomFillColor,
     overlay.showGrid,
+    overlay.showDimensions,
     palette,
   ])
 }
