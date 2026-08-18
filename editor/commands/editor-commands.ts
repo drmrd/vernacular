@@ -14,8 +14,12 @@ function selectedFurnitureIds(context: CommandContext, floorId: string): string[
 /**
  * The single owner of Delete and Backspace: one keystroke removes the selected
  * graph entities and the selected furniture, then clears the selection. The plan's
- * selection keyboard deliberately leaves this key alone, so a delete records one
- * history entry and a single undo brings the selection back.
+ * selection keyboard deliberately leaves the key alone, so nothing removes the same
+ * entity twice and a deleted wall comes back on one undo.
+ *
+ * Graph entities are removed together, but each furniture piece still costs its own
+ * command, so a multi-piece selection takes one undo per piece. Batching that into a
+ * single history entry needs a coalescing remove in core and is separate work.
  */
 function deleteSelection(context: CommandContext): void {
   const floorId = context.activeFloorId
