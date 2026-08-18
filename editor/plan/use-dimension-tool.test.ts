@@ -126,3 +126,34 @@ describe('useDimensionTool cancels a pointer measurement on Escape', () => {
     expect(wasKeystrokeClaimed(event)).toBe(false)
   })
 })
+
+describe('useDimensionTool drops a measurement the user walked away from', () => {
+  it('re-arms with no stale start, so the click after a tool switch begins a fresh one', () => {
+    const { dispatch, view, click } = mountDimensionTool()
+    click(ABANDONED)
+
+    view.rerender({ tool: 'select' })
+    view.rerender({ tool: 'dimension' })
+    click(FRESH_START)
+    click(FRESH_END)
+
+    expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(measurementOf(dispatch)).toMatchObject({
+      start: world(FRESH_START),
+      end: world(FRESH_END),
+    })
+  })
+
+  it('leaves no rubber band anchored to the abandoned start when the tool comes back', () => {
+    const { view, click } = mountDimensionTool()
+    click(ABANDONED)
+
+    view.rerender({ tool: 'select' })
+    view.rerender({ tool: 'dimension' })
+    act(() => {
+      view.result.current.onPointerMove(clickAt(FRESH_END))
+    })
+
+    expect(view.result.current.preview).toBeUndefined()
+  })
+})
