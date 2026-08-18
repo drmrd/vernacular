@@ -1,5 +1,5 @@
 import './plan-overlay.css'
-import { useEffect, useState, type FocusEvent, type ReactElement } from 'react'
+import { useState, type FocusEvent, type ReactElement } from 'react'
 import type { Point, SceneGraph, UnitPreferences } from '../../core'
 import type { SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
@@ -10,15 +10,14 @@ import type { PreviewSegment } from './draw-plan'
 import { formatReadout, segmentReadout } from './draw-readout'
 import { scopeSceneToLayer } from './edit-layer-scope'
 import { EntityProxy } from './entity-proxy'
-import { useOpeningTool } from './opening-tool-context'
+import { useForgetRefusalOnToolChange, useOpeningTool } from './opening-tool-context'
 import { overlayEntities, type OverlayEntity } from './overlay-entities'
 import {
   angleLockAnnouncement,
-  placementRefusalMessage,
+  refusalText,
   selectionAnnouncement,
   snapAnnouncement,
   snapStatusLabel,
-  type PlacementRefusal,
 } from './overlay-announce'
 import type { SnapResult } from './snap'
 import { Compass } from './compass'
@@ -75,32 +74,6 @@ const CREATIVE_AUTHORING_TOOLS: ReadonlySet<ToolId> = new Set<ToolId>([
 
 function isCreativeAuthoringTool(tool: ToolId): boolean {
   return CREATIVE_AUTHORING_TOOLS.has(tool)
-}
-
-// The tool a refusal can only have come from: the stair tool raises the missing
-// floor above, and both opening causes come from the opening tool. A refusal has
-// nothing to say under any other tool.
-function refusingTool(refusal: PlacementRefusal): ToolId {
-  return refusal === 'no-floor-above' ? 'place-stair' : 'place-opening'
-}
-
-// Why the last placement click put nothing on the plan, while the tool that raised
-// it is still in hand. Empty when nothing has been refused.
-function refusalText(tool: ToolId, refusal: PlacementRefusal | null): string {
-  return refusal !== null && refusingTool(refusal) === tool ? placementRefusalMessage(refusal) : ''
-}
-
-// A refusal is about one click under one tool, so putting that tool down retires it
-// rather than parking it for the next time the tool comes back. The matching in
-// refusalText keeps the sentence off the canvas in the meantime, since this runs
-// after the frame that changed the tool.
-function useForgetRefusalOnToolChange(
-  tool: ToolId,
-  setPlacementRefusal: (refusal: PlacementRefusal | null) => void,
-): void {
-  useEffect(() => {
-    setPlacementRefusal(null)
-  }, [tool, setPlacementRefusal])
 }
 
 interface PillProps {
@@ -382,9 +355,8 @@ export function PlanOverlay(props: PlanOverlayProps): ReactElement {
   const [focused, setFocused] = useState(false)
   const focusedEntity = entities[keyboard.focusIndex]
   const selected = entities.filter((entity) => entity.selected)
-  const { placementRefusal, setPlacementRefusal } = useOpeningTool()
-  const refusal = refusalText(tool, placementRefusal)
-  useForgetRefusalOnToolChange(tool, setPlacementRefusal)
+  const refusal = refusalText(tool, useOpeningTool().placementRefusal)
+  useForgetRefusalOnToolChange(tool)
 
   return (
     <div className="plan-overlay">

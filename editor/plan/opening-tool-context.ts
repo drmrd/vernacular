@@ -1,5 +1,14 @@
-import { createContext, createElement, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
+import type { ToolId } from '../tools/active-tool-context'
 import type { PlacementRefusal } from './overlay-announce'
 
 // The element-type id placed when the place-opening tool fires. A single swing
@@ -32,6 +41,18 @@ const OpeningToolContext = createContext<OpeningToolValue | null>(null)
 
 export function useOpeningTool(): OpeningToolValue {
   return useContext(OpeningToolContext) ?? FALLBACK_VALUE
+}
+
+/**
+ * Retires the standing refusal whenever the active tool changes. A refusal is about
+ * one click under one tool, so putting that tool down ends it rather than parking it
+ * for the next time the tool comes back.
+ */
+export function useForgetRefusalOnToolChange(tool: ToolId): void {
+  const { setPlacementRefusal } = useOpeningTool()
+  useEffect(() => {
+    setPlacementRefusal(null)
+  }, [tool, setPlacementRefusal])
 }
 
 export interface OpeningToolProviderProps {

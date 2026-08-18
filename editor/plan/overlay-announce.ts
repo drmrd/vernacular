@@ -1,4 +1,5 @@
 import { SNAP_KIND_LABELS } from '../commands/snap-commands'
+import type { ToolId } from '../tools/active-tool-context'
 import type { OverlayEntity } from './overlay-entities'
 import type { SnapResult } from './snap'
 
@@ -9,9 +10,9 @@ function snapLabel(snap: SnapResult): string {
   return SNAP_KIND_LABELS[snap.kind]
 }
 
-// Sentence case for the visible pill, matching how the panel presents the same
-// label beside its checkbox.
-function titleCase(text: string): string {
+// Sentence case for the visible pill, matching how the snapping panel presents the
+// same label beside its checkbox.
+function sentenceCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
@@ -54,6 +55,22 @@ export function placementRefusalMessage(refusal: PlacementRefusal): string {
   }
 }
 
+// The tool a refusal can only have come from: the stair tool raises the missing
+// floor above, and both opening causes come from the opening tool.
+function refusingTool(refusal: PlacementRefusal): ToolId {
+  return refusal === 'no-floor-above' ? 'place-stair' : 'place-opening'
+}
+
+/**
+ * Why the last placement click put nothing on the plan, while the tool that raised
+ * it is still in hand. Empty when nothing has been refused, or when the refusal
+ * belongs to another tool: a stair refusal has nothing to say under the opening
+ * tool.
+ */
+export function refusalText(tool: ToolId, refusal: PlacementRefusal | null): string {
+  return refusal !== null && refusingTool(refusal) === tool ? placementRefusalMessage(refusal) : ''
+}
+
 /** Screen-reader text naming the angle the drawn wall is locked to. */
 export function angleLockAnnouncement(bearingDeg: number): string {
   return `Locked to ${Math.round(bearingDeg)} degrees`
@@ -64,5 +81,5 @@ export function snapStatusLabel(snap: SnapResult | null): string {
   if (snap === null) {
     return ''
   }
-  return `Snap: ${titleCase(snapLabel(snap))}`
+  return `Snap: ${sentenceCase(snapLabel(snap))}`
 }

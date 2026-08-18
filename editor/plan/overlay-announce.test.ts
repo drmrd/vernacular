@@ -103,7 +103,7 @@ describe('snapStatusLabel', () => {
     expect(snapStatusLabel(snap)).toBe('Snap: Underlay corners')
   })
 
-  it('title-cases the label the way the snapping panel does', () => {
+  it('sentence-cases the label the way the snapping panel does', () => {
     const snap: SnapResult = { point: ORIGIN, kind: 'perpendicular' }
     expect(snapStatusLabel(snap)).toBe('Snap: Perpendicular')
   })
