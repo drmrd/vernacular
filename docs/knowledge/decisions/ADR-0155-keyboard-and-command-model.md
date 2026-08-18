@@ -134,8 +134,10 @@ applied to the code as it stands:
   measurement, and has since 2026-08-18. At first it reached only the candidate a keyboard run had
   placed, so an Escape pressed in the middle of a mouse measurement claimed nothing and fell
   through to the return to select. The start point survived that trip, and the next click could
-  still pair with it. The dimension tool also drops a half-taken measurement when its tool is left,
-  so no start point outlives the tool that took it.
+  still pair with it. Calibrate gained a rung of its own on the same date, where it had none
+  before: a first click already placed on an underlay clears in place, and the distance typed into
+  the flyout stays where the user left it. The dimension tool also drops a half-taken measurement
+  when its tool is left, so no start point outlives the tool that took it.
 - **The command set is assembled once.** `createCommandSet` builds it, the keybinding layer
   publishes what it bound, and the palette lists that, so a command cannot be reachable by key and
   missing from the palette. Save appears in the palette for the first time as a result. Each row
