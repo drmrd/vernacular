@@ -168,6 +168,21 @@ interface SelectionKeyboardDeps {
 }
 
 /**
+ * Drops the selection whenever the editor leaves the select tool. Delete and Escape
+ * are editor-wide commands gated only on a non-empty selection, so a selection that
+ * outlived the tool left them armed under the wall tool, where Backspace and Escape
+ * already mean step back a segment and cancel the run. Nothing off the select tool
+ * acts on a selection, so clearing it costs the user nothing.
+ */
+function useSelectionScopedToSelectTool(tool: ToolId, selection: SelectionStore): void {
+  useEffect(() => {
+    if (tool !== 'select') {
+      selection.clear()
+    }
+  }, [tool, selection])
+}
+
+/**
  * Binds the select-tool editing keystrokes to the window: the arrow keys nudge the
  * selected graph entities and the platform copy, cut, and paste shortcuts drive the
  * clipboard. Delete and Backspace belong to the delete-selection command, which owns
@@ -177,6 +192,7 @@ interface SelectionKeyboardDeps {
  */
 export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
   const { session, selection, clipboard, selectedIds, tool, activeFloorId } = deps
+  useSelectionScopedToSelectTool(tool, selection)
   useEffect(() => {
     if (tool !== 'select') {
       return undefined
