@@ -24,7 +24,8 @@ export interface EscapeToSelectDeps {
 /**
  * Binds the Escape key on the window to leave any placement tool and return to
  * the select tool. Inert under any non-placement tool, mirroring
- * use-furniture-keyboard.
+ * use-furniture-keyboard. A tool chip left holding focus by the click that armed
+ * the tool does not swallow the key, since a button never owns Escape.
  */
 export function useEscapeToSelect(deps: EscapeToSelectDeps): void {
   const { tool, setTool } = deps

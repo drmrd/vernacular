@@ -171,8 +171,9 @@ interface SelectionKeyboardDeps {
  * Binds the select-tool editing keystrokes to the window: the arrow keys nudge the
  * selected graph entities and the platform copy, cut, and paste shortcuts drive the
  * clipboard. Delete and Backspace belong to the delete-selection command, which owns
- * them editor-wide. Inert under any tool but `select`, and ignored while a form
- * control is focused so inspector typing is untouched.
+ * them editor-wide. Inert under any tool but `select`, and silent whenever the
+ * focused control owns the key: inspector typing is untouched, and an arrow key
+ * roving the tools panel moves between chips rather than shifting the plan.
  */
 export function useSelectionKeyboard(deps: SelectionKeyboardDeps): void {
   const { session, selection, clipboard, selectedIds, tool, activeFloorId } = deps
