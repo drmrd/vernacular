@@ -2,7 +2,13 @@ import { describe, it, expect, vi } from 'vitest'
 import { createEditorCommands } from './editor-commands'
 import type { CommandContext } from './command'
 import { createEditorSession, createSelectionStore } from '../../bridge'
-import { addFloor, addWall, createEmptyProject } from '../../core'
+import {
+  addFloor,
+  addWall,
+  createEmptyProject,
+  createFurnitureInstance,
+  placeFurniture,
+} from '../../core'
 
 const WALL_NODE_ID_PREFIX = 'wall:'
 
@@ -113,6 +119,25 @@ describe('createEditorCommands', () => {
     deleteSelection.run(context)
 
     expect(context.session.getSceneGraph().walls).toHaveLength(0)
+    expect(context.selection.getSelectedIds().size).toBe(0)
+  })
+
+  it('removes a selected furniture piece, which the scene graph never carries', () => {
+    const { context, floorId } = buildContext()
+    const furniture = createFurnitureInstance({
+      assetRef: { scope: 'user', contentHash: 'sofa-hash' },
+      position: { x: 1000, y: 1000 },
+      footprint: { width: 800, depth: 900 },
+    })
+    context.session.dispatch(placeFurniture(floorId, furniture))
+    context.selection.select(furniture.id)
+
+    const deleteSelection = commandById('delete-selection')
+    expect(deleteSelection.isEnabled(context)).toBe(true)
+
+    deleteSelection.run(context)
+
+    expect(context.session.getProject().floors[0]!.furniture).toHaveLength(0)
     expect(context.selection.getSelectedIds().size).toBe(0)
   })
 
