@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { LibraryItem } from '../../storage'
+import { useActiveTool } from '../tools/active-tool-context'
+import { ActiveToolProvider } from '../tools/active-tool-provider'
 import { FURNITURE_ROTATION_STEP_DEGREES } from './place-furniture'
 import { FurniturePlacementProvider, useFurniturePlacement } from './furniture-placement-context'
 
@@ -33,6 +35,15 @@ function Probe() {
         Disarm
       </button>
     </div>
+  )
+}
+
+function ToolSwitcher() {
+  const { setTool } = useActiveTool()
+  return (
+    <button type="button" onClick={() => setTool('draw-wall')}>
+      Use the wall tool
+    </button>
   )
 }
 
@@ -96,6 +107,40 @@ describe('furniture-placement-context', () => {
     await user.click(screen.getByRole('button', { name: 'Disarm' }))
 
     expect(screen.getByTestId('armed')).toHaveTextContent('none')
+  })
+
+  it('disarms when the editor leaves the place-furniture tool', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider initialTool="place-furniture">
+        <FurniturePlacementProvider>
+          <Probe />
+          <ToolSwitcher />
+        </FurniturePlacementProvider>
+      </ActiveToolProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Arm' }))
+    expect(screen.getByTestId('armed')).toHaveTextContent('Chair')
+
+    await user.click(screen.getByRole('button', { name: 'Use the wall tool' }))
+
+    expect(screen.getByTestId('armed')).toHaveTextContent('none')
+  })
+
+  it('keeps the armed item while the place-furniture tool is still active', async () => {
+    const user = userEvent.setup()
+    render(
+      <ActiveToolProvider initialTool="place-furniture">
+        <FurniturePlacementProvider>
+          <Probe />
+        </FurniturePlacementProvider>
+      </ActiveToolProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Arm' }))
+
+    expect(screen.getByTestId('armed')).toHaveTextContent('Chair')
   })
 
   it('falls back to an unarmed value outside a provider rather than throwing', () => {
