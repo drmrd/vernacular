@@ -21,7 +21,7 @@ import {
   type SelectionStore,
 } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
-import { isTextEntry } from './keyboard-guard'
+import { isInteractiveTarget } from './keyboard-guard'
 import { selectedEntityIds } from './selection-entities'
 
 // A plain arrow nudge moves by a grid step; holding shift moves by a coarse step.
@@ -132,7 +132,7 @@ function handleNudgeKey({ event, ctx, floor, ids }: KeyAction): void {
 }
 
 function handleKeyDown(event: KeyboardEvent, ctx: SelectionKeyboardContext): void {
-  if (isTextEntry(event.target)) {
+  if (isInteractiveTarget(event.target)) {
     return
   }
   const floor = activeFloor(ctx)
