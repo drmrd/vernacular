@@ -42,7 +42,7 @@ import { RoomPeriodEditor } from '../plan/room-period-editor'
 import { RoomPurposeEditor } from '../plan/room-purpose-editor'
 import { RoomStyleEditor } from '../plan/room-style-editor'
 import { RoomSubPurposeEditor } from '../plan/room-sub-purpose-editor'
-import { selectedEntityIds } from '../plan/selection-entities'
+import { transformableEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
 import { singleSelectedDimension } from '../plan/selected-dimension'
 import { RoomFinishSection } from '../plan/room-finish-section'
@@ -458,12 +458,13 @@ interface TransformPanelProps {
 }
 
 // The rotate controls for any non-empty selection of transformable entities
-// (walls, openings, dimensions), about the selection center. Rooms are derived,
-// so a room-only selection yields no entity ids and renders nothing.
+// (walls and dimensions), about the selection center. Openings ride their
+// host wall and rooms are derived, so neither is moved by the transform
+// commands (ADR-0040); an opening-only or room-only selection renders nothing.
 function TransformPanel({ session, selectedIds }: TransformPanelProps) {
   const activeFloorId = useActiveFloorId()
   const floor = activeFloor(session.getProject(), activeFloorId)
-  const entityIds = selectedEntityIds(selectedIds)
+  const entityIds = transformableEntityIds(selectedIds)
   if (floor === undefined || entityIds.length === 0) {
     return null
   }
