@@ -48,14 +48,37 @@ function useSceneEnvironment() {
 // the whole environment state as one prop instead of re-listing each field.
 type SceneEnvironmentState = ReturnType<typeof useSceneEnvironment>
 
+// A readable label from an opening's element-type id: kebab-case to Title Case so
+// the accessibility proxy text reads as English without a separate label store.
+function humanizeElementTypeId(id: string): string {
+  return id
+    .split('-')
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(' ')
+}
+
+// Labels the openings in graph order, numbering each within its own element-type
+// sequence rather than one shared sequence, so a plan with two doors and one window
+// reads "Single Swing Door 1", "Double Hung Window 1", "Single Swing Door 2" instead
+// of grouping every opening kind under one running count.
+function openingLabels(openings: SceneGraph['openings']): (readonly [string, string])[] {
+  const seen = new Map<string, number>()
+  return openings.map((opening) => {
+    const ordinal = (seen.get(opening.type) ?? 0) + 1
+    seen.set(opening.type, ordinal)
+    return [opening.id, `${humanizeElementTypeId(opening.type)} ${ordinal}`] as const
+  })
+}
+
 // A short, stable label per selectable entity for the accessibility proxies, derived from
-// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Labels live in the
-// bridge layer because the three-dimensional overlay cannot import the editor layer.
-function entityLabels(graph: SceneGraph): Map<string, string> {
+// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings label from
+// their element type instead of the generic "Opening" kind. Labels live in the bridge layer
+// because the three-dimensional overlay cannot import the editor layer.
+export function entityLabels(graph: SceneGraph): Map<string, string> {
   return new Map<string, string>([
     ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
     ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
-    ...graph.openings.map((opening, index) => [opening.id, `Opening ${index + 1}`] as const),
+    ...openingLabels(graph.openings),
   ])
 }
 
