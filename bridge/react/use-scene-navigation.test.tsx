@@ -66,4 +66,10 @@ describe('useSceneNavigation', () => {
     expect(result.current.presetRequest?.preset).toBe('north')
     expect(result.current.presetRequest?.nonce).not.toBe(firstNonce)
   })
+
+  it('enables click selection for a freshly mounted navigation, so a first click can select something', () => {
+    const { result } = renderHook(() => useSceneNavigation())
+
+    expect(result.current.selectionEnabled).toBe(true)
+  })
 })
