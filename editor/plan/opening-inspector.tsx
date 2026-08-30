@@ -6,6 +6,8 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   flipOpening,
   formatAdaptiveLength,
+  inchesToMillimeters,
+  millimetersToInches,
   removeOpening,
   resizeOpening,
   roundToDecimalPlaces,
@@ -21,8 +23,6 @@ import { LengthField } from './length-field'
 import { OpeningOptionGroup } from './opening-type-chooser'
 import { groupedOpeningTypes } from './opening-type-options'
 import { RemoveControl } from './remove-control'
-
-const INCH_IN_MM = 25.4
 
 // Decimal places the rounded millimeter value keeps after the whole-plus-fraction
 // inch conversion below, chosen to erase floating point noise (e.g. 774.6999999999999)
@@ -47,8 +47,11 @@ const FRACTION_CHIPS = [
  * already present in valueMm rather than accumulating onto the previous press.
  */
 function withFractionSetMm(valueMm: number, fraction: number): number {
-  const wholeInches = Math.floor(valueMm / INCH_IN_MM)
-  return roundToDecimalPlaces((wholeInches + fraction) * INCH_IN_MM, FRACTION_RESULT_PRECISION)
+  const wholeInches = Math.floor(millimetersToInches(valueMm))
+  return roundToDecimalPlaces(
+    inchesToMillimeters(wholeInches + fraction),
+    FRACTION_RESULT_PRECISION,
+  )
 }
 
 // Default unit preferences for each system. The inspector formats and parses
