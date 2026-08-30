@@ -205,4 +205,26 @@ describe('entitiesCrossingRect', () => {
       new Set(['opening:straddling', 'dimension:straddling']),
     )
   })
+
+  it('excludes dimensions from the crossing result when the overlay is hidden, while keeping walls, rooms, and openings', () => {
+    const graph = scene(
+      [wall('wall:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 })],
+      [
+        room('room:overlapping', [
+          { x: 500, y: 500 },
+          { x: 1500, y: 500 },
+          { x: 1500, y: 1500 },
+          { x: 500, y: 1500 },
+        ]),
+      ],
+      {
+        openings: [opening('opening:straddling', { x: 950, y: 500 })],
+        dimensions: [dimension('dimension:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 })],
+      },
+    )
+
+    expect(new Set(entitiesCrossingRect(graph, rect, { dimensionsVisible: false }))).toEqual(
+      new Set(['wall:straddling', 'room:overlapping', 'opening:straddling']),
+    )
+  })
 })
