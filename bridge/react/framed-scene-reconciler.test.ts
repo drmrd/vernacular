@@ -172,8 +172,8 @@ const STACKED_TOP_CEILING_MM = 2400
 const STACKED_TOP_EXPECTED_MM = 5400
 const STACKED_TOP_ROOM_SPAN_MM = 4000
 
-// A room spanning the same square footprint on every floor, so each floor's own
-// ceiling height is the only thing that varies between them.
+// A room spanning the same square footprint and ceiling height on every floor,
+// so only each floor's own elevation, set independently below, differs.
 function stackedTopRoom(floorId: string): SceneGraph['rooms'][number] {
   const span = STACKED_TOP_ROOM_SPAN_MM
   const corners = [
