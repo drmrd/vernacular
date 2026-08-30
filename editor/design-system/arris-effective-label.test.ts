@@ -29,6 +29,14 @@ import {
 // own box paints nothing, the ground is the impression drawn into its pseudo-element.
 
 const designSystem = resolve(process.cwd(), 'editor/design-system')
+
+// A probe names either a design-system stylesheet by its bare filename or any other
+// stylesheet in the repo by its repo-relative path. The scan root is what closes the
+// gap ADR-0163 left open: consumer stylesheets outside the design system paint the
+// same active fill and were never measured.
+const stylesheetPath = (name: string) =>
+  name.includes('/') ? resolve(process.cwd(), name) : join(designSystem, name)
+
 const AA_NORMAL = 4.5
 const IMPRESSION = '::before'
 const NO_PAINT = new Set(['transparent', 'none'])
@@ -38,6 +46,13 @@ interface Probe {
   stylesheet: string
   base: string
   state: string
+  /**
+   * A second state the control carries at the same time. A control in two states at
+   * once is matched by the rules for each state separately as well as by the rule for
+   * both, and leaving the single-state rules out of the candidate set hides the case
+   * where one of them outranks the combination and wins a property nobody meant it to.
+   */
+  also?: string
 }
 
 const PROBES: Probe[] = [
@@ -65,6 +80,31 @@ const PROBES: Probe[] = [
     base: '.ds-button',
     state: ':hover',
   },
+  {
+    name: 'inspector count badge',
+    stylesheet: 'editor/shell/inspector.css',
+    base: '.inspector__count-badge',
+    state: '',
+  },
+  {
+    name: 'opening fraction chip, hovered',
+    stylesheet: 'editor/plan/opening-inspector.css',
+    base: '.opening-inspector__fraction-chip',
+    state: ':hover',
+  },
+  {
+    name: 'opening fraction chip, active',
+    stylesheet: 'editor/plan/opening-inspector.css',
+    base: '.opening-inspector__fraction-chip',
+    state: '--active',
+  },
+  {
+    name: 'opening fraction chip, active and hovered',
+    stylesheet: 'editor/plan/opening-inspector.css',
+    base: '.opening-inspector__fraction-chip',
+    state: '--active',
+    also: ':hover',
+  },
 ]
 
 function declaredValue(body: string, property: string): string | undefined {
@@ -77,10 +117,18 @@ function withoutScope(selector: string): string {
   return selector.startsWith(ARRIS_SCOPE) ? selector.slice(ARRIS_SCOPE.length).trim() : selector
 }
 
+/** Every state the probed element is in, singly and in combination. */
+function statesOf(probe: Probe): string[] {
+  if (probe.also === undefined) {
+    return [probe.state]
+  }
+  return [probe.state, probe.also, `${probe.state}${probe.also}`]
+}
+
 function rulesMatching(rules: CssRule[], probe: Probe, pseudoElement: string): CssRule[] {
   const wanted = new Set([
     `${probe.base}${pseudoElement}`,
-    `${probe.base}${probe.state}${pseudoElement}`,
+    ...statesOf(probe).map((state) => `${probe.base}${state}${pseudoElement}`),
   ])
   return rules.filter((rule) => wanted.has(withoutScope(rule.selector)))
 }
@@ -100,7 +148,7 @@ function winning(rules: CssRule[], property: string): string | undefined {
 }
 
 function arrisPalette(appearance: 'light' | 'dark'): Map<string, string> {
-  const arrisCss = readFileSync(join(designSystem, 'tokens-arris.css'), 'utf8')
+  const arrisCss = readFileSync(stylesheetPath('tokens-arris.css'), 'utf8')
   const light = declarationsIn(blockBodies(arrisCss, ARRIS_SCOPE)[0] ?? '')
   if (appearance === 'light') {
     return light
@@ -117,7 +165,7 @@ describe.each(['light', 'dark'] as const)('Arris %s effective label', (appearanc
   const vars = arrisPalette(appearance)
 
   it.each(PROBES)('keeps the $name label readable on the ground it lands on', (probe) => {
-    const rules = leafRules(readFileSync(join(designSystem, probe.stylesheet), 'utf8'))
+    const rules = leafRules(readFileSync(stylesheetPath(probe.stylesheet), 'utf8'))
 
     const label = winning(rulesMatching(rules, probe, ''), 'color')
     const boxFill = winning(rulesMatching(rules, probe, ''), 'background')

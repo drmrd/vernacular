@@ -54,7 +54,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  width: var(--ds-inspector-size, 15rem);
+  /* AppFrame writes the custom property on every render, so this fallback only
+     serves a consumer that uses the class without the component. Even there the
+     default belongs to the visual language rather than to this stylesheet. */
+  width: var(--ds-inspector-size, var(--size-panel-docked-width));
   background: var(--color-surface-panel);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -217,4 +220,73 @@
     'main'
     'inspector'
     'statusbar';
+}
+
+/*
+ * The bench doctrine (the Arris spec, sections 6 and 7). Everything docked is one
+ * bench, dead flat, and the canvas is the sheet lying on it. So the frame stops
+ * insetting the sheet, the gutter drops to the 8px the language asks for, and the
+ * panes lose the rounding that made them read as separate cards.
+ *
+ * Separation comes from a kerf line, a 1px cut at 20 percent ink, rather than from
+ * a heavier border or a tonal step. The elevation declaration is not decorative
+ * bookkeeping: it states in the stylesheet that a docked pane is flat, so a later
+ * shadow has to argue with it rather than land quietly.
+ */
+[data-design-language='arris'] .ds-app-frame {
+  gap: var(--space-2);
+  padding: 0;
+  /* With the padding gone the frame's own ground shows in the gutters, and the
+     frame is chrome. Left on the canvas surface those gutters would read as strips
+     of paper laid between the panels. The plan view paints the sheet itself, so
+     seating the frame on the bench takes nothing away from the drawing. */
+  background: var(--color-surface-panel);
+}
+
+[data-design-language='arris'] .ds-app-frame__rail,
+[data-design-language='arris'] .ds-app-frame__inspector {
+  position: relative;
+  /* A stacking context of the pane's own, so the grain layer below can sit behind
+     the pane's content without falling behind an ancestor's background. */
+  isolation: isolate;
+  border-radius: var(--radius-square);
+  border-color: var(--color-kerf);
+  box-shadow: var(--elevation-flat);
+}
+
+/*
+ * The one texture the language allows (the Arris spec, section 7): a monochrome
+ * grain at 1.5 percent opacity on chrome surfaces. It never touches the canvas, a
+ * control, or a text container, so it rides the two docked panes and nothing else.
+ *
+ * The noise is generated rather than shipped as an asset, so there is no image to
+ * fetch, nothing to go stale, and no second copy for the dark appearance: at 1.5
+ * percent over either bench the grain is texture, not tone. It is desaturated at
+ * source, because a monochrome grain is the rule and a filter is how you keep it
+ * one after a browser's own noise generator has had its say.
+ */
+[data-design-language='arris'] .ds-app-frame__rail::after,
+[data-design-language='arris'] .ds-app-frame__inspector::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--texture-grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23grain)'/%3E%3C/svg%3E");
+}
+
+/* Panel padding is 12px, and it belongs to the panel rather than to whatever the
+   panel happens to be showing, so a pane full of one component and a pane full of
+   another sit their content on the same inset. */
+[data-design-language='arris'] .ds-app-frame__pane-body {
+  padding: var(--space-3);
+}
+
+/* The narrow-width notice is structural chrome the frame draws for itself, not a
+   picked-up thing, so it squares off with the rest of the bench. */
+[data-design-language='arris']
+  .ds-app-frame[data-breakpoint='narrow']
+  .ds-app-frame__narrow-notice {
+  border-radius: var(--radius-square);
 }
