@@ -43,6 +43,7 @@ export function cameraControlsHint(mode: NavMode): readonly string[] {
 /**
  * A small, pointer-inert caption that lists the active camera mode's controls over the
  * scene canvas. It is inert to pointer events so it never blocks an orbit or look drag.
+ * Orbit mode also names clicking to select an object, since walk mode gates selection off.
  */
 export function CameraControlsHint({ mode }: { mode: NavMode }) {
   return (
@@ -55,6 +56,7 @@ export function CameraControlsHint({ mode }: { mode: NavMode }) {
       {cameraControlsHint(mode).map((line) => (
         <li key={line}>{line}</li>
       ))}
+      {mode === 'orbit' && <li>Click to select</li>}
     </ul>
   )
 }
