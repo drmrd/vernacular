@@ -1,5 +1,5 @@
-import { Canvas } from '@react-three/fiber'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
   humanizeElementTypeId,
@@ -24,6 +24,7 @@ import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
+import { sceneReadinessProps } from './scene-readiness'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
@@ -175,6 +176,28 @@ interface LiveSceneCanvasProps {
   opening: OpeningSceneNode | null
 }
 
+// Flips once the live canvas has rendered its first frame, mirroring the harness
+// canvas's data-harness-ready flip (scene-harness-view.tsx): the wrapper advertises
+// it through sceneReadinessProps so the editor pane's readiness observer knows the
+// scene has actually drawn, not merely mounted.
+function useFirstFrameReadiness() {
+  const [ready, setReady] = useState(false)
+  const handleFirstFrame = useCallback(() => setReady(true), [])
+  return { ready, handleFirstFrame }
+}
+
+// Calls onFirstFrame once the render loop has drawn its first frame, then stops
+// mattering: the ref guard keeps every later frame from re-invoking it.
+function LiveSceneFirstFrameSignal({ onFirstFrame }: { onFirstFrame: () => void }) {
+  const firedRef = useRef(false)
+  useFrame(() => {
+    if (firedRef.current) return
+    firedRef.current = true
+    onFirstFrame()
+  })
+  return null
+}
+
 // The interactive React Three Fiber canvas: the keyed scene primitive, the lighting,
 // the selection and proxy wiring, and the camera rig. Extracted from WebGPUSceneView
 // so each function stays within the length limit. frameloop="always" renders every frame
@@ -185,49 +208,58 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
   const { root, pose, bounds, nearWallTargets, roomPolygons, buildingTopWorld } = framed
   const perceivedColor = usePerceivedColorStore()
+  const { ready, handleFirstFrame } = useFirstFrameReadiness()
   return (
-    // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
-    // configuring the Canvas, so create-renderer's shadowMap setup goes dead
-    // without this prop. The bare boolean also selects PCFSoftShadowMap,
-    // matching create-renderer's intent.
-    <Canvas
-      frameloop="always"
-      shadows
-      camera={initialCamera(pose)}
-      // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
-      // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
-      // path), so narrowing the cast away from OffscreenCanvas is safe.
-      gl={(defaultProps) =>
-        createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
-      }
-    >
-      {/* Key the primitive on the rebuilt group so a new scene replaces the old one:
-          React Three Fiber does not re-attach a <primitive> when its object prop
-          changes in place, only when the element remounts. */}
-      <primitive key={root.uuid} object={root} />
-      <ViewSceneLighting viewEnvironment={viewEnvironment} site={site} bounds={bounds} />
-      <SceneSelection
-        root={root}
-        enabled={selectionAllowed({ enabled: nav.selectionEnabled, mode: nav.mode })}
-      />
-      <SceneProxyProjector root={root} onPositions={onProxyPositions} />
-      <NearWallFade
-        targets={nearWallTargets}
-        enabled={nav.mode === 'orbit' && nav.revealInterior}
-        roomPolygons={roomPolygons}
-        buildingTopWorld={buildingTopWorld}
-      />
-      <SceneCameraRig nav={nav} framed={framed} opening={opening} />
-      <AmbientOcclusionRenderTakeover
-        realistic={viewEnvironment.environment.mode === 'realistic'}
-        site={site}
-      />
-      {/* The sampler must live inside the Canvas because it reads the drawing
-          buffer from within the per-frame callback, and it runs at a later
-          frame priority than the ambient-occlusion takeover above so it reads
-          a frame that has already been drawn and composited. */}
-      <PerceivedColorSampler store={perceivedColor} />
-    </Canvas>
+    // The wrapper carries the shared readiness props (scene-readiness.ts) so the
+    // editor pane's observer can tell, from outside the bridge layer, when the
+    // canvas below has drawn its first frame. It fills its flex-item parent the
+    // same way React Three Fiber's own Canvas wrapper div would if it were the
+    // direct child here.
+    <div style={{ width: '100%', height: '100%' }} {...sceneReadinessProps(ready)}>
+      {/* React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
+          configuring the Canvas, so create-renderer's shadowMap setup goes dead
+          without this prop. The bare boolean also selects PCFSoftShadowMap,
+          matching create-renderer's intent. */}
+      <Canvas
+        frameloop="always"
+        shadows
+        camera={initialCamera(pose)}
+        // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
+        // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
+        // path), so narrowing the cast away from OffscreenCanvas is safe.
+        gl={(defaultProps) =>
+          createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
+        }
+      >
+        {/* Key the primitive on the rebuilt group so a new scene replaces the old one:
+            React Three Fiber does not re-attach a <primitive> when its object prop
+            changes in place, only when the element remounts. */}
+        <primitive key={root.uuid} object={root} />
+        <ViewSceneLighting viewEnvironment={viewEnvironment} site={site} bounds={bounds} />
+        <SceneSelection
+          root={root}
+          enabled={selectionAllowed({ enabled: nav.selectionEnabled, mode: nav.mode })}
+        />
+        <SceneProxyProjector root={root} onPositions={onProxyPositions} />
+        <NearWallFade
+          targets={nearWallTargets}
+          enabled={nav.mode === 'orbit' && nav.revealInterior}
+          roomPolygons={roomPolygons}
+          buildingTopWorld={buildingTopWorld}
+        />
+        <SceneCameraRig nav={nav} framed={framed} opening={opening} />
+        <AmbientOcclusionRenderTakeover
+          realistic={viewEnvironment.environment.mode === 'realistic'}
+          site={site}
+        />
+        {/* The sampler must live inside the Canvas because it reads the drawing
+            buffer from within the per-frame callback, and it runs at a later
+            frame priority than the ambient-occlusion takeover above so it reads
+            a frame that has already been drawn and composited. */}
+        <PerceivedColorSampler store={perceivedColor} />
+        <LiveSceneFirstFrameSignal onFirstFrame={handleFirstFrame} />
+      </Canvas>
+    </div>
   )
 }
 

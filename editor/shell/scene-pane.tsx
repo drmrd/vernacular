@@ -10,10 +10,14 @@ import {
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { detectRenderBackend } from '../../engine'
 import { SceneCanvas, useActiveFloorId, useSceneGraph } from '../../bridge'
+import {
+  LIVE_SCENE_CANVAS_TEST_ID,
+  SCENE_READY_ATTRIBUTE,
+} from '../../bridge/react/scene-readiness'
 import { EmptyState, LoadingState } from '../design-system'
 import './scene-pane.css'
 
-const LIVE_SCENE_CANVAS_SELECTOR = '[data-testid="live-scene-canvas"]'
+const LIVE_SCENE_CANVAS_SELECTOR = `[data-testid="${LIVE_SCENE_CANVAS_TEST_ID}"]`
 
 // Whether the pane's own subtree reports its first frame ready: true when the live
 // canvas node is not (yet) present, so a not-yet-mounted or still-suspended canvas
@@ -21,7 +25,7 @@ const LIVE_SCENE_CANVAS_SELECTOR = '[data-testid="live-scene-canvas"]'
 // otherwise whatever the canvas's own data-harness-ready attribute says.
 function readSceneReady(paneNode: HTMLElement): boolean {
   const canvasNode = paneNode.querySelector(LIVE_SCENE_CANVAS_SELECTOR)
-  return canvasNode === null || canvasNode.getAttribute('data-harness-ready') === 'true'
+  return canvasNode === null || canvasNode.getAttribute(SCENE_READY_ATTRIBUTE) === 'true'
 }
 
 // Watches the pane's own wrapper for the live canvas flipping its data-harness-ready
@@ -45,7 +49,7 @@ function useSceneReady(paneRef: RefObject<HTMLDivElement | null>): boolean {
     const observer = new MutationObserver(() => setIsSceneReady(readSceneReady(paneNode)))
     observer.observe(paneNode, {
       attributes: true,
-      attributeFilter: ['data-harness-ready'],
+      attributeFilter: [SCENE_READY_ATTRIBUTE],
       childList: true,
       subtree: true,
     })
