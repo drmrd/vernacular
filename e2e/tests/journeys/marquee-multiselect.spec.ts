@@ -1,8 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
 import { canvasBox, drawWall, expectWallCount, selectors, gotoEditor } from './support'
 
-// Marquee multi-select: a Shift-drag adds to the selection, an Alt-drag subtracts
-// from it, and a right-to-left drag grabs entities it merely crosses (issue #201).
+// Marquee multi-select: the set operation locks from the modifiers held when the
+// marquee begins (ADR-0126, amended for issue #605). Shift alone starts a replace
+// marquee, Shift with Alt starts an additive one, and Alt alone starts a subtractive
+// one; modifiers held at release play no part. A right-to-left drag grabs entities
+// it merely crosses (issue #201).
 // The selection is observed through the wall accessibility proxies, each of which
 // carries aria-selected, so a count of selected "Wall, ..." options is the durable
 // signal that the marquee folded into the selection as expected.
@@ -13,20 +16,24 @@ function selectedWalls(page: Page) {
 
 async function marquee(
   page: Page,
-  modifier: 'Shift' | 'Alt',
+  modifiers: readonly ('Shift' | 'Alt')[],
   from: { x: number; y: number },
   to: { x: number; y: number },
 ): Promise<void> {
   const box = await canvasBox(page)
-  await page.keyboard.down(modifier)
+  for (const modifier of modifiers) {
+    await page.keyboard.down(modifier)
+  }
   await page.mouse.move(box.x + from.x, box.y + from.y)
   await page.mouse.down()
   await page.mouse.move(box.x + to.x, box.y + to.y, { steps: 10 })
   await page.mouse.up()
-  await page.keyboard.up(modifier)
+  for (const modifier of [...modifiers].reverse()) {
+    await page.keyboard.up(modifier)
+  }
 }
 
-test('a Shift-drag adds and an Alt-drag subtracts marquee selections', async ({ page }) => {
+test('marquee modifiers replace, add to, and subtract from the selection', async ({ page }) => {
   await gotoEditor(page)
   const box = await canvasBox(page)
 
@@ -41,32 +48,26 @@ test('a Shift-drag adds and an Alt-drag subtracts marquee selections', async ({ 
 
   await selectors.selectTool(page).click()
 
-  // First Shift-marquee selects wall A.
-  await marquee(
-    page,
-    'Shift',
-    { x: box.width * 0.2, y: box.height * 0.2 },
-    { x: box.width * 0.4, y: box.height * 0.7 },
-  )
+  const aFrom = { x: box.width * 0.2, y: box.height * 0.2 }
+  const aTo = { x: box.width * 0.4, y: box.height * 0.7 }
+  const bFrom = { x: box.width * 0.5, y: box.height * 0.2 }
+  const bTo = { x: box.width * 0.7, y: box.height * 0.7 }
+
+  // A Shift-marquee over wall A selects it.
+  await marquee(page, ['Shift'], aFrom, aTo)
   await expect(selectedWalls(page)).toHaveCount(1)
 
-  // A second Shift-marquee over wall B adds it rather than replacing the selection.
-  await marquee(
-    page,
-    'Shift',
-    { x: box.width * 0.5, y: box.height * 0.2 },
-    { x: box.width * 0.7, y: box.height * 0.7 },
-  )
+  // A Shift+Alt marquee over wall B adds it to the selection.
+  await marquee(page, ['Shift', 'Alt'], bFrom, bTo)
   await expect(selectedWalls(page)).toHaveCount(2)
 
-  // An Alt-marquee over wall B subtracts it, leaving wall A selected.
-  await marquee(
-    page,
-    'Alt',
-    { x: box.width * 0.5, y: box.height * 0.2 },
-    { x: box.width * 0.7, y: box.height * 0.7 },
-  )
+  // A second plain Shift-marquee replaces the pair with just wall B.
+  await marquee(page, ['Shift'], bFrom, bTo)
   await expect(selectedWalls(page)).toHaveCount(1)
+
+  // An Alt-marquee over wall B subtracts it, emptying the selection.
+  await marquee(page, ['Alt'], bFrom, bTo)
+  await expect(selectedWalls(page)).toHaveCount(0)
 })
 
 test('a right-to-left marquee grabs a wall it only crosses', async ({ page }) => {
@@ -84,7 +85,7 @@ test('a right-to-left marquee grabs a wall it only crosses', async ({ page }) =>
   // endpoint lies outside, so the wall is not fully contained.
   await marquee(
     page,
-    'Shift',
+    ['Shift'],
     { x: box.width * 0.5, y: box.height * 0.4 },
     { x: box.width * 0.85, y: box.height * 0.6 },
   )
@@ -93,7 +94,7 @@ test('a right-to-left marquee grabs a wall it only crosses', async ({ page }) =>
   // The same region dragged right-to-left is a crossing marquee and grabs the wall.
   await marquee(
     page,
-    'Shift',
+    ['Shift'],
     { x: box.width * 0.85, y: box.height * 0.4 },
     { x: box.width * 0.5, y: box.height * 0.6 },
   )
