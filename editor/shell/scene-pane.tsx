@@ -18,8 +18,9 @@ function readSceneReady(paneNode: HTMLElement): boolean {
 }
 
 // Watches the pane's own wrapper for the live canvas flipping its data-harness-ready
-// attribute, so the loading placeholder clears the moment the canvas reports its first
-// frame without requiring a React re-render from the bridge layer to drive it.
+// attribute, or for the canvas node itself being inserted (the Suspense-resolve path),
+// so the loading placeholder clears the moment the canvas reports its first frame
+// without requiring a React re-render from the bridge layer to drive it.
 function useSceneReady(paneRef: RefObject<HTMLDivElement | null>): boolean {
   const [isSceneReady, setIsSceneReady] = useState(true)
   useEffect(() => {
@@ -30,6 +31,7 @@ function useSceneReady(paneRef: RefObject<HTMLDivElement | null>): boolean {
     observer.observe(paneNode, {
       attributes: true,
       attributeFilter: ['data-harness-ready'],
+      childList: true,
       subtree: true,
     })
     return () => observer.disconnect()
