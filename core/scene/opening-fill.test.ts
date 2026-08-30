@@ -172,8 +172,7 @@ describe('openingFill hung-window sash operability', () => {
         sillHeight: 900,
       }
 
-      const parts: ReadonlyArray<OpeningFillPart & { readonly fixed?: boolean }> =
-        openingFill(window)
+      const parts: ReadonlyArray<OpeningFillPart> = openingFill(window)
       const glass = parts.filter((p) => p.role === 'glass')
       const midpoint = window.sillHeight + window.height / 2
       const upperGlass = glass.find((p) => p.up.min >= midpoint)
