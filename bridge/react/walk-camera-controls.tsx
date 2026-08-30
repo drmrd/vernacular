@@ -59,14 +59,21 @@ function emptyWalkInput(): WalkInput {
   return { forward: false, back: false, left: false, right: false, yawDelta: 0, pitchDelta: 0 }
 }
 
-function initialWalkState(): WalkState {
-  return { position: { x: 0, y: WALK_EYE_HEIGHT_MM, z: 0 }, yaw: 0, pitch: 0 }
+function initialWalkState(floorElevationMm: number): WalkState {
+  return {
+    position: { x: 0, y: floorElevationMm + WALK_EYE_HEIGHT_MM, z: 0 },
+    yaw: 0,
+    pitch: 0,
+  }
 }
 
 // Seeds a walk state from the camera's current eye-level position and heading so
 // entering walk mode does not teleport the view. A camera looks down the negated
 // third column of its world matrix; yaw and pitch come from that forward vector.
-function seedWalkState(camera: WalkCamera): WalkState {
+// The eye height is seeded on the active floor's elevation, not the ground-floor
+// datum, so walking on an upper floor starts at that floor's eye level.
+// eslint-disable-next-line react-refresh/only-export-components -- the seeding helper ships beside the component that calls it and this slice's test imports seedWalkState from ./walk-camera-controls.
+export function seedWalkState(camera: WalkCamera, floorElevationMm: number): WalkState {
   camera.updateWorldMatrix(true, false)
   const e = camera.matrixWorld.elements
   // The forward axis is elements [8, 9, 10] of the column-major matrixWorld (the
@@ -77,7 +84,11 @@ function seedWalkState(camera: WalkCamera): WalkState {
   const length = Math.hypot(fx, fy, fz) || 1
   const forward = { x: -fx / length, y: -fy / length, z: -fz / length }
   return {
-    position: { x: camera.position.x, y: WALK_EYE_HEIGHT_MM, z: camera.position.z },
+    position: {
+      x: camera.position.x,
+      y: floorElevationMm + WALK_EYE_HEIGHT_MM,
+      z: camera.position.z,
+    },
     yaw: Math.atan2(forward.x, -forward.z),
     pitch: Math.asin(Math.max(-1, Math.min(1, forward.y))),
   }
@@ -92,6 +103,7 @@ interface WalkSession {
   interaction: RefObject<OpeningInteractionState>
   openness: RefObject<Map<string, number>>
   onUserControl: () => void
+  floorElevationMm: number
 }
 
 // Builds the keydown and keyup handlers. Keydown routes the interact key to the
@@ -140,8 +152,8 @@ export function walkKeyHandlers(session: WalkSession): {
 // pointer capture; the pointer only drives look while captured. Returns a teardown
 // that removes the listeners, releases capture, and clears held input.
 function startWalk(session: WalkSession): () => void {
-  const { camera, domElement, state, input, onUserControl } = session
-  state.current = seedWalkState(camera)
+  const { camera, domElement, state, input, onUserControl, floorElevationMm } = session
+  state.current = seedWalkState(camera, floorElevationMm)
   // Mark user-controlled immediately so FrameCamera stops reapplying the framed pose
   // and the walk controller owns the camera from the first frame.
   onUserControl()
@@ -179,6 +191,8 @@ interface WalkCollisionInputs {
   openings: readonly OpeningSceneNode[]
   furnitureSegments: WallSegment[]
   radius: number
+  /** The active floor's elevation, in millimeters; 0 when no floor is active. */
+  floorElevationMm: number
 }
 
 function useWalkCollisionInputs(): WalkCollisionInputs {
@@ -186,11 +200,13 @@ function useWalkCollisionInputs(): WalkCollisionInputs {
   const activeFloorId = useActiveFloorId()
   return useMemo(() => {
     const graph = sceneGraphForFloor(rawGraph, activeFloorId)
+    const floorNode = graph.nodes.find((node) => node.kind === 'floor')
     return {
       walls: graph.walls,
       openings: graph.openings,
       furnitureSegments: furnitureSegmentsForWalk(graph.furniture),
       radius: WALK_RADIUS_MM,
+      floorElevationMm: floorNode?.elevation ?? 0,
     }
   }, [rawGraph, activeFloorId])
 }
@@ -291,9 +307,9 @@ interface WalkCameraControlsProps {
 export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraControlsProps) {
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
-  const stateRef = useRef<WalkState>(initialWalkState())
-  const inputRef = useRef<WalkInput>(emptyWalkInput())
   const collisionInputs = useWalkCollisionInputs()
+  const stateRef = useRef<WalkState>(initialWalkState(collisionInputs.floorElevationMm))
+  const inputRef = useRef<WalkInput>(emptyWalkInput())
   const { openingsRef, interactionRef, opennessRef } = useWalkInteraction()
 
   useEffect(() => {
@@ -307,7 +323,11 @@ export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraC
       interaction: interactionRef,
       openness: opennessRef,
       onUserControl,
+      floorElevationMm: collisionInputs.floorElevationMm,
     })
+    // floorElevationMm is intentionally excluded: re-seeding the walk pose when the
+    // active floor changes mid-walk is a later cycle's concern, not this one's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef, opennessRef])
 
   useFrame((_state, delta) => {
