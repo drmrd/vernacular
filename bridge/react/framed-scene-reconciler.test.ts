@@ -166,6 +166,62 @@ function twoFloorBuildingGraph(): SceneGraph {
   }
 }
 
+const STACKED_TOP_LOWER_ELEVATION_MM = 0
+const STACKED_TOP_UPPER_ELEVATION_MM = 3000
+const STACKED_TOP_CEILING_MM = 2400
+const STACKED_TOP_EXPECTED_MM = 5400
+const STACKED_TOP_ROOM_SPAN_MM = 4000
+
+// A room spanning the same square footprint on every floor, so each floor's own
+// ceiling height is the only thing that varies between them.
+function stackedTopRoom(floorId: string): SceneGraph['rooms'][number] {
+  const span = STACKED_TOP_ROOM_SPAN_MM
+  const corners = [
+    { x: 0, y: 0 },
+    { x: span, y: 0 },
+    { x: span, y: span },
+    { x: 0, y: span },
+  ]
+  return {
+    id: `room:${floorId}`,
+    kind: 'room',
+    floorId,
+    polygon: corners,
+    clearPolygon: corners,
+    area: span * span,
+    ceilingHeight: STACKED_TOP_CEILING_MM,
+  }
+}
+
+// A two-floor whole-building graph with a room on each floor, so the building top can
+// be pinned to a floor's own elevation plus its own ceiling height, not just the
+// taller of the two floor elevations alone.
+function twoFloorGraphWithCeilings(): SceneGraph {
+  return {
+    nodes: [
+      {
+        id: 'floor:g',
+        kind: 'floor',
+        name: 'Ground',
+        elevation: STACKED_TOP_LOWER_ELEVATION_MM,
+      },
+      {
+        id: 'floor:u',
+        kind: 'floor',
+        name: 'Upper',
+        elevation: STACKED_TOP_UPPER_ELEVATION_MM,
+      },
+    ],
+    walls: [floorWall('g', WALL_LENGTH_MM), floorWall('u', WALL_LENGTH_MM)],
+    rooms: [stackedTopRoom('g'), stackedTopRoom('u')],
+    underlays: [],
+    openings: [],
+    dimensions: [],
+    stairs: [],
+    furniture: [],
+  }
+}
+
 describe('createFramedSceneReconciler whole building', () => {
   it('stacks every floor at its elevation and frames the whole building', () => {
     const framed = createFramedSceneReconciler().reconcile(twoFloorBuildingGraph(), emptyPaint())
@@ -203,6 +259,17 @@ describe('createFramedSceneReconciler whole building', () => {
     const floorIds = collectEntityIds(framed.root).filter((id) => id.startsWith('floor:'))
     expect(floorIds).toEqual(['floor:g'])
     expect(findByEntityId(framed.root, 'floor:g')?.position.y).toBe(0)
+  })
+
+  it('carries the building top elevation from the floor whose own ceiling reaches highest', () => {
+    const framed = createFramedSceneReconciler().reconcile(
+      twoFloorGraphWithCeilings(),
+      emptyPaint(),
+    )
+
+    // The ground floor's own reach (0 + 2400 = 2400) sits below the upper floor's own
+    // reach (3000 + 2400 = 5400), so the building top must track the upper floor.
+    expect(framed.buildingTopWorld).toBe(STACKED_TOP_EXPECTED_MM)
   })
 })
 
