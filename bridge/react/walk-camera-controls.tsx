@@ -12,6 +12,7 @@ import {
   WALK_EYE_HEIGHT_MM,
   type OpeningInteractionState,
   type OpeningSceneNode,
+  type SceneGraph,
   type WallSceneNode,
   type WallSegment,
   type WalkCollisionWorld,
@@ -92,6 +93,14 @@ export function seedWalkState(camera: WalkCamera, floorElevationMm: number): Wal
     yaw: Math.atan2(forward.x, -forward.z),
     pitch: Math.asin(Math.max(-1, Math.min(1, forward.y))),
   }
+}
+
+// The active floor's elevation, read from its scene-graph node; 0 when no floor
+// node is present.
+// eslint-disable-next-line react-refresh/only-export-components -- the elevation-derivation helper ships beside the component that calls it and this slice's test imports walkFloorElevationMm from ./walk-camera-controls.
+export function walkFloorElevationMm(graph: SceneGraph): number {
+  const floorNode = graph.nodes.find((node) => node.kind === 'floor')
+  return floorNode?.elevation ?? 0
 }
 
 interface WalkSession {
@@ -200,13 +209,12 @@ function useWalkCollisionInputs(): WalkCollisionInputs {
   const activeFloorId = useActiveFloorId()
   return useMemo(() => {
     const graph = sceneGraphForFloor(rawGraph, activeFloorId)
-    const floorNode = graph.nodes.find((node) => node.kind === 'floor')
     return {
       walls: graph.walls,
       openings: graph.openings,
       furnitureSegments: furnitureSegmentsForWalk(graph.furniture),
       radius: WALK_RADIUS_MM,
-      floorElevationMm: floorNode?.elevation ?? 0,
+      floorElevationMm: walkFloorElevationMm(graph),
     }
   }, [rawGraph, activeFloorId])
 }
