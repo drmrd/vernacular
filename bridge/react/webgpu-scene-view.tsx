@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  humanizeElementTypeId,
   type LightingMode,
   type OpeningSceneNode,
   type SceneGraph,
@@ -47,15 +48,6 @@ function useSceneEnvironment() {
 // The grouped result of useSceneEnvironment, so the toolbar and canvas wiring can take
 // the whole environment state as one prop instead of re-listing each field.
 type SceneEnvironmentState = ReturnType<typeof useSceneEnvironment>
-
-// A readable label from an opening's element-type id: kebab-case to Title Case so
-// the accessibility proxy text reads as English without a separate label store.
-function humanizeElementTypeId(id: string): string {
-  return id
-    .split('-')
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(' ')
-}
 
 // Labels the openings in graph order, numbering each within its own element-type
 // sequence rather than one shared sequence, so a plan with two doors and one window
