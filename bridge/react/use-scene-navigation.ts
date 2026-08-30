@@ -13,7 +13,7 @@ import type { NavMode, PresetChoice } from './scene-nav-toolbar'
  */
 export function useSceneNavigation() {
   const [mode, setMode] = useState<NavMode>('orbit')
-  const [selectionEnabled, setSelectionEnabled] = useState(false)
+  const [selectionEnabled, setSelectionEnabled] = useState(true)
   const [revealInterior, setRevealInterior] = useState(true)
   const [userControlled, setUserControlled] = useState(false)
   const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
