@@ -23,8 +23,46 @@ const INSPECTOR_BOUNDS = { initial: 15, min: 10, max: 28 }
 const RESIZE_STEP_REM = 1
 const PANE_BOUNDS = { rail: RAIL_BOUNDS, inspector: INSPECTOR_BOUNDS } as const
 
+type PaneArea = 'rail' | 'inspector'
+
+/**
+ * What a pane is wide before the user has an opinion. The inspector is a docked
+ * panel, and the width of one belongs to the visual language, so its default is
+ * the published token rather than a number spelled out here. The rail is the tool
+ * rack's home and sizes to its slots, so it opens at its own initial size.
+ */
+const PANE_DEFAULT_WIDTH: Record<PaneArea, string> = {
+  rail: `${RAIL_BOUNDS.initial}rem`,
+  inspector: 'var(--size-panel-docked-width)',
+}
+
+interface PaneWidth {
+  size: number
+  width: string
+  onResizeStep: (delta: number) => void
+}
+
+/**
+ * The pane's live width, as the value its inline custom property carries. An inline
+ * declaration outranks every stylesheet rule, so a pane that always sets one can
+ * never take a default from the language; this hands the token over until the first
+ * resize and the user's own number from then on.
+ */
+function usePaneWidth(area: PaneArea): PaneWidth {
+  const { size, onResizeStep } = usePaneResize(PANE_BOUNDS[area])
+  const [resized, setResized] = useState(false)
+  return {
+    size,
+    width: resized ? `${size}rem` : PANE_DEFAULT_WIDTH[area],
+    onResizeStep: (delta: number) => {
+      setResized(true)
+      onResizeStep(delta)
+    },
+  }
+}
+
 interface CollapsiblePaneProps {
-  area: 'rail' | 'inspector'
+  area: PaneArea
   label: string
   id?: string
   children: ReactNode
@@ -61,8 +99,8 @@ function PaneResizeHandle({ label, size, bounds, onResizeStep }: PaneResizeHandl
 
 function CollapsiblePane({ area, label, id, children }: CollapsiblePaneProps) {
   const { collapsed, toggle } = usePaneCollapse(false)
-  const { size, onResizeStep } = usePaneResize(PANE_BOUNDS[area])
-  const style = { [`--ds-${area}-size`]: `${size}rem` } as CSSProperties
+  const { size, width, onResizeStep } = usePaneWidth(area)
+  const style = { [`--ds-${area}-size`]: width } as CSSProperties
   return (
     <aside
       className={`ds-app-frame__${area}`}

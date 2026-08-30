@@ -5,3 +5,24 @@
   letter-spacing: 0.09em;
   color: var(--color-text-muted);
 }
+
+/*
+ * The stamped header (the Arris spec, sections 4, 5 and 10). Arris marks a section
+ * the way a maker marks a tool: the interface face at 600 and 11px, uppercase and
+ * tracked, struck at the 80 percent ink tier the ramp names for stamped labels
+ * rather than at the secondary tier the shipped language uses for a quiet caption.
+ *
+ * It also stops being a run of small text and becomes a row. Sitting the label in a
+ * band of the drawn control height puts a header on the same rhythm as the controls
+ * under it, which is what makes a dense panel scan by structure instead of by size.
+ */
+[data-design-language='arris'] .ds-section-label {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-control-height);
+  color: var(--color-ink-label);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--letter-spacing-stamped);
+  line-height: var(--line-height-panel);
+}

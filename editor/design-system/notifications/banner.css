@@ -44,3 +44,63 @@
 .ds-banner__dismiss {
   color: var(--color-text-muted);
 }
+
+/*
+ * The banner is the notification tier that does not float: it is a row of the app
+ * frame, above the canvas rather than over it. That makes it bench, and the bench is
+ * dead flat and square (the Arris spec, sections 6 and 7). Holding the two tiers apart
+ * is what makes the elevation doctrine legible on screen: the toast has been picked
+ * up, the banner is part of the frame.
+ *
+ * The flat elevation is restated deliberately and resolves the same today, since the
+ * unscoped rule casts nothing either. Saying it here is what makes the pairing with the
+ * toast's raised tier readable as one decision rather than as an omission.
+ */
+[data-design-language='arris'] .ds-banner {
+  border-radius: var(--radius-square);
+  box-shadow: var(--elevation-flat);
+}
+
+/*
+ * The custody doctrine states one warning treatment for every surface that touches
+ * saving, storage, import, or export (the Arris spec, section 12): the words render at
+ * full ink and carry a 2px Red Lead rule beneath and a Red Lead dot. Red Lead running
+ * text falls below the label floor and is retired, so the alarm is the rule and the
+ * dot while the legibility is the ink. The rest of the frame stays on the ordinary
+ * border, because Red Lead appears on perhaps one control per screen (section 5).
+ */
+[data-design-language='arris'] .ds-banner[data-severity='error'] {
+  border-color: var(--color-border);
+  border-bottom: var(--border-width-focus-ring) solid var(--color-danger);
+  color: var(--color-text);
+}
+
+/* The dot section 12 asks for, leading the row as the first flex item. The mark is a
+   4px square carrying the machined 2px chamfer, and at that size the chamfer takes the
+   whole side, so the language's own radius token is what rounds it. There is no 4px
+   size token, so the mark borrows the base spacing step for its dimensions. */
+[data-design-language='arris'] .ds-banner[data-severity='error']::before {
+  content: '';
+  flex: 0 0 auto;
+  width: var(--space-1);
+  height: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger);
+}
+
+/*
+ * Layout Blue exists as lines and glyphs in an enumerated set of roles and nothing else
+ * borrows it (the Arris spec, section 5). An action here is a word the user has to read
+ * and act on, which puts it in the body tier rather than the accent tier, so it is
+ * stamped plainly in ink. Correct words, stamped plainly (principle 4).
+ */
+[data-design-language='arris'] .ds-banner__action {
+  color: var(--color-text);
+}
+
+/* Dismissal is recoverable from position and label, so it sits at the secondary tier.
+   Restated deliberately and resolves the same today: the unscoped rule reaches for the
+   muted alias, and this names the ink-ramp tier the contrast floor is argued from. */
+[data-design-language='arris'] .ds-banner__dismiss {
+  color: var(--color-ink-secondary);
+}

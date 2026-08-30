@@ -12,6 +12,7 @@ related:
     decisions/ADR-0130-finishes-system-architecture,
     decisions/ADR-0067-three-dimensional-painted-preview,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
+    decisions/ADR-0168-tone-map-extreme-color-gate,
   ]
 sourceFiles:
   [
@@ -22,7 +23,7 @@ sourceFiles:
     e2e/tests/scene-helpers.ts,
   ]
 status: current
-updated: 2026-07-26
+updated: 2026-08-17
 ---
 
 # ADR-0157: Color-accuracy gate: render a known swatch and sample it against an OKLab tolerance
@@ -93,7 +94,8 @@ nondeterminism across backends. The gate has to draw that line from measurement,
    operator's roughly linear mid-range, so "the sample reads as the swatch" is a fair statement for
    each. Near-white and near-black land on the operator's shoulder and toe, where value is
    compressed and a raw-albedo round-trip is not promised; that harder assertion is deferred to a
-   follow-up issue rather than folded into this gate.
+   follow-up issue rather than folded into this gate. (Since resolved:
+   [[ADR-0168-tone-map-extreme-color-gate]] adds that tier.)
 
 5. Each swatch's reference is its raw assigned albedo, and the pass condition is that the lit sample
    reads within tolerance of it. That is only

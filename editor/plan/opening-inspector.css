@@ -25,18 +25,93 @@
     color var(--motion-duration);
 }
 
+/* Both filled states take the reversed on-fill role for their label. The shipped
+   language resolves that role to the ordinary text ink, so nothing moves there;
+   Arris fills with the text ink itself, and a label left on --color-text turns a
+   hovered or selected chip into a solid slab with the fraction lost inside it. */
 .opening-inspector__fraction-chip:hover {
   background: var(--color-surface-active);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .opening-inspector__fraction-chip--active {
   background: var(--color-surface-active);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
   border-color: var(--color-indicator);
 }
 
 .opening-inspector__fraction-chip:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
+}
+
+/*
+ * The chip is a control, so it splits into two measurements under Arris (ADR-0163):
+ * its own box keeps the ADR-0112 hit target, and a centred pseudo-element draws the
+ * 28px control with the fill, the machined border and the 2px chamfer. Nothing
+ * overflows the box, so a chip's hit area never reaches into the neighbour beside it
+ * in the wrapping row.
+ *
+ * The resting impression paints the bench it sits on rather than staying
+ * transparent. That is what gives the hover state a ground to be measured against:
+ * a cancelled fill leaves the label sitting on something, and the stylesheet should
+ * be able to say what.
+ */
+[data-design-language='arris'] .opening-inspector__fraction-chip {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-design-language='arris'] .opening-inspector__fraction-chip::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--size-control-height)) / 2);
+  inset-inline: 0;
+  border: var(--border-width-resting) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-panel);
+}
+
+/*
+ * Hover brightens a border and never blooms a glow (the Arris spec, section 8), so
+ * the fill goes away. The label has to come back with it: the rule that reversed it
+ * is still in force at a lower specificity, and a reversed label over the resting
+ * impression is the ground printed on itself.
+ */
+[data-design-language='arris'] .opening-inspector__fraction-chip:hover {
+  background: transparent;
+  color: var(--color-text);
+}
+
+[data-design-language='arris'] .opening-inspector__fraction-chip:hover::before {
+  border-width: var(--border-width-active);
+}
+
+/*
+ * A selected chip under the pointer is in both states at once, and the hover rule
+ * above is the more specific of the two, so it takes the label while the active fill
+ * stays put on the pseudo-element it never touches. That is the reversed label landing
+ * on the fill it was reversed away from, at 1.00:1 in both appearances. Restating the
+ * reversal at the hover rule's own specificity, later in the file, gives the selected
+ * chip its label back without weakening the plain hover state.
+ */
+[data-design-language='arris'] .opening-inspector__fraction-chip--active:hover {
+  color: var(--color-on-surface-active);
+}
+
+/* The selected chip is a full impression: the fill moves to the pseudo-element and
+   the label rides the element that holds the text, reversed to the ground. */
+[data-design-language='arris'] .opening-inspector__fraction-chip--active {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-on-surface-active);
+}
+
+[data-design-language='arris'] .opening-inspector__fraction-chip--active::before {
+  border-width: var(--border-width-active);
+  border-color: var(--color-indicator);
+  background: var(--color-surface-active);
 }

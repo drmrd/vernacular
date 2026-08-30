@@ -1,5 +1,10 @@
 import type { Preview } from '@storybook/react-vite'
 import { initialize, mswLoader } from 'msw-storybook-addon'
+import {
+  designLanguageGlobalTypes,
+  designLanguageInitialGlobals,
+  withDesignLanguage,
+} from './design-language-decorator'
 
 // Start the Mock Service Worker before any story renders, so data-driven
 // components resolve their fetch calls against per-story handlers
@@ -27,6 +32,9 @@ const preview: Preview = {
     },
   },
   loaders: [mswLoader],
+  decorators: [withDesignLanguage],
+  globalTypes: designLanguageGlobalTypes,
+  initialGlobals: designLanguageInitialGlobals,
 }
 
 export default preview

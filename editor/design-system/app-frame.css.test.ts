@@ -3,7 +3,25 @@ import { resolve } from 'node:path'
 
 import { describe, it, expect } from 'vitest'
 
+import { ARRIS_SCOPE, leafRules } from './css-token-test-support'
+
 const css = readFileSync(resolve(process.cwd(), 'editor/design-system/app-frame.css'), 'utf8')
+
+const rules = leafRules(css)
+
+/**
+ * The selectors a rule lists, split apart and normalised to single spaces, since a
+ * selector long enough to wrap arrives here carrying the newline and indent.
+ */
+function selectorsOf(selector: string): string[] {
+  return selector.split(',').map((part) => part.trim().replace(/\s+/g, ' '))
+}
+
+/** The body of the Arris-scoped rule opened by exactly this selector, or ''. */
+function arrisBody(selector: string): string {
+  const scoped = `${ARRIS_SCOPE} ${selector}`
+  return rules.find((rule) => selectorsOf(rule.selector).includes(scoped))?.body ?? ''
+}
 
 describe('app-frame.css', () => {
   it('widens the pane resize handle to a 40px pointer hit area without growing the visible bar', () => {
@@ -76,6 +94,19 @@ describe('app-frame.css', () => {
     expect(css).toMatch(/\[data-breakpoint='narrow'\][^{]*\.ds-app-frame__rail-toggle/)
   })
 
+  it('falls back to the docked-panel width token rather than a hand-typed literal', () => {
+    // AppFrame writes the inline custom property on every render, so this fallback
+    // never fires through the component; it is what a bare-class consumer of the
+    // stylesheet would get. Even there the default belongs to the visual language,
+    // which publishes it as --size-panel-docked-width, and the shipped language
+    // resolves that token to the same 15rem the literal spelled out.
+    const inspector = css.match(/\.ds-app-frame__inspector\s*\{[^}]*\}/)?.[0] ?? ''
+    expect(inspector).not.toBe('')
+    expect(inspector).toMatch(
+      /width:\s*var\(--ds-inspector-size,\s*var\(--size-panel-docked-width\)\)/,
+    )
+  })
+
   it('shows the unsupported-width notice only at narrow', () => {
     // The narrow unsupported-width notice is always in the DOM but is gated by
     // breakpoint in CSS, which jsdom cannot evaluate, so the visibility contract
@@ -92,5 +123,98 @@ describe('app-frame.css', () => {
       )?.[0] ?? ''
     expect(narrowNotice).not.toBe('')
     expect(narrowNotice).toMatch(/display:\s*block/)
+  })
+})
+
+// The bench doctrine (the Arris spec, sections 6 and 7). Everything docked is one
+// flat bench: no elevation on a panel or on the frame, square edges, and separation
+// carried by a 1px kerf line at 20 percent ink rather than by tonal patchwork. The
+// canvas runs edge to edge, and the 8px gutter is the only air between regions.
+//
+// jsdom applies no stylesheets, so this reads the CSS as text, the idiom the design
+// system's other guards already use.
+describe('app-frame.css under Arris', () => {
+  it('lays the docked panes out as one dead flat bench', () => {
+    const panes = arrisBody('.ds-app-frame__rail')
+    expect(panes, 'no Arris-scoped rule reaches the docked panes').not.toBe('')
+    expect(selectorsOf(rules.find((rule) => rule.body === panes)?.selector ?? '')).toContain(
+      `${ARRIS_SCOPE} .ds-app-frame__inspector`,
+    )
+    expect(panes).toMatch(/border-radius:\s*var\(--radius-square\)/)
+    expect(panes).toMatch(/border-color:\s*var\(--color-kerf\)/)
+    expect(panes).toMatch(/box-shadow:\s*var\(--elevation-flat\)/)
+  })
+
+  it('runs the canvas edge to edge behind an 8px gutter', () => {
+    const frame = arrisBody('.ds-app-frame')
+    expect(frame, 'no Arris-scoped rule reaches the frame itself').not.toBe('')
+    expect(frame).toMatch(/gap:\s*var\(--space-2\)/)
+    expect(frame).toMatch(/padding:\s*0/)
+  })
+
+  it('seats the frame itself on the bench, not on the sheet', () => {
+    // Dropping the frame's padding exposes its own ground in the gutters between
+    // regions. The frame is chrome, so that ground has to be the bench surface: on
+    // the canvas surface the gutters would read as strips of paper between panels,
+    // which is the opposite of what the sheet-and-bench doctrine says (spec
+    // section 5). The plan view paints the sheet itself, so nothing loses it.
+    expect(arrisBody('.ds-app-frame')).toMatch(/background:\s*var\(--color-surface-panel\)/)
+  })
+
+  it('gives the panel its own 12px padding rather than leaving it to the content', () => {
+    expect(arrisBody('.ds-app-frame__pane-body')).toMatch(/padding:\s*var\(--space-3\)/)
+  })
+
+  it('squares the structural chrome the frame draws for itself', () => {
+    const notice = arrisBody(".ds-app-frame[data-breakpoint='narrow'] .ds-app-frame__narrow-notice")
+    expect(notice).toMatch(/border-radius:\s*var\(--radius-square\)/)
+  })
+
+  it('carries the one permitted texture on the docked panes', () => {
+    const grain = arrisBody('.ds-app-frame__rail::after')
+    expect(grain, 'no grain layer is drawn on a docked pane').not.toBe('')
+    expect(grain).toMatch(/content:\s*''/)
+    expect(grain).toMatch(/opacity:\s*var\(--texture-grain-opacity\)/)
+    expect(grain).toMatch(/pointer-events:\s*none/)
+    expect(grain).toMatch(/background-image:\s*url\(/)
+
+    // The grain has to paint above the pane's own background and below its content.
+    // A negative layer alone would fall behind an ancestor's background, so the pane
+    // becomes a stacking context of its own, the idiom the migrated controls use.
+    expect(grain).toMatch(/z-index:\s*-1/)
+    expect(arrisBody('.ds-app-frame__rail')).toMatch(/isolation:\s*isolate/)
+  })
+
+  it('lands the grain on chrome only, never on the canvas or a text container', () => {
+    const painted = new Set([
+      `${ARRIS_SCOPE} .ds-app-frame__rail::after`,
+      `${ARRIS_SCOPE} .ds-app-frame__inspector::after`,
+    ])
+    const grained = rules
+      .filter((rule) => rule.body.includes('var(--texture-grain-opacity)'))
+      .flatMap((rule) => selectorsOf(rule.selector))
+
+    expect(grained.length, 'nothing reads the grain opacity').toBeGreaterThan(0)
+    const strayed = grained.filter((selector) => !painted.has(selector))
+
+    expect(
+      strayed,
+      `The grain is chrome's alone: it never touches the canvas, a control, or a text ` +
+        `container (the Arris spec, section 7). Surfaces it strayed onto:\n${strayed.join('\n')}`,
+    ).toEqual([])
+  })
+
+  it('keeps every bench declaration behind the preview flag', () => {
+    const benchTokens = /var\(--(radius-square|color-kerf|elevation-flat|texture-grain-opacity)\)/
+    const unscoped = rules
+      .filter((rule) => benchTokens.test(rule.body) && !rule.selector.includes(ARRIS_SCOPE))
+      .map((rule) => rule.selector)
+
+    expect(
+      unscoped,
+      `The bench doctrine is Arris's, not the shipped language's, so every rule that ` +
+        `reads a bench token must sit under ${ARRIS_SCOPE} and the flag stays a no-op. ` +
+        `Unscoped rules:\n${unscoped.join('\n')}`,
+    ).toEqual([])
   })
 })
