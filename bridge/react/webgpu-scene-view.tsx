@@ -183,7 +183,7 @@ interface LiveSceneCanvasProps {
 // whole, as it does into SceneViewToolbar) and are destructured in the body.
 function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
-  const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
+  const { root, pose, bounds, nearWallTargets, roomPolygons, buildingTopWorld } = framed
   const perceivedColor = usePerceivedColorStore()
   return (
     // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
@@ -215,6 +215,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         targets={nearWallTargets}
         enabled={nav.mode === 'orbit' && nav.revealInterior}
         roomPolygons={roomPolygons}
+        buildingTopWorld={buildingTopWorld}
       />
       <SceneCameraRig nav={nav} framed={framed} opening={opening} />
       <AmbientOcclusionRenderTakeover
