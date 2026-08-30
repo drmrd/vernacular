@@ -147,12 +147,11 @@ export function hitTest(
 ): string | null {
   const dimensionsVisible = options?.dimensionsVisible ?? true
   const ids = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
+  const dimensionCandidates = dimensionsVisible ? withId(scene.dimensions, ids) : []
   return (
     hitTestOpenings(withId(scene.openings, ids), point, tolerance) ??
     hitTestWalls(withId(scene.walls, ids), point, tolerance) ??
-    (dimensionsVisible
-      ? hitTestDimensions(withId(scene.dimensions, ids), point, tolerance)
-      : null) ??
+    hitTestDimensions(dimensionCandidates, point, tolerance) ??
     hitTestStairs(withId(scene.stairs, ids), point) ??
     containingRoomId(withId(scene.rooms, ids), point)
   )
