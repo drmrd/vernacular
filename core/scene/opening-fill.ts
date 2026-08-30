@@ -101,43 +101,69 @@ function leafBar(along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPa
 }
 
 /**
- * One sash filling a vertical band of the opening: a perimeter of four frame members
- * (a top rail, a bottom rail, and two stiles) ringing one glass pane inset by the
- * frame width. The band is the sash's own `[min, max]` height range, so an undivided
- * sash passes the whole opening and a hung window passes each of its two bands. A
- * fixed sash (a single-hung window's upper sash) has no operable inner frame: it
- * drops its two stiles and its glass pane sets straight into the window's outer
- * jambs, spanning the full `along` width rather than the frame-inset width. It also
- * marks its glass pane `fixed: true`; an operable sash omits the field rather than
- * setting it `false`.
+ * One sash filling a vertical band of the opening: a perimeter of frame members
+ * ringing one glass pane. The band is the sash's own `[min, max]` height range, so
+ * an undivided sash passes the whole opening and a hung window passes each of its
+ * two bands. Dispatches on `fixed` because a fixed sash (a single-hung window's
+ * upper sash) has a structurally different frame from an operable one.
  */
 function sashAssembly(
   halfWidth: number,
   band: OpeningFillExtent,
   fixed = false,
 ): OpeningFillPart[] {
+  return fixed ? fixedSashParts(halfWidth, band) : operableSashParts(halfWidth, band)
+}
+
+/** The head and bottom rails common to every sash, fixed or operable. */
+function sashRails(
+  span: OpeningFillExtent,
+  band: OpeningFillExtent,
+  frameWidth: number,
+): readonly [headRail: OpeningFillPart, bottomRail: OpeningFillPart] {
+  return [
+    leafBar(span, { min: band.max - frameWidth, max: band.max }),
+    leafBar(span, { min: band.min, max: band.min + frameWidth }),
+  ]
+}
+
+/**
+ * A fixed sash has no operable inner frame: its glass sets straight into the
+ * window's outer jambs at the full `along` width, marked `fixed: true`.
+ */
+function fixedSashParts(halfWidth: number, band: OpeningFillExtent): OpeningFillPart[] {
   const frameWidth = SASH_FRAME_WIDTH_MM
-  const innerUp: OpeningFillExtent = { min: band.min + frameWidth, max: band.max - frameWidth }
   const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
-  const headRail = leafBar(span, { min: band.max - frameWidth, max: band.max })
-  const bottomRail = leafBar(span, { min: band.min, max: band.min + frameWidth })
+  const innerUp: OpeningFillExtent = { min: band.min + frameWidth, max: band.max - frameWidth }
+  const [headRail, bottomRail] = sashRails(span, band, frameWidth)
   const glass: OpeningFillPart = {
     role: 'glass',
-    along: fixed ? span : { min: -halfWidth + frameWidth, max: halfWidth - frameWidth },
+    along: span,
     up: innerUp,
     thickness: GLASS_THICKNESS_MM,
-    ...(fixed ? { fixed: true } : {}),
+    fixed: true,
   }
-  if (fixed) {
-    return [headRail, bottomRail, glass]
+  return [headRail, bottomRail, glass]
+}
+
+/**
+ * An operable sash rings its glass with two named stiles plus the head and bottom
+ * rails, all inset by the frame width, so the glass never touches the outer jambs.
+ */
+function operableSashParts(halfWidth: number, band: OpeningFillExtent): OpeningFillPart[] {
+  const frameWidth = SASH_FRAME_WIDTH_MM
+  const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
+  const innerUp: OpeningFillExtent = { min: band.min + frameWidth, max: band.max - frameWidth }
+  const [headRail, bottomRail] = sashRails(span, band, frameWidth)
+  const leftStile = leafBar({ min: -halfWidth, max: -halfWidth + frameWidth }, innerUp)
+  const rightStile = leafBar({ min: halfWidth - frameWidth, max: halfWidth }, innerUp)
+  const glass: OpeningFillPart = {
+    role: 'glass',
+    along: { min: -halfWidth + frameWidth, max: halfWidth - frameWidth },
+    up: innerUp,
+    thickness: GLASS_THICKNESS_MM,
   }
-  return [
-    headRail,
-    bottomRail,
-    leafBar({ min: -halfWidth, max: -halfWidth + frameWidth }, innerUp),
-    leafBar({ min: halfWidth - frameWidth, max: halfWidth }, innerUp),
-    glass,
-  ]
+  return [headRail, bottomRail, leftStile, rightStile, glass]
 }
 
 /** An undivided sash window: one sash spanning the whole opening. */
