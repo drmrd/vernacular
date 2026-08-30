@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { within, expect } from 'storybook/test'
 import { Field } from './index'
+import { expectArrisWrapper } from './arris-story-support'
 
 const meta: Meta<typeof Field> = {
   title: 'Design System/Field',
@@ -34,4 +35,37 @@ export const WithHint: Story = {
     const screen = within(canvasElement)
     await expect(screen.getByLabelText('Email')).toHaveAccessibleDescription('We never share it')
   },
+}
+
+// A filled field beside a disabled one. Field's public props expose no
+// invalid state, so this sheet omits one.
+function ArrisFieldStates() {
+  return (
+    <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <Field htmlFor="arris-project-name" label="Project name">
+        <input id="arris-project-name" defaultValue="Maple Street" />
+      </Field>
+      <Field htmlFor="arris-email" label="Email">
+        <input id="arris-email" disabled defaultValue="closed@example.com" />
+      </Field>
+    </div>
+  )
+}
+
+async function playArrisFieldStates(canvasElement: HTMLElement) {
+  await expectArrisWrapper(canvasElement)
+  const screen = within(canvasElement)
+  await expect(screen.getByLabelText('Email')).toBeDisabled()
+}
+
+export const ArrisLight: Story = {
+  globals: { designLanguage: 'arris', appearance: 'light' },
+  render: () => <ArrisFieldStates />,
+  play: async ({ canvasElement }) => playArrisFieldStates(canvasElement),
+}
+
+export const ArrisDark: Story = {
+  globals: { designLanguage: 'arris', appearance: 'dark' },
+  render: () => <ArrisFieldStates />,
+  play: async ({ canvasElement }) => playArrisFieldStates(canvasElement),
 }
