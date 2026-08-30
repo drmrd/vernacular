@@ -38,19 +38,23 @@ export function restoreUnenrolledNearWallTargets(
 }
 
 /**
+ * The slice of the framed scene the fade decision reads: the room outlines and the
+ * building's top elevation. Kept as one named shape so the pure predicate and the
+ * component's props cannot drift apart.
+ */
+type FadeGeometry = {
+  roomPolygons: readonly (readonly Point[])[]
+  buildingTopWorld?: number | undefined
+}
+
+/**
  * Reports whether the orbit camera counts as outside the building, so the near-wall
  * fade should engage: a thin wrapper over core's cameraOutsideBuilding that reads the
  * room outlines and building top elevation off the framed scene's shape rather than
  * taking them as separate positional arguments (issue #609).
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the pure predicate ships beside the component that calls it each frame and this slice's test imports fadeCameraOutside from ./near-wall-fade.
-export function fadeCameraOutside(
-  cameraWorld: Vector3,
-  framed: {
-    roomPolygons: readonly (readonly Point[])[]
-    buildingTopWorld?: number | undefined
-  },
-): boolean {
+export function fadeCameraOutside(cameraWorld: Vector3, framed: FadeGeometry): boolean {
   return cameraOutsideBuilding(cameraWorld, framed.roomPolygons, framed.buildingTopWorld)
 }
 
@@ -67,11 +71,9 @@ export function NearWallFade({
   enabled,
   roomPolygons,
   buildingTopWorld,
-}: {
+}: FadeGeometry & {
   targets: NearWallTarget[]
   enabled: boolean
-  roomPolygons: readonly (readonly Point[])[]
-  buildingTopWorld?: number | undefined
 }) {
   // The set this component last drove, so a rebuild that drops a wall can be seen here.
   const previousTargets = useRef(targets)
