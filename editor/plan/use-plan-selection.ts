@@ -151,10 +151,12 @@ function pointerUp(
  * `select-gesture` machine: a plain drag pans the view, a Shift- or Alt-drag
  * rubber-bands a marquee, and a bare click selects, shift-toggles, or clears. A
  * left-to-right marquee takes the entities fully inside it, a right-to-left marquee
- * also takes the ones it crosses, and on release Shift adds to the selection, Alt
- * subtracts, and neither replaces it. A press on an already-selected entity is
- * grabbed earlier by the move-drag, so this never sees it. Inert under any tool but
- * `select`.
+ * also takes the ones it crosses. The operation locks in from the modifiers held
+ * at the moment the drag flips from pending into marquee mode: Shift alone
+ * replaces the selection, Alt alone subtracts, and Shift+Alt together add;
+ * modifiers held at release play no part. A press on an already-selected entity
+ * is grabbed earlier by the move-drag, so this never sees it. Inert under any
+ * tool but `select`.
  */
 export function usePlanSelection(deps: PlanSelectionDeps): PlanSelection {
   const stateRef = useRef<SelectGestureState | null>(null)

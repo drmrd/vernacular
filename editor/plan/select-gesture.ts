@@ -3,8 +3,6 @@ import type { Point } from '../../core'
 import type { Bounds } from './fit'
 import type { ScreenPoint } from './viewport'
 
-export type SelectGestureMode = 'pending' | 'panning' | 'marquee'
-
 /**
  * How the marquee result folds into the standing selection: `replace` swaps it
  * wholesale, `add` unions with it (Shift and Alt together), `subtract` removes

@@ -26,8 +26,10 @@ function fold(
 
 /**
  * The next selection after a marquee release: the entities the rectangle picks
- * under its `mode`, folded into `current` by its `operation`. Replace swaps the
- * set, add unions (Shift), subtract removes (Alt).
+ * under its `mode`, folded into `current` by its `operation`. The operation is
+ * locked in at the pending-to-marquee transition, from the modifiers held on the
+ * sample that triggers it: Shift alone replaces the set, Alt alone subtracts,
+ * and Shift+Alt together add. Modifiers held at release play no part.
  */
 export function resolveMarqueeSelection(
   scene: SceneGraph,
