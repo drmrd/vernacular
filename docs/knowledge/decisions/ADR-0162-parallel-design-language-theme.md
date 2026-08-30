@@ -19,9 +19,12 @@ sourceFiles:
     editor/design-system/tokens.css,
     editor/design-system/tokens.ts,
     app/app.tsx,
+    .storybook/design-language-decorator.tsx,
+    .storybook/preview.ts,
+    scripts/ci/select-tests.mjs,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-08-16
 ---
 
 # ADR-0162: Parallel design-language theme and the Arris token contract
@@ -159,6 +162,31 @@ button and field families that migrate next.
 - The Arris contrast floors are not yet gated. The existing contrast test still measures the
   shipped tokens only; the parallel test that measures the Arris ink ramp against its true grounds
   is its own slice.
+
+## Addendum: the Storybook seam (2026-08-16)
+
+The component families migrate in Storybook before they reach the app, and the query flag has no
+read site there, so Storybook needs its own way to select a language. The seam is a toolbar
+global backed by an opt-in decorator: choosing `arris` mounts `ThemeProvider` around the story,
+and the default choice returns the story with no wrapper element, the same bare tree the preview
+rendered before the decorator existed. A second toolbar global picks the light or dark appearance
+for the wrapped case, narrowed by the same helpers beside `resolveTheme` that the shell's theme
+toggle uses.
+
+Loading the decorator changed the story environment in one deliberate way. The preview module now
+imports `ThemeProvider`, and with it the token layer: `tokens.css` and the attribute-scoped
+`tokens-arris.css` load for every story. Before this, a story received the tokens only if its
+module graph happened to reach the design-system barrel. The stories that import their component
+files directly rendered with every `var(--...)` reference unresolved, a state the running editor
+never shows because `app/app.tsx` always mounts `ThemeProvider`. Seven committed story baselines
+had captured that starved rendering (the toast and banner notifications, the project identity
+block, the snap panel, and the snap status) and were re-rendered on the CI runner as part of this
+slice. The Arris sheet stays inert under the default language; its attribute gate scopes every
+rule.
+
+The slice also closed a selection gap: `scripts/ci/select-tests.mjs` now treats `.storybook/` as
+a test directory, so a change under it selects the decorator's own tests. Before that, a
+`.storybook`-only change selected nothing and would have merged ungated.
 
 ## References
 

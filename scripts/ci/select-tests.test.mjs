@@ -55,6 +55,13 @@ describe('runSelectTests', () => {
     expect(d.outputs.paths).toBe('scripts/')
   })
 
+  it('includes .storybook when a Storybook file changes', async () => {
+    const d = deps(['.storybook/design-language-decorator.tsx'])
+    await runSelectTests(['--base', 'origin/main'], d)
+    expect(d.outputs.mode).toBe('some')
+    expect(d.outputs.paths).toBe('.storybook/')
+  })
+
   it('reports none when nothing test-bearing changed', async () => {
     const d = deps(['docs/plans/whatever.md'])
     await runSelectTests(['--base', 'origin/main'], d)
