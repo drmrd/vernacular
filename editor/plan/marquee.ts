@@ -126,13 +126,20 @@ export function entitiesInRect(
  * Crossing (intersect) selection: the ids of every wall, room, opening, and
  * dimension that shares any area with `rect`, including the ones only partially
  * inside. This is the right-to-left counterpart to the window selection of
- * `entitiesInRect`.
+ * `entitiesInRect`. When `options.dimensionsVisible` is `false`, every
+ * dimension is excluded from the result regardless of crossing.
  */
-export function entitiesCrossingRect(scene: SceneGraph, rect: Bounds): string[] {
+export function entitiesCrossingRect(
+  scene: SceneGraph,
+  rect: Bounds,
+  options?: { dimensionsVisible?: boolean },
+): string[] {
+  const dimensionsVisible = options?.dimensionsVisible ?? true
   return selectEntities(scene, {
     wall: (wall) => segmentCrossesRect(wall.start, wall.end, rect),
     room: (room) => polygonCrossesRect(room.polygon, rect),
     opening: (opening) => polygonCrossesRect(openingCorners(opening), rect),
-    dimension: (dimension) => segmentCrossesRect(dimension.start, dimension.end, rect),
+    dimension: (dimension) =>
+      dimensionsVisible && segmentCrossesRect(dimension.start, dimension.end, rect),
   })
 }
