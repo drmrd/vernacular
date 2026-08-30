@@ -11,13 +11,12 @@ export interface MarqueeResolution {
 
 function entitiesForMode(
   scene: SceneGraph,
-  rect: Bounds,
-  mode: MarqueeMode,
+  marquee: Pick<MarqueeResolution, 'rect' | 'mode'>,
   options: { dimensionsVisible?: boolean },
 ): string[] {
-  return mode === 'crossing'
-    ? entitiesCrossingRect(scene, rect, options)
-    : entitiesInRect(scene, rect, options)
+  return marquee.mode === 'crossing'
+    ? entitiesCrossingRect(scene, marquee.rect, options)
+    : entitiesInRect(scene, marquee.rect, options)
 }
 
 function fold(
@@ -40,15 +39,12 @@ function fold(
  * `options.dimensionsVisible` is `false`, every dimension is excluded from the
  * picked entities, matching what is visible.
  */
+// eslint-disable-next-line max-params -- options carries the overlay-visibility flag, mirroring hitTest and planClickTarget; folding it into scene/current/marquee would blur the fold-then-filter contract
 export function resolveMarqueeSelection(
   scene: SceneGraph,
   current: ReadonlySet<string>,
   marquee: MarqueeResolution,
   options: { dimensionsVisible?: boolean } = {},
 ): string[] {
-  return fold(
-    current,
-    entitiesForMode(scene, marquee.rect, marquee.mode, options),
-    marquee.operation,
-  )
+  return fold(current, entitiesForMode(scene, marquee, options), marquee.operation)
 }
