@@ -67,6 +67,7 @@ function openingLabels(openings: SceneGraph['openings']): (readonly [string, str
 // the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings label from
 // their element type instead of the generic "Opening" kind. Labels live in the bridge layer
 // because the three-dimensional overlay cannot import the editor layer.
+// eslint-disable-next-line react-refresh/only-export-components -- pure label derivation exported for its unit test, matching the exported helpers beside CameraControlsHint and NearWallFade
 export function entityLabels(graph: SceneGraph): Map<string, string> {
   return new Map<string, string>([
     ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
