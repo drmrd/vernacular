@@ -104,14 +104,21 @@ function dimensionContained(dimension: DimensionSceneNode, rect: Bounds): boolea
 /**
  * Window (contained) selection: the ids of walls whose both endpoints and rooms
  * whose every vertex lie inside `rect`. Partially overlapping entities are
- * excluded; crossing selection is deferred to a later editing slice.
+ * excluded; crossing selection is deferred to a later editing slice. When
+ * `options.dimensionsVisible` is `false`, every dimension is excluded from the
+ * result regardless of containment.
  */
-export function entitiesInRect(scene: SceneGraph, rect: Bounds): string[] {
+export function entitiesInRect(
+  scene: SceneGraph,
+  rect: Bounds,
+  options?: { dimensionsVisible?: boolean },
+): string[] {
+  const dimensionsVisible = options?.dimensionsVisible ?? true
   return selectEntities(scene, {
     wall: (wall) => wallContained(wall, rect),
     room: (room) => roomContained(room, rect),
     opening: (opening) => openingContained(opening, rect),
-    dimension: (dimension) => dimensionContained(dimension, rect),
+    dimension: (dimension) => dimensionsVisible && dimensionContained(dimension, rect),
   })
 }
 
