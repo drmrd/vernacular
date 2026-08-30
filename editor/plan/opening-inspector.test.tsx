@@ -42,6 +42,9 @@ const UNPARSEABLE_ENTRY = 'abc'
 const WIDTH_WITH_QUARTER_INCH_REMAINDER_MM = parseLength(`30 1/4"`)
 const EXPECTED_WIDTH_WITH_HALF_INCH_REMAINDER_MM = parseLength(`30 1/2"`)
 
+// A width with no fractional remainder at all, so no chip should read as active.
+const WIDTH_WITH_NO_FRACTIONAL_REMAINDER_MM = parseLength(`30"`)
+
 function buildOpening(): Opening {
   return createOpening({
     type: 'single-swing-door',
@@ -387,5 +390,30 @@ describe('OpeningInspector remove and options', () => {
 
     // The chip's name should describe what it now does: set the fraction, not add to it.
     expect(halfInchChip).toHaveAccessibleName(/set fraction to 1\/2 inch/i)
+  })
+
+  it('marks the fraction chip matching the current value as pressed, without any click', () => {
+    renderInspector(vi.fn(), 'imperial', {
+      opening: buildOpeningOfWidth(EXPECTED_WIDTH_WITH_HALF_INCH_REMAINDER_MM),
+    })
+
+    // The width already carries a 1/2" remainder, so its chip reads as pressed and no
+    // other chip does, even though nothing has been clicked in this render.
+    const widthChips = screen.getByRole('list', { name: /fraction chips for width/i })
+    const halfInchChip = within(widthChips).getByRole('button', { name: /1\/2/i })
+    const quarterInchChip = within(widthChips).getByRole('button', { name: /1\/4/i })
+    expect(halfInchChip).toHaveAttribute('aria-pressed', 'true')
+    expect(quarterInchChip).toHaveAttribute('aria-pressed', 'false')
+
+    cleanup()
+
+    // A whole-inch width carries no fractional remainder, so every chip reads unpressed.
+    renderInspector(vi.fn(), 'imperial', {
+      opening: buildOpeningOfWidth(WIDTH_WITH_NO_FRACTIONAL_REMAINDER_MM),
+    })
+    const widthChipsForWholeInch = screen.getByRole('list', { name: /fraction chips for width/i })
+    within(widthChipsForWholeInch)
+      .getAllByRole('button')
+      .forEach((chip) => expect(chip).toHaveAttribute('aria-pressed', 'false'))
   })
 })
