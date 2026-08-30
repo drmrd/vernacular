@@ -1,6 +1,8 @@
 import {
+  ceilingHeight,
   frameSceneCamera,
   kelvinToLinearRgb,
+  DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
@@ -34,6 +36,12 @@ export interface FramedScene {
   // The floor's room outlines, in plan millimeters, so the per-frame near-wall
   // fade can tell whether the orbit camera sits inside the building footprint.
   roomPolygons: readonly (readonly Point[])[]
+  // The building's top elevation, in Three.js world millimeters, so the near-wall fade
+  // can also treat a camera hovering above the roof as outside even when its plan
+  // position falls within a room's footprint. Only the single-floor build path (below)
+  // sets it today: the stacked path's FloorAssembly carries no per-floor ceiling height,
+  // so it cannot derive a building top yet.
+  buildingTopWorld?: number
 }
 
 /**
@@ -63,7 +71,16 @@ export function buildFramedScene(
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
   const roomPolygons = graph.rooms.map((room) => room.polygon)
-  return { root, pose, bounds, nearWallTargets, roomPolygons }
+  // The graph passed here always carries the single active floor's own node (the same
+  // data buildFloorGroup reads for the floor group's world Y) and its rooms (the same
+  // data buildRoomShell reads for each room's ceiling), so the building's top elevation
+  // is that floor's elevation plus the tallest room's ceiling height.
+  const floorElevation = graph.nodes[0]?.elevation ?? 0
+  const roomCeilingHeights = graph.rooms.map((room) => ceilingHeight(room))
+  const buildingTopWorld =
+    floorElevation +
+    (roomCeilingHeights.length > 0 ? Math.max(...roomCeilingHeights) : DEFAULT_CEILING_HEIGHT_MM)
+  return { root, pose, bounds, nearWallTargets, roomPolygons, buildingTopWorld }
 }
 
 /**
