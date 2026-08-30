@@ -38,11 +38,10 @@ export interface FramedScene {
   roomPolygons: readonly (readonly Point[])[]
   // The building's top elevation, in Three.js world millimeters, so the near-wall fade
   // can also treat a camera hovering above the roof as outside even when its plan
-  // position falls within a room's footprint. No live view sets this yet: the live
-  // reconciler routes every real scene through frameStackedScene, which does not compute
-  // it, and buildFramedScene (below), the only place that does, is reached only by tests,
-  // the dev harness, and the empty-graph guard. The stacked path gains this field in the
-  // next cycle of this branch (issue #609).
+  // position falls within a room's footprint. The live reconciler's frameStackedScene
+  // computes this as the highest of every floor's own elevation plus that floor's own
+  // tallest room ceiling (issue #609); buildFramedScene (below) computes the single-floor
+  // case the same way.
   buildingTopWorld?: number
 }
 
@@ -102,6 +101,10 @@ export interface FloorAssembly {
   subgroups: SceneRoot[]
   entities: NearWallEnrollmentEntities
   roomPolygons: readonly (readonly Point[])[]
+  // This floor's own reach toward the building top, in world millimeters: its elevation
+  // plus its own tallest room's ceiling height (DEFAULT_CEILING_HEIGHT_MM when it has no
+  // rooms). frameStackedScene takes the highest of these across every floor.
+  topWorld: number
 }
 
 /**
@@ -174,5 +177,6 @@ export function frameStackedScene(
     bounds,
     nearWallTargets,
     roomPolygons: floors.flatMap((floor) => floor.roomPolygons),
+    buildingTopWorld: Math.max(...floors.map((floor) => floor.topWorld)),
   }
 }
