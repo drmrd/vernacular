@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import './opening-inspector.css'
 import {
   clampOpeningWidth,
@@ -54,6 +54,22 @@ function withFractionSetMm(valueMm: number, fraction: number): number {
   )
 }
 
+/**
+ * The label of the fraction chip matching a dimension's current fractional inches,
+ * or null when the value is a whole number of inches. Rounded to the same precision
+ * as withFractionSetMm to erase the floating point noise a millimeter round trip
+ * introduces (e.g. 774.7mm converts to 30.500000000000004", not exactly 30.5").
+ */
+function activeFractionLabel(valueMm: number): string | null {
+  const inches = millimetersToInches(valueMm)
+  const fractionalInches = roundToDecimalPlaces(
+    inches - Math.floor(inches),
+    FRACTION_RESULT_PRECISION,
+  )
+  const activeChip = FRACTION_CHIPS.find((chip) => chip.fraction === fractionalInches)
+  return activeChip ? activeChip.label : null
+}
+
 // Default unit preferences for each system. The inspector formats and parses
 // against the active system's defaults, mirroring the wall thickness editor.
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
@@ -63,11 +79,16 @@ const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
 
 interface FractionChipsProps {
   dimensionLabel: string
+  valueMm: number
   onSetFraction: (fraction: number) => void
 }
 
-function FractionChips({ dimensionLabel, onSetFraction }: FractionChipsProps): ReactElement {
-  const [activeLabel, setActiveLabel] = useState<string | null>(null)
+function FractionChips({
+  dimensionLabel,
+  valueMm,
+  onSetFraction,
+}: FractionChipsProps): ReactElement {
+  const activeLabel = activeFractionLabel(valueMm)
   return (
     <ul
       className="opening-inspector__fraction-chips"
@@ -78,11 +99,9 @@ function FractionChips({ dimensionLabel, onSetFraction }: FractionChipsProps): R
           <button
             type="button"
             aria-label={`Set fraction to ${text} inch`}
+            aria-pressed={activeLabel === label}
             className={`opening-inspector__fraction-chip${activeLabel === label ? ' opening-inspector__fraction-chip--active' : ''}`}
-            onClick={() => {
-              setActiveLabel(label)
-              onSetFraction(fraction)
-            }}
+            onClick={() => onSetFraction(fraction)}
           >
             {label}
           </button>
@@ -173,6 +192,7 @@ function DimensionFields({
           {units === 'imperial' ? (
             <FractionChips
               dimensionLabel={label}
+              valueMm={current[key]}
               onSetFraction={(fraction) =>
                 onResize({ ...current, [key]: withFractionSetMm(current[key], fraction) })
               }
