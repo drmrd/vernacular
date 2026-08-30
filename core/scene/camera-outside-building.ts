@@ -15,14 +15,26 @@ import { worldToPlan } from './plan-to-world'
  * The `enabled` / view-mode guard lives in the bridge, not here, so this
  * predicate is intentionally flag-free.
  *
+ * A camera above the building's roofline is outside even if its plan
+ * position falls within a room's footprint (looking straight down through
+ * an open floor), so the optional `buildingTopWorld` elevation short-circuits
+ * to outside once the camera's world Y clears it.
+ *
  * @param cameraWorld The orbit camera position, in Three.js world millimeters.
  * @param roomPolygons The floor's room outlines, in plan millimeters.
+ * @param buildingTopWorld The building's top elevation, in Three.js world
+ *   millimeters (same Y-up frame as `cameraWorld`). Omit to test plan
+ *   containment only, matching prior behavior.
  * @see worldToPlan for the ground-plane projection this predicate applies.
  * @see isInteriorViewpoint for the containment test it negates.
  */
 export function cameraOutsideBuilding(
   cameraWorld: Vector3,
   roomPolygons: readonly (readonly Point[])[],
+  buildingTopWorld?: number,
 ): boolean {
+  if (buildingTopWorld !== undefined && cameraWorld.y > buildingTopWorld) {
+    return true
+  }
   return !isInteriorViewpoint(worldToPlan(cameraWorld), roomPolygons)
 }
