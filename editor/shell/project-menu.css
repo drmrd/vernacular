@@ -22,6 +22,27 @@
   color: var(--color-text);
 }
 
+/* The inline rename editor swaps in for the open menu list; it keeps the label,
+   input, and save action on one row, matching the floor switcher's rename form. */
+.project-menu__rename {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-overlay);
+}
+
+.project-menu__rename-input {
+  min-width: 12ch;
+}
+
 .project-menu__list {
   position: absolute;
   top: calc(100% + var(--space-1));
