@@ -121,7 +121,9 @@ function SaveStatusReadout({ status }: { status: AutosaveStatus }) {
   )
 }
 
-function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
+// Owns the session's project-rename wiring: the current name and the handler the
+// project menu calls, discarding blank input rather than dispatching an empty rename.
+function useProjectRename() {
   const session = useEditorSession()
   // Subscribes this header to session changes (e.g. a project rename) so the
   // breadcrumb and project menu re-render with the current project name.
@@ -132,6 +134,11 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
     if (trimmedName === '') return
     session.dispatch(renameProject(trimmedName))
   }
+  return { session, projectName, handleRename }
+}
+
+function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
+  const { session, projectName, handleRename } = useProjectRename()
   return (
     <div className="editor-shell__toolbar">
       <div className="editor-shell__brand">
