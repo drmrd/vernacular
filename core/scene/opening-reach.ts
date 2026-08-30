@@ -1,3 +1,4 @@
+import { openingTypeHasFill } from '../registries/opening-kind'
 import { openingMotion, type HingeMotion, type OpeningMotion } from './opening-motion'
 import { planToWorld } from './plan-to-world'
 import type { OpeningSceneNode } from './scene-graph'
@@ -141,6 +142,7 @@ export function openingUnderReach(
   let nearestId: string | null = null
   let nearestDistance = Infinity
   for (const node of openings) {
+    if (!openingTypeHasFill(node.type)) continue
     const openness = options?.openness?.get(node.id) ?? 0
     const distance = reachDistance(ray, node, { reachMm, openness })
     if (distance !== null && distance < nearestDistance) {
