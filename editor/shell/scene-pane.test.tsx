@@ -179,6 +179,34 @@ describe('ScenePane', () => {
     expect(screen.queryByText(/Preparing 3D view/i)).toBeNull()
   })
 
+  it('shows the loading placeholder for a canvas that mounts late already not-ready', async () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = graphWithGeometry
+    // The canvas suspends first, so it is not present in the tree at mount
+    // time. When it resolves, it is inserted into the pane subtree already
+    // carrying data-harness-ready="false" rather than being created empty
+    // and mutated afterward. The readiness observer must catch this
+    // insertion, not just later attribute changes on an already-mounted node.
+    suspendSceneCanvasOnce = true
+
+    render(<ScenePane />)
+    expect(screen.getByText(/Preparing 3D view/i)).toBeInTheDocument()
+
+    resolveSceneCanvas?.()
+
+    const canvasNode = await screen.findByTestId('live-scene-canvas')
+    expect(canvasNode.getAttribute('data-harness-ready')).toBe('false')
+    expect(await screen.findByText(/building the scene/i)).toBeInTheDocument()
+
+    act(() => {
+      canvasNode.setAttribute('data-harness-ready', 'true')
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/building the scene/i)).toBeNull()
+    })
+  })
+
   it('shows a quiet placeholder until the scene canvas signals its first frame is ready, then clears it', async () => {
     vi.stubGlobal('navigator', { gpu: {} })
     mockSceneGraph = graphWithGeometry
