@@ -8,6 +8,7 @@ import {
   formatAdaptiveLength,
   removeOpening,
   resizeOpening,
+  roundToDecimalPlaces,
   setOpeningType,
   type Command,
   type Opening,
@@ -23,16 +24,32 @@ import { RemoveControl } from './remove-control'
 
 const INCH_IN_MM = 25.4
 
+// Decimal places the rounded millimeter value keeps after the whole-plus-fraction
+// inch conversion below, chosen to erase floating point noise (e.g. 774.6999999999999)
+// without discarding any precision a fractional inch could plausibly need in mm.
+const FRACTION_RESULT_PRECISION = 4
+
 const FRACTION_CHIPS = [
-  { label: '1/16"', deltaMm: INCH_IN_MM / 16 },
-  { label: '1/8"', deltaMm: INCH_IN_MM / 8 },
-  { label: '1/4"', deltaMm: INCH_IN_MM / 4 },
-  { label: '3/8"', deltaMm: (3 * INCH_IN_MM) / 8 },
-  { label: '1/2"', deltaMm: INCH_IN_MM / 2 },
-  { label: '5/8"', deltaMm: (5 * INCH_IN_MM) / 8 },
-  { label: '3/4"', deltaMm: (3 * INCH_IN_MM) / 4 },
-  { label: '7/8"', deltaMm: (7 * INCH_IN_MM) / 8 },
+  { label: '1/16"', text: '1/16', fraction: 1 / 16 },
+  { label: '1/8"', text: '1/8', fraction: 1 / 8 },
+  { label: '1/4"', text: '1/4', fraction: 1 / 4 },
+  { label: '3/8"', text: '3/8', fraction: 3 / 8 },
+  { label: '1/2"', text: '1/2', fraction: 1 / 2 },
+  { label: '5/8"', text: '5/8', fraction: 5 / 8 },
+  { label: '3/4"', text: '3/4', fraction: 3 / 4 },
+  { label: '7/8"', text: '7/8', fraction: 7 / 8 },
 ] as const
+
+/**
+ * Replaces the fractional part of a dimension while preserving its whole inches:
+ * a width of 30 1/4" pressed with the 1/2" chip becomes 30 1/2", not 30 3/4".
+ * Idempotent by construction, since it always derives from the whole inches
+ * already present in valueMm rather than accumulating onto the previous press.
+ */
+function withFractionSetMm(valueMm: number, fraction: number): number {
+  const wholeInches = Math.floor(valueMm / INCH_IN_MM)
+  return roundToDecimalPlaces((wholeInches + fraction) * INCH_IN_MM, FRACTION_RESULT_PRECISION)
+}
 
 // Default unit preferences for each system. The inspector formats and parses
 // against the active system's defaults, mirroring the wall thickness editor.
@@ -43,24 +60,25 @@ const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
 
 interface FractionChipsProps {
   dimensionLabel: string
-  onNudge: (deltaMm: number) => void
+  onSetFraction: (fraction: number) => void
 }
 
-function FractionChips({ dimensionLabel, onNudge }: FractionChipsProps): ReactElement {
+function FractionChips({ dimensionLabel, onSetFraction }: FractionChipsProps): ReactElement {
   const [activeLabel, setActiveLabel] = useState<string | null>(null)
   return (
     <ul
       className="opening-inspector__fraction-chips"
       aria-label={`Fraction chips for ${dimensionLabel}`}
     >
-      {FRACTION_CHIPS.map(({ label, deltaMm }) => (
+      {FRACTION_CHIPS.map(({ label, text, fraction }) => (
         <li key={label}>
           <button
             type="button"
+            aria-label={`Set fraction to ${text} inch`}
             className={`opening-inspector__fraction-chip${activeLabel === label ? ' opening-inspector__fraction-chip--active' : ''}`}
             onClick={() => {
               setActiveLabel(label)
-              onNudge(deltaMm)
+              onSetFraction(fraction)
             }}
           >
             {label}
@@ -152,7 +170,9 @@ function DimensionFields({
           {units === 'imperial' ? (
             <FractionChips
               dimensionLabel={label}
-              onNudge={(delta) => onResize({ ...current, [key]: current[key] + delta })}
+              onSetFraction={(fraction) =>
+                onResize({ ...current, [key]: withFractionSetMm(current[key], fraction) })
+              }
             />
           ) : null}
         </Stack>
