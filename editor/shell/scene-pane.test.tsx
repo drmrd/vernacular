@@ -113,14 +113,20 @@ describe('ScenePane', () => {
     expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
   })
 
-  it('keeps the live scene canvas mounted and overlays empty-floor guidance when the active floor has no geometry', () => {
+  it('keeps the live scene canvas mounted and overlays empty-floor guidance when the active floor has no geometry', async () => {
     vi.stubGlobal('navigator', { gpu: {} })
     mockSceneGraph = emptyGraph
 
     const { container } = render(<ScenePane />)
 
+    // The loading line owns the not-ready state, so mark the canvas ready
+    // before asserting the guidance (the readiness observer reacts async).
+    act(() => {
+      screen.getByTestId('live-scene-canvas').setAttribute('data-harness-ready', 'true')
+    })
+
     // The geometry-empty title and guidance copy from the design-system EmptyState.
-    expect(screen.getByText(/Nothing to show in 3D yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Nothing to show in 3D yet/i)).toBeInTheDocument()
     expect(screen.getByText(/Draw walls in plan view/i)).toBeInTheDocument()
     // Rendered through the EmptyState primitive, not a raw div.
     expect(container.querySelector('.ds-status--empty')).not.toBeNull()
@@ -198,5 +204,31 @@ describe('ScenePane', () => {
     await waitFor(() => {
       expect(screen.queryByText(/building the scene/i)).toBeNull()
     })
+  })
+
+  it('shows only the loading placeholder over an empty floor until the scene is ready, then swaps to the empty-floor guidance', async () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = emptyGraph
+
+    render(<ScenePane />)
+
+    // The floor has no geometry and the canvas has not reported its first
+    // frame yet, so both overlay conditions are true at once. The loading
+    // placeholder must win: the empty-floor guidance is not also shown.
+    const canvasNode = screen.getByTestId('live-scene-canvas')
+    expect(canvasNode.getAttribute('data-harness-ready')).toBe('false')
+    expect(screen.getByText(/building the scene/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Nothing to show in 3D yet/i)).toBeNull()
+
+    // Once the canvas signals its first frame is ready, the empty-floor
+    // guidance takes over and the loading line clears.
+    act(() => {
+      canvasNode.setAttribute('data-harness-ready', 'true')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Nothing to show in 3D yet/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/building the scene/i)).toBeNull()
   })
 })
