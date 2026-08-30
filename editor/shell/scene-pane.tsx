@@ -4,6 +4,7 @@ import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { detectRenderBackend } from '../../engine'
 import { SceneCanvas, useActiveFloorId, useSceneGraph } from '../../bridge'
 import { EmptyState, LoadingState } from '../design-system'
+import './scene-pane.css'
 
 // The pane lives in the editor layer so the styled fallback can use the design
 // system, which the bridge layer cannot import.
@@ -20,18 +21,21 @@ export function ScenePane(): ReactElement {
     )
   }
   const floorGraph = sceneGraphForFloor(graph, activeFloorId)
-  if (!sceneGraphHasGeometry(floorGraph)) {
-    return (
-      <EmptyState
-        asRegion={false}
-        title="Nothing to show in 3D yet"
-        description="Draw walls in plan view to see them here in 3D."
-      />
-    )
-  }
+  const isActiveFloorEmpty = !sceneGraphHasGeometry(floorGraph)
   return (
-    <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
-      <SceneCanvas />
-    </Suspense>
+    <div className="scene-pane">
+      <Suspense fallback={<LoadingState message="Preparing 3D view..." />}>
+        <SceneCanvas />
+      </Suspense>
+      {isActiveFloorEmpty ? (
+        <div className="scene-pane__overlay">
+          <EmptyState
+            asRegion={false}
+            title="Nothing to show in 3D yet"
+            description="Draw walls in plan view to see them here in 3D."
+          />
+        </div>
+      ) : null}
+    </div>
   )
 }
