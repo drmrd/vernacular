@@ -135,14 +135,24 @@ function withId<Entity extends { id: string }>(
  * then stairs, and only when none is in range does the search fall back to the
  * room whose polygon contains the point. Stairs rank where they paint, over the
  * floor fills but under the wall strokes, so a click where a run meets the wall
- * it lands on still selects the wall.
+ * it lands on still selects the wall. When `options.dimensionsVisible` is
+ * `false`, the dimension pass is skipped entirely so the hit falls through to
+ * whatever else is beneath a hidden dimension.
  */
-export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
+export function hitTest(
+  scene: SceneGraph,
+  point: Point,
+  tolerance: number,
+  options?: { dimensionsVisible?: boolean },
+): string | null {
+  const dimensionsVisible = options?.dimensionsVisible ?? true
   const ids = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
   return (
     hitTestOpenings(withId(scene.openings, ids), point, tolerance) ??
     hitTestWalls(withId(scene.walls, ids), point, tolerance) ??
-    hitTestDimensions(withId(scene.dimensions, ids), point, tolerance) ??
+    (dimensionsVisible
+      ? hitTestDimensions(withId(scene.dimensions, ids), point, tolerance)
+      : null) ??
     hitTestStairs(withId(scene.stairs, ids), point) ??
     containingRoomId(withId(scene.rooms, ids), point)
   )
