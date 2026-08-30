@@ -64,3 +64,130 @@ describe('scene-nav-toolbar.css', () => {
     expect(mode).toMatch(/min-height:\s*var\(--size-target-min\)/)
   })
 })
+
+/*
+ * Arris hover states brighten a border rather than blooming a glow (the Arris spec,
+ * section 8), so the scoped hover rule cancels the fill the shipped language paints.
+ * Cancelling a background says nothing about a label, and the declaration that
+ * reversed the label onto that fill is still in force at a lower specificity. Left
+ * alone, the label keeps reversing to the ground while the ground behind it is that
+ * same ground, which reads as an empty control. This is the lesson ADR-0163's
+ * addendum ends on: a rule that cancels a fill owes an answer about the label.
+ *
+ * The design system's cascade scanner cannot catch this one. It resolves the ground
+ * from the control's own box or from the impression drawn into its pseudo-element,
+ * and a toolbar button that cancels its fill has neither: what shows through is the
+ * toolbar surface. So the pairing is asserted here instead.
+ *
+ * This file reads the stylesheet as text rather than importing a design-system
+ * helper, because bridge/ may not import from editor/ (rule 1).
+ */
+
+const ARRIS_SCOPE = "[data-design-language='arris']"
+const HOVERED_TOGGLE = `${ARRIS_SCOPE} .scene-nav-toolbar__btn:hover:not(:disabled)`
+
+// Every rule in this stylesheet is introduced by a comment, and a comment reads as
+// part of the next rule's selector to any regex simple enough to live here.
+const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+/**
+ * Every rule in the stylesheet, in source order.
+ *
+ * This is a reader, not a parser. It assumes what this stylesheet actually contains:
+ * single ungrouped selectors, no ids, no pseudo-elements, and no at-rules. A grouped
+ * selector or an id would be read or scored wrongly and nothing here would say so.
+ */
+function allRules(): { selector: string; body: string }[] {
+  return [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+    selector: (match[1] ?? '').trim(),
+    body: match[2] ?? '',
+  }))
+}
+
+/** The body of the rule opened by exactly this selector. */
+function ruleBody(selector: string): string | undefined {
+  return allRules().find((rule) => rule.selector === selector)?.body
+}
+
+function declaredValue(body: string, property: string): string | undefined {
+  const match = body.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`))
+  return match?.[1]?.trim()
+}
+
+describe('the Arris 3D navigation toolbar', () => {
+  it('brightens the hovered button border instead of blooming its fill', () => {
+    const hover = ruleBody(HOVERED_TOGGLE)
+
+    expect(hover, `no Arris-scoped rule for ${HOVERED_TOGGLE}`).toBeDefined()
+    expect(
+      declaredValue(hover ?? '', 'background'),
+      'hover brightens a border and never blooms a fill (the spec, section 8)',
+    ).toBe('transparent')
+    expect(declaredValue(hover ?? '', 'border-color')).toBe('var(--color-text)')
+  })
+
+  it('restates the label on the rule that cancels the hover fill', () => {
+    const hover = ruleBody(HOVERED_TOGGLE) ?? ''
+
+    expect(
+      declaredValue(hover, 'color'),
+      `The shipped hover rule reverses the label onto the fill it paints. This rule ` +
+        `takes the fill away, so it owes an answer about the label: without one the ` +
+        `label keeps reversing to the ground it is now sitting on.`,
+    ).toBe('var(--color-text)')
+  })
+})
+
+/*
+ * The rule above cancels the hover fill, and it outranks the pressed rule it shares
+ * every property with, so on its own it takes the impression away from a toggle that
+ * is both pressed and hovered: the ink fill, the indicator border, and the reversed
+ * label all go, and an active toggle becomes indistinguishable from an inactive one
+ * under the pointer. A declaration read on its own terms cannot show that. These
+ * resolve the cascade for a state instead, the way the design system's scanner does,
+ * and assert on what actually wins.
+ */
+
+/** Specificity as one number, since these selectors carry no ids or element names. */
+function specificity(selector: string): number {
+  const count = (pattern: RegExp): number => (selector.match(pattern) ?? []).length
+  return count(/\.[\w-]+/g) + count(/\[[^\]]*\]/g) + count(/:[a-z-]+(\([^)]*\))?/g)
+}
+
+/**
+ * The declaration the cascade lands on for a state: the strongest specificity among
+ * the rules that apply, and the last one in source order on a tie.
+ */
+function winning(applying: string[], property: string): string | undefined {
+  let winner: string | undefined
+  let strongest = -1
+  for (const rule of allRules().filter((candidate) => applying.includes(candidate.selector))) {
+    const value = declaredValue(rule.body, property)
+    if (value !== undefined && specificity(rule.selector) >= strongest) {
+      strongest = specificity(rule.selector)
+      winner = value
+    }
+  }
+  return winner
+}
+
+// Every rule that applies to a toggle which is pressed and hovered at once.
+const PRESSED_AND_HOVERED = [
+  '.scene-nav-toolbar__btn',
+  '.scene-nav-toolbar__btn:hover:not(:disabled)',
+  ".scene-nav-toolbar__btn[aria-pressed='true']",
+  HOVERED_TOGGLE,
+  `${ARRIS_SCOPE} .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled)`,
+]
+
+describe('an Arris toggle that is pressed and hovered at once', () => {
+  it('keeps the impression the pressed state paints', () => {
+    expect(
+      winning(PRESSED_AND_HOVERED, 'background'),
+      `The scoped hover rule cancels the fill and outranks the pressed rule, so a ` +
+        `pressed toggle under the pointer loses the impression that says it is active.`,
+    ).toBe('var(--color-surface-active)')
+    expect(winning(PRESSED_AND_HOVERED, 'border-color')).toBe('var(--color-indicator)')
+    expect(winning(PRESSED_AND_HOVERED, 'color')).toBe('var(--color-on-surface-active)')
+  })
+})

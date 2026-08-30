@@ -81,6 +81,24 @@ const PROBES: Probe[] = [
     state: ':hover',
   },
   {
+    name: 'tool rack slot, active',
+    stylesheet: 'editor/tools/tools-panel.css',
+    base: '.tools-panel__chip',
+    state: '.is-active',
+  },
+  {
+    name: 'scene navigation mode, pressed',
+    stylesheet: 'bridge/react/scene-nav-toolbar.css',
+    base: '.scene-nav-toolbar__mode',
+    state: "[aria-pressed='true']",
+  },
+  {
+    name: 'scene navigation toggle, pressed',
+    stylesheet: 'bridge/react/scene-nav-toolbar.css',
+    base: '.scene-nav-toolbar__btn',
+    state: "[aria-pressed='true']",
+  },
+  {
     name: 'menu surface row, hovered',
     stylesheet: 'menu-surface.css',
     base: '.ds-menu-surface__row',

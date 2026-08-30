@@ -40,3 +40,91 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
+
+/*
+ * The Arris tool rack (the Arris spec, section 10): a rack of 32px slots holding
+ * 20px glyphs. Under ADR-0163 the 32px is paint and not a hit area. The chip's own
+ * box keeps the 40px target the shipped layer promises, so no slot's hit area
+ * reaches into its neighbour's, and the slot is drawn inside that box by a
+ * pseudo-element, which can carry the fill, the border weight, and the 2px machined
+ * chamfer that a padded box cannot hold.
+ *
+ * The slot is the first drawn geometry in the system that is larger than the 28px
+ * standard control, so it is the first that can outgrow the box carrying it: on a
+ * coarse pointer the drawn control height rises to the 44px touch floor, and a slot
+ * one grid step above that would spill. Taking the smaller of the slot and the
+ * target holds the no-overflow rule whatever either token resolves to, and collapses
+ * the two onto each other where a finger has to hit the control, which is the point
+ * of the touch floor.
+ */
+[data-design-language='arris'] .tools-panel {
+  --tools-panel-slot: min(
+    calc(var(--size-control-height) + var(--space-1)),
+    var(--size-target-min)
+  );
+}
+
+[data-design-language='arris'] .tools-panel__chip {
+  position: relative;
+  /* A stacking context of the chip's own, so the slot can sit behind the label
+     without falling behind the rack's background. */
+  isolation: isolate;
+}
+
+[data-design-language='arris'] .tools-panel__chip::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--tools-panel-slot)) / 2);
+  /* The inline start clears the gutter the active slot's scribe line is drawn in.
+     Every slot reserves it, active or not, so marking one does not shift the rack. */
+  inset-inline: var(--border-width-scribe) 0;
+  border: var(--border-width-resting) solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+/* The glyph reads as seated in the slot rather than filling it: 20px of icon with
+   6px of ground on each side. It never shrinks, because a rack whose glyphs change
+   size with their label lengths stops reading as a column of slots. */
+[data-design-language='arris'] .tools-panel__chip svg {
+  flex: none;
+  width: calc(var(--tools-panel-slot) - var(--space-3));
+  height: calc(var(--tools-panel-slot) - var(--space-3));
+}
+
+/* The active slot is a full impression: it fills with ink and the glyph and label
+   reverse to the ground (the spec, section 8). The fill moves to the pseudo-element,
+   so the chip's own box paints nothing and the reversed label rides the element that
+   actually holds the text.
+   A chip carries the segmented-option class too, and that stylesheet states the same
+   treatment at the same specificity, so this pair looks redundant in a browser. It is
+   deliberate: the rack owns its own slot geometry, and the cascade-legibility scanner
+   resolves one stylesheet at a time, so a rack that borrowed its fill from another
+   file would leave the scanner with no ground to measure the label against. */
+[data-design-language='arris'] .tools-panel__chip.is-active {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-on-surface-active);
+}
+
+[data-design-language='arris'] .tools-panel__chip.is-active::before {
+  border-width: var(--border-width-active);
+  border-color: var(--color-border);
+  background: var(--color-surface-active);
+}
+
+/* The scribe line: the one persistent mark of the screen's primary rack (the spec,
+   section 8). Layout Blue is lawful here because a scribe is a line and never a
+   fill (refusal 2), but a line still owes 3:1 against its ground, and the accent
+   measures 2.30:1 on the light ink fill and 2.26:1 on the dark one. So it is drawn
+   in the gutter the impression reserves, on the bench, where it clears the floor in
+   both appearances. */
+[data-design-language='arris'] .tools-panel__chip.is-active::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset-block: calc((100% - var(--tools-panel-slot)) / 2);
+  inset-inline-start: 0;
+  width: var(--border-width-scribe);
+  background: var(--color-accent);
+}

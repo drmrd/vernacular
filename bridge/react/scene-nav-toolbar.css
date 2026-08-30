@@ -82,11 +82,14 @@
 
 /* The active mode is marked by the brass indicator, matching the pressed state of
    the 2D shell's icon buttons. The transparent baseline border keeps the segment
-   the same size whether or not it carries the indicator. */
+   the same size whether or not it carries the indicator. The label takes the
+   reversed on-fill role rather than the ordinary text ink: this language resolves
+   the two to the same color, and Arris reverses the label to the ground so a full
+   ink impression stays readable. */
 .scene-nav-toolbar__mode[aria-pressed='true'] {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .scene-nav-toolbar__mode:focus-visible {
@@ -133,15 +136,16 @@
 
 .scene-nav-toolbar__btn:hover:not(:disabled) {
   background: var(--color-surface-active);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 /* A pressed toggle button (such as the click-select toggle) carries the brass
-   indicator, matching the active mode segment and the 2D shell's pressed icon buttons. */
+   indicator, matching the active mode segment and the 2D shell's pressed icon buttons.
+   Its label reverses onto the fill for the same reason the mode segment's does. */
 .scene-nav-toolbar__btn[aria-pressed='true'] {
   background: var(--color-surface-active);
   border-color: var(--color-indicator);
-  color: var(--color-text);
+  color: var(--color-on-surface-active);
 }
 
 .scene-nav-toolbar__btn:focus-visible {
@@ -177,4 +181,29 @@
 .scene-nav-toolbar__temperature-readout {
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Arris hover brightens a border and never blooms a glow (the Arris spec, section 8),
+ * so the fill goes away here. The label has to come back with it: the rule above
+ * reverses the label for the fill it paints, and under Arris that reversal over the
+ * toolbar surface would be the ground drawn on itself. This is the pairing ADR-0163's
+ * addendum ends on, which is that a rule cancelling a fill owes an answer about the
+ * label.
+ */
+[data-design-language='arris'] .scene-nav-toolbar__btn:hover:not(:disabled) {
+  background: transparent;
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+/* A pressed toggle keeps its impression under the pointer. The rule above cancels the
+   hover fill and shares every property with the pressed rule while outranking it, so
+   without this a hovered active toggle would read exactly like an inactive one. The
+   shipped language reaches the same place by painting the same fill for both states;
+   this restates it where the two have been pulled apart. */
+[data-design-language='arris'] .scene-nav-toolbar__btn[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--color-surface-active);
+  border-color: var(--color-indicator);
+  color: var(--color-on-surface-active);
 }
