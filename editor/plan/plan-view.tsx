@@ -237,6 +237,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     tool,
     viewport,
     setViewport,
+    dimensionsVisible: viewOverlay.showDimensions,
   })
   const planHover = usePlanHover({ graph: selectableGraph, selectedIds, tool, viewport })
   const wallFaceHighlight = useWallFacePlanHighlight({ selectedWall, tool, viewport })

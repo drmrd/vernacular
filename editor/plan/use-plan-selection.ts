@@ -25,6 +25,9 @@ interface PlanSelectionDeps {
   tool: ToolId
   viewport: Viewport
   setViewport: Dispatch<SetStateAction<Viewport>>
+  // Whether the dimensions overlay is currently shown; a hidden dimension falls
+  // through to whatever else is beneath the click, matching what is visible.
+  dimensionsVisible: boolean
 }
 
 export interface PlanSelection {
@@ -51,7 +54,9 @@ interface GestureHandle {
  * underlay), so a piece or wall over the underlay selects rather than the image.
  */
 function applyClick(deps: PlanSelectionDeps, world: Point, shift: boolean): void {
-  const hit = planClickTarget(deps.graph, deps.furniture, world)
+  const hit = planClickTarget(deps.graph, deps.furniture, world, {
+    dimensionsVisible: deps.dimensionsVisible,
+  })
   if (hit === null) {
     if (!shift) {
       deps.selection.clear()
