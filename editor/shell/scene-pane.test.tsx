@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
 import { ScenePane } from './scene-pane'
 
@@ -63,7 +63,7 @@ vi.mock('../../bridge', () => ({
         }
       })
     }
-    return <div data-testid="live-scene-canvas" />
+    return <div data-testid="live-scene-canvas" data-harness-ready="false" />
   },
   useSceneGraph: () => mockSceneGraph,
   useActiveFloorId: () => 'g',
@@ -171,5 +171,32 @@ describe('ScenePane', () => {
       expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
     })
     expect(screen.queryByText(/Preparing 3D view/i)).toBeNull()
+  })
+
+  it('shows a quiet placeholder until the scene canvas signals its first frame is ready, then clears it', async () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = graphWithGeometry
+
+    render(<ScenePane />)
+
+    // The live canvas mounts right away (no Suspense in play here), but its
+    // data-harness-ready attribute starts at "false": the first frame has not
+    // settled yet. ScenePane observes that attribute from outside the canvas
+    // subtree, so a quiet loading line covers the gap instead of showing
+    // nothing while the scene assembles.
+    const canvasNode = screen.getByTestId('live-scene-canvas')
+    expect(canvasNode.getAttribute('data-harness-ready')).toBe('false')
+    expect(screen.getByText(/building the scene/i)).toBeInTheDocument()
+
+    // The canvas subtree flips the attribute once its first frame settles.
+    act(() => {
+      canvasNode.setAttribute('data-harness-ready', 'true')
+    })
+
+    // Attribute observation is asynchronous, so the placeholder clears on a
+    // later tick rather than synchronously with the mutation above.
+    await waitFor(() => {
+      expect(screen.queryByText(/building the scene/i)).toBeNull()
+    })
   })
 })
