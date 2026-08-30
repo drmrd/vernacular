@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   FLIP_OPENING,
@@ -36,6 +36,11 @@ const EXPECTED_WIDTH = '0.813'
 const NEW_WIDTH_ENTRY = '0.9'
 const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, { assumeUnit: METRIC_ASSUMED_UNIT })
 const UNPARSEABLE_ENTRY = 'abc'
+
+// A width with a 1/4" remainder, so a chip that sets the fraction to 1/2" is
+// distinguishable from a chip that merely adds 1/2" to whatever is already there.
+const WIDTH_WITH_QUARTER_INCH_REMAINDER_MM = parseLength(`30 1/4"`)
+const EXPECTED_WIDTH_WITH_HALF_INCH_REMAINDER_MM = parseLength(`30 1/2"`)
 
 function buildOpening(): Opening {
   return createOpening({
@@ -88,12 +93,13 @@ function renderInspectorForOpening(opening: Opening, siblingOpenings: readonly O
 function renderInspector(
   dispatch: (command: unknown) => void,
   units: 'metric' | 'imperial' = UNITS,
-  siblingOpenings: readonly Opening[] = [],
+  overrides: { siblingOpenings?: readonly Opening[]; opening?: Opening } = {},
 ) {
+  const { siblingOpenings = [], opening = buildOpening() } = overrides
   render(
     <OpeningInspector
       floorId={FLOOR_ID}
-      opening={buildOpening()}
+      opening={opening}
       units={units}
       siblingOpenings={siblingOpenings}
       dispatch={dispatch as never}
@@ -103,6 +109,15 @@ function renderInspector(
 
 function onlyCommand<P>(dispatch: ReturnType<typeof vi.fn>): Command<P> {
   return dispatch.mock.calls[0]?.[0] as Command<P>
+}
+
+function expectDispatchedWidth(dispatch: ReturnType<typeof vi.fn>, calls: number, width: number) {
+  expect(dispatch).toHaveBeenCalledTimes(calls)
+  const command = dispatch.mock.calls[calls - 1]?.[0] as Command<ResizeOpeningParams>
+  expect(command).toMatchObject({
+    type: RESIZE_OPENING,
+    params: { dimensions: { width, height: HEIGHT_MM, sillHeight: SILL_HEIGHT_MM } },
+  })
 }
 
 afterEach(cleanup)
@@ -159,7 +174,7 @@ describe('OpeningInspector', () => {
       sillHeight: SILL_HEIGHT_MM,
       id: 'o2',
     })
-    renderInspector(dispatch, UNITS, [neighbor])
+    renderInspector(dispatch, UNITS, { siblingOpenings: [neighbor] })
 
     const widthInput = screen.getByLabelText(/width/i)
     await user.clear(widthInput)
@@ -353,14 +368,24 @@ describe('OpeningInspector remove and options', () => {
     })
   })
 
-  it('clicking a fraction chip dispatches a resize command', async () => {
+  it('sets the fractional part of the dimension on each press, instead of adding to the current value', async () => {
     const dispatch = vi.fn()
     const user = userEvent.setup()
-    renderInspector(dispatch, 'imperial')
+    renderInspector(dispatch, 'imperial', {
+      opening: buildOpeningOfWidth(WIDTH_WITH_QUARTER_INCH_REMAINDER_MM),
+    })
 
-    const chip = screen.getAllByRole('button', { name: /1\/4/i })[0]!
-    await user.click(chip)
+    const widthChips = screen.getByRole('list', { name: /fraction chips for width/i })
+    const halfInchChip = within(widthChips).getByRole('button', { name: /1\/2/i })
 
-    expect(dispatch).toHaveBeenCalledTimes(1)
+    // A first press sets the fraction to 1/2", it does not add 1/2" to 1/4". A
+    // second press of the same chip is idempotent: it does not add a second 1/2".
+    await user.click(halfInchChip)
+    expectDispatchedWidth(dispatch, 1, EXPECTED_WIDTH_WITH_HALF_INCH_REMAINDER_MM)
+    await user.click(halfInchChip)
+    expectDispatchedWidth(dispatch, 2, EXPECTED_WIDTH_WITH_HALF_INCH_REMAINDER_MM)
+
+    // The chip's name should describe what it now does: set the fraction, not add to it.
+    expect(halfInchChip).toHaveAccessibleName(/set fraction to 1\/2 inch/i)
   })
 })
