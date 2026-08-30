@@ -1,10 +1,4 @@
-import {
-  ceilingHeight,
-  DEFAULT_CEILING_HEIGHT_MM,
-  type SceneGraph,
-  type SceneNode,
-  type SurfaceTreatment,
-} from '../../core'
+import { type SceneGraph, type SceneNode, type SurfaceTreatment } from '../../core'
 import type { EdgeOverlayOptions } from '../../engine'
 import {
   buildFloorBuild,
@@ -19,6 +13,7 @@ import {
 } from './floor-build'
 import {
   buildFramedScene,
+  floorTopWorld,
   frameStackedScene,
   refreshGroundPlane,
   type FloorAssembly,
@@ -42,20 +37,14 @@ export interface FramedSceneReconciler {
 /** Maps a cached floor build to the assembly input frameStackedScene stacks it from: its
  *  node, its ordered sub-group list (wall first, then rooms, openings, furniture), the
  *  entities its fade targets enroll from, the room outlines it contributes, and its own
- *  reach toward the building top (its elevation plus its own tallest room's ceiling,
- *  falling back to DEFAULT_CEILING_HEIGHT_MM when it has no rooms, consistent with
- *  buildFramedScene's single-floor computation). */
+ *  reach toward the building top (floorTopWorld). */
 function floorAssembly(build: CachedFloorBuild): FloorAssembly {
-  const roomCeilingHeights = build.entities.rooms.map((room) => ceilingHeight(room))
-  const topWorld =
-    build.floorNode.elevation +
-    (roomCeilingHeights.length > 0 ? Math.max(...roomCeilingHeights) : DEFAULT_CEILING_HEIGHT_MM)
   return {
     node: build.floorNode,
     subgroups: [build.wall, ...collectSubgroupGroups(build.rooms, build.openings, build.furniture)],
     entities: build.entities,
     roomPolygons: build.roomPolygons,
-    topWorld,
+    topWorld: floorTopWorld(build.floorNode.elevation, build.entities.rooms),
   }
 }
 

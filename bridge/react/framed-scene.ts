@@ -7,6 +7,7 @@ import {
   type Bounds3,
   type CameraPose,
   type Point,
+  type RoomSceneNode,
   type SceneGraph,
   type SceneNode,
   type SurfaceTreatment,
@@ -38,11 +39,23 @@ export interface FramedScene {
   roomPolygons: readonly (readonly Point[])[]
   // The building's top elevation, in Three.js world millimeters, so the near-wall fade
   // can also treat a camera hovering above the roof as outside even when its plan
-  // position falls within a room's footprint. The live reconciler's frameStackedScene
-  // computes this as the highest of every floor's own elevation plus that floor's own
-  // tallest room ceiling (issue #609); buildFramedScene (below) computes the single-floor
-  // case the same way.
+  // position falls within a room's footprint. Computed per floor by floorTopWorld
+  // (issue #609).
   buildingTopWorld?: number
+}
+
+/**
+ * A floor's reach toward the building top, in Three.js world millimeters: its elevation
+ * plus the tallest of its rooms' ceiling heights, or DEFAULT_CEILING_HEIGHT_MM when it has
+ * no rooms. Shared by buildFramedScene's single-floor case and the reconciler's per-floor
+ * assembly (issue #609) so the two stay in lockstep by construction.
+ */
+export function floorTopWorld(elevation: number, rooms: readonly RoomSceneNode[]): number {
+  const ceilingHeights = rooms.map((room) => ceilingHeight(room))
+  return (
+    elevation +
+    (ceilingHeights.length > 0 ? Math.max(...ceilingHeights) : DEFAULT_CEILING_HEIGHT_MM)
+  )
 }
 
 /**
@@ -72,17 +85,10 @@ export function buildFramedScene(
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
   const roomPolygons = graph.rooms.map((room) => room.polygon)
-  // The graph passed here always carries the single active floor's own node (the same
-  // data buildFloorGroup reads for the floor group's world Y) and its rooms (the same
-  // data buildRoomShell reads for each room's ceiling), so the building's top elevation
-  // is that floor's elevation plus the tallest room's ceiling height.
   // Callers pass zero or one floor node; a multi-floor graph would only pick up the
   // first node's elevation here.
   const floorElevation = graph.nodes[0]?.elevation ?? 0
-  const roomCeilingHeights = graph.rooms.map((room) => ceilingHeight(room))
-  const buildingTopWorld =
-    floorElevation +
-    (roomCeilingHeights.length > 0 ? Math.max(...roomCeilingHeights) : DEFAULT_CEILING_HEIGHT_MM)
+  const buildingTopWorld = floorTopWorld(floorElevation, graph.rooms)
   return { root, pose, bounds, nearWallTargets, roomPolygons, buildingTopWorld }
 }
 
@@ -101,9 +107,8 @@ export interface FloorAssembly {
   subgroups: SceneRoot[]
   entities: NearWallEnrollmentEntities
   roomPolygons: readonly (readonly Point[])[]
-  // This floor's own reach toward the building top, in world millimeters: its elevation
-  // plus its own tallest room's ceiling height (DEFAULT_CEILING_HEIGHT_MM when it has no
-  // rooms). frameStackedScene takes the highest of these across every floor.
+  // This floor's own reach toward the building top, in world millimeters (floorTopWorld).
+  // frameStackedScene takes the highest of these across every floor.
   topWorld: number
 }
 
