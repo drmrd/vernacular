@@ -94,7 +94,7 @@ route under a `spike/` label; do not wire them into the shell and do not keep th
 
 **When a bar fails, the behavior does not silently proceed.** It is either re-scoped to what the
 engine can hold or the spec's open question is revised. Because revising the spec needs an ADR
-(rules), a failed spike opens ADR-0156 (next free number; re-verify before landing) recording the
+(rules), a failed spike opens a spike-revision ADR at the next free number (ADR-0156 is long since taken; re-verify against origin/main before landing) recording the
 measured limit and the revised target.
 
 Each spike names the Phase 2 or Phase 3 build slice it graduates.
@@ -111,7 +111,7 @@ Each spike names the Phase 2 or Phase 3 build slice it graduates.
 - **Graduates:** the dimension-input, slider, and angle-dial build slices (Phase 3, fields and
   instruments).
 - **Fail path:** re-scope the acknowledgement to a cheaper feedback that still lands under 100ms, or
-  revise the latency target in ADR-0156.
+  revise the latency target in the spike-revision ADR.
 
 ### Spike 2: Live-geometry performance
 
@@ -122,7 +122,7 @@ Each spike names the Phase 2 or Phase 3 build slice it graduates.
   frame budget (60fps, 16.7ms per frame) on the target hardware.
 - **Graduates:** the status-rail live-readout slice and the dimension-field live scrub (Phase 3).
 - **Fail path:** throttle or batch the readout to a stated cadence, or revise the budget expectation in
-  ADR-0156.
+  the spike-revision ADR.
 
 ### Spike 3: The luminance-adaptive cased mark
 
@@ -137,7 +137,7 @@ Each spike names the Phase 2 or Phase 3 build slice it graduates.
 - **Graduates:** the cased-mark token and its consumers (cursor badge, snap glyphs, walk reticle,
   projected 3D marks) in Phase 3.
 - **Fail path:** widen the keyline rule or add a second casing tone (an ADR, since it extends the
-  spec's single-token cased mark), or record a documented ground exclusion in ADR-0156.
+  spec's single-token cased mark), or record a documented ground exclusion in the spike-revision ADR.
 
 ### Spike 4: Assistive-technology reach
 
@@ -166,7 +166,7 @@ Each spike names the Phase 2 or Phase 3 build slice it graduates.
   deltaE 2000 at most 3; confirm the exact threshold with the owner before the spike runs.
 - **Graduates:** the paint-chip and finish-swatch rendering slices and the dark-appearance canvas.
 - **Fail path:** calibrate the render path, or record the fidelity limit and the case it applies to in
-  ADR-0156. A material change to the color pipeline earns its own ADR.
+  the spike-revision ADR. A material change to the color pipeline earns its own ADR.
 
 ---
 
@@ -378,7 +378,7 @@ exit code checked.
 2. **The preview-flag key** (`?theme-preview=arris` proposed) and whether it also reads a localStorage or
    env gate.
 3. **The Spike 5 color tolerance** (deltaE 2000 at most 3 proposed) before that spike runs.
-4. **A failed spike revises the spec through ADR-0156** (re-verify the number); confirm that path rather than
+4. **A failed spike revises the spec through a spike-revision ADR at the next free number** (ADR-0156 is taken); confirm that path rather than
    quietly re-scoping.
 5. **Landing and merge order.** PR #499 (keyboard and command model) is the base of the Arris branch and
    merges first; then rebase `docs/ratify-arris-visual-language` onto updated main and merge it. Merges to
