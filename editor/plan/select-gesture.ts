@@ -5,11 +5,17 @@ import type { ScreenPoint } from './viewport'
 
 export type SelectGestureMode = 'pending' | 'panning' | 'marquee'
 
-export interface SelectGestureState {
-  mode: SelectGestureMode
-  originWorld: Point
-  lastCanvas: ScreenPoint
-}
+/**
+ * How the marquee result folds into the standing selection: `replace` swaps it
+ * wholesale, `add` unions with it (Shift and Alt together), `subtract` removes
+ * from it (Alt alone).
+ */
+export type SelectOperation = 'replace' | 'add' | 'subtract'
+
+export type SelectGestureState =
+  | { mode: 'pending'; originWorld: Point; lastCanvas: ScreenPoint }
+  | { mode: 'panning'; originWorld: Point; lastCanvas: ScreenPoint }
+  | { mode: 'marquee'; originWorld: Point; lastCanvas: ScreenPoint; operation: SelectOperation }
 
 export interface SelectMoveSample {
   world: Point
@@ -38,12 +44,6 @@ export interface SelectEndSample {
  */
 export type MarqueeMode = 'window' | 'crossing'
 
-/**
- * How the marquee result folds into the standing selection: `replace` swaps it
- * wholesale, `add` unions with it (Shift), `subtract` removes from it (Alt).
- */
-export type SelectOperation = 'replace' | 'add' | 'subtract'
-
 export type SelectEndEffect =
   | { kind: 'click'; world: Point; shift: boolean }
   | { kind: 'marquee'; rect: Bounds; mode: MarqueeMode; operation: SelectOperation }
@@ -69,6 +69,18 @@ function screenDelta(from: ScreenPoint, to: ScreenPoint): ScreenPoint {
   return { x: to.x - from.x, y: to.y - from.y }
 }
 
+/**
+ * The operation a marquee locks in from the modifiers held on the move sample that
+ * flips the gesture from `pending` into `marquee`. Shift and Alt together add, Alt
+ * alone subtracts, and Shift alone (the only remaining way to reach marquee mode)
+ * replaces.
+ */
+function lockedMarqueeOperation(modifiers: { shift: boolean; alt?: boolean }): SelectOperation {
+  if (modifiers.shift && modifiers.alt) return 'add'
+  if (modifiers.alt) return 'subtract'
+  return 'replace'
+}
+
 export function beginSelectGesture(
   originWorld: Point,
   originCanvas: ScreenPoint,
@@ -83,9 +95,18 @@ function resolvePanning(state: SelectGestureState, sample: SelectMoveSample): Se
   }
 }
 
-function resolveMarquee(state: SelectGestureState, sample: SelectMoveSample): SelectMoveResult {
+function resolveMarquee(
+  state: SelectGestureState,
+  sample: SelectMoveSample,
+  operation: SelectOperation,
+): SelectMoveResult {
   return {
-    state: { mode: 'marquee', originWorld: state.originWorld, lastCanvas: sample.canvas },
+    state: {
+      mode: 'marquee',
+      originWorld: state.originWorld,
+      lastCanvas: sample.canvas,
+      operation,
+    },
     marquee: normalizedBounds(state.originWorld, sample.world),
   }
 }
@@ -101,17 +122,15 @@ export function advanceSelectGesture(
     }
     mode = sample.shift || sample.alt ? 'marquee' : 'panning'
   }
-  return mode === 'marquee' ? resolveMarquee(state, sample) : resolvePanning(state, sample)
+  if (mode === 'marquee') {
+    const operation = state.mode === 'marquee' ? state.operation : lockedMarqueeOperation(sample)
+    return resolveMarquee(state, sample, operation)
+  }
+  return resolvePanning(state, sample)
 }
 
 function marqueeMode(originWorld: Point, releaseWorld: Point): MarqueeMode {
   return releaseWorld.x < originWorld.x ? 'crossing' : 'window'
-}
-
-function marqueeOperation(sample: SelectEndSample): SelectOperation {
-  if (sample.alt) return 'subtract'
-  if (sample.shift) return 'add'
-  return 'replace'
 }
 
 export function endSelectGesture(
@@ -124,7 +143,7 @@ export function endSelectGesture(
       kind: 'marquee',
       rect: normalizedBounds(state.originWorld, sample.world),
       mode: marqueeMode(state.originWorld, sample.world),
-      operation: marqueeOperation(sample),
+      operation: state.operation,
     }
   }
   return { kind: 'click', world: state.originWorld, shift: sample.shift }
