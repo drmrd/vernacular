@@ -113,7 +113,7 @@ describe('ScenePane', () => {
     expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
   })
 
-  it('shows an empty state when WebGPU is available but the active floor has no geometry', () => {
+  it('keeps the live scene canvas mounted and overlays empty-floor guidance when the active floor has no geometry', () => {
     vi.stubGlobal('navigator', { gpu: {} })
     mockSceneGraph = emptyGraph
 
@@ -124,11 +124,30 @@ describe('ScenePane', () => {
     expect(screen.getByText(/Draw walls in plan view/i)).toBeInTheDocument()
     // Rendered through the EmptyState primitive, not a raw div.
     expect(container.querySelector('.ds-status--empty')).not.toBeNull()
-    // The live canvas must not mount when there is nothing to draw.
-    expect(screen.queryByTestId('live-scene-canvas')).toBeNull()
+    // The scene canvas subtree stays mounted underneath the guidance rather
+    // than being swapped out, so the toolbar, camera, and whole-building
+    // scope toggle it hosts keep their mounted state.
+    expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
     // The shell pane already owns the labeled region, so the EmptyState is
     // rendered with asRegion={false}: no nested region landmark.
     expect(screen.queryByRole('region')).toBeNull()
+  })
+
+  it('does not unmount the live scene canvas when the active floor transitions from having geometry to being empty', () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = graphWithGeometry
+
+    const { rerender } = render(<ScenePane />)
+    const canvasBeforeTransition = screen.getByTestId('live-scene-canvas')
+
+    mockSceneGraph = emptyGraph
+    rerender(<ScenePane />)
+
+    // The same canvas DOM node persists across the transition instead of
+    // being torn down and rebuilt when the empty-floor overlay appears, so
+    // the toolbar, camera, and whole-building scope toggle it hosts do not
+    // lose their mounted state.
+    expect(screen.getByTestId('live-scene-canvas')).toBe(canvasBeforeTransition)
   })
 
   it('shows a loading fallback while the live 3D canvas boots, then the canvas', async () => {
