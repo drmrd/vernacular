@@ -1,4 +1,11 @@
-import { Suspense, useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
+import {
+  Suspense,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type RefObject,
+} from 'react'
 
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
 import { detectRenderBackend } from '../../engine'
@@ -21,12 +28,20 @@ function readSceneReady(paneNode: HTMLElement): boolean {
 // attribute, or for the canvas node itself being inserted (the Suspense-resolve path),
 // so the loading placeholder clears the moment the canvas reports its first frame
 // without requiring a React re-render from the bridge layer to drive it.
+//
+// Reads with a layout effect, not a plain effect, so the corrected readiness is in
+// place before the browser paints; a plain effect runs after paint and would flash
+// one unready frame on the synchronous-mount path.
 function useSceneReady(paneRef: RefObject<HTMLDivElement | null>): boolean {
   const [isSceneReady, setIsSceneReady] = useState(true)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const paneNode = paneRef.current
     if (!paneNode) return
     setIsSceneReady(readSceneReady(paneNode))
+    // Observing subtree childList also catches this pane's own overlay divs being
+    // inserted or removed, which retriggers the callback below. That is harmless:
+    // readSceneReady is idempotent, so the extra firings just recompute the same
+    // answer.
     const observer = new MutationObserver(() => setIsSceneReady(readSceneReady(paneNode)))
     observer.observe(paneNode, {
       attributes: true,
