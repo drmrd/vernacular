@@ -326,7 +326,7 @@ export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraC
       floorElevationMm: collisionInputs.floorElevationMm,
     })
     // floorElevationMm is intentionally excluded: re-seeding the walk pose when the
-    // active floor changes mid-walk is a later cycle's concern, not this one's.
+    // active floor changes mid-walk is tracked by #608 and lands in a later cycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef, opennessRef])
 
