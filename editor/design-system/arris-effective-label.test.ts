@@ -81,6 +81,36 @@ const PROBES: Probe[] = [
     state: ':hover',
   },
   {
+    name: 'menu surface row, hovered',
+    stylesheet: 'menu-surface.css',
+    base: '.ds-menu-surface__row',
+    state: ':hover',
+  },
+  {
+    name: 'project menu row, hovered',
+    stylesheet: 'editor/shell/project-menu.css',
+    base: '.project-menu__row',
+    state: ':hover',
+  },
+  {
+    name: 'export menu row, hovered',
+    stylesheet: 'editor/shell/export-menu.css',
+    base: '.export-menu__row',
+    state: ':hover',
+  },
+  {
+    name: 'banner, custody warning',
+    stylesheet: 'editor/design-system/notifications/banner.css',
+    base: '.ds-banner',
+    state: "[data-severity='error']",
+  },
+  {
+    name: 'toast, custody warning',
+    stylesheet: 'editor/design-system/notifications/toast.css',
+    base: '.ds-toast',
+    state: "[data-severity='error']",
+  },
+  {
     name: 'inspector count badge',
     stylesheet: 'editor/shell/inspector.css',
     base: '.inspector__count-badge',
