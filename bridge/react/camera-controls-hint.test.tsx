@@ -45,4 +45,12 @@ describe('CameraControlsHint', () => {
     expect(screen.getByText('R to shut every opening')).toBeInTheDocument()
     expect(screen.queryByText('Drag to orbit')).toBeNull()
   })
+
+  it('mentions clicking to select an object within the Camera controls group', () => {
+    render(<CameraControlsHint mode="orbit" />)
+
+    const group = screen.getByRole('group', { name: /camera controls/i })
+    expect(group.textContent).toMatch(/click/i)
+    expect(group.textContent).toMatch(/select/i)
+  })
 })
