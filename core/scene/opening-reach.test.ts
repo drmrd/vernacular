@@ -34,6 +34,15 @@ function pocketDoorAtZ2000(id: string): OpeningSceneNode {
   }
 }
 
+// A cased opening on the same wall as `doorAtZ2000`. A cased opening has no
+// door leaf: it is a trimmed hole with nothing in it to open.
+function casedOpeningAtZ2000(id: string): OpeningSceneNode {
+  return {
+    ...doorAtZ2000(id),
+    type: 'cased-opening',
+  }
+}
+
 // An opening on a wall running off the axes, so along.y and normal.y are nonzero
 // and the plan-y to world -Z mapping is exercised. The leaf rectangle spans 900mm
 // along the wall and 2000mm tall, centered at the plan origin (world {x:0, y:1000,
@@ -70,6 +79,16 @@ describe('openingUnderReach', () => {
     const hit = openingUnderReach(eyeFacingDoor, towardDoor, [door], { reachMm: REACH_MM })
 
     expect(hit).toBe('opening:front-door')
+  })
+
+  it('excludes a cased opening even when it sits in reach directly ahead', () => {
+    const casedOpening = casedOpeningAtZ2000('opening:cased-opening')
+
+    const hit = openingUnderReach(eyeFacingDoor, towardDoor, [casedOpening], {
+      reachMm: REACH_MM,
+    })
+
+    expect(hit).toBeNull()
   })
 
   it('returns an opening on an angled wall viewed along its true world normal', () => {
