@@ -98,3 +98,24 @@ describe('ProjectMenu', () => {
     expect(trigger).toHaveFocus()
   })
 })
+
+describe('ProjectMenu rename', () => {
+  it('renames the project inline from the Rename item and reports the committed name', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    render(
+      <ProjectMenu onNewProject={vi.fn()} projectName="Eastmore Farmstead" onRename={onRename} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('menuitem', { name: /^rename$/i }))
+
+    const input = screen.getByRole('textbox', { name: /project name/i })
+    expect(input).toHaveValue('Eastmore Farmstead')
+
+    await user.clear(input)
+    await user.type(input, 'Cedar Hollow{Enter}')
+
+    expect(onRename).toHaveBeenCalledWith('Cedar Hollow')
+  })
+})
