@@ -8,6 +8,7 @@ import {
   type SceneGraph,
 } from '../../core'
 
+import { emptySceneGraph } from '../../core/scene/scene-graph-test-fixtures'
 import { seedWalkState, walkFloorElevationMm, walkKeyHandlers } from './walk-camera-controls'
 
 const DOOR_ID = 'opening:front-door'
@@ -80,16 +81,10 @@ describe('walk camera controls: floor elevation derivation', () => {
     // not on a hardcoded ground-floor datum.
     const upperFloorElevationMm = 3000
     const graph: SceneGraph = {
+      ...emptySceneGraph(),
       nodes: [
         { id: 'floor:upper', kind: 'floor', name: 'Upper', elevation: upperFloorElevationMm },
       ],
-      walls: [],
-      rooms: [],
-      underlays: [],
-      openings: [],
-      dimensions: [],
-      stairs: [],
-      furniture: [],
     }
 
     expect(walkFloorElevationMm(graph)).toBe(upperFloorElevationMm)
