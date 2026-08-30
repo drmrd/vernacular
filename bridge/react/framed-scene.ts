@@ -38,9 +38,11 @@ export interface FramedScene {
   roomPolygons: readonly (readonly Point[])[]
   // The building's top elevation, in Three.js world millimeters, so the near-wall fade
   // can also treat a camera hovering above the roof as outside even when its plan
-  // position falls within a room's footprint. Only the single-floor build path (below)
-  // sets it today: the stacked path's FloorAssembly carries no per-floor ceiling height,
-  // so it cannot derive a building top yet.
+  // position falls within a room's footprint. No live view sets this yet: the live
+  // reconciler routes every real scene through frameStackedScene, which does not compute
+  // it, and buildFramedScene (below), the only place that does, is reached only by tests,
+  // the dev harness, and the empty-graph guard. The stacked path gains this field in the
+  // next cycle of this branch (issue #609).
   buildingTopWorld?: number
 }
 
@@ -75,6 +77,8 @@ export function buildFramedScene(
   // data buildFloorGroup reads for the floor group's world Y) and its rooms (the same
   // data buildRoomShell reads for each room's ceiling), so the building's top elevation
   // is that floor's elevation plus the tallest room's ceiling height.
+  // Callers pass zero or one floor node; a multi-floor graph would only pick up the
+  // first node's elevation here.
   const floorElevation = graph.nodes[0]?.elevation ?? 0
   const roomCeilingHeights = graph.rooms.map((room) => ceilingHeight(room))
   const buildingTopWorld =
