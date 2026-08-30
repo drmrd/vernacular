@@ -65,7 +65,7 @@ export function ScenePane(): ReactElement {
           <LoadingState message="Building the scene..." />
         </div>
       )}
-      {isActiveFloorEmpty ? (
+      {isSceneReady && isActiveFloorEmpty ? (
         <div className="scene-pane__overlay">
           <EmptyState
             asRegion={false}
