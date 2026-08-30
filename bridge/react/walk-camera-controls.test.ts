@@ -5,9 +5,10 @@ import {
   isOpeningOpen,
   WALK_EYE_HEIGHT_MM,
   type OpeningInteractionState,
+  type SceneGraph,
 } from '../../core'
 
-import { seedWalkState, walkKeyHandlers } from './walk-camera-controls'
+import { seedWalkState, walkFloorElevationMm, walkKeyHandlers } from './walk-camera-controls'
 
 const DOOR_ID = 'opening:front-door'
 
@@ -69,5 +70,28 @@ describe('walk camera controls: eye height seeding', () => {
     )
 
     expect(seeded.position.y).toBe(upperFloorElevationMm + WALK_EYE_HEIGHT_MM)
+  })
+})
+
+describe('walk camera controls: floor elevation derivation', () => {
+  it("derives the walk floor elevation from the active floor's scene-graph node", () => {
+    // A scene graph narrowed to the active (upper) floor carries that floor's
+    // own node, elevation and all: the walk pose must stand on that number,
+    // not on a hardcoded ground-floor datum.
+    const upperFloorElevationMm = 3000
+    const graph: SceneGraph = {
+      nodes: [
+        { id: 'floor:upper', kind: 'floor', name: 'Upper', elevation: upperFloorElevationMm },
+      ],
+      walls: [],
+      rooms: [],
+      underlays: [],
+      openings: [],
+      dimensions: [],
+      stairs: [],
+      furniture: [],
+    }
+
+    expect(walkFloorElevationMm(graph)).toBe(upperFloorElevationMm)
   })
 })
