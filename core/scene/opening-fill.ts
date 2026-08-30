@@ -23,7 +23,10 @@ export interface OpeningFillPart {
   readonly along: OpeningFillExtent
   readonly up: OpeningFillExtent
   readonly thickness: number
-  /** Whether this part is fixed shut rather than operable, e.g. a single-hung window's upper sash. Omitted (not `false`) when the part is operable or operability does not apply. */
+  /**
+   * Whether this part is fixed shut rather than operable, e.g. a single-hung window's upper
+   * sash. Omitted (not `false`) when the part is operable or operability does not apply.
+   */
   readonly fixed?: boolean
 }
 

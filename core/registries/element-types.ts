@@ -222,7 +222,7 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
     },
     {
       // Differs from double-hung-window in sash operation: its upper sash is fixed
-      // shut (`fixedSash: 'upper'`), where a double-hung window's are both operable.
+      // shut (`fixedSash: 'upper'`), where a double-hung window's sashes are both operable.
       // Symbol/3D void geometry is otherwise still identical for now; a later phase
       // can differentiate those without a schema change.
       id: 'single-hung-window',
