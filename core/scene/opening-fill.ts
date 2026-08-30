@@ -23,6 +23,8 @@ export interface OpeningFillPart {
   readonly along: OpeningFillExtent
   readonly up: OpeningFillExtent
   readonly thickness: number
+  /** Whether this part is fixed shut rather than operable, e.g. a single-hung window's upper sash. Omitted (not `false`) when the part is operable or operability does not apply. */
+  readonly fixed?: boolean
 }
 
 /** Uniform reveal gap insetting a door leaf from its void edges (mm). */
@@ -57,7 +59,7 @@ export function openingFill(
     case 'window-sash':
       return wholeSashParts(node)
     case 'window-sash-hung':
-      return hungWindowSashParts(node)
+      return hungWindowSashParts(node, entry.opening?.fixedSash)
     // A further fill kind (a glazed door, a curved sash) is a new case here, the
     // way a new void shape is a new case in openingVoidContour.
     default:
@@ -99,9 +101,15 @@ function leafBar(along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPa
  * One sash filling a vertical band of the opening: a perimeter of four frame members
  * (a top rail, a bottom rail, and two stiles) ringing one glass pane inset by the
  * frame width. The band is the sash's own `[min, max]` height range, so an undivided
- * sash passes the whole opening and a hung window passes each of its two bands.
+ * sash passes the whole opening and a hung window passes each of its two bands. A
+ * fixed sash (a single-hung window's upper sash) marks its glass pane `fixed: true`;
+ * an operable sash omits the field rather than setting it `false`.
  */
-function sashAssembly(halfWidth: number, band: OpeningFillExtent): OpeningFillPart[] {
+function sashAssembly(
+  halfWidth: number,
+  band: OpeningFillExtent,
+  fixed = false,
+): OpeningFillPart[] {
   const frameWidth = SASH_FRAME_WIDTH_MM
   const innerUp: OpeningFillExtent = { min: band.min + frameWidth, max: band.max - frameWidth }
   const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
@@ -115,6 +123,7 @@ function sashAssembly(halfWidth: number, band: OpeningFillExtent): OpeningFillPa
       along: { min: -halfWidth + frameWidth, max: halfWidth - frameWidth },
       up: innerUp,
       thickness: GLASS_THICKNESS_MM,
+      ...(fixed ? { fixed: true } : {}),
     },
   ]
 }
@@ -127,9 +136,14 @@ function wholeSashParts(node: OpeningSceneNode): OpeningFillPart[] {
 /**
  * A hung window as two stacked sashes: a lower and an upper sash meeting at a
  * full-width meeting rail that straddles the opening's vertical midpoint. Each sash
- * fills its own band, so the window reads as two panes rather than one.
+ * fills its own band, so the window reads as two panes rather than one. `fixedSash`
+ * names the sash that is fixed shut (a single-hung window's upper sash); a
+ * double-hung window passes no `fixedSash`, so both sashes stay operable.
  */
-function hungWindowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
+function hungWindowSashParts(
+  node: OpeningSceneNode,
+  fixedSash?: 'upper' | 'lower',
+): OpeningFillPart[] {
   const halfWidth = node.width / 2
   const sill = node.sillHeight
   const top = sill + node.height
@@ -142,8 +156,8 @@ function hungWindowSashParts(node: OpeningSceneNode): OpeningFillPart[] {
     { min: railBottom, max: railTop },
   )
   return [
-    ...sashAssembly(halfWidth, { min: sill, max: railBottom }),
+    ...sashAssembly(halfWidth, { min: sill, max: railBottom }, fixedSash === 'lower'),
     meetingRail,
-    ...sashAssembly(halfWidth, { min: railTop, max: top }),
+    ...sashAssembly(halfWidth, { min: railTop, max: top }, fixedSash === 'upper'),
   ]
 }

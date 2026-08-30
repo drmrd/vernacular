@@ -43,6 +43,11 @@ export interface OpeningTypeParameters {
   double?: boolean
   /** The hinge edge for a crank window: jamb (casement), head (awning), sill (hopper). */
   hingeEdge?: HingeEdge
+  /**
+   * The sash of a hung window that is fixed shut, leaving the other sash operable.
+   * Absent for a double-hung window, where both sashes operate.
+   */
+  fixedSash?: 'upper' | 'lower'
   defaultWidth: number
   defaultHeight: number
   defaultSillHeight: number
@@ -216,15 +221,17 @@ export const builtinElementTypes: Registry<ElementType> = createRegistry(
       },
     },
     {
-      // Opening parameters are intentionally identical to double-hung-window for now.
-      // Registered as a distinct architectural type (different sash operation) so a later
-      // phase can differentiate its symbol/3D without a schema change.
+      // Differs from double-hung-window in sash operation: its upper sash is fixed
+      // shut (`fixedSash: 'upper'`), where a double-hung window's are both operable.
+      // Symbol/3D void geometry is otherwise still identical for now; a later phase
+      // can differentiate those without a schema change.
       id: 'single-hung-window',
       category: 'opening',
       plan2D: { symbol: 'window-fixed' },
       scene3D: { builder: 'window-frame', voidContour: 'rectangular', fill: 'window-sash-hung' },
       opening: {
         family: 'window-hung',
+        fixedSash: 'upper',
         defaultWidth: 900,
         defaultHeight: 1200,
         defaultSillHeight: 900,
