@@ -7,6 +7,7 @@ import {
   SASH_FRAME_WIDTH_MM,
   SASH_FRAME_THICKNESS_MM,
   GLASS_THICKNESS_MM,
+  type OpeningFillPart,
 } from './opening-fill'
 
 /**
@@ -155,5 +156,41 @@ describe('openingFill', () => {
     expect(openingFill({ ...baseOpening, type: 'cased-opening' })).toEqual([])
     // A type absent from the registry also contributes no body.
     expect(openingFill({ ...baseOpening, type: 'not-a-real-type' })).toEqual([])
+  })
+})
+
+describe('openingFill hung-window sash operability', () => {
+  it('marks the upper sash as fixed for a single-hung window, unlike a double-hung window', () => {
+    const sashFixedFlags = (
+      type: 'single-hung-window' | 'double-hung-window',
+    ): { upperFixed: boolean | undefined; lowerFixed: boolean | undefined } => {
+      const window: OpeningSceneNode = {
+        ...baseOpening,
+        type,
+        width: 900,
+        height: 1200,
+        sillHeight: 900,
+      }
+
+      const parts: ReadonlyArray<OpeningFillPart & { readonly fixed?: boolean }> =
+        openingFill(window)
+      const glass = parts.filter((p) => p.role === 'glass')
+      const midpoint = window.sillHeight + window.height / 2
+      const upperGlass = glass.find((p) => p.up.min >= midpoint)
+      const lowerGlass = glass.find((p) => p.up.min < midpoint)
+
+      return { upperFixed: upperGlass?.fixed, lowerFixed: lowerGlass?.fixed }
+    }
+
+    // A double-hung window keeps both sashes operable: today's behavior, unchanged.
+    expect(sashFixedFlags('double-hung-window')).toEqual({
+      upperFixed: undefined,
+      lowerFixed: undefined,
+    })
+    // A single-hung window fixes its upper sash; only the lower sash remains operable.
+    expect(sashFixedFlags('single-hung-window')).toEqual({
+      upperFixed: true,
+      lowerFixed: undefined,
+    })
   })
 })
