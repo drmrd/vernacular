@@ -290,6 +290,14 @@ describe('hitTest dimension priority', () => {
     ).toBe('dimension:d1')
   })
 
+  it('falls back to what is beneath a dimension when the dimensions overlay is hidden', () => {
+    expect(
+      hitTest(wallRoomAndDimensionScene(), { x: 2000, y: 2000 }, DEFAULT_HIT_TOLERANCE_MM, {
+        dimensionsVisible: false,
+      }),
+    ).toBe('room:a')
+  })
+
   it('prefers the wall over a dimension when the click is on the wall', () => {
     expect(hitTest(wallRoomAndDimensionScene(), { x: 2000, y: 0 }, DEFAULT_HIT_TOLERANCE_MM)).toBe(
       'wall:edge',
