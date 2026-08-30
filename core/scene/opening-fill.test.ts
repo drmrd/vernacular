@@ -193,3 +193,84 @@ describe('openingFill hung-window sash operability', () => {
     })
   })
 })
+
+describe('openingFill hung-window fixed-sash geometry', () => {
+  it("widens the single-hung window's fixed upper pane past its own sash jambs, unlike a double-hung window", () => {
+    const upperSashParts = (
+      type: 'single-hung-window' | 'double-hung-window',
+    ): ReadonlyArray<OpeningFillPart> => {
+      const window: OpeningSceneNode = {
+        ...baseOpening,
+        type,
+        width: 900,
+        height: 1200,
+        sillHeight: 900,
+      }
+
+      // The void splits into two equal sashes around a shared meeting-rail band one
+      // sash-frame width tall, so each sash's own frame starts this far from the head.
+      const head = window.sillHeight + window.height
+      const upperSashBottom = head - (window.height - SASH_FRAME_WIDTH_MM) / 2
+
+      return openingFill(window).filter((p) => p.up.min >= upperSashBottom)
+    }
+
+    // A double-hung window's upper sash keeps its own jambs, inset by one sash-frame
+    // width on either side of the glass: today's behavior, unchanged.
+    const double = upperSashParts('double-hung-window')
+    expect(double.filter((p) => p.role === 'leaf')).toHaveLength(4)
+    expect(double.filter((p) => p.role === 'glass')).toHaveLength(1)
+    expect(double).toEqual(
+      expect.arrayContaining([
+        {
+          role: 'leaf',
+          along: { min: -450, max: -390 },
+          up: { min: 1590, max: 2040 },
+          thickness: SASH_FRAME_THICKNESS_MM,
+        },
+        {
+          role: 'leaf',
+          along: { min: 390, max: 450 },
+          up: { min: 1590, max: 2040 },
+          thickness: SASH_FRAME_THICKNESS_MM,
+        },
+        {
+          role: 'glass',
+          along: { min: -390, max: 390 },
+          up: { min: 1590, max: 2040 },
+          thickness: GLASS_THICKNESS_MM,
+        },
+      ]),
+    )
+
+    // A single-hung window's fixed upper sash carries no sash jambs of its own: the
+    // pane is set straight into the outer frame, spanning the full opening width, and
+    // stays fixed shut per cycle 1's contract.
+    const single = upperSashParts('single-hung-window')
+    expect(single).toHaveLength(3)
+    expect(single.filter((p) => p.role === 'leaf')).toHaveLength(2)
+    expect(single).toEqual(
+      expect.arrayContaining([
+        {
+          role: 'leaf',
+          along: { min: -450, max: 450 },
+          up: { min: 1530, max: 1590 },
+          thickness: SASH_FRAME_THICKNESS_MM,
+        },
+        {
+          role: 'leaf',
+          along: { min: -450, max: 450 },
+          up: { min: 2040, max: 2100 },
+          thickness: SASH_FRAME_THICKNESS_MM,
+        },
+        {
+          role: 'glass',
+          along: { min: -450, max: 450 },
+          up: { min: 1590, max: 2040 },
+          thickness: GLASS_THICKNESS_MM,
+          fixed: true,
+        },
+      ]),
+    )
+  })
+})
