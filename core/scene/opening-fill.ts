@@ -105,8 +105,11 @@ function leafBar(along: OpeningFillExtent, up: OpeningFillExtent): OpeningFillPa
  * (a top rail, a bottom rail, and two stiles) ringing one glass pane inset by the
  * frame width. The band is the sash's own `[min, max]` height range, so an undivided
  * sash passes the whole opening and a hung window passes each of its two bands. A
- * fixed sash (a single-hung window's upper sash) marks its glass pane `fixed: true`;
- * an operable sash omits the field rather than setting it `false`.
+ * fixed sash (a single-hung window's upper sash) has no operable inner frame: it
+ * drops its two stiles and its glass pane sets straight into the window's outer
+ * jambs, spanning the full `along` width rather than the frame-inset width. It also
+ * marks its glass pane `fixed: true`; an operable sash omits the field rather than
+ * setting it `false`.
  */
 function sashAssembly(
   halfWidth: number,
@@ -116,18 +119,24 @@ function sashAssembly(
   const frameWidth = SASH_FRAME_WIDTH_MM
   const innerUp: OpeningFillExtent = { min: band.min + frameWidth, max: band.max - frameWidth }
   const span: OpeningFillExtent = { min: -halfWidth, max: halfWidth }
+  const headRail = leafBar(span, { min: band.max - frameWidth, max: band.max })
+  const bottomRail = leafBar(span, { min: band.min, max: band.min + frameWidth })
+  const glass: OpeningFillPart = {
+    role: 'glass',
+    along: fixed ? span : { min: -halfWidth + frameWidth, max: halfWidth - frameWidth },
+    up: innerUp,
+    thickness: GLASS_THICKNESS_MM,
+    ...(fixed ? { fixed: true } : {}),
+  }
+  if (fixed) {
+    return [headRail, bottomRail, glass]
+  }
   return [
-    leafBar(span, { min: band.max - frameWidth, max: band.max }),
-    leafBar(span, { min: band.min, max: band.min + frameWidth }),
+    headRail,
+    bottomRail,
     leafBar({ min: -halfWidth, max: -halfWidth + frameWidth }, innerUp),
     leafBar({ min: halfWidth - frameWidth, max: halfWidth }, innerUp),
-    {
-      role: 'glass',
-      along: { min: -halfWidth + frameWidth, max: halfWidth - frameWidth },
-      up: innerUp,
-      thickness: GLASS_THICKNESS_MM,
-      ...(fixed ? { fixed: true } : {}),
-    },
+    glass,
   ]
 }
 
