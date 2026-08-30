@@ -2,8 +2,8 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ActiveToolProvider } from './active-tool-provider'
-import { useActiveTool } from './active-tool-context'
-import { OpeningToolProvider } from '../plan/opening-tool-context'
+import { useActiveTool, type ToolId } from './active-tool-context'
+import { OpeningToolProvider, useOpeningTool } from '../plan/opening-tool-context'
 import { ToolsPanel } from './tools-panel'
 
 afterEach(cleanup)
@@ -39,31 +39,31 @@ describe('ToolsPanel', () => {
     renderPanel()
 
     const group = screen.getByRole('radiogroup', { name: /tools/i })
-    for (const name of [/^select$/i, /^pan$/i, /^wall$/i, /^door$/i, /^window$/i, /^dimension$/i]) {
+    for (const name of [/^select$/i, /^wall$/i, /^door$/i, /^window$/i, /^dimension$/i]) {
       expect(within(group).getByRole('radio', { name })).toBeInTheDocument()
     }
   })
 
-  it('includes a Pan chip in the SELECT section', () => {
+  it('offers no Pan chip, because panning is a plain drag under Select', () => {
     renderPanel()
 
-    expect(screen.getByRole('radio', { name: /pan/i })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /^pan$/i })).toBeNull()
   })
 
   it('defaults to the Select tool checked', () => {
     renderPanel()
 
     expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('radio', { name: /pan/i })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: /wall/i })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('marks the active tool chip checked and all others unchecked', async () => {
     const user = userEvent.setup()
     renderPanel()
 
-    await user.click(screen.getByRole('radio', { name: /pan/i }))
+    await user.click(screen.getByRole('radio', { name: /wall/i }))
 
-    expect(screen.getByRole('radio', { name: /pan/i })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /wall/i })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('aria-checked', 'false')
   })
 
@@ -77,7 +77,7 @@ describe('ToolsPanel', () => {
   it('routes tool chips through the shared segmented option treatment', () => {
     renderPanel()
 
-    for (const name of [/select/i, /pan/i, /wall/i, /dimension/i]) {
+    for (const name of [/select/i, /wall/i, /dimension/i]) {
       expect(screen.getByRole('radio', { name })).toHaveClass('ds-segmented__option')
     }
   })
@@ -87,16 +87,16 @@ describe('ToolsPanel', () => {
     renderPanel()
 
     const selectChip = screen.getByRole('radio', { name: /select/i })
-    const panChip = screen.getByRole('radio', { name: /pan/i })
+    const wallChip = screen.getByRole('radio', { name: /wall/i })
 
     expect(selectChip).toHaveClass('is-active')
     expect(selectChip).toHaveAttribute('aria-checked', 'true')
-    expect(panChip).not.toHaveClass('is-active')
+    expect(wallChip).not.toHaveClass('is-active')
 
-    await user.click(panChip)
+    await user.click(wallChip)
 
-    expect(panChip).toHaveClass('is-active')
-    expect(panChip).toHaveAttribute('aria-checked', 'true')
+    expect(wallChip).toHaveClass('is-active')
+    expect(wallChip).toHaveAttribute('aria-checked', 'true')
     expect(selectChip).not.toHaveClass('is-active')
     expect(selectChip).toHaveAttribute('aria-checked', 'false')
   })
@@ -183,12 +183,126 @@ describe('ToolsPanel', () => {
   })
 })
 
+// Shows the shared placement type and can preset it, so a test can arm a specific
+// opening variant the way the type chooser does and then read what a chip press
+// left behind.
+function PlacementTypeProbe({ preset }: { preset: string }) {
+  const { placementType, setPlacementType } = useOpeningTool()
+  return (
+    <>
+      <button type="button" onClick={() => setPlacementType(preset)}>
+        arm variant
+      </button>
+      <output data-testid="placement-type">{placementType}</output>
+    </>
+  )
+}
+
+function renderPanelWithProbe(preset: string) {
+  return render(
+    <ActiveToolProvider>
+      <OpeningToolProvider>
+        <ToolsPanel />
+        <PlacementTypeProbe preset={preset} />
+      </OpeningToolProvider>
+    </ActiveToolProvider>,
+  )
+}
+
+async function armVariant(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'arm variant' }))
+}
+
+describe('ToolsPanel opening variant', () => {
+  it('keeps a chosen window variant when its own chip is pressed again', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('sliding-window')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /window/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('sliding-window')
+  })
+
+  it('keeps a chosen door variant when its own chip is pressed again', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('pocket-door')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /door/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('pocket-door')
+  })
+
+  it('switches to the default door when the chosen variant is a window', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('sliding-window')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /door/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('single-swing-door')
+  })
+
+  it('switches to the default window when the chosen variant is a door', async () => {
+    const user = userEvent.setup()
+    renderPanelWithProbe('pocket-door')
+
+    await armVariant(user)
+    await user.click(screen.getByRole('radio', { name: /window/i }))
+
+    expect(screen.getByTestId('placement-type')).toHaveTextContent('double-hung-window')
+  })
+})
+
+function renderPanelWithTool(initialTool: ToolId) {
+  return render(
+    <ActiveToolProvider initialTool={initialTool}>
+      <OpeningToolProvider>
+        <ToolsPanel />
+      </OpeningToolProvider>
+    </ActiveToolProvider>,
+  )
+}
+
+function tabbableChips() {
+  return screen.getAllByRole('radio').filter((chip) => chip.getAttribute('tabindex') === '0')
+}
+
+describe('ToolsPanel tab order under a tool the rack does not show', () => {
+  it('keeps the first chip tabbable while place-furniture is active', () => {
+    renderPanelWithTool('place-furniture')
+
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '0')
+  })
+
+  it('keeps the first chip tabbable while calibrate is active', () => {
+    renderPanelWithTool('calibrate')
+
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '0')
+  })
+
+  it('leaves exactly one chip in the tab order', () => {
+    renderPanelWithTool('place-furniture')
+
+    expect(tabbableChips()).toHaveLength(1)
+  })
+
+  it('still gives the tab stop to the checked chip when one matches', () => {
+    renderPanelWithTool('dimension')
+
+    expect(tabbableChips()).toHaveLength(1)
+    expect(screen.getByRole('radio', { name: /dimension/i })).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '-1')
+  })
+})
+
 describe('ToolsPanel keyboard navigation', () => {
   it('keeps only the checked tool in the tab order (roving tabindex)', () => {
     renderPanel()
 
     expect(screen.getByRole('radio', { name: /select/i })).toHaveAttribute('tabindex', '0')
-    for (const name of [/pan/i, /wall/i, /door/i, /window/i, /dimension/i, /fireplace/i]) {
+    for (const name of [/wall/i, /door/i, /window/i, /dimension/i, /fireplace/i]) {
       expect(screen.getByRole('radio', { name })).toHaveAttribute('tabindex', '-1')
     }
   })
@@ -200,10 +314,10 @@ describe('ToolsPanel keyboard navigation', () => {
     screen.getByRole('radio', { name: /select/i }).focus()
     await user.keyboard('{ArrowDown}')
 
-    const pan = screen.getByRole('radio', { name: /pan/i })
-    expect(pan).toHaveFocus()
-    expect(pan).toHaveAttribute('aria-checked', 'true')
-    expect(pan).toHaveAttribute('tabindex', '0')
+    const wall = screen.getByRole('radio', { name: /wall/i })
+    expect(wall).toHaveFocus()
+    expect(wall).toHaveAttribute('aria-checked', 'true')
+    expect(wall).toHaveAttribute('tabindex', '0')
   })
 
   it('steps over the disabled planned chips when roving', async () => {

@@ -32,6 +32,16 @@ export function advanceDimensionTool(
   return { state: IDLE_DIMENSION_TOOL, command }
 }
 
+/**
+ * Abandon a measurement in progress, returning the tool to idle and recording
+ * nothing. Every state cancels to idle, so the current state is accepted for a
+ * uniform transition signature but unread, mirroring cancelWallTool.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uniform transition signature; cancel ignores the current state
+export function cancelDimensionTool(_state: DimensionToolState): DimensionToolState {
+  return IDLE_DIMENSION_TOOL
+}
+
 /** The live { start, end } rubber-band while measuring; undefined when idle. */
 export function dimensionPreview(
   state: DimensionToolState,

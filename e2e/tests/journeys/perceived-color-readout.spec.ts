@@ -94,7 +94,7 @@ test('shows the perceived color of a painted surface clicked in the live 3D view
   // Select the floor by clicking it, paint it, then click it again, so the sample that lands
   // is taken from a frame that already shows the paint.
   await clickTheFloorInTheScene(page, canvas)
-  await expect(inspector.getByRole('group', { name: 'Room surface' })).toBeVisible()
+  await expect(inspector.getByRole('group', { name: 'Surface' })).toBeVisible()
   await inspector.getByRole('button', { name: PAINT_NAME }).click()
   await clickTheFloorInTheScene(page, canvas)
 

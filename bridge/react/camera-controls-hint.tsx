@@ -3,7 +3,7 @@ import type { NavMode } from './scene-nav-toolbar'
 
 const HINT_LINES_BY_MODE: Record<NavMode, readonly string[]> = {
   orbit: ['Drag to orbit', 'Right-drag to pan', 'Scroll to zoom'],
-  walk: ['Drag to look', 'W A S D to move'],
+  walk: ['Drag to look', 'W A S D to move', 'E to open or close', 'R to shut every opening'],
 }
 
 // A subtle caption anchored in the bottom-left corner of the pane, out of the canvas
@@ -31,8 +31,9 @@ const HINT_STYLE: CSSProperties = {
 
 /**
  * The per-mode controls hint lines for the three-dimensional camera. Orbit mode rotates
- * on a left drag, pans on a right drag, and zooms on the wheel; walk mode looks on a drag
- * and moves with the W, A, S, and D keys.
+ * on a left drag, pans on a right drag, and zooms on the wheel; walk mode looks on a drag,
+ * moves with the W, A, S, and D keys, uses E to open or close the opening it faces, and
+ * uses R to shut every opening on the floor.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the pure hint data ships beside the component that renders it and this slice's test imports cameraControlsHint from ./camera-controls-hint.
 export function cameraControlsHint(mode: NavMode): readonly string[] {

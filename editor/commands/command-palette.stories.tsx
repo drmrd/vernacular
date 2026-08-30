@@ -82,7 +82,13 @@ export const Open: Story = {
     await expect(dialog).toHaveAttribute('aria-modal', 'true')
     const palette = within(dialog)
     await expect(palette.getByRole('textbox', { name: 'Search commands' })).toBeInTheDocument()
-    await expect(palette.getByRole('button', { name: 'Command palette' })).toBeInTheDocument()
+    // Each row carries its own shortcut, and the palette leaves out the opener
+    // that got the reader here.
+    await expect(palette.getByRole('button', { name: 'Plan view' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      '1',
+    )
+    await expect(palette.queryByRole('button', { name: 'Command palette' })).toBeNull()
   },
 }
 

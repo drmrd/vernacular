@@ -6,7 +6,11 @@ import type {
   SceneGraph,
   WallSceneNode,
 } from '../../core'
-import { selectedEntityIds, selectionGhostSegments } from './selection-entities'
+import {
+  selectedEntityIds,
+  selectionGhostSegments,
+  transformableEntityIds,
+} from './selection-entities'
 
 const WALL_THICKNESS_MM = 114
 
@@ -58,6 +62,26 @@ describe('selectedEntityIds', () => {
 
   it('returns an empty array for an empty selection', () => {
     expect(selectedEntityIds([])).toEqual([])
+  })
+
+  it('still retains opening ids, since the drag and delete paths depend on them', () => {
+    expect(selectedEntityIds(['opening:o1'])).toEqual(['o1'])
+  })
+})
+
+describe('transformableEntityIds', () => {
+  it('strips the wall and dimension node prefixes and drops openings, rooms, and underlays', () => {
+    expect(
+      transformableEntityIds(['wall:w1', 'dimension:d1', 'opening:o1', 'room:r1', 'underlay:u1']),
+    ).toEqual(['w1', 'd1'])
+  })
+
+  it('returns an empty array for an opening-only selection, since an opening rides its host wall and cannot be moved or rotated on its own', () => {
+    expect(transformableEntityIds(['opening:o1'])).toEqual([])
+  })
+
+  it('returns an empty array for an empty selection', () => {
+    expect(transformableEntityIds([])).toEqual([])
   })
 })
 

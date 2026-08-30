@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { effectiveWallThickness } from './construction-profile'
 import type { FurnitureSceneNode, OpeningSceneNode, WallSceneNode } from './scene-graph'
 import {
   furnitureSegmentsForWalk,
@@ -146,6 +147,20 @@ describe('passableDoorIds', () => {
     // not in the open set, and an unrecognized type is treated as not a door.
     expect(passable).toEqual(new Set([openDoor.id]))
   })
+
+  // A cased opening is a trimmed hole in the wall with no leaf hung in it. There is
+  // nothing there to open, so waiting for it to appear in the open set leaves the
+  // walker stopped by thin air in a doorway that plainly reads as walk-through.
+  it('passes a leafless opening even when nothing has been opened', () => {
+    const casedOpening = openingNode({ id: 'opening:cased', type: 'cased-opening' })
+    const shutDoor = openingNode({ id: 'opening:door-shut', type: 'single-swing-door' })
+
+    const passable = passableDoorIds([casedOpening, shutDoor], new Set())
+
+    // The cased opening passes on its own; the swing door has a leaf in the way and
+    // still waits to be opened, so its passability is unchanged.
+    expect(passable).toEqual(new Set([casedOpening.id]))
+  })
 })
 
 describe('wallSegmentsForWalk', () => {
@@ -214,5 +229,30 @@ describe('wall-thickness standoff', () => {
     // wallNode() is 100mm thick, so its derived segment carries thickness 100;
     // without this the standoff would ignore the wall's real solid width.
     expect(segments[0]?.thickness).toBe(100)
+  })
+
+  // A wall that names a construction profile renders to the whole assembly: the 3D
+  // wall builder extrudes its footprint from effectiveWallThickness, so the visible
+  // face sits half the ASSEMBLY off the centerline. Standing the walker off half the
+  // node's raw thickness instead leaves the camera clipped into the rendered slab.
+  it('stops the walker at the construction assembly face, not the raw wall face', () => {
+    // A plastered double-wythe brick bearing wall: the profile totals well past the
+    // node's own thickness, so the two standoffs are far enough apart to tell apart.
+    const masonryWall = wallNode({
+      start: { x: -1000, y: 0 },
+      end: { x: 1000, y: 0 },
+      constructionProfile: 'solid-masonry-brick',
+    })
+    const assemblyThickness = effectiveWallThickness(masonryWall)
+    expect(assemblyThickness).toBeGreaterThan(masonryWall.thickness)
+
+    const resolved = resolveWalkCollision(
+      { x: 0, z: -100 },
+      wallSegmentsForWalk([masonryWall], []),
+      radius,
+    )
+
+    expect(resolved.x).toBeCloseTo(0, 5)
+    expect(resolved.z).toBeCloseTo(-(radius + assemblyThickness / 2), 5)
   })
 })

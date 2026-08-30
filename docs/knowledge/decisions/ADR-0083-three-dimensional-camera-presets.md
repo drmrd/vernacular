@@ -15,6 +15,9 @@ sourceFiles:
     docs/specs/2026-06-14-three-dimensional-camera-presets.md,
     docs/plans/2026-06-14-three-dimensional-camera-presets.md,
     core/scene/camera-presets.ts,
+    bridge/react/use-scene-navigation.ts,
+    bridge/react/use-doorway-target.ts,
+    bridge/react/scene-camera-effects.tsx,
     core/scene/camera-framing.ts,
     bridge/react/fit-camera.ts,
     bridge/react/scene-nav-toolbar.tsx,
@@ -22,7 +25,7 @@ sourceFiles:
     e2e/tests/scene-camera-presets.spec.ts,
   ]
 status: current
-updated: 2026-06-15
+updated: 2026-08-17
 ---
 
 # ADR-0083: Camera viewpoint presets for the three-dimensional preview
@@ -124,3 +127,13 @@ stays the center of the model.
   the first drag can snap, and orbiting out of the doorway view turns around the model
   center rather than the standing point. Both are recorded as follow-ups; the preset
   views themselves are exact.
+
+## Update (2026-08-17): the orbit pivot now follows an applied preset
+
+The plumbing cost that kept the orbit pivot on the model center was paid as part
+of the preview-controls honesty slice: the preset applier hands its pose target
+to the orbit controls, so orbiting out of the doorway view turns around the
+standing point. The axis-aligned presets already pivoted on the bounds center,
+which is unchanged. The Consequences follow-up about the doorway pivot is
+resolved; the top-down pole note still stands. The camera-presets spec drops the
+matching bullet from its deferred list under this update.

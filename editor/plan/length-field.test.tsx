@@ -29,13 +29,31 @@ function renderField(
   )
 }
 
+// A notice is an explanation the field's owner attaches to a legitimate value,
+// not a complaint about what the user typed.
+const NOTICE = 'Limited to 1.20 m by a neighboring opening on this wall.'
+const UNPARSEABLE_HINT = 'Enter a number, or a length such as 2.4 m or 8 ft 6 in.'
+
+function renderFieldWithNotice(notice: string, onCommitMm: (mm: number) => void = vi.fn()) {
+  render(
+    <LengthField
+      inputId={INPUT_ID}
+      label={LABEL}
+      valueMm={CURRENT_MM}
+      preferences={DEFAULT_METRIC_PREFERENCES}
+      onCommitMm={onCommitMm}
+      notice={notice}
+    />,
+  )
+}
+
 function unitPicker() {
   return screen.getByRole('group', { name: `${LABEL} unit` })
 }
 
 afterEach(cleanup)
 
-describe('LengthField', () => {
+describe('LengthField label and default unit', () => {
   it('associates its label with the input, with no unit baked into the label text', () => {
     renderField(vi.fn())
 
@@ -63,7 +81,9 @@ describe('LengthField', () => {
       'true',
     )
   })
+})
 
+describe('LengthField entry unit switching', () => {
   it('re-expresses the committed value when the entry unit changes', async () => {
     const user = userEvent.setup()
     renderField(vi.fn(), DEFAULT_METRIC_PREFERENCES, 1000)
@@ -95,7 +115,9 @@ describe('LengthField', () => {
     expect(input).toHaveValue('2')
     expect(onCommitMm).not.toHaveBeenCalled()
   })
+})
 
+describe('LengthField committing values', () => {
   it('commits a bare number read in the selected entry unit', async () => {
     const onCommitMm = vi.fn()
     const user = userEvent.setup()
@@ -150,7 +172,9 @@ describe('LengthField', () => {
     expect(onCommitMm).toHaveBeenCalledTimes(1)
     expect(onCommitMm).toHaveBeenCalledWith(1200)
   })
+})
 
+describe('LengthField rejection handling', () => {
   it('shows an inline error and keeps the typed text when a commit is rejected for being out of range', async () => {
     const onCommitMm = vi.fn(() => {
       // Mirror the real path: onCommitMm -> parent dispatch -> the dispatcher
@@ -180,6 +204,89 @@ describe('LengthField', () => {
     expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
   })
 
+  it('shows a hint and marks the field invalid when the typed text cannot be parsed as a length, dispatching nothing', async () => {
+    const onCommitMm = vi.fn()
+    const user = userEvent.setup()
+    renderField(onCommitMm)
+    const input = screen.getByLabelText(LABEL)
+
+    await user.clear(input)
+    await user.type(input, 'twelve')
+    // Leave the field without pressing Enter, the same way a click on the canvas would.
+    await user.tab()
+
+    const hint = document.querySelector('.ds-field__hint')
+    expect(hint).not.toBeNull()
+    expect(hint).toHaveTextContent('Enter a number, or a length such as 2.4 m or 8 ft 6 in.')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(onCommitMm).not.toHaveBeenCalled()
+    // The rejected text stays in the field so the user can fix it in place
+    // instead of retyping the whole value from scratch.
+    expect(input).toHaveValue('twelve')
+  })
+
+  it('clears the hint and the invalid flag once a rejected entry is corrected to a valid length', async () => {
+    const onCommitMm = vi.fn()
+    const user = userEvent.setup()
+    renderField(onCommitMm)
+    const input = screen.getByLabelText(LABEL)
+
+    await user.clear(input)
+    await user.type(input, 'twelve')
+    await user.tab()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+
+    await user.clear(input)
+    await user.type(input, '1.2{Enter}')
+
+    expect(document.querySelector('.ds-field__hint')).toBeNull()
+    expect(input).not.toHaveAttribute('aria-invalid')
+    expect(onCommitMm).toHaveBeenCalledWith(1200)
+  })
+})
+
+describe('LengthField owner notices', () => {
+  it('explains a legitimate value through the hint below the input when its owner supplies a notice', () => {
+    renderFieldWithNotice(NOTICE)
+    const input = screen.getByLabelText(LABEL)
+
+    const hint = document.querySelector('.ds-field__hint')
+    expect(hint).not.toBeNull()
+    expect(hint).toHaveTextContent(NOTICE)
+    // The explanation is announced with the control, not left floating beside it.
+    expect(input).toHaveAttribute('aria-describedby', hint?.getAttribute('id') ?? '')
+  })
+
+  it('leaves the control valid while a notice is showing, because the value it explains is accepted', () => {
+    renderFieldWithNotice(NOTICE)
+
+    expect(screen.getByText(NOTICE)).toBeInTheDocument()
+    expect(screen.getByLabelText(LABEL)).not.toHaveAttribute('aria-invalid')
+  })
+
+  it('gives the hint over to a rejected entry and returns it to the notice once the entry parses again', async () => {
+    const user = userEvent.setup()
+    renderFieldWithNotice(NOTICE)
+    const input = screen.getByLabelText(LABEL)
+
+    await user.clear(input)
+    await user.type(input, 'twelve')
+    await user.tab()
+
+    // What the user just typed is the more urgent thing to say, so it wins the slot.
+    expect(document.querySelector('.ds-field__hint')).toHaveTextContent(UNPARSEABLE_HINT)
+    expect(screen.queryByText(NOTICE)).toBeNull()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+
+    await user.clear(input)
+    await user.type(input, '1.2{Enter}')
+
+    expect(document.querySelector('.ds-field__hint')).toHaveTextContent(NOTICE)
+    expect(input).not.toHaveAttribute('aria-invalid')
+  })
+})
+
+describe('LengthField rendering', () => {
   it('renders through the styled design-system field wrapper', () => {
     const { container } = render(
       <LengthField

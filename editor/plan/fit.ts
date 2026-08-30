@@ -85,3 +85,16 @@ export function contentBounds(points: readonly Point[]): Bounds | null {
   }
   return { min: { x: minX, y: minY }, max: { x: maxX, y: maxY } }
 }
+
+/**
+ * The single non-null result `contentBounds` returns for any non-empty point
+ * set, for callers spanning a fixed-size footprint whose corner count is known
+ * up front and can never be empty.
+ */
+export function requiredContentBounds(points: readonly Point[]): Bounds {
+  const bounds = contentBounds(points)
+  if (bounds === null) {
+    throw new Error('cannot compute bounds of an empty point set')
+  }
+  return bounds
+}

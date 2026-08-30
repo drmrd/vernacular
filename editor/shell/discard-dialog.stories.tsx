@@ -12,6 +12,15 @@ const meta: Meta<typeof DiscardDialog> = {
     onConfirm: fn(),
     onCancel: fn(),
   },
+  decorators: [
+    (story) => (
+      // The prompt's backdrop is pinned to the viewport, which in a catalogue
+      // entry would escape the story frame and leave the story root with no
+      // height at all. A transform on this wrapper makes it the containing block
+      // for fixed descendants, so the entry shows the prompt on a bounded stage.
+      <div style={{ height: '16rem', transform: 'translate(0)' }}>{story()}</div>
+    ),
+  ],
 }
 
 export default meta

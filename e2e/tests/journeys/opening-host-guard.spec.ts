@@ -6,6 +6,11 @@ import { gotoEditor, drawWall, expectWallCount, selectors } from './support'
 // room, and dimension proxies the overlay also renders.
 const openingProxies = (page: Page) => page.getByRole('option', { name: / wide$/ })
 
+// The refused-placement notice painted over the plan. It is aria-hidden (the live
+// region carries the same sentence for assistive technology), so it is reached by
+// its class rather than by role.
+const placementRefusal = (page: Page) => page.locator('.plan-overlay__refusal')
+
 test('a wall cannot host on an opening', async ({ page }) => {
   await gotoEditor(page)
   await drawWall(page, { x: 120, y: 200 }, { x: 520, y: 200 })
@@ -21,4 +26,10 @@ test('a wall cannot host on an opening', async ({ page }) => {
   // the host of an opening is always a wall and never another opening or empty space.
   await selectors.planCanvas(page).click({ position: { x: 320, y: 420 } })
   await expect(openingProxies(page)).toHaveCount(1)
+
+  // Refusing has to say so. The reason reaches a sighted user on the canvas and a
+  // screen-reader user through the live region, rather than the click looking like
+  // it simply failed to register.
+  await expect(placementRefusal(page)).toHaveText('No wall here to host the opening')
+  await expect(selectors.liveRegion(page)).toHaveText('No wall here to host the opening')
 })

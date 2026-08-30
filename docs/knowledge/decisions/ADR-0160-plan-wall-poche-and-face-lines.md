@@ -23,7 +23,7 @@ sourceFiles:
     editor/design-system/tokens.css,
   ]
 status: current
-updated: 2026-08-15
+updated: 2026-08-17
 ---
 
 # ADR-0160: Plan walls draw as poche between two face lines
@@ -189,8 +189,9 @@ three: no profile, or a profile id the registry does not carry, still resolves t
 thickness. Three was the count of neighbours that should have followed the ink, not the count
 of raw `thickness` readers left in the tree. Wall topology still nodes the arrangement from the
 raw figure on purpose (`editor/plan/draw-plan.ts`, `core/topology/rooms.ts`), which is what
-decision 5 above describes; the walker's standoff in `core/scene/walk-collision.ts` reads raw
-against 3D walls that render at the assembly total, and that mismatch is issue #552.
+decision 5 above describes; the walker's standoff in `core/scene/walk-collision.ts` read raw
+against 3D walls that render at the assembly total. That mismatch was issue #552, fixed on
+2026-08-17: the walker now stands off the same resolved assembly face (see ADR-0135's update).
 
 `hostThickness` was the one worth tracing before moving it, since the scene graph feeds 3D as
 well as the page. Nothing in `engine/` or `bridge/` reads it. The 3D wall builder sizes its
@@ -210,6 +211,13 @@ The other #547 consequence stands unchanged. A painted band still takes its endp
 square offsets from the wall's own endpoints, so at a non-collinear junction it still falls
 short of or runs past the mitred corner. Only the thickness half of that issue closed here.
 
+## Update (2026-08-17): the svg export wall stroke closes
+
+`renderWalls` in `core/export/svg/svg-plan-exporter.ts` now reads a wall's stroke width through
+`effectiveWallThickness`, the same resolver its opening gap and jamb caps already used. A
+construction-profiled wall now strokes at its assembly total, so an exported opening gap no
+longer outruns the wall it breaks. Issue #550 is closed.
+
 ## References
 
 - [[ADR-0159-plan-ink-weight-hierarchy]] (the ink roles this builds on; its wall-stroke-width claim
@@ -228,5 +236,5 @@ short of or runs past the mitred corner. Only the thickness half of that issue c
   onto the construction-profile thickness the drawn symbol now uses).
 - Issue #550 (bring the SVG plan export's wall stroke onto the same resolver, so an exported
   opening gap stops outrunning the wall it breaks).
-- Issue #552 (the walk-mode collision standoff, which still stands the walker off a raw
-  half-thickness from walls the 3D view renders at the assembly total).
+- Issue #552 (the walk-mode collision standoff, fixed on 2026-08-17: the walker now stands
+  off the resolved assembly face the 3D view renders; ADR-0135 carries the record).

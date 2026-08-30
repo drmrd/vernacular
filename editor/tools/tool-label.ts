@@ -5,8 +5,6 @@ export function toolLabel(tool: ToolId): string {
   switch (tool) {
     case 'select':
       return 'Select'
-    case 'pan':
-      return 'Pan'
     case 'draw-wall':
       return 'Wall'
     case 'place-opening':

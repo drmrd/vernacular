@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react'
-import type { OpeningSceneNode, UnitPreferences, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, SceneGraph, UnitPreferences, WallSceneNode } from '../../core'
+import { useViewOverlay, type ViewOverlayValue } from '../viewport/view-overlay-context'
 import type { DrawableDimension } from './draw-dimension'
 import { drawPlan, type DrawPlanOptions, type PreviewSegment } from './draw-plan'
 import type { DrawableFurniture } from './draw-furniture'
@@ -53,30 +54,31 @@ export interface PlanScene {
   roomFillColor: string | undefined
 }
 
+/** What the header's view toggles currently show, as the draw reads it. */
+export type OverlayVisibility = Pick<ViewOverlayValue, 'showGrid' | 'showDimensions'>
+
 /**
- * Assembles the drawPlan options from the flattened scene leaves and the resolved
- * canvas palette. Optional overlays (preview, snap, marquee, endpoint handles,
- * calibration) are spread in only when present so an absent one stays off under
- * exactOptionalPropertyTypes.
+ * The scene graph as the plan's DOM overlay should read it. The overlay lays out a
+ * measurement chip and a focusable proxy per dimension from the graph, not from the
+ * draw options, so a Dimensions toggle that reached only the canvas would leave the
+ * numbers on screen over nothing and keep them in the tab order.
  */
-export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPlanOptions {
+export function scopeSceneToShownAnnotations(
+  graph: SceneGraph,
+  overlay: OverlayVisibility,
+): SceneGraph {
+  return overlay.showDimensions ? graph : { ...graph, dimensions: [] }
+}
+
+/**
+ * The draw options the plan carries only when the scene has them set: the active
+ * floor's paint color, the pointer's hover, the in-progress preview, the snap
+ * indicator, the marquee, the two handle sets, the calibration measurement, and the
+ * move-drag ghost. Each is spread in only when present, so an unset one stays absent
+ * rather than explicitly undefined, which exactOptionalPropertyTypes refuses.
+ */
+function optionalDrawOptions(scene: PlanScene): Partial<DrawPlanOptions> {
   return {
-    walls: scene.walls,
-    rooms: scene.rooms,
-    viewport: scene.viewport,
-    width: PLAN_WIDTH,
-    height: PLAN_HEIGHT,
-    selectedIds: scene.selectedIds,
-    grid: true,
-    rulers: true,
-    palette,
-    roomLabels: { preferences: scene.preferences },
-    underlays: scene.underlays,
-    openings: scene.openings,
-    furniture: scene.furniture,
-    dimensions: scene.dimensions,
-    stairs: scene.stairs,
-    surfacePaint: scene.surfacePaint,
     ...(scene.roomFillColor !== undefined ? { roomFillColor: scene.roomFillColor } : {}),
     ...(scene.hoveredId !== undefined ? { hoveredId: scene.hoveredId } : {}),
     ...(scene.preview ? { preview: scene.preview } : {}),
@@ -90,13 +92,48 @@ export function buildDrawOptions(scene: PlanScene, palette: PlanPalette): DrawPl
 }
 
 /**
+ * Assembles the drawPlan options from the flattened scene leaves, the resolved
+ * canvas palette, and what the header's view toggles show.
+ */
+export function buildDrawOptions(
+  scene: PlanScene,
+  palette: PlanPalette,
+  overlay: OverlayVisibility,
+): DrawPlanOptions {
+  return {
+    walls: scene.walls,
+    rooms: scene.rooms,
+    viewport: scene.viewport,
+    width: PLAN_WIDTH,
+    height: PLAN_HEIGHT,
+    selectedIds: scene.selectedIds,
+    grid: overlay.showGrid,
+    // The rulers are their own canvas-chrome layer in the design language, and the
+    // header toggle is labeled Grid alone, so hiding the grid leaves them standing.
+    rulers: true,
+    palette,
+    roomLabels: { preferences: scene.preferences },
+    underlays: scene.underlays,
+    openings: scene.openings,
+    furniture: scene.furniture,
+    // A hidden dimension is not drawn and not hover-highlighted either, both of
+    // which the draw reads off this one list.
+    dimensions: overlay.showDimensions ? scene.dimensions : [],
+    stairs: scene.stairs,
+    surfacePaint: scene.surfacePaint,
+    ...optionalDrawOptions(scene),
+  }
+}
+
+/**
  * Redraws the canvas whenever any draw-meaningful scene leaf changes. The effect
  * depends on each leaf member individually rather than on the per-render scene
  * object, which would rasterize on every render; the scene members are listed
  * explicitly because exhaustive-deps cannot infer them through buildDrawOptions.
  */
 export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: PlanPalette): void {
-  const options = buildDrawOptions(scene, palette)
+  const overlay = useViewOverlay()
+  const options = buildDrawOptions(scene, palette, overlay)
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx) {
@@ -125,6 +162,8 @@ export function usePlanRedraw(canvasRef: CanvasRef, scene: PlanScene, palette: P
     scene.ghost,
     scene.surfacePaint,
     scene.roomFillColor,
+    overlay.showGrid,
+    overlay.showDimensions,
     palette,
   ])
 }

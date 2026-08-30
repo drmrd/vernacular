@@ -185,3 +185,23 @@
   font-family: sans-serif;
   pointer-events: none;
 }
+
+/*
+ * The refused-placement notice: a pill across the top of the plan stage saying why
+ * a click put nothing down. It sits opposite the lower-left snap status so the two
+ * transient readouts never collide, and it is aria-hidden because the live region
+ * announces the same sentence; this is the sighted reader's copy of it.
+ */
+.plan-overlay__refusal {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(33, 37, 41, 0.92);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-family: sans-serif;
+  pointer-events: none;
+}

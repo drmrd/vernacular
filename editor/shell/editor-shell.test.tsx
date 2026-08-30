@@ -159,6 +159,20 @@ describe('EditorShell', () => {
     ).toBeInTheDocument()
   })
 
+  it('does not advertise unregistered keyboard shortcuts on the Grid and Dimensions toggles', () => {
+    vi.stubGlobal('navigator', {})
+
+    renderShell()
+
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    const dimensionsBtn = screen.getByRole('button', { name: /dimensions/i })
+
+    // ADR-0155 withholds new keybindings pending the deliverability audit, so the
+    // toolbar must not hint at a Grid or Dimensions shortcut that isn't registered.
+    expect(gridBtn.getAttribute('title')).not.toMatch(/\(g\)/i)
+    expect(dimensionsBtn.getAttribute('title')).not.toMatch(/\(d\)/i)
+  })
+
   it('toggles the Grid button aria-pressed on click', async () => {
     vi.stubGlobal('navigator', {})
     const user = userEvent.setup()
@@ -170,6 +184,31 @@ describe('EditorShell', () => {
 
     await user.click(gridBtn)
     expect(gridBtn).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('makes the Grid and Dimensions toggles inert while the 3D view holds the viewport', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+    const gridBtn = screen.getByRole('button', { name: /grid/i })
+    const dimensionsBtn = screen.getByRole('button', { name: /dimensions/i })
+
+    await user.click(screen.getByRole('button', { name: '3D view' }))
+
+    // Both toggles describe layers of the 2D plan, which the 3D view mode does not
+    // show, so they steer nothing there and say why on hover.
+    expect(gridBtn).toBeDisabled()
+    expect(dimensionsBtn).toBeDisabled()
+    expect(gridBtn.getAttribute('title')).toMatch(/plan/i)
+    expect(dimensionsBtn.getAttribute('title')).toMatch(/plan/i)
+
+    await user.click(screen.getByRole('button', { name: 'Plan view' }))
+
+    expect(gridBtn).toBeEnabled()
+    expect(dimensionsBtn).toBeEnabled()
+    expect(gridBtn.getAttribute('title')).toBe('Grid')
+    expect(dimensionsBtn.getAttribute('title')).toBe('Dimensions')
   })
 
   it('routes the Grid, Dimensions, Undo, and Redo header buttons through the IconButton primitive', async () => {
@@ -339,7 +378,7 @@ describe('EditorShell', () => {
 
     const alert = screen.getByRole('alert')
     await user.click(within(alert).getByRole('button', { name: /restore/i }))
-    await user.click(within(alert).getByRole('button', { name: /discard/i }))
+    await user.click(within(alert).getByRole('button', { name: /delete recovered copy/i }))
 
     expect(onRestore).toHaveBeenCalledTimes(1)
     expect(onDiscard).toHaveBeenCalledTimes(1)
@@ -348,7 +387,21 @@ describe('EditorShell', () => {
     renderShell()
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByRole('button', { name: /restore/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /discard/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /delete recovered copy/i })).toBeNull()
+  })
+
+  it('seats the recovery prompt in the frame banner slot rather than above the frame', () => {
+    // Rendered as a sibling before the frame, the prompt pushes a viewport-tall
+    // frame down by its own height, so the status bar leaves the window. The
+    // frame already reserves a banner row for exactly this kind of notice and
+    // reflows the rest of the layout around it.
+    vi.stubGlobal('navigator', {})
+
+    const { container } = renderShell({ recovery: { onRestore: vi.fn(), onDiscard: vi.fn() } })
+
+    const banner = container.querySelector('.ds-app-frame__banner')
+    expect(banner).not.toBeNull()
+    expect(banner).toContainElement(screen.getByRole('alert'))
   })
 
   it('shows the open-file menu item and a viewport drop target', async () => {

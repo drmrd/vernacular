@@ -237,9 +237,9 @@ interface WalkFrameContext {
 }
 
 // Builds this frame's collision world from the static inputs and the live open-door
-// set: open doors cut gaps in their host walls, closed doors and all windows stay
-// solid, and furniture footprints always block. Closed doors and windows are solid
-// because only door ids in the live open set are passed through as passable.
+// set: passable openings cut gaps in their host walls and furniture footprints always
+// block. passableDoorIds decides what counts as passable, which is open doors plus
+// leafless doorways that have nothing to open; shut doors and windows stay solid.
 function frameCollisionWorld(ctx: WalkFrameContext): WalkCollisionWorld {
   const { walls, openings, furnitureSegments, radius } = ctx.collisionInputs
   const passable = passableDoorIds(openings, ctx.interaction.current.openIds)

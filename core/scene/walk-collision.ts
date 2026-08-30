@@ -1,5 +1,6 @@
 import type { Point } from '../model/types'
-import { openingKindOfType } from '../registries/opening-kind'
+import { openingKindOfType, openingTypeHasFill } from '../registries/opening-kind'
+import { effectiveWallThickness } from './construction-profile'
 import {
   WALL_NODE_PREFIX,
   type FurnitureSceneNode,
@@ -22,10 +23,13 @@ export interface WallSegment {
   start: PlanarPoint
   end: PlanarPoint
   /**
-   * The wall's full thickness in millimeters. The walker stands off the
-   * centerline by `radius + thickness / 2`, so half the thickness widens the
-   * standoff to clear the wall face. Optional: a footprint-perimeter segment is
-   * the exact solid boundary and omits it, keeping the plain `radius` standoff.
+   * The solid width the segment stands for, in millimeters. The walker stands off
+   * the centerline by `radius + thickness / 2`, so half the width widens the
+   * standoff to clear the face. On a wall-derived segment this is the resolved
+   * construction assembly total rather than the wall node's raw `thickness`
+   * field, which is what the 3D wall builder extrudes and so what the walker
+   * sees. Optional: a footprint-perimeter segment is the exact solid boundary and
+   * omits it, keeping the plain `radius` standoff.
    */
   thickness?: number
 }
@@ -141,12 +145,17 @@ export function sweepWalkCollision(
   return resolved
 }
 
-/** The wall centerline as a world-plane segment: plan x to X, plan y to Z. */
+/**
+ * The wall centerline as a world-plane segment: plan x to X, plan y to Z. The
+ * standoff thickness is the resolved assembly total, the same figure the 3D wall
+ * builder extrudes its footprint from, so the walker clears the face it can see
+ * rather than a thinner raw thickness the renderer never draws.
+ */
 function wallToSegment(wall: WallSceneNode): WallSegment {
   return {
     start: { x: wall.start.x, z: wall.start.y },
     end: { x: wall.end.x, z: wall.end.y },
-    thickness: wall.thickness,
+    thickness: effectiveWallThickness(wall),
   }
 }
 
@@ -236,10 +245,11 @@ function splitWall(
 
 /**
  * Builds the collision segments a walker is blocked by on the active floor. Each
- * wall contributes its centerline. A closed opening (a shut door or any window)
- * leaves its host wall solid so the walker cannot pass through it; only an opening
- * named in `passableOpeningIds` (an open, walkable door) cuts a gap in the wall.
- * {@link passableDoorIds} derives that set from the live open-door state.
+ * wall contributes its centerline. Only an opening named in `passableOpeningIds`
+ * cuts a gap in its host wall; every other opening leaves the wall solid, so the
+ * walker cannot pass through it. This function does not decide which openings
+ * qualify. {@link passableDoorIds} builds that set, and {@link isWalkableOpening}
+ * carries the rule, which is not a plain open-or-shut test.
  */
 export function wallSegmentsForWalk(
   walls: readonly WallSceneNode[],
@@ -250,11 +260,26 @@ export function wallSegmentsForWalk(
 }
 
 /**
- * Narrows a set of open opening ids to just the doors. An open door is walkable,
- * so it cuts a gap in its host wall; an open window is not, since you cannot walk
- * through a window. An opening counts as a door when `openingKindOfType` of its
- * type is `'door'`; an unknown or non-opening type is excluded. The result feeds
- * `wallSegmentsForWalk` as its passable set.
+ * Whether the walker can step through this opening right now. Only a door is ever
+ * walkable, since you cannot walk through a window, and an unknown or non-opening
+ * type is not a door. The door check has to come first: it is what keeps a window
+ * that happens to carry no fill body out of the leafless case below. A door with a
+ * leaf hung in it has to be opened first, so it has to appear in `openIds`. A
+ * leafless door, such as a cased opening, is a bare hole in the wall with nothing
+ * to open, so it passes regardless of the open state.
+ */
+function isWalkableOpening(opening: OpeningSceneNode, openIds: ReadonlySet<string>): boolean {
+  if (openingKindOfType(opening.type) !== 'door') {
+    return false
+  }
+  return !openingTypeHasFill(opening.type) || openIds.has(opening.id)
+}
+
+/**
+ * Narrows a set of openings to the ones the walker can pass through, given the ids
+ * currently open. Open doors and leafless doorways qualify; shut doors with a leaf,
+ * every window, and unknown types do not. See {@link isWalkableOpening} for the
+ * per-opening rule. The result feeds `wallSegmentsForWalk` as its passable set.
  */
 export function passableDoorIds(
   openings: readonly OpeningSceneNode[],
@@ -262,7 +287,7 @@ export function passableDoorIds(
 ): Set<string> {
   const passable = new Set<string>()
   for (const opening of openings) {
-    if (openIds.has(opening.id) && openingKindOfType(opening.type) === 'door') {
+    if (isWalkableOpening(opening, openIds)) {
       passable.add(opening.id)
     }
   }

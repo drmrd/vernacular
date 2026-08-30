@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
-import { commitProject, createEditorSession, guardDestructive } from '../bridge'
+import { commitProject, createEditorSession } from '../bridge'
 import { importProjectFile } from '../storage'
 import { failureMessage } from './failure-message'
 import { validateLoadedProject } from './validate-loaded-project'
 import {
   defaultStoreBackend,
+  guardSessionSwap,
   recordRecent,
   type ProjectActionsContext,
 } from './use-project-actions'
@@ -45,23 +46,19 @@ export function useOpenFileAction(context: ProjectActionsContext): {
   const backend = defaultStoreBackend(capabilities)
   const importAndActivate = useCallback(
     (file: File) =>
-      guardDestructive({
-        isDirty: isDirty ?? false,
-        confirm: confirmDiscard ?? (() => true),
-        run: async () => {
-          try {
-            const bytes = await readFileBytes(file)
-            const project = await importProjectFile(file.name, bytes, projectId)
-            validateLoadedProject(project)
-            onSession(createEditorSession(project))
-            await commitProject({ store, projectId, project })
-            if (backend !== null) {
-              recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
-            }
-          } catch (error) {
-            notifications.error(failureMessage('Open', error))
+      guardSessionSwap({ isDirty, confirmDiscard }, async () => {
+        try {
+          const bytes = await readFileBytes(file)
+          const project = await importProjectFile(file.name, bytes, projectId)
+          validateLoadedProject(project)
+          onSession(createEditorSession(project))
+          await commitProject({ store, projectId, project })
+          if (backend !== null) {
+            recordRecent(recentProjects, { id: projectId, name: project.meta.name, backend })
           }
-        },
+        } catch (error) {
+          notifications.error(failureMessage('Open', error))
+        }
       }),
     [store, projectId, recentProjects, backend, onSession, isDirty, confirmDiscard, notifications],
   )

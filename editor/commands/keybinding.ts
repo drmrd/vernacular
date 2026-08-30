@@ -40,3 +40,36 @@ export function eventToKeystroke(
 export function keystrokesMatch(a: Keystroke, b: Keystroke): boolean {
   return a.key === b.key && a.mod === b.mod && a.shift === b.shift
 }
+
+// How each platform prints a modifier. A Mac keyboard carries the glyphs on the
+// keys themselves and runs them together; everywhere else the names are spelled
+// out and joined with a plus.
+const MAC_MODIFIERS: Record<string, string> = { [MODIFIER_TOKEN]: '⌘', [SHIFT_TOKEN]: '⇧' }
+const SPELLED_MODIFIERS: Record<string, string> = {
+  [MODIFIER_TOKEN]: 'Ctrl',
+  [SHIFT_TOKEN]: 'Shift',
+}
+
+/** A key name as it reads on the key: "z" prints as Z, "delete" as Delete. */
+function keyLabel(token: string): string {
+  return token.charAt(0).toUpperCase() + token.slice(1)
+}
+
+/**
+ * A binding printed the way the reader's own keyboard is labelled: "⌘⇧Z" on a Mac,
+ * "Ctrl+Shift+Z" elsewhere. This is display only; matching still runs through
+ * parseKeybinding, so the printed form never decides what a key does.
+ */
+export function formatKeybinding(binding: string, isMac: boolean): string {
+  const modifiers = isMac ? MAC_MODIFIERS : SPELLED_MODIFIERS
+  const parts = binding.split('+').map((token) => modifiers[token.toLowerCase()] ?? keyLabel(token))
+  return parts.join(isMac ? '' : '+')
+}
+
+/** True when the running platform looks like macOS, which decides how a binding prints. */
+export function isMacPlatform(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+  return /mac/i.test(navigator.platform || navigator.userAgent)
+}

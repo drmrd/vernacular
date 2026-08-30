@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest'
-import { parseKeybinding, eventToKeystroke, keystrokesMatch } from './keybinding'
+import { parseKeybinding, eventToKeystroke, formatKeybinding, keystrokesMatch } from './keybinding'
+
+describe('formatKeybinding', () => {
+  it('prints a chord in the glyphs a Mac keyboard is labelled with', () => {
+    expect(formatKeybinding('Mod+Shift+Z', true)).toBe('⌘⇧Z')
+    expect(formatKeybinding('Mod+K', true)).toBe('⌘K')
+  })
+
+  it('spells the modifiers out on every other platform', () => {
+    expect(formatKeybinding('Mod+Shift+Z', false)).toBe('Ctrl+Shift+Z')
+    expect(formatKeybinding('Mod+K', false)).toBe('Ctrl+K')
+  })
+
+  it('leaves an unmodified key reading as it does on the key itself', () => {
+    expect(formatKeybinding('Delete', false)).toBe('Delete')
+    expect(formatKeybinding('Escape', true)).toBe('Escape')
+    expect(formatKeybinding('1', true)).toBe('1')
+  })
+})
 
 describe('keybinding', () => {
   it('parses a modifier chord into a normalized keystroke', () => {

@@ -4,9 +4,10 @@ title: 'ADR-0135: Walk collision sweeps the move path and stands off the wall fa
 type: decision
 tags: [architecture, three-dimensional, walk-mode, collision, camera, navigation, core, geometry]
 related: [decisions/ADR-0064-three-dimensional-camera-navigation]
-sourceFiles: [core/scene/walk-collision.ts, core/scene/walk-camera.ts]
+sourceFiles:
+  [core/scene/walk-collision.ts, core/scene/walk-camera.ts, core/registries/opening-kind.ts]
 status: current
-updated: 2026-06-29
+updated: 2026-08-17
 ---
 
 # ADR-0135: Walk collision sweeps the move path and stands off the wall face
@@ -91,5 +92,11 @@ Carrying thickness per segment rather than as one global wall thickness keeps th
 door open for walls of different thicknesses in the same plan, which the model
 already allows, and costs nothing extra since each segment already comes from a wall
 node that knows its own thickness.
-</content>
-</invoke>
+
+## Update (2026-08-17): the standoff follows the assembly, and leafless openings pass
+
+The standoff thickness now comes from `effectiveWallThickness`, the assembly total the 3D
+wall builder extrudes, so a wall carrying a construction profile no longer lets the eye clip
+into the face it renders (issue #552). Passability also gained a second case: an opening with
+no fill body, such as a cased opening, is walkable whether or not it is in the open set,
+because there is nothing in it to open (issue #532).

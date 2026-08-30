@@ -1,35 +1,19 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AssetRegistry, type AssetSource, type LibraryItem } from '../../storage'
+import { AssetRegistry, type LibraryItem } from '../../storage'
 import { AssetRegistryProvider } from '../../bridge/react/asset-registry-context'
-import type { AssetKind } from '../../core'
+import {
+  MID_CENTURY_CHAIR_NAME,
+  PACK_SCOPE,
+  libraryItem,
+  listingSource,
+} from './library-test-support'
 import { LibraryPanel } from './library-panel'
 
-const PACK_SCOPE = 'pack:vernacular-starter@1.0.0'
-const PACK_ITEM_NAME = 'Mid-century chair'
 const USER_ITEM_NAME = 'Inherited armchair'
 const EMPTY_STATE = 'Your library is empty'
-
-const FOOTPRINT_WIDTH_MM = 600
-const FOOTPRINT_DEPTH_MM = 600
-
-function libraryItem(overrides: Partial<LibraryItem> = {}): LibraryItem {
-  return {
-    reference: { scope: PACK_SCOPE, contentHash: 'h1' },
-    name: PACK_ITEM_NAME,
-    kind: 'furniture' as AssetKind,
-    categories: ['seating'],
-    eras: ['mid-century'],
-    footprint: { width: FOOTPRINT_WIDTH_MM, depth: FOOTPRINT_DEPTH_MM },
-    height: 750,
-    ...overrides,
-  }
-}
-
-function listingSource(id: string, items: LibraryItem[]): AssetSource {
-  return { id, read: async () => undefined, list: async () => items }
-}
+const IMPORT_ACTION = /import a 3d model/i
 
 function registryOf(packItems: LibraryItem[], userItems: LibraryItem[]): AssetRegistry {
   return new AssetRegistry([
@@ -55,11 +39,11 @@ afterEach(cleanup)
 
 describe('LibraryPanel', () => {
   it('lists items from both the pack and user sources', async () => {
-    const packItem = libraryItem({ name: PACK_ITEM_NAME })
+    const packItem = libraryItem({ name: MID_CENTURY_CHAIR_NAME })
     const userItem = libraryItem({ name: USER_ITEM_NAME })
     renderPanel(registryOf([packItem], [userItem]))
 
-    expect(await screen.findByRole('button', { name: PACK_ITEM_NAME })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: USER_ITEM_NAME })).toBeInTheDocument()
   })
 
@@ -71,21 +55,21 @@ describe('LibraryPanel', () => {
 
   it('calls onPick with the picked item when its button is clicked', async () => {
     const user = userEvent.setup()
-    const packItem = libraryItem({ name: PACK_ITEM_NAME })
+    const packItem = libraryItem({ name: MID_CENTURY_CHAIR_NAME })
     const onPick = vi.fn()
     renderPanel(registryOf([packItem], []), onPick)
 
-    await user.click(await screen.findByRole('button', { name: PACK_ITEM_NAME }))
+    await user.click(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME }))
 
     expect(onPick).toHaveBeenCalledWith(packItem)
   })
 
-  it('calls onImport once when the Import GLB action is clicked', async () => {
+  it('calls onImport once when the import action is clicked', async () => {
     const user = userEvent.setup()
     const onImport = vi.fn()
     renderPanel(registryOf([libraryItem()], []), vi.fn(), onImport)
 
-    await user.click(screen.getByRole('button', { name: /import glb/i }))
+    await user.click(screen.getByRole('button', { name: IMPORT_ACTION }))
 
     expect(onImport).toHaveBeenCalledTimes(1)
   })
@@ -94,7 +78,7 @@ describe('LibraryPanel', () => {
     renderPanel(new AssetRegistry([]))
 
     expect(await screen.findByText(EMPTY_STATE)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: PACK_ITEM_NAME })).toBeNull()
+    expect(screen.queryByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toBeNull()
   })
 
   it('presents the empty-state message as a heading', async () => {
@@ -226,10 +210,10 @@ describe('LibraryPanel design-system primitives', () => {
     }
   })
 
-  it('routes the Import GLB button through the Button primitive', async () => {
+  it('routes the import button through the Button primitive', async () => {
     renderPanel(registryOf([libraryItem()], []))
 
-    expect(screen.getByRole('button', { name: /import glb/i })).toHaveClass('ds-button')
+    expect(screen.getByRole('button', { name: IMPORT_ACTION })).toHaveClass('ds-button')
   })
 
   it('still updates the visible items when a source segmented option is selected', async () => {
@@ -242,12 +226,12 @@ describe('LibraryPanel design-system primitives', () => {
     expect(screen.getByRole('button', { name: OAK_NAME })).toBeInTheDocument()
   })
 
-  it('still fires onImport when the Import GLB button is clicked', async () => {
+  it('still fires onImport when the import button is clicked', async () => {
     const user = userEvent.setup()
     const onImport = vi.fn()
     renderPanel(registryOf([libraryItem()], []), vi.fn(), onImport)
 
-    await user.click(screen.getByRole('button', { name: /import glb/i }))
+    await user.click(screen.getByRole('button', { name: IMPORT_ACTION }))
 
     expect(onImport).toHaveBeenCalledTimes(1)
   })
@@ -283,19 +267,30 @@ describe('LibraryPanel thumbnail placeholders', () => {
   })
 })
 
+// The panel with the pack item armed, both rows listed and ready to assert on.
+async function renderArmedPanel(): Promise<void> {
+  const armed = libraryItem({
+    name: EAMES_NAME,
+    reference: { scope: PACK_SCOPE, contentHash: 'p1' },
+  })
+  render(
+    <AssetRegistryProvider registry={packAndUserRegistry()}>
+      <LibraryPanel onPick={vi.fn()} onImport={vi.fn()} armed={armed} />
+    </AssetRegistryProvider>,
+  )
+  await screen.findByRole('button', { name: EAMES_NAME })
+  await screen.findByRole('button', { name: OAK_NAME })
+}
+
 describe('LibraryPanel placement feedback', () => {
+  it('names the key that turns the ghost while the placement hint shows', async () => {
+    await renderArmedPanel()
+
+    expect(screen.getByText(/\bR to rotate\b/)).toBeInTheDocument()
+  })
+
   it('captions the armed item and marks only its button pressed', async () => {
-    const armed = libraryItem({
-      name: EAMES_NAME,
-      reference: { scope: PACK_SCOPE, contentHash: 'p1' },
-    })
-    render(
-      <AssetRegistryProvider registry={packAndUserRegistry()}>
-        <LibraryPanel onPick={vi.fn()} onImport={vi.fn()} armed={armed} />
-      </AssetRegistryProvider>,
-    )
-    await screen.findByRole('button', { name: EAMES_NAME })
-    await screen.findByRole('button', { name: OAK_NAME })
+    await renderArmedPanel()
 
     expect(screen.getByText(`Click the canvas to place ${EAMES_NAME}`)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: EAMES_NAME })).toHaveAttribute('aria-pressed', 'true')
@@ -310,7 +305,7 @@ function carriesFieldControlTreatment(control: HTMLElement): boolean {
 describe('LibraryPanel design-system surfaces', () => {
   it('gives the furniture library region the shared menu-surface class', async () => {
     renderPanel(registryOf([libraryItem()], []))
-    await screen.findByRole('button', { name: PACK_ITEM_NAME })
+    await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })
 
     expect(screen.getByRole('region', { name: /furniture library/i })).toHaveClass(
       'ds-menu-surface',
@@ -320,7 +315,9 @@ describe('LibraryPanel design-system surfaces', () => {
   it('routes the grid item button through the Button primitive', async () => {
     renderPanel(registryOf([libraryItem()], []))
 
-    expect(await screen.findByRole('button', { name: PACK_ITEM_NAME })).toHaveClass('ds-button')
+    expect(await screen.findByRole('button', { name: MID_CENTURY_CHAIR_NAME })).toHaveClass(
+      'ds-button',
+    )
   })
 
   it('gives the furniture search input the field control treatment', async () => {

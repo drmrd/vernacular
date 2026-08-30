@@ -80,6 +80,49 @@ describe('App boot and storage warnings', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not open the project/i)
   })
 
+  it('names the underlying failure in the boot error notice', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'load').mockRejectedValue(new Error('stored project is corrupt'))
+
+    render(<App store={store} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/stored project is corrupt/i)
+  })
+
+  it('boots into the shell when the failed boot is retried', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    // Fails once, then loads normally: Retry has to re-run the boot, not just
+    // repaint the notice.
+    vi.spyOn(store, 'load').mockRejectedValueOnce(new Error('disk fault'))
+
+    render(<App store={store} />)
+
+    await screen.findByRole('alert')
+    await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /vernacular/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('starts a new project from a failed boot without overwriting the stored one', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    vi.spyOn(store, 'load').mockRejectedValue(new Error('stored project is corrupt'))
+    const save = vi.spyOn(store, 'save')
+
+    render(<App store={store} />)
+
+    await screen.findByRole('alert')
+    await userEvent.click(screen.getByRole('button', { name: /start a new project/i }))
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    // The stored bytes survive: they are only replaced by an explicit save.
+    expect(save).not.toHaveBeenCalled()
+  })
+
   it('raises a banner when booting into a storage-degraded environment', async () => {
     vi.stubGlobal('navigator', {})
     vi.stubGlobal('indexedDB', undefined)
@@ -141,6 +184,24 @@ describe('App async store resolution', () => {
       await screen.findByRole('heading', { level: 1, name: /vernacular/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('main', { name: /viewport/i })).toBeInTheDocument()
+    expect(resolveStore).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries only the failed load and leaves the resolved storage alone', async () => {
+    stubCapableStorage()
+    const store = new InMemoryProjectStore()
+    // Storage resolves normally; only the first load fails.
+    vi.spyOn(store, 'load').mockRejectedValueOnce(new Error('disk fault'))
+    const resolveStore = vi.fn(() => Promise.resolve(store))
+
+    render(<App resolveStore={resolveStore} />)
+
+    await screen.findByRole('alert')
+    await userEvent.click(screen.getByRole('button', { name: /retry/i }))
+
+    await screen.findByRole('heading', { level: 1, name: /vernacular/i })
+    // Resolving again would hand the live session a different store object, and a
+    // resolution that failed the second time would throw away a working boot.
     expect(resolveStore).toHaveBeenCalledTimes(1)
   })
 
@@ -267,13 +328,21 @@ describe('App project actions', () => {
     // destructive (prune deletes every autosave file), so it routes through the
     // same confirm seam as New/Open/Import (ADR-0104).
     const alert = await screen.findByRole('alert')
-    await userEvent.click(within(alert).getByRole('button', { name: /discard/i }))
+    await userEvent.click(within(alert).getByRole('button', { name: /delete recovered copy/i }))
 
     // Confirm the dialog the same way the New/Open/Import discard tests do.
     // Same dialog seam as the #472 flake: if this findBy ever times out under
     // full-suite load, see the unsaved-changes guard test's timeout note below.
     const dialog = await screen.findByRole('alertdialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: /discard/i }))
+
+    // What this confirmation deletes is the recovered snapshots, not the changes
+    // in the open document, so it must not borrow the unsaved-changes wording the
+    // New and Open guards use.
+    expect(dialog).toHaveTextContent(/delete the recovered copy of current\?/i)
+    expect(dialog).not.toHaveTextContent(/discard unsaved changes/i)
+
+    // The button is what the user aims at, so it names the deletion too.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete recovered copy' }))
 
     // Only after the confirmation does pruning happen and the prompt dismiss.
     await waitFor(() => expect(snapshots.prune).toHaveBeenCalled())

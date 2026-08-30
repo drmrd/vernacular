@@ -5,6 +5,7 @@ import type { CommandRegistry } from '../command-registry'
 export const ADD_STAIR = 'project/add-stair'
 export const REMOVE_STAIR = 'project/remove-stair'
 export const MOVE_STAIR = 'project/move-stair'
+export const ROTATE_STAIR = 'project/rotate-stair'
 export const SET_STAIR_RUN_TYPE = 'project/set-stair-run-type'
 
 export interface AddStairParams {
@@ -55,6 +56,20 @@ export function moveStair(stairId: string, position: Point): Command<MoveStairPa
   }
 }
 
+export interface RotateStairParams {
+  stairId: string
+  /** The absolute angle in radians, about the stair position, not a delta. */
+  rotation: number
+}
+
+export function rotateStair(stairId: string, rotation: number): Command<RotateStairParams> {
+  return {
+    type: ROTATE_STAIR,
+    params: { stairId, rotation },
+    description: 'Rotate stair',
+  }
+}
+
 export interface SetStairRunTypeParams {
   stairId: string
   runType: StairRunType
@@ -85,19 +100,30 @@ const removeStairHandler: CommandHandler<Project, RemoveStairParams> = {
   },
 }
 
+// Applies `patch` to the stair whose id matches `stairId`, leaving every other
+// stair reference-equal. Reassigns the slice for the same undo reason as above,
+// mirroring `mapTargetFloor`.
+function mapTargetStair(state: Project, stairId: string, patch: Partial<Stair>): void {
+  state.stairs = state.stairs.map((stair) =>
+    stair.id === stairId ? { ...stair, ...patch } : stair,
+  )
+}
+
 const moveStairHandler: CommandHandler<Project, MoveStairParams> = {
   apply(state, params) {
-    state.stairs = state.stairs.map((stair) =>
-      stair.id === params.stairId ? { ...stair, position: params.position } : stair,
-    )
+    mapTargetStair(state, params.stairId, { position: params.position })
+  },
+}
+
+const rotateStairHandler: CommandHandler<Project, RotateStairParams> = {
+  apply(state, params) {
+    mapTargetStair(state, params.stairId, { rotation: params.rotation })
   },
 }
 
 const setStairRunTypeHandler: CommandHandler<Project, SetStairRunTypeParams> = {
   apply(state, params) {
-    state.stairs = state.stairs.map((stair) =>
-      stair.id === params.stairId ? { ...stair, runType: params.runType } : stair,
-    )
+    mapTargetStair(state, params.stairId, { runType: params.runType })
   },
 }
 
@@ -108,5 +134,6 @@ export function registerStairCommands(
     .register(ADD_STAIR, addStairHandler)
     .register(REMOVE_STAIR, removeStairHandler)
     .register(MOVE_STAIR, moveStairHandler)
+    .register(ROTATE_STAIR, rotateStairHandler)
     .register(SET_STAIR_RUN_TYPE, setStairRunTypeHandler)
 }

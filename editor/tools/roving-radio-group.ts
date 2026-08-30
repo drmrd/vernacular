@@ -75,6 +75,10 @@ export function useRovingRadioGroup<C extends HTMLElement = HTMLDivElement>(): R
       return
     }
     event.preventDefault()
+    // The group has consumed the key. Without this the same arrow also reaches the
+    // window shortcuts, so roving between tools would nudge the selection at the
+    // same time.
+    event.stopPropagation()
     roveSelection(container, event.key)
   }, [])
   return { containerRef, onKeyDown }

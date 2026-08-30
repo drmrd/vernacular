@@ -16,6 +16,7 @@ import {
   resolveSurfacePaint,
   ROOM_ID_PREFIX,
   selectionCenter,
+  STAIR_NODE_PREFIX,
   WALL_NODE_PREFIX,
   type Command,
   type DimensionSceneNode,
@@ -25,6 +26,7 @@ import {
   type RoomOverride,
   type RoomSceneNode,
   type SceneGraph,
+  type Stair,
   type UnitPreferences,
   type UnitSystem,
   type WallSceneNode,
@@ -40,10 +42,11 @@ import { RoomPeriodEditor } from '../plan/room-period-editor'
 import { RoomPurposeEditor } from '../plan/room-purpose-editor'
 import { RoomStyleEditor } from '../plan/room-style-editor'
 import { RoomSubPurposeEditor } from '../plan/room-sub-purpose-editor'
-import { selectedEntityIds } from '../plan/selection-entities'
+import { transformableEntityIds } from '../plan/selection-entities'
 import { SelectionTransformPanel } from '../plan/selection-transform-panel'
 import { singleSelectedDimension } from '../plan/selected-dimension'
 import { RoomFinishSection } from '../plan/room-finish-section'
+import { StairInspector } from '../plan/stair-inspector'
 import { WallFinishSection } from '../plan/wall-finish-section'
 import { WallThicknessEditor } from '../plan/wall-thickness-editor'
 
@@ -97,6 +100,13 @@ function singleSelectedRoomNode(
   return graph.rooms.find((room) => room.id === onlyId) ?? null
 }
 
+// How many rooms sit on one floor. Floor and ceiling finishes are floor-scoped,
+// so the finish section needs this count to warn before a room-driven edit repaints
+// every room sharing that floor.
+function roomsSharingFloor(rooms: readonly RoomSceneNode[], floorId: string): number {
+  return rooms.filter((room) => room.floorId === floorId).length
+}
+
 interface SelectedOpening {
   floorId: string
   opening: Opening
@@ -127,6 +137,27 @@ function singleSelectedOpening(
     }
   }
   return null
+}
+
+/**
+ * The single selected raw `Stair`, or null. Unlike an opening or a wall, a stair
+ * lives on the project rather than a floor (it spans floors), so the selection
+ * carries the namespaced scene-node id with no floor id to recover; this strips
+ * `STAIR_NODE_PREFIX` and finds the raw project stair by its bare id.
+ */
+function singleSelectedStair(
+  selectedIds: ReadonlySet<string>,
+  project: Readonly<Project>,
+): Stair | null {
+  if (selectedIds.size !== 1) {
+    return null
+  }
+  const [onlyId] = selectedIds
+  if (onlyId === undefined || !onlyId.startsWith(STAIR_NODE_PREFIX)) {
+    return null
+  }
+  const rawId = onlyId.slice(STAIR_NODE_PREFIX.length)
+  return project.stairs.find((stair) => stair.id === rawId) ?? null
 }
 
 interface SelectedFurniture {
@@ -345,6 +376,7 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
           treatmentFor={(ref) => resolveSurfacePaint(session.getProject(), ref)}
           recent={[]}
           dispatch={dispatch}
+          roomsOnFloor={roomsSharingFloor(graph.rooms, roomNode.floorId)}
         />
       </>
     )
@@ -356,10 +388,11 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
     // widened opening against same-wall neighbors (filtered inside the component).
     const siblingOpenings = floorOpenings(project, selectedOpening.floorId)
     return (
-      // Key on the opening id so the inspector remounts when the selected opening
-      // changes; its dimension fields seed from the opening at mount.
+      // Key on the opening's editable values so the inspector remounts when the
+      // selected opening changes or an undo restores different ones; its dimension
+      // fields seed from the opening at mount and never re-read it afterwards.
       <OpeningInspector
-        key={selectedOpening.opening.id}
+        key={`${selectedOpening.opening.id}:${selectedOpening.opening.width}:${selectedOpening.opening.height}:${selectedOpening.opening.sillHeight}:${selectedOpening.opening.type}`}
         floorId={selectedOpening.floorId}
         opening={selectedOpening.opening}
         units={project.meta.units}
@@ -371,7 +404,13 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
   const dimensionNode = singleSelectedDimension(selectedIds, graph)
   if (dimensionNode !== null) {
     return (
+      // Key on the node id so the inspector remounts when the selected dimension
+      // changes, matching the opening branch above. RemoveControl also disarms
+      // itself from its targetId, so this key is not the only guard against an
+      // armed confirm retargeting; it covers whatever local state this subtree
+      // grows later, without every future caller having to remember the keying.
       <SelectedDimensionInspector
+        key={dimensionNode.id}
         node={dimensionNode}
         units={project.meta.units}
         session={session}
@@ -393,6 +432,19 @@ function SelectionInspector({ session, graph, selectedIds, dispatch }: Selection
       />
     )
   }
+  const selectedStair = singleSelectedStair(selectedIds, project)
+  if (selectedStair !== null) {
+    return (
+      // Key on the stair id and rotation so the inspector remounts when the
+      // selection changes or an undo restores a different rotation; its angle
+      // field seeds at mount.
+      <StairInspector
+        key={`${selectedStair.id}:${selectedStair.rotation}`}
+        stair={selectedStair}
+        dispatch={session.dispatch}
+      />
+    )
+  }
   if (selectedIds.size > 0) {
     return null
   }
@@ -407,12 +459,13 @@ interface TransformPanelProps {
 }
 
 // The rotate controls for any non-empty selection of transformable entities
-// (walls, openings, dimensions), about the selection center. Rooms are derived,
-// so a room-only selection yields no entity ids and renders nothing.
+// (walls and dimensions), about the selection center. Openings ride their
+// host wall and rooms are derived, so neither is moved by the transform
+// commands (ADR-0040); an opening-only or room-only selection renders nothing.
 function TransformPanel({ session, selectedIds }: TransformPanelProps) {
   const activeFloorId = useActiveFloorId()
   const floor = activeFloor(session.getProject(), activeFloorId)
-  const entityIds = selectedEntityIds(selectedIds)
+  const entityIds = transformableEntityIds(selectedIds)
   if (floor === undefined || entityIds.length === 0) {
     return null
   }
@@ -441,6 +494,7 @@ function componentTitleFor(
   if (id.startsWith(ROOM_ID_PREFIX) || graph.rooms.some((r) => r.id === id)) return 'Room'
   if (id.startsWith(DIMENSION_NODE_PREFIX)) return 'Dimension'
   if (id.startsWith(OPENING_NODE_PREFIX)) return 'Opening'
+  if (id.startsWith(STAIR_NODE_PREFIX)) return 'Stair'
   if (project.floors.some((floor) => floor.furniture.some((item) => item.id === id)))
     return 'Furniture'
   return null

@@ -4,7 +4,6 @@ export type ToolId =
   | 'calibrate'
   | 'place-opening'
   | 'dimension'
-  | 'pan'
   | 'place-furniture'
   | 'place-stair'
 

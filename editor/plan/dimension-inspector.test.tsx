@@ -16,16 +16,20 @@ const UNITS = 'metric' as const
 // metric rule: 1000 mm renders as "1.00 m", not "1000 mm".
 const EXPECTED_LENGTH = '1.00 m'
 
-function renderInspector(dispatch: (command: unknown) => void) {
-  render(
+function dimensionInspectorElement(dimensionId: string, dispatch: (command: unknown) => void) {
+  return (
     <DimensionInspector
       floorId={FLOOR_ID}
-      dimensionId={DIMENSION_ID}
+      dimensionId={dimensionId}
       length={LENGTH_MM}
       units={UNITS}
       dispatch={dispatch as never}
-    />,
+    />
   )
+}
+
+function renderInspector(dispatch: (command: unknown) => void) {
+  render(dimensionInspectorElement(DIMENSION_ID, dispatch))
 }
 
 function onlyCommand<P>(dispatch: ReturnType<typeof vi.fn>): Command<P> {
@@ -93,5 +97,22 @@ describe('DimensionInspector', () => {
     expect(dispatch).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Confirm remove' })).toBeNull()
+  })
+
+  it('returns Remove to the unarmed state when the dimension being inspected changes', async () => {
+    const dispatch = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(dimensionInspectorElement(DIMENSION_ID, dispatch))
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(screen.getByRole('button', { name: 'Confirm remove' })).toBeInTheDocument()
+
+    // Retargets the SAME mounted inspector at a different dimension, without
+    // remounting, mirroring how the Inspector swaps props on selection change.
+    rerender(dimensionInspectorElement('d2', dispatch))
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Confirm remove' })).toBeNull()
+    expect(dispatch).not.toHaveBeenCalled()
   })
 })

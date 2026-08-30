@@ -1,54 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup, act } from '@testing-library/react'
-import {
-  EditorSessionProvider,
-  SelectionProvider,
-  ActiveFloorProvider,
-  SurfaceSelectionProvider,
-  createEditorSession,
-  createSelectionStore,
-  createActiveFloorStore,
-  createSurfaceSelectionStore,
-} from '../../bridge'
-import {
-  createEmptyProject,
-  createFloor,
-  createWall,
-  deriveRooms,
-  ROOM_ID_PREFIX,
-  type Project,
-  type Wall,
-} from '../../core'
-import { Inspector, PeriodTags } from './inspector'
+import { createWall, deriveRooms, ROOM_ID_PREFIX } from '../../core'
+import { PeriodTags } from './inspector'
+import { renderInspector } from './inspector-test-support'
 
 afterEach(cleanup)
-
-function renderInspector(walls: Wall[] = [], roomOverrides?: Project['roomOverrides']) {
-  const project = createEmptyProject({
-    name: 'T',
-    units: 'imperial',
-    period: 'modern',
-    appVersion: '0.0.0',
-  })
-  project.floors = [createFloor('G', { id: 'g', walls })]
-  project.roomOverrides = roomOverrides
-  const session = createEditorSession(project)
-  const selection = createSelectionStore()
-  const activeFloor = createActiveFloorStore('g')
-  const surfaceSelection = createSurfaceSelectionStore()
-  render(
-    <EditorSessionProvider session={session}>
-      <SelectionProvider store={selection}>
-        <ActiveFloorProvider store={activeFloor}>
-          <SurfaceSelectionProvider store={surfaceSelection}>
-            <Inspector />
-          </SurfaceSelectionProvider>
-        </ActiveFloorProvider>
-      </SelectionProvider>
-    </EditorSessionProvider>,
-  )
-  return { selection }
-}
 
 describe('Inspector', () => {
   it('renders a PROPERTIES section label through the SectionLabel primitive', () => {
@@ -64,7 +20,7 @@ describe('Inspector', () => {
   })
 
   it('shows a quiet hint when nothing is selected', () => {
-    renderInspector([createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })])
+    renderInspector({ walls: [createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })] })
     expect(screen.getByText('Nothing selected yet')).toBeInTheDocument()
   })
 
@@ -134,7 +90,7 @@ describe('Inspector', () => {
       createWall({ x: 1000, y: 1000 }, { x: 0, y: 1000 }),
       createWall({ x: 0, y: 1000 }, { x: 0, y: 0 }),
     ]
-    const { selection } = renderInspector(walls)
+    const { selection } = renderInspector({ walls })
     const [room] = deriveRooms(walls)
     if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
     act(() => {
@@ -153,8 +109,11 @@ describe('Inspector', () => {
     const [room] = deriveRooms(walls)
     if (room === undefined) throw new Error('expected the closed wall loop to derive one room')
     const roomKey = room.id.slice(ROOM_ID_PREFIX.length)
-    const { selection } = renderInspector(walls, {
-      [roomKey]: { styleOverride: { styleId: 'craftsman' } },
+    const { selection } = renderInspector({
+      walls,
+      roomOverrides: {
+        [roomKey]: { styleOverride: { styleId: 'craftsman' } },
+      },
     })
     act(() => {
       selection.select(room.id)
@@ -167,7 +126,7 @@ describe('Inspector', () => {
 
   it('shows a Transform section header when a transformable entity is selected', () => {
     const wall = createWall({ x: 0, y: 0 }, { x: 1000, y: 0 })
-    const { selection } = renderInspector([wall])
+    const { selection } = renderInspector({ walls: [wall] })
     expect(screen.queryByText('Transform')).toBeNull()
     act(() => {
       selection.select(`wall:${wall.id}`)

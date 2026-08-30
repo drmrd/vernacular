@@ -27,6 +27,7 @@ sourceFiles:
     docs/specs/2026-06-15-open-import-project.md,
     bridge/session/create-dirty-tracker.ts,
     bridge/session/discard-guard.ts,
+    app/app.tsx,
     bridge/react/use-dirty-state.ts,
     bridge/react/use-autosave.ts,
     bridge/autosave/create-autosave.ts,
@@ -41,7 +42,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-06-23
+updated: 2026-08-17
 ---
 
 # ADR-0104: Unsaved-changes guard and dirty-state model
@@ -205,3 +206,23 @@ open and import specification already describes.
 - ADR-0001 (the six-layer architecture: the tracker and guard stay
   framework-free in `bridge/`, the dialog lives in `editor/`, and the wiring
   lives in `app/`).
+
+## Update (2026-08-17): every session-swap path now routes through the guard
+
+A UX audit found the guard covering only New project and Open file, while Open
+folder, Open recent, and crash-recovery Restore replaced the session directly.
+All five call sites now share one `guardSessionSwap` seam in
+`app/use-project-actions.ts`, and the boot path gained a step-scoped retry so a
+failed project load cannot re-run a storage resolution that already succeeded.
+The workspace also keys its selection store on the session, closing the stale
+selection the swap-reset note above relies on.
+
+## Update (2026-08-17): the prompt carries per-caller wording and one request at a time
+
+The confirm seam now takes an optional message and confirm label, staged per
+request, so crash recovery can ask "Delete the recovered copy of {name}?" with a
+button naming that act instead of borrowing the unsaved-changes wording. Staging
+is guarded against relabeling a prompt that is already open, and a second
+concurrent confirmation is turned away instead of orphaning the first parked
+resolver. The dialog itself became modal under ADR-0106's update of the same
+date.

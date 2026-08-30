@@ -13,15 +13,8 @@ import {
   type UnitSystem,
 } from '../../core'
 import { Field, Stack } from '../design-system'
-import { DEG_TO_RAD, RAD_TO_DEG } from './angles'
+import { AngleField } from './angle-field'
 import { LengthField } from './length-field'
-
-const ANGLE_DECIMAL_PLACES = 2
-
-// Render degrees without trailing-zero cruft so a right angle shows "90".
-function formatDegrees(radians: number): string {
-  return String(Number((radians * RAD_TO_DEG).toFixed(ANGLE_DECIMAL_PLACES)))
-}
 
 const PREFERENCES_BY_UNITS: Record<UnitSystem, UnitPreferences> = {
   metric: DEFAULT_METRIC_PREFERENCES,
@@ -52,42 +45,6 @@ function NameField({ inputId, name, onCommit }: NameFieldProps): ReactElement {
         onChange={(event) => setText(event.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={() => onCommit(text)}
-      />
-    </Field>
-  )
-}
-
-interface AngleFieldProps {
-  inputId: string
-  rotation: number
-  onCommit: (rotation: number) => void
-}
-
-function AngleField({ inputId, rotation, onCommit }: AngleFieldProps): ReactElement {
-  const [text, setText] = useState(formatDegrees(rotation))
-
-  function commit(): void {
-    const parsed = Number.parseFloat(text)
-    if (Number.isFinite(parsed)) {
-      onCommit(parsed * DEG_TO_RAD)
-    }
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter') {
-      commit()
-    }
-  }
-
-  return (
-    <Field htmlFor={inputId} label="Angle (deg)">
-      <input
-        id={inputId}
-        type="text"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={commit}
       />
     </Field>
   )

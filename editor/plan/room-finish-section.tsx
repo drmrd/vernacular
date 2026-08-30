@@ -13,7 +13,19 @@ interface RoomFinishSectionProps {
   treatmentFor: (ref: SurfaceRef) => SurfaceTreatment | undefined
   recent: Color[]
   dispatch: (command: Command) => void
+  // Floor and ceiling finishes are floor-scoped, not room-scoped (see surfaceRef
+  // below), so the section needs to know how many rooms share that scope to warn
+  // before a "room" edit silently repaints every room on the floor. Defaults to a
+  // single room, which is the only count where a room-driven paint is unambiguous.
+  roomsOnFloor?: number
 }
+
+const SHARED_HINT =
+  'Floor and ceiling finishes cover every room on this floor, not just the selected one.'
+
+// The note borrows the hint's muted styling and adds its own class as the semantic
+// hook; the shared stylesheet carries no rule for the note class on its own.
+const NOTE_CLASS = 'finish-section__hint finish-section__note'
 
 // Floor and ceiling are floor-level surfaces in the model, so all rooms on a floor
 // share them; selecting a room is the natural place to reach the floor it sits on.
@@ -56,7 +68,7 @@ interface RoomSurfaceSwitchProps {
 function RoomSurfaceSwitch({ kind, onSelect }: RoomSurfaceSwitchProps) {
   return (
     <Segmented
-      label="Room surface"
+      label="Surface"
       options={SURFACE_OPTIONS}
       value={kind}
       onSelect={(value) => {
@@ -66,39 +78,90 @@ function RoomSurfaceSwitch({ kind, onSelect }: RoomSurfaceSwitchProps) {
   )
 }
 
-export function RoomFinishSection({
-  floorId,
-  treatmentFor,
+// The shared-scope warning shown in place of the paint controls once a floor
+// holds more than one room, since a room-driven edit there has no single room
+// to attach to; the room count grounds the warning in what the user is looking at.
+function sharedRoomsNote(roomsOnFloor: number): string {
+  return (
+    `This floor holds ${roomsOnFloor} rooms, so a finish here would repaint every ` +
+    'one of them. Per-room floor and ceiling finishes are not available yet.'
+  )
+}
+
+interface RoomFinishControlsProps {
+  surface: SurfaceRef
+  kind: 'floor' | 'ceiling'
+  onSelectKind: (kind: 'floor' | 'ceiling') => void
+  treatment: SurfaceTreatment | undefined
+  recent: Color[]
+  dispatch: (command: Command) => void
+}
+
+// The surface switch and paint controls, only meaningful while the selected
+// room is the floor's only room (see RoomFinishSection); split out so that
+// case can be rendered without smuggling an unattributable "room" edit past
+// the roomsOnFloor guard.
+function RoomFinishControls({
+  surface,
+  kind,
+  onSelectKind,
+  treatment,
   recent,
   dispatch,
-}: RoomFinishSectionProps) {
-  const [kind, setKind] = useState<'floor' | 'ceiling'>('floor')
-  const ref = surfaceRef(kind, floorId)
-  const treatment = treatmentFor(ref)
+}: RoomFinishControlsProps) {
   const solid = solidPaint(treatment)
   const patternId = treatment?.kind === 'pattern' ? treatment.patternId : undefined
   return (
-    <section className="finish-section">
-      <SectionLabel>Finish</SectionLabel>
-      <RoomSurfaceSwitch kind={kind} onSelect={setKind} />
+    <>
+      <RoomSurfaceSwitch kind={kind} onSelect={onSelectKind} />
       <ColorPicker
-        surface={ref}
+        surface={surface}
         finishId={solid?.finishId ?? DEFAULT_FINISH_ID}
         recent={recent}
         dispatch={dispatch}
       />
-      <PerceivedColorReadout surface={ref} reference={solid?.color} />
+      <PerceivedColorReadout surface={surface} reference={solid?.color} />
       {solid !== undefined ? (
         <FinishPicker
-          surface={ref}
+          surface={surface}
           color={solid.color}
           finishId={solid.finishId}
           dispatch={dispatch}
         />
       ) : null}
       {kind === 'floor' ? (
-        <FloorPatternPicker surface={ref} patternId={patternId} dispatch={dispatch} />
+        <FloorPatternPicker surface={surface} patternId={patternId} dispatch={dispatch} />
       ) : null}
+    </>
+  )
+}
+
+export function RoomFinishSection({
+  floorId,
+  treatmentFor,
+  recent,
+  dispatch,
+  roomsOnFloor = 1,
+}: RoomFinishSectionProps) {
+  const [kind, setKind] = useState<'floor' | 'ceiling'>('floor')
+  const ref = surfaceRef(kind, floorId)
+  const sharedAcrossRooms = roomsOnFloor > 1
+  return (
+    <section className="finish-section">
+      <SectionLabel>Finish (all rooms on this floor)</SectionLabel>
+      <p className="finish-section__hint">{SHARED_HINT}</p>
+      {sharedAcrossRooms ? (
+        <p className={NOTE_CLASS}>{sharedRoomsNote(roomsOnFloor)}</p>
+      ) : (
+        <RoomFinishControls
+          surface={ref}
+          kind={kind}
+          onSelectKind={setKind}
+          treatment={treatmentFor(ref)}
+          recent={recent}
+          dispatch={dispatch}
+        />
+      )}
     </section>
   )
 }

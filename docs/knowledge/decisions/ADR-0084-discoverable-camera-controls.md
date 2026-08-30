@@ -18,7 +18,7 @@ sourceFiles:
     e2e/tests/scene-camera-controls.spec.ts,
   ]
 status: current
-updated: 2026-06-15
+updated: 2026-08-17
 ---
 
 # ADR-0084: Discoverable three-dimensional camera controls
@@ -93,3 +93,9 @@ handling, not about the domain model.
   hardware renderer; an end-to-end check covers the wiring in the pane.
 - A later pass can add a richer affordance (a gizmo or a view cube) or an auto-hiding
   hint on top of this without unwinding it.
+
+## Update (2026-08-17)
+
+The walk hint now also lists the E and R keys the walk controller has bound all
+along; the decision (list the active mode's controls in a pointer-inert caption)
+is unchanged.

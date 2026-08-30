@@ -21,7 +21,7 @@ related:
   ]
 sourceFiles: [editor/design-system/use-focus-trap.ts, editor/commands/command-palette.tsx]
 status: current
-updated: 2026-06-19
+updated: 2026-08-17
 ---
 
 # ADR-0106: Modal focus-trap and focus-restore pattern
@@ -126,3 +126,16 @@ there is no spec-change ADR companion.
   palette styling reuses, and the home for this shared hook).
 - ADR-0104 (the unsaved-changes guard, whose `DiscardDialog` stays a non-trapping
   `alertdialog` banner and is deliberately not retrofitted with this trap).
+
+## Update (2026-08-17): the discard prompt joined the trap
+
+The deliberate non-modal recorded above stopped being deliberate once a UX audit
+showed the prompt rendering a full viewport below the fold, where "lightweight"
+read as "nothing happened". DiscardDialog now renders as a fixed overlay above
+the frame and takes the same treatment this record prescribes for the palette:
+initial focus on Cancel, the shared useFocusTrap, Escape as cancel, and focus
+restored to the opener on close. Its aria-modal claim is now enforced, so the
+References note calling it deliberately not retrofitted no longer applies. Known
+gap for a follow-up: global keybindings registered on window stay live behind
+the shade, so the palette can open behind an active prompt; the shared fix
+belongs in the trap.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ADD_STAIR, createFloor, type AddStairParams, type Command, type Floor } from '../../core'
-import { stairPlacementCommand } from './place-stair'
+import { hasFloorAbove, stairPlacementCommand } from './place-stair'
 
 const GROUND_ELEVATION_MM = 0
 const UPPER_ELEVATION_MM = 2700
@@ -49,5 +49,32 @@ describe('stairPlacementCommand', () => {
     const floors = [floor('ground', GROUND_ELEVATION_MM)]
 
     expect(stairPlacementCommand(floors, null, WORLD)).toBeNull()
+  })
+})
+
+// The tool rack asks the same question before it offers the stair tool at all, so
+// a project with nowhere for a stair to rise says so on the chip rather than
+// leaving it to a click that quietly does nothing.
+describe('hasFloorAbove', () => {
+  it('is true when a floor sits above the active one', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    expect(hasFloorAbove(floors, 'ground')).toBe(true)
+  })
+
+  it('is false on the topmost floor', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    expect(hasFloorAbove(floors, 'upper')).toBe(false)
+  })
+
+  it('is false for the single floor a new project seeds', () => {
+    expect(hasFloorAbove([floor('ground', GROUND_ELEVATION_MM)], 'ground')).toBe(false)
+  })
+
+  it('is false when no floor is active', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    expect(hasFloorAbove(floors, null)).toBe(false)
   })
 })

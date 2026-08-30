@@ -8,8 +8,12 @@ import {
   moveStair,
   registerStairCommands,
   removeStair,
+  rotateStair,
   setStairRunType,
 } from './stair-commands'
+
+// Stair rotation is in radians, so a quarter turn is a right angle in that unit.
+const QUARTER_TURN = Math.PI / 2
 
 function newProject(): Project {
   return createEmptyProject({
@@ -97,5 +101,40 @@ describe('stair commands', () => {
 
     dispatcher.undo()
     expect(state.stairs[0]?.runType).toBe('straight')
+  })
+
+  it('turns a stair about its position and restores the prior angle on undo', () => {
+    const stair = createStair({
+      id: 's1',
+      rotation: 0,
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    const state: Project = { ...newProject(), stairs: [stair] }
+    const dispatcher = stairDispatcher(state)
+
+    dispatcher.dispatch(rotateStair('s1', QUARTER_TURN))
+    expect(state.stairs[0]?.rotation).toBe(QUARTER_TURN)
+
+    dispatcher.undo()
+    expect(state.stairs[0]?.rotation).toBe(0)
+  })
+
+  it('leaves every other stair untouched when one is turned', () => {
+    const target = createStair({
+      id: 's1',
+      rotation: 0,
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    const other = createStair({
+      id: 's2',
+      rotation: 0,
+      connection: { fromFloorId: 'f1', toFloorId: 'f2' },
+    })
+    const state: Project = { ...newProject(), stairs: [target, other] }
+    const dispatcher = stairDispatcher(state)
+
+    dispatcher.dispatch(rotateStair('s1', QUARTER_TURN))
+
+    expect(state.stairs[1]?.rotation).toBe(0)
   })
 })

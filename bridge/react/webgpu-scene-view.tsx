@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  type LightingMode,
   type OpeningSceneNode,
   type SceneGraph,
   type Site,
@@ -9,6 +10,7 @@ import {
 import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
+import { effectiveLightingMode } from './effective-lighting-mode'
 import { useEnvironmentSession } from './environment-session-context'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
@@ -16,68 +18,20 @@ import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
-import { FrameCamera, PresetCamera, type PresetRequest } from './scene-camera-effects'
+import { FrameCamera, PresetCamera } from './scene-camera-effects'
 import { SceneLighting } from './scene-lighting'
-import { SceneNavToolbar, type NavMode, type PresetChoice } from './scene-nav-toolbar'
+import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
+import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useProjectSite } from './use-project-site'
+import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
-
-// The per-view camera navigation state: the active mode and whether the user has
-// taken control of the camera. Session state held in the view layer, never in the
-// model or undo. Reset clears user control, which lets FrameCamera refit the model
-// to the viewport through its `active` transition.
-function useSceneNavigation() {
-  const [mode, setMode] = useState<NavMode>('orbit')
-  const [selectionEnabled, setSelectionEnabled] = useState(false)
-  const [revealInterior, setRevealInterior] = useState(true)
-  const [userControlled, setUserControlled] = useState(false)
-  const [presetRequest, setPresetRequest] = useState<PresetRequest | null>(null)
-  const markUserControlled = useCallback(() => setUserControlled(true), [])
-  const toggleSelection = useCallback(() => setSelectionEnabled((value) => !value), [])
-  const toggleRevealInterior = useCallback(() => setRevealInterior((value) => !value), [])
-  // Reset leaves the last presetRequest in place on purpose: a stale request cannot
-  // re-fire because PresetCamera's effect depends on the request's identity, which does
-  // not change on reset.
-  const resetView = useCallback(() => setUserControlled(false), [])
-  // Applying a preset takes camera control (so the framing does not override it) and
-  // bumps the nonce so PresetCamera reapplies even when the same preset is re-picked.
-  const applyPreset = useCallback((preset: PresetChoice) => {
-    setUserControlled(true)
-    setPresetRequest((previous) => ({ preset, nonce: (previous?.nonce ?? 0) + 1 }))
-  }, [])
-  return {
-    mode,
-    setMode,
-    selectionEnabled,
-    toggleSelection,
-    revealInterior,
-    toggleRevealInterior,
-    userControlled,
-    markUserControlled,
-    resetView,
-    presetRequest,
-    applyPreset,
-  }
-}
-
-// The grouped result of useSceneNavigation, so the toolbar wiring can take the whole
-// navigation state as one prop instead of re-listing each field.
-type SceneNavigationState = ReturnType<typeof useSceneNavigation>
-
-// Per-view color-temperature session state, held in the view component (foundation
-// section 5.3), never in the model or undo. It feeds the toolbar slider and, once
-// wired, the scene lighting.
-function useColorTemperature() {
-  const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
-  return { colorTemperatureK, setColorTemperatureK }
-}
 
 // The grouped per-view environment inputs the toolbar and canvas share: the view-local
 // color temperature (foundation section 5.3, held here and never in the model or undo)
@@ -85,7 +39,7 @@ function useColorTemperature() {
 // color check) that the tool rail and this view both read and write. Grouped so both
 // consumers take it as one prop, the same way the navigation state travels.
 function useSceneEnvironment() {
-  const { colorTemperatureK, setColorTemperatureK } = useColorTemperature()
+  const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
   const { environment, setEnvironment } = useEnvironmentSession()
   return { colorTemperatureK, setColorTemperatureK, environment, setEnvironment }
 }
@@ -124,18 +78,6 @@ function useSceneProxies(graph: SceneGraph) {
   return { proxies, selectedIds, onSelect, setPositions }
 }
 
-// Resolves the opening the doorway preset frames: the selected one when an opening is
-// selected, otherwise the first opening on the active floor (none disables the control).
-function useDoorwayOpening(
-  openings: OpeningSceneNode[],
-  selectedIds: ReadonlySet<string>,
-): OpeningSceneNode | null {
-  return useMemo(() => {
-    const selected = openings.find((entry) => selectedIds.has(entry.id))
-    return selected ?? openings[0] ?? null
-  }, [openings, selectedIds])
-}
-
 interface SceneCameraRigProps {
   nav: SceneNavigationState
   framed: FramedScene
@@ -151,10 +93,18 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
   return (
     <>
       <FrameCamera bounds={bounds} active={!nav.userControlled} />
-      <PresetCamera request={nav.presetRequest} bounds={bounds} opening={opening} />
+      <PresetCamera
+        request={nav.presetRequest}
+        bounds={bounds}
+        opening={opening}
+        onApplied={nav.notePresetApplied}
+      />
+      {/* An applied preset owns the pivot until the view is reset, so the first drag after
+          one turns around what the preset framed instead of snapping back to the model's
+          own framing. */}
       <OrbitCameraControls
         enabled={nav.mode === 'orbit'}
-        target={pose.target}
+        target={nav.presetPose?.target ?? pose.target}
         onUserControl={nav.markUserControlled}
       />
       <WalkCameraControls
@@ -313,27 +263,33 @@ interface SceneViewToolbarProps {
   edgeOverlay: boolean
   onToggleEdgeOverlay: () => void
   viewEnvironment: SceneEnvironmentState
-  canDoorway: boolean
+  doorway: DoorwayTarget | null
+  lightingMode: LightingMode
 }
 
 // Feeds the navigation toolbar from the view's grouped session state: the camera
 // navigation, the building-view scope, the edge-overlay display option, and the
 // view-local color temperature, plus whether the doorway preset has a target. The
 // toolbar's own props stay flat so it can be exercised in isolation. The shared
-// environment session (mode, observation instant, cloud cover, color check) no longer
-// reaches the toolbar; it is read and written by the editor's Environment panel.
+// environment session (observation instant, cloud cover) is still written by the editor's
+// Environment panel; the toolbar sees only the two fields that decide whether the
+// color-temperature slider reaches the render, the effective lighting mode and the color
+// check.
 function SceneViewToolbar({
   nav,
   buildingView,
   edgeOverlay,
   onToggleEdgeOverlay,
   viewEnvironment,
-  canDoorway,
+  doorway,
+  lightingMode,
 }: SceneViewToolbarProps) {
   return (
     <SceneNavToolbar
       mode={nav.mode}
       onModeChange={nav.setMode}
+      lightingMode={lightingMode}
+      colorCheck={viewEnvironment.environment.colorCheck}
       selectionEnabled={nav.selectionEnabled}
       onToggleSelection={nav.toggleSelection}
       revealInterior={nav.revealInterior}
@@ -342,7 +298,7 @@ function SceneViewToolbar({
       colorTemperatureK={viewEnvironment.colorTemperatureK}
       onColorTemperatureChange={viewEnvironment.setColorTemperatureK}
       onPreset={nav.applyPreset}
-      canDoorway={canDoorway}
+      doorway={doorway}
       scope={buildingView.scope}
       onScopeChange={buildingView.setScope}
       showUnderground={buildingView.showUnderground}
@@ -366,7 +322,10 @@ export function WebGPUSceneView() {
   const viewEnvironment = useSceneEnvironment()
   const site = useProjectSite()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
-  const doorwayOpening = useDoorwayOpening(graph.openings, selectedIds)
+  const doorway = useDoorwayTarget(graph.openings, selectedIds)
+  // The toolbar reads the mode the render resolves to, not the requested one, so a
+  // realistic request without a site location keeps the schematic controls live.
+  const lightingMode = effectiveLightingMode(viewEnvironment.environment.mode === 'realistic', site)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -376,7 +335,8 @@ export function WebGPUSceneView() {
         edgeOverlay={edgeOverlay}
         onToggleEdgeOverlay={toggleEdgeOverlay}
         viewEnvironment={viewEnvironment}
-        canDoorway={doorwayOpening !== null}
+        doorway={doorway}
+        lightingMode={lightingMode}
       />
       <ScenePaneShell mode={nav.mode}>
         <LiveSceneCanvas
@@ -385,7 +345,7 @@ export function WebGPUSceneView() {
           viewEnvironment={viewEnvironment}
           site={site}
           onProxyPositions={setPositions}
-          opening={doorwayOpening}
+          opening={doorway?.opening ?? null}
         />
         <SceneProxyOverlay proxies={proxies} selectedIds={selectedIds} onSelect={onSelect} />
       </ScenePaneShell>

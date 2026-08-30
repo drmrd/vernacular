@@ -4,6 +4,7 @@ import { polygonCentroid } from '../../geometry/polygon'
 import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
 import { formatArea, formatLength, lengthFormatOptions, preferencesForUnits } from '../../units'
+import { effectiveWallThickness } from '../../scene/construction-profile'
 import { deriveSceneGraph } from '../../scene/scene-graph'
 import type {
   DimensionSceneNode,
@@ -92,7 +93,7 @@ function renderWalls(graph: SceneGraph, { view }: SvgPlanContext): string {
       y2: end.y,
       attributes: {
         stroke: WALL_INK,
-        'stroke-width': wall.thickness,
+        'stroke-width': effectiveWallThickness(wall),
         'stroke-linecap': 'round',
         // wall.id already carries the `wall:` scene-node prefix (see scene-graph).
         'data-node-id': wall.id,

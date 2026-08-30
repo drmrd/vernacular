@@ -11,7 +11,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-08-18
 ---
 
 # ADR-0155: Adopt the keyboard and command model as a target
@@ -102,3 +102,69 @@ proposed status.
 - `docs/specs/2026-06-01-vernacular-design.md`: the governing design specification.
 - GitHub follow-ups this model depends on: issue #497 (scoped Tab under screen readers), issue #498
   (chord-deliverability audit), issue #496 (numeric storage model).
+
+## Update (2026-08-17): one owner per keystroke
+
+An audit of the shipped editor's own shortcuts found five defects that share one cause. Nothing in
+the editor owned a given key, so every hook listening for it answered. Both the delete-selection
+command and the plan's selection keyboard claimed Delete, so one press recorded two history
+entries and the first undo appeared to do nothing. Arrow keys nudged the plan from any focus that
+was not a text field, the tools panel's radio buttons included. Backspace under the wall tool
+undid whatever sat on top of the undo stack, which was often not the segment that run had drawn.
+Escape cancelled a run and left the tool in the same press. The palette listed a set of commands
+assembled separately from the set the keys ran.
+
+The fix gives each key an owner instead of adding bindings, which is this ADR's precedence ladder
+applied to the code as it stands:
+
+- **One guard decides whether a keystroke belongs to a control.** `ownsKeystroke` in
+  `editor/plan/keyboard-guard.ts` replaces the two predicates that had drifted apart. A field owns
+  every key typed into it. A button owns only the arrows and Home and End it roves with, so a tool
+  chip still holding focus after a click cannot swallow Escape or Delete.
+- **A key has one owner.** Delete and Backspace belong to the delete-selection command, which now
+  also removes selected furniture, the piece of coverage that only the plan hook used to provide.
+  The plan's selection keyboard keeps the nudge and the clipboard.
+- **Escape is a ladder.** The first press cancels a run in progress and leaves the tool armed. The
+  second returns to the select tool. Deselecting happens only when neither applies, which holds
+  because the selection is now dropped whenever the editor leaves the select tool. A tool that
+  cancels a run claims the keystroke; the return to select is decided once the keystroke has
+  finished reaching every listener, because the tools that cancel live in sibling hooks whose
+  subscription order nothing guarantees. The dimension tool joins the ladder with a cancel of its
+  own, and both it and calibrate are tools Escape now leaves. That cancel covers both halves of a
+  measurement, and has since 2026-08-18. At first it reached only the candidate a keyboard run had
+  placed, so an Escape pressed in the middle of a mouse measurement claimed nothing and fell
+  through to the return to select. The start point survived that trip, and the next click could
+  still pair with it. Calibrate gained a rung of its own on the same date, where it had none
+  before: a first click already placed on an underlay clears in place, and the distance typed into
+  the flyout stays where the user left it. The dimension tool also drops a half-taken measurement
+  when its tool is left, so no start point outlives the tool that took it.
+- **The command set is assembled once.** `createCommandSet` builds it, the keybinding layer
+  publishes what it bound, and the palette lists that, so a command cannot be reachable by key and
+  missing from the palette. Save appears in the palette for the first time as a result. Each row
+  prints its first binding in the glyphs the reader's own keyboard carries, and the search matches
+  that text as well as the name. This displays bindings the editor already ships. It promotes
+  nothing new, which this ADR still defers to the chord-deliverability audit.
+
+Two smaller repairs follow the same rule. The wall tool's Backspace steps back only the segment
+that run committed, and stands down entirely once anything else has been recorded, rather than
+calling the session's undo blind. An armed furniture item is disarmed when its tool is left, so the
+arm state cannot outlive the tool that places it.
+
+The reconciliation this ADR promised is not finished. What landed is the shipped editor's own
+keyboard made coherent, not the spec's bindings adopted. Two known gaps remain: the editor shell
+still assembles its command list by hand instead of calling `createCommandSet`, and
+`editor/plan/use-viewport-controls.ts` keeps a third focus predicate of its own for the spacebar
+pan.
+
+## Update (2026-08-17): phantom shell hints removed
+
+Issue #561 found that the editor shell's Grid and Dimensions toolbar buttons carried
+tooltip text reading "Grid (G)" and "Dimensions (D)", which implied G and D keybindings
+that were never registered. The fix drops those parenthetical hints, so the buttons now
+read "Grid" and "Dimensions" with no shortcut claim. This only cleans up stale UI text;
+it does not decide anything about the keyboard model itself. Any future G or D binding
+still has to clear this ADR's chord-deliverability audit before it can be promoted, and
+only then would it belong back on the toolbar. The visual-design-language spec
+(docs/specs/2026-06-13-visual-design-language.md, header section) prescribed the same
+phantom tooltip text; the same change rewrites that passage to match, so the spec no
+longer instructs the hints this update removed.

@@ -6,6 +6,9 @@ import { worldToScreen, type Viewport } from './viewport'
 
 // Stairs are a fixture within the cut plane, drawn at the medium ink weight.
 const STAIR_INK_WIDTH = PLAN_INK_WIDTH.fixture
+// The selected run is re-outlined heavier than its own ink so the highlight reads
+// over the footprint it traces, matching the furniture selection cue.
+const STAIR_SELECTION_WIDTH = 2
 // The number of evenly spaced tread lines drawn across a straight run.
 const TREAD_COUNT = 8
 // The direction arrowhead spans this fraction of the run width to each side of the centerline.
@@ -19,6 +22,8 @@ interface StairPainter {
   viewport: Viewport
   /** The drawing ink for the footprint, treads, and direction arrow, from the palette wall color. */
   ink: string
+  /** The stroke weight the ink is laid down at. */
+  width: number
 }
 
 /** Offset `stair.position` by `acrossMm` along +x and `alongMm` along +y, then rotate the result about the stair position by `stair.rotation`. */
@@ -33,7 +38,9 @@ function footprintPoint(stair: StairSceneNode, acrossMm: number, alongMm: number
  * `width`, length runs 0 to `length`, each corner rotated about the stair
  * position.
  */
-function footprintCorners(stair: StairSceneNode): readonly [Point, Point, Point, Point] {
+export function stairFootprintCorners(
+  stair: StairSceneNode,
+): readonly [Point, Point, Point, Point] {
   return [
     footprintPoint(stair, 0, 0),
     footprintPoint(stair, stair.width, 0),
@@ -53,7 +60,7 @@ function strokeSegment(painter: StairPainter, from: Point, to: Point): void {
 
 function setInk(painter: StairPainter): void {
   painter.ctx.strokeStyle = painter.ink
-  painter.ctx.lineWidth = STAIR_INK_WIDTH
+  painter.ctx.lineWidth = painter.width
 }
 
 /** Stroke the closed footprint outline through the four world-space corners, projecting each to screen. */
@@ -100,17 +107,30 @@ function drawDirectionArrow(painter: StairPainter, stair: StairSceneNode): void 
  * Paint one stair in screen space: the closed footprint outline, then the run.
  * A straight run gets evenly spaced tread lines; non-straight run types draw
  * only the centerline arrow because the turning and curved tread layouts are a
- * deferred 2D refinement.
+ * deferred 2D refinement. A selected run is then re-outlined in the selection
+ * color, the cue `drawFurniture` paints for a selected piece.
  */
 export function drawStair(
   ctx: PlanDrawingContext,
   stair: StairSceneNode,
-  render: { viewport: Viewport; palette: PlanPalette },
+  render: { viewport: Viewport; palette: PlanPalette; selected?: boolean },
 ): void {
-  const painter: StairPainter = { ctx, viewport: render.viewport, ink: render.palette.wall }
-  drawFootprint(painter, footprintCorners(stair))
+  const painter: StairPainter = {
+    ctx,
+    viewport: render.viewport,
+    ink: render.palette.wall,
+    width: STAIR_INK_WIDTH,
+  }
+  const corners = stairFootprintCorners(stair)
+  drawFootprint(painter, corners)
   if (stair.runType === 'straight') {
     drawTreads(painter, stair)
   }
   drawDirectionArrow(painter, stair)
+  if (render.selected === true) {
+    drawFootprint(
+      { ...painter, ink: render.palette.selection, width: STAIR_SELECTION_WIDTH },
+      corners,
+    )
+  }
 }

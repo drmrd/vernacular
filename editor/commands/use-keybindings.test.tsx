@@ -7,7 +7,14 @@ afterEach(cleanup)
 
 function Probe({ commands, context }: { commands: EditorCommand[]; context: CommandContext }) {
   useKeybindings(commands, context)
-  return <input data-testid="field" />
+  return (
+    <>
+      <input data-testid="field" />
+      <button type="button" data-testid="control">
+        Draw wall
+      </button>
+    </>
+  )
 }
 
 describe('useKeybindings', () => {
@@ -43,6 +50,40 @@ describe('useKeybindings', () => {
     fireEvent.keyDown(screen.getByTestId('field'), { key: 'k', ctrlKey: true })
 
     expect(run).not.toHaveBeenCalled()
+  })
+
+  it('ignores an arrow key aimed at a focused button, which roves its own group', () => {
+    const context = {} as CommandContext
+    const run = vi.fn()
+    const command: EditorCommand = {
+      id: 'nudge',
+      label: 'Nudge',
+      keybindings: ['ArrowRight'],
+      isEnabled: () => true,
+      run,
+    }
+    render(<Probe commands={[command]} context={context} />)
+
+    fireEvent.keyDown(screen.getByTestId('control'), { key: 'ArrowRight' })
+
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('still runs a shortcut a focused button does not own, such as Delete', () => {
+    const context = {} as CommandContext
+    const run = vi.fn()
+    const command: EditorCommand = {
+      id: 'delete-selection',
+      label: 'Delete selection',
+      keybindings: ['Delete'],
+      isEnabled: () => true,
+      run,
+    }
+    render(<Probe commands={[command]} context={context} />)
+
+    fireEvent.keyDown(screen.getByTestId('control'), { key: 'Delete' })
+
+    expect(run).toHaveBeenCalledTimes(1)
   })
 
   it('does nothing when no command matches', () => {

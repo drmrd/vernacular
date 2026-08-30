@@ -1,7 +1,7 @@
 import { type ReactElement } from 'react'
 import { type ElementType } from '../../core'
 import { useOpeningTool } from './opening-tool-context'
-import { groupedOpeningTypes, humanizeId } from './opening-type-options'
+import { groupedOpeningTypes, openingTypeLabel } from './opening-type-options'
 
 const OPENING_TYPE_SELECT_ID = 'opening-type'
 
@@ -18,7 +18,7 @@ export function OpeningOptionGroup({ label, types }: OpeningOptionGroupProps): R
     <optgroup label={label}>
       {types.map((type) => (
         <option key={type.id} value={type.id}>
-          {humanizeId(type.id)}
+          {openingTypeLabel(type)}
         </option>
       ))}
     </optgroup>

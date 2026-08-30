@@ -7,40 +7,32 @@ import {
   type SceneGraph,
   type WallSceneNode,
 } from '../../core'
-import { contentBounds, type Bounds } from './fit'
+import { requiredContentBounds, type Bounds } from './fit'
+import { hitTestStairs, stairBounds } from './hit-test-stair'
 import { openingCorners } from './opening-geometry'
 import { buildSpatialIndex, type IndexedEntity } from './spatial-index'
 
 /** A click within this many millimeters of a wall centerline selects it. */
 export const DEFAULT_HIT_TOLERANCE_MM = 150
 
-/** The single non-null result `contentBounds` returns for any non-empty point set. */
-function spanOf(points: readonly Point[]): Bounds {
-  const bounds = contentBounds(points)
-  if (bounds === null) {
-    throw new Error('cannot compute bounds of an empty point set')
-  }
-  return bounds
-}
-
 /** Axis-aligned bounds spanning a wall's two endpoints, normalized over direction. */
 export function wallBounds(wall: WallSceneNode): Bounds {
-  return spanOf([wall.start, wall.end])
+  return requiredContentBounds([wall.start, wall.end])
 }
 
 /** Axis-aligned bounds spanning every vertex of a room polygon. */
 export function roomBounds(room: RoomSceneNode): Bounds {
-  return spanOf(room.polygon)
+  return requiredContentBounds(room.polygon)
 }
 
 /** Axis-aligned bounds spanning an opening's footprint corners. */
 export function openingBounds(opening: OpeningSceneNode): Bounds {
-  return spanOf(openingCorners(opening))
+  return requiredContentBounds(openingCorners(opening))
 }
 
 /** Axis-aligned bounds spanning a dimension's two endpoints. */
 export function dimensionBounds(dimension: DimensionSceneNode): Bounds {
-  return spanOf([dimension.start, dimension.end])
+  return requiredContentBounds([dimension.start, dimension.end])
 }
 
 function distanceToSegment(point: Point, start: Point, end: Point): number {
@@ -120,6 +112,7 @@ function indexEntities(scene: SceneGraph): IndexedEntity[] {
       id: dimension.id,
       bounds: dimensionBounds(dimension),
     })),
+    ...scene.stairs.map((stair) => ({ id: stair.id, bounds: stairBounds(stair) })),
     ...scene.rooms.map((room) => ({ id: room.id, bounds: roomBounds(room) })),
   ]
 }
@@ -139,8 +132,10 @@ function withId<Entity extends { id: string }>(
 /**
  * Broad phase then narrow phase: the spatial index supplies candidate ids near
  * the point. Openings, then walls, then dimensions are tried in priority order,
- * and only when none is in range does the search fall back to the room whose
- * polygon contains the point.
+ * then stairs, and only when none is in range does the search fall back to the
+ * room whose polygon contains the point. Stairs rank where they paint, over the
+ * floor fills but under the wall strokes, so a click where a run meets the wall
+ * it lands on still selects the wall.
  */
 export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
   const ids = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
@@ -148,6 +143,7 @@ export function hitTest(scene: SceneGraph, point: Point, tolerance: number): str
     hitTestOpenings(withId(scene.openings, ids), point, tolerance) ??
     hitTestWalls(withId(scene.walls, ids), point, tolerance) ??
     hitTestDimensions(withId(scene.dimensions, ids), point, tolerance) ??
+    hitTestStairs(withId(scene.stairs, ids), point) ??
     containingRoomId(withId(scene.rooms, ids), point)
   )
 }

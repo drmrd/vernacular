@@ -20,11 +20,13 @@ import {
   DESIGN_LANGUAGE_PREVIEW_PARAM,
   NotificationProvider,
   ThemeProvider,
+  humanMessage,
   resolveDesignLanguage,
   type DesignLanguage,
 } from '../editor/design-system'
 import {
   InMemoryAssetCache,
+  InMemoryProjectStore,
   InMemoryRecentProjectStore,
   probeStorageCapabilities,
   type AssetCache,
@@ -41,6 +43,7 @@ import { resolveProjectStorage } from './resolve-project-store'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useSessionKey } from './use-session-key'
+import { useDiscardPrompt } from './use-discard-prompt'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
@@ -153,12 +156,8 @@ function AppWorkspace({
   snapshots: providedSnapshots,
   resolveSnapshots,
 }: AppProps) {
-  const { store, assets, session, setSession, error } = useProjectBoot({
-    providedStore,
-    providedAssets,
-    resolveStore,
-    projectId,
-  })
+  const { store, assets, session, setSession, error, retryBoot, startFreshProject } =
+    useProjectBoot({ providedStore, providedAssets, resolveStore, projectId })
   const snapshots = useResolvedSnapshots(providedSnapshots, resolveSnapshots)
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
@@ -167,10 +166,11 @@ function AppWorkspace({
   const capabilities = useStorageCapabilities()
   useDegradedStorageBanner(capabilities)
 
-  const booting = store === null || assets === null || session === null || capabilities === null
-  if (error !== null || booting) {
-    // bootStatusView renders the error notice when error is set, otherwise the loading notice.
-    return bootStatusView(error)
+  if (error !== null) {
+    return bootErrorView(error, retryBoot, startFreshProject)
+  }
+  if (store === null || assets === null || session === null || capabilities === null) {
+    return bootLoadingView()
   }
 
   return (
@@ -207,19 +207,30 @@ function useStorageCapabilities(): StorageCapabilities | null {
   return capabilities
 }
 
-// The pre-shell placeholder: the error notice when boot failed, otherwise the
-// loading notice while the store or project is still resolving.
-function bootStatusView(error: Error | null) {
-  if (error !== null) {
-    return (
-      <main aria-label="Error">
-        <p role="alert">Could not open the project. Reload the page to try again.</p>
-      </main>
-    )
-  }
+// The pre-shell placeholder while the store or the project is still resolving.
+function bootLoadingView() {
   return (
     <main aria-label="Loading">
       <p role="status">Loading project...</p>
+    </main>
+  )
+}
+
+// The pre-shell failure notice: why the boot failed and the two ways out of it.
+// A stored document that fails every load (corrupt bytes, a broken migration)
+// would otherwise lock the user out on every reload. Plain elements, because this
+// renders above the editor's provider tree.
+function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => void) {
+  return (
+    <main aria-label="Error">
+      <p role="alert">Could not open the project: {humanMessage(error)}</p>
+      <button type="button" onClick={onRetry}>
+        Retry
+      </button>
+      <button type="button" onClick={onStartFresh}>
+        Start a new project
+      </button>
+      <p>A new project leaves the saved one where it is until you save over it.</p>
     </main>
   )
 }
@@ -230,6 +241,10 @@ interface ProjectBoot {
   session: EditorSession | null
   setSession: (session: EditorSession) => void
   error: Error | null
+  /** Re-run the failed boot from the top (a transient I/O fault deserves a second go). */
+  retryBoot: () => void
+  /** Leave the unreadable stored project alone and work in a fresh empty one. */
+  startFreshProject: () => void
 }
 
 interface ProjectBootInputs {
@@ -239,11 +254,12 @@ interface ProjectBootInputs {
   projectId: string
 }
 
-// Boots the project: uses an injected store directly, otherwise resolves the
-// durable {store, assets} pair asynchronously exactly once, then loads or creates
-// the project. An injected store pairs with the injected asset cache or a fresh
-// in-memory one. Each async step is guarded against writes after unmount, and the
-// store and load errors surface through a single error channel.
+// Boots the project in two steps: resolve the durable {store, assets} pair (skipped
+// for an injected store, which pairs with the injected asset cache or a fresh
+// in-memory one), then load or create the project. Both steps report through one
+// error channel and are guarded against writes after unmount. Each stands down once
+// it holds its own result, so Retry (which just clears the error) re-runs only the
+// step that failed rather than swapping a resolved store under a live session.
 function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const { providedStore, providedAssets, resolveStore, projectId } = inputs
   const [resolved, setResolved] = useState<ProjectStorage | null>(null)
@@ -254,9 +270,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
 
   useEffect(() => {
-    if (providedStore) {
-      return
-    }
+    if (providedStore || resolved !== null || error !== null) return
     let cancelled = false
     void resolveBootStorage(resolveStore)
       .then((it) => !cancelled && setResolved(it))
@@ -264,29 +278,39 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     return () => {
       cancelled = true
     }
-  }, [providedStore, resolveStore])
+  }, [providedStore, resolveStore, resolved, error])
 
   useEffect(() => {
-    if (store === null) {
-      return
-    }
+    if (store === null || session !== null || error !== null) return
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => {
-        if (cancelled) {
-          return
-        }
-        // Non-fatal dev gate: warn if the migrated Document fails CORE shape (VFPF sections 7, 8).
-        validateLoadedProject(project)
-        setSession(createEditorSession(project))
-      })
+      .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
       .catch((cause: unknown) => !cancelled && setError(asError(cause)))
     return () => {
       cancelled = true
     }
-  }, [store, projectId])
+  }, [store, projectId, session, error])
 
-  return { store, assets, session, setSession, error }
+  const startFreshProject = () => {
+    setError(null)
+    // A failed storage resolution leaves no store at all; an in-memory pair keeps the
+    // fresh project workable. The stored project is untouched either way: only an
+    // explicit save replaces it.
+    setResolved((current) => current ?? freshStorage())
+    setSession(createEditorSession(createInitialProject()))
+  }
+  const retryBoot = () => setError(null)
+  return { store, assets, session, setSession, error, retryBoot, startFreshProject }
+}
+
+// Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
+function validatedProject(project: Project): Project {
+  validateLoadedProject(project)
+  return project
+}
+
+function freshStorage(): ProjectStorage {
+  return { store: new InMemoryProjectStore(), assets: new InMemoryAssetCache() }
 }
 
 function asError(cause: unknown): Error {
@@ -307,6 +331,8 @@ export interface EditorWorkspaceProps {
 export function EditorWorkspace(props: EditorWorkspaceProps) {
   const { session, assets } = props
   const ws = useWorkspaceState(props)
+  const projectName = session.getProject().meta.name
+  const prompt = useDiscardPrompt(ws, projectName)
   // Remount the tool provider when the active session is replaced (mid-session New,
   // Open, or restore) so a fresh empty project re-arms the wall tool (#351), keeping
   // the #318 initial-tool decision in sync past the very first mount.
@@ -328,13 +354,15 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                     recentProjects={ws.recentEntries}
                     {...ws.actions}
                     // Spread recovery only when present: the optional prop rejects an explicit undefined.
-                    {...(ws.recovery ? { recovery: ws.recovery } : {})}
+                    {...(prompt.recovery ? { recovery: prompt.recovery } : {})}
                   />
                   <DiscardDialog
                     open={ws.discardRequest !== null}
-                    projectName={session.getProject().meta.name}
-                    onConfirm={() => ws.resolveDiscard(true)}
-                    onCancel={() => ws.resolveDiscard(false)}
+                    projectName={projectName}
+                    message={prompt.message}
+                    confirmLabel={prompt.confirmLabel}
+                    onConfirm={() => prompt.answer(true)}
+                    onCancel={() => prompt.answer(false)}
                   />
                 </EditLayerProvider>
               </ActiveToolProvider>

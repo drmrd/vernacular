@@ -10,11 +10,24 @@ function isWindow(type: ElementType): boolean {
 
 // A readable label from the element-type id: kebab-case to Title Case so the
 // option text reads as English without a separate label store.
-export function humanizeId(id: string): string {
+function humanizeId(id: string): string {
   return id
     .split('-')
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ')
+}
+
+// A cased opening is the one opening with nothing hung in it: a trimmed hole a
+// person walks through. "Cased opening" is the trade term and reads as nothing in
+// particular to an owner searching the list for a doorway with no door, so the
+// option says what it is. Every other family is named for what it plainly is.
+const CASED_OPENING_ID = 'cased-opening'
+const CASED_OPENING_GLOSS = ' (open doorway)'
+
+/** The option text for an opening type, as the chooser and the inspector list it. */
+export function openingTypeLabel(type: ElementType): string {
+  const name = humanizeId(type.id)
+  return type.id === CASED_OPENING_ID ? `${name}${CASED_OPENING_GLOSS}` : name
 }
 
 function openingTypes(): ElementType[] {

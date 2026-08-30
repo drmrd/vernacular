@@ -13,7 +13,12 @@ import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { placeOpeningTarget } from './place-opening'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
-import { advanceDimensionTool, type DimensionToolState } from './dimension-tool'
+import {
+  advanceDimensionTool,
+  cancelDimensionTool,
+  type DimensionToolState,
+} from './dimension-tool'
+import { claimKeystroke } from './keyboard-guard'
 
 // core distance() reports spans in millimetres, so dimension announcements name
 // that unit explicitly rather than embedding a bare literal at the callsite.
@@ -121,8 +126,11 @@ function dropWallVertex(ctx: WallKeyContext): void {
 }
 
 // Abandon the in-progress run, returning the tool to idle and committing nothing.
+// The keystroke is claimed so the Escape ladder stops here and leaves the wall tool
+// armed, ready for the next run.
 function cancelWallRun(ctx: WallKeyContext): void {
   ctx.event.preventDefault()
+  claimKeystroke(ctx.event)
   ctx.setToolState(cancelWallTool(ctx.toolState))
   ctx.setAnnouncement('Wall run cancelled')
 }
@@ -165,14 +173,31 @@ function dropDimensionEndpoint(ctx: DimensionKeyContext): void {
   ctx.setToolState(result.state)
 }
 
+// Abandon the measurement in progress, returning the tool to idle and recording
+// nothing. The keystroke is claimed so the Escape ladder stops here and leaves the
+// dimension tool armed for the next measurement.
+function cancelDimensionRun(ctx: DimensionKeyContext): void {
+  ctx.event.preventDefault()
+  claimKeystroke(ctx.event)
+  ctx.setToolState(cancelDimensionTool(ctx.toolState))
+  ctx.setAnnouncement('Dimension cancelled')
+}
+
 // Handle one keystroke while the dimension tool is active: arrow keys move the
-// candidate, Enter drops a dimension endpoint, any other key falls through.
+// candidate, Enter drops a dimension endpoint, Escape abandons a measurement that
+// is half taken, any other key falls through. As with the wall tool, an Escape at
+// rest is left alone so it neither announces a phantom cancel nor pre-empts the
+// ladder's next rung.
 export function handleDimensionKey(ctx: DimensionKeyContext): void {
   if (handleNudge(ctx, ctx.event)) {
     return
   }
   if (ctx.event.key === 'Enter') {
     dropDimensionEndpoint(ctx)
+    return
+  }
+  if (ctx.event.key === 'Escape' && ctx.toolState.phase === 'measuring') {
+    cancelDimensionRun(ctx)
   }
 }
 

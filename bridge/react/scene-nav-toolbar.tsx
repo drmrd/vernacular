@@ -1,4 +1,4 @@
-import type { CameraPreset } from '../../core'
+import type { CameraPreset, LightingMode } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
 import { SceneDisplayOptions } from './scene-display-options'
@@ -9,6 +9,17 @@ import './scene-nav-toolbar.css'
 export type NavMode = 'orbit' | 'walk'
 
 export type PresetChoice = CameraPreset | 'doorway'
+
+/**
+ * The door the Doorway preset would frame: what to call it, and whether it is there because
+ * the user selected it rather than because it was the first door found. Absent (null) means
+ * the view holds no door at all, which is the one case that disables the preset outright.
+ *
+ * `DoorwayTarget` in use-doorway-target.ts is what the live view actually passes here. The
+ * two are matched structurally rather than by a shared import, so the meaning of these
+ * fields has to be changed in both places at once.
+ */
+type DoorwayChoice = { name: string; selected: boolean }
 
 const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
   { label: 'Orbit', mode: 'orbit' },
@@ -34,12 +45,16 @@ interface SceneNavToolbarProps {
   onReset: () => void
   colorTemperatureK: number
   onColorTemperatureChange: (kelvin: number) => void
+  // The mode the view actually renders in, not the requested one, so a realistic request
+  // that fell back to schematic keeps the color-temperature slider live.
+  lightingMode?: LightingMode
+  colorCheck?: boolean
   selectionEnabled?: boolean
   onToggleSelection?: () => void
   revealInterior?: boolean
   onToggleRevealInterior?: () => void
   onPreset?: (preset: PresetChoice) => void
-  canDoorway?: boolean
+  doorway?: DoorwayChoice | null
   scope?: SceneScope
   onScopeChange?: (scope: SceneScope) => void
   showUnderground?: boolean
@@ -101,19 +116,23 @@ interface ToolbarToggleProps {
   pressed: boolean
   onToggle: () => void
   disabled?: boolean
+  title?: string | undefined
 }
 
 /**
- * A single pressable toolbar action. The label doubles as the accessible name, `pressed`
- * drives `aria-pressed`, and an omitted `disabled` leaves the button enabled.
+ * A single pressable toolbar action. The label doubles as the accessible name (button
+ * content outranks `title` in the accessible-name calculation, so the hover text explains
+ * without renaming), `pressed` drives `aria-pressed`, and an omitted `disabled` leaves the
+ * button enabled.
  */
-function ToolbarToggle({ label, pressed, onToggle, disabled }: ToolbarToggleProps) {
+function ToolbarToggle({ label, pressed, onToggle, disabled, title }: ToolbarToggleProps) {
   return (
     <button
       type="button"
       className="scene-nav-toolbar__btn"
       aria-pressed={pressed}
       disabled={disabled}
+      title={title}
       onClick={onToggle}
     >
       {label}
@@ -121,12 +140,65 @@ function ToolbarToggle({ label, pressed, onToggle, disabled }: ToolbarToggleProp
   )
 }
 
-interface CameraPresetButtonsProps {
-  onPreset: ((preset: PresetChoice) => void) | undefined
-  canDoorway: boolean | undefined
+/**
+ * Whether the walk camera is the one driving the view. Walk mode rewrites the camera every
+ * frame and treats a canvas click as mouse-look, so every control that steers the orbit
+ * camera or an orbit-only render pass reaches nothing until the view returns to orbit. One
+ * predicate for the whole toolbar, so the clusters cannot drift apart on which controls go
+ * inert. It stays unexported because `react-refresh/only-export-components` reserves this
+ * file's exports for components; the matching render gates read `mode` directly.
+ */
+function walkCameraDriving(mode: NavMode): boolean {
+  return mode === 'walk'
 }
 
-function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps) {
+/**
+ * Hover text for the controls that only reach the render under the orbit camera. Each names
+ * what it steers, so a walk-mode user reads why it sits inert instead of assuming it broke.
+ */
+const ORBIT_ONLY_TITLES = {
+  select: 'Picks with the orbit camera. A walk-mode click engages mouse-look instead.',
+  revealInterior:
+    'Thins the walls between the orbit camera and the rooms. Walk mode is already inside them.',
+  preset: 'Poses the orbit camera. Walk mode would overwrite the pose on the next frame.',
+  resetView:
+    'Refits the orbit camera to the model. Walk mode would overwrite the framing on the next frame.',
+} as const
+
+/**
+ * Shown when the view holds no door. The preset stands the camera in the opening and looks
+ * inward, which only reads as a doorway for a door, so a plan of windows leaves it nothing
+ * to frame. It names the fix rather than only reporting the block.
+ */
+const NO_DOORWAY_TITLE =
+  'No door in view to frame. Add a door, or show the floor its doors are on, to use this preset.'
+
+/** No door in the view, the one state that disables the Doorway preset on its own. */
+function doorwayMissing(doorway: DoorwayChoice | null | undefined): doorway is null | undefined {
+  return doorway === null || doorway === undefined
+}
+
+/**
+ * What the Doorway preset will frame, or why it can frame nothing. Walk mode answers first
+ * because it overrides every camera control; a missing door answers next because it is the
+ * harder block to guess at; otherwise the text names the door so the user knows which of a
+ * plan's doors the camera is about to stand in.
+ */
+function doorwayTitle(doorway: DoorwayChoice | null | undefined, inertInWalk: boolean): string {
+  if (inertInWalk) return ORBIT_ONLY_TITLES.preset
+  if (doorwayMissing(doorway)) return NO_DOORWAY_TITLE
+  if (doorway.selected) return `Frames the view from inside the ${doorway.name} you selected.`
+  return `Frames the view from inside the first ${doorway.name} in view.`
+}
+
+interface CameraPresetButtonsProps {
+  onPreset: ((preset: PresetChoice) => void) | undefined
+  doorway: DoorwayChoice | null | undefined
+  mode: NavMode
+}
+
+function CameraPresetButtons({ onPreset, doorway, mode }: CameraPresetButtonsProps) {
+  const inertInWalk = walkCameraDriving(mode)
   return (
     <div
       role="group"
@@ -138,20 +210,49 @@ function CameraPresetButtons({ onPreset, canDoorway }: CameraPresetButtonsProps)
           key={preset}
           type="button"
           className="scene-nav-toolbar__btn"
+          disabled={inertInWalk}
+          title={inertInWalk ? ORBIT_ONLY_TITLES.preset : undefined}
           onClick={() => onPreset?.(preset)}
         >
           {label}
         </button>
       ))}
+      {/* Doorway answers to two reasons rather than the five fixed presets' one: the walk
+          camera driving, and a view holding no door to stand in. Its hover text is resolved
+          alongside its own `disabled` so the two reasons stay paired with the text that
+          explains them, and it speaks even when enabled, because which door the preset picks
+          is not something the button's label can show. */}
       <button
         type="button"
         className="scene-nav-toolbar__btn"
-        disabled={!canDoorway}
+        disabled={inertInWalk || doorwayMissing(doorway)}
+        title={doorwayTitle(doorway, inertInWalk)}
         onClick={() => onPreset?.('doorway')}
       >
         Doorway
       </button>
     </div>
+  )
+}
+
+interface ResetViewButtonProps {
+  mode: NavMode
+  onReset: () => void
+}
+
+/** Returns the camera to the framed starting view it opened on. */
+function ResetViewButton({ mode, onReset }: ResetViewButtonProps) {
+  const inertInWalk = walkCameraDriving(mode)
+  return (
+    <button
+      type="button"
+      className="scene-nav-toolbar__btn"
+      disabled={inertInWalk}
+      title={inertInWalk ? ORBIT_ONLY_TITLES.resetView : undefined}
+      onClick={onReset}
+    >
+      Reset view
+    </button>
   )
 }
 
@@ -176,6 +277,7 @@ interface PrimaryClusterProps {
  * the dominant controls.
  */
 function PrimaryCluster(props: PrimaryClusterProps) {
+  const inertInWalk = walkCameraDriving(props.mode)
   return (
     <div className="scene-nav-toolbar__primary">
       <ScopeToggle scope={props.scope} onScopeChange={props.onScopeChange} />
@@ -196,6 +298,8 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         label="Select"
         pressed={props.selectionEnabled}
         onToggle={props.onToggleSelection}
+        disabled={inertInWalk}
+        title={inertInWalk ? ORBIT_ONLY_TITLES.select : undefined}
       />
       {/* The near-wall fade defaults on because that is the expected-always-on state; a pressed
           toggle reflects whether it is currently on. */}
@@ -203,11 +307,81 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         label="Reveal interior"
         pressed={props.revealInterior}
         onToggle={props.onToggleRevealInterior}
+        disabled={inertInWalk}
+        title={inertInWalk ? ORBIT_ONLY_TITLES.revealInterior : undefined}
       />
-      <button type="button" className="scene-nav-toolbar__btn" onClick={props.onReset}>
-        Reset view
-      </button>
+      <ResetViewButton mode={props.mode} onReset={props.onReset} />
     </div>
+  )
+}
+
+/** The optional toolbar props that carry a stand-in when a caller omits them. */
+type DefaultedToolbarProps = Required<
+  Pick<
+    SceneNavToolbarProps,
+    | 'lightingMode'
+    | 'colorCheck'
+    | 'selectionEnabled'
+    | 'onToggleSelection'
+    | 'revealInterior'
+    | 'onToggleRevealInterior'
+    | 'scope'
+    | 'onScopeChange'
+    | 'showUnderground'
+    | 'onToggleUnderground'
+  >
+>
+
+/**
+ * The stand-ins themselves, applied by spread rather than by per-parameter initializers:
+ * a default per parameter counts as a branch, which pushed the toolbar over the
+ * complexity budget as the prop list grew.
+ */
+const TOOLBAR_DEFAULTS: DefaultedToolbarProps = {
+  lightingMode: 'schematic',
+  colorCheck: false,
+  selectionEnabled: false,
+  onToggleSelection: () => {},
+  revealInterior: true,
+  onToggleRevealInterior: () => {},
+  scope: 'floor',
+  onScopeChange: () => {},
+  showUnderground: true,
+  onToggleUnderground: () => {},
+}
+
+/** The toolbar props with every defaulted one resolved to a value. */
+type ResolvedToolbarProps = SceneNavToolbarProps & DefaultedToolbarProps
+
+/** The toolbar's four clusters, in reading order: primary, presets, display, environment. */
+function ToolbarClusters(props: ResolvedToolbarProps) {
+  return (
+    <>
+      <PrimaryCluster
+        scope={props.scope}
+        onScopeChange={props.onScopeChange}
+        showUnderground={props.showUnderground}
+        onToggleUnderground={props.onToggleUnderground}
+        mode={props.mode}
+        onModeChange={props.onModeChange}
+        selectionEnabled={props.selectionEnabled}
+        onToggleSelection={props.onToggleSelection}
+        revealInterior={props.revealInterior}
+        onToggleRevealInterior={props.onToggleRevealInterior}
+        onReset={props.onReset}
+      />
+      <CameraPresetButtons onPreset={props.onPreset} doorway={props.doorway} mode={props.mode} />
+      <SceneDisplayOptions
+        edgeOverlay={props.edgeOverlay}
+        onToggleEdgeOverlay={props.onToggleEdgeOverlay}
+      />
+      <EnvironmentControls
+        colorTemperatureK={props.colorTemperatureK}
+        onColorTemperatureChange={props.onColorTemperatureChange}
+        lightingMode={props.lightingMode}
+        colorCheck={props.colorCheck}
+      />
+    </>
   )
 }
 
@@ -221,46 +395,10 @@ function PrimaryCluster(props: PrimaryClusterProps) {
  * Pressed states are reflected through `aria-pressed` so assistive technology
  * announces the active view and camera mode.
  */
-export function SceneNavToolbar({
-  mode,
-  onModeChange,
-  onReset,
-  colorTemperatureK,
-  onColorTemperatureChange,
-  selectionEnabled = false,
-  onToggleSelection = () => {},
-  revealInterior = true,
-  onToggleRevealInterior = () => {},
-  onPreset,
-  canDoorway,
-  scope = 'floor',
-  onScopeChange = () => {},
-  showUnderground = true,
-  onToggleUnderground = () => {},
-  edgeOverlay,
-  onToggleEdgeOverlay,
-}: SceneNavToolbarProps) {
+export function SceneNavToolbar(props: SceneNavToolbarProps) {
   return (
     <div role="toolbar" aria-label="3D navigation" className="scene-nav-toolbar">
-      <PrimaryCluster
-        scope={scope}
-        onScopeChange={onScopeChange}
-        showUnderground={showUnderground}
-        onToggleUnderground={onToggleUnderground}
-        mode={mode}
-        onModeChange={onModeChange}
-        selectionEnabled={selectionEnabled}
-        onToggleSelection={onToggleSelection}
-        revealInterior={revealInterior}
-        onToggleRevealInterior={onToggleRevealInterior}
-        onReset={onReset}
-      />
-      <CameraPresetButtons onPreset={onPreset} canDoorway={canDoorway} />
-      <SceneDisplayOptions edgeOverlay={edgeOverlay} onToggleEdgeOverlay={onToggleEdgeOverlay} />
-      <EnvironmentControls
-        colorTemperatureK={colorTemperatureK}
-        onColorTemperatureChange={onColorTemperatureChange}
-      />
+      <ToolbarClusters {...TOOLBAR_DEFAULTS} {...props} />
     </div>
   )
 }

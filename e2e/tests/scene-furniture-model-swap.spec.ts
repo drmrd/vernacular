@@ -14,31 +14,22 @@ import { canvasBox, selectors } from './journeys/support'
 // parse into a mesh; a user import is the path that resolves to real GLB bytes.
 const cubeFixture = fileURLToPath(new URL('../fixtures/cube.glb', import.meta.url))
 
-// The per-reopen ceiling inside the relist retry: short on purpose, since it is one attempt's
-// budget, not the overall wait. The retry below keeps reopening until the import has listed.
-const RELIST_ATTEMPT_TIMEOUT_MS = 1_000
-
 // The overall budget for the asynchronous library write to list and for the model to load and
 // swap in; generous because both cross an async boundary (the user-source write, then the load).
 const SWAP_TIMEOUT_MS = 15_000
 
-// Opens the furniture library, imports the cube GLB, then reopens the panel until the stored
-// "cube" item lists. The panel reads the library once per mount and the user-source write is
-// asynchronous, so the reopen retries to absorb that write before returning the pickable item.
+// Opens the furniture library and imports the cube GLB. The panel re-lists the
+// library after a successful import, so the stored "cube" item appears in place.
 async function importCubeFurniture(page: Page) {
   const furniture = page.getByRole('button', { name: 'Furniture' })
   await furniture.click()
 
   const chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Import GLB' }).click()
+  await page.getByRole('button', { name: 'Import a 3D model' }).click()
   await (await chooser).setFiles(cubeFixture)
 
   const cube = page.getByRole('button', { name: 'cube' })
-  await expect(async () => {
-    await furniture.click() // close the panel
-    await furniture.click() // reopen so it re-lists the library, now including the import
-    await expect(cube).toBeVisible({ timeout: RELIST_ATTEMPT_TIMEOUT_MS })
-  }).toPass({ timeout: SWAP_TIMEOUT_MS })
+  await expect(cube).toBeVisible({ timeout: SWAP_TIMEOUT_MS })
   return cube
 }
 
