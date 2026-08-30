@@ -139,6 +139,7 @@ function withId<Entity extends { id: string }>(
  * `false`, the dimension pass is skipped entirely so the hit falls through to
  * whatever else is beneath a hidden dimension.
  */
+// eslint-disable-next-line max-params -- options carries the overlay-visibility flag; grouping it with the required args would obscure the click target's paint-order contract
 export function hitTest(
   scene: SceneGraph,
   point: Point,
