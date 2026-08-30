@@ -4,12 +4,13 @@ import { cameraControlsHint, CameraControlsHint } from './camera-controls-hint'
 import type { NavMode } from './scene-nav-toolbar'
 
 describe('cameraControlsHint', () => {
-  it('describes orbit mode as drag to orbit, right-drag to pan, and scroll to zoom', () => {
+  it('describes orbit mode as drag to orbit, right-drag to pan, scroll to zoom, and click to select', () => {
     const mode: NavMode = 'orbit'
     expect(cameraControlsHint(mode)).toEqual([
       'Drag to orbit',
       'Right-drag to pan',
       'Scroll to zoom',
+      'Click to select',
     ])
   })
 
@@ -44,13 +45,14 @@ describe('CameraControlsHint', () => {
     expect(screen.getByText('E to open or close')).toBeInTheDocument()
     expect(screen.getByText('R to shut every opening')).toBeInTheDocument()
     expect(screen.queryByText('Drag to orbit')).toBeNull()
+    expect(screen.queryByText('Click to select')).toBeNull()
   })
 
   it('mentions clicking to select an object within the Camera controls group', () => {
     render(<CameraControlsHint mode="orbit" />)
 
     const group = screen.getByRole('group', { name: /camera controls/i })
-    expect(group.textContent).toMatch(/click/i)
-    expect(group.textContent).toMatch(/select/i)
+    expect(group).toBeInTheDocument()
+    expect(screen.getByText('Click to select')).toBeInTheDocument()
   })
 })
