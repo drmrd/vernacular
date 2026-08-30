@@ -14,10 +14,11 @@ export function planClickTarget(
   graph: SceneGraph,
   furniture: readonly FurnitureInstance[],
   world: Point,
+  options?: { dimensionsVisible?: boolean },
 ): string | null {
   return (
     hitTestFurniture(furniture, world) ??
-    hitTest(graph, world, DEFAULT_HIT_TOLERANCE_MM) ??
+    hitTest(graph, world, DEFAULT_HIT_TOLERANCE_MM, options) ??
     hitTestUnderlay(graph.underlays, world)
   )
 }
