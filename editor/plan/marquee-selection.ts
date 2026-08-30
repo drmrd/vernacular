@@ -9,8 +9,15 @@ export interface MarqueeResolution {
   operation: SelectOperation
 }
 
-function entitiesForMode(scene: SceneGraph, rect: Bounds, mode: MarqueeMode): string[] {
-  return mode === 'crossing' ? entitiesCrossingRect(scene, rect) : entitiesInRect(scene, rect)
+function entitiesForMode(
+  scene: SceneGraph,
+  rect: Bounds,
+  mode: MarqueeMode,
+  options: { dimensionsVisible?: boolean },
+): string[] {
+  return mode === 'crossing'
+    ? entitiesCrossingRect(scene, rect, options)
+    : entitiesInRect(scene, rect, options)
 }
 
 function fold(
@@ -29,12 +36,19 @@ function fold(
  * under its `mode`, folded into `current` by its `operation`. The operation is
  * locked in at the pending-to-marquee transition, from the modifiers held on the
  * sample that triggers it: Shift alone replaces the set, Alt alone subtracts,
- * and Shift+Alt together add. Modifiers held at release play no part.
+ * and Shift+Alt together add. Modifiers held at release play no part. When
+ * `options.dimensionsVisible` is `false`, every dimension is excluded from the
+ * picked entities, matching what is visible.
  */
 export function resolveMarqueeSelection(
   scene: SceneGraph,
   current: ReadonlySet<string>,
   marquee: MarqueeResolution,
+  options: { dimensionsVisible?: boolean } = {},
 ): string[] {
-  return fold(current, entitiesForMode(scene, marquee.rect, marquee.mode), marquee.operation)
+  return fold(
+    current,
+    entitiesForMode(scene, marquee.rect, marquee.mode, options),
+    marquee.operation,
+  )
 }

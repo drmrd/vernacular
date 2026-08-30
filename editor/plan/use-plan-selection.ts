@@ -79,7 +79,9 @@ function applyEndEffect(deps: PlanSelectionDeps, effect: SelectEndEffect): void 
     applyClick(deps, effect.world, effect.shift)
   } else if (effect.kind === 'marquee') {
     deps.selection.setSelection(
-      resolveMarqueeSelection(deps.graph, deps.selection.getSelectedIds(), effect),
+      resolveMarqueeSelection(deps.graph, deps.selection.getSelectedIds(), effect, {
+        dimensionsVisible: deps.dimensionsVisible,
+      }),
     )
   }
 }
