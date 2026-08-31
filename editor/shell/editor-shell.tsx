@@ -11,9 +11,11 @@ import {
 import {
   createEnvironmentSessionStore,
   createPerceivedColorStore,
+  createSceneSessionStore,
   createSurfaceSelectionStore,
   EnvironmentSessionProvider,
   PerceivedColorProvider,
+  SceneSessionProvider,
   SurfaceSelectionProvider,
   useActiveFloorId,
   useEditorSession,
@@ -271,12 +273,14 @@ interface ProviderLayerProps {
  * Each store is created once: the surface selection joins the paint inspector to the
  * viewport, the perceived color joins that viewport's sampler to the inspector
  * readout, and the environment session joins the tool rail's Environment panel to the
- * 3D viewport.
+ * 3D viewport. The scene session joins the 3D viewport's session state to a store that
+ * outlives the preview subtree's unmount on a view-mode switch (ADR-0170).
  */
 function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
   const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
   const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
   const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
+  const sceneSession = useMemo(() => createSceneSessionStore(), [])
   return (
     <>
       <KeybindingLayer onSave={onSave} />
@@ -286,7 +290,7 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
         <EntitySurfaceBridge />
         <PerceivedColorProvider store={perceivedColor}>
           <EnvironmentSessionProvider store={environmentSession}>
-            {children}
+            <SceneSessionProvider store={sceneSession}>{children}</SceneSessionProvider>
           </EnvironmentSessionProvider>
         </PerceivedColorProvider>
       </SurfaceSelectionProvider>
