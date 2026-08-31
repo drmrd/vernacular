@@ -156,7 +156,7 @@ every build rather than latching once. The attribute exists for the WebGPU visua
 gate, which must not capture a frame that predates session restore or a pipeline rebuild. One
 known gap: a build cancelled by deactivation suppresses its settlement note, so the drawn-frame
 fact stays false until the next build or a remount; the fix belongs in the takeover's
-deactivation path and is tracked in a follow-up issue.
+deactivation path and is deferred to its own tracked fix rather than this change.
 
 A true fix for the orbit pivot target needs a read-back method added to
 `engine/scene/orbit-controls.ts`'s `OrbitController`, which is an engine-layer change outside this
