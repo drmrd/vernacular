@@ -121,7 +121,7 @@ export function UnderlayProvider({ children }: UnderlayProviderProps) {
 
   const loadImage = useLoadImage({ session, cache, assets, notify: error })
   const arming = useCalibrationArming(activeTool)
-  const decodeTick = useResolveUnderlaysOnOpen(graph, assets, cache)
+  const decodeTick = useResolveUnderlaysOnOpen({ graph, assets, cache, notify: error })
   const resolveDrawables = useCallback(
     (sceneGraph: SceneGraph, floorId: string | undefined): DrawableUnderlay[] =>
       resolveDrawablesFrom(cache, sceneGraph, floorId),
