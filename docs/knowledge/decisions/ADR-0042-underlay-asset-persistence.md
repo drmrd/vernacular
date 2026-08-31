@@ -31,10 +31,13 @@ sourceFiles:
     storage/asset-cache.ts,
     storage/fs/directory-port.ts,
     editor/plan/use-underlay.ts,
+    editor/plan/use-load-underlay-image.ts,
+    editor/plan/use-resolve-underlays.ts,
+    editor/plan/notify-user.ts,
     app/resolve-project-store.ts,
   ]
 status: current
-updated: 2026-06-09
+updated: 2026-08-31
 ---
 
 # ADR-0042: Underlay asset persistence via a directory-backed content-addressed AssetCache
@@ -99,9 +102,20 @@ is durable the moment the underlay exists. A resolve-on-open effect watches the
 project's underlays and, for each whose bitmap is not yet decoded, awaits
 `assets.get(contentHash)`, decodes the bytes with `createImageBitmap`, populates
 the bitmap cache, and bumps a render counter so the underlay paints after reload.
-A missing asset is skipped exactly as a not-yet-decoded bitmap is skipped today, so
-a backend whose assets did not persist degrades to the current behavior rather than
-erroring.
+
+**Amendment, 2026-08-31 (issue #601):** the sentence above described a missing
+asset as skipped in silence; that is no longer the case. Both halves of the round
+trip now take a plain `notify: NotifyUser` callback (`editor/plan/notify-user.ts`)
+and report every failure through it: a calibration that cannot commit
+(`use-underlay.ts`), an image that cannot load (`use-load-underlay-image.ts`: no floor, or a read, hash, or decode failure), and on
+resolve-on-open (`use-resolve-underlays.ts`) an asset whose bytes are missing or
+that will not decode. The composition roots get `notify` from the notification
+store's `useNotifications().error`, so the user sees a toast rather than a quiet
+console log. Resolve-on-open remembers each failed content hash in a set beside
+its existing in-flight set, so a given missing or undecodable asset is reported
+once per session rather than on every graph change; the underlay still simply does
+not paint, which is the graceful degradation this ADR chose and which is
+unchanged.
 
 ## Consequences
 
