@@ -95,6 +95,19 @@ export function seedWalkState(camera: WalkCamera, floorElevationMm: number): Wal
   }
 }
 
+// Resumes the pose the last walk session left behind, so a view-mode switch or a
+// detour through orbit puts the walker back where they stood instead of wherever the
+// camera happens to sit now (ADR-0170). With no pose to resume, the camera seeds the
+// walk the way it always has.
+// eslint-disable-next-line react-refresh/only-export-components -- the resume helper ships beside the component that calls it and this slice's test imports resumedWalkState from ./walk-camera-controls.
+export function resumedWalkState(
+  saved: WalkState | null,
+  camera: WalkCamera,
+  floorElevationMm: number,
+): WalkState {
+  return saved ?? seedWalkState(camera, floorElevationMm)
+}
+
 // The active floor's elevation, read from its scene-graph node; 0 when no floor
 // node is present.
 // eslint-disable-next-line react-refresh/only-export-components -- the elevation-derivation helper ships beside the component that calls it and this slice's test imports walkFloorElevationMm from ./walk-camera-controls.
@@ -113,6 +126,10 @@ interface WalkSession {
   openness: RefObject<Map<string, number>>
   onUserControl: () => void
   floorElevationMm: number
+  /** The pose a previous session left behind, or null when nobody has walked yet. */
+  savedWalkPose: WalkState | null
+  /** Reports the pose the walker ended on, so the next session can resume it. */
+  onWalkPose: (pose: WalkState) => void
 }
 
 // Builds the keydown and keyup handlers. Keydown routes the interact key to the
@@ -156,13 +173,15 @@ export function walkKeyHandlers(session: WalkSession): {
   return { onKeyDown, onKeyUp }
 }
 
-// Seeds the walk state, takes control of the camera, and wires the keyboard,
-// click-to-capture, and pointer-look listeners. Movement keys act independently of
-// pointer capture; the pointer only drives look while captured. Returns a teardown
-// that removes the listeners, releases capture, and clears held input.
+// Resumes the walk state (or seeds it from the camera the first time), takes control
+// of the camera, and wires the keyboard, click-to-capture, and pointer-look listeners.
+// Movement keys act independently of pointer capture; the pointer only drives look while
+// captured. Returns a teardown that hands the pose back, removes the listeners, releases
+// capture, and clears held input.
 function startWalk(session: WalkSession): () => void {
   const { camera, domElement, state, input, onUserControl, floorElevationMm } = session
-  state.current = seedWalkState(camera, floorElevationMm)
+  const { savedWalkPose, onWalkPose } = session
+  state.current = resumedWalkState(savedWalkPose, camera, floorElevationMm)
   // Mark user-controlled immediately so FrameCamera stops reapplying the framed pose
   // and the walk controller owns the camera from the first frame.
   onUserControl()
@@ -182,6 +201,10 @@ function startWalk(session: WalkSession): () => void {
   domElement.addEventListener('click', onClick)
   window.addEventListener('pointermove', onPointerMove)
   return () => {
+    // Reported first, while the pose is still the one the walker was looking through: this
+    // teardown runs both when the view mode unmounts the canvas and when a detour into orbit
+    // re-runs the effect, and either way the next session resumes from here.
+    onWalkPose(state.current)
     window.removeEventListener('keydown', onKeyDown)
     window.removeEventListener('keyup', onKeyUp)
     domElement.removeEventListener('click', onClick)
@@ -234,17 +257,18 @@ function useWalkOpenings(): OpeningSceneNode[] {
 // The refs the interact key and the per-frame swing read: the live openings (kept
 // current for the keydown closure), the open/closed view-state, and each opening's
 // in-flight openness. They are walk-session view-state, never persisted edits.
-function useWalkInteraction(): {
-  openingsRef: RefObject<OpeningSceneNode[]>
-  interactionRef: RefObject<OpeningInteractionState>
-  opennessRef: RefObject<Map<string, number>>
-} {
+function useWalkInteraction(): Pick<WalkSession, 'openings' | 'interaction' | 'openness'> {
   const openings = useWalkOpenings()
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
   const interactionRef = useRef<OpeningInteractionState>(emptyOpeningInteraction())
   const opennessRef = useRef<Map<string, number>>(new Map())
-  return { openingsRef, interactionRef, opennessRef }
+  // One stable bundle, so spreading it into the mount effect's session cannot change the
+  // effect's dependencies from render to render.
+  return useMemo(
+    () => ({ openings: openingsRef, interaction: interactionRef, openness: opennessRef }),
+    [],
+  )
 }
 
 // The live inputs the per-frame walk step reads: the camera and scene root it
@@ -299,6 +323,22 @@ interface WalkCameraControlsProps {
   enabled: boolean
   onUserControl: () => void
   root: SceneRoot
+  savedWalkPose: WalkState | null
+  onWalkPose: (pose: WalkState) => void
+}
+
+// The pose handoff, held in refs refreshed on every render so that neither the saved pose
+// nor the identity of the reporting callback joins the mount effect's dependencies and
+// restarts the walk. The orbit controller holds its onLeave callback the same way.
+function useWalkPoseHandoff(props: WalkCameraControlsProps): {
+  savedWalkPoseRef: RefObject<WalkState | null>
+  onWalkPoseRef: RefObject<(pose: WalkState) => void>
+} {
+  const savedWalkPoseRef = useRef(props.savedWalkPose)
+  savedWalkPoseRef.current = props.savedWalkPose
+  const onWalkPoseRef = useRef(props.onWalkPose)
+  onWalkPoseRef.current = props.onWalkPose
+  return { savedWalkPoseRef, onWalkPoseRef }
 }
 
 /**
@@ -307,18 +347,22 @@ interface WalkCameraControlsProps {
  * that opens or closes the opening the walker faces within reach. It reads the
  * pure walk and interaction math from core and applies the result to the live
  * camera and the scene each frame; the only Three.js touch is handing the scene
- * root to the engine swing helper. Entering walk mode seeds the camera at eye
- * height and takes control of it. This is rendering glue that only runs under a
- * real WebGPU canvas (foundation 6.3); its behavior is proven by the scene-webgl
- * navigation e2e.
+ * root to the engine swing helper. Entering walk mode resumes the pose the last
+ * walk left behind, or seeds the camera at eye height on the first walk, and takes
+ * control of the camera; leaving reports the pose back, so the walk survives a view
+ * switch and a detour through orbit (ADR-0170). This is rendering glue that only runs
+ * under a real WebGPU canvas (foundation 6.3); its behavior is proven by the
+ * scene-webgl navigation e2e.
  */
-export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraControlsProps) {
+export function WalkCameraControls(props: WalkCameraControlsProps) {
+  const { enabled, onUserControl, root } = props
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const collisionInputs = useWalkCollisionInputs()
   const stateRef = useRef<WalkState>(initialWalkState(collisionInputs.floorElevationMm))
   const inputRef = useRef<WalkInput>(emptyWalkInput())
-  const { openingsRef, interactionRef, opennessRef } = useWalkInteraction()
+  const interactionRefs = useWalkInteraction()
+  const { savedWalkPoseRef, onWalkPoseRef } = useWalkPoseHandoff(props)
 
   useEffect(() => {
     if (!enabled) return
@@ -327,30 +371,21 @@ export function WalkCameraControls({ enabled, onUserControl, root }: WalkCameraC
       domElement,
       state: stateRef,
       input: inputRef,
-      openings: openingsRef,
-      interaction: interactionRef,
-      openness: opennessRef,
+      ...interactionRefs,
       onUserControl,
       floorElevationMm: collisionInputs.floorElevationMm,
+      savedWalkPose: savedWalkPoseRef.current,
+      onWalkPose: (pose) => onWalkPoseRef.current(pose),
     })
     // floorElevationMm is intentionally excluded: re-seeding the walk pose when the
     // active floor changes mid-walk is tracked by #608 and lands in a later cycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef, opennessRef])
+  }, [enabled, camera, domElement, onUserControl, interactionRefs])
 
   useFrame((_state, delta) => {
     if (!enabled) return
     stepWalkFrame(
-      {
-        camera,
-        collisionInputs,
-        root,
-        state: stateRef,
-        input: inputRef,
-        openings: openingsRef,
-        interaction: interactionRef,
-        openness: opennessRef,
-      },
+      { camera, collisionInputs, root, state: stateRef, input: inputRef, ...interactionRefs },
       delta,
     )
   })

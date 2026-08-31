@@ -114,6 +114,8 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
         enabled={nav.mode === 'walk'}
         onUserControl={nav.markUserControlled}
         root={root}
+        savedWalkPose={nav.walkPose}
+        onWalkPose={nav.noteWalkPose}
       />
     </>
   )

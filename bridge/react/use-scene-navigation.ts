@@ -67,6 +67,10 @@ export function useSceneNavigation() {
     // framing straight away. Issue #619 covers restoring the whole pose.
     savedCameraPosition: session.savedCameraPosition,
     noteCameraLeft: writers.noteCameraLeft,
+    // The pose the departing walker ended on, so returning to walk mode resumes there
+    // rather than reseeding from wherever the camera has since been left (ADR-0170).
+    walkPose: session.walkPose,
+    noteWalkPose: writers.noteWalkPose,
   }
 }
 
@@ -82,6 +86,7 @@ function useSceneSessionWriters(store: SceneSessionStore) {
       toggleRevealInterior: sceneSessionToggle(store, 'revealInterior'),
       notePresetApplied: sceneSessionSetter(store, 'presetPose'),
       noteCameraLeft: sceneSessionSetter(store, 'savedCameraPosition'),
+      noteWalkPose: sceneSessionSetter(store, 'walkPose'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
     }),
     [store],
