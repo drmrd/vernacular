@@ -199,19 +199,30 @@ function LibraryControls(props: LibraryControlsProps): ReactElement {
   )
 }
 
-// A library that holds items but shows none: the filters, not the library, are
-// what emptied the grid, so the state names them and offers a way out. Wrapped
-// in a status live region so assistive technology announces the outcome of a
-// filter change without the user having to go looking for it.
-function NoMatchesState({ filters, setFilters }: LibraryFilterState): ReactElement {
+interface FilterStatusProps extends LibraryFilterState {
+  noMatches: boolean
+}
+
+// The live region assistive technology listens to for the outcome of a filter
+// change. It stays mounted for the life of the loaded library and only its
+// content toggles, because many browser/screen-reader pairs only announce
+// *changes* to an already-mounted live region rather than one that mounts
+// already containing text. When the filters (not the library) have emptied the
+// grid, the message names them and offers a way out; otherwise the region is
+// present but empty.
+function FilterStatus({ filters, setFilters, noMatches }: FilterStatusProps): ReactElement {
   return (
-    <div role="status">
-      <EmptyState
-        title={NO_MATCHES_MESSAGE}
-        description={activeFiltersDescription(filters)}
-        action={<Button onClick={() => setFilters(DEFAULT_FILTERS)}>{CLEAR_FILTERS_LABEL}</Button>}
-        asRegion={false}
-      />
+    <div className="library-panel__status" role="status" aria-live="polite">
+      {noMatches ? (
+        <EmptyState
+          title={NO_MATCHES_MESSAGE}
+          description={activeFiltersDescription(filters)}
+          action={
+            <Button onClick={() => setFilters(DEFAULT_FILTERS)}>{CLEAR_FILTERS_LABEL}</Button>
+          }
+          asRegion={false}
+        />
+      ) : null}
     </div>
   )
 }
@@ -223,8 +234,9 @@ interface LibraryBodyProps extends LibraryFilterState {
 }
 
 // Pick the body to render: a loading state while listing, the empty message when
-// there are no items, otherwise the filter controls above the matching grid (or
-// the no-match state when the filters keep everything out).
+// there are no items, otherwise the filter controls above the matching grid, with
+// a persistently mounted status region that only speaks up when the filters keep
+// everything out.
 function LibraryBody(props: LibraryBodyProps): ReactElement | null {
   const { items, onPick, armed, filters, setFilters } = props
   if (items === null) {
@@ -234,6 +246,7 @@ function LibraryBody(props: LibraryBodyProps): ReactElement | null {
     return <EmptyState title={EMPTY_MESSAGE} asRegion={false} />
   }
   const visible = visibleLibraryItems(items, filters)
+  const noMatches = visible.length === 0
   return (
     <>
       <LibraryControls
@@ -248,11 +261,8 @@ function LibraryBody(props: LibraryBodyProps): ReactElement | null {
           <span className="library-panel__placement-key">{ROTATE_HINT}</span>
         </p>
       ) : null}
-      {visible.length === 0 ? (
-        <NoMatchesState filters={filters} setFilters={setFilters} />
-      ) : (
-        <LibraryGrid items={visible} onPick={onPick} armed={armed} />
-      )}
+      <FilterStatus filters={filters} setFilters={setFilters} noMatches={noMatches} />
+      {noMatches ? null : <LibraryGrid items={visible} onPick={onPick} armed={armed} />}
     </>
   )
 }
