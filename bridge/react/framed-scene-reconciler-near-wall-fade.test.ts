@@ -8,11 +8,14 @@ import {
   createWall,
   sceneGraphForFloor,
 } from '../../core'
-import { restoreNearWallTransparency, updateNearWallTransparency } from '../../engine'
+import {
+  restoreNearWallTransparency,
+  restoreUnenrolledNearWallTargets,
+  updateNearWallTransparency,
+} from '../../engine'
 import { findByEntityId } from '../../engine/testing'
 import { buildFramedScene } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
-import { restoreUnenrolledNearWallTargets } from './near-wall-fade'
 
 const FADED_OPACITY = 0.1
 const SPAN_MM = 4000

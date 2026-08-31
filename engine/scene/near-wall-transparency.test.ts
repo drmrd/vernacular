@@ -5,6 +5,7 @@ import {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
   restoreNearWallTransparency,
+  restoreUnenrolledNearWallTargets,
   updateNearWallTransparency,
   type NearWallTarget,
 } from './near-wall-transparency'
@@ -522,5 +523,78 @@ describe('updateNearWallTransparency', () => {
       { x: BAR_MIDPOINT_MM + 3000, z: -LEG_LENGTH_MM / 2 },
     )
     expectFillSolid('leg faded, bar solid')
+  })
+})
+
+describe('restoreUnenrolledNearWallTargets', () => {
+  it('restores a wall that leaves the enrollment set to its opaque baseline', () => {
+    const graph = rectangularRoomGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
+    const bottomMaterials = wallMaterials(root, 'wall:bottom')
+    expect(bottomMaterials.every((material) => material.opacity === FADED_OPACITY)).toBe(true)
+
+    const bottomTarget = targets.find((target) =>
+      target.materials.some((record) => bottomMaterials.includes(record.material)),
+    )
+    expect(bottomTarget).toBeDefined()
+
+    // The bottom wall dropped out of enrollment entirely: its target is absent from
+    // the current set.
+    const current = targets.filter((target) => target !== bottomTarget)
+    restoreUnenrolledNearWallTargets(targets, current)
+
+    for (const material of bottomMaterials) {
+      expect(material.opacity).toBe(OPAQUE)
+      expect(material.transparent).toBe(false)
+      expect(material.depthWrite).toBe(true)
+    }
+  })
+
+  it('leaves a material still enrolled in the current set at its faded appearance', () => {
+    const graph = rectangularRoomGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
+    const bottomMaterials = wallMaterials(root, 'wall:bottom')
+    const bottomTarget = targets.find((target) =>
+      target.materials.some((record) => bottomMaterials.includes(record.material)),
+    ) as NearWallTarget
+
+    // A rebuild hands back a fresh target object wrapping the very same material
+    // instances, so enrollment must be recognized by material, not by target identity.
+    const freshBottomTarget: NearWallTarget = {
+      point: bottomTarget.point,
+      outwardNormal: bottomTarget.outwardNormal,
+      materials: bottomTarget.materials.map((record) => ({ ...record })),
+    }
+
+    restoreUnenrolledNearWallTargets(targets, [freshBottomTarget])
+
+    for (const material of bottomMaterials) {
+      expect(material.opacity).toBe(FADED_OPACITY)
+      expect(material.transparent).toBe(true)
+      expect(material.depthWrite).toBe(false)
+    }
+  })
+
+  it('does nothing when previous and current are the very same array', () => {
+    const graph = rectangularRoomGraph()
+    const root = buildScene(graph, new NeutralMaterialProvider())
+    const targets = prepareNearWallTransparency(root, exteriorWalls(graph.walls, graph.rooms))
+
+    updateNearWallTransparency(targets, { x: 2000, z: 3000 })
+    const bottomMaterials = wallMaterials(root, 'wall:bottom')
+
+    restoreUnenrolledNearWallTargets(targets, targets)
+
+    for (const material of bottomMaterials) {
+      expect(material.opacity).toBe(FADED_OPACITY)
+      expect(material.transparent).toBe(true)
+      expect(material.depthWrite).toBe(false)
+    }
   })
 })
