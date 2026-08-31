@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import {
   canvasBox,
   drawWall,
@@ -13,6 +13,14 @@ import {
 // as the middle-mouse pan (canvas-pan-alignment): pan a vertical wall sideways, then click
 // where it landed. The middle-mouse path is covered separately; this proves the primary
 // drag in the default Select tool.
+//
+// Raw mouse coordinates here are always derived from a box measured AFTER hovering the
+// gesture's start point through the locator. The plan stage is a fixed-size canvas, so
+// when the window is short (CI's taller fallback-font chrome, or the short-window suite
+// below) the first canvas interaction scrolls the main pane and any box cached before
+// that scroll aims the gesture at the wrong spot, or at the chrome above the canvas.
+// The hover performs the same scroll-into-view a click would, and pointer capture on
+// the canvas keeps the rest of the drag delivered even where it leaves the visible part.
 
 test('a plain primary drag pans the view in Select mode', async ({ page }) => {
   await gotoEditor(page)
@@ -27,11 +35,10 @@ test('a plain primary drag pans the view in Select mode', async ({ page }) => {
 
   // Primary-button drag starting on empty canvas (well right of the wall), to the right.
   const pan = box.width * 0.25
-  const sx = box.x + box.width * 0.6
-  const sy = box.y + box.height * 0.5
-  await page.mouse.move(sx, sy)
+  await selectors.planCanvas(page).hover({ position: { x: box.width * 0.6, y: box.height * 0.5 } })
+  const live = await canvasBox(page)
   await page.mouse.down()
-  await page.mouse.move(sx + pan, sy, { steps: 10 })
+  await page.mouse.move(live.x + box.width * 0.6 + pan, live.y + box.height * 0.5, { steps: 10 })
   await page.mouse.up()
 
   // A correct 1:1 pan moves the wall right by exactly `pan`, so it now sits at x0 + pan.
@@ -41,7 +48,7 @@ test('a plain primary drag pans the view in Select mode', async ({ page }) => {
   await expect(page.getByRole('textbox', { name: /thickness/i })).toBeVisible()
 })
 
-test('a Shift-drag still draws a marquee that selects', async ({ page }) => {
+async function shiftDragMarqueeSelects(page: Page): Promise<void> {
   await gotoEditor(page)
   const box = await canvasBox(page)
 
@@ -54,13 +61,31 @@ test('a Shift-drag still draws a marquee that selects', async ({ page }) => {
   // Shift held turns the drag into a marquee. The rectangle encloses both wall endpoints,
   // so the window-selection marquee picks the wall up.
   await page.keyboard.down('Shift')
-  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2)
+  await selectors.planCanvas(page).hover({ position: { x: box.width * 0.2, y: box.height * 0.2 } })
+  const live = await canvasBox(page)
   await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.7, { steps: 10 })
+  await page.mouse.move(live.x + box.width * 0.4, live.y + box.height * 0.7, { steps: 10 })
   await page.mouse.up()
   await page.keyboard.up('Shift')
 
   await expect(page.getByRole('textbox', { name: /thickness/i })).toBeVisible()
+}
+
+test('a Shift-drag still draws a marquee that selects', async ({ page }) => {
+  await shiftDragMarqueeSelects(page)
+})
+
+// The failure mode this pins: a window too short for the whole plan stage makes the
+// first canvas click scroll the main pane (CI's fallback fonts inflate the chrome enough
+// to do the same at the default size). A marquee aimed with coordinates cached before
+// that scroll misses the wall and selects nothing. See the main run that caught it:
+// the window-mode rectangle cut through below the wall's top endpoint.
+test.describe('with a window too short for the whole plan stage', () => {
+  test.use({ viewport: { width: 1280, height: 560 } })
+
+  test('a Shift-drag marquee still selects after the canvas scrolls', async ({ page }) => {
+    await shiftDragMarqueeSelects(page)
+  })
 })
 
 test('a spacebar pan keeps an in-progress wall run intact', async ({ page }) => {
@@ -75,9 +100,10 @@ test('a spacebar pan keeps an in-progress wall run intact', async ({ page }) => 
   // Spring-loaded pan: hold the spacebar, drag the view, release. The pan takes the
   // pointer before the wall tool and never touches the run, so the run survives.
   await page.keyboard.down('Space')
-  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6)
+  await canvas.hover({ position: { x: box.width * 0.6, y: box.height * 0.6 } })
+  const live = await canvasBox(page)
   await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.6, { steps: 10 })
+  await page.mouse.move(live.x + box.width * 0.4, live.y + box.height * 0.6, { steps: 10 })
   await page.mouse.up()
   await page.keyboard.up('Space')
 
