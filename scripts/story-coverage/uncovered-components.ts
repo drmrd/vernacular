@@ -74,6 +74,12 @@ export const UNCOVERED_COMPONENTS: {
       'requires a live R3F Canvas to load and report furniture model signals; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'LiveSceneFrameSignal',
+    file: 'bridge/react/live-scene-frame-signal.tsx',
+    reason:
+      'reports each drawn live-view frame through useFrame to the first-frame and readiness readers and renders no DOM (it returns null); it requires a live R3F Canvas and an already drawn frame, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
     component: 'NearWallFade',
     file: 'bridge/react/near-wall-fade.tsx',
     reason:

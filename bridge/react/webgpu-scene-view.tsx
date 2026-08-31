@@ -1,5 +1,5 @@
-import { Canvas, useFrame } from '@react-three/fiber'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   humanizeElementTypeId,
   type LightingMode,
@@ -13,6 +13,7 @@ import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
+import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
 import { NearWallFade } from './near-wall-fade'
 import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
@@ -155,40 +156,6 @@ interface LiveSceneCanvasProps {
   site: Site | undefined
   onProxyPositions: (positions: EntityScreenPosition[]) => void
   opening: OpeningSceneNode | null
-}
-
-// Flips once the live canvas has rendered its first frame, mirroring the harness
-// canvas's data-harness-ready flip (scene-harness-view.tsx): the wrapper advertises
-// it through sceneReadinessProps so the editor pane's readiness observer knows the
-// scene has actually drawn, not merely mounted.
-function useFirstFrameReadiness() {
-  const [ready, setReady] = useState(false)
-  const handleFirstFrame = useCallback(() => setReady(true), [])
-  return { ready, handleFirstFrame }
-}
-
-// After AO_RENDER_PRIORITY (1) and SAMPLE_PRIORITY (2), so this fires once the frame is actually fully drawn.
-const FRAME_SIGNAL_PRIORITY = 3
-
-// Reports each drawn frame to the two readers that wait on one. The scene-readiness boundary
-// cares about the first frame alone, so the ref guard keeps every later frame from re-invoking
-// onFirstFrame. The live-view readiness fact re-arms instead: a pipeline build clears it and the
-// first frame after that build settles has to set it again, so onDrawnFrame fires every frame.
-function LiveSceneFrameSignal({
-  onFirstFrame,
-  onDrawnFrame,
-}: {
-  onFirstFrame: () => void
-  onDrawnFrame: () => void
-}) {
-  const firedRef = useRef(false)
-  useFrame(() => {
-    onDrawnFrame()
-    if (firedRef.current) return
-    firedRef.current = true
-    onFirstFrame()
-  }, FRAME_SIGNAL_PRIORITY)
-  return null
 }
 
 // The wrapper carries the shared readiness props (scene-readiness.ts) so the editor
