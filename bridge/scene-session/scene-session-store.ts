@@ -1,4 +1,9 @@
-import { DEFAULT_COLOR_TEMPERATURE_K, type CameraPose, type WalkState } from '../../core'
+import {
+  DEFAULT_COLOR_TEMPERATURE_K,
+  type CameraPose,
+  type Vector3,
+  type WalkState,
+} from '../../core'
 
 /**
  * Session state for the 3D preview, owned by the bridge rather than by the preview itself.
@@ -21,10 +26,14 @@ export interface SceneSessionState {
   scope: 'floor' | 'building'
   showUnderground: boolean
   edgeOverlay: boolean
+  /** Replace this set on every change; mutating it in place will not notify subscribers. */
   openDoorIds: ReadonlySet<string>
-  savedCameraPosition: { x: number; y: number; z: number } | null
+  savedCameraPosition: Vector3 | null
   walkPose: WalkState | null
 }
+
+/** The empty door set behind the default snapshot. Stores copy it, they never hold it. */
+const NO_OPEN_DOORS: ReadonlySet<string> = Object.freeze(new Set<string>())
 
 export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
   cameraMode: 'orbit',
@@ -35,7 +44,7 @@ export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
   scope: 'floor',
   showUnderground: true,
   edgeOverlay: false,
-  openDoorIds: new Set<string>(),
+  openDoorIds: NO_OPEN_DOORS,
   savedCameraPosition: null,
   walkPose: null,
 })
@@ -54,7 +63,11 @@ function changesAnyField(current: SceneSessionState, patch: Partial<SceneSession
 export function createSceneSessionStore(
   initial: Partial<SceneSessionState> = {},
 ): SceneSessionStore {
-  let sceneSession: SceneSessionState = { ...DEFAULT_SCENE_SESSION_STATE, ...initial }
+  let sceneSession: SceneSessionState = {
+    ...DEFAULT_SCENE_SESSION_STATE,
+    ...initial,
+    openDoorIds: new Set(initial.openDoorIds ?? NO_OPEN_DOORS),
+  }
   const listeners = new Set<() => void>()
 
   return {
