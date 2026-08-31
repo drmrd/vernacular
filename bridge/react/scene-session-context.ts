@@ -45,3 +45,27 @@ export function useSceneSession(): {
   const sceneSession = useSyncExternalStore(store.subscribe, store.getSceneSession)
   return { sceneSession, updateSceneSession: store.updateSceneSession }
 }
+
+/**
+ * The keys whose session value is a boolean, so a toggle cannot be pointed at a field that has
+ * nothing to flip.
+ */
+export type BooleanSceneSessionKey = {
+  [Key in keyof SceneSessionState]: SceneSessionState[Key] extends boolean ? Key : never
+}[keyof SceneSessionState]
+
+/** One field's writer, so each hook names the field it owns instead of respelling the patch. */
+export function sceneSessionSetter<Key extends keyof SceneSessionState>(
+  store: SceneSessionStore,
+  key: Key,
+): (value: SceneSessionState[Key]) => void {
+  return (value) => store.updateSceneSession({ [key]: value })
+}
+
+/** Reads the field as the toggle fires, because the store holds the current value, not a snapshot. */
+export function sceneSessionToggle(
+  store: SceneSessionStore,
+  key: BooleanSceneSessionKey,
+): () => void {
+  return () => store.updateSceneSession({ [key]: !store.getSceneSession()[key] })
+}

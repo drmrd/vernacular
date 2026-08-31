@@ -1,6 +1,10 @@
 import { useMemo, useSyncExternalStore } from 'react'
 
-import { useSceneSessionStoreOrLocal } from './scene-session-context'
+import {
+  sceneSessionSetter,
+  sceneSessionToggle,
+  useSceneSessionStoreOrLocal,
+} from './scene-session-context'
 import type { SceneScope } from './view-scene-graph'
 
 /** The 3D view's whole-building session state: its scope and underground visibility. */
@@ -21,13 +25,10 @@ export interface BuildingViewState {
 export function useBuildingViewState(): BuildingViewState {
   const store = useSceneSessionStoreOrLocal()
   const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
-  // The toggle reads the field back out of the store as it fires, because the store, not a
-  // rendered snapshot, is what holds the current value.
   const writers = useMemo(
     () => ({
-      setScope: (scope: SceneScope) => store.updateSceneSession({ scope }),
-      toggleUnderground: () =>
-        store.updateSceneSession({ showUnderground: !store.getSceneSession().showUnderground }),
+      setScope: sceneSessionSetter(store, 'scope'),
+      toggleUnderground: sceneSessionToggle(store, 'showUnderground'),
     }),
     [store],
   )

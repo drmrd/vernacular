@@ -1,11 +1,14 @@
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
 
-import type { CameraPose } from '../../core'
 import type { SceneSessionStore } from '../scene-session/scene-session-store'
 
 import type { PresetRequest } from './scene-camera-effects'
-import type { NavMode, PresetChoice } from './scene-nav-toolbar'
-import { useSceneSessionStoreOrLocal } from './scene-session-context'
+import type { PresetChoice } from './scene-nav-toolbar'
+import {
+  sceneSessionSetter,
+  sceneSessionToggle,
+  useSceneSessionStoreOrLocal,
+} from './scene-session-context'
 
 /**
  * The per-view camera navigation state: the active mode, whether the user has taken control
@@ -62,18 +65,15 @@ export function useSceneNavigation() {
 
 /**
  * The writes navigation makes to the session store, bundled so the hook that returns them
- * reads as one list of names. Each toggle reads the field back out of the store as it fires,
- * because the store, not a rendered snapshot, is what holds the current value.
+ * reads as one list of names.
  */
 function useSceneSessionWriters(store: SceneSessionStore) {
   return useMemo(
     () => ({
-      setMode: (mode: NavMode) => store.updateSceneSession({ cameraMode: mode }),
-      toggleSelection: () =>
-        store.updateSceneSession({ selectionEnabled: !store.getSceneSession().selectionEnabled }),
-      toggleRevealInterior: () =>
-        store.updateSceneSession({ revealInterior: !store.getSceneSession().revealInterior }),
-      notePresetApplied: (pose: CameraPose) => store.updateSceneSession({ presetPose: pose }),
+      setMode: sceneSessionSetter(store, 'cameraMode'),
+      toggleSelection: sceneSessionToggle(store, 'selectionEnabled'),
+      toggleRevealInterior: sceneSessionToggle(store, 'revealInterior'),
+      notePresetApplied: sceneSessionSetter(store, 'presetPose'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
     }),
     [store],
