@@ -1,9 +1,10 @@
 import { useCallback, type PointerEvent } from 'react'
-import type { Point } from '../../core'
-import type { EditorSession } from '../../bridge'
+import { STAIR_NODE_PREFIX, type Point } from '../../core'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { useOpeningTool } from './opening-tool-context'
 import { stairPlacementCommand } from './place-stair'
+import { selectPlacedEntity } from './select-placed-entity'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -12,6 +13,7 @@ interface StairPlacementDeps {
   tool: ToolId
   viewport: Viewport
   activeFloorId: string | null
+  selection: SelectionStore
 }
 
 export interface StairPlacement {
@@ -29,10 +31,10 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
  * to span two floors, which it reports through the placement context so the
  * overlay can say so rather than letting the click look unregistered. The
  * decisions live in the pure builder (`stairPlacementCommand`); this hook only
- * wires it.
+ * wires it, selecting the new stair once it lands.
  */
 export function useStairPlacement(deps: StairPlacementDeps): StairPlacement {
-  const { session, tool, viewport, activeFloorId } = deps
+  const { session, tool, viewport, activeFloorId, selection } = deps
   const { setPlacementRefusal } = useOpeningTool()
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
@@ -47,8 +49,9 @@ export function useStairPlacement(deps: StairPlacementDeps): StairPlacement {
       }
       setPlacementRefusal(null)
       session.dispatch(command)
+      selectPlacedEntity(selection, STAIR_NODE_PREFIX, command.params.stair.id)
     },
-    [session, tool, viewport, activeFloorId, setPlacementRefusal],
+    [session, tool, viewport, activeFloorId, setPlacementRefusal, selection],
   )
 
   return { onPointerDown }
