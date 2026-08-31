@@ -27,6 +27,7 @@ import { useNotifications } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import type { PreviewSegment } from './draw-plan'
 import type { DrawableUnderlay } from './draw-underlay'
+import type { NotifyUser } from './notify-user'
 import { useLoadImage } from './use-load-underlay-image'
 import { useResolveUnderlaysOnOpen } from './use-resolve-underlays'
 import {
@@ -174,10 +175,6 @@ function parseKnownDistance(text: string, assumeUnit: AssumedUnit): number | und
     return undefined
   }
 }
-
-/** The user-facing channel a failed step reports through; the plan view supplies
- *  the notification store's error toast. */
-export type NotifyUser = (message: string) => void
 
 export interface CalibrationCommit {
   session: EditorSession

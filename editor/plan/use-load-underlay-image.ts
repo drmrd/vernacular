@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { createUnderlay, placeUnderlay, type AssetReference } from '../../core'
 import { useActiveFloorId, type AssetCache, type EditorSession } from '../../bridge'
-import type { NotifyUser } from './use-underlay'
+import type { NotifyUser } from './notify-user'
 
 // The write-on-load half of the underlay persistence round trip: pick a raster
 // file, decode it, persist its source bytes through the asset cache, and place
@@ -22,14 +22,19 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
     .join('')
 }
 
-interface LoadImageDeps {
+export interface LoadImageOptions {
   session: EditorSession
   cache: BitmapCache
   assets: AssetCache
+  notify: NotifyUser
+}
+
+/** The load options, plus the one member the hook resolves from the editor. Extending
+ *  rather than restating the options keeps the two shapes in step by construction. */
+interface LoadImageDeps extends LoadImageOptions {
   // The floor the loaded underlay is placed on (the active floor); null before any
   // floor is selected.
   activeFloorId: string | null
-  notify: NotifyUser
 }
 
 // The two reasons a picked image never reaches the floor, in the words the user reads.
@@ -93,13 +98,6 @@ function pickImageFile(onFile: (file: File) => void): void {
     }
   })
   input.click()
-}
-
-export interface LoadImageOptions {
-  session: EditorSession
-  cache: BitmapCache
-  assets: AssetCache
-  notify: NotifyUser
 }
 
 /** Open a file picker and run the write-on-load round trip for the chosen image. */
