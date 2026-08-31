@@ -9,7 +9,7 @@ import {
 } from 'react'
 
 import type { LibraryItem } from '../../storage'
-import { ActiveToolContext } from '../tools/active-tool-context'
+import { ActiveToolContext, type ToolId } from '../tools/active-tool-context'
 import { FURNITURE_ROTATION_STEP_DEGREES, rotatedBy } from './place-furniture'
 
 const PLACE_FURNITURE_TOOL = 'place-furniture'
@@ -42,6 +42,17 @@ const FurniturePlacementContext = createContext<FurniturePlacementValue | null>(
 
 export function useFurniturePlacement(): FurniturePlacementValue {
   return useContext(FurniturePlacementContext) ?? FALLBACK_VALUE
+}
+
+/**
+ * The armed item survives a tool switch, so a return to the place-furniture
+ * tool resumes where the user left off. Only the tool that consumes it may act
+ * on it or say so, so every other tool sees null here: the placement ghost,
+ * the pointer handler that tracks it, and the picker's placement caption all
+ * read this instead of each re-deriving the same tool check.
+ */
+export function armedUnderTool(tool: ToolId, armed: LibraryItem | null): LibraryItem | null {
+  return tool === PLACE_FURNITURE_TOOL ? armed : null
 }
 
 export interface FurniturePlacementProviderProps {
