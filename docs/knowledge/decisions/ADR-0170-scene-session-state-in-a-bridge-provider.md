@@ -27,6 +27,7 @@ sourceFiles:
     bridge/react/walk-interaction.ts,
     editor/viewport/view-mode-viewport.tsx,
     editor/shell/editor-shell.tsx,
+    editor/shell/shell-providers.tsx,
   ]
 status: current
 updated: 2026-08-31
@@ -80,8 +81,10 @@ wraps a store in context, `useSceneSession()` reads a live snapshot through
 `useSyncExternalStore` and returns it alongside the patch function, and both are re-exported
 additively from `bridge/index.ts` beside the equivalent environment and selection exports.
 
-`editor/shell/editor-shell.tsx` mounts one `SceneSessionProvider`, created once per shell
-instance, inside `SessionStateProviders` beside `EnvironmentSessionProvider`. That places it
+`editor/shell/shell-providers.tsx`, the module that owns the editor shell's provider pyramid,
+mounts one `SceneSessionProvider`, created once per shell instance, inside
+`SessionStateProviders` beside `EnvironmentSessionProvider`; `editor-shell.tsx` renders that
+pyramid around the frame. That places the provider
 above `ViewModeViewport`, so the store outlives every mount and unmount of the preview subtree
 that a view-mode switch triggers. `ViewModeViewport` itself is unchanged: it keeps rendering the
 preview subtree only for `preview` and `split`, so the subtree still fully unmounts in plan mode.
