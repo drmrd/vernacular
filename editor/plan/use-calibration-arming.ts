@@ -78,6 +78,18 @@ export function useCalibrationArming(activeTool: ActiveToolValue): CalibrationAr
 
   const stopCalibration = useCallback(() => setArmedUnderlayId(null), [])
 
+  // An armed underlay only means something while the calibrate tool is active, so
+  // leaving the tool (the Escape ladder's second rung, or a tool chip) abandons the
+  // calibration and frees the underlay flyout to arm a fresh one later. The effect
+  // watches the tool string rather than the context object, which consumers rebuild
+  // every render. startCalibration's setTool lands in the same batch as the arming,
+  // so the effect already sees 'calibrate' and leaves that arming alone.
+  useEffect(() => {
+    if (activeTool.tool !== 'calibrate') {
+      stopCalibration()
+    }
+  }, [activeTool.tool, stopCalibration])
+
   // Memoize the bundle so consumers (the provider's context-value memo) see a
   // stable reference across renders that do not change the armed underlay or the
   // measurement state. setCalibrationToolState, setKnownDistanceText,
