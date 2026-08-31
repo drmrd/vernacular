@@ -258,6 +258,12 @@ export const UNCOVERED_COMPONENTS: {
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'ShellProviders',
+    file: 'editor/shell/shell-providers.tsx',
+    reason:
+      "the editor shell's provider pyramid and keybinding layer; they only have meaning wrapping the whole shell, so an isolated browser-mode story is not feasible and it is a permanent allowlist candidate (see ADR-0111).",
+  },
+  {
     component: 'ToolRail',
     file: 'editor/shell/tool-rail.tsx',
     reason:
