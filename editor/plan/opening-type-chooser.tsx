@@ -27,13 +27,13 @@ export function OpeningOptionGroup({ label, types }: OpeningOptionGroupProps): R
 
 /**
  * Picks the element type the place-opening tool places next. Lists every
- * opening-category entry, grouped into doors and windows, bound to the shared
- * opening-tool context. Coverage-excluded glue rendered while the place-opening
- * tool is active.
+ * opening-category entry, grouped into doors, windows, and passages, bound to
+ * the shared opening-tool context. Coverage-excluded glue rendered while the
+ * place-opening tool is active.
  */
 export function OpeningTypeChooser(): ReactElement {
   const { placementType, setPlacementType } = useOpeningTool()
-  const { doors, windows } = groupedOpeningTypes()
+  const { doors, windows, passages } = groupedOpeningTypes()
   return (
     <div>
       <label htmlFor={OPENING_TYPE_SELECT_ID}>Opening type</label>
@@ -44,6 +44,7 @@ export function OpeningTypeChooser(): ReactElement {
       >
         <OpeningOptionGroup label="Doors" types={doors} />
         <OpeningOptionGroup label="Windows" types={windows} />
+        <OpeningOptionGroup label="Passages" types={passages} />
       </select>
     </div>
   )
