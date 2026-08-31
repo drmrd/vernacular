@@ -8,6 +8,7 @@ import {
 import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
+import { selectPlacedEntity } from './select-placed-entity'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -34,10 +35,11 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
 /**
  * The place-furniture tool's pointer-down: when an item is armed, drop a fresh
  * furniture instance of that item at the cursor with the active ghost rotation,
- * then stay armed so repeated clicks place more. Inert under any other tool, so
- * the wall, opening, and select flows are untouched. The decisions live in the
- * pure factory (`createFurnitureInstance`); this hook only wires it, so it is
- * coverage-excluded glue validated by the place-furniture end-to-end journey.
+ * then stay armed so repeated clicks place more, selecting the new instance.
+ * Inert under any other tool, so the wall, opening, and select flows are
+ * untouched. The decisions live in the pure factory (`createFurnitureInstance`);
+ * this hook only wires it, so it is coverage-excluded glue validated by the
+ * place-furniture end-to-end journey.
  */
 export function usePlaceFurniture(deps: FurniturePlacementDeps): FurniturePlacement {
   const { session, tool, viewport, activeFloorId, armed, rotation, selection } = deps
@@ -56,10 +58,7 @@ export function usePlaceFurniture(deps: FurniturePlacementDeps): FurniturePlacem
         ...(armed.name !== '' ? { name: armed.name } : {}),
       })
       session.dispatch(placeFurniture(activeFloorId, furniture))
-      // Selection is bridge-owned and outside undo history (ADR-0020); selecting the
-      // just-placed furniture here, rather than through the command, shows it in the
-      // inspector without adding an undo step or disarming the placement tool.
-      selection.select(`${FURNITURE_NODE_PREFIX}${furniture.id}`)
+      selectPlacedEntity(selection, FURNITURE_NODE_PREFIX, furniture.id)
     },
     [session, tool, viewport, activeFloorId, armed, rotation, selection],
   )
