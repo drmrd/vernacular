@@ -27,6 +27,10 @@ sourceFiles:
     bridge/react/walk-camera-controls.tsx,
     bridge/react/walk-interaction.ts,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/use-live-view-readiness.ts,
+    bridge/react/live-scene-frame-signal.tsx,
+    bridge/react/use-ambient-occlusion.ts,
+    bridge/react/ambient-occlusion-render-takeover.tsx,
     editor/shell/editor-shell.tsx,
     editor/shell/shell-providers.tsx,
   ]
