@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
-import type { CameraPose, Vector3 } from '../../core'
+import type { CameraPose, Vector3, WalkState } from '../../core'
 import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
 import { useSceneNavigation } from './use-scene-navigation'
 
@@ -13,6 +13,12 @@ const SOME_POSE: CameraPose = {
 }
 
 const SAVED_CAMERA_POSITION: Vector3 = { x: 4, y: 5, z: 6 }
+
+const SAMPLE_WALK_POSE: WalkState = {
+  position: { x: 1200, y: 4700, z: -800 },
+  yaw: 1.25,
+  pitch: -0.4,
+}
 
 function providerAround(store: SceneSessionStore) {
   return function SceneSessionWrapper({ children }: { children: ReactNode }) {
@@ -198,5 +204,31 @@ describe('useSceneNavigation inside a scene session provider', () => {
 
     expect(store.getSceneSession().savedCameraPosition).toEqual(SAVED_CAMERA_POSITION)
     expect(secondMount.result.current.savedCameraPosition).toEqual(SAVED_CAMERA_POSITION)
+  })
+
+  it('offers no walk pose for a fresh session and the saved one once the session holds it', () => {
+    const freshStore = createSceneSessionStore()
+    const touredStore = createSceneSessionStore({ walkPose: SAMPLE_WALK_POSE })
+
+    const fresh = renderNavigationOn(freshStore)
+    const toured = renderNavigationOn(touredStore)
+
+    expect(fresh.result.current.walkPose).toBeNull()
+    expect(toured.result.current.walkPose).toEqual(SAMPLE_WALK_POSE)
+  })
+
+  it('hands a remounted navigation the walk pose the departing walker noted', () => {
+    const store = createSceneSessionStore()
+    const firstMount = renderNavigationOn(store)
+
+    act(() => {
+      firstMount.result.current.noteWalkPose(SAMPLE_WALK_POSE)
+    })
+    firstMount.unmount()
+
+    const secondMount = renderNavigationOn(store)
+
+    expect(store.getSceneSession().walkPose).toEqual(SAMPLE_WALK_POSE)
+    expect(secondMount.result.current.walkPose).toEqual(SAMPLE_WALK_POSE)
   })
 })

@@ -6,12 +6,26 @@ import {
   WALK_EYE_HEIGHT_MM,
   type OpeningInteractionState,
   type SceneGraph,
+  type WalkState,
 } from '../../core'
 
 import { emptySceneGraph } from '../../core/scene/scene-graph-test-fixtures'
-import { seedWalkState, walkFloorElevationMm, walkKeyHandlers } from './walk-camera-controls'
+import {
+  resumedWalkState,
+  seedWalkState,
+  walkFloorElevationMm,
+  walkKeyHandlers,
+} from './walk-camera-controls'
 
 const DOOR_ID = 'opening:front-door'
+
+// A pose a walker left behind mid-tour: off the origin, turned away from the
+// default -Z heading, and looking slightly down.
+const SAVED_WALK_POSE: WalkState = {
+  position: { x: 1200, y: 4700, z: -800 },
+  yaw: 1.25,
+  pitch: -0.4,
+}
 
 // The KeyR branch touches only `interaction` and `onUserControl`, so a minimal
 // stand-in for the (unexported) WalkSession carries just those two real fields.
@@ -88,5 +102,29 @@ describe('walk camera controls: floor elevation derivation', () => {
     }
 
     expect(walkFloorElevationMm(graph)).toBe(upperFloorElevationMm)
+  })
+})
+
+describe('resumedWalkState', () => {
+  it('resumes the pose the walker left behind, wherever the camera happens to sit now', () => {
+    // Re-entering walk mode after a view switch or an orbit detour hands back the
+    // pose the walk left off on, so the tour picks up where the walker stopped.
+    const upperFloorElevationMm = 3000
+    const camera = stubCamera() as unknown as Parameters<typeof seedWalkState>[0]
+
+    const resumed = resumedWalkState(SAVED_WALK_POSE, camera, upperFloorElevationMm)
+
+    expect(resumed).toEqual(SAVED_WALK_POSE)
+  })
+
+  it('seeds the pose from the camera when no walk pose has been left behind', () => {
+    // A first entry into walk mode has nothing to resume, so the pose still comes
+    // from where the camera is already looking.
+    const upperFloorElevationMm = 3000
+    const camera = stubCamera() as unknown as Parameters<typeof seedWalkState>[0]
+
+    const resumed = resumedWalkState(null, camera, upperFloorElevationMm)
+
+    expect(resumed).toEqual(seedWalkState(camera, upperFloorElevationMm))
   })
 })
