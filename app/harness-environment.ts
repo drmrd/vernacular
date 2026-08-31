@@ -86,6 +86,20 @@ const COLOR_ACCURACY_CAMERA_POSE: CameraPose = {
   far: 10000,
 }
 
+// The color-accuracy and finish-contrast states render the same interior shell under the
+// same color-check reference lighting (ADR-0156, ADR-0157); only the sampled surface and
+// therefore the camera pose differ between them, and the lane's plan reserves the right to
+// tune finish-contrast's pose independently if the shared pose shows no specular lobe. So
+// this constant carries every field the two states share, and each map entry below still
+// states its own cameraPose.
+const COLOR_ACCURACY_LIGHTING: Omit<HarnessEnvironmentState, 'cameraPose'> = {
+  site: CANONICAL_SITE,
+  observedAt: EQUINOX_NOON_OBSERVATION,
+  realistic: true,
+  colorCheck: true,
+  scene: 'shell',
+}
+
 /**
  * The named canonical environment states, keyed by the harness `scene` parameter.
  * Each state's date and time match a core solar reference case (the March equinox
@@ -123,22 +137,14 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
   [
     'color-accuracy',
     {
-      site: CANONICAL_SITE,
-      observedAt: EQUINOX_NOON_OBSERVATION,
-      realistic: true,
-      colorCheck: true,
-      scene: 'shell',
+      ...COLOR_ACCURACY_LIGHTING,
       cameraPose: COLOR_ACCURACY_CAMERA_POSE,
     },
   ],
   [
     'finish-contrast',
     {
-      site: CANONICAL_SITE,
-      observedAt: EQUINOX_NOON_OBSERVATION,
-      realistic: true,
-      colorCheck: true,
-      scene: 'shell',
+      ...COLOR_ACCURACY_LIGHTING,
       cameraPose: COLOR_ACCURACY_CAMERA_POSE,
     },
   ],
