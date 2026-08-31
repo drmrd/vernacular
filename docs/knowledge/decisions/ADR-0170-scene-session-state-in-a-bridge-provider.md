@@ -17,6 +17,14 @@ sourceFiles:
     bridge/react/scene-session-context.ts,
     bridge/react/scene-session-provider.tsx,
     bridge/react/use-scene-navigation.ts,
+    bridge/react/use-building-view-state.ts,
+    bridge/react/use-framed-scene.ts,
+    bridge/react/use-scene-environment.ts,
+    bridge/react/scene-camera-seed.ts,
+    bridge/react/orbit-camera-controls.tsx,
+    bridge/react/walk-session.ts,
+    bridge/react/walk-camera-controls.tsx,
+    bridge/react/walk-interaction.ts,
     editor/viewport/view-mode-viewport.tsx,
     editor/shell/editor-shell.tsx,
   ]
@@ -28,11 +36,11 @@ updated: 2026-08-31
 
 ## Status
 
-Accepted, landing with issue #603. This record covers the store, the context and provider that
-expose it, and the seeding contract each preview hook follows; the hooks that still read local
-`useState` today (building scope, the edge overlay, view color temperature, the saved camera
-pose, and the walk controller's pose and open doors) move onto the same store in later cycles of
-the same branch, one hook at a time, without changing the decision recorded here. It extends
+Accepted, landed with issue #603. This record covers the store, the context and provider that
+expose it, and the seeding contract each preview hook follows: the navigation state, the
+building scope and underground visibility, the edge overlay, the view color temperature, the
+saved camera position, and the walk controller's pose and open doors all read and write the
+same store, one hook per cycle of the same branch. It extends
 [[ADR-0146-environment-panel-and-session-contract]], which put the sibling `EnvironmentState`
 contract in the same shape and, at the time, kept view color temperature out of it on the
 reasoning that the field "remains view-local." This record moves that field into session state
