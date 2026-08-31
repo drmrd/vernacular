@@ -60,6 +60,11 @@ export function useSceneNavigation() {
     // what the preset framed instead of yanking the view back to the model's framing.
     presetPose: session.presetPose,
     notePresetApplied: writers.notePresetApplied,
+    // The departing canvas notes where the camera was standing so the next mount reopens
+    // there instead of reframing the model (ADR-0170). Orbit saves the position only, not
+    // the target it was turning around; issue #619 covers restoring the whole pose.
+    savedCameraPosition: session.savedCameraPosition,
+    noteCameraLeft: writers.noteCameraLeft,
   }
 }
 
@@ -74,6 +79,7 @@ function useSceneSessionWriters(store: SceneSessionStore) {
       toggleSelection: sceneSessionToggle(store, 'selectionEnabled'),
       toggleRevealInterior: sceneSessionToggle(store, 'revealInterior'),
       notePresetApplied: sceneSessionSetter(store, 'presetPose'),
+      noteCameraLeft: sceneSessionSetter(store, 'savedCameraPosition'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
     }),
     [store],

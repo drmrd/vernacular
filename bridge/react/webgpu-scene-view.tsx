@@ -18,6 +18,7 @@ import { OrbitCameraControls } from './orbit-camera-controls'
 import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
 import { FrameCamera, PresetCamera } from './scene-camera-effects'
+import { initialCamera } from './scene-camera-seed'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
@@ -107,6 +108,7 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
         enabled={nav.mode === 'orbit'}
         target={nav.presetPose?.target ?? pose.target}
         onUserControl={nav.markUserControlled}
+        onLeave={nav.noteCameraLeft}
       />
       <WalkCameraControls
         enabled={nav.mode === 'walk'}
@@ -139,17 +141,6 @@ function ViewSceneLighting({ viewEnvironment, site, bounds }: ViewSceneLightingP
       colorCheck={environment.colorCheck}
     />
   )
-}
-
-// The camera the canvas opens on, read off the framed scene's pose. The tuple
-// annotation is what React Three Fiber's camera prop expects; an inferred
-// number[] would not satisfy it.
-function initialCamera(pose: FramedScene['pose']) {
-  return {
-    position: [pose.position.x, pose.position.y, pose.position.z] as [number, number, number],
-    near: pose.near,
-    far: pose.far,
-  }
 }
 
 interface LiveSceneCanvasProps {
@@ -253,7 +244,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
       <Canvas
         frameloop="always"
         shadows
-        camera={initialCamera(props.framed.pose)}
+        camera={initialCamera(props.framed.pose, props.nav.savedCameraPosition)}
         // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
         // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
         // path), so narrowing the cast away from OffscreenCanvas is safe.
