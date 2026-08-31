@@ -77,6 +77,35 @@ function calibrationGraph(): SceneGraph {
 // distance text rather than reaching for window.prompt.
 const segment = { start: { x: 1200, y: 500 }, end: { x: 1700, y: 500 } }
 
+const KNOWN_DISTANCE = '3 m'
+const BLANK_DISTANCE = ''
+const UNPARSEABLE_DISTANCE = 'abc'
+
+// The armed underlay has been deleted (or never landed in the graph) by the
+// time the second calibration click arrives.
+function graphMissingTheArmedUnderlay(): SceneGraph {
+  return { ...calibrationGraph(), underlays: [] }
+}
+
+// Commits one calibration and hands back the two effects a user can observe:
+// what was dispatched and what they were told.
+function attemptCalibration(graph: SceneGraph, knownDistanceText: string) {
+  const dispatch = vi.fn()
+  const notify = vi.fn()
+  const session = { dispatch } as unknown as CalibrationCommit['session']
+
+  const committed = commitCalibration(segment, {
+    session,
+    graph,
+    armedUnderlayId: ARMED_ID,
+    units: 'metric',
+    knownDistanceText,
+    notify,
+  })
+
+  return { dispatch, notify, committed }
+}
+
 describe('commitCalibration consumes the entered known distance', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -84,17 +113,10 @@ describe('commitCalibration consumes the entered known distance', () => {
 
   it('dispatches a calibration command derived from the supplied known-distance text without prompting', () => {
     const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null)
-    const dispatch = vi.fn()
-    const session = { dispatch } as unknown as CalibrationCommit['session']
 
-    commitCalibration(segment, {
-      session,
-      graph: calibrationGraph(),
-      armedUnderlayId: ARMED_ID,
-      units: 'metric',
-      knownDistanceText: '3 m',
-    })
+    const { dispatch, notify, committed } = attemptCalibration(calibrationGraph(), KNOWN_DISTANCE)
 
+    expect(committed).toBe(true)
     expect(dispatch).toHaveBeenCalledTimes(1)
     const command = dispatch.mock.calls[0]![0] as {
       type: unknown
@@ -105,23 +127,43 @@ describe('commitCalibration consumes the entered known distance', () => {
     expect(command.params.underlayId).toBe('a')
     expect(typeof command.params.placement).toBe('object')
     expect(promptSpy).not.toHaveBeenCalled()
+    expect(notify).not.toHaveBeenCalled()
   })
 
-  it('dispatches nothing when the supplied known-distance text is blank, and never prompts', () => {
+  it('tells the user the known distance is missing when the supplied text is blank, and never prompts', () => {
     const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null)
-    const dispatch = vi.fn()
-    const session = { dispatch } as unknown as CalibrationCommit['session']
 
-    commitCalibration(segment, {
-      session,
-      graph: calibrationGraph(),
-      armedUnderlayId: ARMED_ID,
-      units: 'metric',
-      knownDistanceText: '',
-    })
+    const { dispatch, notify, committed } = attemptCalibration(calibrationGraph(), BLANK_DISTANCE)
 
+    expect(committed).toBe(false)
     expect(dispatch).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/known distance/i))
     expect(promptSpy).not.toHaveBeenCalled()
+  })
+
+  it('tells the user the known distance is unreadable when the supplied text is not a length', () => {
+    const { dispatch, notify, committed } = attemptCalibration(
+      calibrationGraph(),
+      UNPARSEABLE_DISTANCE,
+    )
+
+    expect(committed).toBe(false)
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/known distance/i))
+  })
+
+  it('tells the user the underlay is gone when the graph holds no node for the armed id', () => {
+    const { dispatch, notify, committed } = attemptCalibration(
+      graphMissingTheArmedUnderlay(),
+      KNOWN_DISTANCE,
+    )
+
+    expect(committed).toBe(false)
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/underlay/i))
   })
 })
 
@@ -159,10 +201,12 @@ interface CalibrationHarness {
 function HarnessProbe({
   session,
   graph,
+  notify,
   onValue,
 }: {
   session: EditorSession
   graph: SceneGraph
+  notify: (message: string) => void
   onValue: (value: CalibrationHarness) => void
 }) {
   const underlay = useUnderlay()
@@ -172,6 +216,7 @@ function HarnessProbe({
     tool: 'calibrate',
     viewport: VIEWPORT,
     activeFloorId: FLOOR_ID,
+    notify,
   })
   onValue({ underlay, layer })
   return null
@@ -179,8 +224,9 @@ function HarnessProbe({
 
 // Arms the calibration against the underlay and enters a known distance, the
 // state a user is in when they take the first of the two calibration clicks.
-function mountArmedCalibration() {
+function mountArmedCalibration(knownDistanceText: string = KNOWN_DISTANCE) {
   const dispatch = vi.fn()
+  const notify = vi.fn()
   const graph = calibrationGraph()
   const session = {
     dispatch,
@@ -197,6 +243,7 @@ function mountArmedCalibration() {
             <HarnessProbe
               session={session}
               graph={graph}
+              notify={notify}
               onValue={(value) => {
                 harness = value
               }}
@@ -209,9 +256,9 @@ function mountArmedCalibration() {
   const current = (): CalibrationHarness => harness as CalibrationHarness
   act(() => {
     current().underlay.startCalibration(ARMED_ID)
-    current().underlay.setKnownDistanceText('3 m')
+    current().underlay.setKnownDistanceText(knownDistanceText)
   })
-  return { dispatch, current }
+  return { dispatch, notify, current }
 }
 
 describe('a committed calibration disarms the underlay', () => {
@@ -227,5 +274,23 @@ describe('a committed calibration disarms the underlay', () => {
 
     expect(dispatch).toHaveBeenCalledTimes(1)
     expect(current().underlay.armedUnderlayId).toBe(null)
+  })
+})
+
+describe('a calibration that cannot commit stays armed', () => {
+  it('reports the missing known distance on the second click and leaves the underlay armed', () => {
+    const { dispatch, notify, current } = mountArmedCalibration(BLANK_DISTANCE)
+
+    act(() => {
+      current().layer.calibration.onPointerDown(clickAt(FIRST_CLICK))
+    })
+    act(() => {
+      current().layer.calibration.onPointerDown(clickAt(SECOND_CLICK))
+    })
+
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify).toHaveBeenCalledWith(expect.stringMatching(/known distance/i))
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(current().underlay.armedUnderlayId).toBe(ARMED_ID)
   })
 })
