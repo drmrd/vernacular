@@ -64,9 +64,13 @@ move. Only new canonical states, new assertions, and new baseline images land.
 
 The whole-frame tolerance (0.35 per pixel, 0.05 differing-pixel ratio) absorbed a probe
 with a deliberately wrong 10x radius. The gate becomes a targeted contrast assertion in the
-style of `scene-color-accuracy.spec.ts`: sample a crop at a wall-floor junction and a crop
+style of `scene-color-accuracy.spec.ts`: sample a crop inside the window head reveal and a crop
 on the open wall above it in the ambient-occlusion canonical state, and assert a minimum
-occlusion contrast between them.
+occlusion contrast between them. The derivation run of 2026-08-31 forced this patch choice:
+under the state's exterior auto-frame camera a 24 px sample spans about 1.3 m of wall, so no
+wall-floor junction separates the shipped radius from the 2500 mm probe, while the window
+head reveal separates them cleanly (shipped +0.0223 against probe +0.0029, with a zero noise
+band across six byte-identical captures).
 
 Acceptance:
 
