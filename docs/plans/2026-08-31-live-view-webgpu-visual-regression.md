@@ -25,7 +25,7 @@
 
 1. **Feasibility before code.** The spec's open question says WebGPU headless determinism is assumed, not proven. Task 1 proves or refutes it before any production code changes. On refutation the lane stops, files what it learned on #469, and the campaign proceeds gated by A1 and A2 (spec fallback); that outcome is a completed task, not a failure.
 2. **Readiness lives in the session provider**, not a new global: ADR-0170 made the provider the owner of cross-view scene session state, and the ready fact is session state. The attribute rides on the element the provider already wraps.
-3. **A deliberate-change probe validates the gate:** temporarily force the effective lighting mode to schematic (local edit of `effective-lighting-mode.ts`, never committed), which removes the occlusion pass from the drawn frame; the screenshot comparison must fail.
+3. **A deliberate-change probe validates the gate:** temporarily force the effective lighting mode (local edit of `effective-lighting-mode.ts`, never committed) and require the screenshot comparison to fail. The Task 3 run showed the drawn-room fixture already defaults to schematic with no site, so forcing schematic is a no-op; the working probe forces realistic, which switches on the occlusion pass and the realistic tone mapping.
 
 ## Task 1: Prove WebGPU headless capture determinism (nothing committed)
 
@@ -63,11 +63,13 @@
 
 **Interfaces:** consumes `drawnRoomCanvas`, `stableFrame`, the readiness attribute from Task 2, and a named camera preset; produces the committed `-darwin` baseline.
 
-- [ ] **Step 1:** Write the spec: WebGPU guard (request an adapter and skip with a named reason unless a non-null adapter arrives; `navigator.gpu` can be present while the adapter is null), load the fixture project, enter the 3D view, apply the top-down preset, wait for `data-live-view-ready="true"` then `stableFrame`, and `toHaveScreenshot` with `threshold: 0.35, maxDiffPixelRatio: 0.05`.
-- [ ] **Step 2:** Generate the baseline with `--update-snapshots=all`, then run five consecutive times; expected five passes.
-- [ ] **Step 3:** Apply the schematic-mode probe edit, rebuild, run once (expected FAIL on the comparison), restore, rebuild, run once (expected PASS).
-- [ ] **Step 4:** Full check chain; `git status --short` shows only the new spec, its one snapshot, and the Task 2 files.
-- [ ] **Step 5:** Commit as `test(e2e): pin the live-view WebGPU frame to a darwin baseline`.
+- [x] **Step 1:** Write the spec: WebGPU guard (request an adapter and skip with a named reason unless a non-null adapter arrives; `navigator.gpu` can be present while the adapter is null), load the fixture project, enter the 3D view, apply the top-down preset, wait for `data-live-view-ready="true"` then `stableFrame`, and `toHaveScreenshot` with `threshold: 0.35, maxDiffPixelRatio: 0.05`.
+- [x] **Step 2:** Generate the baseline with `--update-snapshots=all`, then run five consecutive times; expected five passes.
+- [x] **Step 3:** Probe: force the lighting-mode predicate to realistic (see design decision 3), rebuild, run once (FAILED at diff ratio 0.24 with the toolbar copy pinned, 0.29 unpinned), restore hash-verified, rebuild, run once (PASS).
+- [x] **Step 4:** Full check chain; `git status --short` shows only the new spec, its one snapshot, and the Task 2 files.
+- [x] **Step 5:** Commit as `test(e2e): pin the live-view WebGPU frame to a darwin baseline`.
+
+**Task 3 outcome (2026-08-31):** committed as one exempt test(e2e) commit. The baseline is byte-identical to all five Task 1 probe captures. The readiness wait is a real gate, not a delay: the attribute walks absent, then false, then true on the drive path, and the false state is reachable while the pipeline builds. The original schematic probe could not fail on this fixture; the recorded probe forces realistic instead.
 
 ## Task 4: Reviews before the lane closes
 
