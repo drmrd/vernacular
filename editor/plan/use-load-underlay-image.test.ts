@@ -74,9 +74,9 @@ describe('loadImageFile', () => {
 
     expect(dispatch).toHaveBeenCalledTimes(1)
     const command = dispatch.mock.calls[0]![0] as {
-      params: { underlay: { image: AssetReference } }
+      params: { underlay: { source: { image: AssetReference } } }
     }
-    expect(command.params.underlay.image.contentHash).toMatch(SHA256_HEX)
+    expect(command.params.underlay.source.image.contentHash).toMatch(SHA256_HEX)
     expect(notify).not.toHaveBeenCalled()
   })
 })
