@@ -132,6 +132,17 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     },
   ],
   [
+    'finish-contrast',
+    {
+      site: CANONICAL_SITE,
+      observedAt: EQUINOX_NOON_OBSERVATION,
+      realistic: true,
+      colorCheck: true,
+      scene: 'shell',
+      cameraPose: COLOR_ACCURACY_CAMERA_POSE,
+    },
+  ],
+  [
     'overcast-noon',
     {
       site: CANONICAL_SITE,
