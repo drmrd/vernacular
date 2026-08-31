@@ -1,23 +1,33 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
 
 import type { SceneGraph } from '../../core'
 
 import { useActiveFloorId } from './active-floor-context'
 import type { FramedScene } from './framed-scene'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
+import { useSceneSessionStoreOrLocal } from './scene-session-context'
 import { useBuildingViewState, type BuildingViewState } from './use-building-view-state'
 import { useFurnitureModelCache } from './use-furniture-model-cache'
 import { useProjectPaint } from './use-project-paint'
 import { useSceneGraph } from './use-scene-graph'
 import { useViewSceneGraph } from './use-view-scene-graph'
 
-// Per-view surface-edge overlay session state, held in the view layer, never in the
-// model or undo. Off by default in Orbit (ADR-0132); it feeds the toolbar toggle and the
-// reconciler's view options.
-function useEdgeOverlay() {
-  const [edgeOverlay, setEdgeOverlay] = useState(false)
-  const toggleEdgeOverlay = useCallback(() => setEdgeOverlay((value) => !value), [])
-  return { edgeOverlay, toggleEdgeOverlay }
+/**
+ * Per-view surface-edge overlay session state, never in the model or undo. The setting lives in
+ * the scene session store, so it survives the preview subtree's unmount when the view mode
+ * changes (ADR-0170). Off by default in Orbit (ADR-0132); it feeds the toolbar toggle and the
+ * reconciler's view options.
+ */
+export function useEdgeOverlay(): { edgeOverlay: boolean; toggleEdgeOverlay: () => void } {
+  const store = useSceneSessionStoreOrLocal()
+  const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
+  // The toggle reads the field back out of the store as it fires, because the store, not a
+  // rendered snapshot, is what holds the current value.
+  const toggleEdgeOverlay = useCallback(
+    () => store.updateSceneSession({ edgeOverlay: !store.getSceneSession().edgeOverlay }),
+    [store],
+  )
+  return { edgeOverlay: session.edgeOverlay, toggleEdgeOverlay }
 }
 
 /** The framed scene together with the session state that shapes it. */
