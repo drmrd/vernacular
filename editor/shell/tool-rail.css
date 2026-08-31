@@ -1,0 +1,13 @@
+/*
+ * The rail separates the Edit layer section from the Tools section below it
+ * with a kerf line and extra air rather than a card, a tone, or a shadow (the
+ * Arris spec, sections 6 and 7; ADR-0165). The margin is wider than the
+ * panel-slot kerf uses between ordinary sections, because the Edit layer
+ * toggle is the rail's own control and reads as a distinct cluster from the
+ * tool rack beneath it.
+ */
+.tool-rail__edit-layer {
+  margin-top: var(--space-6);
+  padding-top: var(--space-3);
+  border-top: var(--border-width-resting) solid var(--color-kerf);
+}
