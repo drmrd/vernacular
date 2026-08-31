@@ -152,6 +152,12 @@ export const UNCOVERED_COMPONENTS: {
       'DOM overlay positioned from the live scene projection; it requires the R3F scene context, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'SceneSessionProvider',
+    file: 'bridge/react/scene-session-provider.tsx',
+    reason:
+      'scene-session context provider that only has meaning wrapping the editor shell and the scene view; an isolated browser-mode story is not feasible, so it is a permanent allowlist candidate (see ADR-0111).',
+  },
+  {
     component: 'SceneSelection',
     file: 'bridge/react/scene-selection.tsx',
     reason:

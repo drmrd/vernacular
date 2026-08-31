@@ -116,16 +116,27 @@ export function walkFloorElevationMm(graph: SceneGraph): number {
   return floorNode?.elevation ?? 0
 }
 
-interface WalkSession {
-  camera: WalkCamera
-  domElement: HTMLElement
+// The refs a walk advances: the walker's pose, the input held down, the live openings,
+// the open/closed view-state, and each opening's in-flight openness. A session starts
+// them and the frame loop steps the same refs.
+interface WalkRefs {
   state: RefObject<WalkState>
   input: RefObject<WalkInput>
   openings: RefObject<OpeningSceneNode[]>
   interaction: RefObject<OpeningInteractionState>
   openness: RefObject<Map<string, number>>
-  onUserControl: () => void
+}
+
+// What a walk session needs from the live canvas: the camera it drives, the element it
+// captures the pointer on, and the elevation of the floor being walked.
+interface WalkSessionHost {
+  camera: WalkCamera
+  domElement: HTMLElement
   floorElevationMm: number
+}
+
+interface WalkSession extends WalkRefs, WalkSessionHost {
+  onUserControl: () => void
   /** The pose a previous session left behind, or null when nobody has walked yet. */
   savedWalkPose: WalkState | null
   /** Reports the pose the walker ended on, so the next session can resume it. */
@@ -257,31 +268,25 @@ function useWalkOpenings(): OpeningSceneNode[] {
 // The refs the interact key and the per-frame swing read: the live openings (kept
 // current for the keydown closure), the open/closed view-state, and each opening's
 // in-flight openness. They are walk-session view-state, never persisted edits.
-function useWalkInteraction(): Pick<WalkSession, 'openings' | 'interaction' | 'openness'> {
+function useWalkInteraction(): {
+  openingsRef: RefObject<OpeningSceneNode[]>
+  interactionRef: RefObject<OpeningInteractionState>
+  opennessRef: RefObject<Map<string, number>>
+} {
   const openings = useWalkOpenings()
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
   const interactionRef = useRef<OpeningInteractionState>(emptyOpeningInteraction())
   const opennessRef = useRef<Map<string, number>>(new Map())
-  // One stable bundle, so spreading it into the mount effect's session cannot change the
-  // effect's dependencies from render to render.
-  return useMemo(
-    () => ({ openings: openingsRef, interaction: interactionRef, openness: opennessRef }),
-    [],
-  )
+  return { openingsRef, interactionRef, opennessRef }
 }
 
 // The live inputs the per-frame walk step reads: the camera and scene root it
 // writes to, the collision inputs, and the walk and interaction refs it advances.
-interface WalkFrameContext {
+interface WalkFrameContext extends WalkRefs {
   camera: WalkCamera
   collisionInputs: WalkCollisionInputs
   root: SceneRoot
-  state: RefObject<WalkState>
-  input: RefObject<WalkInput>
-  openings: RefObject<OpeningSceneNode[]>
-  interaction: RefObject<OpeningInteractionState>
-  openness: RefObject<Map<string, number>>
 }
 
 // Builds this frame's collision world from the static inputs and the live open-door
@@ -330,15 +335,66 @@ interface WalkCameraControlsProps {
 // The pose handoff, held in refs refreshed on every render so that neither the saved pose
 // nor the identity of the reporting callback joins the mount effect's dependencies and
 // restarts the walk. The orbit controller holds its onLeave callback the same way.
-function useWalkPoseHandoff(props: WalkCameraControlsProps): {
+function useWalkPoseHandoff(
+  savedWalkPose: WalkState | null,
+  onWalkPose: (pose: WalkState) => void,
+): {
   savedWalkPoseRef: RefObject<WalkState | null>
   onWalkPoseRef: RefObject<(pose: WalkState) => void>
 } {
-  const savedWalkPoseRef = useRef(props.savedWalkPose)
-  savedWalkPoseRef.current = props.savedWalkPose
-  const onWalkPoseRef = useRef(props.onWalkPose)
-  onWalkPoseRef.current = props.onWalkPose
+  const savedWalkPoseRef = useRef(savedWalkPose)
+  savedWalkPoseRef.current = savedWalkPose
+  const onWalkPoseRef = useRef(onWalkPose)
+  onWalkPoseRef.current = onWalkPose
   return { savedWalkPoseRef, onWalkPoseRef }
+}
+
+// The props a walk session reads: everything the component takes except the scene
+// root, which only the per-frame step needs.
+type WalkSessionProps = Omit<WalkCameraControlsProps, 'root'>
+
+// Runs a walk session for as long as walk mode is on: it holds the refs a walk advances,
+// starts the session when the mode turns on, and tears it down (reporting the pose back)
+// when it turns off or the canvas goes away. The refs come back so the frame loop steps
+// the same state the session started.
+function useWalkSession(props: WalkSessionProps, host: WalkSessionHost): WalkRefs {
+  const { enabled, onUserControl, savedWalkPose, onWalkPose } = props
+  const { camera, domElement, floorElevationMm } = host
+  const stateRef = useRef<WalkState>(initialWalkState(floorElevationMm))
+  const inputRef = useRef<WalkInput>(emptyWalkInput())
+  const { openingsRef, interactionRef, opennessRef } = useWalkInteraction()
+  const { savedWalkPoseRef, onWalkPoseRef } = useWalkPoseHandoff(savedWalkPose, onWalkPose)
+
+  useEffect(() => {
+    if (!enabled) return
+    return startWalk({
+      camera,
+      domElement,
+      state: stateRef,
+      input: inputRef,
+      openings: openingsRef,
+      interaction: interactionRef,
+      openness: opennessRef,
+      onUserControl,
+      floorElevationMm,
+      savedWalkPose: savedWalkPoseRef.current,
+      onWalkPose: (pose) => onWalkPoseRef.current(pose),
+    })
+    // Three values are deliberately left out of the dependencies below. floorElevationMm
+    // is excluded because re-seeding the walk pose when the active floor changes mid-walk
+    // is tracked by #608 and lands in a later cycle; savedWalkPoseRef and onWalkPoseRef
+    // are excluded because they are refs refreshed on every render, so reading them here
+    // cannot go stale and must not restart the walk.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef, opennessRef])
+
+  return {
+    state: stateRef,
+    input: inputRef,
+    openings: openingsRef,
+    interaction: interactionRef,
+    openness: opennessRef,
+  }
 }
 
 /**
@@ -355,39 +411,20 @@ function useWalkPoseHandoff(props: WalkCameraControlsProps): {
  * scene-webgl navigation e2e.
  */
 export function WalkCameraControls(props: WalkCameraControlsProps) {
-  const { enabled, onUserControl, root } = props
+  // Kept as one props object because the session hook reads the same shape minus the root.
+  const { enabled, root } = props
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const collisionInputs = useWalkCollisionInputs()
-  const stateRef = useRef<WalkState>(initialWalkState(collisionInputs.floorElevationMm))
-  const inputRef = useRef<WalkInput>(emptyWalkInput())
-  const interactionRefs = useWalkInteraction()
-  const { savedWalkPoseRef, onWalkPoseRef } = useWalkPoseHandoff(props)
-
-  useEffect(() => {
-    if (!enabled) return
-    return startWalk({
-      camera,
-      domElement,
-      state: stateRef,
-      input: inputRef,
-      ...interactionRefs,
-      onUserControl,
-      floorElevationMm: collisionInputs.floorElevationMm,
-      savedWalkPose: savedWalkPoseRef.current,
-      onWalkPose: (pose) => onWalkPoseRef.current(pose),
-    })
-    // floorElevationMm is intentionally excluded: re-seeding the walk pose when the
-    // active floor changes mid-walk is tracked by #608 and lands in a later cycle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, camera, domElement, onUserControl, interactionRefs])
+  const walkRefs = useWalkSession(props, {
+    camera,
+    domElement,
+    floorElevationMm: collisionInputs.floorElevationMm,
+  })
 
   useFrame((_state, delta) => {
     if (!enabled) return
-    stepWalkFrame(
-      { camera, collisionInputs, root, state: stateRef, input: inputRef, ...interactionRefs },
-      delta,
-    )
+    stepWalkFrame({ camera, collisionInputs, root, ...walkRefs }, delta)
   })
 
   return null
