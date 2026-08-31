@@ -1,10 +1,21 @@
 /*
- * The rail separates the Edit layer section from the Tools section below it
+ * The rail separates the Edit layer section from the Tools section above it
  * with a kerf line and extra air rather than a card, a tone, or a shadow (the
- * Arris spec, sections 6 and 7; ADR-0165). The margin is wider than the
- * panel-slot kerf uses between ordinary sections, because the Edit layer
- * toggle is the rail's own control and reads as a distinct cluster from the
- * tool rack beneath it.
+ * Arris spec, sections 6 and 7; ADR-0165). The Edit layer section is rendered
+ * below the tool rack, so the kerf falls on its top edge.
+ *
+ * The rule stays unscoped rather than gated behind
+ * [data-design-language='arris'], the way the panel-slot kerf is. Issue #534
+ * asks the two rail sections to read as distinct controls in the shipped
+ * default rail, not only in the Arris preview, and both --color-kerf and
+ * --border-width-resting resolve in every design language (see the role
+ * comment near tokens.css:61-63), so the rule renders correctly with the flag
+ * off. ADR-0165's "every new rule is scoped" guidance is about Arris-only
+ * doctrine; this separation is a request in its own right.
+ *
+ * The margin is wider than the panel-slot kerf uses between ordinary
+ * sections, because the Edit layer toggle is the rail's own control and
+ * reads as a distinct cluster from the tool rack above it.
  */
 .tool-rail__edit-layer {
   margin-top: var(--space-6);
