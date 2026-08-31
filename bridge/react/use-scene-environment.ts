@@ -1,7 +1,19 @@
 import { useMemo, useSyncExternalStore } from 'react'
 
+import type { EnvironmentState } from '../../core'
 import { useEnvironmentSession } from './environment-session-context'
 import { sceneSessionSetter, useSceneSessionStoreOrLocal } from './scene-session-context'
+
+/**
+ * The grouped result of useSceneEnvironment, so the toolbar and canvas wiring can take the
+ * whole environment state as one prop instead of re-listing each field.
+ */
+export interface SceneEnvironmentState {
+  colorTemperatureK: number
+  setColorTemperatureK: (kelvin: number) => void
+  environment: EnvironmentState
+  setEnvironment: (next: EnvironmentState) => void
+}
 
 /**
  * The grouped per-view environment inputs the toolbar and canvas share: the view-local color
@@ -12,7 +24,7 @@ import { sceneSessionSetter, useSceneSessionStoreOrLocal } from './scene-session
  * the preview subtree's unmount when the view mode changes (ADR-0170, which amends ADR-0146's
  * view-local stance on where the tint is held).
  */
-export function useSceneEnvironment() {
+export function useSceneEnvironment(): SceneEnvironmentState {
   const store = useSceneSessionStoreOrLocal()
   const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
   const setColorTemperatureK = useMemo(
@@ -27,9 +39,3 @@ export function useSceneEnvironment() {
     setEnvironment,
   }
 }
-
-/**
- * The grouped result of useSceneEnvironment, so the toolbar and canvas wiring can take the
- * whole environment state as one prop instead of re-listing each field.
- */
-export type SceneEnvironmentState = ReturnType<typeof useSceneEnvironment>
