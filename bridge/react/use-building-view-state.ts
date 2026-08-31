@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 
+import { useSceneSessionStoreOrLocal } from './scene-session-context'
 import type { SceneScope } from './view-scene-graph'
 
 /** The 3D view's whole-building session state: its scope and underground visibility. */
@@ -11,14 +12,29 @@ export interface BuildingViewState {
 }
 
 /**
- * Per-view session state for the whole-building view (foundation section 5.3), held in
- * the view layer and never in the model or undo. It seeds the active-floor scope with
- * underground levels shown, and exposes a scope setter and an underground toggle for the
- * navigation toolbar.
+ * Per-view session state for the whole-building view (foundation section 5.3). The state lives
+ * in the scene session store, so it outlasts the preview subtree's unmount when the view mode
+ * changes (ADR-0170), and it stays out of the model and undo history whichever store backs it.
+ * It seeds the active-floor scope with underground levels shown, and exposes a scope setter and
+ * an underground toggle for the navigation toolbar.
  */
 export function useBuildingViewState(): BuildingViewState {
-  const [scope, setScope] = useState<SceneScope>('floor')
-  const [showUnderground, setShowUnderground] = useState(true)
-  const toggleUnderground = useCallback(() => setShowUnderground((shown) => !shown), [])
-  return { scope, showUnderground, setScope, toggleUnderground }
+  const store = useSceneSessionStoreOrLocal()
+  const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
+  // The toggle reads the field back out of the store as it fires, because the store, not a
+  // rendered snapshot, is what holds the current value.
+  const writers = useMemo(
+    () => ({
+      setScope: (scope: SceneScope) => store.updateSceneSession({ scope }),
+      toggleUnderground: () =>
+        store.updateSceneSession({ showUnderground: !store.getSceneSession().showUnderground }),
+    }),
+    [store],
+  )
+  return {
+    scope: session.scope,
+    showUnderground: session.showUnderground,
+    setScope: writers.setScope,
+    toggleUnderground: writers.toggleUnderground,
+  }
 }
