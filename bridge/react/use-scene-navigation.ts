@@ -12,11 +12,12 @@ import {
 
 /**
  * The per-view camera navigation state: the active mode, whether the user has taken control
- * of the camera, and the pose the last camera preset actually landed on. The state lives in
- * the scene session store, so it outlasts the preview subtree's unmount when the view mode
- * changes (ADR-0170). The state stays out of the model and undo history whichever store backs
- * it. Reset clears user control, which lets FrameCamera refit the model to the viewport
- * through its `active` transition.
+ * of the camera, the pose the last camera preset actually landed on, and the handoffs the
+ * cameras use to resume where they left off (the saved orbit position, the walk pose, and the
+ * open doors). The state lives in the scene session store, so it outlasts the preview
+ * subtree's unmount when the view mode changes (ADR-0170). The state stays out of the model
+ * and undo history whichever store backs it. Reset clears user control, which lets FrameCamera
+ * refit the model to the viewport through its `active` transition.
  */
 export function useSceneNavigation() {
   const store = useSceneSessionStoreOrLocal()
