@@ -40,15 +40,14 @@ export interface ViewportProviderProps {
   initialContent?: ViewportInitialContent
 }
 
-function initialViewport(initialContent: ViewportInitialContent | undefined): Viewport {
+const DEFAULT_VIEWPORT: Viewport = { scale: DEFAULT_PLAN_SCALE }
+
+function computeInitialViewport(initialContent: ViewportInitialContent | undefined): Viewport {
   if (initialContent === undefined) {
-    return { scale: DEFAULT_PLAN_SCALE }
+    return DEFAULT_VIEWPORT
   }
   const bounds = contentBounds(planContentPoints(initialContent.walls, initialContent.rooms))
-  if (bounds === null) {
-    return { scale: DEFAULT_PLAN_SCALE }
-  }
-  return computeFitViewport(bounds, initialContent.size)
+  return bounds === null ? DEFAULT_VIEWPORT : computeFitViewport(bounds, initialContent.size)
 }
 
 /**
@@ -58,7 +57,7 @@ function initialViewport(initialContent: ViewportInitialContent | undefined): Vi
  * when the state lived locally; the value shape is unchanged.
  */
 export function ViewportProvider({ children, initialContent }: ViewportProviderProps) {
-  const [viewport, setViewport] = useState<Viewport>(() => initialViewport(initialContent))
+  const [viewport, setViewport] = useState<Viewport>(() => computeInitialViewport(initialContent))
   const value = useMemo<ViewportValue>(() => ({ viewport, setViewport }), [viewport])
   return createElement(ViewportContext.Provider, { value }, children)
 }
