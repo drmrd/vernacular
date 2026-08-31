@@ -173,18 +173,22 @@ function parseKnownDistance(text: string, assumeUnit: AssumedUnit): number | und
   }
 }
 
+/** The user-facing channel a failed step reports through; the plan view supplies
+ *  the notification store's error toast. */
+export type NotifyUser = (message: string) => void
+
 export interface CalibrationCommit {
   session: EditorSession
   graph: SceneGraph
   armedUnderlayId: string
   units: UnitSystem
   knownDistanceText: string
-  /** Tells the user why a calibration was dropped; called once per cancelled commit. */
-  notify: (message: string) => void
+  notify: NotifyUser
 }
 
 // The two reasons a calibration cannot complete, in the words the user reads.
-const MISSING_UNDERLAY_MESSAGE = 'The underlay being calibrated is no longer on this floor.'
+const MISSING_UNDERLAY_MESSAGE =
+  'The underlay being calibrated is no longer on this floor. Start the calibration again from the underlay menu.'
 const MISSING_KNOWN_DISTANCE_MESSAGE =
   'Enter the known distance, such as 3 m, before the second click.'
 
@@ -234,7 +238,7 @@ export interface CalibrationInteractionDeps {
   viewport: Viewport
   units: UnitSystem
   underlay: UnderlayContextValue
-  notify: (message: string) => void
+  notify: NotifyUser
 }
 
 export interface CalibrationInteraction {
@@ -308,8 +312,7 @@ export interface PlanUnderlayLayerDeps {
   // The floor whose underlays are shown (the active floor); null before any floor
   // is selected.
   activeFloorId: string | null
-  /** Tells the user why a calibration was dropped; called once per cancelled commit. */
-  notify: (message: string) => void
+  notify: NotifyUser
 }
 
 export interface PlanUnderlayLayer {
