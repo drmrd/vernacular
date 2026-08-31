@@ -16,6 +16,7 @@ import {
   type EditorSession,
 } from '../../bridge'
 import { ActiveToolProvider } from '../tools/active-tool-provider'
+import { NotificationProvider } from '../design-system'
 import { CALIBRATE_UNDERLAY, type SceneGraph, type UnderlaySceneNode } from '../../core'
 import type { Viewport } from './viewport'
 
@@ -239,16 +240,18 @@ function mountArmedCalibration(knownDistanceText: string = KNOWN_DISTANCE) {
     <EditorSessionProvider session={session}>
       <ActiveFloorProvider store={createActiveFloorStore(FLOOR_ID)}>
         <ActiveToolProvider initialTool="calibrate">
-          <UnderlayProvider>
-            <HarnessProbe
-              session={session}
-              graph={graph}
-              notify={notify}
-              onValue={(value) => {
-                harness = value
-              }}
-            />
-          </UnderlayProvider>
+          <NotificationProvider>
+            <UnderlayProvider>
+              <HarnessProbe
+                session={session}
+                graph={graph}
+                notify={notify}
+                onValue={(value) => {
+                  harness = value
+                }}
+              />
+            </UnderlayProvider>
+          </NotificationProvider>
         </ActiveToolProvider>
       </ActiveFloorProvider>
     </EditorSessionProvider>,
