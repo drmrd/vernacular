@@ -183,14 +183,14 @@ function clampUnit(value: number): number {
 }
 
 /** The position of a world point as a parameter t along the segment. */
-function wallParam(segment: WallSegment, x: number, z: number): number {
+function wallParam(segment: WallSegment, point: PlanarPoint): number {
   const spanX = segment.end.x - segment.start.x
   const spanZ = segment.end.z - segment.start.z
   const lengthSquared = spanX * spanX + spanZ * spanZ
   if (lengthSquared === 0) {
     return 0
   }
-  return ((x - segment.start.x) * spanX + (z - segment.start.z) * spanZ) / lengthSquared
+  return ((point.x - segment.start.x) * spanX + (point.z - segment.start.z) * spanZ) / lengthSquared
 }
 
 /** The world point at parameter t along the segment. */
@@ -212,8 +212,8 @@ function openingSpan(segment: WallSegment, opening: OpeningSceneNode): SpanInter
     x: opening.center.x + opening.along.x * half,
     y: opening.center.y + opening.along.y * half,
   })
-  const startParam = wallParam(segment, spanStart.x, spanStart.z)
-  const endParam = wallParam(segment, spanEnd.x, spanEnd.z)
+  const startParam = wallParam(segment, spanStart)
+  const endParam = wallParam(segment, spanEnd)
   return { start: Math.min(startParam, endParam), end: Math.max(startParam, endParam) }
 }
 
