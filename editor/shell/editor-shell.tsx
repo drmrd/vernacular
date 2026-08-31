@@ -1,4 +1,3 @@
-import { useMemo, type ReactNode } from 'react'
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
@@ -9,43 +8,18 @@ import {
   type Icon,
 } from '@phosphor-icons/react'
 import {
-  createEnvironmentSessionStore,
-  createPerceivedColorStore,
-  createSurfaceSelectionStore,
-  EnvironmentSessionProvider,
-  PerceivedColorProvider,
-  SurfaceSelectionProvider,
   useActiveFloorId,
   useEditorSession,
   useSceneGraph,
-  useSelection,
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
 import { addFloor, renameFloor, renameProject, setUnits } from '../../core'
-import {
-  CommandPalette,
-  CommandPaletteProvider,
-  createCommandSet,
-  useCommandPalette,
-  useKeybindings,
-} from '../commands'
-import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
-import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
-import { OpeningToolProvider } from '../plan/opening-tool-context'
 import { PlanView } from '../plan/plan-view'
-import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
-import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
-import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
-import { UnderlayProvider } from '../plan/use-underlay'
-import { ViewportProvider } from '../plan/viewport-context'
-import { PointerReadoutProvider } from '../plan/pointer-readout'
 import { useActiveTool } from '../tools/active-tool-context'
 import { toolLabel } from '../tools/tool-label'
-import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
-import { ViewOverlayProvider } from '../viewport/view-overlay-context'
 import { ViewModeViewport } from '../viewport/view-mode-viewport'
-import { AppFrame, BannerRegion, IconButton, ToastRegion } from '../design-system'
+import { AppFrame, BannerRegion, IconButton } from '../design-system'
 import { BrandMark } from './brand-mark'
 import { ExportMenu } from './export-menu'
 import { Inspector } from './inspector'
@@ -62,6 +36,7 @@ import { useSaveFailureToast } from './use-save-failure-toast'
 import { ImportDropTarget } from './import-drop-target'
 import { UnitToggle } from './unit-toggle'
 import { ViewToggles } from './view-toggles'
+import { ShellProviders } from './shell-providers'
 import './editor-shell.css'
 
 const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
@@ -78,24 +53,6 @@ const SAVE_STATUS_ICONS: Record<AutosaveStatus, Icon> = {
   pending: CircleNotch,
   saved: CheckCircle,
   error: WarningCircle,
-}
-
-// A render-nothing layer that assembles the command context from the editor
-// hooks and registers the global keybindings (undo/redo/delete/deselect/palette).
-function KeybindingLayer({ onSave }: { onSave?: (() => void) | undefined }) {
-  const session = useEditorSession()
-  const selection = useSelection()
-  const activeFloorId = useActiveFloorId()
-  const graph = useSceneGraph()
-  const palette = useCommandPalette()
-  const view = useViewMode()
-  const snapStore = useSnapPreferencesStore()
-  const commands = useMemo(
-    () => createCommandSet({ view, snapStore, onSave }),
-    [view, snapStore, onSave],
-  )
-  useKeybindings(commands, { session, selection, graph, activeFloorId, openPalette: palette.open })
-  return null
 }
 
 interface ShellHeaderProps {
@@ -234,13 +191,6 @@ function ViewportArea({ onImportDroppedFile }: Pick<EditorShellProps, 'onImportD
   )
 }
 
-// A render-nothing layer that defaults the active paint surface to a selected
-// wall's first face, so clicking a wall on the plan also chooses what to paint.
-function EntitySurfaceBridge() {
-  useEntitySurfaceBridge()
-  return null
-}
-
 export interface EditorShellProps extends ProjectControlsProps {
   saveStatus: AutosaveStatus
   recovery?: { onRestore: () => void; onDiscard: () => void }
@@ -258,74 +208,6 @@ function ShellBanner({ recovery }: { recovery: EditorShellProps['recovery'] }) {
         <RecoveryPrompt onRestore={recovery.onRestore} onDiscard={recovery.onDiscard} />
       ) : null}
     </>
-  )
-}
-
-interface ProviderLayerProps {
-  onSave?: (() => void) | undefined
-  children: ReactNode
-}
-
-/**
- * The stores the frame's panels share, and the render-nothing layers that ride them.
- * Each store is created once: the surface selection joins the paint inspector to the
- * viewport, the perceived color joins that viewport's sampler to the inspector
- * readout, and the environment session joins the tool rail's Environment panel to the
- * 3D viewport.
- */
-function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
-  const surfaceSelection = useMemo(() => createSurfaceSelectionStore(), [])
-  const environmentSession = useMemo(() => createEnvironmentSessionStore(), [])
-  const perceivedColor = useMemo(() => createPerceivedColorStore(), [])
-  return (
-    <>
-      <KeybindingLayer onSave={onSave} />
-      <CommandPalette />
-      <ToastRegion />
-      <SurfaceSelectionProvider store={surfaceSelection}>
-        <EntitySurfaceBridge />
-        <PerceivedColorProvider store={perceivedColor}>
-          <EnvironmentSessionProvider store={environmentSession}>
-            {children}
-          </EnvironmentSessionProvider>
-        </PerceivedColorProvider>
-      </SurfaceSelectionProvider>
-    </>
-  )
-}
-
-/**
- * The editor's provider pyramid, wrapped around whatever frame it is given. The
- * command-palette provider sits outermost so the keybinding layer, the command bar,
- * and the palette dialog share one open/close state. The snap preferences are created
- * once here and read by the keybinding layer, the command palette, the snap panel, and
- * the plan's snapping, persisted to localStorage as an editor preference. The underlay
- * and opening-tool providers wrap the frame so the shared underlay state and the
- * opening placement type reach the canvas glue and the inspector and tools panels from
- * one source.
- */
-function ShellProviders({ onSave, children }: ProviderLayerProps) {
-  const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
-  return (
-    <CommandPaletteProvider>
-      <SnapPreferencesProvider store={snapPreferences}>
-        <ViewModeProvider>
-          <ViewOverlayProvider>
-            <ViewportProvider>
-              <PointerReadoutProvider>
-                <UnderlayProvider>
-                  <OpeningToolProvider>
-                    <FurniturePlacementProvider>
-                      <SessionStateProviders onSave={onSave}>{children}</SessionStateProviders>
-                    </FurniturePlacementProvider>
-                  </OpeningToolProvider>
-                </UnderlayProvider>
-              </PointerReadoutProvider>
-            </ViewportProvider>
-          </ViewOverlayProvider>
-        </ViewModeProvider>
-      </SnapPreferencesProvider>
-    </CommandPaletteProvider>
   )
 }
 

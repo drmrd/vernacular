@@ -2,11 +2,13 @@ import { useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import type { Vector3 } from '../../core'
 import { createOrbitController, type OrbitController } from '../../engine'
+import { cameraPositionOf } from './scene-camera-seed'
 
 interface OrbitCameraControlsProps {
   enabled: boolean
   target: Vector3
   onUserControl: () => void
+  onLeave: (position: Vector3) => void
 }
 
 /**
@@ -15,22 +17,36 @@ interface OrbitCameraControlsProps {
  * OrbitControls instance, so this bridge file does not import three (rules.md rule
  * 1). It marks the camera as user-controlled on the first pointer press through a
  * listener it owns on the canvas, which is what tells the pane to stop reframing on
- * edits. This is rendering glue that only runs under a real canvas, so its behavior
- * is covered by the scene-webgl navigation end-to-end test rather than a unit test.
+ * edits. On the way out it reports where the camera ended up through onLeave, so a
+ * session that outlives this canvas can reopen the next one there. This is rendering
+ * glue that only runs under a real canvas, so its behavior is covered by the
+ * scene-webgl navigation end-to-end test rather than a unit test.
  */
-export function OrbitCameraControls({ enabled, target, onUserControl }: OrbitCameraControlsProps) {
+export function OrbitCameraControls({
+  enabled,
+  target,
+  onUserControl,
+  onLeave,
+}: OrbitCameraControlsProps) {
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const controllerRef = useRef<OrbitController | null>(null)
+  // Held in a ref so the identity of the leave callback can never be a reason to tear the
+  // controller down and build a new one.
+  const onLeaveRef = useRef(onLeave)
+  onLeaveRef.current = onLeave
 
   // Construct exactly one controller for this camera and canvas, and mark the camera
-  // as user-controlled the first time the user presses on it.
+  // as user-controlled the first time the user presses on it. The camera position is
+  // read on the way out, before the controller is disposed of, so it is still the
+  // one the user was looking through.
   useEffect(() => {
     const controller = createOrbitController(camera, domElement)
     controllerRef.current = controller
     domElement.addEventListener('pointerdown', onUserControl)
     return () => {
       domElement.removeEventListener('pointerdown', onUserControl)
+      onLeaveRef.current(cameraPositionOf(camera))
       controller.dispose()
       controllerRef.current = null
     }

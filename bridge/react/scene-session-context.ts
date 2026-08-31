@@ -1,0 +1,71 @@
+/**
+ * React seam onto the 3D session store.
+ *
+ * Switching the view mode unmounts the preview subtree, so hooks inside it cannot own the
+ * session state they read and write. This context hands them a store that lives above the
+ * subtree instead. ADR-0170 records the decision.
+ */
+import { createContext, useContext, useState, useSyncExternalStore } from 'react'
+import {
+  createSceneSessionStore,
+  type SceneSessionState,
+  type SceneSessionStore,
+} from '../scene-session/scene-session-store'
+
+export const SceneSessionContext = createContext<SceneSessionStore | null>(null)
+
+export function useSceneSessionStore(): SceneSessionStore {
+  const store = useContext(SceneSessionContext)
+  if (store === null) {
+    throw new Error('useSceneSessionStore must be used within a SceneSessionProvider')
+  }
+  return store
+}
+
+/**
+ * The provider's store when there is one, otherwise a store this mount keeps to itself.
+ *
+ * Hooks inside the preview subtree also run where no provider is mounted, in stories and in
+ * tests, and they have to keep working there. A provider is what lifts the store above the
+ * view-mode unmount, so it is the provider, not the hook, that makes the session survive.
+ */
+export function useSceneSessionStoreOrLocal(): SceneSessionStore {
+  const providedStore = useContext(SceneSessionContext)
+  // Created on every mount so the hook order stays the same whether or not a provider is
+  // above; the local store goes unused when one is.
+  const [localStore] = useState(() => createSceneSessionStore())
+  return providedStore ?? localStore
+}
+
+export function useSceneSession(): {
+  sceneSession: SceneSessionState
+  updateSceneSession: (patch: Partial<SceneSessionState>) => void
+} {
+  const store = useSceneSessionStore()
+  const sceneSession = useSyncExternalStore(store.subscribe, store.getSceneSession)
+  return { sceneSession, updateSceneSession: store.updateSceneSession }
+}
+
+/**
+ * The keys whose session value is a boolean, so a toggle cannot be pointed at a field that has
+ * nothing to flip.
+ */
+export type BooleanSceneSessionKey = {
+  [Key in keyof SceneSessionState]: SceneSessionState[Key] extends boolean ? Key : never
+}[keyof SceneSessionState]
+
+/** One field's writer, so each hook names the field it owns instead of respelling the patch. */
+export function sceneSessionSetter<Key extends keyof SceneSessionState>(
+  store: SceneSessionStore,
+  key: Key,
+): (value: SceneSessionState[Key]) => void {
+  return (value) => store.updateSceneSession({ [key]: value })
+}
+
+/** Reads the field as the toggle fires, because the store holds the current value, not a snapshot. */
+export function sceneSessionToggle(
+  store: SceneSessionStore,
+  key: BooleanSceneSessionKey,
+): () => void {
+  return () => store.updateSceneSession({ [key]: !store.getSceneSession()[key] })
+}

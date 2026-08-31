@@ -62,3 +62,18 @@ export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
     applyOpeningMotionForNode(tick.root, node, next)
   }
 }
+
+/**
+ * Seats every opening a saved session left open at its open pose, so a door restored from
+ * a saved session appears open on the first frame instead of swinging from shut (ADR-0170).
+ * An opening that already carries an openness is mid swing and is left to the per-frame
+ * tick, and so is every opening the saved session did not hold open.
+ */
+export function restoreOpenings(tick: OpeningTick): void {
+  for (const node of tick.openings) {
+    if (!isOpeningOpen(tick.interaction, node.id)) continue
+    if (tick.openness.has(node.id)) continue
+    tick.openness.set(node.id, OPEN)
+    applyOpeningMotionForNode(tick.root, node, OPEN)
+  }
+}

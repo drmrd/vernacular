@@ -7,6 +7,7 @@ import { EditLayerProvider } from '../tools/edit-layer-provider'
 import {
   ActiveFloorProvider,
   EditorSessionProvider,
+  SceneSessionProvider,
   SelectionProvider,
   createActiveFloorStore,
   createEditorSession,
@@ -16,6 +17,18 @@ import { createEmptyProject, createFloor, type Project } from '../../core'
 import { ThemeProvider } from '../design-system'
 import { NotificationProvider } from '../design-system/notifications/use-notifications'
 import { PAINT_PICKER_SLOT, PAINT_INSPECTOR_SLOT } from './shell-panel-slots'
+
+// Every bridge export stays real; the scene session provider is wrapped in a
+// passthrough spy so this file can read the props the shell hands it.
+vi.mock('../../bridge', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../bridge')>()
+  return {
+    ...actual,
+    // A component export legitimately keeps its PascalCase name in the mock.
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    SceneSessionProvider: vi.fn(actual.SceneSessionProvider),
+  }
+})
 
 function projectWithFloor(): Project {
   const project = createEmptyProject({
@@ -56,6 +69,7 @@ describe('EditorShell', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    vi.mocked(SceneSessionProvider).mockClear()
   })
 
   it('renders labeled toolbar, tools, viewport, and inspector regions', () => {
@@ -533,5 +547,29 @@ describe('EditorShell', () => {
       within(environmentSection).getByRole('button', { name: /save scene/i }),
     ).toBeInTheDocument()
     expect(within(environmentSection).getByText(/no saved scenes/i)).toBeInTheDocument()
+  })
+
+  it('mounts one scene session provider around the viewport and keeps its store across a view-mode round trip', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    renderShell()
+
+    await user.click(screen.getByRole('button', { name: '3D view' }))
+    await user.click(screen.getByRole('button', { name: 'Plan view' }))
+
+    // jsdom reports no WebGPU support, so the 3D pane shows its unsupported-hardware
+    // message and no 3D toolbar to round-trip through. What the shell owes the preview
+    // is the wiring: a scene session store made once per shell and held above the
+    // viewport, so the same store survives every hop between plan and 3D. The
+    // user-visible round trip is pinned by the end-to-end journey.
+    const providerCalls = vi.mocked(SceneSessionProvider).mock.calls
+    const firstStore = providerCalls[0]?.[0].store
+    expect(providerCalls.length).toBeGreaterThan(0)
+    expect(firstStore?.getSceneSession).toBeTypeOf('function')
+    for (const [props] of providerCalls) {
+      expect(props.store.getSceneSession).toBeTypeOf('function')
+      expect(props.store).toBe(firstStore)
+    }
   })
 })

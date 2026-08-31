@@ -152,6 +152,12 @@ export const UNCOVERED_COMPONENTS: {
       'DOM overlay positioned from the live scene projection; it requires the R3F scene context, so an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'SceneSessionProvider',
+    file: 'bridge/react/scene-session-provider.tsx',
+    reason:
+      'scene-session context provider that only has meaning wrapping the editor shell and the scene view; an isolated browser-mode story is not feasible, so it is a permanent allowlist candidate (see ADR-0111).',
+  },
+  {
     component: 'SceneSelection',
     file: 'bridge/react/scene-selection.tsx',
     reason:
@@ -250,6 +256,12 @@ export const UNCOVERED_COMPONENTS: {
     file: 'editor/shell/scene-pane.tsx',
     reason:
       'hosts the live R3F scene canvas and the full scene provider tree; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'ShellProviders',
+    file: 'editor/shell/shell-providers.tsx',
+    reason:
+      "the editor shell's provider pyramid and keybinding layer; they only have meaning wrapping the whole shell, so an isolated browser-mode story is not feasible and it is a permanent allowlist candidate (see ADR-0111).",
   },
   {
     component: 'ToolRail',
