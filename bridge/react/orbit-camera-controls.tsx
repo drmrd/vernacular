@@ -31,6 +31,10 @@ export function OrbitCameraControls({
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const controllerRef = useRef<OrbitController | null>(null)
+  // Held in a ref so the identity of the leave callback can never be a reason to tear the
+  // controller down and build a new one.
+  const onLeaveRef = useRef(onLeave)
+  onLeaveRef.current = onLeave
 
   // Construct exactly one controller for this camera and canvas, and mark the camera
   // as user-controlled the first time the user presses on it. The camera position is
@@ -42,11 +46,11 @@ export function OrbitCameraControls({
     domElement.addEventListener('pointerdown', onUserControl)
     return () => {
       domElement.removeEventListener('pointerdown', onUserControl)
-      onLeave(cameraPositionOf(camera))
+      onLeaveRef.current(cameraPositionOf(camera))
       controller.dispose()
       controllerRef.current = null
     }
-  }, [camera, domElement, onUserControl, onLeave])
+  }, [camera, domElement, onUserControl])
 
   // Keep the orbit target on the framed pose's target so orbiting turns around the
   // building rather than the world origin.

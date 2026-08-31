@@ -61,8 +61,10 @@ export function useSceneNavigation() {
     presetPose: session.presetPose,
     notePresetApplied: writers.notePresetApplied,
     // The departing canvas notes where the camera was standing so the next mount reopens
-    // there instead of reframing the model (ADR-0170). Orbit saves the position only, not
-    // the target it was turning around; issue #619 covers restoring the whole pose.
+    // there instead of reframing the model (ADR-0170). Only the position comes back: the
+    // orbit controller aims the camera at the framed target as soon as it mounts, so a
+    // restored session stands where it left off but is turned back toward the model's
+    // framing straight away. Issue #619 covers restoring the whole pose.
     savedCameraPosition: session.savedCameraPosition,
     noteCameraLeft: writers.noteCameraLeft,
   }
