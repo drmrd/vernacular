@@ -13,6 +13,7 @@ related:
   ]
 sourceFiles:
   [
+    bridge/index.ts,
     bridge/scene-session/scene-session-store.ts,
     bridge/react/scene-session-context.ts,
     bridge/react/scene-session-provider.tsx,
@@ -25,7 +26,7 @@ sourceFiles:
     bridge/react/walk-session.ts,
     bridge/react/walk-camera-controls.tsx,
     bridge/react/walk-interaction.ts,
-    editor/viewport/view-mode-viewport.tsx,
+    bridge/react/webgpu-scene-view.tsx,
     editor/shell/editor-shell.tsx,
     editor/shell/shell-providers.tsx,
   ]
