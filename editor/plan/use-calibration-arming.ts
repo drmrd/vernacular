@@ -70,7 +70,6 @@ export function useCalibrationArming(activeTool: ActiveToolValue): CalibrationAr
     (underlayId: string) => {
       setArmedUnderlayId(underlayId)
       setCalibrationToolState(IDLE_CALIBRATION_TOOL)
-      setKnownDistanceText('')
       setTool('calibrate')
     },
     [setTool],
