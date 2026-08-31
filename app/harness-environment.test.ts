@@ -150,6 +150,22 @@ describe('harnessEnvironmentState', () => {
     expect(pose.up).toEqual({ x: 0, y: 0, z: -1 })
     expectTargetOnShellFloor(pose.target)
   })
+
+  it('resolves finish-contrast to the color-check reference lighting with the shell fixture and the color-accuracy camera pose', () => {
+    const colorAccuracy = harnessEnvironmentState('color-accuracy')
+    const finishContrast = harnessEnvironmentState('finish-contrast')
+
+    expect(colorAccuracy).toBeDefined()
+    expect(finishContrast).toEqual({
+      site: canonicalSite,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+      realistic: true,
+      colorCheck: true,
+      scene: 'shell',
+      cameraPose: colorAccuracy?.cameraPose,
+    })
+    expect(resolveHarnessScene('finish-contrast')).toBe('shell')
+  })
 })
 
 describe('resolveHarnessScene', () => {
