@@ -17,15 +17,27 @@ const AO_RENDER_PRIORITY = 1
  * request without a located site falls back to schematic, so AO, the solar provider, and AgX
  * turn on together. Rendering nothing itself, it only registers the takeover; it mounts inside
  * the live Canvas alongside the other useFrame drivers.
+ *
+ * The two build callbacks are the live view's readiness seam: they report when a pipeline build
+ * starts and when it settles, so a frame drawn while the pipeline is being replaced does not
+ * count as the view being ready to capture.
  */
 export function AmbientOcclusionRenderTakeover({
   realistic,
   site,
+  onPipelineBuildStarted,
+  onPipelineSettled,
 }: {
   realistic: boolean
   site: Site | undefined
+  onPipelineBuildStarted: () => void
+  onPipelineSettled: () => void
 }) {
-  const renderFrame = useAmbientOcclusion(ambientOcclusionActiveFor(realistic, site))
+  const renderFrame = useAmbientOcclusion(
+    ambientOcclusionActiveFor(realistic, site),
+    onPipelineSettled,
+    onPipelineBuildStarted,
+  )
   useFrame((state) => renderFrame(state.gl, state.scene, state.camera), AO_RENDER_PRIORITY)
   return null
 }

@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   humanizeElementTypeId,
   type LightingMode,
@@ -30,6 +30,7 @@ import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
 import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
+import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
 import { useProjectSite } from './use-project-site'
 import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-environment'
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
@@ -167,17 +168,26 @@ function useFirstFrameReadiness() {
 }
 
 // After AO_RENDER_PRIORITY (1) and SAMPLE_PRIORITY (2), so this fires once the frame is actually fully drawn.
-const FIRST_FRAME_SIGNAL_PRIORITY = 3
+const FRAME_SIGNAL_PRIORITY = 3
 
-// Calls onFirstFrame once the render loop has drawn its first frame, then stops
-// mattering: the ref guard keeps every later frame from re-invoking it.
-function LiveSceneFirstFrameSignal({ onFirstFrame }: { onFirstFrame: () => void }) {
+// Reports each drawn frame to the two readers that wait on one. The scene-readiness boundary
+// cares about the first frame alone, so the ref guard keeps every later frame from re-invoking
+// onFirstFrame. The live-view readiness fact re-arms instead: a pipeline build clears it and the
+// first frame after that build settles has to set it again, so onDrawnFrame fires every frame.
+function LiveSceneFrameSignal({
+  onFirstFrame,
+  onDrawnFrame,
+}: {
+  onFirstFrame: () => void
+  onDrawnFrame: () => void
+}) {
   const firedRef = useRef(false)
   useFrame(() => {
+    onDrawnFrame()
     if (firedRef.current) return
     firedRef.current = true
     onFirstFrame()
-  }, FIRST_FRAME_SIGNAL_PRIORITY)
+  }, FRAME_SIGNAL_PRIORITY)
   return null
 }
 
@@ -198,8 +208,8 @@ function SceneReadinessBoundary({ ready, children }: { ready: boolean; children:
 // takeover. Grouped apart from LiveSceneCanvas so that function keeps to the Canvas's
 // own setup and its two render-order-sensitive post-processing hooks, the same way
 // SceneCameraRig and ViewSceneLighting group their own slice of the scene.
-function LiveSceneContents(props: LiveSceneCanvasProps) {
-  const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
+function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewReadinessNotes }) {
+  const { framed, nav, viewEnvironment, site, onProxyPositions, opening, readiness } = props
   const { root, bounds, nearWallTargets, roomPolygons, buildingTopWorld } = framed
   return (
     <>
@@ -223,6 +233,8 @@ function LiveSceneContents(props: LiveSceneCanvasProps) {
       <AmbientOcclusionRenderTakeover
         realistic={viewEnvironment.environment.mode === 'realistic'}
         site={site}
+        onPipelineBuildStarted={readiness.notePipelineBuildStarted}
+        onPipelineSettled={readiness.notePipelineSettled}
       />
     </>
   )
@@ -239,6 +251,12 @@ function LiveSceneContents(props: LiveSceneCanvasProps) {
 function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const perceivedColor = usePerceivedColorStore()
   const { ready, handleFirstFrame } = useFirstFrameReadiness()
+  const readiness = useLiveViewReadiness()
+  // The stored session reaches the live view as the Canvas below is constructed: initialCamera
+  // seeds the camera with the position the departing viewer left behind (ADR-0170), and every
+  // other stored field arrives as a prop of this render. By the time this effect runs the
+  // Canvas has been built from both, so the session has been applied.
+  useEffect(() => readiness.noteSessionApplied(), [readiness])
   return (
     <SceneReadinessBoundary ready={ready}>
       {/* React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
@@ -256,13 +274,16 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
           createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
         }
       >
-        <LiveSceneContents {...props} />
+        <LiveSceneContents {...props} readiness={readiness} />
         {/* The sampler must live inside the Canvas because it reads the drawing
             buffer from within the per-frame callback, and it runs at a later
             frame priority than the ambient-occlusion takeover in LiveSceneContents
             so it reads a frame that has already been drawn and composited. */}
         <PerceivedColorSampler store={perceivedColor} />
-        <LiveSceneFirstFrameSignal onFirstFrame={handleFirstFrame} />
+        <LiveSceneFrameSignal
+          onFirstFrame={handleFirstFrame}
+          onDrawnFrame={readiness.noteFrameDrawn}
+        />
       </Canvas>
     </SceneReadinessBoundary>
   )

@@ -83,6 +83,29 @@ function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
     .then(() => build.onSettled())
 }
 
+// One active period's build: it starts as the effect runs, and the teardown it returns bumps
+// the build token so a build still in flight disposes itself instead of installing over the
+// pipeline this teardown has already disposed, and stays quiet rather than reporting its
+// settlement to a caller that has moved on.
+function runAmbientOcclusionBuild(
+  build: Omit<AmbientOcclusionBuild, 'onSettled'>,
+  onSettled: (() => void) | undefined,
+): () => void {
+  let cancelled = false
+  startAmbientOcclusionBuild({
+    ...build,
+    onSettled: () => {
+      if (!cancelled) onSettled?.()
+    },
+  })
+  return () => {
+    cancelled = true
+    build.buildTokenRef.current += 1
+    build.pipelineRef.current?.dispose()
+    build.pipelineRef.current = null
+  }
+}
+
 /**
  * Owns the ambient-occlusion pipeline's React lifecycle for one canvas. When `active` flips
  * true it builds the pipeline from the canvas's renderer, scene, and camera through the engine
@@ -97,9 +120,18 @@ function startAmbientOcclusionBuild(build: AmbientOcclusionBuild): void {
  * (install, stale-discard, or failure), so a caller drawing a single deterministic frame (the
  * render harness under frameloop="never") can defer that frame until the pipeline is installed
  * rather than capturing it before the async build resolves. A build swap or unmount cancels a
- * stale build's callback. Live views omit it and rely on their continuous frame loop instead.
+ * stale build's callback.
+ *
+ * The optional `onBuildStarted` fires as each build begins, so a caller that reports whether the
+ * view is ready to capture (the live view's readiness facts) can say that the frames drawn from
+ * here until settlement are of a pipeline being replaced. Both callbacks are optional, so a
+ * caller that needs neither passes neither.
  */
-export function useAmbientOcclusion(active: boolean, onSettled?: () => void): RenderFrame {
+export function useAmbientOcclusion(
+  active: boolean,
+  onSettled?: () => void,
+  onBuildStarted?: () => void,
+): RenderFrame {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
   const gl = useThree((state) => state.gl)
@@ -112,25 +144,19 @@ export function useAmbientOcclusion(active: boolean, onSettled?: () => void): Re
 
   useEffect(() => {
     if (!active) return undefined
-    let cancelled = false
-    startAmbientOcclusionBuild({
-      renderer: gl as unknown as Parameters<typeof buildAmbientOcclusionPipeline>[0],
-      scene,
-      camera,
-      pipelineRef,
-      buildTokenRef,
-      warnedRef,
-      onSettled: () => {
-        if (!cancelled) onSettled?.()
+    onBuildStarted?.()
+    return runAmbientOcclusionBuild(
+      {
+        renderer: gl as unknown as Parameters<typeof buildAmbientOcclusionPipeline>[0],
+        scene,
+        camera,
+        pipelineRef,
+        buildTokenRef,
+        warnedRef,
       },
-    })
-    return () => {
-      cancelled = true
-      buildTokenRef.current += 1
-      pipelineRef.current?.dispose()
-      pipelineRef.current = null
-    }
-  }, [active, gl, scene, camera, onSettled])
+      onSettled,
+    )
+  }, [active, gl, scene, camera, onSettled, onBuildStarted])
 
   // Presently inert on r184: the pipeline's setSize is a no-op because its PassNode
   // self-reconciles its render target to the renderer size every frame. Kept as the call
