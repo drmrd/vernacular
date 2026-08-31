@@ -88,7 +88,7 @@ reframe. The building-scope and underground-visibility hook, the edge-overlay ho
 color-temperature hook, and the walk controller's saved pose and open-door ids follow the same
 pattern in their own cycles. Because these hooks also render outside `EditorShell`, in stories
 and in isolated component tests, the context layer falls back to a private, per-mount store when
-no provider is present (`useSceneSessionOrLocal()`), so nothing outside the shell has to
+no provider is present (`useSceneSessionStoreOrLocal()`), so nothing outside the shell has to
 construct a provider just to render.
 
 Camera pose restoration takes two different shapes because the two camera modes differ in what
