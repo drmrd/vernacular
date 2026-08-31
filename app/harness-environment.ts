@@ -40,9 +40,9 @@ const FULLY_OVERCAST_CLOUD_COVER = 1
 const WINDOW_LIGHT_MORNING_MINUTES = 540
 
 // The March-equinox-at-civil-noon instant, shared by the equinox-noon, color-check,
-// color-accuracy, overcast-noon, and ambient-occlusion states: all five pin the same
-// sun and differ only in cloud cover, the color-check flag, the paired scene fixture,
-// or the camera pose, so they share one observation instant.
+// color-accuracy, finish-contrast, overcast-noon, and ambient-occlusion states: all six
+// pin the same sun and differ only in cloud cover, the color-check flag, the paired
+// scene fixture, or the camera pose, so they share one observation instant.
 const EQUINOX_NOON_OBSERVATION: ObservationInstant = {
   date: '2026-03-20',
   minutesSinceMidnight: CIVIL_NOON_MINUTES,
