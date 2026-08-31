@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
-import type { CameraPose } from '../../core'
+import type { CameraPose, Vector3 } from '../../core'
+import { createSceneSessionStore, SceneSessionProvider, type SceneSessionStore } from '../index'
 import { useSceneNavigation } from './use-scene-navigation'
 
 const SOME_POSE: CameraPose = {
@@ -8,6 +10,18 @@ const SOME_POSE: CameraPose = {
   target: { x: 0, y: 0, z: 0 },
   near: 0.1,
   far: 100,
+}
+
+const SAVED_CAMERA_POSITION: Vector3 = { x: 4, y: 5, z: 6 }
+
+function providerAround(store: SceneSessionStore) {
+  return function SceneSessionWrapper({ children }: { children: ReactNode }) {
+    return <SceneSessionProvider store={store}>{children}</SceneSessionProvider>
+  }
+}
+
+function renderNavigationOn(store: SceneSessionStore) {
+  return renderHook(() => useSceneNavigation(), { wrapper: providerAround(store) })
 }
 
 describe('useSceneNavigation', () => {
@@ -71,5 +85,92 @@ describe('useSceneNavigation', () => {
     const { result } = renderHook(() => useSceneNavigation())
 
     expect(result.current.selectionEnabled).toBe(true)
+  })
+})
+
+describe('useSceneNavigation inside a scene session provider', () => {
+  it('starts from the camera mode, the toggles, and the preset pose the session already holds', () => {
+    const store = createSceneSessionStore({
+      cameraMode: 'walk',
+      selectionEnabled: false,
+      revealInterior: false,
+      presetPose: SOME_POSE,
+    })
+
+    const { result } = renderNavigationOn(store)
+
+    expect(result.current.mode).toBe('walk')
+    expect(result.current.selectionEnabled).toBe(false)
+    expect(result.current.revealInterior).toBe(false)
+    expect(result.current.presetPose).toEqual(SOME_POSE)
+  })
+
+  it('records a mode switch, both toggles, and an applied preset in the session', () => {
+    const store = createSceneSessionStore()
+    const { result } = renderNavigationOn(store)
+
+    act(() => {
+      result.current.setMode('walk')
+    })
+    act(() => {
+      result.current.toggleSelection()
+    })
+    act(() => {
+      result.current.toggleRevealInterior()
+    })
+    act(() => {
+      result.current.notePresetApplied(SOME_POSE)
+    })
+
+    expect(store.getSceneSession()).toMatchObject({
+      cameraMode: 'walk',
+      selectionEnabled: false,
+      revealInterior: false,
+      presetPose: SOME_POSE,
+    })
+  })
+
+  it('clears the stored preset pose on reset, so a later mount pivots on the model framing', () => {
+    const store = createSceneSessionStore({ presetPose: SOME_POSE })
+    const { result } = renderNavigationOn(store)
+
+    act(() => {
+      result.current.resetView()
+    })
+
+    expect(store.getSceneSession().presetPose).toBeNull()
+  })
+
+  it('hands a remounted navigation the camera mode and toggles the earlier mount left behind', () => {
+    const store = createSceneSessionStore()
+    const firstMount = renderNavigationOn(store)
+
+    act(() => {
+      firstMount.result.current.setMode('walk')
+    })
+    act(() => {
+      firstMount.result.current.toggleSelection()
+    })
+    act(() => {
+      firstMount.result.current.toggleRevealInterior()
+    })
+    firstMount.unmount()
+
+    const secondMount = renderNavigationOn(store)
+
+    expect(secondMount.result.current.mode).toBe('walk')
+    expect(secondMount.result.current.selectionEnabled).toBe(false)
+    expect(secondMount.result.current.revealInterior).toBe(false)
+  })
+
+  it('reads a saved camera position as the user already steering, so a remount leaves it alone', () => {
+    const steeredStore = createSceneSessionStore({ savedCameraPosition: SAVED_CAMERA_POSITION })
+    const unsteeredStore = createSceneSessionStore()
+
+    const steered = renderNavigationOn(steeredStore)
+    const unsteered = renderNavigationOn(unsteeredStore)
+
+    expect(steered.result.current.userControlled).toBe(true)
+    expect(unsteered.result.current.userControlled).toBe(false)
   })
 })
