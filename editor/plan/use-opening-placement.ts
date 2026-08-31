@@ -1,12 +1,13 @@
 import { useCallback, type PointerEvent } from 'react'
 import {
   createOpening,
+  OPENING_NODE_PREFIX,
   openingWouldOverlap,
   placeOpening,
   type Point,
   type SceneGraph,
 } from '../../core'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { useOpeningTool } from './opening-tool-context'
@@ -21,6 +22,7 @@ interface OpeningPlacementDeps {
   viewport: Viewport
   /** The element-type id placed on the next click. */
   placementType: string
+  selection: SelectionStore
 }
 
 export interface OpeningPlacement {
@@ -42,7 +44,7 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
  * `openingWouldOverlap`); this hook only wires them.
  */
 export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacement {
-  const { session, graph, tool, viewport, placementType } = deps
+  const { session, graph, tool, viewport, placementType, selection } = deps
   const { setPlacementRefusal } = useOpeningTool()
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
@@ -68,8 +70,12 @@ export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacemen
       }
       setPlacementRefusal(null)
       session.dispatch(placeOpening(target.floorId, opening))
+      // Selection is bridge-owned and outside undo history (ADR-0020); selecting the
+      // just-placed opening here, rather than through the command, shows it in the
+      // inspector without adding an undo step or disarming the placement tool.
+      selection.select(`${OPENING_NODE_PREFIX}${opening.id}`)
     },
-    [session, graph, tool, viewport, placementType, setPlacementRefusal],
+    [session, graph, tool, viewport, placementType, selection, setPlacementRefusal],
   )
 
   return { onPointerDown }

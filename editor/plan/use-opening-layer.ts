@@ -1,5 +1,5 @@
 import type { OpeningSceneNode, SceneGraph, UnitPreferences } from '../../core'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawableOpening } from './draw-opening'
 import { toDrawableOpenings } from './drawable-openings'
@@ -17,6 +17,7 @@ export interface OpeningLayerDeps {
   viewport: Viewport
   selectedIds: ReadonlySet<string>
   preferences: UnitPreferences
+  selection: SelectionStore
 }
 
 export interface OpeningLayer {
@@ -42,12 +43,20 @@ export function useOpeningLayer({
   viewport,
   selectedIds,
   preferences,
+  selection,
 }: OpeningLayerDeps): OpeningLayer {
   const { placementType } = useOpeningTool()
   const selectedOpening = singleSelectedOpening(tool, selectedIds, graph)
   const editing = useOpeningEditing({ session, selectedOpening, graph, viewport })
   const resizing = useOpeningResizing({ session, selectedOpening, graph, viewport, preferences })
-  const placement = useOpeningPlacement({ session, graph, tool, viewport, placementType })
+  const placement = useOpeningPlacement({
+    session,
+    graph,
+    tool,
+    viewport,
+    placementType,
+    selection,
+  })
   const drawables = toDrawableOpenings(graph.openings, selectedIds)
   return { drawables, editing, resizing, placement, selectedOpening }
 }
