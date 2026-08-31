@@ -200,15 +200,19 @@ function LibraryControls(props: LibraryControlsProps): ReactElement {
 }
 
 // A library that holds items but shows none: the filters, not the library, are
-// what emptied the grid, so the state names them and offers a way out.
+// what emptied the grid, so the state names them and offers a way out. Wrapped
+// in a status live region so assistive technology announces the outcome of a
+// filter change without the user having to go looking for it.
 function NoMatchesState({ filters, setFilters }: LibraryFilterState): ReactElement {
   return (
-    <EmptyState
-      title={NO_MATCHES_MESSAGE}
-      description={activeFiltersDescription(filters)}
-      action={<Button onClick={() => setFilters(DEFAULT_FILTERS)}>{CLEAR_FILTERS_LABEL}</Button>}
-      asRegion={false}
-    />
+    <div role="status">
+      <EmptyState
+        title={NO_MATCHES_MESSAGE}
+        description={activeFiltersDescription(filters)}
+        action={<Button onClick={() => setFilters(DEFAULT_FILTERS)}>{CLEAR_FILTERS_LABEL}</Button>}
+        asRegion={false}
+      />
+    </div>
   )
 }
 
