@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Allowed files:** modify `bridge/react/scene-session-provider.tsx` (and its unit test) plus, only if the readiness fact must originate beside the render seam, `bridge/scene-session/scene-session-store.ts`; create `e2e/tests/scene-live-view-visual-regression.spec.ts` and its `-darwin` snapshot. Playwright config: STOP and report if the new spec does not fall into a suitable existing project by its current matching rules; do not edit shared config unilaterally.
+- **Allowed files:** modify `bridge/react/scene-session-provider.tsx` (and its unit test), `bridge/scene-session/scene-session-store.ts` (and its unit test), and the Task 2b producer seam files listed in that task; create `e2e/tests/scene-live-view-visual-regression.spec.ts` and its `-darwin` snapshot. Playwright config: STOP and report if the new spec does not fall into a suitable existing project by its current matching rules; do not edit shared config unilaterally.
 - **No capture rests on a timeout.** Readiness is the attribute plus `stableFrame`; a `waitForTimeout` in the committed spec is a defect.
 - **Existing baselines stay byte-identical.** Only the one new `-darwin` snapshot lands.
 - **Tolerances are fixed up front** (spec slice A3): per-pixel `threshold` 0.35, `maxDiffPixelRatio` 0.05, five consecutive green runs required before the baseline commits.
@@ -44,6 +44,18 @@
 - [ ] **Step 1 (RED):** `/test-first` a failing provider test: the attribute is absent or false before restore, true after restore plus a drawn frame, false again during a simulated pipeline rebuild. Run `pnpm exec vitest run bridge/react`; expected FAIL.
 - [ ] **Step 2 (GREEN):** `/implement` the minimal attribute wiring. Expected PASS.
 - [ ] **Step 3 (BLUE):** `/clean-code-review` then `/refactor` (empty marker commit if clean).
+
+**Task 2 outcome (2026-08-31):** the provider rendered no DOM element of its own, so the green phase adds a `display: contents` host that carries the attribute without touching the shell layout. The session store gained the two facts (`sessionRestored`, `frameDrawnSincePipelineSettled`), both defaulting to false, with no separate in-flight flag: clearing the drawn-frame fact at build start already encodes a rebuild. Nothing in the live app produces the two facts yet, which is what Task 2b adds.
+
+## Task 2b: Producer wiring for the readiness facts (one red-green-blue cycle)
+
+**Files:** modify `bridge/react/use-scene-navigation.ts`, `bridge/react/webgpu-scene-view.tsx`, `bridge/react/ambient-occlusion-render-takeover.tsx`, and `bridge/react/use-ambient-occlusion.ts` as the seams require, plus their unit test files; the Task 2 store and provider may gain minimal setters.
+
+**Interfaces:** the live view maintains the two session facts. Applying the stored session sets `sessionRestored`. The ambient-occlusion pipeline clears `frameDrawnSincePipelineSettled` when a build starts, and the first frame drawn after settlement sets it again, so the first-frame signal re-arms on each settlement instead of latching once (`useAmbientOcclusion` already exposes `onSettled`; the live caller currently omits it).
+
+- [ ] **Step 1 (RED):** failing test pinning the producer lifecycle across a simulated restore, build, settlement, and drawn frame.
+- [ ] **Step 2 (GREEN):** minimal producer wiring through the seams above.
+- [ ] **Step 3 (BLUE):** review and refactor as in Task 2.
 
 ## Task 3: The committed visual spec and its baseline
 
