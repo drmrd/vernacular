@@ -2,16 +2,19 @@ import {
   createFurnitureInstance,
   createOpening,
   distance,
+  FURNITURE_NODE_PREFIX,
+  OPENING_NODE_PREFIX,
   placeFurniture,
   placeOpening,
   type Point,
   type SceneGraph,
 } from '../../core'
 import type { LibraryItem } from '../../storage'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { placeOpeningTarget } from './place-opening'
+import { selectPlacedEntity } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
   advanceDimensionTool,
@@ -28,6 +31,7 @@ const DISTANCE_UNIT = 'mm'
 // per-tool key handlers can compose their own context object.
 export interface AuthoringRun {
   session: EditorSession
+  selection: SelectionStore
   activeFloorId: string | null
   candidate: Point
   setCandidate: (point: Point) => void
@@ -222,6 +226,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
     position: target.position,
   })
   ctx.session.dispatch(placeOpening(target.floorId, opening))
+  selectPlacedEntity(ctx.selection, OPENING_NODE_PREFIX, opening.id)
   ctx.setAnnouncement(openingAnnouncement(ctx.placementType))
 }
 
@@ -257,6 +262,7 @@ function dropFurniture(ctx: FurnitureKeyContext): void {
     ...(ctx.armed.name !== '' ? { name: ctx.armed.name } : {}),
   })
   ctx.session.dispatch(placeFurniture(floorId, furniture))
+  selectPlacedEntity(ctx.selection, FURNITURE_NODE_PREFIX, furniture.id)
   ctx.setAnnouncement(`Placed ${ctx.armed.name}`)
 }
 

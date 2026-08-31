@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { type Point, type SceneGraph } from '../../core'
 import type { LibraryItem } from '../../storage'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
 import { IDLE_WALL_TOOL, type WallToolState } from './wall-tool'
@@ -22,6 +22,7 @@ const ORIGIN: Point = { x: 0, y: 0 }
 
 export interface PlanAuthoringDeps {
   session: EditorSession
+  selection: SelectionStore
   tool: ToolId
   activeFloorId: string | null
   /** Wall graph the opening branch projects the candidate onto via placeOpeningTarget. */
@@ -123,7 +124,7 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
  * focused, mirroring the selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
-  const { session, tool, activeFloorId, graph, placementType } = deps
+  const { session, selection, tool, activeFloorId, graph, placementType } = deps
   const armed = deps.armed ?? null
   const rotation = deps.rotation ?? 0
   const [candidate, setCandidate] = useState<Point>(ORIGIN)
@@ -139,7 +140,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     }
     return listenForAuthoringKeys({
       tool,
-      run: { session, activeFloorId, candidate, setCandidate, setAnnouncement },
+      run: { session, selection, activeFloorId, candidate, setCandidate, setAnnouncement },
       wallState: wallToolState,
       setWallState: setWallToolState,
       dimensionState: dimensionToolState,
@@ -151,6 +152,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     })
   }, [
     session,
+    selection,
     tool,
     activeFloorId,
     candidate,

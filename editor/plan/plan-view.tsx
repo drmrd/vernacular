@@ -273,6 +273,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const { armed, rotation } = useFurniturePlacement()
   const authoring = usePlanAuthoring({
     session,
+    selection,
     tool,
     activeFloorId,
     graph,
