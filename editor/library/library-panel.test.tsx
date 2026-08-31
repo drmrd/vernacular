@@ -163,6 +163,15 @@ describe('LibraryPanel filtering', () => {
     expect(screen.getByRole('button', { name: EAMES_NAME })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: OAK_NAME })).toBeNull()
   })
+
+  it('announces the no-matches state to assistive technology when a filter empties the grid', async () => {
+    const user = userEvent.setup()
+    await renderBothLoaded()
+
+    await user.type(screen.getByRole('searchbox', { name: /search furniture/i }), 'no such item')
+
+    expect(screen.getByRole('status')).toHaveTextContent('No matches')
+  })
 })
 
 const EXPECTED_SEGMENTED_GROUPS = 3
