@@ -30,7 +30,7 @@ sourceFiles:
     core/scene/walk-collision.ts,
   ]
 status: current
-updated: 2026-07-01
+updated: 2026-08-31
 ---
 
 # ADR-0139: Map plan north to world -Z so the 3D view is not a mirror of the plan
