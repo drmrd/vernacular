@@ -1,4 +1,4 @@
-import { roomKey } from '../../index'
+import { roomKey } from '../../topology/rooms'
 import type { ProjectShape, SchemaMigration } from '../types'
 
 /** Separator an early build joined a room's bounding wall ids with. */
