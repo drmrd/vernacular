@@ -51,6 +51,8 @@ type BitmapCache = Map<string, ImageBitmap>
 export interface CalibrationArming {
   /** Arm the calibration tool against a specific underlay and switch the active tool to 'calibrate'. */
   startCalibration: (underlayId: string) => void
+  /** Disarm the calibration tool, leaving no underlay targeted. */
+  stopCalibration: () => void
   /** The underlay id the calibration tool currently targets, or null when nothing is armed. */
   armedUnderlayId: string | null
   /** The two-click calibration measurement state. */
@@ -79,6 +81,7 @@ const NO_DRAWABLES: DrawableUnderlay[] = []
 const FALLBACK_VALUE: UnderlayContextValue = {
   loadImage: () => {},
   startCalibration: () => {},
+  stopCalibration: () => {},
   armedUnderlayId: null,
   calibrationToolState: IDLE_CALIBRATION_TOOL,
   setCalibrationToolState: () => {},
@@ -149,10 +152,12 @@ export function useCalibrationArming(activeTool: ActiveToolValue): CalibrationAr
     [setTool],
   )
 
+  const stopCalibration = useCallback(() => setArmedUnderlayId(null), [])
+
   // Memoize the bundle so consumers (the provider's context-value memo) see a
   // stable reference across renders that do not change the armed underlay or the
-  // measurement state. setCalibrationToolState, setKnownDistanceText, and
-  // startCalibration are stable.
+  // measurement state. setCalibrationToolState, setKnownDistanceText,
+  // startCalibration, and stopCalibration are stable.
   return useMemo(
     () => ({
       armedUnderlayId,
@@ -161,8 +166,9 @@ export function useCalibrationArming(activeTool: ActiveToolValue): CalibrationAr
       knownDistanceText,
       setKnownDistanceText,
       startCalibration,
+      stopCalibration,
     }),
-    [armedUnderlayId, calibrationToolState, knownDistanceText, startCalibration],
+    [armedUnderlayId, calibrationToolState, knownDistanceText, startCalibration, stopCalibration],
   )
 }
 
@@ -282,21 +288,21 @@ function armedUnderlayNode(graph: SceneGraph, armedUnderlayId: string): Underlay
  * world segment to pixels, derive the new scale, and dispatch the calibrated
  * placement. Any cancel (no armed node, blank or unparseable entry) dispatches
  * nothing. Lives here so the plan-view canvas glue stays composition-only.
+ * Returns whether a calibration was dispatched, so the caller can tell a
+ * completed calibration from a cancelled one.
  */
-export function commitCalibration(segment: PreviewSegment, commit: CalibrationCommit): void {
+export function commitCalibration(segment: PreviewSegment, commit: CalibrationCommit): boolean {
   const node = armedUnderlayNode(commit.graph, commit.armedUnderlayId)
-  if (node === null) {
-    return
-  }
   const knownMm = parseKnownDistance(commit.knownDistanceText, ASSUMED_UNIT_BY_UNITS[commit.units])
-  if (knownMm === undefined) {
-    return
+  if (node === null || knownMm === undefined) {
+    return false
   }
   const pixelStart = worldToPixel(segment.start, node.placement)
   const pixelEnd = worldToPixel(segment.end, node.placement)
   const scale = calibrationScale({ start: pixelStart, end: pixelEnd }, knownMm)
   const next = applyCalibration(node.placement, scale)
   commit.session.dispatch(calibrateUnderlay(node.floorId, commit.armedUnderlayId, next))
+  return true
 }
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
@@ -320,20 +326,24 @@ export interface CalibrationInteraction {
 }
 
 // Advance the two-click tool on each calibrate-tool click and commit on the
-// completing second click; other tools are inert here.
+// completing second click, which also disarms the underlay; other tools are
+// inert here.
 function applyCalibrationClick(world: Point, deps: CalibrationInteractionDeps): void {
   const { session, graph, units, underlay } = deps
   const { armedUnderlayId } = underlay
   const result = advanceCalibrationTool(underlay.calibrationToolState, world)
   underlay.setCalibrationToolState(result.state)
   if (result.segment && armedUnderlayId !== null) {
-    commitCalibration(result.segment, {
+    const calibrated = commitCalibration(result.segment, {
       session,
       graph,
       armedUnderlayId,
       units,
       knownDistanceText: underlay.knownDistanceText,
     })
+    if (calibrated) {
+      underlay.stopCalibration()
+    }
   }
 }
 
