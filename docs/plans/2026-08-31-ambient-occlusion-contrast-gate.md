@@ -40,14 +40,14 @@
 
 **Interfaces:** consumes `sampleCanvasColor(page, canvas, {x, y})` from `./scene-helpers` and `srgbToOkLab` from `core/`; produces the named constants `AO_WINDOW_HEAD_PATCH`, `AO_OPEN_WALL_PATCH`, and `AO_CONTRAST_MINIMUM` (the derived threshold with its derivation comment).
 
-- [ ] **Step 1:** Write the spec: WebGL 2 guard and skip, navigate to the ambient-occlusion state, wait for `data-harness-ready`, sample both patches, assert `openWallL - revealL >= AO_CONTRAST_MINIMUM`.
-- [ ] **Step 2:** Run `pnpm exec playwright test --project=scene-webgl scene-ambient-occlusion` five consecutive times. Expected: five passes.
-- [ ] **Step 3:** Re-apply the `2.5` probe edit, rebuild, run once. Expected: FAIL on the contrast assertion. Restore the file, rebuild, run once more. Expected: PASS.
-- [ ] **Step 4:** Run the full check chain; verify `git status --short e2e/tests` shows only the new spec file.
-- [ ] **Step 5:** Commit as `test(e2e): gate ambient-occlusion contrast at the window head reveal`.
+- [x] **Step 1:** Write the spec: WebGL 2 guard and skip, navigate to the ambient-occlusion state, wait for `data-harness-ready`, sample both patches, assert `openWallL - revealL >= AO_CONTRAST_MINIMUM`.
+- [x] **Step 2:** Run `pnpm exec playwright test --project=scene-webgl scene-ambient-occlusion` five consecutive times. Expected: five passes.
+- [x] **Step 3:** Re-apply the `2.5` probe edit, rebuild, run once. Expected: FAIL on the contrast assertion. Restore the file, rebuild, run once more. Expected: PASS.
+- [x] **Step 4:** Run the full check chain; verify `git status --short e2e/tests` shows only the new spec file.
+- [x] **Step 5:** Commit as `test(e2e): gate ambient-occlusion contrast at the window head reveal`.
 
 ## Task 3: Reviews before the lane closes
 
-- [ ] **Step 1:** Dispatch `/clean-code-review` on the diff; fix must-fix findings.
-- [ ] **Step 2:** Run `pnpm rgb:audit --range origin/main..HEAD`; a lone `test(e2e)` commit is exempt but the audit must exit zero.
-- [ ] **Step 3:** Dispatch `/review` (pr-reviewer) and hold the branch for the landing window.
+- [x] **Step 1:** Dispatch `/clean-code-review` on the diff; fix must-fix findings.
+- [x] **Step 2:** Run `pnpm rgb:audit --range origin/main..HEAD`; a lone `test(e2e)` commit is exempt but the audit must exit zero.
+- [x] **Step 3:** Dispatch `/review` (pr-reviewer) and hold the branch for the landing window.

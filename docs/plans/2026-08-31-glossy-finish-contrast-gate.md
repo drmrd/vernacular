@@ -32,9 +32,9 @@
 
 **Interfaces:** produces a `finish-contrast` branch in `resolveHarnessPaint(paintParam)` returning a surface-treatment store that assigns the floor surface `finishId: 'semi-gloss'` and the wall faces `finishId: 'matte'`, all with one shared base `srgbHex`.
 
-- [ ] **Step 1 (RED):** `/test-first` a failing unit test: `resolveHarnessPaint('finish-contrast')` yields floor `semi-gloss`, walls `matte`, and one identical hex on both. Run `pnpm exec vitest run app/harness-paint.test.ts`; expected FAIL.
-- [ ] **Step 2 (GREEN):** `/implement` the minimal branch. Same command; expected PASS.
-- [ ] **Step 3 (BLUE):** `/clean-code-review` then `/refactor` (empty marker commit if no findings).
+- [x] **Step 1 (RED):** `/test-first` a failing unit test: `resolveHarnessPaint('finish-contrast')` yields floor `semi-gloss`, walls `matte`, and one identical hex on both. Run `pnpm exec vitest run app/harness-paint.test.ts`; expected FAIL.
+- [x] **Step 2 (GREEN):** `/implement` the minimal branch. Same command; expected PASS.
+- [x] **Step 3 (BLUE):** `/clean-code-review` then `/refactor` (empty marker commit if no findings).
 
 ## Task 2: The `finish-contrast` environment state (one red-green-blue cycle)
 
@@ -42,9 +42,9 @@
 
 **Interfaces:** produces a named `finish-contrast` environment state resolving to the color-check reference lighting and the shell geometry fixture, with a camera pose read from the state (reuse the color-accuracy interior pose as the starting point).
 
-- [ ] **Step 1 (RED):** failing unit test: the state resolves, pins the reference lighting values, and pairs with the shell fixture. `pnpm exec vitest run app/harness-environment.test.ts`; expected FAIL.
-- [ ] **Step 2 (GREEN):** minimal state entry; expected PASS.
-- [ ] **Step 3 (BLUE):** review and refactor as in Task 1.
+- [x] **Step 1 (RED):** failing unit test: the state resolves, pins the reference lighting values, and pairs with the shell fixture. `pnpm exec vitest run app/harness-environment.test.ts`; expected FAIL.
+- [x] **Step 2 (GREEN):** minimal state entry; expected PASS.
+- [x] **Step 3 (BLUE):** review and refactor as in Task 1.
 
 ## Task 3: Derive the patches and the minimum delta (nothing committed)
 

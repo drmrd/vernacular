@@ -41,9 +41,9 @@
 
 **Interfaces:** produces `data-live-view-ready="true"` on the provider's wrapper element, false until (a) session restore has applied and (b) the first frame after the latest pipeline build settlement has drawn; flips back to false while a rebuild is in flight. Consumed by the Task 3 spec via `page.locator('[data-live-view-ready="true"]')`.
 
-- [ ] **Step 1 (RED):** `/test-first` a failing provider test: the attribute is absent or false before restore, true after restore plus a drawn frame, false again during a simulated pipeline rebuild. Run `pnpm exec vitest run bridge/react`; expected FAIL.
-- [ ] **Step 2 (GREEN):** `/implement` the minimal attribute wiring. Expected PASS.
-- [ ] **Step 3 (BLUE):** `/clean-code-review` then `/refactor` (empty marker commit if clean).
+- [x] **Step 1 (RED):** `/test-first` a failing provider test: the attribute is absent or false before restore, true after restore plus a drawn frame, false again during a simulated pipeline rebuild. Run `pnpm exec vitest run bridge/react`; expected FAIL.
+- [x] **Step 2 (GREEN):** `/implement` the minimal attribute wiring. Expected PASS.
+- [x] **Step 3 (BLUE):** `/clean-code-review` then `/refactor` (empty marker commit if clean).
 
 **Task 2 outcome (2026-08-31):** the provider rendered no DOM element of its own, so the green phase adds a `display: contents` host that carries the attribute without touching the shell layout. The session store gained the two facts (`sessionRestored`, `frameDrawnSincePipelineSettled`), both defaulting to false, with no separate in-flight flag: clearing the drawn-frame fact at build start already encodes a rebuild. Nothing in the live app produces the two facts yet, which is what Task 2b adds.
 
