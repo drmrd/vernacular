@@ -3,7 +3,7 @@ import { renderHook, act, cleanup } from '@testing-library/react'
 import type { ActiveToolValue, ToolId } from '../tools/active-tool-context'
 import { IDLE_CALIBRATION_TOOL, type CalibrationToolState } from './calibration-tool'
 import { wasKeystrokeClaimed } from './keyboard-guard'
-import { useCalibrationArming } from './use-underlay'
+import { useCalibrationArming } from './use-calibration-arming'
 
 afterEach(cleanup)
 
@@ -103,5 +103,52 @@ describe('useCalibrationArming cancels a pointer calibration on Escape', () => {
 
     expect(wasKeystrokeClaimed(event)).toBe(false)
     expect(view.result.current.calibrationToolState).toEqual(HALF_TAKEN)
+  })
+})
+
+const FIRST_UNDERLAY = 'underlay-a'
+const SECOND_UNDERLAY = 'underlay-b'
+
+// The tool arrives as a prop so a rerender can walk the hook off the calibrate tool
+// the way the Escape ladder and the tool chips do.
+function armedAcrossTools(underlayId: string) {
+  const view = renderHook(({ tool }: { tool: ToolId }) => useCalibrationArming(activeTool(tool)), {
+    initialProps: { tool: 'calibrate' as ToolId },
+  })
+  act(() => {
+    view.result.current.startCalibration(underlayId)
+  })
+  return view
+}
+
+describe('useCalibrationArming disarms when the tool leaves calibrate', () => {
+  it('drops the armed underlay once another tool takes over', () => {
+    const view = armedAcrossTools(FIRST_UNDERLAY)
+    expect(view.result.current.armedUnderlayId).toBe(FIRST_UNDERLAY)
+
+    view.rerender({ tool: 'select' })
+
+    expect(view.result.current.armedUnderlayId).toBeNull()
+  })
+
+  it('arms a second underlay when the calibrate tool comes back', () => {
+    const view = armedAcrossTools(FIRST_UNDERLAY)
+    view.rerender({ tool: 'select' })
+    expect(view.result.current.armedUnderlayId).toBeNull()
+
+    view.rerender({ tool: 'calibrate' })
+    act(() => {
+      view.result.current.startCalibration(SECOND_UNDERLAY)
+    })
+
+    expect(view.result.current.armedUnderlayId).toBe(SECOND_UNDERLAY)
+  })
+
+  it('keeps the arming while the calibrate tool stays put', () => {
+    const view = armedAcrossTools(FIRST_UNDERLAY)
+
+    view.rerender({ tool: 'calibrate' })
+
+    expect(view.result.current.armedUnderlayId).toBe(FIRST_UNDERLAY)
   })
 })
