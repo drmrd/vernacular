@@ -3,7 +3,6 @@ import {
   createElement,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -24,18 +23,19 @@ import {
   type UnitSystem,
 } from '../../core'
 import { useAssetCache, useEditorSession, useSceneGraph, type EditorSession } from '../../bridge'
-import { useActiveTool, type ActiveToolValue, type ToolId } from '../tools/active-tool-context'
+import { useNotifications } from '../design-system'
+import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import type { PreviewSegment } from './draw-plan'
 import type { DrawableUnderlay } from './draw-underlay'
+import type { NotifyUser } from './notify-user'
 import { useLoadImage } from './use-load-underlay-image'
 import { useResolveUnderlaysOnOpen } from './use-resolve-underlays'
 import {
   advanceCalibrationTool,
   calibrationPreviewSegment,
   IDLE_CALIBRATION_TOOL,
-  type CalibrationToolState,
 } from './calibration-tool'
-import { claimKeystroke, ownsKeystroke } from './keyboard-guard'
+import { useCalibrationArming, type CalibrationArming } from './use-calibration-arming'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -45,21 +45,6 @@ import { screenToWorld, type Viewport } from './viewport'
 // placed underlay survives a reload; the decoded bitmaps themselves are not
 // persisted (they re-decode from the content-addressed bytes).
 type BitmapCache = Map<string, ImageBitmap>
-
-/** Everything the calibration arming owns: the armed underlay, the two-click
- *  measurement, and the distance entered against it. */
-export interface CalibrationArming {
-  /** Arm the calibration tool against a specific underlay and switch the active tool to 'calibrate'. */
-  startCalibration: (underlayId: string) => void
-  /** The underlay id the calibration tool currently targets, or null when nothing is armed. */
-  armedUnderlayId: string | null
-  /** The two-click calibration measurement state. */
-  calibrationToolState: CalibrationToolState
-  setCalibrationToolState: (state: CalibrationToolState) => void
-  /** The known real-world distance the user has entered for the armed calibration, empty when none. */
-  knownDistanceText: string
-  setKnownDistanceText: (text: string) => void
-}
 
 /** The arming, plus the two members the provider supplies around it. Extending
  *  rather than restating the arming fields keeps the provider's
@@ -79,6 +64,7 @@ const NO_DRAWABLES: DrawableUnderlay[] = []
 const FALLBACK_VALUE: UnderlayContextValue = {
   loadImage: () => {},
   startCalibration: () => {},
+  stopCalibration: () => {},
   armedUnderlayId: null,
   calibrationToolState: IDLE_CALIBRATION_TOOL,
   setCalibrationToolState: () => {},
@@ -91,79 +77,6 @@ const UnderlayContext = createContext<UnderlayContextValue | null>(null)
 
 export function useUnderlay(): UnderlayContextValue {
   return useContext(UnderlayContext) ?? FALLBACK_VALUE
-}
-
-/**
- * The ladder's first rung for the pointer half of a calibration: Escape abandons a
- * measurement whose first click is already down, claims the keystroke so the tool
- * stays armed, and leaves an Escape at rest to the rung that returns to select. The
- * entered known distance is untouched, so the flyout keeps what the user typed.
- *
- * The measurement is read through a ref refreshed every render, so the window
- * listener subscribes once per tool change rather than on every render, as in the
- * wall and dimension tools. A render-scoped subscription would re-add the listener
- * mid-keystroke whenever a sibling hook updates state inside the same keydown, and
- * the DOM drops a listener re-added during dispatch, which would swallow the cancel.
- * setToolState comes from useState, so it is stable and never re-subscribes.
- */
-function useCalibrationCancel(
-  tool: ToolId,
-  toolState: CalibrationToolState,
-  setToolState: (state: CalibrationToolState) => void,
-): void {
-  const measurementRef = useRef(toolState)
-  measurementRef.current = toolState
-  useEffect(() => {
-    if (tool !== 'calibrate') {
-      return undefined
-    }
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || ownsKeystroke(event.target, event.key)) {
-        return
-      }
-      if (measurementRef.current.phase === 'measuring') {
-        claimKeystroke(event)
-        setToolState(IDLE_CALIBRATION_TOOL)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tool, setToolState])
-}
-
-export function useCalibrationArming(activeTool: ActiveToolValue): CalibrationArming {
-  const [armedUnderlayId, setArmedUnderlayId] = useState<string | null>(null)
-  const [calibrationToolState, setCalibrationToolState] =
-    useState<CalibrationToolState>(IDLE_CALIBRATION_TOOL)
-  const [knownDistanceText, setKnownDistanceText] = useState('')
-  const { setTool } = activeTool
-  useCalibrationCancel(activeTool.tool, calibrationToolState, setCalibrationToolState)
-
-  const startCalibration = useCallback(
-    (underlayId: string) => {
-      setArmedUnderlayId(underlayId)
-      setCalibrationToolState(IDLE_CALIBRATION_TOOL)
-      setKnownDistanceText('')
-      setTool('calibrate')
-    },
-    [setTool],
-  )
-
-  // Memoize the bundle so consumers (the provider's context-value memo) see a
-  // stable reference across renders that do not change the armed underlay or the
-  // measurement state. setCalibrationToolState, setKnownDistanceText, and
-  // startCalibration are stable.
-  return useMemo(
-    () => ({
-      armedUnderlayId,
-      calibrationToolState,
-      setCalibrationToolState,
-      knownDistanceText,
-      setKnownDistanceText,
-      startCalibration,
-    }),
-    [armedUnderlayId, calibrationToolState, knownDistanceText, startCalibration],
-  )
 }
 
 // Pair each underlay node on the floor with its decoded bitmap; a node whose
@@ -196,6 +109,7 @@ export interface UnderlayProviderProps {
 
 export function UnderlayProvider({ children }: UnderlayProviderProps) {
   const session = useEditorSession()
+  const { error } = useNotifications()
   const activeTool = useActiveTool()
   const assets = useAssetCache()
   const graph = useSceneGraph()
@@ -205,9 +119,9 @@ export function UnderlayProvider({ children }: UnderlayProviderProps) {
   const cacheRef = useRef<BitmapCache>(new Map())
   const cache = cacheRef.current
 
-  const loadImage = useLoadImage(session, cache, assets)
+  const loadImage = useLoadImage({ session, cache, assets, notify: error })
   const arming = useCalibrationArming(activeTool)
-  const decodeTick = useResolveUnderlaysOnOpen(graph, assets, cache)
+  const decodeTick = useResolveUnderlaysOnOpen({ graph, assets, cache, notify: error })
   const resolveDrawables = useCallback(
     (sceneGraph: SceneGraph, floorId: string | undefined): DrawableUnderlay[] =>
       resolveDrawablesFrom(cache, sceneGraph, floorId),
@@ -268,7 +182,14 @@ export interface CalibrationCommit {
   armedUnderlayId: string
   units: UnitSystem
   knownDistanceText: string
+  notify: NotifyUser
 }
+
+// The two reasons a calibration cannot complete, in the words the user reads.
+const MISSING_UNDERLAY_MESSAGE =
+  'The underlay being calibrated is no longer on this floor. Start the calibration again from the underlay menu.'
+const MISSING_KNOWN_DISTANCE_MESSAGE =
+  'Enter the known distance, such as 3 m, before the second click.'
 
 // The armed underlay's scene node, matched by its raw underlay id against the
 // namespaced node id; null when the armed underlay is no longer present.
@@ -281,22 +202,28 @@ function armedUnderlayNode(graph: SceneGraph, armedUnderlayId: string): Underlay
  * Complete a calibration: read the entered known distance, convert the measured
  * world segment to pixels, derive the new scale, and dispatch the calibrated
  * placement. Any cancel (no armed node, blank or unparseable entry) dispatches
- * nothing. Lives here so the plan-view canvas glue stays composition-only.
+ * nothing and reports why through notify, so the click never fails in silence.
+ * Lives here so the plan-view canvas glue stays composition-only.
+ * Returns whether a calibration was dispatched, so the caller can tell a
+ * completed calibration from a cancelled one.
  */
-export function commitCalibration(segment: PreviewSegment, commit: CalibrationCommit): void {
+export function commitCalibration(segment: PreviewSegment, commit: CalibrationCommit): boolean {
   const node = armedUnderlayNode(commit.graph, commit.armedUnderlayId)
   if (node === null) {
-    return
+    commit.notify(MISSING_UNDERLAY_MESSAGE)
+    return false
   }
   const knownMm = parseKnownDistance(commit.knownDistanceText, ASSUMED_UNIT_BY_UNITS[commit.units])
   if (knownMm === undefined) {
-    return
+    commit.notify(MISSING_KNOWN_DISTANCE_MESSAGE)
+    return false
   }
   const pixelStart = worldToPixel(segment.start, node.placement)
   const pixelEnd = worldToPixel(segment.end, node.placement)
   const scale = calibrationScale({ start: pixelStart, end: pixelEnd }, knownMm)
   const next = applyCalibration(node.placement, scale)
   commit.session.dispatch(calibrateUnderlay(node.floorId, commit.armedUnderlayId, next))
+  return true
 }
 
 function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport): Point {
@@ -310,6 +237,7 @@ export interface CalibrationInteractionDeps {
   viewport: Viewport
   units: UnitSystem
   underlay: UnderlayContextValue
+  notify: NotifyUser
 }
 
 export interface CalibrationInteraction {
@@ -320,20 +248,25 @@ export interface CalibrationInteraction {
 }
 
 // Advance the two-click tool on each calibrate-tool click and commit on the
-// completing second click; other tools are inert here.
+// completing second click, which also disarms the underlay; other tools are
+// inert here.
 function applyCalibrationClick(world: Point, deps: CalibrationInteractionDeps): void {
-  const { session, graph, units, underlay } = deps
+  const { session, graph, units, underlay, notify } = deps
   const { armedUnderlayId } = underlay
   const result = advanceCalibrationTool(underlay.calibrationToolState, world)
   underlay.setCalibrationToolState(result.state)
   if (result.segment && armedUnderlayId !== null) {
-    commitCalibration(result.segment, {
+    const calibrated = commitCalibration(result.segment, {
       session,
       graph,
       armedUnderlayId,
       units,
       knownDistanceText: underlay.knownDistanceText,
+      notify,
     })
+    if (calibrated) {
+      underlay.stopCalibration()
+    }
   }
 }
 
@@ -378,6 +311,7 @@ export interface PlanUnderlayLayerDeps {
   // The floor whose underlays are shown (the active floor); null before any floor
   // is selected.
   activeFloorId: string | null
+  notify: NotifyUser
 }
 
 export interface PlanUnderlayLayer {
@@ -391,7 +325,7 @@ export interface PlanUnderlayLayer {
  * Keeps the underlay layer's session/graph plumbing out of the canvas glue.
  */
 export function usePlanUnderlayLayer(deps: PlanUnderlayLayerDeps): PlanUnderlayLayer {
-  const { session, graph, tool, viewport, activeFloorId } = deps
+  const { session, graph, tool, viewport, activeFloorId, notify } = deps
   const underlay = useUnderlay()
   const project = session.getProject()
   const floorId = activeFloorId ?? project.floors[0]?.id
@@ -406,6 +340,7 @@ export function usePlanUnderlayLayer(deps: PlanUnderlayLayerDeps): PlanUnderlayL
     viewport,
     units: project.meta.units,
     underlay,
+    notify,
   })
   return { underlays, calibration }
 }

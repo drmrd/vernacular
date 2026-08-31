@@ -19,7 +19,7 @@ import {
   type ClipboardStore,
   type SelectionStore,
 } from '../../bridge'
-import { useTheme } from '../design-system'
+import { useNotifications, useTheme } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import { useActiveEditLayer, type EditLayer } from '../tools/edit-layer-context'
 import { scopeFurnitureToLayer, scopeSceneToLayer } from './edit-layer-scope'
@@ -290,7 +290,17 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   })
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
-  const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport, activeFloorId })
+  // A calibration that cannot commit reports through the shell's notifications rather
+  // than dropping the second click in silence.
+  const { error } = useNotifications()
+  const underlayLayer = usePlanUnderlayLayer({
+    session,
+    graph,
+    tool,
+    viewport,
+    activeFloorId,
+    notify: error,
+  })
   const openingLayer = useOpeningLayer({
     session,
     graph,

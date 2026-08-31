@@ -124,6 +124,32 @@ describe('UnderlayMenu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('keeps the flyout open on a pointer-down outside the menu while a calibration is armed', async () => {
+    const user = userEvent.setup()
+    const underlay = { id: 'u1', opacity: 0.5, visible: true } as Underlay
+    render(
+      <UnderlayMenu
+        floorId={FLOOR_ID}
+        underlays={[underlay]}
+        dispatch={vi.fn()}
+        onLoadImage={vi.fn()}
+        onCalibrate={vi.fn()}
+        armedUnderlayId="u1"
+        knownDistance=""
+        onKnownDistanceChange={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: /underlay/i })
+    await user.click(trigger)
+    expect(screen.getByLabelText(/known distance/i)).toBeInTheDocument()
+
+    fireEvent.pointerDown(document.body)
+
+    expect(screen.getByLabelText(/known distance/i)).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  })
+
   it('invokes onLoadImage once and closes the flyout when Load image is clicked', async () => {
     const user = userEvent.setup()
     const onLoadImage = vi.fn()

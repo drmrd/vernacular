@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { createUnderlay, placeUnderlay, type AssetReference } from '../../core'
 import { useActiveFloorId, type AssetCache, type EditorSession } from '../../bridge'
+import type { NotifyUser } from './notify-user'
 
 // The write-on-load half of the underlay persistence round trip: pick a raster
 // file, decode it, persist its source bytes through the asset cache, and place
@@ -21,14 +22,24 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
     .join('')
 }
 
-interface LoadImageDeps {
+export interface LoadImageOptions {
   session: EditorSession
   cache: BitmapCache
   assets: AssetCache
+  notify: NotifyUser
+}
+
+/** The load options, plus the one member the hook resolves from the editor. Extending
+ *  rather than restating the options keeps the two shapes in step by construction. */
+interface LoadImageDeps extends LoadImageOptions {
   // The floor the loaded underlay is placed on (the active floor); null before any
   // floor is selected.
   activeFloorId: string | null
 }
+
+// The two reasons a picked image never reaches the floor, in the words the user reads.
+const MISSING_FLOOR_MESSAGE = 'Add a floor before loading an underlay.'
+const UNREADABLE_IMAGE_MESSAGE = 'That image could not be loaded. Choose a PNG or JPEG file.'
 
 // Persist the underlay's source bytes through the asset cache, best-effort: a
 // failed put is logged but does not block placing the underlay (the in-memory
@@ -49,13 +60,14 @@ async function persistUnderlayBytes(
 // Decode the chosen file, cache the bitmap under its content hash, persist the
 // source bytes through the asset cache, and dispatch a place-underlay command
 // onto the active floor (falling back to the first floor before any floor is
-// selected). No floor means nothing to place, so the load is dropped. The image
-// bytes are read once: the same buffer feeds the content hash, the bitmap decode,
-// and the durable write. A failed read, hash, or decode is logged; a user-facing
-// toast is a documented follow-up.
-async function loadImageFile(file: File, deps: LoadImageDeps): Promise<void> {
+// selected). No floor means nothing to place, so the load is dropped and the user
+// is told to add one. The image bytes are read once: the same buffer feeds the
+// content hash, the bitmap decode, and the durable write. A failed read, hash, or
+// decode is logged and reported to the user through notify.
+export async function loadImageFile(file: File, deps: LoadImageDeps): Promise<void> {
   const floorId = deps.activeFloorId ?? deps.session.getProject().floors[0]?.id
   if (floorId === undefined) {
+    deps.notify(MISSING_FLOOR_MESSAGE)
     return
   }
   try {
@@ -69,6 +81,7 @@ async function loadImageFile(file: File, deps: LoadImageDeps): Promise<void> {
     deps.session.dispatch(placeUnderlay(floorId, underlay))
   } catch (error) {
     console.error('Failed to load underlay image', error)
+    deps.notify(UNREADABLE_IMAGE_MESSAGE)
   }
 }
 
@@ -88,15 +101,11 @@ function pickImageFile(onFile: (file: File) => void): void {
 }
 
 /** Open a file picker and run the write-on-load round trip for the chosen image. */
-export function useLoadImage(
-  session: EditorSession,
-  cache: BitmapCache,
-  assets: AssetCache,
-): () => void {
+export function useLoadImage({ session, cache, assets, notify }: LoadImageOptions): () => void {
   const activeFloorId = useActiveFloorId()
   return useCallback(() => {
     pickImageFile((file) => {
-      void loadImageFile(file, { session, cache, assets, activeFloorId })
+      void loadImageFile(file, { session, cache, assets, activeFloorId, notify })
     })
-  }, [session, cache, assets, activeFloorId])
+  }, [session, cache, assets, activeFloorId, notify])
 }

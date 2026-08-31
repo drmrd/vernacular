@@ -5,16 +5,47 @@ import { UnderlayRow, type UnderlayPanelProps } from './underlay-panel'
 import '../design-system/menu-surface.css'
 import './underlay-menu.css'
 
-// Close the flyout when Escape is pressed or a pointer goes down outside the
-// menu root, mirroring the dropdown dismissal pattern used elsewhere in the
-// shell. The listeners are attached only while the flyout is open.
-function useDismissOnOutside(
-  open: boolean,
-  rootRef: RefObject<HTMLDivElement | null>,
-  close: () => void,
-): void {
+interface DismissOnEscapeOptions {
+  active: boolean
+  close: () => void
+}
+
+// Close the flyout when Escape is pressed, mirroring the dropdown dismissal
+// pattern used elsewhere in the shell. The listener is attached only while the
+// caller reports the dismissal as active.
+function useDismissOnEscape({ active, close }: DismissOnEscapeOptions): void {
   useEffect(() => {
-    if (!open) {
+    if (!active) {
+      return
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [active, close])
+}
+
+interface DismissOnOutsidePointerOptions {
+  active: boolean
+  rootRef: RefObject<HTMLDivElement | null>
+  close: () => void
+}
+
+// Close the flyout when a pointer goes down outside the menu root, mirroring
+// the dropdown dismissal pattern used elsewhere in the shell. The listener is
+// attached only while the caller reports the dismissal as active.
+function useDismissOnOutsidePointer({
+  active,
+  rootRef,
+  close,
+}: DismissOnOutsidePointerOptions): void {
+  useEffect(() => {
+    if (!active) {
       return
     }
     const onPointerDown = (event: PointerEvent) => {
@@ -23,18 +54,11 @@ function useDismissOnOutside(
         close()
       }
     }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        close()
-      }
-    }
     document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
     }
-  }, [open, rootRef, close])
+  }, [active, rootRef, close])
 }
 
 interface UnderlayMenuListProps extends UnderlayPanelProps {
@@ -86,10 +110,15 @@ const UnderlayMenuList: FC<UnderlayMenuListProps> = ({
 // The trigger carries an "Underlay" label and the standard dropdown a11y
 // attributes; clicking it opens a flyout with the underlay actions.
 export const UnderlayMenu: FC<UnderlayPanelProps> = (props) => {
-  const { onLoadImage } = props
+  const { onLoadImage, armedUnderlayId } = props
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  useDismissOnOutside(open, rootRef, () => setOpen(false))
+  const calibrationIsArmed = armedUnderlayId !== null && armedUnderlayId !== undefined
+  const close = () => setOpen(false)
+  useDismissOnEscape({ active: open, close })
+  // An armed calibration is measured by two clicks on the canvas, both of which
+  // land outside the menu root, so dismissing on those would cancel it.
+  useDismissOnOutsidePointer({ active: open && !calibrationIsArmed, rootRef, close })
   return (
     <div className="underlay-menu" ref={rootRef}>
       <Button aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
