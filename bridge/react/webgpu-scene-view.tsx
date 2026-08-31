@@ -1,7 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  DEFAULT_COLOR_TEMPERATURE_K,
   humanizeElementTypeId,
   type LightingMode,
   type OpeningSceneNode,
@@ -12,7 +11,6 @@ import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
-import { useEnvironmentSession } from './environment-session-context'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { NearWallFade } from './near-wall-fade'
@@ -32,23 +30,9 @@ import type { BuildingViewState } from './use-building-view-state'
 import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useProjectSite } from './use-project-site'
+import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-environment'
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
-
-// The grouped per-view environment inputs the toolbar and canvas share: the view-local
-// color temperature (foundation section 5.3, held here and never in the model or undo)
-// paired with the shared environment session (mode, observation instant, cloud cover,
-// color check) that the tool rail and this view both read and write. Grouped so both
-// consumers take it as one prop, the same way the navigation state travels.
-function useSceneEnvironment() {
-  const [colorTemperatureK, setColorTemperatureK] = useState(DEFAULT_COLOR_TEMPERATURE_K)
-  const { environment, setEnvironment } = useEnvironmentSession()
-  return { colorTemperatureK, setColorTemperatureK, environment, setEnvironment }
-}
-
-// The grouped result of useSceneEnvironment, so the toolbar and canvas wiring can take
-// the whole environment state as one prop instead of re-listing each field.
-type SceneEnvironmentState = ReturnType<typeof useSceneEnvironment>
 
 // Labels the openings in graph order, numbering each within its own element-type
 // sequence rather than one shared sequence, so a plan with two doors and one window
