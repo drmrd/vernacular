@@ -9,6 +9,7 @@ import { updateNearWallTransparency } from '../../engine'
 import {
   DEFAULT_CAMERA_POSE,
   builtinFinishes,
+  cameraOutsideBuilding,
   colorFromHex,
   getEntry,
   solidTreatment,
@@ -392,6 +393,17 @@ describe('buildFramedScene', () => {
     expect(table).not.toBeNull()
     expect(furnitureOpacitiesOf(wardrobe)).toEqual([fadedOpacity])
     expect(furnitureOpacitiesOf(table)).not.toContain(fadedOpacity)
+  })
+
+  it('supplies the building top elevation so a camera above the roof still counts as outside', () => {
+    const { roomPolygons, buildingTopWorld } = buildFramedScene(squareRoomWithSouthWindow(height))
+
+    // Plan (2000, 2000) sits squarely inside the room, but the camera hovers well above
+    // the building's top elevation (the floor's 0mm elevation plus its 2400mm ceiling
+    // height), so it counts as outside despite its interior plan position, and the fade
+    // must not stand down.
+    const cameraAboveRoof = { x: 2000, y: 8000, z: -2000 }
+    expect(cameraOutsideBuilding(cameraAboveRoof, roomPolygons, buildingTopWorld)).toBe(true)
   })
 
   it('paints a room floor from the supplied paint store', () => {

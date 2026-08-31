@@ -13,9 +13,9 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 //
 // The assertion is semantic, not a committed pixel baseline: the live view renders
 // through the non-deterministic WebGPU backend (ADR-0045 explains why a WebGPU pixel
-// baseline is not pinned). An empty floor shows the "Nothing to show in 3D yet"
-// empty-state rather than a blank canvas, so the canvas only mounts once a wall exists.
-// The test first confirms that empty-state, then compares two STABLE canvas frames - one
+// baseline is not pinned). An empty floor keeps the canvas mounted under the
+// "Nothing to show in 3D yet" guidance overlay, so the pane never tears down its
+// rendering context (issue #602). The test first confirms that overlaid empty state, then compares two STABLE canvas frames - one
 // wall vs a second wall added - and requires them to differ, which catches both an
 // unframed camera (geometry off-screen leaves both frames identically blank) and a view
 // that never updates when the plan changes. Stability matters: an earlier version fired
@@ -68,14 +68,15 @@ test.describe('Live three-dimensional preview pane', () => {
     await page.getByRole('button', { name: 'Split view' }).click()
 
     const pane = page.getByRole('region', { name: /3d preview/i })
-    // An empty floor has no geometry, so the pane shows the empty-state and no canvas.
+    // An empty floor has no geometry, so the pane shows the guidance overlay while the
+    // canvas stays mounted beneath it.
     await expect(pane.getByRole('heading', { name: /nothing to show in 3d yet/i })).toBeVisible()
-    await expect(pane.locator('canvas')).toHaveCount(0)
+    await expect(pane.locator('canvas')).toHaveCount(1)
 
     const plan = page.getByLabel('Floor plan')
     await expect(plan).toBeVisible()
 
-    // The first wall gives the live view geometry, so the canvas mounts and frames it.
+    // The first wall gives the live view geometry, so the canvas frames it.
     await drawWall(page, plan, { from: { x: 100, y: 150 }, to: { x: 300, y: 150 } })
     await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
 

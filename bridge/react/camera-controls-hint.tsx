@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { NavMode } from './scene-nav-toolbar'
 
 const HINT_LINES_BY_MODE: Record<NavMode, readonly string[]> = {
-  orbit: ['Drag to orbit', 'Right-drag to pan', 'Scroll to zoom'],
+  orbit: ['Drag to orbit', 'Right-drag to pan', 'Scroll to zoom', 'Click to select'],
   walk: ['Drag to look', 'W A S D to move', 'E to open or close', 'R to shut every opening'],
 }
 
@@ -31,9 +31,10 @@ const HINT_STYLE: CSSProperties = {
 
 /**
  * The per-mode controls hint lines for the three-dimensional camera. Orbit mode rotates
- * on a left drag, pans on a right drag, and zooms on the wheel; walk mode looks on a drag,
- * moves with the W, A, S, and D keys, uses E to open or close the opening it faces, and
- * uses R to shut every opening on the floor.
+ * on a left drag, pans on a right drag, zooms on the wheel, and selects on a click; walk
+ * mode looks on a drag, moves with the W, A, S, and D keys, uses E to open or close the
+ * opening it faces, and uses R to shut every opening on the floor. Walk mode gates
+ * selection off, so only orbit mode names the click.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the pure hint data ships beside the component that renders it and this slice's test imports cameraControlsHint from ./camera-controls-hint.
 export function cameraControlsHint(mode: NavMode): readonly string[] {
@@ -43,6 +44,7 @@ export function cameraControlsHint(mode: NavMode): readonly string[] {
 /**
  * A small, pointer-inert caption that lists the active camera mode's controls over the
  * scene canvas. It is inert to pointer events so it never blocks an orbit or look drag.
+ * Orbit mode also names clicking to select an object, since walk mode gates selection off.
  */
 export function CameraControlsHint({ mode }: { mode: NavMode }) {
   return (

@@ -25,6 +25,9 @@ interface PlanSelectionDeps {
   tool: ToolId
   viewport: Viewport
   setViewport: Dispatch<SetStateAction<Viewport>>
+  // Whether the dimensions overlay is currently shown; a hidden dimension falls
+  // through to whatever else is beneath the click, matching what is visible.
+  dimensionsVisible: boolean
 }
 
 export interface PlanSelection {
@@ -51,7 +54,9 @@ interface GestureHandle {
  * underlay), so a piece or wall over the underlay selects rather than the image.
  */
 function applyClick(deps: PlanSelectionDeps, world: Point, shift: boolean): void {
-  const hit = planClickTarget(deps.graph, deps.furniture, world)
+  const hit = planClickTarget(deps.graph, deps.furniture, world, {
+    dimensionsVisible: deps.dimensionsVisible,
+  })
   if (hit === null) {
     if (!shift) {
       deps.selection.clear()
@@ -74,7 +79,9 @@ function applyEndEffect(deps: PlanSelectionDeps, effect: SelectEndEffect): void 
     applyClick(deps, effect.world, effect.shift)
   } else if (effect.kind === 'marquee') {
     deps.selection.setSelection(
-      resolveMarqueeSelection(deps.graph, deps.selection.getSelectedIds(), effect),
+      resolveMarqueeSelection(deps.graph, deps.selection.getSelectedIds(), effect, {
+        dimensionsVisible: deps.dimensionsVisible,
+      }),
     )
   }
 }
@@ -151,10 +158,12 @@ function pointerUp(
  * `select-gesture` machine: a plain drag pans the view, a Shift- or Alt-drag
  * rubber-bands a marquee, and a bare click selects, shift-toggles, or clears. A
  * left-to-right marquee takes the entities fully inside it, a right-to-left marquee
- * also takes the ones it crosses, and on release Shift adds to the selection, Alt
- * subtracts, and neither replaces it. A press on an already-selected entity is
- * grabbed earlier by the move-drag, so this never sees it. Inert under any tool but
- * `select`.
+ * also takes the ones it crosses. The operation locks in from the modifiers held
+ * at the moment the drag flips from pending into marquee mode: Shift alone
+ * replaces the selection, Alt alone subtracts, and Shift+Alt together add;
+ * modifiers held at release play no part. A press on an already-selected entity
+ * is grabbed earlier by the move-drag, so this never sees it. Inert under any
+ * tool but `select`.
  */
 export function usePlanSelection(deps: PlanSelectionDeps): PlanSelection {
   const stateRef = useRef<SelectGestureState | null>(null)

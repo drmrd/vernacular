@@ -340,7 +340,7 @@ type DefaultedToolbarProps = Required<
 const TOOLBAR_DEFAULTS: DefaultedToolbarProps = {
   lightingMode: 'schematic',
   colorCheck: false,
-  selectionEnabled: false,
+  selectionEnabled: true,
   onToggleSelection: () => {},
   revealInterior: true,
   onToggleRevealInterior: () => {},

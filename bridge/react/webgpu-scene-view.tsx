@@ -1,7 +1,8 @@
-import { Canvas } from '@react-three/fiber'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  humanizeElementTypeId,
   type LightingMode,
   type OpeningSceneNode,
   type SceneGraph,
@@ -23,6 +24,7 @@ import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 import { SceneProxyProjector } from './scene-proxies'
+import { sceneReadinessProps } from './scene-readiness'
 import { SceneSelection } from './scene-selection'
 import { selectionAllowed } from './scene-selection-gate'
 import { useSelection, useSelectionIds } from './selection-context'
@@ -48,14 +50,29 @@ function useSceneEnvironment() {
 // the whole environment state as one prop instead of re-listing each field.
 type SceneEnvironmentState = ReturnType<typeof useSceneEnvironment>
 
+// Labels the openings in graph order, numbering each within its own element-type
+// sequence rather than one shared sequence, so a plan with two doors and one window
+// reads "Single Swing Door 1", "Double Hung Window 1", "Single Swing Door 2" instead
+// of grouping every opening kind under one running count.
+function openingLabels(openings: SceneGraph['openings']): (readonly [string, string])[] {
+  const seen = new Map<string, number>()
+  return openings.map((opening) => {
+    const ordinal = (seen.get(opening.type) ?? 0) + 1
+    seen.set(opening.type, ordinal)
+    return [opening.id, `${humanizeElementTypeId(opening.type)} ${ordinal}`] as const
+  })
+}
+
 // A short, stable label per selectable entity for the accessibility proxies, derived from
-// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Labels live in the
-// bridge layer because the three-dimensional overlay cannot import the editor layer.
-function entityLabels(graph: SceneGraph): Map<string, string> {
+// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings label from
+// their element type instead of the generic "Opening" kind. Labels live in the bridge layer
+// because the three-dimensional overlay cannot import the editor layer.
+// eslint-disable-next-line react-refresh/only-export-components -- pure label derivation exported for its unit test, matching the exported helpers beside CameraControlsHint and NearWallFade
+export function entityLabels(graph: SceneGraph): Map<string, string> {
   return new Map<string, string>([
     ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
     ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
-    ...graph.openings.map((opening, index) => [opening.id, `Opening ${index + 1}`] as const),
+    ...openingLabels(graph.openings),
   ])
 }
 
@@ -160,32 +177,53 @@ interface LiveSceneCanvasProps {
   opening: OpeningSceneNode | null
 }
 
-// The interactive React Three Fiber canvas: the keyed scene primitive, the lighting,
-// the selection and proxy wiring, and the camera rig. Extracted from WebGPUSceneView
-// so each function stays within the length limit. frameloop="always" renders every frame
-// so interactive camera moves and color-temperature changes show continuously, not only
-// when React remounts the scene. Props arrive unflattened (the navigation state travels
-// whole, as it does into SceneViewToolbar) and are destructured in the body.
-function LiveSceneCanvas(props: LiveSceneCanvasProps) {
-  const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
-  const { root, pose, bounds, nearWallTargets, roomPolygons } = framed
-  const perceivedColor = usePerceivedColorStore()
+// Flips once the live canvas has rendered its first frame, mirroring the harness
+// canvas's data-harness-ready flip (scene-harness-view.tsx): the wrapper advertises
+// it through sceneReadinessProps so the editor pane's readiness observer knows the
+// scene has actually drawn, not merely mounted.
+function useFirstFrameReadiness() {
+  const [ready, setReady] = useState(false)
+  const handleFirstFrame = useCallback(() => setReady(true), [])
+  return { ready, handleFirstFrame }
+}
+
+// After AO_RENDER_PRIORITY (1) and SAMPLE_PRIORITY (2), so this fires once the frame is actually fully drawn.
+const FIRST_FRAME_SIGNAL_PRIORITY = 3
+
+// Calls onFirstFrame once the render loop has drawn its first frame, then stops
+// mattering: the ref guard keeps every later frame from re-invoking it.
+function LiveSceneFirstFrameSignal({ onFirstFrame }: { onFirstFrame: () => void }) {
+  const firedRef = useRef(false)
+  useFrame(() => {
+    if (firedRef.current) return
+    firedRef.current = true
+    onFirstFrame()
+  }, FIRST_FRAME_SIGNAL_PRIORITY)
+  return null
+}
+
+// The wrapper carries the shared readiness props (scene-readiness.ts) so the editor
+// pane's observer can tell, from outside the bridge layer, when the canvas inside has
+// drawn its first frame. It fills its flex-item parent the same way React Three
+// Fiber's own Canvas wrapper div would if it were the direct child here.
+function SceneReadinessBoundary({ ready, children }: { ready: boolean; children: ReactNode }) {
   return (
-    // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
-    // configuring the Canvas, so create-renderer's shadowMap setup goes dead
-    // without this prop. The bare boolean also selects PCFSoftShadowMap,
-    // matching create-renderer's intent.
-    <Canvas
-      frameloop="always"
-      shadows
-      camera={initialCamera(pose)}
-      // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
-      // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
-      // path), so narrowing the cast away from OffscreenCanvas is safe.
-      gl={(defaultProps) =>
-        createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
-      }
-    >
+    <div style={{ width: '100%', height: '100%' }} {...sceneReadinessProps(ready)}>
+      {children}
+    </div>
+  )
+}
+
+// The scene-graph elements that render inside the Canvas: the keyed primitive, the
+// lighting, the selection and proxy wiring, the camera rig, and the ambient-occlusion
+// takeover. Grouped apart from LiveSceneCanvas so that function keeps to the Canvas's
+// own setup and its two render-order-sensitive post-processing hooks, the same way
+// SceneCameraRig and ViewSceneLighting group their own slice of the scene.
+function LiveSceneContents(props: LiveSceneCanvasProps) {
+  const { framed, nav, viewEnvironment, site, onProxyPositions, opening } = props
+  const { root, bounds, nearWallTargets, roomPolygons, buildingTopWorld } = framed
+  return (
+    <>
       {/* Key the primitive on the rebuilt group so a new scene replaces the old one:
           React Three Fiber does not re-attach a <primitive> when its object prop
           changes in place, only when the element remounts. */}
@@ -200,18 +238,54 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
         targets={nearWallTargets}
         enabled={nav.mode === 'orbit' && nav.revealInterior}
         roomPolygons={roomPolygons}
+        buildingTopWorld={buildingTopWorld}
       />
       <SceneCameraRig nav={nav} framed={framed} opening={opening} />
       <AmbientOcclusionRenderTakeover
         realistic={viewEnvironment.environment.mode === 'realistic'}
         site={site}
       />
-      {/* The sampler must live inside the Canvas because it reads the drawing
-          buffer from within the per-frame callback, and it runs at a later
-          frame priority than the ambient-occlusion takeover above so it reads
-          a frame that has already been drawn and composited. */}
-      <PerceivedColorSampler store={perceivedColor} />
-    </Canvas>
+    </>
+  )
+}
+
+// The interactive React Three Fiber canvas: the WebGPU renderer setup, the readiness
+// boundary around it, and the two post-processing hooks that must stay directly under
+// this function (they need the perceived-color store and first-frame callback that
+// live here). Extracted from WebGPUSceneView so each function stays within the length
+// limit. frameloop="always" renders every frame so interactive camera moves and
+// color-temperature changes show continuously, not only when React remounts the scene.
+// Props arrive unflattened (the navigation state travels whole, as it does into
+// SceneViewToolbar) and pass straight through to LiveSceneContents.
+function LiveSceneCanvas(props: LiveSceneCanvasProps) {
+  const perceivedColor = usePerceivedColorStore()
+  const { ready, handleFirstFrame } = useFirstFrameReadiness()
+  return (
+    <SceneReadinessBoundary ready={ready}>
+      {/* React Three Fiber overwrites gl.shadowMap.enabled with !!shadows while
+          configuring the Canvas, so create-renderer's shadowMap setup goes dead
+          without this prop. The bare boolean also selects PCFSoftShadowMap,
+          matching create-renderer's intent. */}
+      <Canvas
+        frameloop="always"
+        shadows
+        camera={initialCamera(props.framed.pose)}
+        // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
+        // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
+        // path), so narrowing the cast away from OffscreenCanvas is safe.
+        gl={(defaultProps) =>
+          createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
+        }
+      >
+        <LiveSceneContents {...props} />
+        {/* The sampler must live inside the Canvas because it reads the drawing
+            buffer from within the per-frame callback, and it runs at a later
+            frame priority than the ambient-occlusion takeover in LiveSceneContents
+            so it reads a frame that has already been drawn and composited. */}
+        <PerceivedColorSampler store={perceivedColor} />
+        <LiveSceneFirstFrameSignal onFirstFrame={handleFirstFrame} />
+      </Canvas>
+    </SceneReadinessBoundary>
   )
 }
 

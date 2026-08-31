@@ -40,4 +40,11 @@ describe('cameraOutsideBuilding', () => {
     // A camera hovering far above an interior plan point is still inside the footprint.
     expect(cameraOutsideBuilding(world(2000, 99999, -2000), [room])).toBe(false)
   })
+
+  it('engages the fade when the camera is above the building, even though its plan position falls inside the footprint', () => {
+    // Plan (2000, 2000) sits squarely inside the room, but the camera hovers well
+    // above the building's top elevation of 3000mm, so it counts as outside despite
+    // its interior plan position.
+    expect(cameraOutsideBuilding(world(2000, 8000, -2000), [room], 3000)).toBe(true)
+  })
 })

@@ -126,6 +126,28 @@ describe('entitiesInRect', () => {
 
     expect(entitiesInRect(graph, rect)).toEqual(['dimension:inside'])
   })
+
+  it('excludes dimensions from the window result when the overlay is hidden, while keeping walls, rooms, and openings', () => {
+    const graph = scene(
+      [wall('wall:inside', { x: 100, y: 100 }, { x: 900, y: 900 })],
+      [
+        room('room:inside', [
+          { x: 100, y: 100 },
+          { x: 900, y: 100 },
+          { x: 900, y: 900 },
+          { x: 100, y: 900 },
+        ]),
+      ],
+      {
+        openings: [opening('opening:inside', { x: 500, y: 500 })],
+        dimensions: [dimension('dimension:inside', { x: 100, y: 100 }, { x: 900, y: 900 })],
+      },
+    )
+
+    expect(new Set(entitiesInRect(graph, rect, { dimensionsVisible: false }))).toEqual(
+      new Set(['wall:inside', 'room:inside', 'opening:inside']),
+    )
+  })
 })
 
 describe('entitiesCrossingRect', () => {
@@ -181,6 +203,28 @@ describe('entitiesCrossingRect', () => {
 
     expect(new Set(entitiesCrossingRect(graph, rect))).toEqual(
       new Set(['opening:straddling', 'dimension:straddling']),
+    )
+  })
+
+  it('excludes dimensions from the crossing result when the overlay is hidden, while keeping walls, rooms, and openings', () => {
+    const graph = scene(
+      [wall('wall:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 })],
+      [
+        room('room:overlapping', [
+          { x: 500, y: 500 },
+          { x: 1500, y: 500 },
+          { x: 1500, y: 1500 },
+          { x: 500, y: 1500 },
+        ]),
+      ],
+      {
+        openings: [opening('opening:straddling', { x: 950, y: 500 })],
+        dimensions: [dimension('dimension:straddling', { x: 500, y: 500 }, { x: 1500, y: 500 })],
+      },
+    )
+
+    expect(new Set(entitiesCrossingRect(graph, rect, { dimensionsVisible: false }))).toEqual(
+      new Set(['wall:straddling', 'room:overlapping', 'opening:straddling']),
     )
   })
 })

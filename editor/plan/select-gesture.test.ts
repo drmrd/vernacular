@@ -166,13 +166,28 @@ describe('endSelectGesture', () => {
     ).toEqual({ kind: 'none' })
   })
 
-  it('resolves a left-to-right marquee to a window selection', () => {
-    expect(
-      endSelectGesture(
-        { mode: 'marquee', originWorld: { x: 0, y: 0 }, lastCanvas: { x: 50, y: 10 } },
-        { world: { x: 100, y: 40 }, shift: false },
-      ),
-    ).toEqual({
+  it('replaces the selection when a marquee begins with Shift alone, even if Shift is still held at release', () => {
+    const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const marquee = advanceSelectGesture(begin, {
+      world: { x: 100, y: 0 },
+      canvas: { x: 50, y: 10 },
+      shift: true,
+    }).state
+
+    const effect = endSelectGesture(marquee, { world: { x: 100, y: 40 }, shift: true })
+
+    expect(effect).toMatchObject({ kind: 'marquee', operation: 'replace' })
+  })
+
+  it('resolves a left-to-right marquee to a window selection, with replace locked in by Shift alone at the drag threshold', () => {
+    const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const marquee = advanceSelectGesture(begin, {
+      world: { x: 100, y: 0 },
+      canvas: { x: 50, y: 10 },
+      shift: true,
+    }).state
+
+    expect(endSelectGesture(marquee, { world: { x: 100, y: 40 }, shift: true })).toEqual({
       kind: 'marquee',
       rect: { min: { x: 0, y: 0 }, max: { x: 100, y: 40 } },
       mode: 'window',
@@ -180,13 +195,15 @@ describe('endSelectGesture', () => {
     })
   })
 
-  it('resolves a right-to-left marquee to a crossing selection', () => {
-    expect(
-      endSelectGesture(
-        { mode: 'marquee', originWorld: { x: 100, y: 0 }, lastCanvas: { x: 50, y: 10 } },
-        { world: { x: 0, y: 40 }, shift: false },
-      ),
-    ).toEqual({
+  it('resolves a right-to-left marquee to a crossing selection, with replace locked in by Shift alone at the drag threshold', () => {
+    const begin = beginSelectGesture({ x: 100, y: 0 }, { x: 50, y: 10 })
+    const marquee = advanceSelectGesture(begin, {
+      world: { x: 200, y: 0 },
+      canvas: { x: 90, y: 10 },
+      shift: true,
+    }).state
+
+    expect(endSelectGesture(marquee, { world: { x: 0, y: 40 }, shift: true })).toEqual({
       kind: 'marquee',
       rect: { min: { x: 0, y: 0 }, max: { x: 100, y: 40 } },
       mode: 'crossing',
@@ -194,20 +211,30 @@ describe('endSelectGesture', () => {
     })
   })
 
-  it('adds to the selection when a marquee is released holding Shift', () => {
-    const effect = endSelectGesture(
-      { mode: 'marquee', originWorld: { x: 0, y: 0 }, lastCanvas: { x: 50, y: 10 } },
-      { world: { x: 100, y: 40 }, shift: true },
-    )
+  it('adds to the selection when a marquee begins with Shift and Alt held together', () => {
+    const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const marquee = advanceSelectGesture(begin, {
+      world: { x: 100, y: 0 },
+      canvas: { x: 50, y: 10 },
+      shift: true,
+      alt: true,
+    }).state
+
+    const effect = endSelectGesture(marquee, { world: { x: 100, y: 40 }, shift: true })
 
     expect(effect).toMatchObject({ kind: 'marquee', operation: 'add' })
   })
 
-  it('subtracts from the selection when a marquee is released holding Alt', () => {
-    const effect = endSelectGesture(
-      { mode: 'marquee', originWorld: { x: 0, y: 0 }, lastCanvas: { x: 50, y: 10 } },
-      { world: { x: 100, y: 40 }, shift: false, alt: true },
-    )
+  it('subtracts from the selection when a marquee begins with Alt alone', () => {
+    const begin = beginSelectGesture({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const marquee = advanceSelectGesture(begin, {
+      world: { x: 100, y: 0 },
+      canvas: { x: 50, y: 10 },
+      shift: false,
+      alt: true,
+    }).state
+
+    const effect = endSelectGesture(marquee, { world: { x: 100, y: 40 }, shift: false, alt: true })
 
     expect(effect).toMatchObject({ kind: 'marquee', operation: 'subtract' })
   })

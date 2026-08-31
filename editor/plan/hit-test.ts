@@ -135,14 +135,24 @@ function withId<Entity extends { id: string }>(
  * then stairs, and only when none is in range does the search fall back to the
  * room whose polygon contains the point. Stairs rank where they paint, over the
  * floor fills but under the wall strokes, so a click where a run meets the wall
- * it lands on still selects the wall.
+ * it lands on still selects the wall. When `options.dimensionsVisible` is
+ * `false`, the dimension pass is skipped entirely so the hit falls through to
+ * whatever else is beneath a hidden dimension.
  */
-export function hitTest(scene: SceneGraph, point: Point, tolerance: number): string | null {
+// eslint-disable-next-line max-params -- options carries the overlay-visibility flag; grouping it with the required args would obscure the click target's paint-order contract
+export function hitTest(
+  scene: SceneGraph,
+  point: Point,
+  tolerance: number,
+  options?: { dimensionsVisible?: boolean },
+): string | null {
+  const dimensionsVisible = options?.dimensionsVisible ?? true
   const ids = new Set(buildSpatialIndex(indexEntities(scene)).queryPoint(point, tolerance))
+  const dimensionCandidates = dimensionsVisible ? withId(scene.dimensions, ids) : []
   return (
     hitTestOpenings(withId(scene.openings, ids), point, tolerance) ??
     hitTestWalls(withId(scene.walls, ids), point, tolerance) ??
-    hitTestDimensions(withId(scene.dimensions, ids), point, tolerance) ??
+    hitTestDimensions(dimensionCandidates, point, tolerance) ??
     hitTestStairs(withId(scene.stairs, ids), point) ??
     containingRoomId(withId(scene.rooms, ids), point)
   )

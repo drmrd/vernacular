@@ -368,6 +368,37 @@ describe('EditorShell', () => {
     expect(onOpenRecent).toHaveBeenCalledWith('b')
   })
 
+  it('renames the project from the project menu, but ignores a blank or whitespace-only name', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    const { session } = renderShell()
+
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('menuitem', { name: /^rename$/i }))
+    const input = screen.getByRole('textbox', { name: /project name/i })
+    await user.clear(input)
+    await user.type(input, 'Cedar Hollow{Enter}')
+
+    // The renamed project shows up everywhere the shell names it: the header
+    // breadcrumb and the rail's project identity block.
+    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
+    expect(within(breadcrumb).getByText('Cedar Hollow')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Cedar Hollow' })).toBeInTheDocument()
+    expect(session.getProject().meta.name).toBe('Cedar Hollow')
+
+    // A blank or whitespace-only name is not a real rename, so the shown name
+    // stays exactly what it was before this second attempt.
+    await user.click(screen.getByRole('button', { name: /project/i }))
+    await user.click(screen.getByRole('menuitem', { name: /^rename$/i }))
+    const blankInput = screen.getByRole('textbox', { name: /project name/i })
+    await user.clear(blankInput)
+    await user.type(blankInput, '   {Enter}')
+
+    expect(within(breadcrumb).getByText('Cedar Hollow')).toBeInTheDocument()
+    expect(session.getProject().meta.name).toBe('Cedar Hollow')
+  })
+
   it('restores or discards from the recovery prompt and hides it otherwise', async () => {
     vi.stubGlobal('navigator', {})
     const onRestore = vi.fn()

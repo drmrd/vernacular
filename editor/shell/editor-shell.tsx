@@ -22,7 +22,7 @@ import {
   useSetActiveFloorId,
   type AutosaveStatus,
 } from '../../bridge'
-import { addFloor, renameFloor, setUnits } from '../../core'
+import { addFloor, renameFloor, renameProject, setUnits } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -121,8 +121,24 @@ function SaveStatusReadout({ status }: { status: AutosaveStatus }) {
   )
 }
 
-function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
+// Owns the session's project-rename wiring: the current name and the handler the
+// project menu calls, discarding blank input rather than dispatching an empty rename.
+function useProjectRename() {
   const session = useEditorSession()
+  // Subscribes this header to session changes (e.g. a project rename) so the
+  // breadcrumb and project menu re-render with the current project name.
+  useSceneGraph()
+  const projectName = session.getProject().meta.name
+  const handleRename = (name: string) => {
+    const trimmedName = name.trim()
+    if (trimmedName === '') return
+    session.dispatch(renameProject(trimmedName))
+  }
+  return { session, projectName, handleRename }
+}
+
+function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
+  const { session, projectName, handleRename } = useProjectRename()
   return (
     <div className="editor-shell__toolbar">
       <div className="editor-shell__brand">
@@ -136,8 +152,10 @@ function ShellHeader({ saveStatus, projectControls }: ShellHeaderProps) {
         onOpenFolder={projectControls.onOpenFolder}
         onOpenRecent={projectControls.onOpenRecent}
         recentProjects={projectControls.recentProjects}
+        projectName={projectName}
+        onRename={handleRename}
       />
-      <Breadcrumb projectName={session.getProject().meta.name} />
+      <Breadcrumb projectName={projectName} />
       <div className="editor-shell__toolbar-actions">
         <ViewToggles />
         <ZoomControl />

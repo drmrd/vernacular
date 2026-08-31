@@ -11,19 +11,19 @@ function selectionStatusOf(page: Page) {
     .filter({ hasText: /No entity selected|^Selected: / })
 }
 
-// Exercises the live three-dimensional pane's pointer selection, now gated behind the nav
-// toolbar's "Select" toggle. Runs only in the GPU scene-webgl Playwright project (the config
-// routes scene-*.spec.ts there) and self-skips without WebGPU.
+// Exercises the live three-dimensional pane's pointer selection. Click-to-select is ON by
+// default; the nav toolbar's "Select" toggle is an opt-out (and walk mode gates selection
+// separately). Runs only in the GPU scene-webgl Playwright project (the config routes
+// scene-*.spec.ts there) and self-skips without WebGPU.
 //
-// Click-to-select is a user toggle that is OFF by default: a pointer click commits a selection
-// only when the toggle is on (and the camera is not in walk mode). The assertions are
-// semantic, not a committed pixel baseline: a closed room is drawn so its floor slab fills the
-// framed view, the canvas settles, and the selection status region plus the settled frame
-// report whether the click wrote the shared selection. That proves the toggle gates the
-// pointer pick without depending on the non-deterministic WebGPU backend's exact pixels.
+// The assertions are semantic, not a committed pixel baseline: a closed room is drawn so its
+// floor slab fills the framed view, the canvas settles, and the selection status region plus
+// the settled frame report whether the click wrote the shared selection. That proves the
+// default-on pointer pick (and its opt-out) without depending on the non-deterministic
+// WebGPU backend's exact pixels.
 
-test.describe('Live three-dimensional toggle-gated selection', () => {
-  test('clicking an entity does not select it while the Select toggle is off', async ({ page }) => {
+test.describe('Live three-dimensional default-on selection', () => {
+  test('clicking an entity selects it by default (the settled frame changes)', async ({ page }) => {
     await page.goto('/')
     const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
@@ -32,12 +32,40 @@ test.describe('Live three-dimensional toggle-gated selection', () => {
     const region = page.getByRole('region', { name: /3d preview/i })
     const selectionStatus = selectionStatusOf(page)
 
-    // The Select toggle is off by default, so no pointer click should select anything.
+    // The Select toggle is on by default, so a first click selects with no setup.
     await expect(region.getByRole('button', { name: /select/i })).toHaveAttribute(
       'aria-pressed',
-      'false',
+      'true',
     )
     await expect(selectionStatus).toHaveText('No entity selected')
+    const before = await stableFrame(canvas)
+
+    const box = await canvas.boundingBox()
+    if (box === null) throw new Error('the 3D canvas has no bounding box')
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+
+    // The click commits a selection: the status names an entity and the settled frame
+    // changes because the selection outline appeared.
+    await expect(selectionStatus).toHaveText(/^Selected: /)
+    const after = await stableFrame(canvas)
+    expect(after.equals(before)).toBe(false)
+  })
+
+  test('disabling the Select toggle makes a click inert', async ({ page }) => {
+    await page.goto('/')
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    const canvas = await drawnRoomCanvas(page)
+    const region = page.getByRole('region', { name: /3d preview/i })
+    const selectionStatus = selectionStatusOf(page)
+
+    // Opt out of click-to-select via the nav toolbar toggle.
+    const selectToggle = region.getByRole('button', { name: /select/i })
+    await selectToggle.click()
+    await expect(selectToggle).toHaveAttribute('aria-pressed', 'false')
+    await expect(selectionStatus).toHaveText('No entity selected')
+
     const before = await stableFrame(canvas)
 
     const box = await canvas.boundingBox()
@@ -49,35 +77,6 @@ test.describe('Live three-dimensional toggle-gated selection', () => {
     await expect(selectionStatus).toHaveText('No entity selected')
     const after = await stableFrame(canvas)
     expect(after.equals(before)).toBe(true)
-  })
-
-  test('enabling the Select toggle lets a click outline the entity (the settled frame changes)', async ({
-    page,
-  }) => {
-    await page.goto('/')
-    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
-    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
-
-    const canvas = await drawnRoomCanvas(page)
-    const region = page.getByRole('region', { name: /3d preview/i })
-    const selectionStatus = selectionStatusOf(page)
-
-    // Turn on click-to-select via the nav toolbar toggle.
-    const selectToggle = region.getByRole('button', { name: /select/i })
-    await selectToggle.click()
-    await expect(selectToggle).toHaveAttribute('aria-pressed', 'true')
-
-    const before = await stableFrame(canvas)
-
-    const box = await canvas.boundingBox()
-    if (box === null) throw new Error('the 3D canvas has no bounding box')
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-
-    // The click now commits a selection: the status names an entity and the settled frame
-    // changes because the selection outline appeared.
-    await expect(selectionStatus).toHaveText(/^Selected: /)
-    const after = await stableFrame(canvas)
-    expect(after.equals(before)).toBe(false)
   })
 
   test('dragging to orbit the camera does not select the entity under the press', async ({

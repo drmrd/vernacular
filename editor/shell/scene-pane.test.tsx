@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
 import { ScenePane } from './scene-pane'
 
@@ -63,7 +63,7 @@ vi.mock('../../bridge', () => ({
         }
       })
     }
-    return <div data-testid="live-scene-canvas" />
+    return <div data-testid="live-scene-canvas" data-harness-ready="false" />
   },
   useSceneGraph: () => mockSceneGraph,
   useActiveFloorId: () => 'g',
@@ -113,22 +113,47 @@ describe('ScenePane', () => {
     expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
   })
 
-  it('shows an empty state when WebGPU is available but the active floor has no geometry', () => {
+  it('keeps the live scene canvas mounted and overlays empty-floor guidance when the active floor has no geometry', async () => {
     vi.stubGlobal('navigator', { gpu: {} })
     mockSceneGraph = emptyGraph
 
     const { container } = render(<ScenePane />)
 
+    // The loading line owns the not-ready state, so mark the canvas ready
+    // before asserting the guidance (the readiness observer reacts async).
+    act(() => {
+      screen.getByTestId('live-scene-canvas').setAttribute('data-harness-ready', 'true')
+    })
+
     // The geometry-empty title and guidance copy from the design-system EmptyState.
-    expect(screen.getByText(/Nothing to show in 3D yet/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Nothing to show in 3D yet/i)).toBeInTheDocument()
     expect(screen.getByText(/Draw walls in plan view/i)).toBeInTheDocument()
     // Rendered through the EmptyState primitive, not a raw div.
     expect(container.querySelector('.ds-status--empty')).not.toBeNull()
-    // The live canvas must not mount when there is nothing to draw.
-    expect(screen.queryByTestId('live-scene-canvas')).toBeNull()
+    // The scene canvas subtree stays mounted underneath the guidance rather
+    // than being swapped out, so the toolbar, camera, and whole-building
+    // scope toggle it hosts keep their mounted state.
+    expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
     // The shell pane already owns the labeled region, so the EmptyState is
     // rendered with asRegion={false}: no nested region landmark.
     expect(screen.queryByRole('region')).toBeNull()
+  })
+
+  it('does not unmount the live scene canvas when the active floor transitions from having geometry to being empty', () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = graphWithGeometry
+
+    const { rerender } = render(<ScenePane />)
+    const canvasBeforeTransition = screen.getByTestId('live-scene-canvas')
+
+    mockSceneGraph = emptyGraph
+    rerender(<ScenePane />)
+
+    // The same canvas DOM node persists across the transition instead of
+    // being torn down and rebuilt when the empty-floor overlay appears, so
+    // the toolbar, camera, and whole-building scope toggle it hosts do not
+    // lose their mounted state.
+    expect(screen.getByTestId('live-scene-canvas')).toBe(canvasBeforeTransition)
   })
 
   it('shows a loading fallback while the live 3D canvas boots, then the canvas', async () => {
@@ -152,5 +177,86 @@ describe('ScenePane', () => {
       expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
     })
     expect(screen.queryByText(/Preparing 3D view/i)).toBeNull()
+  })
+
+  it('shows the loading placeholder for a canvas that mounts late already not-ready', async () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = graphWithGeometry
+    // The canvas suspends first, so it is not present in the tree at mount
+    // time. When it resolves, it is inserted into the pane subtree already
+    // carrying data-harness-ready="false" rather than being created empty
+    // and mutated afterward. The readiness observer must catch this
+    // insertion, not just later attribute changes on an already-mounted node.
+    suspendSceneCanvasOnce = true
+
+    render(<ScenePane />)
+    expect(screen.getByText(/Preparing 3D view/i)).toBeInTheDocument()
+
+    resolveSceneCanvas?.()
+
+    const canvasNode = await screen.findByTestId('live-scene-canvas')
+    expect(canvasNode.getAttribute('data-harness-ready')).toBe('false')
+    expect(await screen.findByText(/building the scene/i)).toBeInTheDocument()
+
+    act(() => {
+      canvasNode.setAttribute('data-harness-ready', 'true')
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/building the scene/i)).toBeNull()
+    })
+  })
+
+  it('shows a quiet placeholder until the scene canvas signals its first frame is ready, then clears it', async () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = graphWithGeometry
+
+    render(<ScenePane />)
+
+    // The live canvas mounts right away (no Suspense in play here), but its
+    // data-harness-ready attribute starts at "false": the first frame has not
+    // settled yet. ScenePane observes that attribute from outside the canvas
+    // subtree, so a quiet loading line covers the gap instead of showing
+    // nothing while the scene assembles.
+    const canvasNode = screen.getByTestId('live-scene-canvas')
+    expect(canvasNode.getAttribute('data-harness-ready')).toBe('false')
+    expect(screen.getByText(/building the scene/i)).toBeInTheDocument()
+
+    // The canvas subtree flips the attribute once its first frame settles.
+    act(() => {
+      canvasNode.setAttribute('data-harness-ready', 'true')
+    })
+
+    // Attribute observation is asynchronous, so the placeholder clears on a
+    // later tick rather than synchronously with the mutation above.
+    await waitFor(() => {
+      expect(screen.queryByText(/building the scene/i)).toBeNull()
+    })
+  })
+
+  it('shows only the loading placeholder over an empty floor until the scene is ready, then swaps to the empty-floor guidance', async () => {
+    vi.stubGlobal('navigator', { gpu: {} })
+    mockSceneGraph = emptyGraph
+
+    render(<ScenePane />)
+
+    // The floor has no geometry and the canvas has not reported its first
+    // frame yet, so both overlay conditions are true at once. The loading
+    // placeholder must win: the empty-floor guidance is not also shown.
+    const canvasNode = screen.getByTestId('live-scene-canvas')
+    expect(canvasNode.getAttribute('data-harness-ready')).toBe('false')
+    expect(screen.getByText(/building the scene/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Nothing to show in 3D yet/i)).toBeNull()
+
+    // Once the canvas signals its first frame is ready, the empty-floor
+    // guidance takes over and the loading line clears.
+    act(() => {
+      canvasNode.setAttribute('data-harness-ready', 'true')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Nothing to show in 3D yet/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/building the scene/i)).toBeNull()
   })
 })

@@ -1,4 +1,9 @@
-import { builtinElementTypes, openingKindOfType, type ElementType } from '../../core'
+import {
+  builtinElementTypes,
+  humanizeElementTypeId,
+  openingKindOfType,
+  type ElementType,
+} from '../../core'
 
 // An opening renders under the Windows group when the shared door-or-window
 // classifier reads its type as a window; every door family reads as a door. This
@@ -6,15 +11,6 @@ import { builtinElementTypes, openingKindOfType, type ElementType } from '../../
 // list, so a new window family groups correctly without another edit here.
 function isWindow(type: ElementType): boolean {
   return openingKindOfType(type.id) === 'window'
-}
-
-// A readable label from the element-type id: kebab-case to Title Case so the
-// option text reads as English without a separate label store.
-function humanizeId(id: string): string {
-  return id
-    .split('-')
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(' ')
 }
 
 // A cased opening is the one opening with nothing hung in it: a trimmed hole a
@@ -26,7 +22,7 @@ const CASED_OPENING_GLOSS = ' (open doorway)'
 
 /** The option text for an opening type, as the chooser and the inspector list it. */
 export function openingTypeLabel(type: ElementType): string {
-  const name = humanizeId(type.id)
+  const name = humanizeElementTypeId(type.id)
   return type.id === CASED_OPENING_ID ? `${name}${CASED_OPENING_GLOSS}` : name
 }
 

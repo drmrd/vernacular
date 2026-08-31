@@ -18,20 +18,22 @@ sourceFiles:
     editor/plan/use-plan-selection.ts,
   ]
 status: current
-updated: 2026-06-27
+updated: 2026-08-30
 ---
 
 # ADR-0126: Crossing marquee and additive selection set operations
 
 ## Status
 
-Accepted, landed. The selection marquee now reads its drag direction and its
-modifier keys. A left-to-right drag keeps the window (contained) rule; a
-right-to-left drag also grabs entities it merely crosses. On release Shift adds
-the marquee result to the standing selection, Alt removes it, and neither
-replaces it. This builds on ADR-0032, which shipped window-only marquee that
-replaced the selection and named both of these as work for a later editing
-slice.
+Accepted, landed. Amended on 2026-08-30 for issue #605: the set operation now
+locks when the marquee begins, not when the pointer lifts. The selection marquee
+reads its drag direction and its modifier keys. A left-to-right drag keeps the
+window (contained) rule; a right-to-left drag also grabs entities it merely
+crosses. At the drag-threshold flip, Shift alone starts a replace marquee, Alt
+alone starts a subtractive one, and Shift with Alt starts an additive one. The
+modifiers held at release play no part. This builds on ADR-0032, which shipped
+window-only marquee that replaced the selection and named both of these as work
+for a later editing slice.
 
 ## Context
 
@@ -66,14 +68,19 @@ rectangle edge is selected.
 ### The pure gesture machine carries the rule and the operation
 
 `editor/plan/select-gesture.ts` resolves the marquee on release into an effect
-that now carries a `mode` and an `operation`. The mode is `crossing` when the
+that carries a `mode` and an `operation`. The mode is `crossing` when the
 release point lies left of the press origin and `window` otherwise, so direction
-alone picks the geometry rule with no extra key. The operation is `subtract` when
-Alt is held at release, `add` when Shift is held, and `replace` when neither is.
-A marquee begins on either Shift or Alt, so an Alt drag can open a subtractive
-marquee without first holding Shift. The machine stays a pure function unit-tested
-in plain Node; the modifier flags are optional inputs so existing callers and
-tests are unaffected.
+alone picks the geometry rule with no extra key. Since the 2026-08-30 amendment
+the operation locks at the moment the gesture crosses the drag threshold and
+becomes a marquee: Shift alone locks `replace`, Alt alone locks `subtract`, and
+Shift with Alt locks `add`. The marquee state carries the locked operation and
+the release handler reads it from the state, so the modifiers held at release
+cannot change the outcome. The original design read the modifiers at release
+(Shift added, Alt subtracted, neither replaced), which left replace reachable
+only by releasing the modifiers before the pointer lifted and let a late slip of
+the fingers change the operation mid-gesture. A marquee still begins on either
+Shift or Alt, so an Alt drag opens a subtractive marquee without first holding
+Shift, and the machine stays a pure function unit-tested in plain Node.
 
 ### A pure resolver folds the marquee into the selection
 
@@ -96,11 +103,12 @@ or core change was needed.
 
 - The marquee covers both selection rules a vector editor expects, chosen by drag
   direction, with no new key to learn and no change to the live marquee overlay.
-- Shift-marquee now adds rather than replaces, which lines up with shift-click
-  toggling and with the issue's request. Replace is still reachable by releasing
-  the modifiers before the pointer lifts. A user who relied on a second
-  Shift-marquee clearing the first now grows the selection instead; this is the
-  intended additive behavior.
+- A plain Shift marquee replaces the selection, so one gesture says "select
+  exactly these" and a second Shift marquee restarts the selection rather than
+  growing it. Add stays one gesture away on Shift with Alt, and Alt keeps
+  subtracting. Under the original release-time rule a Shift marquee added, and
+  replace was reachable only through the release-order trick; issue #605
+  recorded that gap and the 2026-08-30 amendment closed it.
 - The set operations live in a pure resolver and the rule and operation live in
   the pure gesture machine, so the pointer hook stays coverage-excluded glue and
   the behavior is exercised by unit tests plus a marquee multi-select end-to-end

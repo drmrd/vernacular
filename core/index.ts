@@ -130,6 +130,7 @@ export type {
 export { ELEMENT_TYPE_REGISTRY_VERSION, builtinElementTypes } from './registries/element-types'
 export type { OpeningKind } from './registries/opening-kind'
 export { openingKindOfType } from './registries/opening-kind'
+export { humanizeElementTypeId } from './registries/element-type-label'
 export type { Command, CommandHandler } from './commands/command'
 export { CommandRegistry } from './commands/command-registry'
 export type { DispatcherOptions } from './commands/dispatcher'

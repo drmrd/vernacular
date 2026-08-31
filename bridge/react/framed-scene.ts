@@ -1,10 +1,13 @@
 import {
+  ceilingHeight,
   frameSceneCamera,
   kelvinToLinearRgb,
+  DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_COLOR_TEMPERATURE_K,
   type Bounds3,
   type CameraPose,
   type Point,
+  type RoomSceneNode,
   type SceneGraph,
   type SceneNode,
   type SurfaceTreatment,
@@ -34,6 +37,25 @@ export interface FramedScene {
   // The floor's room outlines, in plan millimeters, so the per-frame near-wall
   // fade can tell whether the orbit camera sits inside the building footprint.
   roomPolygons: readonly (readonly Point[])[]
+  // The building's top elevation, in Three.js world millimeters, so the near-wall fade
+  // can also treat a camera hovering above the roof as outside even when its plan
+  // position falls within a room's footprint. Computed per floor by floorTopWorld
+  // (issue #609).
+  buildingTopWorld?: number
+}
+
+/**
+ * A floor's reach toward the building top, in Three.js world millimeters: its elevation
+ * plus the tallest of its rooms' ceiling heights, or DEFAULT_CEILING_HEIGHT_MM when it has
+ * no rooms. Shared by buildFramedScene's single-floor case and the reconciler's per-floor
+ * assembly (issue #609) so the two stay in lockstep by construction.
+ */
+export function floorTopWorld(elevation: number, rooms: readonly RoomSceneNode[]): number {
+  const ceilingHeights = rooms.map((room) => ceilingHeight(room))
+  return (
+    elevation +
+    (ceilingHeights.length > 0 ? Math.max(...ceilingHeights) : DEFAULT_CEILING_HEIGHT_MM)
+  )
 }
 
 /**
@@ -63,7 +85,11 @@ export function buildFramedScene(
   const bounds = sceneBounds(root)
   const pose = frameSceneCamera(bounds)
   const roomPolygons = graph.rooms.map((room) => room.polygon)
-  return { root, pose, bounds, nearWallTargets, roomPolygons }
+  // Callers pass zero or one floor node; a multi-floor graph would only pick up the
+  // first node's elevation here.
+  const floorElevation = graph.nodes[0]?.elevation ?? 0
+  const buildingTopWorld = floorTopWorld(floorElevation, graph.rooms)
+  return { root, pose, bounds, nearWallTargets, roomPolygons, buildingTopWorld }
 }
 
 /**
@@ -81,6 +107,9 @@ export interface FloorAssembly {
   subgroups: SceneRoot[]
   entities: NearWallEnrollmentEntities
   roomPolygons: readonly (readonly Point[])[]
+  // This floor's own reach toward the building top, in world millimeters (floorTopWorld).
+  // frameStackedScene takes the highest of these across every floor.
+  topWorld: number
 }
 
 /**
@@ -153,5 +182,6 @@ export function frameStackedScene(
     bounds,
     nearWallTargets,
     roomPolygons: floors.flatMap((floor) => floor.roomPolygons),
+    buildingTopWorld: Math.max(...floors.map((floor) => floor.topWorld)),
   }
 }

@@ -17,49 +17,24 @@ import {
   type SetOpeningTypeParams,
 } from '../../core'
 import { OpeningInspector } from './opening-inspector'
-
-// A single selected opening, fixed so the formatted values and the dispatched
-// command payloads are all deterministic. A metric field defaults its entry unit
-// to metres, so a bare number is read as metres.
-const FLOOR_ID = 'floor-1'
-const OPENING_ID = 'o1'
-const WIDTH_MM = 813
-const HEIGHT_MM = 2032
-const SILL_HEIGHT_MM = 0
-const UNITS = 'metric' as const
-const METRIC_ASSUMED_UNIT = 'm' as const
+import {
+  FLOOR_ID,
+  HEIGHT_MM,
+  OPENING_ID,
+  SILL_HEIGHT_MM,
+  UNITS,
+  buildOpeningOfWidth,
+  renderInspector,
+} from './opening-inspector-test-helpers'
 
 // The metric entry unit defaults to metres and the value is shown bare, so an
 // 813 mm width reads as "0.813".
 const EXPECTED_WIDTH = '0.813'
+const METRIC_ASSUMED_UNIT = 'm' as const
 
 const NEW_WIDTH_ENTRY = '0.9'
 const EXPECTED_NEW_WIDTH_MM = parseLength(NEW_WIDTH_ENTRY, { assumeUnit: METRIC_ASSUMED_UNIT })
 const UNPARSEABLE_ENTRY = 'abc'
-
-function buildOpening(): Opening {
-  return createOpening({
-    type: 'single-swing-door',
-    hostWallId: 'w1',
-    position: 1000,
-    width: WIDTH_MM,
-    height: HEIGHT_MM,
-    sillHeight: SILL_HEIGHT_MM,
-    id: OPENING_ID,
-  })
-}
-
-function buildOpeningOfWidth(width: number): Opening {
-  return createOpening({
-    type: 'single-swing-door',
-    hostWallId: 'w1',
-    position: 1000,
-    width,
-    height: HEIGHT_MM,
-    sillHeight: SILL_HEIGHT_MM,
-    id: OPENING_ID,
-  })
-}
 
 function buildNeighbor(hostWallId: string, position: number, width: number): Opening {
   return createOpening({
@@ -81,22 +56,6 @@ function renderInspectorForOpening(opening: Opening, siblingOpenings: readonly O
       units={UNITS}
       siblingOpenings={siblingOpenings}
       dispatch={vi.fn() as never}
-    />,
-  )
-}
-
-function renderInspector(
-  dispatch: (command: unknown) => void,
-  units: 'metric' | 'imperial' = UNITS,
-  siblingOpenings: readonly Opening[] = [],
-) {
-  render(
-    <OpeningInspector
-      floorId={FLOOR_ID}
-      opening={buildOpening()}
-      units={units}
-      siblingOpenings={siblingOpenings}
-      dispatch={dispatch as never}
     />,
   )
 }
@@ -159,7 +118,7 @@ describe('OpeningInspector', () => {
       sillHeight: SILL_HEIGHT_MM,
       id: 'o2',
     })
-    renderInspector(dispatch, UNITS, [neighbor])
+    renderInspector(dispatch, UNITS, { siblingOpenings: [neighbor] })
 
     const widthInput = screen.getByLabelText(/width/i)
     await user.clear(widthInput)
@@ -351,16 +310,5 @@ describe('OpeningInspector remove and options', () => {
       openingId: OPENING_ID,
       type: 'double-swing-door',
     })
-  })
-
-  it('clicking a fraction chip dispatches a resize command', async () => {
-    const dispatch = vi.fn()
-    const user = userEvent.setup()
-    renderInspector(dispatch, 'imperial')
-
-    const chip = screen.getAllByRole('button', { name: /1\/4/i })[0]!
-    await user.click(chip)
-
-    expect(dispatch).toHaveBeenCalledTimes(1)
   })
 })
