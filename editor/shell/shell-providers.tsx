@@ -1,5 +1,6 @@
-import { useMemo, type ReactNode } from 'react'
+import { useContext, useMemo, useState, type ReactNode } from 'react'
 import {
+  ActiveFloorContext,
   createEnvironmentSessionStore,
   createPerceivedColorStore,
   createSceneSessionStore,
@@ -105,24 +106,29 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
  * opening placement type reach the canvas glue and the inspector and tools panels from
  * one source. The viewport provider reads the active floor's already-drawn walls and
  * rooms so a document that opens with content already on it frames that content
- * instead of the default scale.
+ * instead of the default scale. That read happens once, at mount, straight off the
+ * session and active-floor store's non-reactive getters: later scene-graph mutations
+ * must not re-render this whole provider pyramid just to recompute a value the
+ * viewport only ever consumes on its first render.
  */
 export function ShellProviders({ onSave, children }: ProviderLayerProps) {
   const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
-  const sceneGraph = useSceneGraph()
-  const activeFloorId = useActiveFloorId()
-  const activeFloorGraph = useMemo(
-    () => sceneGraphForFloor(sceneGraph, activeFloorId),
-    [sceneGraph, activeFloorId],
-  )
-  const initialContent: ViewportInitialContent = useMemo(
-    () => ({
+  const session = useEditorSession()
+  const activeFloorStore = useContext(ActiveFloorContext)
+  if (activeFloorStore === null) {
+    throw new Error('ShellProviders must be used within an ActiveFloorProvider')
+  }
+  const [initialContent] = useState<ViewportInitialContent>(() => {
+    const activeFloorGraph = sceneGraphForFloor(
+      session.getSceneGraph(),
+      activeFloorStore.getActiveFloorId(),
+    )
+    return {
       walls: activeFloorGraph.walls,
       rooms: activeFloorGraph.rooms,
       size: { width: PLAN_WIDTH, height: PLAN_HEIGHT },
-    }),
-    [activeFloorGraph],
-  )
+    }
+  })
   return (
     <CommandPaletteProvider>
       <SnapPreferencesProvider store={snapPreferences}>
