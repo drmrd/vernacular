@@ -53,9 +53,9 @@
 
 **Interfaces:** the live view maintains the two session facts. Applying the stored session sets `sessionRestored`. The ambient-occlusion pipeline clears `frameDrawnSincePipelineSettled` when a build starts, and the first frame drawn after settlement sets it again, so the first-frame signal re-arms on each settlement instead of latching once (`useAmbientOcclusion` already exposes `onSettled`; the live caller currently omits it).
 
-- [ ] **Step 1 (RED):** failing test pinning the producer lifecycle across a simulated restore, build, settlement, and drawn frame.
-- [ ] **Step 2 (GREEN):** minimal producer wiring through the seams above.
-- [ ] **Step 3 (BLUE):** review and refactor as in Task 2.
+- [x] **Step 1 (RED):** failing test pinning the producer lifecycle across a simulated restore, build, settlement, and drawn frame.
+- [x] **Step 2 (GREEN):** minimal producer wiring through the seams above.
+- [x] **Step 3 (BLUE):** review and refactor as in Task 2.
 
 ## Task 3: The committed visual spec and its baseline
 

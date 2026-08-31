@@ -48,10 +48,10 @@
 
 ## Task 3: Derive the patches and the minimum delta (nothing committed)
 
-- [ ] **Step 1:** Render `?fixture=scene-harness&scene=finish-contrast&paint=finish-contrast`. Pick a floor patch inside the specular response and a wall patch away from it; if the pose shows no specular lobe, adjust the state's camera pose (Task 2 files only) until it does.
-- [ ] **Step 2:** Sample both patches five times; record the mean `perceptualDistance` between them and the noise band.
-- [ ] **Step 3:** Apply the matte-values probe edit to the registry, rebuild, sample five times, record the collapsed delta, restore the file, confirm `git diff --stat` is empty.
-- [ ] **Step 4:** Set `FINISH_CONTRAST_MINIMUM` between the two readings with a margin of at least twice the noise band.
+- [x] **Step 1:** Render `?fixture=scene-harness&scene=finish-contrast&paint=finish-contrast`. Pick a floor patch inside the specular response and a wall patch away from it; if the pose shows no specular lobe, adjust the state's camera pose (Task 2 files only) until it does.
+- [x] **Step 2:** Sample both patches five times; record the mean `perceptualDistance` between them and the noise band.
+- [x] **Step 3:** Apply the matte-values probe edit to the registry, rebuild, sample five times, record the collapsed delta, restore the file, confirm `git diff --stat` is empty.
+- [x] **Step 4:** Set `FINISH_CONTRAST_MINIMUM` between the two readings with a margin of at least twice the noise band.
 
 ## Task 4: The committed gate spec
 
@@ -59,13 +59,13 @@
 
 **Interfaces:** consumes `sampleCanvasColor` from `./scene-helpers`, `srgbToOkLab`, `colorFromOkLab`, `perceptualDistance` from `core/`; produces `FLOOR_SPECULAR_PATCH`, `WALL_MATTE_PATCH`, `FINISH_CONTRAST_MINIMUM` with the derivation comment.
 
-- [ ] **Step 1:** Write the spec: WebGL 2 guard, navigate, wait for `data-harness-ready`, sample both patches, assert the perceptual distance is at least `FINISH_CONTRAST_MINIMUM`.
-- [ ] **Step 2:** Five consecutive runs of `pnpm exec playwright test --project=scene-webgl scene-finish-contrast`; expected five passes.
-- [ ] **Step 3:** Re-apply the registry probe, rebuild, run once (expected FAIL), restore, rebuild, run once (expected PASS).
-- [ ] **Step 4:** Full check chain; `git status --short e2e/tests` shows only the new spec.
-- [ ] **Step 5:** Commit as `test(e2e): gate the specular contrast between semi-gloss and matte finishes`.
+- [x] **Step 1:** Write the spec: WebGL 2 guard, navigate, wait for `data-harness-ready`, sample both patches, assert the perceptual distance is at least `FINISH_CONTRAST_MINIMUM`.
+- [x] **Step 2:** Five consecutive runs of `pnpm exec playwright test --project=scene-webgl scene-finish-contrast`; expected five passes.
+- [x] **Step 3:** Re-apply the registry probe, rebuild, run once (expected FAIL), restore, rebuild, run once (expected PASS).
+- [x] **Step 4:** Full check chain; `git status --short e2e/tests` shows only the new spec.
+- [x] **Step 5:** Commit as `test(e2e): gate the specular contrast between semi-gloss and matte finishes`.
 
 ## Task 5: Reviews before the lane closes
 
-- [ ] **Step 1:** `pnpm rgb:audit --range origin/main..HEAD` exits zero (two cycles plus one exempt `test(e2e)` commit).
-- [ ] **Step 2:** `/clean-code-review` on the branch diff, then `/review`; hold the branch for the landing window.
+- [x] **Step 1:** `pnpm rgb:audit --range origin/main..HEAD` exits zero (two cycles plus one exempt `test(e2e)` commit).
+- [x] **Step 2:** `/clean-code-review` on the branch diff, then `/review`; hold the branch for the landing window.
