@@ -23,6 +23,7 @@ import {
   type UnitSystem,
 } from '../../core'
 import { useAssetCache, useEditorSession, useSceneGraph, type EditorSession } from '../../bridge'
+import { useNotifications } from '../design-system'
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
 import type { PreviewSegment } from './draw-plan'
 import type { DrawableUnderlay } from './draw-underlay'
@@ -107,6 +108,7 @@ export interface UnderlayProviderProps {
 
 export function UnderlayProvider({ children }: UnderlayProviderProps) {
   const session = useEditorSession()
+  const { error } = useNotifications()
   const activeTool = useActiveTool()
   const assets = useAssetCache()
   const graph = useSceneGraph()
@@ -116,7 +118,7 @@ export function UnderlayProvider({ children }: UnderlayProviderProps) {
   const cacheRef = useRef<BitmapCache>(new Map())
   const cache = cacheRef.current
 
-  const loadImage = useLoadImage(session, cache, assets)
+  const loadImage = useLoadImage({ session, cache, assets, notify: error })
   const arming = useCalibrationArming(activeTool)
   const decodeTick = useResolveUnderlaysOnOpen(graph, assets, cache)
   const resolveDrawables = useCallback(
