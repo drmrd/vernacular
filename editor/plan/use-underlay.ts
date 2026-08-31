@@ -201,8 +201,11 @@ function armedUnderlayNode(graph: SceneGraph, armedUnderlayId: string): Underlay
  */
 export function commitCalibration(segment: PreviewSegment, commit: CalibrationCommit): boolean {
   const node = armedUnderlayNode(commit.graph, commit.armedUnderlayId)
+  if (node === null) {
+    return false
+  }
   const knownMm = parseKnownDistance(commit.knownDistanceText, ASSUMED_UNIT_BY_UNITS[commit.units])
-  if (node === null || knownMm === undefined) {
+  if (knownMm === undefined) {
     return false
   }
   const pixelStart = worldToPixel(segment.start, node.placement)
