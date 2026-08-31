@@ -25,6 +25,8 @@ const defaultSceneSession: SceneSessionState = {
   openDoorIds: new Set<string>(),
   savedCameraPosition: null,
   walkPose: null,
+  sessionRestored: false,
+  frameDrawnSincePipelineSettled: false,
 }
 
 describe('createSceneSessionStore', () => {
