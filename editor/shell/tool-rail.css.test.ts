@@ -16,8 +16,9 @@ function bodyOf(selector: string): string {
 
 // Sections are told apart by a kerf line rather than by cards, tones, or shadows
 // (ADR-0165). The rail's Edit-layer section sits below the Tools section, so it
-// carries the kerf on its own top edge, with the same margin-and-padding air the
-// design system's other section separators use.
+// carries the kerf on its own top edge. Its margin is deliberately wider than the
+// panel-slot kerf's --space-3, because the Edit layer toggle is the rail's own
+// control and reads as a distinct cluster from the tool rack above it.
 describe('tool-rail.css', () => {
   it('separates the edit-layer section from the tools section with a kerf line', () => {
     const editLayer = bodyOf('.tool-rail__edit-layer')
