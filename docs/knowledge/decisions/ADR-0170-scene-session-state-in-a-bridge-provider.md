@@ -146,6 +146,18 @@ mount used to reseed the walk pose from the live camera every time the mode togg
 it now reads the last saved walk pose instead, so the walk position holds steady across an orbit
 detour.
 
+The 2026-08-31 rendering-realism campaign extended the store with two readiness facts,
+`sessionRestored` and `frameDrawnSincePipelineSettled`, and the provider now derives a
+`data-live-view-ready` attribute from them on a layout-neutral host element around its children.
+The `useLiveViewReadiness` hook turns producer events into those facts: the live canvas notes the
+session as applied on mount, the ambient-occlusion takeover notes each pipeline build's start and
+settlement, and a per-frame signal notes the first frame drawn after settlement, re-arming on
+every build rather than latching once. The attribute exists for the WebGPU visual-regression
+gate, which must not capture a frame that predates session restore or a pipeline rebuild. One
+known gap: a build cancelled by deactivation suppresses its settlement note, so the drawn-frame
+fact stays false until the next build or a remount; the fix belongs in the takeover's
+deactivation path and is tracked in a follow-up issue.
+
 A true fix for the orbit pivot target needs a read-back method added to
 `engine/scene/orbit-controls.ts`'s `OrbitController`, which is an engine-layer change outside this
 decision's scope; track it as a follow-up rather than folding an engine edit into a bridge-layer
