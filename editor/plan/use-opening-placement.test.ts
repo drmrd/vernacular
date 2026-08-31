@@ -1,6 +1,15 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { act, renderHook, cleanup } from '@testing-library/react'
-import { createOpening, type Opening, type SceneGraph, type WallSceneNode } from '../../core'
+import {
+  createOpening,
+  OPENING_NODE_PREFIX,
+  type Command,
+  type Opening,
+  type PlaceOpeningParams,
+  type SceneGraph,
+  type WallSceneNode,
+} from '../../core'
+import { createSelectionStore } from '../../bridge'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { OpeningToolProvider, useOpeningTool } from './opening-tool-context'
@@ -107,6 +116,33 @@ describe('useOpeningPlacement', () => {
 
     expect(run.dispatch).toHaveBeenCalledTimes(1)
     expect(run.refusal()).toBeNull()
+  })
+
+  it('selects the opening it just placed', () => {
+    const dispatch = vi.fn()
+    const session = sessionWithOpenings([], dispatch)
+    const selection = createSelectionStore()
+    const { result } = renderHook(
+      () =>
+        useOpeningPlacement({
+          session,
+          graph: graphWithOneWall(),
+          tool: 'place-opening',
+          viewport: VIEWPORT,
+          placementType: DOOR_TYPE,
+          selection,
+        }),
+      { wrapper: OpeningToolProvider },
+    )
+
+    act(() => {
+      result.current.onPointerDown(clickAt(WALL_MIDPOINT_X, 0))
+    })
+
+    const [command] = dispatch.mock.calls[0] as [Command<PlaceOpeningParams>]
+    expect(selection.getSelectedIds()).toEqual(
+      new Set([`${OPENING_NODE_PREFIX}${command.params.opening.id}`]),
+    )
   })
 
   it('says a click clear of every wall had nothing to host the opening', () => {
