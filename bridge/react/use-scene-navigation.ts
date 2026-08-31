@@ -5,38 +5,18 @@ import type { SceneSessionStore } from '../scene-session/scene-session-store'
 
 import type { PresetRequest } from './scene-camera-effects'
 import type { NavMode, PresetChoice } from './scene-nav-toolbar'
-import { useSceneSessionOrLocal } from './scene-session-context'
-
-/**
- * The writes navigation makes to the session store, bundled so the hook that returns them
- * reads as one list of names. Each toggle reads the field back out of the store as it fires,
- * because the store, not a rendered snapshot, is what holds the current value.
- */
-function useSceneSessionWriters(store: SceneSessionStore) {
-  return useMemo(
-    () => ({
-      setMode: (mode: NavMode) => store.updateSceneSession({ cameraMode: mode }),
-      toggleSelection: () =>
-        store.updateSceneSession({ selectionEnabled: !store.getSceneSession().selectionEnabled }),
-      toggleRevealInterior: () =>
-        store.updateSceneSession({ revealInterior: !store.getSceneSession().revealInterior }),
-      notePresetApplied: (pose: CameraPose) => store.updateSceneSession({ presetPose: pose }),
-      clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
-    }),
-    [store],
-  )
-}
+import { useSceneSessionStoreOrLocal } from './scene-session-context'
 
 /**
  * The per-view camera navigation state: the active mode, whether the user has taken control
  * of the camera, and the pose the last camera preset actually landed on. The state lives in
  * the scene session store, so it outlasts the preview subtree's unmount when the view mode
- * changes (ADR-0172). Session state either way, never in the model or undo. Reset clears user
- * control, which lets FrameCamera refit the model to the viewport through its `active`
- * transition.
+ * changes (ADR-0170). The state stays out of the model and undo history whichever store backs
+ * it. Reset clears user control, which lets FrameCamera refit the model to the viewport
+ * through its `active` transition.
  */
 export function useSceneNavigation() {
-  const store = useSceneSessionOrLocal()
+  const store = useSceneSessionStoreOrLocal()
   const session = useSyncExternalStore(store.subscribe, store.getSceneSession)
   const writers = useSceneSessionWriters(store)
   // A saved camera position is the mark of a viewer who was steering, so a mount that finds
@@ -78,6 +58,26 @@ export function useSceneNavigation() {
     presetPose: session.presetPose,
     notePresetApplied: writers.notePresetApplied,
   }
+}
+
+/**
+ * The writes navigation makes to the session store, bundled so the hook that returns them
+ * reads as one list of names. Each toggle reads the field back out of the store as it fires,
+ * because the store, not a rendered snapshot, is what holds the current value.
+ */
+function useSceneSessionWriters(store: SceneSessionStore) {
+  return useMemo(
+    () => ({
+      setMode: (mode: NavMode) => store.updateSceneSession({ cameraMode: mode }),
+      toggleSelection: () =>
+        store.updateSceneSession({ selectionEnabled: !store.getSceneSession().selectionEnabled }),
+      toggleRevealInterior: () =>
+        store.updateSceneSession({ revealInterior: !store.getSceneSession().revealInterior }),
+      notePresetApplied: (pose: CameraPose) => store.updateSceneSession({ presetPose: pose }),
+      clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
+    }),
+    [store],
+  )
 }
 
 /**

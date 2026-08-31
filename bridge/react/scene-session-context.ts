@@ -3,7 +3,7 @@
  *
  * Switching the view mode unmounts the preview subtree, so hooks inside it cannot own the
  * session state they read and write. This context hands them a store that lives above the
- * subtree instead. ADR-0172 records the decision.
+ * subtree instead. ADR-0170 records the decision.
  */
 import { createContext, useContext, useState, useSyncExternalStore } from 'react'
 import {
@@ -29,7 +29,7 @@ export function useSceneSessionStore(): SceneSessionStore {
  * tests, and they have to keep working there. A provider is what lifts the store above the
  * view-mode unmount, so it is the provider, not the hook, that makes the session survive.
  */
-export function useSceneSessionOrLocal(): SceneSessionStore {
+export function useSceneSessionStoreOrLocal(): SceneSessionStore {
   const providedStore = useContext(SceneSessionContext)
   // Created on every mount so the hook order stays the same whether or not a provider is
   // above; the local store goes unused when one is.

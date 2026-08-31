@@ -10,7 +10,7 @@ import {
  *
  * Switching the view mode unmounts the preview subtree, so any state held inside it is
  * discarded. Keeping the state in a store that outlives the subtree lets a returning viewer
- * pick up the camera, scope, and reveal settings they left behind. ADR-0172 records the
+ * pick up the camera, scope, and reveal settings they left behind. ADR-0170 records the
  * decision.
  *
  * The shape copies `createEnvironmentSessionStore`: a factory closing over a snapshot plus a
