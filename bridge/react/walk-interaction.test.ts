@@ -8,9 +8,9 @@ import {
   type SceneGraph,
   type WalkState,
 } from '../../core'
-import { buildScene, NeutralMaterialProvider } from '../../engine'
+import { buildScene, NeutralMaterialProvider, type SceneRoot } from '../../engine'
 
-import { interactFromWalk, tickOpenings } from './walk-interaction'
+import { interactFromWalk, restoreOpenings, tickOpenings } from './walk-interaction'
 
 const DOOR_ID = 'opening:front-door'
 
@@ -52,6 +52,25 @@ const facingDoor: WalkState = { position: { x: 1000, y: 1700, z: -1000 }, yaw: 0
 
 // A whole-second tick covers the full swing in one step.
 const FULL_STEP = 1
+
+const FULLY_OPEN = 1
+
+// The pose an opening's fill group sits at, as plain numbers, so two independently
+// built scenes can be compared for the same pose.
+function fillGroupPose(root: SceneRoot, openingId: string) {
+  const group = root.getObjectByName(openingId)
+  if (group === undefined) {
+    throw new Error(`no fill group was built for ${openingId}`)
+  }
+  return {
+    position: { x: group.position.x, y: group.position.y, z: group.position.z },
+    rotationY: group.rotation.y,
+  }
+}
+
+function sceneWith(door: OpeningSceneNode): SceneRoot {
+  return buildScene(graphWith(door), new NeutralMaterialProvider())
+}
 
 describe('walk interaction', () => {
   it('opens the looked-at opening, swings its fill group, then closes it on a second use', () => {
@@ -144,5 +163,54 @@ describe('walk interaction', () => {
     // which it runs parallel to, so it misses the swung leaf and toggles nothing.
     const stillOpen = interactFromWalk(aimedAtSwungLeaf, [door], open)
     expect(isOpeningOpen(stillOpen, DOOR_ID)).toBe(true)
+  })
+})
+
+describe('restoreOpenings', () => {
+  it('shows a door carried in from a saved session already open, not swinging from shut', () => {
+    // Two scenes of the same door: one swung open a frame at a time, one restored
+    // in a single step. The restored door must land on the same open pose.
+    const door = frontDoor()
+    const swungOpen = sceneWith(door)
+    const restored = sceneWith(door)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const openness = new Map<string, number>()
+
+    tickOpenings(
+      { root: swungOpen, openings: [door], interaction: open, openness: new Map() },
+      FULL_STEP,
+    )
+    restoreOpenings({ root: restored, openings: [door], interaction: open, openness })
+
+    expect(openness.get(DOOR_ID)).toBe(FULLY_OPEN)
+    expect(fillGroupPose(restored, DOOR_ID)).toEqual(fillGroupPose(swungOpen, DOOR_ID))
+  })
+
+  it('leaves an opening the saved session did not hold open at its built pose', () => {
+    const door = frontDoor()
+    const root = sceneWith(door)
+    const builtPose = fillGroupPose(root, DOOR_ID)
+    const openness = new Map<string, number>()
+
+    restoreOpenings({ root, openings: [door], interaction: emptyOpeningInteraction(), openness })
+
+    expect(openness.has(DOOR_ID)).toBe(false)
+    expect(fillGroupPose(root, DOOR_ID)).toEqual(builtPose)
+  })
+
+  it('leaves an opening already part way through its swing at the openness it carries', () => {
+    const door = frontDoor()
+    const root = sceneWith(door)
+    const partWayOpen = 0.25
+    const openness = new Map([[DOOR_ID, partWayOpen]])
+
+    restoreOpenings({
+      root,
+      openings: [door],
+      interaction: toggleOpening(emptyOpeningInteraction(), DOOR_ID),
+      openness,
+    })
+
+    expect(openness.get(DOOR_ID)).toBe(partWayOpen)
   })
 })

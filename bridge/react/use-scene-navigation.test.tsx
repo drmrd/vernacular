@@ -20,6 +20,8 @@ const SAMPLE_WALK_POSE: WalkState = {
   pitch: -0.4,
 }
 
+const SAMPLE_OPEN_DOORS: ReadonlySet<string> = new Set(['opening:front-door'])
+
 function providerAround(store: SceneSessionStore) {
   return function SceneSessionWrapper({ children }: { children: ReactNode }) {
     return <SceneSessionProvider store={store}>{children}</SceneSessionProvider>
@@ -230,5 +232,33 @@ describe('useSceneNavigation inside a scene session provider', () => {
 
     expect(store.getSceneSession().walkPose).toEqual(SAMPLE_WALK_POSE)
     expect(secondMount.result.current.walkPose).toEqual(SAMPLE_WALK_POSE)
+  })
+})
+
+describe('useSceneNavigation open doors inside a scene session provider', () => {
+  it('holds no open doors for a fresh session and the saved ones once the session has them', () => {
+    const freshStore = createSceneSessionStore()
+    const touredStore = createSceneSessionStore({ openDoorIds: SAMPLE_OPEN_DOORS })
+
+    const fresh = renderNavigationOn(freshStore)
+    const toured = renderNavigationOn(touredStore)
+
+    expect(fresh.result.current.openDoorIds.size).toBe(0)
+    expect(toured.result.current.openDoorIds).toEqual(SAMPLE_OPEN_DOORS)
+  })
+
+  it('hands a remounted navigation the doors the departing walker left open', () => {
+    const store = createSceneSessionStore()
+    const firstMount = renderNavigationOn(store)
+
+    act(() => {
+      firstMount.result.current.noteOpenDoors(SAMPLE_OPEN_DOORS)
+    })
+    firstMount.unmount()
+
+    const secondMount = renderNavigationOn(store)
+
+    expect(store.getSceneSession().openDoorIds).toEqual(SAMPLE_OPEN_DOORS)
+    expect(secondMount.result.current.openDoorIds).toEqual(SAMPLE_OPEN_DOORS)
   })
 })
