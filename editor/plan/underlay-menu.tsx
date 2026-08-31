@@ -5,19 +5,32 @@ import { UnderlayRow, type UnderlayPanelProps } from './underlay-panel'
 import '../design-system/menu-surface.css'
 import './underlay-menu.css'
 
+interface DismissOnOutsideOptions {
+  open: boolean
+  dismissOnOutsidePointer: boolean
+  rootRef: RefObject<HTMLDivElement | null>
+  close: () => void
+}
+
 // Close the flyout when Escape is pressed or a pointer goes down outside the
 // menu root, mirroring the dropdown dismissal pattern used elsewhere in the
 // shell. The listeners are attached only while the flyout is open.
-function useDismissOnOutside(
-  open: boolean,
-  rootRef: RefObject<HTMLDivElement | null>,
-  close: () => void,
-): void {
+function useDismissOnOutside({
+  open,
+  dismissOnOutsidePointer,
+  rootRef,
+  close,
+}: DismissOnOutsideOptions): void {
   useEffect(() => {
     if (!open) {
       return
     }
     const onPointerDown = (event: PointerEvent) => {
+      // An armed calibration is measured by two clicks on the canvas, both of
+      // which land outside the menu root, so dismissing here would cancel it.
+      if (!dismissOnOutsidePointer) {
+        return
+      }
       const root = rootRef.current
       if (root && event.target instanceof Node && !root.contains(event.target)) {
         close()
@@ -34,7 +47,7 @@ function useDismissOnOutside(
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [open, rootRef, close])
+  }, [open, dismissOnOutsidePointer, rootRef, close])
 }
 
 interface UnderlayMenuListProps extends UnderlayPanelProps {
@@ -86,10 +99,15 @@ const UnderlayMenuList: FC<UnderlayMenuListProps> = ({
 // The trigger carries an "Underlay" label and the standard dropdown a11y
 // attributes; clicking it opens a flyout with the underlay actions.
 export const UnderlayMenu: FC<UnderlayPanelProps> = (props) => {
-  const { onLoadImage } = props
+  const { onLoadImage, armedUnderlayId } = props
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  useDismissOnOutside(open, rootRef, () => setOpen(false))
+  useDismissOnOutside({
+    open,
+    dismissOnOutsidePointer: !armedUnderlayId,
+    rootRef,
+    close: () => setOpen(false),
+  })
   return (
     <div className="underlay-menu" ref={rootRef}>
       <Button aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
