@@ -104,6 +104,24 @@ describe('AppFrame collapse', () => {
   })
 })
 
+describe('AppFrame collapse direction', () => {
+  it('points each pane toggle toward its own collapse edge and names the action per state', async () => {
+    const user = userEvent.setup()
+    renderFrame()
+
+    const railToggle = screen.getByRole('button', { name: /collapse tools/i })
+    expect(railToggle).toHaveTextContent('‹')
+
+    const inspectorToggle = screen.getByRole('button', { name: /collapse inspector/i })
+    expect(inspectorToggle).toHaveTextContent('›')
+
+    await user.click(inspectorToggle)
+
+    const collapsedInspectorToggle = screen.getByRole('button', { name: /expand inspector/i })
+    expect(collapsedInspectorToggle).toHaveTextContent('‹')
+  })
+})
+
 describe('AppFrame rail disclosure', () => {
   it('opens the rail through a Tools disclosure that flips aria-expanded and data-rail-open', async () => {
     const user = userEvent.setup()
