@@ -31,7 +31,7 @@ sourceFiles:
     docs/plans/2026-06-11-vernacular-format-preservation.md,
   ]
 status: current
-updated: 2026-06-11
+updated: 2026-08-31
 ---
 
 # ADR-0051: Forward-compatibility preservation and load-time validation for the floor plan format
@@ -76,7 +76,10 @@ a passthrough carrier on the typed model versus a raw-document overlay in the co
    value wins on shared keys; a previous-only key is restored), reconciles id-arrays by identity, and
    reconciles the keyed maps `roomOverrides` and `paint` by key, so deletions are never resurrected.
    It reads the prior `vernacular.json` at save time, so it is stateless and needs no app-lifecycle
-   coupling.
+   coupling. One refinement (2026-08-31): a keyed-collection entry whose `kind` discriminant
+   differs between the prior and saved values is replaced outright rather than key-union merged.
+   The overlay predates the surface-treatment discriminated union, and a field graft across a kind
+   change resurrected the old variant's fields, producing an entry no variant of the union accepts.
 
    The rejected alternative, a typed carrier field on every entity, would add a non-domain member to
    the "small, honest CORE" the format prizes (and to the generated schema), and would have to be
