@@ -2,9 +2,9 @@ import {
   builtinElementTypes,
   humanizeElementTypeId,
   openingKindOfType,
+  openingTypeHasFill,
   type ElementType,
 } from '../../core'
-import { openingTypeHasFill } from '../../core/registries/opening-kind'
 
 // An opening renders under the Windows group when the shared door-or-window
 // classifier reads its type as a window; every door family reads as a door. This
