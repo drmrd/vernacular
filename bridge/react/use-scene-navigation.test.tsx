@@ -173,4 +173,30 @@ describe('useSceneNavigation inside a scene session provider', () => {
     expect(steered.result.current.userControlled).toBe(true)
     expect(unsteered.result.current.userControlled).toBe(false)
   })
+
+  it('offers no camera position for a fresh session and the saved one once the session holds it', () => {
+    const freshStore = createSceneSessionStore()
+    const steeredStore = createSceneSessionStore({ savedCameraPosition: SAVED_CAMERA_POSITION })
+
+    const fresh = renderNavigationOn(freshStore)
+    const steered = renderNavigationOn(steeredStore)
+
+    expect(fresh.result.current.savedCameraPosition).toBeNull()
+    expect(steered.result.current.savedCameraPosition).toEqual(SAVED_CAMERA_POSITION)
+  })
+
+  it('hands a remounted navigation the camera position the departing mount noted', () => {
+    const store = createSceneSessionStore()
+    const firstMount = renderNavigationOn(store)
+
+    act(() => {
+      firstMount.result.current.noteCameraLeft(SAVED_CAMERA_POSITION)
+    })
+    firstMount.unmount()
+
+    const secondMount = renderNavigationOn(store)
+
+    expect(store.getSceneSession().savedCameraPosition).toEqual(SAVED_CAMERA_POSITION)
+    expect(secondMount.result.current.savedCameraPosition).toEqual(SAVED_CAMERA_POSITION)
+  })
 })
