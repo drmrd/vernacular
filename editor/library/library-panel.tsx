@@ -77,7 +77,7 @@ const NO_MATCHES_MESSAGE = 'No matches'
 const CLEAR_FILTERS_LABEL = 'Clear filters'
 // The key use-furniture-keyboard binds while the place-furniture tool is active,
 // named where the ghost it turns is waiting to land.
-const ROTATE_HINT = 'R to rotate'
+const ROTATE_KEY_NAME = 'R'
 // The picker's accept filter carries the format detail, so the action names the
 // outcome rather than the container.
 const IMPORT_LABEL = 'Import a 3D model'
@@ -258,7 +258,9 @@ function LibraryBody(props: LibraryBodyProps): ReactElement | null {
       {armed ? (
         <p className="library-panel__placement-hint">
           Click the canvas to place {armed.name}{' '}
-          <span className="library-panel__placement-key">{ROTATE_HINT}</span>
+          <span className="library-panel__placement-key">
+            <kbd>{ROTATE_KEY_NAME}</kbd> to rotate
+          </span>
         </p>
       ) : null}
       <FilterStatus filters={filters} setFilters={setFilters} noMatches={noMatches} />
