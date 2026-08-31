@@ -31,6 +31,7 @@ export {
   cameraFacesWallOutside,
   prepareNearWallTransparency,
   restoreNearWallTransparency,
+  restoreUnenrolledNearWallTargets,
   updateNearWallTransparency,
 } from './scene/near-wall-transparency'
 export type { NearWallEnrollmentEntities } from './scene/near-wall-transparency-enrollment'

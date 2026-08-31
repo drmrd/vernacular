@@ -371,3 +371,31 @@ export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
     }
   }
 }
+
+/**
+ * Restores the targets a shrinking enrollment set left behind. Enrollment keys on the
+ * exterior wall set, so an edit that changes room topology can reclassify a wall from
+ * exterior to interior while it is mid-fade. The wall then drops out of the set with its
+ * materials still at the fade opacity, and no later frame reaches them, since every update
+ * and restore runs over the current set. Sweeping what left the set before tracking is
+ * dropped puts those materials back on their baseline (issue #526).
+ */
+export function restoreUnenrolledNearWallTargets(
+  previous: NearWallTarget[],
+  current: NearWallTarget[],
+): void {
+  if (previous === current) {
+    return
+  }
+  // A rebuild hands back fresh target objects over reused materials, so what survived
+  // enrollment is read off the material instances rather than off target identity.
+  const stillEnrolled = new Set(
+    current.flatMap((target) => target.materials.map((record) => record.material)),
+  )
+  restoreNearWallTransparency(
+    previous.map((target) => ({
+      ...target,
+      materials: target.materials.filter((record) => !stillEnrolled.has(record.material)),
+    })),
+  )
+}
