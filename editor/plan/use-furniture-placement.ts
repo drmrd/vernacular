@@ -1,7 +1,12 @@
 import { useCallback, type PointerEvent } from 'react'
-import { createFurnitureInstance, placeFurniture, type Point } from '../../core'
+import {
+  createFurnitureInstance,
+  FURNITURE_NODE_PREFIX,
+  placeFurniture,
+  type Point,
+} from '../../core'
 import type { LibraryItem } from '../../storage'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
@@ -15,6 +20,7 @@ interface FurniturePlacementDeps {
   armed: LibraryItem | null
   /** The placement ghost's rotation in degrees applied to the dropped instance. */
   rotation: number
+  selection: SelectionStore
 }
 
 export interface FurniturePlacement {
@@ -34,7 +40,7 @@ function eventToWorld(event: PointerEvent<HTMLCanvasElement>, viewport: Viewport
  * coverage-excluded glue validated by the place-furniture end-to-end journey.
  */
 export function usePlaceFurniture(deps: FurniturePlacementDeps): FurniturePlacement {
-  const { session, tool, viewport, activeFloorId, armed, rotation } = deps
+  const { session, tool, viewport, activeFloorId, armed, rotation, selection } = deps
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
       if (tool !== 'place-furniture' || armed === null || activeFloorId === null) {
@@ -50,8 +56,12 @@ export function usePlaceFurniture(deps: FurniturePlacementDeps): FurniturePlacem
         ...(armed.name !== '' ? { name: armed.name } : {}),
       })
       session.dispatch(placeFurniture(activeFloorId, furniture))
+      // Selection is bridge-owned and outside undo history (ADR-0020); selecting the
+      // just-placed furniture here, rather than through the command, shows it in the
+      // inspector without adding an undo step or disarming the placement tool.
+      selection.select(`${FURNITURE_NODE_PREFIX}${furniture.id}`)
     },
-    [session, tool, viewport, activeFloorId, armed, rotation],
+    [session, tool, viewport, activeFloorId, armed, rotation, selection],
   )
 
   return { onPointerDown }

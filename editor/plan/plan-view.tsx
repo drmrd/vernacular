@@ -306,6 +306,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     activeFloorId,
     furniture,
     selectedIds,
+    selection,
   })
   const stairPlacement = useStairPlacement({ session, tool, viewport, activeFloorId })
   const stairEditing = useStairEditing({
