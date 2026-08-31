@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   FLIP_OPENING,
@@ -310,5 +310,14 @@ describe('OpeningInspector remove and options', () => {
       openingId: OPENING_ID,
       type: 'double-swing-door',
     })
+  })
+
+  it('groups the cased opening under its own Passages optgroup in the type select', () => {
+    renderInspector(vi.fn())
+
+    const typeSelect = screen.getByRole('combobox', { name: /opening type/i })
+    const passages = within(typeSelect).getByRole('group', { name: 'Passages' })
+
+    expect(within(passages).getByRole('option', { name: /cased opening/i })).toBeInTheDocument()
   })
 })

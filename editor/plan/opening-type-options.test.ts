@@ -48,8 +48,8 @@ describe('groupedOpeningTypes', () => {
 
 describe('openingTypeLabel', () => {
   function typeById(id: string) {
-    const { doors, windows } = groupedOpeningTypes()
-    const found = [...doors, ...windows].find((type) => type.id === id)
+    const { doors, windows, passages = [] } = groupedOpeningTypes()
+    const found = [...doors, ...windows, ...passages].find((type) => type.id === id)
     if (found === undefined) {
       throw new Error(`No opening type ${id}`)
     }
