@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import {
   setSiteLocation,
   setSiteNorthBearing,
@@ -66,6 +66,9 @@ interface LabeledNumberInputProps {
 }
 
 function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNumberInputProps) {
+  // An explicit id/htmlFor association, not just the wrapping <label>, is what
+  // VoiceOver needs to announce the field's name (#576).
+  const id = useId()
   const commitHandlers = useCommitOnBlur({
     // A cleared number input reads back as NaN; never commit an empty field.
     isCommittable: !Number.isNaN(value),
@@ -73,9 +76,9 @@ function LabeledNumberInput({ label, value, onValueChange, onCommit }: LabeledNu
     onCommit,
   })
   return (
-    <label>
+    <label htmlFor={id}>
       {label}
-      <input type="number" value={value} {...commitHandlers} />
+      <input id={id} type="number" value={value} {...commitHandlers} />
     </label>
   )
 }
@@ -88,15 +91,17 @@ interface LabeledTextInputProps {
 }
 
 function LabeledTextInput({ label, value, onValueChange, onCommit }: LabeledTextInputProps) {
+  // Same explicit association as LabeledNumberInput, for the same reason (#576).
+  const id = useId()
   const commitHandlers = useCommitOnBlur({
     isCommittable: true,
     applyChange: (event) => onValueChange(event.target.value),
     onCommit,
   })
   return (
-    <label>
+    <label htmlFor={id}>
       {label}
-      <input type="text" value={value} {...commitHandlers} />
+      <input id={id} type="text" value={value} {...commitHandlers} />
     </label>
   )
 }
