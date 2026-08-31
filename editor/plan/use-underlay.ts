@@ -179,7 +179,14 @@ export interface CalibrationCommit {
   armedUnderlayId: string
   units: UnitSystem
   knownDistanceText: string
+  /** Tells the user why a calibration was dropped; called once per cancelled commit. */
+  notify: (message: string) => void
 }
+
+// The two reasons a calibration cannot complete, in the words the user reads.
+const MISSING_UNDERLAY_MESSAGE = 'The underlay being calibrated is no longer on this floor.'
+const MISSING_KNOWN_DISTANCE_MESSAGE =
+  'Enter the known distance, such as 3 m, before the second click.'
 
 // The armed underlay's scene node, matched by its raw underlay id against the
 // namespaced node id; null when the armed underlay is no longer present.
@@ -192,17 +199,20 @@ function armedUnderlayNode(graph: SceneGraph, armedUnderlayId: string): Underlay
  * Complete a calibration: read the entered known distance, convert the measured
  * world segment to pixels, derive the new scale, and dispatch the calibrated
  * placement. Any cancel (no armed node, blank or unparseable entry) dispatches
- * nothing. Lives here so the plan-view canvas glue stays composition-only.
+ * nothing and reports why through notify, so the click never fails in silence.
+ * Lives here so the plan-view canvas glue stays composition-only.
  * Returns whether a calibration was dispatched, so the caller can tell a
  * completed calibration from a cancelled one.
  */
 export function commitCalibration(segment: PreviewSegment, commit: CalibrationCommit): boolean {
   const node = armedUnderlayNode(commit.graph, commit.armedUnderlayId)
   if (node === null) {
+    commit.notify(MISSING_UNDERLAY_MESSAGE)
     return false
   }
   const knownMm = parseKnownDistance(commit.knownDistanceText, ASSUMED_UNIT_BY_UNITS[commit.units])
   if (knownMm === undefined) {
+    commit.notify(MISSING_KNOWN_DISTANCE_MESSAGE)
     return false
   }
   const pixelStart = worldToPixel(segment.start, node.placement)
@@ -224,6 +234,7 @@ export interface CalibrationInteractionDeps {
   viewport: Viewport
   units: UnitSystem
   underlay: UnderlayContextValue
+  notify: (message: string) => void
 }
 
 export interface CalibrationInteraction {
@@ -237,7 +248,7 @@ export interface CalibrationInteraction {
 // completing second click, which also disarms the underlay; other tools are
 // inert here.
 function applyCalibrationClick(world: Point, deps: CalibrationInteractionDeps): void {
-  const { session, graph, units, underlay } = deps
+  const { session, graph, units, underlay, notify } = deps
   const { armedUnderlayId } = underlay
   const result = advanceCalibrationTool(underlay.calibrationToolState, world)
   underlay.setCalibrationToolState(result.state)
@@ -248,6 +259,7 @@ function applyCalibrationClick(world: Point, deps: CalibrationInteractionDeps): 
       armedUnderlayId,
       units,
       knownDistanceText: underlay.knownDistanceText,
+      notify,
     })
     if (calibrated) {
       underlay.stopCalibration()
@@ -296,6 +308,8 @@ export interface PlanUnderlayLayerDeps {
   // The floor whose underlays are shown (the active floor); null before any floor
   // is selected.
   activeFloorId: string | null
+  /** Tells the user why a calibration was dropped; called once per cancelled commit. */
+  notify: (message: string) => void
 }
 
 export interface PlanUnderlayLayer {
@@ -309,7 +323,7 @@ export interface PlanUnderlayLayer {
  * Keeps the underlay layer's session/graph plumbing out of the canvas glue.
  */
 export function usePlanUnderlayLayer(deps: PlanUnderlayLayerDeps): PlanUnderlayLayer {
-  const { session, graph, tool, viewport, activeFloorId } = deps
+  const { session, graph, tool, viewport, activeFloorId, notify } = deps
   const underlay = useUnderlay()
   const project = session.getProject()
   const floorId = activeFloorId ?? project.floors[0]?.id
@@ -324,6 +338,7 @@ export function usePlanUnderlayLayer(deps: PlanUnderlayLayerDeps): PlanUnderlayL
     viewport,
     units: project.meta.units,
     underlay,
+    notify,
   })
   return { underlays, calibration }
 }
