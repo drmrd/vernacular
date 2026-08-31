@@ -12,11 +12,11 @@
 
 ## Global Constraints
 
-- **Allowed files:** modify `bridge/react/scene-session-provider.tsx` (and its unit test) plus, only if the readiness fact must originate beside the render seam, `bridge/scene-session/scene-session-store.ts`; create `e2e/tests/live-view-visual-regression.spec.ts` and its `-darwin` snapshot. Playwright config: STOP and report if the new spec does not fall into a suitable existing project by its current matching rules; do not edit shared config unilaterally.
+- **Allowed files:** modify `bridge/react/scene-session-provider.tsx` (and its unit test) plus, only if the readiness fact must originate beside the render seam, `bridge/scene-session/scene-session-store.ts`; create `e2e/tests/scene-live-view-visual-regression.spec.ts` and its `-darwin` snapshot. Playwright config: STOP and report if the new spec does not fall into a suitable existing project by its current matching rules; do not edit shared config unilaterally.
 - **No capture rests on a timeout.** Readiness is the attribute plus `stableFrame`; a `waitForTimeout` in the committed spec is a defect.
 - **Existing baselines stay byte-identical.** Only the one new `-darwin` snapshot lands.
 - **Tolerances are fixed up front** (spec slice A3): per-pixel `threshold` 0.35, `maxDiffPixelRatio` 0.05, five consecutive green runs required before the baseline commits.
-- **Worktree name must not contain `scene-`.** Use `vernacular.wt/live-view-pixel-gate`, branch `feat/live-view-webgpu-visual-regression`. Note the trap directly: the spec filename also avoids the `scene-` prefix so it stays out of the `scene-webgl` harness project.
+- **Worktree name must not contain `scene-`.** Use `vernacular.wt/live-view-pixel-gate`, branch `feat/live-view-webgpu-visual-regression`. The trap applies to the worktree path only. The committed spec is deliberately named with the `scene-` prefix (see the Task 1 outcome) so the existing `testMatch` rule routes it into the `scene-webgl` project, which carries the WebGPU launch flags and already hosts live-view specs. No Playwright config change.
 - **The browser pane freeze gotcha:** a hidden embedded pane never fires `requestAnimationFrame`, so all verification runs through Playwright, never through an embedded preview pane.
 - **Repo rules:** Conventional Commits, no em-dashes, no `Co-Authored-By` or `Claude-Session` trailers, author `Dan Moore <9156191+drmrd@users.noreply.github.com>`, ESLint zero problems (warnings count), `prettier --check .` repo-wide, no `git stash`. RED briefs must retrofit sibling fixtures and run `pnpm typecheck` when a public surface changes.
 - **Full check chain:** `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build`, each exit code verified on its own.
@@ -29,9 +29,11 @@
 
 ## Task 1: Prove WebGPU headless capture determinism (nothing committed)
 
-- [ ] **Step 1:** With a scratch spec in the scratchpad directory, drive the existing live-view path (`drawnRoomCanvas`, a camera preset click as in `e2e/tests/scene-camera-presets.spec.ts`, `stableFrame`) and save five consecutive PNG captures.
-- [ ] **Step 2:** Diff the five captures pairwise with the shell tolerances. All pairs within tolerance means GO.
+- [x] **Step 1:** With a scratch spec in the scratchpad directory, drive the existing live-view path (`drawnRoomCanvas`, a camera preset click as in `e2e/tests/scene-camera-presets.spec.ts`, `stableFrame`) and save five consecutive PNG captures.
+- [x] **Step 2:** Diff the five captures pairwise with the shell tolerances. All pairs within tolerance means GO.
 - [ ] **Step 3 (only on NO-GO):** Write up the observed divergence (which pixels, which pass), post it to issue #469, report the fallback to the owner, and end the lane cleanly.
+
+**Task 1 outcome (2026-08-31): GO, with one routing amendment.** The plain `chromium` project exposes `navigator.gpu` but `requestAdapter()` resolves to null, so the live view silently falls back to SwiftShader WebGL 2 there; a baseline in that project would miss the backend split this gate exists to catch. In the existing `scene-webgl` project the live view runs on the real Metal WebGPU adapter and five separate probe runs produced byte-identical captures (all ten pairwise diff ratios 0.000000 against the 0.05 budget). The committed spec is therefore named `scene-live-view-visual-regression.spec.ts` so it routes into `scene-webgl` by the current matching rules, and the WebGPU guard must test the adapter, not `navigator.gpu` presence. The captured canvas region includes the overlaid empty-selection and controls-hint text; the baseline keeps that chrome deliberately, matching the existing live-view captures. On linux CI the `scene-webgl` lane has no WebGPU adapter, so the spec self-skips there and the WebGL 2 contract of ADR-0152 stands.
 
 ## Task 2: The readiness attribute (one red-green-blue cycle)
 
@@ -45,11 +47,11 @@
 
 ## Task 3: The committed visual spec and its baseline
 
-**Files:** create `e2e/tests/live-view-visual-regression.spec.ts` plus its snapshot directory.
+**Files:** create `e2e/tests/scene-live-view-visual-regression.spec.ts` plus its snapshot directory.
 
 **Interfaces:** consumes `drawnRoomCanvas`, `stableFrame`, the readiness attribute from Task 2, and a named camera preset; produces the committed `-darwin` baseline.
 
-- [ ] **Step 1:** Write the spec: WebGPU guard (probe `navigator.gpu` and skip with a named reason when absent), load the fixture project, enter the 3D view, apply the top-down preset, wait for `data-live-view-ready="true"` then `stableFrame`, and `toHaveScreenshot` with `threshold: 0.35, maxDiffPixelRatio: 0.05`.
+- [ ] **Step 1:** Write the spec: WebGPU guard (request an adapter and skip with a named reason unless a non-null adapter arrives; `navigator.gpu` can be present while the adapter is null), load the fixture project, enter the 3D view, apply the top-down preset, wait for `data-live-view-ready="true"` then `stableFrame`, and `toHaveScreenshot` with `threshold: 0.35, maxDiffPixelRatio: 0.05`.
 - [ ] **Step 2:** Generate the baseline with `--update-snapshots=all`, then run five consecutive times; expected five passes.
 - [ ] **Step 3:** Apply the schematic-mode probe edit, rebuild, run once (expected FAIL on the comparison), restore, rebuild, run once (expected PASS).
 - [ ] **Step 4:** Full check chain; `git status --short` shows only the new spec, its one snapshot, and the Task 2 files.
