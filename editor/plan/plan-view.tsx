@@ -273,6 +273,7 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const { armed, rotation } = useFurniturePlacement()
   const authoring = usePlanAuthoring({
     session,
+    selection,
     tool,
     activeFloorId,
     graph,
@@ -290,7 +291,15 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
   const controls = useViewportControls(canvasRef, setViewport)
   useFitToContent({ walls: graph.walls, rooms: graph.rooms, size: PLAN_SIZE }, setViewport)
   const underlayLayer = usePlanUnderlayLayer({ session, graph, tool, viewport, activeFloorId })
-  const openingLayer = useOpeningLayer({ session, graph, tool, viewport, selectedIds, preferences })
+  const openingLayer = useOpeningLayer({
+    session,
+    graph,
+    tool,
+    viewport,
+    selectedIds,
+    preferences,
+    selection,
+  })
   const furnitureLayer = useFurnitureLayer({
     session,
     tool,
@@ -298,8 +307,9 @@ function usePlanLayers(canvasRef: CanvasRef, traceEnabled: boolean): PlanLayers 
     activeFloorId,
     furniture,
     selectedIds,
+    selection,
   })
-  const stairPlacement = useStairPlacement({ session, tool, viewport, activeFloorId })
+  const stairPlacement = useStairPlacement({ session, tool, viewport, activeFloorId, selection })
   const stairEditing = useStairEditing({
     session,
     selectedStair: singleSelectedStair(tool, selectedIds, graph.stairs),

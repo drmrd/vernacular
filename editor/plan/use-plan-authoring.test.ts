@@ -3,7 +3,8 @@ import { renderHook, act, cleanup } from '@testing-library/react'
 import { ADD_DIMENSION, ADD_WALL, PLACE_FURNITURE, PLACE_OPENING } from '../../core'
 import type { SceneGraph, WallSceneNode } from '../../core'
 import type { LibraryItem } from '../../storage'
-import type { EditorSession } from '../../bridge'
+import { createSelectionStore } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import { usePlanAuthoring } from './use-plan-authoring'
 
 afterEach(cleanup)
@@ -53,11 +54,22 @@ function armedItem(name: string): LibraryItem {
   }
 }
 
+// Supplies the selection store every usePlanAuthoring fixture needs alongside
+// its case-specific overrides, so an Enter placement has somewhere to select
+// what it drops.
+function planAuthoringDeps<Overrides extends object>(
+  overrides: Overrides,
+): Overrides & { selection: SelectionStore } {
+  return { selection: createSelectionStore(), ...overrides }
+}
+
 describe('usePlanAuthoring', () => {
   it('drops a wall vertex on Enter and moves the candidate with arrow keys', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
-    renderHook(() => usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }))
+    renderHook(() =>
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'draw-wall', activeFloorId: 'g' })),
+    )
 
     // First Enter anchors the run at the seeded origin; advanceWallTool from idle
     // commits no wall yet.
@@ -79,7 +91,7 @@ describe('usePlanAuthoring', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     const { result } = renderHook(() =>
-      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'draw-wall', activeFloorId: 'g' })),
     )
 
     act(() => dispatchWindowKey('Enter'))
@@ -93,7 +105,7 @@ describe('usePlanAuthoring', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     const { result } = renderHook(() =>
-      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'draw-wall', activeFloorId: 'g' })),
     )
 
     // Drop a vertex so the live region carries a keyboard-authoring announcement.
@@ -112,7 +124,7 @@ describe('usePlanAuthoring', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     const { result } = renderHook(() =>
-      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'draw-wall', activeFloorId: 'g' })),
     )
 
     // Anchor, nudge, commit one wall.
@@ -133,7 +145,7 @@ describe('usePlanAuthoring', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     const { result } = renderHook(() =>
-      usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }),
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'draw-wall', activeFloorId: 'g' })),
     )
 
     // Anchor the run and move the candidate, then abandon with Escape.
@@ -149,7 +161,7 @@ describe('usePlanAuthoring', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     const { result } = renderHook(() =>
-      usePlanAuthoring({ session, tool: 'dimension', activeFloorId: 'g' }),
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'dimension', activeFloorId: 'g' })),
     )
 
     // First Enter drops the dimension start at the seeded origin; advanceDimensionTool
@@ -172,7 +184,9 @@ describe('usePlanAuthoring', () => {
   it('dispatches nothing for a zero-length dimension', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
-    renderHook(() => usePlanAuthoring({ session, tool: 'dimension', activeFloorId: 'g' }))
+    renderHook(() =>
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'dimension', activeFloorId: 'g' })),
+    )
 
     // Two Enters on the unchanged candidate: advanceDimensionTool idles on a
     // same-point end, so no dimension lands.
@@ -189,13 +203,15 @@ describe('usePlanAuthoring', () => {
     // candidate projects onto it within DEFAULT_HIT_TOLERANCE_MM.
     const graph = graphWithWalls([wall('w1', { x: -500, y: 0 }, { x: 500, y: 0 })])
     const { result } = renderHook(() =>
-      usePlanAuthoring({
-        session,
-        tool: 'place-opening',
-        activeFloorId: 'g',
-        graph,
-        placementType: 'single-swing-door',
-      }),
+      usePlanAuthoring(
+        planAuthoringDeps({
+          session,
+          tool: 'place-opening',
+          activeFloorId: 'g',
+          graph,
+          placementType: 'single-swing-door',
+        }),
+      ),
     )
 
     act(() => dispatchWindowKey('Enter'))
@@ -215,13 +231,15 @@ describe('usePlanAuthoring', () => {
     // than DEFAULT_HIT_TOLERANCE_MM, so placeOpeningTarget returns null.
     const graph = graphWithWalls([wall('w1', { x: 9000, y: 9000 }, { x: 9500, y: 9000 })])
     const { result } = renderHook(() =>
-      usePlanAuthoring({
-        session,
-        tool: 'place-opening',
-        activeFloorId: 'g',
-        graph,
-        placementType: 'single-swing-door',
-      }),
+      usePlanAuthoring(
+        planAuthoringDeps({
+          session,
+          tool: 'place-opening',
+          activeFloorId: 'g',
+          graph,
+          placementType: 'single-swing-door',
+        }),
+      ),
     )
 
     act(() => dispatchWindowKey('Enter'))
@@ -235,13 +253,15 @@ describe('usePlanAuthoring', () => {
     const session = fakeSession(dispatch)
     const armed = armedItem('Wingback chair')
     const { result } = renderHook(() =>
-      usePlanAuthoring({
-        session,
-        tool: 'place-furniture',
-        activeFloorId: 'g',
-        armed,
-        rotation: 0,
-      }),
+      usePlanAuthoring(
+        planAuthoringDeps({
+          session,
+          tool: 'place-furniture',
+          activeFloorId: 'g',
+          armed,
+          rotation: 0,
+        }),
+      ),
     )
 
     // Enter drops a fresh instance of the armed item at the seeded origin
@@ -260,13 +280,15 @@ describe('usePlanAuthoring', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
     renderHook(() =>
-      usePlanAuthoring({
-        session,
-        tool: 'place-furniture',
-        activeFloorId: 'g',
-        armed: null,
-        rotation: 0,
-      }),
+      usePlanAuthoring(
+        planAuthoringDeps({
+          session,
+          tool: 'place-furniture',
+          activeFloorId: 'g',
+          armed: null,
+          rotation: 0,
+        }),
+      ),
     )
 
     // With nothing armed, Enter has no item to drop, so no command lands.
@@ -278,7 +300,9 @@ describe('usePlanAuthoring', () => {
   it('ignores Enter while a non-creative tool is active', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
-    renderHook(() => usePlanAuthoring({ session, tool: 'select', activeFloorId: 'g' }))
+    renderHook(() =>
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'select', activeFloorId: 'g' })),
+    )
 
     act(() => dispatchWindowKey('Enter'))
 
@@ -288,7 +312,9 @@ describe('usePlanAuthoring', () => {
   it('ignores Enter while a form control is focused', () => {
     const dispatch = vi.fn()
     const session = fakeSession(dispatch)
-    renderHook(() => usePlanAuthoring({ session, tool: 'draw-wall', activeFloorId: 'g' }))
+    renderHook(() =>
+      usePlanAuthoring(planAuthoringDeps({ session, tool: 'draw-wall', activeFloorId: 'g' })),
+    )
 
     const input = document.createElement('input')
     document.body.appendChild(input)

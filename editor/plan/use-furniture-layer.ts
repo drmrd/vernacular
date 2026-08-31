@@ -1,7 +1,7 @@
 import { useCallback, useState, type PointerEvent } from 'react'
 import { createFurnitureInstance, type FurnitureInstance, type Point } from '../../core'
 import type { LibraryItem } from '../../storage'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawableFurniture } from './draw-furniture'
 import { toDrawableFurniture } from './drawable-furniture'
@@ -24,6 +24,7 @@ export interface FurnitureLayerDeps {
   activeFloorId: string | null
   furniture: readonly FurnitureInstance[]
   selectedIds: ReadonlySet<string>
+  selection: SelectionStore
 }
 
 export interface FurniturePlacementHandlers {
@@ -72,10 +73,18 @@ function ghostDrawable({ armed, rotation, cursor, tool }: GhostInputs): Drawable
  * follows the pointer. Coverage-excluded glue like the layer it parallels.
  */
 export function useFurnitureLayer(deps: FurnitureLayerDeps): FurnitureLayer {
-  const { session, tool, viewport, activeFloorId, furniture, selectedIds } = deps
+  const { session, tool, viewport, activeFloorId, furniture, selectedIds, selection } = deps
   const { armed, rotation, rotateArmed } = useFurniturePlacement()
   const [cursor, setCursor] = useState<Point | null>(null)
-  const placement = usePlaceFurniture({ session, tool, viewport, activeFloorId, armed, rotation })
+  const placement = usePlaceFurniture({
+    session,
+    tool,
+    viewport,
+    activeFloorId,
+    armed,
+    rotation,
+    selection,
+  })
   useFurnitureKeyboard({ tool, rotateArmed })
   const selectedFurniture = singleSelectedFurniture(tool, selectedIds, furniture)
   const editing = useFurnitureEditing({ session, selectedFurniture, activeFloorId, viewport })

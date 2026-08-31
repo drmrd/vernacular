@@ -2,6 +2,7 @@ import {
   builtinElementTypes,
   humanizeElementTypeId,
   openingKindOfType,
+  openingTypeHasFill,
   type ElementType,
 } from '../../core'
 
@@ -30,12 +31,22 @@ function openingTypes(): ElementType[] {
   return Object.values(builtinElementTypes.entries).filter((type) => type.category === 'opening')
 }
 
-// Splits the opening-category element types into the two option groups the
-// chooser and the inspector both render: doors first, then windows.
-export function groupedOpeningTypes(): { doors: ElementType[]; windows: ElementType[] } {
+/** The option groups the chooser and the inspector both render. */
+export type GroupedOpeningTypes = {
+  doors: ElementType[]
+  windows: ElementType[]
+  passages: ElementType[]
+}
+
+// Splits the opening-category element types into the option groups the chooser
+// and the inspector both render. A passage has no fill (the leaf or sash a door
+// or window hangs), so it groups apart from doors rather than hiding among them.
+export function groupedOpeningTypes(): GroupedOpeningTypes {
   const types = openingTypes()
+  const hungOpenings = types.filter((type) => openingTypeHasFill(type.id))
   return {
-    doors: types.filter((type) => !isWindow(type)),
-    windows: types.filter(isWindow),
+    doors: hungOpenings.filter((type) => !isWindow(type)),
+    windows: hungOpenings.filter(isWindow),
+    passages: types.filter((type) => !openingTypeHasFill(type.id)),
   }
 }

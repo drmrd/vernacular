@@ -22,12 +22,34 @@ describe('groupedOpeningTypes', () => {
     expect(doorIds).toContain('single-swing-door')
     expect(windowIds).not.toContain('single-swing-door')
   })
+
+  it('sets the cased opening apart under passages instead of burying it among ten door types', () => {
+    const { doors, windows, passages } = groupedOpeningTypes()
+    const passageIds = passages.map((type) => type.id)
+    const doorIds = doors.map((type) => type.id)
+    const windowIds = windows.map((type) => type.id)
+
+    expect(passageIds).toContain('cased-opening')
+    expect(doorIds).not.toContain('cased-opening')
+    expect(windowIds).not.toContain('cased-opening')
+
+    for (const doorId of [
+      'single-swing-door',
+      'double-swing-door',
+      'pocket-door',
+      'barn-door',
+      'bifold-door',
+      'pivot-door',
+    ]) {
+      expect(doorIds).toContain(doorId)
+    }
+  })
 })
 
 describe('openingTypeLabel', () => {
   function typeById(id: string) {
-    const { doors, windows } = groupedOpeningTypes()
-    const found = [...doors, ...windows].find((type) => type.id === id)
+    const { doors, windows, passages = [] } = groupedOpeningTypes()
+    const found = [...doors, ...windows, ...passages].find((type) => type.id === id)
     if (found === undefined) {
       throw new Error(`No opening type ${id}`)
     }

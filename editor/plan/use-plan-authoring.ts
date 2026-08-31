@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { type Point, type SceneGraph } from '../../core'
 import type { LibraryItem } from '../../storage'
-import type { EditorSession } from '../../bridge'
+import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { isTextEntry } from './keyboard-guard'
 import { IDLE_WALL_TOOL, type WallToolState } from './wall-tool'
@@ -22,6 +22,7 @@ const ORIGIN: Point = { x: 0, y: 0 }
 
 export interface PlanAuthoringDeps {
   session: EditorSession
+  selection: SelectionStore
   tool: ToolId
   activeFloorId: string | null
   /** Wall graph the opening branch projects the candidate onto via placeOpeningTarget. */
@@ -68,6 +69,50 @@ interface AuthoringTools {
   placementType: string | undefined
   armed: LibraryItem | null
   rotation: number
+}
+
+// A tool-state slot's current value and setter, paired so the call site can
+// pass wallToolState/setWallToolState (or the dimension equivalent) as one
+// nested, single-line argument instead of two flat properties.
+interface ToolStateSlot<State> {
+  state: State
+  setState: (state: State) => void
+}
+
+// The graph and placement values that only the opening and furniture
+// branches read, grouped so the call site can pass them as one line.
+interface AuthoringPlacementDeps {
+  graph: SceneGraph | undefined
+  placementType: string | undefined
+  armed: LibraryItem | null
+  rotation: number
+}
+
+// Assembles the AuthoringTools payload the window listener routes a keystroke
+// into. Split out of the hook body so usePlanAuthoring stays under the line
+// budget; callers pass the same values the hook's effect dependency array
+// lists, so this stays free of any dependency the array does not already track.
+function buildAuthoringTools(
+  run: AuthoringRun,
+  tool: ToolId,
+  toolState: {
+    wall: ToolStateSlot<WallToolState>
+    dimension: ToolStateSlot<DimensionToolState>
+    placement: AuthoringPlacementDeps
+  },
+): AuthoringTools {
+  return {
+    tool,
+    run,
+    wallState: toolState.wall.state,
+    setWallState: toolState.wall.setState,
+    dimensionState: toolState.dimension.state,
+    setDimensionState: toolState.dimension.setState,
+    graph: toolState.placement.graph,
+    placementType: toolState.placement.placementType,
+    armed: toolState.placement.armed,
+    rotation: toolState.placement.rotation,
+  }
 }
 
 // Install the window keydown listener that routes a keystroke to the active
@@ -123,7 +168,7 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
  * focused, mirroring the selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
-  const { session, tool, activeFloorId, graph, placementType } = deps
+  const { session, selection, tool, activeFloorId, graph, placementType } = deps
   const armed = deps.armed ?? null
   const rotation = deps.rotation ?? 0
   const [candidate, setCandidate] = useState<Point>(ORIGIN)
@@ -137,20 +182,20 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     if (!isAuthoringTool(tool)) {
       return undefined
     }
-    return listenForAuthoringKeys({
-      tool,
-      run: { session, activeFloorId, candidate, setCandidate, setAnnouncement },
-      wallState: wallToolState,
-      setWallState: setWallToolState,
-      dimensionState: dimensionToolState,
-      setDimensionState: setDimensionToolState,
-      graph,
-      placementType,
-      armed,
-      rotation,
-    })
+    return listenForAuthoringKeys(
+      buildAuthoringTools(
+        { session, selection, activeFloorId, candidate, setCandidate, setAnnouncement },
+        tool,
+        {
+          wall: { state: wallToolState, setState: setWallToolState },
+          dimension: { state: dimensionToolState, setState: setDimensionToolState },
+          placement: { graph, placementType, armed, rotation },
+        },
+      ),
+    )
   }, [
     session,
+    selection,
     tool,
     activeFloorId,
     candidate,

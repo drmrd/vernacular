@@ -25,6 +25,7 @@ import { EditLayerPanel } from '../tools/edit-layer-panel'
 import { SectionLabel } from '../design-system'
 import { OverallDimensions } from './overall-dimensions'
 import { ProjectIdentity } from './project-identity'
+import './tool-rail.css'
 
 // The tools nav: the tool buttons, plus the opening-type chooser surfaced only
 // while the place-opening tool is active so the user picks what to place.
@@ -53,6 +54,17 @@ function railPeriodLabel(period: string): string | undefined {
 // site identity changes, for example after undo, so the fields reflect the model.
 function siteEditorKey(site: Project['site']): string {
   return JSON.stringify(site ?? {})
+}
+
+// The rail's Edit layer section: wrapped in its own element so the kerf line
+// and air set it apart from the tool rack above it, #534; the rule lives in
+// tool-rail.css.
+function EditLayerRailSection() {
+  return (
+    <div className="tool-rail__edit-layer">
+      <EditLayerPanel />
+    </div>
+  )
 }
 
 // The rail's Environment section: the panel reads and writes the shared
@@ -107,7 +119,7 @@ export function ToolRail() {
         periodLabel={railPeriodLabel(project.meta.period)}
       />
       <ToolsNav />
-      <EditLayerPanel />
+      <EditLayerRailSection />
       <OverallDimensions extent={overall} />
       <LibraryLauncherPanel />
       <UnderlayMenuPanel />

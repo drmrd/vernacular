@@ -246,3 +246,22 @@ describe('SiteEditor timezone', () => {
     expect(dispatch).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('SiteEditor field names', () => {
+  const FIELD_PATTERNS: ReadonlyArray<[string, RegExp]> = [
+    ['latitude', /latitude/i],
+    ['longitude', /longitude/i],
+    ['north bearing', /north bearing/i],
+  ]
+
+  it.each(FIELD_PATTERNS)('gives the %s field an explicit label association', (_name, pattern) => {
+    render(<SiteEditor site={SITE} dispatch={vi.fn()} />)
+
+    const input = screen.getByLabelText(pattern)
+    expect(input.id).not.toBe('')
+
+    const label = document.querySelector(`label[for="${input.id}"]`)
+    expect(label).not.toBeNull()
+    expect(label).toHaveTextContent(pattern)
+  })
+})

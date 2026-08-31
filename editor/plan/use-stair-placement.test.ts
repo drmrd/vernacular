@@ -1,6 +1,14 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { act, renderHook, cleanup } from '@testing-library/react'
-import { ADD_STAIR, createFloor, type AddStairParams, type Command, type Floor } from '../../core'
+import {
+  ADD_STAIR,
+  createFloor,
+  STAIR_NODE_PREFIX,
+  type AddStairParams,
+  type Command,
+  type Floor,
+} from '../../core'
+import { createSelectionStore } from '../../bridge'
 import type { EditorSession } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { OpeningToolProvider, useOpeningTool } from './opening-tool-context'
@@ -44,9 +52,10 @@ function clickAt(x: number, y: number) {
 function clickStairTool(tool: ToolId, floors: readonly Floor[], activeFloorId: string | null) {
   const dispatch = vi.fn()
   const session = sessionWithFloors(floors, dispatch)
+  const selection = createSelectionStore()
   const { result } = renderHook(
     () => ({
-      placement: useStairPlacement({ session, tool, viewport: VIEWPORT, activeFloorId }),
+      placement: useStairPlacement({ session, tool, viewport: VIEWPORT, activeFloorId, selection }),
       opening: useOpeningTool(),
     }),
     { wrapper: OpeningToolProvider },
@@ -54,7 +63,7 @@ function clickStairTool(tool: ToolId, floors: readonly Floor[], activeFloorId: s
   act(() => {
     result.current.placement.onPointerDown(clickAt(CLICK_X, CLICK_Y))
   })
-  return { dispatch, refusal: () => result.current.opening.placementRefusal }
+  return { dispatch, selection, refusal: () => result.current.opening.placementRefusal }
 }
 
 function placeStair(tool: ToolId, floors: readonly Floor[], activeFloorId: string | null) {
@@ -63,6 +72,11 @@ function placeStair(tool: ToolId, floors: readonly Floor[], activeFloorId: strin
 
 function paramsOf(command: Command): AddStairParams {
   return command.params as AddStairParams
+}
+
+function placedStairId(dispatch: ReturnType<typeof vi.fn>): string {
+  const command = dispatch.mock.calls[0]?.[0] as Command
+  return paramsOf(command).stair.id
 }
 
 describe('useStairPlacement', () => {
@@ -107,5 +121,23 @@ describe('useStairPlacement', () => {
     const floors = [floor('ground', GROUND_ELEVATION_MM)]
 
     expect(clickStairTool('select', floors, 'ground').refusal()).toBeNull()
+  })
+
+  it('selects the stair it just placed', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    const { dispatch, selection } = clickStairTool('place-stair', floors, 'ground')
+
+    expect(selection.getSelectedIds()).toEqual(
+      new Set([`${STAIR_NODE_PREFIX}${placedStairId(dispatch)}`]),
+    )
+  })
+
+  it('leaves the selection empty when the click on the topmost floor placed nothing', () => {
+    const floors = [floor('ground', GROUND_ELEVATION_MM), floor('upper', UPPER_ELEVATION_MM)]
+
+    const { selection } = clickStairTool('place-stair', floors, 'upper')
+
+    expect(selection.getSelectedIds()).toEqual(new Set())
   })
 })

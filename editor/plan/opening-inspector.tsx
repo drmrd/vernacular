@@ -211,7 +211,7 @@ interface OpeningTypeFieldProps {
 
 function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): ReactElement {
   const selectId = `opening-type-${opening.id}`
-  const { doors, windows } = groupedOpeningTypes()
+  const { doors, windows, passages } = groupedOpeningTypes()
   return (
     <Stack gap="space-2">
       <label htmlFor={selectId}>Opening type</label>
@@ -222,6 +222,7 @@ function OpeningTypeField({ opening, onChangeType }: OpeningTypeFieldProps): Rea
       >
         <OpeningOptionGroup label="Doors" types={doors} />
         <OpeningOptionGroup label="Windows" types={windows} />
+        <OpeningOptionGroup label="Passages" types={passages} />
       </select>
     </Stack>
   )
