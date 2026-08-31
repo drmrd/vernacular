@@ -71,6 +71,10 @@ export function useSceneNavigation() {
     // rather than reseeding from wherever the camera has since been left (ADR-0170).
     walkPose: session.walkPose,
     noteWalkPose: writers.noteWalkPose,
+    // The doors the departing walker left open, so the next walk starts with the same ones
+    // standing open rather than shutting the house back up (ADR-0170).
+    openDoorIds: session.openDoorIds,
+    noteOpenDoors: writers.noteOpenDoors,
   }
 }
 
@@ -87,6 +91,7 @@ function useSceneSessionWriters(store: SceneSessionStore) {
       notePresetApplied: sceneSessionSetter(store, 'presetPose'),
       noteCameraLeft: sceneSessionSetter(store, 'savedCameraPosition'),
       noteWalkPose: sceneSessionSetter(store, 'walkPose'),
+      noteOpenDoors: sceneSessionSetter(store, 'openDoorIds'),
       clearPresetPose: () => store.updateSceneSession({ presetPose: null }),
     }),
     [store],
