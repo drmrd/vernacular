@@ -14,6 +14,7 @@ import { addSurfaceTreatmentMigration } from './add-surface-treatment'
 import { addUnderlayKindMigration } from './add-underlay-kind'
 import { addWallConstructionProfileMigration } from './add-wall-construction-profile'
 import { addWeatherCloudCoverMigration } from './add-weather-cloud-cover'
+import { rekeyRoomOverridesMigration } from './rekey-room-overrides'
 
 export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addRoomOverridesMigration,
@@ -31,4 +32,5 @@ export const SCHEMA_MIGRATIONS: readonly SchemaMigration[] = [
   addSiteTimezoneMigration,
   addEnvironmentScenesMigration,
   addWeatherCloudCoverMigration,
+  rekeyRoomOverridesMigration,
 ]
