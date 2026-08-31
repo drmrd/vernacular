@@ -34,7 +34,7 @@ function armedCalibration(tool: ToolId = 'calibrate') {
 }
 
 describe('useCalibrationArming', () => {
-  it('clears any previously-entered known distance when a calibration is armed', () => {
+  it('keeps a previously-entered known distance when a calibration is armed', () => {
     const { view } = armedCalibration()
 
     act(() => {
@@ -46,7 +46,7 @@ describe('useCalibrationArming', () => {
       view.result.current.startCalibration('underlay-x')
     })
 
-    expect(view.result.current.knownDistanceText).toBe('')
+    expect(view.result.current.knownDistanceText).toBe('3 m')
   })
 
   // The underlay panel is the only way into the calibrate tool, so arming is where
@@ -150,5 +150,20 @@ describe('useCalibrationArming disarms when the tool leaves calibrate', () => {
     view.rerender({ tool: 'calibrate' })
 
     expect(view.result.current.armedUnderlayId).toBe(FIRST_UNDERLAY)
+  })
+
+  it('keeps the typed known distance across a disarm and re-arm round trip', () => {
+    const view = armedAcrossTools(FIRST_UNDERLAY)
+    act(() => {
+      view.result.current.setKnownDistanceText('3 m')
+    })
+
+    view.rerender({ tool: 'select' })
+    view.rerender({ tool: 'calibrate' })
+    act(() => {
+      view.result.current.startCalibration(SECOND_UNDERLAY)
+    })
+
+    expect(view.result.current.knownDistanceText).toBe('3 m')
   })
 })
