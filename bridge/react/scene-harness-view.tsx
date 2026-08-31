@@ -13,6 +13,7 @@ import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
+import { SCENE_READY_ATTRIBUTE } from './scene-readiness'
 import { SceneLighting } from './scene-lighting'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
 
@@ -34,7 +35,7 @@ const HARNESS_BACKGROUND = 0x1b2a3a
 // and never races an animation tick (the Canvas runs in `frameloop="never"`). The mount
 // frame keeps the canvas from sitting blank while asynchronous lighting (the solar
 // provider's lazily loaded sky) attaches; the ready frame is the one the baselines
-// capture, awaited through the wrapper's data-harness-ready attribute. Fitting here
+// capture, awaited through the wrapper's SCENE_READY_ATTRIBUTE. Fitting here
 // (rather than only at scene build) frames the model to the harness aspect ratio and
 // field of view, matching the live preview (ADR-0075).
 /**
@@ -170,7 +171,7 @@ function harnessCameraProps(pose: CameraPose) {
 }
 
 // Flips once the lighting provider's asynchronous resources (the lazy sky) attach.
-// The wrapper advertises it as data-harness-ready, which the visual specs await
+// The wrapper advertises it through SCENE_READY_ATTRIBUTE, which the visual specs await
 // before screenshotting: React commits the attribute in the same pass whose layout
 // effect renders the ready frame, so an observable "true" implies the frame exists.
 function useHarnessLightingReadiness() {
@@ -189,7 +190,7 @@ function useHarnessAmbientOcclusionReadiness() {
 }
 
 // Combines the two asynchronous readiness signals into the single gate the captured frame and
-// the data-harness-ready attribute share. When the ambient-occlusion pass is active the frame
+// SCENE_READY_ATTRIBUTE share. When the ambient-occlusion pass is active the frame
 // waits for both the lazy sky and the pipeline build; when it is inactive the gate is lighting
 // readiness alone, so schematic and no-location states keep their existing single-signal
 // contract unchanged.
@@ -240,7 +241,7 @@ export function SceneHarnessView({
   return (
     <div
       data-testid="scene-harness"
-      data-harness-ready={harnessReady ? 'true' : 'false'}
+      {...{ [SCENE_READY_ATTRIBUTE]: harnessReady ? 'true' : 'false' }}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
       <Canvas
