@@ -37,9 +37,6 @@ import { useCalibrationArming, type CalibrationArming } from './use-calibration-
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
-// The arming test still reaches useCalibrationArming through this module; the facade goes when it retargets.
-export { useCalibrationArming } from './use-calibration-arming'
-
 // The decoded-bitmap cache and the calibration arming live only in memory for
 // the editing session. The underlay's source bytes are persisted through the
 // AssetCache on load and re-decoded into this cache on open (ADR-0042), so a
