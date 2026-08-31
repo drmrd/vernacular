@@ -113,11 +113,12 @@ export const UnderlayMenu: FC<UnderlayPanelProps> = (props) => {
   const { onLoadImage, armedUnderlayId } = props
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const calibrationIsArmed = armedUnderlayId !== null && armedUnderlayId !== undefined
   const close = () => setOpen(false)
   useDismissOnEscape({ active: open, close })
   // An armed calibration is measured by two clicks on the canvas, both of which
   // land outside the menu root, so dismissing on those would cancel it.
-  useDismissOnOutsidePointer({ active: open && !armedUnderlayId, rootRef, close })
+  useDismissOnOutsidePointer({ active: open && !calibrationIsArmed, rootRef, close })
   return (
     <div className="underlay-menu" ref={rootRef}>
       <Button aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
