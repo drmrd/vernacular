@@ -155,7 +155,11 @@ function EditorStatusBar() {
       onAddFloor={(placement) =>
         session.dispatch(addFloor(placement.name, { elevation: placement.elevation }))
       }
-      onRenameFloor={(id, name) => session.dispatch(renameFloor(id, name))}
+      onRenameFloor={(id, name) => {
+        const trimmedName = name.trim()
+        if (trimmedName === '') return
+        session.dispatch(renameFloor(id, trimmedName))
+      }}
       tool={`Tool: ${toolLabel(tool)}`}
       coords={<CoordsReadout />}
       snap={<SnapStatus />}
