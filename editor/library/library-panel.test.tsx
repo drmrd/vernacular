@@ -291,11 +291,20 @@ async function renderArmedPanel(): Promise<void> {
   await screen.findByRole('button', { name: OAK_NAME })
 }
 
+// The rotate-key segment of the placement hint, located by class rather than
+// by its rendered text so that wrapping the key letter in markup (e.g. kbd)
+// doesn't break the query: getByText only matches a node's direct text.
+function placementKeyHint(): HTMLElement {
+  return screen.getByText(
+    (_, element) => element?.classList.contains('library-panel__placement-key') ?? false,
+  )
+}
+
 describe('LibraryPanel placement feedback', () => {
   it('names the key that turns the ghost while the placement hint shows', async () => {
     await renderArmedPanel()
 
-    expect(screen.getByText(/\bR to rotate\b/)).toBeInTheDocument()
+    expect(placementKeyHint()).toHaveTextContent(/\bR to rotate\b/)
   })
 
   it('captions the armed item and marks only its button pressed', async () => {
@@ -304,6 +313,17 @@ describe('LibraryPanel placement feedback', () => {
     expect(screen.getByText(`Click the canvas to place ${EAMES_NAME}`)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: EAMES_NAME })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: OAK_NAME })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('marks the rotate key name in the placement hint as keyboard input', async () => {
+    await renderArmedPanel()
+
+    const hint = placementKeyHint()
+    const key = hint.querySelector('kbd')
+
+    expect(key).not.toBeNull()
+    expect(key?.textContent).toBe('R')
+    expect(hint).toHaveTextContent(/to rotate/)
   })
 })
 
