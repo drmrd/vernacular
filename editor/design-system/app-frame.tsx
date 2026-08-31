@@ -80,15 +80,16 @@ const COLLAPSE_GLYPH: Record<PaneArea, { expanded: string; collapsed: string }> 
 }
 
 /**
- * The collapse toggle's accessible name, keyed by pane. The rail also has an
- * outer disclosure toggle ("Show/Hide Tools") that owns announcing its open
- * state, so the rail's own collapse button keeps a constant name and leans on
- * aria-expanded for state. The inspector has no such outer control, so its
- * name announces the action the button currently performs.
+ * The collapse toggle's accessible name, keyed by pane and state. The rail
+ * also has an outer disclosure toggle ("Show/Hide Tools") that owns
+ * announcing its open state, so the rail's own collapse button keeps a
+ * constant name in both states and leans on aria-expanded for state. The
+ * inspector has no such outer control, so its name announces the action the
+ * button currently performs.
  */
-const COLLAPSE_ACTION_NAME: Record<PaneArea, (collapsed: boolean) => string> = {
-  rail: () => 'Collapse',
-  inspector: (collapsed) => (collapsed ? 'Expand' : 'Collapse'),
+const COLLAPSE_ACTION_NAME: Record<PaneArea, { expanded: string; collapsed: string }> = {
+  rail: { expanded: 'Collapse', collapsed: 'Collapse' },
+  inspector: { expanded: 'Collapse', collapsed: 'Expand' },
 }
 
 interface PaneResizeHandleProps {
@@ -125,7 +126,7 @@ function CollapsiblePane({ area, label, id, children }: CollapsiblePaneProps) {
   const { size, width, onResizeStep } = usePaneWidth(area)
   const style = { [`--ds-${area}-size`]: width } as CSSProperties
   const glyph = collapsed ? COLLAPSE_GLYPH[area].collapsed : COLLAPSE_GLYPH[area].expanded
-  const toggleAction = COLLAPSE_ACTION_NAME[area](collapsed)
+  const toggleAction = COLLAPSE_ACTION_NAME[area][collapsed ? 'collapsed' : 'expanded']
   return (
     <aside
       className={`ds-app-frame__${area}`}
