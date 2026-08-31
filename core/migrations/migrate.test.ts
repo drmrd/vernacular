@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, createEmptyProject } from '../model/factories'
-import type { Project } from '../model/types'
+import { CURRENT_SCHEMA_VERSION, createEmptyProject, createWall } from '../model/factories'
+import type { Point, Project, Wall } from '../model/types'
+import { deriveRooms, roomKey } from '../topology/rooms'
 import { migrateProject } from './migrate'
 import type { ProjectShape, RegistryMigration, SchemaMigration } from './types'
 import { MalformedProjectError, MigrationFailedError, UnsupportedSchemaVersionError } from './types'
@@ -239,5 +240,90 @@ describe('migrateProject furniture backfill', () => {
     expect(
       (migrated as unknown as { floors: { furniture: unknown[] }[] }).floors[0]?.furniture,
     ).toEqual([])
+  })
+})
+
+const VERSION_SIXTEEN = 16
+
+/** Corners of one rectangular parlor, in floor-plan millimeters. */
+const PARLOR_CORNERS: Point[] = [
+  { x: 0, y: 0 },
+  { x: 4000, y: 0 },
+  { x: 4000, y: 3000 },
+  { x: 0, y: 3000 },
+]
+
+/**
+ * One wall id per edge of `PARLOR_CORNERS`, each carrying dashes of its own. The
+ * dashes matter: the dash-era key joined these ids with `-` too, so the saved key
+ * cannot be split back into ids on `-`. Only the floor's wall-id vocabulary says
+ * where one id ends and the next begins.
+ */
+const PARLOR_WALL_IDS = ['wall-south-2', 'wall-east-1', 'wall-north-1', 'wall-west-2']
+
+/** The parlor's key as the app wrote it before `roomKey` switched to `|`. */
+const DASH_ERA_ROOM_KEY = 'wall-east-1-wall-north-1-wall-south-2-wall-west-2'
+
+const PARLOR_OVERRIDE = { name: 'Front Parlor', purpose: 'parlor' }
+
+function parlorWalls(): Wall[] {
+  return PARLOR_CORNERS.map((corner, index) => {
+    const next = PARLOR_CORNERS[(index + 1) % PARLOR_CORNERS.length]
+    const id = PARLOR_WALL_IDS[index]
+    if (next === undefined || id === undefined) {
+      throw new Error('expected a closing corner and a wall id per edge')
+    }
+    return createWall(corner, next, { id })
+  })
+}
+
+/**
+ * Builds a document sitting at the current head version whose one room override is
+ * still keyed the dash-era way. No ladder step so far rewrites override keys, so a
+ * project saved before the separator changed arrives here still carrying them.
+ */
+function makeDashEraOverrideDocument(): ProjectShape {
+  return {
+    meta: {
+      name: 'Dash Era House',
+      units: 'imperial',
+      period: 'victorian',
+      schemaVersion: VERSION_SIXTEEN,
+      appVersion: '0.1.0',
+      registryVersions: {},
+    },
+    floors: [
+      {
+        id: 'floor:ground',
+        name: 'Ground Floor',
+        elevation: 0,
+        defaultCeilingHeight: 2438,
+        walls: parlorWalls(),
+        underlays: [],
+        openings: [],
+        dimensions: [],
+        furniture: [],
+      },
+    ],
+    stairs: [],
+    roomOverrides: { [DASH_ERA_ROOM_KEY]: { ...PARLOR_OVERRIDE } },
+  }
+}
+
+function soleDerivedRoomKey(walls: Wall[]): string {
+  const [room, ...rest] = deriveRooms(walls)
+  if (room === undefined || rest.length > 0) {
+    throw new Error('expected exactly one derived room')
+  }
+  return roomKey(room)
+}
+
+describe('migrateProject dash-era room override keys', () => {
+  it('rebinds a dash-joined override key to the pipe key roomKey derives for the same walls', () => {
+    const migrated = migrateProject(makeDashEraOverrideDocument())
+
+    const pipeKey = soleDerivedRoomKey(parlorWalls())
+    expect(migrated.roomOverrides?.[pipeKey]).toEqual(PARLOR_OVERRIDE)
+    expect(migrated.roomOverrides?.[DASH_ERA_ROOM_KEY]).toBeUndefined()
   })
 })
