@@ -8,7 +8,6 @@ import {
   sceneGraphForFloor,
   walkLookTarget,
   wallSegmentsForWalk,
-  WALK_EYE_HEIGHT_MM,
   type OpeningInteractionState,
   type OpeningSceneNode,
   type WallSceneNode,
@@ -22,6 +21,8 @@ import { useActiveFloorId } from './active-floor-context'
 import { useSceneGraph } from './use-scene-graph'
 import { restoreOpenings, tickOpenings } from './walk-interaction'
 import {
+  emptyWalkInput,
+  initialWalkState,
   resumedWalkState,
   walkFloorElevationMm,
   walkKeyHandlers,
@@ -37,18 +38,6 @@ const LOOK_SENSITIVITY_RAD_PER_PX = 0.0025
 // clear of any wall. About half a person's shoulder width, wide enough to keep the
 // camera off the wall surface yet narrow enough to step through a doorway.
 const WALK_RADIUS_MM = 250
-
-function emptyWalkInput(): WalkInput {
-  return { forward: false, back: false, left: false, right: false, yawDelta: 0, pitchDelta: 0 }
-}
-
-function initialWalkState(floorElevationMm: number): WalkState {
-  return {
-    position: { x: 0, y: floorElevationMm + WALK_EYE_HEIGHT_MM, z: 0 },
-    yaw: 0,
-    pitch: 0,
-  }
-}
 
 // Resumes the walk state (or seeds it from the camera the first time), seats the doors the
 // last session left open, takes control of the camera, and wires the keyboard,
@@ -262,7 +251,7 @@ function useWalkSession(props: WalkSessionProps, host: WalkSessionHost): WalkRef
       onWalkPose: (pose) => onWalkPoseRef.current(pose),
       onOpenDoors: (openIds) => onOpenDoorsRef.current(openIds),
     })
-    // Four values are deliberately left out of the dependencies below. floorElevationMm and
+    // Five values are deliberately left out of the dependencies below. floorElevationMm and
     // root are read only as the session starts, and a mid-walk change to either must not
     // restart the walk and drop pointer capture; re-seeding the walk pose when the active
     // floor changes mid-walk is tracked by #608 and lands in a later cycle. savedWalkPoseRef,

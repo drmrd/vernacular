@@ -2,7 +2,7 @@
  * What a first-person walk session is made of: the refs it advances, the live canvas it
  * drives, and the pure helpers that seed its pose and read its keyboard. The component
  * that mounts a session lives in walk-camera-controls.tsx; this module holds the parts
- * that carry no React, so they can be read and tested on their own.
+ * that carry no React runtime, so they can be read and tested on their own.
  */
 import type { RefObject } from 'react'
 import {
@@ -85,6 +85,18 @@ export function resumedWalkState(
 export function walkFloorElevationMm(graph: SceneGraph): number {
   const floorNode = graph.nodes.find((node) => node.kind === 'floor')
   return floorNode?.elevation ?? 0
+}
+
+export function emptyWalkInput(): WalkInput {
+  return { forward: false, back: false, left: false, right: false, yawDelta: 0, pitchDelta: 0 }
+}
+
+export function initialWalkState(floorElevationMm: number): WalkState {
+  return {
+    position: { x: 0, y: floorElevationMm + WALK_EYE_HEIGHT_MM, z: 0 },
+    yaw: 0,
+    pitch: 0,
+  }
 }
 
 // The refs a walk advances: the walker's pose, the input held down, the live openings,
