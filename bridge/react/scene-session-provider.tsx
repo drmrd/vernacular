@@ -21,11 +21,11 @@ const HOST_STYLE = { display: 'contents' } as const
 export function SceneSessionProvider({ store, children }: SceneSessionProviderProps) {
   const liveViewReady = useSyncExternalStore(store.subscribe, () => {
     const { sessionRestored, frameDrawnSincePipelineSettled } = store.getSceneSession()
-    return String(sessionRestored && frameDrawnSincePipelineSettled)
+    return sessionRestored && frameDrawnSincePipelineSettled
   })
   return (
     <SceneSessionContext.Provider value={store}>
-      <div style={HOST_STYLE} data-live-view-ready={liveViewReady}>
+      <div style={HOST_STYLE} data-live-view-ready={liveViewReady ? 'true' : 'false'}>
         {children}
       </div>
     </SceneSessionContext.Provider>
