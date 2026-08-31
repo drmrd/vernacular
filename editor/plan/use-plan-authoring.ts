@@ -71,6 +71,50 @@ interface AuthoringTools {
   rotation: number
 }
 
+// A tool-state slot's current value and setter, paired so the call site can
+// pass wallToolState/setWallToolState (or the dimension equivalent) as one
+// nested, single-line argument instead of two flat properties.
+interface ToolStateSlot<State> {
+  state: State
+  setState: (state: State) => void
+}
+
+// The graph and placement values that only the opening and furniture
+// branches read, grouped so the call site can pass them as one line.
+interface AuthoringPlacementDeps {
+  graph: SceneGraph | undefined
+  placementType: string | undefined
+  armed: LibraryItem | null
+  rotation: number
+}
+
+// Assembles the AuthoringTools payload the window listener routes a keystroke
+// into. Split out of the hook body so usePlanAuthoring stays under the line
+// budget; callers pass the same values the hook's effect dependency array
+// lists, so this stays free of any dependency the array does not already track.
+function buildAuthoringTools(
+  run: AuthoringRun,
+  tool: ToolId,
+  toolState: {
+    wall: ToolStateSlot<WallToolState>
+    dimension: ToolStateSlot<DimensionToolState>
+    placement: AuthoringPlacementDeps
+  },
+): AuthoringTools {
+  return {
+    tool,
+    run,
+    wallState: toolState.wall.state,
+    setWallState: toolState.wall.setState,
+    dimensionState: toolState.dimension.state,
+    setDimensionState: toolState.dimension.setState,
+    graph: toolState.placement.graph,
+    placementType: toolState.placement.placementType,
+    armed: toolState.placement.armed,
+    rotation: toolState.placement.rotation,
+  }
+}
+
 // Install the window keydown listener that routes a keystroke to the active
 // tool, with cleanup. Kept out of the hook body so usePlanAuthoring stays lean.
 function listenForAuthoringKeys(tools: AuthoringTools): () => void {
@@ -138,18 +182,17 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     if (!isAuthoringTool(tool)) {
       return undefined
     }
-    return listenForAuthoringKeys({
-      tool,
-      run: { session, selection, activeFloorId, candidate, setCandidate, setAnnouncement },
-      wallState: wallToolState,
-      setWallState: setWallToolState,
-      dimensionState: dimensionToolState,
-      setDimensionState: setDimensionToolState,
-      graph,
-      placementType,
-      armed,
-      rotation,
-    })
+    return listenForAuthoringKeys(
+      buildAuthoringTools(
+        { session, selection, activeFloorId, candidate, setCandidate, setAnnouncement },
+        tool,
+        {
+          wall: { state: wallToolState, setState: setWallToolState },
+          dimension: { state: dimensionToolState, setState: setDimensionToolState },
+          placement: { graph, placementType, armed, rotation },
+        },
+      ),
+    )
   }, [
     session,
     selection,
