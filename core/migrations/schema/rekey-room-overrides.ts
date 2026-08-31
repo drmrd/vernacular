@@ -1,10 +1,8 @@
+import { roomKey } from '../../index'
 import type { ProjectShape, SchemaMigration } from '../types'
 
 /** Separator an early build joined a room's bounding wall ids with. */
 const DASH_ERA_SEPARATOR = '-'
-
-/** Separator `roomKey` joins a room's bounding wall ids with today. */
-const ROOM_KEY_SEPARATOR = '|'
 
 /**
  * Migrates a version-16 document to version 17, rebinding every room override
@@ -29,9 +27,9 @@ export const rekeyRoomOverridesMigration: SchemaMigration = {
     const rekeyed: Record<string, unknown> = {}
     let rewroteAnyKey = false
     for (const [storedKey, override] of Object.entries(overrides)) {
-      const roomKey = roomKeyFor(storedKey, wallIds)
-      if (roomKey !== storedKey) rewroteAnyKey = true
-      rekeyed[roomKey] = override
+      const resolvedKey = roomKeyFor(storedKey, wallIds)
+      if (resolvedKey !== storedKey) rewroteAnyKey = true
+      rekeyed[resolvedKey] = override
     }
     return rewroteAnyKey ? { ...project, roomOverrides: rekeyed } : project
   },
@@ -44,12 +42,14 @@ export const rekeyRoomOverridesMigration: SchemaMigration = {
 function roomKeyFor(storedKey: string, wallIds: ReadonlySet<string>): string {
   const segments = segmentIntoWallIds(storedKey, wallIds)
   if (segments === undefined) return storedKey
-  return [...new Set(segments)].sort().join(ROOM_KEY_SEPARATOR)
+  return roomKey({ wallIds: [...new Set(segments)].sort() })
 }
 
 /**
  * Split a dash-joined key back into wall ids, backtracking because a wall id may
  * itself contain the separator. Returns undefined when no split covers the key.
+ * Safe because wall ids are UUID-shaped; an importer assigning externally-sourced
+ * wall ids should revisit this backtracking.
  */
 function segmentIntoWallIds(key: string, wallIds: ReadonlySet<string>): string[] | undefined {
   for (const wallId of wallIds) {
