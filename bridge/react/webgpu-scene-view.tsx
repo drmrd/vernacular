@@ -5,7 +5,7 @@ import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
-import { entityLabels } from './entity-labels'
+import { entityLabels, useCatalogNames } from './entity-labels'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
@@ -39,7 +39,8 @@ function useSceneProxies(graph: SceneGraph) {
   const [positions, setPositions] = useState<EntityScreenPosition[]>([])
   const selection = useSelection()
   const selectedIds = useSelectionIds()
-  const labels = useMemo(() => entityLabels(graph), [graph])
+  const catalogNames = useCatalogNames()
+  const labels = useMemo(() => entityLabels(graph, catalogNames), [graph, catalogNames])
   const proxies = useMemo(
     () => positions.map((p) => ({ id: p.id, x: p.x, y: p.y, label: labels.get(p.id) ?? p.id })),
     [positions, labels],

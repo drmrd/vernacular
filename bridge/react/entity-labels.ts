@@ -1,4 +1,13 @@
+import { useEffect, useState } from 'react'
+
 import { humanizeElementTypeId, type SceneGraph } from '../../core'
+
+import { useAssetRegistry } from './asset-registry-context'
+
+// A single, stable empty map instance so the first synchronous render (and every
+// still-loading or failed-load render) returns the same reference, avoiding a
+// needless re-render of memoized label consumers.
+const EMPTY_CATALOG_NAMES: ReadonlyMap<string, string> = new Map()
 
 // Assigns each item an ordinal within its own key's sequence (an opening's type, a stair's
 // run type) rather than one shared sequence across every key, so a plan with two doors and
@@ -59,6 +68,33 @@ function furnitureLabels(
     seen.set(catalogName, ordinal)
     return [piece.id, `${catalogName} ${ordinal}`] as const
   })
+}
+
+// Resolves the asset registry's catalog into a contentHash -> display name map for
+// furnitureLabels. Labels must render synchronously on first paint while the registry's
+// list() (an async read, possibly over IndexedDB or a network pack) is still in flight, so
+// this starts at the shared empty map and swaps in the settled catalog once it resolves,
+// guarding against a stale resolve landing after unmount or after the registry itself changes.
+export function useCatalogNames(): ReadonlyMap<string, string> {
+  const registry = useAssetRegistry()
+  const [catalogNames, setCatalogNames] = useState<ReadonlyMap<string, string>>(EMPTY_CATALOG_NAMES)
+  useEffect(() => {
+    let cancelled = false
+    setCatalogNames(EMPTY_CATALOG_NAMES)
+    registry
+      .list()
+      .then((items) => {
+        if (cancelled) return
+        setCatalogNames(new Map(items.map((item) => [item.reference.contentHash, item.name])))
+      })
+      .catch(() => {
+        // Degrade to fallback labels rather than surfacing a load failure here.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [registry])
+  return catalogNames
 }
 
 // A short, stable label per selectable entity for the accessibility proxies, derived from
