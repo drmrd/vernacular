@@ -7,12 +7,7 @@ import { AssetRegistry } from '../../storage'
 import { createSelectionStore } from '../selection/selection-store'
 import { AssetRegistryProvider } from './asset-registry-context'
 import { SelectionProvider } from './selection-provider'
-import { CAMERA_PANE_MIN_HEIGHT_SHARE, ScenePaneShell } from './webgpu-scene-view'
-// `useSceneProxies` exists in the module but is not exported yet. This namespace import
-// plus cast lets the test reference it ahead of the export landing, so the RED failure
-// below is this file's own `toBeDefined` assertion rather than a typecheck error. A
-// follow-up cleanup switches this to a plain named import once the hook is exported.
-import * as sceneView from './webgpu-scene-view'
+import { CAMERA_PANE_MIN_HEIGHT_SHARE, ScenePaneShell, useSceneProxies } from './webgpu-scene-view'
 
 afterEach(cleanup)
 
@@ -30,17 +25,6 @@ describe('ScenePaneShell', () => {
     expect((pane as HTMLElement).style.flexGrow).toBe('1')
   })
 })
-
-interface SceneProxiesResult {
-  proxies: { id: string; x: number; y: number; label: string }[]
-  setPositions: (positions: { id: string; x: number; y: number }[]) => void
-  selectedIds: ReadonlySet<string>
-  onSelect: (id: string, additive: boolean) => void
-}
-
-const useSceneProxies = (
-  sceneView as { useSceneProxies?: (graph: SceneGraph) => SceneProxiesResult }
-).useSceneProxies
 
 const FURNITURE_ID = 'furniture:unnamed-armchair'
 
@@ -97,7 +81,7 @@ function SceneProxiesProbe({
 }: {
   onProxies: (proxies: { id: string; x: number; y: number; label: string }[]) => void
 }) {
-  const { proxies, setPositions } = useSceneProxies!(graph)
+  const { proxies, setPositions } = useSceneProxies(graph)
   onProxies(proxies)
   useEffect(() => {
     setPositions([{ id: FURNITURE_ID, x: 5, y: 6 }])
@@ -107,8 +91,6 @@ function SceneProxiesProbe({
 
 describe('useSceneProxies', () => {
   it('joins injected screen positions with catalog-resolved labels', async () => {
-    expect(useSceneProxies).toBeDefined()
-
     const stubSource: AssetSource = {
       id: 'stub-source',
       read: async () => undefined,
