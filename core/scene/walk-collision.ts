@@ -1,6 +1,7 @@
 import type { Point } from '../model/types'
 import { openingKindOfType, openingTypeHasFill } from '../registries/opening-kind'
 import { effectiveWallThickness } from './construction-profile'
+import { planToWorld } from './plan-to-world'
 import {
   WALL_NODE_PREFIX,
   type FurnitureSceneNode,
@@ -146,15 +147,27 @@ export function sweepWalkCollision(
 }
 
 /**
- * The wall centerline as a world-plane segment: plan x to X, plan y to Z. The
+ * A plan point as a point in the world horizontal plane, dropping the height the
+ * walker cannot move along. This goes through `planToWorld` so collision reads the
+ * same axis map the renderer draws with: plan x to world X, plan north (+y) to
+ * world -Z. See ADR-0139; mapping plan y to +Z instead would put the collision
+ * field at the building's reflection across world z = 0.
+ */
+function planPointToPlanar(point: Point): PlanarPoint {
+  const world = planToWorld(point, 0)
+  return { x: world.x, z: world.z }
+}
+
+/**
+ * The wall centerline as a world-plane segment: plan x to X, plan north to -Z. The
  * standoff thickness is the resolved assembly total, the same figure the 3D wall
  * builder extrudes its footprint from, so the walker clears the face it can see
  * rather than a thinner raw thickness the renderer never draws.
  */
 function wallToSegment(wall: WallSceneNode): WallSegment {
   return {
-    start: { x: wall.start.x, z: wall.start.y },
-    end: { x: wall.end.x, z: wall.end.y },
+    start: planPointToPlanar(wall.start),
+    end: planPointToPlanar(wall.end),
     thickness: effectiveWallThickness(wall),
   }
 }
@@ -170,14 +183,14 @@ function clampUnit(value: number): number {
 }
 
 /** The position of a world point as a parameter t along the segment. */
-function wallParam(segment: WallSegment, x: number, z: number): number {
+function wallParam(segment: WallSegment, point: PlanarPoint): number {
   const spanX = segment.end.x - segment.start.x
   const spanZ = segment.end.z - segment.start.z
   const lengthSquared = spanX * spanX + spanZ * spanZ
   if (lengthSquared === 0) {
     return 0
   }
-  return ((x - segment.start.x) * spanX + (z - segment.start.z) * spanZ) / lengthSquared
+  return ((point.x - segment.start.x) * spanX + (point.z - segment.start.z) * spanZ) / lengthSquared
 }
 
 /** The world point at parameter t along the segment. */
@@ -191,16 +204,16 @@ function pointAtParam(segment: WallSegment, t: number): PlanarPoint {
 /** The span an opening covers on its host wall, as a t interval along the wall. */
 function openingSpan(segment: WallSegment, opening: OpeningSceneNode): SpanInterval {
   const half = opening.width / 2
-  const startParam = wallParam(
-    segment,
-    opening.center.x - opening.along.x * half,
-    opening.center.y - opening.along.y * half,
-  )
-  const endParam = wallParam(
-    segment,
-    opening.center.x + opening.along.x * half,
-    opening.center.y + opening.along.y * half,
-  )
+  const spanStart = planPointToPlanar({
+    x: opening.center.x - opening.along.x * half,
+    y: opening.center.y - opening.along.y * half,
+  })
+  const spanEnd = planPointToPlanar({
+    x: opening.center.x + opening.along.x * half,
+    y: opening.center.y + opening.along.y * half,
+  })
+  const startParam = wallParam(segment, spanStart)
+  const endParam = wallParam(segment, spanEnd)
   return { start: Math.min(startParam, endParam), end: Math.max(startParam, endParam) }
 }
 
@@ -294,19 +307,14 @@ export function passableDoorIds(
   return passable
 }
 
-/** A footprint corner as a world-plane point: plan x to X, plan y to Z. */
-function cornerToPlanar(corner: Point): PlanarPoint {
-  return { x: corner.x, z: corner.y }
-}
-
 /** The four perimeter segments of a footprint, traced as a closed loop. */
 function footprintSegments(corners: FurnitureSceneNode['footprintCorners']): WallSegment[] {
   const [first, second, third, fourth] = corners
   return [
-    { start: cornerToPlanar(first), end: cornerToPlanar(second) },
-    { start: cornerToPlanar(second), end: cornerToPlanar(third) },
-    { start: cornerToPlanar(third), end: cornerToPlanar(fourth) },
-    { start: cornerToPlanar(fourth), end: cornerToPlanar(first) },
+    { start: planPointToPlanar(first), end: planPointToPlanar(second) },
+    { start: planPointToPlanar(second), end: planPointToPlanar(third) },
+    { start: planPointToPlanar(third), end: planPointToPlanar(fourth) },
+    { start: planPointToPlanar(fourth), end: planPointToPlanar(first) },
   ]
 }
 
@@ -314,7 +322,7 @@ function footprintSegments(corners: FurnitureSceneNode['footprintCorners']): Wal
  * Builds the collision segments a walker is blocked by from furniture footprints.
  * Each piece contributes the four perimeter segments of its footprint as a closed
  * loop, so the walker cannot step into a piece of furniture from any side. Plan x
- * maps to world X and plan y to world Z, matching the wall mapping.
+ * maps to world X and plan north to world -Z, matching the wall mapping.
  */
 export function furnitureSegmentsForWalk(furniture: readonly FurnitureSceneNode[]): WallSegment[] {
   return furniture.flatMap((node) => footprintSegments(node.footprintCorners))

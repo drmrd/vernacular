@@ -47,10 +47,10 @@ function furnitureNode(overrides: Partial<FurnitureSceneNode> = {}): FurnitureSc
     kind: 'furniture',
     floorId: 'f1',
     footprintCorners: [
-      { x: 0, y: 0 },
-      { x: 1000, y: 0 },
-      { x: 1000, y: 500 },
-      { x: 0, y: 500 },
+      { x: 0, y: 200 },
+      { x: 1000, y: 200 },
+      { x: 1000, y: 700 },
+      { x: 0, y: 700 },
     ],
     elevationZ: 0,
     height: 750,
@@ -119,16 +119,16 @@ describe('sweepWalkCollision', () => {
 })
 
 describe('furnitureSegmentsForWalk', () => {
-  it('returns the four closed-loop perimeter segments of a footprint, mapping plan y to Z', () => {
+  it('returns the four closed-loop perimeter segments of a footprint, mapping plan north to -Z', () => {
     const segments = furnitureSegmentsForWalk([furnitureNode()])
 
     // The 4 corners trace a closed loop: 0->1, 1->2, 2->3, 3->0, with plan x kept
-    // as world X and plan y mapped to world Z.
+    // as world X and plan north (+y) mapped to world -Z, the way the piece renders.
     expect(segments).toEqual([
-      { start: { x: 0, z: 0 }, end: { x: 1000, z: 0 } },
-      { start: { x: 1000, z: 0 }, end: { x: 1000, z: 500 } },
-      { start: { x: 1000, z: 500 }, end: { x: 0, z: 500 } },
-      { start: { x: 0, z: 500 }, end: { x: 0, z: 0 } },
+      { start: { x: 0, z: -200 }, end: { x: 1000, z: -200 } },
+      { start: { x: 1000, z: -200 }, end: { x: 1000, z: -700 } },
+      { start: { x: 1000, z: -700 }, end: { x: 0, z: -700 } },
+      { start: { x: 0, z: -700 }, end: { x: 0, z: -200 } },
     ])
   })
 })
@@ -164,12 +164,12 @@ describe('passableDoorIds', () => {
 })
 
 describe('wallSegmentsForWalk', () => {
-  it('maps each wall centerline into a world-plane segment (plan x to X, plan y to Z)', () => {
+  it('maps each wall centerline into a world-plane segment (plan x to X, plan north to -Z)', () => {
     const segments = wallSegmentsForWalk([wallNode()], [])
 
     expect(segments).toHaveLength(1)
-    expect(segments[0]?.start).toEqual({ x: 100, z: 200 })
-    expect(segments[0]?.end).toEqual({ x: 100, z: 800 })
+    expect(segments[0]?.start).toEqual({ x: 100, z: -200 })
+    expect(segments[0]?.end).toEqual({ x: 100, z: -800 })
   })
 
   it('keeps a wall with a closed opening solid but cuts a gap for a passable one', () => {
@@ -254,5 +254,36 @@ describe('wall-thickness standoff', () => {
 
     expect(resolved.x).toBeCloseTo(0, 5)
     expect(resolved.z).toBeCloseTo(-(radius + assemblyThickness / 2), 5)
+  })
+})
+
+describe('plan-to-world orientation', () => {
+  // ADR-0139 pins the single plan-to-world map as plan north (+y) to world -Z, and
+  // every renderer builds its geometry through it. The collision field has to agree,
+  // or the walker is stopped by a mirror image of the building: it walks through the
+  // wall it can see and bumps into nothing at the reflection across world z = 0.
+  // Near the plan origin a wall and its reflection sit close enough to overlap, so
+  // the disagreement only shows on a plan drawn well away from plan y = 0.
+  it('blocks the walker at the wall it renders, not at its reflection across world z = 0', () => {
+    const planNorth = 5000
+    const northWall = wallNode({
+      start: { x: -1000, y: planNorth },
+      end: { x: 1000, y: planNorth },
+    })
+    const segments = wallSegmentsForWalk([northWall], [])
+    const standoff = radius + effectiveWallThickness(northWall) / 2
+    const approach = 100
+
+    // The wall renders at world z = -5000, so a step to within `approach` of that
+    // line is pushed straight back out to the face standoff.
+    const atRendered = resolveWalkCollision({ x: 0, z: -planNorth + approach }, segments, radius)
+    expect(atRendered.x).toBeCloseTo(0, 5)
+    expect(atRendered.z).toBeCloseTo(-planNorth + standoff, 5)
+
+    // Nothing is rendered at world z = +5000, so the mirrored step is left exactly
+    // where it was asked to go.
+    const atReflection = resolveWalkCollision({ x: 0, z: planNorth - approach }, segments, radius)
+    expect(atReflection.x).toBeCloseTo(0, 5)
+    expect(atReflection.z).toBeCloseTo(planNorth - approach, 5)
   })
 })

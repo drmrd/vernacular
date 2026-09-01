@@ -27,9 +27,10 @@ sourceFiles:
     engine/scene/furniture-builder.ts,
     engine/scene/wall-prism.ts,
     engine/scene/near-wall-transparency.ts,
+    core/scene/walk-collision.ts,
   ]
 status: current
-updated: 2026-07-01
+updated: 2026-08-31
 ---
 
 # ADR-0139: Map plan north to world -Z so the 3D view is not a mirror of the plan
@@ -123,6 +124,11 @@ ADR is the record of that spec correction.
   position can be tested against the 2D plan-space room polygons. It is the exact inverse
   of the plan-north = world `-Z` mapping this ADR records, which is why it lives beside
   the forward map.
+- `walk-collision.ts` was missing from the original consequence sweep and kept mapping
+  plan `y` to world `+Z`, so walk mode collided with a reflection of the building across
+  world `z = 0` on any plan that sits away from the origin. The fix routes every
+  conversion in that module through `planToWorld`, and a test now pins a far-from-origin
+  wall to its rendered side.
 
 ## References
 
