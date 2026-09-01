@@ -65,4 +65,16 @@ describe('graftUnknown keyed-collection maps', () => {
     const next = { paint: { s1: { color: 'new' } } }
     expect(graftUnknown(previous, next)).toEqual({ paint: { s1: { color: 'new' } } })
   })
+
+  it('replaces a paint entry outright when its treatment kind changes, not grafting fields from the old kind', () => {
+    const previous = {
+      paint: { s1: { kind: 'solid', color: 'old-red', finishId: 'matte' } },
+    }
+    const next = {
+      paint: {
+        s1: { kind: 'pattern', patternId: 'herringbone', scale: 100, colors: ['blue', 'white'] },
+      },
+    }
+    expect(graftUnknown(previous, next)).toEqual(next)
+  })
 })

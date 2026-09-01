@@ -8,13 +8,32 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // `next` here is a user deletion, so it must not be re-grafted (unlike an unknown key on an entity).
 const KEYED_COLLECTIONS = new Set(['roomOverrides', 'paint'])
 
+function discriminantKind(value: unknown): unknown {
+  return isPlainObject(value) ? value.kind : undefined
+}
+
+// A keyed collection's entries can themselves be a discriminated union (e.g. a paint entry may
+// be a solid-color treatment or a pattern treatment, tagged by `kind`). Grafting field-by-field
+// across a kind change would resurrect fields the new kind doesn't have and shouldn't carry, so
+// treat a kind change as a full replacement instead of a merge. Same-kind entries still enrich
+// via graftUnknown, which is what preserves reader-unknown fields per VFPF section 6.4. Any
+// keyed collection whose entry shape grows variants over time relies on this guard.
+function graftKeyedCollectionEntry(previous: unknown, next: unknown): unknown {
+  const previousKind = discriminantKind(previous)
+  const nextKind = discriminantKind(next)
+  if (previousKind !== undefined && nextKind !== undefined && previousKind !== nextKind) {
+    return next
+  }
+  return graftUnknown(previous, next)
+}
+
 function graftKeyedCollection(
   previous: Record<string, unknown>,
   next: Record<string, unknown>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(next)) {
-    result[key] = key in previous ? graftUnknown(previous[key], next[key]) : next[key]
+    result[key] = key in previous ? graftKeyedCollectionEntry(previous[key], next[key]) : next[key]
   }
   return result
 }
