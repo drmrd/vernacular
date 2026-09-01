@@ -1,16 +1,11 @@
 import { Canvas } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import {
-  humanizeElementTypeId,
-  type LightingMode,
-  type OpeningSceneNode,
-  type SceneGraph,
-  type Site,
-} from '../../core'
+import { type LightingMode, type OpeningSceneNode, type SceneGraph, type Site } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
+import { entityLabels, useCatalogNames } from './entity-labels'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
@@ -37,40 +32,16 @@ import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-env
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
 
-// Labels the openings in graph order, numbering each within its own element-type
-// sequence rather than one shared sequence, so a plan with two doors and one window
-// reads "Single Swing Door 1", "Double Hung Window 1", "Single Swing Door 2" instead
-// of grouping every opening kind under one running count.
-function openingLabels(openings: SceneGraph['openings']): (readonly [string, string])[] {
-  const seen = new Map<string, number>()
-  return openings.map((opening) => {
-    const ordinal = (seen.get(opening.type) ?? 0) + 1
-    seen.set(opening.type, ordinal)
-    return [opening.id, `${humanizeElementTypeId(opening.type)} ${ordinal}`] as const
-  })
-}
-
-// A short, stable label per selectable entity for the accessibility proxies, derived from
-// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings label from
-// their element type instead of the generic "Opening" kind. Labels live in the bridge layer
-// because the three-dimensional overlay cannot import the editor layer.
-// eslint-disable-next-line react-refresh/only-export-components -- pure label derivation exported for its unit test, matching the exported helpers beside CameraControlsHint and NearWallFade
-export function entityLabels(graph: SceneGraph): Map<string, string> {
-  return new Map<string, string>([
-    ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
-    ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
-    ...openingLabels(graph.openings),
-  ])
-}
-
 // The accessibility proxy state: the live projected screen positions (fed by the in-canvas
 // projector), joined with entity labels, plus the shared selection the proxies read and
 // write. The positions are session view state, like the camera and color temperature.
-function useSceneProxies(graph: SceneGraph) {
+// eslint-disable-next-line react-refresh/only-export-components -- the hook ships beside the component that calls it and this slice's test imports useSceneProxies from ./webgpu-scene-view.
+export function useSceneProxies(graph: SceneGraph) {
   const [positions, setPositions] = useState<EntityScreenPosition[]>([])
   const selection = useSelection()
   const selectedIds = useSelectionIds()
-  const labels = useMemo(() => entityLabels(graph), [graph])
+  const catalogNames = useCatalogNames()
+  const labels = useMemo(() => entityLabels(graph, catalogNames), [graph, catalogNames])
   const proxies = useMemo(
     () => positions.map((p) => ({ id: p.id, x: p.x, y: p.y, label: labels.get(p.id) ?? p.id })),
     [positions, labels],
