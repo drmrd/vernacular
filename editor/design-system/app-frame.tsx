@@ -68,6 +68,30 @@ interface CollapsiblePaneProps {
   children: ReactNode
 }
 
+/**
+ * Which way a pane's collapse glyph points, keyed by the edge the pane docks
+ * against. Expanded points toward that edge, the direction the pane travels
+ * when it collapses. Collapsed points back toward the canvas, the direction
+ * the pane travels when it expands again.
+ */
+const COLLAPSE_GLYPH: Record<PaneArea, { expanded: string; collapsed: string }> = {
+  rail: { expanded: '‹', collapsed: '›' },
+  inspector: { expanded: '›', collapsed: '‹' },
+}
+
+/**
+ * The collapse toggle's accessible name, keyed by pane and state. The rail
+ * also has an outer disclosure toggle ("Show/Hide Tools") that owns
+ * announcing its open state, so the rail's own collapse button keeps a
+ * constant name in both states and leans on aria-expanded for state. The
+ * inspector has no such outer control, so its name announces the action the
+ * button currently performs.
+ */
+const COLLAPSE_ACTION_NAME: Record<PaneArea, { expanded: string; collapsed: string }> = {
+  rail: { expanded: 'Collapse', collapsed: 'Collapse' },
+  inspector: { expanded: 'Collapse', collapsed: 'Expand' },
+}
+
 interface PaneResizeHandleProps {
   label: string
   size: number
@@ -101,6 +125,8 @@ function CollapsiblePane({ area, label, id, children }: CollapsiblePaneProps) {
   const { collapsed, toggle } = usePaneCollapse(false)
   const { size, width, onResizeStep } = usePaneWidth(area)
   const style = { [`--ds-${area}-size`]: width } as CSSProperties
+  const glyph = collapsed ? COLLAPSE_GLYPH[area].collapsed : COLLAPSE_GLYPH[area].expanded
+  const toggleAction = COLLAPSE_ACTION_NAME[area][collapsed ? 'collapsed' : 'expanded']
   return (
     <aside
       className={`ds-app-frame__${area}`}
@@ -112,10 +138,10 @@ function CollapsiblePane({ area, label, id, children }: CollapsiblePaneProps) {
       <Button
         className="ds-app-frame__collapse"
         aria-expanded={!collapsed}
-        aria-label={`Collapse ${label}`}
+        aria-label={`${toggleAction} ${label}`}
         onClick={toggle}
       >
-        {collapsed ? '›' : '‹'}
+        {glyph}
       </Button>
       {collapsed ? null : (
         <>
