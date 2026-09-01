@@ -5,7 +5,7 @@ import { useUserAssetSource } from '../../bridge/react/user-asset-source-context
 import { humanMessage, useNotifications, type PromiseMessages } from '../design-system'
 
 import { useActiveTool, type ToolId } from '../tools/active-tool-context'
-import { useFurniturePlacement } from '../plan/furniture-placement-context'
+import { armedUnderTool, useFurniturePlacement } from '../plan/furniture-placement-context'
 
 import { importFurnitureGlb } from './use-furniture-import'
 import { LibraryLauncher } from './library-launcher'
@@ -89,10 +89,9 @@ export function LibraryLauncherPanel(): ReactElement {
     inputRef.current?.click()
   }, [])
 
-  // The armed item outlives a tool switch, so that a return to the tool resumes
-  // where the user left off. Only the tool that consumes it should say so: under
-  // any other tool the canvas will not place it, and the panel stays quiet.
-  const itemAwaitingPlacement = tool === PLACE_FURNITURE_TOOL ? armed : null
+  // Only the place-furniture tool speaks the armed item's placement caption;
+  // under any other tool the panel stays quiet about it.
+  const itemAwaitingPlacement = armedUnderTool(tool, armed)
 
   return (
     <>

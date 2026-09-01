@@ -5,7 +5,7 @@ import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import type { DrawableFurniture } from './draw-furniture'
 import { toDrawableFurniture } from './drawable-furniture'
-import { useFurniturePlacement } from './furniture-placement-context'
+import { armedUnderTool, useFurniturePlacement } from './furniture-placement-context'
 import { useFurnitureEditing, type FurnitureEditing } from './use-furniture-editing'
 import { useFurnitureKeyboard } from './use-furniture-keyboard'
 import { usePlaceFurniture } from './use-furniture-placement'
@@ -49,18 +49,19 @@ interface GhostInputs {
 
 /** Build the transient ghost drawable that tracks the cursor while an item is armed, or null when it should not paint. */
 function ghostDrawable({ armed, rotation, cursor, tool }: GhostInputs): DrawableFurniture | null {
-  if (armed === null || cursor === null || tool !== 'place-furniture') {
+  const armedItem = armedUnderTool(tool, armed)
+  if (armedItem === null || cursor === null) {
     return null
   }
-  const ghost = furnitureGhostAt(cursor, rotation, armed.footprint)
+  const ghost = furnitureGhostAt(cursor, rotation, armedItem.footprint)
   const instance = createFurnitureInstance({
     id: FURNITURE_GHOST_ID,
-    assetRef: armed.reference,
+    assetRef: armedItem.reference,
     position: ghost.position,
     rotation: ghost.rotation,
     footprint: ghost.footprint,
-    height: armed.height,
-    ...(armed.name !== '' ? { name: armed.name } : {}),
+    height: armedItem.height,
+    ...(armedItem.name !== '' ? { name: armedItem.name } : {}),
   })
   return { instance, selected: false }
 }
@@ -90,7 +91,7 @@ export function useFurnitureLayer(deps: FurnitureLayerDeps): FurnitureLayer {
   const editing = useFurnitureEditing({ session, selectedFurniture, activeFloorId, viewport })
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
-      if (tool !== 'place-furniture' || armed === null) {
+      if (armedUnderTool(tool, armed) === null) {
         return
       }
       setCursor(screenToWorld(eventToCanvas(event, event.currentTarget), viewport))
