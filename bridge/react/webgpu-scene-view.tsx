@@ -50,16 +50,33 @@ function openingLabels(openings: SceneGraph['openings']): (readonly [string, str
   })
 }
 
+// Labels each stair within its own run-type sequence, the same per-type counter
+// openingLabels uses, so a plan with two straight runs and one L-turn reads
+// "Straight Stair 1", "L Turn Stair 1", "Straight Stair 2" rather than one shared count.
+function stairLabels(stairs: SceneGraph['stairs']): (readonly [string, string])[] {
+  const seen = new Map<string, number>()
+  return stairs.map((stair) => {
+    const ordinal = (seen.get(stair.runType) ?? 0) + 1
+    seen.set(stair.runType, ordinal)
+    return [stair.id, `${humanizeElementTypeId(stair.runType)} Stair ${ordinal}`] as const
+  })
+}
+
 // A short, stable label per selectable entity for the accessibility proxies, derived from
-// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings label from
-// their element type instead of the generic "Opening" kind. Labels live in the bridge layer
-// because the three-dimensional overlay cannot import the editor layer.
+// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings and stairs
+// label from their own type instead of the generic kind, and furniture labels from its own
+// name when the piece has one. Labels live in the bridge layer because the three-dimensional
+// overlay cannot import the editor layer.
 // eslint-disable-next-line react-refresh/only-export-components -- pure label derivation exported for its unit test, matching the exported helpers beside CameraControlsHint and NearWallFade
 export function entityLabels(graph: SceneGraph): Map<string, string> {
   return new Map<string, string>([
     ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
     ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
     ...openingLabels(graph.openings),
+    ...graph.furniture.map(
+      (piece, index) => [piece.id, piece.name ?? `Furniture ${index + 1}`] as const,
+    ),
+    ...stairLabels(graph.stairs),
   ])
 }
 
