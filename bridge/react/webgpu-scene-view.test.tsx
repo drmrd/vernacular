@@ -1,10 +1,22 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, waitFor } from '@testing-library/react'
+import { useEffect } from 'react'
+import type { FurnitureSceneNode, SceneGraph } from '../../core'
+import type { AssetSource, LibraryItem } from '../../storage'
+import { AssetRegistry } from '../../storage'
+import { createSelectionStore } from '../selection/selection-store'
+import { AssetRegistryProvider } from './asset-registry-context'
+import { SelectionProvider } from './selection-provider'
 import { CAMERA_PANE_MIN_HEIGHT_SHARE, ScenePaneShell } from './webgpu-scene-view'
+// `useSceneProxies` exists in the module but is not exported yet. This namespace import
+// plus cast lets the test reference it ahead of the export landing, so the RED failure
+// below is this file's own `toBeDefined` assertion rather than a typecheck error. A
+// follow-up cleanup switches this to a plain named import once the hook is exported.
+import * as sceneView from './webgpu-scene-view'
+
+afterEach(cleanup)
 
 describe('ScenePaneShell', () => {
-  afterEach(cleanup)
-
   it('reserves the camera pane min-height share so the toolbar above it scrolls instead of collapsing the canvas', () => {
     const { container } = render(
       <ScenePaneShell mode="orbit">
@@ -16,5 +28,116 @@ describe('ScenePaneShell', () => {
     expect(pane).not.toBeNull()
     expect((pane as HTMLElement).style.minHeight).toBe(CAMERA_PANE_MIN_HEIGHT_SHARE)
     expect((pane as HTMLElement).style.flexGrow).toBe('1')
+  })
+})
+
+interface SceneProxiesResult {
+  proxies: { id: string; x: number; y: number; label: string }[]
+  setPositions: (positions: { id: string; x: number; y: number }[]) => void
+  selectedIds: ReadonlySet<string>
+  onSelect: (id: string, additive: boolean) => void
+}
+
+const useSceneProxies = (
+  sceneView as { useSceneProxies?: (graph: SceneGraph) => SceneProxiesResult }
+).useSceneProxies
+
+const FURNITURE_ID = 'furniture:unnamed-armchair'
+
+// A single unnamed furniture piece referencing a catalog asset by content hash, the same
+// minimal shape the entity-labels fixtures use since only `id` and `assetRef` drive
+// this test.
+function furnitureFromCatalog(id: string, contentHash: string): FurnitureSceneNode {
+  return {
+    id,
+    kind: 'furniture',
+    floorId: 'demo',
+    footprintCorners: [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+      { x: 0, y: 1 },
+    ],
+    elevationZ: 0,
+    height: 800,
+    assetRef: { scope: 'project', contentHash },
+  }
+}
+
+const graph: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+  furniture: [furnitureFromCatalog(FURNITURE_ID, 'hash-armchair')],
+}
+
+// A minimal library item for a stubbed asset source, the same shape the entity-labels
+// tests use, keyed by the content hash the hook resolves against.
+function libraryItem(contentHash: string, name: string): LibraryItem {
+  return {
+    reference: { scope: 'project', contentHash },
+    name,
+    kind: 'furniture',
+    categories: [],
+    eras: [],
+    footprint: { width: 600, depth: 600 },
+    height: 900,
+  }
+}
+
+// Reports the hook's proxies on every render and injects one fixed screen position, so
+// a test can observe the joined proxy label settle from its positional fallback to the
+// catalog name once the registry's list() resolves.
+function SceneProxiesProbe({
+  onProxies,
+}: {
+  onProxies: (proxies: { id: string; x: number; y: number; label: string }[]) => void
+}) {
+  const { proxies, setPositions } = useSceneProxies!(graph)
+  onProxies(proxies)
+  useEffect(() => {
+    setPositions([{ id: FURNITURE_ID, x: 5, y: 6 }])
+  }, [setPositions])
+  return null
+}
+
+describe('useSceneProxies', () => {
+  it('joins injected screen positions with catalog-resolved labels', async () => {
+    expect(useSceneProxies).toBeDefined()
+
+    const stubSource: AssetSource = {
+      id: 'stub-source',
+      read: async () => undefined,
+      list: async () => [libraryItem('hash-armchair', 'Wingback Armchair')],
+    }
+    const registry = new AssetRegistry([{ kind: 'project', source: stubSource }])
+    const store = createSelectionStore()
+
+    let captured: { id: string; x: number; y: number; label: string }[] = []
+    render(
+      <SelectionProvider store={store}>
+        <AssetRegistryProvider registry={registry}>
+          <SceneProxiesProbe
+            onProxies={(proxies) => {
+              captured = proxies
+            }}
+          />
+        </AssetRegistryProvider>
+      </SelectionProvider>,
+    )
+
+    // Before the registry's list() resolves, the joined proxy still carries the
+    // positional fallback label.
+    expect(captured.find((proxy) => proxy.id === FURNITURE_ID)?.label).toBe('Furniture 1')
+
+    await waitFor(() =>
+      expect(captured.find((proxy) => proxy.id === FURNITURE_ID)?.label).toBe(
+        'Wingback Armchair 1',
+      ),
+    )
   })
 })

@@ -9,20 +9,11 @@ import type {
 } from '../../core'
 import type { AssetSource, LibraryItem } from '../../storage'
 import { AssetRegistry } from '../../storage'
-import { entityLabels } from './entity-labels'
+import { entityLabels, useCatalogNames } from './entity-labels'
 import { AssetRegistryProvider } from './asset-registry-context'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
-// `useCatalogNames` does not exist on the module yet. This namespace import plus cast
-// lets the test reference it ahead of the export landing, so the RED failure below is
-// this file's own `toBeDefined` assertion rather than a typecheck error. The follow-up
-// cleanup switches this to a plain named import once the hook lands.
-import * as entityLabelsModule from './entity-labels'
 
 afterEach(cleanup)
-
-const useCatalogNames = (
-  entityLabelsModule as { useCatalogNames?: () => ReadonlyMap<string, string> }
-).useCatalogNames
 
 // Three openings on one floor, in graph order: a door, then a window, then a
 // second opening of that same door type. Minimal geometry fields are filled
@@ -208,7 +199,7 @@ function libraryItem(contentHash: string, name: string): LibraryItem {
 // Reports the hook's return value on every render, so a test can observe it settle
 // from its initial empty map to the populated one once the registry's list() resolves.
 function CatalogNamesProbe({ onNames }: { onNames: (names: ReadonlyMap<string, string>) => void }) {
-  onNames(useCatalogNames!())
+  onNames(useCatalogNames())
   return null
 }
 
