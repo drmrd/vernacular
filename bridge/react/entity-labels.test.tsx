@@ -7,7 +7,7 @@ import type {
   StairSceneNode,
   StairRunType,
 } from '../../core'
-import { entityLabels } from './webgpu-scene-view'
+import { entityLabels } from './entity-labels'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 
 afterEach(cleanup)
@@ -123,6 +123,83 @@ describe('furniture labels in the 3D view', () => {
     expect(screen.getByRole('option', { name: 'Wingback Armchair' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Furniture 2' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Furniture 3' })).toBeInTheDocument()
+  })
+})
+
+// A furniture piece referencing a catalog asset by content hash, with the same
+// minimal geometry as `furniture()`. `name` is optional so a fixture can leave
+// a piece unnamed and exercise the catalog-name fallback.
+function furnitureFromCatalog(id: string, contentHash: string, name?: string): FurnitureSceneNode {
+  return {
+    id,
+    kind: 'furniture',
+    floorId: 'demo',
+    footprintCorners: [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+      { x: 0, y: 1 },
+    ],
+    elevationZ: 0,
+    height: 800,
+    assetRef: { scope: 'project', contentHash },
+    ...(name === undefined ? {} : { name }),
+  }
+}
+
+const catalogFurnitureGraph: SceneGraph = {
+  nodes: [{ id: 'floor:demo', kind: 'floor', name: 'Demo', elevation: 0 }],
+  walls: [],
+  rooms: [],
+  underlays: [],
+  openings: [],
+  dimensions: [],
+  stairs: [],
+  furniture: [
+    furnitureFromCatalog('furniture:named-armchair', 'hash-armchair', 'Reading Nook Chair'),
+    furnitureFromCatalog('furniture:unnamed-armchair-a', 'hash-armchair'),
+    furnitureFromCatalog('furniture:unnamed-armchair-b', 'hash-armchair'),
+    furnitureFromCatalog('furniture:unnamed-settee', 'hash-settee'),
+    furnitureFromCatalog('furniture:unrecognized', 'hash-unknown'),
+  ],
+}
+
+const catalogNames = new Map<string, string>([
+  ['hash-armchair', 'Wingback Armchair'],
+  ['hash-settee', 'Camelback Settee'],
+])
+
+describe('furniture labels sourced from a catalog-names map', () => {
+  it('labels unnamed pieces by their catalog name, numbered within that name, without consuming an ordinal for named pieces or a hash absent from the map', () => {
+    // `entityLabels` currently takes one parameter; this cast lets the test call
+    // the pending two-argument form ahead of the implementation. The next
+    // cycle's test commit removes this cast once the signature grows the
+    // optional `catalogNames` parameter for real.
+    const entityLabelsWithCatalog = entityLabels as (
+      graph: SceneGraph,
+      catalogNames?: ReadonlyMap<string, string>,
+    ) => Map<string, string>
+
+    const labels = entityLabelsWithCatalog(catalogFurnitureGraph, catalogNames)
+    const proxies = catalogFurnitureGraph.furniture.map((entity, index) => ({
+      id: entity.id,
+      x: index,
+      y: index,
+      label: labels.get(entity.id) ?? entity.id,
+    }))
+
+    render(<SceneProxyOverlay proxies={proxies} selectedIds={new Set()} onSelect={vi.fn()} />)
+
+    // The named piece keeps its own name and does not consume a "Wingback
+    // Armchair" ordinal, so the two unnamed armchairs number 1 and 2.
+    expect(screen.getByRole('option', { name: 'Reading Nook Chair' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Wingback Armchair 1' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Wingback Armchair 2' })).toBeInTheDocument()
+    // A single unnamed piece of a catalog name still gets an ordinal.
+    expect(screen.getByRole('option', { name: 'Camelback Settee 1' })).toBeInTheDocument()
+    // A content hash absent from the catalog-names map falls back to the
+    // existing array-position idiom, unaffected by the catalog lookups above.
+    expect(screen.getByRole('option', { name: 'Furniture 5' })).toBeInTheDocument()
   })
 })
 
