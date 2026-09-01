@@ -9,6 +9,7 @@ related:
     decisions/ADR-0003-storage-provider-pattern,
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0001-six-layer-architecture,
+    decisions/ADR-0051-format-preservation-and-load-validation,
   ]
 sourceFiles:
   [
@@ -19,10 +20,11 @@ sourceFiles:
     core/migrations/schema/index.ts,
     core/migrations/registries/index.ts,
     core/migrations/index.ts,
+    core/migrations/schema/rekey-room-overrides.ts,
     storage/folder/folder-project-store.ts,
   ]
 status: current
-updated: 2026-06-04
+updated: 2026-08-31
 ---
 
 # ADR-0029: Schema-and-registry migration framework, pure core with storage-side atomicity
@@ -151,3 +153,59 @@ injected migrate targeting a higher version) without changing the real schema.
   migrate on load).
 - ADR-0003 (the `ProjectNotFoundError` and clone-on-save precedents the folder
   store preserves).
+
+## Update (2026-08-31): the first data-rewriting step, and the segment-and-rejoin pattern for a changed key separator
+
+`rekeyRoomOverridesMigration` (`core/migrations/schema/rekey-room-overrides.ts`, issue #625, PR #641)
+is the schema ladder's first step that rewrites existing data rather than adding a field with a
+default. Every earlier `add-*` step in `core/migrations/schema/index.ts` only introduces a new key
+with a default value; this one changes how an existing key is spelled. The "real chains are empty"
+framing in this ADR's Status and Decision sections is now historical: `CURRENT_SCHEMA_VERSION` is 17,
+and sixteen migrations occupy the ladder.
+
+The problem this step solves is a recurring shape worth naming for whoever hits it next: a key
+separator changes under live data. An early build joined a room override's key from its sorted
+wall ids with `-`. Wall ids are themselves dash-shaped strings, so that join was ambiguous, two
+different sets of walls could land on the same joined key, and `roomKey`
+(`core/topology/rooms.ts`) now joins with `|` instead. A document an old build saved still carries
+overrides filed under the old, ambiguous key, and the room lookup, which always calls today's
+`roomKey`, can no longer find them.
+
+The fix is split, validate, rejoin, not a blind character swap:
+
+- Split. The migration walks the stored key against the set of wall ids that actually exist in
+  this document, backtracking, because a wall id can itself contain the old separator, so a plain
+  `split('-')` would cut through a wall id rather than between two of them.
+- Validate. A split only counts if it consumes the entire key into wall ids the document
+  recognizes. A key that partially matches, or matches nothing, is not massaged into a best guess.
+- Rejoin through the live key function, not the new separator. The migration does not hand-build
+  the new key by joining the recovered segments with `|`. It calls `roomKey` itself, the same
+  function every current room lookup uses, so the migrated key is guaranteed to match what the rest
+  of the app resolves today even if `roomKey`'s canonicalization (deduplicating and sorting the ids)
+  does more than a plain join.
+
+This shape generalizes past room overrides: reach for split-validate-rejoin whenever a stored,
+delimiter-joined key predates a change to that delimiter or to the joining function, and the
+component values are not guaranteed free of the old delimiter.
+
+The migration leaves an unmatched key alone rather than dropping it. A dash-joined key that does not fully
+segment against this document's wall ids does not provably name any room here: it might reference
+walls the user has since deleted, or it might be unrelated data. The migration cannot tell, so it
+declines to guess and declines to drop the entry; it writes the key back unchanged. That is a
+narrower instance of the preservation stance [[ADR-0051-format-preservation-and-load-validation]]
+takes for extension payloads and reserved keys: something the current code cannot interpret is
+carried forward untouched rather than discarded, so it stays recoverable, by a smarter future
+migration or by a person reading the file, instead of vanishing silently inside a routine schema
+bump.
+
+The framework allows one migration per `from` version, which forces a later cleanup
+into a later step. `migrateProject`'s schema loop (`core/migrations/migrate.ts`) finds the single `SchemaMigration`
+whose `from` equals the document's current version, applies it, then advances the version by
+exactly one; nothing in the loop lets two migrations share a `from`, and no step spans more than one
+version. A `from` version is a slot with room for exactly one step. `rekeyRoomOverridesMigration`
+claims the 16-to-17 slot. A second, unrelated cleanup, stripping paint entries a kind-switch bug
+once left with fields invalid for their kind (issue #632), also wants to touch documents from around
+this era, but it cannot ride along in the same step: it is queued as the 17-to-18 step, landing only
+once this migration has merged and the version has advanced again. An author whose fix wants to land
+against a `from` version another migration already occupies should expect the same: sequence the fix
+as the next step rather than trying to widen the step that is already there.
