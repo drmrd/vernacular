@@ -42,9 +42,10 @@ sourceFiles:
     bridge/react/scene-selection.tsx,
     bridge/react/scene-overlay.tsx,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/entity-labels.ts,
   ]
 status: current
-updated: 2026-06-13
+updated: 2026-08-31
 ---
 
 # ADR-0066: Selection and accessibility for the three-dimensional preview: shared store, pure pick, reconciled luminance outline
@@ -123,6 +124,28 @@ each proxy is positioned from the camera projection and repositioned as the came
 orbits or walks. The proxy layer takes no pointer events, so the pointer pick stays
 on the canvas; the proxies are the keyboard and screen-reader surface. This lands in
 part 6b.
+
+### Labels derive per kind, and catalog names join through an async seam
+
+The proxies and the live region need names, and a bare kind-and-index name tells a
+screen reader user very little. Label derivation is a pure function in
+`bridge/react/entity-labels.ts` (the overlay cannot import the editor layer), with
+one strategy per kind. Walls and rooms number by array position, "Wall 1", "Room 2".
+Openings and stairs read as their humanized element type, and each type counts its
+own ordinal, so two swing doors and a hung window come out "Single Swing Door 1",
+"Double Hung Window 1", "Single Swing Door 2" instead of sharing one running count.
+Furniture resolves in priority order: a user-set name wins verbatim and consumes no
+ordinal; an unnamed piece with a known asset hash takes its catalog display name,
+numbered within that name; anything else falls back to its array position,
+"Furniture N".
+
+The catalog half of that priority order is asynchronous, because display names live
+in the asset registry and its `list()` may read IndexedDB or a network pack. A small
+hook, `useCatalogNames`, resolves the listing into a content-hash-to-name map.
+Labels still render synchronously: first paint uses the fallbacks, and the labels
+settle to catalog names once the map arrives. A failed listing warns on the console
+and keeps the fallbacks, so a broken catalog source degrades furniture names rather
+than taking down the proxies.
 
 ### Delivery in two parts
 
