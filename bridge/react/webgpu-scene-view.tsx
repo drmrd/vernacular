@@ -35,7 +35,8 @@ import { WalkCameraControls } from './walk-camera-controls'
 // The accessibility proxy state: the live projected screen positions (fed by the in-canvas
 // projector), joined with entity labels, plus the shared selection the proxies read and
 // write. The positions are session view state, like the camera and color temperature.
-function useSceneProxies(graph: SceneGraph) {
+// eslint-disable-next-line react-refresh/only-export-components -- the hook ships beside the component that calls it and this slice's test imports useSceneProxies from ./webgpu-scene-view.
+export function useSceneProxies(graph: SceneGraph) {
   const [positions, setPositions] = useState<EntityScreenPosition[]>([])
   const selection = useSelection()
   const selectedIds = useSelectionIds()
