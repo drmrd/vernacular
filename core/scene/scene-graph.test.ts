@@ -20,6 +20,7 @@ import { DEFAULT_GRADE_ELEVATION_MM } from '../model/site'
 import type { Floor, Project, RoomOverride, Underlay, Wall } from '../model/types'
 import { deriveRooms, ROOM_ID_PREFIX, roomKey } from '../topology/rooms'
 import {
+  deriveFurnitureNode,
   deriveRoomNodesForFloor,
   deriveSceneGraph,
   deriveUnderlayNode,
@@ -430,5 +431,27 @@ describe('deriveSceneGraph furniture', () => {
       elevationZ: instance.elevationZ,
       height: instance.height,
     })
+  })
+})
+
+describe('deriveFurnitureNode name', () => {
+  it("carries the instance's optional name onto the derived node, and derives no name when the instance has none", () => {
+    const namedInstance = createFurnitureInstance({
+      id: 'sofa-1',
+      assetRef: FURNITURE_IMAGE,
+      position: { x: 1500, y: 900 },
+      footprint: { width: 2000, depth: 900 },
+      name: 'Reading Nook Sofa',
+    })
+    const namelessInstance = createFurnitureInstance({
+      id: 'sofa-2',
+      assetRef: FURNITURE_IMAGE,
+      position: { x: 1500, y: 900 },
+      footprint: { width: 2000, depth: 900 },
+    })
+    const floor = createFloor('Ground', { id: 'g' })
+
+    expect(deriveFurnitureNode(floor, namedInstance)).toMatchObject({ name: 'Reading Nook Sofa' })
+    expect(deriveFurnitureNode(floor, namelessInstance)).not.toHaveProperty('name')
   })
 })
