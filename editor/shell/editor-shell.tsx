@@ -55,6 +55,13 @@ const SAVE_STATUS_ICONS: Record<AutosaveStatus, Icon> = {
   error: WarningCircle,
 }
 
+// A blank (or whitespace-only) name is not a real rename request. Returns the
+// trimmed name, or null when there is nothing to rename to.
+function trimmedOrNull(name: string): string | null {
+  const trimmed = name.trim()
+  return trimmed === '' ? null : trimmed
+}
+
 interface ShellHeaderProps {
   saveStatus: AutosaveStatus
   projectControls: ProjectControlsProps
@@ -87,8 +94,8 @@ function useProjectRename() {
   useSceneGraph()
   const projectName = session.getProject().meta.name
   const handleRename = (name: string) => {
-    const trimmedName = name.trim()
-    if (trimmedName === '') return
+    const trimmedName = trimmedOrNull(name)
+    if (trimmedName === null) return
     session.dispatch(renameProject(trimmedName))
   }
   return { session, projectName, handleRename }
@@ -155,7 +162,11 @@ function EditorStatusBar() {
       onAddFloor={(placement) =>
         session.dispatch(addFloor(placement.name, { elevation: placement.elevation }))
       }
-      onRenameFloor={(id, name) => session.dispatch(renameFloor(id, name))}
+      onRenameFloor={(id, name) => {
+        const trimmedName = trimmedOrNull(name)
+        if (trimmedName === null) return
+        session.dispatch(renameFloor(id, trimmedName))
+      }}
       tool={`Tool: ${toolLabel(tool)}`}
       coords={<CoordsReadout />}
       snap={<SnapStatus />}

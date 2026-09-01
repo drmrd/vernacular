@@ -413,6 +413,25 @@ describe('EditorShell', () => {
     expect(session.getProject().meta.name).toBe('Cedar Hollow')
   })
 
+  it('renames the active floor from the status bar, but ignores a blank or whitespace-only name', async () => {
+    vi.stubGlobal('navigator', {})
+    const user = userEvent.setup()
+
+    const { session } = renderShell()
+
+    await user.click(screen.getByRole('button', { name: /rename floor/i }))
+    const blankInput = screen.getByRole('textbox', { name: /floor name/i })
+    await user.clear(blankInput)
+    await user.type(blankInput, '   {Enter}')
+
+    // A blank or whitespace-only name is not a real rename, so the floor keeps
+    // the name it had before this attempt, both in the switcher and in the
+    // session's own project state.
+    const floorsNav = screen.getByRole('navigation', { name: /floors/i })
+    expect(within(floorsNav).getByRole('button', { name: 'Ground' })).toBeInTheDocument()
+    expect(session.getProject().floors[0]?.name).toBe('Ground')
+  })
+
   it('restores or discards from the recovery prompt and hides it otherwise', async () => {
     vi.stubGlobal('navigator', {})
     const onRestore = vi.fn()
