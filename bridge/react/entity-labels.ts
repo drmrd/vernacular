@@ -80,6 +80,8 @@ export function useCatalogNames(): ReadonlyMap<string, string> {
   const [catalogNames, setCatalogNames] = useState<ReadonlyMap<string, string>>(EMPTY_CATALOG_NAMES)
   useEffect(() => {
     let cancelled = false
+    // Resets to the shared empty map on every registry change; on first mount this is a
+    // harmless Object.is no-op since state already holds that exact reference.
     setCatalogNames(EMPTY_CATALOG_NAMES)
     registry
       .list()
@@ -87,8 +89,9 @@ export function useCatalogNames(): ReadonlyMap<string, string> {
         if (cancelled) return
         setCatalogNames(new Map(items.map((item) => [item.reference.contentHash, item.name])))
       })
-      .catch(() => {
+      .catch((error) => {
         // Degrade to fallback labels rather than surfacing a load failure here.
+        console.warn('Failed to list catalog names for furniture labels', error)
       })
     return () => {
       cancelled = true
