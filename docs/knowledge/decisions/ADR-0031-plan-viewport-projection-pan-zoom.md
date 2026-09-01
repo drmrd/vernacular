@@ -26,7 +26,7 @@ sourceFiles:
     editor/shell/editor-shell.css,
   ]
 status: current
-updated: 2026-06-05
+updated: 2026-08-31
 ---
 
 # ADR-0031: 2D plan viewport projection model (pan offset + zoom)
@@ -147,7 +147,17 @@ content (it always materializes a concrete `offset`, so the no-pan sentinel neve
 applies to a fit viewport). A degenerate (single-point) bounds falls back to the
 tightest zoom on the degenerate axis so the other axis governs. Fit-to-content is
 wired to the `f` key; fit-to-selection is a one-line caller change deferred to
-slice 5 (selection lands fully there).
+slice 5 (selection lands fully there). A third caller landed 2026-08-31: on mount,
+`ViewportProvider` seeds its initial state with the fit result when the opened
+document already carries drawn content, so a plan in the positive quadrant is in
+frame on open instead of off-screen above the canvas. The default
+`scale`-plus-zero-offset viewport still applies to an empty document, so the
+wall-drawing e2e mapping is unchanged. The seeding read in the editor shell
+deliberately bypasses the reactive hooks: it reads `getSceneGraph()` and the
+active-floor getter once inside a lazy state initializer, because the value is
+consumed exactly once at mount and a subscription would re-render the whole
+provider pyramid on every scene edit for a discarded value. Do not "fix" that
+bypass back to the reactive hooks.
 
 ### Drawing extends the ADR-0021 Canvas seam by five members
 

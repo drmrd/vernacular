@@ -8,7 +8,9 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react'
-import { DEFAULT_PLAN_SCALE, type Viewport } from './viewport'
+import type { Point } from '../../core'
+import { computeFitViewport, contentBounds, planContentPoints } from './fit'
+import { DEFAULT_PLAN_SCALE, type Viewport, type ViewportSize } from './viewport'
 
 export interface ViewportValue {
   viewport: Viewport
@@ -25,8 +27,27 @@ export function useViewport(): ViewportValue {
   return value
 }
 
+/** The already-drawn content a floor opens with, so the initial viewport can frame it. */
+export interface ViewportInitialContent {
+  walls: readonly { start: Point; end: Point }[]
+  rooms: readonly { polygon: readonly Point[] }[]
+  size: ViewportSize
+}
+
 export interface ViewportProviderProps {
   children: ReactNode
+  /** When provided, the initial viewport frames this content instead of starting at the default scale. */
+  initialContent?: ViewportInitialContent
+}
+
+const DEFAULT_VIEWPORT: Viewport = { scale: DEFAULT_PLAN_SCALE }
+
+function computeInitialViewport(initialContent: ViewportInitialContent | undefined): Viewport {
+  if (initialContent === undefined) {
+    return DEFAULT_VIEWPORT
+  }
+  const bounds = contentBounds(planContentPoints(initialContent.walls, initialContent.rooms))
+  return bounds === null ? DEFAULT_VIEWPORT : computeFitViewport(bounds, initialContent.size)
 }
 
 /**
@@ -35,8 +56,8 @@ export interface ViewportProviderProps {
  * The plan view consumes `setViewport` for its pan/zoom/fit input exactly as it did
  * when the state lived locally; the value shape is unchanged.
  */
-export function ViewportProvider({ children }: ViewportProviderProps) {
-  const [viewport, setViewport] = useState<Viewport>({ scale: DEFAULT_PLAN_SCALE })
+export function ViewportProvider({ children, initialContent }: ViewportProviderProps) {
+  const [viewport, setViewport] = useState<Viewport>(() => computeInitialViewport(initialContent))
   const value = useMemo<ViewportValue>(() => ({ viewport, setViewport }), [viewport])
   return createElement(ViewportContext.Provider, { value }, children)
 }

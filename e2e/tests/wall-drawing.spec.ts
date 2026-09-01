@@ -22,7 +22,12 @@ test.describe('Wall-drawing proof of life', () => {
     await expect(page.getByRole('option', { name: /^Wall,/ })).toHaveCount(1)
 
     await page.getByRole('radio', { name: 'Select' }).click()
-    await page.getByLabel('Floor plan').click({ position: { x: 320, y: 200 } })
+    // The restored document opens framed on its drawn content, so the wall's midpoint
+    // now sits at the canvas center rather than at its draw-time coordinates.
+    const restored = page.getByLabel('Floor plan')
+    const box = await restored.boundingBox()
+    if (!box) throw new Error('Floor plan canvas has no bounding box')
+    await restored.click({ position: { x: box.width / 2, y: box.height / 2 } })
     await expect(page.getByRole('textbox', { name: /thickness/i })).toBeVisible()
   })
 })

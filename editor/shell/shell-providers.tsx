@@ -1,5 +1,6 @@
-import { useMemo, type ReactNode } from 'react'
+import { useContext, useMemo, useState, type ReactNode } from 'react'
 import {
+  ActiveFloorContext,
   createEnvironmentSessionStore,
   createPerceivedColorStore,
   createSceneSessionStore,
@@ -13,6 +14,7 @@ import {
   useSceneGraph,
   useSelection,
 } from '../../bridge'
+import { sceneGraphForFloor } from '../../core'
 import {
   CommandPalette,
   CommandPaletteProvider,
@@ -23,11 +25,12 @@ import {
 import { useEntitySurfaceBridge } from '../paint/use-entity-surface-bridge'
 import { FurniturePlacementProvider } from '../plan/furniture-placement-context'
 import { OpeningToolProvider } from '../plan/opening-tool-context'
+import { PLAN_HEIGHT, PLAN_WIDTH } from '../plan/plan-scene'
 import { createSnapPreferencesStore } from '../plan/snap-preferences-store'
 import { useSnapPreferencesStore } from '../plan/snap-preferences-context'
 import { SnapPreferencesProvider } from '../plan/snap-preferences-provider'
 import { UnderlayProvider } from '../plan/use-underlay'
-import { ViewportProvider } from '../plan/viewport-context'
+import { ViewportProvider, type ViewportInitialContent } from '../plan/viewport-context'
 import { PointerReadoutProvider } from '../plan/pointer-readout'
 import { ViewModeProvider, useViewMode } from '../viewport/view-mode'
 import { ViewOverlayProvider } from '../viewport/view-overlay-context'
@@ -101,16 +104,37 @@ function SessionStateProviders({ onSave, children }: ProviderLayerProps) {
  * the plan's snapping, persisted to localStorage as an editor preference. The underlay
  * and opening-tool providers wrap the frame so the shared underlay state and the
  * opening placement type reach the canvas glue and the inspector and tools panels from
- * one source.
+ * one source. The viewport provider reads the active floor's already-drawn walls and
+ * rooms so a document that opens with content already on it frames that content
+ * instead of the default scale. That read happens once, at mount, straight off the
+ * session and active-floor store's non-reactive getters: later scene-graph mutations
+ * must not re-render this whole provider pyramid just to recompute a value the
+ * viewport only ever consumes on its first render.
  */
 export function ShellProviders({ onSave, children }: ProviderLayerProps) {
   const snapPreferences = useMemo(() => createSnapPreferencesStore(), [])
+  const session = useEditorSession()
+  const activeFloorStore = useContext(ActiveFloorContext)
+  if (activeFloorStore === null) {
+    throw new Error('ShellProviders must be used within an ActiveFloorProvider')
+  }
+  const [initialContent] = useState<ViewportInitialContent>(() => {
+    const activeFloorGraph = sceneGraphForFloor(
+      session.getSceneGraph(),
+      activeFloorStore.getActiveFloorId(),
+    )
+    return {
+      walls: activeFloorGraph.walls,
+      rooms: activeFloorGraph.rooms,
+      size: { width: PLAN_WIDTH, height: PLAN_HEIGHT },
+    }
+  })
   return (
     <CommandPaletteProvider>
       <SnapPreferencesProvider store={snapPreferences}>
         <ViewModeProvider>
           <ViewOverlayProvider>
-            <ViewportProvider>
+            <ViewportProvider initialContent={initialContent}>
               <PointerReadoutProvider>
                 <UnderlayProvider>
                   <OpeningToolProvider>
