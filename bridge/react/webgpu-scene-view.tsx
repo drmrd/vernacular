@@ -1,16 +1,11 @@
 import { Canvas } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import {
-  humanizeElementTypeId,
-  type LightingMode,
-  type OpeningSceneNode,
-  type SceneGraph,
-  type Site,
-} from '../../core'
+import { type LightingMode, type OpeningSceneNode, type SceneGraph, type Site } from '../../core'
 import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
+import { entityLabels } from './entity-labels'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
@@ -37,48 +32,8 @@ import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-env
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
 
-// Labels the openings in graph order, numbering each within its own element-type
-// sequence rather than one shared sequence, so a plan with two doors and one window
-// reads "Single Swing Door 1", "Double Hung Window 1", "Single Swing Door 2" instead
-// of grouping every opening kind under one running count.
-function openingLabels(openings: SceneGraph['openings']): (readonly [string, string])[] {
-  const seen = new Map<string, number>()
-  return openings.map((opening) => {
-    const ordinal = (seen.get(opening.type) ?? 0) + 1
-    seen.set(opening.type, ordinal)
-    return [opening.id, `${humanizeElementTypeId(opening.type)} ${ordinal}`] as const
-  })
-}
-
-// Labels each stair within its own run-type sequence, the same per-type counter
-// openingLabels uses, so a plan with two straight runs and one L-turn reads
-// "Straight Stair 1", "L Turn Stair 1", "Straight Stair 2" rather than one shared count.
-function stairLabels(stairs: SceneGraph['stairs']): (readonly [string, string])[] {
-  const seen = new Map<string, number>()
-  return stairs.map((stair) => {
-    const ordinal = (seen.get(stair.runType) ?? 0) + 1
-    seen.set(stair.runType, ordinal)
-    return [stair.id, `${humanizeElementTypeId(stair.runType)} Stair ${ordinal}`] as const
-  })
-}
-
-// A short, stable label per selectable entity for the accessibility proxies, derived from
-// the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings and stairs
-// label from their own type instead of the generic kind, and furniture labels from its own
-// name when the piece has one. Labels live in the bridge layer because the three-dimensional
-// overlay cannot import the editor layer.
 // eslint-disable-next-line react-refresh/only-export-components -- pure label derivation exported for its unit test, matching the exported helpers beside CameraControlsHint and NearWallFade
-export function entityLabels(graph: SceneGraph): Map<string, string> {
-  return new Map<string, string>([
-    ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
-    ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
-    ...openingLabels(graph.openings),
-    ...graph.furniture.map(
-      (piece, index) => [piece.id, piece.name ?? `Furniture ${index + 1}`] as const,
-    ),
-    ...stairLabels(graph.stairs),
-  ])
-}
+export { entityLabels } from './entity-labels'
 
 // The accessibility proxy state: the live projected screen positions (fed by the in-canvas
 // projector), joined with entity labels, plus the shared selection the proxies read and
