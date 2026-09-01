@@ -27,6 +27,10 @@ sourceFiles:
     bridge/react/walk-camera-controls.tsx,
     bridge/react/walk-interaction.ts,
     bridge/react/webgpu-scene-view.tsx,
+    bridge/react/use-live-view-readiness.ts,
+    bridge/react/live-scene-frame-signal.tsx,
+    bridge/react/use-ambient-occlusion.ts,
+    bridge/react/ambient-occlusion-render-takeover.tsx,
     editor/shell/editor-shell.tsx,
     editor/shell/shell-providers.tsx,
   ]
@@ -145,6 +149,18 @@ The change also fixes a second, related bug for free: a walk-orbit-walk round tr
 mount used to reseed the walk pose from the live camera every time the mode toggled back to walk;
 it now reads the last saved walk pose instead, so the walk position holds steady across an orbit
 detour.
+
+The 2026-08-31 rendering-realism campaign extended the store with two readiness facts,
+`sessionRestored` and `frameDrawnSincePipelineSettled`, and the provider now derives a
+`data-live-view-ready` attribute from them on a layout-neutral host element around its children.
+The `useLiveViewReadiness` hook turns producer events into those facts: the live canvas notes the
+session as applied on mount, the ambient-occlusion takeover notes each pipeline build's start and
+settlement, and a per-frame signal notes the first frame drawn after settlement, re-arming on
+every build rather than latching once. The attribute exists for the WebGPU visual-regression
+gate, which must not capture a frame that predates session restore or a pipeline rebuild. One
+known gap: a build cancelled by deactivation suppresses its settlement note, so the drawn-frame
+fact stays false until the next build or a remount; the fix belongs in the takeover's
+deactivation path and is deferred to its own tracked fix (#630) rather than this change.
 
 A true fix for the orbit pivot target needs a read-back method added to
 `engine/scene/orbit-controls.ts`'s `OrbitController`, which is an engine-layer change outside this

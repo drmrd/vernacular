@@ -30,6 +30,14 @@ export interface SceneSessionState {
   openDoorIds: ReadonlySet<string>
   savedCameraPosition: Vector3 | null
   walkPose: WalkState | null
+  /** True once the stored session has been applied to the live view. */
+  sessionRestored: boolean
+  /**
+   * True once a frame has drawn since the latest pipeline build settled. A build clears it
+   * as it starts and the first frame after settlement sets it again, so a frame drawn while
+   * the pipeline is still building never counts.
+   */
+  frameDrawnSincePipelineSettled: boolean
 }
 
 /** The empty door set behind the default snapshot. Stores copy it, they never hold it. */
@@ -47,6 +55,8 @@ export const DEFAULT_SCENE_SESSION_STATE: SceneSessionState = Object.freeze({
   openDoorIds: NO_OPEN_DOORS,
   savedCameraPosition: null,
   walkPose: null,
+  sessionRestored: false,
+  frameDrawnSincePipelineSettled: false,
 })
 
 export interface SceneSessionStore {
