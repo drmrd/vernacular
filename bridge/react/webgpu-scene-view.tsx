@@ -32,9 +32,6 @@ import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-env
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
 import { WalkCameraControls } from './walk-camera-controls'
 
-// eslint-disable-next-line react-refresh/only-export-components -- pure label derivation exported for its unit test, matching the exported helpers beside CameraControlsHint and NearWallFade
-export { entityLabels } from './entity-labels'
-
 // The accessibility proxy state: the live projected screen positions (fed by the in-canvas
 // projector), joined with entity labels, plus the shared selection the proxies read and
 // write. The positions are session view state, like the camera and color temperature.
