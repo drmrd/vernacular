@@ -42,19 +42,39 @@ function stairLabels(stairs: SceneGraph['stairs']): (readonly [string, string])[
   )
 }
 
+// Labels furniture in graph order: a piece's own name wins outright (and never consumes a
+// catalog ordinal); otherwise an unnamed piece with a known asset hash gets its catalog name,
+// numbered within that name via the same per-key counter openingLabels and stairLabels use;
+// otherwise it falls back to its array position, unchanged by any catalog-labeled neighbors.
+function furnitureLabels(
+  furniture: SceneGraph['furniture'],
+  catalogNames?: ReadonlyMap<string, string>,
+): (readonly [string, string])[] {
+  const seen = new Map<string, number>()
+  return furniture.map((piece, index) => {
+    if (piece.name !== undefined) return [piece.id, piece.name] as const
+    const catalogName = catalogNames?.get(piece.assetRef.contentHash)
+    if (catalogName === undefined) return [piece.id, `Furniture ${index + 1}`] as const
+    const ordinal = (seen.get(catalogName) ?? 0) + 1
+    seen.set(catalogName, ordinal)
+    return [piece.id, `${catalogName} ${ordinal}`] as const
+  })
+}
+
 // A short, stable label per selectable entity for the accessibility proxies, derived from
 // the scene graph node kind and a per-kind index ("Wall 1", "Room 2"). Openings and stairs
 // label from their own type instead of the generic kind, and furniture labels from its own
-// name when the piece has one. Labels live in the bridge layer because the three-dimensional
-// overlay cannot import the editor layer.
-export function entityLabels(graph: SceneGraph): Map<string, string> {
+// name when the piece has one, else a catalog name (when supplied), else its position. Labels
+// live in the bridge layer because the three-dimensional overlay cannot import the editor layer.
+export function entityLabels(
+  graph: SceneGraph,
+  catalogNames?: ReadonlyMap<string, string>,
+): Map<string, string> {
   return new Map<string, string>([
     ...graph.walls.map((wall, index) => [wall.id, `Wall ${index + 1}`] as const),
     ...graph.rooms.map((room, index) => [room.id, `Room ${index + 1}`] as const),
     ...openingLabels(graph.openings),
-    ...graph.furniture.map(
-      (piece, index) => [piece.id, piece.name ?? `Furniture ${index + 1}`] as const,
-    ),
+    ...furnitureLabels(graph.furniture, catalogNames),
     ...stairLabels(graph.stairs),
   ])
 }
