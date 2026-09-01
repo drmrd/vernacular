@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, waitFor } from '@testing-library/react'
 import type {
   FurnitureSceneNode,
   OpeningSceneNode,
@@ -7,10 +7,22 @@ import type {
   StairSceneNode,
   StairRunType,
 } from '../../core'
+import type { AssetSource, LibraryItem } from '../../storage'
+import { AssetRegistry } from '../../storage'
 import { entityLabels } from './entity-labels'
+import { AssetRegistryProvider } from './asset-registry-context'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
+// `useCatalogNames` does not exist on the module yet. This namespace import plus cast
+// lets the test reference it ahead of the export landing, so the RED failure below is
+// this file's own `toBeDefined` assertion rather than a typecheck error. The follow-up
+// cleanup switches this to a plain named import once the hook lands.
+import * as entityLabelsModule from './entity-labels'
 
 afterEach(cleanup)
+
+const useCatalogNames = (
+  entityLabelsModule as { useCatalogNames?: () => ReadonlyMap<string, string> }
+).useCatalogNames
 
 // Three openings on one floor, in graph order: a door, then a window, then a
 // second opening of that same door type. Minimal geometry fields are filled
@@ -126,25 +138,10 @@ describe('furniture labels in the 3D view', () => {
   })
 })
 
-// A furniture piece referencing a catalog asset by content hash, with the same
-// minimal geometry as `furniture()`. `name` is optional so a fixture can leave
-// a piece unnamed and exercise the catalog-name fallback.
+// A furniture piece referencing a catalog asset by content hash: the same shape as
+// `furniture()`, with its placeholder asset reference's content hash overridden.
 function furnitureFromCatalog(id: string, contentHash: string, name?: string): FurnitureSceneNode {
-  return {
-    id,
-    kind: 'furniture',
-    floorId: 'demo',
-    footprintCorners: [
-      { x: 0, y: 0 },
-      { x: 1, y: 0 },
-      { x: 1, y: 1 },
-      { x: 0, y: 1 },
-    ],
-    elevationZ: 0,
-    height: 800,
-    assetRef: { scope: 'project', contentHash },
-    ...(name === undefined ? {} : { name }),
-  }
+  return { ...furniture(id, name), assetRef: { scope: 'project', contentHash } }
 }
 
 const catalogFurnitureGraph: SceneGraph = {
@@ -171,16 +168,7 @@ const catalogNames = new Map<string, string>([
 
 describe('furniture labels sourced from a catalog-names map', () => {
   it('labels unnamed pieces by their catalog name, numbered within that name, without consuming an ordinal for named pieces or a hash absent from the map', () => {
-    // `entityLabels` currently takes one parameter; this cast lets the test call
-    // the pending two-argument form ahead of the implementation. The next
-    // cycle's test commit removes this cast once the signature grows the
-    // optional `catalogNames` parameter for real.
-    const entityLabelsWithCatalog = entityLabels as (
-      graph: SceneGraph,
-      catalogNames?: ReadonlyMap<string, string>,
-    ) => Map<string, string>
-
-    const labels = entityLabelsWithCatalog(catalogFurnitureGraph, catalogNames)
+    const labels = entityLabels(catalogFurnitureGraph, catalogNames)
     const proxies = catalogFurnitureGraph.furniture.map((entity, index) => ({
       id: entity.id,
       x: index,
@@ -200,6 +188,61 @@ describe('furniture labels sourced from a catalog-names map', () => {
     // A content hash absent from the catalog-names map falls back to the
     // existing array-position idiom, unaffected by the catalog lookups above.
     expect(screen.getByRole('option', { name: 'Furniture 5' })).toBeInTheDocument()
+  })
+})
+
+// A minimal library item for a stubbed asset source: only the fields the catalog-names
+// lookup and its type require, keyed by the content hash callers resolve against.
+function libraryItem(contentHash: string, name: string): LibraryItem {
+  return {
+    reference: { scope: 'project', contentHash },
+    name,
+    kind: 'furniture',
+    categories: [],
+    eras: [],
+    footprint: { width: 600, depth: 600 },
+    height: 900,
+  }
+}
+
+// Reports the hook's return value on every render, so a test can observe it settle
+// from its initial empty map to the populated one once the registry's list() resolves.
+function CatalogNamesProbe({ onNames }: { onNames: (names: ReadonlyMap<string, string>) => void }) {
+  onNames(useCatalogNames!())
+  return null
+}
+
+describe('resolving catalog display names from the asset registry', () => {
+  it('starts empty and settles to the registry catalog once list() resolves', async () => {
+    expect(useCatalogNames).toBeDefined()
+
+    const stubSource: AssetSource = {
+      id: 'stub-source',
+      read: async () => undefined,
+      list: async () => [
+        libraryItem('hash-armchair', 'Wingback Armchair'),
+        libraryItem('hash-settee', 'Camelback Settee'),
+      ],
+    }
+    const registry = new AssetRegistry([{ kind: 'project', source: stubSource }])
+
+    let captured: ReadonlyMap<string, string> | undefined
+    render(
+      <AssetRegistryProvider registry={registry}>
+        <CatalogNamesProbe
+          onNames={(names) => {
+            captured = names
+          }}
+        />
+      </AssetRegistryProvider>,
+    )
+
+    // The first synchronous render happens before list() has had a chance to resolve.
+    expect(captured?.size).toBe(0)
+
+    await waitFor(() => expect(captured?.size).toBe(2))
+    expect(captured?.get('hash-armchair')).toBe('Wingback Armchair')
+    expect(captured?.get('hash-settee')).toBe('Camelback Settee')
   })
 })
 
