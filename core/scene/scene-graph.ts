@@ -281,6 +281,8 @@ export function deriveFurnitureNode(floor: Floor, item: FurnitureInstance): Furn
     elevationZ: item.elevationZ,
     height: item.height,
     assetRef: item.assetRef,
+    // Omit the optional name when absent; exactOptionalPropertyTypes rejects
+    // assigning an explicit undefined to the optional field.
     ...(item.name !== undefined && { name: item.name }),
   }
 }
