@@ -1,9 +1,12 @@
 import type { Point } from '../../core'
 import type { PlanDrawingContext, PreviewSegment } from './draw-plan'
+import { PLAN_INK_OVERLAY_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
-const GHOST_LINE_WIDTH = 2
+// The ghost previews where a drag would land, so it inks at the overlay weight
+// rather than at the role weight of whatever entity it stands in for.
+const GHOST_LINE_WIDTH = PLAN_INK_OVERLAY_WIDTH
 const GHOST_LINE_CAP = 'round' as const
 
 /** Paint each ghost segment as a faint overlay between its projected screen endpoints; no-ops when absent or empty. */

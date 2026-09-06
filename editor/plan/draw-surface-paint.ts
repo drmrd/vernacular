@@ -7,15 +7,20 @@ import {
   type WallSceneNode,
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
+import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH } from './plan-ink'
 import { worldToScreen, type Viewport } from './viewport'
 
-// The width in pixels of a painted face band; thin so it reads as a face stripe, not a fill.
-const BAND_LINE_WIDTH = 3
 // The brass accent stroke for the active surface highlight. Distinct from any treatment color.
 const ACTIVE_HIGHLIGHT_COLOR = '#b5894a'
-const ACTIVE_HIGHLIGHT_WIDTH = 2
-// The width in pixels of the highlighted-face band; thicker than the paint band so it reads on top.
-const HIGHLIGHT_BAND_WIDTH = 4
+// The three surface-paint strokes stack, each one emphasis step heavier than the
+// stroke it has to read over: the accent centerline sits over the plan ink, the
+// painted face band over the centerline, and the highlighted-face band over the
+// painted band. Rooting the ladder at the overlay weight keeps that order intact
+// when the ink hierarchy is retuned, and keeps a band thin enough to read as a face
+// stripe rather than a fill.
+const ACTIVE_HIGHLIGHT_WIDTH = PLAN_INK_OVERLAY_WIDTH
+const BAND_LINE_WIDTH = ACTIVE_HIGHLIGHT_WIDTH + PLAN_INK_EMPHASIS
+const HIGHLIGHT_BAND_WIDTH = BAND_LINE_WIDTH + PLAN_INK_EMPHASIS
 const HALF = 0.5
 const FACE_SIDES = ['left', 'right'] as const
 

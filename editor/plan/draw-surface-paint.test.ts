@@ -238,3 +238,39 @@ describe('drawSurfacePaint construction-profile thickness', () => {
     ).toBe(true)
   })
 })
+
+describe('drawSurfacePaint line weights', () => {
+  // Pinned as bare numbers rather than ink-table expressions: these cases exist to
+  // catch a width moving, and restating the derivation would make them tautologies.
+  // Each case supplies only the layer whose width it reads, so that layer's stroke
+  // is the last one the draw call sets.
+  it('strokes a painted face band at three pixels', () => {
+    const recorder = recordingContext()
+
+    drawSurfacePaint(recorder.ctx, layer({ treatmentForFace: paintEveryFace }))
+
+    expect(recorder.ctx.lineWidth).toBe(3)
+  })
+
+  it('strokes the active-surface accent centerline at two pixels', () => {
+    const recorder = recordingContext()
+
+    drawSurfacePaint(
+      recorder.ctx,
+      layer({ activeSurface: { kind: 'wall-face', wallId: 'a', side: 'left' } }),
+    )
+
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
+
+  it('strokes the highlighted-face band at four pixels, over the paint band', () => {
+    const recorder = recordingContext()
+
+    drawSurfacePaint(
+      recorder.ctx,
+      layer({ highlightedSurface: { kind: 'wall-face', wallId: 'a', side: 'left' } }),
+    )
+
+    expect(recorder.ctx.lineWidth).toBe(4)
+  })
+})

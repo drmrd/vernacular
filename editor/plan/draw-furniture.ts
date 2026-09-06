@@ -1,7 +1,7 @@
 import { rotatePoint, type FurnitureInstance, type Point } from '../../core'
 import { DEG_TO_RAD } from './angles'
 import type { PlanDrawingContext } from './draw-plan'
-import { PLAN_INK_WIDTH } from './plan-ink'
+import { PLAN_INK_FIXTURE_SELECTION_EMPHASIS, PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -9,7 +9,9 @@ import { worldToScreen, type Viewport } from './viewport'
 const HALF_DIVISOR = 2
 // Furniture is a fixture within the cut plane, drawn at the medium ink weight.
 const FURNITURE_INK_WIDTH = PLAN_INK_WIDTH.fixture
-const FURNITURE_SELECTION_WIDTH = 2
+// Emphasis over the fixture ink the highlight re-strokes, at the half step the
+// fixture selection cues draw with.
+const FURNITURE_SELECTION_WIDTH = PLAN_INK_WIDTH.fixture + PLAN_INK_FIXTURE_SELECTION_EMPHASIS
 const FURNITURE_LABEL_FONT = '12px sans-serif'
 // Anchored at the instance position, matching the pre-existing label placement: set
 // explicitly so a prior draw call's textAlign/textBaseline can never leak in and

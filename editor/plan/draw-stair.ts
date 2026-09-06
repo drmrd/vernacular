@@ -1,14 +1,15 @@
 import { rotatePoint, type Point, type StairSceneNode } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
-import { PLAN_INK_WIDTH } from './plan-ink'
+import { PLAN_INK_FIXTURE_SELECTION_EMPHASIS, PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
 // Stairs are a fixture within the cut plane, drawn at the medium ink weight.
 const STAIR_INK_WIDTH = PLAN_INK_WIDTH.fixture
 // The selected run is re-outlined heavier than its own ink so the highlight reads
-// over the footprint it traces, matching the furniture selection cue.
-const STAIR_SELECTION_WIDTH = 2
+// over the footprint it traces, at the same half step over the fixture weight that
+// the furniture selection cue uses.
+const STAIR_SELECTION_WIDTH = PLAN_INK_WIDTH.fixture + PLAN_INK_FIXTURE_SELECTION_EMPHASIS
 // The number of evenly spaced tread lines drawn across a straight run.
 const TREAD_COUNT = 8
 // The direction arrowhead spans this fraction of the run width to each side of the centerline.

@@ -845,6 +845,40 @@ describe('drawPlan emphasis relative to cut', () => {
   })
 })
 
+describe('plan canvas line weights outside the ink roles', () => {
+  // Pinned as bare numbers rather than ink-table expressions: these cases exist to
+  // catch a width moving, and restating the derivation would make them tautologies.
+  it('strokes the grid at one pixel', () => {
+    const recorder = recordingContext()
+
+    drawGrid(recorder.ctx, planOptions({ grid: true }))
+
+    expect(recorder.ctx.lineWidth).toBe(1)
+  })
+
+  it('strokes the drag-select marquee outline at one pixel', () => {
+    const recorder = recordingContext()
+    const rect: Bounds = { min: { x: 1000, y: 2000 }, max: { x: 5000, y: 6000 } }
+
+    drawMarquee(recorder.ctx, rect, planOptions())
+
+    expect(recorder.ctx.lineWidth).toBe(1)
+  })
+
+  it('strokes the wall-draw preview line at two pixels', () => {
+    const recorder = recordingContext()
+
+    // The preview is the last layer in this call to set a line width: no snap,
+    // marquee, dimension, calibration, ghost, hover, or ruler layer follows it.
+    drawPlan(
+      recorder.ctx,
+      planOptions({ preview: { start: { x: 0, y: 0 }, end: { x: 2000, y: 0 } } }),
+    )
+
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
+})
+
 describe('drawPlan grid and rulers', () => {
   const room = rectangleRoom('room:r')
 

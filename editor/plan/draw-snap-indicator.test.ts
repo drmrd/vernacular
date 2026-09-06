@@ -18,6 +18,17 @@ describe('drawSnapIndicator', () => {
     expect(recorder.arcs[0]?.x).toBe(expected.x)
     expect(recorder.arcs[0]?.y).toBe(expected.y)
   })
+
+  it('strokes the marker ring at two pixels', () => {
+    const recorder = recordingContext()
+    const viewport = { scale: DEFAULT_PLAN_SCALE }
+    const snap: SnapResult = { point: { x: 1000, y: 0 }, kind: 'grid' }
+
+    drawSnapIndicator(recorder.ctx, snap, viewport)
+
+    // A bare number, not an ink-table expression: this pins the painted width.
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
 })
 
 describe('drawPlan snap indicator', () => {
