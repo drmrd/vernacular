@@ -29,7 +29,7 @@ import { visibleGridLines } from './grid'
 import { centerOf, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
 import { roomLabelContent, type RoomLabelOptions } from './room-label'
 import { drawRulers } from './ruler'
-import { PLAN_INK_WIDTH } from './plan-ink'
+import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH, PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE, type PlanPalette } from './plan-palette'
 import type { SnapResult } from './snap'
 import { worldToScreen, type Viewport } from './viewport'
@@ -112,23 +112,27 @@ export interface DrawPlanOptions {
 
 // Defined relative to the cut weight, not a literal, so a future retune of the
 // cut role keeps the selected-room highlight reading heavier than the wall ink.
-const SELECTED_ROOM_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
+const SELECTED_ROOM_LINE_WIDTH = PLAN_INK_WIDTH.cut + PLAN_INK_EMPHASIS
 // Defined relative to the cut weight, not a literal, so a future retune of the
 // cut role keeps the hover highlight reading heavier than the wall ink it marks.
-const HOVER_HIGHLIGHT_LINE_WIDTH = PLAN_INK_WIDTH.cut + 1
+const HOVER_HIGHLIGHT_LINE_WIDTH = PLAN_INK_WIDTH.cut + PLAN_INK_EMPHASIS
 // A wall's two faces are the plan's cut plane, so they ink at the cut weight
 // whatever thickness the wall itself projects to.
 const WALL_FACE_LINE_WIDTH = PLAN_INK_WIDTH.cut
-const PREVIEW_LINE_WIDTH = 2
+// The wall being drawn is not built yet, so it inks at the overlay weight rather
+// than the cut weight it takes once the segment is committed.
+const PREVIEW_LINE_WIDTH = PLAN_INK_OVERLAY_WIDTH
 const START_MARKER_RADIUS = 4
 const FULL_CIRCLE = Math.PI * 2
 const LINE_CAP = 'round' as const
-const GRID_LINE_WIDTH = 1
+// The grid rules behind every other layer, so it takes the lightest ink role.
+const GRID_LINE_WIDTH = PLAN_INK_WIDTH.annotation
 const SNAP_MARKER_COLOR = '#f08c00'
 const SNAP_MARKER_RADIUS_PX = 5
-const SNAP_MARKER_LINE_WIDTH = 2
+const SNAP_MARKER_LINE_WIDTH = PLAN_INK_OVERLAY_WIDTH
 const ENDPOINT_HANDLE_RADIUS_PX = 5
-const MARQUEE_LINE_WIDTH = 1
+// The marquee is a hairline box around a drag, not ink on the plan: annotation weight.
+const MARQUEE_LINE_WIDTH = PLAN_INK_WIDTH.annotation
 const LABEL_FONT = '12px sans-serif'
 const LABEL_TEXT_ALIGN = 'center' as const
 const LABEL_TEXT_BASELINE = 'middle' as const
