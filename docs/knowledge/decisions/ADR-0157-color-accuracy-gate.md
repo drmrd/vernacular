@@ -164,6 +164,20 @@ blocked.
   exposure moves the gate's target, that is an [[ADR-0156-luminance-calibration-convention]] revision
   that re-derives this tolerance, not an incidental constant edit.
 
+## Amendment (2026-09-06): the two-probe midpoint variant
+
+Lanes 1 and 2 of the rendering-realism campaign derive per-capture screenshot tolerances
+with a variant of this gate's method. Decision 3 above sets one tolerance from the observed
+maximum of a legitimate variation band plus a margin. The variant applies when a capture
+exists to reject a known defect class: seed each documented defect probe, measure the diff
+ratio it produces at every candidate per-pixel threshold, take the largest threshold at
+which the weaker probe still moves at least one percent of the frame, and place the ratio
+gate at the midpoint between the measured noise band and the weaker probe's signal. With a
+measured noise band of zero the midpoint sits at half the weaker signal, which keeps a
+factor-of-two margin against both noise and a missed defect. The spirit is unchanged from
+decision 3: measure, then freeze, and never hand-pick. The derivation comments on the
+constants in `e2e/tests/scene-solar.spec.ts` record the probes and readings per capture.
+
 ## References
 
 - Decorating color-accuracy gate slice specification

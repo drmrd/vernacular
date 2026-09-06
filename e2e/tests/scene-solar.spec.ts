@@ -25,7 +25,7 @@ const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 // (rendering-realism lane 1, issue #541). The roughness defect this gate exists to catch
 // spreads the specular lobe across the whole floor: nearly every pixel moves, each by a
 // hair, so the standing shell tolerances never see it and the pair below is derived
-// instead, per the midpoint rule from ADR-0157.
+// instead, per the two-probe midpoint variant recorded in ADR-0157's amendment.
 //
 // Derived on 2026-09-06 on the development Mac (darwin Metal, 320x240 canvas, 76800
 // pixels), against the seeded baseline:
@@ -51,7 +51,7 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
 // amounts the standing shell tolerances absorb: issue #522 measured a 10x radius probe
 // passing all six solar baselines at threshold 0.35, and the readings below reproduce
 // that (the probes move 34 and 28 pixels there). So the pair below is derived instead,
-// per the midpoint rule from ADR-0157.
+// per the two-probe midpoint variant recorded in ADR-0157's amendment.
 //
 // Derived on 2026-09-06 on the development Mac (darwin Metal, 320x240 canvas, 76800
 // pixels), against the committed baseline:
