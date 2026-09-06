@@ -118,19 +118,19 @@ test('renders the finish-contrast glossy floor to its baseline', async ({ page }
 
 - Create: `e2e/tests/scene-solar.spec.ts-snapshots/scene-finish-contrast-webgl-scene-webgl-linux.png`
 
-- [ ] **Step 1:** Confirm every commit timestamp falls outside weekday 08:30-18:30 local (`git log --format='%ad %cd'`); if any falls inside, window with the `git meta rewrite` recipe before pushing.
-- [ ] **Step 2:** `git push --no-verify -u origin feat/glossy-harness-baseline` (the pre-push chain already ran by hand in Task 3; `--no-verify` avoids the known worktree hook failures).
-- [ ] **Step 3:** Open the pull request against main: title `test(e2e): baseline the glossy harness floor (rendering-realism lane 1)`, body describing the gate, the derivation, and `Closes #541`. No session links.
-- [ ] **Step 4:** The pull request's scene-visual job is expected red at this point (the linux snapshot does not exist yet). Dispatch the runner render on the lane branch: `gh workflow run refresh-scene-baselines.yml --ref feat/glossy-harness-baseline`, then watch it finish.
-- [ ] **Step 5:** `gh run download <run-id> -n scene-baselines -D <scratch>/scene-baselines`. Copy ONLY `scene-finish-contrast-webgl-scene-webgl-linux.png` into `e2e/tests/scene-solar.spec.ts-snapshots/`. `cmp` every other artifact PNG against its committed counterpart; any difference means STOP and report drift.
-- [ ] **Step 6:** Commit `test(e2e): seed the linux finish-contrast scene baseline from the runner render`, push, and watch `gh pr checks <n> --watch` until ci-complete is green.
+- [x] **Step 1:** Confirm every commit timestamp falls outside weekday 08:30-18:30 local (`git log --format='%ad %cd'`); if any falls inside, window with the `git meta rewrite` recipe before pushing.
+- [x] **Step 2:** `git push --no-verify -u origin feat/glossy-harness-baseline` (the pre-push chain already ran by hand in Task 3; `--no-verify` avoids the known worktree hook failures).
+- [x] **Step 3:** Open the pull request against main: title `test(e2e): baseline the glossy harness floor (rendering-realism lane 1)`, body describing the gate, the derivation, and `Closes #541`. No session links.
+- [x] **Step 4:** The pull request's scene-visual job is expected red at this point (the linux snapshot does not exist yet). Dispatch the runner render on the lane branch: `gh workflow run refresh-scene-baselines.yml --ref feat/glossy-harness-baseline`, then watch it finish.
+- [x] **Step 5:** `gh run download <run-id> -n scene-baselines -D <scratch>/scene-baselines`. Copy ONLY `scene-finish-contrast-webgl-scene-webgl-linux.png` into `e2e/tests/scene-solar.spec.ts-snapshots/`. `cmp` every other artifact PNG against its committed counterpart; any difference means STOP and report drift.
+- [x] **Step 6:** Commit `test(e2e): seed the linux finish-contrast scene baseline from the runner render`, push, and watch `gh pr checks <n> --watch` until ci-complete is green.
 
 ### Task 5: Prove the gate on CI
 
-- [ ] **Step 1:** On the lane branch, apply the roughness defect (`semi-gloss` roughness 0.9), commit `test(e2e): prove the finish-contrast baseline rejects a roughness defect`, push.
-- [ ] **Step 2:** Wait for the scene-visual job. Expected: it fails, the failure names `renders the finish-contrast glossy floor to its baseline`, and every other scene test in that run passes (the red is targeted). Record the run URL.
-- [ ] **Step 3:** Drop the defect: `git reset --hard HEAD~1 && git push --force-with-lease --no-verify origin feat/glossy-harness-baseline` (or `git revert` if the force push is refused). Watch CI return to green.
-- [ ] **Step 4:** Add the acceptance evidence to the pull request body: the baseline set name, the red run URL, and the note that sibling scene tests stayed green in the red run.
+- [x] **Step 1:** On the lane branch, apply the roughness defect (`semi-gloss` roughness 0.9), commit `test(e2e): prove the finish-contrast baseline rejects a roughness defect`, push.
+- [x] **Step 2:** Wait for the scene-visual job. Expected: it fails, the failure names `renders the finish-contrast glossy floor to its baseline`, and every other scene test in that run passes (the red is targeted). Record the run URL.
+- [x] **Step 3:** Drop the defect: `git reset --hard HEAD~1 && git push --force-with-lease --no-verify origin feat/glossy-harness-baseline` (or `git revert` if the force push is refused). Watch CI return to green.
+- [x] **Step 4:** Add the acceptance evidence to the pull request body: the baseline set name, the red run URL, and the note that sibling scene tests stayed green in the red run.
 
 ### Task 6: Reviews and handoff to the owner
 
