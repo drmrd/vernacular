@@ -291,6 +291,15 @@ describe('drawCalibrationSegment', () => {
     end: { x: 3400, y: 2600 },
   }
 
+  it('strokes the calibration line at two pixels', () => {
+    const recorder = recordingContext()
+
+    drawCalibrationSegment(recorder.ctx, segment, VIEWPORT)
+
+    // A bare number, not an ink-table expression: this pins the painted width.
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
+
   it('strokes the calibration line between the two projected screen endpoints', () => {
     const recorder = recordingContext()
 
