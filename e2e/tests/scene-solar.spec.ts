@@ -46,6 +46,35 @@ const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 const FINISH_CONTRAST_THRESHOLD = 0
 const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
 
+// The ambient-occlusion baseline gates the GTAO pass as pixels (rendering-realism lane 2,
+// issue #522). The defect classes this gate exists to catch shift contact shadows by
+// amounts the standing shell tolerances absorb: issue #522 measured a 10x radius probe
+// passing all six solar baselines at threshold 0.35, and the readings below reproduce
+// that (the probes move 34 and 28 pixels there). So the pair below is derived instead,
+// per the midpoint rule from ADR-0157.
+//
+// Derived on 2026-09-06 on the development Mac (darwin Metal, 320x240 canvas, 76800
+// pixels), against the committed baseline:
+//
+//   noise: five consecutive captures at threshold 0 and maxDiffPixelRatio 0 all passed,
+//   so the render is deterministic and the noise band is 0.000000.
+//   probe A, the no-op radius class (ADR-0158: the addon default misread in a millimetre
+//   world; AO_RADIUS_METERS 0.25 set to 0.00025): pixels differing at threshold
+//   0.35 / 0.2 / 0.1 / 0.05 / 0.02 / 0 were 34 / 87 / 538 / 3697 / 21818 / 36529.
+//   probe B, the 10x recalibration class (issue #522; AO_RADIUS_METERS 0.25 set to 2.5):
+//   28 / 59 / 185 / 1540 / 4766 / 9185.
+//
+// Probe B is the weaker signal at every threshold. The threshold is the largest candidate
+// at which the weaker probe still moves at least one percent of the frame: 0.05, where
+// probe B moves 1540 pixels (ratio 0.0201). The ratio gate goes at the midpoint between
+// the zero noise band and that signal: 0.010. The linux SwiftShader lane rasterizes the
+// same frame differently, so its probe reading is measured from this lane's seeded red
+// run rather than assumed:
+//
+//   linux red-run reading (probe B seeded): pending; recorded by the lane before merge.
+const AMBIENT_OCCLUSION_THRESHOLD = 0.05
+const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.01
+
 // One harness capture: the query string that selects the state, the snapshot it must
 // match, and optional per-capture overrides of the standing shell tolerances.
 interface ShellCapture {
@@ -124,6 +153,8 @@ test.describe('Solar environment visual baseline', () => {
     await captureShell(page, {
       query: '&scene=ambient-occlusion',
       snapshot: 'scene-ambient-occlusion-webgl.png',
+      threshold: AMBIENT_OCCLUSION_THRESHOLD,
+      maxDiffPixelRatio: AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO,
     })
   })
 
