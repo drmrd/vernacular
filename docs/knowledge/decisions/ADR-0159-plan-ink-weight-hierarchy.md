@@ -18,9 +18,12 @@ sourceFiles:
     editor/plan/draw-stair.ts,
     editor/plan/draw-furniture.ts,
     editor/plan/draw-plan.ts,
+    editor/plan/draw-ghost.ts,
+    editor/plan/draw-underlay.ts,
+    editor/plan/draw-surface-paint.ts,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-09-06
 ---
 
 # ADR-0159: Plan ink-weight hierarchy: cut, fixture, and annotation roles
