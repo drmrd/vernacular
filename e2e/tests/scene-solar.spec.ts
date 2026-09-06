@@ -5,10 +5,10 @@ import { test, expect, type Page } from '@playwright/test'
 // query parameter. The named states resolve in app/harness-environment.ts to a fixed
 // site (latitude 40 north, longitude 75 west, America/New_York) and a fixed observation
 // instant, driving the SolarLightingProvider deterministically so each baseline pins one
-// sun position. Baselines are darwin renders from the development Mac's Metal tier,
-// regenerated locally with --update-snapshots=all; continuous integration neither renders
-// nor checks them, because the CI end-to-end job ignores scene specs (ADR-0149 records
-// the convention and why the plans' CI-runner assumption was wrong).
+// sun position. The -darwin baselines are renders from the development Mac's Metal tier,
+// regenerated locally with --update-snapshots=all (ADR-0149); the -linux baselines are
+// rendered on the CI runner by the refresh-scene-baselines workflow and checked there by
+// the scene-visual job (ADR-0152).
 //
 // Self-skip policy: unlike the absent-WebGPU case, the harness renders via whatever
 // backend the runner provides and only self-skips when no WebGL 2 context can be created
@@ -21,8 +21,42 @@ import { test, expect, type Page } from '@playwright/test'
 const SHELL_THRESHOLD = 0.35
 const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 
-async function captureShell(page: Page, query: string, snapshot: string): Promise<void> {
-  await page.goto(`/?fixture=scene-harness${query}`)
+// The finish-contrast baseline gates the glossy floor's specular response as pixels
+// (rendering-realism lane 1, issue #541). The roughness defect this gate exists to catch
+// spreads the specular lobe across the whole floor: nearly every pixel moves, each by a
+// hair, so the standing shell tolerances never see it and the pair below is derived
+// instead, per the midpoint rule from ADR-0157.
+//
+// Derived on 2026-09-06 on the development Mac (darwin Metal, 320x240 canvas, 76800
+// pixels), against the seeded baseline:
+//
+//   noise: five consecutive captures at threshold 0 and maxDiffPixelRatio 0 all passed,
+//   so the render is deterministic and the noise band is 0.000000.
+//   roughness-only probe (semi-gloss roughness 0.3 set to 0.9, sheen and specular kept):
+//   53138 pixels differ at threshold 0 (ratio 0.6919); at threshold 0.02 only 54 pixels
+//   remain (ratio 0.0007), and at 0.1 and above the comparison passes.
+//   full-collapse probe (the semi-gloss entry set to the matte values, the #520 defect
+//   class): 53344 pixels differ at threshold 0 (ratio 0.6946).
+//
+// So the per-pixel threshold is 0 (any deviation counts; the capture is deterministic)
+// and the ratio gate goes at the midpoint between the zero noise band and the weaker
+// probe signal: 0.6919 / 2 rounded to 0.346. An environmental drift that moves more
+// than a third of the pixels turns this test red; that forces a deliberate baseline
+// refresh, which is the standing discipline for the scene tier.
+const FINISH_CONTRAST_THRESHOLD = 0
+const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
+
+// One harness capture: the query string that selects the state, the snapshot it must
+// match, and optional per-capture overrides of the standing shell tolerances.
+interface ShellCapture {
+  readonly query: string
+  readonly snapshot: string
+  readonly threshold?: number
+  readonly maxDiffPixelRatio?: number
+}
+
+async function captureShell(page: Page, capture: ShellCapture): Promise<void> {
+  await page.goto(`/?fixture=scene-harness${capture.query}`)
 
   const canvas = page.locator('[data-testid="scene-harness"] canvas')
   await expect(canvas).toBeVisible()
@@ -51,34 +85,61 @@ async function captureShell(page: Page, query: string, snapshot: string): Promis
   // guarantees the screenshot captures the sky-lit frame, not the placeholder background.
   await expect(page.getByTestId('scene-harness')).toHaveAttribute('data-harness-ready', 'true')
 
-  await expect(canvas).toHaveScreenshot(snapshot, {
-    threshold: SHELL_THRESHOLD,
-    maxDiffPixelRatio: SHELL_MAX_DIFF_PIXEL_RATIO,
+  await expect(canvas).toHaveScreenshot(capture.snapshot, {
+    threshold: capture.threshold ?? SHELL_THRESHOLD,
+    maxDiffPixelRatio: capture.maxDiffPixelRatio ?? SHELL_MAX_DIFF_PIXEL_RATIO,
   })
 }
 
 test.describe('Solar environment visual baseline', () => {
   test('renders the equinox-noon solar environment to its baseline', async ({ page }) => {
-    await captureShell(page, '&scene=equinox-noon', 'scene-equinox-noon-webgl.png')
+    await captureShell(page, {
+      query: '&scene=equinox-noon',
+      snapshot: 'scene-equinox-noon-webgl.png',
+    })
   })
 
   test('renders the winter-afternoon solar environment to its baseline', async ({ page }) => {
-    await captureShell(page, '&scene=winter-afternoon', 'scene-winter-afternoon-webgl.png')
+    await captureShell(page, {
+      query: '&scene=winter-afternoon',
+      snapshot: 'scene-winter-afternoon-webgl.png',
+    })
   })
 
   test('renders the neutral color-check environment to its baseline', async ({ page }) => {
-    await captureShell(page, '&scene=color-check', 'scene-color-check-webgl.png')
+    await captureShell(page, {
+      query: '&scene=color-check',
+      snapshot: 'scene-color-check-webgl.png',
+    })
   })
 
   test('renders the overcast-noon environment to its baseline', async ({ page }) => {
-    await captureShell(page, '&scene=overcast-noon', 'scene-overcast-noon-webgl.png')
+    await captureShell(page, {
+      query: '&scene=overcast-noon',
+      snapshot: 'scene-overcast-noon-webgl.png',
+    })
   })
 
   test('renders the ambient-occlusion interior to its baseline', async ({ page }) => {
-    await captureShell(page, '&scene=ambient-occlusion', 'scene-ambient-occlusion-webgl.png')
+    await captureShell(page, {
+      query: '&scene=ambient-occlusion',
+      snapshot: 'scene-ambient-occlusion-webgl.png',
+    })
   })
 
   test('renders the window-light interior to its baseline', async ({ page }) => {
-    await captureShell(page, '&scene=window-light', 'scene-window-light-webgl.png')
+    await captureShell(page, {
+      query: '&scene=window-light',
+      snapshot: 'scene-window-light-webgl.png',
+    })
+  })
+
+  test('renders the finish-contrast glossy floor to its baseline', async ({ page }) => {
+    await captureShell(page, {
+      query: '&scene=finish-contrast&paint=finish-contrast',
+      snapshot: 'scene-finish-contrast-webgl.png',
+      threshold: FINISH_CONTRAST_THRESHOLD,
+      maxDiffPixelRatio: FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO,
+    })
   })
 })
