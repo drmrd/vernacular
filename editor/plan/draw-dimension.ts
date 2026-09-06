@@ -7,7 +7,7 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { midpoint } from './geometry'
-import { PLAN_INK_WIDTH } from './plan-ink'
+import { PLAN_INK_EMPHASIS, PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport, type ScreenPoint } from './viewport'
 
@@ -19,7 +19,9 @@ export interface DrawableDimension {
 
 // Dimensions are annotations over the plan, drawn at the lightest ink weight.
 const DIMENSION_INK_WIDTH = PLAN_INK_WIDTH.annotation
-const DIMENSION_SELECTION_WIDTH = 2
+// One emphasis step over the annotation ink the highlight re-strokes, so a retune
+// of the annotation role keeps the selected dimension line reading heavier than it.
+const DIMENSION_SELECTION_WIDTH = PLAN_INK_WIDTH.annotation + PLAN_INK_EMPHASIS
 // Each arrowhead vee reaches this many screen pixels back from the line tip.
 const ARROWHEAD_LENGTH_PX = 8
 // One eighth of a half-turn, the divisor that yields the arrowhead's 22.5-degree half-angle.

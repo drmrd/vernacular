@@ -7,7 +7,7 @@ import {
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
 import { openingCorners, swingLeafGeometry } from './opening-geometry'
-import { PLAN_INK_WIDTH } from './plan-ink'
+import { PLAN_INK_EMPHASIS, PLAN_INK_WIDTH } from './plan-ink'
 import type { PlanPalette } from './plan-palette'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -29,7 +29,7 @@ const OPENING_INK_WIDTH = PLAN_INK_WIDTH.cut
 const OPENING_SYMBOL_INK_WIDTH = PLAN_INK_WIDTH.annotation
 // Defined relative to the cut weight, not a literal, so a future retune of the
 // cut role keeps the selection highlight reading heavier than the ink it marks.
-const OPENING_SELECTION_WIDTH = PLAN_INK_WIDTH.cut + 1
+const OPENING_SELECTION_WIDTH = PLAN_INK_WIDTH.cut + PLAN_INK_EMPHASIS
 // The pivot dot radius in screen pixels.
 const PIVOT_DOT_RADIUS_PX = 3
 const FULL_CIRCLE = Math.PI * 2

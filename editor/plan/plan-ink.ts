@@ -36,3 +36,14 @@ export const PLAN_INK_EMPHASIS = 1
  * an overlay shows is provisional, not built.
  */
 export const PLAN_INK_OVERLAY_WIDTH = PLAN_INK_WIDTH.annotation + PLAN_INK_EMPHASIS
+
+/**
+ * The lighter emphasis step the fixture selection outlines (furniture and stairs)
+ * draw with: half the standard one. Named rather than left as a bare literal so
+ * those outlines stay tied to the fixture weight they emphasize, and so it is
+ * visible that they clear their ink by half a step where every other selection cue
+ * clears its ink by a full one. Raising them to the full step would change what the
+ * canvas paints, which is a visual-design call, so the sweep that brought them into
+ * this table preserved the widths they already had.
+ */
+export const PLAN_INK_FIXTURE_SELECTION_EMPHASIS = PLAN_INK_EMPHASIS / 2
