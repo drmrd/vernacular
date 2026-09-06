@@ -1,5 +1,6 @@
 import type { Point, UnderlaySceneNode } from '../../core'
 import type { PlanDrawingContext, PreviewSegment } from './draw-plan'
+import { PLAN_INK_OVERLAY_WIDTH } from './plan-ink'
 import { underlayTracePoints } from './underlay-trace-points'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -16,7 +17,8 @@ const FULLY_OPAQUE = 1 // restore alpha after the dimmed underlay draw so later 
 
 // Distinct amber for the calibration measure line and its endpoint markers, set apart from the snap marker's orange.
 const CALIBRATION_COLOR = '#e8590c'
-const CALIBRATION_LINE_WIDTH = 2
+// The measure line is a transient overlay over the traced image, not plan ink.
+const CALIBRATION_LINE_WIDTH = PLAN_INK_OVERLAY_WIDTH
 const CALIBRATION_MARKER_RADIUS_PX = 4
 const FULL_CIRCLE = Math.PI * 2
 
