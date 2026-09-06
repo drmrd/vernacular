@@ -35,11 +35,11 @@
 
 **Files:** none committed except this plan.
 
-- [ ] **Step 1:** From the main clone: `git worktree add ../vernacular.wt/ambient-occlusion-baseline-gate -b feat/ambient-occlusion-baseline-gate`, then `pnpm install --frozen-lockfile` inside the worktree.
-- [ ] **Step 2:** Confirm chromium is present: `pnpm exec playwright install chromium` (no-op when cached).
-- [ ] **Step 3:** Kill any stale preview server: `lsof -ti:4173 | xargs kill -9` (a nonzero exit when the port is free is fine).
-- [ ] **Step 4:** `pnpm build`; confirm exit 0.
-- [ ] **Step 5:** Commit this plan: `git add docs/plans/2026-09-06-ambient-occlusion-baseline-gate.md && git commit -m "docs: plan the ambient-occlusion baseline gate lane"`.
+- [x] **Step 1:** From the main clone: `git worktree add ../vernacular.wt/ambient-occlusion-baseline-gate -b feat/ambient-occlusion-baseline-gate`, then `pnpm install --frozen-lockfile` inside the worktree.
+- [x] **Step 2:** Confirm chromium is present: `pnpm exec playwright install chromium` (no-op when cached).
+- [x] **Step 3:** Kill any stale preview server: `lsof -ti:4173 | xargs kill -9` (a nonzero exit when the port is free is fine).
+- [x] **Step 4:** `pnpm build`; confirm exit 0.
+- [x] **Step 5:** Commit this plan: `git add docs/plans/2026-09-06-ambient-occlusion-baseline-gate.md && git commit -m "docs: plan the ambient-occlusion baseline gate lane"`.
 
 ### Task 2: Derive the tolerance on darwin, commit the spec change
 
@@ -53,12 +53,12 @@
 - Consumes: `ShellCapture` (lane 1) and the existing test `renders the ambient-occlusion interior to its baseline`.
 - Produces: `AMBIENT_OCCLUSION_THRESHOLD` and `AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO`, wired into that test's `captureShell` call.
 
-- [ ] **Step 1 (noise and freshness):** Run the ambient-occlusion test five times against the committed darwin baseline with a temporary local override `threshold: 0, maxDiffPixelRatio: 0`: `pnpm exec playwright test --project=scene-webgl -g "ambient-occlusion interior"`. Five passes mean the committed darwin PNG is fresh and the noise band N is 0. Any failure: re-seed the darwin PNG with `--update-snapshots=all`, eyeball it (interior, furniture box, darkened window head reveal), record the pre-refresh diff ratio for the pull request body, and repeat the five runs.
-- [ ] **Step 2 (probe A, no-op radius):** Edit `engine/postprocessing/ambient-occlusion-params.ts`: `AO_RADIUS_METERS` from `0.25` to `0.00025`. `pnpm build`, kill the stale preview server, run the test with the ratio-0 override once per candidate threshold 0.35, 0.2, 0.1, 0.05, 0.02, 0. Record the reported diff ratio at each; call the series RA.
-- [ ] **Step 3 (probe B, 10x radius):** Set `AO_RADIUS_METERS` to `2.5`, rebuild, kill the server, record the same series; call it RB. Restore `AO_RADIUS_METERS = 0.25`, rebuild, and confirm `git status --short engine` is empty.
-- [ ] **Step 4 (fix the constants):** Choose the largest candidate threshold T at which min(RA, RB) is at least 0.01. Set `AMBIENT_OCCLUSION_THRESHOLD = T` and `AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = min(RA, RB) / 2`, rounded to three decimals. With N = 0 the ADR-0157 midpoint rule is satisfied by construction; if N > 0 the ratio must also sit at least 2N above N. If no candidate T qualifies, go to Task 6 (cropped-capture fallback). Write the derivation comment on the constants: both probe definitions with the ADR-0158 and issue #522 provenance, the five noise readings, RA and RB at each threshold, the date, the platform, and a placeholder line for the linux red-run reading that Task 5 fills in.
-- [ ] **Step 5 (the gate bites locally):** With the final constants wired into the test's `captureShell` call: one clean run passes; one probe-A run fails. Restore the engine file, rebuild, confirm `git status --short` shows only the spec (and the darwin PNG if Step 1 re-seeded it).
-- [ ] **Step 6 (commit):** Run the full check chain, each exit code checked on its own. Commit `test(e2e): derive a pixel tolerance for the ambient-occlusion baseline` (spec edit; plus a separate `test(e2e): refresh the stale darwin ambient-occlusion baseline` commit first if Step 1 re-seeded).
+- [x] **Step 1 (noise and freshness):** Run the ambient-occlusion test five times against the committed darwin baseline with a temporary local override `threshold: 0, maxDiffPixelRatio: 0`: `pnpm exec playwright test --project=scene-webgl -g "ambient-occlusion interior"`. Five passes mean the committed darwin PNG is fresh and the noise band N is 0. Any failure: re-seed the darwin PNG with `--update-snapshots=all`, eyeball it (interior, furniture box, darkened window head reveal), record the pre-refresh diff ratio for the pull request body, and repeat the five runs.
+- [x] **Step 2 (probe A, no-op radius):** Edit `engine/postprocessing/ambient-occlusion-params.ts`: `AO_RADIUS_METERS` from `0.25` to `0.00025`. `pnpm build`, kill the stale preview server, run the test with the ratio-0 override once per candidate threshold 0.35, 0.2, 0.1, 0.05, 0.02, 0. Record the reported diff ratio at each; call the series RA.
+- [x] **Step 3 (probe B, 10x radius):** Set `AO_RADIUS_METERS` to `2.5`, rebuild, kill the server, record the same series; call it RB. Restore `AO_RADIUS_METERS = 0.25`, rebuild, and confirm `git status --short engine` is empty.
+- [x] **Step 4 (fix the constants):** Choose the largest candidate threshold T at which min(RA, RB) is at least 0.01. Set `AMBIENT_OCCLUSION_THRESHOLD = T` and `AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = min(RA, RB) / 2`, rounded to three decimals. With N = 0 the ADR-0157 midpoint rule is satisfied by construction; if N > 0 the ratio must also sit at least 2N above N. If no candidate T qualifies, go to Task 6 (cropped-capture fallback). Write the derivation comment on the constants: both probe definitions with the ADR-0158 and issue #522 provenance, the five noise readings, RA and RB at each threshold, the date, the platform, and a placeholder line for the linux red-run reading that Task 5 fills in.
+- [x] **Step 5 (the gate bites locally):** With the final constants wired into the test's `captureShell` call: one clean run passes; one probe-A run fails. Restore the engine file, rebuild, confirm `git status --short` shows only the spec (and the darwin PNG if Step 1 re-seeded it).
+- [x] **Step 6 (commit):** Run the full check chain, each exit code checked on its own. Commit `test(e2e): derive a pixel tolerance for the ambient-occlusion baseline` (spec edit; plus a separate `test(e2e): refresh the stale darwin ambient-occlusion baseline` commit first if Step 1 re-seeded).
 
 ### Task 3: Darwin staleness sweep for the remaining baselines
 
@@ -66,9 +66,11 @@
 
 - Possibly replace: stale `-darwin` PNGs in `e2e/tests/scene-solar.spec.ts-snapshots/` and `e2e/tests/scene-visual-regression.spec.ts-snapshots/`
 
-- [ ] **Step 1:** Run every scene-webgl test once with a temporary ratio-0, threshold-0 override in both spec files: `pnpm exec playwright test --project=scene-webgl`. List which captures differ from their committed darwin baselines and by how much (the failure output reports pixel counts).
-- [ ] **Step 2:** For each stale darwin PNG: re-seed with `--update-snapshots=all`, eyeball the new frame, and verify the standing-tolerance run passes afterward. Revert the temporary overrides so the specs read exactly as committed plus the Task 2 change.
-- [ ] **Step 3:** If any darwin PNG was replaced: commit `test(e2e): true up stale darwin scene baselines before the tolerance gate`, listing every replaced file and its measured pre-refresh diff in the body, citing issue #656's mechanism. If none were stale, skip and note that in the pull request body.
+- [x] **Step 1:** Run every scene-webgl test once with a temporary ratio-0, threshold-0 override in both spec files: `pnpm exec playwright test --project=scene-webgl`. List which captures differ from their committed darwin baselines and by how much (the failure output reports pixel counts).
+- [x] **Step 2:** For each stale darwin PNG: re-seed with `--update-snapshots=all`, eyeball the new frame, and verify the standing-tolerance run passes afterward. Revert the temporary overrides so the specs read exactly as committed plus the Task 2 change.
+- [x] **Step 3:** If any darwin PNG was replaced: commit `test(e2e): true up stale darwin scene baselines before the tolerance gate`, listing every replaced file and its measured pre-refresh diff in the body, citing issue #656's mechanism. If none were stale, skip and note that in the pull request body.
+
+**Task 3 outcome (2026-09-06):** the local regeneration left every darwin PNG byte-identical, so no darwin baseline was stale and nothing was committed; the staleness from issue #656 is linux-only.
 
 ### Task 4: Push, open the pull request, measure linux noise, true up the linux baselines
 
@@ -85,7 +87,7 @@
 
 ### Task 5: Prove the gate on CI, finish the derivation record
 
-- [ ] **Step 1:** Apply probe A (`AO_RADIUS_METERS = 0.00025`), commit `test(e2e): prove the ambient-occlusion baseline rejects a no-op radius defect`, push.
+- [ ] **Step 1:** Apply the weaker probe. The Task 2 readings made that probe B, not the predicted probe A, so: apply probe B (`AO_RADIUS_METERS = 2.5`), commit `test(e2e): prove the ambient-occlusion baseline rejects a 10x radius defect`, push.
 - [ ] **Step 2:** Wait for the scene-visual job. Expected: red, with exactly two failures (the whole-frame ambient-occlusion capture and the sampled contrast gate) and every other scene test green. Record the run URL and the reported linux diff ratio for the whole-frame failure.
 - [ ] **Step 3 (midpoint check on linux):** The reported linux ratio must be at least twice `AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO`. If it is not, lower the ratio constant to half the linux reading (it must still clear 2x the measured noise; if it cannot, activate Task 6), update the derivation comment, and amend before the defect drop.
 - [ ] **Step 4:** Drop the defect commit: `git reset --hard HEAD~1 && git push --force-with-lease --no-verify origin feat/ambient-occlusion-baseline-gate` (or `git revert` if refused). Fill the linux reading into the derivation comment's placeholder line, commit `test(e2e): record the linux probe reading in the derivation comment`, push, watch CI back to green.
