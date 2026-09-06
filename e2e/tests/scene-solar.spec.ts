@@ -71,7 +71,11 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
 // same frame differently, so its probe reading is measured from this lane's seeded red
 // run rather than assumed:
 //
-//   linux red-run reading (probe B seeded): pending; recorded by the lane before merge.
+//   linux red-run reading (probe B seeded as a wiring defect, the radius scaled 10x where
+//   it reaches the GTAO node, because the unit tier pins the constant itself and rejects a
+//   constant-level defect before the visual job runs): 1616 pixels, ratio 0.0210, at least
+//   twice this gate's 0.010, so the midpoint rule holds on both platforms
+//   (run 34066144054, 2026-09-06).
 const AMBIENT_OCCLUSION_THRESHOLD = 0.05
 const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.01
 
