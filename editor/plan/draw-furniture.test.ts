@@ -126,6 +126,16 @@ describe('drawFurniture', () => {
     expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.fixture)
   })
 
+  it('strokes the selection outline at two pixels', () => {
+    const recorder = recordingContext()
+
+    drawFurniture(recorder.ctx, drawable({ selected: true }), RENDER)
+
+    // A bare number, not an ink-table expression: this pins the painted width.
+    // The outline is the last stroke a selected piece paints.
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
+
   it('sets its own textAlign and textBaseline before drawing the label, instead of inheriting a hostile prior context state', () => {
     const recorder = recordingContext()
     // Stands in for a previous draw call (e.g. a centered dimension label) that

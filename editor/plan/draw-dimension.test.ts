@@ -87,3 +87,15 @@ describe('drawDimension', () => {
     )
   })
 })
+
+describe('drawDimension selection weight', () => {
+  it('strokes the selection highlight at two pixels', () => {
+    const recorder = recordingContext()
+
+    drawDimension(recorder.ctx, drawable({ selected: true }), RENDER)
+
+    // A bare number, not an ink-table expression: this pins the painted width.
+    // The highlight is the last stroke a selected dimension paints.
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
+})

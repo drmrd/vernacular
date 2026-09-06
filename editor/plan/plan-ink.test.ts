@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH, PLAN_INK_WIDTH } from './plan-ink'
+import {
+  PLAN_INK_EMPHASIS,
+  PLAN_INK_FIXTURE_SELECTION_EMPHASIS,
+  PLAN_INK_OVERLAY_WIDTH,
+  PLAN_INK_WIDTH,
+} from './plan-ink'
 
 describe('PLAN_INK_WIDTH', () => {
   it('defines the cut/fixture/annotation ink-weight hierarchy from heaviest to lightest', () => {
@@ -23,5 +28,16 @@ describe('PLAN_INK_OVERLAY_WIDTH', () => {
   it('reads over the annotation layer without claiming the cut plane weight', () => {
     expect(PLAN_INK_OVERLAY_WIDTH).toBeGreaterThan(PLAN_INK_WIDTH.annotation)
     expect(PLAN_INK_OVERLAY_WIDTH).toBeLessThan(PLAN_INK_WIDTH.cut)
+  })
+})
+
+describe('PLAN_INK_FIXTURE_SELECTION_EMPHASIS', () => {
+  it('is the half step the furniture and stair selection outlines draw with today', () => {
+    expect(PLAN_INK_FIXTURE_SELECTION_EMPHASIS).toBe(0.5)
+  })
+
+  it('still clears the fixture ink it emphasizes, at less than a full emphasis step', () => {
+    expect(PLAN_INK_FIXTURE_SELECTION_EMPHASIS).toBeGreaterThan(0)
+    expect(PLAN_INK_FIXTURE_SELECTION_EMPHASIS).toBeLessThan(PLAN_INK_EMPHASIS)
   })
 })

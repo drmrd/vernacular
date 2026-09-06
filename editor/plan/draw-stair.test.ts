@@ -61,6 +61,16 @@ describe('drawStair', () => {
     )
   })
 
+  it('strokes the selection outline at two pixels', () => {
+    const recorder = recordingContext()
+
+    drawStair(recorder.ctx, node, { ...RENDER, selected: true })
+
+    // A bare number, not an ink-table expression: this pins the painted width.
+    // The outline is the last stroke a selected run paints.
+    expect(recorder.ctx.lineWidth).toBe(2)
+  })
+
   it('leaves the selection highlight in the palette selection color', () => {
     const recorder = recordingContext()
 
