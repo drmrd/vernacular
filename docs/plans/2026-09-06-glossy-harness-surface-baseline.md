@@ -134,8 +134,8 @@ test('renders the finish-contrast glossy floor to its baseline', async ({ page }
 
 ### Task 6: Reviews and handoff to the owner
 
-- [ ] **Step 1:** Dispatch `/clean-code-review` on the branch diff (sonnet). Address must-fix and should-fix findings as further `test(e2e)` commits.
-- [ ] **Step 2:** Dispatch `/review` (the pr-reviewer, sonnet). Address findings; surface any deviation that would need an ADR to the owner before merge.
+- [x] **Step 1:** Dispatch `/clean-code-review` on the branch diff (sonnet). Address must-fix and should-fix findings as further `test(e2e)` commits.
+- [x] **Step 2:** Dispatch `/review` (the pr-reviewer, sonnet). Address findings; surface any deviation that would need an ADR to the owner before merge.
 - [ ] **Step 3:** Take the pull request to green and MERGEABLE, then hand it to the owner for the merge decision. After the merge: remove the worktree (`git worktree remove ../vernacular.wt/glossy-harness-baseline`), delete the local branch, and hand the owner the remote-branch deletion command.
 
 ### Task 7: Camera-pose fallback (only if Task 3 Step 5 fails)
