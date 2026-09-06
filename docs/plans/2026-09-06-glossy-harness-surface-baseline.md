@@ -35,11 +35,11 @@
 
 **Files:** none committed except this plan.
 
-- [ ] **Step 1:** `git worktree add ../vernacular.wt/glossy-harness-baseline -b feat/glossy-harness-baseline` from the main clone, then `pnpm install --frozen-lockfile` inside the worktree.
-- [ ] **Step 2:** Confirm chromium is present: `pnpm exec playwright install chromium` is a no-op when the per-user cache already has it.
-- [ ] **Step 3:** Kill any stale preview server so Playwright's `reuseExistingServer` cannot serve a stale bundle: `lsof -ti:4173 | xargs kill -9` (ignore a nonzero exit when the port is free).
-- [ ] **Step 4:** `pnpm build` and confirm exit 0.
-- [ ] **Step 5:** Commit this plan file: `git add docs/plans/2026-09-06-glossy-harness-surface-baseline.md && git commit -m "docs: plan the glossy harness surface baseline lane"`.
+- [x] **Step 1:** `git worktree add ../vernacular.wt/glossy-harness-baseline -b feat/glossy-harness-baseline` from the main clone, then `pnpm install --frozen-lockfile` inside the worktree.
+- [x] **Step 2:** Confirm chromium is present: `pnpm exec playwright install chromium` is a no-op when the per-user cache already has it.
+- [x] **Step 3:** Kill any stale preview server so Playwright's `reuseExistingServer` cannot serve a stale bundle: `lsof -ti:4173 | xargs kill -9` (ignore a nonzero exit when the port is free).
+- [x] **Step 4:** `pnpm build` and confirm exit 0.
+- [x] **Step 5:** Commit this plan file: `git add docs/plans/2026-09-06-glossy-harness-surface-baseline.md && git commit -m "docs: plan the glossy harness surface baseline lane"`.
 
 ### Task 2: The baseline capture test
 
@@ -52,7 +52,7 @@
 - Consumes: the `finish-contrast` environment state and paint store (`app/harness-environment.ts`, `app/harness-paint.ts`, unchanged).
 - Produces: a `ShellCapture` parameter object for `captureShell`, the constants `FINISH_CONTRAST_THRESHOLD` and `FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO` (values fixed in Task 3), and the test `renders the finish-contrast glossy floor to its baseline` writing `scene-finish-contrast-webgl.png`.
 
-- [ ] **Step 1:** Replace `captureShell`'s three positional parameters with one object, keeping the body otherwise unchanged:
+- [x] **Step 1:** Replace `captureShell`'s three positional parameters with one object, keeping the body otherwise unchanged:
 
 ```ts
 interface ShellCapture {
@@ -78,7 +78,7 @@ Mechanically convert the six existing call sites, for example:
 await captureShell(page, { query: '&scene=equinox-noon', snapshot: 'scene-equinox-noon-webgl.png' })
 ```
 
-- [ ] **Step 2:** Add the new constants (placeholder values; Task 3 fixes them and writes the derivation comment) and the new test inside the existing describe block:
+- [x] **Step 2:** Add the new constants (placeholder values; Task 3 fixes them and writes the derivation comment) and the new test inside the existing describe block:
 
 ```ts
 const FINISH_CONTRAST_THRESHOLD = 0.35
@@ -94,8 +94,8 @@ test('renders the finish-contrast glossy floor to its baseline', async ({ page }
 })
 ```
 
-- [ ] **Step 3:** Refresh the stale paragraph in the spec's header comment: "continuous integration neither renders nor checks them" predates the scene-visual job; the `-linux` family is now rendered by `refresh-scene-baselines.yml` and checked by the scene-visual CI job (ADR-0152). Keep the darwin sentence.
-- [ ] **Step 4:** Run the six pre-existing captures against their committed darwin baselines to prove the refactor changed nothing: `pnpm exec playwright test --project=scene-webgl scene-solar`. Expected: six pass, one fails with a missing `scene-finish-contrast-webgl-scene-webgl-darwin.png` snapshot. That missing-snapshot failure is this lane's RED.
+- [x] **Step 3:** Refresh the stale paragraph in the spec's header comment: "continuous integration neither renders nor checks them" predates the scene-visual job; the `-linux` family is now rendered by `refresh-scene-baselines.yml` and checked by the scene-visual CI job (ADR-0152). Keep the darwin sentence.
+- [x] **Step 4:** Run the six pre-existing captures against their committed darwin baselines to prove the refactor changed nothing: `pnpm exec playwright test --project=scene-webgl scene-solar`. Expected: six pass, one fails with a missing `scene-finish-contrast-webgl-scene-webgl-darwin.png` snapshot. That missing-snapshot failure is this lane's RED.
 
 ### Task 3: Derive the tolerance, seed darwin, commit
 
@@ -104,13 +104,13 @@ test('renders the finish-contrast glossy floor to its baseline', async ({ page }
 - Modify: `e2e/tests/scene-solar.spec.ts` (constants and derivation comment only)
 - Create: `e2e/tests/scene-solar.spec.ts-snapshots/scene-finish-contrast-webgl-scene-webgl-darwin.png`
 
-- [ ] **Step 1 (seed):** `pnpm exec playwright test --project=scene-webgl -g "finish-contrast glossy floor" --update-snapshots=all` writes the darwin PNG. Eyeball the PNG: the frame must show the floor with a visible specular response (the straight-down interior pose; the sampled gate measured OKLab separation 0.012 from this framing, so a lobe is expected).
-- [ ] **Step 2 (noise):** Re-run the same test five times without `--update-snapshots`, with a temporary local override `maxDiffPixelRatio: 0`. Expected: five passes (darwin Metal captures have come back byte-identical in every prior derivation). Record the largest observed diff ratio as N (expected 0).
-- [ ] **Step 3 (signal, roughness-only):** Edit `core/registries/finishes.ts`, `semi-gloss` roughness `0.3` to `0.9` (sheen and specular kept). `pnpm build`, kill the stale preview server, re-run the test with the temporary `maxDiffPixelRatio: 0` override at each candidate threshold 0.35, 0.2, 0.1, 0.05, 0.02. From each failure message record the reported diff ratio; call the value at the chosen threshold R1.
-- [ ] **Step 4 (signal, full collapse):** Set the `semi-gloss` entry to the matte values (roughness 0.9, sheen 0, specular 0.04), rebuild, and record the same readings; call it R2. Restore `core/registries/finishes.ts`, rebuild, and confirm `git status --short core` is empty.
-- [ ] **Step 5 (fix the constants):** Choose the largest candidate threshold T at which min(R1, R2) is at least 0.01. Set `FINISH_CONTRAST_THRESHOLD = T` and `FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = min(R1, R2) / 2` rounded to three decimals. The margin rule: the chosen ratio must be at least twice N above N and at most half the weaker signal; with N = 0 the midpoint rule from ADR-0157 is satisfied by construction. If no candidate threshold yields min(R1, R2) at or above 0.01, go to Task 7 (camera-pose fallback). Write the derivation comment on the constants: both probe definitions, the five noise readings, R1 and R2 at each threshold, the date, and the platform (darwin Metal), mirroring the `FINISH_CONTRAST_MINIMUM` comment in `scene-finish-contrast.spec.ts`.
-- [ ] **Step 6 (verify the gate bites):** With the final constants, one clean run passes and one roughness-defect run fails on darwin. Restore the registry after the defect run and confirm `git status --short` shows only the spec and the new PNG.
-- [ ] **Step 7 (commit):** Two commits: `test(e2e): gate the finish-contrast glossy floor on a scene baseline` (the spec change) and `test(e2e): seed the darwin finish-contrast scene baseline` (the PNG). Run the full check chain first; verify each exit code on its own.
+- [x] **Step 1 (seed):** `pnpm exec playwright test --project=scene-webgl -g "finish-contrast glossy floor" --update-snapshots=all` writes the darwin PNG. Eyeball the PNG: the frame must show the floor with a visible specular response (the straight-down interior pose; the sampled gate measured OKLab separation 0.012 from this framing, so a lobe is expected).
+- [x] **Step 2 (noise):** Re-run the same test five times without `--update-snapshots`, with a temporary local override `maxDiffPixelRatio: 0`. Expected: five passes (darwin Metal captures have come back byte-identical in every prior derivation). Record the largest observed diff ratio as N (expected 0).
+- [x] **Step 3 (signal, roughness-only):** Edit `core/registries/finishes.ts`, `semi-gloss` roughness `0.3` to `0.9` (sheen and specular kept). `pnpm build`, kill the stale preview server, re-run the test with the temporary `maxDiffPixelRatio: 0` override at each candidate threshold 0.35, 0.2, 0.1, 0.05, 0.02. From each failure message record the reported diff ratio; call the value at the chosen threshold R1.
+- [x] **Step 4 (signal, full collapse):** Set the `semi-gloss` entry to the matte values (roughness 0.9, sheen 0, specular 0.04), rebuild, and record the same readings; call it R2. Restore `core/registries/finishes.ts`, rebuild, and confirm `git status --short core` is empty.
+- [x] **Step 5 (fix the constants):** Choose the largest candidate threshold T at which min(R1, R2) is at least 0.01. Set `FINISH_CONTRAST_THRESHOLD = T` and `FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = min(R1, R2) / 2` rounded to three decimals. The margin rule: the chosen ratio must be at least twice N above N and at most half the weaker signal; with N = 0 the midpoint rule from ADR-0157 is satisfied by construction. If no candidate threshold yields min(R1, R2) at or above 0.01, go to Task 7 (camera-pose fallback). Write the derivation comment on the constants: both probe definitions, the five noise readings, R1 and R2 at each threshold, the date, and the platform (darwin Metal), mirroring the `FINISH_CONTRAST_MINIMUM` comment in `scene-finish-contrast.spec.ts`.
+- [x] **Step 6 (verify the gate bites):** With the final constants, one clean run passes and one roughness-defect run fails on darwin. Restore the registry after the defect run and confirm `git status --short` shows only the spec and the new PNG.
+- [x] **Step 7 (commit):** Two commits: `test(e2e): gate the finish-contrast glossy floor on a scene baseline` (the spec change) and `test(e2e): seed the darwin finish-contrast scene baseline` (the PNG). Run the full check chain first; verify each exit code on its own.
 
 ### Task 4: Push, open the pull request, seed the linux baseline
 
