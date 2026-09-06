@@ -162,6 +162,18 @@ applied one level up, from the base weights to the derived ones.
   dimension/furniture selection line widths stay outside `PLAN_INK_WIDTH` for now. Issue #524
   tracks deriving them from the hierarchy in a later sweep.
 
+## Amendment (2026-09-06)
+
+The issue #524 sweep has landed. The literals that decision 1 and the consequences list as
+staying outside the table now derive from `plan-ink.ts` through three named exports.
+`PLAN_INK_EMPHASIS` is the one-step increment a highlight adds over the ink it marks.
+`PLAN_INK_OVERLAY_WIDTH` is `annotation` plus that step; the preview, snap marker, ghost,
+underlay calibration, and active-highlight strokes share it. `PLAN_INK_FIXTURE_SELECTION_EMPHASIS`
+is the half step the furniture and stair selection outlines add today. No effective width
+changed; the sweep named the arithmetic behind each value. Two design questions the sweep
+made visible (the fixture half step, and a wall-draw preview that reads lighter than the
+wall it becomes) are tracked in issue #658 rather than settled here.
+
 ## References
 
 - [[ADR-0069-visual-design-language-draughtsmans-restraint]] (the shipped language; its icon-stroke
