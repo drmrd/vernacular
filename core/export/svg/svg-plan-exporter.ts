@@ -8,7 +8,7 @@ import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
 import { formatArea, formatLength, lengthFormatOptions, preferencesForUnits } from '../../units'
 import { effectiveWallThickness } from '../../scene/construction-profile'
-import { deriveSceneGraph, WALL_NODE_PREFIX } from '../../scene/scene-graph'
+import { deriveSceneGraph } from '../../scene/scene-graph'
 import type {
   DimensionSceneNode,
   OpeningSceneNode,
@@ -16,6 +16,7 @@ import type {
   SceneGraph,
   WallSceneNode,
 } from '../../scene/scene-graph'
+import { rawWallId } from '../../scene/wall-id'
 import { openingFootprint } from '../../topology/openings'
 import type { Exporter, ExportResult } from '../exporter'
 import { svgDocument, svgGroup, svgLine, svgPolygon, svgText } from './svg-document'
@@ -134,18 +135,16 @@ function wallOpeningGaps(
   wall: WallSceneNode,
   openings: readonly OpeningSceneNode[],
 ): WallFaceGap[] {
-  const rawWallId = wall.id.slice(WALL_NODE_PREFIX.length)
+  const hostId = rawWallId(wall)
   const axis = unit(subtract(wall.end, wall.start))
   return openings
-    .filter((opening) => opening.hostWallId === rawWallId)
+    .filter((opening) => opening.hostWallId === hostId)
     .map((opening) => wallOpeningGap(wall, axis, opening))
 }
 
 /** One opening's clear span on `wall`'s axis, from its near jamb to its far jamb. */
 function wallOpeningGap(wall: WallSceneNode, axis: Point, opening: OpeningSceneNode): WallFaceGap {
-  const halfWidth = opening.width / 2
-  const nearJamb = translate(opening.center, opening.along, -halfWidth)
-  const farJamb = translate(opening.center, opening.along, halfWidth)
+  const [nearJamb, farJamb] = openingJambPoints(opening)
   return {
     from: dot(subtract(nearJamb, wall.start), axis),
     to: dot(subtract(farJamb, wall.start), axis),
@@ -224,11 +223,18 @@ function openingGap(opening: OpeningSceneNode, { view }: SvgPlanContext): string
   return svgPolygon(projected, { fill: OPENING_GAP, stroke: 'none' })
 }
 
+/** The opening's two jamb points on the host wall centerline, near jamb first. */
+function openingJambPoints(opening: OpeningSceneNode): [Point, Point] {
+  const halfWidth = opening.width / 2
+  return [
+    translate(opening.center, opening.along, -halfWidth),
+    translate(opening.center, opening.along, halfWidth),
+  ]
+}
+
 /** Emit an across-wall `<line>` jamb cap at each of the opening's two jambs. */
 function openingJambs(opening: OpeningSceneNode, context: SvgPlanContext): string[] {
-  const halfWidth = opening.width / 2
-  const jambStart = translate(opening.center, opening.along, -halfWidth)
-  const jambEnd = translate(opening.center, opening.along, halfWidth)
+  const [jambStart, jambEnd] = openingJambPoints(opening)
   return [jambCap(jambStart, opening, context), jambCap(jambEnd, opening, context)]
 }
 
