@@ -91,10 +91,10 @@ Story: the live preview is a second scene-construction path that has repeatedly 
 
 The two paths:
 
-| Path         | Entry                                                                                                           | Scene construction                                                                                                                 | Backend                       |
-| ------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Harness      | `?fixture=scene-harness` URL param, handled in `app/app.tsx`, rendered by `bridge/react/scene-harness-view.tsx` | `buildFramedScene` (`bridge/react/framed-scene.ts`) calls engine `buildScene` (`engine/scene/build-scene.ts`): one-shot full build | Deterministic WebGL 2         |
-| Live preview | Editor preview/split pane (`WebGPUSceneView`, `bridge/react/webgpu-scene-view.tsx`)                             | `useFramedScene` > `createFramedSceneReconciler` (`bridge/react/framed-scene-reconciler.ts`): incremental reconcile of subgroups   | WebGPU (hard gate, #476 open) |
+| Path         | Entry                                                                                                           | Scene construction                                                                                                                 | Backend                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Harness      | `?fixture=scene-harness` URL param, handled in `app/app.tsx`, rendered by `bridge/react/scene-harness-view.tsx` | `buildFramedScene` (`bridge/react/framed-scene.ts`) calls engine `buildScene` (`engine/scene/build-scene.ts`): one-shot full build | Deterministic WebGL 2                                                                                    |
+| Live preview | Editor preview/split pane (`WebGPUSceneView`, `bridge/react/webgpu-scene-view.tsx`)                             | `useFramedScene` > `createFramedSceneReconciler` (`bridge/react/framed-scene-reconciler.ts`): incremental reconcile of subgroups   | WebGPU, or its WebGL 2 fallback (#476 landed; only a browser with neither shows the unsupported message) |
 
 Discriminating experiment: build and serve (`pnpm build`, `pnpm preview`), then load `http://localhost:4173/?fixture=scene-harness` (add `&scene=<name>` for a named fixture; param catalog: vernacular-config-and-flags). Compare against the live pane on the same content.
 
@@ -114,7 +114,7 @@ Check in this order:
    document.querySelector('canvas')?.getBoundingClientRect()
    ```
    A 300x150 (or near-zero) rect means the CSS layout collapsed. Fix the layout; the renderer is innocent.
-2. Fallback message "Your browser does not support WebGPU..." (`editor/shell/scene-pane.tsx`): the live pane hard-gates on `detectRenderBackend() === 'webgpu'` (also `bridge/react/scene-canvas.tsx`). Issue #476 (open as of 2026-07-05) tracks falling back to WebGL 2 instead.
+2. Fallback message "This browser cannot render the 3D view." (`editor/shell/scene-pane.tsx`): the live pane refuses only when `detectLivePreviewBackend()` (`bridge/react/live-preview-backend.ts`) answers `unsupported`, meaning neither WebGPU nor WebGL 2 exists. On WebGL 2 it renders with a dismissible notice instead (#476, ADR-0174).
 3. Empty state "Nothing to show in 3D yet" (`editor/shell/scene-pane.tsx`): the canvas only mounts once the floor has geometry. Draw a wall first.
 4. Only then suspect the render path (entry 3, then vernacular-rendering-defect-campaign).
 
