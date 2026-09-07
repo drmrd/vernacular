@@ -38,7 +38,8 @@ furniture; schematic mode is untouched.
 
 Decision 3, the whole-frame occlusion multiply, is superseded by ADR-0172 (2026-09-07):
 occlusion now applies to indirect light only through the renderer's lighting-context
-seam. Everything else in this record stands.
+seam. The depth-reconstructed normals are superseded by ADR-0173 (2026-09-07): the
+prepass renders the normals GTAO consumes. Everything else in this record stands.
 
 ## Context
 
