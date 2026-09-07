@@ -47,15 +47,6 @@ interface OpeningPainter {
   ink: string
   /** The highlight stroke for a selected opening, from the palette selection color. */
   selection: string
-  /**
-   * The wall-break gap fill, sourced from the palette room fill. Exact for an
-   * interior wall between two unpainted rooms; a known mismatch on the exterior
-   * side of an exterior wall and on a room with a floor paint override, since
-   * the gap paints one opaque color regardless of which side or finish is
-   * showing through it. The durable fix is a geometric break in the wall stroke
-   * rather than a painted-over gap (issue #521).
-   */
-  gapFill: string
 }
 
 function add(a: Point, b: Point): Point {
@@ -142,12 +133,13 @@ function tracePolygon(painter: OpeningPainter, corners: readonly Point[]): void 
   painter.ctx.closePath()
 }
 
-/** Fill the opening footprint in the gap color so the wall stroke is broken, then stroke a jamb cap across the wall at each jamb. */
-function drawGapAndJambs(painter: OpeningPainter, node: OpeningSceneNode): void {
-  painter.ctx.fillStyle = painter.gapFill
-  tracePolygon(painter, openingCorners(node))
-  painter.ctx.fill()
-
+/**
+ * Stroke a jamb cap across the wall at each jamb, closing the break the wall
+ * already carries. The wall's poche and face lines stop at these jambs
+ * (ADR-0160 decision 4), so nothing is painted over the opening: whatever the
+ * canvas drew underneath survives on both sides of the wall's thickness.
+ */
+function drawJambCaps(painter: OpeningPainter, node: OpeningSceneNode): void {
   painter.ctx.strokeStyle = painter.ink
   painter.ctx.lineWidth = OPENING_INK_WIDTH
   const across = scale(node.normal, node.hostThickness * HALF)
@@ -215,7 +207,7 @@ function drawDoorPivot(painter: OpeningPainter, opening: DrawableOpening): void 
 }
 
 function drawCasedOpening(): void {
-  // Cased openings draw nothing beyond the gap and jamb caps. The unused
+  // Cased openings draw nothing beyond the jamb caps. The unused
   // `FamilyRoutine` parameters are omitted because the signature is structurally
   // assignable to it without them.
 }
@@ -341,7 +333,7 @@ function drawSelectionHighlight(painter: OpeningPainter, node: OpeningSceneNode)
   painter.ctx.stroke()
 }
 
-/** Paint one opening in screen space: break the host wall with a gap and jamb caps, draw the family symbol, then a selection highlight when selected. */
+/** Paint one opening in screen space: cap the host wall's break at each jamb, draw the family symbol, then a selection highlight when selected. */
 export function drawOpening(
   ctx: PlanDrawingContext,
   opening: DrawableOpening,
@@ -352,9 +344,8 @@ export function drawOpening(
     viewport: render.viewport,
     ink: render.palette.wall,
     selection: render.palette.selection,
-    gapFill: render.palette.roomFill,
   }
-  drawGapAndJambs(painter, opening.node)
+  drawJambCaps(painter, opening.node)
   const routine = familyRoutine(opening.symbol)
   if (routine !== undefined) {
     routine(painter, opening)
