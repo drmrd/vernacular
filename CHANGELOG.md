@@ -11,6 +11,142 @@ Starting in Phase 0e, this file is maintained automatically by
 `release-please` from Conventional Commit messages. Until then, entries
 are added by hand and intentionally coarse-grained (one bullet per phase).
 
+## [0.3.4](https://github.com/drmrd/vernacular/compare/v0.3.3...v0.3.4) (2026-09-07)
+
+
+### Features
+
+* apply ambient occlusion to indirect light only ([988a575](https://github.com/drmrd/vernacular/commit/988a5758c0a1906921ca596629233e2588b868ab)), closes [#470](https://github.com/drmrd/vernacular/issues/470)
+* apply ambient occlusion to indirect light only (rendering-realism lane 4) ([7527c6b](https://github.com/drmrd/vernacular/commit/7527c6bb7957efcebd022189875231c603f5855f))
+* fall back to WebGL 2 in the live 3D pane instead of refusing ([c788d0b](https://github.com/drmrd/vernacular/commit/c788d0b25ced47a7ba049c92bc035db62e0ca0df))
+* feed ambient occlusion from a rendered normals target ([0fe0130](https://github.com/drmrd/vernacular/commit/0fe01307d2f82f830c752f4d218c9a4bb781e4dd))
+* feed ambient occlusion from a rendered normals target (rendering-realism lane 5) ([df13a15](https://github.com/drmrd/vernacular/commit/df13a157b55a25db0a67a9cf402e0e7a87d96148))
+* probe whether the live preview can render on WebGPU or WebGL 2 ([3c7a344](https://github.com/drmrd/vernacular/commit/3c7a3447953c46ebea8e12985c70066f3d100a4f))
+* say when the 3D preview is running without WebGPU ([4ceeaef](https://github.com/drmrd/vernacular/commit/4ceeaefafa127d19e9c20c8672fe56fb129546b7))
+
+
+### Bug fixes
+
+* break the exported wall stroke at its openings ([f19b9b4](https://github.com/drmrd/vernacular/commit/f19b9b48175c39cb1991f8600173a961795e807a))
+* break the surface-paint face bands at opening jambs ([6ba3a32](https://github.com/drmrd/vernacular/commit/6ba3a324b6c1d08328601833a0339d7cc2dee0d9))
+* break the wall at an opening without painting over the plan ([12d0e1a](https://github.com/drmrd/vernacular/commit/12d0e1a8dd71063cf42ea2f992b289ccb37671a0))
+* break the wall stroke at openings instead of painting a cover-up ([12d5fc1](https://github.com/drmrd/vernacular/commit/12d5fc1678a6e69bd1a67b69af4deb65ad10b543))
+* keep a refused WebGL 2 context probe from blanking the editor ([bcafdf0](https://github.com/drmrd/vernacular/commit/bcafdf014012ab53f112f4e31510065b106135fe))
+* keep the 3D preview for browsers that render through WebGL 2 ([c3b6a78](https://github.com/drmrd/vernacular/commit/c3b6a78c3cf71090aa8ec62270c660ab0f2b2b72))
+* mount the live 3D view on a WebGL 2 runtime instead of refusing it ([94b1f26](https://github.com/drmrd/vernacular/commit/94b1f262de1416467d96f475743ef67f9309e5cd))
+* stop painting a gap over an exported opening ([a953a77](https://github.com/drmrd/vernacular/commit/a953a775ed5a55a77cc2e31d7220d9d5bd9d82e3))
+* stop painting an opening gap over the exported wall stroke ([3632f73](https://github.com/drmrd/vernacular/commit/3632f73d411ee29e01db8baeabdc2f36d2600e9b))
+
+
+### Refactoring
+
+* close the live preview backend probe cycle ([fa82a23](https://github.com/drmrd/vernacular/commit/fa82a23e43f59e912e6b026516c7d8b567037c55))
+* close the opening gap-fill removal cycle with no findings ([0477f4f](https://github.com/drmrd/vernacular/commit/0477f4f0ee6f5256120cebe6f11c2a8b0a17e581))
+* close the scene canvas backend gate cycle ([5328ef6](https://github.com/drmrd/vernacular/commit/5328ef6657add2d25ca42ca44cd6dbe1152512ca))
+* close the scene pane backend gate cycle ([7c18d3b](https://github.com/drmrd/vernacular/commit/7c18d3b13253587a456847757c8da44e9ecf7d77))
+* close the WebGPU fallback notice cycle ([5ac97d0](https://github.com/drmrd/vernacular/commit/5ac97d01a3f3c339dda3c20e1c6a731e03558205))
+* derive the draw-plan line widths from the ink table ([ce1e28e](https://github.com/drmrd/vernacular/commit/ce1e28ea68c69d91b9bcf5ae914479fd1b3460bc))
+* derive the ghost and calibration widths from the ink table ([b57962c](https://github.com/drmrd/vernacular/commit/b57962cff9542ddaec5068a6d0e923dc3716373f))
+* derive the remaining plan-canvas stroke widths from the ink table ([fe00c7f](https://github.com/drmrd/vernacular/commit/fe00c7f765924f2abf16764dff7bf35aad9e1f04))
+* derive the selection widths from the ink table ([847ec5b](https://github.com/drmrd/vernacular/commit/847ec5ba997d4e736f222452d8181ce3971e2958))
+* derive the surface-paint widths from the ink table ([34b6d1a](https://github.com/drmrd/vernacular/commit/34b6d1a79d75732a623eddabd46d923f54ff45ae))
+* document the cached answer on the live preview backend probe ([d3b0763](https://github.com/drmrd/vernacular/commit/d3b0763bc47ed7630a5a2218d29e6a9d52a26c17))
+* pin the retired gap fill against a room the opening sits over ([eb0f295](https://github.com/drmrd/vernacular/commit/eb0f295a16b536fc0418ccbf3b9b0cb7eae6cb64))
+* read the plan's opening nodes through one helper ([f2879e5](https://github.com/drmrd/vernacular/commit/f2879e53865dd46b2ff7ca23870548bebd71b81c))
+* read the wall id and the opening jambs through one helper each ([44d9fd7](https://github.com/drmrd/vernacular/commit/44d9fd796830bb72bc0b9eb509fe7b37e0671087))
+* reflow the ambient-occlusion factory comment ([7e4eb09](https://github.com/drmrd/vernacular/commit/7e4eb09c2a61bb10a0abc649ad8c2e6728defc51))
+* share one opening-span projection across the wall layers ([edf9bdd](https://github.com/drmrd/vernacular/commit/edf9bddff455c5b3c1ba4c6401e2f2fcab019204))
+* sharpen the ambient-occlusion pipeline comments and dispose grouping ([21a3101](https://github.com/drmrd/vernacular/commit/21a3101c183928292efb0c4e44fc895a68982739))
+
+
+### Documentation
+
+* adopt the gates-first spec for the rendering realism slices ([f5ef3a8](https://github.com/drmrd/vernacular/commit/f5ef3a8618f129eb0174fde65ccc3bde625b4397))
+* adopt the gates-first spec for the rendering realism slices ([ca8d7eb](https://github.com/drmrd/vernacular/commit/ca8d7eb7e6507940429edec09767d12f8fc87591))
+* amend ADR-0159 for the landed line-weight sweep ([4fa9974](https://github.com/drmrd/vernacular/commit/4fa99748cb160940480fe46893a49a4a0373d31e))
+* correct the half-float coupling and add the ADR-0172 cross-reference ([da010b6](https://github.com/drmrd/vernacular/commit/da010b6cd6dfc5af4ee62bc0b9ac785b5112e58c))
+* correct the measured lane cost in ADR-0171 ([b460f6f](https://github.com/drmrd/vernacular/commit/b460f6f8f706047e10a039ff5b886a36808f6df6))
+* date the issue closure claim to the merge, not the branch ([dca5113](https://github.com/drmrd/vernacular/commit/dca51133ec32f638576fc4b41ddfa0a25724d700))
+* fix the ADR-0149 slug, tick the lane plan, cache the macOS browsers ([be8da36](https://github.com/drmrd/vernacular/commit/be8da36278602b43248289fcbed937b4b74e9f38))
+* move the supersession note after the sentence it split ([df8f0dd](https://github.com/drmrd/vernacular/commit/df8f0ddeb0ab344ad8ee1d7e19339a52447c8b91))
+* plan the ambient-occlusion baseline gate lane ([1c6449a](https://github.com/drmrd/vernacular/commit/1c6449a44547b21782ac642d6131162a0c0c0906))
+* plan the ambient-occlusion normals target lane ([60ff059](https://github.com/drmrd/vernacular/commit/60ff059b60b17a31efe53a53f90147cfb32977be))
+* plan the exported wall-stroke break at openings ([622ef37](https://github.com/drmrd/vernacular/commit/622ef379cec334789b3169157f2edaf95ec5b1f7))
+* plan the geometric wall-stroke break at openings ([f71ef25](https://github.com/drmrd/vernacular/commit/f71ef255611a635429e2fcc2fa9c849f7bbb3e80))
+* plan the glossy harness surface baseline lane ([32ee431](https://github.com/drmrd/vernacular/commit/32ee43143514685027e329746a75f78d2b5b50f1))
+* plan the indirect-only ambient-occlusion lane ([8d5a3a8](https://github.com/drmrd/vernacular/commit/8d5a3a8dce5c080769553d5a87b549c128909267))
+* plan the line-weight sweep completion ([eba318a](https://github.com/drmrd/vernacular/commit/eba318a758cb1c24cff56d935e291bd9a07707e6))
+* plan the live pane WebGL 2 fallback ([9b1fe88](https://github.com/drmrd/vernacular/commit/9b1fe88e45db12f2bb0a8a8bbb23d3a3630b4f27))
+* plan the live-view CI render lane ([432fa72](https://github.com/drmrd/vernacular/commit/432fa72f3a264784776ef2768f89fa7485cba4e1))
+* record the executed steps in the glossy baseline lane plan ([ddd9be4](https://github.com/drmrd/vernacular/commit/ddd9be4425632b7729a8d96650f8fe69309d96f3))
+* record the exported gap fill's retirement in the wall poche decision ([a96c22a](https://github.com/drmrd/vernacular/commit/a96c22a79650577fb38d458340ae56205a6b9610))
+* record the indirect-only blend in ADR-0172, note the supersession in ADR-0151 ([3b1f3b3](https://github.com/drmrd/vernacular/commit/3b1f3b3c067c795c16a4aac4021a4d288467b3a7))
+* record the live pane WebGL 2 fallback in ADR-0174 ([7cc93a9](https://github.com/drmrd/vernacular/commit/7cc93a9c86a43037116b2f977c0c066626b83eca))
+* record the live pane WebGL 2 fallback plan as executed ([74b17fd](https://github.com/drmrd/vernacular/commit/74b17fde052cf7523f084b38ef63a96be3de4653))
+* record the live-view CI render lane in ADR-0171 ([82a4ca1](https://github.com/drmrd/vernacular/commit/82a4ca1a5c83b35881462942620bbe028d7c10c6))
+* record the probe throw guard in ADR-0174 and the plan ([1411d66](https://github.com/drmrd/vernacular/commit/1411d66cfa4f2306a0c513ee487ce63433b4fca7))
+* record the rendered normals target in ADR-0173 ([3d8a194](https://github.com/drmrd/vernacular/commit/3d8a194a4e38c48e9be6a8af46246e3b16bc293b))
+* record the retired gap fill in the wall poche decision ([9b85073](https://github.com/drmrd/vernacular/commit/9b85073ec87f2e9d290a8cdfc3bda57b747121c3))
+* record the two-probe midpoint variant in ADR-0157 and fix both citations ([2662411](https://github.com/drmrd/vernacular/commit/266241139502547cbd65ae79c18a74d8f80d1ceb))
+* refresh ADR-0159 frontmatter for the amendment ([b9a3953](https://github.com/drmrd/vernacular/commit/b9a39532ad8d1a6031b5149460c9e51a750de736))
+* tick the completed review steps in the lane plan ([942c699](https://github.com/drmrd/vernacular/commit/942c699910723ef8d491a201e7e0de47117ff5c3))
+* tick the derivation and sweep steps in the lane plan ([c1d3d6b](https://github.com/drmrd/vernacular/commit/c1d3d6b74c3f79b5502fa8cc2d748b78f8ce3d48))
+* tick the executed lane steps and record the red-run outcome ([ba7f7f8](https://github.com/drmrd/vernacular/commit/ba7f7f8bc4e8946aa57096e05b49c7649881c99d))
+* tick the executed setup and derivation steps in the lane plan ([d927906](https://github.com/drmrd/vernacular/commit/d927906e78080d295fc542cf09ab25ca706b0612))
+* update the debugging playbook for the landed WebGL 2 fallback ([f8f0da7](https://github.com/drmrd/vernacular/commit/f8f0da7f25f30035fda5e20c76372166c0781e16))
+
+
+### Tests
+
+* credit the no-MRT design call for the normals prepass ([a3f52c3](https://github.com/drmrd/vernacular/commit/a3f52c36feb465fe2cd98a2dc98180d0ab41fffc))
+* **e2e:** baseline the glossy harness floor (rendering-realism lane 1) ([ebd4cf1](https://github.com/drmrd/vernacular/commit/ebd4cf17ab039507617ac08085fcfa7553baf56c))
+* **e2e:** derive a pixel tolerance for the ambient-occlusion baseline ([c8012ed](https://github.com/drmrd/vernacular/commit/c8012edd796b4922e1aa7ec2efd7d97abbe8c57e))
+* **e2e:** gate ambient-occlusion drift on a derived baseline tolerance (rendering-realism lane 2) ([3eb7988](https://github.com/drmrd/vernacular/commit/3eb7988fab6eef38ed45aec987f3c3653ee5fc65))
+* **e2e:** gate the finish-contrast glossy floor on a scene baseline ([ff0ce0d](https://github.com/drmrd/vernacular/commit/ff0ce0d0b87c494bfa6ac84a7fd50f769bdb87e6))
+* **e2e:** re-derive both ambient-occlusion gates for the indirect-only blend ([d67a235](https://github.com/drmrd/vernacular/commit/d67a2355f0b4824b7357e4b17ee018fff81368f6))
+* **e2e:** re-derive both ambient-occlusion gates for the normals target ([b9599ca](https://github.com/drmrd/vernacular/commit/b9599caae8585e570f067c900f137f43a6758efd))
+* **e2e:** record the linux probe reading in the derivation comment ([ca7604e](https://github.com/drmrd/vernacular/commit/ca7604e5acd44f48c9dd905359166ea0e44e6cf0))
+* **e2e:** record the linux readings for the normals-target gates ([a729abc](https://github.com/drmrd/vernacular/commit/a729abcd1885bb3ed0b536c89e2cd8bc9f0422e6))
+* **e2e:** record the linux readings for the re-derived gates ([80d1eb0](https://github.com/drmrd/vernacular/commit/80d1eb0d39052c8dd0eaff7c3114366c6b713d8d))
+* **e2e:** refresh the darwin solar baselines for the indirect-only blend ([6b22fba](https://github.com/drmrd/vernacular/commit/6b22fba20c6fa4a7e82f96dc976dc316ff778bc4))
+* **e2e:** refresh the darwin solar baselines for the normals target ([8b81c57](https://github.com/drmrd/vernacular/commit/8b81c57ff6646038f56b5532a0ff521f815fe708))
+* **e2e:** refresh the linux solar baselines for the indirect-only blend ([93d7438](https://github.com/drmrd/vernacular/commit/93d7438348603213fe2e5753e9c03d2cd4e69d08))
+* **e2e:** refresh the linux solar baselines for the normals target ([292a3dd](https://github.com/drmrd/vernacular/commit/292a3dde92e874bb225b7c1b2569c3a8d02d718d))
+* **e2e:** seed the darwin finish-contrast scene baseline ([7151131](https://github.com/drmrd/vernacular/commit/71511311ef728c92fbcbf8a4927dea9b4b8d74bd))
+* **e2e:** seed the linux finish-contrast scene baseline from the runner render ([ae4d332](https://github.com/drmrd/vernacular/commit/ae4d3325c39b48f0921961ab1a9930789e5eb752))
+* **e2e:** true up the stale linux scene baselines from a fresh runner render ([d91d8f8](https://github.com/drmrd/vernacular/commit/d91d8f8fbe908dd1a8486c4e1574ac9db1db7e2a))
+* expect a painted face band to stop at each opening jamb ([47cc37d](https://github.com/drmrd/vernacular/commit/47cc37d21ce32c5f924ff1984cbd9f642f39e8c6))
+* expect an exported opening to leave the plan beneath it unpainted ([a219855](https://github.com/drmrd/vernacular/commit/a2198556f0b5bde01ca379d2a2387aa653b89373))
+* expect an exported wall stroke to stop at each opening jamb ([0be643a](https://github.com/drmrd/vernacular/commit/0be643ad6c1db15af6c4a9b5c079fa981d0fd243))
+* expect an opening to leave the plan beneath it unpainted ([35844bd](https://github.com/drmrd/vernacular/commit/35844bd0314405df982ead4f553c13d57eaa9bf8))
+* pin ambient occlusion to the indirect lighting context ([f59b051](https://github.com/drmrd/vernacular/commit/f59b051877d0826f7d3a0db84929246dab56a432))
+* pin the ambient-occlusion normals to a rendered target ([48d036a](https://github.com/drmrd/vernacular/commit/48d036a5564d7ce644d5acc952f8ae0f18fd301e))
+* pin the dimension, furniture, and stair selection widths ([7c66cc9](https://github.com/drmrd/vernacular/commit/7c66cc9a3637740c256d2e7c4f413227570ccd8e))
+* pin the ghost and calibration line widths ([f547649](https://github.com/drmrd/vernacular/commit/f547649c138b2a8849289b7480fabe67125c82d3))
+* pin the grid, marquee, preview, and snap-marker line widths ([771a88b](https://github.com/drmrd/vernacular/commit/771a88b882c68448d9a224647fddb090d4390456))
+* pin the live preview backend probe to a three way answer ([8ba0958](https://github.com/drmrd/vernacular/commit/8ba095848a57fc8865c017a8b2acb439f5698e49))
+* pin the surface-paint band and highlight widths ([1939645](https://github.com/drmrd/vernacular/commit/1939645527b82e62b4d560abe2715004e5baa7d4))
+* require a dismissible notice when the preview runs without WebGPU ([f4a4a08](https://github.com/drmrd/vernacular/commit/f4a4a089818fa8ce774f50b1b616f680df488fa2))
+* require the backend probe to survive a throwing context request ([2cb44ea](https://github.com/drmrd/vernacular/commit/2cb44ea2e5c7303ebcb3234771c5853d33e85467))
+* require the scene canvas to mount on a WebGL 2 runtime ([86fd254](https://github.com/drmrd/vernacular/commit/86fd254230a2eb7f2a7d8a038934702056d6bf3b))
+* require the scene pane to render a WebGL 2 preview ([e714e80](https://github.com/drmrd/vernacular/commit/e714e80708415c09a6899fb36ac85f485479d50a))
+* self-describe the light-blend guard and harden its negative assertion ([a4ed85e](https://github.com/drmrd/vernacular/commit/a4ed85e8ab0d715713aa544f5826a68d4b8dc537))
+
+
+### Build
+
+* add the live-view WebGPU visual CI lane (rendering-realism lane 3) ([5906a02](https://github.com/drmrd/vernacular/commit/5906a0275d4fd9a06c3c3e93cefa215bbadb335e))
+* drop the temporary SwiftShader extension probe ([ac3598d](https://github.com/drmrd/vernacular/commit/ac3598d78c02257af3b3dce119653d6fe32831f8))
+* probe SwiftShader for the MRT extensions lane 5 needs (temporary, lane branch only) ([c4860a6](https://github.com/drmrd/vernacular/commit/c4860a64c8ca429a923232071ceb0dd7651d6041))
+* probe the macOS runner for a WebGPU adapter (temporary, lane branch only) ([6310f9a](https://github.com/drmrd/vernacular/commit/6310f9ab517c821bf5dada0f9ad2c42be53136d3))
+* run the live-view WebGPU visual spec on a macOS CI lane ([2fb6f3b](https://github.com/drmrd/vernacular/commit/2fb6f3bee970e2326c9b37686f8ad2238d07f9fb))
+
+
+### Chores
+
+* **deps:** bump fflate from 0.8.2 to 0.8.3 in the npm_and_yarn group across 1 directory ([901efd4](https://github.com/drmrd/vernacular/commit/901efd49ac7f63ba527160226c13c9b67f3670ae))
+* **deps:** bump fflate in the npm_and_yarn group across 1 directory ([19ca757](https://github.com/drmrd/vernacular/commit/19ca757efe90a89ee3712287ab10a9ab287a6323))
+
 ## [0.3.3](https://github.com/drmrd/vernacular/compare/v0.3.2...v0.3.3) (2026-09-01)
 
 
