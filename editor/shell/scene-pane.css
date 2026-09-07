@@ -21,3 +21,24 @@
   justify-content: center;
   pointer-events: none;
 }
+
+/*
+ * The backend notice rides over the pane rather than taking a row of it, so the canvas
+ * keeps the height every measurement below it is built on. It is anchored bottom-right
+ * to leave the bottom-left camera-controls caption clear, and the wrapper ignores
+ * pointer input so an orbit drag passes through; the banner itself takes pointer input
+ * back so its dismiss button works. The width cap keeps the message to a readable
+ * measure on a wide pane.
+ */
+.scene-pane__notice {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 20;
+  max-width: min(24rem, calc(100% - var(--space-6)));
+  pointer-events: none;
+}
+
+.scene-pane__notice > * {
+  pointer-events: auto;
+}

@@ -1,13 +1,14 @@
-import { detectRenderBackend } from '../../engine'
+import { detectLivePreviewBackend } from './live-preview-backend'
 import { WebGPUSceneView } from './webgpu-scene-view'
 
-/** The 3D viewport. Renders the WebGPU scene when available, otherwise an accessible
- *  message. The WebGL2 fallback renderer arrives in a later phase. */
+/** The 3D viewport. Renders the live scene whenever the runtime can drive a backend, on
+ *  WebGPU or on the renderer's own WebGL 2 fallback, and an accessible message when it
+ *  can drive neither. */
 export function SceneCanvas() {
-  if (detectRenderBackend() !== 'webgpu') {
+  if (detectLivePreviewBackend() === 'unsupported') {
     return (
       <div role="status" className="scene-canvas__fallback">
-        This 3D view requires a WebGPU-capable browser.
+        This browser cannot render the 3D view.
       </div>
     )
   }
