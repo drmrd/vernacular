@@ -6,12 +6,11 @@ import {
   type Point,
   type SurfaceRef,
   type SurfaceTreatment,
-  type WallFaceGap,
   type WallFaceStretch,
   type WallSceneNode,
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
-import { openingJambs, projectPointOntoWall } from './opening-geometry'
+import { openingSpansAlong } from './opening-spans'
 import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH } from './plan-ink'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -108,20 +107,6 @@ function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point;
   }
 }
 
-/** The clear spans the openings hosted by `wall` cut out of it, as centerline distances from its start. */
-function openingSpans(wall: WallSceneNode, openings: readonly OpeningSceneNode[]): WallFaceGap[] {
-  const hostId = rawWallId(wall)
-  return openings
-    .filter((opening) => opening.hostWallId === hostId)
-    .map((opening) => {
-      const jambs = openingJambs(opening)
-      return {
-        from: projectPointOntoWall(wall.start, wall.end, jambs.start),
-        to: projectPointOntoWall(wall.start, wall.end, jambs.end),
-      }
-    })
-}
-
 /**
  * The stretches of `wall`'s two face bands that its openings leave standing.
  *
@@ -143,7 +128,10 @@ function bandStretches(
     start: wall.start,
     end: wall.end,
     corners: { aPlus: left.from, bPlus: left.to, aMinus: right.from, bMinus: right.to },
-    gaps: openingSpans(wall, openings),
+    gaps: openingSpansAlong(
+      { start: wall.start, end: wall.end, wallId: rawWallId(wall) },
+      openings,
+    ),
   })
 }
 
