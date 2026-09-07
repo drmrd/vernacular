@@ -4,6 +4,7 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
+  WALL_NODE_PREFIX,
   deriveSceneGraph,
   dimensionGeometry,
   effectiveWallThickness,
@@ -208,6 +209,58 @@ describe('SvgPlanExporter emitting walls', () => {
     new SvgPlanExporter().export(project)
 
     expect(project).toEqual(untouched)
+  })
+
+  it('keeps the round linecap on a wall stroke that has no opening to cut it', () => {
+    // Characterization: the exporter draws each authored wall end to end with no
+    // mitring, so the round cap is what fills the notch where two walls meet at a
+    // corner. Only a stretch a cut bounds may square off instead.
+    const project = createSingleWallProject()
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const line = document.querySelector('line[data-node-id^="wall:"]')
+
+    expect(line).not.toBeNull()
+    expect(line?.getAttribute('stroke-linecap')).toBe('round')
+  })
+
+  it('stops the wall stroke at each jamb of an opening that cuts it', () => {
+    const project = createSingleOpeningProject()
+    const graph = deriveSceneGraph(project)
+    const opening = soleDerivedOpening(project)
+    const wallId = `${WALL_NODE_PREFIX}wall-a`
+    const wall = graph.walls.find((candidate) => candidate.id === wallId)
+    if (wall === undefined) {
+      throw new Error('expected the fixture to derive its host wall')
+    }
+    const view = createSvgView(planContentBounds(graph))
+    const half = opening.width / 2
+    const jambStart = {
+      x: opening.center.x - opening.along.x * half,
+      y: opening.center.y - opening.along.y * half,
+    }
+    const jambEnd = {
+      x: opening.center.x + opening.along.x * half,
+      y: opening.center.y + opening.along.y * half,
+    }
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const wallLines = [...document.querySelectorAll('line')].filter(
+      (line) => line.getAttribute('data-node-id') === wallId,
+    )
+
+    expect(wallLines).toHaveLength(2)
+    expect(inkedLineForSegment(wallLines, view.project(wall.start), view.project(jambStart))).toBe(
+      true,
+    )
+    expect(inkedLineForSegment(wallLines, view.project(jambEnd), view.project(wall.end))).toBe(true)
+    // A round cap would extend the ink half the wall's thickness past the jamb,
+    // bulging back into the doorway. The cut must read square.
+    for (const line of wallLines) {
+      expect(line.getAttribute('stroke-linecap')).toBe('butt')
+    }
   })
 })
 
