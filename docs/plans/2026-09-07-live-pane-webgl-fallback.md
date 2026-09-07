@@ -68,3 +68,10 @@ Neither gate can simply be deleted. Removing the bridge gate outright would moun
 
 - [x] **Step 1:** Write the ADR: the reversal of the gate ADR-0004 deferred and ADR-0019 recorded, what made the reversal safe (ADR-0171's live-view CI lane, and ADR-0151's note that WebGL 2 is the only baselined backend), the three-value probe and why it sits in bridge, the notice, and the follow-ups. `pnpm knowledge:index` must exit 0 and every `related` slug must resolve to a file.
 - [x] **Step 2:** Run the full check chain, each exit code read on its own, and `pnpm rgb:audit` against `origin/main`.
+
+### Task 6: Review findings
+
+**Files:** `bridge/react/live-preview-backend.ts` and its test, `docs/knowledge/decisions/ADR-0174-live-pane-webgl-fallback.md`.
+
+- [x] **Step 1:** The clean-code review raised one must-fix: the probe called `getContext` unguarded, against this plan's own Task 1 wording. Privacy-hardening extensions throw from `getContext` to defeat feature probes, the probe runs during render, and the application mounts no error boundary, so a throw would blank the editor. Red, green, and a closing blue: a failing test for the throwing runtime, the `try`/`catch`, and a doc comment on `detectLivePreviewBackend` recording that the answer is cached per module instance (the review's second finding).
+- [x] **Step 2:** ADR-0174 records the throw case alongside the constructor-check reasoning.

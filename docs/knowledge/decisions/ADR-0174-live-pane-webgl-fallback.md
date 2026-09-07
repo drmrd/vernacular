@@ -56,7 +56,10 @@ The pane renders whenever the runtime can drive any 3D backend, and says which o
    delegates the WebGPU half to the engine's existing `detectRenderBackend()` and answers the WebGL 2
    half by asking a detached canvas for a `webgl2` context. Asking for the context rather than
    checking for the `WebGL2RenderingContext` constructor is deliberate: a runtime can carry the type
-   and still refuse a context on a blocked GPU.
+   and still refuse a context on a blocked GPU. A refusal that arrives as a throw counts as no
+   support too. Privacy-hardening extensions throw from `getContext` to defeat exactly this kind of
+   probe, the probe runs during render, and the application mounts no error boundary, so an escaping
+   throw would blank the editor rather than cost the user a preview.
 2. **The probe runs once per page load.** Browsers cap how many live WebGL contexts one document may
    hold, and both callers sit on a render path. A probe context per render would exhaust the cap and
    take the scene canvas down with it, so the verdict is cached in the module.
