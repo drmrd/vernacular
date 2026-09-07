@@ -11,7 +11,6 @@ import {
   formatArea,
   formatLength,
   lengthFormatOptions,
-  openingFootprint,
   polygonCentroid,
   roomKey,
 } from '../../'
@@ -22,7 +21,6 @@ import {
   createSingleRoomProject,
   createSingleWallProject,
   createTwoWallProject,
-  parsePoints,
   soleDerivedDimension,
   soleDerivedOpening,
   soleDerivedRoom,
@@ -45,32 +43,20 @@ describe('SvgPlanExporter emitting openings', () => {
     expect(groups).toHaveLength(1)
   })
 
-  it('breaks the host wall with an opening gap polygon', () => {
+  it('leaves the plan beneath it unpainted', () => {
+    // The fixture derives no room, so the only polygon the export could ever
+    // draw for it is the opening's own gap fill. Pinning zero polygons proves
+    // that fill is gone and whatever the export paints beneath the opening,
+    // room fill, a hatch, an underlay, survives underneath it.
     const project = createSingleOpeningProject()
-    const graph = deriveSceneGraph(project)
     const opening = soleDerivedOpening(project)
-    const view = createSvgView(planContentBounds(graph))
-    const expectedCorners = openingFootprint(
-      opening.center,
-      opening.along,
-      opening.normal,
-      opening.width,
-      opening.hostThickness,
-    ).map((corner) => view.project(corner))
 
     const result = new SvgPlanExporter().export(project)
     const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
     const group = document.querySelector(`[data-node-id="${opening.id}"]`)
-    const polygon = group?.querySelector('polygon') ?? null
-    expect(polygon).not.toBeNull()
-    expect(polygon?.getAttribute('fill')).toBe('#ffffff')
 
-    const actualCorners = parsePoints(polygon?.getAttribute('points') ?? null)
-    expect(actualCorners).toHaveLength(expectedCorners.length)
-    expectedCorners.forEach((expected, index) => {
-      expect(actualCorners[index]?.x).toBeCloseTo(expected.x, 3)
-      expect(actualCorners[index]?.y).toBeCloseTo(expected.y, 3)
-    })
+    expect(document.querySelectorAll('polygon')).toHaveLength(0)
+    expect(group?.querySelectorAll('polygon')).toHaveLength(0)
   })
 
   it('draws a jamb cap at each opening jamb', () => {
