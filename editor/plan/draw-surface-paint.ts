@@ -1,12 +1,16 @@
 import {
   WALL_NODE_PREFIX,
   effectiveWallThickness,
+  wallFaceGeometry,
+  type OpeningSceneNode,
   type Point,
   type SurfaceRef,
   type SurfaceTreatment,
+  type WallFaceStretch,
   type WallSceneNode,
 } from '../../core'
 import type { PlanDrawingContext } from './draw-plan'
+import { openingSpansAlong } from './opening-spans'
 import { PLAN_INK_EMPHASIS, PLAN_INK_OVERLAY_WIDTH } from './plan-ink'
 import { worldToScreen, type Viewport } from './viewport'
 
@@ -38,13 +42,21 @@ export interface SurfacePaintLayer {
    * finish-chip link, not a deliberate API asymmetry; callers without a highlight omit the field.
    */
   highlightedSurface?: SurfaceRef | null
+  /**
+   * The openings cut into the walls being painted. A band stops at each jamb of
+   * an opening hosted on its wall, because a doorway leaves no face there to
+   * finish. Optional so a caller with no openings can leave it off.
+   */
+  openings?: readonly OpeningSceneNode[]
   viewport: Viewport
 }
 
-/** The drawing context and viewport bundled so helpers stay within the parameter limit. */
+/** The drawing context, viewport, and wall openings bundled so helpers stay within the parameter limit. */
 interface SurfacePainter {
   ctx: PlanDrawingContext
   viewport: Viewport
+  /** The openings every band routine cuts its wall's face bands at. */
+  openings: readonly OpeningSceneNode[]
 }
 
 function subtract(a: Point, b: Point): Point {
@@ -95,7 +107,47 @@ function offsetBand(wall: WallSceneNode, side: 'left' | 'right'): { from: Point;
   }
 }
 
-/** Offset both wall endpoints perpendicular toward the face, then stroke the band in the treatment color. */
+/**
+ * The stretches of `wall`'s two face bands that its openings leave standing.
+ *
+ * A face band is a line parallel to the centerline at a half-thickness offset,
+ * which is what `wallFaceGeometry` cuts, so the band composes that helper instead
+ * of repeating the span algebra. The corners handed in are the square offsets from
+ * the wall's own endpoints, the unmitred form of the mitred corners the drawn face
+ * lines use, so a band still falls short of or runs past a mitred corner at a
+ * non-collinear junction (issue #547). What it gains is the same square cut at
+ * each jamb the poche and the face lines already take.
+ */
+function bandStretches(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+): WallFaceStretch[] {
+  const left = offsetBand(wall, 'left')
+  const right = offsetBand(wall, 'right')
+  return wallFaceGeometry({
+    start: wall.start,
+    end: wall.end,
+    corners: { aPlus: left.from, bPlus: left.to, aMinus: right.from, bMinus: right.to },
+    gaps: openingSpansAlong(
+      { start: wall.start, end: wall.end, wallId: rawWallId(wall) },
+      openings,
+    ),
+  })
+}
+
+/** The parts of one side's face band left standing between `wall`'s openings, in order from its start. */
+function faceBands(
+  wall: WallSceneNode,
+  side: 'left' | 'right',
+  openings: readonly OpeningSceneNode[],
+): { from: Point; to: Point }[] {
+  return bandStretches(wall, openings).map((stretch) => {
+    const face = side === 'left' ? stretch.plusFace : stretch.minusFace
+    return { from: face[0], to: face[1] }
+  })
+}
+
+/** Stroke each standing part of one wall face's band in the treatment color. */
 function strokeBand(painter: SurfacePainter, face: PaintedFace): void {
   const { wall, side, treatment } = face
   if (treatment.kind !== 'solid') {
@@ -103,8 +155,9 @@ function strokeBand(painter: SurfacePainter, face: PaintedFace): void {
   }
   painter.ctx.strokeStyle = treatment.color.srgbHex
   painter.ctx.lineWidth = BAND_LINE_WIDTH
-  const { from, to } = offsetBand(wall, side)
-  strokeSegment(painter, from, to)
+  for (const band of faceBands(wall, side, painter.openings)) {
+    strokeSegment(painter, band.from, band.to)
+  }
 }
 
 /** Paint a band for each painted face of one wall, skipping faces without a treatment. */
@@ -130,7 +183,12 @@ function activeWall(layer: SurfacePaintLayer): WallSceneNode | undefined {
   return layer.walls.find((wall) => rawWallId(wall) === active.wallId)
 }
 
-/** Stroke the brass accent centerline over the active wall so the user sees the painted target. */
+/**
+ * Stroke the brass accent centerline over the active wall so the user sees the
+ * painted target. It runs the whole wall, openings included: it names which wall
+ * is being painted rather than marking a face, and a wall with a door in it is
+ * still one wall.
+ */
 function drawActiveHighlight(painter: SurfacePainter, layer: SurfacePaintLayer): void {
   const wall = activeWall(layer)
   if (wall === undefined) {
@@ -164,13 +222,18 @@ function drawHighlightedFace(painter: SurfacePainter, layer: SurfacePaintLayer):
   }
   painter.ctx.strokeStyle = ACTIVE_HIGHLIGHT_COLOR
   painter.ctx.lineWidth = HIGHLIGHT_BAND_WIDTH
-  const { from, to } = offsetBand(highlighted.wall, highlighted.side)
-  strokeSegment(painter, from, to)
+  for (const band of faceBands(highlighted.wall, highlighted.side, painter.openings)) {
+    strokeSegment(painter, band.from, band.to)
+  }
 }
 
 /** Paint each painted wall face as a thin colored band, then highlight the active surface's wall. */
 export function drawSurfacePaint(ctx: PlanDrawingContext, layer: SurfacePaintLayer): void {
-  const painter: SurfacePainter = { ctx, viewport: layer.viewport }
+  const painter: SurfacePainter = {
+    ctx,
+    viewport: layer.viewport,
+    openings: layer.openings ?? [],
+  }
   for (const wall of layer.walls) {
     drawWallBands(painter, wall, layer)
   }

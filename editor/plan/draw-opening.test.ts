@@ -3,7 +3,7 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { recordingContext } from './draw-plan-test-fixtures'
 import { PLAN_INK_WIDTH } from './plan-ink'
 import { DEFAULT_PLAN_PALETTE } from './plan-palette'
-import type { Viewport } from './viewport'
+import { worldToScreen, type ScreenPoint, type Viewport } from './viewport'
 import type { OpeningSceneNode, VoidContourKind } from '../../core'
 
 // A non-trivial scale and pan so the projection is observable rather than an
@@ -60,15 +60,54 @@ function countOp(ops: readonly string[], name: string): number {
   return ops.filter((op) => op === name).length
 }
 
+// The two jambs of the shared opening node: half its width either side of center,
+// on the host wall's centerline.
+const HINGE_JAMB_X_MM = OPENING_CENTER_X_MM - OPENING_WIDTH_MM / 2
+const OTHER_JAMB_X_MM = OPENING_CENTER_X_MM + OPENING_WIDTH_MM / 2
+
+// Screen coordinates are world millimeters times a fractional scale, so they are
+// compared within a tolerance rather than for exact equality.
+const SCREEN_TOLERANCE_PX = 1e-9
+
+/** The screen endpoints of the cap that closes the wall break at `jambX`, run across the host thickness. */
+function jambCap(jambX: number): { from: ScreenPoint; to: ScreenPoint } {
+  const half = HOST_THICKNESS_MM / 2
+  return {
+    from: worldToScreen({ x: jambX, y: -half }, VIEWPORT),
+    to: worldToScreen({ x: jambX, y: half }, VIEWPORT),
+  }
+}
+
+function samePoint(recorded: readonly [number, number], point: ScreenPoint): boolean {
+  return (
+    Math.abs(recorded[0] - point.x) < SCREEN_TOLERANCE_PX &&
+    Math.abs(recorded[1] - point.y) < SCREEN_TOLERANCE_PX
+  )
+}
+
+/** Whether any recorded segment runs between `cap`'s endpoints, in either direction. */
+function strokesCap(
+  segments: readonly { from: [number, number]; to: [number, number] }[],
+  cap: { from: ScreenPoint; to: ScreenPoint },
+): boolean {
+  return segments.some(
+    (segment) =>
+      (samePoint(segment.from, cap.from) && samePoint(segment.to, cap.to)) ||
+      (samePoint(segment.from, cap.to) && samePoint(segment.to, cap.from)),
+  )
+}
+
 describe('drawOpening', () => {
-  it('breaks the host wall by filling the opening footprint and stroking the jamb caps', () => {
+  it('leaves the plan beneath the opening unpainted, breaking the wall with jamb caps alone', () => {
     const recorder = recordingContext()
 
-    drawOpening(recorder.ctx, drawable('door-swing'), RENDER)
+    // A cased opening draws only the wall break, no leaf and no arc, so the fill
+    // list is the whole answer to what it paints over. The wall is already cut
+    // geometrically, so a footprint fill would tab one opaque color across
+    // whatever the canvas drew underneath, matching at most one of the two sides.
+    drawOpening(recorder.ctx, drawable('cased-opening'), RENDER)
 
-    // The gap is painted: at least one fill (the footprint in the gap-fill
-    // color) so the wall stroke is broken, plus strokes for the jamb caps.
-    expect(countOp(recorder.ops, 'fill')).toBeGreaterThanOrEqual(1)
+    expect(recorder.fills).toEqual([])
     expect(countOp(recorder.ops, 'stroke')).toBeGreaterThanOrEqual(1)
   })
 
@@ -187,7 +226,7 @@ describe('drawOpening', () => {
 
     drawOpening(recorder.ctx, drawable('cased-opening'), RENDER)
 
-    // The gap-only symbol: jamb caps and the footprint fill, no swing arc.
+    // The gap-only symbol: jamb caps and nothing else, no swing arc.
     expect(recorder.arcs).toHaveLength(0)
   })
 
@@ -238,9 +277,24 @@ describe('drawOpening', () => {
   })
 })
 
+// The wall break itself, in its own describe block so the main suite's arrow
+// function stays within the per-function line budget.
+describe('drawOpening wall break', () => {
+  it('caps the break with a segment across the host thickness at each jamb', () => {
+    const recorder = recordingContext()
+
+    drawOpening(recorder.ctx, drawable('cased-opening'), RENDER)
+
+    // The caps are the cut ink that closes the break, so they have to survive the
+    // gap fill going away.
+    expect(strokesCap(recorder.segments, jambCap(HINGE_JAMB_X_MM))).toBe(true)
+    expect(strokesCap(recorder.segments, jambCap(OTHER_JAMB_X_MM))).toBe(true)
+  })
+})
+
 // A separate describe block so this suite's arrow function stays within the
 // per-function line budget; these cases pin the palette wiring the other block
-// doesn't already cover (gap-fill color, ink-hierarchy weight).
+// doesn't already cover (jamb-cap color, ink-hierarchy weight).
 describe('drawOpening palette wiring', () => {
   it('keeps the jamb-cap ink at the cut weight, the heaviest role in the plan ink hierarchy', () => {
     const recorder = recordingContext()
@@ -253,15 +307,19 @@ describe('drawOpening palette wiring', () => {
     expect(recorder.ctx.lineWidth).toBe(PLAN_INK_WIDTH.cut)
   })
 
-  it('fills the wall-break gap from the palette room fill, tracking the theme instead of a hardcoded light color', () => {
+  it('inks the jamb caps from the palette wall color and paints no fill behind them', () => {
     const recorder = recordingContext()
-    // A dark-theme palette: the gap fill must track this, not a hardcoded light color.
-    const darkPalette = { ...DEFAULT_PLAN_PALETTE, roomFill: '#23344d' }
+    // A dark-theme palette. The room fill is the color the retired gap fill used
+    // to paint the footprint with, so it must not appear at all.
+    const darkPalette = { ...DEFAULT_PLAN_PALETTE, wall: '#e8e2d4', roomFill: '#23344d' }
 
-    drawOpening(recorder.ctx, drawable('door-swing'), { viewport: VIEWPORT, palette: darkPalette })
+    drawOpening(recorder.ctx, drawable('cased-opening'), {
+      viewport: VIEWPORT,
+      palette: darkPalette,
+    })
 
-    expect(recorder.fills).toContain('#23344d')
-    expect(recorder.fills).not.toContain('#ffffff')
+    expect(recorder.segments.map((segment) => segment.style)).toEqual(['#e8e2d4', '#e8e2d4'])
+    expect(recorder.fills).toEqual([])
   })
 })
 

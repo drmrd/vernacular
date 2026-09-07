@@ -369,6 +369,46 @@ describe('drawPlan wall symbology', () => {
   })
 })
 
+describe('drawPlan opening wall break', () => {
+  // The same door the wall-symbology block uses: centered on the sample wall and
+  // clearing 800 of its 1000 mm run, so a stub of standing wall is left at each
+  // end. hostWallId is the RAW wall id, the scene node id with its prefix stripped.
+  // A cased opening is chosen because it draws only the wall break, with no leaf,
+  // arc, or pivot dot of its own to account for.
+  // prettier-ignore
+  const doorNode: OpeningSceneNode = {
+    id: 'opening:a', kind: 'opening', floorId: 'g', type: 'cased-opening',
+    center: { x: 500, y: 0 }, along: { x: 1, y: 0 }, normal: { x: 0, y: 1 },
+    width: 800, height: 2032, sillHeight: 0, hostThickness: 114,
+    orientation: { hinge: 'start', facing: 'positive' }, hostWallId: 'a',
+  }
+  // prettier-ignore
+  const door: DrawableOpening = {
+    node: doorNode, symbol: 'cased-opening', double: false, selected: false,
+  }
+
+  it('paints no room fill on a plan with no rooms, so an exterior opening leaves the canvas bare', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ openings: [door] }))
+
+    // Nothing on this plan is a room, so a fill in the room color could only be an
+    // opening tabbing an interior color over the canvas behind the wall it breaks.
+    // That tab is the defect on the outer half of every exterior wall's thickness.
+    expect(recorder.fills).not.toContain(DEFAULT_PLAN_PALETTE.roomFill)
+  })
+
+  it('leaves the poche of each standing stretch as the only fill a broken wall paints', () => {
+    const recorder = recordingContext()
+
+    drawPlan(recorder.ctx, planOptions({ openings: [door] }))
+
+    // The wall is already cut geometrically into two stretches, so the two poche
+    // rings are the whole of what the wall and its opening fill.
+    expect(recorder.fills).toEqual([DEFAULT_PLAN_PALETTE.poche, DEFAULT_PLAN_PALETTE.poche])
+  })
+})
+
 describe('drawPlan wall symbology construction-profile thickness', () => {
   // effectiveWallThickness is the resolver these expectations lean on: the same
   // rule the 3D wall builder already draws footprints from (issue #365), applied

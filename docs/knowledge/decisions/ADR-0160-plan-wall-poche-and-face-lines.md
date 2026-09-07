@@ -17,13 +17,15 @@ sourceFiles:
     core/scene/construction-profile.ts,
     core/scene/scene-graph.ts,
     editor/plan/draw-plan.ts,
+    editor/plan/draw-opening.ts,
+    editor/plan/opening-spans.ts,
     editor/plan/draw-surface-paint.ts,
     editor/plan/hit-test-wall-face.ts,
     editor/plan/plan-palette.ts,
     editor/design-system/tokens.css,
   ]
 status: current
-updated: 2026-08-17
+updated: 2026-09-07
 ---
 
 # ADR-0160: Plan walls draw as poche between two face lines
@@ -218,6 +220,50 @@ short of or runs past the mitred corner. Only the thickness half of that issue c
 construction-profiled wall now strokes at its assembly total, so an exported opening gap no
 longer outruns the wall it breaks. Issue #550 is closed.
 
+## Update (2026-09-07): the painted gap retires and the face bands break
+
+Decision 4 above left the old workaround in place. `draw-opening.ts` still filled the opening
+footprint in the palette room fill before stroking its jamb caps, and the decision named retiring
+that as a separate cycle. The cycle has landed. `drawGapAndJambs` is now `drawJambCaps`, `OpeningPainter` has
+no `gapFill` field, and an opening paints no fill of its own. The jamb caps are untouched and still
+ink at `PLAN_INK_WIDTH.cut` per [[ADR-0159-plan-ink-weight-hierarchy]] decision 2.
+
+What the fill got wrong was that one opaque color can only match one backdrop. On an exterior wall
+it matched the interior room across the inner half of the thickness and laid a pale tab over the
+canvas across the outer half. In a room carrying a floor paint override it mismatched on the inside
+too. Nothing is painted over an opening now, so the grid, an underlay photo, a stair tread, or a
+painted floor reads through the doorway on both sides of the wall. Issue #521 closes when this update merges.
+
+Decision 5 of [[ADR-0159-plan-ink-weight-hierarchy]] describes where that fill sourced its color. It
+no longer describes the code, in the same way this decision's face lines superseded that ADR's
+wall-stroke-width claim. Its ink roles are otherwise untouched.
+
+One layer was relying on the cover-up. `drawSurfacePaint` strokes a painted wall face as a band
+offset half a thickness from the centerline, running the wall end to end, and the opening's fill was
+painting over the part of it that crossed a doorway. Without the fill a painted wall would have
+shown its finish running through the door, so the bands now break at the same spans. A band is a
+line parallel to the centerline at a half-thickness offset, which is what `wallFaceGeometry` already
+cuts, so the band routine composes that helper with the square offsets from the wall's own endpoints
+as its corners rather than repeating the span algebra. Each returned stretch carries the left band as
+`plusFace` and the right as `minusFace`. A wall with no openings yields one stretch whose faces are
+the endpoints the routine drew before, so nothing moved on an unbroken wall.
+
+The band offsets still come off the wall's own endpoints rather than the mitred corners, so the
+junction mismatch in the consequences above is unchanged and issue #547 still carries it. The
+active-surface accent centerline also still runs the whole wall: it names which wall is being
+painted rather than marking a face, and a wall with a door in it is one wall.
+
+Both wall layers need the same projection, so it lives in one place now,
+`editor/plan/opening-spans.ts`.
+`openingSpansAlong` filters the openings by `hostWallId` and projects each jamb onto a run's axis.
+The plan's wall pass hands it a graph edge and the paint layer hands it the authored wall; the
+clamping that drops an opening belonging to another sub-edge stays downstream in `wallFaceGeometry`,
+so one helper covers both.
+
+The SVG plan export was not part of this. `core/export/svg/` still paints its own opening gap the
+way the canvas did, and putting it on the geometric break is its own cycle with its own export
+tests.
+
 ## References
 
 - [[ADR-0159-plan-ink-weight-hierarchy]] (the ink roles this builds on; its wall-stroke-width claim
@@ -230,7 +276,8 @@ longer outruns the wall it breaks. Issue #550 is closed.
 - `core/scene/construction-profile.ts` (`effectiveWallThickness` and its fallback rule).
 - `editor/plan/draw-plan.ts` (`drawableWallEdges`, `drawWallPoche`, `drawWallFaces`).
 - Issue #414 (size the 2D plan wall symbol from the construction-profile thickness).
-- Issue #521 (the durable geometric break for the wall-break gap fill).
+- Issue #521 (the durable geometric break for the wall-break gap fill, closed by the 2026-09-07
+  update).
 - Issue #546 (memoize the plan wall graph so a pan or zoom stops rebuilding topology).
 - Issue #547 (bring the surface-paint band, the wall-face hit band, and an opening's `hostThickness`
   onto the construction-profile thickness the drawn symbol now uses).

@@ -12,7 +12,6 @@ import {
   type RoomSceneNode,
   type StairSceneNode,
   type UnitPreferences,
-  type WallFaceGap,
   type WallFaceStretch,
   type WallSceneNode,
 } from '../../core'
@@ -23,7 +22,8 @@ import { drawOpening, type DrawableOpening } from './draw-opening'
 import { drawStair } from './draw-stair'
 import { drawSurfacePaint, type SurfacePaintLayer } from './draw-surface-paint'
 import { drawUnderlays, drawCalibration, type DrawableUnderlay } from './draw-underlay'
-import { openingCorners, openingJambs, projectPointOntoWall } from './opening-geometry'
+import { openingCorners, openingJambs } from './opening-geometry'
+import { openingSpansAlong, type HostWallRun } from './opening-spans'
 import type { Bounds } from './fit'
 import { visibleGridLines } from './grid'
 import { centerOf, layoutDimensionLabels, layoutRoomLabels } from './label-layout'
@@ -402,13 +402,6 @@ interface DrawableWallEdge {
   selected: boolean
 }
 
-/** One graph edge's centerline, with the id of the wall it was split from. */
-interface WallEdgeCenterline {
-  start: Point
-  end: Point
-  wallId: string
-}
-
 /** The mitred, opening-broken symbology of every wall edge on the plan. */
 function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
   const graph = wallGraphOf(options.walls)
@@ -421,6 +414,7 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     return wall === undefined ? 0 : effectiveWallThickness(wall)
   })
   const footprints = wallFootprints(graph, thicknessByEdge)
+  const openings = openingNodesOf(options)
   return graph.edges.map((edge, index) => {
     const wall = wallByEdgeId.get(edge.wallId)
     const selected = wall !== undefined && options.selectedIds.has(wall.id)
@@ -433,10 +427,15 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     if (corners === undefined || start === undefined || end === undefined) {
       return { stretches: [], selected }
     }
-    const centerline = { start, end, wallId: edge.wallId }
-    const gaps = openingGapsAlong(centerline, options.openings ?? [])
+    const centerline: HostWallRun = { start, end, wallId: edge.wallId }
+    const gaps = openingSpansAlong(centerline, openings)
     return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
+}
+
+/** The scene nodes behind the plan's drawable openings, the form both wall layers project onto their walls. */
+function openingNodesOf(options: DrawPlanOptions): OpeningSceneNode[] {
+  return (options.openings ?? []).map((opening) => opening.node)
 }
 
 /**
@@ -459,33 +458,14 @@ function strippedWallId(wall: WallSceneNode): string {
   return wall.id.slice(WALL_NODE_PREFIX.length)
 }
 
-/**
- * The clear spans the openings hosted by this edge's wall cut out of it, as
- * centerline distances from the edge's start. An opening that sits on another
- * sub-edge of the same wall projects outside this one; `wallFaceGeometry` clamps
- * it to a zero-length gap and drops it, so it needs no filtering here.
- */
-function openingGapsAlong(
-  edge: WallEdgeCenterline,
-  openings: readonly DrawableOpening[],
-): WallFaceGap[] {
-  const gaps: WallFaceGap[] = []
-  for (const opening of openings) {
-    if (opening.node.hostWallId !== edge.wallId) continue
-    const jambs = openingJambs(opening.node)
-    gaps.push({
-      from: projectPointOntoWall(edge.start, edge.end, jambs.start),
-      to: projectPointOntoWall(edge.start, edge.end, jambs.end),
-    })
-  }
-  return gaps
-}
-
 /** Paint the surface-paint face bands and the active-surface highlight beneath the wall strokes. */
 function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   if (options.surfacePaint === undefined) return
   const { walls, viewport } = options
-  drawSurfacePaint(ctx, { walls, viewport, ...options.surfacePaint })
+  // The bands break at the same jambs the poche and face lines do, so the layer
+  // needs the openings as well as the walls.
+  const openings = openingNodesOf(options)
+  drawSurfacePaint(ctx, { walls, viewport, openings, ...options.surfacePaint })
 }
 
 /** Paint each dimension as an annotation overlay above the plan. */
