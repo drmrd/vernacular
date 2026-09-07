@@ -253,6 +253,54 @@ jobs:
           path: playwright-report
           retention-days: 7
 
+  live-view-visual:
+    name: Live-view visual regression (macOS/WebGPU)
+    runs-on: macos-14
+    needs: [check, decide]
+    # Pixel-tests the render path users actually see: the editor's live WebGPU pane on a
+    # Metal-backed adapter, which the linux runners cannot provide (the spec self-skips
+    # there). The probe run 34067553157 showed the macos-14 chromium exposes a real WebGPU
+    # adapter and renders within the committed -darwin baseline's standing tolerances, so
+    # one baseline serves the development Mac and this runner. macOS minutes bill at 10x
+    # linux, so the job shares the e2e gate: it runs only when the PR touches a path that
+    # can move the live frame (ADR-0171).
+    if: needs.decide.outputs.e2e == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.33.4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # The macOS browser cache lives under ~/Library/Caches, not the linux ~/.cache path
+      # the scene-visual job uses; caching it keeps the 10x-priced runner off a fresh
+      # chromium download on every triggered run.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium
+      - name: Build production bundle
+        run: pnpm build
+      - name: Live-view visual-regression diff (scene-webgl project)
+        run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-visual-regression.spec.ts --reporter=list
+      - name: Upload live-view diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-view-visual-report
+          path: test-results/
+          retention-days: 7
+
   lighthouse:
     name: Lighthouse CI
     runs-on: ubuntu-latest
@@ -290,12 +338,13 @@ jobs:
     name: ci-complete
     if: always()
     runs-on: ubuntu-latest
-    needs: [check, decide, ping-pong, storybook-build, e2e, scene-visual, lighthouse]
+    needs:
+      [check, decide, ping-pong, storybook-build, e2e, scene-visual, live-view-visual, lighthouse]
     steps:
       - name: Gate on required jobs
         run: |
-          echo "check=${{ needs.check.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} scene-visual=${{ needs.scene-visual.result }} lighthouse=${{ needs.lighthouse.result }}"
-          for result in "${{ needs.check.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.scene-visual.result }}" "${{ needs.lighthouse.result }}"; do
+          echo "check=${{ needs.check.result }} decide=${{ needs.decide.result }} ping-pong=${{ needs.ping-pong.result }} storybook=${{ needs.storybook-build.result }} e2e=${{ needs.e2e.result }} scene-visual=${{ needs.scene-visual.result }} live-view-visual=${{ needs.live-view-visual.result }} lighthouse=${{ needs.lighthouse.result }}"
+          for result in "${{ needs.check.result }}" "${{ needs.decide.result }}" "${{ needs.ping-pong.result }}" "${{ needs.storybook-build.result }}" "${{ needs.e2e.result }}" "${{ needs.scene-visual.result }}" "${{ needs.live-view-visual.result }}" "${{ needs.lighthouse.result }}"; do
             if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
               echo "A required job did not pass: $result"
               exit 1
