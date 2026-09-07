@@ -17,7 +17,6 @@ import type {
   WallSceneNode,
 } from '../../scene/scene-graph'
 import { rawWallId } from '../../scene/wall-id'
-import { openingFootprint } from '../../topology/openings'
 import type { Exporter, ExportResult } from '../exporter'
 import { svgDocument, svgGroup, svgLine, svgPolygon, svgText } from './svg-document'
 import { createSvgView, planContentBounds } from './svg-view'
@@ -29,8 +28,6 @@ const WALL_INK = '#222222'
 const ROOM_FILL = '#eef2f6'
 /** Room label ink, mirroring the on-screen label color (redeclared in core). */
 const LABEL_INK = '#37414d'
-/** Opening gap fill, painted over the wall stroke so the wall reads as broken. */
-const OPENING_GAP = '#ffffff'
 /** Opening jamb cap stroke, mirroring the wall ink. */
 const OPENING_INK = '#222222'
 /** Dimension line, extension, and arrowhead ink, mirroring the on-screen dimension. */
@@ -73,7 +70,8 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
       [
         renderRooms(graph, context),
         renderWalls(graph, context),
-        // Openings paint over the wall stroke so the wall reads as broken.
+        // The wall stroke already breaks at each opening's jambs, so an opening only
+        // caps that break; it paints nothing over the plan beneath it.
         renderOpenings(graph, context),
         renderRoomLabels(graph, context),
         // Dimensions are annotation overlays painted above the plan.
@@ -188,7 +186,7 @@ function pointsEqual(a: Point, b: Point): boolean {
   return a.x === b.x && a.y === b.y
 }
 
-/** Render every opening as a gap polygon plus jamb caps, wrapped in an openings layer group. */
+/** Render every opening as its jamb caps, wrapped in an openings layer group. */
 function renderOpenings(graph: SceneGraph, context: SvgPlanContext): string {
   const groups = graph.openings.map((opening) => renderOpening(opening, context))
   /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
@@ -197,30 +195,19 @@ function renderOpenings(graph: SceneGraph, context: SvgPlanContext): string {
 }
 
 /**
- * Render one opening as its gap polygon and two jamb caps.
+ * Render one opening as its two jamb caps.
  *
- * The coarse per-family glyph (swing leaf, window frame lines) is deferred per
- * Decision 4: registry-driven symbol classification is an editor/bridge concern,
- * and no committed test drives a glyph this slice.
+ * The wall stroke already breaks at the opening's jambs (see `wallOpeningGaps`),
+ * so the opening itself paints nothing over the plan beneath it; it only caps the
+ * break. The coarse per-family glyph (swing leaf, window frame lines) is deferred
+ * per Decision 4: registry-driven symbol classification is an editor/bridge
+ * concern, and no committed test drives a glyph this slice.
  */
 function renderOpening(opening: OpeningSceneNode, context: SvgPlanContext): string {
-  const fragments = [openingGap(opening, context), ...openingJambs(opening, context)]
+  const fragments = openingJambs(opening, context)
   // opening.id already carries the `opening:` scene-node prefix (see scene-graph).
   /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
   return svgGroup(fragments, { 'data-node-id': opening.id })
-}
-
-/** Emit the opening's gap `<polygon>`, projected, filled with the gap color. */
-function openingGap(opening: OpeningSceneNode, { view }: SvgPlanContext): string {
-  const corners = openingFootprint(
-    opening.center,
-    opening.along,
-    opening.normal,
-    opening.width,
-    opening.hostThickness,
-  )
-  const projected = corners.map((corner) => view.project(corner))
-  return svgPolygon(projected, { fill: OPENING_GAP, stroke: 'none' })
 }
 
 /** The opening's two jamb points on the host wall centerline, near jamb first. */
