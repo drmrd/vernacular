@@ -12,7 +12,6 @@ related:
 sourceFiles:
   [
     engine/postprocessing/ambient-occlusion.ts,
-    engine/renderer/create-renderer.ts,
     e2e/tests/scene-solar.spec.ts,
     e2e/tests/scene-ambient-occlusion.spec.ts,
   ]
@@ -45,11 +44,11 @@ had just added a depth-only prepass whose color output nothing read.
    floats, which would flatten every negative normal component. The custom output path
    bypasses that clamp, so the normal is stored raw. GTAO samples it raw as well (it
    normalizes the rgb it reads and applies no unpacking).
-3. The store only works because pass render targets are half-float: the renderer's output
-   buffer type default is what the pass inherits, and `engine/renderer/create-renderer.ts`
-   never overrides it. A future renderer profile that switched the output buffer to an
-   unsigned byte type would silently clamp the normals; this coupling is the reason that
-   file sits in this record's source list.
+3. The store only works because pass render targets are half-float. That default comes
+   from the pass node's own constructor in the pinned three build, which overrides the
+   render-target library default of unsigned bytes. The couplings to watch are a future
+   pass call that supplies an explicit texture type, and a three upgrade that changes the
+   pass default; an unsigned byte target would silently clamp the negative components.
 4. A probe on the lane branch (run 34078575507) showed the SwiftShader CI lane exposes
    `OES_draw_buffers_indexed`, `EXT_color_buffer_float`, and `EXT_color_buffer_half_float`,
    so the addon's multi-target route was viable after all. The prepass route still wins:
