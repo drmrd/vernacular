@@ -45,3 +45,23 @@ describe('ambient-occlusion light blend', () => {
     expect(source).not.toMatch(/outputNode\s*=\s*\w+\.mul\(/)
   })
 })
+
+describe('ambient-occlusion normals source', () => {
+  // This is a source-reading guard, not a behavior test. It pins a *normal-quality*
+  // property no runtime assertion can observe: reconstructing normals from depth
+  // (derivative-based, screen-space differencing) softens and misplaces occlusion at
+  // creases and other high-curvature geometry, exactly where occlusion should read
+  // sharpest. The addon's own recommendation is to feed GTAO a normals texture
+  // rendered by a depth-prepass override material, which writes view-space normals
+  // (normalView) into the prepass color target instead of leaving GTAO to guess them
+  // from depth. ADR-0173 records this decision.
+  it('feeds GTAO rendered view-space normals instead of reconstructing them from depth', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'engine/postprocessing/ambient-occlusion.ts'),
+      'utf8',
+    )
+
+    expect(source).not.toContain('reconstructNormalsFromDepth')
+    expect(source).toContain('normalView')
+  })
+})
