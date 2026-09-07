@@ -414,7 +414,7 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     return wall === undefined ? 0 : effectiveWallThickness(wall)
   })
   const footprints = wallFootprints(graph, thicknessByEdge)
-  const openings = (options.openings ?? []).map((opening) => opening.node)
+  const openings = openingNodesOf(options)
   return graph.edges.map((edge, index) => {
     const wall = wallByEdgeId.get(edge.wallId)
     const selected = wall !== undefined && options.selectedIds.has(wall.id)
@@ -431,6 +431,11 @@ function drawableWallEdges(options: DrawPlanOptions): DrawableWallEdge[] {
     const gaps = openingSpansAlong(centerline, openings)
     return { stretches: wallFaceGeometry({ ...centerline, corners, gaps }), selected }
   })
+}
+
+/** The scene nodes behind the plan's drawable openings, the form both wall layers project onto their walls. */
+function openingNodesOf(options: DrawPlanOptions): OpeningSceneNode[] {
+  return (options.openings ?? []).map((opening) => opening.node)
 }
 
 /**
@@ -459,7 +464,7 @@ function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions
   const { walls, viewport } = options
   // The bands break at the same jambs the poche and face lines do, so the layer
   // needs the openings as well as the walls.
-  const openings = (options.openings ?? []).map((opening) => opening.node)
+  const openings = openingNodesOf(options)
   drawSurfacePaint(ctx, { walls, viewport, openings, ...options.surfacePaint })
 }
 
