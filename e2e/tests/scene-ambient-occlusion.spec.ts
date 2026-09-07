@@ -38,19 +38,23 @@ const AO_WINDOW_HEAD_PATCH = patchCenteredOn(224, 116)
 // shows the remaining separation is still wide enough to place a threshold in.
 const AO_OPEN_WALL_PATCH = patchCenteredOn(224, 100)
 
-// The derived threshold (spec locked decision 6: derive the tolerance, then freeze it). Both
-// readings below are darwin Metal renders of this frame, as `openWallL - revealL`:
+// The derived threshold (spec locked decision 6: derive the tolerance, then freeze it).
+// Re-derived on 2026-09-06 for the indirect-only blend (rendering-realism lane 4, issue
+// #470): occlusion now darkens only the indirect share of the reveal's light, so the
+// shipped contrast shrank from the whole-frame-multiply era. Darwin Metal readings of
+// this frame, as openWallL - revealL:
 //
-//   shipped radius, AO_RADIUS_METERS 0.25: +0.0223
-//   wrong-radius probe, AO_RADIUS_METERS 2.5: +0.0029
+//   shipped radius, AO_RADIUS_METERS 0.25: +0.0075
+//   wrong-radius probe, AO_RADIUS_METERS 2.5: -0.0017
+//   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0127
 //
-// Six captures at the shipped radius, spanning a rebuild and three preview-server restarts,
-// came back byte-identical, so the observed noise band over the repeats is 0.0000 and the
-// margin rule (at least twice the noise band) puts no floor on the threshold. With no noise to
-// widen for, the threshold sits at the midpoint of the two readings, (0.0223 + 0.0029) / 2.
-// The SwiftShader lane rasterizes the same frame differently, so a reading that lands near
-// this number there is a reason to re-derive the pair, not to nudge the constant.
-const AO_CONTRAST_MINIMUM = 0.0126
+// Captures of this frame are byte-deterministic (the lane 2 and lane 4 derivations both
+// measured a zero noise band over repeated runs), so the threshold sits at the midpoint
+// of the shipped reading and the nearer defect reading, (0.0075 - 0.0017) / 2: the
+// margin is 0.0046 to either side. The SwiftShader lane rasterizes the same frame
+// differently, so a reading that lands near this number there is a reason to re-derive
+// the pair, not to nudge the constant.
+const AO_CONTRAST_MINIMUM = 0.0029
 
 // Puts the harness in the ambient-occlusion state and returns its settled canvas.
 async function gotoAmbientOcclusionScene(page: Page): Promise<Locator> {
