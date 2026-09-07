@@ -102,15 +102,17 @@ everything else as exempt. Every GREEN is closed by a BLUE before the next RED.
 1. `docs: plan the geometric wall-stroke break at openings`
 2. `test: expect an opening to leave the plan beneath it unpainted`
 3. `fix: break the wall at an opening without painting over the plan`
-4. `refactor: name the opening wall break for the jamb caps it draws`
+4. `refactor: close the opening gap-fill removal cycle with no findings`
 5. `test: expect a painted face band to stop at each opening jamb`
 6. `fix: break the surface-paint face bands at opening jambs`
 7. `refactor: share one opening-span projection across the wall layers`
 8. `docs: record the retired gap fill in the wall poche decision`
 
 Step 2 also rewrites the two cases in `draw-opening.test.ts` that assert the fill, since the
-behavior they pin is the behavior being removed. Step 8 amends ADR-0160 with a dated update
-section and bumps its `updated:` date.
+behavior they pin is the behavior being removed. Step 4 is an empty marker: renaming
+`drawGapAndJambs` to `drawJambCaps` had to land with the fill removal, because a function that no
+longer draws a gap cannot keep the name, and nothing else was left to clean. Step 8 amends ADR-0160
+with a dated update section and bumps its `updated:` date.
 
 ## How the tests read the canvas
 
