@@ -70,7 +70,10 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
 // band and that signal: 0.020. The linux reading for the re-derived pair is measured from
 // this lane's seeded red run before merge, as lane 2 did:
 //
-//   linux red-run reading (probe B seeded): pending; recorded by the lane before merge.
+//   linux red-run reading (probe B seeded as the radius-scaled wiring defect): 3179
+//   pixels, ratio 0.0414, at least twice this gate's 0.020, so the midpoint rule holds
+//   on both platforms; the sampled contrast gate read -0.0016 there against its 0.0029
+//   minimum (run 34072545806, 2026-09-07).
 const AMBIENT_OCCLUSION_THRESHOLD = 0.02
 const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.02
 
