@@ -32,45 +32,39 @@ Neither gate can simply be deleted. Removing the bridge gate outright would moun
 
 **Files:** `bridge/react/live-preview-backend.ts`, `bridge/react/live-preview-backend.test.ts`.
 
-- [ ] **Step 1 (RED):** A failing test that `detectLivePreviewBackend()` reports `'webgpu'` with `navigator.gpu` present, `'webgl2'` with no `navigator.gpu` but an obtainable `webgl2` canvas context, and `'unsupported'` when neither is there.
-- [ ] **Step 2 (GREEN):** The module. It delegates the WebGPU question to the engine's `detectRenderBackend()` and probes a detached canvas for the WebGL 2 context, treating a throw as no support.
-- [ ] **Step 3 (BLUE):** Clean-code review and a closing `refactor:` commit.
+- [x] **Step 1 (RED):** A failing test that `detectLivePreviewBackend()` reports `'webgpu'` with `navigator.gpu` present, `'webgl2'` with no `navigator.gpu` but an obtainable `webgl2` canvas context, and `'unsupported'` when neither is there.
+- [x] **Step 2 (GREEN):** The module. It delegates the WebGPU question to the engine's `detectRenderBackend()` and probes a detached canvas for the WebGL 2 context, treating a throw as no support.
+- [x] **Step 3 (BLUE):** Clean-code review and a closing `refactor:` commit.
 
 ### Task 2: The bridge gate
 
 **Files:** `bridge/react/scene-canvas.tsx`, `bridge/react/scene-canvas.test.tsx`, `bridge/index.ts`.
 
-- [ ] **Step 1 (RED):** A failing test that `SceneCanvas` mounts the live scene view on a WebGL 2 runtime, alongside the existing test that it keeps the accessible fallback when neither backend exists. The live view is mocked at the module edge so jsdom never mounts an R3F canvas.
-- [ ] **Step 2 (GREEN):** The gate asks `detectLivePreviewBackend() === 'unsupported'`. The barrel exports the probe and its type.
-- [ ] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
+- [x] **Step 1 (RED):** A failing test that `SceneCanvas` mounts the live scene view on a WebGL 2 runtime, alongside the existing test that it keeps the accessible fallback when neither backend exists. The live view is mocked at the module edge so jsdom never mounts an R3F canvas.
+- [x] **Step 2 (GREEN):** The gate asks `detectLivePreviewBackend() === 'unsupported'`. The barrel exports the probe and its type.
+- [x] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
 
 ### Task 3: The pane gate
 
 **Files:** `editor/shell/scene-pane.tsx`, `editor/shell/scene-pane.test.tsx`.
 
-- [ ] **Step 1 (RED):** A failing test that `ScenePane` renders the live canvas rather than the unavailable empty state when the runtime falls back to WebGL 2, and keeps the empty state when nothing can render.
-- [ ] **Step 2 (GREEN):** The pane asks the probe and gates on `'unsupported'`.
-- [ ] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
+- [x] **Step 1 (RED):** A failing test that `ScenePane` renders the live canvas rather than the unavailable empty state when the runtime falls back to WebGL 2, and keeps the empty state when nothing can render.
+- [x] **Step 2 (GREEN):** The pane asks the probe and gates on `'unsupported'`.
+- [x] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
 
 ### Task 4: The notice
 
 **Files:** `editor/shell/scene-pane.tsx`, `editor/shell/scene-pane.css`, `editor/shell/scene-pane.test.tsx`.
 
-- [ ] **Step 1 (RED):** A failing test that the pane shows a notice saying the preview is running without WebGPU on the WebGL 2 branch, and shows no notice on WebGPU.
-- [ ] **Step 2 (GREEN):** The inline `Banner` and its overlay rule.
-- [ ] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
+- [x] **Step 1 (RED):** A failing test that the pane shows a notice saying the preview is running without WebGPU on the WebGL 2 branch, shows no notice on WebGPU, and drops the notice once the dismiss control is pressed.
+- [x] **Step 2 (GREEN):** The inline `Banner`, its overlay rule, and the dismissed flag.
+- [x] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
 
-### Task 5: Dismissal
+**Outcome:** the dismissal was first planned as its own cycle. Rendering the design system's `Banner` with `dismissible: true` brings its dismiss control along, so a separate cycle would have had no failing test to open it. The dismissal assertion moved into this cycle's red instead.
 
-**Files:** `editor/shell/scene-pane.tsx`, `editor/shell/scene-pane.test.tsx`.
-
-- [ ] **Step 1 (RED):** A failing test that pressing the notice's dismiss control removes it and leaves the live canvas mounted.
-- [ ] **Step 2 (GREEN):** The dismissed flag.
-- [ ] **Step 3 (BLUE):** Review and a closing `refactor:` commit.
-
-### Task 6: ADR-0174 and the check chain
+### Task 5: ADR-0174 and the check chain
 
 **Files:** `docs/knowledge/decisions/ADR-0174-live-pane-webgl-fallback.md`.
 
-- [ ] **Step 1:** Write the ADR: the reversal of the gate ADR-0004 deferred and ADR-0019 recorded, what made the reversal safe (ADR-0171's live-view CI lane, and ADR-0151's note that WebGL 2 is the only baselined backend), the three-value probe and why it sits in bridge, the notice, and the follow-ups. `pnpm knowledge:index` must exit 0 and every `related` slug must resolve to a file.
-- [ ] **Step 2:** Run the full check chain, each exit code read on its own, and `pnpm rgb:audit` against `origin/main`.
+- [x] **Step 1:** Write the ADR: the reversal of the gate ADR-0004 deferred and ADR-0019 recorded, what made the reversal safe (ADR-0171's live-view CI lane, and ADR-0151's note that WebGL 2 is the only baselined backend), the three-value probe and why it sits in bridge, the notice, and the follow-ups. `pnpm knowledge:index` must exit 0 and every `related` slug must resolve to a file.
+- [x] **Step 2:** Run the full check chain, each exit code read on its own, and `pnpm rgb:audit` against `origin/main`.
