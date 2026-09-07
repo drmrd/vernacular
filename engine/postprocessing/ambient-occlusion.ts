@@ -43,18 +43,18 @@ type WebGPURenderer = InstanceType<WebGpuModule['WebGPURenderer']>
  * scene pass's context node, which routes it into the lighting model's ambient-occlusion hook:
  * the scene's indirect diffuse and specular darken while direct sunlight keeps its full
  * strength, which is the physically correct blend. Multiplying the occlusion across the finished
- * frame instead (ADR-0151's first output node) dimmed the sun along with everything else.
- * The occlusion node reads depth and view-space normals from a separate prepass so that
- * rendering it cannot re-enter the context installed on the scene pass. That prepass renders the
- * normals GTAO consumes instead of leaving it to reconstruct them from depth, a reconstruction
- * that rounds creases and thin details off (ADR-0173). The pipeline's default output handling
- * carries the renderer's active tone-mapping operator, so realistic AgX
- * (ADR-0147) still applies after the pass takes over the draw. three/webgpu, three/tsl, and the
- * GTAONode addon load through loadAmbientOcclusionModules's cached lazy dynamic import so the
- * WebGPU build stays off the entry chunk and repeated calls (every realistic-mode toggle) share
- * one module load; this function still builds a fresh RenderPipeline and GTAONode per call, and
- * the returned dispose releases both passes, the occlusion node (its render target and material
- * included), and the prepass override material.
+ * frame instead (ADR-0151's first output node) dimmed the sun along with everything else. The
+ * occlusion node reads depth and view-space normals from a separate prepass so that rendering it
+ * cannot re-enter the context installed on the scene pass. That prepass renders the normals GTAO
+ * consumes instead of leaving it to reconstruct them from depth, a reconstruction that rounds
+ * creases and thin details off (ADR-0173). The pipeline's default output handling carries the
+ * renderer's active tone-mapping operator, so realistic AgX (ADR-0147) still applies after the
+ * pass takes over the draw. three/webgpu, three/tsl, and the GTAONode addon load through
+ * loadAmbientOcclusionModules's cached lazy dynamic import so the WebGPU build stays off the
+ * entry chunk and repeated calls (every realistic-mode toggle) share one module load; this
+ * function still builds a fresh RenderPipeline and GTAONode per call, and the returned dispose
+ * releases both passes, the occlusion node (its render target and material included), and the
+ * prepass override material.
  */
 // eslint-disable-next-line max-params -- renderer, scene, and camera are the RenderPipeline's irreducible construction inputs and params is the GTAONode tuning; splitting them would only wrap the same four values in a throwaway object
 export async function buildAmbientOcclusionPipeline(
