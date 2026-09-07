@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
+import type { LivePreviewBackend } from '../../bridge'
 import { ScenePane } from './scene-pane'
 
 // An empty scene graph: no walls/rooms/openings/stairs/furniture, so the real
@@ -37,6 +38,10 @@ const graphWithGeometry: SceneGraph = {
 // Mockable scene-graph state so each test can drive the empty/non-empty branch.
 let mockSceneGraph: SceneGraph = graphWithGeometry
 
+// Which backend the runtime can drive. The pane asks the bridge probe rather than
+// navigator directly, so each test states the runtime it means here.
+let mockBackend: LivePreviewBackend = 'webgpu'
+
 // When true, the mocked SceneCanvas suspends on its first render (throws a
 // promise) before resolving to the live stub. This mimics how R3F's <Canvas>
 // suspends its subtree until the renderer boots and the first frame is ready,
@@ -67,30 +72,34 @@ vi.mock('../../bridge', () => ({
   },
   useSceneGraph: () => mockSceneGraph,
   useActiveFloorId: () => 'g',
+  detectLivePreviewBackend: () => mockBackend,
 }))
 
 describe('ScenePane', () => {
   afterEach(() => {
-    vi.unstubAllGlobals()
     mockSceneGraph = graphWithGeometry
+    mockBackend = 'webgpu'
     suspendSceneCanvasOnce = false
     sceneCanvasResolved = false
     resolveSceneCanvas = null
   })
 
-  it('renders the styled empty-state fallback when WebGPU is unavailable', () => {
-    vi.stubGlobal('navigator', {})
+  it('renders the styled empty-state fallback when the runtime can render no 3D at all', () => {
+    mockBackend = 'unsupported'
 
     const { container } = render(<ScenePane />)
 
     // The design-system EmptyState title, not a bare unstyled string.
     expect(screen.getByText(/3D preview unavailable/i)).toBeInTheDocument()
+    // Missing WebGPU is no longer the reason a preview is unavailable, so the copy
+    // must not blame it: a WebGL 2 browser reaches the live view instead.
+    expect(screen.queryByText(/WebGPU/i)).toBeNull()
     // Rendered through the EmptyState primitive (its section markup), not a raw div.
     expect(container.querySelector('.ds-status--empty')).not.toBeNull()
   })
 
   it('reassures the user without nesting a duplicate region landmark', () => {
-    vi.stubGlobal('navigator', {})
+    mockBackend = 'unsupported'
 
     const { container } = render(<ScenePane />)
 
@@ -103,7 +112,7 @@ describe('ScenePane', () => {
   })
 
   it('renders the live scene rather than the fallback when WebGPU is available', () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
 
     render(<ScenePane />)
 
@@ -113,8 +122,20 @@ describe('ScenePane', () => {
     expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
   })
 
+  it('renders the live scene when the runtime falls back to WebGL 2', () => {
+    // The renderer targets WebGPU when it is there and falls back to its own WebGL 2
+    // backend when it is not, and that fallback path is what every committed scene
+    // baseline renders through. A WebGL 2 browser therefore gets the preview.
+    mockBackend = 'webgl2'
+
+    render(<ScenePane />)
+
+    expect(screen.queryByText(/3D preview unavailable/i)).toBeNull()
+    expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
+  })
+
   it('keeps the live scene canvas mounted and overlays empty-floor guidance when the active floor has no geometry', async () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
     mockSceneGraph = emptyGraph
 
     const { container } = render(<ScenePane />)
@@ -140,7 +161,7 @@ describe('ScenePane', () => {
   })
 
   it('does not unmount the live scene canvas when the active floor transitions from having geometry to being empty', () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
     mockSceneGraph = graphWithGeometry
 
     const { rerender } = render(<ScenePane />)
@@ -157,7 +178,7 @@ describe('ScenePane', () => {
   })
 
   it('shows a loading fallback while the live 3D canvas boots, then the canvas', async () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
     // Geometry is present, so the empty branch is not taken and ScenePane must
     // delegate to the live canvas. Make that canvas suspend on first render to
     // exercise the Suspense fallback ScenePane wraps it in.
@@ -180,7 +201,7 @@ describe('ScenePane', () => {
   })
 
   it('shows the loading placeholder for a canvas that mounts late already not-ready', async () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
     mockSceneGraph = graphWithGeometry
     // The canvas suspends first, so it is not present in the tree at mount
     // time. When it resolves, it is inserted into the pane subtree already
@@ -208,7 +229,7 @@ describe('ScenePane', () => {
   })
 
   it('shows a quiet placeholder until the scene canvas signals its first frame is ready, then clears it', async () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
     mockSceneGraph = graphWithGeometry
 
     render(<ScenePane />)
@@ -235,7 +256,7 @@ describe('ScenePane', () => {
   })
 
   it('shows only the loading placeholder over an empty floor until the scene is ready, then swaps to the empty-floor guidance', async () => {
-    vi.stubGlobal('navigator', { gpu: {} })
+    mockBackend = 'webgpu'
     mockSceneGraph = emptyGraph
 
     render(<ScenePane />)
