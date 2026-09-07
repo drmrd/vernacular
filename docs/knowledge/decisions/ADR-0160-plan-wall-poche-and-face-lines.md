@@ -20,6 +20,7 @@ sourceFiles:
     editor/plan/draw-opening.ts,
     editor/plan/opening-spans.ts,
     editor/plan/draw-surface-paint.ts,
+    core/export/svg/svg-plan-exporter.ts,
     editor/plan/hit-test-wall-face.ts,
     editor/plan/plan-palette.ts,
     editor/design-system/tokens.css,
@@ -264,6 +265,46 @@ The SVG plan export was not part of this. `core/export/svg/` still paints its ow
 way the canvas did, and putting it on the geometric break is its own cycle with its own export
 tests.
 
+## Update (2026-09-07): the SVG plan export takes the same break
+
+The update above closed the canvas and said the export was not part of it. Issue #661 closes the
+export. `core/export/svg/svg-plan-exporter.ts` no longer fills an opaque rectangle over an opening
+before stroking its jamb caps, and `renderWalls` no longer strokes a wall straight through the
+opening that cuts it. A door in an interior wall used to land a white tab over the room fill on
+both sides of the wall, and anything the export grows underneath later would have been covered the
+same way.
+
+The exported wall symbol is still a stroked centerline, not the poche between two drawn faces this
+decision gave the canvas. Porting the drafting symbol is a separate question from breaking the
+wall, and only the break was asked for. So the exporter composes `wallFaceGeometry` on a run whose
+two faces are the centerline itself: `aPlus` and `aMinus` are the wall's start point, `bPlus` and
+`bMinus` its end. Every stretch that comes back repeats the centerline sub-segment as its
+`plusFace`, which is the pair of endpoints a `<line>` needs, and the span clamping, ordering,
+merging, and degenerate-stretch dropping stay in the one place that owns them. A wall with one
+interior opening exports two `<line>`s, both carrying the wall node id, since they are two pieces
+of one wall.
+
+One thing had to move that the canvas never had to think about. A round linecap extends the ink
+half a stroke width past the endpoint, and an exported wall strokes at its full thickness, so a
+round cap at a jamb would push half the wall's thickness of dark ink back into the doorway. A
+stretch bounded by a cut therefore strokes with `stroke-linecap: butt` and stops square at the
+jamb, which is the perpendicular cut decision 4 describes. A stretch still reaching both of its
+wall's own endpoints keeps the round cap, because the exporter draws each authored wall end to end
+with no mitring and those rounded ends fill the notch where two walls meet. A wall with no openings
+exports what it exported before.
+
+The projection is not shared with the canvas. `editor/plan/opening-spans.ts` is built on
+`openingJambs` and `projectPointOntoWall`, both of which live in `editor/plan/opening-geometry.ts`,
+and `core/` does not import from `editor/`. The exporter carries its own filter by host wall id and
+its own scalar projection of each jamb onto the wall axis, a dozen lines built from
+`core/geometry/vector` and `core/scene/wall-id`. Lifting one copy into a shared core module and
+pointing the canvas at it is worth doing once a second caller inside `core/` wants the same answer.
+
+One consequence is new. A zero-length wall used to export a round dot, since a `<line>` with equal
+endpoints and a round cap still paints. `wallFaceGeometry` treats a run that short as having no
+direction and returns no stretches, so such a wall now exports nothing. Neither the canvas nor the
+export has ever drawn a zero-length wall on purpose.
+
 ## References
 
 - [[ADR-0159-plan-ink-weight-hierarchy]] (the ink roles this builds on; its wall-stroke-width claim
@@ -285,3 +326,5 @@ tests.
   opening gap stops outrunning the wall it breaks).
 - Issue #552 (the walk-mode collision standoff, fixed on 2026-08-17: the walker now stands
   off the resolved assembly face the 3D view renders; ADR-0135 carries the record).
+- Issue #661 (retire the opening gap fill in the SVG plan export, closed by the 2026-09-07 export
+  update above).
