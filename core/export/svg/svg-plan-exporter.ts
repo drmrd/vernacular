@@ -1,16 +1,20 @@
 import { dimensionGeometry } from '../../geometry/dimension'
 import type { DimensionGeometry } from '../../geometry/dimension'
 import { polygonCentroid } from '../../geometry/polygon'
+import { dot, subtract, unit } from '../../geometry/vector'
+import { wallFaceGeometry } from '../../geometry/wall-face'
+import type { WallFaceGap, WallFaceRun, WallFaceStretch } from '../../geometry/wall-face'
 import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
 import { formatArea, formatLength, lengthFormatOptions, preferencesForUnits } from '../../units'
 import { effectiveWallThickness } from '../../scene/construction-profile'
-import { deriveSceneGraph } from '../../scene/scene-graph'
+import { deriveSceneGraph, WALL_NODE_PREFIX } from '../../scene/scene-graph'
 import type {
   DimensionSceneNode,
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
+  WallSceneNode,
 } from '../../scene/scene-graph'
 import { openingFootprint } from '../../topology/openings'
 import type { Exporter, ExportResult } from '../exporter'
@@ -80,28 +84,109 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
   }
 }
 
-/** Render every wall as a projected `<line>`, wrapped in a walls layer group. */
+/** Render every wall as one `<line>` per standing stretch, wrapped in a walls layer group. */
 function renderWalls(graph: SceneGraph, { view }: SvgPlanContext): string {
   /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
-  const lines = graph.walls.map((wall) => {
-    const start = view.project(wall.start)
-    const end = view.project(wall.end)
-    return svgLine({
-      x1: start.x,
-      y1: start.y,
-      x2: end.x,
-      y2: end.y,
-      attributes: {
-        stroke: WALL_INK,
-        'stroke-width': effectiveWallThickness(wall),
-        'stroke-linecap': 'round',
-        // wall.id already carries the `wall:` scene-node prefix (see scene-graph).
-        'data-node-id': wall.id,
-      },
-    })
-  })
+  const lines = graph.walls.flatMap((wall) => wallStrokeLines(wall, graph.openings, view))
   return svgGroup(lines, { 'data-layer': 'walls' })
   /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+/**
+ * One `<line>` per stretch of `wall`'s centerline left standing by its openings,
+ * in order from the wall's start.
+ */
+function wallStrokeLines(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+  view: SvgView,
+): string[] {
+  const stretches = wallFaceGeometry(wallCenterlineRun(wall, openings))
+  return stretches.map((stretch) => wallStrokeLine(wall, stretch, view))
+}
+
+/**
+ * `wall` as a `wallFaceGeometry` run whose two faces are the centerline itself.
+ * The exported wall symbol is a stroked centerline rather than a poche between two
+ * drawn faces, so every corner collapses to the wall's own start or end; each
+ * returned stretch then carries the centerline sub-segment the `<line>` needs as
+ * `plusFace`.
+ */
+function wallCenterlineRun(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+): WallFaceRun {
+  return {
+    start: wall.start,
+    end: wall.end,
+    corners: {
+      aPlus: wall.start,
+      aMinus: wall.start,
+      bPlus: wall.end,
+      bMinus: wall.end,
+    },
+    gaps: wallOpeningGaps(wall, openings),
+  }
+}
+
+/** The clear spans `wall`'s own openings cut out of it, as distances from its start. */
+function wallOpeningGaps(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+): WallFaceGap[] {
+  const rawWallId = wall.id.slice(WALL_NODE_PREFIX.length)
+  const axis = unit(subtract(wall.end, wall.start))
+  return openings
+    .filter((opening) => opening.hostWallId === rawWallId)
+    .map((opening) => wallOpeningGap(wall, axis, opening))
+}
+
+/** One opening's clear span on `wall`'s axis, from its near jamb to its far jamb. */
+function wallOpeningGap(wall: WallSceneNode, axis: Point, opening: OpeningSceneNode): WallFaceGap {
+  const halfWidth = opening.width / 2
+  const nearJamb = translate(opening.center, opening.along, -halfWidth)
+  const farJamb = translate(opening.center, opening.along, halfWidth)
+  return {
+    from: dot(subtract(nearJamb, wall.start), axis),
+    to: dot(subtract(farJamb, wall.start), axis),
+  }
+}
+
+/** One projected `<line>` for a wall stretch, capped square where a cut bounds it. */
+function wallStrokeLine(wall: WallSceneNode, stretch: WallFaceStretch, view: SvgView): string {
+  const [from, to] = stretch.plusFace
+  const start = view.project(from)
+  const end = view.project(to)
+  /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  return svgLine({
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+    attributes: {
+      stroke: WALL_INK,
+      'stroke-width': effectiveWallThickness(wall),
+      'stroke-linecap': isUncutStretch(wall, from, to) ? 'round' : 'butt',
+      // wall.id already carries the `wall:` scene-node prefix (see scene-graph).
+      'data-node-id': wall.id,
+    },
+  })
+  /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+/**
+ * True when a stretch still reaches both of the wall's own endpoints, rather than
+ * being bounded by a cut. A round cap belongs only here: `wallFaceGeometry` passes
+ * the run's own corners through untouched at its ends, so exact coordinate equality
+ * is the right test and no epsilon is needed.
+ */
+function isUncutStretch(wall: WallSceneNode, from: Point, to: Point): boolean {
+  return pointsEqual(from, wall.start) && pointsEqual(to, wall.end)
+}
+
+/** Exact coordinate equality. */
+function pointsEqual(a: Point, b: Point): boolean {
+  return a.x === b.x && a.y === b.y
 }
 
 /** Render every opening as a gap polygon plus jamb caps, wrapped in an openings layer group. */
