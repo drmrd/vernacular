@@ -1,6 +1,9 @@
 import { dimensionGeometry } from '../../geometry/dimension'
 import type { DimensionGeometry } from '../../geometry/dimension'
 import { polygonCentroid } from '../../geometry/polygon'
+import { dot, subtract, unit } from '../../geometry/vector'
+import { wallFaceGeometry } from '../../geometry/wall-face'
+import type { WallFaceGap, WallFaceRun, WallFaceStretch } from '../../geometry/wall-face'
 import type { Point, Project } from '../../model/types'
 import type { UnitPreferences } from '../../units'
 import { formatArea, formatLength, lengthFormatOptions, preferencesForUnits } from '../../units'
@@ -11,8 +14,9 @@ import type {
   OpeningSceneNode,
   RoomSceneNode,
   SceneGraph,
+  WallSceneNode,
 } from '../../scene/scene-graph'
-import { openingFootprint } from '../../topology/openings'
+import { rawWallId } from '../../scene/wall-id'
 import type { Exporter, ExportResult } from '../exporter'
 import { svgDocument, svgGroup, svgLine, svgPolygon, svgText } from './svg-document'
 import { createSvgView, planContentBounds } from './svg-view'
@@ -24,8 +28,6 @@ const WALL_INK = '#222222'
 const ROOM_FILL = '#eef2f6'
 /** Room label ink, mirroring the on-screen label color (redeclared in core). */
 const LABEL_INK = '#37414d'
-/** Opening gap fill, painted over the wall stroke so the wall reads as broken. */
-const OPENING_GAP = '#ffffff'
 /** Opening jamb cap stroke, mirroring the wall ink. */
 const OPENING_INK = '#222222'
 /** Dimension line, extension, and arrowhead ink, mirroring the on-screen dimension. */
@@ -68,7 +70,7 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
       [
         renderRooms(graph, context),
         renderWalls(graph, context),
-        // Openings paint over the wall stroke so the wall reads as broken.
+        // Openings paint no fill of their own; see `renderOpening`.
         renderOpenings(graph, context),
         renderRoomLabels(graph, context),
         // Dimensions are annotation overlays painted above the plan.
@@ -80,31 +82,110 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
   }
 }
 
-/** Render every wall as a projected `<line>`, wrapped in a walls layer group. */
+/** Render every wall as one `<line>` per standing stretch, wrapped in a walls layer group. */
 function renderWalls(graph: SceneGraph, { view }: SvgPlanContext): string {
   /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
-  const lines = graph.walls.map((wall) => {
-    const start = view.project(wall.start)
-    const end = view.project(wall.end)
-    return svgLine({
-      x1: start.x,
-      y1: start.y,
-      x2: end.x,
-      y2: end.y,
-      attributes: {
-        stroke: WALL_INK,
-        'stroke-width': effectiveWallThickness(wall),
-        'stroke-linecap': 'round',
-        // wall.id already carries the `wall:` scene-node prefix (see scene-graph).
-        'data-node-id': wall.id,
-      },
-    })
-  })
+  const lines = graph.walls.flatMap((wall) => wallStrokeLines(wall, graph.openings, view))
   return svgGroup(lines, { 'data-layer': 'walls' })
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 
-/** Render every opening as a gap polygon plus jamb caps, wrapped in an openings layer group. */
+/**
+ * One `<line>` per stretch of `wall`'s centerline left standing by its openings,
+ * in order from the wall's start.
+ */
+function wallStrokeLines(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+  view: SvgView,
+): string[] {
+  const stretches = wallFaceGeometry(wallCenterlineRun(wall, openings))
+  return stretches.map((stretch) => wallStrokeLine(wall, stretch, view))
+}
+
+/**
+ * `wall` as a `wallFaceGeometry` run whose two faces are the centerline itself.
+ * The exported wall symbol is a stroked centerline rather than a poche between two
+ * drawn faces, so every corner collapses to the wall's own start or end; each
+ * returned stretch then carries the centerline sub-segment the `<line>` needs as
+ * `plusFace`.
+ */
+function wallCenterlineRun(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+): WallFaceRun {
+  return {
+    start: wall.start,
+    end: wall.end,
+    corners: {
+      aPlus: wall.start,
+      aMinus: wall.start,
+      bPlus: wall.end,
+      bMinus: wall.end,
+    },
+    gaps: wallOpeningGaps(wall, openings),
+  }
+}
+
+/** The clear spans `wall`'s own openings cut out of it, as distances from its start. */
+function wallOpeningGaps(
+  wall: WallSceneNode,
+  openings: readonly OpeningSceneNode[],
+): WallFaceGap[] {
+  const hostId = rawWallId(wall)
+  const axis = unit(subtract(wall.end, wall.start))
+  return openings
+    .filter((opening) => opening.hostWallId === hostId)
+    .map((opening) => wallOpeningGap(wall, axis, opening))
+}
+
+/** One opening's clear span on `wall`'s axis, from its near jamb to its far jamb. */
+function wallOpeningGap(wall: WallSceneNode, axis: Point, opening: OpeningSceneNode): WallFaceGap {
+  const [nearJamb, farJamb] = openingJambPoints(opening)
+  return {
+    from: dot(subtract(nearJamb, wall.start), axis),
+    to: dot(subtract(farJamb, wall.start), axis),
+  }
+}
+
+/** One projected `<line>` for a wall stretch, capped square where a cut bounds it. */
+function wallStrokeLine(wall: WallSceneNode, stretch: WallFaceStretch, view: SvgView): string {
+  const [from, to] = stretch.plusFace
+  const start = view.project(from)
+  const end = view.project(to)
+  /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
+  return svgLine({
+    x1: start.x,
+    y1: start.y,
+    x2: end.x,
+    y2: end.y,
+    attributes: {
+      stroke: WALL_INK,
+      'stroke-width': effectiveWallThickness(wall),
+      'stroke-linecap': isUncutStretch(wall, from, to) ? 'round' : 'butt',
+      // wall.id already carries the `wall:` scene-node prefix (see scene-graph).
+      'data-node-id': wall.id,
+    },
+  })
+  /* eslint-enable @typescript-eslint/naming-convention */
+}
+
+/**
+ * True when a stretch still reaches both of the wall's own endpoints, rather than
+ * being bounded by a cut. A round cap belongs only here: `wallFaceGeometry` passes
+ * the run's own corners through untouched at its ends, so exact coordinate equality
+ * is the right test and no epsilon is needed.
+ */
+function isUncutStretch(wall: WallSceneNode, from: Point, to: Point): boolean {
+  return pointsEqual(from, wall.start) && pointsEqual(to, wall.end)
+}
+
+/** Exact coordinate equality. */
+function pointsEqual(a: Point, b: Point): boolean {
+  return a.x === b.x && a.y === b.y
+}
+
+/** Render every opening as its jamb caps, wrapped in an openings layer group. */
 function renderOpenings(graph: SceneGraph, context: SvgPlanContext): string {
   const groups = graph.openings.map((opening) => renderOpening(opening, context))
   /* eslint-disable @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
@@ -113,37 +194,32 @@ function renderOpenings(graph: SceneGraph, context: SvgPlanContext): string {
 }
 
 /**
- * Render one opening as its gap polygon and two jamb caps.
+ * Render one opening as its two jamb caps.
  *
- * The coarse per-family glyph (swing leaf, window frame lines) is deferred per
- * Decision 4: registry-driven symbol classification is an editor/bridge concern,
- * and no committed test drives a glyph this slice.
+ * The wall stroke already breaks at the opening's jambs (see `wallOpeningGaps`),
+ * so the opening itself paints nothing over the plan beneath it; it only caps the
+ * break. The coarse per-family glyph (swing leaf, window frame lines) is deferred
+ * per Decision 4: registry-driven symbol classification is an editor/bridge
+ * concern, and no committed test drives a glyph this slice.
  */
 function renderOpening(opening: OpeningSceneNode, context: SvgPlanContext): string {
-  const fragments = [openingGap(opening, context), ...openingJambs(opening, context)]
   // opening.id already carries the `opening:` scene-node prefix (see scene-graph).
   /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
-  return svgGroup(fragments, { 'data-node-id': opening.id })
+  return svgGroup(openingJambs(opening, context), { 'data-node-id': opening.id })
 }
 
-/** Emit the opening's gap `<polygon>`, projected, filled with the gap color. */
-function openingGap(opening: OpeningSceneNode, { view }: SvgPlanContext): string {
-  const corners = openingFootprint(
-    opening.center,
-    opening.along,
-    opening.normal,
-    opening.width,
-    opening.hostThickness,
-  )
-  const projected = corners.map((corner) => view.project(corner))
-  return svgPolygon(projected, { fill: OPENING_GAP, stroke: 'none' })
+/** The opening's two jamb points on the host wall centerline, near jamb first. */
+function openingJambPoints(opening: OpeningSceneNode): [Point, Point] {
+  const halfWidth = opening.width / 2
+  return [
+    translate(opening.center, opening.along, -halfWidth),
+    translate(opening.center, opening.along, halfWidth),
+  ]
 }
 
 /** Emit an across-wall `<line>` jamb cap at each of the opening's two jambs. */
 function openingJambs(opening: OpeningSceneNode, context: SvgPlanContext): string[] {
-  const halfWidth = opening.width / 2
-  const jambStart = translate(opening.center, opening.along, -halfWidth)
-  const jambEnd = translate(opening.center, opening.along, halfWidth)
+  const [jambStart, jambEnd] = openingJambPoints(opening)
   return [jambCap(jambStart, opening, context), jambCap(jambEnd, opening, context)]
 }
 

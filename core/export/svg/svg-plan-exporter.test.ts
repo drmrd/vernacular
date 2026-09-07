@@ -4,24 +4,24 @@ import {
   DEFAULT_METRIC_PREFERENCES,
   DIMENSION_NODE_PREFIX,
   OPENING_NODE_PREFIX,
+  WALL_NODE_PREFIX,
   deriveSceneGraph,
   dimensionGeometry,
   effectiveWallThickness,
   formatArea,
   formatLength,
   lengthFormatOptions,
-  openingFootprint,
   polygonCentroid,
   roomKey,
 } from '../../'
 import {
   createConstructionProfiledWallProject,
+  createRoomWithOpeningProject,
   createSingleDimensionProject,
   createSingleOpeningProject,
   createSingleRoomProject,
   createSingleWallProject,
   createTwoWallProject,
-  parsePoints,
   soleDerivedDimension,
   soleDerivedOpening,
   soleDerivedRoom,
@@ -44,32 +44,24 @@ describe('SvgPlanExporter emitting openings', () => {
     expect(groups).toHaveLength(1)
   })
 
-  it('breaks the host wall with an opening gap polygon', () => {
-    const project = createSingleOpeningProject()
-    const graph = deriveSceneGraph(project)
+  it('leaves the room fill beneath an opening unpainted', () => {
+    // A door on one wall of a closed room. The room fill is painted first and the
+    // wall stroke now breaks at the jambs, so an opening still painting a fill of
+    // its own would lay an opaque tab over that room fill across the doorway.
+    const project = createRoomWithOpeningProject()
     const opening = soleDerivedOpening(project)
-    const view = createSvgView(planContentBounds(graph))
-    const expectedCorners = openingFootprint(
-      opening.center,
-      opening.along,
-      opening.normal,
-      opening.width,
-      opening.hostThickness,
-    ).map((corner) => view.project(corner))
+    const room = soleDerivedRoom(project)
 
     const result = new SvgPlanExporter().export(project)
     const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
     const group = document.querySelector(`[data-node-id="${opening.id}"]`)
-    const polygon = group?.querySelector('polygon') ?? null
-    expect(polygon).not.toBeNull()
-    expect(polygon?.getAttribute('fill')).toBe('#ffffff')
+    expect(group).not.toBeNull()
 
-    const actualCorners = parsePoints(polygon?.getAttribute('points') ?? null)
-    expect(actualCorners).toHaveLength(expectedCorners.length)
-    expectedCorners.forEach((expected, index) => {
-      expect(actualCorners[index]?.x).toBeCloseTo(expected.x, 3)
-      expect(actualCorners[index]?.y).toBeCloseTo(expected.y, 3)
-    })
+    expect(group?.querySelectorAll('polygon')).toHaveLength(0)
+    const filled = [...document.querySelectorAll('polygon')].map((polygon) =>
+      polygon.getAttribute('data-node-id'),
+    )
+    expect(filled).toEqual([room.id])
   })
 
   it('draws a jamb cap at each opening jamb', () => {
@@ -208,6 +200,58 @@ describe('SvgPlanExporter emitting walls', () => {
     new SvgPlanExporter().export(project)
 
     expect(project).toEqual(untouched)
+  })
+
+  it('keeps the round linecap on a wall stroke that has no opening to cut it', () => {
+    // Characterization: the exporter draws each authored wall end to end with no
+    // mitring, so the round cap is what fills the notch where two walls meet at a
+    // corner. Only a stretch a cut bounds may square off instead.
+    const project = createSingleWallProject()
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const line = document.querySelector('line[data-node-id^="wall:"]')
+
+    expect(line).not.toBeNull()
+    expect(line?.getAttribute('stroke-linecap')).toBe('round')
+  })
+
+  it('stops the wall stroke at each jamb of an opening that cuts it', () => {
+    const project = createSingleOpeningProject()
+    const graph = deriveSceneGraph(project)
+    const opening = soleDerivedOpening(project)
+    const wallId = `${WALL_NODE_PREFIX}wall-a`
+    const wall = graph.walls.find((candidate) => candidate.id === wallId)
+    if (wall === undefined) {
+      throw new Error('expected the fixture to derive its host wall')
+    }
+    const view = createSvgView(planContentBounds(graph))
+    const half = opening.width / 2
+    const jambStart = {
+      x: opening.center.x - opening.along.x * half,
+      y: opening.center.y - opening.along.y * half,
+    }
+    const jambEnd = {
+      x: opening.center.x + opening.along.x * half,
+      y: opening.center.y + opening.along.y * half,
+    }
+
+    const result = new SvgPlanExporter().export(project)
+    const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
+    const wallLines = [...document.querySelectorAll('line')].filter(
+      (line) => line.getAttribute('data-node-id') === wallId,
+    )
+
+    expect(wallLines).toHaveLength(2)
+    expect(inkedLineForSegment(wallLines, view.project(wall.start), view.project(jambStart))).toBe(
+      true,
+    )
+    expect(inkedLineForSegment(wallLines, view.project(jambEnd), view.project(wall.end))).toBe(true)
+    // A round cap would extend the ink half the wall's thickness past the jamb,
+    // bulging back into the doorway. The cut must read square.
+    for (const line of wallLines) {
+      expect(line.getAttribute('stroke-linecap')).toBe('butt')
+    }
   })
 })
 
