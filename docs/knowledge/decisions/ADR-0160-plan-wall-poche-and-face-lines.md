@@ -232,7 +232,7 @@ What the fill got wrong was that one opaque color can only match one backdrop. O
 it matched the interior room across the inner half of the thickness and laid a pale tab over the
 canvas across the outer half. In a room carrying a floor paint override it mismatched on the inside
 too. Nothing is painted over an opening now, so the grid, an underlay photo, a stair tread, or a
-painted floor reads through the doorway on both sides of the wall. Issue #521 is closed.
+painted floor reads through the doorway on both sides of the wall. Issue #521 closes when this update merges.
 
 Decision 5 of [[ADR-0159-plan-ink-weight-hierarchy]] describes where that fill sourced its color. It
 no longer describes the code, in the same way this decision's face lines superseded that ADR's
