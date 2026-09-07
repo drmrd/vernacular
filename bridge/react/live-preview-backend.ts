@@ -17,9 +17,17 @@ function canCreateWebGl2Context(): boolean {
   if (typeof document === 'undefined') {
     return false
   }
-  // A runtime can carry the WebGL2RenderingContext constructor and still refuse a context
-  // (a blocked GPU, WebGL switched off), so this asks for the context rather than the type.
-  return Boolean(document.createElement('canvas').getContext('webgl2'))
+  try {
+    // A runtime can carry the WebGL2RenderingContext constructor and still refuse a context
+    // (a blocked GPU, WebGL switched off), so this asks for the context rather than the type.
+    return Boolean(document.createElement('canvas').getContext('webgl2'))
+  } catch {
+    // Privacy-hardening extensions throw from getContext rather than returning null, to
+    // defeat probes like this one. The probe runs during render and the application mounts
+    // no error boundary, so a throw escaping here would blank the whole editor instead of
+    // costing the user a 3D preview.
+    return false
+  }
 }
 
 function probeLivePreviewBackend(): LivePreviewBackend {
