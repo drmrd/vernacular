@@ -5,7 +5,7 @@ import {
   createOpening,
   createWall,
 } from '../../model/factories'
-import type { Project } from '../../model/types'
+import type { Project, Wall } from '../../model/types'
 import {
   deriveSceneGraph,
   type DimensionSceneNode,
@@ -79,25 +79,44 @@ export function createTwoWallProject(): Project {
  * loop into exactly one derived room. Pass overrides to attach a name.
  */
 export function createSingleRoomProject(roomOverrides?: Project['roomOverrides']): Project {
-  const floor = createFloor('Ground Floor', {
-    id: 'floor-a',
-    walls: [
-      createWall({ x: 0, y: 0 }, { x: WALL_LENGTH_MM, y: 0 }, { id: 'wall-a' }),
-      createWall(
-        { x: WALL_LENGTH_MM, y: 0 },
-        { x: WALL_LENGTH_MM, y: ROOM_DEPTH_MM },
-        { id: 'wall-b' },
-      ),
-      createWall(
-        { x: WALL_LENGTH_MM, y: ROOM_DEPTH_MM },
-        { x: 0, y: ROOM_DEPTH_MM },
-        { id: 'wall-c' },
-      ),
-      createWall({ x: 0, y: ROOM_DEPTH_MM }, { x: 0, y: 0 }, { id: 'wall-d' }),
-    ],
-  })
+  const floor = createFloor('Ground Floor', { id: 'floor-a', walls: roomLoopWalls() })
   const project = projectWithFloor(floor)
   return roomOverrides === undefined ? project : { ...project, roomOverrides }
+}
+
+/** The closed four-wall loop, start to end, that encloses the one fixture room. */
+function roomLoopWalls(): Wall[] {
+  return [
+    createWall({ x: 0, y: 0 }, { x: WALL_LENGTH_MM, y: 0 }, { id: 'wall-a' }),
+    createWall(
+      { x: WALL_LENGTH_MM, y: 0 },
+      { x: WALL_LENGTH_MM, y: ROOM_DEPTH_MM },
+      { id: 'wall-b' },
+    ),
+    createWall(
+      { x: WALL_LENGTH_MM, y: ROOM_DEPTH_MM },
+      { x: 0, y: ROOM_DEPTH_MM },
+      { id: 'wall-c' },
+    ),
+    createWall({ x: 0, y: ROOM_DEPTH_MM }, { x: 0, y: 0 }, { id: 'wall-d' }),
+  ]
+}
+
+/**
+ * Build a deterministic project whose single floor encloses the same rectangular
+ * room as `createSingleRoomProject`, with a door centered on `wall-a`. The room fill
+ * is drawn beneath the wall and the opening, so this is the fixture that shows
+ * whether an opening paints over what the plan already drew under it.
+ */
+export function createRoomWithOpeningProject(): Project {
+  const opening = createOpening({
+    type: 'single-swing-door',
+    hostWallId: 'wall-a',
+    position: OPENING_CENTER_MM,
+    id: 'opening-a',
+  })
+  const floor = createFloor('Ground Floor', { id: 'floor-a', walls: roomLoopWalls() })
+  return projectWithFloor({ ...floor, openings: [opening] })
 }
 
 /** The first node of a derived collection, asserting the fixture produced exactly one. */
@@ -158,16 +177,4 @@ export function createSingleDimensionProject(): Project {
 /** The sole derived dimension scene node for the single-dimension fixture above. */
 export function soleDerivedDimension(project: Project): DimensionSceneNode {
   return soleNode(deriveSceneGraph(project).dimensions, 'dimension')
-}
-
-/** Parse an SVG `points="x,y x,y ..."` attribute into an array of points. */
-export function parsePoints(attribute: string | null): { x: number; y: number }[] {
-  return (attribute ?? '')
-    .trim()
-    .split(/\s+/u)
-    .filter((pair) => pair.length > 0)
-    .map((pair) => {
-      const [x, y] = pair.split(',').map(Number)
-      return { x: x ?? Number.NaN, y: y ?? Number.NaN }
-    })
 }

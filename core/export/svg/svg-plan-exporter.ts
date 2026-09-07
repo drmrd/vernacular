@@ -70,8 +70,7 @@ export class SvgPlanExporter implements Exporter<SvgPlanExportOptions> {
       [
         renderRooms(graph, context),
         renderWalls(graph, context),
-        // The wall stroke already breaks at each opening's jambs, so an opening only
-        // caps that break; it paints nothing over the plan beneath it.
+        // Openings paint no fill of their own; see `renderOpening`.
         renderOpenings(graph, context),
         renderRoomLabels(graph, context),
         // Dimensions are annotation overlays painted above the plan.
@@ -204,10 +203,9 @@ function renderOpenings(graph: SceneGraph, context: SvgPlanContext): string {
  * concern, and no committed test drives a glyph this slice.
  */
 function renderOpening(opening: OpeningSceneNode, context: SvgPlanContext): string {
-  const fragments = openingJambs(opening, context)
   // opening.id already carries the `opening:` scene-node prefix (see scene-graph).
   /* eslint-disable-next-line @typescript-eslint/naming-convention -- SVG attribute names are kebab-case per the SVG specification. */
-  return svgGroup(fragments, { 'data-node-id': opening.id })
+  return svgGroup(openingJambs(opening, context), { 'data-node-id': opening.id })
 }
 
 /** The opening's two jamb points on the host wall centerline, near jamb first. */

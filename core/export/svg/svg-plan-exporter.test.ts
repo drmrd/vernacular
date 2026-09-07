@@ -16,6 +16,7 @@ import {
 } from '../../'
 import {
   createConstructionProfiledWallProject,
+  createRoomWithOpeningProject,
   createSingleDimensionProject,
   createSingleOpeningProject,
   createSingleRoomProject,
@@ -43,20 +44,24 @@ describe('SvgPlanExporter emitting openings', () => {
     expect(groups).toHaveLength(1)
   })
 
-  it('leaves the plan beneath it unpainted', () => {
-    // The fixture derives no room, so the only polygon the export could ever
-    // draw for it is the opening's own gap fill. Pinning zero polygons proves
-    // that fill is gone and whatever the export paints beneath the opening,
-    // room fill, a hatch, an underlay, survives underneath it.
-    const project = createSingleOpeningProject()
+  it('leaves the room fill beneath an opening unpainted', () => {
+    // A door on one wall of a closed room. The room fill is painted first and the
+    // wall stroke now breaks at the jambs, so an opening still painting a fill of
+    // its own would lay an opaque tab over that room fill across the doorway.
+    const project = createRoomWithOpeningProject()
     const opening = soleDerivedOpening(project)
+    const room = soleDerivedRoom(project)
 
     const result = new SvgPlanExporter().export(project)
     const document = new DOMParser().parseFromString(result.content, 'image/svg+xml')
     const group = document.querySelector(`[data-node-id="${opening.id}"]`)
+    expect(group).not.toBeNull()
 
-    expect(document.querySelectorAll('polygon')).toHaveLength(0)
     expect(group?.querySelectorAll('polygon')).toHaveLength(0)
+    const filled = [...document.querySelectorAll('polygon')].map((polygon) =>
+      polygon.getAttribute('data-node-id'),
+    )
+    expect(filled).toEqual([room.id])
   })
 
   it('draws a jamb cap at each opening jamb', () => {
