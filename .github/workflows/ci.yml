@@ -279,6 +279,14 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # The macOS browser cache lives under ~/Library/Caches, not the linux ~/.cache path
+      # the scene-visual job uses; caching it keeps the 10x-priced runner off a fresh
+      # chromium download on every triggered run.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium
       - name: Build production bundle

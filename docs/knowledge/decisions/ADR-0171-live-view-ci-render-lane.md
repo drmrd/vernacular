@@ -5,7 +5,7 @@ type: decision
 tags: [ci, visual-regression, webgpu, 3d-preview, testing]
 related:
   [
-    decisions/ADR-0149-scene-baseline-platform-split,
+    decisions/ADR-0149-harness-lighting-readiness,
     decisions/ADR-0151-ambient-occlusion-render-pipeline,
     decisions/ADR-0152-linux-scene-baseline-lane,
     decisions/ADR-0170-scene-session-state-in-a-bridge-provider,
@@ -86,4 +86,4 @@ for this gate must move the rendered scene, not the opening vantage.
 - Issue #469 (the lane), issue #603 (the regression class that motivated it).
 - `docs/specs/2026-09-06-rendering-realism-gates-and-slices.md`, lane 3.
 - Probe run 34067553157; red-proof run 34067973637.
-- ADR-0149 (platform-split baselines), ADR-0152 (the linux scene lane this complements).
+- ADR-0149 (where scene baselines render), ADR-0152 (the linux scene lane this complements).

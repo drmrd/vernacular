@@ -29,28 +29,30 @@
 
 - [x] **Step 1:** Worktree `../vernacular.wt/live-view-ci-render-lane`, branch `feat/live-view-ci-render-lane`.
 - [x] **Step 2:** Push the temporary push-triggered probe workflow; observe run 34067553157: `1 passed (7.0s)` on `macos-14`, no skip, against the committed darwin baseline.
-- [ ] **Step 3:** Commit this plan: `git add docs/plans/2026-09-06-live-view-ci-render-lane.md && git commit -m "docs: plan the live-view CI render lane"`.
+- [x] **Step 3:** Commit this plan: `git add docs/plans/2026-09-06-live-view-ci-render-lane.md && git commit -m "docs: plan the live-view CI render lane"`.
 
 ### Task 2: The ci.yml job
 
 **Files:** modify `.github/workflows/ci.yml`; delete `.github/workflows/probe-macos-webgpu.yml`.
 
-- [ ] **Step 1:** Add a `live-view-visual` job after `scene-visual`: name `Live-view visual regression (macOS/WebGPU)`, `runs-on: macos-14`, `needs: [check, decide]`, `if: needs.decide.outputs.e2e == 'true'`, steps mirroring the probe (checkout, pnpm 10.33.4, node from `.nvmrc` with pnpm cache, `pnpm install --frozen-lockfile`, `pnpm exec playwright install chromium`, `pnpm build`, `pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-visual-regression.spec.ts --reporter=list`), plus a failure-only artifact upload of `test-results/` named `live-view-visual-report`, retention 7 days. A header comment states the probe facts and the 10x minute cost.
-- [ ] **Step 2:** Add `live-view-visual` to `ci-complete`'s `needs`, its echo line, and its result loop, exactly matching the existing pattern.
-- [ ] **Step 3:** Delete the probe workflow file.
-- [ ] **Step 4:** Run the full check chain, each exit code on its own. Commit `build: run the live-view WebGPU visual spec on a macOS CI lane` and push.
-- [ ] **Step 5:** Open the pull request: title `build: add the live-view WebGPU visual CI lane (rendering-realism lane 3)`, body with the probe evidence and `Closes #469`. Watch the PR run: the new job must appear, run (this branch touches `.github/` and `e2e/`-adjacent paths through the plan only, so confirm the gate fired; if the job skipped because the diff touches no e2e path, note that the gate works as designed and rely on the defect commit to exercise it), and `ci-complete` must aggregate it.
+- [x] **Step 1:** Add a `live-view-visual` job after `scene-visual`: name `Live-view visual regression (macOS/WebGPU)`, `runs-on: macos-14`, `needs: [check, decide]`, `if: needs.decide.outputs.e2e == 'true'`, steps mirroring the probe (checkout, pnpm 10.33.4, node from `.nvmrc` with pnpm cache, `pnpm install --frozen-lockfile`, `pnpm exec playwright install chromium`, `pnpm build`, `pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-visual-regression.spec.ts --reporter=list`), plus a failure-only artifact upload of `test-results/` named `live-view-visual-report`, retention 7 days. A header comment states the probe facts and the 10x minute cost.
+- [x] **Step 2:** Add `live-view-visual` to `ci-complete`'s `needs`, its echo line, and its result loop, exactly matching the existing pattern.
+- [x] **Step 3:** Delete the probe workflow file.
+- [x] **Step 4:** Run the full check chain, each exit code on its own. Commit `build: run the live-view WebGPU visual spec on a macOS CI lane` and push.
+- [x] **Step 5:** Open the pull request: title `build: add the live-view WebGPU visual CI lane (rendering-realism lane 3)`, body with the probe evidence and `Closes #469`. Watch the PR run: the new job must appear, run (this branch touches `.github/` and `e2e/`-adjacent paths through the plan only, so confirm the gate fired; if the job skipped because the diff touches no e2e path, note that the gate works as designed and rely on the defect commit to exercise it), and `ci-complete` must aggregate it.
 
 ### Task 3: Red proof
 
-- [ ] **Step 1:** Seed a live-view-only defect in `bridge/react/webgpu-scene-view.tsx` (pick a one-line change that visibly moves the rendered frame, for example offsetting the camera target the view passes to its scene setup; verify locally first: the live-view spec fails, the harness specs pass: `pnpm exec playwright test --project=scene-webgl`). Commit `test(e2e): prove the live-view lane rejects a live-view-only render defect`, push.
-- [ ] **Step 2:** Watch the PR run: `live-view-visual` fails, `scene-visual` and every harness test pass, `ci-complete` fails. Record the run URL and the reported diff.
-- [ ] **Step 3:** Drop the defect: `git reset --hard HEAD~1 && git push --force-with-lease --no-verify`. Watch CI return to green.
+- [x] **Step 1:** Seed a live-view-only defect in `bridge/react/webgpu-scene-view.tsx` (pick a one-line change that visibly moves the rendered frame, for example offsetting the camera target the view passes to its scene setup; verify locally first: the live-view spec fails, the harness specs pass: `pnpm exec playwright test --project=scene-webgl`). Commit `test(e2e): prove the live-view lane rejects a live-view-only render defect`, push.
+- [x] **Step 2:** Watch the PR run: `live-view-visual` fails, `scene-visual` and every harness test pass, `ci-complete` fails. Record the run URL and the reported diff.
+- [x] **Step 3:** Drop the defect: `git reset --hard HEAD~1 && git push --force-with-lease --no-verify`. Watch CI return to green.
 
 ### Task 4: ADR-0171
 
-- [ ] **Step 1:** Write `docs/knowledge/decisions/ADR-0171-live-view-ci-render-lane.md`: status current; context (the live view had no CI pixel coverage, ADR-0151's known backend-split risk, issue #469); decision (the macos-14 job, the e2e-key gate, one shared baseline); the probe and red-proof evidence with run links; consequences (cost per triggered run at 10x minutes, the deliberate-refresh rule if the runner image drifts, the thin-margin watch item does not apply here since the standing tolerances hold). Humanizer pass on the prose. `pnpm knowledge:index` must exit 0.
-- [ ] **Step 2:** Commit `docs: record the live-view CI render lane in ADR-0171`, push, watch CI green.
+- [x] **Step 1:** Write `docs/knowledge/decisions/ADR-0171-live-view-ci-render-lane.md`: status current; context (the live view had no CI pixel coverage, ADR-0151's known backend-split risk, issue #469); decision (the macos-14 job, the e2e-key gate, one shared baseline); the probe and red-proof evidence with run links; consequences (cost per triggered run at 10x minutes, the deliberate-refresh rule if the runner image drifts, the thin-margin watch item does not apply here since the standing tolerances hold). Humanizer pass on the prose. `pnpm knowledge:index` must exit 0.
+- [x] **Step 2:** Commit `docs: record the live-view CI render lane in ADR-0171`, push, watch CI green.
+
+**Tasks 2 through 4 outcome (2026-09-06):** the gate fired both ways on PR #660 (the docs-and-workflow head skipped the job; the bridge-touching defect head ran it). The camera-seed defect predicted in Task 3 was masked: the capture applies the top-down preset after mount, so the initial camera never reaches the frame. The working defect was a 0.35 radian yaw around the live scene contents; the red run 34067973637 failed only `live-view-visual` (31579 pixels, ratio 0.12, byte-matching the local reading) and `ci-complete`, with every harness job green. ADR-0171 records both facts. The clean-code review added the macOS browser cache step and fixed a dangling ADR-0149 slug.
 
 ### Task 5: Reviews, merge, cleanup
 
