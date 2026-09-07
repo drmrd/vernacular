@@ -32,13 +32,13 @@ updated: 2026-09-07
 ## Status
 
 Accepted, lands with issue #442. It is the indirect-light step
+[[ADR-0148-visible-sky-and-sh-light-probe]] named as the spine's next work after the sky and its
+light probe. Realistic mode now darkens contact seams at wall-floor junctions and around placed
+furniture; schematic mode is untouched.
 
 Decision 3, the whole-frame occlusion multiply, is superseded by ADR-0172 (2026-09-07):
 occlusion now applies to indirect light only through the renderer's lighting-context
 seam. Everything else in this record stands.
-[[ADR-0148-visible-sky-and-sh-light-probe]] named as the spine's next work after the sky and its
-light probe. Realistic mode now darkens contact seams at wall-floor junctions and around placed
-furniture; schematic mode is untouched.
 
 ## Context
 
