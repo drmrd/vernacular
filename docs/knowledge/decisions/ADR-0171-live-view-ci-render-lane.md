@@ -68,8 +68,9 @@ for this gate must move the rendered scene, not the opening vantage.
 
 ## Consequences
 
-- A triggered run costs about four macOS-runner minutes (install and build dominate; the spec
-  itself takes seconds), and macOS minutes bill at ten times linux minutes. The e2e gate keeps
+- A triggered run costs about a minute and a half of macOS-runner time (the probe ran 76
+  seconds and the red proof 80; install and build dominate, and the spec itself takes
+  seconds), and macOS minutes bill at ten times linux minutes. The e2e gate keeps
   the job off docs-only and config-only pull requests; this lane's own first head demonstrated
   the skip.
 - The live path now has the same drift discipline as the harness tier: an intentional visual
