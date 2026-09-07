@@ -23,3 +23,25 @@ describe('ambient-occlusion module imports', () => {
     expect(importsStaticValueOf(source, 'three/addons/tsl/display/GTAONode.js')).toBe(false)
   })
 })
+
+describe('ambient-occlusion light blend', () => {
+  // This is a source-reading guard, not a behavior test. It pins a *lighting-model*
+  // property no runtime assertion can observe: multiplying the whole composited frame
+  // by the occlusion texture also dims direct sunlight, which is not how occlusion works
+  // in the real world: only bounced, indirect light gets blocked by nearby geometry. The
+  // physically correct blend routes the occlusion term through three r184's
+  // builtinAOContext lighting-context seam, so it darkens indirect light while leaving
+  // direct sun untouched. ADR-0172 records this decision.
+  it('applies occlusion through the indirect-light context instead of darkening the whole frame', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'engine/postprocessing/ambient-occlusion.ts'),
+      'utf8',
+    )
+
+    expect(source).toContain('builtinAOContext')
+    // Rename-proof guard: reject any outputNode assignment that multiplies the scene
+    // color by something, the shape a reintroduced whole-frame darken would take,
+    // regardless of what the multiplied variable happens to be called.
+    expect(source).not.toMatch(/outputNode\s*=\s*\w+\.mul\(/)
+  })
+})
