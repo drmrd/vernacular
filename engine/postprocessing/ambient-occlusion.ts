@@ -43,17 +43,18 @@ type WebGPURenderer = InstanceType<WebGpuModule['WebGPURenderer']>
  * scene pass's context node, which routes it into the lighting model's ambient-occlusion hook:
  * the scene's indirect diffuse and specular darken while direct sunlight keeps its full
  * strength, which is the physically correct blend. Multiplying the occlusion across the finished
- * frame instead (ADR-0151's first output node) dimmed the sun along with everything else.
- * The occlusion node reads depth from a separate depth-only prepass so that rendering it cannot
- * re-enter the context installed on the scene pass. Normals are reconstructed from depth (no
- * multiple-render-target output; see the slice spec's backend-parity posture). The pipeline's
- * default output handling carries the renderer's active tone-mapping operator, so realistic AgX
- * (ADR-0147) still applies after the pass takes over the draw. three/webgpu, three/tsl, and the
- * GTAONode addon load through loadAmbientOcclusionModules's cached lazy dynamic import so the
- * WebGPU build stays off the entry chunk and repeated calls (every realistic-mode toggle) share
- * one module load; this function still builds a fresh RenderPipeline and GTAONode per call, and
- * the returned dispose releases both passes, the occlusion node (its render target and material
- * included), and the prepass override material.
+ * frame instead (ADR-0151's first output node) dimmed the sun along with everything else. The
+ * occlusion node reads depth and view-space normals from a separate prepass so that rendering it
+ * cannot re-enter the context installed on the scene pass. That prepass renders the normals GTAO
+ * consumes instead of leaving it to reconstruct them from depth, a reconstruction that rounds
+ * creases and thin details off (ADR-0173). The pipeline's default output handling carries the
+ * renderer's active tone-mapping operator, so realistic AgX (ADR-0147) still applies after the
+ * pass takes over the draw. three/webgpu, three/tsl, and the GTAONode addon load through
+ * loadAmbientOcclusionModules's cached lazy dynamic import so the WebGPU build stays off the
+ * entry chunk and repeated calls (every realistic-mode toggle) share one module load; this
+ * function still builds a fresh RenderPipeline and GTAONode per call, and the returned dispose
+ * releases both passes, the occlusion node (its render target and material included), and the
+ * prepass override material.
  */
 // eslint-disable-next-line max-params -- renderer, scene, and camera are the RenderPipeline's irreducible construction inputs and params is the GTAONode tuning; splitting them would only wrap the same four values in a throwaway object
 export async function buildAmbientOcclusionPipeline(
@@ -62,27 +63,30 @@ export async function buildAmbientOcclusionPipeline(
   camera: THREE.Camera,
   params: AmbientOcclusionParams,
 ): Promise<AmbientOcclusionPipeline> {
-  const [{ MeshBasicNodeMaterial, RenderPipeline }, { builtinAOContext, pass, screenUV }, { ao }] =
+  const [{ MeshBasicNodeMaterial, RenderPipeline }, tslModule, { ao }] =
     await loadAmbientOcclusionModules()
+  const { builtinAOContext, normalView, pass, screenUV, vec4 } = tslModule
 
   const scenePass = pass(scene, camera)
 
-  // The occlusion node reads depth from its own pass rather than from the scene pass, so that
-  // rendering it cannot re-enter the ambient-occlusion context installed on the scene pass
-  // below. A cheap override material suffices because the occlusion node reads only the
-  // resulting depth texture, never this pass's color output. MeshBasicNodeMaterial is the
-  // minimal node material with no lighting to compute; a dedicated depth-material class is
-  // unnecessary since depth writes happen regardless of which material draws the pass.
-  const depthPrepass = pass(scene, camera)
-  const depthPrepassMaterial = new MeshBasicNodeMaterial()
-  depthPrepass.overrideMaterial = depthPrepassMaterial
+  // The occlusion node reads depth and normals from its own pass rather than from the scene
+  // pass, so that rendering it cannot re-enter the ambient-occlusion context installed on the
+  // scene pass below. The override material draws every surface as its view-space normal, so
+  // this pass's color output carries the normals GTAO samples. Rendered normals hold the true
+  // orientation of each face at a crease, where reconstructing a normal from neighboring depth
+  // samples blends the two faces into one slanted plane and washes the contact shadow out
+  // (ADR-0173). MeshBasicNodeMaterial is the minimal node material with no lighting to compute,
+  // and the normal goes through outputNode rather than colorNode because the color path clamps
+  // its result at zero (NodeMaterial's "force unsigned floats" step), which would flatten every
+  // negative normal component. The pass render target is HalfFloatType, so signed components
+  // survive unencoded and the normal is written raw: GTAONode samples the normal texture's rgb
+  // and normalizes it, with no unpacking step to match.
+  const prepass = pass(scene, camera)
+  const prepassMaterial = new MeshBasicNodeMaterial()
+  prepassMaterial.outputNode = vec4(normalView, 1)
+  prepass.overrideMaterial = prepassMaterial
 
-  // GTAONode reconstructs surface normals from depth when no normal node is supplied, which
-  // keeps the pass clear of the multiple-render-target output that diverged between backends
-  // before r174 (three.js issue #30567). The r184 type declares normalNode non-null, so the
-  // depth-only path passes null through a cast at this one call site.
-  const reconstructNormalsFromDepth = null as unknown as Parameters<typeof ao>[1]
-  const aoNode = ao(depthPrepass.getTextureNode('depth'), reconstructNormalsFromDepth, camera)
+  const aoNode = ao(prepass.getTextureNode('depth'), prepass.getTextureNode('output'), camera)
   aoNode.radius.value = params.radius
   aoNode.scale.value = params.scale
   aoNode.thickness.value = params.thickness
@@ -111,8 +115,8 @@ export async function buildAmbientOcclusionPipeline(
     dispose: () => {
       pipeline.dispose()
       scenePass.dispose()
-      depthPrepass.dispose()
-      depthPrepassMaterial.dispose()
+      prepass.dispose()
+      prepassMaterial.dispose()
       aoNode.dispose()
     },
   }

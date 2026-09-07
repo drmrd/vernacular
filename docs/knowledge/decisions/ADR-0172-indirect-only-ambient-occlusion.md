@@ -82,6 +82,11 @@ dimmed twice.
 - The gate constants in the two e2e specs are now derived against this blend; ADR-0158's
   millimetre conversions for radius and thickness are unaffected.
 
+## Amendment (2026-09-07)
+
+ADR-0173 refines the prepass this record introduced: its color target now carries the
+view-space normals GTAO consumes, replacing depth reconstruction.
+
 ## References
 
 - Issue #470 (the lane); issue #522 (the gate that judges it).

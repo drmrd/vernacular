@@ -45,3 +45,25 @@ describe('ambient-occlusion light blend', () => {
     expect(source).not.toMatch(/outputNode\s*=\s*\w+\.mul\(/)
   })
 })
+
+describe('ambient-occlusion normals source', () => {
+  // This is a source-reading guard, not a behavior test. It pins a *normal-quality*
+  // property no runtime assertion can observe: reconstructing normals from depth
+  // (derivative-based, screen-space differencing) softens and misplaces occlusion at
+  // creases and other high-curvature geometry, exactly where occlusion should read
+  // sharpest. The GTAO addon's own docs recommend normals via MRT from the main
+  // scene pass, but this repo runs a no-MRT pipeline (ADR-0151/ADR-0172), so
+  // Vernacular instead renders a separate normals texture in a depth-prepass
+  // override material, writing view-space normals (normalView) into the prepass
+  // color target instead of leaving GTAO to guess them from depth. ADR-0173
+  // records this decision.
+  it('feeds GTAO rendered view-space normals instead of reconstructing them from depth', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'engine/postprocessing/ambient-occlusion.ts'),
+      'utf8',
+    )
+
+    expect(source).not.toContain('reconstructNormalsFromDepth')
+    expect(source).toContain('normalView')
+  })
+})
