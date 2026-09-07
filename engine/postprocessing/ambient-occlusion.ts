@@ -41,7 +41,7 @@ type WebGPURenderer = InstanceType<WebGpuModule['WebGPURenderer']>
  * Builds a RenderPipeline that renders the scene with the GTAONode occlusion term applied to
  * indirect light alone. The term reaches the scene through `builtinAOContext` installed as the
  * scene pass's context node, which routes it into the lighting model's ambient-occlusion hook:
- * the light probe's indirect diffuse and specular darken while direct sunlight keeps its full
+ * the scene's indirect diffuse and specular darken while direct sunlight keeps its full
  * strength, which is the physically correct blend. Multiplying the occlusion across the finished
  * frame instead (ADR-0151's first output node) dimmed the sun along with everything else.
  * The occlusion node reads depth from a separate depth-only prepass so that rendering it cannot
@@ -69,7 +69,10 @@ export async function buildAmbientOcclusionPipeline(
 
   // The occlusion node reads depth from its own pass rather than from the scene pass, so that
   // rendering it cannot re-enter the ambient-occlusion context installed on the scene pass
-  // below. The override material draws depth alone, which is all the occlusion node reads.
+  // below. A cheap override material suffices because the occlusion node reads only the
+  // resulting depth texture, never this pass's color output. MeshBasicNodeMaterial is the
+  // minimal node material with no lighting to compute; a dedicated depth-material class is
+  // unnecessary since depth writes happen regardless of which material draws the pass.
   const depthPrepass = pass(scene, camera)
   const depthPrepassMaterial = new MeshBasicNodeMaterial()
   depthPrepass.overrideMaterial = depthPrepassMaterial
@@ -109,8 +112,8 @@ export async function buildAmbientOcclusionPipeline(
       pipeline.dispose()
       scenePass.dispose()
       depthPrepass.dispose()
-      aoNode.dispose()
       depthPrepassMaterial.dispose()
+      aoNode.dispose()
     },
   }
 }
