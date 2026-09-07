@@ -37,7 +37,14 @@ function probeLivePreviewBackend(): LivePreviewBackend {
   return canCreateWebGl2Context() ? 'webgl2' : 'unsupported'
 }
 
-/** Reports the backend the live 3D preview will render through on this runtime. */
+/**
+ * Reports the backend the live 3D preview will render through on this runtime.
+ *
+ * The answer is probed once and then cached for the life of the module, so a test that
+ * renders a real consumer without mocking this module gets whichever runtime the first
+ * caller in that file saw. Drive the answer with a module mock, or reload the module with
+ * `vi.resetModules()` between cases.
+ */
 export function detectLivePreviewBackend(): LivePreviewBackend {
   probedBackend ??= probeLivePreviewBackend()
   return probedBackend
