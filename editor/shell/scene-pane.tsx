@@ -8,8 +8,12 @@ import {
 } from 'react'
 
 import { sceneGraphForFloor, sceneGraphHasGeometry } from '../../core'
-import { detectRenderBackend } from '../../engine'
-import { SceneCanvas, useActiveFloorId, useSceneGraph } from '../../bridge'
+import {
+  SceneCanvas,
+  detectLivePreviewBackend,
+  useActiveFloorId,
+  useSceneGraph,
+} from '../../bridge'
 import {
   LIVE_SCENE_CANVAS_TEST_ID,
   SCENE_READY_ATTRIBUTE,
@@ -65,12 +69,12 @@ export function ScenePane(): ReactElement {
   const activeFloorId = useActiveFloorId()
   const paneRef = useRef<HTMLDivElement | null>(null)
   const isSceneReady = useSceneReady(paneRef)
-  if (detectRenderBackend() !== 'webgpu') {
+  if (detectLivePreviewBackend() === 'unsupported') {
     return (
       <EmptyState
         asRegion={false}
         title="3D preview unavailable"
-        description="Your browser does not support WebGPU, which the 3D preview needs. Your plan and the 2D editor are unaffected."
+        description="Your browser cannot drive a 3D graphics context, which the preview needs. Your plan and the 2D editor are unaffected."
       />
     )
   }
