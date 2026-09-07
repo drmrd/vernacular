@@ -43,6 +43,19 @@ describe('detectLivePreviewBackend', () => {
     expect(await detectBackend()).toBe('unsupported')
   })
 
+  it('reports the preview unsupported when the context probe throws', async () => {
+    vi.stubGlobal('navigator', {})
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() => {
+      throw new Error('context creation blocked')
+    }) as never)
+
+    // Privacy-hardening extensions throw from getContext rather than returning null,
+    // precisely to defeat probes like this one. The probe runs during render and the
+    // application mounts no error boundary, so a throw escaping here would blank the
+    // whole editor rather than costing the user a 3D preview.
+    expect(await detectBackend()).toBe('unsupported')
+  })
+
   it('creates at most one probe context however often it is asked', async () => {
     vi.stubGlobal('navigator', {})
     stubWebGl2Context({})
