@@ -24,7 +24,7 @@ sourceFiles:
     e2e/tests/scene-solar.spec.ts,
   ]
 status: current
-updated: 2026-07-04
+updated: 2026-09-07
 ---
 
 # ADR-0151: The ambient-occlusion render pipeline and its frame takeover
@@ -32,6 +32,10 @@ updated: 2026-07-04
 ## Status
 
 Accepted, lands with issue #442. It is the indirect-light step
+
+Decision 3, the whole-frame occlusion multiply, is superseded by ADR-0172 (2026-09-07):
+occlusion now applies to indirect light only through the renderer's lighting-context
+seam. Everything else in this record stands.
 [[ADR-0148-visible-sky-and-sh-light-probe]] named as the spine's next work after the sky and its
 light probe. Realistic mode now darkens contact seams at wall-floor junctions and around placed
 furniture; schematic mode is untouched.
