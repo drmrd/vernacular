@@ -485,7 +485,10 @@ function openingGapsAlong(
 function drawSurfacePaintLayer(ctx: PlanDrawingContext, options: DrawPlanOptions): void {
   if (options.surfacePaint === undefined) return
   const { walls, viewport } = options
-  drawSurfacePaint(ctx, { walls, viewport, ...options.surfacePaint })
+  // The bands break at the same jambs the poche and face lines do, so the layer
+  // needs the openings as well as the walls.
+  const openings = (options.openings ?? []).map((opening) => opening.node)
+  drawSurfacePaint(ctx, { walls, viewport, openings, ...options.surfacePaint })
 }
 
 /** Paint each dimension as an annotation overlay above the plan. */
