@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, waitFor, act } from '@testing-library/react'
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import type { SceneGraph } from '../../core'
 import type { LivePreviewBackend } from '../../bridge'
 import { ScenePane } from './scene-pane'
@@ -75,15 +75,15 @@ vi.mock('../../bridge', () => ({
   detectLivePreviewBackend: () => mockBackend,
 }))
 
-describe('ScenePane', () => {
-  afterEach(() => {
-    mockSceneGraph = graphWithGeometry
-    mockBackend = 'webgpu'
-    suspendSceneCanvasOnce = false
-    sceneCanvasResolved = false
-    resolveSceneCanvas = null
-  })
+afterEach(() => {
+  mockSceneGraph = graphWithGeometry
+  mockBackend = 'webgpu'
+  suspendSceneCanvasOnce = false
+  sceneCanvasResolved = false
+  resolveSceneCanvas = null
+})
 
+describe('ScenePane backend gating', () => {
   it('renders the styled empty-state fallback when the runtime can render no 3D at all', () => {
     mockBackend = 'unsupported'
 
@@ -134,6 +134,40 @@ describe('ScenePane', () => {
     expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
   })
 
+  it('says the preview is running without WebGPU when it falls back to WebGL 2', () => {
+    mockBackend = 'webgl2'
+
+    render(<ScenePane />)
+
+    // The two backends can shade a frame differently, so the pane says which one is
+    // driving rather than letting the difference look like a bug.
+    expect(screen.getByText(/running without WebGPU/i)).toBeInTheDocument()
+    // The notice sits beside a working preview, not in place of one.
+    expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
+  })
+
+  it('drops the backend notice once the user dismisses it', () => {
+    mockBackend = 'webgl2'
+
+    render(<ScenePane />)
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }))
+
+    // One showing is the point: the message is worth saying, not worth keeping a
+    // stripe across the view for the rest of the visit.
+    expect(screen.queryByText(/running without WebGPU/i)).toBeNull()
+    expect(screen.getByTestId('live-scene-canvas')).toBeInTheDocument()
+  })
+
+  it('shows no backend notice when the preview runs on WebGPU', () => {
+    mockBackend = 'webgpu'
+
+    render(<ScenePane />)
+
+    expect(screen.queryByText(/running without WebGPU/i)).toBeNull()
+  })
+})
+
+describe('ScenePane scene readiness', () => {
   it('keeps the live scene canvas mounted and overlays empty-floor guidance when the active floor has no geometry', async () => {
     mockBackend = 'webgpu'
     mockSceneGraph = emptyGraph
