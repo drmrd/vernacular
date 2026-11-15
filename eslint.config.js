@@ -28,140 +28,352 @@ const layerRules = [
   },
 ]
 
-export default tseslint.config(
+const reactPackages = {
+  regex: '^(react|react-dom)(/.*)?$|^@react-three/',
+  message: 'This layer does not import React (ADR-0001).',
+}
+const threePackages = {
+  regex: '^three(/.*)?$',
+  message: 'Only engine/ imports Three.js (ADR-0001).',
+}
+const reactThreePackages = {
+  regex: '^@react-three/',
+  message: 'Only bridge/ imports @react-three (ADR-0001).',
+}
+
+const engineTestingEntry = {
+  regex: '(^|/)engine/testing(/.*)?$',
+  message: 'The engine testing entry is for tests only.',
+}
+const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
+
+const nodeGlobalNames = new Set(Object.keys(globals.node))
+const browserOnlyGlobals = Object.keys(globals.browser)
+  .filter((name) => !nodeGlobalNames.has(name))
+  .map((name) => ({ name, message: 'core/ uses no global that exists only in a browser.' }))
+
+const layerPurityBlocks = [
   {
-    ignores: [
-      'dist',
-      'coverage',
-      'node_modules',
-      '.superpowers',
-      'pnpm-lock.yaml',
-      'storybook-static',
-      'playwright-report',
-      'test-results',
-      'e2e/.cache',
-      '.lighthouseci',
-      'reports',
-      '.stryker-tmp',
-      '.claude/worktrees',
-      // emitted by `tsc -b` from the tsconfig.node.json composite project
-      'vite.config.js',
-      'vite.config.d.ts',
-      'vitest.config.js',
-      'vitest.config.d.ts',
-    ],
+    files: ['core/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages, threePackages] }] },
   },
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    languageOptions: {
-      ecmaVersion: 2022,
-      globals: globals.browser,
-    },
-    plugins: {
-      'react-hooks': reactHooks,
-      'react-refresh': reactRefresh,
-      boundaries,
-      'unused-imports': unusedImports,
-    },
-    settings: {
-      'boundaries/elements': layerElements,
-      'import/resolver': { node: { extensions: ['.ts', '.tsx', '.js', '.jsx'] } },
-      'boundaries/include': [
-        'core/**',
-        'storage/**',
-        'engine/**',
-        'bridge/**',
-        'editor/**',
-        'app/**',
-      ],
-    },
+    // Shipped core/ code must run with no browser. The unit tests of core/ run
+    // under jsdom and may use the DOM to check output, so they are left out.
+    files: ['core/**'],
+    ignores: ['core/**/*.test.ts', 'core/**/*.test.tsx'],
+    rules: { 'no-restricted-globals': ['error', ...browserOnlyGlobals] },
+  },
+  {
+    files: ['storage/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages, threePackages] }] },
+  },
+  {
+    files: ['engine/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages] }] },
+  },
+  {
+    files: ['bridge/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [threePackages] }] },
+  },
+  {
+    files: ['editor/**', 'app/**'],
     rules: {
-      ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
-
-      // Naming
-      '@typescript-eslint/naming-convention': [
+      'no-restricted-imports': ['error', { patterns: [threePackages, reactThreePackages] }],
+    },
+  },
+  {
+    // Later blocks replace the rule's options, so these repeat the layer patterns.
+    files: ['bridge/**'],
+    ignores: testFileGlobs,
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [threePackages, engineTestingEntry] }],
+    },
+  },
+  {
+    files: ['editor/**', 'app/**'],
+    ignores: testFileGlobs,
+    rules: {
+      'no-restricted-imports': [
         'error',
-        { selector: 'default', format: ['camelCase'], leadingUnderscore: 'allow' },
-        { selector: 'variable', format: ['camelCase', 'UPPER_CASE', 'PascalCase'] },
-        { selector: 'function', format: ['camelCase', 'PascalCase'] },
-        { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
-        { selector: 'typeLike', format: ['PascalCase'] },
-        { selector: 'enumMember', format: ['UPPER_CASE', 'PascalCase'] },
-        { selector: 'import', format: ['camelCase', 'PascalCase'] },
+        { patterns: [threePackages, reactThreePackages, engineTestingEntry] },
       ],
+    },
+  },
+]
 
-      // Size and shape limits
-      'max-lines-per-function': [
-        'warn',
-        { max: 40, skipBlankLines: true, skipComments: true, IIFEs: true },
-      ],
-      'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
-      'max-params': ['warn', 3],
-      complexity: ['warn', 10],
-      'max-depth': ['warn', 3],
-      'no-nested-ternary': 'error',
-      'no-magic-numbers': [
-        'warn',
-        { ignore: [-1, 0, 1, 2, 100], ignoreArrayIndexes: true, enforceConst: true },
-      ],
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+/** @typedef {{ file: string, rule: string, issue: number, max?: number }} LintException */
 
-      // Unused
-      'unused-imports/no-unused-imports': 'error',
-      'unused-imports/no-unused-vars': [
-        'warn',
-        { vars: 'all', varsIgnorePattern: '^_', args: 'after-used', argsIgnorePattern: '^_' },
-      ],
+/**
+ * The only place in this config where a limit is raised or a rule is turned
+ * off for a file. Inline disable comments with a reason stay allowed (ADR-0185).
+ * Each entry names the issue that removes it; a size-rule entry caps the file
+ * at its measured value.
+ *
+ * @type {LintException[]}
+ */
+export const lintExceptions = [
+  { file: 'app/app.test.tsx', rule: 'max-lines', issue: 685, max: 434 },
+  { file: 'app/use-project-actions.test.ts', rule: 'max-lines', issue: 685, max: 411 },
+  {
+    file: 'bridge/autosave/create-autosave.test.ts',
+    rule: 'max-lines-per-function',
+    issue: 685,
+    max: 223,
+  },
+  {
+    file: 'core/commands/handlers/furniture-commands.test.ts',
+    rule: 'max-lines',
+    issue: 686,
+    max: 335,
+  },
+  {
+    file: 'core/commands/handlers/opening-commands.test.ts',
+    rule: 'max-lines',
+    issue: 686,
+    max: 371,
+  },
+  {
+    file: 'core/commands/handlers/opening-commands.test.ts',
+    rule: 'complexity',
+    issue: 686,
+    max: 23,
+  },
+  {
+    file: 'core/topology/wall-footprint.test.ts',
+    rule: 'max-lines-per-function',
+    issue: 687,
+    max: 152,
+  },
+  { file: 'engine/scene/wall-builder.ts', rule: 'max-lines', issue: 687, max: 307 },
+  { file: 'engine/scene/wall-builder.test.ts', rule: 'max-lines', issue: 687, max: 356 },
+  { file: 'editor/shell/inspector.tsx', rule: 'max-lines', issue: 688, max: 427 },
+  { file: 'editor/shell/inspector.tsx', rule: 'max-lines-per-function', issue: 688, max: 87 },
+  { file: 'editor/shell/inspector.tsx', rule: 'complexity', issue: 688, max: 11 },
+  { file: 'editor/plan/hit-test.test.ts', rule: 'max-lines', issue: 688, max: 307 },
+  {
+    file: 'bridge/react/framed-scene.test.ts',
+    rule: 'max-lines-per-function',
+    issue: 689,
+    max: 283,
+  },
+  { file: 'bridge/react/scene-nav-toolbar.test.tsx', rule: 'max-lines', issue: 689, max: 378 },
+  {
+    file: 'bridge/react/scene-selection.tsx',
+    rule: 'react-refresh/only-export-components',
+    issue: 689,
+  },
+  {
+    file: 'engine/scene/near-wall-transparency.test.ts',
+    rule: 'max-lines',
+    issue: 689,
+    max: 451,
+  },
+  {
+    file: 'engine/scene/near-wall-transparency.test.ts',
+    rule: 'max-lines-per-function',
+    issue: 689,
+    max: 155,
+  },
+  { file: 'editor/plan/draw-plan.test.ts', rule: 'max-lines-per-function', issue: 690, max: 168 },
+  {
+    file: 'editor/plan/draw-underlay.test.ts',
+    rule: 'max-lines-per-function',
+    issue: 690,
+    max: 165,
+  },
+  {
+    file: 'editor/plan/use-plan-authoring.test.ts',
+    rule: 'max-lines-per-function',
+    issue: 691,
+    max: 201,
+  },
+  { file: 'editor/shell/editor-shell.test.tsx', rule: 'max-lines', issue: 691, max: 410 },
+  {
+    file: 'editor/shell/editor-shell.test.tsx',
+    rule: 'max-lines-per-function',
+    issue: 691,
+    max: 351,
+  },
+  {
+    file: 'editor/design-system/notifications/use-notifications.tsx',
+    rule: 'react-refresh/only-export-components',
+    issue: 692,
+  },
+  {
+    file: 'editor/design-system/design-system.stories.tsx',
+    rule: 'max-lines',
+    issue: 500,
+    max: 347,
+  },
+  {
+    file: 'editor/design-system/design-system.stories.tsx',
+    rule: 'max-lines-per-function',
+    issue: 500,
+    max: 235,
+  },
+]
 
-      // Layer boundaries
-      'boundaries/dependencies': ['error', { default: 'disallow', rules: layerRules }],
+const lengthOptions = { skipBlankLines: true, skipComments: true }
+const functionLengthOptions = { ...lengthOptions, IIFEs: true }
+// Test, spec, contract, and story files carry their own function-length options.
+const relaxedFunctionLengthFile = /\.(test|spec|stories)\.tsx?$|-contract\.ts$/
+
+/** The rule's standard options with only the limit replaced by `max`. */
+function sizeRuleSetting(rule, max, file) {
+  switch (rule) {
+    case 'max-lines':
+      return ['error', { ...lengthOptions, max }]
+    case 'max-lines-per-function':
+      return [
+        'error',
+        relaxedFunctionLengthFile.test(file)
+          ? { ...lengthOptions, max }
+          : { ...functionLengthOptions, max },
+      ]
+    default:
+      return ['error', max]
+  }
+}
+
+/** @param {LintException} exception */
+function exceptionBlock({ file, rule, max }) {
+  const setting = max === undefined ? 'off' : sizeRuleSetting(rule, max, file)
+  return { files: [file], rules: { [rule]: setting } }
+}
+
+/** @param {LintException[]} exceptions */
+export function buildConfig(exceptions = lintExceptions) {
+  return tseslint.config(
+    { linterOptions: { reportUnusedDisableDirectives: 'error' } },
+    {
+      ignores: [
+        'dist',
+        'coverage',
+        'node_modules',
+        '.superpowers',
+        'pnpm-lock.yaml',
+        'storybook-static',
+        'playwright-report',
+        'test-results',
+        'e2e/.cache',
+        '.lighthouseci',
+        'reports',
+        '.stryker-tmp',
+        '.claude/worktrees',
+        // generated by msw, not authored here
+        'public/mockServiceWorker.js',
+        // emitted by `tsc -b` from the tsconfig.node.json composite project
+        'vite.config.js',
+        'vite.config.d.ts',
+        'vitest.config.js',
+        'vitest.config.d.ts',
+      ],
     },
-  },
-  {
-    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts'],
-    rules: {
-      'no-magic-numbers': 'off',
-      'max-lines-per-function': ['warn', { max: 120, skipBlankLines: true, skipComments: true }],
+    {
+      files: ['**/*.{ts,tsx}'],
+      extends: [js.configs.recommended, ...tseslint.configs.recommended],
+      languageOptions: {
+        ecmaVersion: 2022,
+        globals: globals.browser,
+      },
+      plugins: {
+        'react-hooks': reactHooks,
+        'react-refresh': reactRefresh,
+        boundaries,
+        'unused-imports': unusedImports,
+      },
+      settings: {
+        'boundaries/elements': layerElements,
+        'import/resolver': { node: { extensions: ['.ts', '.tsx', '.js', '.jsx'] } },
+        'boundaries/include': [
+          'core/**',
+          'storage/**',
+          'engine/**',
+          'bridge/**',
+          'editor/**',
+          'app/**',
+        ],
+      },
+      rules: {
+        ...reactHooks.configs.recommended.rules,
+        'react-hooks/exhaustive-deps': 'error',
+        'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
+
+        // Naming
+        '@typescript-eslint/naming-convention': [
+          'error',
+          { selector: 'default', format: ['camelCase'], leadingUnderscore: 'allow' },
+          { selector: 'variable', format: ['camelCase', 'UPPER_CASE', 'PascalCase'] },
+          { selector: 'function', format: ['camelCase', 'PascalCase'] },
+          { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
+          { selector: 'typeLike', format: ['PascalCase'] },
+          { selector: 'enumMember', format: ['UPPER_CASE', 'PascalCase'] },
+          { selector: 'import', format: ['camelCase', 'PascalCase'] },
+        ],
+
+        // Size and shape limits
+        'max-lines-per-function': ['error', { ...functionLengthOptions, max: 40 }],
+        'max-lines': ['error', { ...lengthOptions, max: 300 }],
+        'max-params': ['error', 3],
+        complexity: ['error', 10],
+        'max-depth': ['error', 3],
+        'no-nested-ternary': 'error',
+        'no-magic-numbers': [
+          'error',
+          { ignore: [-1, 0, 1, 2, 100], ignoreArrayIndexes: true, enforceConst: true },
+        ],
+        'no-console': ['error', { allow: ['warn', 'error'] }],
+
+        // Unused
+        'unused-imports/no-unused-imports': 'error',
+        'unused-imports/no-unused-vars': [
+          'error',
+          { vars: 'all', varsIgnorePattern: '^_', args: 'after-used', argsIgnorePattern: '^_' },
+        ],
+
+        // Layer boundaries
+        'boundaries/dependencies': ['error', { default: 'disallow', rules: layerRules }],
+      },
     },
-  },
-  {
-    // Stories double as component tests: their render scaffolding and `play`
-    // interactions carry literal layout values and longer bodies, the same way
-    // test files do. Relax the same rules the test override relaxes.
-    files: ['**/*.stories.{ts,tsx}'],
-    rules: {
-      'no-magic-numbers': 'off',
-      'max-lines-per-function': ['warn', { max: 120, skipBlankLines: true, skipComments: true }],
+    {
+      files: testFileGlobs,
+      rules: {
+        'no-magic-numbers': 'off',
+        'max-lines-per-function': ['error', { ...lengthOptions, max: 120 }],
+      },
     },
-  },
-  {
-    files: ['vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      globals: globals.node,
+    {
+      // Stories double as component tests: their render scaffolding and `play`
+      // interactions carry literal layout values and longer bodies, the same way
+      // test files do. Relax the same rules the test override relaxes.
+      files: ['**/*.stories.{ts,tsx}'],
+      rules: {
+        'no-magic-numbers': 'off',
+        'max-lines-per-function': ['error', { ...lengthOptions, max: 120 }],
+      },
     },
-    rules: {
-      'no-magic-numbers': 'off',
+    {
+      files: ['vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
+      languageOptions: {
+        ecmaVersion: 2022,
+        globals: globals.node,
+      },
+      rules: {
+        'no-magic-numbers': 'off',
+      },
     },
-  },
-  {
-    files: ['**/registries/**/*.ts'],
-    rules: {
-      // Registries are declarative data tables; numeric material parameters are
-      // inherent data, not unexplained constants.
-      'no-magic-numbers': 'off',
+    {
+      files: ['**/registries/**/*.ts'],
+      rules: {
+        // Registries are declarative data tables; numeric material parameters are
+        // inherent data, not unexplained constants.
+        'no-magic-numbers': 'off',
+      },
     },
-  },
-  {
-    files: ['scripts/story-coverage/uncovered-components.ts'],
-    rules: {
-      // The story-coverage allowlist is a declarative data table with one entry
-      // per tolerated uncovered component module; its length is inherent to its
-      // purpose and shrinks as story coverage lands, so the file-length cap does
-      // not apply.
-      'max-lines': 'off',
-    },
-  },
-)
+    ...layerPurityBlocks,
+    ...exceptions.map(exceptionBlock),
+  )
+}
+
+export default buildConfig()

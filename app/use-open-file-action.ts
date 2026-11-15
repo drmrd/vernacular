@@ -3,12 +3,8 @@ import { commitProject, createEditorSession } from '../bridge'
 import { importProjectFile } from '../storage'
 import { failureMessage } from './failure-message'
 import { validateLoadedProject } from './validate-loaded-project'
-import {
-  defaultStoreBackend,
-  guardSessionSwap,
-  recordRecent,
-  type ProjectActionsContext,
-} from './use-project-actions'
+import { defaultStoreBackend, guardSessionSwap, recordRecent } from './project-action-helpers'
+import type { ProjectActionsContext } from './use-project-actions'
 
 // Reads the file's bytes through a FileReader, which both browsers and the jsdom
 // test File implement (jsdom's Blob exposes no async byte readers).

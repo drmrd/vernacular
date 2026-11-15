@@ -29,6 +29,7 @@ import { RemoveControl } from './remove-control'
 // without discarding any precision a fractional inch could plausibly need in mm.
 const FRACTION_RESULT_PRECISION = 4
 
+/* eslint-disable no-magic-numbers -- the inch-fraction table is data: each numerator and denominator is the fraction it names. */
 const FRACTION_CHIPS = [
   { label: '1/16"', text: '1/16', fraction: 1 / 16 },
   { label: '1/8"', text: '1/8', fraction: 1 / 8 },
@@ -39,6 +40,7 @@ const FRACTION_CHIPS = [
   { label: '3/4"', text: '3/4', fraction: 3 / 4 },
   { label: '7/8"', text: '7/8', fraction: 7 / 8 },
 ] as const
+/* eslint-enable no-magic-numbers */
 
 /**
  * Replaces the fractional part of a dimension while preserving its whole inches:

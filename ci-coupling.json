@@ -12,6 +12,7 @@
   "runAllPrefixes": ["src/"],
   "edges": {
     "schema/": ["core"],
+    "scripts/schema/": ["core"],
     "resources/": ["engine"]
   }
 }

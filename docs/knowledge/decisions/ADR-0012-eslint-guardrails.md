@@ -12,7 +12,7 @@ related:
   ]
 sourceFiles: [eslint.config.js, .claude/rules.md, .jscpd.json]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0012: ESLint guardrails and layer boundary enforcement
@@ -22,7 +22,8 @@ updated: 2026-11-14
 > Amended by [[ADR-0185-lint-warnings-fail-and-exceptions-are-recorded]] on 2026-11-14. Every
 > rule that warned becomes an error at its configured limit, `pnpm lint` allows no warning, and
 > exceptions sit in one recorded list. ADR-0185 also adds the ban on Three.js imports outside
-> `engine/` that this record deferred. Until that work lands, the rules warn as described below.
+> `engine/` that this record deferred. The decision below describes the original warning level.
+> Update 2026-11-15: ADR-0185 moved every rule to error level.
 
 Accepted. The boundary-enforcement portion was repaired and given a fitness
 test; see ADR-0017.

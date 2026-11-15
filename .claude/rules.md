@@ -78,7 +78,7 @@ Real duplication: eliminate. Coincidental similarity: leave. Premature abstracti
 
 ### Cyclomatic complexity
 
-Flag any function above 10; investigate above 5. ESLint enforces this with a warning at 10 and an error at 15.
+Flag any function above 10; investigate above 5. ESLint fails a function above 10. A file on the exception list in `eslint.config.js` has its own limit until the issue named there removes it.
 
 ### SOLID
 

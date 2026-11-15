@@ -6,7 +6,6 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 import type {
   Floor,
@@ -32,7 +31,8 @@ import {
   sceneGraphForFloor,
 } from '../../core'
 import { parseFurnitureModel } from '../../engine'
-import { findByEntityId } from '../../engine/testing'
+import { Mesh, findByEntityId } from '../../engine/testing'
+import type { Object3D } from '../../engine/testing'
 import { createFramedSceneReconciler } from './framed-scene-reconciler'
 
 const CUBE_GLB = resolve(dirname(fileURLToPath(import.meta.url)), '../../e2e/fixtures/cube.glb')
@@ -170,10 +170,10 @@ function chairAt(x: number, id: string, contentHash = 'c'): FurnitureInstance {
   })
 }
 
-function firstMeshMaterialName(group: THREE.Object3D): string {
-  let mesh: THREE.Mesh | undefined
+function firstMeshMaterialName(group: Object3D): string {
+  let mesh: Mesh | undefined
   group.traverse((object) => {
-    if (mesh === undefined && object instanceof THREE.Mesh) {
+    if (mesh === undefined && object instanceof Mesh) {
       mesh = object
     }
   })

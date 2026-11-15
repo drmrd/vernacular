@@ -16,12 +16,14 @@ export interface FloorPattern extends RegistryEntry {
 
 export const FLOOR_PATTERN_REGISTRY_VERSION = 1
 
-const floorPattern = (
-  id: string,
-  hexes: string[],
-  scale: number,
-  roughness: number,
-): FloorPattern => ({
+interface FloorPatternOptions {
+  id: string
+  hexes: string[]
+  scale: number
+  roughness: number
+}
+
+const floorPattern = ({ id, hexes, scale, roughness }: FloorPatternOptions): FloorPattern => ({
   id,
   colors: hexes.map((hex) => colorFromHex(hex)),
   scale,
@@ -32,10 +34,10 @@ export const builtinFloorPatterns: Registry<FloorPattern> = createRegistry(
   FLOOR_PATTERN_REGISTRY_VERSION,
   [
     // Oak plank with a darker grain line; a plank is roughly 150 mm wide.
-    floorPattern('plank', ['#a9824f', '#7c5a33'], 150, 0.6),
+    floorPattern({ id: 'plank', hexes: ['#a9824f', '#7c5a33'], scale: 150, roughness: 0.6 }),
     // Ceramic tile in a square grid with a pale grout joint; 300 mm tiles.
-    floorPattern('tile-grid', ['#cfc7ba', '#b8b0a3'], 300, 0.3),
+    floorPattern({ id: 'tile-grid', hexes: ['#cfc7ba', '#b8b0a3'], scale: 300, roughness: 0.3 }),
     // Parquet hardwood in small interlocking blocks; a 100 mm module.
-    floorPattern('parquet', ['#9c6f3d', '#caa06a'], 100, 0.55),
+    floorPattern({ id: 'parquet', hexes: ['#9c6f3d', '#caa06a'], scale: 100, roughness: 0.55 }),
   ],
 )

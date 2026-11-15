@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0185: Lint warnings fail CI, and exceptions are one recorded list
@@ -30,7 +30,7 @@ updated: 2026-11-14
 Current. The owner chose on 2026-11-14 that warnings fail CI and that each existing warning is
 either fixed or recorded against the issue that removes it. The owner approved the rest the same
 day, with section 5.5 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. It amends
-ADR-0012. The lint configuration changes with #683. Until then the rules warn.
+ADR-0012. The lint configuration changed with #683, and every rule is now at error level.
 
 ## Context
 
@@ -58,6 +58,11 @@ only when a file in it changed, so a pull request that changes only source does 
   Three.js package and uses no browser-only global. `storage/` imports neither package. `engine/`
   imports no React package. Only `engine/` imports `three`, and only `bridge/` imports
   `@react-three/*`.
+- The browser-global rule covers the production files of `core/` only. Test files there
+  (`core/**/*.test.ts` and `core/**/*.test.tsx`) are outside it, because the unit tests run under
+  jsdom and two SVG exporter tests use `DOMParser` to check the exported markup. The rule protects
+  shipped `core/` code, which must run with no browser. The React and Three.js import rules still
+  apply to those test files. The owner decided this on 2026-11-15.
 - An import cycle through value imports fails. A cycle of type-only imports is allowed.
 - The tests under `tests/` run on every pull request that changes a source layer.
 
@@ -72,6 +77,11 @@ import order inside each layer is left to the later stage specifications.
   describe one limit per rule and the exception list.
 - The format suites under `tests/format/` now run before a merge, not after it.
 - Inline disable comments stay where they carry a reason. A new one needs a reason.
+- Section 9.8 of the design specification no longer lists `jsdoc/require-jsdoc` or
+  `import/no-internal-modules`, because neither was ever configured and no plugin for them is
+  installed. It describes `jscpd` as the report that `pnpm dup` prints, not as a lint rule. The
+  engine testing entry (`engine/testing`) re-exports the few Three.js names that two `bridge/react`
+  tests need, and lint fails a production file of `bridge/`, `editor/`, or `app/` that imports it.
 
 ## References
 

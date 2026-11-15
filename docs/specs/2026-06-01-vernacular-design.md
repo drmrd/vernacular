@@ -950,23 +950,26 @@ At PR completion, `clean-code-reviewer` runs once over the full PR diff. Report 
 
 ### 9.8 Automated guardrails (lint level)
 
-Configured in `eslint.config.js`:
+Configured in `eslint.config.js`. Each rule has one limit, and lint fails above it. `pnpm lint` is `eslint . --max-warnings 0`, and no rule is at warning level (ADR-0185).
 
-- `max-lines-per-function`: 40 warn, 80 error
-- `max-lines`: 300 warn, 500 error
-- `max-params`: 3 warn, 5 error
-- `complexity`: 10 warn, 15 error
-- `max-depth`: 3 warn, 4 error
+- `max-lines-per-function`: 40 (120 in test, contract, and story files)
+- `max-lines`: 300
+- `max-params`: 3
+- `complexity`: 10
+- `max-depth`: 3
 - `@typescript-eslint/naming-convention` strict
 - `no-magic-numbers` with allowlist
-- `no-nested-ternary`, `no-console`, `import/no-cycle`
-- `import/no-internal-modules` for layer-boundary enforcement
-- `boundaries/element-types` (eslint-plugin-boundaries): enforces `core/` cannot import React/Three.js
-- Custom `no-direct-three-imports-outside-engine`
-- Custom `no-direct-storage-API-outside-storage`
-- `jsdoc/require-jsdoc` on public APIs
+- `no-nested-ternary`, `no-console`
+- `boundaries/dependencies` (eslint-plugin-boundaries): enforces the direction of the six layers
 - `unused-imports`
-- `jscpd` for duplicate detection at build level
+
+Duplicate detection is not an ESLint rule. `pnpm dup` runs `jscpd` and only reports.
+
+Exceptions sit in one list in `eslint.config.js`, the only place in the config where a limit is raised or a rule is turned off for a file. Each entry names a file, a rule, and the issue that removes the entry. For a size rule it also gives the measured limit of that file. A test fails an entry that is no longer needed. An inline disable comment is also allowed, and it needs a reason (ADR-0185).
+
+Lint holds the purity rules of each layer. `core/` imports no React or Three.js package, and its production files use no global that exists only in a browser. `storage/` imports no React or Three.js package. `engine/` imports no React package. Only `engine/` imports `three`, and only `bridge/` imports `@react-three/*`. The engine testing entry (`engine/testing`) is for test files only, and lint fails a production file of `bridge/`, `editor/`, or `app/` that imports it.
+
+A test under `tests/architecture/` fails a cycle of value imports among the files of the six layers. A cycle of type-only imports is allowed.
 
 Pre-commit (incremental) and CI (full).
 

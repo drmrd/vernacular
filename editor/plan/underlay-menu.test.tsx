@@ -8,7 +8,7 @@ const FLOOR_ID = 'ground'
 
 afterEach(cleanup)
 
-describe('UnderlayMenu', () => {
+describe('UnderlayMenu launcher and flyout opening', () => {
   it('renders a closed Underlay launcher with no Load image item when there are no underlays', () => {
     render(
       <UnderlayMenu
@@ -79,7 +79,9 @@ describe('UnderlayMenu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('menuitem', { name: /load image/i })).toBeInTheDocument()
   })
+})
 
+describe('UnderlayMenu flyout dismissal and image loading', () => {
   it('closes the flyout when Escape is pressed', async () => {
     const user = userEvent.setup()
     render(
@@ -170,7 +172,9 @@ describe('UnderlayMenu', () => {
     expect(onLoadImage).toHaveBeenCalledTimes(1)
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
+})
 
+describe('UnderlayMenu underlay rows and calibration', () => {
   it("renders a row per underlay whose Calibrate button reports the underlay's id", async () => {
     const user = userEvent.setup()
     const underlay = { id: 'u1', opacity: 0.5, visible: true } as Underlay
