@@ -29,6 +29,7 @@ import {
   InMemoryProjectStore,
   InMemoryRecentProjectStore,
   probeStorageCapabilities,
+  type ActiveProjectIdStore,
   type AssetCache,
   type ProjectStorage,
   type ProjectStore,
@@ -40,6 +41,7 @@ import { createInitialProject } from './create-initial-project'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
 import { resolveProjectStorage } from './resolve-project-store'
+import { useActiveProjectId } from './use-active-project-id'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useSessionKey } from './use-session-key'
@@ -47,7 +49,7 @@ import { useDiscardPrompt } from './use-discard-prompt'
 import { useWorkspaceState } from './use-workspace-state'
 import { validateLoadedProject } from './validate-loaded-project'
 
-export const DEFAULT_PROJECT_ID = 'current'
+export { DEFAULT_PROJECT_ID } from './use-active-project-id'
 
 // Test-only render-harness seam. When `?fixture=scene-harness` is present the app
 // mounts the deterministic three-dimensional render harness instead of the editor, so
@@ -115,10 +117,13 @@ export interface AppProps {
   /** Injected asset cache; defaults to the boot-resolved cache, or in-memory under an injected store. */
   assets?: AssetCache
   resolveStore?: () => Promise<ProjectStore>
+  /** An override for tests; when set, the remembered id is not read. */
   projectId?: string
+  /** Remembers which project opens at start; defaults to in memory, nothing remembered. */
+  activeProjectIds?: ActiveProjectIdStore
   recentProjects?: RecentProjectStore
   snapshots?: SnapshotsPort
-  resolveSnapshots?: () => Promise<SnapshotsPort | undefined>
+  resolveSnapshots?: (projectId: string) => Promise<SnapshotsPort | undefined>
 }
 
 export function App(props: AppProps) {
@@ -147,18 +152,11 @@ export function App(props: AppProps) {
   )
 }
 
-function AppWorkspace({
-  store: providedStore,
-  assets: providedAssets,
-  resolveStore,
-  projectId = DEFAULT_PROJECT_ID,
-  recentProjects: providedRecentProjects,
-  snapshots: providedSnapshots,
-  resolveSnapshots,
-}: AppProps) {
-  const { store, assets, session, setSession, error, retryBoot, startFreshProject } =
-    useProjectBoot({ providedStore, providedAssets, resolveStore, projectId })
-  const snapshots = useResolvedSnapshots(providedSnapshots, resolveSnapshots)
+function AppWorkspace(props: AppProps) {
+  const { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject } =
+    useProjectBoot(props)
+  const snapshots = useResolvedSnapshots(props.snapshots, props.resolveSnapshots, projectId)
+  const providedRecentProjects = props.recentProjects
   const recentProjects = useMemo(
     () => providedRecentProjects ?? new InMemoryRecentProjectStore(),
     [providedRecentProjects],
@@ -169,7 +167,13 @@ function AppWorkspace({
   if (error !== null) {
     return bootErrorView(error, retryBoot, startFreshProject)
   }
-  if (store === null || assets === null || session === null || capabilities === null) {
+  if (
+    store === null ||
+    assets === null ||
+    session === null ||
+    capabilities === null ||
+    projectId === null
+  ) {
     return bootLoadingView()
   }
 
@@ -236,6 +240,8 @@ function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => vo
 }
 
 interface ProjectBoot {
+  /** The id of the open project; null until the remembered id has been read. */
+  projectId: string | null
   store: ProjectStore | null
   assets: AssetCache | null
   session: EditorSession | null
@@ -247,12 +253,10 @@ interface ProjectBoot {
   startFreshProject: () => void
 }
 
-interface ProjectBootInputs {
-  providedStore: ProjectStore | undefined
-  providedAssets: AssetCache | undefined
-  resolveStore: (() => Promise<ProjectStore>) | undefined
-  projectId: string
-}
+type ProjectBootInputs = Pick<
+  AppProps,
+  'store' | 'assets' | 'resolveStore' | 'projectId' | 'activeProjectIds'
+>
 
 // Boots the project in two steps: resolve the durable {store, assets} pair (skipped
 // for an injected store, which pairs with the injected asset cache or a fresh
@@ -261,7 +265,8 @@ interface ProjectBootInputs {
 // it holds its own result, so Retry (which just clears the error) re-runs only the
 // step that failed rather than swapping a resolved store under a live session.
 function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
-  const { providedStore, providedAssets, resolveStore, projectId } = inputs
+  const { store: providedStore, assets: providedAssets, resolveStore } = inputs
+  const projectId = useActiveProjectId(inputs.projectId, inputs.activeProjectIds)
   const [resolved, setResolved] = useState<ProjectStorage | null>(null)
   const [session, setSession] = useState<EditorSession | null>(null)
   const [error, setError] = useState<Error | null>(null)
@@ -281,7 +286,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   }, [providedStore, resolveStore, resolved, error])
 
   useEffect(() => {
-    if (store === null || session !== null || error !== null) return
+    if (store === null || projectId === null || session !== null || error !== null) return
     let cancelled = false
     void loadOrCreateProject(store, projectId, createInitialProject)
       .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
@@ -300,7 +305,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     setSession(createEditorSession(createInitialProject()))
   }
   const retryBoot = () => setError(null)
-  return { store, assets, session, setSession, error, retryBoot, startFreshProject }
+  return { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject }
 }
 
 // Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
