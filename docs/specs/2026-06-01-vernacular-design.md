@@ -952,7 +952,7 @@ At PR completion, `clean-code-reviewer` runs once over the full PR diff. Report 
 
 Configured in `eslint.config.js`. Each rule has one limit, and lint fails above it. `pnpm lint` is `eslint . --max-warnings 0`, and no rule is at warning level (ADR-0185).
 
-- `max-lines-per-function`: 40 (120 in test and story files)
+- `max-lines-per-function`: 40 (120 in test, contract, and story files)
 - `max-lines`: 300
 - `max-params`: 3
 - `complexity`: 10

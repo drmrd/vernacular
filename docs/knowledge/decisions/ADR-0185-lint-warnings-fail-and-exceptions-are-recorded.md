@@ -30,7 +30,7 @@ updated: 2026-11-15
 Current. The owner chose on 2026-11-14 that warnings fail CI and that each existing warning is
 either fixed or recorded against the issue that removes it. The owner approved the rest the same
 day, with section 5.5 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. It amends
-ADR-0012. The lint configuration changes with #683. Until then the rules warn.
+ADR-0012. The lint configuration changed with #683, and every rule is now at error level.
 
 ## Context
 
@@ -77,6 +77,11 @@ import order inside each layer is left to the later stage specifications.
   describe one limit per rule and the exception list.
 - The format suites under `tests/format/` now run before a merge, not after it.
 - Inline disable comments stay where they carry a reason. A new one needs a reason.
+- Section 9.8 of the design specification no longer lists `jsdoc/require-jsdoc` or
+  `import/no-internal-modules`, because neither was ever configured and no plugin for them is
+  installed. It describes `jscpd` as the report that `pnpm dup` prints, not as a lint rule. The
+  engine testing entry (`engine/testing`) re-exports the few Three.js names that two `bridge/react`
+  tests need, and lint fails a production file of `bridge/`, `editor/`, or `app/` that imports it.
 
 ## References
 
