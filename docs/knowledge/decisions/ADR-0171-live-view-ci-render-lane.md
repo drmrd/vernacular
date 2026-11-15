@@ -43,12 +43,12 @@ reached main unseen, and ADR-0151 had already recorded the backend-split risk as
 
 ## Decision
 
-CI runs the live-view spec in a dedicated `live-view-visual` job on the `macos-14` runner,
+CI runs the live-view spec in a dedicated `live-view-visual` job on the `macos-15` runner,
 aggregated by `ci-complete` like every other heavy job.
 
-1. **The runner is `macos-14`.** A probe on the lane branch (run 34067553157) showed its
-   chromium exposes a Metal-backed WebGPU adapter: the spec ran there rather than
-   self-skipping, and passed in 7 seconds.
+1. **The runner is `macos-15`.** It was `macos-14` when the lane landed. A probe on the lane
+   branch (run 34067553157, on `macos-14`) showed its chromium exposes a Metal-backed WebGPU
+   adapter: the spec ran there rather than self-skipping, and passed in 7 seconds.
 2. **One baseline serves the development Mac and the runner.** The probe passed against the
    committed `-darwin` baseline at the standing tolerances (per-pixel 0.35, ratio 0.05), and
    the seeded-defect run reported the same 31579-pixel diff the development Mac measured
