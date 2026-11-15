@@ -132,8 +132,9 @@ export function App(props: AppProps) {
 }
 
 function AppWorkspace(props: AppProps) {
+  const boot = useProjectBoot(props)
   const { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject } =
-    useProjectBoot(props)
+    boot
   const snapshots = useResolvedSnapshots(props.snapshots, props.resolveSnapshots, projectId)
   const providedRecentProjects = props.recentProjects
   const recentProjects = useMemo(
@@ -166,6 +167,7 @@ function AppWorkspace(props: AppProps) {
       capabilities={capabilities}
       snapshots={snapshots}
       onSession={setSession}
+      onProjectSaved={boot.rememberSavedProject}
     />
   )
 }
@@ -227,6 +229,8 @@ export interface EditorWorkspaceProps {
   capabilities: StorageCapabilities
   snapshots: SnapshotsPort | undefined
   onSession: (session: EditorSession) => void
+  /** Called after each successful autosave or explicit save. */
+  onProjectSaved?: () => void
 }
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {

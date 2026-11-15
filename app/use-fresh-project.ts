@@ -19,6 +19,8 @@ export interface FreshProjectContext {
 export interface FreshProject {
   /** The id of the project started after a failed load; null until one is started. */
   freshProjectId: string | null
+  /** True once a fresh project starts on a store that resolved; false on the in-memory fallback. */
+  freshProjectDurable: boolean
   /** Leave the unreadable stored project alone and work in a fresh empty one under its own id. */
   startFreshProject: () => void
 }
@@ -28,6 +30,7 @@ export interface FreshProject {
 export function useFreshProject(context: FreshProjectContext): FreshProject {
   const { store, setResolved, setSession, setError } = context
   const [freshProjectId, setFreshProjectId] = useState<string | null>(null)
+  const [freshProjectDurable, setFreshProjectDurable] = useState(false)
 
   const mounted = useRef(true)
   const lookupPending = useRef(false)
@@ -50,11 +53,12 @@ export function useFreshProject(context: FreshProjectContext): FreshProject {
       if (!mounted.current) return
       setResolved((current) => current ?? fallback)
       setFreshProjectId(newProjectId(ids))
+      setFreshProjectDurable(store !== null)
       setSession(createEditorSession(createInitialProject()))
       setError(null)
     })
   }
-  return { freshProjectId, startFreshProject }
+  return { freshProjectId, freshProjectDurable, startFreshProject }
 }
 
 // A listing that fails still allows a fresh project: a random id cannot name the failed one.

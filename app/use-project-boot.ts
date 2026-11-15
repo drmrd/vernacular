@@ -12,6 +12,7 @@ import { createInitialProject } from './create-initial-project'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useActiveProjectId } from './use-active-project-id'
 import { useFreshProject } from './use-fresh-project'
+import { useRememberSavedProject } from './use-remember-saved-project'
 import { validateLoadedProject } from './validate-loaded-project'
 
 // Resolve the durable {store, assets} pair to boot against. An injected
@@ -39,6 +40,8 @@ export interface ProjectBoot {
   retryBoot: () => void
   /** Leave the unreadable stored project alone and work in a fresh empty one. */
   startFreshProject: () => void
+  /** Report a successful save, so a project started after a failed load is remembered. */
+  rememberSavedProject: () => void
 }
 
 export type ProjectBootInputs = Pick<
@@ -61,24 +64,21 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const fallbackAssets = useMemo(() => new InMemoryAssetCache(), [])
   const store = providedStore ?? resolved?.store ?? null
   const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
-  const { freshProjectId, startFreshProject } = useFreshProject({
+  const { freshProjectId, freshProjectDurable, startFreshProject } = useFreshProject({
     store,
     setResolved,
     setSession,
     setError,
   })
   const projectId = freshProjectId ?? activeProjectId
+  const rememberSavedProject = useRememberSavedProject({
+    projectId,
+    activeProjectId,
+    durable: freshProjectDurable,
+    activeProjectIds: inputs.activeProjectIds,
+  })
 
-  useEffect(() => {
-    if (providedStore || resolved !== null || error !== null) return
-    let cancelled = false
-    void resolveBootStorage(resolveStore)
-      .then((it) => !cancelled && setResolved(it))
-      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
-    return () => {
-      cancelled = true
-    }
-  }, [providedStore, resolveStore, resolved, error])
+  useBootStorage({ providedStore, resolveStore, resolved, error, setResolved, setError })
 
   useEffect(() => {
     if (store === null || projectId === null || session !== null || error !== null) return
@@ -92,7 +92,32 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   }, [store, projectId, session, error])
 
   const retryBoot = () => setError(null)
-  return { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject }
+  const loaded = { projectId, store, assets, session, setSession, error }
+  return { ...loaded, retryBoot, startFreshProject, rememberSavedProject }
+}
+
+interface BootStorageContext {
+  providedStore: ProjectStore | undefined
+  resolveStore: (() => Promise<ProjectStore>) | undefined
+  resolved: ProjectStorage | null
+  error: Error | null
+  setResolved: (storage: ProjectStorage) => void
+  setError: (error: Error) => void
+}
+
+// The first boot step: resolve the durable pair unless a store was injected, once.
+function useBootStorage(context: BootStorageContext): void {
+  const { providedStore, resolveStore, resolved, error, setResolved, setError } = context
+  useEffect(() => {
+    if (providedStore || resolved !== null || error !== null) return
+    let cancelled = false
+    void resolveBootStorage(resolveStore)
+      .then((it) => !cancelled && setResolved(it))
+      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
+    return () => {
+      cancelled = true
+    }
+  }, [providedStore, resolveStore, resolved, error, setResolved, setError])
 }
 
 // Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
