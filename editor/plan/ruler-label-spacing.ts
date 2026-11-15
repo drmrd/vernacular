@@ -1,6 +1,7 @@
 import { MM_PER_FOOT, type UnitPreferences } from '../../core'
 import { nice125AtLeast } from './nice-numbers'
-import { RULER_MIN_LABEL_GAP_PX } from './ruler'
+
+export const RULER_MIN_LABEL_GAP_PX = 60
 
 /**
  * Spacing in millimetres between labeled ruler ticks, snapped to a 1-2-5 nice

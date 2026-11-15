@@ -12,7 +12,7 @@ import { DEFAULT_PLAN_PALETTE } from './plan-palette'
 
 export const RULER_THICKNESS_PX = 20
 
-export const RULER_MIN_LABEL_GAP_PX = 60
+export { RULER_MIN_LABEL_GAP_PX } from './ruler-label-spacing'
 
 const RULER_FONT = '10px sans-serif'
 const RULER_LABEL_INSET_PX = 2
