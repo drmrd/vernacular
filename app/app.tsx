@@ -26,7 +26,6 @@ import {
 } from '../editor/design-system'
 import {
   InMemoryAssetCache,
-  InMemoryProjectStore,
   InMemoryRecentProjectStore,
   probeStorageCapabilities,
   type ActiveProjectIdStore,
@@ -43,6 +42,7 @@ import { resolveHarnessPaint } from './harness-paint'
 import { resolveProjectStorage } from './resolve-project-store'
 import { useActiveProjectId } from './use-active-project-id'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
+import { useFreshProject } from './use-fresh-project'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
@@ -266,13 +266,15 @@ type ProjectBootInputs = Pick<
 // step that failed rather than swapping a resolved store under a live session.
 function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
   const { store: providedStore, assets: providedAssets, resolveStore } = inputs
-  const projectId = useActiveProjectId(inputs.projectId, inputs.activeProjectIds)
+  const activeProjectId = useActiveProjectId(inputs.projectId, inputs.activeProjectIds)
   const [resolved, setResolved] = useState<ProjectStorage | null>(null)
   const [session, setSession] = useState<EditorSession | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const fallbackAssets = useMemo(() => new InMemoryAssetCache(), [])
   const store = providedStore ?? resolved?.store ?? null
   const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
+  const fresh = useFreshProject({ store, setResolved, setSession, setError })
+  const projectId = fresh.freshProjectId ?? activeProjectId
 
   useEffect(() => {
     if (providedStore || resolved !== null || error !== null) return
@@ -296,14 +298,7 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     }
   }, [store, projectId, session, error])
 
-  const startFreshProject = () => {
-    setError(null)
-    // A failed storage resolution leaves no store at all; an in-memory pair keeps the
-    // fresh project workable. The stored project is untouched either way: only an
-    // explicit save replaces it.
-    setResolved((current) => current ?? freshStorage())
-    setSession(createEditorSession(createInitialProject()))
-  }
+  const { startFreshProject } = fresh
   const retryBoot = () => setError(null)
   return { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject }
 }
@@ -312,10 +307,6 @@ function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
 function validatedProject(project: Project): Project {
   validateLoadedProject(project)
   return project
-}
-
-function freshStorage(): ProjectStorage {
-  return { store: new InMemoryProjectStore(), assets: new InMemoryAssetCache() }
 }
 
 function asError(cause: unknown): Error {
