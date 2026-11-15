@@ -4,8 +4,6 @@ import {
   EditorSessionProvider,
   SceneHarnessView,
   SelectionProvider,
-  createEditorSession,
-  loadOrCreateProject,
   type EditorSession,
 } from '../bridge'
 import {
@@ -25,29 +23,23 @@ import {
   type DesignLanguage,
 } from '../editor/design-system'
 import {
-  InMemoryAssetCache,
   InMemoryRecentProjectStore,
   probeStorageCapabilities,
   type ActiveProjectIdStore,
   type AssetCache,
-  type ProjectStorage,
   type ProjectStore,
   type RecentProjectStore,
   type StorageCapabilities,
 } from '../storage'
 import { type Project, type SurfaceTreatment } from '../core'
-import { createInitialProject } from './create-initial-project'
 import { harnessEnvironmentState, resolveHarnessScene } from './harness-environment'
 import { resolveHarnessPaint } from './harness-paint'
-import { resolveProjectStorage } from './resolve-project-store'
-import { useActiveProjectId } from './use-active-project-id'
 import { useDegradedStorageBanner } from './use-degraded-storage-banner'
-import { useFreshProject } from './use-fresh-project'
+import { useProjectBoot } from './use-project-boot'
 import { useResolvedSnapshots } from './use-resolved-snapshots'
 import { useSessionKey } from './use-session-key'
 import { useDiscardPrompt } from './use-discard-prompt'
 import { useWorkspaceState } from './use-workspace-state'
-import { validateLoadedProject } from './validate-loaded-project'
 
 export { DEFAULT_PROJECT_ID } from './use-active-project-id'
 
@@ -89,19 +81,6 @@ function requestedHarnessPaint(): Record<string, SurfaceTreatment> | undefined {
 // eslint-disable-next-line react-refresh/only-export-components -- every URL seam in this app reads through the one searchParam helper here, so the reader belongs beside its siblings rather than in a module of its own; it is exported only so the seam itself is unit-testable.
 export function requestedDesignLanguage(): DesignLanguage {
   return resolveDesignLanguage(searchParam(DESIGN_LANGUAGE_PREVIEW_PARAM))
-}
-
-// Resolve the durable {store, assets} pair to boot against. An injected
-// store-only resolver (tests) pairs its store with an in-memory asset cache; the
-// default resolves the real pair, so the OPFS runtime gets a directory-backed
-// asset cache that persists underlay rasters beside vernacular.json (ADR-0042).
-async function resolveBootStorage(
-  resolveStore?: () => Promise<ProjectStore>,
-): Promise<ProjectStorage> {
-  if (resolveStore) {
-    return { store: await resolveStore(), assets: new InMemoryAssetCache() }
-  }
-  return resolveProjectStorage()
 }
 
 /** The subset of SnapshotStore the app depends on for autosave and crash recovery. */
@@ -237,80 +216,6 @@ function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => vo
       <p>A new project leaves the saved one where it is until you save over it.</p>
     </main>
   )
-}
-
-interface ProjectBoot {
-  /** The id of the open project; null until the remembered id has been read. */
-  projectId: string | null
-  store: ProjectStore | null
-  assets: AssetCache | null
-  session: EditorSession | null
-  setSession: (session: EditorSession) => void
-  error: Error | null
-  /** Re-run the failed boot from the top (a transient I/O fault deserves a second go). */
-  retryBoot: () => void
-  /** Leave the unreadable stored project alone and work in a fresh empty one. */
-  startFreshProject: () => void
-}
-
-type ProjectBootInputs = Pick<
-  AppProps,
-  'store' | 'assets' | 'resolveStore' | 'projectId' | 'activeProjectIds'
->
-
-// Boots the project in two steps: resolve the durable {store, assets} pair (skipped
-// for an injected store, which pairs with the injected asset cache or a fresh
-// in-memory one), then load or create the project. Both steps report through one
-// error channel and are guarded against writes after unmount. Each stands down once
-// it holds its own result, so Retry (which just clears the error) re-runs only the
-// step that failed rather than swapping a resolved store under a live session.
-function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
-  const { store: providedStore, assets: providedAssets, resolveStore } = inputs
-  const activeProjectId = useActiveProjectId(inputs.projectId, inputs.activeProjectIds)
-  const [resolved, setResolved] = useState<ProjectStorage | null>(null)
-  const [session, setSession] = useState<EditorSession | null>(null)
-  const [error, setError] = useState<Error | null>(null)
-  const fallbackAssets = useMemo(() => new InMemoryAssetCache(), [])
-  const store = providedStore ?? resolved?.store ?? null
-  const assets = providedAssets ?? resolved?.assets ?? (providedStore ? fallbackAssets : null)
-  const fresh = useFreshProject({ store, setResolved, setSession, setError })
-  const projectId = fresh.freshProjectId ?? activeProjectId
-
-  useEffect(() => {
-    if (providedStore || resolved !== null || error !== null) return
-    let cancelled = false
-    void resolveBootStorage(resolveStore)
-      .then((it) => !cancelled && setResolved(it))
-      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
-    return () => {
-      cancelled = true
-    }
-  }, [providedStore, resolveStore, resolved, error])
-
-  useEffect(() => {
-    if (store === null || projectId === null || session !== null || error !== null) return
-    let cancelled = false
-    void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
-      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
-    return () => {
-      cancelled = true
-    }
-  }, [store, projectId, session, error])
-
-  const { startFreshProject } = fresh
-  const retryBoot = () => setError(null)
-  return { projectId, store, assets, session, setSession, error, retryBoot, startFreshProject }
-}
-
-// Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).
-function validatedProject(project: Project): Project {
-  validateLoadedProject(project)
-  return project
-}
-
-function asError(cause: unknown): Error {
-  return cause instanceof Error ? cause : new Error('Failed to boot the project')
 }
 
 export interface EditorWorkspaceProps {

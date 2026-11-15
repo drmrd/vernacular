@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { createEditorSession, type EditorSession } from '../bridge'
 import {
   InMemoryAssetCache,
@@ -29,11 +29,25 @@ export function useFreshProject(context: FreshProjectContext): FreshProject {
   const { store, setResolved, setSession, setError } = context
   const [freshProjectId, setFreshProjectId] = useState<string | null>(null)
 
+  const mounted = useRef(true)
+  const lookupPending = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
   const startFreshProject = () => {
+    // A second click while the first id lookup is pending would set a second id.
+    if (lookupPending.current) return
+    lookupPending.current = true
     // A failed storage resolution leaves no store at all; an in-memory pair keeps the
     // fresh project workable.
     const fallback = freshStorage()
     void storedProjectIds(store ?? fallback.store).then((ids) => {
+      lookupPending.current = false
+      if (!mounted.current) return
       setResolved((current) => current ?? fallback)
       setFreshProjectId(newProjectId(ids))
       setSession(createEditorSession(createInitialProject()))
