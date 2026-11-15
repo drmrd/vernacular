@@ -21,6 +21,7 @@ related:
   [
     decisions/ADR-0047-published-floor-plan-data-format-standard,
     decisions/ADR-0178-schema-version-and-revision,
+    decisions/ADR-0184-known-keys-from-the-schema-for-the-save-time-graft,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0034-future-direction-extensibility-seams,
     decisions/ADR-0028-directory-port-folder-storage-seam,
@@ -52,6 +53,13 @@ gate, and the optional Strict profile.
 > reported. The tolerance stays for a Document from a newer revision. Preservation (decision 1) is
 > unchanged: a key is kept whether or not it is reported. Until that work lands, the gate behaves
 > as described below.
+
+> Amended by [[ADR-0184-known-keys-from-the-schema-for-the-save-time-graft]] on 2026-11-14.
+> ADR-0184 replaces the rule by which the overlay of decision 1 chooses what to restore. A key that
+> the previous file has and the saved Document lacks comes back only when a table generated from
+> the schema does not know that key. The hand-written list of keyed maps goes away, and the
+> previous file is migrated in memory before the graft. The duty to preserve unknown data is
+> unchanged. Until that work lands, the overlay restores every missing key, as described below.
 
 ## Context
 

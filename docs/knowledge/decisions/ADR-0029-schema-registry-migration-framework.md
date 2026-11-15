@@ -10,6 +10,7 @@ related:
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0051-format-preservation-and-load-validation,
+    decisions/ADR-0182-migration-backups-in-their-own-directory,
   ]
 sourceFiles:
   [
@@ -24,12 +25,17 @@ sourceFiles:
     storage/folder/folder-project-store.ts,
   ]
 status: current
-updated: 2026-08-31
+updated: 2026-11-14
 ---
 
 # ADR-0029: Schema-and-registry migration framework, pure core with storage-side atomicity
 
 ## Status
+
+> Superseded in part by [[ADR-0182-migration-backups-in-their-own-directory]] on 2026-11-14. The
+> pre-migration backup moves from `.house-autosave/` to `.house-backups/` and stays until its
+> project is deleted. The migration framework is unchanged, and the backup is still written before
+> the migration runs. Until that work lands, the backup is written where this record says.
 
 Accepted, landed. The pure framework lives in `core/migrations/`
 (`migrateProject`, the migration types, the empty real chains, the barrel) and is

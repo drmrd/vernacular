@@ -9,6 +9,7 @@ related:
     decisions/ADR-0042-underlay-asset-persistence,
     decisions/ADR-0104-unsaved-changes-guard-and-dirty-state-model,
     decisions/ADR-0022-storage-capability-detection,
+    decisions/ADR-0182-migration-backups-in-their-own-directory,
   ]
 sourceFiles:
   [
@@ -22,12 +23,17 @@ sourceFiles:
     app/use-project-actions.ts,
   ]
 status: current
-updated: 2026-06-23
+updated: 2026-11-14
 ---
 
 # ADR-0119: Write-ahead crash recovery
 
 ## Status
+
+> Amended by [[ADR-0182-migration-backups-in-their-own-directory]] on 2026-11-14. The prune step
+> removes only the files the snapshot store wrote, which are the session-start snapshot and the
+> rolling snapshots. It leaves any other file in `.house-autosave/` alone. The order of the
+> autosave cycle is unchanged. Until that work lands, the prune empties the directory.
 
 Accepted, landed. Autosave now writes a recovery snapshot, saves the canonical project, then prunes the
 snapshot, in that order. A plain reload restores the latest edit silently from the canonical store. A
