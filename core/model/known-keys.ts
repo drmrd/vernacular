@@ -9,7 +9,7 @@ export type KnownValue =
   | { readonly kind: 'leaf' } // a scalar, an enum, or an array of scalars
   | { readonly kind: 'opaque' } // the schema leaves the value open
   | { readonly kind: 'object'; readonly type: string }
-  | { readonly kind: 'union'; readonly types: readonly string[] } // a tagged union
+  | { readonly kind: 'union'; readonly tag: string; readonly types: readonly string[] } // a tagged union
   | { readonly kind: 'array'; readonly item: KnownValue }
   | { readonly kind: 'map'; readonly value: KnownValue } // a collection the model owns
 

@@ -23,24 +23,56 @@ function isObjectDefinition(definition) {
   return definition.type === 'object' && definition.properties !== undefined
 }
 
+function unionVariants(definition) {
+  return definition.anyOf ?? definition.oneOf
+}
+
 function isUnionDefinition(definition) {
-  return Array.isArray(definition.anyOf)
+  return Array.isArray(unionVariants(definition))
 }
 
 function isOpenValue(node) {
   return node === true || (typeof node === 'object' && Object.keys(node).length === 0)
 }
 
-function variantTag(unionName, variant) {
-  const tagged = Object.values(variant.properties ?? {}).find((property) => 'const' in property)
-  if (tagged === undefined) {
-    throw new Error(`Union ${unionName} has a variant without a constant tag`)
-  }
-  return `${unionName}.${tagged.const}`
+const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null'])
+
+function isScalar(node) {
+  return 'enum' in node || 'const' in node || SCALAR_TYPES.has(node.type)
 }
 
-function unionVariantNames(unionName, definition) {
-  return definition.anyOf.map((variant) => variantTag(unionName, variant))
+function unsupportedShape(place, node) {
+  return new Error(`${place} has a shape the table cannot express: ${JSON.stringify(node)}`)
+}
+
+function constantKeys(variant) {
+  return Object.entries(variant.properties ?? {})
+    .filter(([, property]) => 'const' in property)
+    .map(([key]) => key)
+}
+
+function sharedTagKey(unionName, variants) {
+  const [first, ...rest] = variants.map(constantKeys)
+  const tag = (first ?? []).find((key) => rest.every((keys) => keys.includes(key)))
+  if (tag === undefined) {
+    throw new Error(`Union ${unionName} has no constant tag that every variant shares`)
+  }
+  return tag
+}
+
+function unionVariantTypes(unionName, definition) {
+  const variants = unionVariants(definition)
+  const tag = sharedTagKey(unionName, variants)
+  const types = new Map()
+  for (const variant of variants) {
+    const tagValue = variant.properties[tag].const
+    const typeName = `${unionName}.${tagValue}`
+    if (types.has(typeName)) {
+      throw new Error(`Union ${unionName} has two variants with the tag value ${tagValue}`)
+    }
+    types.set(typeName, variant)
+  }
+  return { tag, types }
 }
 
 function describeReference(schema, ref) {
@@ -49,37 +81,43 @@ function describeReference(schema, ref) {
   const definition = schema.definitions[name]
   if (definition === undefined) throw new Error(`Missing schema definition: ${name}`)
   if (isUnionDefinition(definition)) {
-    return { kind: 'union', types: unionVariantNames(name, definition) }
+    const { tag, types } = unionVariantTypes(name, definition)
+    return { kind: 'union', tag, types: [...types.keys()] }
   }
   if (isObjectDefinition(definition)) return { kind: 'object', type: name }
-  if (definition.type === 'object') throw new Error(`Unsupported object definition: ${name}`)
-  return LEAF
+  if (isScalar(definition)) return LEAF
+  throw unsupportedShape(`Definition ${name}`, definition)
 }
 
-function describeValue(schema, node) {
+function describeArray(schema, node, place) {
+  const items = node.items
+  if (items === undefined || Array.isArray(items) || 'prefixItems' in node) {
+    throw unsupportedShape(`${place} (a tuple)`, node)
+  }
+  if (items.type === 'array') throw unsupportedShape(`${place} (an array of arrays)`, node)
+  const item = describeValue(schema, items, `${place}[]`)
+  return item.kind === 'leaf' ? LEAF : { kind: 'array', item }
+}
+
+function describeValue(schema, node, place) {
   if (isOpenValue(node)) return OPAQUE
   if (typeof node.$ref === 'string') return describeReference(schema, node.$ref)
-  if (node.type === 'array') {
-    const item = describeValue(schema, node.items)
-    return item.kind === 'leaf' ? LEAF : { kind: 'array', item }
-  }
+  if (node.type === 'array') return describeArray(schema, node, place)
   if (node.type === 'object') {
     if (node.properties !== undefined || node.additionalProperties === undefined) {
-      throw new Error(`Unsupported inline object: ${JSON.stringify(node)}`)
+      throw unsupportedShape(`${place} (an inline object)`, node)
     }
     if (isOpenValue(node.additionalProperties)) return OPAQUE
-    return { kind: 'map', value: describeValue(schema, node.additionalProperties) }
+    return { kind: 'map', value: describeValue(schema, node.additionalProperties, `${place}.*`) }
   }
-  if (node.anyOf !== undefined || node.oneOf !== undefined || node.allOf !== undefined) {
-    throw new Error(`Unsupported inline composition: ${JSON.stringify(node)}`)
-  }
-  return LEAF
+  if (isScalar(node)) return LEAF
+  throw unsupportedShape(place, node)
 }
 
-function describeType(schema, objectSchema) {
+function describeType(schema, objectSchema, typeName) {
   const keys = {}
   for (const [key, property] of Object.entries(objectSchema.properties)) {
-    keys[key] = describeValue(schema, property)
+    keys[key] = describeValue(schema, property, `${typeName}.${key}`)
   }
   const required = new Set(objectSchema.required ?? [])
   const optional = Object.keys(objectSchema.properties).filter((key) => !required.has(key))
@@ -93,13 +131,13 @@ function describeType(schema, objectSchema) {
  * @returns {Record<string, { keys: Record<string, object>, optional: string[] }>}
  */
 export function buildKnownKeys(schema) {
-  const table = { [ROOT_TYPE]: describeType(schema, schema) }
+  const table = { [ROOT_TYPE]: describeType(schema, schema, ROOT_TYPE) }
   for (const [name, definition] of Object.entries(schema.definitions)) {
     if (isObjectDefinition(definition)) {
-      table[name] = describeType(schema, definition)
+      table[name] = describeType(schema, definition, name)
     } else if (isUnionDefinition(definition)) {
-      for (const variant of definition.anyOf) {
-        table[variantTag(name, variant)] = describeType(schema, variant)
+      for (const [typeName, variant] of unionVariantTypes(name, definition).types) {
+        table[typeName] = describeType(schema, variant, typeName)
       }
     }
   }

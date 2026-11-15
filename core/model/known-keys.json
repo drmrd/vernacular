@@ -44,6 +44,7 @@
         "kind": "map",
         "value": {
           "kind": "union",
+          "tag": "kind",
           "types": [
             "SurfaceTreatment.solid",
             "SurfaceTreatment.pattern"
@@ -228,6 +229,7 @@
       },
       "source": {
         "kind": "union",
+        "tag": "kind",
         "types": [
           "UnderlaySource.raster",
           "UnderlaySource.document",
