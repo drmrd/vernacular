@@ -16,10 +16,10 @@ export function isValidProjectId(id: string): boolean {
 
 /** `project-` and a random UUID, never one of `existing`. */
 export function newProjectId(existing: readonly string[]): string {
-  let candidate = `${NEW_PROJECT_ID_PREFIX}${crypto.randomUUID()}`
-  while (existing.includes(candidate)) {
+  let candidate: string
+  do {
     candidate = `${NEW_PROJECT_ID_PREFIX}${crypto.randomUUID()}`
-  }
+  } while (existing.includes(candidate))
   return candidate
 }
 
@@ -47,6 +47,7 @@ export class LocalStorageActiveProjectIdStore implements ActiveProjectIdStore {
   }
 
   write(id: string): Promise<void> {
+    // No validation: callers pass ids from newProjectId or a store listing, and read guards against a damaged value.
     try {
       localStorage.setItem(ACTIVE_PROJECT_ID_KEY, id)
       return Promise.resolve()
