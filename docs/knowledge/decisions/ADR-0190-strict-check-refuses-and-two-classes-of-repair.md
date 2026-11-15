@@ -52,8 +52,11 @@ has one `kind` and also carries fields that only another variant defines.
 
 - Validation is strict and runs in every build, by the reading rules of ADR-0178. The application
   refuses a file at a version above its own and has no read-only mode.
-- Encode never lowers a revision. It writes the higher of the document's revision and the build's,
-  and it checks a document that came in at a higher revision with the same tolerance on the way out.
+- Within one version, encode never lowers a revision. It writes the higher of the document's
+  revision and the build's, and it checks a document that came in at a higher revision with the
+  same tolerance on the way out. A migration to a higher version sets the revision back to 0
+  (ADR-0178). The tolerant reading accepts an unknown field at any depth, inside a variant of a
+  union too.
 - A stored project that fails decode does not open. A decode that fails writes nothing. The
   migration backup is written after a decode that migrated and succeeded, before the document
   reaches the caller.
@@ -64,7 +67,8 @@ has one `kind` and also carries fields that only another variant defines.
   dialog without Export and without the replace choice, because the user still has the file.
 - The refusal reaches users only together with the dialog, in one pull request. The codec builds
   the strict check first. Until the dialog lands, a failed check is reported and the document
-  opens.
+  opens, on every path that reads one. In that interval a document that migrated and then failed
+  the check still gets its migration backup before it opens.
 - A repair that loses no data is a step in the migration chain. It takes the next `schemaVersion`,
   runs with no question, and has a test that shows every value of the input is in the output.
 - A repair that removes data is never in the chain. It is an entry in a named list in `core/`. It

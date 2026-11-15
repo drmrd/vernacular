@@ -292,7 +292,7 @@ Closing proof:
 - Whether `coalesceWith` survives once transactions exist. Only the stair and project handlers use it today.
 - How room identity survives a wall split, and the migration for existing room overrides.
 - The import order inside each layer. The review proposed one for `core/`: units, color, and geometry; then the model; then registries, eras, and assets; then topology; then scene, environment, and paint; then clipboard and commands; then format, migrations, and export.
-- Whether `bridge/` and `editor/` keep any type-only import from `storage/` or `engine/` once their uses have moved behind `session/`. For `storage/` the answer is no (`docs/specs/2026-11-15-session-layer-and-document-identity.md`, section 5.1). The question is still open for `engine/`.
+- Whether `bridge/` and `editor/` keep any type-only import from `storage/` or `engine/` once their uses have moved behind `session/`. The answer is no for both. For `storage/`, see `docs/specs/2026-11-15-session-layer-and-document-identity.md`, section 5.1. For `engine/`, ADR-0175 lets `bridge/` import it in full, and `editor/` imports nothing from it.
 - What a second tab sees when it opens a document that another tab has locked. The proposal was a read-only view with a notice. ADR-0189 answers it: the second tab shows the Projects page, and there is no read-only view.
 - How the plan drawing model handles text measurement, which differs between canvas and PDF.
 

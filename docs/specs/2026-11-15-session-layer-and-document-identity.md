@@ -56,7 +56,7 @@ Anti-goals. The four in the umbrella specification apply. Five more are specific
 - Every document from schema version 8 onward still opens after every step, through every store.
 - A user who has a project today finds it after the upgrade with no action on their part. It is stored under the id `'current'`, it opens at start, and it has a card.
 - No new runtime dependency. Addresses are handled without a routing library.
-- A project's address works on a static host with no rewrite rule. It asks the server for nothing but the application shell, so it works offline wherever the shell is served offline. The service worker does not cache the shell yet (design specification, section 11).
+- A project's address works on a static host with no rewrite rule. It asks the server for nothing but the application shell, so it works offline wherever the shell is served offline. The service worker does not cache the shell yet (design specification, section 11), and #719 tracks that work.
 - `session/` imports no React and no Three.js and uses no DOM global. It reaches browser APIs only through ports in `storage/`.
 - Browser storage APIs stay inside `storage/`, and after this stage lint enforces that.
 - The refusal to open an invalid document reaches users only together with the dialog that lets them export and repair (section 6).
@@ -85,7 +85,7 @@ Anti-goals. The four in the umbrella specification apply. Five more are specific
 
 ### 4.2 Calls made in this document
 
-The owner saw calls 1 to 14 during the brainstorm and raised no objection. Calls 15 to 33 are new in this document. The owner confirmed three of them on 2026-11-15, each in place of a stated alternative: call 19 over a save that is refused, call 29 over a migration that removes the known leftover keys with no question, and call 32 over moving the folder project in this stage.
+The owner saw calls 1 to 14 during the brainstorm and raised no objection. Calls 15 to 33 are new in this document. The owner confirmed three of them on 2026-11-15, each in place of a stated alternative: call 19 over a save that is refused, call 29 over a migration that removes the known leftover keys with no question, and call 32 over moving the folder project in this stage. On the same date the owner changed one rule of call 11: a delete holds the project's lock while it runs (section 5.12, rule 1).
 
 | #   | Area         | Call                                                                                                                                                                                            | Section |
 | --- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
@@ -138,7 +138,7 @@ Design:
 
 1. `session/` is created with a barrel, and lint learns it. The import rules are the table in ADR-0175: `session/` may import `core/` and `storage/`. `bridge/` may import `core/`, `session/`, and `engine/`. `editor/` may import `core/`, `session/`, and `bridge/`. `app/` may import every layer. The allowances that nothing uses go at once: `engine/` to `storage/`, and `editor/` to `engine/`.
 2. ADR-0175 left one question to this document: whether `bridge/` and `editor/` keep a type-only import from `storage/` once their uses have moved. They do not. A type the upper layers need is exported from `session/`. One path to a type is easier to hold than a rule that tells type imports from value imports.
-3. The files in `bridge/` and `editor/` that still import `storage/` after this stage are the asset contexts and the library and furniture code. Each goes on the exception list that the first stage creates (section 5.5 there), with the issue that removes it. The layer rule itself is strict from the first day.
+3. The files in `bridge/` and `editor/` that still import `storage/` after this stage are the asset contexts and the library and furniture code, with their tests and stories. Each goes on the exception list that the first stage creates (section 5.5 there), with the issue that removes it (#717). The layer rule itself is strict from the first day.
 4. What moves in this stage: everything in `bridge/session/` and `bridge/autosave/`, and the logic of the flows in `app/`. Each flow becomes a function in `session/` that takes ports and returns a typed result. The hooks in `app/` shrink to adapters that call the function and show the result.
 5. The flows report a failure as a typed result. The adapter turns it into a notification. The notification channel that the umbrella specification gives to `session/` is not built here.
 6. Lint holds the purity of `session/` the way the first stage holds it for `core/`: no React package, no Three.js package, no browser-only global, with one test per rule.
@@ -166,15 +166,15 @@ Today:
 Design:
 
 1. The codec is two pure functions in `core/`. Decode takes the bytes of a stored document and returns a document or a typed failure. Encode takes a document, and the previous stored document when there is one, and returns bytes. Neither does any I/O.
-2. Decode parses, reads the version and the revision, refuses a version above its own, migrates up the chain, and validates. It reports whether it migrated and from which version.
-3. Encode validates, grafts unknown data from the previous document with the table of known keys from the first stage (section 5.1 there), writes `schemaRevision`, and serializes. The table and the graft move into the codec as they are. Encode never lowers a revision: it writes the higher of the document's revision and the build's. A document that came in at a higher revision is checked on the way out with the same tolerance as on the way in, so its unknown fields are not a fault.
-4. Validation is strict and runs in every build, against the schema of the current version and revision. The reading rules are the table in ADR-0178. For a file at the reader's version and at or below its revision, a field the schema does not define, outside `extensions`, is an error. A file at a higher revision is read tolerantly: unknown fields are kept, and the application says that a newer build saved the project. `extensions` is checked as an open object in every case.
+2. Decode parses, reads the version and the revision, refuses a version above its own, migrates up the chain, and validates. It reports whether it migrated and from which version. A migration to a higher version sets the revision back to 0, as ADR-0178 requires.
+3. Encode validates, grafts unknown data from the previous document with the table of known keys from the first stage (section 5.1 there), writes `schemaRevision`, and serializes. The table and the graft move into the codec as they are. Within one version, encode never lowers a revision: it writes the higher of the document's revision and the build's. A document that came in at a higher revision is checked on the way out with the same tolerance as on the way in, so its unknown fields are not a fault.
+4. Validation is strict and runs in every build, against the schema of the current version and revision. The reading rules are the table in ADR-0178. For a file at the reader's version and at or below its revision, a field the schema does not define, outside `extensions`, is an error. A file at a higher revision is read tolerantly: unknown fields are kept, and the application says that a newer build saved the project. The tolerant reading accepts an unknown field at any depth, inside a variant of a union too. `extensions` is checked as an open object in every case.
 5. A decode that fails validation returns a failure with the errors and their paths. The document does not open (decision 13). Section 5.7 says what the user sees.
 6. A failed check never blocks a save. A document can only become invalid in memory through a defect in a command, and refusing to write it would turn that defect into lost work. Encode reports the errors and still returns the bytes. The wrapper of section 5.3 keeps the last stored file that passed the check as a backup, by the backup rule of the first stage (ADR-0182), before it writes. The application tells the user once that the project has a fault, that a copy of the last sound state is kept, and that Export is available. The next open of that project fails the check and goes through section 5.7.
 7. The defect itself is caught earlier. The first stage adds a test that runs every registered command against a fixture document (section 5.4 there). This stage runs the same commands against a second fixture that carries no planted unknown key, and checks after each command that the document still passes the schema. The fixture of the first stage cannot serve, because its planted keys fail the strict check by design. The mixed paint entry of #624 would have failed the new test.
 8. Decode failures are typed, because section 5.7 turns each into a sentence: the bytes are not JSON, the JSON is not a project, the version is newer than the build, a migration failed, or the document breaks the format rules.
 9. Every path that reads a document goes through decode: each store, archive import, file import, and the restore of a recovery snapshot. Every path that writes one goes through encode: each store, the snapshot write, and archive export. `app/validate-loaded-project.ts` is deleted.
-10. The codec writes `schemaRevision`, and the drift test fails when the generated schema changes and neither number rises (ADR-0178). The schema files that exist stay where they are and count as revision 0 of their versions. Adding `schemaRevision` to the model is itself the first additive change to version 17, so this stage publishes revision 1 of that version. The application bundles the current schema only. A file at a lower revision of the same version is valid against it, because a revision only adds optional fields.
+10. The codec writes `schemaRevision`, and the drift test fails when the generated schema changes and neither number rises (ADR-0178). The schema files that exist stay where they are and count as revision 0 of their versions. Adding `schemaRevision` to the model is itself the first additive change to the current version, so this stage publishes revision 1 of that version. The application bundles the current schema only. A file at a lower revision of the same version is valid against it, because a revision only adds optional fields.
 
 Left to the builder: the names and signatures, the path where a later revision of a schema is published (the existing paths and their `$id` values must not change), and whether the validator is compiled when the application is built or when it runs. The pull request states what the choice adds to the production bundle.
 
@@ -325,7 +325,7 @@ Design:
    The values sit in one module. They are a first estimate and can change with evidence.
 
 6. The reader writes only the document and the entries under `assets/`. An entry with a path outside the archive layout is ignored.
-7. Deleting a project removes an asset only when no other project in the workspace and no entry of the user's library refers to it. The asset lists in the index records answer that. A list that came from a best-effort read of a project that did not open can be incomplete. While the workspace holds another project in that state, a delete removes no asset. Assets inside a folder project are never removed.
+7. Deleting a project removes an asset only when no other project in the workspace and no entry of the user's library refers to it. The asset lists in the index records answer that. A list that came from a best-effort read of a project that did not open can be incomplete. While the workspace holds another project in that state, a delete removes no asset. A project in the workspace store that has no record counts the same way, because nothing says which assets it uses. Assets inside a folder project are never removed.
 
 Left to the builder: which asset scopes an archive must carry, and the wording of the two reports.
 
@@ -351,6 +351,8 @@ Design:
 #### The check
 
 A stored project that fails decode does not open. A failed open writes nothing, so the stored bytes are as they were.
+
+A recovery snapshot that fails decode is not restored. It moves to the project's backups, where no prune removes it, and the recovery prompt says that the copy could not be read and is kept.
 
 #### Two classes of repair
 
@@ -467,6 +469,7 @@ The card action and the Project menu entry both dispatch `project/rename`. For a
 - A delete removes everything that only that project uses: the document, the recovery snapshots, the migration backups, the index record with its preview, and the assets that section 5.6 allows.
 - The project open in this tab can be deleted. The page stays, and no project is open afterward.
 - A project open in another tab cannot be deleted. A project that did not open can.
+- A delete takes the project's lock before it removes anything and holds it until it is done, so no tab can open the project while its files and assets go. When another tab holds the lock, the delete is refused and nothing is removed. For the project open in this tab, the handle closes first and the delete then takes the lock.
 - A folder project has "Remove from list". It forgets the folder and the record, removes no file, and shows no dialog.
 
 #### Page actions
@@ -563,7 +566,7 @@ Design:
 2. `session/` gets the settings service of ADR-0180: typed keys, defaults, a check of stored values, and change notification. The editor reads it through an adapter in `bridge/`.
 3. The service has two users in this stage. The snap preferences move to it, and the old key is read once and carried over. The theme choice is stored through it, which is a change in behavior: the choice now survives a reload. The pull request says so.
 4. The design language and unit precision get keys when they get controls.
-5. Lint forbids browser storage globals outside `storage/`, and the probe in `app/opfs-probe.ts` moves into `storage/`. The storage sentence of rule 1 in `.claude/rules.md` then holds with no exception.
+5. Lint forbids browser storage globals outside `storage/`, and the probe in `app/opfs-probe.ts` moves into `storage/`. The rule covers the source layers and `src/`, with their tests and stories. End-to-end specs are outside it, because a spec checks the browser from inside the page. The storage sentence of rule 1 in `.claude/rules.md` then holds with no exception.
 6. Which project to open at start is not a setting. It comes from the project index (section 5.5).
 
 Left to the builder: the browser API behind the port. The theme has to be known before the first paint, which favors an API that can be read synchronously. Also the list of forbidden globals.
@@ -579,7 +582,7 @@ Done when:
 
 Decision 11 leaves two things for later and requires that nothing in this stage rules them out. The stage meets that with five rules.
 
-1. Only the open step of the handle takes the lock, through one port. Only the project list reads the lock state, through the same port. No editor code depends on it. A later mode in which two windows share a document changes the policy behind that port and nothing else.
+1. Two steps take the lock, both in `session/` and both through one port: the open step of the handle, and the delete of a project, which holds the lock for as long as it runs. Only the project list reads the lock state, through the same port. No editor code depends on it. A later mode in which two windows share a document changes the policy behind that port and nothing else.
 2. The handle holds the document, its store, its lock, and its save state. Selection, camera, active floor, and tool state belong to a window and live outside the handle.
 3. Every change to a document in a session goes through `dispatch`, the rename of a closed project included. Migrations and repairs are the only code that changes a document without it, and they run before a session exists.
 4. A project id is a random UUID. The one id that is not, `'current'`, is local to a browser and would get a new id if projects ever leave the browser.
@@ -606,7 +609,8 @@ One specification covers the stage, and the plan delivers it in several pull req
 Order inside and between groups:
 
 - The first stage lands before any of this. The codec takes over its table and its graft, the session layer extends its lint exception list, and the identity group replaces its remembered id.
-- The codec group builds the strict check, and the application does not act on a failed check yet. The refusal goes live in the failed-open group, in the same pull request as the dialog. Until then a failed check is reported and the document opens, as it does today. In that interval a document that migrated and then failed the check still gets its migration backup before it opens, so the first save cannot replace the only copy of the original.
+- The codec group builds the strict check, and the application does not act on a failed check yet. The refusal goes live in the failed-open group, in the same pull request as the dialog. Until then a failed check is reported and the document opens, as it does today, on every path that reads one: a store, an import, the restore of a snapshot, and the rebuild of the index. In that interval a document that migrated and then failed the check still gets its migration backup before it opens, so the first save cannot replace the only copy of the original.
+- The switch of section 5.9 (point 5) is built with the session layer, because every flow that replaces the open project needs it as soon as the discard prompt goes. The identity group adds start and the addresses.
 - After the session layer lands, the identity, assets, and settings groups can run in parallel. The Projects page waits for the assets group as well as for identity, because its Export and Delete use the unchecked copy and the rule for removing assets.
 - `storage/index.ts`, `core/index.ts`, `session/index.ts`, and `package.json` are shared. Each change to them is a line or two, and they need a merge order, not an owner.
 - `app/app.tsx` has no single owner either. Five groups edit it in turn: the session layer, identity, the Projects page, failed open, and temporary storage. Their dependencies already put them in that order.

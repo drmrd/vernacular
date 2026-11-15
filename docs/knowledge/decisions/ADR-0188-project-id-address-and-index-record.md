@@ -75,8 +75,9 @@ them loads, including a folder project whose folder the browser has not yet gran
 - Projects in the browser share one asset pool, and a folder project has its own pool in its
   folder. A delete removes an asset from the shared pool only when no other record and no entry of
   the user's library lists it. While the workspace holds another project that did not open, a
-  delete removes no asset, because the list of that project can be incomplete. Assets inside a
-  folder project are never removed.
+  delete removes no asset, because the list of that project can be incomplete. A project in the
+  workspace store that has no record counts the same way. Assets inside a folder project are never
+  removed.
 - The index is a port in `storage/`, with a browser implementation and an in-memory one. It can be
   read before any project loads, and it is not a project.
 - The index replaces the recent-project store. It also takes over the remembered id of ADR-0183.

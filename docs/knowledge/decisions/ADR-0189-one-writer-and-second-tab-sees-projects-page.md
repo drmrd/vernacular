@@ -28,9 +28,10 @@ updated: 2026-11-15
 
 Current. The owner took decision 11 of section 4.1 of
 `docs/specs/2026-11-15-session-layer-and-document-identity.md` on 2026-11-15 and approved the guard
-rails of section 5.12 the same day, with that specification. It supersedes the read-only outcome
-of the project lock in ADR-0030. The code changes with #685. Until then no code takes a lock when
-it opens a project, and two tabs can write the same document.
+rails of section 5.12 the same day, with that specification. Later that day the owner changed the
+first guard rail: a delete also takes the lock and holds it while it runs. It supersedes the
+read-only outcome of the project lock in ADR-0030. The code changes with #685. Until then no code
+takes a lock when it opens a project, and two tabs can write the same document.
 
 ## Context
 
@@ -51,15 +52,19 @@ manager does not check that the API exists.
   says "Already open in another tab."
 - That card offers Export only, and the export holds the last saved state. A tab that does not
   hold the document cannot rename or delete it.
+- A delete takes the project's lock before it removes anything and holds it until it is done, so
+  no tab can open a project while its files and assets go. When another tab holds the lock, the
+  delete is refused and nothing is removed.
 - There is no read-only mode and no taking of ownership.
 
 The owner called this a fair assumption for now and set a condition. Nothing decided now may make
 the plan and the 3D view in separate windows, or editing by more than one person, unattainable.
 These five guard rails are how the stage meets that condition.
 
-1. Only the open step of the handle takes the lock, through one port. Only the project list reads
-   the lock state, through the same port. No editor code depends on it. A later mode in which two
-   windows share a document changes the policy behind that port and nothing else.
+1. Two steps take the lock, both in `session/` and both through one port: the open step of the
+   handle, and the delete of a project. Only the project list reads the lock state, through the
+   same port. No editor code depends on it. A later mode in which two windows share a document
+   changes the policy behind that port and nothing else.
 2. The handle holds the document, its store, its lock, and its save state. Selection, camera,
    active floor, and tool state belong to a window and live outside the handle.
 3. Every change to a document in a session goes through `dispatch`, the rename of a closed project
