@@ -8,15 +8,21 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0009-test-pyramid-rgb-tdd,
     decisions/ADR-0017-layer-boundary-enforcement-repair,
+    decisions/ADR-0185-lint-warnings-fail-and-exceptions-are-recorded,
   ]
 sourceFiles: [eslint.config.js, .claude/rules.md, .jscpd.json]
 status: current
-updated: 2026-06-02
+updated: 2026-11-14
 ---
 
 # ADR-0012: ESLint guardrails and layer boundary enforcement
 
 ## Status
+
+> Amended by [[ADR-0185-lint-warnings-fail-and-exceptions-are-recorded]] on 2026-11-14. Every
+> rule that warned becomes an error at its configured limit, `pnpm lint` allows no warning, and
+> exceptions sit in one recorded list. ADR-0185 also adds the ban on Three.js imports outside
+> `engine/` that this record deferred. Until that work lands, the rules warn as described below.
 
 Accepted. The boundary-enforcement portion was repaired and given a fitness
 test; see ADR-0017.
