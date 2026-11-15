@@ -11,8 +11,8 @@ that needs no React has a layer of its own.
 
 **Architecture:** thirteen pull requests in seven lanes. The codec, the stores, and the session
 layer land one after the other. Then the identity, assets, and settings lanes run in parallel. The
-Projects page follows, and the failed-open and temporary-storage lanes close the stage. The refusal
-to open an invalid document goes live only in pull request 12, with the dialog.
+Projects page follows, then the failed-open pull request, and temporary storage closes the stage.
+The refusal to open an invalid document goes live only in pull request 12, with the dialog.
 
 **Tech stack:** TypeScript, Vitest (the unit project on jsdom, and a new browser-mode project on
 Chromium for IndexedDB and the origin private file system), Ajv standalone code generation, fflate,
@@ -50,7 +50,10 @@ the description.
 - `session/` imports no React and no Three.js and uses no DOM global. Browser storage APIs stay in
   `storage/`, and from pull request 9 lint holds that with no exception.
 - Until pull request 12, a document that fails the strict check is reported and opens. No earlier
-  pull request may refuse one.
+  pull request may refuse one. Every path that reads a document treats a `format-rules` failure the
+  same way until then: it uses `failure.document`, warns with the faults, and goes on. The paths
+  are the stores (cycles 2.5 and 3.2), the open step of the handle (5.3), `importFile` (5.6), the
+  restore of a snapshot (2.5 and 5.8), and `reconcileIndex` (6.5). Cycle 12.3 flips each of them.
 - No lint rule is switched off to reach zero problems. The first stage's exception list is the only
   place where a limit is raised or an import allowed for one file, and each entry names an open
   issue.
@@ -58,6 +61,10 @@ the description.
   `refactor:`, an empty marker when the review finds nothing. The commit lines below name the first
   two; the `refactor:` commit always follows. Tooling cycles (lint, CI, scripts, generators) use
   `test:` then `build:` or `ci:`. A pure move under green tests is one `refactor:` commit.
+- A GREEN commit changes no test file, and a deleted, moved, or split test file counts as changed.
+  Tests that a cycle removes, moves, splits, or rewrites change in that cycle's RED commit. A
+  `test:` commit that is not a cycle's RED (a benchmark, an end-to-end journey) lands after the
+  cycle's `refactor:` commit, never between `feat:` and `refactor:`.
 - No decision record is needed beyond ADR-0187 to ADR-0191. If a lane finds that it needs one, the
   orchestrator assigns the number.
 - Each pull request passes `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`,
@@ -78,17 +85,24 @@ differently.
    `format-rules` failure carries the migrated document, so the repair list and the interim open
    need no second decode.
 2. **The revision is `meta.schemaRevision`**, and the build's is `CURRENT_SCHEMA_REVISION`. Adding
-   the field is itself the first additive change to version 17, so this stage publishes revision 1
-   of version 17: a published schema is fixed once released (ADR-0178).
+   the field is itself the first additive change to the current version, so this stage publishes
+   revision 1 of the current version (17, unless cycle 1.3 raised it): a published schema is fixed
+   once released (ADR-0178). The revision belongs to one version. Decode sets it back to 0 whenever
+   it migrated to a higher version, and encode writes the higher of the document's revision and the
+   build's only within one version.
 3. **A later revision is published at `schema/<version>/revision-<R>/vernacular.schema.json`**, with
    the matching `$id` under `https://drmrd.github.io/vernacular/schema/`. Existing paths and `$id`
    values stay and count as revision 0.
-4. **The validator is compiled when the schema is generated**, with Ajv's standalone code into
-   `core/format/generated/current-schema-validator.js`, checked by `pnpm schema:check`. The bundle
-   then carries no schema compiler, a load pays no compile time, and no `new Function` runs, which
-   keeps a strict content security policy possible. The cost is a large generated file under drift
-   control. One compiled validator serves both reading modes: tolerant mode drops the
-   `additionalProperties` faults and nothing else.
+4. **The validators are compiled when the schema is generated**, with Ajv's standalone code. The
+   bundle then carries no schema compiler, a load pays no compile time, and no `new Function` runs,
+   which keeps a strict content security policy possible. Two validators are generated: the strict
+   one from the published schema, into `core/format/generated/current-schema-validator.js`, and the
+   tolerant one from the same schema with every `additionalProperties: false` removed, into
+   `core/format/generated/tolerant-schema-validator.js`. Dropping only the `additionalProperties`
+   faults would not do: `SurfaceTreatment` and `UnderlaySource` are `anyOf` unions whose variants
+   are closed, so an unknown field inside a variant also leaves `anyOf`, `const`, and `required`
+   faults. The cost is two large generated files under drift control (`pnpm schema:check`), and
+   the bundle delta goes in the description of pull request 2.
 5. **Stores move bytes through a `ProjectFiles` port over `DirectoryPort`.** A workspace holds
    projects in id-named directories and the shared pool at `assets/`; a picked folder or an archive
    is one project at a root. This is the spec's directory port: the folder layout, the snapshot
@@ -109,7 +123,9 @@ differently.
    forbids to production files.
 10. **The lock port is `ProjectLockPort`** (`tryAcquire`, `heldIds`, `supported`) over
     `navigator.locks.request` with `ifAvailable` and `navigator.locks.query`. The read-only outcome
-    of ADR-0030 goes away.
+    of ADR-0030 goes away. Two steps take the lock, both in `session/`: the open step of the handle,
+    and the delete of a project, which holds it while it runs (spec 5.12 rule 1).
+    `listProjectCards` is the only reader of `heldIds()`.
 11. **The project index is its own IndexedDB database, `vernacular-index`**, with a `records` store
     keyed by id: readable before any project loads, usable beside both backends, and free of the
     project database's version changes. A preview can be tens of kilobytes, which rules out
@@ -129,7 +145,9 @@ differently.
 15. **Forbidden storage globals outside `storage/`:** `localStorage`, `sessionStorage`, `indexedDB`,
     `caches`, `showDirectoryPicker`, `showOpenFilePicker`, `showSaveFilePicker`, the same names as
     properties of `window`, `globalThis`, and `self`, and `navigator.storage` and `navigator.locks`.
-    Tests are covered too.
+    The rule covers `core/`, `session/`, `engine/`, `bridge/`, `editor/`, `app/`, and `src/`, with
+    their tests and stories. `e2e/` is outside it, because a spec there evaluates browser code in
+    the page (`e2e/tests/storage-capabilities.spec.ts` uses `navigator.storage` and `indexedDB`).
 16. **The first stage's remembered id is read once** when pull request 6 builds the index from
     nothing: it becomes the latest use and the key is removed. The first-stage port goes away.
 17. **The session layer's lint exceptions** use the rule `boundaries/dependencies` and a new field
@@ -205,21 +223,22 @@ the cycle named.
 | 4   | The session layer                     | `feat/session-layer`                     | #685       | Session layer     | 3               |
 | 5   | The document handle and the flows     | `feat/document-handle-and-flows`         | #685, #588 | Session layer     | 4               |
 | 6   | The project index and the preview     | `feat/project-index-and-preview`         | #588       | Identity          | 5               |
-| 7   | Addresses, start, and the switch      | `feat/project-addresses-and-switch`      | #588       | Identity          | 6               |
+| 7   | Addresses and start                   | `feat/project-addresses-and-start`       | #588       | Identity          | 6               |
 | 8   | Assets travel with documents          | `fix/assets-travel-with-documents`       | #673, #672 | Assets            | 5               |
 | 9   | The settings port                     | `feat/settings-port`                     | #685       | Settings          | 5               |
 | 10  | The Projects page                     | `feat/projects-page`                     | #588       | Projects page     | 7 and 8         |
 | 11  | Card actions                          | `feat/project-card-actions`              | #588       | Projects page     | 10              |
 | 12  | A project that does not open          | `feat/failed-open-dialog-and-repairs`    | #631       | Failed open       | 11              |
-| 13  | Temporary storage says so             | `fix/temporary-storage-says-so`          | #591       | Temporary storage | 11              |
+| 13  | Temporary storage says so             | `fix/temporary-storage-says-so`          | #591       | Temporary storage | 12              |
 
 Pull requests 1 to 5 land in order. Pull request 1 comes first because a migration that produces a
 document the current schema rejects needs a lossless step at the next `schemaVersion` before the
-revision work builds on it. After pull request 5, three lanes run in parallel in sibling
-worktrees: identity (6, then 7), assets (8), and settings (9). The Projects page lane waits for 7
-and 8: spec section 6 gives it identity as its only need, but its export and delete use the
-unchecked copy and the asset rule of pull request 8. After 11, pull requests 12 and 13 run in
-parallel.
+revision work builds on it. Pull request 5 brings the switch with the flows, because it removes the
+discard prompt: from then on every path that replaces the open project writes its changes first.
+After pull request 5, three lanes run in parallel in sibling worktrees: identity (6, then 7),
+assets (8), and settings (9). The Projects page lane waits for 7 and 8, the needs that spec section
+6 gives it. Pull requests 12 and 13 then land one after the other, because both edit the handle,
+the Projects screen, and `app/app.tsx`.
 
 File fences, in addition to spec section 6. A lane edits a file outside its fence only where the
 table of shared files lists it.
@@ -233,15 +252,14 @@ table of shared files lists it.
   `storage/indexeddb/`, `storage/opfs/`, `storage/filesystem/`, `storage/project-store.ts`,
   `storage/zip/zip-bundle-project-store.ts`, `storage/in-memory-project-store.ts`,
   `storage/project-storage.ts`, `tests/storage/`, `vitest.config.ts`, `.github/workflows/ci.yml`.
-- **Session layer (4, 5):** spec section 6's list, plus `src/main.tsx`,
+- **Session layer (4, 5):** spec section 6's list, plus `session/flows/switch-project.ts`,
   `app/resolve-snapshot-store.ts`, `app/use-resolved-snapshots.ts`, the discard files in `app/`,
-  `editor/shell/discard-dialog.tsx`, every test and story that builds a session, and
-  `e2e/tests/discard-confirmation.spec.ts`.
+  `editor/shell/discard-dialog.tsx`, every test and story in `bridge/` and `editor/` that builds a
+  session or imports `storage/`, and `e2e/tests/discard-confirmation.spec.ts`.
 - **Identity (6, 7):** `core/export/svg/`, `core/format/best-effort-read.ts`,
   `storage/project-index/`, `storage/active-project/`, `storage/recent/`,
-  `storage/filesystem/directory-handle-store.ts`, `session/handle/`, `session/projects/`,
-  `session/flows/start.ts`, `session/flows/switch-project.ts`, `session/ports.ts`,
-  `app/address.ts`, `app/resolve-place.ts`, `app/use-history-navigation.ts`, `src/main.tsx`.
+  `storage/filesystem/directory-handle-store.ts`, `session/flows/start.ts`, `app/address.ts`,
+  `app/resolve-place.ts`, `app/use-history-navigation.ts`.
 - **Assets (8):** `storage/zip/`, `storage/import/`, `storage/assets/removable-assets.ts`,
   `session/flows/import-file.ts`, `session/flows/export-archive.ts`.
 - **Settings (9):** `storage/settings/`, `storage/opfs/opfs-probe.ts`, `session/settings/`,
@@ -249,33 +267,46 @@ table of shared files lists it.
   `editor/plan/snap-preferences-store.ts`, `editor/shell/shell-providers.tsx`,
   `editor/design-system/theme-provider.tsx`, `editor/design-system/theme.ts`,
   `editor/shell/theme-toggle.tsx`, `app/opfs-probe.ts`, `app/resolve-project-store.ts`,
-  `eslint.config.js`,
   `tests/architecture/storage-globals.test.ts`.
 - **Projects page (10, 11):** `editor/projects/`, `session/flows/rename-project.ts`,
   `session/flows/delete-project.ts`, `session/flows/export-project.ts`,
-  `editor/shell/project-menu.tsx`, `editor/shell/export-menu.tsx`, its new journeys,
-  `src/e2e-storage-hook.ts`, `app/projects-screen.tsx`, `app/app-failed-load.test.tsx`.
+  `editor/shell/export-menu.tsx`, its new journeys.
 - **Failed open (12):** `core/repairs/`, `editor/projects/failed-open-dialog.tsx`,
   `editor/projects/repair-choice-dialog.tsx`, `editor/projects/failure-sentences.ts`,
   `session/flows/open-failed.ts`, `storage/documents/open-despite-format-faults.ts`.
-- **Temporary storage (13):** `app/use-degraded-storage-banner.ts`, `app/create-session-ports.ts`,
-  `app/temporary-storage.test.tsx`, `app/app-failed-load.test.tsx`, `session/autosave/`,
-  `editor/shell/editor-shell.tsx`, `storage/project-storage.ts`.
+- **Temporary storage (13):** `app/use-degraded-storage-banner.ts`, `app/temporary-storage.test.tsx`.
 
-Shared files take a line or two from more than one lane, in a fixed merge order. The lane that
-merges second rebases.
+Files that more than one pull request edits have a fixed merge order. Where two of them run in
+parallel, the one that merges second rebases. Every other file belongs to one fence above.
 
-| File               | Edited by, in merge order                                    |
-| ------------------ | ------------------------------------------------------------ |
-| `core/index.ts`    | 2, 6, 12                                                     |
-| `storage/index.ts` | 2, 3, 5, then 6, 8, and 9 as they merge, then 13             |
-| `session/index.ts` | 4, 5, then 6, 7, 8, and 9 as they merge, then 10, 11, 12, 13 |
-| `package.json`     | 3, then 6, 8, and 9 as they merge                            |
-| `app/app.tsx`      | 2, 4, 5, then 6, 7, and 9 as they merge, then 10, 11, 12, 13 |
+| File                                                                                                                                      | Edited by, in merge order                                    |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `core/index.ts`                                                                                                                           | 2, 6, 12                                                     |
+| `storage/index.ts`                                                                                                                        | 2, 3, 5, then 6, 8, and 9 as they merge, then 13             |
+| `session/index.ts`                                                                                                                        | 4, 5, then 6, 7, 8, and 9 as they merge, then 10, 11, 12, 13 |
+| `package.json`                                                                                                                            | 3, then 6, 8, and 9 as they merge                            |
+| `app/app.tsx`                                                                                                                             | 2, 4, 5, then 6, 7, and 9 as they merge, then 10, 11, 12, 13 |
+| `eslint.config.js`                                                                                                                        | 2, 4, 5, 9                                                   |
+| `src/main.tsx`                                                                                                                            | 5, 7                                                         |
+| `src/e2e-storage-hook.ts`                                                                                                                 | 5, 6, 10, 12                                                 |
+| `storage/import/`, `storage/zip/`                                                                                                         | 2 and 3, then 8                                              |
+| `storage/folder/`, `storage/snapshots/`, `storage/documents/`                                                                             | 2, 3, 12                                                     |
+| `storage/project-storage.ts`                                                                                                              | 3, 13                                                        |
+| `session/ports.ts`                                                                                                                        | 5, 6                                                         |
+| `session/handle/`                                                                                                                         | 5, 6, 12, 13                                                 |
+| `session/autosave/`                                                                                                                       | 4, 5, 13                                                     |
+| `session/projects/`                                                                                                                       | 6, 10, 11, 12                                                |
+| `session/flows/import-file.ts`, `export-archive.ts`                                                                                       | 5, 8, 12                                                     |
+| `app/create-session-ports.ts`                                                                                                             | 5, then 6, 8, and 9 as each needs, then 13                   |
+| The four flow adapters in `app/` (`use-project-actions.ts`, `use-open-file-action.ts`, `use-export-actions.ts`, `use-workspace-state.ts`) | 2 (one line), 5, then 6, 7, and 8 as they merge              |
+| `app/projects-screen.tsx` and its test                                                                                                    | 10, 11, 12, 13                                               |
+| `app/app-failed-load.test.tsx`                                                                                                            | 10, 13                                                       |
+| `editor/shell/project-menu.tsx`                                                                                                           | 6, 10, 11                                                    |
+| `editor/shell/editor-shell.tsx`                                                                                                           | 4, 13                                                        |
 
 Pull request 2 edits `app/app.tsx` and `app/use-open-file-action.ts` in one place each, to drop the
 call to `validateLoadedProject`. Pull request 9 edits `app/app.tsx` in one place, to mount the
-settings provider. Pull requests 12 and 13 both edit it; 12 merges first.
+settings provider.
 
 Documents that change with the code (spec section 8):
 
@@ -406,18 +437,20 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
       `feat: add the schema revision to the project meta`,
       `build: publish schema revisions beside their version`.
 
-### Cycle 2.2: the validator is generated
+### Cycle 2.2: the validators are generated
 
 - [ ] RED in `tests/format/current-schema-validator.test.ts`: `pnpm schema:check` exits non-zero
-      and names `core/format/generated/current-schema-validator.js` when that file is stale (run on
-      a temporary copy); an unknown root key gives one fault at `/x-unknown` with rule
-      `additionalProperties` in strict mode and none in tolerant mode; an unknown key in
-      `extensions` gives none; a missing `meta.name` gives a fault in both modes.
-- [ ] GREEN: the generator step, `core/format/current-schema.ts` over its output, and
+      and names `core/format/generated/current-schema-validator.js`, or
+      `tolerant-schema-validator.js`, when that file is stale (run on a temporary copy); an unknown
+      root key gives one fault at `/x-unknown` with rule `additionalProperties` in strict mode and
+      none in tolerant mode; tolerant mode accepts an unknown field inside a paint entry; an unknown
+      key in `extensions` gives none; a missing `meta.name` gives a fault in both modes.
+- [ ] GREEN: the generator step for both validators (the tolerant one from the schema with every
+      `additionalProperties: false` removed), `core/format/current-schema.ts` over them, and
       `core/format/generated/` in `.prettierignore` and in the `ignores` of `eslint.config.js`.
       Record the production bundle size before and after, for the description.
-- [ ] Commits: `test: expect a generated validator for the current schema`,
-      `build: generate the current schema validator with the schema`,
+- [ ] Commits: `test: expect generated strict and tolerant validators for the current schema`,
+      `build: generate the current schema validators with the schema`,
       `feat: check a document against the current schema`.
 
 ### Cycle 2.3: decode
@@ -430,7 +463,9 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
   - `x-unknown` on a wall at the current revision gives `format-rules` with the path
     `/floors/0/walls/0/x-unknown`;
   - the same with `schemaRevision: CURRENT_SCHEMA_REVISION + 1` decodes, keeps the key, and has
-    `savedByNewerBuild: true`;
+    `savedByNewerBuild: true`; so does an unknown field inside a paint entry at that revision;
+  - an older-version fixture given `schemaRevision: 3` decodes with no revision carried and
+    `savedByNewerBuild: false`, because the revision resets when the version rises;
   - a paint entry of one `kind` that carries a field only another variant defines gives
     `format-rules`; an unknown key inside `extensions` decodes.
 - [ ] GREEN: `decodeDocument`.
@@ -443,14 +478,15 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
       and keeps a higher revision; a document read at a higher revision encodes with no fault, and
       its unknown field survives a second decode; an unknown key in the previous bytes survives;
       previous bytes that do not parse or migrate are ignored; an unknown field at the current
-      revision gives non-empty `faults` and bytes that hold the document; decode of encode is equal
+      revision gives non-empty `faults` and bytes that hold the document; the older-version fixture
+      given `schemaRevision: 3` encodes with `CURRENT_SCHEMA_REVISION`; decode of encode is equal
       for every fixture.
 - [ ] GREEN: `encodeDocument`, grafting at the root of `KNOWN_KEYS`.
 - [ ] `tests/performance/encode-time.bench.ts` runs `encodeDocument` on `createReferenceProject()`
       with its own bytes as the previous file. Run it with `pnpm exec vitest bench --project unit`
       on `main` and on the branch on one machine; both medians go in the description.
 - [ ] Commits: `test: expect encode to check, graft, and write the revision`,
-      `feat: encode documents through one codec`, and
+      `feat: encode documents through one codec`; after this cycle's `refactor:` commit,
       `test: measure the encode time of the reference project`.
 
 ### Cycle 2.5: every path reads and writes through the codec
@@ -458,7 +494,8 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
 - [ ] RED: in `storage/folder/folder-project-store.test.ts`, a stored file that fails the check
       loads as the migrated document and `console.warn` receives the faults (interim; pull request
       12 reverses it); in `storage/snapshots/snapshot-store.test.ts`, a version 8 snapshot restores
-      through decode; in `storage/import/import-project-file.test.ts`, a `.json` file at a higher
+      through decode, and one that fails the check restores its migrated document with a warning
+      (interim); in `storage/import/import-project-file.test.ts`, a `.json` file at a higher
       version rejects with an error whose `failure.kind` is `newer-version`.
 - [ ] GREEN: the folder store, the snapshot store, and the import call the codec; the first-stage
       backup rule stays until pull request 3. `app/app.tsx` and `app/use-open-file-action.ts` stop
@@ -536,7 +573,7 @@ export class DocumentStore {
   read(id: string): Promise<StoreRead>
   /** Rejects only when the bytes could not be written. */
   save(id: string, project: Project): Promise<SaveReport>
-  snapshots(id: string): ProjectSnapshots // restore() gives a DecodeResult
+  snapshots(id: string): ProjectSnapshots
   assets(id: string): AssetCache
   storedFiles(id: string): Promise<ReadonlyMap<string, Uint8Array>>
   /** Interim, removed by pull request 12: writes the migration backup, returns the document. */
@@ -545,6 +582,28 @@ export class DocumentStore {
   load(id: string): Promise<Project>
 }
 // WorkspaceDocumentStore extends DocumentStore over RemovableProjectFiles and adds delete(id).
+
+// storage/documents/project-snapshots.ts: the codec in front of SnapshotStore
+export interface ProjectSnapshots {
+  writeSnapshot(project: Project): Promise<void>
+  prune(): Promise<void>
+  isRecoverable(): Promise<boolean>
+  restore(): Promise<DecodeResult | undefined>
+}
+
+// storage/filesystem/folder-access.ts
+export interface FolderAccess {
+  readonly supported: boolean
+  /** Shows the browser's folder picker; undefined when the user cancels. */
+  pick(): Promise<FileSystemDirectoryHandle | undefined>
+  /** The id of a known folder that is the same entry as `handle`. */
+  findKnown(handle: FileSystemDirectoryHandle): Promise<string | undefined>
+  remember(id: string, handle: FileSystemDirectoryHandle): Promise<void>
+  forget(id: string): Promise<void>
+  permission(id: string): Promise<'granted' | 'prompt' | 'denied' | 'missing'>
+  /** After a user gesture: requests access and returns the folder's files. */
+  reopen(id: string): Promise<FolderFiles | 'denied' | 'missing'>
+}
 ```
 
 `ProjectStore` becomes an alias of `DocumentStore`, so type imports compile. The five store classes
@@ -585,14 +644,15 @@ callers. `SnapshotStore` moves bytes only.
 
 ### Cycle 3.3: the store kinds on the byte port
 
-- [ ] RED in the tests of the five store classes: `list()` returns `{ id, lastChangedAt }` with no
-      name; every other case passes unchanged. In `file-system-folder-project-store.test.ts`, with
-      `notes.txt` and `drawings/` in the folder, no method removes a file it did not write, and
-      there is no `delete`.
+- [ ] RED: in the existing tests of the in-memory, origin private file system, and archive stores,
+      `list()` returns `{ id, lastChangedAt }` with no name, and every other case passes unchanged.
+      Two test files are new: `storage/filesystem/file-system-folder-project-store.test.ts`, where,
+      with `notes.txt` and `drawings/` in the folder, no method removes a file it did not write and
+      there is no `delete`; and `storage/indexeddb/indexeddb-project-store.browser.test.ts`, where
+      `list()` has the same shape.
 - [ ] GREEN: the five classes over the wrapper; `createOpfsProjectStorage` and
       `createDefaultProjectStorage` give a `DirectoryAssetCache` on every durable backend.
-      `BrowserFolderAccess` in `storage/filesystem/folder-access.ts` (the `FolderAccess` of pull
-      request 5) replaces `FileSystemFolderProjectStore.open` and `reopen`, keeps
+      `BrowserFolderAccess` in `storage/filesystem/folder-access.ts` replaces `FileSystemFolderProjectStore.open` and `reopen`, keeps
       `DirectoryHandleStore`, and finds a known folder with `isSameEntry`; `InMemoryFolderAccess`
       serves tests. The picker is checked by hand, as today.
 - [ ] Commits: `test: expect every store kind to list ids and never empty a picked folder`,
@@ -614,13 +674,22 @@ callers. `SnapshotStore` moves bytes only.
 ### Cycle 3.5: version 1 records are converted
 
 - [ ] RED in `storage/indexeddb/legacy-records.browser.test.ts`, seeding a version 1 database with
-      `{ id: 'current', project }`: after the first open, `current/vernacular.json` decodes to the
-      record's object and the record is gone;
-      `keeps a legacy record whose converted file does not read back equal` (an injected
-      `readBack`); a second open writes nothing.
-- [ ] GREEN: `convertLegacyRecords(db, options?)` in `storage/indexeddb/legacy-records.ts`, run
-      once before the first read. It writes `JSON.stringify` of the stored object, a byte copy and
-      not an encode; the first read after it decodes, migrates, and backs up as for any file.
+      `{ id: 'current', project }`:
+  - before any conversion, `IndexedDbDirectory` serves the record as `current/vernacular.json`, so
+    `ids()` lists `current` and the project reads;
+  - after the first open, `current/vernacular.json` is a file that decodes to the record's object,
+    and the record is gone;
+  - `keeps a legacy record whose converted file does not read back equal` (an injected
+    `readBack`): the converted file is removed, the record stays, and the project still reads from
+    the record;
+  - a second open writes nothing.
+- [ ] GREEN: `IndexedDbDirectory` serves a version 1 record with no converted file as
+      `<id>/vernacular.json`. `convertLegacyRecords(db, options?)` in
+      `storage/indexeddb/legacy-records.ts`, run once before the first read, writes the file, reads
+      it back, and removes the record only when the two are equal; on a mismatch it removes the
+      converted file and keeps the record. It writes `JSON.stringify` of the stored object, a byte
+      copy and not an encode; the first read after it decodes, migrates, and backs up as for any
+      file.
 - [ ] Commits: `test: expect stored IndexedDB records to become files without loss`,
       `feat: convert stored IndexedDB records to files`.
 
@@ -696,15 +765,24 @@ Spec 5.1, design points 1 to 3 and 6. Files move; behavior does not.
       `editor/sample.tsx` are rejected for a value import and for an `import type` from
       `../storage`; a file listed with `allowImportOf: 'storage'` is accepted for `storage` and
       still rejected for `../app`. In `tests/architecture/lint-exceptions.test.ts`, such an entry
-      names an issue, and one whose file no longer imports `storage/` is stale.
+      names an issue, and one whose file no longer imports `storage/` is stale. In
+      `tests/architecture/session-testing-entry.test.ts`, an import of `session/testing` is
+      rejected in `editor/sample.tsx` and accepted in `editor/sample.test.tsx` and
+      `editor/sample.stories.tsx`.
 - [ ] GREEN: `storage` leaves the allow lists of `bridge` and `editor`; `buildConfig` turns an
       `allowImportOf` entry into a per-file block that restates the layer rules with one extra
       target. The entries are the files that still import `storage/` after cycle 4.3 (re-run
       `git grep` on the day): today the three asset contexts in `bridge/react/`, the six files of
       `editor/library/` that import it, and `authoring-tool-handlers.ts`,
       `furniture-placement-context.ts`, `use-furniture-layer.ts`, `use-furniture-placement.ts`, and
-      `use-plan-authoring.ts` in `editor/plan/`. Each names #717, which moves the asset and library
-      ports behind the session layer.
+      `use-plan-authoring.ts` in `editor/plan/`. The sixteen test and story files in `bridge/` and
+      `editor/` that import `storage/` for the asset and library ports get entries too (for
+      example `bridge/react/entity-labels.test.tsx`, `bridge/react/webgpu-scene-view.test.tsx`, and
+      the `editor/library/` stories). Each entry names #717, which moves the asset and library
+      ports behind the session layer. No other test or story file in those layers imports
+      `storage/`: one that needs a store double takes it from `session/testing`, which this cycle
+      creates with the in-memory store and asset cache, and with the `no-restricted-imports` block
+      that keeps it out of production files.
 - [ ] Commits: `test: expect bridge and editor to reach storage only through session`,
       `build: route storage imports from bridge and editor through session`.
 
@@ -755,7 +833,7 @@ export type ProjectLocation =
 export interface SessionPorts {
   readonly workspace: WorkspaceDocumentStore
   readonly locks: ProjectLockPort
-  readonly folders: FolderAccess // pick, findKnown, remember, forget, permission, reopen
+  readonly folders: FolderAccess // the interface of pull request 3
   readonly now: () => Date
 }
 
@@ -789,13 +867,29 @@ export interface OpenRequest {
   readonly create?: () => Project
 }
 export function openDocumentHandle(ports: SessionPorts, request: OpenRequest): Promise<OpenResult>
+
+// session/flows/switch-project.ts
+export type SwitchResult =
+  | { readonly ok: true; readonly handle: DocumentHandle }
+  | { readonly ok: false; readonly failure: { readonly kind: 'flush-failed' } | OpenFailure }
+/** Flush the current project, open the target, close the current one. On failure the current
+ * handle stays open. */
+export function switchProject(
+  ports: SessionPorts,
+  current: DocumentHandle | undefined,
+  target: OpenRequest,
+): Promise<SwitchResult>
 ```
 
-The flows, one file each under `session/flows/`: `createNewProject(ports)`, giving an
-`OpenResult`; `importFile(ports, { name, bytes })`, giving an open result or a failure of kind
-`unsupported-file` or `did-not-import` with its `DecodeFailure`; `openFolder(ports)`, giving an
-open result or a refusal of kind `cancelled` or `folder-empty`; and `exportArchive(handle)`, giving
-the bytes and a file name or a message. Pull request 8 adds `missingAssets` to import and export.
+The other flows, one file each under `session/flows/`, take the current handle and return a
+`SwitchResult` or a refusal: `createNewProject(ports, current)`; `importFile(ports, current,
+{ name, bytes })`, which can also fail with `unsupported-file` or `did-not-import` and its
+`DecodeFailure`; `openFolder(ports, current)`, which can also refuse with `cancelled` or
+`folder-empty`; and `openRecent(ports, current, id)`. Each ends in `switchProject`, so every path
+that replaces the open project writes its changes first, and no adapter installs a handle itself.
+`exportArchive(handle)` gives the bytes and a file name, or a message. Pull request 8 adds
+`missingAssets` to import and export. Until pull request 12, `importFile` treats a `format-rules`
+failure as the global constraint says, so `did-not-import` never carries `format-rules` yet.
 
 ### Cycle 5.1: the lock port
 
@@ -831,9 +925,12 @@ the bytes and a file name or a message. Pull request 8 adds `missingAssets` to i
     migration backup;
   - `savedByNewerBuild` emits `saved-by-newer-build`;
   - a type test finds no member of `DocumentHandle` for selection, camera, active floor, or tool
-    (guard rail 2).
+    (guard rail 2);
+  - the same RED commit splits `session/autosave/create-autosave.test.ts` into one file for the
+    timer and one for the write through the queue, each under the standard limit.
 - [ ] GREEN: `openDocumentHandle`, over the moved `createEditorSession` and `createAutosave`, with
-      autosave writing through the queue.
+      autosave writing through the queue. The first-stage exception entry for
+      `create-autosave.test.ts` goes.
 - [ ] Commits: `test: expect opening a handle to type each failure`,
       `feat: open a project through a document handle`.
 
@@ -847,57 +944,85 @@ the bytes and a file name or a message. Pull request 8 adds `missingAssets` to i
 - [ ] Commits: `test: expect a close to write pending changes or stay open`,
       `feat: flush and close a document handle`.
 
-### Cycle 5.5: the flows move into `session/`
+### Cycle 5.5: the switch
+
+- [ ] RED in `session/flows/switch-project.test.ts`:
+  - the order is flush, open target, close current (a recording port);
+  - an edit made just before a switch is stored;
+  - a failed flush stops the switch before the target opens and leaves the current handle open;
+  - a target that does not open leaves the current handle open, and `session.undo()` returns
+    `true`;
+  - the current id as target returns the current handle with no write;
+  - after a switch the old project's lock is free, so a second switch back to it opens.
+- [ ] RED in `app/use-switch-notices.test.tsx`: a `flush-failed` result shows "The changes could not
+      be saved, so the project stays open."
+- [ ] GREEN: `switchProject` and the adapter's notice.
+- [ ] Commits: `test: expect a switch to flush, open, then close`,
+      `feat: switch projects without losing the current one`.
+
+### Cycle 5.6: the flows move into `session/`
 
 - [ ] RED, one file per flow under `session/flows/`:
   - `create-new-project.test.ts`: a new id from `newProjectId`, nothing stored before the first
-    save, no discard question;
-  - `import-file.test.ts`: a `.json` file becomes a copy under a new id, the file is unchanged, and
-    two imports of one file give two ids;
+    save, no discard question, and an edit made just before New project is stored;
+  - `import-file.test.ts`: a `.json` file becomes a copy under a new id, the file is unchanged, two
+    imports of one file give two ids, and a file that fails the check opens its migrated document
+    with a warning (interim);
   - `open-folder.test.ts`: `a project opened from a folder saves back to the folder`: on an
     in-memory directory, an open, an edit, and a save leave the edit in the folder's
     `vernacular.json`, and `ports.workspace.list()` is unchanged; a known folder opens its existing
     id; a folder with no document gives `folder-empty` and nothing is remembered;
+  - `open-recent.test.ts`: after switching away from a project, opening it again from the recent
+    list works, because its lock is free;
   - `export-archive.test.ts`: pending changes are written before the archive is made.
-- [ ] GREEN: the four flows. `app/use-project-actions.ts`, `app/use-open-file-action.ts`,
+- [ ] The same RED commit removes the tests of the discard prompt in front of a swap: those cases
+      in `app/use-project-actions.test.ts`, `app/use-workspace-state.test.ts`,
+      `app/use-discard-confirmation.test.ts`, and `app/use-discard-prompt.test.ts`, and
+      `e2e/tests/discard-confirmation.spec.ts`. The cases of the recovered copy stay. It also splits
+      `app/app.test.tsx` and `app/use-project-actions.test.ts` into one test file per adapter, each
+      under the standard limit.
+- [ ] GREEN: the flows. `app/use-project-actions.ts`, `app/use-open-file-action.ts`,
       `app/use-export-actions.ts`, and `app/use-workspace-state.ts` become adapters that call a flow
-      and turn its result into a notification. The discard prompt in front of New project, Open
-      file, Open folder, and the recent list goes, with `guardSessionSwap` and
-      `e2e/tests/discard-confirmation.spec.ts`; the prompt for a recovered copy stays. The
-      first-stage exception entries for `app/app.test.tsx` and `app/use-project-actions.test.ts`
-      go: their tests move to one file per adapter, split further if still over the limit.
+      and turn its result into a notification; none installs a handle itself. The discard prompt in
+      front of New project, Open file, Open folder, and the recent list goes; the prompt for a
+      recovered copy stays, and `guardSessionSwap` serves only it. The first-stage exception entries
+      for `app/app.test.tsx` and `app/use-project-actions.test.ts` go.
 - [ ] Commits: `test: expect each flow to run without React and return a typed result`,
       `feat: move the open, save, import, and export flows into the session layer`.
 
-### Cycle 5.6: stores through flows, sessions through handles
+### Cycle 5.7: stores through flows, sessions through handles
 
 - [ ] RED: in `tests/architecture/app-reaches-stores-through-flows.test.ts`, with the import graph,
       no production file in `app/` except `app/create-session-ports.ts` imports a store class,
       `ProjectStore`, `DocumentStore`, or `WorkspaceDocumentStore`, and a planted sample is named;
       in `tests/architecture/session-testing-entry.test.ts`, `session/index.ts` exports no
-      `createEditorSession`, and an import of `session/testing` is rejected in `editor/sample.tsx`
-      and accepted in `editor/sample.test.tsx` and `editor/sample.stories.tsx`.
+      `createEditorSession` (the import guard of cycle 4.4 already holds). The same RED commit
+      deletes the tests of `DocumentStore.load` and of the moved `loadOrCreateProject`, and moves
+      every test and story that builds a session to `createEditorSession` from `session/testing`.
 - [ ] GREEN: `app/create-session-ports.ts` builds `SessionPorts`; `DocumentStore.load` and the
       moved `loadOrCreateProject` are deleted; `src/e2e-storage-hook.ts` uses `read` and the lock
-      port; `session/testing/index.ts` exports `createEditorSession` and in-memory `SessionPorts`,
-      tests and stories import from it, and a `no-restricted-imports` block guards it.
+      port; `session/testing/index.ts` also exports `createEditorSession` and in-memory
+      `SessionPorts`.
 - [ ] Commits: `test: expect app to reach stores through flows and sessions through handles`,
       `feat: build the session ports in one place`.
 
-### Cycle 5.7: snapshots, hiding, and the notices
+### Cycle 5.8: snapshots, hiding, and the notices
 
 - [ ] RED: in `session/handle/handle-snapshots.test.ts`, autosave writes snapshots under the
-      handle's id and a handle on another id sees no recovery; in `app/use-flush-on-hidden.test.ts`,
-      a `visibilitychange` to `hidden` calls `flush()` once and the prompt before unload still
-      shows while a write is pending; in `app/use-handle-notices.test.tsx`, each notice shows its
-      sentence from decision 22 once.
+      handle's id, a handle on another id sees no recovery, and the restore of a snapshot that
+      fails the check gives its migrated document with a warning (interim); in
+      `app/use-flush-on-hidden.test.ts`, a `visibilitychange` to `hidden` calls `flush()` once and
+      the prompt before unload still shows while a write is pending; in
+      `app/use-handle-notices.test.tsx`, each notice shows its sentence from decision 22 once. The
+      same RED commit deletes `app/resolve-snapshot-store.test.ts` and
+      `app/use-resolved-snapshots.test.ts`.
 - [ ] GREEN: the handle's snapshots feed autosave; `app/use-flush-on-hidden.ts`;
       `app/use-handle-notices.ts`. `app/resolve-snapshot-store.ts` and
       `app/use-resolved-snapshots.ts` are deleted.
 - [ ] Commits: `test: expect snapshots per handle and a flush when the page hides`,
       `feat: flush on hide and report save notices`.
 
-### Cycle 5.8: the whole editor without React
+### Cycle 5.9: the whole editor without React
 
 - [ ] RED in `tests/session/headless-round-trip.test.ts`, importing only from `core/`, `storage/`,
       `session/`, and `session/testing`: open a stored document through `openDocumentHandle`,
@@ -906,7 +1031,7 @@ the bytes and a file name or a message. Pull request 8 adds `missingAssets` to i
       or `@react-three/*` module in the test file's import closure.
 - [ ] Commit: `test: open, edit, undo, save, and export without React`.
 
-### Cycle 5.9: two tabs
+### Cycle 5.10: two tabs
 
 - [ ] `e2e/tests/second-tab.spec.ts`: one context, two pages at the bare address. The second shows
       "This project is open in another tab." in the boot view, and after an edit in the first
@@ -993,8 +1118,8 @@ export function recentRecords(records: readonly ProjectRecord[], openId?: string
 - [ ] Extend `tests/performance/encode-time.bench.ts` with `createPlanPreview` on the reference
       project; report both medians on `main` and the branch, and which branch of decision 21 holds.
 - [ ] Commits: `test: expect the handle to keep the project's record`,
-      `feat: update the project index after each save and open`, and
-      `test: measure the preview time of the reference project`.
+      `feat: update the project index after each save and open`; after this cycle's `refactor:`
+      commit, `test: measure the preview time of the reference project`.
 
 ### Cycle 6.5: the index can be rebuilt
 
@@ -1002,7 +1127,9 @@ export function recentRecords(records: readonly ProjectRecord[], openId?: string
       project's record has the same name, floor count, and preview as before; a record for a
       workspace id the store lacks is dropped, and a folder record is kept; a lost `lastUsedAt`
       takes `lastChangedAt`; bytes that are not JSON give a record with `opened: false`, the
-      placeholder name, and `assetListComplete: false`, and `list()` succeeds;
+      placeholder name, and `assetListComplete: false`, and `list()` succeeds; a project that fails
+      only the strict check gets its facts from `failure.document` and a record that says it
+      opened (interim, until cycle 12.3);
       `an index that rejects every call falls back to one rebuilt in memory`.
 - [ ] GREEN: `reconcileIndex`.
 - [ ] Commits: `test: expect the index to be rebuilt from the store`,
@@ -1014,7 +1141,8 @@ export function recentRecords(records: readonly ProjectRecord[], openId?: string
       record for it with a `lastUsedAt`, and a second call keeps it; a folder handle stored under
       `'current'` gives no folder record, the stored handle is removed, and no folder file is
       touched; a first-stage id under `vernacular.activeProjectId` becomes the latest use, and the
-      key is gone.
+      key is gone. The same RED commit deletes the tests of `ActiveProjectIdStore` and its classes
+      and rewrites the first-stage boot tests that read the port to read the index.
 - [ ] GREEN: the upgrade step in `reconcileIndex`. `takeLegacyActiveProjectId()` in
       `storage/active-project/` reads and removes the key and returns only an id that
       `isValidProjectId` accepts. `ActiveProjectIdStore` and its classes are deleted.
@@ -1026,7 +1154,10 @@ export function recentRecords(records: readonly ProjectRecord[], openId?: string
 - [ ] RED: `newProjectId` returns a UUID not in `existing`, and `isValidProjectId` still accepts
       `'project-<uuid>'`; `recentRecords` gives the five latest by use, without the open one; in
       `session/projects/recheck.test.ts`, a record that failed under another build is checked again
-      and a pass clears it, and one that failed under this build is not.
+      and a pass clears it, and one that failed under this build is not. The same RED commit
+      deletes the tests under `storage/recent/`, the recent-list case of
+      `src/e2e-storage-hook.ts`'s spec, and the recent-store cases of the adapter tests, which now
+      read the index.
 - [ ] GREEN: the three. The Project menu reads its recent entries from the index;
       `storage/recent/` is deleted.
 - [ ] Commits: `test: expect random ids, recent entries from the index, and a fresh check`,
@@ -1034,7 +1165,7 @@ export function recentRecords(records: readonly ProjectRecord[], openId?: string
 
 ---
 
-## Pull request 7: addresses, start, and the switch (#588)
+## Pull request 7: addresses and start (#588)
 
 Spec 5.9. Until pull request 10, a screen of kind `projects` renders through the existing boot view
 with its notice sentence.
@@ -1057,15 +1188,11 @@ export function resolvePlace(
   place: Place,
   current?: DocumentHandle,
 ): Promise<Screen>
-// session/flows/
+// session/flows/start.ts
 export function startProject(ports: SessionPorts): Promise<OpenRequest>
-/** Fails with flush-failed, or with the target's OpenFailure; the current handle stays open. */
-export function switchProject(
-  ports: SessionPorts,
-  current: DocumentHandle | undefined,
-  target: OpenRequest,
-): Promise<SwitchResult>
 ```
+
+`resolvePlace` reaches every project through `switchProject` of pull request 5.
 
 ### Cycle 7.1: parsing and making an address
 
@@ -1081,21 +1208,23 @@ export function switchProject(
 
 - [ ] RED in `session/flows/start.test.ts` and `app/resolve-place.test.ts`, one test per case: a
       latest record opens; no record gives a request with `create` for a new id; a project that did
-      not open, one open in another tab, and an unknown id each give the page with that notice.
+      not open, one open in another tab, and an unknown id each give the page with that notice; a
+      store that holds only `'current'` and no index starts in that project and then has its
+      record.
 - [ ] GREEN: `startProject` and `resolvePlace`.
 - [ ] Commits: `test: expect start and each address to resolve to a screen`,
       `feat: resolve start and addresses to a project or the page`.
 
-### Cycle 7.3: the switch
+### Cycle 7.3: an address with a project open
 
-- [ ] RED in `session/flows/switch-project.test.ts`: the order is flush, open target, close current
-      (a recording port); an edit just before a switch is stored; a failed flush stops the switch
-      before the target opens and leaves the current handle open; a target that does not open
-      leaves the current handle open, and `session.undo()` returns `true`; the current id as target
-      returns the current handle with no write.
-- [ ] GREEN: `switchProject`.
-- [ ] Commits: `test: expect a switch to flush, open, then close`,
-      `feat: switch projects without losing the current one`.
+- [ ] RED in `app/resolve-place.test.ts`: with a current handle, `resolvePlace` for another
+      project's address goes through `switchProject` (a recording port shows flush, open, close);
+      for the current project's address it returns the current handle with no write; for an
+      address whose project does not open, the current handle stays open and the page shows with
+      the notice.
+- [ ] GREEN: `resolvePlace` over `switchProject`.
+- [ ] Commits: `test: expect an address to switch through the switch flow`,
+      `feat: switch projects from an address`.
 
 ### Cycle 7.4: the history
 
@@ -1104,8 +1233,7 @@ export function switchProject(
       and to `#/projects` shows the page with the project still open; after a switch, a fresh mount
       on the same address opens that project; a new project's address replaces the entry at its
       first save, not before; `?fixture=scene-harness` and `?e2e-storage` behave as before.
-- [ ] GREEN: `app/use-history-navigation.ts`; `src/main.tsx` passes the session ports; the recent
-      entries run a switch.
+- [ ] GREEN: `app/use-history-navigation.ts`; `src/main.tsx` passes the session ports.
 - [ ] Commits: `test: expect the browser history to follow projects`,
       `feat: follow project addresses through the browser history`.
 
@@ -1255,14 +1383,17 @@ export interface SettingsService {
   subscribe<T>(key: SettingKey<T>, listener: (value: T) => void): () => void
 }
 export function createSettingsService(port: SettingsPort): SettingsService
+
+// editor/plan/snap-preferences.ts
 export const SNAP_PREFERENCES_SETTING: SettingKey<SnapPreferences>
+// editor/design-system/theme.ts
 export const THEME_SETTING: SettingKey<ThemeChoice>
 ```
 
-`session/` cannot import `editor/`, so the pure `editor/plan/snap-preferences.ts` moves to
-`session/settings/snap-preferences.ts`, and `ThemeChoice` and `isThemeChoice` move from
-`editor/design-system/theme.ts` to `session/settings/theme-choice.ts`; `editor/` imports them from
-`session/`.
+`session/settings/` exports only `SettingKey<T>`, `SettingsService`, and `createSettingsService`.
+No file moves from `editor/` to `session/`: `editor/plan/snap-preferences.ts` imports from
+`editor/plan/snap.ts`, so the keys are defined beside the types they parse, and the service in
+`session/` stays generic over them.
 
 ### Cycle 9.1: the port
 
@@ -1281,30 +1412,35 @@ export const THEME_SETTING: SettingKey<ThemeChoice>
 - [ ] RED in `session/settings/settings-service.test.ts`: `get` gives the default when nothing is
       stored or the value fails `parse`; `set` then `get` gives the value; a `set` notifies each
       subscriber of that key once and none of another key; an unsubscribed listener is not called.
-- [ ] GREEN: `createSettingsService` and the two keys.
+      The test defines its own keys.
+- [ ] GREEN: `createSettingsService`.
 - [ ] Commits: `test: expect a settings service with typed keys and change notification`,
       `feat: add the settings service to the session layer`.
 
 ### Cycle 9.3: the two users
 
-- [ ] RED: in `editor/plan/snap-preferences-store.test.ts`, preferences under the old key are in
-      effect; in `editor/design-system/theme-provider.test.tsx`, with `dark` stored the first
+- [ ] RED: in `editor/plan/snap-preferences.test.ts` and `editor/design-system/theme.test.ts`,
+      `SNAP_PREFERENCES_SETTING` and `THEME_SETTING` parse a valid stored value and refuse an
+      invalid one; in `editor/plan/snap-preferences-store.test.ts`, preferences under the old key
+      are in effect; in `editor/design-system/theme-provider.test.tsx`, with `dark` stored the first
       render has `data-theme="dark"`, and a choice in the toggle reaches the port; in
       `app/app-settings.test.tsx`, a choice then a fresh mount over the same port shows the same
       theme.
-- [ ] GREEN: `SettingsProvider` and `useSetting` in `bridge/react/settings-context.tsx` (the
-      default context holds a memory-port service for tests and stories); the snap store and
-      `ThemeProvider` read through it; `app/app.tsx` mounts the provider with
+- [ ] GREEN: the two keys in `editor/`; `SettingsProvider` and `useSetting` in
+      `bridge/react/settings-context.tsx` (the default context holds a memory-port service for
+      tests and stories); the snap store and `ThemeProvider` read through it; `app/app.tsx` mounts the provider with
       `LocalStorageSettingsPort`. The description says that the theme now survives a reload.
 - [ ] Commits: `test: expect snap preferences and the theme to come from the settings service`,
       `feat: keep snap preferences and the theme through the settings service`.
 
 ### Cycle 9.4: lint forbids storage globals outside `storage/`
 
-- [ ] RED in `tests/architecture/storage-globals.test.ts`: `editor/sample.tsx`, `app/sample.ts`,
-      and `src/sample.ts` are rejected for `localStorage.getItem('x')`, `globalThis.localStorage`,
-      `window.indexedDB`, `navigator.storage.getDirectory()`, and `navigator.locks.request`;
-      `storage/sample.ts` accepts each; no exception entry names these rules.
+- [ ] RED in `tests/architecture/storage-globals.test.ts`: samples in `core/`, `session/`,
+      `engine/`, `bridge/`, `editor/`, `app/`, and `src/`, and an `editor/sample.test.tsx` and an
+      `editor/sample.stories.tsx`, are rejected for `localStorage.getItem('x')`,
+      `globalThis.localStorage`, `window.indexedDB`, `navigator.storage.getDirectory()`, and
+      `navigator.locks.request`; `storage/sample.ts` and `e2e/tests/sample.spec.ts` accept each; no
+      exception entry names these rules.
 - [ ] GREEN: `no-restricted-globals` and `no-restricted-properties` for the names of decision 15;
       `app/opfs-probe.ts` moves to `storage/opfs/opfs-probe.ts`.
 - [ ] Commits: `test: expect lint to forbid storage globals outside storage`,
@@ -1446,17 +1582,22 @@ Spec 5.8 (rename, export, delete), and the wiring of spec 5.6 point 7. The flows
     project and its recovery copies from this browser. You cannot undo this action.", the controls
     Cancel and "Delete project", and Cancel focused;
   - `session/flows/delete-project.test.ts`: the other projects' `storedFiles` are identical, and the
-    store, the index, and the pool hold nothing only the deleted project used (`removableAssets`
-    over the records); an asset another project or the library uses stays; Cancel counts no write;
-    deleting the open project closes it, the page stays, and no project is open; a card that reads
-    `open-elsewhere` just before the delete is refused;
+    store, the index, and the pool hold nothing only the deleted project used; an asset another
+    project or the library uses stays; `a workspace id with no record blocks every asset removal`;
+    Cancel counts no write; deleting the open project closes its handle first, then deletes, the
+    page stays, and no project is open;
+  - the lock: while a second port on the same registry holds the lock, the delete fails with
+    `open-elsewhere` and every file is byte-identical; while the delete runs (a store whose delete
+    resolves on command), a second port's `tryAcquire` gives `undefined`; the lock is free
+    afterward;
   - `removeFolderFromList` forgets the handle and the record, every file of the folder (an
     in-memory directory) is byte-identical, and the action shows no dialog.
-- [ ] GREEN: the dialog and the flows. `deleteProject` asks `listProjectCards` for the card just
-      before it deletes and takes no lock itself. Spec 5.12 rule 1 gives the lock to the open step
-      alone, so a tab that opens the project between that check and the delete is not stopped. The
-      limit is known and is with the owner. Do not close it here by taking the lock, unless the
-      rule has changed by then.
+- [ ] GREEN: the dialog and the flows. `deleteProject` calls `ports.locks.tryAcquire(id)` before it
+      removes anything and holds the lock until the store, the index, and the pool are done, then
+      releases it; when another holder has the lock it fails with `open-elsewhere` and removes
+      nothing. It builds the asset users for `removableAssets` from `ports.workspace.list()`, not
+      from the records alone: every workspace id with no record is a user with
+      `assetListComplete: false`. `listProjectCards` stays the only reader of `heldIds()`.
 - [ ] Commits: `test: expect a delete to remove only what that project used`,
       `feat: delete a project or remove a folder from the list`.
 
@@ -1500,6 +1641,8 @@ export interface RepairOffer {
 export function findRepairOffer(document: unknown): RepairOffer | undefined
 ```
 
+The `did-not-open` member of `OpenFailure` gains `readonly repair?: RepairOffer`.
+
 `undefined-fields` finds a field with `KNOWN_KEYS` as the graft does, so a key that any union
 variant defines is known to it. That is why the mixed paint entry needs its own repair.
 
@@ -1521,19 +1664,28 @@ variant defines is known to it. That is why the mixed paint entry needs its own 
 - [ ] RED in the same file:
       `offers one repair for a document with both a mixed paint entry and an undefined field`, with
       both sentences; a missing required field gets no offer, and so does a document that still
-      fails after every entry; a document that passes gets none.
-- [ ] GREEN: `findRepairOffer`.
+      fails after every entry; a document that passes gets none. The same RED commit updates
+      `tests/architecture/codec-only-callers.test.ts` so that files under `core/repairs/` may call
+      `checkCurrentSchema`, and only that name.
+- [ ] GREEN: `findRepairOffer`, which checks the repaired document with `checkCurrentSchema`.
 - [ ] Commits: `test: expect one offer only when the repaired document passes`,
       `feat: offer a repair only when it yields a valid document`.
 
 ### Cycle 12.3: the refusal
 
 - [ ] RED in `session/flows/open-failed.test.ts`, with a store that counts writes: a project with
-      two mixed paint entries gives `did-not-open` with `format-rules` and an offer naming 2 paint
-      entries; until the user chooses, no write is counted; the folder-store case of cycle 2.5 now
-      expects the failure.
-- [ ] GREEN: the open step stops calling `openDespiteFormatFaults`, which is deleted with its file,
-      and the failure carries `findRepairOffer(failure.document)`.
+      two mixed paint entries gives `did-not-open` with `format-rules` and a `repair` naming 2 paint
+      entries; until the user chooses, no write is counted. The same RED commit turns each interim
+      case into a refusal: the folder-store case of cycle 2.5 and the store case of cycle 3.2, the
+      open-step case of cycle 5.3, the `importFile` case of cycle 5.6 (now `did-not-import` with
+      `format-rules`), the snapshot cases of cycles 2.5 and 5.8, and the `reconcileIndex` case of
+      cycle 6.5 (the record now says it did not open). For a snapshot, the restore offers no
+      recovery and says "A recovery copy could not be read. It is kept with the project's backups.",
+      and after the next autosave the refused snapshot is under `.house-backups/` byte for byte.
+- [ ] GREEN: every read path stops using `failure.document`; `openDespiteFormatFaults` is deleted
+      with its file; the failure carries `repair: findRepairOffer(failure.document)`. A snapshot
+      that fails decode is moved to the project's backups by the backup rule before any prune
+      runs, so the unsaved work in it is never removed without the user.
 - [ ] Commits: `test: expect a document that breaks the format rules not to open`,
       `feat: refuse to open a document that breaks the format rules`.
 
@@ -1648,86 +1800,86 @@ The description says "Closes #591".
 
 Bullets are numbered in the order of each "Done when" list.
 
-| Spec | Bullet                                                            | Cycle               |
-| ---- | ----------------------------------------------------------------- | ------------------- |
-| 5.1  | 1 Session rejects React, Three.js, bridge, editor, engine         | 4.1, 4.2            |
-| 5.1  | 2 Bridge and editor reject storage imports, type-only too         | 4.4                 |
-| 5.1  | 3 No file in app calls a store                                    | 5.6                 |
-| 5.1  | 4 Four documents describe seven layers                            | 4, texts            |
-| 5.2  | 1 A fixture per version, valid, decodes                           | 1.1, 1.2, 2.3       |
-| 5.2  | 2 Unknown field at the current revision fails with its path       | 2.3                 |
-| 5.2  | 3 Higher revision decodes, keeps the field, reported              | 2.3, 2.4, 5.3, 5.7  |
-| 5.2  | 4 Mixed paint entry fails                                         | 2.3                 |
-| 5.2  | 5 Higher version fails with its reason                            | 2.3                 |
-| 5.2  | 6 Encode writes the revision; drift test needs an increment       | 2.1, 2.4            |
-| 5.2  | 7 Invalid encode gives bytes and errors; store keeps a backup     | 2.4, 3.2            |
-| 5.2  | 8 Every command leaves a valid document                           | 2.6                 |
-| 5.2  | 9 No other caller of migration, helpers, validators               | 2.7                 |
-| 5.3  | 1 Every store passes the suite                                    | 3.6                 |
-| 5.3  | 2 Folder project saves to its folder; workspace gains nothing     | 5.5                 |
-| 5.3  | 3 After a delete, nothing under the id                            | 3.1, 3.2            |
-| 5.3  | 4 No picked-folder method removes a file it did not write         | 3.3                 |
-| 5.4  | 1 The session constructor is not exported                         | 5.6                 |
-| 5.4  | 2 Second open fails as open elsewhere, unit and two pages         | 5.3, 5.9, 10.5      |
-| 5.4  | 3 Edit then close is stored                                       | 5.4                 |
-| 5.4  | 4 Close whose write fails stays open                              | 5.4                 |
-| 5.4  | 5 Overlapping saves leave the last state                          | 5.2                 |
-| 5.4  | 6 Open, edit, undo, save, export with no React                    | 5.8                 |
-| 5.5  | 1 Two projects; saving one leaves the other identical             | 6.4                 |
-| 5.5  | 2 A new project has a UUID; two imports differ                    | 6.7, 5.5            |
-| 5.5  | 3 Only `'current'`, no index: starts there, then has a record     | 6.6, 7.2            |
-| 5.5  | 4 Index emptied: same name, floors, preview                       | 6.5                 |
-| 5.5  | 5 Bytes not JSON: record says so, list succeeds                   | 6.5                 |
-| 5.5  | 6 After a save: name, floors, assets                              | 6.4                 |
-| 5.5  | 7 Preview: no text, first floor only                              | 6.2                 |
-| 5.6  | 1 Export and import into an empty workspace are equal             | 8.3                 |
-| 5.6  | 2 A missing asset in an archive is reported                       | 8.3                 |
-| 5.6  | 3 An export with an absent asset reports one                      | 8.4                 |
-| 5.6  | 4 Each limit refuses; small archive that inflates large           | 8.1                 |
-| 5.6  | 5 A mismatched hash is not in the cache                           | 8.3                 |
-| 5.6  | 6 Delete removes only-used, keeps shared and library assets       | 8.5, 11.3           |
-| 5.7  | 1 Two mixed paint entries: no open, sentence, line about 2        | 12.1, 12.3, 12.4    |
-| 5.7  | 2 No write until the user chooses                                 | 12.3                |
-| 5.7  | 3 Open as new: bytes identical, second project passes             | 12.5                |
-| 5.7  | 4 Replace stores the repair and backs up the original             | 12.5                |
-| 5.7  | 5 One undefined field: general repair, path in details            | 12.1, 12.4          |
-| 5.7  | 6 Still failing after every entry: no offer                       | 12.2                |
-| 5.7  | 7 Each cause yields its sentence                                  | 12.4                |
-| 5.7  | 8 No control starts a new project                                 | 12.4, 13.1          |
-| 5.7  | 9 A failed import has no Export and no replace                    | 12.6                |
-| 5.8  | 1 One card per record with the four facts                         | 10.1, 10.2          |
-| 5.8  | 2 A state line has no button role and no focus                    | 10.2                |
-| 5.8  | 3 Each kind offers exactly its actions                            | 10.1                |
-| 5.8  | 4 Rename of a closed project changes document and card            | 11.1                |
-| 5.8  | 5 Delete leaves others identical and nothing orphaned; Cancel     | 11.3                |
-| 5.8  | 6 Remove from list leaves every file, no dialog                   | 11.3                |
-| 5.8  | 7 Unchecked copy byte for byte with snapshots, backups, notice    | 8.6, 11.2           |
-| 5.8  | 8 Journey: two projects, switch, reload, back                     | 11.4                |
-| 5.9  | 1 Latest record, no record, did not open, other tab, unknown id   | 7.2                 |
-| 5.9  | 2 After a switch, a reload opens the open project                 | 7.4, 11.4           |
-| 5.9  | 3 An edit just before a switch is stored                          | 7.3                 |
-| 5.9  | 4 A target that does not open keeps the current one and undo      | 7.3                 |
-| 5.9  | 5 Back and Forward across two projects and the page               | 11.4                |
-| 5.10 | 1 Each way into temporary storage raises the banner               | 13.1                |
-| 5.10 | 2 The save status never shows saved                               | 13.2                |
-| 5.10 | 3 The card reads "In this tab only."                              | 13.2                |
-| 5.11 | 1 Snap preferences under the old key are in effect                | 9.1, 9.3            |
-| 5.11 | 2 A theme choice survives a reload                                | 9.3                 |
-| 5.11 | 3 Lint rejects `localStorage` in editor, accepts it in storage    | 9.4                 |
-| 5.11 | 4 A change notifies subscribers                                   | 9.2                 |
-| 5.12 | 1 Lock taken at open only; lock state read by the card model only | 5.3, 10.1, 11.3     |
-| 5.12 | 2 The handle holds no window state                                | 5.3                 |
-| 5.12 | 3 Every change through dispatch, a closed rename included         | 11.1                |
-| 5.12 | 4 Random ids; `'current'` the one exception                       | 6.7                 |
-| 5.12 | 5 The command-layer spec carries the condition                    | not code            |
-| 7    | Umbrella 1: two projects coexist                                  | 6.4                 |
-| 7    | Umbrella 2: a folder project saves back to its folder             | 5.5                 |
-| 7    | Umbrella 3: one suite; migrate, preserve, keep assets             | 3.6                 |
-| 7    | Umbrella 4: archive round trip is identical                       | 8.3                 |
-| 7    | Umbrella 5: every version from 8 opens through every store        | 1.2, 2.3, 3.6       |
-| 7    | Umbrella 6: open, edit, undo, save, export with no React          | 5.8                 |
-| 7    | #588                                                              | 3.6, 5.5, 6.4, 11.4 |
-| 7    | #591                                                              | 13.1, 13.2          |
-| 7    | #631                                                              | 2.3, 12.3           |
-| 7    | #672                                                              | 2.5, 3.5, 3.6, 8.3  |
-| 7    | #673                                                              | 8.3                 |
+| Spec | Bullet                                                                          | Cycle                    |
+| ---- | ------------------------------------------------------------------------------- | ------------------------ |
+| 5.1  | 1 Session rejects React, Three.js, bridge, editor, engine                       | 4.1, 4.2                 |
+| 5.1  | 2 Bridge and editor reject storage imports, type-only too                       | 4.4                      |
+| 5.1  | 3 No file in app calls a store                                                  | 5.7                      |
+| 5.1  | 4 Four documents describe seven layers                                          | 4, texts                 |
+| 5.2  | 1 A fixture per version, valid, decodes                                         | 1.1, 1.2, 2.3            |
+| 5.2  | 2 Unknown field at the current revision fails with its path                     | 2.3                      |
+| 5.2  | 3 Higher revision decodes, keeps the field, reported                            | 2.3, 2.4, 5.3, 5.8       |
+| 5.2  | 4 Mixed paint entry fails                                                       | 2.3                      |
+| 5.2  | 5 Higher version fails with its reason                                          | 2.3                      |
+| 5.2  | 6 Encode writes the revision; drift test needs an increment                     | 2.1, 2.4                 |
+| 5.2  | 7 Invalid encode gives bytes and errors; store keeps a backup                   | 2.4, 3.2                 |
+| 5.2  | 8 Every command leaves a valid document                                         | 2.6                      |
+| 5.2  | 9 No other caller of migration, helpers, validators                             | 2.7                      |
+| 5.3  | 1 Every store passes the suite                                                  | 3.6                      |
+| 5.3  | 2 Folder project saves to its folder; workspace gains nothing                   | 5.6                      |
+| 5.3  | 3 After a delete, nothing under the id                                          | 3.1, 3.2                 |
+| 5.3  | 4 No picked-folder method removes a file it did not write                       | 3.3                      |
+| 5.4  | 1 The session constructor is not exported                                       | 5.7                      |
+| 5.4  | 2 Second open fails as open elsewhere, unit and two pages                       | 5.3, 5.10, 10.5          |
+| 5.4  | 3 Edit then close is stored                                                     | 5.4                      |
+| 5.4  | 4 Close whose write fails stays open                                            | 5.4                      |
+| 5.4  | 5 Overlapping saves leave the last state                                        | 5.2                      |
+| 5.4  | 6 Open, edit, undo, save, export with no React                                  | 5.9                      |
+| 5.5  | 1 Two projects; saving one leaves the other identical                           | 6.4                      |
+| 5.5  | 2 A new project has a UUID; two imports differ                                  | 6.7, 5.6                 |
+| 5.5  | 3 Only `'current'`, no index: starts there, then has a record                   | 7.2                      |
+| 5.5  | 4 Index emptied: same name, floors, preview                                     | 6.5                      |
+| 5.5  | 5 Bytes not JSON: record says so, list succeeds                                 | 6.5                      |
+| 5.5  | 6 After a save: name, floors, assets                                            | 6.4                      |
+| 5.5  | 7 Preview: no text, first floor only                                            | 6.2                      |
+| 5.6  | 1 Export and import into an empty workspace are equal                           | 8.3                      |
+| 5.6  | 2 A missing asset in an archive is reported                                     | 8.3                      |
+| 5.6  | 3 An export with an absent asset reports one                                    | 8.4                      |
+| 5.6  | 4 Each limit refuses; small archive that inflates large                         | 8.1                      |
+| 5.6  | 5 A mismatched hash is not in the cache                                         | 8.3                      |
+| 5.6  | 6 Delete removes only-used, keeps shared and library assets                     | 8.5, 11.3                |
+| 5.7  | 1 Two mixed paint entries: no open, sentence, line about 2                      | 12.1, 12.3, 12.4         |
+| 5.7  | 2 No write until the user chooses                                               | 12.3                     |
+| 5.7  | 3 Open as new: bytes identical, second project passes                           | 12.5                     |
+| 5.7  | 4 Replace stores the repair and backs up the original                           | 12.5                     |
+| 5.7  | 5 One undefined field: general repair, path in details                          | 12.1, 12.4               |
+| 5.7  | 6 Still failing after every entry: no offer                                     | 12.2                     |
+| 5.7  | 7 Each cause yields its sentence                                                | 12.4                     |
+| 5.7  | 8 No control starts a new project                                               | 12.4, 13.1               |
+| 5.7  | 9 A failed import has no Export and no replace                                  | 12.6                     |
+| 5.8  | 1 One card per record with the four facts                                       | 10.1, 10.2               |
+| 5.8  | 2 A state line has no button role and no focus                                  | 10.2                     |
+| 5.8  | 3 Each kind offers exactly its actions                                          | 10.1                     |
+| 5.8  | 4 Rename of a closed project changes document and card                          | 11.1                     |
+| 5.8  | 5 Delete leaves others identical and nothing orphaned; Cancel                   | 11.3                     |
+| 5.8  | 6 Remove from list leaves every file, no dialog                                 | 11.3                     |
+| 5.8  | 7 Unchecked copy byte for byte with snapshots, backups, notice                  | 8.6, 11.2                |
+| 5.8  | 8 Journey: two projects, switch, reload, back                                   | 11.4                     |
+| 5.9  | 1 Latest record, no record, did not open, other tab, unknown id                 | 7.2                      |
+| 5.9  | 2 After a switch, a reload opens the open project                               | 7.4, 11.4                |
+| 5.9  | 3 An edit just before a switch is stored                                        | 5.5, 5.6                 |
+| 5.9  | 4 A target that does not open keeps the current one and undo                    | 5.5, 7.3                 |
+| 5.9  | 5 Back and Forward across two projects and the page                             | 11.4                     |
+| 5.10 | 1 Each way into temporary storage raises the banner                             | 13.1                     |
+| 5.10 | 2 The save status never shows saved                                             | 13.2                     |
+| 5.10 | 3 The card reads "In this tab only."                                            | 13.2                     |
+| 5.11 | 1 Snap preferences under the old key are in effect                              | 9.1, 9.3                 |
+| 5.11 | 2 A theme choice survives a reload                                              | 9.3                      |
+| 5.11 | 3 Lint rejects `localStorage` in editor, accepts it in storage                  | 9.4                      |
+| 5.11 | 4 A change notifies subscribers                                                 | 9.2                      |
+| 5.12 | 1 Lock taken by open and by delete only; lock state read by the card model only | 5.3, 10.1, 11.3          |
+| 5.12 | 2 The handle holds no window state                                              | 5.3                      |
+| 5.12 | 3 Every change through dispatch, a closed rename included                       | 11.1                     |
+| 5.12 | 4 Random ids; `'current'` the one exception                                     | 6.7                      |
+| 5.12 | 5 The command-layer spec carries the condition                                  | not code                 |
+| 7    | Umbrella 1: two projects coexist                                                | 6.4                      |
+| 7    | Umbrella 2: a folder project saves back to its folder                           | 5.6                      |
+| 7    | Umbrella 3: one suite; migrate, preserve, keep assets                           | 3.6                      |
+| 7    | Umbrella 4: archive round trip is identical                                     | 8.3                      |
+| 7    | Umbrella 5: every version from 8 opens through every store                      | 1.2, 2.3, 3.6            |
+| 7    | Umbrella 6: open, edit, undo, save, export with no React                        | 5.9                      |
+| 7    | #588                                                                            | 3.6, 5.5, 5.6, 6.4, 11.4 |
+| 7    | #591                                                                            | 13.1, 13.2               |
+| 7    | #631                                                                            | 2.3, 12.3                |
+| 7    | #672                                                                            | 2.5, 3.5, 3.6, 8.3       |
+| 7    | #673                                                                            | 8.3                      |
