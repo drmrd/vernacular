@@ -17,8 +17,6 @@ const KEPT_NAME = 'Kept House'
 const AUTOSAVE_TIMEOUT_MS = 3000
 // The discard prompt opens at once when the app asks for it; a short wait tells "not asked".
 const DISCARD_PROMPT_TIMEOUT_MS = 1000
-// Time for whatever follows a released promise (a new session, an id write) to run.
-const SETTLE_MS = 300
 
 function stubCapableStorage() {
   vi.stubGlobal('navigator', { storage: { getDirectory: () => Promise.resolve({}) } })
@@ -98,33 +96,32 @@ async function rigThatFailsOnce(): Promise<Rig> {
   return rig
 }
 
-function boot(rig: Rig, activeProjectIds: ActiveProjectIdStore): void {
+function boot(rig: Rig, port: ActiveProjectIdStore): void {
   const resolveSnapshots = (id: string) => {
     rig.snapshotIds.push(id)
     return Promise.resolve(new SnapshotStore(new SubdirectoryPort(rig.root, id)))
   }
-  render(
-    <App
-      store={rig.store}
-      activeProjectIds={activeProjectIds}
-      resolveSnapshots={resolveSnapshots}
-    />,
-  )
+  render(<App store={rig.store} activeProjectIds={port} resolveSnapshots={resolveSnapshots} />)
 }
 
+// The held gate plus the promise of every lookup the application started, in order.
+type HeldLookups = Gate & { results: Promise<unknown>[] }
+
 // Hold the next id lookups (`store.list()`) open until the gate is released.
-function holdTheIdLookup(store: OpfsProjectStore): Gate {
+function holdTheIdLookup(store: OpfsProjectStore): HeldLookups {
   const held = gate()
+  const results: Promise<unknown>[] = []
   const list = store.list.bind(store)
-  vi.spyOn(store, 'list').mockImplementation(async () => {
-    await held.promise
-    return list()
+  vi.spyOn(store, 'list').mockImplementation(() => {
+    const result = held.promise.then(list)
+    results.push(result)
+    return result
   })
-  return held
+  return { ...held, results }
 }
 
 function startANewProjectButton(): HTMLElement {
-  return screen.getByRole('button', { name: /start a new project/i })
+  return screen.getByRole('button', { name: 'Start a new project' })
 }
 
 async function editTheProject(): Promise<void> {
@@ -145,13 +142,20 @@ async function openProjectName(): Promise<string | null> {
   return within(breadcrumb).getByText(/.+/).textContent
 }
 
-async function settle(): Promise<void> {
-  await act(() => new Promise<void>((resolve) => setTimeout(resolve, SETTLE_MS)))
+// Wait, inside `act`, until every promise has settled and React applied what followed.
+async function settleInAct(promises: readonly unknown[]): Promise<void> {
+  await act(async () => {
+    await Promise.allSettled(promises)
+  })
 }
 
-async function release(held: Gate): Promise<void> {
+async function releaseTheLookups(held: HeldLookups): Promise<void> {
   held.release()
-  await settle()
+  await settleInAct(held.results)
+}
+
+async function flushTheSaves(rig: Rig): Promise<void> {
+  await settleInAct(vi.mocked(rig.store.save).mock.results.map((result) => result.value))
 }
 
 function newIds(ids: readonly string[]): Set<string> {
@@ -185,13 +189,13 @@ describe('A retry while the id of a new project is still being looked up', () =>
     const lookup = holdTheIdLookup(rig.store)
 
     await userEvent.click(startANewProjectButton())
-    await userEvent.click(screen.getByRole('button', { name: /retry|try again/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await openProjectName()).toBe(KEPT_NAME)
-    await release(lookup)
+    await releaseTheLookups(lookup)
 
     expect(await openProjectName()).toBe(KEPT_NAME)
     await editAndAwaitASave(rig)
-    await settle()
+    await flushTheSaves(rig)
     expect(await openProjectName()).toBe(KEPT_NAME)
     expect(newIds(rig.saved)).toEqual(new Set())
     expect(newIds(port.writes)).toEqual(new Set())
@@ -219,9 +223,10 @@ describe('A save that finishes after another new project started', () => {
     const firstId = vi.mocked(rig.store.save).mock.calls[0]?.[0]
 
     await startAnotherNewProjectFromTheMenu()
-    await release(heldSave)
+    heldSave.release()
     await waitFor(() => expect(rig.saved).toContain(firstId), { timeout: AUTOSAVE_TIMEOUT_MS })
-    await settle()
+    await waitFor(() => expect(port.writes).toContain(firstId))
+    await flushTheSaves(rig)
 
     expect(firstId).not.toBe(FAILED_ID)
     expect(port.writes).toEqual([firstId])
@@ -266,9 +271,9 @@ describe('Guards on starting a new project from the failure dialog', () => {
     const lookup = holdTheIdLookup(rig.store)
 
     await userEvent.dblClick(startANewProjectButton())
-    await release(lookup)
+    await releaseTheLookups(lookup)
     await editAndAwaitASave(rig)
-    await settle()
+    await flushTheSaves(rig)
 
     expect(rig.store.list).toHaveBeenCalledTimes(1)
     expect(newIds([...rig.saved, ...rig.snapshotIds]).size).toBe(1)
@@ -284,7 +289,7 @@ describe('Guards on starting a new project from the failure dialog', () => {
     const error = vi.spyOn(console, 'error')
 
     cleanup()
-    await release(lookup)
+    await releaseTheLookups(lookup)
 
     expect(error).not.toHaveBeenCalled()
     expect(rig.saved).toEqual([])
