@@ -15,7 +15,7 @@ sourceFiles:
     editor/plan/snap-preferences-store.ts,
     storage/library-store.ts,
   ]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -23,9 +23,11 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this on 2026-11-14. It takes effect when the architecture refactor round
-specification is approved. It then supersedes the part of ADR-0059 that persists snap preferences
-from `editor/`. The snapping behavior ADR-0059 describes stays.
+Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
+specification the same day. It supersedes the part of ADR-0059 that persists snap preferences from
+`editor/`. The snapping behavior ADR-0059 describes stays. The settings port arrives with the
+persistence stage of that round, and until then the snap preference store still writes
+`localStorage` from `editor/`.
 
 ## Context
 

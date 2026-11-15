@@ -6,7 +6,9 @@ Vernacular is built as a set of parallel delivery tracks that converge on three 
 
 ## Why parallel tracks
 
-Phase 1, the two-dimensional plan editor, shipped as release 0.2.0 and brought with it the decoupling layer the rest of the work needs: scene-graph derivation, the registry pattern, and a single command-dispatch boundary. With that layer in place, a new entity kind is an additive scene-graph projection that the two-dimensional renderer, the three-dimensional renderer, and the export pipeline each pick up on their own. What an entity is stays independent of how each surface draws it, and that independence is what lets the remaining MVP work run as parallel tracks rather than a strict phase chain.
+Phase 1, the two-dimensional plan editor, shipped as release 0.2.0 and brought with it the decoupling layer the rest of the work needs: scene-graph derivation, the registry pattern, and a single command-dispatch boundary. The aim of that layer is that a new entity kind is an additive scene-graph projection that the two-dimensional renderer, the three-dimensional renderer, and the export pipeline each pick up on their own. What an entity is stays independent of how each surface draws it, and that independence is what let the MVP work run as parallel tracks rather than a strict phase chain.
+
+The aim is only partly met. An architecture review in November 2026 found that a kind is still listed by hand in about 60 places across the layers, and that the lists disagree, so a new kind costs much more than a projection. The architecture refactor round described below closes that gap before the public beta adds more kinds.
 
 ## Delivery tracks
 
@@ -74,8 +76,16 @@ Three pieces of work depend only on shipped Phase-1 infrastructure, depend on no
 ## Milestone composition
 
 - **Public alpha** is the Phase-1 editor (done) plus the three-dimensional preview; the assets and furniture track delivered and de-risked end to end; the identity-bearing front of the old-house vocabulary (the era registry, era tagging, the room-purpose registry, and surfacing the already-shipped historic opening vocabulary); two-dimensional export (vector, document, image); and the user-experience foundation. The alpha leads with the product's identity, ships furniture, produces a real export artifact, and is reasonably polished.
-- **Public beta** is multi-floor and stairs; the three-dimensional renderings of the old-house vocabulary; the complete underlay layer; and library era filtering.
+- **Public beta** is multi-floor and stairs; the three-dimensional renderings of the old-house vocabulary; the complete underlay layer; library era filtering; and the architecture refactor round, which the new beta features are built on.
 - **1.0** is paint, palettes, and finishes; site metadata; full export including the bundle and standard formats; and the final polish pass.
+
+## The architecture refactor round
+
+The public beta is mostly new kinds of element and new tools, and the November 2026 review showed that the structure under them needed work first. Some paths could lose what a user saved. The plan, the three-dimensional view, and room derivation each worked out wall geometry on their own and could disagree. A new kind had to be added by hand to dozens of shared lists. The response is a round of structural work, specified in [`docs/specs/2026-11-14-architecture-refactor-round.md`](specs/2026-11-14-architecture-refactor-round.md) and decided in ADR-0175 through ADR-0181.
+
+The round runs in stages, and every stage lands on `main` through ordinary pull requests. There is no rewrite branch. It starts with the fixes for data loss. Next come a `session/` layer for application logic that needs no React, a document that knows where it is stored, and a command layer with typed commands, transactions, and rules enforced in the handlers. The remaining areas follow: one derived plan geometry, a descriptor for each kind of element, one owner for the three-dimensional scene, one drawing model behind the canvas and the exports, and one contract for tools and input.
+
+From the command layer on, each stage lands together with a public-beta feature that proves it. Live feedback during a drag proves transactions, for example, and the first curved wall segment proves the geometry seam. The round closes when a text annotation, a new kind, can be added without an edit to any shared list. Other beta features wait for the stage they depend on, so the round sets the order of much of the beta. Its tracking issue in the public-beta milestone carries the status.
 
 ## Open-standard interoperability
 

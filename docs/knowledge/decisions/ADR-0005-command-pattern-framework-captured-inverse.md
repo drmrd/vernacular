@@ -9,6 +9,8 @@ related:
     decisions/ADR-0018-scene-graph-derivation,
     decisions/ADR-0035-wall-editing-endpoint-move-and-thickness,
     decisions/ADR-0036-room-metadata-overrides-and-labels,
+    decisions/ADR-0176-commands-as-data-and-session-undo-history,
+    decisions/ADR-0177-open-transactions-for-changes-in-progress,
   ]
 sourceFiles:
   [
@@ -20,7 +22,7 @@ sourceFiles:
     core/commands/handlers/project-commands.ts,
   ]
 status: current
-updated: 2026-06-02
+updated: 2026-11-14
 ---
 
 # ADR-0005: Command pattern with framework-captured inverse
@@ -32,6 +34,13 @@ mutation boundary, the inverse-capture proxy, and the first concrete project
 commands are implemented and unit-tested in `core/commands/`. The design
 specification (section 7.1) remains authoritative; this ADR records the
 implementation interpretation chosen where the spec left choices open.
+
+> Amended by [[ADR-0176-commands-as-data-and-session-undo-history]] on 2026-11-14. Undo history
+> lasts for the session and is not saved with the project, so the statements below that history is
+> persisted no longer hold. Inverse steps become plain data and commands get a typed map when the
+> command-layer work of the architecture refactor round lands, and
+> [[ADR-0177-open-transactions-for-changes-in-progress]] adds transactions on top. The single
+> dispatch boundary and the linear, bounded history are unchanged.
 
 ## Context
 

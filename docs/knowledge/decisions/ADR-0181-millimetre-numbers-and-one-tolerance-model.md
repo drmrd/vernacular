@@ -9,7 +9,7 @@ related:
     decisions/ADR-0178-schema-version-and-revision,
   ]
 sourceFiles: [core/geometry/segment.ts, core/topology/rooms.ts, core/topology/wall-graph.ts]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -17,8 +17,9 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this on 2026-11-14. It takes effect when the architecture refactor round
-specification is approved. It answers #496.
+Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
+specification the same day. It answers #496. The tolerance module and the formatter changes arrive
+with the kernel stage of that round.
 
 ## Context
 

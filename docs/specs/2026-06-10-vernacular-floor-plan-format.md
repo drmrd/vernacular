@@ -229,17 +229,39 @@ promoted to core only by a `schemaVersion` increment and an accompanying ADR.
 - **Three independent version surfaces.** `schemaVersion` is the format version and drives the
   schema-migration chain. `appVersion` records the writing application. `registryVersions`
   records vocabulary versions. They move independently.
-- **Additive within a major version.** New optional fields, new reserved names, and new
-  registry types are additive and do not increment beyond a minor expectation. Removing or
-  renaming a field, or changing a field's meaning, requires a new `schemaVersion` and a
+- **Version and revision.** `schemaVersion` counts breaking changes. `schemaRevision` is an
+  OPTIONAL non-negative integer beside it in `ProjectMeta` that counts additive changes to the
+  CORE schema within one `schemaVersion` (ADR-0178). A Document without `schemaRevision` is at
+  revision 0. The revision returns to 0 when `schemaVersion` increments.
+- **Additive changes increment the revision.** A new optional field or a new reserved name is
+  additive. It increments `schemaRevision` and needs no migration step. A new registry type is
+  additive too, but it is registry data and changes no schema, so the revision stays. Removing
+  or renaming a field, or changing a field's meaning, requires a new `schemaVersion` and a
   migration step in the chain (`core/migrations/schema/`), layered with per-registry migrations
   (`core/migrations/registries/`). A pre-migration backup is written before applying, and
   migration failure is atomic.
-- **Reading rules.** A reader at version N opening a Document at version M < N migrates it up
-  the chain. A reader opening a Document at version M > N SHOULD open it read-only or refuse,
-  because it cannot safely interpret newer required fields; if it opens the Document it MUST
-  obey the preservation rule (section 6.4). Unknown `extensions` are always preserved
-  regardless of version.
+- **Published schemas are immutable.** A schema is fixed once it is released. A change to the
+  generated schema with no increment of `schemaRevision` or `schemaVersion` is a drift error
+  (section 8).
+- **Reading rules.** A reader at version N and revision R opening a Document at version M and
+  revision Q does one of four things.
+  - M < N: it migrates the Document up the chain.
+  - M = N and Q ≤ R: it validates the Document strictly. An unknown field outside `extensions`
+    is a validation error.
+  - M = N and Q > R: a newer build wrote the Document with additive fields this reader does not
+    know. The reader reads it tolerantly, MUST obey the preservation rule (section 6.4), and
+    SHOULD tell the user that a newer build wrote it.
+  - M > N: it SHOULD open the Document read-only or refuse, because it cannot safely interpret
+    newer required fields; if it opens the Document it MUST obey the preservation rule
+    (section 6.4).
+
+  Unknown `extensions` are always preserved regardless of version or revision.
+
+- **Adoption (non-normative).** Versions 8 through 17 predate the revision and each incremented
+  `schemaVersion`, including for additive changes. The application adopts `schemaRevision` with
+  the document codec work described in `2026-11-14-architecture-refactor-round.md`; until then
+  it writes no revision and every Document is at revision 0. What the application does with a
+  validation error (report, repair, or refuse) is decided with that work.
 
 ## 8. Schema generation and validation
 
@@ -255,7 +277,8 @@ promoted to core only by a `schemaVersion` increment and an accompanying ADR.
   hard rejection, because migrations are the user-facing compatibility path.
 - **Drift guard.** Continuous integration regenerates the schema and fails if the committed
   schema differs from the regenerated one, keeping the published schema in lockstep with the
-  types.
+  types. Once the application adopts `schemaRevision` (section 7), the guard also fails when the
+  generated schema changes and neither `schemaRevision` nor `schemaVersion` increments.
 - **Layering.** Generation and validation live in `core/` and `scripts/` only; they import no
   React and no Three.js, consistent with the layer boundaries (ADR-0001). New dependencies (the
   generator and the validator) honor the dependency cooldown and exact-version pinning.

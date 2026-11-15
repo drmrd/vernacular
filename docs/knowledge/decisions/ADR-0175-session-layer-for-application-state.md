@@ -12,7 +12,7 @@ related:
   ]
 sourceFiles:
   [bridge/session/editor-session.ts, eslint.config.js, tests/architecture/layer-boundaries.test.ts]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -20,9 +20,13 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this structure on 2026-11-14. It takes effect when the architecture
-refactor round specification (`docs/specs/2026-11-14-architecture-refactor-round.md`) is approved,
-and it then supersedes the layer list in ADR-0001.
+Current. The owner chose this structure on 2026-11-14 and approved the architecture refactor round
+specification (`docs/specs/2026-11-14-architecture-refactor-round.md`) the same day. It supersedes
+the layer list in ADR-0001.
+
+The `session/` directory does not exist yet. It is created in the stage of that round that brings
+its first tenants, and the lint configuration, `ARCHITECTURE.md`, `CLAUDE.md`, and
+`.claude/rules.md` change in the same stage. Until then lint enforces the six layers of ADR-0001.
 
 ## Context
 

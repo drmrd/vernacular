@@ -15,7 +15,7 @@ sourceFiles:
     core/model/factories.ts,
     storage/folder/preserve-unknown.ts,
   ]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -23,9 +23,11 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this on 2026-11-14. It takes effect when the architecture refactor round
-specification is approved. It amends section 7 of the format specification
-(`docs/specs/2026-06-10-vernacular-floor-plan-format.md`).
+Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
+specification the same day. It amends section 7 of the format specification
+(`docs/specs/2026-06-10-vernacular-floor-plan-format.md`). The policy applies from the next change
+to the schema. The reader and the drift test learn about the revision with the document codec work
+in that round.
 
 ## Context
 

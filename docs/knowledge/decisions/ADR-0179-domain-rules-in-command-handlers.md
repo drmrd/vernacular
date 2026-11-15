@@ -16,7 +16,7 @@ sourceFiles:
     editor/plan/authoring-tool-handlers.ts,
     editor/plan/use-opening-placement.ts,
   ]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -24,9 +24,10 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this on 2026-11-14. It takes effect when the architecture refactor round
-specification is approved. It then supersedes the part of ADR-0122 that places enforcement in the
-editor. The clamping behavior ADR-0122 describes stays.
+Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
+specification the same day. It supersedes the part of ADR-0122 that places enforcement in the
+editor. The clamping behavior ADR-0122 describes stays. The command-layer stage of that round moves
+the rules into the handlers.
 
 ## Context
 

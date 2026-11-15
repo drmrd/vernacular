@@ -16,7 +16,7 @@ sourceFiles:
     core/commands/dispatcher.ts,
     core/commands/inverse-capture.ts,
   ]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -24,8 +24,10 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this on 2026-11-14. It takes effect when the architecture refactor round
-specification is approved. It amends ADR-0005 and design specification section 7.1.
+Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
+specification the same day. It amends ADR-0005 and design specification section 7.1. The rule that
+history is not saved holds now, because the code never saved it. The typed command map, the data
+inverses, and the change set arrive with the command-layer stage of that round.
 
 ## Context
 

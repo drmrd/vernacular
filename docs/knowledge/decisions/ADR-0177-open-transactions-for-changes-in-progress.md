@@ -15,7 +15,7 @@ sourceFiles:
     editor/commands/editor-commands.ts,
     editor/plan/use-plan-interaction.ts,
   ]
-status: proposed
+status: current
 updated: 2026-11-14
 ---
 
@@ -23,8 +23,8 @@ updated: 2026-11-14
 
 ## Status
 
-Proposed. The owner chose this on 2026-11-14. It takes effect when the architecture refactor round
-specification is approved.
+Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
+specification the same day. The command-layer stage of that round builds it.
 
 ## Context
 

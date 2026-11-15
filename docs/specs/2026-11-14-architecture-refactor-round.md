@@ -1,6 +1,6 @@
 # Architecture refactor round: target structure and sequence
 
-Status: draft for owner review, 2026-11-14. The project owner took the decisions listed in section 4 on that date. The rest of this document is a proposal until it is approved.
+Status: approved by the project owner, 2026-11-14. The owner took the decisions listed in section 4 on that date and approved the rest of this document, including the order of work and the pairings in section 6, the same day.
 
 ## 1. Why this document exists
 
@@ -36,7 +36,7 @@ Non-goals:
 - A design for renovation comparison (#494). This round keeps both candidate models possible (section 5.5).
 - Curved walls themselves (#80). This round builds the seam they need and pairs its first slice with the kernel work.
 
-Anti-goals. Any of these would make the round a failure even if the code came out cleaner. They are proposed here and have not been confirmed by the owner.
+Anti-goals. Any of these would make the round a failure even if the code came out cleaner. The owner confirmed all four.
 
 - A long-lived rewrite branch. Every step lands on `main` through a green pull request with the usual red, green, blue cycle.
 - A saved project that stops loading. Every document from schema version 8 onward must still open after every step.
@@ -185,7 +185,7 @@ Today every render repaints all 20 passes, the canvas is a fixed 800 by 600 bitm
 
 ## 6. Order of work
 
-The order is: stop data loss, then document identity and the command layer, then each remaining area together with a public-beta feature that proves it. The pairings are proposals.
+The order is: stop data loss, then document identity and the command layer, then each remaining area together with a public-beta feature that proves it. The round has a tracking issue in the public-beta milestone that links the issues for every stage, and the status of the round lives there.
 
 | Stage | Work                                                                              | Paired feature                                      | Issues it settles            |
 | ----- | --------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
@@ -297,13 +297,16 @@ Closing proof:
 
 ## 9. Changes to other documents
 
-These follow from the decisions and are made when the relevant ADR takes effect.
+These changes landed with the approval of this document.
 
 - Design specification section 7.1: history is per session and is not saved (ADR-0176).
-- Format specification section 7: add `schemaRevision` and the reading rules (ADR-0178).
+- Format specification section 7: `schemaRevision` and the reading rules (ADR-0178).
+- `docs/delivery-strategy.md`: its claim that a new kind of element is an additive projection is the target of section 5.5, not the current state. The page now says so and describes this round.
+- ADR-0001, ADR-0059, and ADR-0122 are superseded in part by ADR-0175, ADR-0180, and ADR-0179. ADR-0005 is amended by ADR-0176. Each carries a note that points to its successor.
+
+These wait for the stage that creates `session/`, because they describe the code as it is.
+
 - `ARCHITECTURE.md`, `CLAUDE.md`, and `.claude/rules.md`: the layer list and the invariants that name layers (ADR-0175). Edits to the last two need owner sign-off.
-- `docs/delivery-strategy.md`: its claim that a new kind of element is an additive projection is the target of section 5.5, not the current state. The page should say so and should describe this round.
-- ADR-0001, ADR-0059, and ADR-0122 are superseded in whole or in part by ADR-0175, ADR-0180, and ADR-0179.
 
 ## 10. Risks
 

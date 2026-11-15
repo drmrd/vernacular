@@ -8,6 +8,7 @@ related:
     decisions/ADR-0004-three-js-r3f-webgpu,
     decisions/ADR-0012-eslint-guardrails,
     decisions/ADR-0017-layer-boundary-enforcement-repair,
+    decisions/ADR-0175-session-layer-for-application-state,
   ]
 sourceFiles:
   [
@@ -18,7 +19,7 @@ sourceFiles:
     tests/architecture/layer-boundaries.test.ts,
   ]
 status: current
-updated: 2026-06-02
+updated: 2026-11-14
 ---
 
 # ADR-0001: Six-layer codebase architecture
@@ -27,6 +28,13 @@ updated: 2026-06-02
 
 Accepted. The two bottom layers (`core/` and `storage/`) now contain real,
 unit-tested modules; the upper four layer directories remain placeholders.
+
+> Superseded in part by [[ADR-0175-session-layer-for-application-state]] on 2026-11-14. ADR-0175
+> adds a seventh layer, `session/`, between `storage/` and `bridge/`, and narrows `bridge/` to
+> React adapters. The downward dependency rule set here is unchanged, and so are the roles of
+> `core/`, `storage/`, and `engine/`. Lint enforces the six-layer list below until the stage that
+> creates `session/` lands. The implementation notes in this document describe June 2026: all six
+> layers have carried production code for some time.
 
 ## Context
 
