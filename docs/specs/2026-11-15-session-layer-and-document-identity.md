@@ -56,7 +56,7 @@ Anti-goals. The four in the umbrella specification apply. Five more are specific
 - Every document from schema version 8 onward still opens after every step, through every store.
 - A user who has a project today finds it after the upgrade with no action on their part. It is stored under the id `'current'`, it opens at start, and it has a card.
 - No new runtime dependency. Addresses are handled without a routing library.
-- A project's address works on a static host with no rewrite rule, and it works offline through the service worker.
+- A project's address works on a static host with no rewrite rule. It asks the server for nothing but the application shell, so it works offline wherever the shell is served offline. The service worker does not cache the shell yet (design specification, section 11).
 - `session/` imports no React and no Three.js and uses no DOM global. It reaches browser APIs only through ports in `storage/`.
 - Browser storage APIs stay inside `storage/`, and after this stage lint enforces that.
 - The refusal to open an invalid document reaches users only together with the dialog that lets them export and repair (section 6).
@@ -174,7 +174,7 @@ Design:
 7. The defect itself is caught earlier. The first stage adds a test that runs every registered command against a fixture document (section 5.4 there). This stage runs the same commands against a second fixture that carries no planted unknown key, and checks after each command that the document still passes the schema. The fixture of the first stage cannot serve, because its planted keys fail the strict check by design. The mixed paint entry of #624 would have failed the new test.
 8. Decode failures are typed, because section 5.7 turns each into a sentence: the bytes are not JSON, the JSON is not a project, the version is newer than the build, a migration failed, or the document breaks the format rules.
 9. Every path that reads a document goes through decode: each store, archive import, file import, and the restore of a recovery snapshot. Every path that writes one goes through encode: each store, the snapshot write, and archive export. `app/validate-loaded-project.ts` is deleted.
-10. The codec writes `schemaRevision`, and the drift test fails when the generated schema changes and neither number rises (ADR-0178). The schema files that exist stay where they are and count as revision 0 of their versions. The application bundles the current schema only. A file at a lower revision of the same version is valid against it, because a revision only adds optional fields.
+10. The codec writes `schemaRevision`, and the drift test fails when the generated schema changes and neither number rises (ADR-0178). The schema files that exist stay where they are and count as revision 0 of their versions. Adding `schemaRevision` to the model is itself the first additive change to version 17, so this stage publishes revision 1 of that version. The application bundles the current schema only. A file at a lower revision of the same version is valid against it, because a revision only adds optional fields.
 
 Left to the builder: the names and signatures, the path where a later revision of a schema is published (the existing paths and their `$id` values must not change), and whether the validator is compiled when the application is built or when it runs. The pull request states what the choice adds to the production bundle.
 
@@ -209,8 +209,8 @@ Design:
    - keeps unknown data through a save (a field from a higher revision, and an `extensions` payload);
    - leaves a cleared optional field cleared;
    - keeps an asset across a new instance of the store;
-   - holds two projects side by side, where a save of one leaves the bytes of the other identical;
-   - deletes one project and nothing else;
+   - holds two projects side by side, where a save of one leaves the bytes of the other identical (a store that holds one project, such as a picked folder or an archive, leaves every file it did not write unchanged);
+   - deletes one project and nothing else (a store that holds many projects);
    - lists its projects when one of them holds bytes that are not JSON;
    - fails to load a document that breaks the format rules, and still saves one (section 5.2, point 6).
 4. The IndexedDB store runs the same suite as the others. Records that exist today hold a document as an object, and they still open.
@@ -240,7 +240,7 @@ Today:
 
 Design:
 
-1. A handle is the only way to get a session. Opening one takes a project's id and location, finds the store, takes the lock, loads through the codec, builds the editor session, and arms autosave. Each of those steps can fail, and the failure is typed: the project is open in another tab, it is not in the store, it did not open, the storage did not answer, or the folder needs permission.
+1. A handle is the only way to get a session. Opening one takes a project's id and location, finds the store, takes the lock, loads through the codec, builds the editor session, and arms autosave. Each of those steps can fail, and the failure is typed: the project is open in another tab, it is not in the store, it did not open, the storage did not answer, the folder needs permission, or the folder cannot be reached.
 2. The handle holds the id, the location, the store, the lock, the editor session with its undo history, and the save state. It holds no selection, camera, active floor, or tool state.
 3. The handle saves, flushes, and closes. A flush writes pending changes now and resolves when they are stored. A close flushes, stops autosave, and releases the lock. When the flush fails, the close fails, the handle stays open, and the caller decides what to do.
 4. Writes run one at a time, and the last state wins.
@@ -598,7 +598,7 @@ One specification covers the stage, and the plan delivers it in several pull req
 | Session layer     | 5.1, 5.4                | Codec, Stores                | `session/`, `bridge/session/`, `bridge/autosave/`, `storage/locks/`, the flow hooks in `app/` (`use-project-actions.ts`, `use-open-file-action.ts`, `use-export-actions.ts`, `use-workspace-state.ts`), `src/e2e-storage-hook.ts`, `eslint.config.js`, `tests/architecture/`, the four documents that list the layers |
 | Identity          | 5.5, 5.9                | Session layer                | `storage/recent/`, `storage/filesystem/directory-handle-store.ts`, the new index port, `src/main.tsx`, the address functions                                                                                                                                                                                          |
 | Assets            | 5.6                     | Stores, Session layer        | `storage/zip/`, `storage/import/`                                                                                                                                                                                                                                                                                     |
-| Projects page     | 5.8                     | Identity                     | The page components and their stories, `editor/shell/project-menu.tsx`, the end-to-end journeys                                                                                                                                                                                                                       |
+| Projects page     | 5.8                     | Identity, Assets             | The page components and their stories, `editor/shell/project-menu.tsx`, the end-to-end journeys                                                                                                                                                                                                                       |
 | Failed open       | 5.7                     | Codec, Projects page         | The repair list in `core/`, the dialog                                                                                                                                                                                                                                                                                |
 | Temporary storage | 5.10                    | Session layer, Projects page | `app/use-degraded-storage-banner.ts`, the save status                                                                                                                                                                                                                                                                 |
 | Settings          | 5.11                    | Session layer                | The settings port and service, `editor/plan/snap-preferences-store.ts`, `editor/design-system/theme-provider.tsx`, `app/opfs-probe.ts`                                                                                                                                                                                |
@@ -606,8 +606,8 @@ One specification covers the stage, and the plan delivers it in several pull req
 Order inside and between groups:
 
 - The first stage lands before any of this. The codec takes over its table and its graft, the session layer extends its lint exception list, and the identity group replaces its remembered id.
-- The codec group builds the strict check, and the application does not act on a failed check yet. The refusal goes live in the failed-open group, in the same pull request as the dialog. Until then a failed check is reported and the document opens, as it does today.
-- After the session layer lands, the identity, assets, and settings groups can run in parallel.
+- The codec group builds the strict check, and the application does not act on a failed check yet. The refusal goes live in the failed-open group, in the same pull request as the dialog. Until then a failed check is reported and the document opens, as it does today. In that interval a document that migrated and then failed the check still gets its migration backup before it opens, so the first save cannot replace the only copy of the original.
+- After the session layer lands, the identity, assets, and settings groups can run in parallel. The Projects page waits for the assets group as well as for identity, because its Export and Delete use the unchecked copy and the rule for removing assets.
 - `storage/index.ts`, `core/index.ts`, `session/index.ts`, and `package.json` are shared. Each change to them is a line or two, and they need a merge order, not an owner.
 - `app/app.tsx` has no single owner either. Five groups edit it in turn: the session layer, identity, the Projects page, failed open, and temporary storage. Their dependencies already put them in that order.
 

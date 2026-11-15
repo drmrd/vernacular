@@ -84,8 +84,8 @@ them loads, including a folder project whose folder the browser has not yet gran
 - At start the application opens the record with the latest use. With no record, it starts in an
   empty project.
 - Each project has its own address, which carries its id. A reload opens the same project. The
-  address works on a static host with no rewrite rule, and it works offline through the service
-  worker.
+  address works on a static host with no rewrite rule. It asks the server for nothing but the
+  application shell, so it works offline wherever the shell is served offline.
 - The form of the address is left to the builder. Parsing an address and making one are pure
   functions in `app/`, and `session/` knows nothing about addresses.
 - The preview is a drawing of the first floor with no text, made by a pure function in `core/`,
