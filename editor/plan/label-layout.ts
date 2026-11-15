@@ -12,6 +12,7 @@ import type { Bounds } from './fit'
 import { midpoint } from './geometry'
 import { LABEL_FONT_SIZE_PX, LABEL_LINE_HEIGHT_PX } from './label-constants'
 import {
+  labelBox,
   roomLabelContent,
   roomLabelPlacement,
   type RoomLabelOptions,
@@ -19,31 +20,9 @@ import {
 } from './room-label'
 import { worldToScreen, type Viewport } from './viewport'
 
-/**
- * Average glyph advance as a fraction of the font's pixel size for the canvas
- * label face (12px sans-serif). A deterministic stand-in for canvas
- * `measureText`, which is absent from the drawing-context fake and varies across
- * platforms. Estimating width from this constant keeps label placement a pure
- * function of its inputs.
- */
-const AVERAGE_GLYPH_ADVANCE_RATIO = 0.55
-
-/**
- * Estimate the axis-aligned on-screen box a label occupies, centered on
- * `anchor` (center/middle alignment). Width is estimated deterministically from
- * `text` and `font.sizePx` via an average-glyph-advance model, not from a canvas
- * `measureText`, so the box is a pure function of its inputs.
- */
-export function labelBox(text: string, anchor: Point, font: { sizePx: number }): Bounds {
-  const width = AVERAGE_GLYPH_ADVANCE_RATIO * font.sizePx * text.length
-  const height = font.sizePx
-  const halfWidth = width / 2
-  const halfHeight = height / 2
-  return {
-    min: { x: anchor.x - halfWidth, y: anchor.y - halfHeight },
-    max: { x: anchor.x + halfWidth, y: anchor.y + halfHeight },
-  }
-}
+// labelBox lives beside the room label placement that sizes lines with it; re-exported so the
+// layout module keeps its public surface.
+export { labelBox }
 
 /**
  * Whether two label boxes share positive on-screen area. Strict comparison: two
