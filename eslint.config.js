@@ -148,16 +148,16 @@ const relaxedFunctionLengthFile = /\.(test|spec|stories)\.tsx?$|-contract\.ts$/
 function sizeRuleSetting(rule, max, file) {
   switch (rule) {
     case 'max-lines':
-      return ['warn', { ...lengthOptions, max }]
+      return ['error', { ...lengthOptions, max }]
     case 'max-lines-per-function':
       return [
-        'warn',
+        'error',
         relaxedFunctionLengthFile.test(file)
           ? { ...lengthOptions, max }
           : { ...functionLengthOptions, max },
       ]
     default:
-      return ['warn', max]
+      return ['error', max]
   }
 }
 
@@ -170,6 +170,7 @@ function exceptionBlock({ file, rule, max }) {
 /** @param {LintException[]} exceptions */
 export function buildConfig(exceptions = lintExceptions) {
   return tseslint.config(
+    { linterOptions: { reportUnusedDisableDirectives: 'error' } },
     {
       ignores: [
         'dist',
@@ -221,7 +222,8 @@ export function buildConfig(exceptions = lintExceptions) {
       },
       rules: {
         ...reactHooks.configs.recommended.rules,
-        'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+        'react-hooks/exhaustive-deps': 'error',
+        'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
 
         // Naming
         '@typescript-eslint/naming-convention': [
@@ -236,22 +238,22 @@ export function buildConfig(exceptions = lintExceptions) {
         ],
 
         // Size and shape limits
-        'max-lines-per-function': ['warn', { ...functionLengthOptions, max: 40 }],
-        'max-lines': ['warn', { ...lengthOptions, max: 300 }],
-        'max-params': ['warn', 3],
-        complexity: ['warn', 10],
-        'max-depth': ['warn', 3],
+        'max-lines-per-function': ['error', { ...functionLengthOptions, max: 40 }],
+        'max-lines': ['error', { ...lengthOptions, max: 300 }],
+        'max-params': ['error', 3],
+        complexity: ['error', 10],
+        'max-depth': ['error', 3],
         'no-nested-ternary': 'error',
         'no-magic-numbers': [
-          'warn',
+          'error',
           { ignore: [-1, 0, 1, 2, 100], ignoreArrayIndexes: true, enforceConst: true },
         ],
-        'no-console': ['warn', { allow: ['warn', 'error'] }],
+        'no-console': ['error', { allow: ['warn', 'error'] }],
 
         // Unused
         'unused-imports/no-unused-imports': 'error',
         'unused-imports/no-unused-vars': [
-          'warn',
+          'error',
           { vars: 'all', varsIgnorePattern: '^_', args: 'after-used', argsIgnorePattern: '^_' },
         ],
 
@@ -263,7 +265,7 @@ export function buildConfig(exceptions = lintExceptions) {
       files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts'],
       rules: {
         'no-magic-numbers': 'off',
-        'max-lines-per-function': ['warn', { ...lengthOptions, max: 120 }],
+        'max-lines-per-function': ['error', { ...lengthOptions, max: 120 }],
       },
     },
     {
@@ -273,7 +275,7 @@ export function buildConfig(exceptions = lintExceptions) {
       files: ['**/*.stories.{ts,tsx}'],
       rules: {
         'no-magic-numbers': 'off',
-        'max-lines-per-function': ['warn', { ...lengthOptions, max: 120 }],
+        'max-lines-per-function': ['error', { ...lengthOptions, max: 120 }],
       },
     },
     {
