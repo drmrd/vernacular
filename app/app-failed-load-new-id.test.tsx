@@ -13,7 +13,6 @@ import {
 import { CURRENT_SCHEMA_VERSION, createEmptyProject } from '../core'
 
 const FAILED_ID = 'current'
-const AUTOSAVE_DIRECTORY = '.house-autosave'
 // Autosave debounces its writes, so the wait for the first one is generous.
 const AUTOSAVE_TIMEOUT_MS = 3000
 
@@ -76,8 +75,16 @@ describe('A project started after a failed load', () => {
     const before = await filesUnder(root, FAILED_ID)
     expect(await storedIds(store)).toEqual([FAILED_ID])
     const save = vi.spyOn(store, 'save')
-    const resolveSnapshots = (id: string) =>
-      Promise.resolve(new SnapshotStore(new SubdirectoryPort(root, id)))
+    const snapshotWrites: string[] = []
+    const resolveSnapshots = (id: string) => {
+      const snapshots = new SnapshotStore(new SubdirectoryPort(root, id))
+      const write = snapshots.writeSnapshot.bind(snapshots)
+      vi.spyOn(snapshots, 'writeSnapshot').mockImplementation((project) => {
+        snapshotWrites.push(id)
+        return write(project)
+      })
+      return Promise.resolve(snapshots)
+    }
 
     render(
       <App
@@ -98,8 +105,9 @@ describe('A project started after a failed load', () => {
     const newId = ids.find((id) => id !== FAILED_ID)
     expect(ids).toEqual(expect.arrayContaining([FAILED_ID, newId]))
     expect(ids).toHaveLength(2)
-    await waitFor(async () =>
-      expect(await root.list(`${newId}/${AUTOSAVE_DIRECTORY}`)).not.toHaveLength(0),
-    )
+    // The prune that closes an autosave cycle removes the snapshot it just wrote,
+    // so the write itself is observed rather than the files left behind.
+    expect(snapshotWrites).toContain(newId)
+    expect(snapshotWrites).not.toContain(FAILED_ID)
   })
 })
