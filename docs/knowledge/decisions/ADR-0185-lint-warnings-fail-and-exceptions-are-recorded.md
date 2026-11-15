@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0185: Lint warnings fail CI, and exceptions are one recorded list
@@ -58,6 +58,11 @@ only when a file in it changed, so a pull request that changes only source does 
   Three.js package and uses no browser-only global. `storage/` imports neither package. `engine/`
   imports no React package. Only `engine/` imports `three`, and only `bridge/` imports
   `@react-three/*`.
+- The browser-global rule covers the production files of `core/` only. Test files there
+  (`core/**/*.test.ts` and `core/**/*.test.tsx`) are outside it, because the unit tests run under
+  jsdom and two SVG exporter tests use `DOMParser` to check the exported markup. The rule protects
+  shipped `core/` code, which must run with no browser. The React and Three.js import rules still
+  apply to those test files. The owner decided this on 2026-11-15.
 - An import cycle through value imports fails. A cycle of type-only imports is allowed.
 - The tests under `tests/` run on every pull request that changes a source layer.
 
