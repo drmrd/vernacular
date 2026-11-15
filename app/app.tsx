@@ -215,7 +215,7 @@ function bootErrorView(error: Error, onRetry: () => void, onStartFresh: () => vo
       <button type="button" onClick={onStartFresh}>
         Start a new project
       </button>
-      <p>A new project leaves the saved one where it is until you save over it.</p>
+      <p>The saved project is kept unchanged. A new project is stored separately.</p>
     </main>
   )
 }
