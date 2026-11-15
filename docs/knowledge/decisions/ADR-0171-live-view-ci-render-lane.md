@@ -17,7 +17,7 @@ sourceFiles:
     scripts/ci/decide.mjs,
   ]
 status: current
-updated: 2026-09-06
+updated: 2026-11-15
 ---
 
 # ADR-0171: Live-view WebGPU visual regression runs on a macOS CI lane
@@ -25,6 +25,12 @@ updated: 2026-09-06
 ## Status
 
 Current. Rendering-realism lane 3 (issue #469), decided in the gates-first spec of 2026-09-06.
+
+> Amended on 2026-11-15 (issue #721). GitHub retired the `macos-14` runner image, and the job
+> could no longer start. It now runs on `macos-15`, pinned by number. Run 43765231877 on the
+> `macos-15-arm64` image (macOS 15.8.2) ran the spec without a skip and passed against the
+> committed `-darwin` baseline at the standing tolerances, so points 1 and 2 of the decision hold
+> on the new image. A move to a later image is a deliberate change that needs the same proof.
 
 ## Context
 
