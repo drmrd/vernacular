@@ -3,15 +3,33 @@ import { createEditorSession, type EditorSession } from '../../bridge'
 import type { FramedScene } from '../../bridge/react/framed-scene'
 import { createFramedSceneReconciler } from '../../bridge/react/framed-scene-reconciler'
 import { FURNITURE_NODE_PREFIX, type SceneGraph, type SurfaceTreatment } from '../../core'
-import { isUpdatingBaseline, readBaseline, writeBaselineSection } from './baseline-file'
-import { REFERENCE_EDITS, createReferenceProject } from './reference-project'
+import {
+  countChangedMessage,
+  isUpdatingBaseline,
+  readBaseline,
+  writeBaseline,
+} from './baseline-file'
+import { REFERENCE_EDITS, createReferenceProject, type ReferenceEdit } from './reference-project'
 
-const BASELINE_SECTION = 'rebuiltObjects'
+const BASELINE_FILE = 'baseline-scene-rebuild.json'
+const GATE_MESSAGE = countChangedMessage('count of 3D groups rebuilt, removed, or added')
 const RENAME_EDIT = 'rename-project'
 const EMPTY_PAINT: Record<string, SurfaceTreatment> = {}
 
-type GroupKind = 'floor' | 'wallGroup' | 'room' | 'opening' | 'furniture'
-type RebuiltCount = Record<GroupKind, number>
+const GROUP_KINDS = ['floor', 'wallGroup', 'room', 'opening', 'furniture'] as const
+type GroupKind = (typeof GROUP_KINDS)[number]
+type KindCount = Record<GroupKind, number>
+
+/**
+ * What one edit did to the groups of one kind. A rebuilt group has the same element id and is a
+ * different object; a removed one has an id that is gone; an added one has a new id.
+ */
+interface GroupChanges {
+  rebuilt: number
+  removed: number
+  added: number
+}
+type EditChanges = Record<GroupKind, GroupChanges>
 
 /** An object of the framed scene, typed through the scene root so this test needs no `three`. */
 type SceneObject = Parameters<Parameters<FramedScene['root']['traverse']>[0]>[0]
@@ -48,6 +66,8 @@ function entityIdOf(object: SceneObject | null): string | undefined {
 /**
  * The wall group of a floor carries no element id of its own. It is the parent of the wall
  * meshes, and the floor group above it carries the floor id, so it is tracked under that id.
+ * The lookup holds while the floor group is the direct parent of the wall group; the test that
+ * reads an element id for every group of every kind fails if that stops being so.
  */
 function wallGroupEntry(wallMesh: SceneObject): GroupEntry | undefined {
   const group = wallMesh.parent
@@ -77,28 +97,36 @@ function identifyGroups(scene: FramedScene, graph: SceneGraph): GroupIdentities 
   return identities
 }
 
-function zeroCount(): RebuiltCount {
-  return { floor: 0, wallGroup: 0, room: 0, opening: 0, furniture: 0 }
-}
-
-function countByKind(identities: GroupIdentities): RebuiltCount {
-  const counts = zeroCount()
+function countByKind(identities: GroupIdentities): KindCount {
+  const counts: KindCount = { floor: 0, wallGroup: 0, room: 0, opening: 0, furniture: 0 }
   for (const { kind } of identities.values()) {
     counts[kind] += 1
   }
   return counts
 }
 
-/** The groups that are a different object after the edit for the same element id, by kind. */
-function countRebuilt(before: GroupIdentities, after: GroupIdentities): RebuiltCount {
-  const counts = zeroCount()
+function noChanges(): EditChanges {
+  const none = (): GroupChanges => ({ rebuilt: 0, removed: 0, added: 0 })
+  return Object.fromEntries(GROUP_KINDS.map((kind) => [kind, none()])) as EditChanges
+}
+
+/** The groups rebuilt, removed, and added by the edit, by kind. */
+function countChanges(before: GroupIdentities, after: GroupIdentities): EditChanges {
+  const changes = noChanges()
   for (const [key, { kind, group }] of before) {
     const next = after.get(key)
-    if (next !== undefined && next.group !== group) {
-      counts[kind] += 1
+    if (next === undefined) {
+      changes[kind].removed += 1
+    } else if (next.group !== group) {
+      changes[kind].rebuilt += 1
     }
   }
-  return counts
+  for (const [key, { kind }] of after) {
+    if (!before.has(key)) {
+      changes[kind].added += 1
+    }
+  }
+  return changes
 }
 
 type Reconcile = (session: EditorSession) => GroupIdentities
@@ -113,21 +141,26 @@ function reconcileWithOneReconciler(): Reconcile {
   }
 }
 
-/** Reads the identities before the edit reconciles again: a reused group moves to the new root. */
-function measureEdit(edit: (typeof REFERENCE_EDITS)[number]): RebuiltCount {
+/**
+ * Reads the identities before the edit reconciles again: a reused group moves to the new root.
+ * The session edits its document in place, so the command is built from a second, identical
+ * reference project. The command then reads the document as it was before the edit and shares
+ * no object with the document the session changes.
+ */
+function measureEdit(edit: ReferenceEdit): EditChanges {
   const session = createEditorSession(createReferenceProject())
   const reconcile = reconcileWithOneReconciler()
   const before = reconcile(session)
   session.dispatch(edit.command(createReferenceProject()))
-  return countRebuilt(before, reconcile(session))
+  return countChanges(before, reconcile(session))
 }
 
-function measureEveryEdit(): Record<string, RebuiltCount> {
+function measureEveryEdit(): Record<string, EditChanges> {
   return Object.fromEntries(REFERENCE_EDITS.map((edit) => [edit.name, measureEdit(edit)]))
 }
 
-function recordedCounts(): Record<string, RebuiltCount> {
-  return readBaseline()[BASELINE_SECTION] as Record<string, RebuiltCount>
+function recordedCounts(): Record<string, EditChanges> {
+  return readBaseline(BASELINE_FILE) as Record<string, EditChanges>
 }
 
 describe('the 3D groups rebuilt by each reference edit', () => {
@@ -135,7 +168,7 @@ describe('the 3D groups rebuilt by each reference edit', () => {
 
   beforeAll(() => {
     if (isUpdatingBaseline()) {
-      writeBaselineSection(BASELINE_SECTION, measured)
+      writeBaseline(BASELINE_FILE, measured)
     }
   })
 
@@ -160,13 +193,13 @@ describe('the 3D groups rebuilt by each reference edit', () => {
   })
 
   it.each(REFERENCE_EDITS)(
-    'the $name edit rebuilds the groups recorded in the baseline',
+    'the $name edit rebuilds, removes, and adds the groups recorded in the baseline',
     (edit) => {
-      expect(measured[edit.name]).toEqual(recordedCounts()[edit.name])
+      expect(measured[edit.name], GATE_MESSAGE).toEqual(recordedCounts()[edit.name])
     },
   )
 
-  it('renaming the project rebuilds no 3D group', () => {
-    expect(measured[RENAME_EDIT]).toEqual(zeroCount())
+  it('renaming the project rebuilds, removes, and adds no 3D group', () => {
+    expect(measured[RENAME_EDIT]).toEqual(noChanges())
   })
 })

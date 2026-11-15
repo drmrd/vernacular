@@ -14,6 +14,7 @@ import {
 import { buildReferenceDimensions } from './reference-dimensions'
 import { buildReferenceFloor, buildReferenceStairs } from './reference-layout'
 import { paintReferenceSurfaces } from './reference-paint'
+import { required } from './required'
 
 /** The floor count that section 6.10 of the design specification budgets for. */
 export const REFERENCE_FLOOR_COUNT = 4
@@ -41,13 +42,6 @@ export function createReferenceProject(): Project {
   project.stairs = buildReferenceStairs(project.floors)
   paintReferenceSurfaces(project)
   return project
-}
-
-function required<T>(item: T | undefined, what: string): T {
-  if (item === undefined) {
-    throw new Error(`The reference project has no ${what}`)
-  }
-  return item
 }
 
 /** Every edit targets the ground floor, the first floor of the project. */
@@ -94,13 +88,18 @@ function raiseGroundCeiling(project: Project): Command {
   return setFloorCeilingHeight(floor.id, floor.defaultCeilingHeight + CEILING_RAISE_MM)
 }
 
+/** One gated edit: its name in the baseline, and the command it makes from a reference project. */
+export interface ReferenceEdit {
+  name: string
+  command: (project: Project) => Command
+}
+
 /** The six gated edits, each built from ids of the reference project. */
-export const REFERENCE_EDITS: readonly { name: string; command: (project: Project) => Command }[] =
-  [
-    { name: 'move-wall-endpoint', command: moveFirstWallEndpoint },
-    { name: 'move-furniture', command: moveFirstFurniture },
-    { name: 'resize-opening', command: widenFirstOpening },
-    { name: 'paint-surface', command: paintFirstWallFace },
-    { name: 'set-ceiling-height', command: raiseGroundCeiling },
-    { name: 'rename-project', command: () => renameProject(`${REFERENCE_NAME}, renamed`) },
-  ]
+export const REFERENCE_EDITS: readonly ReferenceEdit[] = [
+  { name: 'move-wall-endpoint', command: moveFirstWallEndpoint },
+  { name: 'move-furniture', command: moveFirstFurniture },
+  { name: 'resize-opening', command: widenFirstOpening },
+  { name: 'paint-surface', command: paintFirstWallFace },
+  { name: 'set-ceiling-height', command: raiseGroundCeiling },
+  { name: 'rename-project', command: () => renameProject(`${REFERENCE_NAME}, renamed`) },
+]

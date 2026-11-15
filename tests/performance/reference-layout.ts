@@ -13,6 +13,7 @@ import {
   type Stair,
   type Wall,
 } from '../../core'
+import { required } from './required'
 
 /** Every floor of the reference project is the same plain grid of rooms. */
 export const ROOM_COLUMNS = 5
@@ -79,7 +80,7 @@ function buildWalls(floorId: string): Wall[] {
 
 function buildOpenings(floorId: string, walls: readonly Wall[]): Opening[] {
   return GRID_EDGES.slice(0, OPENINGS_PER_FLOOR).map((edge, index) => {
-    const wall = walls[index] as Wall
+    const wall = required(walls[index], `wall ${index + 1} of ${floorId}`)
     return createOpening({
       id: `${floorId}-opening-${index + 1}`,
       type: edge.exterior ? WINDOW_TYPE : DOOR_TYPE,
@@ -131,7 +132,8 @@ export function buildReferenceFloor(floorIndex: number): Floor {
 export function buildReferenceStairs(floors: readonly Floor[]): Stair[] {
   const backStairCorner = gridPoint(ROOM_COLUMNS - 1, ROOM_ROWS - 1)
   return floors.slice(1).flatMap((upper, index) => {
-    const connection = { fromFloorId: (floors[index] as Floor).id, toFloorId: upper.id }
+    const lower = required(floors[index], `floor below ${upper.id}`)
+    const connection = { fromFloorId: lower.id, toFloorId: upper.id }
     return [
       createStair({
         id: `stair-main-${index + 1}`,

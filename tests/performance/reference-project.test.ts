@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { createEditorSession } from '../../bridge'
 import { createDocumentValidator } from '../../core'
 import { SCHEMA_VERSION } from '../../scripts/schema/build-schema.mjs'
-import baseline from './baseline.json'
+import recordedSizes from './baseline-sizes.json'
 import { DIMENSIONS_PER_FLOOR } from './reference-dimensions'
 import { REFERENCE_EDITS, createReferenceProject } from './reference-project'
 import { measureProjectSizes } from './reference-sizes'
@@ -22,7 +22,7 @@ describe('the reference project', () => {
   })
 
   it('has the sizes recorded in the performance baseline', () => {
-    expect(measureProjectSizes(createReferenceProject())).toEqual(baseline.sizes)
+    expect(measureProjectSizes(createReferenceProject())).toEqual(recordedSizes)
   })
 
   it('meets the project size that the design specification budgets for', () => {

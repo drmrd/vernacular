@@ -1,0 +1,164 @@
+{
+  "move-wall-endpoint": {
+    "floor": {
+      "rebuilt": 4,
+      "removed": 0,
+      "added": 0
+    },
+    "wallGroup": {
+      "rebuilt": 1,
+      "removed": 0,
+      "added": 0
+    },
+    "room": {
+      "rebuilt": 2,
+      "removed": 1,
+      "added": 0
+    },
+    "opening": {
+      "rebuilt": 1,
+      "removed": 0,
+      "added": 0
+    },
+    "furniture": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    }
+  },
+  "move-furniture": {
+    "floor": {
+      "rebuilt": 4,
+      "removed": 0,
+      "added": 0
+    },
+    "wallGroup": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "room": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "opening": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "furniture": {
+      "rebuilt": 1,
+      "removed": 0,
+      "added": 0
+    }
+  },
+  "resize-opening": {
+    "floor": {
+      "rebuilt": 4,
+      "removed": 0,
+      "added": 0
+    },
+    "wallGroup": {
+      "rebuilt": 1,
+      "removed": 0,
+      "added": 0
+    },
+    "room": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "opening": {
+      "rebuilt": 1,
+      "removed": 0,
+      "added": 0
+    },
+    "furniture": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    }
+  },
+  "paint-surface": {
+    "floor": {
+      "rebuilt": 4,
+      "removed": 0,
+      "added": 0
+    },
+    "wallGroup": {
+      "rebuilt": 4,
+      "removed": 0,
+      "added": 0
+    },
+    "room": {
+      "rebuilt": 40,
+      "removed": 0,
+      "added": 0
+    },
+    "opening": {
+      "rebuilt": 44,
+      "removed": 0,
+      "added": 0
+    },
+    "furniture": {
+      "rebuilt": 200,
+      "removed": 0,
+      "added": 0
+    }
+  },
+  "set-ceiling-height": {
+    "floor": {
+      "rebuilt": 4,
+      "removed": 0,
+      "added": 0
+    },
+    "wallGroup": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "room": {
+      "rebuilt": 10,
+      "removed": 0,
+      "added": 0
+    },
+    "opening": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "furniture": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    }
+  },
+  "rename-project": {
+    "floor": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "wallGroup": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "room": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "opening": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    },
+    "furniture": {
+      "rebuilt": 0,
+      "removed": 0,
+      "added": 0
+    }
+  }
+}
