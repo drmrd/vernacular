@@ -8,6 +8,7 @@ export interface ProjectSizes {
   openings: number
   stairs: number
   furniture: number
+  dimensions: number
   paintedSurfaces: number
 }
 
@@ -22,6 +23,7 @@ export function measureProjectSizes(project: Project): ProjectSizes {
     openings: sumOverFloors((floor) => floor.openings.length),
     stairs: project.stairs.length,
     furniture: sumOverFloors((floor) => floor.furniture.length),
+    dimensions: sumOverFloors((floor) => floor.dimensions.length),
     paintedSurfaces: Object.keys(project.paint ?? {}).length,
   }
 }

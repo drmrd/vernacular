@@ -11,6 +11,7 @@ import {
   type Floor,
   type Project,
 } from '../../core'
+import { buildReferenceDimensions } from './reference-dimensions'
 import { buildReferenceFloor, buildReferenceStairs } from './reference-layout'
 import { paintReferenceSurfaces } from './reference-paint'
 
@@ -33,9 +34,10 @@ export function createReferenceProject(): Project {
     period: 'victorian',
     appVersion: REFERENCE_APP_VERSION,
   })
-  project.floors = Array.from({ length: REFERENCE_FLOOR_COUNT }, (_, index) =>
-    buildReferenceFloor(index),
-  )
+  project.floors = Array.from({ length: REFERENCE_FLOOR_COUNT }, (_, index) => {
+    const floor = buildReferenceFloor(index)
+    return { ...floor, dimensions: buildReferenceDimensions(floor.id) }
+  })
   project.stairs = buildReferenceStairs(project.floors)
   paintReferenceSurfaces(project)
   return project

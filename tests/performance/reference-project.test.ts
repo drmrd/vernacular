@@ -5,6 +5,7 @@ import { createEditorSession } from '../../bridge'
 import { createDocumentValidator } from '../../core'
 import { SCHEMA_VERSION } from '../../scripts/schema/build-schema.mjs'
 import baseline from './baseline.json'
+import { DIMENSIONS_PER_FLOOR } from './reference-dimensions'
 import { REFERENCE_EDITS, createReferenceProject } from './reference-project'
 import { measureProjectSizes } from './reference-sizes'
 
@@ -31,6 +32,17 @@ describe('the reference project', () => {
     expect(sizes.furniture).toBe(200)
     expect(sizes.openings + sizes.stairs).toBe(50)
     expect(sizes.paintedSurfaces).toBeGreaterThan(0)
+  })
+
+  it('gives every floor the same dimensions, so the plan dimension pass has work to draw', () => {
+    const { floors } = createReferenceProject()
+
+    for (const floor of floors) {
+      expect(floor.dimensions).toHaveLength(DIMENSIONS_PER_FLOOR)
+    }
+    expect(measureProjectSizes(createReferenceProject()).dimensions).toBe(
+      DIMENSIONS_PER_FLOOR * floors.length,
+    )
   })
 
   it('passes the schema validator', () => {
