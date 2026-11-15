@@ -94,12 +94,21 @@ Inputs the spec implies and no "Done when" line covers. Each has a test in the c
 | 8   | Performance timing report and the first baseline | `feat/performance-timing-report`         | #684  | Performance | 7            |
 
 Pull request 1 lands alone. After it, the three other lanes run in parallel, each in its own
-sibling worktree. The file fences are in section 6 of the spec, with two additions from this plan:
-the saved-data lane also owns `bridge/session/editor-session.ts` and `.prettierignore`, and the
-performance lane also owns `tests/performance/` and `vitest.config.ts`.
+sibling worktree. The file fences are in section 6 of the spec, with these additions from this
+plan:
 
-Four files are shared and take a line or two from more than one lane: `package.json`,
-`storage/index.ts`, `core/index.ts`, and `ci-coupling.json`. The lane that merges second rebases.
+- The lint lane also owns `bridge/react/scene-selection.test.ts`,
+  `bridge/react/framed-scene-reconciler-reuse.test.ts`, and `engine/testing/`.
+- The saved-data lane also owns `bridge/session/editor-session.ts`, `.prettierignore`,
+  `core/commands/testing/`, `core/commands/extensions-survive.test.ts`, `tests/format/`, and
+  `tests/storage/`.
+- The failed-load lane also owns `app/app-failed-load.test.tsx` and its one journey under `e2e/`.
+- The performance lane also owns `tests/performance/` and `vitest.config.ts`.
+
+Five files are shared and take a small change from more than one lane: `package.json`,
+`storage/index.ts`, `core/index.ts`, `ci-coupling.json`, and the design specification (section 9.8
+from the lint lane, sections 3.3, 3.4, and 5.5 from the saved-data lane, sections 6.10 and 9.3 from
+the performance lane). The lane that merges second rebases.
 
 ---
 
@@ -194,9 +203,10 @@ export function buildConfig(exceptions = lintExceptions) {
 export default buildConfig()
 ```
 
-An entry for a size rule (`max-lines`, `max-lines-per-function`, `complexity`) becomes a per-file
-block that keeps the rule's standard options and replaces only the limit. An entry for a rule with
-no number turns that rule off for that file.
+A size rule is a rule with a numeric limit: `max-lines`, `max-lines-per-function`, `max-params`,
+`max-depth`, and `complexity`. An entry for a size rule becomes a per-file block that keeps the
+rule's standard options and replaces only the limit. An entry for a rule with no number turns that
+rule off for that file.
 
 - [ ] RED in `tests/architecture/lint-exceptions.test.ts`:
   - every entry has a positive `issue`, a `file` that exists, and a `max` exactly when its rule is
@@ -257,7 +267,7 @@ no number turns that rule off for that file.
 
 ### Cycle 1.8: the texts that describe lint
 
-- [ ] `.claude/rules.md:81` becomes: "ESLint fails a function above 10. A file on the exception
+- [ ] The second sentence of `.claude/rules.md:81` becomes: "ESLint fails a function above 10. A file on the exception
       list in `eslint.config.js` has its own limit until the issue named there removes it."
       Approval of the spec covers this sentence and no other in that file.
 - [ ] Section 9.8 of the design specification describes one failing limit per rule, the exception
@@ -324,6 +334,8 @@ whose values the schema leaves open, and every `Extensions` value, becomes `opaq
 
 - [ ] RED in `tests/format/known-keys.test.ts`:
   - `buildKnownKeys(buildProjectSchema())` serializes to the committed JSON file, byte for byte;
+  - with a stale `core/model/known-keys.json`, `generate-schema.mjs --check` exits with a non-zero
+    code and names that file (the test runs the script against a temporary copy);
   - `KNOWN_KEYS.Project.keys.roomOverrides` is a `map` of `{ kind: 'object', type: 'RoomOverride' }`;
   - `KNOWN_KEYS.Project.keys.paint` is a `map` of a `union`;
   - `KNOWN_KEYS.ProjectMeta.keys.registryVersions` is a `map` of a `leaf`;
@@ -464,8 +476,6 @@ a table that is wrong in the same way as the tests (spec section 9).
 - [ ] `tests/format/corpus-preservation.test.ts` gains: every document under
       `tests/fixtures/projects/` loads and saves with no edit to a file equal to
       `serializeProjectJson` of the migrated document.
-- [ ] `tests/format/schema-drift.test.ts` gains a case that fails on a stale key table, if cycle
-      3.1 did not already put it in `known-keys.test.ts`.
 - [ ] Commit: `test: check cleared fields and the corpus through the folder store`.
 
 The pull request description says "Closes #669".
@@ -653,7 +663,8 @@ tests with `UPDATE_PERFORMANCE_BASELINE=1` rewrites the file.
       with options from `buildDrawOptions` (`editor/plan/plan-scene.ts`), a fixed viewport that
       shows the whole floor, and the grid, the rulers, the room labels, and the dimensions on. The
       length of `ops` and its tally by name equal the baseline exactly. If a context method does
-      not reach `ops`, report it. Do not count around it.
+      not reach `ops`, report it. Do not count around it. How the plan scene of a floor is built
+      from the reference project is left to the builder.
 - [ ] Cycle 7.3, `scene-rebuild-counts.test.ts`: reconcile the reference project with
       `createFramedSceneReconciler`, apply each edit with the real command through an editor
       session, reconcile again, and count the groups that are a different object for the same

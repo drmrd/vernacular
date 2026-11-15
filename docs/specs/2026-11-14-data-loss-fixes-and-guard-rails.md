@@ -217,7 +217,7 @@ Done when:
 Today, measured with `pnpm exec eslint . -f json`:
 
 - 43 warnings and no errors. By rule: `max-lines` 12, `max-lines-per-function` 12, `no-magic-numbers` 11, `max-params` 3, `complexity` 2, `react-refresh/only-export-components` 2, and one unused disable directive.
-- `eslint.config.js` sets 11 rules to `warn`. `pnpm lint` is `eslint .` with no warning limit, so none of them can fail CI.
+- `eslint.config.js` sets nine rules to `warn`, in eleven places. `pnpm lint` is `eslint .` with no warning limit, so none of them can fail CI.
 - Section 9.8 of the design specification describes two limits per size rule, a warning and a higher error. Only the warning limit was ever configured. `.claude/rules.md:81` repeats the two-limit claim for complexity.
 - No lint rule stops `core/` from importing React or Three.js, or from using a DOM global. The boundaries rule only covers imports between the repository's own layers. No violation exists today: nothing in `core/`, `storage/`, or `engine/` imports React, no production file outside `engine/` imports `three`, and `@react-three/fiber` is imported only in `bridge/`. Two test files in `bridge/` import `three`.
 - Three import cycles run through value imports, each between two files: `editor/plan/room-label.ts` and `label-layout.ts`, `editor/plan/ruler.ts` and `ruler-label-spacing.ts`, `app/use-project-actions.ts` and `use-open-file-action.ts`. Counting type-only imports there are six groups over 27 files.

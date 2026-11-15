@@ -19,8 +19,8 @@ updated: 2026-11-14
 
 ## Status
 
-> Amended by [[ADR-0185-lint-warnings-fail-and-exceptions-are-recorded]] on 2026-11-14. The size
-> and complexity rules become errors at their configured limits, `pnpm lint` allows no warning, and
+> Amended by [[ADR-0185-lint-warnings-fail-and-exceptions-are-recorded]] on 2026-11-14. Every
+> rule that warned becomes an error at its configured limit, `pnpm lint` allows no warning, and
 > exceptions sit in one recorded list. ADR-0185 also adds the ban on Three.js imports outside
 > `engine/` that this record deferred. Until that work lands, the rules warn as described below.
 

@@ -46,9 +46,9 @@ load deletes the backup (#670). A bad migration is usually noticed long after th
 - A pre-migration backup is written to `.house-backups/`, beside `vernacular.json`. The directory is
   not part of the format and never travels in an archive.
 - The backup is written before the migration runs, as before.
-- A project keeps one backup for each schema version it was stored at and migrated from.
-- A backup write never replaces a file that has different bytes. The same bytes are not written
-  twice.
+- A project keeps at least one backup for each schema version it was migrated from.
+- A backup write never replaces a file that has different bytes, so different bytes at one version
+  add another backup. The same bytes are not written twice.
 - Nothing removes a backup except the deletion of its project.
 - The snapshot prune removes only the files the snapshot store wrote: the session-start snapshot and
   the rolling snapshots. It leaves any other file in `.house-autosave/` alone.
