@@ -258,15 +258,17 @@ jobs:
 
   live-view-visual:
     name: Live-view visual regression (macOS/WebGPU)
-    runs-on: macos-14
+    runs-on: macos-15
     needs: [check, decide]
     # Pixel-tests the render path users actually see: the editor's live WebGPU pane on a
     # Metal-backed adapter, which the linux runners cannot provide (the spec self-skips
-    # there). The probe run 34067553157 showed the macos-14 chromium exposes a real WebGPU
-    # adapter and renders within the committed -darwin baseline's standing tolerances, so
-    # one baseline serves the development Mac and this runner. macOS minutes bill at 10x
-    # linux, so the job shares the e2e gate: it runs only when the PR touches a path that
-    # can move the live frame (ADR-0171).
+    # there). The probe run 34067553157 showed that chromium on a macOS runner exposes a real
+    # WebGPU adapter and renders within the committed -darwin baseline's standing tolerances,
+    # so one baseline serves the development Mac and this runner. That probe ran on macos-14.
+    # GitHub retired that image in November 2026, and macos-15 is the nearest supported one.
+    # The image is pinned by number so that a move to a newer one is a deliberate change.
+    # macOS minutes bill at 10x linux, so the job shares the e2e gate: it runs only when the
+    # PR touches a path that can move the live frame (ADR-0171).
     if: needs.decide.outputs.e2e == 'true'
     steps:
       - name: Checkout

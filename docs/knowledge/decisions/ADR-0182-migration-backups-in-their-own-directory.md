@@ -9,6 +9,8 @@ related:
     decisions/ADR-0119-write-ahead-crash-recovery,
     decisions/ADR-0028-directory-port-folder-storage-seam,
     decisions/ADR-0047-published-floor-plan-data-format-standard,
+    decisions/ADR-0190-strict-check-refuses-and-two-classes-of-repair,
+    decisions/ADR-0191-export-on-every-card-and-unchecked-copy,
   ]
 sourceFiles:
   [
@@ -18,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0182: Migration backups live in their own directory until the project is deleted
@@ -30,6 +32,18 @@ same day, with section 5.2 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-r
 supersedes the part of ADR-0029 that puts the backup in `.house-autosave/`, and it narrows what the
 prune of ADR-0119 removes. The code changes with #670. Until then the backup is written to
 `.house-autosave/` and the prune empties that directory.
+
+> Amended by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15. The backup
+> is written after a decode that migrated and succeeded, before the document reaches the caller,
+> and no longer before the migration runs. Decode works in memory, so a migration that fails
+> cannot touch the stored file. The same backup rule keeps the last stored file that passed the
+> check when a save writes a document that fails it, the stored bytes when a repair replaces
+> them, and a recovery snapshot that fails the check. The directory, the lifetime, and the rule
+> against overwriting are unchanged.
+
+> Amended by [[ADR-0191-export-on-every-card-and-unchecked-copy]] on 2026-11-15. One export carries
+> backups and recovery snapshots: the unchecked copy of a project that did not open. An ordinary
+> export still carries neither, and an import ignores those entries.
 
 ## Context
 

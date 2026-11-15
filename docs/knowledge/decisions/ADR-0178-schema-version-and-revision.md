@@ -9,6 +9,7 @@ related:
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0051-format-preservation-and-load-validation,
     decisions/ADR-0176-commands-as-data-and-session-undo-history,
+    decisions/ADR-0190-strict-check-refuses-and-two-classes-of-repair,
   ]
 sourceFiles:
   [
@@ -18,7 +19,7 @@ sourceFiles:
     storage/folder/preserve-unknown.ts,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0178: schemaVersion counts breaking changes and schemaRevision counts additive ones
@@ -32,6 +33,12 @@ tolerates every unknown key at load, and it amends ADR-0047, where a reserved na
 only by a new `schemaVersion`. The policy applies from the next change
 to the schema. The reader and the drift test learn about the revision with the document codec work
 in that round.
+
+> Amended by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15. Where the
+> reading rules allow a choice, the application refuses: it does not open a file at a version above
+> its own, and it has no read-only mode. A document at the reader's version that fails the strict
+> check does not open. The stored bytes are kept, and the user can export them or accept an
+> offered repair. Encode never lowers a revision. The reading rules themselves are unchanged.
 
 ## Context
 
