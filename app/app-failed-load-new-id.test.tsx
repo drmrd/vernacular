@@ -37,6 +37,7 @@ async function seedFailedProject(root: InMemoryDirectory): Promise<void> {
   const bytes = projectFromANewerBuild()
   await root.writeFile(`${FAILED_ID}/vernacular.json`, bytes)
   await root.writeFile(`${FAILED_ID}/.house-backups/vernacular.pre-migration.json`, bytes)
+  await root.writeFile(`${FAILED_ID}/.house-autosave/snapshot-1.json`, bytes)
 }
 
 // Every file below `prefix`, keyed by path. A fatal decoder that keeps the byte
