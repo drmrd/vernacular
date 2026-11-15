@@ -18,6 +18,11 @@ sourceFiles:
     app/use-workspace-state.ts,
     bridge/session/load-or-create-project.ts,
     storage/project-store.ts,
+    storage/active-project/active-project-id-store.ts,
+    app/use-active-project-id.ts,
+    app/use-fresh-project.ts,
+    app/use-project-boot.ts,
+    app/use-remember-saved-project.ts,
   ]
 status: current
 updated: 2026-11-15
@@ -28,8 +33,9 @@ updated: 2026-11-15
 ## Status
 
 Current. The owner chose the identity rule on 2026-11-14 and approved the rest the same day, with
-section 5.3 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. The code changes with
-#671. Until then a project started after a failed load still uses the id `'current'`.
+section 5.3 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. The code landed
+with #671. A project started after a failed load now gets its own id, and the application remembers
+that id after the project's first successful save.
 
 > Amended by [[ADR-0188-project-id-address-and-index-record]] on 2026-11-15. The project index
 > takes over the port that remembers the active project id. The project to open at start is the
@@ -78,6 +84,17 @@ application assumes a single id.
   the document handle takes the new port over.
 - The fixed id stops being an assumption in `app/`. The default value stays, so an existing user's
   project opens as before.
+
+## Notes on the code
+
+- The port is `ActiveProjectIdStore` in `storage/active-project/active-project-id-store.ts`. The
+  browser implementation keeps the remembered id in `localStorage` under the key
+  `vernacular.activeProjectId`.
+- A new id has the form `project-<uuid>`, and the code checks that no stored project has it.
+- The id is remembered only after the first successful save on a durable store.
+- A damaged remembered value counts as nothing remembered, and the application opens `'current'`.
+- A retry that succeeds wins over a pending start of a new project. The start gives up when the
+  failure it answered has gone.
 
 ## References
 
