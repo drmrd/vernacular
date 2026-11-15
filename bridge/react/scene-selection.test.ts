@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import * as THREE from 'three'
+import { THREE } from '../../engine/testing'
 
 import { buildScene } from '../../engine'
 import { createPerceivedColorStore } from '../perceived-color/perceived-color-store'

@@ -8,3 +8,4 @@ export {
 } from './geometry-assertions'
 export type { MaterialGroup } from './geometry-assertions'
 export { importsStaticValueOf } from './import-guards'
+export * as THREE from 'three'
