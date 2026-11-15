@@ -1,0 +1,11 @@
+{
+  "sizes": {
+    "floors": 4,
+    "walls": 108,
+    "rooms": 40,
+    "openings": 44,
+    "stairs": 6,
+    "furniture": 200,
+    "paintedSurfaces": 116
+  }
+}
