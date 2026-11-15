@@ -164,7 +164,7 @@ The format reserves names for first-party entities the design specification anti
 (section 3.1 entity tree) but that are not yet implemented, and for the modeling concepts the
 floor-plan test corpus surfaced as gaps. A reserved name is owned by the format, documented as
 reserved and not yet defined, and becomes part of the CORE schema additively in a later
-`schemaVersion`. Reserving the names now keeps the path additive and prevents a third party from
+schema revision (section 7). Reserving the names now keeps the path additive and prevents a third party from
 colonizing a name the project intends to define. The reserved-namespace registry is section 6.5.
 
 ### 6.3 Third-party vendor extensions
@@ -222,7 +222,8 @@ the design-specification section, ADR, or floor-plan corpus gap that motivates i
 | `level.partial`         | reserved | corpus gap `split-level-and-mezzanine`                           |
 
 This table is normative for name ownership and informative for shape. A reserved name is
-promoted to core only by a `schemaVersion` increment and an accompanying ADR.
+promoted to core only by a `schemaRevision` or `schemaVersion` increment (section 7) and an
+accompanying ADR.
 
 ## 7. Versioning, migration, and compatibility
 
@@ -233,9 +234,10 @@ promoted to core only by a `schemaVersion` increment and an accompanying ADR.
   OPTIONAL non-negative integer beside it in `ProjectMeta` that counts additive changes to the
   CORE schema within one `schemaVersion` (ADR-0178). A Document without `schemaRevision` is at
   revision 0. The revision returns to 0 when `schemaVersion` increments.
-- **Additive changes increment the revision.** A new optional field or a new reserved name is
-  additive. It increments `schemaRevision` and needs no migration step. A new registry type is
-  additive too, but it is registry data and changes no schema, so the revision stays. Removing
+- **Additive changes increment the revision.** A new optional field is additive, and so is the
+  promotion of a reserved name to a defined optional field. Each increments `schemaRevision` and
+  needs no migration step. Reserving a name, or adding a registry type, changes no schema, so
+  the revision stays. Removing
   or renaming a field, or changing a field's meaning, requires a new `schemaVersion` and a
   migration step in the chain (`core/migrations/schema/`), layered with per-registry migrations
   (`core/migrations/registries/`). A pre-migration backup is written before applying, and
@@ -246,8 +248,9 @@ promoted to core only by a `schemaVersion` increment and an accompanying ADR.
 - **Reading rules.** A reader at version N and revision R opening a Document at version M and
   revision Q does one of four things.
   - M < N: it migrates the Document up the chain.
-  - M = N and Q ≤ R: it validates the Document strictly. An unknown field outside `extensions`
-    is a validation error.
+  - M = N and Q ≤ R: it validates the Document with no tolerance for unknown fields. A field the
+    schema does not define, outside `extensions`, is a validation error. The error is reported,
+    and the field is still preserved (section 6.4).
   - M = N and Q > R: a newer build wrote the Document with additive fields this reader does not
     know. The reader reads it tolerantly, MUST obey the preservation rule (section 6.4), and
     SHOULD tell the user that a newer build wrote it.
@@ -259,9 +262,11 @@ promoted to core only by a `schemaVersion` increment and an accompanying ADR.
 
 - **Adoption (non-normative).** Versions 8 through 17 predate the revision and each incremented
   `schemaVersion`, including for additive changes. The application adopts `schemaRevision` with
-  the document codec work described in `2026-11-14-architecture-refactor-round.md`; until then
-  it writes no revision and every Document is at revision 0. What the application does with a
-  validation error (report, repair, or refuse) is decided with that work.
+  the document codec work described in `2026-11-14-architecture-refactor-round.md`. Until then
+  it writes no revision, every Document is at revision 0, and the application validates in
+  development builds only and tolerates unknown fields. That work also decides how a validation
+  error is reported (section 8 still rules out a user-facing hard rejection) and where the
+  schema for each revision is published.
 
 ## 8. Schema generation and validation
 

@@ -20,6 +20,7 @@ tags:
 related:
   [
     decisions/ADR-0047-published-floor-plan-data-format-standard,
+    decisions/ADR-0178-schema-version-and-revision,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0034-future-direction-extensibility-seams,
     decisions/ADR-0028-directory-port-folder-storage-seam,
@@ -31,7 +32,7 @@ sourceFiles:
     docs/plans/2026-06-11-vernacular-format-preservation.md,
   ]
 status: current
-updated: 2026-08-31
+updated: 2026-11-14
 ---
 
 # ADR-0051: Forward-compatibility preservation and load-time validation for the floor plan format
@@ -44,6 +45,13 @@ specification (`docs/specs/2026-06-10-vernacular-floor-plan-format.md`), introdu
 schema and the `createDocumentValidator`; the file-rename plan adopted `vernacular.json` and
 `*.building`. This decision covers the preservation round-trip, the validate-after-migration load
 gate, and the optional Strict profile.
+
+> Superseded in part by [[ADR-0178-schema-version-and-revision]] on 2026-11-14. ADR-0178 narrows
+> the load gate of decision 2. Once the application adopts `schemaRevision`, a Document at or below
+> the reader's revision is validated with no tolerance, and an unknown key outside `extensions` is
+> reported. The tolerance stays for a Document from a newer revision. Preservation (decision 1) is
+> unchanged: a key is kept whether or not it is reported. Until that work lands, the gate behaves
+> as described below.
 
 ## Context
 

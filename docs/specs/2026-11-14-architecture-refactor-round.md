@@ -117,12 +117,12 @@ Today a command is a string `type` plus untyped `params` (`core/commands/command
 
 ### 5.4 The geometric kernel
 
-Today the wall graph is built three times from the same function: in `core/topology/rooms.ts:126`, `editor/plan/draw-plan.ts:446`, and `engine/scene/wall-scene-helpers.ts:11`. Each call maps its own inputs and passes its own tolerance, and the plan and the 3D builder then derive footprints and miters separately. The scene graph carries raw centerlines, and "the same point" means 1 mm, 1e-6, 1e-9, or exact equality depending on the module.
+Today the wall graph is built three times from the same function: in `core/topology/rooms.ts:126`, `editor/plan/draw-plan.ts:446`, and `engine/scene/wall-scene-helpers.ts:11`. Each call maps its own inputs, and the plan and the 3D builder then derive footprints and miters separately. The scene graph carries raw centerlines, and "the same point" means 1 mm, 1e-6, 1e-9, or exact equality depending on the module.
 
 - One tolerance module defines what coincident and parallel mean (ADR-0181). No other module carries its own epsilon.
 - One derived plan geometry per floor holds the wall graph, wall footprints with their miters, junction fills, opening spans, room boundaries, and addressable faces. The scene graph carries it, and the plan renderer, the 3D builder, room derivation, and export all read it.
 - One function enumerates the scene graph. There are two today, and the live view misses a field that the harness sees (#675).
-- Consumers reach wall geometry through the centerline accessor that ADR-0034 specified. No code uses it yet, and 74 places read wall end points directly. This is the seam curved walls need.
+- Consumers reach wall geometry through a centerline accessor. ADR-0034 recommended one, but none exists yet, and 74 places read wall end points directly. This round creates it, and it is the seam curved walls need.
 - Degenerate input is handled on purpose. A wall that overlaps a room's edge makes the room disappear today (#681). Room identity is the sorted list of bounding wall ids, so splitting a wall at a tee renames the room and detaches its overrides.
 - Property-based tests cover the derivation.
 
@@ -185,7 +185,7 @@ Today every render repaints all 20 passes, the canvas is a fixed 800 by 600 bitm
 
 ## 6. Order of work
 
-The order is: stop data loss, then document identity and the command layer, then each remaining area together with a public-beta feature that proves it. The round has a tracking issue in the public-beta milestone that links the issues for every stage, and the status of the round lives there.
+The order is: stop data loss, then document identity and the command layer, then each remaining area together with a public-beta feature that proves it. The round has a tracking issue in the public-beta milestone, #682, that links the issues for every stage. The status of the round lives there.
 
 | Stage | Work                                                                              | Paired feature                                      | Issues it settles            |
 | ----- | --------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
@@ -302,11 +302,11 @@ These changes landed with the approval of this document.
 - Design specification section 7.1: history is per session and is not saved (ADR-0176).
 - Format specification section 7: `schemaRevision` and the reading rules (ADR-0178).
 - `docs/delivery-strategy.md`: its claim that a new kind of element is an additive projection is the target of section 5.5, not the current state. The page now says so and describes this round.
-- ADR-0001, ADR-0059, and ADR-0122 are superseded in part by ADR-0175, ADR-0180, and ADR-0179. ADR-0005 is amended by ADR-0176. Each carries a note that points to its successor.
+- ADR-0001, ADR-0059, and ADR-0122 are superseded in part by ADR-0175, ADR-0180, and ADR-0179. ADR-0005 is amended by ADR-0176. ADR-0051 is superseded in part, and ADR-0047 amended, by ADR-0178. Each carries a note that points to its successor.
 
 These wait for the stage that creates `session/`, because they describe the code as it is.
 
-- `ARCHITECTURE.md`, `CLAUDE.md`, and `.claude/rules.md`: the layer list and the invariants that name layers (ADR-0175). Edits to the last two need owner sign-off.
+- `ARCHITECTURE.md`, `CLAUDE.md`, `.claude/rules.md`, and design specification section 2: the layer list and the invariants that name layers (ADR-0175). Edits to `CLAUDE.md` and `.claude/rules.md` need owner sign-off.
 
 ## 10. Risks
 

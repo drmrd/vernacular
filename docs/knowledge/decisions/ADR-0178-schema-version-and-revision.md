@@ -6,6 +6,8 @@ tags: [format, schema, versioning, migration, validation]
 related:
   [
     decisions/ADR-0047-published-floor-plan-data-format-standard,
+    decisions/ADR-0029-schema-registry-migration-framework,
+    decisions/ADR-0051-format-preservation-and-load-validation,
     decisions/ADR-0176-commands-as-data-and-session-undo-history,
   ]
 sourceFiles:
@@ -25,7 +27,9 @@ updated: 2026-11-14
 
 Current. The owner chose this on 2026-11-14 and approved the architecture refactor round
 specification the same day. It amends section 7 of the format specification
-(`docs/specs/2026-06-10-vernacular-floor-plan-format.md`). The policy applies from the next change
+(`docs/specs/2026-06-10-vernacular-floor-plan-format.md`). It supersedes the part of ADR-0051 that
+tolerates every unknown key at load, and it amends ADR-0047, where a reserved name was promoted
+only by a new `schemaVersion`. The policy applies from the next change
 to the schema. The reader and the drift test learn about the revision with the document codec work
 in that round.
 
@@ -35,7 +39,7 @@ Section 7 of the format specification says a new optional field is additive and 
 `schemaVersion`. The code has bumped the version for every change anyway. `CURRENT_SCHEMA_VERSION`
 is 17 (`core/model/factories.ts:43`), versions 8 through 17 arrived in about three months, and six
 of the sixteen migrations change nothing. The migration chain allows one step per version, so two
-lanes that each add a field have to queue for the next number (#632 is an example).
+lanes that each add a field have to queue for the next number.
 
 Following the specification as written would remove that cost, but it has a weakness. If nothing
 records additive changes, a reader cannot tell a field added by a newer build from a corrupt field.

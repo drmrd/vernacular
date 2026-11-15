@@ -41,8 +41,8 @@ power-user surface over snapping that does not change the default drawing
 behavior.
 
 > Superseded in part by [[ADR-0180-one-settings-port]] on 2026-11-14. ADR-0180 puts every user
-> setting, the snap preferences included, behind one settings port in `storage/`, so the editor no
-> longer writes `localStorage` itself. The store described below stays as it is until that work
+> setting, the snap preferences included, behind one settings port in `storage/`, so the editor will no
+> longer write `localStorage` itself. The store described below stays as it is until that work
 > lands. The snapping behavior, the toggles, and the panel are unchanged.
 
 ## Context

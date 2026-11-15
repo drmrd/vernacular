@@ -6,7 +6,7 @@ tags: [editor, openings, overlap, drag, resize, inspector, core]
 related:
   [
     decisions/ADR-0001-six-layer-architecture,
-    decisions/ADR-0005-command-pattern-with-inverse,
+    decisions/ADR-0005-command-pattern-framework-captured-inverse,
     decisions/ADR-0038-openings-as-typed-wall-hosted-entities,
     decisions/ADR-0073-opening-resize-handles,
     decisions/ADR-0179-domain-rules-in-command-handlers,

@@ -85,7 +85,7 @@ The public beta is mostly new kinds of element and new tools, and the November 2
 
 The round runs in stages, and every stage lands on `main` through ordinary pull requests. There is no rewrite branch. It starts with the fixes for data loss. Next come a `session/` layer for application logic that needs no React, a document that knows where it is stored, and a command layer with typed commands, transactions, and rules enforced in the handlers. The remaining areas follow: one derived plan geometry, a descriptor for each kind of element, one owner for the three-dimensional scene, one drawing model behind the canvas and the exports, and one contract for tools and input.
 
-From the command layer on, each stage lands together with a public-beta feature that proves it. Live feedback during a drag proves transactions, for example, and the first curved wall segment proves the geometry seam. The round closes when a text annotation, a new kind, can be added without an edit to any shared list. Other beta features wait for the stage they depend on, so the round sets the order of much of the beta. Its tracking issue in the public-beta milestone carries the status.
+From the command layer on, each stage lands together with a public-beta feature that proves it. Live feedback during a drag proves transactions, for example, and the first curved wall segment proves the geometry seam. The round closes when a text annotation, a new kind, can be added without an edit to any shared list. Other beta features wait for the stage they depend on, so the round sets the order of much of the beta. Its tracking issue, [#682](https://github.com/drmrd/vernacular/issues/682), carries the status.
 
 ## Open-standard interoperability
 

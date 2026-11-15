@@ -35,10 +35,10 @@ it for display, while parametric tools also keep the typed expression for named 
 
 Three facts settle the question for Vernacular.
 
-- A 64-bit millimetre value holds a typed inch fraction to about 1e-13 mm. Formatting it back
+- A 64-bit millimetre value holds a typed inch fraction to about 1e-12 mm at building scale. Formatting it back
   yields the same fraction.
 - What actually threatens a typed value is tolerance. "The same point" means 1 mm, 1e-6, 1e-9, or
-  exact equality depending on the module, and a 1 mm merge can move a wall end by 3/64 inch.
+  exact equality depending on the module, and a 1 mm merge can move a wall end by about 1/25 inch.
 - A wall stores two end points and no length. A typed length would be a note that any later edit
   invalidates, and a wall drawn at an angle has irrational end coordinates whatever is stored.
 

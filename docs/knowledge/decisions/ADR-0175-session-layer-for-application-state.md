@@ -94,4 +94,4 @@ and the open and save flows. The document codec itself is pure and lives in `cor
 ## References
 
 - `docs/specs/2026-11-14-architecture-refactor-round.md`, section 5.1.
-- ADR-0001, the six-layer architecture this amends.
+- ADR-0001, the six-layer architecture this supersedes in part.
