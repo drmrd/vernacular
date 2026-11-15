@@ -10,10 +10,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every Linux job in this repository runs on ubuntu-24.04, not ubuntu-latest. Playwright 1.60.0 has
+# no Chromium build for Ubuntu 26.04, and the visual baselines depend on the image. Issue #696
+# moves the pin together with the Playwright upgrade.
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,7 +59,7 @@ jobs:
 
   decide:
     name: Decide heavy suites
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       issues: read
@@ -100,7 +103,7 @@ jobs:
   ping-pong:
     name: Ping-pong compliance
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - name: Checkout
@@ -123,7 +126,7 @@ jobs:
 
   storybook-build:
     name: Storybook build and component tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [check, decide]
     if: needs.decide.outputs.visual == 'true'
     steps:
@@ -173,7 +176,7 @@ jobs:
 
   e2e:
     name: End-to-end (chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [check, decide]
     if: needs.decide.outputs.e2e == 'true'
     steps:
@@ -211,7 +214,7 @@ jobs:
 
   scene-visual:
     name: Scene visual regression (chromium/SwiftShader)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [check, decide]
     # Runs only once runner-rendered -linux scene baselines are committed (see the decide job's
     # detection step). Skips cleanly on any tree that has none, which is every tree today.
@@ -303,7 +306,7 @@ jobs:
 
   lighthouse:
     name: Lighthouse CI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [check, decide]
     if: needs.decide.outputs.lighthouse == 'true'
     steps:
@@ -337,7 +340,7 @@ jobs:
   ci-complete:
     name: ci-complete
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs:
       [check, decide, ping-pong, storybook-build, e2e, scene-visual, live-view-visual, lighthouse]
     steps:
