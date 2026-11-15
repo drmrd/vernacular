@@ -1,0 +1,744 @@
+{
+  "Project": {
+    "keys": {
+      "meta": {
+        "kind": "object",
+        "type": "ProjectMeta"
+      },
+      "floors": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Floor"
+        }
+      },
+      "stairs": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Stair"
+        }
+      },
+      "environmentScenes": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "EnvironmentScene"
+        }
+      },
+      "roomOverrides": {
+        "kind": "map",
+        "value": {
+          "kind": "object",
+          "type": "RoomOverride"
+        }
+      },
+      "palettes": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "ProjectPalette"
+        }
+      },
+      "paint": {
+        "kind": "map",
+        "value": {
+          "kind": "union",
+          "types": [
+            "SurfaceTreatment.solid",
+            "SurfaceTreatment.pattern"
+          ]
+        }
+      },
+      "site": {
+        "kind": "object",
+        "type": "Site"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "environmentScenes",
+      "roomOverrides",
+      "palettes",
+      "paint",
+      "site",
+      "extensions"
+    ]
+  },
+  "ProjectMeta": {
+    "keys": {
+      "name": {
+        "kind": "leaf"
+      },
+      "units": {
+        "kind": "leaf"
+      },
+      "period": {
+        "kind": "leaf"
+      },
+      "style": {
+        "kind": "object",
+        "type": "StyleTag"
+      },
+      "schemaVersion": {
+        "kind": "leaf"
+      },
+      "appVersion": {
+        "kind": "leaf"
+      },
+      "registryVersions": {
+        "kind": "map",
+        "value": {
+          "kind": "leaf"
+        }
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "style",
+      "extensions"
+    ]
+  },
+  "StyleTag": {
+    "keys": {
+      "styleId": {
+        "kind": "leaf"
+      },
+      "vernacular": {
+        "kind": "leaf"
+      }
+    },
+    "optional": [
+      "vernacular"
+    ]
+  },
+  "Floor": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "name": {
+        "kind": "leaf"
+      },
+      "elevation": {
+        "kind": "leaf"
+      },
+      "defaultCeilingHeight": {
+        "kind": "leaf"
+      },
+      "periodOverride": {
+        "kind": "leaf"
+      },
+      "styleOverride": {
+        "kind": "object",
+        "type": "StyleTag"
+      },
+      "walls": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Wall"
+        }
+      },
+      "underlays": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Underlay"
+        }
+      },
+      "openings": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Opening"
+        }
+      },
+      "dimensions": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Dimension"
+        }
+      },
+      "furniture": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "FurnitureInstance"
+        }
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "periodOverride",
+      "styleOverride",
+      "extensions"
+    ]
+  },
+  "Wall": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "start": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "end": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "thickness": {
+        "kind": "leaf"
+      },
+      "constructionProfile": {
+        "kind": "leaf"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "constructionProfile",
+      "extensions"
+    ]
+  },
+  "Point": {
+    "keys": {
+      "x": {
+        "kind": "leaf"
+      },
+      "y": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "Underlay": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "source": {
+        "kind": "union",
+        "types": [
+          "UnderlaySource.raster",
+          "UnderlaySource.document",
+          "UnderlaySource.scene"
+        ]
+      },
+      "width": {
+        "kind": "leaf"
+      },
+      "height": {
+        "kind": "leaf"
+      },
+      "placement": {
+        "kind": "object",
+        "type": "UnderlayPlacement"
+      },
+      "opacity": {
+        "kind": "leaf"
+      },
+      "visible": {
+        "kind": "leaf"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "extensions"
+    ]
+  },
+  "UnderlaySource.raster": {
+    "keys": {
+      "kind": {
+        "kind": "leaf"
+      },
+      "image": {
+        "kind": "object",
+        "type": "AssetReference"
+      }
+    },
+    "optional": []
+  },
+  "UnderlaySource.document": {
+    "keys": {
+      "kind": {
+        "kind": "leaf"
+      },
+      "document": {
+        "kind": "object",
+        "type": "AssetReference"
+      },
+      "page": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "UnderlaySource.scene": {
+    "keys": {
+      "kind": {
+        "kind": "leaf"
+      },
+      "scene": {
+        "kind": "object",
+        "type": "AssetReference"
+      }
+    },
+    "optional": []
+  },
+  "AssetReference": {
+    "keys": {
+      "scope": {
+        "kind": "leaf"
+      },
+      "contentHash": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "UnderlayPlacement": {
+    "keys": {
+      "offset": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "millimetersPerPixel": {
+        "kind": "leaf"
+      },
+      "rotation": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "Opening": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "type": {
+        "kind": "leaf"
+      },
+      "hostWallId": {
+        "kind": "leaf"
+      },
+      "position": {
+        "kind": "leaf"
+      },
+      "width": {
+        "kind": "leaf"
+      },
+      "height": {
+        "kind": "leaf"
+      },
+      "sillHeight": {
+        "kind": "leaf"
+      },
+      "orientation": {
+        "kind": "object",
+        "type": "OpeningOrientation"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "extensions"
+    ]
+  },
+  "OpeningOrientation": {
+    "keys": {
+      "hinge": {
+        "kind": "leaf"
+      },
+      "facing": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "Dimension": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "start": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "end": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "offset": {
+        "kind": "leaf"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "extensions"
+    ]
+  },
+  "FurnitureInstance": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "assetRef": {
+        "kind": "object",
+        "type": "AssetReference"
+      },
+      "position": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "rotation": {
+        "kind": "leaf"
+      },
+      "elevationZ": {
+        "kind": "leaf"
+      },
+      "footprint": {
+        "kind": "object",
+        "type": "FurnitureFootprint"
+      },
+      "height": {
+        "kind": "leaf"
+      },
+      "name": {
+        "kind": "leaf"
+      },
+      "customizations": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "name",
+      "customizations"
+    ]
+  },
+  "FurnitureFootprint": {
+    "keys": {
+      "width": {
+        "kind": "leaf"
+      },
+      "depth": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "Stair": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "runType": {
+        "kind": "leaf"
+      },
+      "position": {
+        "kind": "object",
+        "type": "Point"
+      },
+      "width": {
+        "kind": "leaf"
+      },
+      "length": {
+        "kind": "leaf"
+      },
+      "rotation": {
+        "kind": "leaf"
+      },
+      "connection": {
+        "kind": "object",
+        "type": "StairConnection"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "extensions"
+    ]
+  },
+  "StairConnection": {
+    "keys": {
+      "fromFloorId": {
+        "kind": "leaf"
+      },
+      "toFloorId": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "EnvironmentScene": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "name": {
+        "kind": "leaf"
+      },
+      "observedAt": {
+        "kind": "leaf"
+      },
+      "weather": {
+        "kind": "object",
+        "type": "WeatherConditions"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "weather",
+      "extensions"
+    ]
+  },
+  "WeatherConditions": {
+    "keys": {
+      "summary": {
+        "kind": "leaf"
+      },
+      "cloudCover": {
+        "kind": "leaf"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "summary",
+      "cloudCover",
+      "extensions"
+    ]
+  },
+  "RoomOverride": {
+    "keys": {
+      "name": {
+        "kind": "leaf"
+      },
+      "customPolygon": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Point"
+        }
+      },
+      "purpose": {
+        "kind": "leaf"
+      },
+      "subPurpose": {
+        "kind": "leaf"
+      },
+      "periodOverride": {
+        "kind": "leaf"
+      },
+      "styleOverride": {
+        "kind": "object",
+        "type": "StyleTag"
+      },
+      "ceilingHeight": {
+        "kind": "leaf"
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "name",
+      "customPolygon",
+      "purpose",
+      "subPurpose",
+      "periodOverride",
+      "styleOverride",
+      "ceilingHeight",
+      "extensions"
+    ]
+  },
+  "ProjectPalette": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "name": {
+        "kind": "leaf"
+      },
+      "description": {
+        "kind": "leaf"
+      },
+      "periods": {
+        "kind": "leaf"
+      },
+      "colors": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "NamedColor"
+        }
+      },
+      "extensions": {
+        "kind": "opaque"
+      }
+    },
+    "optional": [
+      "description",
+      "periods",
+      "extensions"
+    ]
+  },
+  "NamedColor": {
+    "keys": {
+      "name": {
+        "kind": "leaf"
+      },
+      "color": {
+        "kind": "object",
+        "type": "Color"
+      }
+    },
+    "optional": []
+  },
+  "Color": {
+    "keys": {
+      "oklab": {
+        "kind": "object",
+        "type": "OkLab"
+      },
+      "srgbHex": {
+        "kind": "leaf"
+      },
+      "originalSpec": {
+        "kind": "leaf"
+      }
+    },
+    "optional": [
+      "originalSpec"
+    ]
+  },
+  "OkLab": {
+    "keys": {
+      "L": {
+        "kind": "leaf"
+      },
+      "a": {
+        "kind": "leaf"
+      },
+      "b": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "SurfaceTreatment.solid": {
+    "keys": {
+      "kind": {
+        "kind": "leaf"
+      },
+      "color": {
+        "kind": "object",
+        "type": "Color"
+      },
+      "finishId": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "SurfaceTreatment.pattern": {
+    "keys": {
+      "kind": {
+        "kind": "leaf"
+      },
+      "patternId": {
+        "kind": "leaf"
+      },
+      "scale": {
+        "kind": "leaf"
+      },
+      "colors": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Color"
+        }
+      }
+    },
+    "optional": []
+  },
+  "Site": {
+    "keys": {
+      "latLong": {
+        "kind": "object",
+        "type": "LatLong"
+      },
+      "northBearing": {
+        "kind": "leaf"
+      },
+      "obstructions": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Obstruction"
+        }
+      },
+      "gradeElevation": {
+        "kind": "leaf"
+      },
+      "timezone": {
+        "kind": "leaf"
+      }
+    },
+    "optional": [
+      "latLong",
+      "northBearing",
+      "obstructions",
+      "gradeElevation",
+      "timezone"
+    ]
+  },
+  "LatLong": {
+    "keys": {
+      "latitude": {
+        "kind": "leaf"
+      },
+      "longitude": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  },
+  "Obstruction": {
+    "keys": {
+      "id": {
+        "kind": "leaf"
+      },
+      "footprint": {
+        "kind": "array",
+        "item": {
+          "kind": "object",
+          "type": "Point"
+        }
+      },
+      "height": {
+        "kind": "leaf"
+      }
+    },
+    "optional": []
+  }
+}
