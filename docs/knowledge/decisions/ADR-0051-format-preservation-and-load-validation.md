@@ -22,6 +22,7 @@ related:
     decisions/ADR-0047-published-floor-plan-data-format-standard,
     decisions/ADR-0178-schema-version-and-revision,
     decisions/ADR-0184-known-keys-from-the-schema-for-the-save-time-graft,
+    decisions/ADR-0190-strict-check-refuses-and-two-classes-of-repair,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0034-future-direction-extensibility-seams,
     decisions/ADR-0028-directory-port-folder-storage-seam,
@@ -33,7 +34,7 @@ sourceFiles:
     docs/plans/2026-06-11-vernacular-format-preservation.md,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0051: Forward-compatibility preservation and load-time validation for the floor plan format
@@ -53,6 +54,12 @@ gate, and the optional Strict profile.
 > reported. The tolerance stays for a Document from a newer revision. Preservation (decision 1) is
 > unchanged: a key is kept whether or not it is reported. Until that work lands, the gate behaves
 > as described below.
+
+> Superseded in part by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15.
+> The load gate of decision 2 no longer only reports. A stored Document that fails the check does
+> not open. Nothing is rewritten, so preservation (decision 1) holds: the stored bytes stay as they
+> are until the user exports them or accepts a repair. Until that work lands, the gate behaves as
+> described below.
 
 > Amended by [[ADR-0184-known-keys-from-the-schema-for-the-save-time-graft]] on 2026-11-14.
 > ADR-0184 replaces the rule by which the overlay of decision 1 chooses what to restore. A key that

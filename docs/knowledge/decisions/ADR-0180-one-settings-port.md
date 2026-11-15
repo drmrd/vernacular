@@ -7,6 +7,7 @@ related:
   [
     decisions/ADR-0059-precision-snapping-preferences,
     decisions/ADR-0175-session-layer-for-application-state,
+    decisions/ADR-0188-project-id-address-and-index-record,
   ]
 sourceFiles:
   [
@@ -16,7 +17,7 @@ sourceFiles:
     storage/library-store.ts,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0180: User settings go through one settings port in storage
@@ -28,6 +29,13 @@ specification the same day. It supersedes the part of ADR-0059 that persists sna
 `editor/`. The snapping behavior ADR-0059 describes stays. The settings port arrives with the
 persistence stage of that round, and until then the snap preference store still writes
 `localStorage` from `editor/`.
+
+> Amended on 2026-11-15 by section 5.11 of
+> `docs/specs/2026-11-15-session-layer-and-document-identity.md`, which answers the question this
+> record left open. The settings port is its own interface in `storage/`, not a part of the library
+> store, because the library store has no implementation to build on. The snap preferences and the
+> theme choice are its first users. Which project opens at start is not a setting. It comes from
+> the project index ([[ADR-0188-project-id-address-and-index-record]]).
 
 ## Context
 

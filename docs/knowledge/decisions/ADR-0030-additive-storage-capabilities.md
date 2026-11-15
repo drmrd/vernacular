@@ -10,6 +10,8 @@ related:
     decisions/ADR-0003-storage-provider-pattern,
     decisions/ADR-0019-bridge-dispatch-boundary,
     decisions/ADR-0022-storage-capability-detection,
+    decisions/ADR-0188-project-id-address-and-index-record,
+    decisions/ADR-0189-one-writer-and-second-tab-sees-projects-page,
   ]
 sourceFiles:
   [
@@ -31,7 +33,7 @@ sourceFiles:
     e2e/tests/durable-storage.spec.ts,
   ]
 status: current
-updated: 2026-06-06
+updated: 2026-11-15
 ---
 
 # ADR-0030: Additive storage capabilities for recent projects, multi-tab locks, and autosave snapshots
@@ -50,6 +52,16 @@ list and a crash-recovery prompt. The save/open/recent wiring that drives these
 capabilities from the running app (the pure recent-ordering and upsert rules, the
 `.house.zip` export download, the folder-open control, and per-project backend
 routing) is recorded in the "Project save, open, and recent wiring" section below.
+
+> Superseded in part by [[ADR-0188-project-id-address-and-index-record]] on 2026-11-15. A project
+> index with one record per project replaces `RecentProjectStore`. The record remembers the
+> backend, as the recent entry did, and the recent entries in the Project menu are read from the
+> index. Until that work lands, the recent-project store works as described below.
+
+> Superseded in part by [[ADR-0189-one-writer-and-second-tab-sees-projects-page]] on 2026-11-15.
+> The document handle takes the lock when it opens a project. A second tab that asks for the same
+> project shows the Projects page, so the `read-only` outcome has no use and the interface for
+> taking ownership is not built. Until that work lands, nothing in the application takes the lock.
 
 ## Context
 
