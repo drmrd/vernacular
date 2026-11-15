@@ -3,6 +3,7 @@ import { CommandRegistry } from './command-registry'
 import { Dispatcher } from './dispatcher'
 import { registerAllProjectCommands } from './handlers/register-all-project-commands'
 import { COMMAND_SAMPLES } from './testing/command-samples'
+import { REMOVED_OBJECTS } from './testing/command-removals'
 import { UNKNOWN_PROBE_KEY, createExtensionsFixture } from './testing/extensions-fixture'
 import {
   KNOWN_KEYS,
@@ -103,6 +104,13 @@ function keptData(carriers: Map<string, Carrier>, identities: string[]): JsonObj
   return Object.fromEntries(entries) as JsonObject
 }
 
+/** The identities of the probed objects of `before` that `after` no longer holds, sorted. */
+function missingFrom(before: Map<string, Carrier>, after: Map<string, Carrier>): string[] {
+  return identitiesWithExtensions(before)
+    .filter((identity) => !after.has(identity))
+    .sort()
+}
+
 function fullRegistry(): CommandRegistry<Project> {
   return registerAllProjectCommands(new CommandRegistry<Project>())
 }
@@ -138,7 +146,31 @@ describe('the extensions fixture and the command samples', () => {
   })
 })
 
+describe('the check of removed objects', () => {
+  it('names a probed object that a command removes', () => {
+    const before = carriersOf(createExtensionsFixture())
+    const after = carriersOf({ ...createExtensionsFixture(), stairs: [] })
+
+    expect(missingFrom(before, after)).toEqual(['Stair#stair-main', 'Stair#stair-spare'])
+  })
+})
+
 describe('every registered command', () => {
+  it.each(fullRegistry().types())(
+    '%s changes the document and removes only the objects its sample declares',
+    (type) => {
+      const original = createExtensionsFixture()
+      const project = structuredClone(original)
+
+      dispatchSample(project, type)
+
+      const before = carriersOf(original)
+      const after = carriersOf(project)
+      expect(project).not.toEqual(original)
+      expect(missingFrom(before, after)).toEqual([...(REMOVED_OBJECTS[type] ?? [])].sort())
+    },
+  )
+
   it.each(fullRegistry().types())(
     '%s keeps extensions and unknown keys on every object that survives it',
     (type) => {
