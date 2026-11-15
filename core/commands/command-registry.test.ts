@@ -21,4 +21,15 @@ describe('CommandRegistry', () => {
   it('returns undefined for an unregistered type', () => {
     expect(new CommandRegistry<Box>().handlerFor('missing')).toBeUndefined()
   })
+
+  it('lists the registered types in registration order, each once', () => {
+    const handler: CommandHandler<Box, number> = { apply() {} }
+    const registry = new CommandRegistry<Box>()
+      .register('second', handler)
+      .register('first', handler)
+      .register('second', handler)
+      .register('third', handler)
+
+    expect(registry.types()).toEqual(['second', 'first', 'third'])
+  })
 })
