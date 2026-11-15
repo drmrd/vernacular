@@ -1,6 +1,8 @@
 // @vitest-environment node
 // ESLint resolves its configuration through Node's fs module, which needs the node environment, not the project-wide jsdom.
 import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { ESLint, type Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
 
@@ -21,7 +23,8 @@ const WARNING_LEVEL = 1
 const ERROR_LEVEL = 2
 const CONFIG_TIMEOUT_MS = 30_000
 
-const eslint = new ESLint()
+const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
+const eslint = new ESLint({ cwd: repositoryRoot })
 
 function severityOf(entry: Linter.RuleEntry | undefined): number | string | undefined {
   return Array.isArray(entry) ? entry[0] : entry
@@ -52,7 +55,7 @@ describe('lint severity', () => {
   })
 
   it('runs the lint script with no warning allowed', async () => {
-    const manifest = JSON.parse(await readFile('package.json', 'utf8')) as {
+    const manifest = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
     }
     expect(manifest.scripts.lint).toBe('eslint . --max-warnings 0')

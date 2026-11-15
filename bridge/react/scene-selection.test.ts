@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { THREE } from '../../engine/testing'
+import { PerspectiveCamera, Raycaster } from '../../engine/testing'
 
 import { buildScene } from '../../engine'
 import { createPerceivedColorStore } from '../perceived-color/perceived-color-store'
@@ -71,8 +71,8 @@ function cornerMissClick(): PointerEvent {
 
 // A camera above the room centre looking straight down at the floor slab top.
 // The room centre sits at world z = -1000 (plan y maps to world -z).
-function topDownCamera(): THREE.PerspectiveCamera {
-  const camera = new THREE.PerspectiveCamera(50, 1, 1, 100000)
+function topDownCamera(): PerspectiveCamera {
+  const camera = new PerspectiveCamera(50, 1, 1, 100000)
   camera.position.set(1000, 5000, -1000)
   camera.lookAt(1000, 0, -1000)
   camera.updateMatrixWorld(true)
@@ -88,7 +88,7 @@ describe('commitSelectionAt', () => {
     commitSelectionAt(centreClick(), {
       domElement: stubCanvas(),
       camera: topDownCamera(),
-      raycaster: new THREE.Raycaster(),
+      raycaster: new Raycaster(),
       root,
       selection: createSelectionStore(),
       surfaceSelection,
@@ -107,7 +107,7 @@ describe('commitSelectionAt', () => {
     commitSelectionAt(centreClick(), {
       domElement: stubCanvas(),
       camera: topDownCamera(),
-      raycaster: new THREE.Raycaster(),
+      raycaster: new Raycaster(),
       root,
       selection,
       surfaceSelection,
@@ -133,7 +133,7 @@ describe('commitSelectionAt', () => {
     commitSelectionAt(cornerMissClick(), {
       domElement: stubCanvas(),
       camera: topDownCamera(),
-      raycaster: new THREE.Raycaster(),
+      raycaster: new Raycaster(),
       root,
       selection: createSelectionStore(),
       surfaceSelection: createSurfaceSelectionStore(),
@@ -155,7 +155,7 @@ describe('commitSelectionAt', () => {
       commitSelectionAt(centreClick(), {
         domElement: stubCanvas(),
         camera: topDownCamera(),
-        raycaster: new THREE.Raycaster(),
+        raycaster: new Raycaster(),
         root,
         selection: createSelectionStore(),
         surfaceSelection,
@@ -174,7 +174,7 @@ describe('commitSelectionAt', () => {
       commitSelectionAt(centreClick(), {
         domElement: stubCanvas(),
         camera: topDownCamera(),
-        raycaster: new THREE.Raycaster(),
+        raycaster: new Raycaster(),
         root,
         selection: createSelectionStore(),
         surfaceSelection,

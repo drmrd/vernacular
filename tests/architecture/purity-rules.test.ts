@@ -46,6 +46,7 @@ const rejectedImports: readonly ImportCase[] = [
   { filePath: 'engine/sample.ts', specifier: 'react' },
   { filePath: 'engine/sample.ts', specifier: 'react/jsx-runtime' },
   { filePath: 'engine/sample.ts', specifier: 'react-dom/client' },
+  { filePath: 'engine/sample.ts', specifier: '@react-three/fiber' },
   { filePath: 'bridge/sample.tsx', specifier: 'three' },
   { filePath: 'bridge/sample.tsx', specifier: 'three/addons/controls/OrbitControls.js' },
   { filePath: 'editor/sample.tsx', specifier: 'three' },
@@ -56,6 +57,9 @@ const rejectedImports: readonly ImportCase[] = [
   { filePath: 'app/sample.tsx', specifier: 'three/addons/controls/OrbitControls.js' },
   { filePath: 'app/sample.tsx', specifier: '@react-three/fiber' },
   { filePath: 'app/sample.tsx', specifier: '@react-three/drei' },
+  ...['bridge/sample.tsx', 'editor/sample.tsx', 'app/sample.tsx'].flatMap((filePath) =>
+    ['../engine/testing', '../../engine/testing'].map((specifier) => ({ filePath, specifier })),
+  ),
 ]
 
 const acceptedImports: readonly ImportCase[] = [
@@ -64,6 +68,8 @@ const acceptedImports: readonly ImportCase[] = [
   { filePath: 'engine/sample.ts', specifier: 'three/addons/controls/OrbitControls.js' },
   { filePath: 'bridge/sample.tsx', specifier: '@react-three/fiber' },
   { filePath: 'bridge/sample.tsx', specifier: '@react-three/drei' },
+  { filePath: 'bridge/sample.tsx', specifier: 'three-stdlib' },
+  { filePath: 'bridge/react/sample.test.ts', specifier: '../../engine/testing' },
   { filePath: 'bridge/sample.tsx', specifier: 'react' },
   { filePath: 'bridge/sample.tsx', specifier: 'react/jsx-runtime' },
   { filePath: 'editor/sample.tsx', specifier: 'react' },
@@ -101,6 +107,11 @@ describe('layer purity: browser globals', () => {
       expect(ids).toContain(GLOBAL_RULE)
     },
   )
+
+  it('allows a core test file using the global window', { timeout: LINT_TIMEOUT_MS }, async () => {
+    const ids = await purityRuleIds(globalSample('window'), 'core/sample.test.ts')
+    expect(ids).toEqual([])
+  })
 
   it('allows a core module using Math.max', { timeout: LINT_TIMEOUT_MS }, async () => {
     const ids = await purityRuleIds('export const value = Math.max(1, 2)\n', 'core/sample.ts')

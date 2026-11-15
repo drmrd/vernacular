@@ -8,4 +8,5 @@ export {
 } from './geometry-assertions'
 export type { MaterialGroup } from './geometry-assertions'
 export { importsStaticValueOf } from './import-guards'
-export * as THREE from 'three'
+export { Mesh, PerspectiveCamera, Raycaster } from 'three'
+export type { Object3D } from 'three'
