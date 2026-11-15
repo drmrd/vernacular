@@ -13,7 +13,7 @@ jobs:
   command:
     name: Apply CI slash command
     if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Apply command
         uses: actions/github-script@v7
