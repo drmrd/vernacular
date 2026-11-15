@@ -14,6 +14,8 @@ export interface FreshProjectContext {
   setResolved: Dispatch<SetStateAction<ProjectStorage | null>>
   setSession: (session: EditorSession) => void
   setError: (error: Error | null) => void
+  /** The failure the fresh project answers; a lookup that resolves after it has gone is dropped. */
+  error: Error | null
 }
 
 export interface FreshProject {
@@ -28,12 +30,16 @@ export interface FreshProject {
 // A project started after a failed load gets an id no stored project has, so its
 // autosave and snapshots never write under the id that failed (ADR-0183).
 export function useFreshProject(context: FreshProjectContext): FreshProject {
-  const { store, setResolved, setSession, setError } = context
+  const { store, setResolved, setSession, setError, error } = context
   const [freshProjectId, setFreshProjectId] = useState<string | null>(null)
   const [freshProjectDurable, setFreshProjectDurable] = useState(false)
 
   const mounted = useRef(true)
-  const lookupPending = useRef(false)
+  const currentError = useRef(error)
+  const lookupPendingFor = useRef<Error | null>(null)
+  useEffect(() => {
+    currentError.current = error
+  })
   useEffect(() => {
     mounted.current = true
     return () => {
@@ -43,14 +49,16 @@ export function useFreshProject(context: FreshProjectContext): FreshProject {
 
   const startFreshProject = () => {
     // A second click while the first id lookup is pending would set a second id.
-    if (lookupPending.current) return
-    lookupPending.current = true
+    if (error !== null && lookupPendingFor.current === error) return
+    const failure = error
+    lookupPendingFor.current = failure
     // A failed storage resolution leaves no store at all; an in-memory pair keeps the
     // fresh project workable.
     const fallback = freshStorage()
     void storedProjectIds(store ?? fallback.store).then((ids) => {
-      lookupPending.current = false
-      if (!mounted.current) return
+      if (lookupPendingFor.current === failure) lookupPendingFor.current = null
+      // A retry that ran meanwhile (and loaded, or failed anew) owns the outcome now.
+      if (!mounted.current || currentError.current !== failure) return
       setResolved((current) => current ?? fallback)
       setFreshProjectId(newProjectId(ids))
       setFreshProjectDurable(store !== null)

@@ -17,9 +17,13 @@ export function useActiveProjectId(
   useEffect(() => {
     if (override !== undefined) return
     let cancelled = false
-    void activeProjectIds.read().then((id) => {
-      if (!cancelled) setRemembered(id ?? DEFAULT_PROJECT_ID)
-    })
+    // A port that breaks its contract and rejects counts as nothing remembered.
+    void Promise.resolve()
+      .then(() => activeProjectIds.read())
+      .catch(() => null)
+      .then((id) => {
+        if (!cancelled) setRemembered(id ?? DEFAULT_PROJECT_ID)
+      })
     return () => {
       cancelled = true
     }

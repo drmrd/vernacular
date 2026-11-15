@@ -69,6 +69,7 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
     setResolved,
     setSession,
     setError,
+    error,
   })
   const projectId = freshProjectId ?? activeProjectId
   const rememberSavedProject = useRememberSavedProject({
