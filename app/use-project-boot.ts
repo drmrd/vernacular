@@ -80,16 +80,7 @@ export function useProjectBoot(inputs: ProjectBootInputs): ProjectBoot {
 
   useBootStorage({ providedStore, resolveStore, resolved, error, setResolved, setError })
 
-  useEffect(() => {
-    if (store === null || projectId === null || session !== null || error !== null) return
-    let cancelled = false
-    void loadOrCreateProject(store, projectId, createInitialProject)
-      .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
-      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
-    return () => {
-      cancelled = true
-    }
-  }, [store, projectId, session, error])
+  useSessionLoad({ store, projectId, session, error, setSession, setError })
 
   const retryBoot = () => setError(null)
   const loaded = { projectId, store, assets, session, setSession, error }
@@ -118,6 +109,30 @@ function useBootStorage(context: BootStorageContext): void {
       cancelled = true
     }
   }, [providedStore, resolveStore, resolved, error, setResolved, setError])
+}
+
+interface SessionLoadContext {
+  store: ProjectStore | null
+  projectId: string | null
+  session: EditorSession | null
+  error: Error | null
+  setSession: (session: EditorSession) => void
+  setError: (error: Error) => void
+}
+
+// The second boot step: load or create the project once the store and id are known.
+function useSessionLoad(context: SessionLoadContext): void {
+  const { store, projectId, session, error, setSession, setError } = context
+  useEffect(() => {
+    if (store === null || projectId === null || session !== null || error !== null) return
+    let cancelled = false
+    void loadOrCreateProject(store, projectId, createInitialProject)
+      .then((project) => !cancelled && setSession(createEditorSession(validatedProject(project))))
+      .catch((cause: unknown) => !cancelled && setError(asError(cause)))
+    return () => {
+      cancelled = true
+    }
+  }, [store, projectId, session, error, setSession, setError])
 }
 
 // Non-fatal dev gate: warns if the migrated Document fails CORE shape (VFPF sections 7, 8).

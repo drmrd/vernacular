@@ -25,11 +25,11 @@ export function useRememberSavedProject(context: RememberSavedProjectContext): (
     const { projectId, activeProjectId, durable, activeProjectIds } = latest.current
     if (!durable || activeProjectIds === undefined || projectId === null) return
     if (projectId === activeProjectId || projectId === written.current) return
-    void activeProjectIds
-      .write(projectId)
-      .then(() => {
-        written.current = projectId
+    written.current = projectId
+    void Promise.resolve()
+      .then(() => activeProjectIds.write(projectId))
+      .catch(() => {
+        if (written.current === projectId) written.current = null
       })
-      .catch(() => undefined)
   }, [])
 }
