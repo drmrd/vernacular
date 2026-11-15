@@ -35,9 +35,26 @@ function definition(name: string, node: SchemaNode): Record<string, SchemaNode> 
 }
 
 /** A tagged union over the given tag key and tag values, referenced from the root. */
-function taggedUnionSchema(tagKey: string, tagValues: string[]) {
+function taggedUnionSchema(
+  tagKey: string,
+  tagValues: string[],
+  combinator: 'anyOf' | 'oneOf' = 'anyOf',
+) {
   const variants = tagValues.map((tagValue) => variant(tagKey, tagValue))
-  return schemaWith({ $ref: '#/definitions/Shape' }, definition('Shape', { anyOf: variants }))
+  return schemaWith(
+    { $ref: '#/definitions/Shape' },
+    definition('Shape', { [combinator]: variants }),
+  )
+}
+
+/** The error that `buildKnownKeys` stops with, which fails the test when it accepts the schema. */
+function refusalOf(schema: object): Error {
+  try {
+    buildKnownKeys(schema)
+  } catch (error) {
+    return error as Error
+  }
+  return expect.fail('the generator accepted a schema it cannot express')
 }
 
 type TaggedUnionValue = { kind: 'union'; tag?: string; types: string[] }
@@ -66,35 +83,120 @@ interface InexpressibleShape {
   namesTheShape: RegExp
 }
 
+/** An object definition with one scalar property, for the shapes that mix it with something else. */
+const PATTERN = '^x-'
+
+const PLAIN_OBJECT: SchemaNode = {
+  type: 'object',
+  properties: { a: { type: 'string' } },
+  required: ['a'],
+}
+
 const INEXPRESSIBLE_SHAPES: InexpressibleShape[] = [
   {
-    label: 'an array of arrays',
+    label: 'an array of arrays behind a reference',
     property: { $ref: '#/definitions/Grid' },
     definitions: definition('Grid', {
       type: 'array',
       items: { type: 'array', items: { type: 'number' } },
     }),
-    namesTheShape: /Grid|value/,
+    namesTheShape: /Grid.*array of arrays/,
+  },
+  {
+    label: 'an inline array of arrays',
+    property: { type: 'array', items: { type: 'array', items: { type: 'number' } } },
+    definitions: {},
+    namesTheShape: /Project\.value.*array of arrays/,
   },
   {
     label: 'a tuple',
     property: { type: 'array', prefixItems: [{ type: 'number' }, { type: 'string' }] },
     definitions: {},
-    namesTheShape: /value/,
+    namesTheShape: /Project\.value.*tuple/,
   },
   {
     label: 'a oneOf with no shared tag',
     property: { $ref: '#/definitions/Either' },
     definitions: definition('Either', { oneOf: [{ type: 'string' }, { type: 'number' }] }),
-    namesTheShape: /Either|value/,
+    namesTheShape: /Either.*tag/,
+  },
+  {
+    label: 'an anyOf of objects with no constant tag that every variant shares',
+    property: { $ref: '#/definitions/Either' },
+    definitions: definition('Either', {
+      anyOf: [
+        { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] },
+        { type: 'object', properties: { b: { type: 'number' } }, required: ['b'] },
+      ],
+    }),
+    namesTheShape: /Either.*tag/,
+  },
+  {
+    label: 'a property whose type is a list of types',
+    property: { type: ['string', 'null'] },
+    definitions: {},
+    namesTheShape: /Project\.value.*type list/,
+  },
+  {
+    label: 'a property with allOf',
+    property: { allOf: [{ type: 'string' }] },
+    definitions: {},
+    namesTheShape: /Project\.value.*allOf/,
+  },
+  {
+    label: 'a reference to a definition that does not exist',
+    property: { $ref: '#/definitions/Missing' },
+    definitions: {},
+    namesTheShape: /Project\.value.*Missing/,
+  },
+  {
+    label: 'an object with properties and a schema-valued additionalProperties',
+    property: { $ref: '#/definitions/Bag' },
+    definitions: definition('Bag', { ...PLAIN_OBJECT, additionalProperties: { type: 'number' } }),
+    namesTheShape: /Bag.*additionalProperties/,
+  },
+  {
+    label: 'an object with properties and patternProperties',
+    property: { $ref: '#/definitions/Bag' },
+    definitions: definition('Bag', {
+      ...PLAIN_OBJECT,
+      patternProperties: { [PATTERN]: { type: 'number' } },
+    }),
+    namesTheShape: /Bag.*patternProperties/,
+  },
+  {
+    label: 'a reference with sibling keywords beside it',
+    property: {
+      $ref: '#/definitions/A',
+      type: 'object',
+      properties: { b: { type: 'string' } },
+    },
+    definitions: definition('A', PLAIN_OBJECT),
+    namesTheShape: /Project\.value.*sibling/,
+  },
+  {
+    label: 'a definition with both properties and anyOf',
+    property: { $ref: '#/definitions/Mixed' },
+    definitions: definition('Mixed', { ...PLAIN_OBJECT, anyOf: [{ type: 'string' }] }),
+    namesTheShape: /Mixed.*anyOf/,
+  },
+  {
+    label: 'an object with additionalProperties false and no properties',
+    property: { additionalProperties: false },
+    definitions: {},
+    namesTheShape: /Project\.value.*no properties/,
   },
 ]
 
 describe('the table of known keys, for a schema shape it cannot express', () => {
   it.each(INEXPRESSIBLE_SHAPES)(
-    'refuses $label instead of recording it as a leaf',
+    'refuses $label with a named error instead of recording it',
     ({ property, definitions, namesTheShape }) => {
-      expect(() => buildKnownKeys(schemaWith(property, definitions))).toThrow(namesTheShape)
+      const error = refusalOf(schemaWith(property, definitions))
+
+      expect(error).toBeInstanceOf(Error)
+      expect(error).not.toBeInstanceOf(TypeError)
+      expect(error.message).toMatch(namesTheShape)
     },
   )
 
@@ -123,6 +225,18 @@ describe('the table of known keys, for a schema shape it can express', () => {
 })
 
 describe('the tag key of a union in the table of known keys', () => {
+  it('is recorded for a union written with oneOf, with a variant entry for each tag value', () => {
+    const table = buildKnownKeys(taggedUnionSchema('kind', ['circle', 'square'], 'oneOf'))
+    expect(table.Project?.keys.value).toEqual({
+      kind: 'union',
+      tag: 'kind',
+      types: ['Shape.circle', 'Shape.square'],
+    })
+    expect(Object.keys(table)).toEqual(
+      expect.arrayContaining(['Project', 'Shape.circle', 'Shape.square']),
+    )
+  })
+
   it('is recorded for a union tagged by a key other than kind', () => {
     const table = buildKnownKeys(taggedUnionSchema('type', ['circle', 'square']))
     expect(table.Project?.keys.value).toEqual({

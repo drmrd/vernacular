@@ -52,7 +52,7 @@ class CarrierCollector {
     if (known.kind === 'object') {
       this.visitObject(value, known.type, path)
     } else if (known.kind === 'union' && isJsonObject(value)) {
-      const member = known.types.find((type) => type.endsWith(`.${String(value.kind)}`))
+      const member = known.types.find((type) => type.endsWith(`.${String(value[known.tag])}`))
       this.visitObject(value, member ?? '', path)
     } else if (known.kind === 'array' && Array.isArray(value)) {
       value.forEach((item: unknown, index) => {
