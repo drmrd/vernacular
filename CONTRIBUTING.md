@@ -110,7 +110,7 @@ Current state:
   fixes most issues automatically. The Clean Code rule set (function
   length, parameter count, cyclomatic complexity, nesting depth,
   layer boundaries, naming convention, unused imports) lands as
-  warnings or errors per `eslint.config.js`. Test files relax
+  errors per `eslint.config.js`. Test files relax
   `no-magic-numbers` and lift the function-length cap so literal
   expectations remain natural.
 - **Duplicate detection.** Run `pnpm dup` for a jscpd duplicate
