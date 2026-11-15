@@ -2,18 +2,7 @@ import {
   CommandRegistry,
   Dispatcher,
   createSceneGraphDeriver,
-  registerDimensionCommands,
-  registerEnvironmentSceneCommands,
-  registerFurnitureCommands,
-  registerOpeningCommands,
-  registerPaintCommands,
-  registerProjectCommands,
-  registerRoomCommands,
-  registerSiteCommands,
-  registerStairCommands,
-  registerTransformCommands,
-  registerUnderlayCommands,
-  registerWallCommands,
+  registerAllProjectCommands,
   type Command,
   type Project,
   type SceneGraph,
@@ -86,20 +75,7 @@ export function createEditorSession(project: Project): EditorSession {
 }
 
 function createCommandRegistry(): CommandRegistry<Project> {
-  const registry = new CommandRegistry<Project>()
-  registerProjectCommands(registry)
-  registerWallCommands(registry)
-  registerRoomCommands(registry)
-  registerUnderlayCommands(registry)
-  registerOpeningCommands(registry)
-  registerFurnitureCommands(registry)
-  registerDimensionCommands(registry)
-  registerStairCommands(registry)
-  registerTransformCommands(registry)
-  registerPaintCommands(registry)
-  registerSiteCommands(registry)
-  registerEnvironmentSceneCommands(registry)
-  return registry
+  return registerAllProjectCommands(new CommandRegistry<Project>())
 }
 
 interface ChangeNotifier {

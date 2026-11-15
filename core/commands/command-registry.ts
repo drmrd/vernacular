@@ -14,4 +14,9 @@ export class CommandRegistry<S> {
   handlerFor(type: string): CommandHandler<S, unknown> | undefined {
     return this.handlers.get(type)
   }
+
+  /** Every registered type in registration order, each once. */
+  types(): readonly string[] {
+    return [...this.handlers.keys()]
+  }
 }
