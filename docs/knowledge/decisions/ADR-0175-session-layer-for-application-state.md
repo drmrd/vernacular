@@ -13,7 +13,7 @@ related:
 sourceFiles:
   [bridge/session/editor-session.ts, eslint.config.js, tests/architecture/layer-boundaries.test.ts]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0175: A session layer holds application state and logic that needs no React
@@ -27,6 +27,15 @@ the layer list in ADR-0001.
 The `session/` directory does not exist yet. It is created in the stage of that round that brings
 its first tenants, and the lint configuration, `ARCHITECTURE.md`, `CLAUDE.md`, and
 `.claude/rules.md` change in the same stage. Until then lint enforces the six layers of ADR-0001.
+
+> Amended on 2026-11-15 by section 5.1 of
+> `docs/specs/2026-11-15-session-layer-and-document-identity.md`, which answers the question this
+> record left open. `bridge/` and `editor/` keep no import from `storage/`, type-only imports
+> included. A type that the upper layers need is exported from `session/`. A file that still
+> imports `storage/` after that stage goes on the lint exception list, with the issue that removes
+> it. That stage moves the editor session, the document handle, the flows, autosave, dirty
+> tracking, and the settings service. The other tenants listed below move with the stages that
+> rework them.
 
 ## Context
 

@@ -9,6 +9,8 @@ related:
     decisions/ADR-0180-one-settings-port,
     decisions/ADR-0119-write-ahead-crash-recovery,
     decisions/ADR-0003-storage-provider-pattern,
+    decisions/ADR-0188-project-id-address-and-index-record,
+    decisions/ADR-0190-strict-check-refuses-and-two-classes-of-repair,
   ]
 sourceFiles:
   [
@@ -18,7 +20,7 @@ sourceFiles:
     storage/project-store.ts,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0183: A project started after a failed load gets its own id
@@ -28,6 +30,15 @@ updated: 2026-11-14
 Current. The owner chose the identity rule on 2026-11-14 and approved the rest the same day, with
 section 5.3 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. The code changes with
 #671. Until then a project started after a failed load still uses the id `'current'`.
+
+> Amended by [[ADR-0188-project-id-address-and-index-record]] on 2026-11-15. The project index
+> takes over the port that remembers the active project id. The project to open at start is the
+> record with the latest use. Every new project gets a random id, not only a project started after
+> a failed load.
+
+> Amended by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15. The dialog
+> for a project that did not open loses the "Start a new project" control, because the Projects
+> page has New project. The rule that nothing writes under the id that failed is unchanged.
 
 ## Context
 

@@ -190,7 +190,7 @@ The order is: stop data loss, then document identity and the command layer, then
 | Stage | Work                                                                              | Paired feature                                      | Issues it settles            |
 | ----- | --------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
 | 1     | Local fixes for data loss. Lint warnings fail CI. A performance baseline.         | none                                                | #669, #670, #671, #678       |
-| 2     | The `session/` layer, the document handle, the codec, the settings port.          | none                                                | #588, #591, #631, #672, #673 |
+| 2     | The `session/` layer, the document handle, the codec, the settings port.          | the Projects page                                   | #588, #591, #631, #672, #673 |
 | 3     | Commands: typed map, data inverses, change sets, rules in handlers, transactions. | live drag feedback in the 3D view and the inspector | #676, #677                   |
 | 4     | Kernel: tolerances, plan geometry, one scene-graph enumeration.                   | the first slice of #80 curved walls                 | #674, #675, #681, #546       |
 | 5     | Kinds of element: descriptors, element references, hosting, run-time registries.  | #428 duplicate and paste, #429 mirror               | #679                         |
@@ -203,6 +203,7 @@ Stage 2 comes before stage 3 because transactions live in the session. Stage 3 c
 
 Why these pairings:
 
+- The Projects page is how a user sees document identity. Once two projects can exist in storage, the user needs a page that lists them. The owner added this pairing on 2026-11-15 (ADR-0187).
 - Live feedback during a drag is the open transaction at work. The 3D view and the inspector follow the pointer, and Escape cancels. Deleting a mixed selection in one undo step comes with it.
 - Duplicate, paste, and mirror have to work for every kind and each be one undo step. They show that shared operations iterate the descriptors, so they belong with stage 5 and not with the command layer.
 - An arc wall segment is the smallest change that forces every consumer through the centerline accessor.
@@ -291,8 +292,8 @@ Closing proof:
 - Whether `coalesceWith` survives once transactions exist. Only the stair and project handlers use it today.
 - How room identity survives a wall split, and the migration for existing room overrides.
 - The import order inside each layer. The review proposed one for `core/`: units, color, and geometry; then the model; then registries, eras, and assets; then topology; then scene, environment, and paint; then clipboard and commands; then format, migrations, and export.
-- Whether `bridge/` and `editor/` keep any type-only import from `storage/` or `engine/` once their uses have moved behind `session/`.
-- What a second tab sees when it opens a document that another tab has locked. The proposal is a read-only view with a notice.
+- Whether `bridge/` and `editor/` keep any type-only import from `storage/` or `engine/` once their uses have moved behind `session/`. For `storage/` the answer is no (`docs/specs/2026-11-15-session-layer-and-document-identity.md`, section 5.1). The question is still open for `engine/`.
+- What a second tab sees when it opens a document that another tab has locked. The proposal was a read-only view with a notice. ADR-0189 answers it: the second tab shows the Projects page, and there is no read-only view.
 - How the plan drawing model handles text measurement, which differs between canvas and PDF.
 
 ## 9. Changes to other documents
@@ -310,7 +311,7 @@ These wait for the stage that creates `session/`, because they describe the code
 
 ## 10. Risks
 
-- The round is long. Stages 1 and 2 have no paired feature, and stage 3 shows only as better feedback during a drag, so new features wait until stage 4. Stage 1 is small, and stages 2 and 3 fix issues users can hit, which is the reason they come first.
+- The round is long. Stage 1 has no paired feature, stage 2 brings the Projects page, and stage 3 shows only as better feedback during a drag, so most new features wait until stage 4. Stage 1 is small, and stages 2 and 3 fix issues users can hit, which is the reason they come first. The Projects page also makes stage 2 larger than this document first assumed (ADR-0187).
 - The `session/` layer invites argument about what belongs in it. ADR-0175 gives a placement rule that settles most cases: code that needs React belongs in `bridge/` or `editor/`, code that needs Three.js belongs in `engine/`, a pure function of the document belongs in `core/`, and the rest is `session/`.
 - A descriptor can become a place where everything is optional. Each descriptor field needs at least two kinds that use it before it is added.
 - Moving geometry into `core/` can change pixels by a rounding step. Each such move is checked against the baselines, and a change is either explained or fixed.

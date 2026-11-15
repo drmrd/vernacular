@@ -21,6 +21,7 @@ related:
     decisions/ADR-0003-storage-provider-pattern,
     decisions/ADR-0019-bridge-dispatch-boundary,
     decisions/ADR-0119-write-ahead-crash-recovery,
+    decisions/ADR-0187-projects-page-with-document-identity,
   ]
 sourceFiles:
   [
@@ -42,7 +43,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-08-17
+updated: 2026-11-15
 ---
 
 # ADR-0104: Unsaved-changes guard and dirty-state model
@@ -64,6 +65,12 @@ Save item in the project menu and the Cmd+S (Ctrl+S elsewhere) shortcut, and it
 pulses the save-status indicator to confirm the write. Both paths mark the saved
 baseline by the revision they persisted, so an edit made while a save is in
 flight stays dirty.
+
+> Superseded in part by [[ADR-0187-projects-page-with-document-identity]] on 2026-11-15. The
+> discard confirmation in front of New, Open, Import, Open-Recent, and Open-Folder goes away. Those
+> actions no longer replace the open project: a switch writes pending changes and then opens the
+> other project. The dirty-state model, the leave warning, and the prompt for a recovered copy
+> stay. Until that work lands, the guard behaves as described below.
 
 ## Context
 
