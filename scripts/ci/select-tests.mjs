@@ -79,6 +79,9 @@ function selectionDirs(changed, coupling) {
     }
   }
   const dirs = affectedLayers(layers).map((layer) => `${layer}/`)
+  if (dirs.length > 0) {
+    dirs.push('tests/')
+  }
   for (const dir of EXTRA_TEST_DIRS) {
     if (changed.some((file) => file.startsWith(`${dir}/`))) {
       dirs.push(`${dir}/`)
