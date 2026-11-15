@@ -28,6 +28,56 @@ const layerRules = [
   },
 ]
 
+const reactPackages = {
+  regex: '^(react|react-dom)(/.*)?$|^@react-three/',
+  message: 'This layer does not import React (ADR-0001).',
+}
+const threePackages = {
+  regex: '^three(/.*)?$',
+  message: 'Only engine/ imports Three.js (ADR-0001).',
+}
+const reactThreePackages = {
+  regex: '^@react-three/',
+  message: 'Only bridge/ imports @react-three (ADR-0001).',
+}
+
+const nodeGlobalNames = new Set(Object.keys(globals.node))
+const browserOnlyGlobals = Object.keys(globals.browser)
+  .filter((name) => !nodeGlobalNames.has(name))
+  .map((name) => ({ name, message: 'core/ uses no global that exists only in a browser.' }))
+
+const layerPurityBlocks = [
+  {
+    files: ['core/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages, threePackages] }] },
+  },
+  {
+    // Shipped core/ code must run with no browser. The unit tests of core/ run
+    // under jsdom and may use the DOM to check output, so they are left out.
+    files: ['core/**'],
+    ignores: ['core/**/*.test.ts', 'core/**/*.test.tsx'],
+    rules: { 'no-restricted-globals': ['error', ...browserOnlyGlobals] },
+  },
+  {
+    files: ['storage/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages, threePackages] }] },
+  },
+  {
+    files: ['engine/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [reactPackages] }] },
+  },
+  {
+    files: ['bridge/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [threePackages] }] },
+  },
+  {
+    files: ['editor/**', 'app/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [threePackages, reactThreePackages] }],
+    },
+  },
+]
+
 /** @typedef {{ file: string, rule: string, issue: number, max?: number }} LintException */
 
 /**
@@ -296,6 +346,7 @@ export function buildConfig(exceptions = lintExceptions) {
         'no-magic-numbers': 'off',
       },
     },
+    ...layerPurityBlocks,
     ...exceptions.map(exceptionBlock),
   )
 }
