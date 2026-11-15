@@ -41,6 +41,12 @@ const reactThreePackages = {
   message: 'Only bridge/ imports @react-three (ADR-0001).',
 }
 
+const engineTestingEntry = {
+  regex: '(^|/)engine/testing(/.*)?$',
+  message: 'The engine testing entry is for tests only.',
+}
+const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
+
 const nodeGlobalNames = new Set(Object.keys(globals.node))
 const browserOnlyGlobals = Object.keys(globals.browser)
   .filter((name) => !nodeGlobalNames.has(name))
@@ -76,12 +82,31 @@ const layerPurityBlocks = [
       'no-restricted-imports': ['error', { patterns: [threePackages, reactThreePackages] }],
     },
   },
+  {
+    // Later blocks replace the rule's options, so these repeat the layer patterns.
+    files: ['bridge/**'],
+    ignores: testFileGlobs,
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [threePackages, engineTestingEntry] }],
+    },
+  },
+  {
+    files: ['editor/**', 'app/**'],
+    ignores: testFileGlobs,
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [threePackages, reactThreePackages, engineTestingEntry] },
+      ],
+    },
+  },
 ]
 
 /** @typedef {{ file: string, rule: string, issue: number, max?: number }} LintException */
 
 /**
- * The only place where a limit is raised or a rule is turned off for a file.
+ * The only place in this config where a limit is raised or a rule is turned
+ * off for a file. Inline disable comments with a reason stay allowed (ADR-0185).
  * Each entry names the issue that removes it; a size-rule entry caps the file
  * at its measured value.
  *
@@ -312,7 +337,7 @@ export function buildConfig(exceptions = lintExceptions) {
       },
     },
     {
-      files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts'],
+      files: testFileGlobs,
       rules: {
         'no-magic-numbers': 'off',
         'max-lines-per-function': ['error', { ...lengthOptions, max: 120 }],
