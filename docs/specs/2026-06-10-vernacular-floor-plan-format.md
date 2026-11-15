@@ -164,7 +164,7 @@ The format reserves names for first-party entities the design specification anti
 (section 3.1 entity tree) but that are not yet implemented, and for the modeling concepts the
 floor-plan test corpus surfaced as gaps. A reserved name is owned by the format, documented as
 reserved and not yet defined, and becomes part of the CORE schema additively in a later
-`schemaVersion`. Reserving the names now keeps the path additive and prevents a third party from
+schema revision (section 7). Reserving the names now keeps the path additive and prevents a third party from
 colonizing a name the project intends to define. The reserved-namespace registry is section 6.5.
 
 ### 6.3 Third-party vendor extensions
@@ -222,24 +222,51 @@ the design-specification section, ADR, or floor-plan corpus gap that motivates i
 | `level.partial`         | reserved | corpus gap `split-level-and-mezzanine`                           |
 
 This table is normative for name ownership and informative for shape. A reserved name is
-promoted to core only by a `schemaVersion` increment and an accompanying ADR.
+promoted to core only by a `schemaRevision` or `schemaVersion` increment (section 7) and an
+accompanying ADR.
 
 ## 7. Versioning, migration, and compatibility
 
 - **Three independent version surfaces.** `schemaVersion` is the format version and drives the
   schema-migration chain. `appVersion` records the writing application. `registryVersions`
   records vocabulary versions. They move independently.
-- **Additive within a major version.** New optional fields, new reserved names, and new
-  registry types are additive and do not increment beyond a minor expectation. Removing or
-  renaming a field, or changing a field's meaning, requires a new `schemaVersion` and a
+- **Version and revision.** `schemaVersion` counts breaking changes. `schemaRevision` is an
+  OPTIONAL non-negative integer beside it in `ProjectMeta` that counts additive changes to the
+  CORE schema within one `schemaVersion` (ADR-0178). A Document without `schemaRevision` is at
+  revision 0. The revision returns to 0 when `schemaVersion` increments.
+- **Additive changes increment the revision.** A new optional field is additive, and so is the
+  promotion of a reserved name to a defined optional field. Each increments `schemaRevision` and
+  needs no migration step. Reserving a name, or adding a registry type, changes no schema, so
+  the revision stays. Removing
+  or renaming a field, or changing a field's meaning, requires a new `schemaVersion` and a
   migration step in the chain (`core/migrations/schema/`), layered with per-registry migrations
   (`core/migrations/registries/`). A pre-migration backup is written before applying, and
   migration failure is atomic.
-- **Reading rules.** A reader at version N opening a Document at version M < N migrates it up
-  the chain. A reader opening a Document at version M > N SHOULD open it read-only or refuse,
-  because it cannot safely interpret newer required fields; if it opens the Document it MUST
-  obey the preservation rule (section 6.4). Unknown `extensions` are always preserved
-  regardless of version.
+- **Published schemas are immutable.** A schema is fixed once it is released. A change to the
+  generated schema with no increment of `schemaRevision` or `schemaVersion` is a drift error
+  (section 8).
+- **Reading rules.** A reader at version N and revision R opening a Document at version M and
+  revision Q does one of four things.
+  - M < N: it migrates the Document up the chain.
+  - M = N and Q ≤ R: it validates the Document with no tolerance for unknown fields. A field the
+    schema does not define, outside `extensions`, is a validation error. The error is reported,
+    and the field is still preserved (section 6.4).
+  - M = N and Q > R: a newer build wrote the Document with additive fields this reader does not
+    know. The reader reads it tolerantly, MUST obey the preservation rule (section 6.4), and
+    SHOULD tell the user that a newer build wrote it.
+  - M > N: it SHOULD open the Document read-only or refuse, because it cannot safely interpret
+    newer required fields; if it opens the Document it MUST obey the preservation rule
+    (section 6.4).
+
+  Unknown `extensions` are always preserved regardless of version or revision.
+
+- **Adoption (non-normative).** Versions 8 through 17 predate the revision and each incremented
+  `schemaVersion`, including for additive changes. The application adopts `schemaRevision` with
+  the document codec work described in `2026-11-14-architecture-refactor-round.md`. Until then
+  it writes no revision, every Document is at revision 0, and the application validates in
+  development builds only and tolerates unknown fields. That work also decides how a validation
+  error is reported (section 8 still rules out a user-facing hard rejection) and where the
+  schema for each revision is published.
 
 ## 8. Schema generation and validation
 
@@ -255,7 +282,8 @@ promoted to core only by a `schemaVersion` increment and an accompanying ADR.
   hard rejection, because migrations are the user-facing compatibility path.
 - **Drift guard.** Continuous integration regenerates the schema and fails if the committed
   schema differs from the regenerated one, keeping the published schema in lockstep with the
-  types.
+  types. Once the application adopts `schemaRevision` (section 7), the guard also fails when the
+  generated schema changes and neither `schemaRevision` nor `schemaVersion` increments.
 - **Layering.** Generation and validation live in `core/` and `scripts/` only; they import no
   React and no Three.js, consistent with the layer boundaries (ADR-0001). New dependencies (the
   generator and the validator) honor the dependency cooldown and exact-version pinning.

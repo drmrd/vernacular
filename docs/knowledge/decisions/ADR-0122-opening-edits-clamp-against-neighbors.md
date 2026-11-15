@@ -6,9 +6,10 @@ tags: [editor, openings, overlap, drag, resize, inspector, core]
 related:
   [
     decisions/ADR-0001-six-layer-architecture,
-    decisions/ADR-0005-command-pattern-with-inverse,
+    decisions/ADR-0005-command-pattern-framework-captured-inverse,
     decisions/ADR-0038-openings-as-typed-wall-hosted-entities,
     decisions/ADR-0073-opening-resize-handles,
+    decisions/ADR-0179-domain-rules-in-command-handlers,
   ]
 sourceFiles:
   [
@@ -19,7 +20,7 @@ sourceFiles:
     editor/shell/inspector.tsx,
   ]
 status: current
-updated: 2026-06-24
+updated: 2026-11-14
 ---
 
 # ADR-0122: Opening edits clamp against same-wall neighbors
@@ -30,6 +31,12 @@ Accepted, landed. The three ways an existing opening changes its span on a wall 
 on top of a neighbor. Dragging an opening along its wall, dragging one of its jamb handles, and typing
 a wider value in the inspector all stop the opening flush against the nearest neighbor instead of
 overlapping it.
+
+> Superseded in part by [[ADR-0179-domain-rules-in-command-handlers]] on 2026-11-14. ADR-0179 moves
+> enforcement of the overlap rule from the editor seam into the command handlers, which is the move
+> the last consequence below anticipated. Until the command-layer work of the architecture refactor
+> round lands, the editor seam still enforces the rule. The clamp helpers and the flush stop are
+> unchanged.
 
 ## Context
 

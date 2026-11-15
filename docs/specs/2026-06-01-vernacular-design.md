@@ -116,7 +116,7 @@ Project
 ├── stairs[]                  (top-level: spans floors)
 ├── palettes[]                (project-local; user/global palettes live in LibraryStore)
 ├── assetIndex                (every assetRef used → source, hash, license, attribution)
-└── history (transient; persisted with autosave)
+└── history (transient; per session, not saved)
 ```
 
 ### 3.2 Key modeling decisions
@@ -560,10 +560,12 @@ interface CommandHandler<P> {
 - **Coalescing** via `coalesceWith(prev)` for continuous actions; drag operations produce one undo entry, not many.
 - **Selection is NOT in undo history.** Selection state lives in `bridge/`, persists with autosave separately.
 - **Linear history.** New edit after undo discards the redo branch.
-- **Persisted with project.** History is part of autosave snapshots, bounded to ~200 most recent commands.
+- **Per session, not saved.** History lasts for the editing session and is bounded to about 200 commands. It is not written to the project or to autosave snapshots, and the file format carries no history (ADR-0176). Commands and their inverse steps become plain data with the command-layer work of the architecture refactor round, and the diagnostic export in section 7.6 can then read the history.
 - **Atomic on error.** Command throws → inverse is replayed → command rejected with a clear error.
 
 Commands live in `core/commands/handlers/`, grouped by domain. Single dispatcher in `core/commands/dispatch.ts`. The `bridge/` is the only place outside `core/commands/` that calls `dispatch`.
+
+The architecture refactor round (`2026-11-14-architecture-refactor-round.md`, section 5.3) changes this section further as its command-layer work lands: a typed command map, data inverses, and change sets (ADR-0176), open transactions for a change in progress (ADR-0177), and domain rules enforced in the handlers (ADR-0179). The interfaces above show the original design.
 
 ### 7.2 i18n
 
@@ -1063,7 +1065,7 @@ Phased delivery with public alpha at phase 3 and public beta at phase 5. Each ph
 - Pan/zoom Canvas + DOM overlay; grid + rulers
 - Selection (click, marquee, multi-select)
 - Copy/paste/delete/move/rotate
-- System-level undo/redo with coalescing, persisted with autosave
+- System-level undo/redo with coalescing, kept for the session
 - Units (imperial + metric, multi-format, tolerant parsing)
 - `FileSystemFolderProjectStore` + `OPFSProjectStore` + `ZipBundleProjectStore`
 - Save/open/recent projects

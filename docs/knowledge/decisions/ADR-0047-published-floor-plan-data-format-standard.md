@@ -28,6 +28,7 @@ related:
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0046-period-style-and-room-purpose-registries,
     decisions/ADR-0001-six-layer-architecture,
+    decisions/ADR-0178-schema-version-and-revision,
   ]
 sourceFiles:
   [
@@ -35,12 +36,17 @@ sourceFiles:
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
 status: current
-updated: 2026-06-11
+updated: 2026-11-14
 ---
 
 # ADR-0047: Published floor-plan data format standard (Vernacular Floor Plan Format)
 
 ## Status
+
+> Amended by [[ADR-0178-schema-version-and-revision]] on 2026-11-14. An additive change to the
+> schema, the promotion of a reserved name included, increments the new `schemaRevision` and no
+> longer needs a new `schemaVersion`. Statements below that a reserved name becomes CORE "in a
+> later `schemaVersion`" should be read that way.
 
 Accepted. The companion specification `docs/specs/2026-06-10-vernacular-floor-plan-format.md`
 is the normative artifact this ADR introduces. The first implementation plan has landed: the

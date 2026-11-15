@@ -10,6 +10,7 @@ related:
     decisions/ADR-0054-smart-angle-snap,
     decisions/ADR-0050-command-registry-keybindings-and-palette,
     decisions/ADR-0020-bridge-owned-selection-outside-undo,
+    decisions/ADR-0180-one-settings-port,
   ]
 sourceFiles:
   [
@@ -25,7 +26,7 @@ sourceFiles:
     editor/shell/editor-shell.tsx,
   ]
 status: current
-updated: 2026-06-12
+updated: 2026-11-14
 ---
 
 # ADR-0059: Precision snapping preferences, running-snap toggles, and the snap panel
@@ -38,6 +39,11 @@ commands, a status-bar readout, and a precision panel. Slice 8 of the
 editor-experience makeover. No journey-coverage capability is added; this is a
 power-user surface over snapping that does not change the default drawing
 behavior.
+
+> Superseded in part by [[ADR-0180-one-settings-port]] on 2026-11-14. ADR-0180 puts every user
+> setting, the snap preferences included, behind one settings port in `storage/`, so the editor will no
+> longer write `localStorage` itself. The store described below stays as it is until that work
+> lands. The snapping behavior, the toggles, and the panel are unchanged.
 
 ## Context
 
