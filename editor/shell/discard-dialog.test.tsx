@@ -5,7 +5,7 @@ import { DiscardDialog } from './discard-dialog'
 
 afterEach(cleanup)
 
-describe('DiscardDialog', () => {
+describe('DiscardDialog wording and answers', () => {
   it('names the project and routes confirm and cancel to their callbacks', async () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
@@ -96,7 +96,9 @@ describe('DiscardDialog', () => {
 
     expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument()
   })
+})
 
+describe('DiscardDialog focus, modality, and closing', () => {
   it('opens with focus on Cancel and keeps Tab inside the prompt', async () => {
     // An alertdialog that leaves focus behind it is answerable only with the
     // mouse, and Tab walks away into a frame the prompt is blocking. Cancel takes
