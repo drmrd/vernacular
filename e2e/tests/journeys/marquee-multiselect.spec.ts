@@ -14,12 +14,13 @@ function selectedWalls(page: Page) {
   return page.getByRole('option', { name: /^Wall,/, selected: true })
 }
 
-async function marquee(
-  page: Page,
-  modifiers: readonly ('Shift' | 'Alt')[],
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-): Promise<void> {
+interface MarqueeDrag {
+  modifiers: readonly ('Shift' | 'Alt')[]
+  from: { x: number; y: number }
+  to: { x: number; y: number }
+}
+
+async function marquee(page: Page, { modifiers, from, to }: MarqueeDrag): Promise<void> {
   const box = await canvasBox(page)
   for (const modifier of modifiers) {
     await page.keyboard.down(modifier)
@@ -54,19 +55,19 @@ test('marquee modifiers replace, add to, and subtract from the selection', async
   const bTo = { x: box.width * 0.7, y: box.height * 0.7 }
 
   // A Shift-marquee over wall A selects it.
-  await marquee(page, ['Shift'], aFrom, aTo)
+  await marquee(page, { modifiers: ['Shift'], from: aFrom, to: aTo })
   await expect(selectedWalls(page)).toHaveCount(1)
 
   // A Shift+Alt marquee over wall B adds it to the selection.
-  await marquee(page, ['Shift', 'Alt'], bFrom, bTo)
+  await marquee(page, { modifiers: ['Shift', 'Alt'], from: bFrom, to: bTo })
   await expect(selectedWalls(page)).toHaveCount(2)
 
   // A second plain Shift-marquee replaces the pair with just wall B.
-  await marquee(page, ['Shift'], bFrom, bTo)
+  await marquee(page, { modifiers: ['Shift'], from: bFrom, to: bTo })
   await expect(selectedWalls(page)).toHaveCount(1)
 
   // An Alt-marquee over wall B subtracts it, emptying the selection.
-  await marquee(page, ['Alt'], bFrom, bTo)
+  await marquee(page, { modifiers: ['Alt'], from: bFrom, to: bTo })
   await expect(selectedWalls(page)).toHaveCount(0)
 })
 
@@ -83,20 +84,18 @@ test('a right-to-left marquee grabs a wall it only crosses', async ({ page }) =>
 
   // A left-to-right (window) marquee over the right region misses the wall: its left
   // endpoint lies outside, so the wall is not fully contained.
-  await marquee(
-    page,
-    ['Shift'],
-    { x: box.width * 0.5, y: box.height * 0.4 },
-    { x: box.width * 0.85, y: box.height * 0.6 },
-  )
+  await marquee(page, {
+    modifiers: ['Shift'],
+    from: { x: box.width * 0.5, y: box.height * 0.4 },
+    to: { x: box.width * 0.85, y: box.height * 0.6 },
+  })
   await expect(selectedWalls(page)).toHaveCount(0)
 
   // The same region dragged right-to-left is a crossing marquee and grabs the wall.
-  await marquee(
-    page,
-    ['Shift'],
-    { x: box.width * 0.85, y: box.height * 0.4 },
-    { x: box.width * 0.5, y: box.height * 0.6 },
-  )
+  await marquee(page, {
+    modifiers: ['Shift'],
+    from: { x: box.width * 0.85, y: box.height * 0.4 },
+    to: { x: box.width * 0.5, y: box.height * 0.6 },
+  })
   await expect(selectedWalls(page)).toHaveCount(1)
 })
