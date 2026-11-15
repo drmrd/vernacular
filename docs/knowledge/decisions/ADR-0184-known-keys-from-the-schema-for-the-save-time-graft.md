@@ -16,9 +16,12 @@ sourceFiles:
     storage/folder/folder-project-store.ts,
     scripts/schema/generate-schema.mjs,
     core/commands/handlers/project-commands.ts,
+    core/model/known-keys.ts,
+    core/model/known-keys.json,
+    scripts/schema/build-known-keys.mjs,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0184: The save-time graft reads a table of known keys generated from the schema
@@ -74,6 +77,17 @@ no graft and saved the loss.
   it. Every store then gets the same behavior (#672).
 - A wrong table loses data. The tests generated from the table cannot catch that on their own, so a
   round trip of the test corpus and three end-to-end cases check it independently.
+
+## Shape of the table
+
+- Each variant of a tagged union is its own entry, named `Union.tag`, for example
+  `UnderlaySource.raster`.
+- A `union` value records its tag key and the names of its variant entries.
+- `KNOWN_KEYS` is typed with the generated type names, so a lookup by a known name needs no check
+  for undefined.
+- The generator stops with an error that names the place when the schema holds a shape the table
+  cannot express: an array of arrays, a tuple, a union with no shared constant tag, or two variants
+  with one tag value. Such a shape can never be read as a plain value.
 
 ## References
 
