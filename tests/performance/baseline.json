@@ -69,5 +69,49 @@
         "stroke": 374
       }
     }
+  },
+  "rebuiltObjects": {
+    "move-wall-endpoint": {
+      "floor": 4,
+      "wallGroup": 1,
+      "room": 2,
+      "opening": 1,
+      "furniture": 0
+    },
+    "move-furniture": {
+      "floor": 4,
+      "wallGroup": 0,
+      "room": 0,
+      "opening": 0,
+      "furniture": 1
+    },
+    "resize-opening": {
+      "floor": 4,
+      "wallGroup": 1,
+      "room": 0,
+      "opening": 1,
+      "furniture": 0
+    },
+    "paint-surface": {
+      "floor": 4,
+      "wallGroup": 4,
+      "room": 40,
+      "opening": 44,
+      "furniture": 200
+    },
+    "set-ceiling-height": {
+      "floor": 4,
+      "wallGroup": 0,
+      "room": 10,
+      "opening": 0,
+      "furniture": 0
+    },
+    "rename-project": {
+      "floor": 0,
+      "wallGroup": 0,
+      "room": 0,
+      "opening": 0,
+      "furniture": 0
+    }
   }
 }
