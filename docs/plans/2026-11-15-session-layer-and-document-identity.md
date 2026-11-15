@@ -429,7 +429,8 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
       `driftVerdict(committed, regenerated, numbers)` in `scripts/schema/build-schema.mjs` fails
       when the schemas differ and neither number rose; `schemaPath(17, 0)` is
       `schema/17/vernacular.schema.json` and `schemaPath(17, 1)` is
-      `schema/17/revision-1/vernacular.schema.json`; every existing `$id` is unchanged.
+      `schema/17/revision-1/vernacular.schema.json`; every existing `$id` is unchanged. These
+      examples take 17 as the current version. If cycle 1.3 raised it, use the new number.
 - [ ] GREEN: `schemaRevision?: number` in `ProjectMeta`, `CURRENT_SCHEMA_REVISION = 1` in
       `core/model/factories.ts`, the script, and `schema/17/revision-1/`. `schema/README.md` and
       format spec section 7 describe the path (ADR-0178).
@@ -953,6 +954,9 @@ failure as the global constraint says, so `did-not-import` never carries `format
   - a target that does not open leaves the current handle open, and `session.undo()` returns
     `true`;
   - the current id as target returns the current handle with no write;
+  - a close of the current project that fails after the target opened (an edit made while the
+    target loaded, and a store that then rejects) closes the target, keeps the current handle
+    open with that edit, and returns `flush-failed`;
   - after a switch the old project's lock is free, so a second switch back to it opens.
 - [ ] RED in `app/use-switch-notices.test.tsx`: a `flush-failed` result shows "The changes could not
       be saved, so the project stays open."
@@ -1584,7 +1588,9 @@ Spec 5.8 (rename, export, delete), and the wiring of spec 5.6 point 7. The flows
   - `session/flows/delete-project.test.ts`: the other projects' `storedFiles` are identical, and the
     store, the index, and the pool hold nothing only the deleted project used; an asset another
     project or the library uses stays; `a workspace id with no record blocks every asset removal`;
-    Cancel counts no write; deleting the open project closes its handle first, then deletes, the
+    `a record older than its stored document blocks every asset removal` (the record's
+    `lastChangedAt` differs from the one the store lists); an asset that the open project added
+    and had not saved when the delete of another project started stays; Cancel counts no write; deleting the open project closes its handle first, then deletes, the
     page stays, and no project is open;
   - the lock: while a second port on the same registry holds the lock, the delete fails with
     `open-elsewhere` and every file is byte-identical; while the delete runs (a store whose delete
@@ -1597,7 +1603,10 @@ Spec 5.8 (rename, export, delete), and the wiring of spec 5.6 point 7. The flows
       releases it; when another holder has the lock it fails with `open-elsewhere` and removes
       nothing. It builds the asset users for `removableAssets` from `ports.workspace.list()`, not
       from the records alone: every workspace id with no record is a user with
-      `assetListComplete: false`. `listProjectCards` stays the only reader of `heldIds()`.
+      `assetListComplete: false`, and so is every id whose record carries a `lastChangedAt` other
+      than the one the store lists, because decision 21 lets a record lag its document and a failed
+      `put` leaves the old record. It flushes the open project before it computes the users, so
+      that project's record is current. `listProjectCards` stays the only reader of `heldIds()`.
 - [ ] Commits: `test: expect a delete to remove only what that project used`,
       `feat: delete a project or remove a folder from the list`.
 
@@ -1676,8 +1685,8 @@ variant defines is known to it. That is why the mixed paint entry needs its own 
 - [ ] RED in `session/flows/open-failed.test.ts`, with a store that counts writes: a project with
       two mixed paint entries gives `did-not-open` with `format-rules` and a `repair` naming 2 paint
       entries; until the user chooses, no write is counted. The same RED commit turns each interim
-      case into a refusal: the folder-store case of cycle 2.5 and the store case of cycle 3.2, the
-      open-step case of cycle 5.3, the `importFile` case of cycle 5.6 (now `did-not-import` with
+      case into a refusal: the folder-store case of cycle 2.5, the open-step case of cycle 5.3
+      (which took over the `load()` case of cycle 3.2 when cycle 5.7 deleted `load()`), the `importFile` case of cycle 5.6 (now `did-not-import` with
       `format-rules`), the snapshot cases of cycles 2.5 and 5.8, and the `reconcileIndex` case of
       cycle 6.5 (the record now says it did not open). For a snapshot, the restore offers no
       recovery and says "A recovery copy could not be read. It is kept with the project's backups.",
@@ -1716,9 +1725,12 @@ variant defines is known to it. That is why the mixed paint entry needs its own 
       decodes; "Replace the stored project" shows "The data that the repair removes is lost. You
       cannot undo this action.", stores the repaired document, and leaves a backup with the
       original bytes; Cancel returns to the dialog and writes nothing; for a folder project, a new
-      project goes to the workspace and a replace writes into the folder.
+      project goes to the workspace and a replace writes into the folder; with another project
+      open while the page shows, either choice opens its project through `switchProject`, and an
+      edit made in the open project just before the choice is stored.
 - [ ] GREEN: `openRepairedAsNew` and `replaceWithRepaired` in `session/flows/open-failed.ts`, and
-      the choice dialog.
+      the choice dialog. Both take the current handle and end in `switchProject`, like every flow
+      that replaces the open project.
 - [ ] Commits: `test: expect a repaired copy or a replace with a backup`,
       `feat: open a repaired project as a new one or replace the stored one`.
 

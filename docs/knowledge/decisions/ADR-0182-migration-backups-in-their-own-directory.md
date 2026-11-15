@@ -37,8 +37,9 @@ prune of ADR-0119 removes. The code changes with #670. Until then the backup is 
 > is written after a decode that migrated and succeeded, before the document reaches the caller,
 > and no longer before the migration runs. Decode works in memory, so a migration that fails
 > cannot touch the stored file. The same backup rule keeps the last stored file that passed the
-> check when a save writes a document that fails it, and it keeps the stored bytes when a repair
-> replaces them. The directory, the lifetime, and the rule against overwriting are unchanged.
+> check when a save writes a document that fails it, the stored bytes when a repair replaces
+> them, and a recovery snapshot that fails the check. The directory, the lifetime, and the rule
+> against overwriting are unchanged.
 
 > Amended by [[ADR-0191-export-on-every-card-and-unchecked-copy]] on 2026-11-15. One export carries
 > backups and recovery snapshots: the unchecked copy of a project that did not open. An ordinary

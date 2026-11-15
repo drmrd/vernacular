@@ -60,6 +60,9 @@ has one `kind` and also carries fields that only another variant defines.
 - A stored project that fails decode does not open. A decode that fails writes nothing. The
   migration backup is written after a decode that migrated and succeeded, before the document
   reaches the caller.
+- A recovery snapshot that fails decode is not restored. It moves to the project's backups by the
+  rule of ADR-0182, so no prune removes the unsaved work in it, and the recovery prompt says that
+  the copy is kept.
 - The user decides what happens next. A dialog says that the project did not open, gives the
   reason, and has details that can be expanded. It offers Close, Export, and, when a known repair
   applies, opening with the repair. The "Start a new project" control that the first stage builds
