@@ -59,15 +59,17 @@ function sidePositions(polygon: readonly Point[], base: number, top: number): nu
   return positions
 }
 
+interface BoxSectionOptions {
+  corners: readonly Point[]
+  base: number
+  top: number
+  role: SurfaceRole
+}
+
 // planToWorld is orientation-preserving, so the natural triangulation already faces +Y: the top cap
 // keeps that order while the base reverses its winding to face -Y; the sides span base to top. Mirrors
 // junction-fill so the box reads solid from outside under front-side culling.
-function boxSections(
-  corners: readonly Point[],
-  base: number,
-  top: number,
-  role: SurfaceRole,
-): WallSection[] {
+function boxSections({ corners, base, top, role }: BoxSectionOptions): WallSection[] {
   const triangles = capTriangles(corners)
   const baseCap: WallSection = {
     role,
@@ -124,7 +126,9 @@ export function buildFurnitureMassing(
 ): THREE.Group {
   const base = node.elevationZ
   const top = node.elevationZ + node.height
-  const geometry = geometryFromSections(boxSections(node.footprintCorners, base, top, role))
+  const geometry = geometryFromSections(
+    boxSections({ corners: node.footprintCorners, base, top, role }),
+  )
   const mesh = new THREE.Mesh(geometry, boxMaterials(materials.material(role)))
   const group = new THREE.Group()
   group.add(mesh)
