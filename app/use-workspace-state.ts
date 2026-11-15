@@ -14,7 +14,8 @@ import type { EditorWorkspaceProps, SnapshotsPort } from './app'
 import { createAssetLibrary } from './create-asset-library-registry'
 import { useBeforeUnloadGuard } from './use-before-unload-guard'
 import { useDiscardConfirmation } from './use-discard-confirmation'
-import { guardSessionSwap, useProjectActions, type RecentEntry } from './use-project-actions'
+import { guardSessionSwap } from './project-action-helpers'
+import { useProjectActions, type RecentEntry } from './use-project-actions'
 
 // The per-render state EditorWorkspace renders from: the context stores, the asset
 // library, autosave/recent/recovery status, the file-menu actions, and the discard
