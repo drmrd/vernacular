@@ -52,6 +52,8 @@ const WHITE_PAINT_REFLECTANCE = srgbToLinear(WHITE_PAINT_CODE / CODE_RANGE)
  * reproduce. The luminance of each prediction goes through agxNeutralResponse and is read as a
  * grey. Model: south L 0.9095, west L 0.7203, gap 0.1891. Reading of these regions on this
  * build: south 0.9078, west 0.7143, gap 0.1936.
+ *   Linux SwiftShader (run 43826437734, 2026-11-16), this build: south 0.9078, west 0.7143, gap
+ *   0.1936, the same readings as on the Mac.
  *
  * Five captures came back identical, so the noise band is 0. The threshold is half the model
  * gap, 0.1891 / 2 = 0.0946, rounded to 0.095. The defect this gate is written for, sample
@@ -70,6 +72,8 @@ const SAMPLE_DAYLIGHT_MIN_GAP = 0.095
  * 0.9078 in both, a difference of exactly 0) and in the west wall region (L 0.7143 in both), so
  * the noise band is 0. The tolerance is a small stated margin, 0.001: about a third of the
  * lightness change that a one-code step over the whole region makes near this code (0.0033).
+ * Linux SwiftShader (run 43826437734, 2026-11-16): one capture, the same two readings (south
+ * 0.9078 in both frames, a difference of exactly 0; west 0.7143 in both).
  */
 const SAME_SUN_TOLERANCE_L = 0.001
 
