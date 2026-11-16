@@ -31,7 +31,17 @@ const ANNOTATION_KEYWORDS = new Set([
 ])
 const SCALAR_KEYWORDS = ['enum', 'const']
 const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null'])
-const STRUCTURAL_KEYWORDS = ['properties', 'items', 'anyOf']
+const STRUCTURAL_KEYWORDS = [
+  'properties',
+  'items',
+  'anyOf',
+  'oneOf',
+  'allOf',
+  'prefixItems',
+  'additionalProperties',
+  'patternProperties',
+]
+const STRUCTURAL_TYPES = ['array', 'object']
 const UNION_KEYWORDS = ['anyOf', 'oneOf']
 
 const REFUSAL_HINT =
@@ -70,11 +80,15 @@ function isObjectDefinition(definition) {
 
 function refuseScalarWithStructure(place, node) {
   const scalarKeyword = SCALAR_KEYWORDS.find((keyword) => keyword in node)
+  if (scalarKeyword === undefined) return
   const structuralKeyword = STRUCTURAL_KEYWORDS.find((keyword) => keyword in node)
-  if (scalarKeyword !== undefined && structuralKeyword !== undefined) {
+  if (structuralKeyword !== undefined) {
     throw refusal(
       `${place} has ${scalarKeyword} beside the structural keyword ${structuralKeyword}`,
     )
+  }
+  if (STRUCTURAL_TYPES.includes(node.type)) {
+    throw refusal(`${place} has ${scalarKeyword} beside the structural type ${node.type}`)
   }
 }
 
@@ -125,6 +139,9 @@ function sharedTagKey(unionName, variants) {
 
 function unionVariantTypes(unionName, definition) {
   const variants = unionVariants(definition)
+  variants.forEach((variant, index) => {
+    refuseScalarWithStructure(`Union ${unionName} variant ${index}`, variant)
+  })
   const tag = sharedTagKey(unionName, variants)
   const types = new Map()
   for (const variant of variants) {
