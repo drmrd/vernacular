@@ -395,7 +395,7 @@ readings and thresholds live in their spec files.
   way a camera with a fixed daylight white balance records it, bluer than a person sees it. Two
   things set that hue: the white point is fixed at the reference instant, and no light bounces from
   the real sunlit ground or from nearby surfaces. The fixed exposure does not change the hue, but
-  it makes the same shade darker than a person sees it. A follow-up issue tracks each of the three
+  it makes the same shade darker than a person sees it. Issues #786, #783, and #785 track the three, in that order
   (see Not decided).
 - A sun on the horizon no longer lights a wall; the fade with the air mass answered #771. The light
   model gives a white wall that faces a sun on the horizon, or 3 degrees below it, code 105.4, the
@@ -404,7 +404,7 @@ readings and thresholds live in their spec files.
   model, not pixel readings.
 - With the sun on the horizon, the dome at its night floor is the scene's only light, and once the
   sun is under the horizon the visible sky is black. A level for twilight and night is not designed;
-  a follow-up issue tracks this.
+  issue #784 tracks this.
 - Two render defects are open: window glass reads dull and green (#767), and the frame edges on a
   sunlit wall render jagged (#768).
 - Older records that name `sunIntensity` or `DAYLIGHT_SUN_INTENSITY` read with this mapping:
@@ -426,16 +426,16 @@ readings and thresholds live in their spec files.
   shadowed lawn above black (#766).
 - Light bounced from the real ground and from floors near a wall, which would give a surface the
   color of the ground beside it and would temper the blue of shade under a low sun. The grey ground
-  bounce gives that up; a follow-up issue tracks this.
-- A level for twilight and night, below the reach of the fade; a follow-up issue tracks this.
-- Exposure at a low sun and at night. Exposure stays 1, so how a low sun looks is not modeled; a
-  follow-up issue tracks exposure that follows the scene. The lamps that will read the lux anchor
+  bounce gives that up; issue #783 tracks this.
+- A level for twilight and night, below the reach of the fade; issue #784 tracks this.
+- Exposure at a low sun and at night. Exposure stays 1, so how a low sun looks is not modeled;
+  issue #785 tracks exposure that follows the scene. The lamps that will read the lux anchor
   wait on the same work.
 - A white balance that follows the scene's light. The white point is fixed at the reference instant,
   so shade under a low sun reads bluer than a person sees it. A partial chromatic adaptation, with a
   degree of adaptation below 1, would move the white point part of the way toward the light of the
-  moment; a follow-up issue tracks this.
-- A tighter tolerance for the tone curve gate; a follow-up issue tracks this.
+  moment; issue #786 tracks this.
+- A tighter tolerance for the tone curve gate; issue #787 tracks this.
 - Refraction near the horizon. The air mass takes the sun's geometric height, while refraction
   lifts the sun the eye sees. With the refraction step of the ESRA model the level at 1.5 degrees
   would be 1.56 times higher (1.52 times with Saemundsson's formula); whether to apply it is open.
@@ -484,7 +484,7 @@ halved the cast. A darker ground in the lawn's hue kept much of the cast, darken
 moved the reference wall off code 225, which would have needed a new sun scale.
 
 What this gives up: no surface takes the color of the ground beside it. Bounce from the real ground
-and from floors near a wall is later work, and a follow-up issue tracks it. Shade under a low sun is
+and from floors near a wall is later work, and issue #783 tracks it. Shade under a low sun is
 also bluer than under the lawn-colored ground, since nothing green offsets the sky's blue; the
 Consequences say why that is stronger than what a person sees. This answers #765.
 
@@ -541,7 +541,7 @@ What stays wrong: below 3 degrees this fade is still too dark against those mode
 times at 1.5 to 2 degrees. At those heights a rough spectral estimate, made during the comparison
 and neither published nor confirmed, puts the effect of haze alone at more than a factor of 10, so
 no single curve is likely to be right there. The comparison is about the light that reaches a wall.
-How a low sun looks also depends on exposure, which stays 1, and a follow-up issue tracks exposure
+How a low sun looks also depends on exposure, which stays 1, and issue #785 tracks exposure
 that follows the scene.
 
 One property of the design changed with the new fade. The light on a level card is still warm at
@@ -553,7 +553,7 @@ warm low sun that way.
 
 What this gives up: at dusk the sun no longer props up the light. Below 12.19 degrees the sky's
 light sits at the night floor, and at the horizon the sun adds nothing. A level for twilight and
-night is not designed, and a follow-up issue tracks it. This answers #771.
+night is not designed, and issue #784 tracks it. This answers #771.
 
 ### The visible sky's gain follows the sun's height
 
