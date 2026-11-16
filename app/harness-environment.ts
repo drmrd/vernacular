@@ -83,8 +83,8 @@ const SHADOW_ON_LAWN_CAMERA_POSE: CameraPose = {
 }
 
 // The reference instant of the daylight calibration: the sample place (40 N, 1.86 E, plan-up
-// as true north, UTC) and the sample instant (the March equinox at 10:30 UTC) under a clear
-// sky. The camera looks from the south-west, so the frame shows the sunlit south wall (the
+// as true north, UTC) and the sample instant (the March equinox at 10:30 UTC). It sets no
+// cloud cover, so the default of 0 applies and the sky is clear. The camera looks from the south-west, so the frame shows the sunlit south wall (the
 // front, by its door) and the west wall in shade.
 const DAYLIGHT_REFERENCE_SITE: Site = {
   latLong: { latitude: 40, longitude: 1.86 },
