@@ -13,12 +13,7 @@ import {
   type EnvironmentLighting,
 } from '../../core'
 import { importsStaticValueOf } from '../testing'
-import {
-  SKY_MESH_GAIN,
-  attachSkyEnvironment,
-  skyMeshGain,
-  updateSkyEnvironment,
-} from './sky-environment'
+import { attachSkyEnvironment, skyMeshGainAt, updateSkyEnvironment } from './sky-environment'
 import { buildLightingRig, disposeLightingRig, type LightingRig } from './lighting-rig'
 
 /** The sun intensity the rig is built with; any positive value is fine for these tests. */
@@ -37,6 +32,13 @@ const DISTINCT_DOME_RADIANCE = 3
 const DISTINCT_SKY_AMBIENT: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS.map(
   (coefficient) => coefficient * DISTINCT_DOME_RADIANCE,
 )
+/** The sun heights, in degrees, the gain-tracking cases aim at: a low sun on a table row, and
+ *  a high sun between the table's last two rows, so its expectation goes through skyMeshGainAt. */
+const LOW_SUN_DEGREES = 4.95
+const HIGH_SUN_DEGREES = 45
+/** The gain is compared component by component; this is looser than the pure-function cases
+ *  because the rig stores single-precision-friendly values read back through a Vector3. */
+const GAIN_TOLERANCE = 1e-6
 /** Reconstruction and passthrough are exact copies; a loose float tolerance suffices. */
 const PRECISION = 5
 /** The sky scattering constants the module pins; they are the addon's own defaults today. */
@@ -61,6 +63,32 @@ function makeLighting(): EnvironmentLighting {
     cloudCover: CLOUD_COVER,
     skyAmbient: DISTINCT_SKY_AMBIENT,
   }
+}
+
+/** Lighting whose sun sits the given number of degrees above the horizon. */
+function makeLightingWithSunHeight(degrees: number): EnvironmentLighting {
+  const height = toRadians(degrees)
+  return {
+    ...makeLighting(),
+    sunDirection: { x: Math.cos(height), y: Math.sin(height), z: 0 },
+  }
+}
+
+/**
+ * Asserts the rig's sky gain is the table gain for this sun altitude (radians) divided by
+ * each white point channel, which is what skyMeshGain returns. The expectation is built from
+ * skyMeshGainAt so a gain that ignores the sun's height cannot satisfy it by coincidence.
+ */
+function expectSkyGainForAltitude(rig: LightingRig, altitude: number): void {
+  const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
+  const gain = skyMeshGainAt(altitude)
+  expect(Math.abs(rig.skyGain!.x - gain / r)).toBeLessThan(GAIN_TOLERANCE)
+  expect(Math.abs(rig.skyGain!.y - gain / g)).toBeLessThan(GAIN_TOLERANCE)
+  expect(Math.abs(rig.skyGain!.z - gain / b)).toBeLessThan(GAIN_TOLERANCE)
+}
+
+function toRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180
 }
 
 /** A scene with the solar rig already applied: the state attachSkyEnvironment expects. */
@@ -227,15 +255,24 @@ describe('attachSkyEnvironment', () => {
     expect(rig.sky?.mieDirectionalG.value).toBe(PINNED_SCATTERING.mieDirectionalG)
   })
 
-  it('records the sky mesh gain scaled by the white point on the rig', async () => {
+  it('records the high-sun gain on the rig when no update arrived before the sky did', async () => {
     const { scene, rig } = makeAppliedRig()
 
     await attachSkyEnvironment(scene, rig)
 
+    // With no lighting yet, the sun is taken to be overhead: the end of the table.
     expect(rig.skyGain).toBeInstanceOf(THREE.Vector3)
-    expect(rig.skyGain?.x).toBeCloseTo(skyMeshGain().x, PRECISION)
-    expect(rig.skyGain?.y).toBeCloseTo(skyMeshGain().y, PRECISION)
-    expect(rig.skyGain?.z).toBeCloseTo(skyMeshGain().z, PRECISION)
+    expectSkyGainForAltitude(rig, Math.PI / 2)
+  })
+
+  it('sets the sky gain from the sun height of an update issued before the sky resolves', async () => {
+    const { scene, rig } = makeAppliedRig()
+
+    const attached = attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(LOW_SUN_DEGREES))
+    await attached
+
+    expectSkyGainForAltitude(rig, toRadians(LOW_SUN_DEGREES))
   })
 
   it('multiplies the sky color by a uniform that reads the rig sky gain', async () => {
@@ -304,27 +341,6 @@ describe('attachSkyEnvironment', () => {
   })
 })
 
-describe('skyMeshGain', () => {
-  it('divides the sky mesh gain by each channel of the daylight white point', () => {
-    const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
-
-    expect(Number.isFinite(SKY_MESH_GAIN)).toBe(true)
-    expect(SKY_MESH_GAIN).toBeGreaterThan(0)
-    expect(skyMeshGain().x).toBeCloseTo(SKY_MESH_GAIN / r, PRECISION)
-    expect(skyMeshGain().y).toBeCloseTo(SKY_MESH_GAIN / g, PRECISION)
-    expect(skyMeshGain().z).toBeCloseTo(SKY_MESH_GAIN / b, PRECISION)
-  })
-
-  it('returns a new vector on every call so a caller cannot alias another', () => {
-    const first = skyMeshGain()
-
-    first.set(0, 0, 0)
-
-    expect(skyMeshGain()).not.toBe(first)
-    expect(skyMeshGain().x).toBeGreaterThan(0)
-  })
-})
-
 describe('updateSkyEnvironment', () => {
   it("aims the sky's sun position at the lighting's sun direction", async () => {
     const { scene, rig } = makeAppliedRig()
@@ -336,6 +352,40 @@ describe('updateSkyEnvironment', () => {
     expect(sunPosition?.x).toBeCloseTo(SUN_DIRECTION.x, PRECISION)
     expect(sunPosition?.y).toBeCloseTo(SUN_DIRECTION.y, PRECISION)
     expect(sunPosition?.z).toBeCloseTo(SUN_DIRECTION.z, PRECISION)
+  })
+
+  it.each([LOW_SUN_DEGREES, HIGH_SUN_DEGREES])(
+    'keeps the sky gain in step with a sun %s degrees above the horizon',
+    async (degrees) => {
+      const { scene, rig } = makeAppliedRig()
+      await attachSkyEnvironment(scene, rig)
+
+      updateSkyEnvironment(rig, makeLightingWithSunHeight(degrees))
+
+      expectSkyGainForAltitude(rig, toRadians(degrees))
+    },
+  )
+
+  it('brightens the visible sky when an update lowers the sun', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(HIGH_SUN_DEGREES))
+    const highSunGain = rig.skyGain!.y
+
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(LOW_SUN_DEGREES))
+
+    expect(rig.skyGain!.y).toBeGreaterThan(highSunGain)
+  })
+
+  it('writes the sky gain into the same vector the shader uniform holds across updates', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    const gainBefore = rig.skyGain!
+
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(LOW_SUN_DEGREES))
+
+    expect(rig.skyGain).toBe(gainBefore)
+    expect(reachesUniformHolding(rig.sky!.material.colorNode!, gainBefore)).toBe(true)
   })
 
   it("drives the sky's cloud coverage from the lighting's cloud cover", async () => {
@@ -457,10 +507,11 @@ describe('disposeLightingRig', () => {
 })
 
 describe('engine public surface', () => {
-  it('keeps the sky mesh gain inside the lighting module, off the engine barrel', async () => {
+  it('keeps the sky mesh gain table and its lookup inside the lighting module, off the engine barrel', async () => {
     const engine = await import('../index')
 
-    expect(engine).not.toHaveProperty('SKY_MESH_GAIN')
+    expect(engine).not.toHaveProperty('SKY_MESH_GAIN_BY_SUN_HEIGHT')
+    expect(engine).not.toHaveProperty('skyMeshGainAt')
   })
 })
 
