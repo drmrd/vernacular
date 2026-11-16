@@ -1,7 +1,6 @@
-import { Canvas } from '@react-three/fiber'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { type LightingMode, type OpeningSceneNode, type SceneGraph, type Site } from '../../core'
-import { createSceneRenderer, type EntityScreenPosition } from '../../engine'
+import { type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
@@ -15,6 +14,7 @@ import { usePerceivedColorStore } from './perceived-color-context'
 import { PerceivedColorSampler } from './perceived-color-sampler'
 import { FrameCamera, PresetCamera } from './scene-camera-effects'
 import { initialCamera } from './scene-camera-seed'
+import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { SceneLighting } from './scene-lighting'
 import { SceneNavToolbar, type NavMode } from './scene-nav-toolbar'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
@@ -192,8 +192,9 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
   const readiness = useLiveViewReadiness()
   // The stored session reaches the live view as the Canvas below is constructed: initialCamera
   // seeds the camera with the position the departing viewer left behind (ADR-0170), and every
-  // other stored field arrives as a prop of this render. By the time this effect runs the
-  // Canvas has been built from both, so the session has been applied.
+  // other stored field arrives as a prop of this render. The Canvas is built from both once the
+  // renderer module loads, and no frame can count as drawn before that, so readiness never
+  // reports a frame drawn without the session.
   useEffect(() => readiness.noteSessionApplied(), [readiness])
   return (
     <SceneReadinessBoundary ready={ready}>
@@ -201,16 +202,10 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
           configuring the Canvas, so create-renderer's shadowMap setup goes dead
           without this prop. The bare boolean also selects PCFSoftShadowMap,
           matching create-renderer's intent. */}
-      <Canvas
+      <SceneRendererCanvas
         frameloop="always"
         shadows
         camera={initialCamera(props.framed.pose, props.nav.savedCameraPosition)}
-        // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here
-        // (the OffscreenCanvas branch of DefaultGLProps applies only to its worker
-        // path), so narrowing the cast away from OffscreenCanvas is safe.
-        gl={(defaultProps) =>
-          createSceneRenderer({ canvas: defaultProps.canvas as HTMLCanvasElement })
-        }
       >
         <LiveSceneContents {...props} readiness={readiness} />
         {/* The sampler must live inside the Canvas because it reads the drawing
@@ -222,7 +217,7 @@ function LiveSceneCanvas(props: LiveSceneCanvasProps) {
           onFirstFrame={handleFirstFrame}
           onDrawnFrame={readiness.noteFrameDrawn}
         />
-      </Canvas>
+      </SceneRendererCanvas>
     </SceneReadinessBoundary>
   )
 }

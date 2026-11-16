@@ -1,3 +1,4 @@
+import type * as ThreeWebGPU from 'three/webgpu'
 import type { WebGPURenderer } from 'three/webgpu'
 
 import { applyToneMappingOperator } from './tone-mapping'
@@ -22,21 +23,33 @@ export interface SceneRendererOptions {
   toneMappingExposure?: number
 }
 
+/** The parts of the lazily loaded WebGPU build that constructSceneRenderer reads. */
+export type SceneRendererModule = Pick<
+  typeof ThreeWebGPU,
+  'WebGPURenderer' | 'PCFSoftShadowMap' | 'SRGBColorSpace'
+>
+
 /**
- * Creates and initializes the WebGPU renderer. Three.js is imported lazily so the
- * WebGPU build never enters the test or server import graph; this is the one place
- * that constructs a backend renderer. WebGPURenderer auto-selects WebGPU when it is
- * available and falls back to its own WebGL 2 backend otherwise; `forceWebGL` pins
- * the WebGL 2 backend unconditionally for the deterministic visual baseline.
+ * Loads the WebGPU build of Three.js. It is imported lazily so the WebGPU build never
+ * enters the test or server import graph. A canvas loads it before it mounts, so the
+ * renderer itself can then be constructed synchronously.
  */
-export async function createSceneRenderer(
+export function loadSceneRendererModule(): Promise<SceneRendererModule> {
+  return import('three/webgpu')
+}
+
+/**
+ * Constructs the scene renderer for a canvas from the loaded module, without initializing
+ * its backend: the caller starts `renderer.init()` and draws nothing until it resolves.
+ * This is the one place that constructs a backend renderer. WebGPURenderer auto-selects
+ * WebGPU when it is available and falls back to its own WebGL 2 backend otherwise;
+ * `forceWebGL` pins the WebGL 2 backend unconditionally for the deterministic visual baseline.
+ */
+export function constructSceneRenderer(
+  rendererModule: SceneRendererModule,
   options: SceneRendererOptions = {},
-): Promise<WebGPURenderer> {
-  const {
-    WebGPURenderer: Renderer,
-    PCFSoftShadowMap,
-    SRGBColorSpace,
-  } = await import('three/webgpu')
+): WebGPURenderer {
+  const { WebGPURenderer: Renderer, PCFSoftShadowMap, SRGBColorSpace } = rendererModule
   const renderer = new Renderer({
     canvas: options.canvas,
     antialias: options.antialias ?? true,
@@ -55,6 +68,14 @@ export async function createSceneRenderer(
   renderer.outputColorSpace = SRGBColorSpace
   applyToneMappingOperator(renderer, 'neutral')
   renderer.toneMappingExposure = options.toneMappingExposure ?? 1
+  return renderer
+}
+
+/** Loads the module, constructs the renderer, and waits for its backend to initialize. */
+export async function createSceneRenderer(
+  options: SceneRendererOptions = {},
+): Promise<WebGPURenderer> {
+  const renderer = constructSceneRenderer(await loadSceneRendererModule(), options)
   await renderer.init()
   return renderer
 }
