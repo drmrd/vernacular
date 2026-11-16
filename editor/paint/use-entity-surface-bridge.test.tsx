@@ -72,3 +72,25 @@ describe('useEntitySurfaceBridge when a wall becomes the selection', () => {
     expect(surfaceSelection.getActiveSurface()).toEqual(wallFace('w1', 'left'))
   })
 })
+
+describe('useEntitySurfaceBridge when a floor surface is active', () => {
+  const floorSurface: SurfaceRef = { kind: 'floor', floorId: 'f1' }
+
+  it('leaves the floor surface alone when the room of that floor becomes the selection', () => {
+    const { selection, surfaceSelection } = mountBridge()
+    surfaceSelection.select(floorSurface)
+
+    act(() => selection.select('room:r1'))
+
+    expect(surfaceSelection.getActiveSurface()).toEqual(floorSurface)
+  })
+
+  it('sets the left face when a wall becomes the selection', () => {
+    const { selection, surfaceSelection } = mountBridge()
+    surfaceSelection.select(floorSurface)
+
+    act(() => selection.select(wallNodeId('w1')))
+
+    expect(surfaceSelection.getActiveSurface()).toEqual(wallFace('w1', 'left'))
+  })
+})

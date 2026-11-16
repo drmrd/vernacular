@@ -110,3 +110,35 @@ describe('WallFinishSection when the user changes the side', () => {
     expect(surfaceSelection.getActiveSurface()).toEqual(LEFT_FACE)
   })
 })
+
+describe('WallFinishSection when the active surface is a face of another wall', () => {
+  const FOREIGN_FACE: SurfaceRef = { kind: 'wall-face', wallId: 'w2', side: 'right' }
+
+  it('shows the left side as the chosen side', () => {
+    renderSection(FOREIGN_FACE)
+
+    expect(screen.getByRole('button', { name: 'A' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'B' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('paints the left face of its own wall when a color is applied', async () => {
+    const user = userEvent.setup()
+    const { dispatch } = renderSection(FOREIGN_FACE)
+
+    await user.click(screen.getByRole('button', { name: FIRST_COLOR.name }))
+
+    expect(dispatchedKey(dispatch)).toBe(surfaceKey(LEFT_FACE))
+  })
+
+  it('shows no perceived-color readout for a sample on the foreign face', () => {
+    renderSection(FOREIGN_FACE, {}, FOREIGN_FACE)
+
+    expect(screen.queryByText(SAMPLE.srgbHex)).not.toBeInTheDocument()
+  })
+
+  it('shows the perceived-color readout for a sample on its own left face', () => {
+    renderSection(FOREIGN_FACE, {}, LEFT_FACE)
+
+    expect(screen.getByText(SAMPLE.srgbHex)).toHaveAttribute('data-perceived', SAMPLE.srgbHex)
+  })
+})
