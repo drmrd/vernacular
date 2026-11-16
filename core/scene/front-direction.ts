@@ -60,8 +60,9 @@ function exteriorDoorsOnFloor(input: FrontDirectionInput, floorId: string): Fron
 /**
  * The plan direction the building faces: the outward normal of the wall that
  * hosts the widest exterior door. Equal widths prefer the direction nearer
- * plan-down (directions within a rounding tolerance are equally near), then the opening id that sorts first as a string (so `opening:10`
- * comes before `opening:9`). With no exterior door it is plan-down.
+ * plan-down (directions within a rounding tolerance are equally near), then
+ * the opening id that sorts first as a string (so `opening:10` comes before
+ * `opening:9`). With no exterior door it is plan-down.
  */
 export function frontDirection(input: FrontDirectionInput): PlanDirection {
   const floorIds = [...new Set(input.walls.map((wall) => wall.floorId))]
