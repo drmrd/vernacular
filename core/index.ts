@@ -566,13 +566,14 @@ export {
 } from './color/color-temperature'
 export type { ObservationInstant } from './environment/observation-time'
 export {
-  DEFAULT_OBSERVATION_INSTANT,
   MINUTES_PER_DAY,
   formatObservationDateTime,
   isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
 } from './environment/observation-time'
+export type { OpeningInstantInput } from './environment/opening-instant'
+export { openingInstant } from './environment/opening-instant'
 export type { SolarAngles, SolarPositionInput } from './environment/solar-position'
 export { solarPosition } from './environment/solar-position'
 export { utcOffsetMinutesFor } from './environment/timezone-offset'

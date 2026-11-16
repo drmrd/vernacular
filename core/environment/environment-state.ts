@@ -1,9 +1,9 @@
 import {
-  DEFAULT_OBSERVATION_INSTANT,
   observationInstantToIso,
   parseObservationInstant,
   type ObservationInstant,
 } from './observation-time'
+import { openingInstant } from './opening-instant'
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import type { EnvironmentScene } from '../model/environment-scene'
 
@@ -22,7 +22,7 @@ export interface EnvironmentState {
 
 export const DEFAULT_ENVIRONMENT_STATE: EnvironmentState = {
   mode: 'schematic',
-  observedAt: DEFAULT_OBSERVATION_INSTANT,
+  observedAt: openingInstant({ site: undefined }),
   cloudCover: DEFAULT_CLOUD_COVER,
   colorCheck: false,
 }
