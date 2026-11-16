@@ -9,6 +9,7 @@ related:
     decisions/ADR-0149-harness-lighting-readiness,
     decisions/ADR-0151-ambient-occlusion-render-pipeline,
     decisions/ADR-0152-linux-scene-baseline-lane,
+    decisions/ADR-0139-plan-to-world-orientation,
   ]
 sourceFiles:
   [
@@ -23,7 +24,7 @@ sourceFiles:
     e2e/tests/scene-solar.spec.ts,
   ]
 status: current
-updated: 2026-07-05
+updated: 2026-11-15
 ---
 
 # ADR-0153: Daylight through glass via the opening-fill role stamp
@@ -91,10 +92,17 @@ ambient-occlusion import guard pins its bundling property.
 Second, with shadow maps actually on, the schematic sun angle blackened every steep face wholesale:
 full-face self-shadowing that survived bias sign flips, `normalBias` up to 30 mm, `shadowSide`
 overrides, and a freshly built light, identically on the Metal and SwiftShader backends. Realistic
-states render shadows correctly at their sun angles, including the window-light beam. Shadow
-casting is therefore a provider policy, the same shape as the sun-intensity policy
+states render shadows correctly at their sun angles, including the window-light beam.
+
+> Superseded 2026-11-15: the diagnosis in this paragraph (a defect in the renderer or the
+> schematic sun angle) was wrong. Every vertical wall face was wound inside out, so each sunlit
+> wall shadowed itself. See the amendment in [[ADR-0139-plan-to-world-orientation]]. The
+> measurements above stand as observations.
+
+Shadow casting is therefore a provider policy, the same shape as the sun-intensity policy
 `buildLightingRig` already owns: the solar provider's sun casts, the basic provider's does not. Schematic states
-keep rendering exactly as their committed baselines on both families. A follow-up issue records the
+keep rendering exactly as their committed baselines on both families. Whether schematic shadows
+return is still open, and the winding fix does not decide it. A follow-up issue records the
 investigation and the exit criteria for restoring schematic shadows; the committed `SHADOW_BIAS`
 also needs re-deriving once the upstream behavior is sound, since it was authored while the
 pipeline was dead.
