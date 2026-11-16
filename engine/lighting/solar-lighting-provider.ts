@@ -51,6 +51,8 @@ export class SolarLightingProvider implements LightingProvider {
   private skyAttachmentReady: Promise<void> | null = null
 
   apply(scene: THREE.Object3D): void {
+    // The sun starts dark: `update` sets its level from the environment lighting, and both run in
+    // layout effects of one React commit, so no frame renders between them.
     this.rig = buildLightingRig(scene, 0, true)
     // The visible sky loads off the startup path, so `apply` stores its attach promise rather
     // than awaiting it, which keeps `apply` synchronous. `dispose` clears the stored promise,

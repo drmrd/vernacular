@@ -23,8 +23,8 @@ export interface SkyLighting {
  */
 export const DEFAULT_CLOUD_COVER = 0
 
-/** The level of the full sun, overhead under a clear sky; it was the engine's daylight sun intensity. */
-export const FULL_SUN_LEVEL = 1.6
+/** The sun's level overhead under a clear sky, in the units the engine sets directly as the directional light's intensity. */
+const FULL_SUN_LEVEL = 1.6
 
 /** Direct sun tint with the sun on the horizon: strongly reddened by the long air path. */
 const HORIZON_SUN_TINT: LinearRgb = { r: 1, g: 0.55, b: 0.25 }
