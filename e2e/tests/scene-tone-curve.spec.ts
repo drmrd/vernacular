@@ -4,14 +4,13 @@ import {
   agxNeutralResponse,
   computeEnvironmentLighting,
   linearLuminance,
-  linearToSrgb,
   predictedMatteRadiance,
   referenceLightingInput,
   srgbToLinear,
-  type Srgb,
 } from '../../core'
 import {
   CODE_RANGE,
+  luminanceCode,
   SOUTH_WEST_VIEW_SOUTH_WALL,
   logReading,
   sampleCanvasColor,
@@ -87,12 +86,6 @@ function predictedSouthWallCode(): number {
     },
   })
   return agxNeutralResponse(linearLuminance(radiance)) * CODE_RANGE
-}
-
-// The display code of a sampled color's luminance: decode the channels, weigh them, encode.
-function luminanceCode(color: Srgb): number {
-  const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
-  return linearToSrgb(linearLuminance(linear)) * CODE_RANGE
 }
 
 test.describe('Tone curve gate', () => {

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import type { Srgb } from '../../core'
+import { linearLuminance, linearToSrgb, srgbToLinear, type Srgb } from '../../core'
 
 // Shared helpers for the live three-dimensional pane specs (navigation, color
 // temperature, selection). The live view renders through the non-deterministic WebGPU
@@ -199,6 +199,12 @@ export const SOUTH_WEST_VIEW_SOUTH_WALL = squareRegion(157, 143, 6)
 
 /** The 8-bit code range a display shows: a channel's 0..1 fraction times this is its code. */
 export const CODE_RANGE = 255
+
+// The display code of a sampled color's luminance: decode the channels, weigh them, encode.
+export function luminanceCode(color: Srgb): number {
+  const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
+  return linearToSrgb(linearLuminance(linear)) * CODE_RANGE
+}
 
 // The RGBA stride of an ImageData buffer.
 const RGBA_STRIDE = 4

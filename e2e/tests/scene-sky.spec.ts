@@ -31,8 +31,9 @@ import {
 
 // The canonical harness state this gate renders: clear noon with the white paint.
 const CLEAR_NOON_QUERY = '&scene=equinox-noon&paint=daylight-white'
-// The low-sun state: the winter afternoon with the white paint, the state of the earlier reading.
-const LOW_SUN_SKY_QUERY = '&scene=winter-afternoon&paint=daylight-white'
+// The winter afternoon, a sun about 5 degrees up, with the white paint, the state of the earlier
+// reading.
+const WINTER_AFTERNOON_SKY_QUERY = '&scene=winter-afternoon&paint=daylight-white'
 
 // The sky the viewer sees above the far edge of the lawn, at the top left of the frame:
 // x 12..35, y 12..35. The camera looks 35 degrees down, so the true horizon crosses the frame
@@ -88,7 +89,7 @@ const CLEAR_SKY_CHANNEL_CEILING = 250
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * bound is the midpoint, 0.4447, which clears each reading by 0.0970.
  */
-const LOW_SUN_SKY_MIN_LIGHTNESS = 0.4447
+const WINTER_AFTERNOON_SKY_MIN_LIGHTNESS = 0.4447
 
 // The clear sky must also read darker in OKLab lightness than the sunlit white wall of the same
 // frame, another relation with no midpoint. Before the daylight calibration the sky read 0.9574
@@ -127,15 +128,16 @@ test.describe('Sky gate', () => {
   })
 
   test('the sky with the sun 5 degrees up is not near black', async ({ page }) => {
-    const canvas = await settledHarnessCanvas(page, LOW_SUN_SKY_QUERY)
+    const canvas = await settledHarnessCanvas(page, WINTER_AFTERNOON_SKY_QUERY)
 
     const sky = srgbToOkLab(await sampleCanvasColor(page, canvas, SKY))
-    logReading('low-sun sky L', sky.L.toFixed(4))
+    logReading('winter-afternoon sky L', sky.L.toFixed(4))
 
     expect(
       sky.L,
-      `low-sun sky L ${sky.L.toFixed(4)} is under ${LOW_SUN_SKY_MIN_LIGHTNESS}, so the sky with ` +
-        `a low sun reads near black while the house and the lawn are in daylight`,
-    ).toBeGreaterThanOrEqual(LOW_SUN_SKY_MIN_LIGHTNESS)
+      `winter-afternoon sky L ${sky.L.toFixed(4)} is under ` +
+        `${WINTER_AFTERNOON_SKY_MIN_LIGHTNESS}, so the sky with a low sun reads near black ` +
+        `while the house and the lawn are in daylight`,
+    ).toBeGreaterThanOrEqual(WINTER_AFTERNOON_SKY_MIN_LIGHTNESS)
   })
 })

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { linearLuminance, linearToSrgb, srgbToLinear, srgbToOkLab, type Srgb } from '../../core'
+import { srgbToOkLab } from '../../core'
 import {
-  CODE_RANGE,
   SOUTH_WEST_VIEW_SOUTH_WALL,
   SOUTH_WEST_VIEW_WEST_WALL,
   logReading,
+  luminanceCode,
   sampleCanvasColor,
   settledHarnessCanvas,
 } from './scene-helpers'
@@ -47,12 +47,6 @@ const LOW_SUN_QUERY = '&scene=low-sun&paint=daylight-white'
  * 105.76, within 0.2 of the render: the sky alone lights it.
  */
 const LOW_SUN_WALL_MAX_LIGHTNESS = 0.6953
-
-// The display code of a sampled color's luminance: decode the channels, weigh them, encode.
-function luminanceCode(color: Srgb): number {
-  const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
-  return linearToSrgb(linearLuminance(linear)) * CODE_RANGE
-}
 
 test.describe('Low sun gate', () => {
   test('a white wall that faces a sun on the horizon reads close to shade', async ({ page }) => {

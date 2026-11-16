@@ -22,8 +22,9 @@ import {
 // Every derived bound on the first two states sits at the midpoint of this build's reading and
 // the reading of the render before the daylight calibration, which painted the noon wall a dim
 // grey, the shade a cool blue a little weaker than this build's, and the low sun neutral. The
-// shade must also read b under 0, a relation with no midpoint. The bound on the green axis sits at the midpoint of this build's
-// reading and the reading of the build whose dome took the lawn's green color below the horizon.
+// shade must also read b under 0, a relation with no midpoint. The bound on the green axis sits at
+// the midpoint of this build's reading and the reading of the build whose dome took the lawn's
+// green color below the horizon.
 //
 // It renders through the deterministic scene harness on the WebGL 2 backend, so it runs on
 // darwin Metal and on the linux SwiftShader lane and self-skips only where no WebGL 2 context
@@ -43,9 +44,10 @@ const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white
 // 2 harness, 320x240 frame), on this build and on the build before the daylight calibration.
 // The bounds on noon white, on the shade, and on the low sun were derived again on this build,
 // after the ground half of the sky dome turned a neutral grey, the sun's level took the air-path
-// fade, and the visible sky's gain came to follow the sun's height. Five captures of each build came back identical to four decimals, so every
-// noise band is 0. The earlier east wall reading came from the 16 px square at x 186..201,
-// y 143..158, which held one color (92, 99, 113), so the 12 px square inside it reads the same.
+// fade, and the visible sky's gain came to follow the sun's height. Five captures of each build
+// came back identical to four decimals, so every noise band is 0. The earlier east wall reading
+// came from the 16 px square at x 186..201, y 143..158, which held one color (92, 99, 113), so the
+// 12 px square inside it reads the same.
 // Linux: not yet recorded for this derivation. The before-calibration readings were not taken
 // on Linux.
 
