@@ -43,8 +43,8 @@ function overcastAdjusted(color: LinearRgb, cloudCover: number): LinearRgb {
  * horizon in radians (negative once it has set); `cloudCover` is a 0..1
  * fraction (0 clear, 1 fully overcast). The sun's color and level come from the
  * daylight calibration: the color is white-balanced at luminance 1, and the level
- * carries the dimming toward the horizon, the extinction just below, and the
- * cloud transmission. The sky color is the tint of the hemisphere fill, which
+ * carries the dimming along the light's path through the air, gone at the
+ * horizon and below it, and the cloud transmission. The sky color is the tint of the hemisphere fill, which
  * daylight does not read: it blends between named horizon and zenith tints on the
  * sun's elevation and flattens toward grey under cloud while dimming.
  */

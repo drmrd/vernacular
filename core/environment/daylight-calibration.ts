@@ -37,7 +37,7 @@ const NIGHT_DOME_SCALE = 0.35
 const DOME_MEAN_LUMINANCE = 0.4445
 /**
  * The level the diffuse light on the level card never falls below. It holds the sky's level
- * through the night and until the sun is about 9.67 degrees up, where the sun-driven level first
+ * through the night and until the sun is about 12.36 degrees up, where the sun-driven level first
  * exceeds it.
  */
 export const NIGHT_DIFFUSE_LEVEL = NIGHT_DOME_SCALE * DOME_MEAN_LUMINANCE
@@ -57,10 +57,12 @@ const HORIZON_DOME_TINT: LinearRgb = { r: 0.45, g: 0.45, b: 0.5 }
 /** Dome tint at the zenith: a saturated daytime blue, bluer than the horizon band. */
 const ZENITH_DOME_TINT: LinearRgb = { r: 0.25, g: 0.45, b: 0.9 }
 
-/** Fraction of full sun level that remains with the sun right on the horizon. */
-const HORIZON_SUN_FRACTION = 0.35
-/** Radians below the horizon over which direct sunlight fades to nothing. */
-const HORIZON_EXTINCTION_RADIANS = 0.1
+/**
+ * The clear-sky optical depth of the direct sun in the daylight availability formula that
+ * ADR-0192 cites: the direct normal illuminance goes as exp(-0.21 / sin h). The same number
+ * serves the photometric anchor and the fade of the sun's level.
+ */
+export const SUN_OPTICAL_DEPTH = 0.21
 /**
  * Exponent of the Kasten-Czeplak direct-beam cloud transmission curve: convex, so light cloud
  * cover barely dims the direct sun while heavy cover extinguishes it by full overcast.
@@ -153,16 +155,19 @@ function whiteBalanced(color: LinearRgb, cloudCover: number): LinearRgb {
 /**
  * The sun level overhead under a clear sky. The reference wall's level is linear in it, so it
  * was solved once with the scale at 1 (and the night floor set aside, which the reference sky
- * clears): the wall then returned a luminance of 0.169890, and the sunlit white level
- * 2.099829 / 0.169890 gives 12.3599.
+ * clears): the wall then returned a luminance of 0.192369, and the sunlit white level
+ * 2.099829 / 0.192369 gives 10.9156.
  */
-const SUN_SCALE = 12.3599
+const SUN_SCALE = 10.9156
 
-/** The fraction of the sun's level its height leaves: dimmer toward the horizon, gone just below it. */
+/**
+ * The fraction of the sun's level its height leaves: the clear-sky attenuation along the light's
+ * path through the air, relative to the path overhead, so exactly 1 at the zenith. It falls
+ * smoothly to 0 as the sun reaches the horizon and stays 0 below it.
+ */
 function sunFade(sunAltitude: number): number {
-  const elevation = clampToUnitInterval(Math.sin(sunAltitude))
-  const extinction = clampToUnitInterval(1 + sunAltitude / HORIZON_EXTINCTION_RADIANS)
-  return extinction * (HORIZON_SUN_FRACTION + (1 - HORIZON_SUN_FRACTION) * elevation)
+  if (sunAltitude <= 0) return 0
+  return Math.exp(-SUN_OPTICAL_DEPTH * (1 / Math.sin(sunAltitude) - 1))
 }
 
 /**
