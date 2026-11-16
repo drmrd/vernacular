@@ -169,3 +169,63 @@ describe('shadowFitBounds', () => {
     expect(numbersOf(fit).every(Number.isFinite)).toBe(true)
   })
 })
+
+describe('shadowFitBounds near the horizon', () => {
+  // A sun due east as the application computes it carries a z component of
+  // floating-point noise (Math.cos(Math.PI / 2) is about 6.1e-17).
+  const COSINE_NOISE = -6.1e-17
+
+  function fitFor(sunDirection: Vector3): Bounds3 {
+    return shadowFitBounds({
+      casters: CASTERS,
+      ground: GROUND,
+      sunDirection,
+      maxRadius: NO_CAP,
+    })
+  }
+
+  function dueEastAt(altitude: number): Vector3 {
+    return {
+      x: Math.cos(altitude),
+      y: Math.sin(altitude),
+      z: COSINE_NOISE * Math.cos(altitude),
+    }
+  }
+
+  function expectSameBox(actual: Bounds3, expected: Bounds3): void {
+    const differences = numbersOf(actual).map((value, index) =>
+      Math.abs(value - (numbersOf(expected)[index] ?? Number.NaN)),
+    )
+    expect(Math.max(...differences)).toBeLessThan(ONE_MILLIMETRE)
+  }
+
+  it('gives the same box for a due-east sun just above the horizon and on it', () => {
+    expectSameBox(fitFor(dueEastAt(2e-6)), fitFor(dueEastAt(0)))
+  })
+
+  it('gives the same box for a due-east sun at two altitudes either side of the threshold', () => {
+    expectSameBox(fitFor(dueEastAt(2e-6)), fitFor(dueEastAt(1e-6)))
+  })
+
+  it('gives the same box just above and just below the height threshold', () => {
+    const above = fitFor({ x: 1, y: 1.000001e-6, z: 1e-7 })
+    const below = fitFor({ x: 1, y: 0.999999e-6, z: 1e-7 })
+    expectSameBox(above, below)
+  })
+
+  it('treats a sun below the horizon as a sun on the horizon', () => {
+    const onTheHorizon = fitFor({ x: 1, y: 0, z: 1e-7 })
+    const below = fitFor({ x: 1, y: -0.1, z: 1e-7 })
+    expectSameBox(below, onTheHorizon)
+  })
+
+  it.each([
+    ['on the horizon', ON_THE_HORIZON],
+    ['5 degrees up', FIVE_DEGREES_UP],
+    ['below the horizon', BELOW_THE_HORIZON],
+  ])('leaves the depth of the casters alone for a sun %s with no sideways component', (_n, sun) => {
+    const fit = fitFor(sun)
+    expect(fit.min.z).toBe(CASTERS.min.z)
+    expect(fit.max.z).toBe(CASTERS.max.z)
+  })
+})
