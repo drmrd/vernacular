@@ -7,6 +7,7 @@ import { findByEntityId } from '../testing'
 import { buildScene } from './build-scene'
 import {
   addGroundPlane,
+  groundExtent,
   isGroundPlane,
   GRADE_ELEVATION_MM,
   GROUND_PLANE_NAME,
@@ -18,6 +19,9 @@ const FOOTPRINT_HEIGHT_MM = 2400
 
 // A non-zero grade the ground plane must honor, distinct from the 0 datum.
 const SUPPLIED_GRADE_MM = 1500
+
+// The site margin the ground plane extends past the footprint on each horizontal side.
+const GROUND_MARGIN_MM = 5000
 
 const BASEMENT_ELEVATION_MM = -2400
 const FOUNDATION_WALL_HEIGHT_MM = 2700
@@ -73,6 +77,63 @@ describe('addGroundPlane', () => {
     // The flat plane sits on the supplied grade, not the 0 datum.
     expect(box.min.y).toBeCloseTo(SUPPLIED_GRADE_MM)
     expect(box.max.y).toBeCloseTo(SUPPLIED_GRADE_MM)
+  })
+})
+
+// A building that spans x in [0, 4000], y in [0, 2400], z in [0, 3000].
+const footprintBuilding = (): THREE.Mesh => {
+  const building = new THREE.Mesh(
+    new THREE.BoxGeometry(FOOTPRINT_WIDTH_MM, FOOTPRINT_HEIGHT_MM, FOOTPRINT_DEPTH_MM),
+  )
+  building.position.set(FOOTPRINT_WIDTH_MM / 2, FOOTPRINT_HEIGHT_MM / 2, FOOTPRINT_DEPTH_MM / 2)
+  return building
+}
+
+describe('groundExtent', () => {
+  it('reports the footprint plus the site margin on each side, flat at the supplied grade', () => {
+    const root = new THREE.Group()
+    root.add(footprintBuilding())
+    addGroundPlane(root, SUPPLIED_GRADE_MM)
+
+    const extent = groundExtent(root)
+
+    expect(extent).toEqual({
+      min: { x: -GROUND_MARGIN_MM, y: SUPPLIED_GRADE_MM, z: -GROUND_MARGIN_MM },
+      max: {
+        x: FOOTPRINT_WIDTH_MM + GROUND_MARGIN_MM,
+        y: SUPPLIED_GRADE_MM,
+        z: FOOTPRINT_DEPTH_MM + GROUND_MARGIN_MM,
+      },
+    })
+  })
+
+  it('finds a ground plane nested under a parent object, in world coordinates', () => {
+    const root = new THREE.Group()
+    const parent = new THREE.Group()
+    parent.add(footprintBuilding())
+    addGroundPlane(parent)
+    root.add(parent)
+    const shiftX = 1000
+    const shiftZ = 2000
+    parent.position.set(shiftX, 0, shiftZ)
+
+    const extent = groundExtent(root)
+
+    expect(extent).toEqual({
+      min: { x: shiftX - GROUND_MARGIN_MM, y: GRADE_ELEVATION_MM, z: shiftZ - GROUND_MARGIN_MM },
+      max: {
+        x: shiftX + FOOTPRINT_WIDTH_MM + GROUND_MARGIN_MM,
+        y: GRADE_ELEVATION_MM,
+        z: shiftZ + FOOTPRINT_DEPTH_MM + GROUND_MARGIN_MM,
+      },
+    })
+  })
+
+  it('returns null when the root holds no ground plane', () => {
+    const root = new THREE.Group()
+    root.add(footprintBuilding())
+
+    expect(groundExtent(root)).toBeNull()
   })
 })
 
