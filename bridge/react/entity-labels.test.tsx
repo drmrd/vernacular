@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 import type {
   FurnitureSceneNode,
   OpeningSceneNode,
@@ -7,10 +7,8 @@ import type {
   StairSceneNode,
   StairRunType,
 } from '../../core'
-import type { AssetSource, LibraryItem } from '../../storage'
-import { AssetRegistry } from '../../storage'
-import { entityLabels, useCatalogNames } from './entity-labels'
-import { AssetRegistryProvider } from './asset-registry-context'
+import * as entityLabelsModule from './entity-labels'
+import { entityLabels } from './entity-labels'
 import { SceneProxyOverlay } from './scene-proxy-overlay'
 
 afterEach(cleanup)
@@ -182,61 +180,6 @@ describe('furniture labels sourced from a catalog-names map', () => {
   })
 })
 
-// A minimal library item for a stubbed asset source: only the fields the catalog-names
-// lookup and its type require, keyed by the content hash callers resolve against.
-function libraryItem(contentHash: string, name: string): LibraryItem {
-  return {
-    reference: { scope: 'project', contentHash },
-    name,
-    kind: 'furniture',
-    categories: [],
-    eras: [],
-    footprint: { width: 600, depth: 600 },
-    height: 900,
-  }
-}
-
-// Reports the hook's return value on every render, so a test can observe it settle
-// from its initial empty map to the populated one once the registry's list() resolves.
-function CatalogNamesProbe({ onNames }: { onNames: (names: ReadonlyMap<string, string>) => void }) {
-  onNames(useCatalogNames())
-  return null
-}
-
-describe('resolving catalog display names from the asset registry', () => {
-  it('starts empty and settles to the registry catalog once list() resolves', async () => {
-    expect(useCatalogNames).toBeDefined()
-
-    const stubSource: AssetSource = {
-      id: 'stub-source',
-      read: async () => undefined,
-      list: async () => [
-        libraryItem('hash-armchair', 'Wingback Armchair'),
-        libraryItem('hash-settee', 'Camelback Settee'),
-      ],
-    }
-    const registry = new AssetRegistry([{ kind: 'project', source: stubSource }])
-
-    let captured: ReadonlyMap<string, string> | undefined
-    render(
-      <AssetRegistryProvider registry={registry}>
-        <CatalogNamesProbe
-          onNames={(names) => {
-            captured = names
-          }}
-        />
-      </AssetRegistryProvider>,
-    )
-
-    // The first synchronous render happens before list() has had a chance to resolve.
-    expect(captured?.size).toBe(0)
-
-    await waitFor(() => expect(captured?.size).toBe(2))
-    expect(captured?.get('hash-armchair')).toBe('Wingback Armchair')
-    expect(captured?.get('hash-settee')).toBe('Camelback Settee')
-  })
-})
-
 // A single stair run, with minimal geometry filled with fixed placeholder
 // values, since only `id` and `runType` drive labeling.
 function stair(id: string, runType: StairRunType): StairSceneNode {
@@ -282,5 +225,11 @@ describe('stair labels in the 3D view', () => {
     expect(screen.getByRole('option', { name: 'Straight Stair 1' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'L Turn Stair 1' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Straight Stair 2' })).toBeInTheDocument()
+  })
+})
+
+describe('the entity-labels module', () => {
+  it('exports pure label helpers only, leaving the catalog names hook to its own module', () => {
+    expect('useCatalogNames' in entityLabelsModule).toBe(false)
   })
 })
