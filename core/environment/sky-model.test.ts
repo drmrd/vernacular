@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { DAYLIGHT_CALIBRATION } from './daylight-calibration'
 import { skyLighting } from './sky-model'
 import { linearToSrgb, type LinearRgb } from '../color/oklab'
-import { relativeLuminance } from '../color/contrast'
+import { linearLuminance, relativeLuminance } from '../color/contrast'
 
 // The clear-sky model is an analytic fit, not a published reference table, so
 // these tests pin down relational facts only: how the sun and sky colors move
@@ -36,10 +37,19 @@ const LIGHT_CLOUD_LEVEL_RETENTION_MINIMUM = 0.9
 
 // Near-white means the brightest channel exceeds the dimmest by at most 15%.
 const NEAR_WHITE_CHANNEL_RATIO = 1.15
-// The saturated red channel of the horizon tint.
-const SATURATED_SUN_COLOR_CHANNEL = 1
-// The full sun level: the direct sun's strength for a clear sky with the sun at the zenith.
-const FULL_SUN_LEVEL = 1.6
+// The sun tint is scaled to luminance 1 at every height; the dimming is left to sunLevel.
+const SUN_COLOR_LUMINANCE = 1
+const SUN_COLOR_LUMINANCE_TOLERANCE = 1e-6
+// Heights from overhead to well below the horizon.
+const SUN_COLOR_SAMPLE_ALTITUDES = [
+  HIGH_SUN_ALTITUDE,
+  MODERATE_SUN_ALTITUDE,
+  0.2,
+  HORIZON_SUN_ALTITUDE,
+  ON_HORIZON_ALTITUDE,
+  JUST_BELOW_HORIZON_ALTITUDE,
+  BELOW_HORIZON_ALTITUDE,
+]
 // Fraction of the full sun level the design documents for the sun exactly on the horizon.
 const HORIZON_SUN_LEVEL_FRACTION = 0.35
 
@@ -64,27 +74,29 @@ function blueFraction(color: LinearRgb): number {
 }
 
 describe('skyLighting', () => {
-  it('renders the high clear-sky sun near white and brighter than the horizon sun', () => {
-    const highSun = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY).sunColor
-    const horizonSun = skyLighting(HORIZON_SUN_ALTITUDE, CLEAR_SKY).sunColor
+  it('renders the high clear-sky sun near white and delivering more light than the horizon sun', () => {
+    const high = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY)
+    const horizon = skyLighting(HORIZON_SUN_ALTITUDE, CLEAR_SKY)
+    const highSun = high.sunColor
     const brightestChannel = Math.max(highSun.r, highSun.g, highSun.b)
     const dimmestChannel = Math.min(highSun.r, highSun.g, highSun.b)
     expect(brightestChannel).toBeLessThanOrEqual(dimmestChannel * NEAR_WHITE_CHANNEL_RATIO)
-    expect(luminance(highSun)).toBeGreaterThan(luminance(horizonSun))
+    expect(high.sunLevel).toBeGreaterThan(horizon.sunLevel)
   })
 
-  it('warms and dims the direct sun at the horizon', () => {
-    const horizonSun = skyLighting(HORIZON_SUN_ALTITUDE, CLEAR_SKY).sunColor
-    const highSun = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY).sunColor
-    expect(horizonSun.r).toBeGreaterThan(horizonSun.b)
-    expect(summedLevel(horizonSun)).toBeLessThan(summedLevel(highSun))
+  it('warms the direct sun at the horizon and dims it through sunLevel', () => {
+    const horizon = skyLighting(HORIZON_SUN_ALTITUDE, CLEAR_SKY)
+    const high = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY)
+    expect(horizon.sunColor.r).toBeGreaterThan(horizon.sunColor.b)
+    expect(horizon.sunLevel).toBeLessThan(high.sunLevel)
   })
 
-  it('reaches the full sun level of 1.6 at the zenith and 0.35 of it exactly on the horizon', () => {
+  it('reaches the sun scale at the zenith and 0.35 of it exactly on the horizon', () => {
+    const { sunScale } = DAYLIGHT_CALIBRATION
     const zenith = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY)
     const horizon = skyLighting(ON_HORIZON_ALTITUDE, CLEAR_SKY)
-    expect(zenith.sunLevel).toBe(FULL_SUN_LEVEL)
-    expect(horizon.sunLevel).toBeCloseTo(HORIZON_SUN_LEVEL_FRACTION * FULL_SUN_LEVEL, 5)
+    expect(zenith.sunLevel).toBe(sunScale)
+    expect(horizon.sunLevel).toBeCloseTo(HORIZON_SUN_LEVEL_FRACTION * sunScale, 5)
   })
 
   it('extinguishes sunLevel once the sun passes the extinction limit below the horizon', () => {
@@ -105,9 +117,13 @@ describe('skyLighting', () => {
     }
   })
 
-  it('keeps sunColor at full strength on the horizon, leaving the dimming to sunLevel', () => {
-    const { sunColor } = skyLighting(ON_HORIZON_ALTITUDE, CLEAR_SKY)
-    expect(sunColor.r).toBeCloseTo(SATURATED_SUN_COLOR_CHANNEL, 5)
+  it('keeps the luminance of sunColor at 1 at every height, leaving the dimming to sunLevel', () => {
+    for (const altitude of SUN_COLOR_SAMPLE_ALTITUDES) {
+      const { sunColor } = skyLighting(altitude, CLEAR_SKY)
+      expect(Math.abs(linearLuminance(sunColor) - SUN_COLOR_LUMINANCE)).toBeLessThan(
+        SUN_COLOR_LUMINANCE_TOLERANCE,
+      )
+    }
   })
 
   it('tints the clear sky cooler than the direct sun', () => {

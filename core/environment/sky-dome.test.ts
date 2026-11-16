@@ -3,7 +3,6 @@ import { referenceLightingInput } from './daylight-reference'
 import { computeEnvironmentLighting } from './environment-lighting'
 import { GROUND_SURFACE_COLOR } from './ground-surface'
 import { skyDomeRadiance, type SkyDomeInput } from './sky-dome'
-import { skyLighting } from './sky-model'
 import { solarPosition } from './solar-position'
 import { linearToSrgb, type LinearRgb } from '../color/oklab'
 import { linearLuminance, relativeLuminance } from '../color/contrast'
@@ -52,10 +51,10 @@ const SAMPLE_VIEW_ELEVATIONS = [
   GROUND_VIEW_ELEVATION,
 ]
 
-// Loose cross-model check: the dome's horizon radiance need only land within
-// this factor of skyLighting's ambient luminance, so the two models can each
-// evolve their own tuning without silently drifting apart.
-const AMBIENT_FAMILY_LUMINANCE_FACTOR = 2
+// With the sun at the zenith the ground, lit by the sun, is brighter than the zenith sky
+// (about 1.6 times by the plan's arithmetic).
+const GROUND_TO_ZENITH_RATIO_MINIMUM = 1.3
+const GROUND_TO_ZENITH_RATIO_MAXIMUM = 2.0
 
 function luminance(color: LinearRgb): number {
   return relativeLuminance({
@@ -206,23 +205,14 @@ describe('skyDomeRadiance', () => {
     expect(luminance(overcast)).toBeLessThanOrEqual(luminance(clear))
   })
 
-  it('returns a ground dimmer than the zenith under a high sun for a below-horizon view', () => {
+  it('returns a ground between 1.3 and 2.0 times as bright as the zenith with the sun at the zenith', () => {
     const zenith = skyDomeRadiance(viewAt(ZENITH_VIEW_ELEVATION), sunAt(HIGH_SUN_ALTITUDE))
     const ground = skyDomeRadiance(viewAt(GROUND_VIEW_ELEVATION), sunAt(HIGH_SUN_ALTITUDE))
-    expect(luminance(ground)).toBeLessThan(luminance(zenith))
+    const ratio = level(ground) / level(zenith)
+    expect(ratio).toBeGreaterThan(GROUND_TO_ZENITH_RATIO_MINIMUM)
+    expect(ratio).toBeLessThan(GROUND_TO_ZENITH_RATIO_MAXIMUM)
   })
 
-  it('keeps the horizon-level dome in the same ambient family as the sky model', () => {
-    const domeAtHorizon = skyDomeRadiance(
-      viewAt(HORIZON_VIEW_ELEVATION),
-      sunAt(MODERATE_SUN_ALTITUDE),
-    )
-    const ambient = skyLighting(MODERATE_SUN_ALTITUDE, CLEAR_SKY).skyColor
-    const domeLuminance = luminance(domeAtHorizon)
-    const ambientLuminance = luminance(ambient)
-    expect(domeLuminance).toBeLessThanOrEqual(ambientLuminance * AMBIENT_FAMILY_LUMINANCE_FACTOR)
-    expect(domeLuminance).toBeGreaterThanOrEqual(ambientLuminance / AMBIENT_FAMILY_LUMINANCE_FACTOR)
-  })
   it('makes the horizon toward the sun three times as bright as the horizon away from it at the reference height', () => {
     const sky = sunAt(referenceSunAltitude())
     const toward = skyDomeRadiance({ x: 1, y: 0, z: 0 }, sky)

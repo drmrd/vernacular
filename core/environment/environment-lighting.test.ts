@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DAYLIGHT_CALIBRATION } from './daylight-calibration'
 import { computeEnvironmentLighting, type EnvironmentLightingInput } from './environment-lighting'
 import { solarPosition, type SolarAngles } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
@@ -21,12 +22,10 @@ import type { Vector3 } from '../scene/vector3'
 
 const COMPOSITION_DECIMAL_PLACES = 10
 
-// The sun level now includes the factor of 1.6 that the engine multiplied in before; 0.8267 is
-// the clear-sky fraction at this site and instant.
-const SUN_LEVEL_FULL_SUN_SCALE = 1.6
+// The sun level carries the calibrated sun scale; 0.8267 is the clear-sky fraction of it at this
+// site and instant, and the tolerance is 0.1 percent.
 const EQUINOX_NOON_CLEAR_SKY_FRACTION = 0.8267
-const EQUINOX_NOON_SUN_LEVEL = SUN_LEVEL_FULL_SUN_SCALE * EQUINOX_NOON_CLEAR_SKY_FRACTION
-const SUN_LEVEL_TOLERANCE = 0.001
+const SUN_LEVEL_RELATIVE_TOLERANCE = 0.001
 
 const LOCAL_NOON_MINUTES = 720
 const LOCAL_MIDNIGHT_MINUTES = 0
@@ -96,7 +95,7 @@ describe('computeEnvironmentLighting', () => {
     expect(midnight.sunLevel).toBe(0)
   })
 
-  it('reports a sun level of 1.6 times 0.8267 on a clear spring noon at 40 N, 75 W', () => {
+  it('reports a sun level of the sun scale times 0.8267 on a clear spring noon at 40 N, 75 W', () => {
     const { sunLevel } = computeEnvironmentLighting({
       latLong: { latitude: 40.0, longitude: -75.0 },
       northBearing: 0,
@@ -104,7 +103,8 @@ describe('computeEnvironmentLighting', () => {
       observedAt: { date: '2026-03-20', minutesSinceMidnight: LOCAL_NOON_MINUTES },
       cloudCover: 0,
     })
-    expect(Math.abs(sunLevel - EQUINOX_NOON_SUN_LEVEL)).toBeLessThan(SUN_LEVEL_TOLERANCE)
+    const expected = DAYLIGHT_CALIBRATION.sunScale * EQUINOX_NOON_CLEAR_SKY_FRACTION
+    expect(Math.abs(sunLevel - expected)).toBeLessThan(expected * SUN_LEVEL_RELATIVE_TOLERANCE)
   })
 
   it('leaves a frozen input untouched', () => {
