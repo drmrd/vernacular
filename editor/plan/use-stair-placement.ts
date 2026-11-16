@@ -49,7 +49,7 @@ export function useStairPlacement(deps: StairPlacementDeps): StairPlacement {
       }
       setPlacementRefusal(null)
       session.dispatch(command)
-      selectPlacedEntity(selection, STAIR_NODE_PREFIX, command.params.stair.id)
+      selectPlacedEntity(selection, `${STAIR_NODE_PREFIX}${command.params.stair.id}`)
     },
     [session, tool, viewport, activeFloorId, setPlacementRefusal, selection],
   )

@@ -2,7 +2,6 @@ import {
   createFurnitureInstance,
   createOpening,
   distance,
-  FURNITURE_NODE_PREFIX,
   OPENING_NODE_PREFIX,
   placeFurniture,
   placeOpening,
@@ -226,7 +225,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
     position: target.position,
   })
   ctx.session.dispatch(placeOpening(target.floorId, opening))
-  selectPlacedEntity(ctx.selection, OPENING_NODE_PREFIX, opening.id)
+  selectPlacedEntity(ctx.selection, `${OPENING_NODE_PREFIX}${opening.id}`)
   ctx.setAnnouncement(openingAnnouncement(ctx.placementType))
 }
 
@@ -262,7 +261,7 @@ function dropFurniture(ctx: FurnitureKeyContext): void {
     ...(ctx.armed.name !== '' ? { name: ctx.armed.name } : {}),
   })
   ctx.session.dispatch(placeFurniture(floorId, furniture))
-  selectPlacedEntity(ctx.selection, FURNITURE_NODE_PREFIX, furniture.id)
+  selectPlacedEntity(ctx.selection, furniture.id)
   ctx.setAnnouncement(`Placed ${ctx.armed.name}`)
 }
 

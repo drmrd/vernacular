@@ -72,7 +72,7 @@ export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacemen
       }
       setPlacementRefusal(null)
       session.dispatch(placeOpening(target.floorId, opening))
-      selectPlacedEntity(selection, OPENING_NODE_PREFIX, opening.id)
+      selectPlacedEntity(selection, `${OPENING_NODE_PREFIX}${opening.id}`)
     },
     [session, graph, tool, viewport, placementType, selection, setPlacementRefusal],
   )

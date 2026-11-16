@@ -1,10 +1,5 @@
 import { useCallback, type PointerEvent } from 'react'
-import {
-  createFurnitureInstance,
-  FURNITURE_NODE_PREFIX,
-  placeFurniture,
-  type Point,
-} from '../../core'
+import { createFurnitureInstance, placeFurniture, type Point } from '../../core'
 import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
@@ -58,7 +53,7 @@ export function usePlaceFurniture(deps: FurniturePlacementDeps): FurniturePlacem
         ...(armed.name !== '' ? { name: armed.name } : {}),
       })
       session.dispatch(placeFurniture(activeFloorId, furniture))
-      selectPlacedEntity(selection, FURNITURE_NODE_PREFIX, furniture.id)
+      selectPlacedEntity(selection, furniture.id)
     },
     [session, tool, viewport, activeFloorId, armed, rotation, selection],
   )
