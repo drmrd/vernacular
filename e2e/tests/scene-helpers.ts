@@ -123,6 +123,14 @@ export async function settledHarnessCanvas(page: Page, query: string): Promise<L
   return canvas
 }
 
+// Prints one numeric reading of a scene gate as `[reading] <label>: <value>`, so a run with the
+// list reporter shows the numbers a gate compares, not only whether it passed.
+export function logReading(label: string, value: string): void {
+  // The list reporter relays the test process's stdout; this is the one place a gate prints.
+  // eslint-disable-next-line no-console
+  console.log(`[reading] ${label}: ${value}`)
+}
+
 // The default side of the square sample patch, in screenshot pixels. Averaging a patch
 // rather than reading one pixel damps per-pixel WebGL nondeterminism.
 const SAMPLE_PATCH_PX = 24

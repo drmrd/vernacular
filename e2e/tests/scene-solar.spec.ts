@@ -171,4 +171,11 @@ test.describe('Solar environment visual baseline', () => {
       maxDiffPixelRatio: FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO,
     })
   })
+
+  test('renders the shadow on the lawn to its baseline', async ({ page }) => {
+    await captureShell(page, {
+      query: '&scene=shadow-on-lawn',
+      snapshot: 'scene-shadow-on-lawn-webgl.png',
+    })
+  })
 })

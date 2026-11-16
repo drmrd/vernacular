@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { sampleCanvasColor, settledHarnessCanvas } from './scene-helpers'
+import { logReading, sampleCanvasColor, settledHarnessCanvas } from './scene-helpers'
 
 // The ambient-occlusion gate (slice A1 of the rendering-realism gates spec, issue #522).
 // The committed pixel baseline for the ambient-occlusion state passes whether or not the
@@ -64,6 +64,7 @@ test.describe('Ambient-occlusion contrast gate', () => {
     const creaseL = srgbToOkLab(await sampleCanvasColor(page, canvas, AO_WALL_FLOOR_CREASE_PATCH)).L
     const openFloorL = srgbToOkLab(await sampleCanvasColor(page, canvas, AO_OPEN_FLOOR_PATCH)).L
     const contrast = openFloorL - creaseL
+    logReading('ambient-occlusion contrast', contrast.toFixed(4))
 
     expect(
       contrast,

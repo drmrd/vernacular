@@ -70,6 +70,18 @@ const WINDOW_LIGHT_CAMERA_POSE: CameraPose = {
   far: 10000,
 }
 
+// The shadow-on-lawn state looks from the north and above, back toward the shell, down at
+// the lawn north of the shell's north wall (plan y 3000 maps to world z -3000, so the lawn
+// begins past z -3060). The target stands on the ground 4.2 m north of the plan origin, where
+// the north wall's noon shadow falls (about 2.2 m north and 1.0 m west of the wall). The
+// frame keeps lit lawn past the shadow's tip, so a longer shadow still fits.
+const SHADOW_ON_LAWN_CAMERA_POSE: CameraPose = {
+  position: { x: 1500, y: 7000, z: -8500 },
+  target: { x: 1500, y: 0, z: -4200 },
+  near: 100,
+  far: 40000,
+}
+
 // The color-accuracy gate samples the shell floor under the color-check reference lighting,
 // but the shell is a closed box (floor, four walls, and a ceiling), so the exterior auto-frame
 // hides the floor. This interior camera stands just under the 2600 mm ceiling directly above
@@ -115,6 +127,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       site: CANONICAL_SITE,
       observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
+      scene: 'shell-south-window',
     },
   ],
   [
@@ -123,6 +136,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       site: CANONICAL_SITE,
       observedAt: { date: '2026-12-21', minutesSinceMidnight: MID_AFTERNOON_MINUTES },
       realistic: true,
+      scene: 'shell-south-window',
     },
   ],
   [
@@ -155,6 +169,17 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       observedAt: EQUINOX_NOON_OBSERVATION,
       realistic: true,
       cloudCover: FULLY_OVERCAST_CLOUD_COVER,
+      scene: 'shell-south-window',
+    },
+  ],
+  [
+    'shadow-on-lawn',
+    {
+      site: CANONICAL_SITE,
+      observedAt: EQUINOX_NOON_OBSERVATION,
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: SHADOW_ON_LAWN_CAMERA_POSE,
     },
   ],
   [

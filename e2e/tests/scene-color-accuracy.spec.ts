@@ -12,7 +12,7 @@ import {
   srgbToOkLab,
   perceptualDistance,
 } from '../../core'
-import { sampleCanvasColor } from './scene-helpers'
+import { logReading, sampleCanvasColor } from './scene-helpers'
 
 // The color-accuracy gate, the headline acceptance of the realistic-environmental-lighting
 // epic. It renders each known swatch on the shell floor under the color-check reference
@@ -59,6 +59,8 @@ test.describe('Decorating color-accuracy gate', () => {
       const sampledSrgb = await sampleCanvasColor(page, canvas, FLOOR_SAMPLE_CENTER)
       const sampled = colorFromOkLab(srgbToOkLab(sampledSrgb))
       const distance = perceptualDistance(sampled, swatch.color)
+      logReading(`${swatch.name} sampled`, sampled.srgbHex)
+      logReading(`${swatch.name} distance`, distance.toFixed(4))
 
       expect(
         withinColorTolerance(sampled, swatch.color),
@@ -78,6 +80,8 @@ test.describe('Tone-map-extreme color gate', () => {
       const sampledSrgb = await sampleCanvasColor(page, canvas, FLOOR_SAMPLE_CENTER)
       const sampled = colorFromOkLab(srgbToOkLab(sampledSrgb))
       const distance = perceptualDistance(sampled, swatch.reference)
+      logReading(`${swatch.name} sampled`, sampled.srgbHex)
+      logReading(`${swatch.name} distance`, distance.toFixed(4))
 
       expect(
         withinColorTolerance(sampled, swatch.reference, TONE_MAP_EXTREME_TOLERANCE),
@@ -94,6 +98,7 @@ test.describe('Tone-map-extreme color gate', () => {
         const sampledSrgb = await sampleCanvasColor(page, canvas, FLOOR_SAMPLE_CENTER)
         const sampled = colorFromOkLab(srgbToOkLab(sampledSrgb))
         const chroma = oklabChroma(sampled)
+        logReading(`${swatch.name} chroma`, chroma.toFixed(4))
 
         expect(
           withinNeutralChroma(sampled),

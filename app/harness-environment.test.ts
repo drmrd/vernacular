@@ -35,6 +35,7 @@ describe('harnessEnvironmentState', () => {
       site: canonicalSite,
       observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
       realistic: true,
+      scene: 'shell-south-window',
     })
   })
 
@@ -43,6 +44,7 @@ describe('harnessEnvironmentState', () => {
       site: canonicalSite,
       observedAt: { date: '2026-12-21', minutesSinceMidnight: 960 },
       realistic: true,
+      scene: 'shell-south-window',
     })
   })
 
@@ -80,6 +82,7 @@ describe('harnessEnvironmentState', () => {
       observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
       realistic: true,
       cloudCover: 1,
+      scene: 'shell-south-window',
     })
   })
 
@@ -102,14 +105,39 @@ describe('harnessEnvironmentState', () => {
     })
   })
 
-  it('resolves the existing named states without the new scene fixture field', () => {
-    const equinoxNoon = harnessEnvironmentState('equinox-noon')
-    const winterAfternoon = harnessEnvironmentState('winter-afternoon')
-
-    expect(equinoxNoon?.scene).toBeUndefined()
-    expect(winterAfternoon?.scene).toBeUndefined()
+  it('pairs the daylight states with the shell that has a south window', () => {
+    expect(harnessEnvironmentState('equinox-noon')?.scene).toBe('shell-south-window')
+    expect(harnessEnvironmentState('winter-afternoon')?.scene).toBe('shell-south-window')
+    expect(harnessEnvironmentState('overcast-noon')?.scene).toBe('shell-south-window')
   })
 
+  it('keeps the color and finish gates on the shell without a window and the color check on the bare scene', () => {
+    expect(harnessEnvironmentState('color-check')?.scene).toBeUndefined()
+    expect(harnessEnvironmentState('color-accuracy')?.scene).toBe('shell')
+    expect(harnessEnvironmentState('finish-contrast')?.scene).toBe('shell')
+    expect(harnessEnvironmentState('window-light')?.scene).toBe('shell')
+    expect(harnessEnvironmentState('ambient-occlusion')?.scene).toBe('furniture')
+  })
+
+  it('resolves shadow-on-lawn to equinox noon at the canonical site with the south-window shell and a camera on the lawn north of the north wall', () => {
+    const shadowOnLawn = harnessEnvironmentState('shadow-on-lawn')
+
+    expect(shadowOnLawn).toMatchObject({
+      site: canonicalSite,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+      realistic: true,
+      scene: 'shell-south-window',
+    })
+
+    const pose = shadowOnLawn?.cameraPose as NonNullable<typeof shadowOnLawn>['cameraPose']
+    expect(pose).toBeDefined()
+    expect(pose?.position.y).toBeGreaterThan(0)
+    expect(pose?.target.y).toBe(0)
+    expect(pose?.target.z).toBeLessThan(-3060)
+  })
+})
+
+describe('harnessEnvironmentState camera poses and fixtures', () => {
   it('resolves window-light to a summer-solstice morning at the canonical site with the shell fixture and an interior camera pose', () => {
     const windowLight = harnessEnvironmentState('window-light')
 
@@ -179,8 +207,16 @@ describe('resolveHarnessScene', () => {
     expect(resolveHarnessScene('ambient-occlusion')).toBe('furniture')
   })
 
+  it('resolves a daylight state to the shell that has a south window', () => {
+    expect(resolveHarnessScene('equinox-noon')).toBe('shell-south-window')
+  })
+
   it('resolves an environment state without a paired fixture to undefined', () => {
-    expect(resolveHarnessScene('equinox-noon')).toBeUndefined()
+    expect(resolveHarnessScene('color-check')).toBeUndefined()
+  })
+
+  it('does not accept the south-window fixture key as a query value', () => {
+    expect(resolveHarnessScene('shell-south-window')).toBeUndefined()
   })
 
   it('resolves an unknown scene name to undefined', () => {
