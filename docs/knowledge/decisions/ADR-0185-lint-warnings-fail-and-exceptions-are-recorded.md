@@ -83,7 +83,9 @@ import order inside each layer is left to the later stage specifications.
   engine testing entry (`engine/testing`) re-exports the few Three.js names that two `bridge/react`
   tests need, and lint fails a production file of `bridge/`, `editor/`, `app/`, or `src/`, or of
   `engine/` outside `engine/testing/`, that imports it. Inside `engine/`, a file named
-  `*-test-support.ts` counts as test support for this rule, so it may import the entry.
+  `*-test-support.ts` or `*-test-support.tsx` counts as test support for this rule, so it may
+  import the entry. A relative import such as `../testing` is checked inside `engine/` only. In
+  the other layers a sibling folder named `testing` is not the entry, so the rule leaves it alone.
 
 ## References
 
