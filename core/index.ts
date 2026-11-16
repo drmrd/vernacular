@@ -596,6 +596,18 @@ export { computeEnvironmentLighting } from './environment/environment-lighting'
 export { agxNeutralInverse, agxNeutralResponse } from './environment/tone-response'
 export type { MatteSurface } from './environment/light-model'
 export { predictedMatteRadiance, skyAmbientLevel } from './environment/light-model'
+export type { DaylightCalibration, LevelCardLight } from './environment/daylight-calibration'
+export {
+  DAYLIGHT_CALIBRATION,
+  LUX_PER_UNIT_IRRADIANCE,
+  NIGHT_DIFFUSE_LEVEL,
+  REFERENCE_HORIZONTAL_ILLUMINANCE_LUX,
+  WHITE_CODE_FLOOR,
+  diffuseLevelAt,
+  directToDiffuseRatio,
+  levelCardLight,
+  sunLevelAt,
+} from './environment/daylight-calibration'
 export type {
   LightingMode,
   EnvironmentState,
