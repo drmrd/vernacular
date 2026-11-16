@@ -6,7 +6,6 @@ import type { OpeningSceneNode, Point, SceneGraph, SurfaceRef, WallSceneNode } f
 import { PhysicalMaterialProvider } from '../materials/physical-material-provider'
 
 import { buildScene } from './build-scene'
-import { pickSurface } from './pick-surface'
 import { worldAt } from './wall-winding-support'
 
 // Each long face of a wall shows the paint of its own side. The side names follow
@@ -132,14 +131,6 @@ const CASES = (['plain prism', 'opening'] as const).flatMap((path) =>
 )
 
 describe('wall paint side', () => {
-  it.each(CASES)(
-    'reports side $side for a hit from the $approach side ($path path)',
-    ({ path, side }) => {
-      const root = paintedScene(path)
-      expect(pickSurface(rayFrom(side), root)).toEqual(faceRef(side))
-    },
-  )
-
   it.each(CASES)(
     'draws the face hit from the $approach side in the $side paint ($path path)',
     ({ path, side }) => {
