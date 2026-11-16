@@ -8,6 +8,7 @@ import {
   deriveUnderlayNodesForFloor,
   deriveWallNode,
 } from './scene-graph'
+import { resolveGradeElevation } from '../model/site'
 import type {
   Floor,
   FurnitureInstance,
@@ -154,5 +155,6 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
     dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
     stairs: stairNodesFor(project),
     furniture: project.floors.flatMap(furnitureNodesFor),
+    gradeElevation: resolveGradeElevation(project.site),
   })
 }
