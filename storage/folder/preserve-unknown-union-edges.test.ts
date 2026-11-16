@@ -79,15 +79,14 @@ function ownKeyValue(value: unknown, key: string): unknown {
 describe('graftWithTable a union value whose tag names no variant', () => {
   const previous = { type: 'round', radius: 1, side: 2, label: 'L', [UNKNOWN_KEY]: 'kept' }
 
-  it('keeps the keys of every variant dropped and restores the unknown key', () => {
-    const next = { type: 'triangle' }
-    expect(graftFigure(previous, next)).toEqual({ type: 'triangle', [UNKNOWN_KEY]: 'kept' })
+  it('replaces the previous value in full when the tag differs and names no variant', () => {
+    expect(graftFigure(previous, { type: 'triangle' })).toEqual({ type: 'triangle' })
   })
 
   it.each([[42], [null], [true], [['round']]])(
-    'treats the tag value %j that is not a string the same way',
+    'replaces the previous value in full when the tag value %j is not a string',
     (tag) => {
-      expect(graftFigure(previous, { type: tag })).toEqual({ type: tag, [UNKNOWN_KEY]: 'kept' })
+      expect(graftFigure(previous, { type: tag })).toEqual({ type: tag })
     },
   )
 })
@@ -162,10 +161,10 @@ describe('graftWithTable a union value key named like an inherited property', ()
 })
 
 describe('graftWithTable a union value whose variant changes or whose tag key is removed', () => {
-  it('restores an unknown key of the previous value but not the old variant keys', () => {
+  it('does not carry over an unknown key of the previous value when the variant changes', () => {
     const previous = { type: 'round', radius: 1, label: 'L', [UNKNOWN_KEY]: 'kept' }
-    const grafted = graftFigure(previous, { type: 'square', side: 2 })
-    expect(grafted).toEqual({ type: 'square', side: 2, [UNKNOWN_KEY]: 'kept' })
+    const next = { type: 'square', side: 2 }
+    expect(graftFigure(previous, next)).toEqual(next)
   })
 
   it('keeps the tag key removed from the next value', () => {
@@ -173,9 +172,9 @@ describe('graftWithTable a union value whose variant changes or whose tag key is
     expect(grafted).toEqual({ side: 4 })
   })
 
-  it('keeps the tag key removed and still restores an unknown key', () => {
+  it('keeps the tag key removed and does not restore an unknown key either', () => {
     const previous = { type: 'square', side: 3, [UNKNOWN_KEY]: 'kept' }
-    expect(graftFigure(previous, { side: 4 })).toEqual({ side: 4, [UNKNOWN_KEY]: 'kept' })
+    expect(graftFigure(previous, { side: 4 })).toEqual({ side: 4 })
   })
 })
 
@@ -184,13 +183,19 @@ describe('graftWithTable two variants that define one key with different kinds',
     return graftWithTable(previous, next, { table: TABLE, at: MIXED })
   }
 
-  it('grafts the key by the kind of the next variant, so a dropped nested key stays dropped', () => {
-    const previous = { kind: 'plain', payload: { size: 1, note: 'old', [UNKNOWN_KEY]: 'k' } }
+  it('grafts the key by the kind of the shared variant, so a dropped nested key stays dropped', () => {
+    const previous = { kind: 'structured', payload: { size: 1, note: 'old', [UNKNOWN_KEY]: 'k' } }
     const next = { kind: 'structured', payload: { size: 2 } }
     expect(graftMixed(previous, next)).toEqual({
       kind: 'structured',
       payload: { size: 2, [UNKNOWN_KEY]: 'k' },
     })
+  })
+
+  it('replaces the value in full when the variant changes, so no nested key is carried over', () => {
+    const previous = { kind: 'plain', payload: { size: 1, note: 'old', [UNKNOWN_KEY]: 'k' } }
+    const next = { kind: 'structured', payload: { size: 2 } }
+    expect(graftMixed(previous, next)).toEqual(next)
   })
 
   it('takes the key from the next value as it is when the next variant holds a plain value', () => {
