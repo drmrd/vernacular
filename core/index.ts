@@ -601,6 +601,8 @@ export {
 } from './environment/daylight-reference'
 export type { MatteSurface } from './environment/light-model'
 export { predictedMatteRadiance, skyAmbientLevel } from './environment/light-model'
+export type { DaylightSample, DaylightSite } from './environment/daylight-site'
+export { daylightSampleOf, daylightSiteFor } from './environment/daylight-site'
 export type { DaylightCalibration, LevelCardLight } from './environment/daylight-calibration'
 export {
   DAYLIGHT_CALIBRATION,
