@@ -10,10 +10,13 @@ related:
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0079-three-dimensional-lighting-legibility,
     decisions/ADR-0161-sky-specular-environment-map,
+    decisions/ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point,
   ]
 sourceFiles:
   [
     core/environment/sky-dome.ts,
+    core/environment/daylight-calibration.ts,
+    core/environment/ground-surface.ts,
     core/environment/spherical-harmonics.ts,
     core/environment/environment-lighting.ts,
     core/environment/color-check.ts,
@@ -23,7 +26,7 @@ sourceFiles:
     engine/lighting/solar-lighting-provider.ts,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-11-16
 ---
 
 # ADR-0148: The visible sky and its spherical-harmonics light probe
@@ -175,3 +178,47 @@ The fork this ADR settled is therefore better read as settled in both directions
 reversed: harmonics remained the right way to compute and carry the sky's ambient, and PMREM
 became the right way to present it to the materials once there were materials with a specular
 response to present it to.
+
+## Amendment 2026-11-16: the dome brightens toward the sun, its ground is computed, and the visible sky is calibrated
+
+The calibration change of
+[[ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point]] changes the dome and
+the visible sky this record describes. The dome in `core/` is still the one authority for light.
+
+The dome is no longer a function of view elevation alone. `skyDomeRadiance(view, sky)` takes a unit
+view vector and a `SkyDomeInput`, `{ sunDirection, cloudCover }`, in place of the old
+`(viewElevation, sunAltitude, cloudCover)`. `skyDomeSampler(sky)` computes what depends only on the
+sky once, for callers that sample many directions. Above the horizon the dome still blends its
+horizon tint into its zenith tint on the view height, but both end tints now come from the daylight
+calibration, divided by its white point and scaled so the dome's light on a level card is the
+calibrated diffuse level. Under a clear sky the dome brightens toward the sun's azimuth by the
+factor `1 + SUNWARD_GAIN * (1 - cloudCover) * (view.x * sun.x + view.z * sun.z)`, with a gain of
+0.70695 set so that at the reference instant the horizon toward the sun is three times as bright as
+the horizon away from it. That ratio is an estimate, as ADR-0192 says.
+
+The ground bounce is computed. Below the horizon the dome returns the lawn color
+`GROUND_SURFACE_COLOR` from `core/environment/ground-surface.ts` times the light a level card
+receives from the sun and the upper dome, in place of the fixed brown `(0.12, 0.1, 0.08)`. The
+engine's ground plane paints the same hex, `#5f8a4f`.
+
+`projectDomeToSphericalHarmonics(sky)` takes the same `SkyDomeInput` in place of a sun altitude and
+a cloud cover. Because the dome now varies with azimuth, the projection samples the dome in every
+direction of its grid instead of once per ring. The twenty-seven coefficients and
+`SH_COEFFICIENT_COUNT` are still the cross-layer contract. The dependency rule above still holds:
+`spherical-harmonics.ts` does not import `color-check.ts`.
+
+"A night scene never goes black" now rests on the calibration's night level. The diffuse level never
+falls below `NIGHT_DIFFUSE_LEVEL`, the level this dome had on a level card with the sun below the
+horizon, and that floor binds until the sun is 9.67 degrees up.
+
+The visible sky is calibrated. Its scattering constants (turbidity, Rayleigh, and the two Mie
+values) are pinned by name at the addon's defaults, as its cloud constants already were. Its color
+node is multiplied by a three/tsl uniform holding `SKY_MESH_GAIN` (0.0636) divided by the white
+point, so the mesh sits in the same white-balanced space as the dome. The three/tsl module loads
+through a cached dynamic import beside the sky mesh module, so the lazy boundary of this record still
+holds. The gain was measured near the horizon, where the mesh matches the dome within 0.12 percent.
+At the zenith the mesh reads about 0.071 of the dome, and ADR-0192 records that residual and the
+check that the multiply works on both render backends.
+
+`EnvironmentLighting.sunIntensity`, named above, is now `sunLevel`, the sun's actual level rather
+than a fraction of it.
