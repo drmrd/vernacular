@@ -55,10 +55,8 @@ function eastWindowRoom({
   offset = 0,
 }: RoomOptions = {}): DaylightRoom {
   const shifted = (point: Point): Point => ({ x: point.x + offset, y: point.y })
-  const [low, high] = [
-    { x: 0, y: 0 },
-    { x: ROOM_WIDTH, y: ROOM_DEPTH },
-  ].map(shifted)
+  const low = shifted({ x: 0, y: 0 })
+  const high = shifted({ x: ROOM_WIDTH, y: ROOM_DEPTH })
   return {
     outline: [low, { x: high.x, y: low.y }, high, { x: low.x, y: high.y }],
     ceilingHeight: CEILING_HEIGHT,
