@@ -46,19 +46,23 @@ const AO_OPEN_FLOOR_PATCH = patchCenteredOn(226, 134)
 // Re-sited on 2026-11-15 (issue #491): once the wall faces were wound outward, the window head
 // reveal this gate sampled in the exterior ambient-occlusion state turned out to be the
 // inside-out head polygon seen through the wall, and the new exterior faces take direct sun.
-// Darwin Metal readings of the window-light frame, as openFloorL - creaseL:
+// Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
+// 320x240 frame) under the calibrated daylight, with both probes repeated. Darwin Metal readings
+// of the window-light frame, as openFloorL - creaseL:
 //
-//   shipped radius, AO_RADIUS_METERS 0.25: +0.0302
-//   wrong-radius probe, AO_RADIUS_METERS 2.5: +0.0008
-//   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0012
+//   shipped radius, AO_RADIUS_METERS 0.25: +0.0284
+//   wrong-radius probe, AO_RADIUS_METERS 2.5: -0.0005
+//   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0029
+//   Linux SwiftShader readings: not yet recorded.
 //
 // Captures of this frame are byte-deterministic (five identical captures of each build, zero
 // noise band), so the threshold sits at the midpoint of the shipped reading and the nearer
-// defect reading, (0.0302 + 0.0008) / 2: the margin is 0.0147 to either side, and a 2 px shift
-// of both patches in any of eight directions keeps at least 0.0205 of contrast on the shipped
-// radius. The SwiftShader lane rasterizes the same frame differently, so a reading that lands
-// near this number there is a reason to re-derive the pair, not to nudge the constant.
-const AO_CONTRAST_MINIMUM = 0.0155
+// defect reading, (0.0284 - 0.0005) / 2 = 0.01395, rounded to 0.0140: the margin is 0.0144
+// below the shipped reading and 0.0145 above the defect reading, and a 2 px shift of both
+// patches in any of eight directions keeps at least 0.0191 of contrast on the shipped radius.
+// The SwiftShader lane rasterizes the same frame differently, so a reading that lands near
+// this number there is a reason to re-derive the pair, not to nudge the constant.
+const AO_CONTRAST_MINIMUM = 0.014
 
 test.describe('Ambient-occlusion contrast gate', () => {
   test('the wall-floor crease renders darker than the open floor beside it', async ({ page }) => {
