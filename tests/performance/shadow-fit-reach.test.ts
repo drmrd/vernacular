@@ -20,6 +20,13 @@ import { createReferenceProject } from './reference-project'
 /** The sun that casts the longest shadow of the winter afternoon, from the scene toward the sun. */
 const WINTER_AFTERNOON_SUN: Vector3 = { x: -0.798, y: 0.0911, z: 0.5957 }
 const NO_CAP = 1e12
+const DOUBLED_FOOTPRINT = 2
+/**
+ * A footprint factor that leaves the casters under the cap radius and the uncapped fit over it.
+ * At 1.2 the casters measure about 14718 mm, the cap radius is 15872 mm, and the uncapped fit
+ * measures about 17883 mm.
+ */
+const FOOTPRINT_BETWEEN_CAP_AND_UNCAPPED = 1.2
 
 const HOUSE_FLOOR_COUNT = 6
 const HOUSE_WIDTH_MM = 60000
@@ -67,18 +74,23 @@ function numbersOf({ min, max }: Bounds3): number[] {
   return [min.x, min.y, min.z, max.x, max.y, max.z]
 }
 
-/** The same box with its width and depth doubled, the near corner kept. */
-function doubleFootprint(bounds: Bounds3): Bounds3 {
+/** The same box with its width and depth multiplied by the factor, the near corner kept. */
+function scaleFootprint(bounds: Bounds3, factor: number): Bounds3 {
   const width = bounds.max.x - bounds.min.x
   const depth = bounds.max.z - bounds.min.z
   return {
     min: { ...bounds.min },
-    max: { ...bounds.max, x: bounds.max.x + width, z: bounds.max.z + depth },
+    max: {
+      ...bounds.max,
+      x: bounds.max.x + width * (factor - 1),
+      z: bounds.max.z + depth * (factor - 1),
+    },
   }
 }
 
-function doubledFraming({ casters, ground }: Framing): Framing {
-  const grownCasters = doubleFootprint(casters)
+/** The framing with the casters grown by the factor and the lawn grown by the same amount. */
+function scaledFraming({ casters, ground }: Framing, factor: number): Framing {
+  const grownCasters = scaleFootprint(casters, factor)
   const growthX = grownCasters.max.x - casters.max.x
   const growthZ = grownCasters.max.z - casters.max.z
   const grownGround: Bounds3 = {
@@ -148,12 +160,26 @@ describe('the cap on the size of a shadow texel', () => {
     expect(fit(framing, capRadius())).toEqual(fit(framing, NO_CAP))
   })
 
-  it('shrinks the shadow of a building twice as wide and twice as deep, never the building', () => {
-    const framing = doubledFraming(measuredReferenceFraming())
+  it('falls back to the casters alone when the building by itself exceeds the cap', () => {
+    const framing = scaledFraming(measuredReferenceFraming(), DOUBLED_FOOTPRINT)
     const capped = fit(framing, capRadius())
 
-    expect(boundsRadius(capped)).toBeLessThan(boundsRadius(fit(framing, NO_CAP)))
+    expect(boundsRadius(framing.casters)).toBeGreaterThan(capRadius())
+    expect(capped).toEqual(framing.casters)
+    expect(numbersOf(capped).every(Number.isFinite)).toBe(true)
+  })
+
+  it('shrinks the shadow linearly to the cap radius, never the building, when only the shadow exceeds it', () => {
+    const framing = scaledFraming(measuredReferenceFraming(), FOOTPRINT_BETWEEN_CAP_AND_UNCAPPED)
+    const uncapped = fit(framing, NO_CAP)
+    const capped = fit(framing, capRadius())
+
+    expect(boundsRadius(framing.casters)).toBeLessThan(capRadius())
+    expect(capRadius()).toBeLessThan(boundsRadius(uncapped))
+    expect(boundsRadius(capped)).toBeCloseTo(capRadius(), 0)
     expect(contains(capped, framing.casters)).toBe(true)
+    expect(contains(uncapped, capped)).toBe(true)
+    expect(numbersOf(capped).every(Number.isFinite)).toBe(true)
   })
 
   it('keeps every floor of a six-floor house inside a finite fit no larger than it must be', () => {
