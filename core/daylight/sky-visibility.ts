@@ -5,6 +5,7 @@ import type { DaylightAperture, DaylightField, DaylightRoom } from './daylight-f
 import {
   createDaylightField,
   daylightFieldCellIndex,
+  OPEN_SKY_VISIBILITY,
   SKY_VISIBILITY_CHANNEL,
 } from './daylight-field'
 import type { WallRectangle } from './form-factor'
@@ -29,21 +30,32 @@ export const UNPAINTED_SURFACE_REFLECTANCE = 0.66
 export interface DaylightFieldSolver {
   /** The field for this sky; each cell holds the share of open-sky light it receives. */
   field(sky: SkyLuminance): DaylightField
-  /** Light that enters the room through its apertures, in plan square millimetres of open sky. */
+  /**
+   * Light that enters the room through its apertures, in plan square millimetres of open sky.
+   * Returns 0 until the room-average term is built.
+   */
   enteringFlux(room: number, sky: SkyLuminance): number
-  /** Share of open-sky light that reaches every point of the room after bouncing between surfaces. */
+  /**
+   * Share of open-sky light that reaches every point of the room after bouncing between surfaces.
+   * Returns 0 until the room-average term is built.
+   */
   interreflection(room: number, sky: SkyLuminance): number
   /** How many times the solver has measured the window-to-cell form factors. */
   readonly geometryPasses: number
 }
 
-/** Elevation of the mean sky direction that a vertical opening faces, in radians. */
+/**
+ * Elevation of the mean sky direction that a vertical opening faces, in radians. The
+ * cosine-weighted mean direction of the quarter of the sky in front of a vertical opening rises at
+ * an angle whose tangent is (2/3) / (pi/3) = 2/pi.
+ */
 const SKY_FACING_ELEVATION = Math.atan(2 / Math.PI)
 
 /** How far past the span the outward side test probes, in plan millimetres. */
 const OUTWARD_PROBE_MM = 1
 
-const OPEN_SKY_VISIBILITY = 1
+/** A cell center sits half a cell past its lower edge. */
+const CELL_CENTER_OFFSET = 0.5
 
 /** One cell of a room, with the form factor from its center to each sky aperture of the room. */
 interface CellView {
@@ -115,9 +127,6 @@ function skyOpenings(room: DaylightRoom): SkyOpening[] {
     .map((aperture) => ({ aperture, outwardNormal: outwardNormal(aperture, room.outline) }))
 }
 
-/** A cell center sits half a cell past its lower edge. */
-const CELL_CENTER_OFFSET = 0.5
-
 function cellCenter(grid: DaylightField, column: number, row: number): Point {
   return {
     x: grid.origin.x + (column + CELL_CENTER_OFFSET) * grid.cellSize,
@@ -137,7 +146,10 @@ function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry {
   for (let row = 0; row < grid.rows; row++) {
     for (let column = 0; column < grid.columns; column++) {
       const center = cellCenter(grid, column, row)
+      // A cell belongs to the first room whose outline contains its center; a center on a wall
+      // line counts as inside.
       const roomIndex = rooms.findIndex((room) => pointInPolygon(center, room.outline))
+      if (rooms[roomIndex]?.openToSky === true) continue
       const roomOpenings = openings[roomIndex] ?? []
       measured[roomIndex]?.cells.push({
         visibilityIndex: daylightFieldCellIndex(grid, column, row) + SKY_VISIBILITY_CHANNEL,
@@ -154,7 +166,11 @@ function fillField(
   sky: SkyLuminance,
   interreflection: (room: number) => number,
 ): DaylightField {
-  const field = { ...geometry.grid, data: geometry.grid.data.slice() }
+  const field = {
+    ...geometry.grid,
+    origin: { ...geometry.grid.origin },
+    data: geometry.grid.data.slice(),
+  }
   for (const [roomIndex, room] of geometry.rooms.entries()) {
     if (room.openToSky) continue
     const weights = room.skyDirections.map((direction) => sky(direction))
@@ -175,7 +191,8 @@ function fillField(
  * apertures of the form factor from the cell center at the work plane to the opening, times the
  * sky's radiance toward the opening's facing, plus the room-average term, capped at 1. The form
  * factors depend on geometry alone, so the solver measures them on the first call and only
- * re-weights them for later skies.
+ * re-weights them for later skies. The rooms are read one time, on the first call of `field`; a
+ * caller that changes the rooms builds a new solver.
  */
 export function createDaylightFieldSolver(rooms: readonly DaylightRoom[]): DaylightFieldSolver {
   let geometry: SolverGeometry | null = null

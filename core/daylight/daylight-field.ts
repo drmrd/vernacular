@@ -10,7 +10,8 @@ export const DAYLIGHT_FIELD_VALUES_PER_CELL = 4
 /** Offset of the sky visibility within the values of a cell; offsets 0 to 2 hold the bounce color. */
 export const SKY_VISIBILITY_CHANNEL = 3
 
-const OPEN_SKY_VISIBILITY = 1
+/** Sky visibility of a cell that sees the whole open sky. */
+export const OPEN_SKY_VISIBILITY = 1
 
 /** An opening in a room's outline that lets light in from the sky or from a neighbor room. */
 export interface DaylightAperture {
