@@ -32,34 +32,39 @@ const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon&paint=daylight-white'
 // Both states share the default camera, so the gate reads the shared south and east wall squares
 // of the default view (scene-helpers.ts), the same squares as the sunlit wall gate.
 
-// Each bound below was measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL
+// Each reading below was taken on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL
 // 2 harness, 320x240 frame), on this build and on the build before the daylight calibration.
-// Five captures of each build came back identical to four decimals, so every noise band is 0.
-// The earlier east wall reading came from the 16 px square at x 186..201, y 143..158, which
-// held one color (92, 99, 113), so the 12 px square inside it reads the same. The Linux
-// SwiftShader lane (run 43820235938, 2026-11-16) read the same four values on this build as the
-// Mac: chroma 0.0042, lightness 0.9112, shaded east wall b -0.0094, low-sun south wall b 0.0257.
-// The before-calibration readings were not taken on Linux.
+// The bounds on noon white and on the low sun were derived again on this build, after the
+// ground half of the sky dome turned a neutral grey, the sun's level took the air-path fade, and
+// the visible sky's gain came to follow the sun's height. The lower bound on the shade keeps its
+// earlier derivation. Five captures of each build came back identical to four decimals, so every
+// noise band is 0. The earlier east wall reading came from the 16 px square at x 186..201,
+// y 143..158, which held one color (92, 99, 113), so the 12 px square inside it reads the same.
+// Linux: not yet recorded for this derivation. The before-calibration readings were not taken
+// on Linux.
 
 /**
  * The most chroma the white south wall may show in the noon sun.
  *
  *   before the calibration: 0.0072
- *   this build: 0.0042
+ *   this build: 0.0013
  *
- * The midpoint is 0.0057, which clears each reading by 0.0015.
+ * The midpoint is 0.00425, rounded to 0.0043, which clears this build by 0.0030 and the earlier
+ * build by 0.0029. Before the grey ground of the dome this build read 0.0042 and the bound was
+ * 0.0057.
  */
-const NOON_WHITE_MAX_CHROMA = 0.0057
+const NOON_WHITE_MAX_CHROMA = 0.0043
 
 /**
  * The least OKLab lightness the white south wall may read in the noon sun.
  *
  *   before the calibration: 0.7170
- *   this build: 0.9112
+ *   this build: 0.9125
  *
- * The midpoint is 0.8141, which clears each reading by 0.0971.
+ * The midpoint is 0.81475, rounded to 0.8148, which clears this build by 0.0977 and the earlier
+ * build by 0.0978.
  */
-const NOON_WHITE_MIN_LIGHTNESS = 0.8141
+const NOON_WHITE_MIN_LIGHTNESS = 0.8148
 
 /**
  * The least OKLab b the shaded white east wall may read on the winter afternoon. The shade is
@@ -80,11 +85,13 @@ const SHADE_MIN_B = -0.0167
  * The least OKLab b the white south wall may read in the low winter sun.
  *
  *   before the calibration: 0.0015
- *   this build: 0.0257
+ *   this build: 0.0139
  *
- * The midpoint is 0.0136, which clears each reading by 0.0121.
+ * The midpoint is 0.0077, which clears each reading by 0.0062. The sun 5 degrees up is much
+ * weaker under the air-path fade, so the wall reads less warm than the 0.0257 it read before,
+ * when the bound was 0.0136, but still warmer than the earlier build.
  */
-const LOW_SUN_MIN_B = 0.0136
+const LOW_SUN_MIN_B = 0.0077
 
 test.describe('Daylight white gate', () => {
   test('the white south wall reads white in the noon sun', async ({ page }) => {

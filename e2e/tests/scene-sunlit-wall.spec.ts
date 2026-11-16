@@ -31,31 +31,33 @@ const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon'
  * The smallest OKLab lightness gap the sunlit south face may read above the shaded east face.
  *
  * Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
- * 320x240 frame) under the calibrated daylight, from the light model in core, not by eye. The
- * two faces no longer receive the same sky: the sky brightens toward the sun and the lawn lights
- * the walls from below, so each face is predicted on its own. The model is
- * predictedMatteRadiance: the wall color (#d8d4cc, linear 0.687, 0.658, 0.604) times the sun
- * color times the sun level times max(0, n.l) over pi, plus the sky's light on that normal from
- * its spherical harmonics, with the sun from the pinned instant (south n.l 0.596, east n.l
- * -0.798). The luminance of each prediction goes through agxNeutralResponse and is read as a
- * grey. Model: south L 0.8007, east L 0.4032, gap 0.3975. Readings of these regions:
+ * 320x240 frame), after the ground half of the sky dome turned a neutral grey, the sun's level
+ * took the air-path fade, and the visible sky's gain came to follow the sun's height. It comes
+ * from the light model in core, not by eye. The two faces do not receive the same sky: the sky
+ * brightens toward the sun and the ground lights the walls from below, so each face is predicted
+ * on its own. The model is predictedMatteRadiance: the wall color (#d8d4cc, linear 0.687, 0.658,
+ * 0.604) times the sun color times the sun level times max(0, n.l) over pi, plus the sky's light
+ * on that normal from its spherical harmonics, with the sun from the pinned instant (5.23
+ * degrees up, level 1.344; south n.l 0.596, east n.l -0.798). The luminance of each prediction
+ * goes through agxNeutralResponse and is read as a grey. Model: south L 0.6495, east L 0.3803,
+ * gap 0.2692. Readings of these regions:
  *
- *   calibrated daylight (this build): south 0.8009, east 0.4095, gap 0.3914
- *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight: south 0.8010, east
- *   0.4095, gap 0.3915, within 0.0001 of the Mac
+ *   calibrated daylight (this build): south 0.6526, east 0.3929, gap 0.2597
+ *   Linux: not yet recorded for this derivation
  *
  * Five captures came back identical to four decimals, so the noise band is 0. The threshold is
- * half the model gap, 0.3975 / 2 = 0.19875, rounded to 0.199. The east face reads a little above
- * the model, so the measured gap is 0.0061 under it. The margin is 0.1924 below the reading.
+ * half the model gap, 0.2692 / 2 = 0.1346, rounded to 0.135. The east face reads a little above
+ * the model, so the measured gap is 0.0095 under it. The margin is 0.1247 below the reading.
  * The defect this gate was written for, a wall that shades its own sunlit face, made the two
  * walls read the same, a gap of zero, so half the model gap is the midpoint between the model
  * and that defect. Under today's sky, which brightens toward the sun, the same defect would leave
- * the south face its sky light alone: the model puts that face at L 0.4813, a gap of 0.0781 over
- * the east face, 0.1209 under the threshold. The east region was the 16 px square at x 186..201,
- * y 143..158 until this derivation; it held one color, so the 12 px square inside it reads the
- * same.
+ * the south face its sky light alone: the model puts that face at L 0.4672, a gap of 0.0869 over
+ * the east face, 0.0481 under the threshold. Before these three changes the model gap was 0.3975,
+ * the reading 0.3914, and the threshold 0.199; the weaker low sun narrows the gap. The east
+ * region was the 16 px square at x 186..201, y 143..158 until the earlier derivation; it held one
+ * color, so the 12 px square inside it reads the same.
  */
-const SUNLIT_WALL_MIN_GAP = 0.199
+const SUNLIT_WALL_MIN_GAP = 0.135
 
 test.describe('Sunlit wall gate', () => {
   test('the sunlit south wall renders lighter than the shaded east wall', async ({ page }) => {

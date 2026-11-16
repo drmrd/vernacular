@@ -41,29 +41,31 @@ const SKY = squareRegion(12, 12, 24)
 /**
  * The most OKLab b the clear sky may read: it must lean blue.
  *
- * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
- * frame). Readings of this region:
+ * Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
+ * 320x240 frame), after the ground half of the sky dome turned a neutral grey, the sun's level
+ * took the air-path fade, and the visible sky's gain came to follow the sun's height. Readings
+ * of this region:
  *
  *   before the daylight calibration, a near-white sky: -0.0029
- *   calibrated daylight (this build): -0.0105
- *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight: -0.0105, the same as
- *   the Mac
+ *   calibrated daylight (this build): -0.0104
+ *   Linux: not yet recorded for this derivation
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
- * bound is the midpoint, -0.0067, which clears each reading by 0.0038.
+ * bound is the midpoint, -0.00665, rounded to -0.0067, which clears this build by 0.0037 and the
+ * earlier build by 0.0038.
  */
 const CLEAR_SKY_MAX_B = -0.0067
 
 /**
  * The code the clear sky's largest channel must stay under, so no channel is near clipping.
  * This is a relation with no midpoint. The largest channel read 243.00 before the daylight
- * calibration and 156.65 on this build.
+ * calibration and 157.20 on this build.
  */
 const CLEAR_SKY_CHANNEL_CEILING = 250
 
 // The clear sky must also read darker in OKLab lightness than the sunlit white wall of the same
 // frame, another relation with no midpoint. Before the daylight calibration the sky read 0.9574
-// against a wall of 0.7170; on this build it reads 0.6711 against 0.9112.
+// against a wall of 0.7170; on this build it reads 0.6730 against 0.9125.
 
 test.describe('Sky gate', () => {
   test('the clear sky reads blue, unclipped, and darker than the sunlit white wall', async ({

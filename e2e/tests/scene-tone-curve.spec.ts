@@ -57,23 +57,25 @@ const WHITE_PAINT_REFLECTANCE = srgbToLinear(WHITE_PAINT_CODE / CODE_RANGE)
  * The largest difference, in display codes, between the measured and the predicted code of the
  * sunlit south face.
  *
- * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
- * frame). The predicted code is 224.90. Readings of this region, measured minus predicted:
+ * Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
+ * 320x240 frame), after the ground half of the sky dome turned a neutral grey, the sun's level
+ * took the air-path fade, and the visible sky's gain came to follow the sun's height. The
+ * predicted code is 224.90. Readings of this region, measured minus predicted:
  *
- *   calibrated daylight under AgX (this build): code 224.50, difference -0.40
- *   probe, daylight mapped to the Neutral operator instead of AgX: code 248.90, difference
- *   +24.00
- *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight under AgX: code 224.50,
- *   difference -0.40, the same as the Mac
+ *   calibrated daylight under AgX (this build): code 224.86, difference -0.05
+ *   probe, daylight mapped to the Neutral operator instead of AgX: code 248.29, difference
+ *   +23.38
+ *   Linux: not yet recorded for this derivation
  *
  * Five captures of each build came back byte-identical, so the noise band is 0. The tolerance
- * is the midpoint of the two differences' sizes, (0.40 + 24.00) / 2 = 12.20, which clears each
- * reading by 11.80 codes.
+ * is the midpoint of the two differences' sizes, (0.05 + 23.38) / 2 = 11.715, rounded to 11.7,
+ * which clears this build by 11.65 codes and the probe by 11.68. Before these three changes
+ * the two differences were -0.40 and +24.00 and the tolerance was 12.2.
  */
-const TONE_CURVE_TOLERANCE_CODES = 12.2
+const TONE_CURVE_TOLERANCE_CODES = 11.7
 
 // The lowest code the sunlit white face may read: the white code floor of the calibration less
-// the tone curve tolerance, 225 - 12.2 = 212.8. The face read 224.50 on this build.
+// the tone curve tolerance, 225 - 11.7 = 213.3. The face read 224.86 on this build.
 const SUNLIT_WHITE_MINIMUM_CODE = WHITE_CODE_FLOOR - TONE_CURVE_TOLERANCE_CODES
 
 // The code the light model and the tone curve predict for the sunlit south face. The

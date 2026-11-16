@@ -31,23 +31,25 @@ const SUNLIT_LAWN = squareRegion(236, 109, 24)
 /**
  * The smallest ratio of the sunlit lawn's linear level to the shadowed lawn's.
  *
- * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
- * frame). Readings of these regions, sunlit over shadowed:
+ * Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
+ * 320x240 frame), after the ground half of the sky dome turned a neutral grey, the sun's level
+ * took the air-path fade, and the visible sky's gain came to follow the sun's height. Readings
+ * of these regions, sunlit over shadowed:
  *
  *   before the daylight calibration: 0.1334 / 0.0764 = 1.7455
- *   calibrated daylight (this build): 0.6097 / 0.1021 = 5.9702
- *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight: 0.6100 / 0.1022 =
- *   5.9703, within 0.0001 of the Mac
+ *   calibrated daylight (this build): 0.5978 / 0.1008 = 5.9321
+ *   Linux: not yet recorded for this derivation
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
- * minimum is the midpoint of the two ratios, 3.8579, rounded to 3.858, which clears each
- * reading by 2.112.
+ * minimum is the midpoint of the two ratios, 3.8388, rounded to 3.839, which clears this build
+ * by 2.093 and the earlier build by 2.094. Before these three changes this build read 5.9702 and
+ * the minimum was 3.858.
  *
  * The gate has no upper bound. Its probe zeroes the sky's ambient light, and the shadowed lawn
  * then renders black (code 0, linear level 0), so the ratio has no finite value and no midpoint
  * to set a bound at.
  */
-const SUN_TO_SHADE_MIN_RATIO = 3.858
+const SUN_TO_SHADE_MIN_RATIO = 3.839
 
 // The linear light level behind a sampled color: its luminance, encoded as a display code,
 // taken back through the inverse of the tone curve.
