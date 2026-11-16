@@ -3,8 +3,14 @@
 // intentionally-namespaced literal keys.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import { KNOWN_KEYS, KNOWN_ROOT_TYPE, type KnownKeyTable, type KnownValue } from '../../core'
-import { graftUnknown, graftWithTable } from './preserve-unknown'
+import {
+  KNOWN_KEYS,
+  KNOWN_ROOT_TYPE,
+  createEmptyProject,
+  type KnownKeyTable,
+  type KnownValue,
+} from '../../core'
+import { graftUnknown, graftWithTable, preserveUnknown } from './preserve-unknown'
 
 describe('graftUnknown object union', () => {
   it('re-grafts a top-level key the next document dropped, keeping next for shared keys', () => {
@@ -92,6 +98,11 @@ const optionalKeys = typeNames.flatMap((typeName) =>
 )
 
 describe('graftWithTable known optional keys', () => {
+  it('generates its cases from a non-empty table of known keys', () => {
+    expect(typeNames.length).toBeGreaterThan(0)
+    expect(optionalKeys.length).toBeGreaterThan(0)
+  })
+
   it.each(optionalKeys)(
     'leaves the optional key of %s cleared when the next object lacks %s',
     (typeName, key) => {
@@ -161,5 +172,78 @@ describe('graftWithTable array items without an id', () => {
     const next = { points: [{ x: 1 }] }
     const grafted = graftWithTable(previous, next, { table, at: objectAt('Shape') })
     expect(grafted).toEqual({ points: [{ x: 1 }] })
+  })
+})
+
+const INHERITED_NAMES: ReadonlyArray<[string, unknown]> = [
+  ['constructor', { depth: { value: 1 } }],
+  ['toString', { depth: { value: 1 } }],
+  ['hasOwnProperty', 1],
+  ['valueOf', 1],
+]
+
+describe('graftWithTable unknown keys named like inherited properties', () => {
+  it.each(INHERITED_NAMES)('keeps an unknown root key named %s', (name, value) => {
+    const previous = { meta: { name: 'old' }, [name]: value }
+    const next = { meta: { name: 'new' } }
+    const grafted = graftWithTable(previous, next, {
+      table: KNOWN_KEYS,
+      at: objectAt(KNOWN_ROOT_TYPE),
+    })
+    expect(grafted).toEqual({ meta: { name: 'new' }, [name]: value })
+  })
+
+  it.each(INHERITED_NAMES)('keeps an unknown key named %s on a floor', (name, value) => {
+    const previous = { floors: [{ id: 'f1', name: 'Ground', [name]: value }] }
+    const next = { floors: [{ id: 'f1', name: 'Ground' }] }
+    const grafted = graftWithTable(previous, next, {
+      table: KNOWN_KEYS,
+      at: objectAt(KNOWN_ROOT_TYPE),
+    })
+    expect(grafted).toEqual({ floors: [{ id: 'f1', name: 'Ground', [name]: value }] })
+  })
+})
+
+const PROTO_VALUE = { fromANewerBuild: true }
+const PREVIOUS_WITH_PROTO_KEY = '{"__proto__":{"fromANewerBuild":true},"meta":{"name":"old"}}'
+
+function expectProtoKeyKept(result: unknown): void {
+  const grafted = result as Record<string, unknown>
+  expect(Object.hasOwn(grafted, '__proto__')).toBe(true)
+  expect(Object.getOwnPropertyDescriptor(grafted, '__proto__')?.value).toEqual(PROTO_VALUE)
+  expect(Object.getPrototypeOf(grafted)).toBe(Object.prototype)
+  expect(JSON.stringify(grafted)).toContain('"__proto__":{"fromANewerBuild":true}')
+}
+
+describe('graftWithTable unknown key named __proto__', () => {
+  it('keeps the own key without changing the prototype of the result', () => {
+    const previous: unknown = JSON.parse(PREVIOUS_WITH_PROTO_KEY)
+    const next = { meta: { name: 'new' } }
+    const grafted = graftWithTable(previous, next, {
+      table: KNOWN_KEYS,
+      at: objectAt(KNOWN_ROOT_TYPE),
+    })
+    expectProtoKeyKept(grafted)
+  })
+})
+
+describe('preserveUnknown at the root', () => {
+  const project = createEmptyProject({
+    name: 'P',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.1.0',
+  })
+
+  it('keeps an unknown root key named toString', () => {
+    const previous = { ...JSON.parse(JSON.stringify(project)), toString: { depth: { value: 1 } } }
+    const saved = preserveUnknown(previous, project) as unknown as Record<string, unknown>
+    expect(Object.hasOwn(saved, 'toString')).toBe(true)
+    expect(saved['toString']).toEqual({ depth: { value: 1 } })
+  })
+
+  it('keeps an unknown root key named __proto__ as an own key', () => {
+    const previous: unknown = JSON.parse(PREVIOUS_WITH_PROTO_KEY)
+    expectProtoKeyKept(preserveUnknown(previous, project))
   })
 })
