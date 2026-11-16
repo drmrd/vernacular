@@ -19,3 +19,7 @@ schema/*/vernacular.schema.json
 # an integrity checksum tied to the installed msw version, so Prettier must not
 # reformat it. Regenerate it with `msw init public/ --save` on an msw bump.
 public/mockServiceWorker.js
+
+# Generated table of known keys (ADR-0184). The schema-drift guard compares it
+# byte-for-byte with the generator's output, so Prettier must not reformat it.
+core/model/known-keys.json

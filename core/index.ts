@@ -715,3 +715,6 @@ export type {
   ExtensionSchemaRegistry,
   LoadValidationGateOptions,
 } from './format'
+export { KNOWN_KEYS, KNOWN_ROOT_TYPE, typesWithExtensions } from './model/known-keys'
+export type { KnownKeyTable, KnownType, KnownValue } from './model/known-keys'
+export { registerAllProjectCommands } from './commands/handlers/register-all-project-commands'

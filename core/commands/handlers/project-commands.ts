@@ -281,22 +281,16 @@ interface FloorOverrides {
 // resolves to undefined. The overrides are optional under exactOptionalPropertyTypes,
 // so an absent value must be left off the object rather than written as undefined.
 function rebuildFloor(floor: Floor, { periodOverride, styleOverride }: FloorOverrides): Floor {
-  const next: Floor = {
-    id: floor.id,
-    name: floor.name,
-    elevation: floor.elevation,
-    defaultCeilingHeight: floor.defaultCeilingHeight,
-    walls: floor.walls,
-    underlays: floor.underlays,
-    openings: floor.openings,
-    dimensions: floor.dimensions,
-    furniture: floor.furniture,
-  }
+  const next: Floor = { ...floor }
   if (periodOverride !== undefined) {
     next.periodOverride = periodOverride
+  } else {
+    delete next.periodOverride
   }
   if (styleOverride !== undefined) {
     next.styleOverride = styleOverride
+  } else {
+    delete next.styleOverride
   }
   return next
 }
@@ -326,16 +320,11 @@ const setFloorStyleHandler: CommandHandler<Project, SetFloorStyleParams> = {
 // exactOptionalPropertyTypes, so an absent value must be left off the object
 // rather than written as undefined; a cleared style therefore drops the key.
 function rebuildMetaStyle(meta: ProjectMeta, style: StyleTag | undefined): ProjectMeta {
-  const next: ProjectMeta = {
-    name: meta.name,
-    units: meta.units,
-    period: meta.period,
-    schemaVersion: meta.schemaVersion,
-    appVersion: meta.appVersion,
-    registryVersions: meta.registryVersions,
-  }
+  const next: ProjectMeta = { ...meta }
   if (style !== undefined) {
     next.style = style
+  } else {
+    delete next.style
   }
   return next
 }
