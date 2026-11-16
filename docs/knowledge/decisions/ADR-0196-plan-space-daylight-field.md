@@ -204,9 +204,10 @@ change, and this record does not settle them.
 - The display rule: how dark a room is shown. The field is linear, and a real room gets a few
   percent of the outdoor light, which renders close to black at exposure 1.
 - The color check's bypass of the field, so that the color gates do not move.
-- The engine texture and the lighting hook that reads it. Both wait for the lighting hook spike,
-  which shows whether a lookup of a plan-space texture works inside the scene pass on both
-  backends.
+- The engine texture and the lighting hook that reads it. The lighting hook spike is recorded at
+  the end of this record and passed on both backends. It settles that a lookup of a plan-space
+  texture works inside the scene pass. The engine texture itself stays undecided, because the spike
+  used a throwaway texture.
 - The bounce channels. They wait for the scene stage of the refactor round, because floor bounce
   adds light and the occlusion context cannot add light.
 
@@ -220,8 +221,8 @@ current, the amendments go into the records named here.
 
 ## Consequences
 
-- Window-lit rooms have a tested source of numbers before any engine work starts. If the lighting
-  hook spike fails, the engine side waits and the core math is kept.
+- Window-lit rooms have a tested source of numbers before any engine work starts. The lighting
+  hook spike passed, so the engine side does not have to wait, and the core math is kept.
 - The math has no dependency on the renderer, so both backends agree by construction.
 - The field's error is bounded but not small. For a room lit by its own windows, the model reads up
   to a factor of 2 bright against the figure with lossless glass. Light borrowed through a doorway
@@ -252,8 +253,8 @@ of a variant gave the same reading to four decimals as every other load of it, s
 0.0000. WebGL 2 means the scene harness on its forced WebGL 2 backend, on the Mac's GPU. WebGPU
 means two things: the same harness with the forced backend switched off (the renderer reported
 `isWebGPUBackend`), and the editor's live view with a drawn room, realistic lighting, a site at 40 N
-75 W, and 2026-03-20 12:00. Both WebGPU runs were on the development Mac. The linux
-software-rendering lane was not run.
+75 W, and 2026-03-20 12:00. Both WebGPU runs were on the development Mac. The Linux
+software-rendering run was not made.
 
 | Question                                        | WebGL 2 | WebGPU |
 | ----------------------------------------------- | ------- | ------ |
@@ -286,13 +287,17 @@ const visibility = texture(field, uv, float(0)).a
 scenePass.contextNode = builtinAOContext(occlusion.r.mul(visibility))
 ```
 
+The code blocks in this section are sketches of the spike's code. `CELL` is the 100 mm cell size,
+and `COLUMNS` and `ROWS` are the size of the field in cells.
+
 ### Question 2: the plain level
 
-Two variants ran with no occlusion node in the graph, and both gave the same darkening as
-question 1. The first kept a pipeline scene pass whose context held the field alone. The second
-dropped the pass and set the renderer's own context node before a plain `renderer.render`.
-Window-light north wall: 0.5547 to 0.3400 for both, on both backends. Live view floor: 0.6490 to
-0.4770 for both. The equinox-noon exterior regions did not move.
+The plain level is the quality level that has no ambient occlusion pass, so a draw there has no
+occlusion node in the graph. Two variants ran there, and both gave the same darkening as question 1.
+The first kept a pipeline scene pass whose context held the field alone. The second dropped the
+pass and set the renderer's own context node before a plain `renderer.render`. Window-light north
+wall: 0.5547 to 0.3400 for both, on both backends. Live view floor: 0.6490 to 0.4770 for both. The
+equinox-noon exterior regions did not move.
 
 The scene pass does not have to stay at the plain level. `Renderer.contextNode` is a public context
 that every node material reads when it builds, and a `PassNode` only merges its own context over it
