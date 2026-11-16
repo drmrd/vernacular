@@ -1,4 +1,5 @@
 import type { SelectionStore } from '../../bridge'
+import { OPENING_NODE_PREFIX, STAIR_NODE_PREFIX } from '../../core'
 
 /**
  * Selection is bridge-owned and outside undo history (ADR-0020); selecting a
@@ -12,4 +13,14 @@ import type { SelectionStore } from '../../bridge'
  */
 export function selectPlacedEntity(selection: SelectionStore, selectionId: string): void {
   selection.select(selectionId)
+}
+
+/** Select a just-placed opening under its prefixed scene node id. */
+export function selectPlacedOpening(selection: SelectionStore, openingId: string): void {
+  selectPlacedEntity(selection, `${OPENING_NODE_PREFIX}${openingId}`)
+}
+
+/** Select a just-placed stair under its prefixed scene node id. */
+export function selectPlacedStair(selection: SelectionStore, stairId: string): void {
+  selectPlacedEntity(selection, `${STAIR_NODE_PREFIX}${stairId}`)
 }
