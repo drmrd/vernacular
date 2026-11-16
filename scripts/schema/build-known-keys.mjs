@@ -261,7 +261,9 @@ export function buildKnownKeys(schema) {
         table[typeName] = describeType(schema, variant, typeName)
       }
     }
-    // Any other definition is a scalar or an array alias; the table reads it where it is referenced.
+    // Any other definition is a scalar alias, which the table reads as a leaf where it is
+    // referenced, or a shape the table cannot express, which `describeReference` refuses when
+    // something refers to it.
   }
   return table
 }

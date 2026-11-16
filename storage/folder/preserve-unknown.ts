@@ -148,6 +148,14 @@ function graftMapWithTable(previous: unknown, next: unknown, position: TablePosi
   return result
 }
 
+function sharesTag(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+  tag: string,
+): boolean {
+  return Object.hasOwn(previous, tag) && Object.hasOwn(next, tag) && previous[tag] === next[tag]
+}
+
 // At a tagged union, only a value whose tag is the same on both sides is grafted, as an object of
 // that variant's type. A changed or missing tag means a new value, so nothing of the old one belongs
 // to it; the same tag means an edit, so data this build does not know must survive it.
@@ -160,7 +168,7 @@ function graftUnionWithTable(
     return next
   }
   const { tag } = union
-  if (!Object.hasOwn(previous, tag) || !Object.hasOwn(next, tag) || previous[tag] !== next[tag]) {
+  if (!sharesTag(previous, next, tag)) {
     return next
   }
   const variant = variantTypeOf(union, next[tag])
