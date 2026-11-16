@@ -1,3 +1,4 @@
+import { clampToUnitInterval } from '../color/linear-rgb'
 import { linearToSrgb } from '../color/oklab'
 
 /*
@@ -47,15 +48,13 @@ function contrast(position: number): number {
   return AGX_CONTRAST_COEFFICIENTS.reduce((total, coefficient) => total * position + coefficient, 0)
 }
 
-function clampUnit(value: number): number {
-  return Math.min(1, Math.max(0, value))
-}
-
 /** The display-encoded value, 0 to 1, of a neutral linear input at exposure 1. */
 export function agxNeutralResponse(linear: number): number {
   const stops = Math.log2(Math.max(linear, AGX_LINEAR_FLOOR))
-  const position = clampUnit((stops - AGX_MIN_EV) / (AGX_MAX_EV - AGX_MIN_EV))
-  const outputLinear = clampUnit(Math.pow(Math.max(0, contrast(position)), AGX_OUTPUT_POWER))
+  const position = clampToUnitInterval((stops - AGX_MIN_EV) / (AGX_MAX_EV - AGX_MIN_EV))
+  const outputLinear = clampToUnitInterval(
+    Math.pow(Math.max(0, contrast(position)), AGX_OUTPUT_POWER),
+  )
   return linearToSrgb(outputLinear)
 }
 

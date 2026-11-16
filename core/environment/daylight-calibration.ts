@@ -1,5 +1,12 @@
 import { linearLuminance } from '../color/contrast'
-import { clampToUnitInterval, greyOf, mixLinearRgb, scaleLinearRgb } from '../color/linear-rgb'
+import {
+  addLinearRgb,
+  clampToUnitInterval,
+  divideLinearRgb,
+  greyOf,
+  mixLinearRgb,
+  scaleLinearRgb,
+} from '../color/linear-rgb'
 import type { LinearRgb } from '../color/oklab'
 import { referenceLightingInput } from './daylight-reference'
 import { solarPosition } from './solar-position'
@@ -23,7 +30,10 @@ export const REFERENCE_HORIZONTAL_ILLUMINANCE_LUX = 80_000
 
 /** Fraction of full dome brightness the sky keeps through the night. */
 const NIGHT_DOME_SCALE = 0.35
-/** The luminance of the cosine-weighted mean of the dome's tints, rounded. */
+/**
+ * The mean luminance of the dome before calibration, frozen as a number. It does not follow a
+ * later change of the raw tints.
+ */
 const DOME_MEAN_LUMINANCE = 0.4445
 /**
  * The level the diffuse light on the level card never falls below. It holds the sky's level
@@ -90,14 +100,6 @@ export const SUNWARD_GAIN =
 
 /** Fixed-point steps of the white point solve; it settles to double precision well before this. */
 const WHITE_POINT_ITERATION_COUNT = 50
-
-function addLinearRgb(first: LinearRgb, second: LinearRgb): LinearRgb {
-  return { r: first.r + second.r, g: first.g + second.g, b: first.b + second.b }
-}
-
-function divideLinearRgb(color: LinearRgb, divisor: LinearRgb): LinearRgb {
-  return { r: color.r / divisor.r, g: color.g / divisor.g, b: color.b / divisor.b }
-}
 
 function withLuminance(color: LinearRgb, luminance: number): LinearRgb {
   return scaleLinearRgb(color, luminance / linearLuminance(color))

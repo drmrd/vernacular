@@ -18,6 +18,14 @@ export function scaleLinearRgb(color: LinearRgb, factor: number): LinearRgb {
   return { r: color.r * factor, g: color.g * factor, b: color.b * factor }
 }
 
+export function addLinearRgb(first: LinearRgb, second: LinearRgb): LinearRgb {
+  return { r: first.r + second.r, g: first.g + second.g, b: first.b + second.b }
+}
+
+export function divideLinearRgb(color: LinearRgb, divisor: LinearRgb): LinearRgb {
+  return { r: color.r / divisor.r, g: color.g / divisor.g, b: color.b / divisor.b }
+}
+
 /** The grey a color flattens toward under cloud: its own channel mean. */
 export function greyOf(color: LinearRgb): LinearRgb {
   const mean = (color.r + color.g + color.b) / RGB_CHANNEL_COUNT

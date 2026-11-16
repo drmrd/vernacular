@@ -40,17 +40,12 @@ const CLOUD_DENSITY = 0.4
 /** Pinned defensively: matches the r184 addon's own cloudElevation default so an addon version
  *  bump cannot silently drift scene baselines. */
 const CLOUD_ELEVATION = 0.5
-/** Pinned defensively: matches the r184 addon's own turbidity default so an addon version
- *  bump cannot silently drift scene baselines. */
+/* The four scattering constants are pinned defensively: each matches the r184 addon's own default
+ * (turbidity, rayleigh, mieCoefficient, mieDirectionalG) so an addon version bump cannot silently
+ * drift scene baselines. */
 const TURBIDITY = 2
-/** Pinned defensively: matches the r184 addon's own rayleigh default so an addon version
- *  bump cannot silently drift scene baselines. */
 const RAYLEIGH = 1
-/** Pinned defensively: matches the r184 addon's own mieCoefficient default so an addon version
- *  bump cannot silently drift scene baselines. */
 const MIE_COEFFICIENT = 0.005
-/** Pinned defensively: matches the r184 addon's own mieDirectionalG default so an addon version
- *  bump cannot silently drift scene baselines. */
 const MIE_DIRECTIONAL_G = 0.8
 
 /**
@@ -142,9 +137,10 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
   sky.cloudCoverage.value = lighting.cloudCover
 }
 
-/** Multiplies the sky's color by the sky mesh gain uniform and records that gain on the rig, so a later
- *  change can scale the visible sky by writing the rig's vector. The rig holds a gain only when the
- *  sky reads it: without an addon color node nothing is recorded. */
+/** Multiplies the sky's color by the sky mesh gain uniform and records that gain on the rig. The
+ *  rig keeps the vector as a live handle on the uniform, so a writer of the vector changes the
+ *  visible sky with no shader rebuild. The rig holds a gain only when the sky reads it: without
+ *  an addon color node nothing is recorded. */
 function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
   const gain = skyMeshGain()
   // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",

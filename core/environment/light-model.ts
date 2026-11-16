@@ -1,7 +1,7 @@
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 import type { EnvironmentLighting } from './environment-lighting'
-import { SPHERICAL_HARMONIC_BASIS } from './spherical-harmonics'
+import { RGB_CHANNEL_COUNT, SPHERICAL_HARMONIC_BASIS, coefficientAt } from './spherical-harmonics'
 
 /** Cosine-lobe convolution factors per band, over pi: pi, 2 pi / 3, and pi / 4, each divided by pi. */
 const BAND_0_FACTOR = 1
@@ -22,13 +22,6 @@ const BAND_FACTORS: readonly number[] = [
   BAND_2_FACTOR,
   BAND_2_FACTOR,
 ]
-
-/** RGB channels carried per spherical-harmonic coefficient. */
-const RGB_CHANNEL_COUNT = 3
-
-function coefficientAt(coefficients: readonly number[], index: number): number {
-  return coefficients[index] ?? 0
-}
 
 /** The irradiance over pi that the nine coefficients of each channel deliver to a surface. */
 export function skyAmbientLevel(skyAmbient: readonly number[], normal: Vector3): LinearRgb {

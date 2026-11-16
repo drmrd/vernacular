@@ -594,6 +594,11 @@ export type {
 } from './environment/environment-lighting'
 export { computeEnvironmentLighting } from './environment/environment-lighting'
 export { agxNeutralInverse, agxNeutralResponse } from './environment/tone-response'
+export {
+  DAYLIGHT_REFERENCE_INSTANT,
+  DAYLIGHT_REFERENCE_PLACE,
+  referenceLightingInput,
+} from './environment/daylight-reference'
 export type { MatteSurface } from './environment/light-model'
 export { predictedMatteRadiance, skyAmbientLevel } from './environment/light-model'
 export type { DaylightCalibration, LevelCardLight } from './environment/daylight-calibration'

@@ -82,7 +82,8 @@ function floorPaintStore(hex: string): Record<string, SurfaceTreatment> {
 }
 
 // A neutral white paint with a reflectance of about 0.85 (the linear value of `#ededed`,
-// within 0.005), which the daylight gates read. It covers the exterior (right) face of all four walls and no floor.
+// within 0.005), which the daylight gates read. It covers the exterior (right) face of all
+// four walls and no floor.
 const DAYLIGHT_WHITE_HEX = '#ededed'
 const DAYLIGHT_WHITE_EXTERIOR_SIDE = 'right'
 

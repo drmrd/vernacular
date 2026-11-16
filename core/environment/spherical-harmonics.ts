@@ -19,7 +19,7 @@ const SH_BAND_2_SECTORAL = 0.546274
 const ZONAL_Z_SQUARED_MULTIPLIER = 3
 
 /** RGB channels carried per spherical-harmonic coefficient. */
-const RGB_CHANNEL_COUNT = 3
+export const RGB_CHANNEL_COUNT = 3
 
 type SphericalHarmonicBasis = (direction: Vector3) => number
 
@@ -51,7 +51,7 @@ const SAMPLE_MIDPOINT = 0.5
 /** One full revolution in radians. */
 const FULL_TURN_RAD = Math.PI * 2
 
-function coefficientAt(coefficients: readonly number[], index: number): number {
+export function coefficientAt(coefficients: readonly number[], index: number): number {
   return coefficients[index] ?? 0
 }
 

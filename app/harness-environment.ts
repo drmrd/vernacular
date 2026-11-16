@@ -1,5 +1,6 @@
 import type { HarnessScene } from '../bridge'
 import type { CameraPose, ObservationInstant, Site } from '../core'
+import { referenceLightingInput } from '../core'
 
 /**
  * A named canonical environment for the scene harness: a fixed site, a fixed
@@ -82,16 +83,17 @@ const SHADOW_ON_LAWN_CAMERA_POSE: CameraPose = {
   far: 40000,
 }
 
-// The reference instant of the daylight calibration: the sample place (40 N, 1.86 E, plan-up
-// as true north, UTC) and the sample instant (the March equinox at 10:30 UTC). It sets no
-// cloud cover, so the default of 0 applies and the sky is clear. The camera looks from the south-west, so the frame shows the sunlit south wall (the
-// front, by its door) and the west wall in shade.
+// The reference instant of the daylight calibration: the place and instant that core states
+// for the calibration (read here from its reference lighting input, so they are written once),
+// with plan-up as true north and UTC. It sets no cloud cover, so the default of 0 applies and
+// the sky is clear. The camera looks from the south-west, so the frame shows the sunlit south
+// wall (the front, by its door) and the west wall in shade.
+const DAYLIGHT_REFERENCE_LIGHTING = referenceLightingInput()
 const DAYLIGHT_REFERENCE_SITE: Site = {
-  latLong: { latitude: 40, longitude: 1.86 },
-  northBearing: 0,
+  latLong: DAYLIGHT_REFERENCE_LIGHTING.latLong,
+  northBearing: DAYLIGHT_REFERENCE_LIGHTING.northBearing,
   timezone: 'UTC',
 }
-const DAYLIGHT_REFERENCE_MINUTES = 630
 const DAYLIGHT_REFERENCE_CAMERA_POSE: CameraPose = {
   position: { x: -4500, y: 3200, z: 5000 },
   target: { x: 2000, y: 1300, z: -1500 },
@@ -203,7 +205,7 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     'daylight-reference',
     {
       site: DAYLIGHT_REFERENCE_SITE,
-      observedAt: { date: '2026-03-20', minutesSinceMidnight: DAYLIGHT_REFERENCE_MINUTES },
+      observedAt: DAYLIGHT_REFERENCE_LIGHTING.observedAt,
       realistic: true,
       scene: 'shell-south-window',
       cameraPose: DAYLIGHT_REFERENCE_CAMERA_POSE,
