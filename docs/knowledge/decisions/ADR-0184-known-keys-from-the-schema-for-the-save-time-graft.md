@@ -31,8 +31,8 @@ updated: 2026-11-15
 Current. The owner approved it on 2026-11-14 with sections 5.1 and 5.4 of
 `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. It replaces the rule by which the
 preservation overlay of ADR-0051 decides what to restore. The duty to preserve unknown data is
-unchanged. The code changes with #678 and #669. Until then the overlay restores every key the
-document lacks.
+unchanged. The code changed with #678 and #669. The overlay now restores a key only when the table
+does not know it at that place.
 
 ## Context
 
@@ -61,7 +61,11 @@ no graft and saved the loss.
 - A map whose values the schema types is a collection the model owns, and a missing entry was
   deleted. A map whose values the schema leaves open, such as `extensions`, is opaque. No list of
   collection names is written by hand.
-- A key that any variant of a tagged union defines counts as known.
+- A tagged union value is grafted only when the previous file and the document carry the same
+  tag, and then as an object of that one variant. A changed or missing tag means a new value, so
+  the next value stands as it is. The first form of this rule counted a key of any variant as
+  known. A review showed that it dropped a field from a newer build when another variant had a key
+  of the same name, and the owner replaced it on 2026-11-15.
 - The previous file is migrated in memory before the graft.
 - Command handlers copy by spread. A test runs every registered command against a document that
   carries `extensions` and an unknown key on every object, and both must survive.
@@ -70,7 +74,10 @@ no graft and saved the loss.
 
 - A cleared optional field stays cleared, and a key that a migration removed stays removed.
 - A field added by a newer schema revision is unknown to an older reader's table, so the reader
-  keeps it. That is the tolerant case of ADR-0178.
+  keeps it. That is the tolerant case of ADR-0178. On a union value this holds while the tag
+  stays the same. A value whose tag changed is a new value, and it takes nothing from the old one,
+  at that position or below it. The old value's `extensions` and any union value nested in it are
+  not carried over.
 - The graft no longer repairs a known key that a command dropped. The command test is the guard for
   that, which is why it covers every registered command and fails for one it cannot run.
 - The table and the graft move into the document codec unchanged when the persistence stage builds
@@ -82,12 +89,16 @@ no graft and saved the loss.
 
 - Each variant of a tagged union is its own entry, named `Union.tag`, for example
   `UnderlaySource.raster`.
-- A `union` value records its tag key and the names of its variant entries.
+- A `union` value records its tag key and a list of its variants. Each variant pairs a tag value
+  with the name of its entry, and `variantTypeOf` in `core/` finds a variant by its tag value. No
+  code reads a tag value out of an entry name.
 - `KNOWN_KEYS` is typed with the generated type names, so a lookup by a known name needs no check
   for undefined.
 - The generator stops with an error that names the place when the schema holds a shape the table
-  cannot express: an array of arrays, a tuple, a union with no shared constant tag, or two variants
-  with one tag value. Such a shape can never be read as a plain value.
+  cannot express: an array of arrays, a tuple, a union with no shared constant tag, a tag value
+  that is not a string, two variants with one tag value, a scalar (`enum` or `const`) that also
+  carries structure, or a reference with a sibling keyword that is not an annotation. Such a
+  shape can never be read as a plain value.
 
 ## References
 

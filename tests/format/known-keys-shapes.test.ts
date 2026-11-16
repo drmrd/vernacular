@@ -57,7 +57,11 @@ function refusalOf(schema: object): Error {
   return expect.fail('the generator accepted a schema it cannot express')
 }
 
-type TaggedUnionValue = { kind: 'union'; tag?: string; types: string[] }
+type TaggedUnionValue = {
+  kind: 'union'
+  tag?: string
+  variants: { value: string; type: string }[]
+}
 
 /** Every union value found anywhere in the table, however deeply it is nested. */
 function unionValuesIn(node: unknown): TaggedUnionValue[] {
@@ -230,7 +234,10 @@ describe('the tag key of a union in the table of known keys', () => {
     expect(table.Project?.keys.value).toEqual({
       kind: 'union',
       tag: 'kind',
-      types: ['Shape.circle', 'Shape.square'],
+      variants: [
+        { value: 'circle', type: 'Shape.circle' },
+        { value: 'square', type: 'Shape.square' },
+      ],
     })
     expect(Object.keys(table)).toEqual(
       expect.arrayContaining(['Project', 'Shape.circle', 'Shape.square']),
@@ -242,7 +249,10 @@ describe('the tag key of a union in the table of known keys', () => {
     expect(table.Project?.keys.value).toEqual({
       kind: 'union',
       tag: 'type',
-      types: ['Shape.circle', 'Shape.square'],
+      variants: [
+        { value: 'circle', type: 'Shape.circle' },
+        { value: 'square', type: 'Shape.square' },
+      ],
     })
   })
 
@@ -254,7 +264,7 @@ describe('the tag key of a union in the table of known keys', () => {
       const unions = unionValuesIn(KNOWN_KEYS)
       expect(unions.length).toBeGreaterThan(0)
       for (const union of unions) {
-        const unionName = (union.types[0] ?? '').split('.')[0] ?? ''
+        const unionName = (union.variants[0]?.type ?? '').split('.')[0] ?? ''
         expect(union.tag, unionName).toBe(tagKeyOf(schema, unionName))
       }
     },

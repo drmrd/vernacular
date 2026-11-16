@@ -1,41 +1,19 @@
-import type { Project } from '../../core'
+import { KNOWN_KEYS, KNOWN_ROOT_TYPE, variantTypeOf } from '../../core'
+import type { KnownKeyTable, KnownUnion, KnownValue, Project } from '../../core'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// Top-level members that are keyed collections of modeled entries, not entities. A key absent from
-// `next` here is a user deletion, so it must not be re-grafted (unlike an unknown key on an entity).
-const KEYED_COLLECTIONS = new Set(['roomOverrides', 'paint'])
-
-function discriminantKind(value: unknown): unknown {
-  return isPlainObject(value) ? value.kind : undefined
-}
-
-// A keyed collection's entries can themselves be a discriminated union (e.g. a paint entry may
-// be a solid-color treatment or a pattern treatment, tagged by `kind`). Grafting field-by-field
-// across a kind change would resurrect fields the new kind doesn't have and shouldn't carry, so
-// treat a kind change as a full replacement instead of a merge. Same-kind entries still enrich
-// via graftUnknown, which is what preserves reader-unknown fields per VFPF section 6.4. Any
-// keyed collection whose entry shape grows variants over time relies on this guard.
-function graftKeyedCollectionEntry(previous: unknown, next: unknown): unknown {
-  const previousKind = discriminantKind(previous)
-  const nextKind = discriminantKind(next)
-  if (previousKind !== undefined && nextKind !== undefined && previousKind !== nextKind) {
-    return next
-  }
-  return graftUnknown(previous, next)
-}
-
-function graftKeyedCollection(
-  previous: Record<string, unknown>,
-  next: Record<string, unknown>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = {}
-  for (const key of Object.keys(next)) {
-    result[key] = key in previous ? graftKeyedCollectionEntry(previous[key], next[key]) : next[key]
-  }
-  return result
+// A key from a file can be any name, `__proto__` included; a plain assignment with that name sets
+// the prototype instead of creating a key, so every key from a file is written as an own property.
+function setOwn(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  })
 }
 
 function graftObject(
@@ -44,49 +22,50 @@ function graftObject(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(next)) {
-    result[key] = graftMember(key, previous, next)
+    setOwn(result, key, graftUntypedMember(key, previous, next))
   }
   for (const key of Object.keys(previous)) {
     // A key the next document lacks is unknown or reserved data the reader dropped; preserve it.
-    if (!(key in next)) {
-      result[key] = previous[key]
+    if (!Object.hasOwn(next, key)) {
+      setOwn(result, key, previous[key])
     }
   }
   return result
 }
 
-function graftMember(
+function graftUntypedMember(
   key: string,
   previous: Record<string, unknown>,
   next: Record<string, unknown>,
 ): unknown {
-  const previousValue = previous[key]
-  const nextValue = next[key]
-  if (KEYED_COLLECTIONS.has(key) && isPlainObject(previousValue) && isPlainObject(nextValue)) {
-    return graftKeyedCollection(previousValue, nextValue)
-  }
-  return key in previous ? graftUnknown(previousValue, nextValue) : nextValue
+  return Object.hasOwn(previous, key) ? graftUntyped(previous[key], next[key]) : next[key]
 }
 
 function idOf(value: unknown): string | undefined {
   return isPlainObject(value) && typeof value.id === 'string' ? value.id : undefined
 }
 
-function graftArray(previous: readonly unknown[], next: readonly unknown[]): unknown[] {
+// Pair each next item with the previous item of the same id, if any, and graft the pair.
+function graftById(
+  previous: readonly unknown[],
+  next: readonly unknown[],
+  graftPair: (previousItem: unknown, nextItem: unknown) => unknown,
+): unknown[] {
   return next.map((item) => {
     const id = idOf(item)
     const match =
       id === undefined ? undefined : previous.find((candidate) => idOf(candidate) === id)
-    return match === undefined ? item : graftUnknown(match, item)
+    return match === undefined ? item : graftPair(match, item)
   })
 }
 
-/**
- * Re-graft any value the previous Document carried that the next Document dropped, so a
- * read-modify-write cycle preserves extension payloads and reserved keys a reader does not
- * model (VFPF section 6.4). Shared keys take the next value; previous-only keys are restored.
- */
-export function graftUnknown(previous: unknown, next: unknown): unknown {
+function graftArray(previous: readonly unknown[], next: readonly unknown[]): unknown[] {
+  return graftById(previous, next, graftUntyped)
+}
+
+// The graft where the table has nothing to say, such as inside the value of an unknown key: shared
+// keys take the next value and previous-only keys are restored (VFPF section 6.4).
+function graftUntyped(previous: unknown, next: unknown): unknown {
   if (Array.isArray(previous) && Array.isArray(next)) {
     return graftArray(previous, next)
   }
@@ -94,6 +73,152 @@ export function graftUnknown(previous: unknown, next: unknown): unknown {
     return graftObject(previous, next)
   }
   return next
+}
+
+interface TablePosition {
+  table: KnownKeyTable
+  at: KnownValue
+}
+
+interface TypeScope {
+  table: KnownKeyTable
+  keys: Readonly<Record<string, KnownValue>>
+}
+
+// Only an own key of the table is known; a name every object inherits, such as `constructor`, is not.
+function knownValueOf(scope: TypeScope, key: string): KnownValue | undefined {
+  return Object.hasOwn(scope.keys, key) ? scope.keys[key] : undefined
+}
+
+// A type is known only as an own entry of the table; a name every object inherits, such as
+// `toString`, is not a type.
+function knownTypeOf(table: KnownKeyTable, typeName: string): KnownKeyTable[string] | undefined {
+  return Object.hasOwn(table, typeName) ? table[typeName] : undefined
+}
+
+function graftKnownMember(
+  key: string,
+  { previous, next }: { previous: Record<string, unknown>; next: Record<string, unknown> },
+  scope: TypeScope,
+): unknown {
+  const known = knownValueOf(scope, key)
+  if (known === undefined) {
+    return graftUntypedMember(key, previous, next)
+  }
+  const { table } = scope
+  return Object.hasOwn(previous, key)
+    ? graftWithTable(previous[key], next[key], { table, at: known })
+    : next[key]
+}
+
+function graftObjectWithTable(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+  scope: TypeScope,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(next)) {
+    setOwn(result, key, graftKnownMember(key, { previous, next }, scope))
+  }
+  for (const key of Object.keys(previous)) {
+    // A known key the next document lacks was cleared; only a key the table does not know is restored.
+    if (!Object.hasOwn(next, key) && knownValueOf(scope, key) === undefined) {
+      setOwn(result, key, previous[key])
+    }
+  }
+  return result
+}
+
+function graftArrayWithTable(
+  previous: readonly unknown[],
+  next: readonly unknown[],
+  position: TablePosition,
+): unknown[] {
+  return graftById(previous, next, (match, item) => graftWithTable(match, item, position))
+}
+
+// A map the schema types is a collection the model owns: an entry the next document omits was
+// deleted and stays absent.
+function graftMapWithTable(previous: unknown, next: unknown, position: TablePosition): unknown {
+  if (!isPlainObject(previous) || !isPlainObject(next)) {
+    return graftUntyped(previous, next)
+  }
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(next)) {
+    setOwn(
+      result,
+      key,
+      Object.hasOwn(previous, key) ? graftWithTable(previous[key], next[key], position) : next[key],
+    )
+  }
+  return result
+}
+
+function sharesTag(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+  tag: string,
+): boolean {
+  return Object.hasOwn(previous, tag) && Object.hasOwn(next, tag) && previous[tag] === next[tag]
+}
+
+// At a tagged union, only a value whose tag is the same on both sides is grafted, as an object of
+// that variant's type. A changed or missing tag means a new value, so nothing of the old one belongs
+// to it; the same tag means an edit, so data this build does not know must survive it.
+function graftUnionWithTable(
+  previous: unknown,
+  next: unknown,
+  { table, union }: { table: KnownKeyTable; union: KnownUnion },
+): unknown {
+  if (!isPlainObject(previous) || !isPlainObject(next)) {
+    return next
+  }
+  const { tag } = union
+  if (!sharesTag(previous, next, tag)) {
+    return next
+  }
+  const variant = variantTypeOf(union, next[tag])
+  // A tag no variant of the table names is of a variant from a newer build: graft it untyped.
+  return variant === undefined
+    ? graftObject(previous, next)
+    : graftWithTable(previous, next, { table, at: { kind: 'object', type: variant } })
+}
+
+/** A pure function of the previous value, the next value, the table, and the place in it. */
+export function graftWithTable(
+  previous: unknown,
+  next: unknown,
+  { table, at }: TablePosition,
+): unknown {
+  if (at.kind === 'array' && Array.isArray(previous) && Array.isArray(next)) {
+    return graftArrayWithTable(previous, next, { table, at: at.item })
+  }
+  if (at.kind === 'map') {
+    return graftMapWithTable(previous, next, { table, at: at.value })
+  }
+  if (at.kind === 'union') {
+    return graftUnionWithTable(previous, next, { table, union: at })
+  }
+  const knownType = at.kind === 'object' ? knownTypeOf(table, at.type) : undefined
+  if (knownType !== undefined && isPlainObject(previous) && isPlainObject(next)) {
+    return graftObjectWithTable(previous, next, { table, keys: knownType.keys })
+  }
+  return graftUntyped(previous, next)
+}
+
+const ROOT_POSITION: TablePosition = {
+  table: KNOWN_KEYS,
+  at: { kind: 'object', type: KNOWN_ROOT_TYPE },
+}
+
+/**
+ * Re-graft any value the previous Document carried that the next Document dropped, so a
+ * read-modify-write cycle preserves extension payloads and reserved keys a reader does not
+ * model (VFPF section 6.4). The graft follows the table of known keys from the Document root.
+ * Production code calls `preserveUnknown`; this untyped-result form serves the tests.
+ */
+export function graftUnknown(previous: unknown, next: unknown): unknown {
+  return graftWithTable(previous, next, ROOT_POSITION)
 }
 
 /** Apply the preservation overlay, returning a Document that restores dropped unknown data. */

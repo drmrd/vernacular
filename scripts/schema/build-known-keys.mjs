@@ -17,7 +17,31 @@ const LEAF = { kind: 'leaf' }
 const OPAQUE = { kind: 'opaque' }
 
 const REFERENCE_KEY = '$ref'
-const ANNOTATION_KEYWORDS = new Set(['description', 'title', '$comment'])
+// Annotations never change which keys a value holds, so they may sit beside a $ref. `default` stays
+// refused on purpose: it would make an absent key mean a value, and the save-time graft decides
+// from absence that a key was cleared.
+const ANNOTATION_KEYWORDS = new Set([
+  'description',
+  'title',
+  '$comment',
+  'examples',
+  'deprecated',
+  'readOnly',
+  'writeOnly',
+])
+const SCALAR_KEYWORDS = ['enum', 'const']
+const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null'])
+const STRUCTURAL_KEYWORDS = [
+  'properties',
+  'items',
+  'anyOf',
+  'oneOf',
+  'allOf',
+  'prefixItems',
+  'additionalProperties',
+  'patternProperties',
+]
+const STRUCTURAL_TYPES = ['array', 'object']
 const UNION_KEYWORDS = ['anyOf', 'oneOf']
 
 const REFUSAL_HINT =
@@ -54,7 +78,22 @@ function isObjectDefinition(definition) {
   return definition.type === 'object' && definition.properties !== undefined
 }
 
+function refuseScalarWithStructure(place, node) {
+  const scalarKeyword = SCALAR_KEYWORDS.find((keyword) => keyword in node)
+  if (scalarKeyword === undefined) return
+  const structuralKeyword = STRUCTURAL_KEYWORDS.find((keyword) => keyword in node)
+  if (structuralKeyword !== undefined) {
+    throw refusal(
+      `${place} has ${scalarKeyword} beside the structural keyword ${structuralKeyword}`,
+    )
+  }
+  if (STRUCTURAL_TYPES.includes(node.type)) {
+    throw refusal(`${place} has ${scalarKeyword} beside the structural type ${node.type}`)
+  }
+}
+
 function refuseMixedDefinition(name, definition) {
+  refuseScalarWithStructure(`Definition ${name}`, definition)
   const keyword = unionKeyword(definition)
   if (keyword !== undefined && definition.properties !== undefined) {
     throw refusal(`Definition ${name} mixes properties with ${keyword}`)
@@ -65,10 +104,8 @@ function isOpenValue(node) {
   return node === true || (typeof node === 'object' && Object.keys(node).length === 0)
 }
 
-const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null'])
-
 function isScalar(node) {
-  return 'enum' in node || 'const' in node || SCALAR_TYPES.has(node.type)
+  return SCALAR_KEYWORDS.some((keyword) => keyword in node) || SCALAR_TYPES.has(node.type)
 }
 
 function isObjectWithNoProperties(node) {
@@ -76,6 +113,7 @@ function isObjectWithNoProperties(node) {
 }
 
 function refuseUnexpressibleNode(place, node) {
+  refuseScalarWithStructure(place, node)
   if (Array.isArray(node.type)) {
     throw refusal(`${place} has a type list ${JSON.stringify(node.type)}`)
   }
@@ -101,15 +139,23 @@ function sharedTagKey(unionName, variants) {
 
 function unionVariantTypes(unionName, definition) {
   const variants = unionVariants(definition)
+  variants.forEach((variant, index) => {
+    refuseScalarWithStructure(`Union ${unionName} variant ${index}`, variant)
+  })
   const tag = sharedTagKey(unionName, variants)
   const types = new Map()
   for (const variant of variants) {
     const tagValue = variant.properties[tag].const
+    if (typeof tagValue !== 'string') {
+      throw refusal(
+        `Union ${unionName} has a tag value that is not a string: ${JSON.stringify(tagValue)}`,
+      )
+    }
     const typeName = `${unionName}.${tagValue}`
     if (types.has(typeName)) {
       throw refusal(`Union ${unionName} has two variants with the tag value ${tagValue}`)
     }
-    types.set(typeName, variant)
+    types.set(typeName, { value: tagValue, variant })
   }
   return { tag, types }
 }
@@ -141,7 +187,8 @@ function describeReference(schema, node, place) {
   refuseMixedDefinition(name, definition)
   if (isUnionDefinition(definition)) {
     const { tag, types } = unionVariantTypes(name, definition)
-    return { kind: 'union', tag, types: [...types.keys()] }
+    const variants = [...types].map(([type, { value }]) => ({ value, type }))
+    return { kind: 'union', tag, variants }
   }
   if (isObjectDefinition(definition)) return { kind: 'object', type: name }
   if (isScalar(definition)) return LEAF
@@ -210,11 +257,13 @@ export function buildKnownKeys(schema) {
     if (isObjectDefinition(definition)) {
       table[name] = describeType(schema, definition, name)
     } else if (isUnionDefinition(definition)) {
-      for (const [typeName, variant] of unionVariantTypes(name, definition).types) {
+      for (const [typeName, { variant }] of unionVariantTypes(name, definition).types) {
         table[typeName] = describeType(schema, variant, typeName)
       }
     }
-    // Any other definition is a scalar or an array alias; the table reads it where it is referenced.
+    // Any other definition is a scalar alias, which the table reads as a leaf where it is
+    // referenced, or a shape the table cannot express, which `describeReference` refuses when
+    // something refers to it.
   }
   return table
 }
