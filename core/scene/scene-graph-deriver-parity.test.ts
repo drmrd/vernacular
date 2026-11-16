@@ -14,7 +14,10 @@ import { createSceneGraphDeriver } from './scene-graph-deriver'
 const RAISED_FOUNDATION_GRADE_MM = -600
 const DAYLIGHT_BASEMENT_GRADE_MM = -1800
 
-/** A ground floor with a closed wall loop, a door, and a sofa, so every node kind is present. */
+/**
+ * A ground floor with a closed wall loop (so one room is derived), a door, and a sofa.
+ * It has no underlays, no dimensions, and no room overrides, so parity is not checked for those.
+ */
 function furnishedGroundFloor(): Floor {
   const ground = createFloor('Ground', {
     id: 'g',
@@ -56,6 +59,7 @@ function twoStoreyProject(): Project {
   return project
 }
 
+// Each parity test compares a fresh deriver with the pure projection: a cold cache only.
 describe('createSceneGraphDeriver parity with deriveSceneGraph', () => {
   it('derives the same scene graph as the pure projection when a site grade is set', () => {
     const project = { ...twoStoreyProject(), site: { gradeElevation: RAISED_FOUNDATION_GRADE_MM } }
