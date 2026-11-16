@@ -43,8 +43,8 @@ const reactThreePackages = {
 
 const engineTestingMessage = 'The engine testing entry is for tests only.'
 const engineTestingEntry = { regex: '(^|/)engine/testing(/.*)?$', message: engineTestingMessage }
-// Only inside engine/ can a relative ./testing or ../testing be the entry itself.
-const engineTestingEntryRelative = {
+// Inside engine/ a relative ./testing or ../testing can be the entry itself, so this pattern adds the relative form to the path form.
+const engineTestingEntryInsideEngine = {
   regex: '(^|/)engine/testing(/.*)?$|^\\.{1,2}/(\\.\\./)*testing(/.*)?$',
   message: engineTestingMessage,
 }
@@ -114,7 +114,10 @@ const layerPurityBlocks = [
     files: ['engine/**'],
     ignores: [...testFileGlobs, 'engine/testing/**', '**/*-test-support.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [reactPackages, engineTestingEntryRelative] }],
+      'no-restricted-imports': [
+        'error',
+        { patterns: [reactPackages, engineTestingEntryInsideEngine] },
+      ],
     },
   },
 ]
