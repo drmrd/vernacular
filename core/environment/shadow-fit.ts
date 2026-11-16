@@ -1,3 +1,4 @@
+import { centerAndDiagonal } from '../scene/camera-framing'
 import type { Bounds3, Vector3 } from '../scene/vector3'
 
 /**
@@ -15,26 +16,18 @@ export interface ShadowFitInput {
   maxRadius: number
 }
 
-/** Below this sun height (the y of the unit sun direction) the sun counts as on the horizon. */
+/** At or below this sun height (the y of the unit sun direction) the sun counts as on the horizon. */
 const HORIZON_SUN_HEIGHT = 1e-6
 
 const DIAGONAL_TO_RADIUS = 0.5
 const QUADRATIC_FOUR = 4
-const QUADRATIC_TWO = 2
 
 /**
  * Half the diagonal of a box, in millimetres: the radius the engine fits its
  * shadow camera to.
  */
 export function boundsRadius(bounds: Bounds3): number {
-  return (
-    DIAGONAL_TO_RADIUS *
-    Math.hypot(
-      bounds.max.x - bounds.min.x,
-      bounds.max.y - bounds.min.y,
-      bounds.max.z - bounds.min.z,
-    )
-  )
+  return DIAGONAL_TO_RADIUS * centerAndDiagonal(bounds).diagonal
 }
 
 /**
@@ -71,7 +64,7 @@ function shadowPoints(casters: Bounds3, ground: Bounds3, sunDirection: Vector3):
 
 function projectOntoGround(corner: Vector3, ground: Bounds3, sunDirection: Vector3): Vector3 {
   const height = corner.y - ground.min.y
-  const sun: SunReach = { height, sunHeight: sunDirection.y }
+  const sun: CornerAndSunHeights = { height, sunHeight: sunDirection.y }
   return {
     x: shadowCoordinate(
       { coordinate: corner.x, sunComponent: sunDirection.x, low: ground.min.x, high: ground.max.x },
@@ -94,12 +87,12 @@ interface AxisProjection {
 }
 
 /** The corner's height above the ground and the sun's height (y of the unit direction). */
-interface SunReach {
+interface CornerAndSunHeights {
   height: number
   sunHeight: number
 }
 
-function shadowCoordinate(axis: AxisProjection, sun: SunReach): number {
+function shadowCoordinate(axis: AxisProjection, sun: CornerAndSunHeights): number {
   const { coordinate, sunComponent, low, high } = axis
   if (sun.sunHeight > HORIZON_SUN_HEIGHT) {
     const projected = coordinate - (sunComponent / sun.sunHeight) * sun.height
@@ -129,16 +122,13 @@ function shrinkTowardCasters(casters: Bounds3, full: Bounds3, maxRadius: number)
  */
 function shrinkFraction(casters: Bounds3, full: Bounds3, maxRadius: number): number {
   const base = diagonal(casters)
-  const growth = diagonal(full)
-  growth.x -= base.x
-  growth.y -= base.y
-  growth.z -= base.z
+  const growth = subtract(diagonal(full), base)
   const quadratic = dot(growth, growth)
-  const linear = QUADRATIC_TWO * dot(base, growth)
+  const linear = 2 * dot(base, growth)
   const target = maxRadius / DIAGONAL_TO_RADIUS
   const constant = dot(base, base) - target * target
   const discriminant = linear * linear - QUADRATIC_FOUR * quadratic * constant
-  const root = (-linear + Math.sqrt(discriminant)) / (QUADRATIC_TWO * quadratic)
+  const root = (-linear + Math.sqrt(discriminant)) / (2 * quadratic)
   return Math.min(1, Math.max(0, root))
 }
 
@@ -148,6 +138,10 @@ function diagonal(bounds: Bounds3): Vector3 {
     y: bounds.max.y - bounds.min.y,
     z: bounds.max.z - bounds.min.z,
   }
+}
+
+function subtract(a: Vector3, b: Vector3): Vector3 {
+  return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }
 }
 
 function dot(a: Vector3, b: Vector3): number {
@@ -169,7 +163,7 @@ function corners(bounds: Bounds3): Vector3[] {
   )
 }
 
-function unionOf(casters: Bounds3, points: Vector3[]): Bounds3 {
+function unionOf(start: Bounds3, points: Vector3[]): Bounds3 {
   return points.reduce<Bounds3>(
     (box, point) => ({
       min: {
@@ -183,7 +177,7 @@ function unionOf(casters: Bounds3, points: Vector3[]): Bounds3 {
         z: Math.max(box.max.z, point.z),
       },
     }),
-    copyBounds(casters),
+    copyBounds(start),
   )
 }
 
