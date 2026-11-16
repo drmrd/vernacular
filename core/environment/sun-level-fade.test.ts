@@ -112,7 +112,7 @@ describe('the sun level', () => {
     )
   })
 
-  it('follows the clear-sky attenuation exp(-0.21 / sin h) of the direct sun, as a fraction of the sun scale', () => {
+  it('follows exp(-0.21 (1 / sin h - 1)), the clear-sky attenuation relative to the zenith', () => {
     for (const degrees of FADE_SAMPLE_HEIGHTS_IN_DEGREES) {
       const height = degrees * DEGREES
       const fraction = sunLevelAt(height, CLEAR_SKY) / DAYLIGHT_CALIBRATION.sunScale
