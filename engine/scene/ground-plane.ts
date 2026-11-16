@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 
+import type { Bounds3, Vector3 } from '../../core'
 import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
 
 /**
@@ -30,6 +31,10 @@ const GRASS_COLOR = 0x5f8a4f
 // site the building sits on rather than a slab cut to the walls.
 const GROUND_MARGIN_MM = 5000
 
+// Decimal places kept in a reported extent: the flat plane is laid by a quarter-turn whose
+// cosine is not exactly zero, so the transformed box carries rounding dust near 1e-12 millimeters.
+const EXTENT_DECIMAL_PLACES = 6
+
 // Footprint side for a building with no horizontal extent (an empty plan), so a ground
 // surface is always present.
 const EMPTY_PLAN_GROUND_SIZE_MM = 10000
@@ -44,6 +49,38 @@ interface GroundFootprint {
 /** True when an object is the ground-plane mesh rather than building geometry. */
 export function isGroundPlane(object: THREE.Object3D): boolean {
   return object.userData.ground === true
+}
+
+function findGroundPlane(root: THREE.Object3D): THREE.Object3D | null {
+  let found: THREE.Object3D | null = null
+  root.traverse((object) => {
+    if (found === null && isGroundPlane(object)) found = object
+  })
+  return found
+}
+
+/**
+ * The world-space box of the ground plane under `root`, in millimeters with y up, or `null`
+ * when `root` holds no ground plane. The box comes from the plane's geometry and its world
+ * matrix, refreshed through every ancestor, so a parent moved after the plane was built is
+ * reflected, and rounding dust from the plane's quarter-turn is settled to 1e-6 millimeters.
+ * A flat plane yields `min.y` equal to `max.y`, the grade it sits at.
+ */
+export function groundExtent(root: THREE.Object3D): Bounds3 | null {
+  const plane = findGroundPlane(root)
+  if (plane === null) return null
+  plane.updateWorldMatrix(true, false)
+  const box = new THREE.Box3().setFromObject(plane)
+  return { min: settledPoint(box.min), max: settledPoint(box.max) }
+}
+
+// Adding zero turns a negative zero, which rounding dust below zero leaves behind, into zero.
+function settle(value: number): number {
+  return Number(value.toFixed(EXTENT_DECIMAL_PLACES)) + 0
+}
+
+function settledPoint(point: THREE.Vector3): Vector3 {
+  return { x: settle(point.x), y: settle(point.y), z: settle(point.z) }
 }
 
 // Horizontal extent of the already-built geometry, padded with the site margin so the
