@@ -7,8 +7,8 @@ import {
   type EnvironmentState,
   type LightingMode,
 } from './environment-state'
+import { openingInstant } from './opening-instant'
 import {
-  DEFAULT_OBSERVATION_INSTANT,
   observationInstantToIso,
   parseObservationInstant,
   type ObservationInstant,
@@ -16,7 +16,7 @@ import {
 import { DEFAULT_CLOUD_COVER } from './sky-model'
 import type { EnvironmentScene } from '../model/environment-scene'
 
-// A "when" that is deliberately far from the default noon-solstice instant, so a
+// A "when" that is deliberately far from the opening instant, so a
 // test failing to serialize or parse it cannot pass by coincidence.
 const CUSTOM_MINUTES_SINCE_MIDNIGHT = 960
 const CUSTOM_OBSERVATION_INSTANT: ObservationInstant = {
@@ -35,10 +35,10 @@ const NON_DEFAULT_MODE: LightingMode = 'realistic'
 const NON_DEFAULT_COLOR_CHECK = true
 
 describe('DEFAULT_ENVIRONMENT_STATE', () => {
-  it('starts in schematic mode at the default observation instant with no cloud cover or color check', () => {
+  it('starts in schematic mode at the opening instant with no cloud cover or color check', () => {
     expect(DEFAULT_ENVIRONMENT_STATE).toEqual({
       mode: 'schematic',
-      observedAt: DEFAULT_OBSERVATION_INSTANT,
+      observedAt: openingInstant({ site: undefined }),
       cloudCover: DEFAULT_CLOUD_COVER,
       colorCheck: false,
     })
