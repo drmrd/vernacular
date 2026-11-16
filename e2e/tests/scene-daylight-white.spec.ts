@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import {
+  DEFAULT_VIEW_EAST_WALL,
+  DEFAULT_VIEW_SOUTH_WALL,
+  logReading,
+  sampleCanvasColor,
+  settledHarnessCanvas,
+} from './scene-helpers'
 
 // The daylight white gate. A white wall in daylight should read white at noon, a little cool
 // where only the sky lights it, and a little warm where a low sun lights it. This spec paints
@@ -23,13 +29,8 @@ import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } fro
 const EQUINOX_NOON_QUERY = '&scene=equinox-noon&paint=daylight-white'
 const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon&paint=daylight-white'
 
-// The south exterior face, the door wall, clear of the door and the wall edges: x 143..166,
-// y 148..171. The same square as the sunlit wall gate; both states share the default camera.
-const SOUTH_WALL = squareRegion(143, 148, 24)
-// The east exterior face, the window wall, between the south-east corner and the window:
-// x 188..199, y 145..156. The face is about 21 px wide here, so this is the largest square that
-// keeps 4 px from the corner and from the window reveal.
-const EAST_WALL = squareRegion(188, 145, 12)
+// Both states share the default camera, so the gate reads the shared south and east wall squares
+// of the default view (scene-helpers.ts), the same squares as the sunlit wall gate.
 
 // Each bound below was measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL
 // 2 harness, 320x240 frame), on this build and on the build before the daylight calibration.
@@ -89,7 +90,7 @@ test.describe('Daylight white gate', () => {
   test('the white south wall reads white in the noon sun', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, EQUINOX_NOON_QUERY)
 
-    const south = srgbToOkLab(await sampleCanvasColor(page, canvas, SOUTH_WALL))
+    const south = srgbToOkLab(await sampleCanvasColor(page, canvas, DEFAULT_VIEW_SOUTH_WALL))
     const chroma = Math.hypot(south.a, south.b)
     logReading('noon south wall chroma', chroma.toFixed(4))
     logReading('noon south wall L', south.L.toFixed(4))
@@ -109,8 +110,8 @@ test.describe('Daylight white gate', () => {
   test('the white walls read cool in shade and warm in the low sun', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, WINTER_AFTERNOON_QUERY)
 
-    const shadedEast = srgbToOkLab(await sampleCanvasColor(page, canvas, EAST_WALL))
-    const lowSunSouth = srgbToOkLab(await sampleCanvasColor(page, canvas, SOUTH_WALL))
+    const shadedEast = srgbToOkLab(await sampleCanvasColor(page, canvas, DEFAULT_VIEW_EAST_WALL))
+    const lowSunSouth = srgbToOkLab(await sampleCanvasColor(page, canvas, DEFAULT_VIEW_SOUTH_WALL))
     logReading('afternoon shaded east wall b', shadedEast.b.toFixed(4))
     logReading('afternoon low-sun south wall b', lowSunSouth.b.toFixed(4))
 

@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { agxNeutralInverse, linearToSrgb, srgbToLinear, type Srgb } from '../../core'
+import {
+  agxNeutralInverse,
+  linearLuminance,
+  linearToSrgb,
+  srgbToLinear,
+  type Srgb,
+} from '../../core'
 import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The sun-to-shade gate. Daylight on open ground is several times brighter than the shade of a
@@ -21,9 +27,6 @@ const SHADOWED_LAWN = squareRegion(150, 109, 24)
 // The lawn in the sun east of the shadow, at the same depth in the view: x 236..259,
 // y 109..132. No edge of the shadow or the lawn comes within 13 px of it.
 const SUNLIT_LAWN = squareRegion(236, 109, 24)
-
-// Rec. 709 luminance weights.
-const LUMINANCE_WEIGHTS = { r: 0.2126, g: 0.7152, b: 0.0722 }
 
 /**
  * The smallest ratio of the sunlit lawn's linear level to the shadowed lawn's.
@@ -49,10 +52,11 @@ const SUN_TO_SHADE_MIN_RATIO = 3.858
 // The linear light level behind a sampled color: its luminance, encoded as a display code,
 // taken back through the inverse of the tone curve.
 function linearLevel(color: Srgb): number {
-  const luminance =
-    LUMINANCE_WEIGHTS.r * srgbToLinear(color.r) +
-    LUMINANCE_WEIGHTS.g * srgbToLinear(color.g) +
-    LUMINANCE_WEIGHTS.b * srgbToLinear(color.b)
+  const luminance = linearLuminance({
+    r: srgbToLinear(color.r),
+    g: srgbToLinear(color.g),
+    b: srgbToLinear(color.b),
+  })
   return agxNeutralInverse(linearToSrgb(luminance))
 }
 

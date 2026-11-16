@@ -159,10 +159,30 @@ export function squareRegion(originXPx: number, originYPx: number, sizePx: numbe
     sizePx,
   }
 }
+
+/**
+ * The south exterior face, the door wall (outward normal toward world south), clear of the door
+ * and the wall edges: x 143..166, y 148..171. It belongs to the `shell-south-window` scene seen
+ * from the harness's default camera, which the `equinox-noon`, `winter-afternoon`, and
+ * `overcast-noon` states share; the states with their own camera pose frame the wall elsewhere.
+ */
+// eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
+export const DEFAULT_VIEW_SOUTH_WALL = squareRegion(143, 148, 24)
+
+/**
+ * The east exterior face, the window wall (outward normal toward world east), between the
+ * south-east corner and the window: x 188..199, y 145..156. Same scene and default camera as
+ * `DEFAULT_VIEW_SOUTH_WALL`. The face is about 21 px wide here, so this is the largest square
+ * that keeps 4 px from the corner and from the window reveal.
+ */
+// eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
+export const DEFAULT_VIEW_EAST_WALL = squareRegion(188, 145, 12)
+
+/** The 8-bit code range a display shows: a channel's 0..1 fraction times this is its code. */
+export const CODE_RANGE = 255
+
 // The RGBA stride of an ImageData buffer.
 const RGBA_STRIDE = 4
-// The maximum value of an 8-bit sRGB channel, for scaling to a 0..1 fraction.
-const SRGB_MAX = 255
 
 // Runs in the browser (page context): decode a PNG data URL, draw it to a 2D canvas, and
 // average a square patch to one gamma-encoded sRGB triple in 0..1. Kept as a self-contained
@@ -228,7 +248,7 @@ export async function sampleCanvasColor(
     url: dataUrl,
     patch: center.sizePx ?? SAMPLE_PATCH_PX,
     stride: RGBA_STRIDE,
-    max: SRGB_MAX,
+    max: CODE_RANGE,
     cx: center.x,
     cy: center.y,
   })

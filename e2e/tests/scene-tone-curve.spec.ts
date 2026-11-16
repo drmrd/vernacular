@@ -3,15 +3,21 @@ import {
   WHITE_CODE_FLOOR,
   agxNeutralResponse,
   computeEnvironmentLighting,
+  linearLuminance,
   linearToSrgb,
   predictedMatteRadiance,
+  referenceLightingInput,
   srgbToLinear,
   srgbToOkLab,
-  type EnvironmentLightingInput,
-  type LinearRgb,
   type Srgb,
 } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import {
+  CODE_RANGE,
+  logReading,
+  sampleCanvasColor,
+  settledHarnessCanvas,
+  squareRegion,
+} from './scene-helpers'
 
 // The tone curve gate. The daylight-reference state paints the four exterior wall faces the
 // matte daylight white and lights them from a clear mid-morning sky at the equinox, so the
@@ -40,28 +46,12 @@ const SUNLIT_SOUTH_WALL = squareRegion(157, 142, 6)
 // every edge.
 const SHADED_WEST_WALL = squareRegion(121, 107, 24)
 
-// The site and instant of the daylight-reference state (app/harness-environment.ts), which are
-// the reference place and instant of the daylight calibration in core: 40 N, 1.86 E, UTC, north
-// up, the March equinox at 10:30, and a clear sky.
-const REFERENCE_LIGHTING_INPUT: EnvironmentLightingInput = {
-  latLong: { latitude: 40, longitude: 1.86 },
-  northBearing: 0,
-  utcOffsetMinutes: 0,
-  observedAt: { date: '2026-03-20', minutesSinceMidnight: 630 },
-  cloudCover: 0,
-}
-
 // The south face's outward normal (world south is +z).
 const SOUTH_NORMAL = { x: 0, y: 0, z: 1 }
-// The 8-bit code range a display shows.
-const CODE_RANGE = 255
 // The daylight white paint is `#ededed`, so each channel's reflectance is the linear value of
 // code 237 (0.8469), the reflectance the renderer uses.
 const WHITE_PAINT_CODE = 237
 const WHITE_PAINT_REFLECTANCE = srgbToLinear(WHITE_PAINT_CODE / CODE_RANGE)
-
-// Rec. 709 luminance weights.
-const LUMINANCE_WEIGHTS = { r: 0.2126, g: 0.7152, b: 0.0722 }
 
 /**
  * The largest difference, in display codes, between the measured and the predicted code of the
@@ -86,15 +76,12 @@ const TONE_CURVE_TOLERANCE_CODES = 12.2
 // the tone curve tolerance, 225 - 12.2 = 212.8. The face read 224.50 on this build.
 const SUNLIT_WHITE_MINIMUM_CODE = WHITE_CODE_FLOOR - TONE_CURVE_TOLERANCE_CODES
 
-function luminance(color: LinearRgb): number {
-  return (
-    LUMINANCE_WEIGHTS.r * color.r + LUMINANCE_WEIGHTS.g * color.g + LUMINANCE_WEIGHTS.b * color.b
-  )
-}
-
-// The code the light model and the tone curve predict for the sunlit south face.
+// The code the light model and the tone curve predict for the sunlit south face. The
+// daylight-reference state (app/harness-environment.ts) renders at the reference place and
+// instant of the daylight calibration in core, so the prediction lights the face from the
+// calibration's own lighting input.
 function predictedSouthWallCode(): number {
-  const lighting = computeEnvironmentLighting(REFERENCE_LIGHTING_INPUT)
+  const lighting = computeEnvironmentLighting(referenceLightingInput())
   const radiance = predictedMatteRadiance(lighting, {
     normal: SOUTH_NORMAL,
     reflectance: {
@@ -103,13 +90,13 @@ function predictedSouthWallCode(): number {
       b: WHITE_PAINT_REFLECTANCE,
     },
   })
-  return agxNeutralResponse(luminance(radiance)) * CODE_RANGE
+  return agxNeutralResponse(linearLuminance(radiance)) * CODE_RANGE
 }
 
 // The display code of a sampled color's luminance: decode the channels, weigh them, encode.
 function luminanceCode(color: Srgb): number {
   const linear = { r: srgbToLinear(color.r), g: srgbToLinear(color.g), b: srgbToLinear(color.b) }
-  return linearToSrgb(luminance(linear)) * CODE_RANGE
+  return linearToSrgb(linearLuminance(linear)) * CODE_RANGE
 }
 
 test.describe('Tone curve gate', () => {

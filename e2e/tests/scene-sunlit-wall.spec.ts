@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import {
+  DEFAULT_VIEW_EAST_WALL,
+  DEFAULT_VIEW_SOUTH_WALL,
+  logReading,
+  sampleCanvasColor,
+  settledHarnessCanvas,
+} from './scene-helpers'
 
 // The sunlit-wall gate (issue #491). Every wall face used to be wound inside out, so the
 // shadow pass stored each wall's sun-side plane and every sunlit face was shadowed by its own
@@ -18,13 +24,8 @@ import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } fro
 // The canonical harness state this gate renders.
 const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon'
 
-// The south exterior face, the door wall (outward normal toward world south), clear of the
-// door and the wall edges: x 143..166, y 148..171.
-const SUNLIT_SOUTH_WALL = squareRegion(143, 148, 24)
-// The east exterior face, the window wall (outward normal toward world east), between the
-// south-east corner and the window: x 188..199, y 145..156. The face is about 21 px wide here,
-// so this is the largest square that keeps 4 px from the corner and from the window reveal.
-const SHADED_EAST_WALL = squareRegion(188, 145, 12)
+// The regions are the shared wall squares of the default view (scene-helpers.ts): on this
+// afternoon the south face takes the sun and the east face is in shade.
 
 /**
  * The smallest OKLab lightness gap the sunlit south face may read above the shaded east face.
@@ -44,10 +45,12 @@ const SHADED_EAST_WALL = squareRegion(188, 145, 12)
  *   0.4095, gap 0.3915, within 0.0001 of the Mac
  *
  * Five captures came back identical to four decimals, so the noise band is 0. The threshold is
- * half the model gap, 0.3975 / 2 = 0.1987, rounded to 0.199. The east face reads a little above
+ * half the model gap, 0.3975 / 2 = 0.19875, rounded to 0.199. The east face reads a little above
  * the model, so the measured gap is 0.0061 under it. The margin is 0.1924 below the reading.
- * The defect this gate was written for, a wall that shades its own sunlit face, would leave the
- * south face its sky light alone: the model puts that face at L 0.4813, a gap of 0.0781 over
+ * The defect this gate was written for, a wall that shades its own sunlit face, made the two
+ * walls read the same, a gap of zero, so half the model gap is the midpoint between the model
+ * and that defect. Under today's sky, which brightens toward the sun, the same defect would leave
+ * the south face its sky light alone: the model puts that face at L 0.4813, a gap of 0.0781 over
  * the east face, 0.1209 under the threshold. The east region was the 16 px square at x 186..201,
  * y 143..158 until this derivation; it held one color, so the 12 px square inside it reads the
  * same.
@@ -58,8 +61,8 @@ test.describe('Sunlit wall gate', () => {
   test('the sunlit south wall renders lighter than the shaded east wall', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, WINTER_AFTERNOON_QUERY)
 
-    const sunlitL = srgbToOkLab(await sampleCanvasColor(page, canvas, SUNLIT_SOUTH_WALL)).L
-    const shadedL = srgbToOkLab(await sampleCanvasColor(page, canvas, SHADED_EAST_WALL)).L
+    const sunlitL = srgbToOkLab(await sampleCanvasColor(page, canvas, DEFAULT_VIEW_SOUTH_WALL)).L
+    const shadedL = srgbToOkLab(await sampleCanvasColor(page, canvas, DEFAULT_VIEW_EAST_WALL)).L
     const gap = sunlitL - shadedL
     logReading('sunlit south wall L', sunlitL.toFixed(4))
     logReading('shaded east wall L', shadedL.toFixed(4))

@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+import {
+  CODE_RANGE,
+  DEFAULT_VIEW_SOUTH_WALL,
+  logReading,
+  sampleCanvasColor,
+  settledHarnessCanvas,
+  squareRegion,
+} from './scene-helpers'
 
 // The sky gate. A clear sky should read blue and darker than a white wall in the sun, with no
 // channel clipped to white. This spec reads the sky in the equinox-noon state, where the four
@@ -28,12 +35,8 @@ const CLEAR_NOON_QUERY = '&scene=equinox-noon&paint=daylight-white'
 // the sky reads almost flat (2 codes of spread). The lawn's far edge lies near row 107 below
 // it and the building far to its right.
 const SKY = squareRegion(12, 12, 24)
-// The south exterior face, the door wall, clear of the door and the wall edges: x 143..166,
-// y 148..171. The same square as the sunlit wall gate.
-const SUNLIT_SOUTH_WALL = squareRegion(143, 148, 24)
-
-// The 8-bit code range a display shows.
-const CODE_RANGE = 255
+// The sunlit wall it is compared with is the shared south wall square of the default view
+// (scene-helpers.ts), the same square as the sunlit wall gate.
 
 /**
  * The most OKLab b the clear sky may read: it must lean blue.
@@ -71,7 +74,7 @@ test.describe('Sky gate', () => {
     const skyColor = await sampleCanvasColor(page, canvas, SKY)
     const sky = srgbToOkLab(skyColor)
     const largestChannel = Math.max(skyColor.r, skyColor.g, skyColor.b) * CODE_RANGE
-    const wallL = srgbToOkLab(await sampleCanvasColor(page, canvas, SUNLIT_SOUTH_WALL)).L
+    const wallL = srgbToOkLab(await sampleCanvasColor(page, canvas, DEFAULT_VIEW_SOUTH_WALL)).L
     logReading('clear sky b', sky.b.toFixed(4))
     logReading('clear sky largest channel code', largestChannel.toFixed(2))
     logReading('clear sky L', sky.L.toFixed(4))

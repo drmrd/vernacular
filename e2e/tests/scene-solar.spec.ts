@@ -56,7 +56,7 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.304
 //
 // Re-derived on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
 // 320x240 frame, 76800 pixels) under the calibrated daylight, against the shipped frame the
-// refreshed baseline will hold:
+// refreshed baseline holds:
 //
 //   noise: five consecutive captures of each build were byte-identical, so the render is
 //   deterministic and the noise band is 0.000000.
@@ -65,14 +65,13 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.304
 //   0 / 0 / 8 / 52 / 1943 / 30953.
 //   probe B, the 10x recalibration class (issue #522; AO_RADIUS_METERS 0.25 set to 2.5):
 //   0 / 0 / 3 / 122 / 612 / 6699.
-//   Linux SwiftShader readings: not yet recorded.
+//   Linux SwiftShader (run 43820235938, 2026-11-16): the shipped frame matches its refreshed
+//   linux baseline; the two probes were not run on Linux.
 //
 // The weaker probe per rung first clears one percent of the frame at threshold 0 (probe B,
 // 6699 pixels, ratio 0.0872); at threshold 0.02 the weaker probe moves only 612 pixels (ratio
 // 0.0080). The ratio gate goes at the midpoint between the zero noise band and that signal,
-// rounded down so it stays at most half the signal: 0.043 (2.0x margin). The previous
-// derivation's linux red run (run 34081251702, 2026-09-07) read probe B at ratio 0.0412 at
-// threshold 0.02.
+// rounded down so it stays at most half the signal: 0.043 (2.0x margin).
 const AMBIENT_OCCLUSION_THRESHOLD = 0
 const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.043
 
