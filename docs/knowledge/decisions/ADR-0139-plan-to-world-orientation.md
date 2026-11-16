@@ -158,9 +158,10 @@ The corner order of every vertical quad gives a normal that points away from the
 solid. A long face points away from the wall's centerline, an end cap points away
 from the wall's midpoint along its length, and a reveal points toward the void that
 it bounds. A hole loop runs opposite to the outline, so a reveal uses the same corner
-order as the outer cap. The fix is in `faceQuad` in `wall-prism.ts` and in the long
-faces and `revealQuad` in `wall-builder.ts`. Nothing in `engine/` or `bridge/`
-compensated for the old order, and stored documents need no migration.
+order as the outer cap. The fix is in `faceQuad` in `wall-prism.ts`, and in the long
+faces and the reveals in `wall-builder.ts`, where a reveal takes its corner order from
+`outerCapPositions`. Nothing in `engine/` or `bridge/` compensated for the old order,
+and stored documents need no migration.
 
 ### Why the first correction missed them
 
@@ -194,8 +195,9 @@ faces were horizontal and opposite to each other, which holds for either winding
 - The ambient occlusion contrast gate moved to the window-light state, as recorded in
   [[ADR-0173-ambient-occlusion-normals-target]]. The finish contrast fixture now paints
   the room side of its walls.
-- 14 macOS scene baselines changed, each to the physically correct picture. The Linux
-  family refreshes on its own workflow.
+- 14 macOS and 13 Linux scene baselines changed, each to the physically correct
+  picture. The Linux images come from the baseline workflow, which passed every scene
+  test and gate on its runner.
 
 Schematic shadows stay off. Whether the schematic look should cast shadows is a
 question for the default-look design, and this fix does not decide it.
