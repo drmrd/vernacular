@@ -33,23 +33,27 @@ const SUNLIT_LAWN = squareRegion(28, 140, 24)
  * The smallest OKLab lightness gap the sunlit lawn may read above the shadowed lawn.
  *
  * Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
- * 320x240 frame) under the calibrated daylight, not by eye. The defect probe is a local edit to
- * the solar lighting provider that fits the shadow camera to the casters alone, as before the
- * fix, which cuts the shadow off on the lawn. Readings of these regions:
+ * 320x240 frame), after the sun's level came to fade by the Kasten and Young (1989) relative air
+ * mass; not by eye. The defect probe is a local edit to the solar lighting provider that fits
+ * the shadow camera to the casters alone, as before the fix, which cuts the shadow off on the
+ * lawn. It was repeated on this build, since the sun lights the lawn the probe leaves uncovered.
+ * Readings of these regions:
  *
- *   probe, shadow fitted to the casters alone: sunlit 0.4465, shadowed 0.4337, gap 0.0127
- *   shadow fitted to the casters and their shadow on the ground (this build): sunlit 0.4465,
- *   shadowed 0.3290, gap 0.1174
- *   Linux SwiftShader (run 43820235938, 2026-11-16), this build: gap 0.1176. The probe was not
- *   run on Linux, so there is no Linux defect reading.
+ *   probe, shadow fitted to the casters alone: sunlit 0.3759, shadowed 0.3696, gap 0.0063
+ *   shadow fitted to the casters and their shadow on the ground (this build): sunlit 0.3759,
+ *   shadowed 0.3287, gap 0.0471
+ *   Linux, shadow fitted to the casters and their shadow on the ground (this build): sunlit
+ *   0.3761, shadowed 0.3291, gap 0.0470 (the probe was not taken)
  *
  * Five captures of each build came back identical to four decimals, so the noise band is under
- * 0.0001 on both. The threshold is the midpoint of the two gaps, (0.1174 + 0.0127) / 2 = 0.06505,
- * rounded to 0.065. The margins are 0.0524 below the shipped reading and 0.0523 above the
- * defect reading. Before the calibration the lawn read darker, the two gaps were 0.0124 and
- * 0.0008, and the threshold was 0.007, which the calibrated defect reading of 0.0127 would pass.
+ * 0.0001 on both. The threshold is the midpoint of the two gaps, (0.0471 + 0.0063) / 2 = 0.0267,
+ * rounded to 0.027. The margins are 0.0201 below the shipped reading and 0.0207 above the defect
+ * reading. The sun 5 degrees up is weak, so the sunlit lawn reads close to the shade. Under the
+ * earlier fade, exp(-0.21 * (1 / sin h - 1)), the sun was weaker still: the two gaps were 0.0388
+ * and 0.0055 and the threshold was 0.022. Before that fade they were 0.1174 and 0.0127 and the
+ * threshold was 0.065.
  */
-const SHADOW_REACH_MIN_GAP = 0.065
+const SHADOW_REACH_MIN_GAP = 0.027
 
 test.describe('Shadow reach gate', () => {
   test('the lawn far east of the building reads darker than the lawn in the sun', async ({

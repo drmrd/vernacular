@@ -2,36 +2,42 @@ import { clampToUnitInterval, mixLinearRgb, scaleLinearRgb } from '../color/line
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 import { SUNWARD_GAIN, levelCardLight, upperDomeTints } from './daylight-calibration'
-import { GROUND_SURFACE_COLOR } from './ground-surface'
+import { GROUND_BOUNCE_COLOR } from './ground-surface'
 
-/** The sky the dome is drawn for: a unit world-frame direction toward the sun, and the cloud cover. */
+/**
+ * The sky the dome is drawn for: a unit world-frame direction toward the sun, and the cloud cover.
+ */
 export type SkyDomeInput = { sunDirection: Vector3; cloudCover: number }
 
-/** The sun's height above the horizon in radians, from its unit direction. */
-function sunAltitudeOf(sky: SkyDomeInput): number {
+/**
+ * The sun's height above the horizon in radians, from its unit direction, with the sine clamped
+ * against rounding.
+ */
+export function sunAltitudeOf(sky: Pick<SkyDomeInput, 'sunDirection'>): number {
   return Math.asin(Math.min(1, Math.max(-1, sky.sunDirection.y)))
 }
 
 /**
- * The lawn under the light a level card receives: the direct sun's irradiance over pi plus the
- * cosine-weighted mean of the upper dome, both from the daylight calibration.
+ * The neutral grey ground bounce under the light a level card receives: the direct sun's
+ * irradiance over pi plus the cosine-weighted mean of the upper dome, both from the daylight
+ * calibration.
  */
 function groundRadiance(sunAltitude: number, cloudCover: number): LinearRgb {
   const { sun, sky } = levelCardLight(sunAltitude, cloudCover)
   return {
-    r: GROUND_SURFACE_COLOR.r * (sun.r + sky.r),
-    g: GROUND_SURFACE_COLOR.g * (sun.g + sky.g),
-    b: GROUND_SURFACE_COLOR.b * (sun.b + sky.b),
+    r: GROUND_BOUNCE_COLOR.r * (sun.r + sky.r),
+    g: GROUND_BOUNCE_COLOR.g * (sun.g + sky.g),
+    b: GROUND_BOUNCE_COLOR.b * (sun.b + sky.b),
   }
 }
 
 /**
  * Builds the dome's radiance function for one sky. Everything that depends only on the sky (the
- * sun's altitude, the dome's end tints, the lawn's radiance) is computed here once, so a caller
+ * sun's altitude, the dome's end tints, the ground's radiance) is computed here once, so a caller
  * sampling many directions pays only the per-direction work for each.
  * Above the horizon (y at or above 0) the dome blends the calibrated horizon tint into the zenith
  * tint on the view height and brightens toward the sun's azimuth under a clear sky. Below the
- * horizon it is the lawn lit by the sun and the upper dome.
+ * horizon it is the neutral grey ground bounce lit by the sun and the upper dome.
  */
 export function skyDomeSampler(sky: SkyDomeInput): (view: Vector3) => LinearRgb {
   const { sunDirection, cloudCover } = sky

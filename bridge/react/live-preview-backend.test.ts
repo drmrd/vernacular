@@ -1,4 +1,10 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
+// Loads the module under test once while the file is collected, where no test timeout
+// applies. Its first load transforms the engine and core barrels (about 220 modules) and
+// loads three and ajv: about 1.3 s alone, and 4 to 5 s when this file starts among the
+// first files of a busy run, which timed out the first case. Each case below still loads
+// a fresh copy through vi.resetModules(), which now costs tens of milliseconds.
+import './live-preview-backend'
 
 // The probe answers once per page load and reuses the answer, so every case
 // loads a fresh copy of the module against the runtime it just stubbed.

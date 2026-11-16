@@ -52,31 +52,32 @@ const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.304
 
 // The ambient-occlusion baseline gates the GTAO pass as pixels (rendering-realism lane 2,
 // issue #522; re-derived for lane 4's indirect-only blend, for lane 5's rendered normals
-// target, issue #471, for the outward wall faces, issue #491, and for the calibrated daylight).
-// Each engine change moves what the defect probes can move, so the pair below is re-derived
-// against the refreshed baselines, per the two-probe midpoint variant recorded in ADR-0157's
-// amendment.
+// target, issue #471, for the outward wall faces, issue #491, for the calibrated daylight, and
+// for the grey ground of the dome, the air-path fade of the sun, and the sky gain that follows
+// the sun's height). Each engine change moves what the defect probes can move, so the pair below
+// is re-derived against the shipped frame the refreshed baseline will hold, per the two-probe
+// midpoint variant recorded in ADR-0157's amendment.
 //
 // Re-derived on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
-// 320x240 frame, 76800 pixels) under the calibrated daylight, against the shipped frame the
-// refreshed baseline holds:
+// 320x240 frame, 76800 pixels), with Playwright's own image comparator, each probe frame
+// against the shipped frame:
 //
 //   noise: five consecutive captures of each build were byte-identical, so the render is
 //   deterministic and the noise band is 0.000000.
 //   probe A, the no-op radius class (ADR-0158; AO_RADIUS_METERS 0.25 set to 0.00025):
 //   pixels differing at threshold 0.35 / 0.2 / 0.1 / 0.05 / 0.02 / 0 were
-//   0 / 0 / 8 / 52 / 1943 / 30953.
+//   0 / 0 / 7 / 51 / 2018 / 31683.
 //   probe B, the 10x recalibration class (issue #522; AO_RADIUS_METERS 0.25 set to 2.5):
-//   0 / 0 / 3 / 122 / 612 / 6699.
-//   Linux SwiftShader (run 43820235938, 2026-11-16): the shipped frame matches its refreshed
-//   linux baseline; the two probes were not run on Linux.
+//   0 / 0 / 2 / 118 / 616 / 7273.
+//   Linux: not yet recorded for this derivation.
 //
 // The weaker probe per rung first clears one percent of the frame at threshold 0 (probe B,
-// 6699 pixels, ratio 0.0872); at threshold 0.02 the weaker probe moves only 612 pixels (ratio
+// 7273 pixels, ratio 0.0947); at threshold 0.02 the weaker probe moves only 616 pixels (ratio
 // 0.0080). The ratio gate goes at the midpoint between the zero noise band and that signal,
-// rounded down so it stays at most half the signal: 0.043 (2.0x margin).
+// rounded down so it stays at most half the signal: 0.047 (2.0x margin). Before these three
+// changes probe B moved 6699 pixels at threshold 0 and the ratio was 0.043.
 const AMBIENT_OCCLUSION_THRESHOLD = 0
-const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.043
+const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.047
 
 // One harness capture: the query string that selects the state, the snapshot it must
 // match, and optional per-capture overrides of the standing shell tolerances.

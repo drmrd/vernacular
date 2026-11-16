@@ -583,8 +583,12 @@ export { MAX_SHADOW_TEXEL_MM, boundsRadius, shadowFitBounds } from './environmen
 export type { SkyLighting } from './environment/sky-model'
 export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
 export type { SkyDomeInput } from './environment/sky-dome'
-export { skyDomeRadiance } from './environment/sky-dome'
-export { GROUND_SURFACE_COLOR, GROUND_SURFACE_HEX } from './environment/ground-surface'
+export { skyDomeRadiance, sunAltitudeOf } from './environment/sky-dome'
+export {
+  GROUND_BOUNCE_COLOR,
+  GROUND_SURFACE_COLOR,
+  GROUND_SURFACE_HEX,
+} from './environment/ground-surface'
 export {
   NEUTRAL_DOME_SPHERICAL_HARMONICS,
   SH_COEFFICIENT_COUNT,
@@ -612,10 +616,12 @@ export {
   LUX_PER_UNIT_IRRADIANCE,
   NIGHT_DIFFUSE_LEVEL,
   REFERENCE_HORIZONTAL_ILLUMINANCE_LUX,
+  SUN_OPTICAL_DEPTH,
   WHITE_CODE_FLOOR,
   diffuseLevelAt,
   directToDiffuseRatio,
   levelCardLight,
+  relativeAirMass,
   sunLevelAt,
 } from './environment/daylight-calibration'
 export type {

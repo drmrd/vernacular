@@ -11,12 +11,13 @@ import {
   WHITE_CODE_FLOOR,
 } from './daylight-calibration'
 import { referenceLightingInput } from './daylight-reference'
+import { LOW_SUN_CHROMA_MINIMUM, shadeOf } from './daylight-test-support'
 import { computeEnvironmentLighting, type EnvironmentLightingInput } from './environment-lighting'
 import { predictedMatteRadiance, type MatteSurface } from './light-model'
 import { solarPosition } from './solar-position'
 import { agxNeutralInverse, agxNeutralResponse } from './tone-response'
 import { linearLuminance } from '../color/contrast'
-import { linearToSrgb, srgbToOkLab, type LinearRgb } from '../color/oklab'
+import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 
 // Daylight is calibrated from three stated targets: a white wall in the sun reads code 225
@@ -44,10 +45,19 @@ const WHITE_CODE_TOLERANCE = 0.5
 const SUNLIT_WALL_CODE_CEILING = 250
 const WALL_REFLECTANCE = 0.85
 const WALL_NORMAL = { x: 0, y: 0, z: 1 }
+const WEST_WALL_NORMAL = { x: -1, y: 0, z: 0 }
+const NORTH_WALL_NORMAL = { x: 0, y: 0, z: -1 }
+const EQUINOX_NOON_INPUT: EnvironmentLightingInput = {
+  latLong: { latitude: 40, longitude: -75 },
+  observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+  utcOffsetMinutes: -300,
+  northBearing: 0,
+  cloudCover: 0,
+}
 
 const SHADE_CHROMA_MINIMUM = 0.02
+const WALL_SHADE_GREEN_CAST_LIMIT = 0.015
 const SHADE_CHROMA_MAXIMUM = 0.1
-const LOW_SUN_CHROMA_MINIMUM = 0.01
 
 const REFERENCE_LUX = 80_000
 const LUX_TOLERANCE = 0.01
@@ -88,17 +98,6 @@ function sumOf(a: LinearRgb, b: LinearRgb): LinearRgb {
 
 function wallOf(reflectance: number, normal: Vector3): MatteSurface {
   return { normal, reflectance: { r: reflectance, g: reflectance, b: reflectance } }
-}
-
-/** Scales so the largest channel is 1, encodes to sRGB, and returns the OKLab color. */
-function shadeOf(color: LinearRgb): { a: number; b: number; chroma: number } {
-  const largest = Math.max(color.r, color.g, color.b)
-  const lab = srgbToOkLab({
-    r: linearToSrgb(color.r / largest),
-    g: linearToSrgb(color.g / largest),
-    b: linearToSrgb(color.b / largest),
-  })
-  return { a: lab.a, b: lab.b, chroma: Math.hypot(lab.a, lab.b) }
 }
 
 function expectEqualChannels(color: LinearRgb): void {
@@ -162,14 +161,12 @@ describe('levelCardLight at the reference height', () => {
 })
 
 describe('levelCardLight under a low sun', () => {
-  it('warms the light on the card at 20 degrees and at 10 degrees', () => {
-    for (const height of [TWENTY_DEGREES, TEN_DEGREES]) {
-      const card = levelCardLight(height, CLEAR_SKY)
-      const tone = shadeOf(sumOf(card.sun, card.sky))
-      expect(tone.a).toBeGreaterThan(0)
-      expect(tone.b).toBeGreaterThan(0)
-      expect(tone.chroma).toBeGreaterThanOrEqual(LOW_SUN_CHROMA_MINIMUM)
-    }
+  it('warms the light on the level card at 20 degrees', () => {
+    const card = levelCardLight(TWENTY_DEGREES, CLEAR_SKY)
+    const tone = shadeOf(sumOf(card.sun, card.sky))
+    expect(tone.a).toBeGreaterThan(0)
+    expect(tone.b).toBeGreaterThan(0)
+    expect(tone.chroma).toBeGreaterThanOrEqual(LOW_SUN_CHROMA_MINIMUM)
   })
 })
 
@@ -186,6 +183,25 @@ describe('the white wall', () => {
   it('records the linear level of code 225 as the sunlit white level', () => {
     expect(WHITE_CODE_FLOOR).toBe(225)
     expect(DAYLIGHT_CALIBRATION.sunlitWhiteLevel).toBe(agxNeutralInverse(225 / BYTE_RANGE))
+  })
+})
+
+describe('a white wall in shade', () => {
+  it('shows no green cast on the west wall at the reference instant', () => {
+    const shade = shadeOf(
+      predictedMatteRadiance(referenceLighting(), wallOf(WALL_REFLECTANCE, WEST_WALL_NORMAL)),
+    )
+    expect(Math.abs(shade.a)).toBeLessThan(WALL_SHADE_GREEN_CAST_LIMIT)
+    expect(shade.b).toBeLessThan(0)
+  })
+
+  it('shows no green cast on the north wall at equinox noon at 40 N, 75 W', () => {
+    const lighting = computeEnvironmentLighting(EQUINOX_NOON_INPUT)
+    const shade = shadeOf(
+      predictedMatteRadiance(lighting, wallOf(WALL_REFLECTANCE, NORTH_WALL_NORMAL)),
+    )
+    expect(Math.abs(shade.a)).toBeLessThan(WALL_SHADE_GREEN_CAST_LIMIT)
+    expect(shade.b).toBeLessThan(0)
   })
 })
 

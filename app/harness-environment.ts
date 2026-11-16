@@ -40,6 +40,9 @@ const FULLY_OVERCAST_CLOUD_COVER = 1
 // ~89 deg, altitude ~37 deg).
 const WINDOW_LIGHT_MORNING_MINUTES = 540
 
+// 19:05 Eastern, shortly before sunset at the canonical site on the low-sun date.
+const LOW_SUN_EVENING_MINUTES = 1145
+
 // The March-equinox-at-civil-noon instant, shared by the equinox-noon, color-check,
 // color-accuracy, finish-contrast, overcast-noon, and ambient-occlusion states: all six
 // pin the same sun and differ only in cloud cover, the color-check flag, the paired
@@ -206,6 +209,20 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     {
       site: DAYLIGHT_REFERENCE_SITE,
       observedAt: DAYLIGHT_REFERENCE_LIGHTING.observedAt,
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: DAYLIGHT_REFERENCE_CAMERA_POSE,
+    },
+  ],
+  // On this evening the sun stands about 1.5 degrees above the horizon, a little north of
+  // due west, so the west wall faces a sun just above the horizon and the south wall is in
+  // shade; a pixel gate reads that a low sun adds almost no light. The south-west camera of
+  // the reference state shows both walls.
+  [
+    'low-sun',
+    {
+      site: CANONICAL_SITE,
+      observedAt: { date: '2026-03-25', minutesSinceMidnight: LOW_SUN_EVENING_MINUTES },
       realistic: true,
       scene: 'shell-south-window',
       cameraPose: DAYLIGHT_REFERENCE_CAMERA_POSE,

@@ -196,10 +196,11 @@ factor `1 + SUNWARD_GAIN * (1 - cloudCover) * (view.x * sun.x + view.z * sun.z)`
 0.70695 set so that at the reference instant the horizon toward the sun is three times as bright as
 the horizon away from it. That ratio is an estimate, as ADR-0192 says.
 
-The ground bounce is computed. Below the horizon the dome returns the lawn color
-`GROUND_SURFACE_COLOR` from `core/environment/ground-surface.ts` times the light a level card
-receives from the sun and the upper dome, in place of the fixed brown `(0.12, 0.1, 0.08)`. The
-engine's ground plane paints the same hex, `#5f8a4f`.
+The ground bounce is computed. Below the horizon the dome returns `GROUND_BOUNCE_COLOR` from
+`core/environment/ground-surface.ts`, a neutral grey with the luminance of the lawn color, times
+the light a level card receives from the sun and the upper dome, in place of the fixed brown
+`(0.12, 0.1, 0.08)`. The engine's ground plane still paints the lawn's hex, `#5f8a4f`. The bounce is
+grey so that shaded white walls do not take the lawn's green, as ADR-0192 records.
 
 `projectDomeToSphericalHarmonics(sky)` takes the same `SkyDomeInput` in place of a sun altitude and
 a cloud cover. Because the dome now varies with azimuth, the projection samples the dome in every
@@ -209,16 +210,20 @@ direction of its grid instead of once per ring. The twenty-seven coefficients an
 
 "A night scene never goes black" now rests on the calibration's night level. The diffuse level never
 falls below `NIGHT_DIFFUSE_LEVEL`, the level this dome had on a level card with the sun below the
-horizon, and that floor binds until the sun is 9.67 degrees up.
+horizon. The sun's level now falls with the Kasten and Young relative air mass and is 0 at and
+below the horizon, so that floor binds until the sun is 12.19 degrees up.
 
 The visible sky is calibrated. Its scattering constants (turbidity, Rayleigh, and the two Mie
 values) are pinned by name at the addon's defaults, as its cloud constants already were. Its color
-node is multiplied by a three/tsl uniform holding `SKY_MESH_GAIN` (0.0636) divided by the white
-point, so the mesh sits in the same white-balanced space as the dome. The three/tsl module loads
-through a cached dynamic import beside the sky mesh module, so the lazy boundary of this record still
-holds. The gain was measured near the horizon, where the mesh matches the dome within 0.12 percent.
-At the zenith the mesh reads about 0.071 of the dome, and ADR-0192 records that residual and the
-check that the multiply works on both render backends.
+node is multiplied by a three/tsl uniform that holds a gain for the sun's height, divided by the
+white point, so the mesh sits in the same white-balanced space as the dome. The gain comes from
+`SKY_MESH_GAIN_BY_SUN_HEIGHT`, a table measured in the scene harness, and `updateSkyEnvironment`
+rewrites it as the sun moves. It replaces a single gain of 0.0636 that left the visible sky near
+black at a low sun. The three/tsl module loads through a cached dynamic import beside the sky mesh
+module, so the lazy boundary of this record still holds. The table matches the dome just above the
+horizon on the side away from the sun. At the zenith the mesh still reads far below the dome, and
+ADR-0192 records that residual, the other differences that stay open, and the check that the
+multiply works on both render backends.
 
 `EnvironmentLighting.sunIntensity`, named above, is now `sunLevel`, the sun's actual level rather
 than a fraction of it.

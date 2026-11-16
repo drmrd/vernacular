@@ -89,7 +89,8 @@ function groundFootprint(sceneRoot: THREE.Object3D): GroundFootprint {
 function groundMesh(footprint: GroundFootprint, gradeElevation: number): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(footprint.width, footprint.depth)
   const material = new THREE.MeshStandardMaterial({
-    // Mowed-lawn green standing in for grass, the same hex the sky dome's ground reflects.
+    // Mowed-lawn green standing in for grass; the sky dome's ground bounce keeps only this
+    // color's luminance.
     // Pulling a grass texture through the content-addressed asset pipeline is out of scope
     // here (a follow-up), so a flat color carries the ground for now.
     color: GROUND_SURFACE_HEX,

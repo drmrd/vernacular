@@ -20,7 +20,9 @@ import {
 } from './lighting-rig'
 import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
 
-/** The largest radius the sun's shadow frustum may fit, set by the coarsest shadow texel allowed. */
+/**
+ * The largest radius the sun's shadow frustum may fit, set by the coarsest shadow texel allowed.
+ */
 const MAX_SHADOW_FIT_RADIUS_MM = (MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE) / 2
 
 /** Fits the sun's shadow frustum to the casters and the stretch of ground their shadow reaches. */
@@ -42,9 +44,9 @@ function fitSunShadowToCastersAndGround(
  * Solar-aware lighting under the LightingProvider contract: `apply` builds the same
  * sun-plus-sky rig as the basic provider, and `update` re-aims and re-tints it from a
  * computed EnvironmentLighting so the light follows the site, date, and time. The sun's
- * intensity is the environment `sunLevel`, which carries the horizon
- * extinction ramp, so night scenes stay lit by the sky's environment map rather than
- * the fill, which realistic mode zeroes.
+ * intensity is the environment `sunLevel`, which carries the fade along the
+ * light's path (0 at and below the horizon), so night scenes stay lit by the sky's environment
+ * map rather than the fill, which realistic mode zeroes.
  */
 export class SolarLightingProvider implements LightingProvider {
   private rig: LightingRig | null = null

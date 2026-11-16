@@ -65,7 +65,7 @@ describe('addGroundPlane', () => {
     expect(material.color.g).toBeGreaterThan(material.color.b)
   })
 
-  it('paints the ground plane with the lawn color the sky dome lights', () => {
+  it('paints the ground plane with the lawn color', () => {
     const root = new THREE.Group()
 
     addGroundPlane(root)
