@@ -22,6 +22,7 @@ sourceFiles:
     engine/lighting/lighting-rig.ts,
     engine/lighting/solar-lighting-provider.ts,
     core/environment/sky-dome.ts,
+    core/environment/ground-surface.ts,
     core/environment/spherical-harmonics.ts,
   ]
 status: current
@@ -217,9 +218,10 @@ What the coefficients carry is different. The dome now brightens toward the sun'
 factor `1 + SUNWARD_GAIN * (1 - cloudCover) * (view.x * sun.x + view.z * sun.z)`, so the map is
 brighter on the sun's side of the sky and a glossy surface reflects that. The term sums to zero
 around each ring of the dome, so it moves light between directions without changing the light on a
-level card. Below the horizon the dome is now the lawn color times the light a level card receives
-from the sun and the upper dome, in place of the fixed brown tint, so the lower half of the map is
-lit lawn.
+level card. Below the horizon the dome is now a neutral grey with the lawn's luminance times the
+light a level card receives from the sun and the upper dome, in place of the fixed brown tint. So
+the lower half of the map is about as bright as the lit lawn but has no hue, and a glossy surface
+does not reflect the lawn's green from it.
 
 Two signatures changed with it. `skyDomeRadiance(view, sky)` takes a unit view vector and a
 `SkyDomeInput`, `{ sunDirection, cloudCover }`, and `projectDomeToSphericalHarmonics(sky)` takes the
@@ -229,6 +231,7 @@ value, and the teardown above are unchanged.
 
 `scene.environmentIntensity` stays at 1. The white point is applied in `core`, before the
 coefficients are projected, so the map and the sun share one white-balanced space with no scale in
-the engine. The visible sky mesh is calibrated separately: its color node
-is multiplied by `SKY_MESH_GAIN` divided by the white point, which brings the mesh to the dome near
-the horizon. That gain applies to the mesh alone and never to the map.
+the engine. The visible sky mesh is calibrated separately: its color node is multiplied by a gain
+for the sun's height from `SKY_MESH_GAIN_BY_SUN_HEIGHT`, divided by the white point, which brings
+the mesh to the dome just above the horizon on the side away from the sun. That gain applies to the
+mesh alone and never to the map.

@@ -30,6 +30,7 @@ sourceFiles:
   [
     core/environment/daylight-calibration.ts,
     core/environment/daylight-calibration.test.ts,
+    core/environment/sun-level-fade.test.ts,
     core/environment/daylight-reference.ts,
     core/environment/tone-response.ts,
     core/environment/light-model.ts,
@@ -41,10 +42,12 @@ sourceFiles:
     core/environment/color-check.ts,
     core/color/linear-rgb.ts,
     engine/lighting/sky-environment.ts,
+    engine/lighting/sky-mesh-gain.test.ts,
     engine/lighting/lighting-rig.ts,
     engine/lighting/solar-lighting-provider.ts,
     engine/lighting/basic-lighting-provider.ts,
     engine/scene/ground-plane.ts,
+    app/harness-environment.ts,
     docs/specs/2026-11-15-daylight-and-shadow.md,
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
@@ -61,7 +64,9 @@ Current. Lands with the calibration change of the daylight and shadow work, whic
 `docs/plans/2026-11-15-daylight-and-shadow.md`. It amends
 [[ADR-0156-luminance-calibration-convention]], [[ADR-0148-visible-sky-and-sh-light-probe]], and
 [[ADR-0161-sky-specular-environment-map]], and each of those carries an amendment dated
-2026-11-16.
+2026-11-16. Three later decisions of the same day (the grey ground bounce, the sun's fade along the
+light's path, and the sky gain by sun height) are recorded in the amendment at the end of this
+record, and the sections below are written to agree with it.
 
 ## Context
 
@@ -104,7 +109,7 @@ Every quantity on the level card is irradiance over pi, so a white card returns 
 | Value                                   | Where it lives                          | Value at the reference             |
 | --------------------------------------- | --------------------------------------- | ---------------------------------- |
 | Sunlit white level                      | `DAYLIGHT_CALIBRATION.sunlitWhiteLevel` | 2.099829                           |
-| Sun scale, full sun overhead, clear sky | `DAYLIGHT_CALIBRATION.sunScale`         | 12.3599                            |
+| Sun scale, full sun overhead, clear sky | `DAYLIGHT_CALIBRATION.sunScale`         | 10.9156                            |
 | White point, at luminance 1             | `DAYLIGHT_CALIBRATION.whitePoint`       | r 1.069166, g 0.980015, b 0.994307 |
 | Sun level                               | `sunLevelAt(h, cloudCover)`             | 10.0056                            |
 | Diffuse level on the level card         | `diffuseLevelAt(h, cloudCover)`         | 0.45039                            |
@@ -116,10 +121,12 @@ The sunlit white level is `agxNeutralInverse(225 / 255)`, from the tone curve in
 
 The sun scale is a frozen literal. The reference wall's luminance is linear in the scale, so it was
 solved once: at a scale of 1, with the night floor described below set aside (the reference sky
-clears it), the wall returned 0.169890, and 2.099829 / 0.169890 is 12.3599. An independent solve
-during review got 12.3599048. The tests in `core/environment/daylight-calibration.test.ts` read the
-wall back through the light model and the tone curve and require code 225 within half a code, so a
-stale literal fails there. The wall reads 225.00.
+clears it), the wall returned 0.192369, and 2.099829 / 0.192369 is 10.9156. That solve uses the
+fade along the light's path from the amendment. Under the first fade the same solve gave 12.3599
+(an independent solve during review got 12.3599048). The tests in
+`core/environment/daylight-calibration.test.ts` read the wall back through the light model and the
+tone curve and require code 225 within half a code, so a stale literal fails there. The wall reads
+225.00.
 
 The dome follows from the sun through target 1. The sky's level on the card is the clear direct
 level on the card divided by the ratio, and the dome's end tints are scaled so that the
@@ -133,7 +140,8 @@ a fixed point by iteration (50 steps) when it loads, then scales it to luminance
 Three checks are not targets, and the tests assert each. A white wall square to the sun at the
 reference instant reads code 234.47, below clipping, so it still differs from pure white. The sky
 alone on the card is blue, with an OKLab chroma of 0.0834 inside the test's band of 0.02 to 0.10.
-With the sun at 20 degrees and at 10 degrees the light on the card is warm.
+With the sun at 20 degrees the light on the card is warm. At 10 degrees it is not, and a white wall
+that faces the sun is warm there instead (see the amendment).
 
 ### The raw tints are inputs
 
@@ -147,11 +155,13 @@ leaves at luminance 1, so all of its strength lives in its level. The hemisphere
 ### The sun level moves into core
 
 `EnvironmentLighting.sunIntensity`, a fraction, is now `sunLevel`, the light's actual intensity:
-`sunLevelAt(h, cloudCover)` is the sun scale times the old fade with height times the old cloud
-transmission. The fade (0.35 of full on the horizon, rising with `sin h`, gone 0.1 radians below)
-and the cloud curve (exponent 3.4) are unchanged. The solar provider sets the light to `sunLevel`
-and no longer multiplies by a constant of its own. It builds the rig dark, and `update` sets the
-level in the same React commit, so no frame shows the dark sun. The engine's old constant is now
+`sunLevelAt(h, cloudCover)` is the sun scale times a fade with height times the old cloud
+transmission. The fade follows the light's path through the air,
+`exp(-SUN_OPTICAL_DEPTH * (1 / sin h - 1))` above the horizon and 0 at and below it, with
+`SUN_OPTICAL_DEPTH` 0.21; the amendment records why it replaced the first fade. The cloud curve
+(exponent 3.4) is unchanged. The solar provider sets the light to `sunLevel` and no longer
+multiplies by a constant of its own. It builds the rig dark, and `update` sets the level in the
+same React commit, so no frame shows the dark sun. The engine's old constant is now
 `SCHEMATIC_SUN_INTENSITY`, still 1.6, and only the schematic rig of
 [[ADR-0079-three-dimensional-lighting-legibility]] reads it.
 
@@ -164,10 +174,10 @@ Read literally, target 1 sends the dome to zero at sunset, because the direct le
 and the ratio goes to 1. That gives a black scene. So the diffuse level never falls below
 `NIGHT_DIFFUSE_LEVEL`, which is 0.35 times 0.4445, or 0.155575. That is the level the old dome had
 on the card with the sun below the horizon: its night scale of 0.35 times the luminance of the
-cosine-weighted mean of its tints. The floor binds through the night and until the sun is 9.67
-degrees up, where the level driven by the sun first passes it. Below that height the card's direct
-to diffuse ratio is lower than the curve says. Full overcast takes 30 percent off the diffuse level
-at any height.
+cosine-weighted mean of its tints. The floor binds through the night and until the sun is 12.36
+degrees up, where the level driven by the sun first passes it (9.67 degrees under the first fade).
+Below that height the card's direct to diffuse ratio is lower than the curve says. Full overcast
+takes 30 percent off the diffuse level at any height.
 
 ### The dome toward the sun, and its ground
 
@@ -184,10 +194,12 @@ never falls below 0.29 of the plain dome. The term sums to zero around each ring
 does not change the light on the level card, and the targets above do not see it. Cloud cover
 fades it out.
 
-Below the horizon the dome is the lawn: `GROUND_SURFACE_COLOR` (the hex `#5f8a4f` of
-`core/environment/ground-surface.ts`, decoded to linear light) times the light a level card
-receives from the sun and the upper dome. That replaces the fixed brown. The engine's ground plane
-paints the same hex, so the ground the dome reflects and the ground the camera sees are one color.
+Below the horizon the dome is a neutral grey ground bounce: `GROUND_BOUNCE_COLOR` in
+`core/environment/ground-surface.ts`, a grey with the luminance (0.21174) of the lawn color
+`GROUND_SURFACE_COLOR`, times the light a level card receives from the sun and the upper dome. That
+replaces the fixed brown. The engine's ground plane still paints the lawn's hex, `#5f8a4f`, so the
+camera sees a green lawn while the dome's ground keeps only its luminance. The amendment gives the
+reason.
 
 The dome's functions take a `SkyDomeInput`, `{ sunDirection, cloudCover }`, in place of a sun
 height: `skyDomeRadiance(view, sky)` takes a unit view vector, `skyDomeSampler(sky)` computes the
@@ -226,10 +238,12 @@ directional factor 0.8), as its cloud constants already were. They are not tuned
 
 The mesh's output takes a gain. After the attach builds the sky, `applySkyGain` replaces the
 addon's color node with that node multiplied by a three/tsl uniform. The uniform holds
-`skyMeshGain()`, which is `SKY_MESH_GAIN` divided channel by channel by the white point, so the
-visible sky sits in the same white-balanced space as the sun and the dome. The vector is recorded on
-the rig as `skyGain`. The three/tsl module loads lazily beside the sky mesh module, so the startup
-path does not grow ([[ADR-0148-visible-sky-and-sh-light-probe]]).
+`skyMeshGain(sunAltitude)`: the gain for the sun's height from `skyMeshGainAt`, divided channel by
+channel by the white point, so the visible sky sits in the same white-balanced space as the sun and
+the dome. The vector is recorded on the rig as `skyGain`, and `updateSkyEnvironment` writes the
+gain for the current sun height into it on each update. The three/tsl module loads lazily beside
+the sky mesh module, so the startup path does not grow
+([[ADR-0148-visible-sky-and-sh-light-probe]]).
 
 Spec section 9 named a risk here: the addon assigns its color node on the material, and a gain
 might need a local copy of that node. A check on 2026-11-16, one capture per build, settled it on
@@ -240,23 +254,21 @@ and wall regions did not change. In the live view on WebGPU, a sky region read
 unchanged. The addon's color node takes the multiply on both backends, so the fallback was not
 needed.
 
-`SKY_MESH_GAIN` is 0.0636, measured on 2026-11-16 on the development machine (the scene harness
-forced to WebGL 2, a 320 by 240 frame, AgX at exposure 1) in the `equinox-noon` state. The region
-is an 8 pixel square at the top of the frame, on the side away from the sun, looking 1.2 degrees
-above the horizon. Each reading is the region's encoded luminance turned back into linear
-luminance with `agxNeutralInverse`. At a gain of 1 the region sat too close to the flat top of the
-curve, so it was read at a provisional gain of 0.25 and scaled back: 3.844 at a gain of 1. The
-dome gives 0.24466 in that direction, so the gain is 0.24466 / 3.844, or 0.06365, frozen as
-0.0636. At that gain the region reads 0.24496, a residual of +0.12 percent. Five captures
-were byte-identical.
+The gain was first a single number, 0.0636, measured on 2026-11-16 on the development machine (the
+scene harness forced to WebGL 2, a 320 by 240 frame, AgX at exposure 1) in the `equinox-noon`
+state, on the side away from the sun just above the horizon. Each reading is the region's encoded
+luminance turned back into linear luminance with `agxNeutralInverse`, divided by the gain it was
+rendered with. That gain matched the dome at noon and left the visible sky near black at a low sun.
+The amendment replaces it with `SKY_MESH_GAIN_BY_SUN_HEIGHT`, a table of gains by sun height
+measured the same way.
 
-At the zenith the same gain leaves the visible sky far too dark: it reads 0.0328 against the dome's
-0.4596, a ratio of about 0.071, so about 14 times darker. That figure is an order of magnitude and
-no more, because the inverse of the tone curve is exact only for a neutral color and the zenith is a
-saturated blue. The mesh is much brighter at the horizon than at the zenith, and the dome is the
-other way round, so one gain cannot match both. The gain matches the horizon. Light on surfaces
-comes from the dome and not from the mesh, so the residual affects how the sky looks and not how
-the building is lit.
+At the zenith the visible sky is far too dark. At equinox noon, under the single gain, it read
+0.0328 against the dome's 0.4596, a ratio of about 0.071, so about 14 times darker. That figure is
+an order of magnitude and no more, because the inverse of the tone curve is exact only for a
+neutral color and the zenith is a saturated blue. The mesh is much brighter at the horizon than at
+the zenith, and the dome is the other way round, so a gain that depends only on the sun's height
+cannot match both. The gain matches the horizon. Light on surfaces comes from the dome and not
+from the mesh, so the residual affects how the sky looks and not how the building is lit.
 
 ### The color check's sun
 
@@ -276,12 +288,14 @@ tone mapping. None of the calibrated values above reach it.
   transcription: before the change the light model predicted code 161.34 for the reference wall
   and the render read 162.67.
 - With that curve the sun at the reference instant is 7.7 times its earlier level (10.0056 against
-  1.2952, a factor of 7.725), where the spec estimated about four. The sky on the card comes out at
-  0.45039 against 0.35985 before, above the earlier level where the spec expected a little below.
-  The targets stand (spec section 9) and the values follow from them.
-- Spec section 6.3 asks the sky mesh to match the dome at the zenith and at the far horizon. One
-  gain cannot do both, so the gain matches one region near the horizon and the zenith residual is
-  recorded above.
+  1.2952, a factor of 7.725), where the spec estimated about four. The new fade and its sun scale,
+  10.9156, keep that level at the reference instant, so the factor still holds there. At other sun
+  heights it differs, because the fade differs. The sky on the card comes out at 0.45039 against
+  0.35985 before, above the earlier level where the spec expected a little below. The targets
+  stand (spec section 9) and the values follow from them.
+- Spec section 6.3 asks the sky mesh to match the dome at the zenith and at the far horizon. A gain
+  that depends only on the sun's height cannot do both, so the gain matches the horizon away from
+  the sun and the zenith residual is recorded above.
 - Spec section 6.9 sets every threshold of the sky gate at a midpoint. The plan uses exact
   relations for two of its tests instead, "not clipped" and "darker than the sunlit white wall",
   because neither has a free number. The blue of the clear sky keeps a midpoint. The overcast sky
@@ -290,8 +304,12 @@ tone mapping. None of the calibrated values above reach it.
 
 ### Gates
 
-Node tests assert the ratio curve, the white point, the white wall's code, the shade, the warm low
-sun, the lux anchor, and the night floor as plain numbers.
+Node tests assert the ratio curve, the white point, the white wall's code, the shade, the lux
+anchor, and the night floor as plain numbers. They also assert the warm low sun in the form the new
+fade allows: the light on the level card is warm at 20 degrees, and a white wall that faces the sun
+is warm at 10 and at 5 degrees. Since the amendment they check that shaded white walls show no green
+cast, that the sun's level follows the fade along the light's path and is 0 at and below the
+horizon, and that the sky gain table holds its measured rows.
 
 The pixel gates keep their readings and thresholds in their spec files under `e2e/tests/`, and this
 record states no threshold for them. Of the gates in spec section 6.9, this change sets the
@@ -305,6 +323,15 @@ its clouds only above the horizon, and this view shows almost no sky above it, s
 to set a bound in (#764). The sun-to-shade band has no upper edge. Its probe zeroes the sky's
 ambient light, the shadowed lawn then renders black, and the ratio has no finite value to set an
 edge at (#766).
+
+The amendment adds a harness state, `low-sun`, and three pixel gates. The state renders the
+evening of 2026-03-25 at the harness site, with the sun about 1.5 degrees up a little north of due
+west, through the camera of the reference state, so the west wall faces the low sun and the south
+wall is in shade. One gate reads the green-red axis (OKLab a) of white walls in shade, so the green
+cast cannot come back unnoticed. One reads the visible sky at a low sun, so it cannot fall back to
+near black while the dome still lights the scene. One reads the white wall that faces a sun just
+above the horizon, so a sun that low cannot light it as strongly as the first fade did. Their
+readings and thresholds live in their spec files.
 
 ## Consequences
 
@@ -321,25 +348,29 @@ edge at (#766).
   the dome follow on their own when the module loads, and the wall test catches a stale scale. The
   night floor is the exception: `DOME_MEAN_LUMINANCE` in `core/environment/daylight-calibration.ts`
   is a frozen number, so a change to the raw dome tints needs that number updated too.
-- `SKY_MESH_GAIN` is a measurement on one machine and one three.js build. A three.js bump that
-  touches the sky addon needs a new measurement.
-- The gain is fitted at one instant and one place, so the visible sky does not follow the dome at
-  other sun heights. At low sun the visible sky band renders near black, and the zenith residual
-  stands (#763).
+- `SKY_MESH_GAIN_BY_SUN_HEIGHT` is a measurement on one machine (WebGL 2 on macOS) and one three.js
+  build. A three.js bump that touches the sky addon needs the table measured again.
+- The gain follows the sun's height but matches the dome only just above the horizon on the side
+  away from the sun. The zenith still reads far below the dome, the horizon to the side of the sun
+  reads 45 to 70 percent of it, the band of the mesh below the true horizon is not matched, and
+  with the sun under the horizon the mesh is black (#763).
 - Two parts of the pixel gates are not set (see Gates): the overcast sky has no bound (#764) and
   the sun-to-shade band has no upper edge (#766). A change that leaves the overcast sky blue, or
   that drains the sky light out of the shade, passes the gates.
-- Shade on a vertical white wall under a high sun is green, not cool. The lower half of the dome
-  is the lit lawn, and the lawn is brighter than the sky: its luminance is about 0.57 against a
-  zenith of about 0.45 at the reference instant, and about 0.60 against 0.46 at equinox noon. So
-  the cool shade of the checks above holds on the level card only. The light model predicts OKLab
-  a -0.070, b +0.027 for the shaded west wall at the reference instant, and a -0.075, b +0.033 for
-  the north wall at equinox noon. Rendered shaded white walls read a from -0.020 to -0.031. No gate
-  reads the a axis (#765).
-- The sun's fade with height is unchanged and keeps 35 percent of the sun's level at the horizon.
-  Under the scale of 12.36 the light model predicts code 210.5 for a white wall that faces a sun on
-  the horizon, and code 186.5 with the sun 3 degrees below it, while the dome sits at its night
-  level. These are figures from the model, not pixel readings (#771).
+- Shade on a vertical white wall is no longer green; the grey ground bounce answered #765. The
+  lower half of the dome is still brighter than the sky (luminance about 0.57 against a zenith of
+  about 0.45 at the reference instant), but it is grey now, so it lights a shaded wall without a
+  hue. The light model predicts OKLab a -0.0044, b -0.0277 for the shaded west wall at the reference
+  instant, and a -0.0052, b -0.0261 for the north wall at equinox noon, where the lit lawn gave
+  a -0.070 and a -0.075. A gate now reads the a axis.
+- A sun on the horizon no longer lights a wall; the fade along the light's path answered #771. The
+  light model gives a white wall that faces a sun on the horizon, or 3 degrees below it, code 105.4,
+  the same as the dome alone, where the first fade gave 210.5 and 186.5. With the sun 5 degrees up
+  the wall reads 168.9, and at 10 degrees 208.3. These are figures from the model, not pixel
+  readings.
+- With the sun on the horizon, the dome at its night floor is the scene's only light, and once the
+  sun is under the horizon the visible sky is black. A level for twilight and night is not designed;
+  a follow-up issue tracks this.
 - Two render defects are open: window glass reads dull and green (#767), and the frame edges on a
   sunlit wall render jagged (#768).
 - Older records that name `sunIntensity` or `DAYLIGHT_SUN_INTENSITY` read with this mapping:
@@ -352,17 +383,20 @@ edge at (#766).
 - The edition of the IES Lighting Handbook the anchor's equations come from (#769).
 - A source for the three-to-one ratio of the horizon toward the sun. A measured or published sky
   distribution can replace the estimate without touching the other targets.
-- How to make the visible sky follow the dome at every sun height and close its zenith residual.
-  That needs a gain that varies with height or a sky that is not the addon's, and neither is chosen
-  (#763).
+- How to make the visible sky follow the dome at the zenith, to the side of the sun, below the
+  true horizon, and with the sun under the horizon. The gain by sun height matches only the horizon
+  away from the sun. The rest needs a correction that also depends on the view direction, or a sky
+  drawn from the dome, and neither is chosen (#763).
 - A bound for the overcast sky, which needs a view or a state where the overcast and clear skies
   differ (#764), and an upper edge for the sun-to-shade band, which needs a probe that leaves the
   shadowed lawn above black (#766).
-- Whether shade on a vertical wall should read cool, and whether a gate should read the a axis
-  (#765).
-- Whether the sun should keep 35 percent of its level at the horizon under the calibrated scale
-  (#771).
-- Exposure control at night, and the lamps that will read the lux anchor.
+- Light bounced from the real ground and from floors near a wall, which would give a surface the
+  color of the ground beside it. The grey ground bounce gives that up; a follow-up issue tracks
+  this.
+- A level for twilight and night, below the reach of the fade; a follow-up issue tracks this.
+- Exposure at a low sun and at night. Exposure stays 1, so how a low sun looks is not modeled; a
+  follow-up issue tracks this. The lamps that will read the lux anchor wait on the same work.
+- A tighter tolerance for the tone curve gate; a follow-up issue tracks this.
 - The display rule for the daylight field and the color check's bypass of it, which
   [[ADR-0196-plan-space-daylight-field]] leaves to the window-lit rooms work.
 
@@ -376,3 +410,91 @@ edge at (#766).
 - [[ADR-0157-color-accuracy-gate]] (the tolerances that do not move).
 - [[ADR-0147-per-mode-tone-mapping]] (AgX for daylight, Neutral for the check).
 - The IES Lighting Handbook, clear-sky daylight availability equations (edition to be confirmed).
+
+## Amendment 2026-11-16: the grey ground bounce, the sun's fade, and the sky gain by sun height
+
+Later on 2026-11-16 the owner decided three of the open points of this record. All three are in
+code, and the sections above are corrected to agree with them. The three targets still hold
+exactly: the reference wall reads code 225.00, the white point and the lux anchor do not change,
+and the sun level at the reference instant stays 10.0056.
+
+### The ground bounce is a neutral grey
+
+The lower half of the dome uses `GROUND_BOUNCE_COLOR` from `core/environment/ground-surface.ts`, a
+grey whose luminance is that of the lawn color, 0.21174 in linear light. `groundRadiance` in
+`core/environment/sky-dome.ts` multiplies it by the light a level card receives from the sun and
+the upper dome. The visible lawn keeps its color: the engine's ground plane still paints
+`GROUND_SURFACE_HEX`.
+
+The reason is the green cast. With the lit lawn color as its lower half, the dome gave every white
+wall in shade a green tint. The light model predicted OKLab a -0.070 for the shaded west wall at the
+reference instant, and rendered shaded walls read a -0.020 to -0.031. In a capture made for the
+decision, with the grey ground, the same west wall read a -0.0036 and b -0.0116, a cool light grey.
+The model now predicts a -0.0044, b -0.0277 there. At the reference instant the light on the lawn
+is the neutral white of the level card, so a ground of the same luminance gives the reference wall
+the same luminance, and the three targets do not move.
+
+Two other options were weighed and not taken. A ground halfway between the lawn and the grey only
+halved the cast. A darker ground in the lawn's hue kept much of the cast, darkened the shade, and
+moved the reference wall off code 225, which would have needed a new sun scale.
+
+What this gives up: no surface takes the color of the ground beside it. Bounce from the real ground
+and from floors near a wall is later work, and a follow-up issue tracks it. This answers #765.
+
+### The sun's level follows the light's path through the air
+
+`sunFade` in `core/environment/daylight-calibration.ts` is now
+`exp(-SUN_OPTICAL_DEPTH * (1 / sin h - 1))` above the horizon and 0 at and below it, with
+`SUN_OPTICAL_DEPTH` 0.21. That is the optical depth of the clear-sky direct sun formula this record
+already cites for its photometric anchor (see "The photometric anchor"), taken relative to the path
+overhead, so the fade is exactly 1 at the zenith. The first fade kept 35 percent of the level at
+the horizon and reached zero 0.1 radians (5.73 degrees) below it.
+
+The sun scale was solved again in the same way and is now 10.9156 (it was 12.3599). The sun level
+at the reference instant stays 10.0056, and the reference wall stays at code 225. Because the sun
+is weaker at low heights, the night floor of the diffuse level now binds below 12.36 degrees of sun
+height, where it bound below 9.67.
+
+The owner weighed two alternatives: the same optical depth with the Kasten and Young air mass in
+place of `1 / sin h`, and a smaller optical depth. This fade was chosen because it is the cited
+handbook formula itself, it has no step at the horizon, and it needs no extra constant. The
+alternative with the more exact air mass differs from it only below about 5 degrees. Neither is a
+model of perception: how a low sun looks depends on exposure, which stays 1, and a follow-up issue
+tracks exposure at a low sun.
+
+One property of the design changed with it. The light on a level card is still warm at 20 degrees
+of sun height, but at 10 degrees it no longer is: it reads OKLab a +0.0141, b -0.0046, because the
+direct sun on level ground at that height is weaker than the sky's light. A white wall that faces
+the sun is warm at 10 degrees (a +0.0232, b +0.0557) and at 5 degrees (a +0.0234, b +0.0392). The
+Node tests state the warm low sun that way.
+
+What this gives up: at dusk the sun no longer props up the light. Below 12.36 degrees the sky's
+light sits at the night floor, and at the horizon the sun adds nothing. A level for twilight and
+night is not designed, and a follow-up issue tracks it. This answers #771.
+
+### The visible sky's gain follows the sun's height
+
+The single gain of 0.0636 is gone. `SKY_MESH_GAIN_BY_SUN_HEIGHT` in
+`engine/lighting/sky-environment.ts` holds eight rows, measured in the scene harness (WebGL 2,
+macOS, 2026-11-16). Each row is the gain that makes the visible sky's luminance equal the dome's
+just above the horizon on the side away from the sun. `skyMeshGainAt` interpolates the natural logarithm of the
+gain linearly in the height between rows and holds the end rows beyond the table.
+`skyMeshGain` divides that gain by the white point, and `updateSkyEnvironment` writes it into the
+rig's `skyGain` vector on each update, so the visible sky follows the sun with no shader rebuild.
+
+The rows run from 1.07 degrees (gain 1.15, an estimate, from the least certain reading) through
+2.07, 3.58, 4.95, 7.54, 10, and 12.5 degrees to 73.44 degrees (gain 0.061). With the gain set
+outright at four measured heights (2.07, 4.95, 19.99, and 45.06 degrees) the region came within 0.7
+percent of the dome. Five more measured heights (15, 20, 30, 45, and 60 degrees) fall within 1.74
+percent of the table's interpolation. The doc comment of the table records these figures and its
+limits.
+
+The reason is the low sun. Under the single gain the visible sky behind the house went near black
+at a low sun while the house and the lawn were still in daylight. Near the horizon the mesh dims
+much faster than the dome as the sun drops, so the matching gain climbs steeply at low heights: it
+is 0.0692 at 12.5 degrees and 0.651 at 2.07.
+
+What stays open (#763): the zenith, where the mesh reads far below the dome; the horizon to the side
+of the sun, which reads 45 to 70 percent of the dome; the band of the mesh below the true horizon;
+and the sun under the horizon, where the mesh is black and the held end row does not light a night
+sky. The scattering constants stay pinned and are not tuned to close these differences.
