@@ -1,27 +1,46 @@
 import { Canvas, type CanvasProps, type GLProps } from '@react-three/fiber'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   loadSceneRendererFactory,
   type SceneRendererFactory,
   type SceneRendererOptions,
 } from '../../engine'
+import { SceneUnsupportedStatus } from './scene-unsupported-status'
 
 // The pane shown while the renderer factory loads: the same blank, block-level canvas that
 // React Three Fiber's Canvas shows before it draws its first frame.
 const LOADING_CANVAS_STYLE = { display: 'block', width: '100%', height: '100%' } as const
 
-function useSceneRendererFactory(): SceneRendererFactory | null {
+type SceneRendererStatus = 'loading' | 'starting' | 'ready' | 'failed'
+
+// The repository has no error-reporting channel for the bridge layer yet; a failed start is
+// logged the way the other bridge loaders log theirs, so the cause stays reachable in the console.
+function logStartFailure(stage: string, error: unknown): void {
+  console.warn(`Scene renderer failed to ${stage}`, error)
+}
+
+function useSceneRendererFactory(
+  setStatus: (status: SceneRendererStatus) => void,
+): SceneRendererFactory | null {
   const [rendererFactory, setRendererFactory] = useState<SceneRendererFactory | null>(null)
   useEffect(() => {
     let cancelled = false
-    void loadSceneRendererFactory().then((loaded) => {
-      if (!cancelled) setRendererFactory(() => loaded)
-    })
+    loadSceneRendererFactory().then(
+      (loaded) => {
+        if (cancelled) return
+        setRendererFactory(() => loaded)
+        setStatus('starting')
+      },
+      (error: unknown) => {
+        logStartFailure('load', error)
+        if (!cancelled) setStatus('failed')
+      },
+    )
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [setStatus])
   return rendererFactory
 }
 
@@ -34,8 +53,15 @@ function useSceneRendererFactory(): SceneRendererFactory | null {
 // factory's result for one microtask, so only a render of the Canvas inside that same task
 // could land in the window; no such path exists today.
 function useSceneRendererStart(forceWebGL: boolean) {
-  const rendererFactory = useSceneRendererFactory()
-  const [initialized, setInitialized] = useState(false)
+  const [status, setStatus] = useState<SceneRendererStatus>('loading')
+  const rendererFactory = useSceneRendererFactory(setStatus)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const createRenderer = useMemo<GLProps | null>(() => {
     if (rendererFactory === null) return null
     return (defaultProps) => {
@@ -43,11 +69,19 @@ function useSceneRendererStart(forceWebGL: boolean) {
       // OffscreenCanvas branch of DefaultGLProps applies only to its worker path).
       const canvas = defaultProps.canvas as HTMLCanvasElement
       const renderer = rendererFactory({ canvas, forceWebGL })
-      void renderer.init().then(() => setInitialized(true))
+      renderer.init().then(
+        () => {
+          if (mounted.current) setStatus('ready')
+        },
+        (error: unknown) => {
+          logStartFailure('start', error)
+          if (mounted.current) setStatus('failed')
+        },
+      )
       return renderer
     }
   }, [rendererFactory, forceWebGL])
-  return { createRenderer, initialized }
+  return { createRenderer, status }
 }
 
 /** The Canvas props a scene canvas takes: everything but the renderer, which it builds. */
@@ -66,8 +100,10 @@ export function SceneRendererCanvas({
   children,
   ...canvasProps
 }: SceneRendererCanvasProps) {
-  const { createRenderer, initialized } = useSceneRendererStart(forceWebGL)
+  const { createRenderer, status } = useSceneRendererStart(forceWebGL)
+  if (status === 'failed') return <SceneUnsupportedStatus />
   if (createRenderer === null) return <canvas style={LOADING_CANVAS_STYLE} />
+  const initialized = status === 'ready'
   return (
     <Canvas {...canvasProps} frameloop={initialized ? frameloop : 'never'} gl={createRenderer}>
       {initialized ? children : null}
