@@ -616,6 +616,7 @@ export {
   diffuseLevelAt,
   directToDiffuseRatio,
   levelCardLight,
+  relativeAirMass,
   sunLevelAt,
 } from './environment/daylight-calibration'
 export type {

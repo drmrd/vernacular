@@ -37,7 +37,7 @@ const NIGHT_DOME_SCALE = 0.35
 const DOME_MEAN_LUMINANCE = 0.4445
 /**
  * The level the diffuse light on the level card never falls below. It holds the sky's level
- * through the night and until the sun is about 12.36 degrees up, where the sun-driven level first
+ * through the night and until the sun is about 12.19 degrees up, where the sun-driven level first
  * exceeds it.
  */
 export const NIGHT_DIFFUSE_LEVEL = NIGHT_DOME_SCALE * DOME_MEAN_LUMINANCE
@@ -60,9 +60,40 @@ const ZENITH_DOME_TINT: LinearRgb = { r: 0.25, g: 0.45, b: 0.9 }
 /**
  * The clear-sky optical depth of the direct sun in the daylight availability formula that
  * ADR-0192 cites: the direct normal illuminance goes as exp(-0.21 / sin h). ADR-0192 uses it
- * when it derives the photometric anchor; in the code it sets the fade of the sun's level.
+ * when it derives the photometric anchor; in the code it multiplies the relative air mass in
+ * the fade of the sun's level.
  */
 export const SUN_OPTICAL_DEPTH = 0.21
+
+const HALF_TURN_IN_DEGREES = 180
+const DEGREES_PER_RADIAN = HALF_TURN_IN_DEGREES / Math.PI
+/** The coefficient of the height term in the Kasten and Young air mass. */
+const KASTEN_YOUNG_COEFFICIENT = 0.50572
+/** The degrees added to the sun's height in the Kasten and Young air mass. */
+const KASTEN_YOUNG_OFFSET_DEGREES = 6.07995
+/** The power the offset height is raised to in the Kasten and Young air mass. */
+const KASTEN_YOUNG_EXPONENT = -1.6364
+
+/**
+ * The relative air mass at a sun height in radians: the length of the light's path through the
+ * air relative to the path overhead. It is the formula of F. Kasten and A. T. Young, "Revised
+ * optical air mass tables and approximation formula", Applied Optics 28 (1989), 4735-4738:
+ * 1 / (sin h + 0.50572 (h + 6.07995) ^ -1.6364) with h in degrees in the second term. Unlike
+ * 1 / sin h it stays finite at the horizon, about 38 there, and it is about 0.9997 overhead.
+ */
+export function relativeAirMass(sunAltitude: number): number {
+  const heightDegrees = sunAltitude * DEGREES_PER_RADIAN
+  return (
+    1 /
+    (Math.sin(sunAltitude) +
+      KASTEN_YOUNG_COEFFICIENT *
+        (heightDegrees + KASTEN_YOUNG_OFFSET_DEGREES) ** KASTEN_YOUNG_EXPONENT)
+  )
+}
+
+/** The relative air mass with the sun overhead, where the fade is exactly 1. */
+const ZENITH_AIR_MASS = relativeAirMass(Math.PI / 2)
+
 /**
  * Exponent of the Kasten-Czeplak direct-beam cloud transmission curve: convex, so light cloud
  * cover barely dims the direct sun while heavy cover extinguishes it by full overcast.
@@ -155,19 +186,22 @@ function whiteBalanced(color: LinearRgb, cloudCover: number): LinearRgb {
 /**
  * The sun level overhead under a clear sky. The reference wall's level is linear in it, so it
  * was solved once with the scale at 1 (and the night floor set aside, which the reference sky
- * clears): the wall then returned a luminance of 0.192369, and the sunlit white level
- * 2.099829 / 0.192369 gives 10.9156.
+ * clears): under the Kasten and Young fade the wall then returns a luminance of about 0.192423,
+ * and the sunlit white level 2.099829 over it gives about 10.9126, the frozen value. At the
+ * reference height the sun's level is then 10.0056.
  */
-const SUN_SCALE = 10.9156
+const SUN_SCALE = 10.9126
 
 /**
- * The fraction of the sun's level its height leaves: the clear-sky attenuation along the light's
- * path through the air, relative to the path overhead, so exactly 1 at the zenith. It falls
- * smoothly to 0 as the sun reaches the horizon and stays 0 below it.
+ * The fraction of the sun's level its height leaves: the clear-sky attenuation
+ * exp(-SUN_OPTICAL_DEPTH (m(h) - m(zenith))) for the Kasten and Young relative air mass m, so
+ * exactly 1 at the zenith. It falls smoothly as the sun nears the horizon; just above it the
+ * level is about 0.005, under 0.05 percent of the reference level, a small step to the 0 it
+ * keeps at the horizon and below, wherever the sine of the height is 0 or negative.
  */
 function sunFade(sunAltitude: number): number {
-  if (sunAltitude <= 0) return 0
-  return Math.exp(-SUN_OPTICAL_DEPTH * (1 / Math.sin(sunAltitude) - 1))
+  if (sunAltitude <= 0 || Math.sin(sunAltitude) <= 0) return 0
+  return Math.exp(-SUN_OPTICAL_DEPTH * (relativeAirMass(sunAltitude) - ZENITH_AIR_MASS))
 }
 
 /**
