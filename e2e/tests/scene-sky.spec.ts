@@ -1,0 +1,95 @@
+import { test, expect } from '@playwright/test'
+import { srgbToOkLab } from '../../core'
+import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
+
+// The sky gate. A clear sky should read blue and darker than a white wall in the sun, with no
+// channel clipped to white. This spec reads the sky in the equinox-noon state, where the four
+// exterior wall faces wear the matte daylight white, and compares it with the sunlit south wall
+// of the same frame.
+//
+// The overcast sky has no bound yet. In the overcast-noon state this region renders the same
+// pixels as the clear sky (chroma 0.0204 on both, measured on 2026-11-16), because the sky mesh
+// draws its clouds only above the horizon, fading them out toward it, and this view shows
+// almost no sky above the horizon. With no gap
+// between the overcast and the clear reading there is no midpoint to set a bound at.
+//
+// It renders through the deterministic scene harness on the WebGL 2 backend, so it runs on
+// darwin Metal and on the linux SwiftShader lane and self-skips only where no WebGL 2 context
+// can be created. It commits no screenshot, so no baseline moves with it.
+
+// The canonical harness state this gate renders: clear noon with the white paint.
+const CLEAR_NOON_QUERY = '&scene=equinox-noon&paint=daylight-white'
+
+// The sky the viewer sees above the far edge of the lawn, at the top left of the frame:
+// x 12..35, y 12..35. The camera looks 35 degrees down, so the true horizon crosses the frame
+// near row 9 and only rows 0 to 8 look above it. That strip is too narrow for a square that
+// keeps clear of the frame's edge, and its color changes by about 2 codes a row. This square
+// is the sky mesh drawn just below the true horizon, about 0.5 to 5.8 degrees below it, where
+// the sky reads almost flat (2 codes of spread). The lawn's far edge lies near row 107 below
+// it and the building far to its right.
+const SKY = squareRegion(12, 12, 24)
+// The south exterior face, the door wall, clear of the door and the wall edges: x 143..166,
+// y 148..171. The same square as the sunlit wall gate.
+const SUNLIT_SOUTH_WALL = squareRegion(143, 148, 24)
+
+// The 8-bit code range a display shows.
+const CODE_RANGE = 255
+
+/**
+ * The most OKLab b the clear sky may read: it must lean blue.
+ *
+ * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
+ * frame). Readings of this region:
+ *
+ *   before the daylight calibration, a near-white sky: -0.0029
+ *   calibrated daylight (this build): -0.0105
+ *   Linux SwiftShader readings: not yet recorded.
+ *
+ * Five captures of each build came back identical to four decimals, so the noise band is 0. The
+ * bound is the midpoint, -0.0067, which clears each reading by 0.0038.
+ */
+const CLEAR_SKY_MAX_B = -0.0067
+
+/**
+ * The code the clear sky's largest channel must stay under, so no channel is near clipping.
+ * This is a relation with no midpoint. The largest channel read 243.00 before the daylight
+ * calibration and 156.65 on this build.
+ */
+const CLEAR_SKY_CHANNEL_CEILING = 250
+
+// The clear sky must also read darker in OKLab lightness than the sunlit white wall of the same
+// frame, another relation with no midpoint. Before the daylight calibration the sky read 0.9574
+// against a wall of 0.7170; on this build it reads 0.6711 against 0.9112.
+
+test.describe('Sky gate', () => {
+  test('the clear sky reads blue, unclipped, and darker than the sunlit white wall', async ({
+    page,
+  }) => {
+    const canvas = await settledHarnessCanvas(page, CLEAR_NOON_QUERY)
+
+    const skyColor = await sampleCanvasColor(page, canvas, SKY)
+    const sky = srgbToOkLab(skyColor)
+    const largestChannel = Math.max(skyColor.r, skyColor.g, skyColor.b) * CODE_RANGE
+    const wallL = srgbToOkLab(await sampleCanvasColor(page, canvas, SUNLIT_SOUTH_WALL)).L
+    logReading('clear sky b', sky.b.toFixed(4))
+    logReading('clear sky largest channel code', largestChannel.toFixed(2))
+    logReading('clear sky L', sky.L.toFixed(4))
+    logReading('sunlit south wall L', wallL.toFixed(4))
+
+    expect(
+      sky.b,
+      `clear sky b ${sky.b.toFixed(4)} is over ${CLEAR_SKY_MAX_B}, so the clear sky reads ` +
+        `near white rather than blue`,
+    ).toBeLessThanOrEqual(CLEAR_SKY_MAX_B)
+    expect(
+      largestChannel,
+      `clear sky largest channel code ${largestChannel.toFixed(2)} is not under ` +
+        `${CLEAR_SKY_CHANNEL_CEILING}, so the sky is near clipping`,
+    ).toBeLessThan(CLEAR_SKY_CHANNEL_CEILING)
+    expect(
+      sky.L,
+      `clear sky L ${sky.L.toFixed(4)} is not under the sunlit white wall's L ` +
+        `${wallL.toFixed(4)}, so the sky outshines a white wall in the sun`,
+    ).toBeLessThan(wallL)
+  })
+})
