@@ -31,8 +31,8 @@ updated: 2026-11-15
 Current. The owner approved it on 2026-11-14 with sections 5.1 and 5.4 of
 `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. It replaces the rule by which the
 preservation overlay of ADR-0051 decides what to restore. The duty to preserve unknown data is
-unchanged. The code changes with #678 and #669. Until then the overlay restores every key the
-document lacks.
+unchanged. The code changed with #678 and #669. The overlay now restores a key only when the table
+does not know it at that place.
 
 ## Context
 
@@ -61,7 +61,11 @@ no graft and saved the loss.
 - A map whose values the schema types is a collection the model owns, and a missing entry was
   deleted. A map whose values the schema leaves open, such as `extensions`, is opaque. No list of
   collection names is written by hand.
-- A key that any variant of a tagged union defines counts as known.
+- A tagged union value is grafted only when the previous file and the document carry the same
+  tag, and then as an object of that one variant. A changed or missing tag means a new value, so
+  the next value stands as it is. The first form of this rule counted a key of any variant as
+  known. A review showed that it dropped a field from a newer build when another variant had a key
+  of the same name, and the owner replaced it on 2026-11-15.
 - The previous file is migrated in memory before the graft.
 - Command handlers copy by spread. A test runs every registered command against a document that
   carries `extensions` and an unknown key on every object, and both must survive.
@@ -70,7 +74,8 @@ no graft and saved the loss.
 
 - A cleared optional field stays cleared, and a key that a migration removed stays removed.
 - A field added by a newer schema revision is unknown to an older reader's table, so the reader
-  keeps it. That is the tolerant case of ADR-0178.
+  keeps it. That is the tolerant case of ADR-0178. On a union value this holds while the tag
+  stays the same. A value whose tag changed is a new value, and it takes nothing from the old one.
 - The graft no longer repairs a known key that a command dropped. The command test is the guard for
   that, which is why it covers every registered command and fails for one it cannot run.
 - The table and the graft move into the document codec unchanged when the persistence stage builds
