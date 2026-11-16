@@ -21,8 +21,10 @@ const NIGHT_SUN_LEVEL = 0
 // forgets to neutralize skyAmbient cannot pass by coincidence with an
 // already-neutral fixture.
 const TINTED_CLOUD_COVER = 0.6
-const TINTED_SUN_ALTITUDE = 0.7
-const TINTED_SKY_AMBIENT = projectDomeToSphericalHarmonics(TINTED_SUN_ALTITUDE, TINTED_CLOUD_COVER)
+const TINTED_SKY_AMBIENT = projectDomeToSphericalHarmonics({
+  sunDirection: TINTED_SUN_DIRECTION,
+  cloudCover: TINTED_CLOUD_COVER,
+})
 
 function tintedLighting(sunLevel: number): EnvironmentLighting {
   return {

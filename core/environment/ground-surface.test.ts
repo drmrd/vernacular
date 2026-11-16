@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest'
+import { GROUND_SURFACE_COLOR, GROUND_SURFACE_HEX } from './ground-surface'
+import { srgbToLinear } from '../color/oklab'
+
+// The lawn color is one fact stated twice: as the hex the engine paints the ground plane with,
+// and as the linear-light color the sky dome multiplies its light by.
+
+const MAX_CHANNEL_CODE = 255
+const COLOR_TOLERANCE = 1e-6
+
+function linearChannelOfHex(hex: string, offset: number): number {
+  const code = Number.parseInt(hex.slice(offset, offset + 2), 16)
+  return srgbToLinear(code / MAX_CHANNEL_CODE)
+}
+
+describe('the ground surface', () => {
+  it('is the lawn green #5f8a4f', () => {
+    expect(GROUND_SURFACE_HEX).toBe('#5f8a4f')
+  })
+
+  it('carries the same color in linear light', () => {
+    const expected = {
+      r: linearChannelOfHex(GROUND_SURFACE_HEX, 1),
+      g: linearChannelOfHex(GROUND_SURFACE_HEX, 3),
+      b: linearChannelOfHex(GROUND_SURFACE_HEX, 5),
+    }
+
+    expect(Math.abs(GROUND_SURFACE_COLOR.r - expected.r)).toBeLessThan(COLOR_TOLERANCE)
+    expect(Math.abs(GROUND_SURFACE_COLOR.g - expected.g)).toBeLessThan(COLOR_TOLERANCE)
+    expect(Math.abs(GROUND_SURFACE_COLOR.b - expected.b)).toBeLessThan(COLOR_TOLERANCE)
+  })
+})

@@ -3,7 +3,11 @@ import { computeEnvironmentLighting, type EnvironmentLightingInput } from './env
 import { solarPosition, type SolarAngles } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
 import { skyLighting } from './sky-model'
-import { evaluateSphericalHarmonics, SH_COEFFICIENT_COUNT } from './spherical-harmonics'
+import {
+  evaluateSphericalHarmonics,
+  projectDomeToSphericalHarmonics,
+  SH_COEFFICIENT_COUNT,
+} from './spherical-harmonics'
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 
@@ -126,5 +130,16 @@ describe('computeEnvironmentLighting', () => {
     const noonZenith = evaluateSphericalHarmonics(noon.skyAmbient, ZENITH_DIRECTION)
     const midnightZenith = evaluateSphericalHarmonics(midnight.skyAmbient, ZENITH_DIRECTION)
     expect(summedIntensity(midnightZenith)).toBeLessThan(summedIntensity(noonZenith))
+  })
+
+  it('projects the sky ambient from the dome of the world-frame sun direction and the cloud cover', () => {
+    const input = equinoxNoonInput()
+    const { sunDirection, cloudCover, skyAmbient } = computeEnvironmentLighting(input)
+    const expected = projectDomeToSphericalHarmonics({ sunDirection, cloudCover })
+
+    expect(skyAmbient).toHaveLength(expected.length)
+    expected.forEach((coefficient, index) => {
+      expect(skyAmbient[index]).toBeCloseTo(coefficient, COMPOSITION_DECIMAL_PLACES)
+    })
   })
 })

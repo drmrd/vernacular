@@ -5,8 +5,10 @@ import {
   projectDomeToSphericalHarmonics,
   SH_COEFFICIENT_COUNT,
 } from './spherical-harmonics'
-import { skyDomeRadiance } from './sky-dome'
+import { skyDomeRadiance, type SkyDomeInput } from './sky-dome'
 import { NEUTRAL_REFERENCE_WHITE } from './color-check'
+import { referenceLightingInput } from './daylight-reference'
+import { solarPosition } from './solar-position'
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 
@@ -22,11 +24,13 @@ const HORIZON_DIRECTION: Vector3 = { x: 1, y: 0, z: 0 }
 const GROUND_DIRECTION: Vector3 = { x: 0, y: -1, z: 0 }
 // A second horizon direction at a different azimuth, for the azimuthal-symmetry check.
 const HORIZON_DIRECTION_OTHER_AZIMUTH: Vector3 = { x: 0, y: 0, z: 1 }
+const HORIZON_DIRECTION_AWAY_FROM_SUN: Vector3 = { x: -1, y: 0, z: 0 }
 
 const HIGH_SUN_ALTITUDE = Math.PI / 2
 const MODERATE_SUN_ALTITUDE = 0.7
 const LOW_SUN_ALTITUDE = 0.3
 const CLEAR_SKY = 0
+const FULL_OVERCAST = 1
 
 const ZENITH_VIEW_ELEVATION = Math.PI / 2
 const MID_VIEW_ELEVATION = Math.PI / 4
@@ -63,8 +67,33 @@ const NEUTRAL_DOME_SAMPLE_DIRECTIONS: readonly Vector3[] = [
 // be checked to a very tight tolerance.
 const NEUTRAL_DOME_TOLERANCE = 1e-6
 
+// The sun is a unit world-frame direction; these helpers aim it along +x at a given altitude.
+// Views are aimed along +z, a quarter turn from the sun, so the term that brightens the dome
+// toward the sun drops out of the reconstruction samples that are not about it.
+function sunAt(altitude: number, cloudCover: number = CLEAR_SKY): SkyDomeInput {
+  return { sunDirection: { x: Math.cos(altitude), y: Math.sin(altitude), z: 0 }, cloudCover }
+}
+
 function directionAtElevation(viewElevation: number): Vector3 {
-  return { x: Math.cos(viewElevation), y: Math.sin(viewElevation), z: 0 }
+  return { x: 0, y: Math.sin(viewElevation), z: Math.cos(viewElevation) }
+}
+
+function referenceSunAltitude(): number {
+  const input = referenceLightingInput()
+  return solarPosition({
+    latitude: input.latLong.latitude,
+    longitude: input.latLong.longitude,
+    observedAt: input.observedAt,
+    utcOffsetMinutes: input.utcOffsetMinutes,
+  }).altitude
+}
+
+function expectSameHorizonAtEveryAzimuth(coefficients: readonly number[]): void {
+  const first = evaluateSphericalHarmonics(coefficients, HORIZON_DIRECTION)
+  const second = evaluateSphericalHarmonics(coefficients, HORIZON_DIRECTION_OTHER_AZIMUTH)
+  expect(second.r).toBeCloseTo(first.r, 3)
+  expect(second.g).toBeCloseTo(first.g, 3)
+  expect(second.b).toBeCloseTo(first.b, 3)
 }
 
 function summedIntensity(color: LinearRgb): number {
@@ -73,12 +102,12 @@ function summedIntensity(color: LinearRgb): number {
 
 describe('projectDomeToSphericalHarmonics', () => {
   it('returns a flattened nine-band RGB coefficient array', () => {
-    const coefficients = projectDomeToSphericalHarmonics(HIGH_SUN_ALTITUDE, CLEAR_SKY)
+    const coefficients = projectDomeToSphericalHarmonics(sunAt(HIGH_SUN_ALTITUDE))
     expect(coefficients).toHaveLength(SH_COEFFICIENT_COUNT)
   })
 
   it('reconstructs a clear high-sun dome brighter overhead than at the horizon, and brighter at the horizon than at the ground', () => {
-    const coefficients = projectDomeToSphericalHarmonics(HIGH_SUN_ALTITUDE, CLEAR_SKY)
+    const coefficients = projectDomeToSphericalHarmonics(sunAt(HIGH_SUN_ALTITUDE))
     const zenith = evaluateSphericalHarmonics(coefficients, ZENITH_DIRECTION)
     const horizon = evaluateSphericalHarmonics(coefficients, HORIZON_DIRECTION)
     const ground = evaluateSphericalHarmonics(coefficients, GROUND_DIRECTION)
@@ -87,23 +116,32 @@ describe('projectDomeToSphericalHarmonics', () => {
     expect(summedIntensity(horizon)).toBeGreaterThan(summedIntensity(ground))
   })
 
-  it('reconstructs the same radiance at every azimuth for the azimuthally symmetric dome', () => {
-    const coefficients = projectDomeToSphericalHarmonics(HIGH_SUN_ALTITUDE, CLEAR_SKY)
-    const horizon = evaluateSphericalHarmonics(coefficients, HORIZON_DIRECTION)
-    const horizonOtherAzimuth = evaluateSphericalHarmonics(
-      coefficients,
-      HORIZON_DIRECTION_OTHER_AZIMUTH,
+  it('reconstructs the same radiance at every azimuth with the sun at the zenith', () => {
+    const coefficients = projectDomeToSphericalHarmonics(sunAt(HIGH_SUN_ALTITUDE))
+
+    expectSameHorizonAtEveryAzimuth(coefficients)
+  })
+
+  it('reconstructs the same radiance at every azimuth under full overcast', () => {
+    const coefficients = projectDomeToSphericalHarmonics(
+      sunAt(referenceSunAltitude(), FULL_OVERCAST),
     )
 
-    expect(horizonOtherAzimuth.r).toBeCloseTo(horizon.r, 3)
-    expect(horizonOtherAzimuth.g).toBeCloseTo(horizon.g, 3)
-    expect(horizonOtherAzimuth.b).toBeCloseTo(horizon.b, 3)
+    expectSameHorizonAtEveryAzimuth(coefficients)
+  })
+
+  it('reconstructs a horizon toward the sun brighter than the horizon away from it under a clear sky with the sun at the reference height', () => {
+    const coefficients = projectDomeToSphericalHarmonics(sunAt(referenceSunAltitude()))
+    const toward = evaluateSphericalHarmonics(coefficients, HORIZON_DIRECTION)
+    const away = evaluateSphericalHarmonics(coefficients, HORIZON_DIRECTION_AWAY_FROM_SUN)
+
+    expect(summedIntensity(toward)).toBeGreaterThan(summedIntensity(away))
   })
 
   it('reconstructs the dome within a generous tolerance of its own radiance at each sampled direction', () => {
     for (const { sunAltitude, viewElevation } of RECONSTRUCTION_SAMPLES) {
-      const coefficients = projectDomeToSphericalHarmonics(sunAltitude, CLEAR_SKY)
-      const expected = skyDomeRadiance(viewElevation, sunAltitude, CLEAR_SKY)
+      const coefficients = projectDomeToSphericalHarmonics(sunAt(sunAltitude))
+      const expected = skyDomeRadiance(directionAtElevation(viewElevation), sunAt(sunAltitude))
       const actual = evaluateSphericalHarmonics(coefficients, directionAtElevation(viewElevation))
 
       const expectedIntensity = summedIntensity(expected)
