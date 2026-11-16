@@ -99,6 +99,7 @@ export class FolderProjectStore {
    * The previous document at the target version, so a key a migration removed is not grafted back
    * as unknown data (ADR-0184). Undefined when the document is not an object or is at a newer
    * version than the target. The file on disk is never rewritten here. Throws when migration fails.
+   * It looks at the schema version only, not at the registry versions (see the skip below).
    */
   private migrateInMemory(raw: unknown): unknown {
     if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
@@ -106,6 +107,9 @@ export class FolderProjectStore {
     }
     const storedVersion = readStoredSchemaVersion(raw)
     if (storedVersion === this.targetVersion) {
+      // Skipping saves a migration run on every save. It assumes no pending registry migration
+      // removes or renames a key, which holds while no registry migration exists. Issue #734
+      // tracks the change that removes this assumption.
       return raw
     }
     if (storedVersion !== undefined && storedVersion > this.targetVersion) {
