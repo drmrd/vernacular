@@ -18,7 +18,8 @@ const OPAQUE = { kind: 'opaque' }
 
 const REFERENCE_KEY = '$ref'
 // Annotations never change which keys a value holds, so they may sit beside a $ref. `default` stays
-// refused on purpose: the save-time graft may read it one day.
+// refused on purpose: it would make an absent key mean a value, and the save-time graft decides
+// from absence that a key was cleared.
 const ANNOTATION_KEYWORDS = new Set([
   'description',
   'title',
@@ -29,6 +30,7 @@ const ANNOTATION_KEYWORDS = new Set([
   'writeOnly',
 ])
 const SCALAR_KEYWORDS = ['enum', 'const']
+const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null'])
 const STRUCTURAL_KEYWORDS = ['properties', 'items', 'anyOf']
 const UNION_KEYWORDS = ['anyOf', 'oneOf']
 
@@ -88,10 +90,8 @@ function isOpenValue(node) {
   return node === true || (typeof node === 'object' && Object.keys(node).length === 0)
 }
 
-const SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null'])
-
 function isScalar(node) {
-  return 'enum' in node || 'const' in node || SCALAR_TYPES.has(node.type)
+  return SCALAR_KEYWORDS.some((keyword) => keyword in node) || SCALAR_TYPES.has(node.type)
 }
 
 function isObjectWithNoProperties(node) {
