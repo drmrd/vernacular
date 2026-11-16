@@ -1,3 +1,4 @@
+import { clampToUnitInterval, greyOf, mixLinearRgb, scaleLinearRgb } from '../color/linear-rgb'
 import type { LinearRgb } from '../color/oklab'
 import { sunColorAt, sunLevelAt } from './daylight-calibration'
 
@@ -30,29 +31,6 @@ const HORIZON_SKY_TINT: LinearRgb = { r: 0.45, g: 0.45, b: 0.5 }
 const ZENITH_SKY_TINT: LinearRgb = { r: 0.35, g: 0.55, b: 1 }
 /** Fraction of the fill's light a fully overcast sky removes, alongside flattening it toward grey. */
 const OVERCAST_DIMMING = 0.3
-const RGB_CHANNEL_COUNT = 3
-
-function clampToUnitInterval(value: number): number {
-  return Math.min(1, Math.max(0, value))
-}
-
-function mixLinearRgb(from: LinearRgb, to: LinearRgb, fraction: number): LinearRgb {
-  return {
-    r: from.r + (to.r - from.r) * fraction,
-    g: from.g + (to.g - from.g) * fraction,
-    b: from.b + (to.b - from.b) * fraction,
-  }
-}
-
-function scaleLinearRgb(color: LinearRgb, factor: number): LinearRgb {
-  return { r: color.r * factor, g: color.g * factor, b: color.b * factor }
-}
-
-/** The grey a color flattens toward under cloud: its own channel mean. */
-function greyOf(color: LinearRgb): LinearRgb {
-  const mean = (color.r + color.g + color.b) / RGB_CHANNEL_COUNT
-  return { r: mean, g: mean, b: mean }
-}
 
 /** Clouds scatter the fill toward grey and absorb some of it outright. */
 function overcastAdjusted(color: LinearRgb, cloudCover: number): LinearRgb {

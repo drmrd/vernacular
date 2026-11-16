@@ -1,4 +1,5 @@
 import { linearLuminance } from '../color/contrast'
+import { clampToUnitInterval, greyOf, mixLinearRgb, scaleLinearRgb } from '../color/linear-rgb'
 import type { LinearRgb } from '../color/oklab'
 import { referenceLightingInput } from './daylight-reference'
 import { solarPosition } from './solar-position'
@@ -20,12 +21,16 @@ const DISPLAY_CODE_MAX = 255
 /** The lux on the level card at the reference instant. */
 export const REFERENCE_HORIZONTAL_ILLUMINANCE_LUX = 80_000
 
-/** Fraction of full dome brightness that remained below the horizon before this calibration. */
-const PREVIOUS_HORIZON_DOME_SCALE = 0.35
-/** The luminance of the cosine-weighted mean of the previous dome's tints, rounded. */
-const PREVIOUS_DOME_MEAN_LUMINANCE = 0.4445
-/** The sky level on the level card with the sun at or below the horizon: the level of the previous dome there. */
-export const NIGHT_DIFFUSE_LEVEL = PREVIOUS_HORIZON_DOME_SCALE * PREVIOUS_DOME_MEAN_LUMINANCE
+/** Fraction of full dome brightness the sky keeps through the night. */
+const NIGHT_DOME_SCALE = 0.35
+/** The luminance of the cosine-weighted mean of the dome's tints, rounded. */
+const DOME_MEAN_LUMINANCE = 0.4445
+/**
+ * The level the diffuse light on the level card never falls below. It holds the sky's level
+ * through the night and until the sun is about 9.67 degrees up, where the sun-driven level first
+ * exceeds it.
+ */
+export const NIGHT_DIFFUSE_LEVEL = NIGHT_DOME_SCALE * DOME_MEAN_LUMINANCE
 
 const EIGHTH_TURN_DIVISOR = 4
 /** The sun height, 45 degrees, at which the direct to diffuse ratio is stated as 5 to 1. */
@@ -53,7 +58,6 @@ const HORIZON_EXTINCTION_RADIANS = 0.1
 const DIRECT_BEAM_CLOUD_EXPONENT = 3.4
 /** Fraction of the diffuse level a fully overcast sky removes. */
 const OVERCAST_DIFFUSE_DIMMING = 0.3
-const RGB_CHANNEL_COUNT = 3
 
 /**
  * The view height whose dome radiance equals the cosine-weighted mean of the upper dome. The dome
@@ -87,22 +91,6 @@ export const SUNWARD_GAIN =
 /** Fixed-point steps of the white point solve; it settles to double precision well before this. */
 const WHITE_POINT_ITERATION_COUNT = 50
 
-function clampToUnitInterval(value: number): number {
-  return Math.min(1, Math.max(0, value))
-}
-
-function mixLinearRgb(from: LinearRgb, to: LinearRgb, fraction: number): LinearRgb {
-  return {
-    r: from.r + (to.r - from.r) * fraction,
-    g: from.g + (to.g - from.g) * fraction,
-    b: from.b + (to.b - from.b) * fraction,
-  }
-}
-
-function scaleLinearRgb(color: LinearRgb, factor: number): LinearRgb {
-  return { r: color.r * factor, g: color.g * factor, b: color.b * factor }
-}
-
 function addLinearRgb(first: LinearRgb, second: LinearRgb): LinearRgb {
   return { r: first.r + second.r, g: first.g + second.g, b: first.b + second.b }
 }
@@ -113,12 +101,6 @@ function divideLinearRgb(color: LinearRgb, divisor: LinearRgb): LinearRgb {
 
 function withLuminance(color: LinearRgb, luminance: number): LinearRgb {
   return scaleLinearRgb(color, luminance / linearLuminance(color))
-}
-
-/** The grey a color flattens toward under cloud: its own channel mean. */
-function greyOf(color: LinearRgb): LinearRgb {
-  const mean = (color.r + color.g + color.b) / RGB_CHANNEL_COUNT
-  return { r: mean, g: mean, b: mean }
 }
 
 function rawSunTint(sunAltitude: number): LinearRgb {
