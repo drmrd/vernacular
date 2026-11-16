@@ -83,17 +83,11 @@ interface TablePosition {
 interface TypeScope {
   table: KnownKeyTable
   keys: Readonly<Record<string, KnownValue>>
-  // At a tagged union: every key any variant defines, so a key of another variant is known too.
-  unionKeys?: ReadonlySet<string>
 }
 
 // Only an own key of the table is known; a name every object inherits, such as `constructor`, is not.
 function knownValueOf(scope: TypeScope, key: string): KnownValue | undefined {
   return Object.hasOwn(scope.keys, key) ? scope.keys[key] : undefined
-}
-
-function isKnownKey(scope: TypeScope, key: string): boolean {
-  return knownValueOf(scope, key) !== undefined || scope.unionKeys?.has(key) === true
 }
 
 function graftKnownMember(
@@ -103,8 +97,7 @@ function graftKnownMember(
 ): unknown {
   const known = knownValueOf(scope, key)
   if (known === undefined) {
-    // A key of another variant of the union is known but has no kind here; the next value stands.
-    return scope.unionKeys?.has(key) === true ? next[key] : graftUntypedMember(key, previous, next)
+    return graftUntypedMember(key, previous, next)
   }
   const { table } = scope
   return Object.hasOwn(previous, key)
@@ -123,7 +116,7 @@ function graftObjectWithTable(
   }
   for (const key of Object.keys(previous)) {
     // A known key the next document lacks was cleared; only a key the table does not know is restored.
-    if (!Object.hasOwn(next, key) && !isKnownKey(scope, key)) {
+    if (!Object.hasOwn(next, key) && knownValueOf(scope, key) === undefined) {
       setOwn(result, key, previous[key])
     }
   }
@@ -155,44 +148,9 @@ function graftMapWithTable(previous: unknown, next: unknown, position: TablePosi
   return result
 }
 
-function variantKeysOf(table: KnownKeyTable, name: string): Readonly<Record<string, KnownValue>> {
-  const entry = Object.hasOwn(table, name) ? table[name] : undefined
-  return entry?.keys ?? {}
-}
-
-const allVariantKeys = new WeakMap<KnownUnion, ReadonlySet<string>>()
-
-function variantKeysOfUnion(table: KnownKeyTable, union: KnownUnion): ReadonlySet<string> {
-  const cached = allVariantKeys.get(union)
-  if (cached !== undefined) {
-    return cached
-  }
-  const keys = new Set(
-    union.variants.flatMap(({ type }) => Object.keys(variantKeysOf(table, type))),
-  )
-  allVariantKeys.set(union, keys)
-  return keys
-}
-
-// The scope holds the keys of the next value's variant plus every key any variant defines, because a
-// key of any variant is known and the graft never restores it.
-function unionScope(
-  table: KnownKeyTable,
-  union: KnownUnion,
-  next: Record<string, unknown>,
-): TypeScope {
-  const unionKeys = variantKeysOfUnion(table, union)
-  const variant = Object.hasOwn(next, union.tag) ? variantTypeOf(union, next[union.tag]) : undefined
-  // A tag that names no variant of the table is of a variant this reader does not model: it has no
-  // keys of its own, a key of another variant takes the next value, and only a key no variant
-  // defines is restored.
-  const keys = variant === undefined ? {} : variantKeysOf(table, variant)
-  return { table, keys, unionKeys }
-}
-
-// At a tagged union, a key that any variant defines is known, so a changed variant does not get the
-// old variant's keys back; a shared key is grafted at its kind in the next value's variant.
-// A value that is not an object on both sides is replaced by the next value as it is.
+// At a tagged union, only a value whose tag is the same on both sides is grafted, as an object of
+// that variant's type. A changed or missing tag means a new value, so nothing of the old one belongs
+// to it; the same tag means an edit, so data this build does not know must survive it.
 function graftUnionWithTable(
   previous: unknown,
   next: unknown,
@@ -201,7 +159,15 @@ function graftUnionWithTable(
   if (!isPlainObject(previous) || !isPlainObject(next)) {
     return next
   }
-  return graftObjectWithTable(previous, next, unionScope(table, union, next))
+  const { tag } = union
+  if (!Object.hasOwn(previous, tag) || !Object.hasOwn(next, tag) || previous[tag] !== next[tag]) {
+    return next
+  }
+  const variant = variantTypeOf(union, next[tag])
+  // A tag no variant of the table names is of a variant from a newer build: graft it untyped.
+  return variant === undefined
+    ? graftObject(previous, next)
+    : graftWithTable(previous, next, { table, at: { kind: 'object', type: variant } })
 }
 
 /** A pure function of the previous value, the next value, the table, and the place in it. */
