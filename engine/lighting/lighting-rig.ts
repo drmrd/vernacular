@@ -68,8 +68,9 @@ export interface LightingRig {
   sky?: SkyMesh
   /**
    * The multiplier on the visible sky's color, solar mode only. The sky's color node reads this
-   * very vector through a uniform, so writing it rescales the sky on the next frame; a later
-   * change sets it from the daylight calibration.
+   * very vector through a uniform, so writing it rescales the sky on the next frame;
+   * attachSkyEnvironment sets it to skyMeshGain(), the measured gain divided by the white point
+   * for each channel.
    */
   skyGain?: THREE.Vector3
   /**
