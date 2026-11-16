@@ -718,3 +718,11 @@ export type {
 export { KNOWN_KEYS, KNOWN_ROOT_TYPE, typesWithExtensions, variantTypeOf } from './model/known-keys'
 export type { KnownKeyTable, KnownType, KnownUnion, KnownValue } from './model/known-keys'
 export { registerAllProjectCommands } from './commands/handlers/register-all-project-commands'
+export type { DaylightAperture, DaylightField, DaylightRoom } from './daylight/daylight-field'
+export {
+  createDaylightField,
+  DAYLIGHT_FIELD_CELL_SIZE_MM,
+  daylightFieldCellIndex,
+  sampleSkyVisibility,
+  SKY_VISIBILITY_CHANNEL,
+} from './daylight/daylight-field'
