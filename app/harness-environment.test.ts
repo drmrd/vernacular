@@ -10,11 +10,11 @@ import {
 // reference cases in core/environment/solar-position.test.ts, and the
 // America/New_York timezone exercised in core/environment/timezone-offset.test.ts,
 // so harness baselines reuse the solar model's verified reference geometry.
-const canonicalSite: Site = {
+const canonicalSite = {
   latLong: { latitude: 40, longitude: -75 },
   northBearing: 0,
   timezone: 'America/New_York',
-}
+} satisfies Site
 
 // The shell room's clear floor lives at plan (60,60)..(3940,2940), 2600 mm tall; planToWorld
 // maps plan (x, y) to world (x, height, -y), so a camera target on the floor sits within these
@@ -168,9 +168,9 @@ describe('harnessEnvironmentState low sun', () => {
 
   function lowSunLighting(): ReturnType<typeof computeEnvironmentLighting> {
     return computeEnvironmentLighting({
-      latLong: { latitude: 40, longitude: -75 },
-      northBearing: 0,
-      utcOffsetMinutes: utcOffsetMinutesFor('America/New_York', lowSunInstant.date),
+      latLong: canonicalSite.latLong,
+      northBearing: canonicalSite.northBearing,
+      utcOffsetMinutes: utcOffsetMinutesFor(canonicalSite.timezone, lowSunInstant.date),
       observedAt: lowSunInstant,
       cloudCover: 0,
     })
