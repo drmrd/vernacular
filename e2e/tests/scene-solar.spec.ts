@@ -3,9 +3,11 @@ import { test, expect, type Page } from '@playwright/test'
 // The solar cases boot the deterministic render harness via the `?fixture=scene-harness`
 // seam (see app/app.tsx) and select a named canonical environment state with the `scene`
 // query parameter. The named states resolve in app/harness-environment.ts to a fixed
-// site (latitude 40 north, longitude 75 west, America/New_York) and a fixed observation
-// instant, driving the SolarLightingProvider deterministically so each baseline pins one
-// sun position. The -darwin baselines are renders from the development Mac's Metal tier,
+// site (most to latitude 40 north, longitude 75 west, America/New_York) and a fixed
+// observation instant, driving the SolarLightingProvider deterministically so each baseline
+// pins one sun position. The sample-daylight state is the one with no site location: it
+// pins the opening instant, and the sun comes from the sample place with north implied by
+// the front of the building, so its baseline pins one sun position too. The -darwin baselines are renders from the development Mac's Metal tier,
 // regenerated locally with --update-snapshots=all (ADR-0149); the -linux baselines are
 // rendered on the CI runner by the refresh-scene-baselines workflow and checked there by
 // the scene-visual job (ADR-0152).
@@ -178,6 +180,13 @@ test.describe('Solar environment visual baseline', () => {
     await captureShell(page, {
       query: '&scene=shadow-on-lawn',
       snapshot: 'scene-shadow-on-lawn-webgl.png',
+    })
+  })
+
+  test('renders sample daylight to its baseline', async ({ page }) => {
+    await captureShell(page, {
+      query: '&scene=sample-daylight',
+      snapshot: 'scene-sample-daylight-webgl.png',
     })
   })
 })
