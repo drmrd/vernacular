@@ -210,8 +210,8 @@ direction of its grid instead of once per ring. The twenty-seven coefficients an
 
 "A night scene never goes black" now rests on the calibration's night level. The diffuse level never
 falls below `NIGHT_DIFFUSE_LEVEL`, the level this dome had on a level card with the sun below the
-horizon. The sun's level now fades along the light's path through the air and is 0 at and below
-the horizon, so that floor binds until the sun is 12.36 degrees up.
+horizon. The sun's level now falls with the Kasten and Young relative air mass and is 0 at and
+below the horizon, so that floor binds until the sun is 12.19 degrees up.
 
 The visible sky is calibrated. Its scattering constants (turbidity, Rayleigh, and the two Mie
 values) are pinned by name at the addon's defaults, as its cloud constants already were. Its color
