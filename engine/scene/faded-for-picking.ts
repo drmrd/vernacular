@@ -27,7 +27,9 @@ function isMaterialFaded(material: THREE.Material): boolean {
  * True when the near-wall fade currently shows `object` faded: a wall the camera looks at
  * from outside, or an opening, junction fill, or piece of furniture faded with it. The
  * fade privatizes and fades each mesh's own materials, so the hit object itself carries
- * the state; no ancestor is consulted.
+ * the state; no ancestor is consulted. This relies on a mesh fading whole (every material
+ * slot of a faded mesh is faded together), so one flagged material means the whole hit
+ * object is faded.
  */
 export function isFadedForPicking(object: THREE.Object3D): boolean {
   const material = (object as Partial<Pick<THREE.Mesh, 'material'>>).material

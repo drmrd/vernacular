@@ -335,6 +335,18 @@ function hasConditionalFade(
 }
 
 /**
+ * The one place a fade material's opacity state is written: the faded values together
+ * with the picking flag when `fade` is true, the captured baseline with the flag cleared
+ * otherwise.
+ */
+function applyFadeState({ material, baseline }: FadeMaterial, fade: boolean): void {
+  material.transparent = fade ? true : baseline.transparent
+  material.opacity = fade ? FADED_OPACITY : baseline.opacity
+  material.depthWrite = fade ? false : baseline.depthWrite
+  markFadedForPicking(material, fade)
+}
+
+/**
  * Fades each target's materials when the camera looks at the wall from outside,
  * and restores full opacity otherwise.
  */
@@ -348,12 +360,8 @@ export function updateNearWallTransparency(
           cameraFacesWallOutside(cameraPosition, facing.point, facing.outwardNormal),
         )
       : cameraFacesWallOutside(cameraPosition, target.point, target.outwardNormal)
-    for (const { material, baseline, holdOpaque } of target.materials) {
-      const fade = faded && holdOpaque !== true
-      material.transparent = fade ? true : baseline.transparent
-      material.opacity = fade ? FADED_OPACITY : baseline.opacity
-      material.depthWrite = fade ? false : baseline.depthWrite
-      markFadedForPicking(material, fade)
+    for (const record of target.materials) {
+      applyFadeState(record, faded && record.holdOpaque !== true)
     }
   }
 }
@@ -367,11 +375,8 @@ export function updateNearWallTransparency(
  */
 export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
   for (const target of targets) {
-    for (const { material, baseline } of target.materials) {
-      material.transparent = baseline.transparent
-      material.opacity = baseline.opacity
-      material.depthWrite = baseline.depthWrite
-      markFadedForPicking(material, false)
+    for (const record of target.materials) {
+      applyFadeState(record, false)
     }
   }
 }
