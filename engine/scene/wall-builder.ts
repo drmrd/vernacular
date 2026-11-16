@@ -335,13 +335,13 @@ function isOuterBoundaryEdge(from: THREE.Vector2, to: THREE.Vector2, frame: Edge
  * inward toward the void interior (away from the wall material).
  */
 function revealQuad(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vector2): number[] {
-  // The `to -> from` corner order (vs the outer cap's `from -> to`) reverses the
-  // winding so the reveal normal points inward toward the void.
+  // The outer cap's `from -> to` corner order: a hole loop runs opposite to the
+  // outline, so the same order turns the reveal normal toward the void.
   return thicknessSpanningQuad([
-    edgeLocalToWorld(frame, to, SIDE_INTERIOR),
     edgeLocalToWorld(frame, from, SIDE_INTERIOR),
-    edgeLocalToWorld(frame, from, SIDE_EXTERIOR),
+    edgeLocalToWorld(frame, to, SIDE_INTERIOR),
     edgeLocalToWorld(frame, to, SIDE_EXTERIOR),
+    edgeLocalToWorld(frame, from, SIDE_EXTERIOR),
   ])
 }
 
@@ -380,12 +380,12 @@ function openingWallSections(
   const sections: WallSection[] = [
     {
       role: 'interiorFace',
-      positions: longFacePositions(frame, outline, SIDE_INTERIOR),
+      positions: longFacePositions(frame, reversed, SIDE_INTERIOR),
       ref: wallFaceRef(wallId, 'left'),
     },
     {
       role: 'exteriorFace',
-      positions: longFacePositions(frame, reversed, SIDE_EXTERIOR),
+      positions: longFacePositions(frame, outline, SIDE_EXTERIOR),
       ref: wallFaceRef(wallId, 'right'),
     },
     { role: 'top', positions: outerCapPositions(frame, topEnd, top) },

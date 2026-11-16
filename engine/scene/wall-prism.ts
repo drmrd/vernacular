@@ -138,10 +138,10 @@ function reverseCorners([first, second, third, fourth]: CapCorners): CapCorners 
 /** A vertical face quad from `from` to `to`, rising from the base to `height`. */
 function faceQuad(from: Point, to: Point, height: number): number[] {
   return thicknessSpanningQuad([
-    cornerWorld(from, 0),
     cornerWorld(to, 0),
-    cornerWorld(to, height),
+    cornerWorld(from, 0),
     cornerWorld(from, height),
+    cornerWorld(to, height),
   ])
 }
 
