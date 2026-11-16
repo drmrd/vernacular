@@ -34,8 +34,10 @@ const EAST_WALL = squareRegion(188, 145, 12)
 // 2 harness, 320x240 frame), on this build and on the build before the daylight calibration.
 // Five captures of each build came back identical to four decimals, so every noise band is 0.
 // The earlier east wall reading came from the 16 px square at x 186..201, y 143..158, which
-// held one color (92, 99, 113), so the 12 px square inside it reads the same. Linux SwiftShader
-// readings: not yet recorded.
+// held one color (92, 99, 113), so the 12 px square inside it reads the same. The Linux
+// SwiftShader lane (run 43820235938, 2026-11-16) read the same four values on this build as the
+// Mac: chroma 0.0042, lightness 0.9112, shaded east wall b -0.0094, low-sun south wall b 0.0257.
+// The before-calibration readings were not taken on Linux.
 
 /**
  * The most chroma the white south wall may show in the noon sun.

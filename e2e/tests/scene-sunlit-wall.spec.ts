@@ -40,7 +40,8 @@ const SHADED_EAST_WALL = squareRegion(188, 145, 12)
  * grey. Model: south L 0.8007, east L 0.4032, gap 0.3975. Readings of these regions:
  *
  *   calibrated daylight (this build): south 0.8009, east 0.4095, gap 0.3914
- *   Linux SwiftShader readings: not yet recorded.
+ *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight: south 0.8010, east
+ *   0.4095, gap 0.3915, within 0.0001 of the Mac
  *
  * Five captures came back identical to four decimals, so the noise band is 0. The threshold is
  * half the model gap, 0.3975 / 2 = 0.1987, rounded to 0.199. The east face reads a little above

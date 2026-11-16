@@ -33,7 +33,8 @@ const LUMINANCE_WEIGHTS = { r: 0.2126, g: 0.7152, b: 0.0722 }
  *
  *   before the daylight calibration: 0.1334 / 0.0764 = 1.7455
  *   calibrated daylight (this build): 0.6097 / 0.1021 = 5.9702
- *   Linux SwiftShader readings: not yet recorded.
+ *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight: 0.6100 / 0.1022 =
+ *   5.9703, within 0.0001 of the Mac
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * minimum is the midpoint of the two ratios, 3.8579, rounded to 3.858, which clears each

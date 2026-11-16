@@ -53,7 +53,8 @@ const AO_OPEN_FLOOR_PATCH = patchCenteredOn(226, 134)
 //   shipped radius, AO_RADIUS_METERS 0.25: +0.0284
 //   wrong-radius probe, AO_RADIUS_METERS 2.5: -0.0005
 //   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0029
-//   Linux SwiftShader readings: not yet recorded.
+//   Linux SwiftShader (run 43820235938, 2026-11-16), shipped radius: +0.0282, within 0.0002 of
+//   the Mac; the two wrong-radius probes were not run on Linux
 //
 // Captures of this frame are byte-deterministic (five identical captures of each build, zero
 // noise band), so the threshold sits at the midpoint of the shipped reading and the nearer

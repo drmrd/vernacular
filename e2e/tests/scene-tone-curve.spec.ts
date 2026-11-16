@@ -67,7 +67,8 @@ const LUMINANCE_WEIGHTS = { r: 0.2126, g: 0.7152, b: 0.0722 }
  *   calibrated daylight under AgX (this build): code 224.50, difference -0.40
  *   probe, daylight mapped to the Neutral operator instead of AgX: code 248.90, difference
  *   +24.00
- *   Linux SwiftShader readings: not yet recorded.
+ *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight under AgX: code 224.50,
+ *   difference -0.40, the same as the Mac
  *
  * Five captures of each build came back byte-identical, so the noise band is 0. The tolerance
  * is the midpoint of the two differences' sizes, (0.40 + 24.00) / 2 = 12.20, which clears each

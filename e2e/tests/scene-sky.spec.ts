@@ -43,7 +43,8 @@ const CODE_RANGE = 255
  *
  *   before the daylight calibration, a near-white sky: -0.0029
  *   calibrated daylight (this build): -0.0105
- *   Linux SwiftShader readings: not yet recorded.
+ *   Linux SwiftShader (run 43820235938, 2026-11-16), calibrated daylight: -0.0105, the same as
+ *   the Mac
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * bound is the midpoint, -0.0067, which clears each reading by 0.0038.
