@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { EnvironmentLighting } from '../../core'
+import { DAYLIGHT_CALIBRATION, type EnvironmentLighting } from '../../core'
 
 import { asScene, type LightingRig } from './lighting-rig'
 import { createSkyEnvironmentTexture, writeSkyEnvironmentTexture } from './sky-environment-map'
@@ -52,6 +52,38 @@ const MIE_COEFFICIENT = 0.005
 /** Pinned defensively: matches the r184 addon's own mieDirectionalG default so an addon version
  *  bump cannot silently drift scene baselines. */
 const MIE_DIRECTIONAL_G = 0.8
+
+/**
+ * The one scale between the visible sky mesh's output and the sky dome of `core`, which is the
+ * authority for light. Measured in the scene harness and then frozen.
+ *
+ * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
+ * frame, AgX at exposure 1) in the equinox-noon state. Each reading is a region's encoded
+ * luminance turned back into scene-linear luminance with agxNeutralInverse.
+ *
+ * Near the horizon: the 8 px square at x 236 to 243, y 0 to 7, away from the sun, looking 1.2
+ * degrees above the horizon (view (-0.385, 0.021, -0.923)). The reading was taken at a
+ * provisional gain of 0.25, because the tone curve is flat near the top, and scaled to a gain of
+ * 1: 3.844. The dome target is 0.2447, so the gain is 0.0636. At that gain the region reads
+ * 0.2450, a closed-loop residual of +0.12 percent.
+ *
+ * At the zenith: the sky reads 0.0328 at this gain against a dome of 0.4596, a ratio of 0.071.
+ * One gain cannot match both places. The gain is fitted near the horizon. The zenith figure is an
+ * order-of-magnitude one, because the tone curve inverse is exact only for neutral colors.
+ *
+ * The scattering constants above are pinned and are not tuned to close this difference.
+ */
+export const SKY_MESH_GAIN = 0.0636
+
+/**
+ * The per-channel gain the visible sky is scaled by. Dividing by the white point puts the
+ * visible sky in the same white-balanced space as the sun and the dome. A new vector on each
+ * call, so a caller may write to it without moving another's gain.
+ */
+export function skyMeshGain(): THREE.Vector3 {
+  const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
+  return new THREE.Vector3(SKY_MESH_GAIN / r, SKY_MESH_GAIN / g, SKY_MESH_GAIN / b)
+}
 
 // The SkyMesh addon statically pulls in three/webgpu, which would land the whole WebGPU
 // build in the app's entry chunk. Loading its module through a dynamic import keeps it on a
@@ -110,11 +142,11 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
   sky.cloudCoverage.value = lighting.cloudCover
 }
 
-/** Multiplies the sky's color by a neutral-gain uniform and records that gain on the rig, so a later
- *  change can scale the visible sky by writing the rig's vector. At one no pixel moves. The rig holds
- *  a gain only when the sky reads it: without an addon color node nothing is recorded. */
+/** Multiplies the sky's color by the sky mesh gain uniform and records that gain on the rig, so a later
+ *  change can scale the visible sky by writing the rig's vector. The rig holds a gain only when the
+ *  sky reads it: without an addon color node nothing is recorded. */
 function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
-  const gain = new THREE.Vector3(1, 1, 1)
+  const gain = skyMeshGain()
   // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",
   // and the typed overloads of `mul` reject a vec3 uniform against that union. The shader widens
   // the uniform to a vec4 with alpha one, so the product keeps the sky opaque.
