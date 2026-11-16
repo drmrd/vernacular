@@ -182,6 +182,7 @@ interface SaveStatusOptions {
   snapshots?: EditorWorkspaceProps['snapshots']
   revision: ReturnType<typeof useDirtyTracker>['revision']
   markSavedRevision: ReturnType<typeof useDirtyTracker>['markSavedRevision']
+  onProjectSaved?: EditorWorkspaceProps['onProjectSaved']
 }
 
 // Owns the save-status indicator the autosave and the explicit save share. Autosave
@@ -191,20 +192,31 @@ function useSaveStatus(options: SaveStatusOptions): {
   saveStatus: AutosaveStatus
   reportSaved: () => void
 } {
-  const { session, store, projectId, snapshots, revision, markSavedRevision } = options
+  const { session, store, projectId, snapshots, revision, markSavedRevision, onProjectSaved } =
+    options
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('idle')
+  const onSaved = useCallback(
+    (savedRevision: number) => {
+      markSavedRevision(savedRevision)
+      onProjectSaved?.()
+    },
+    [markSavedRevision, onProjectSaved],
+  )
   useAutosave({
     session,
     store,
     projectId,
     onStatusChange: setSaveStatus,
     revision,
-    onSaved: markSavedRevision,
+    onSaved,
     // Spread snapshots only when present: under exactOptionalPropertyTypes the optional
     // option rejects an explicit undefined.
     ...(snapshots ? { snapshots } : {}),
   })
-  const reportSaved = useCallback(() => setSaveStatus('saved'), [])
+  const reportSaved = useCallback(() => {
+    setSaveStatus('saved')
+    onProjectSaved?.()
+  }, [onProjectSaved])
   return { saveStatus, reportSaved }
 }
 
@@ -215,6 +227,7 @@ interface WorkspaceActionsOptions {
   confirmDiscard: ReturnType<typeof useDiscardConfirmation>['confirmDiscard']
   revision: ReturnType<typeof useDirtyTracker>['revision']
   markSavedRevision: ReturnType<typeof useDirtyTracker>['markSavedRevision']
+  onProjectSaved?: EditorWorkspaceProps['onProjectSaved']
 }
 
 // Owns the save-status indicator plus the file-menu actions that share it: the
@@ -234,6 +247,7 @@ function useWorkspaceActions(options: WorkspaceActionsOptions): {
     snapshots,
     revision,
     markSavedRevision,
+    onProjectSaved: props.onProjectSaved,
   })
   const notifications = useNotifications()
   const actions = useProjectActions({

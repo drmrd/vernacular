@@ -77,3 +77,10 @@ export {
 export type { SvgPlanToPdfOptions } from './download/pdf-plan-document'
 export { downloadBytes, downloadText } from './download/download-blob'
 export { importProjectFile, UnsupportedProjectFileError } from './import/import-project-file'
+export {
+  InMemoryActiveProjectIdStore,
+  LocalStorageActiveProjectIdStore,
+  isValidProjectId,
+  newProjectId,
+} from './active-project/active-project-id-store'
+export type { ActiveProjectIdStore } from './active-project/active-project-id-store'
