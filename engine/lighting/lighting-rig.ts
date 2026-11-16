@@ -67,6 +67,12 @@ export interface LightingRig {
   /** The visible sky, solar mode only. */
   sky?: SkyMesh
   /**
+   * The multiplier on the visible sky's color, solar mode only. The sky's color node reads this
+   * very vector through a uniform, so writing it rescales the sky on the next frame; a later
+   * change sets it from the daylight calibration.
+   */
+  skyGain?: THREE.Vector3
+  /**
    * The sky's image-based light, solar mode only: an equirectangular radiance map assigned
    * to the scene's environment, carrying both the diffuse ambient and the specular
    * reflection. It replaces the fill, and replaced the light probe that preceded it

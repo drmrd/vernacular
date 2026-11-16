@@ -40,6 +40,18 @@ const CLOUD_DENSITY = 0.4
 /** Pinned defensively: matches the r184 addon's own cloudElevation default so an addon version
  *  bump cannot silently drift scene baselines. */
 const CLOUD_ELEVATION = 0.5
+/** Pinned defensively: matches the r184 addon's own turbidity default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const TURBIDITY = 2
+/** Pinned defensively: matches the r184 addon's own rayleigh default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const RAYLEIGH = 1
+/** Pinned defensively: matches the r184 addon's own mieCoefficient default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const MIE_COEFFICIENT = 0.005
+/** Pinned defensively: matches the r184 addon's own mieDirectionalG default so an addon version
+ *  bump cannot silently drift scene baselines. */
+const MIE_DIRECTIONAL_G = 0.8
 
 // The SkyMesh addon statically pulls in three/webgpu, which would land the whole WebGPU
 // build in the app's entry chunk. Loading its module through a dynamic import keeps it on a
@@ -52,13 +64,28 @@ function loadSkyMeshModule(): Promise<typeof import('three/examples/jsm/objects/
   return skyMeshModule
 }
 
+// The TSL module is loaded the same way, beside the SkyMesh module, so the uniform that carries
+// the sky gain never puts three/tsl on the startup path either.
+let tslModule: Promise<typeof import('three/tsl')> | undefined
+
+function loadTslModule(): Promise<typeof import('three/tsl')> {
+  tslModule ??= import('three/tsl')
+  return tslModule
+}
+
 // A type-only alias for the resolved sky mesh, derived from the lazily loaded module's own
 // type via `typeof import(...)` rather than a static `import type { SkyMesh } from ...`
 // statement: the latter's `from '<specifier>'` text is exactly what the guard test below
 // checks for, so this keeps the module's only reference to the specifier inside a dynamic
 // `import(...)`, matching how `loadSkyMeshModule` above already refers to it.
 type SkyMeshModule = typeof import('three/examples/jsm/objects/SkyMesh.js')
+type TslModule = typeof import('three/tsl')
 type SkyMesh = InstanceType<SkyMeshModule['SkyMesh']>
+type SkyColorNode = NonNullable<SkyMesh['material']['colorNode']>
+/** The one operation the gain needs from the addon's color node, narrowed from its union type. */
+interface ScalableColorNode {
+  mul(factor: unknown): SkyColorNode
+}
 
 /**
  * Builds the sky's environment map, records it on the rig, and hands it to the scene at the
@@ -83,6 +110,19 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
   sky.cloudCoverage.value = lighting.cloudCover
 }
 
+/** Records a neutral gain on the rig and multiplies the sky's color by a uniform that reads it,
+ *  so a later change can scale the visible sky by writing the rig's vector. At one no pixel moves. */
+function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
+  const gain = new THREE.Vector3(1, 1, 1)
+  rig.skyGain = gain
+  // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",
+  // and the typed overloads of `mul` reject a vec3 uniform against that union. The shader widens
+  // the uniform to a vec4 with alpha one, so the product keeps the sky opaque.
+  const addonColor = sky.material.colorNode as ScalableColorNode | null
+  if (addonColor === null) return
+  sky.material.colorNode = addonColor.mul(tsl.uniform(gain))
+}
+
 /**
  * Adds the visible sky and its environment map to an applied rig and zeroes the hemisphere
  * fill (the map carries the ambient; running both double-counts it). The map attaches and the
@@ -103,8 +143,9 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   attachEnvironmentMap(scene, rig)
 
   let loadedModule: SkyMeshModule
+  let tsl: TslModule
   try {
-    loadedModule = await loadSkyMeshModule()
+    ;[loadedModule, tsl] = await Promise.all([loadSkyMeshModule(), loadTslModule()])
   } catch (reason) {
     console.warn(
       'Failed to load the visible sky module (three/examples/jsm/objects/SkyMesh.js); realistic lighting continues without it',
@@ -117,11 +158,16 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   const { SkyMesh } = loadedModule
   const sky = new SkyMesh()
   sky.scale.setScalar(SKY_SCALE)
+  sky.turbidity.value = TURBIDITY
+  sky.rayleigh.value = RAYLEIGH
+  sky.mieCoefficient.value = MIE_COEFFICIENT
+  sky.mieDirectionalG.value = MIE_DIRECTIONAL_G
   sky.cloudSpeed.value = FROZEN_CLOUD_SPEED
   sky.showSunDisc.value = SUN_DISC_ON
   sky.cloudScale.value = CLOUD_SCALE
   sky.cloudDensity.value = CLOUD_DENSITY
   sky.cloudElevation.value = CLOUD_ELEVATION
+  applySkyGain(sky, rig, tsl)
   scene.add(sky)
   rig.sky = sky
 
