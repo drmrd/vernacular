@@ -178,7 +178,7 @@ asserted.
   top of the gap above.
 - The doorway weight uses the neighbor's mean illuminance ratio as if it were a radiance. A hall's
   direct term is therefore too high by about one over the mean reflectance, roughly 1.6 times.
-  Together with the gap above, light that a room borrows through a doorway reads about 2.8 times
+  Together with the gap above, light that a room borrows through a doorway reads about 2.9 times
   too bright (1.6 times 1.8).
 - A cell whose center lies outside every room holds 1. When a room's walls do not fall on the 100
   mm grid, some cells along each wall have their center outside the room, so a strip along the
@@ -225,9 +225,8 @@ current, the amendments go into the records named here.
 - The math has no dependency on the renderer, so both backends agree by construction.
 - The field's error is bounded but not small. For a room lit by its own windows, the model reads up
   to a factor of 2 bright against the figure with lossless glass. Light borrowed through a doorway
-  reads about 2.8 times bright, and real glass widens both. Anything that reads the field as a
-  measurement needs the limits above. The reserved photo mode
-  is the accuracy backstop.
+  reads about 2.9 times bright, and real glass widens both. Anything that reads the field as a
+  measurement needs the limits above. The reserved photo mode is the accuracy backstop.
 - The field is built from `DaylightRoom` values only. A short adapter from the scene graph, and
   later a mapper from the plan geometry, supply them.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
