@@ -13,9 +13,10 @@ const SITE_WITHOUT_TIMEZONE: Site = {
   latLong: { latitude: 42.36, longitude: -71.06 },
 }
 
-const MISSING_LOCATION_NOTICE =
-  'Realistic lighting needs the site location. Set latitude and longitude in the Site panel; ' +
-  'until then the view falls back to schematic lighting.'
+const SAMPLE_DAYLIGHT_NOTICE =
+  'Sample daylight. Set the location and north in the Site panel for true sun angles.'
+
+const OLD_MISSING_LOCATION_TEXT = /Realistic lighting needs the site location/
 
 const MISSING_TIMEZONE_NOTICE =
   'The site has no timezone, so solar time is estimated from its longitude. Set the timezone ' +
@@ -28,6 +29,15 @@ const SCHEMATIC_LIGHTING_NOTICE =
 // The observation and cloud controls only reach the render under realistic lighting, so the
 // cases that drive them start from a realistic environment on a located site.
 const REALISTIC_ENVIRONMENT: EnvironmentState = { ...DEFAULT_ENVIRONMENT_STATE, mode: 'realistic' }
+
+// The sample notice is a status region whose whole text is the notice.
+function sampleDaylightNotices(): HTMLElement[] {
+  return screen.queryAllByRole('status').filter((n) => n.textContent === SAMPLE_DAYLIGHT_NOTICE)
+}
+
+function renderPanel(site: Site | undefined, environment: EnvironmentState): void {
+  render(<EnvironmentPanel site={site} environment={environment} onEnvironmentChange={vi.fn()} />)
+}
 
 afterEach(cleanup)
 
@@ -55,7 +65,7 @@ describe('EnvironmentPanel', () => {
     expect(onEnvironmentChange).toHaveBeenCalledWith({ ...environment, mode: 'realistic' })
   })
 
-  it('shows the site coordinates and timezone with no missing-location notice when the site has a location and timezone', () => {
+  it('shows the site coordinates and timezone with no sample daylight notice when the site has a location and timezone', () => {
     render(
       <EnvironmentPanel
         site={SITE_WITH_TIMEZONE}
@@ -67,53 +77,49 @@ describe('EnvironmentPanel', () => {
     expect(screen.getByText(/42\.36/)).toBeInTheDocument()
     expect(screen.getByText(/-71\.06/)).toBeInTheDocument()
     expect(screen.getByText(/America\/New_York/)).toBeInTheDocument()
-    expect(screen.queryByText(MISSING_LOCATION_NOTICE)).toBeNull()
+    expect(sampleDaylightNotices()).toHaveLength(0)
   })
 
-  it('shows the missing-location notice when realistic mode is selected and the site has no coordinates', () => {
-    render(
-      <EnvironmentPanel
-        site={undefined}
-        environment={{ ...DEFAULT_ENVIRONMENT_STATE, mode: 'realistic' }}
-        onEnvironmentChange={vi.fn()}
-      />,
-    )
+  it.each([
+    ['no site', undefined],
+    ['a site with only a north bearing of 0.5', { northBearing: 0.5 }],
+    ['a site with only a north bearing of pi', { northBearing: Math.PI }],
+  ] satisfies [string, Site | undefined][])(
+    'shows the sample daylight notice as a status when realistic mode is selected and there is %s',
+    (_label, site) => {
+      renderPanel(site, REALISTIC_ENVIRONMENT)
 
-    expect(screen.getByText(MISSING_LOCATION_NOTICE)).toBeInTheDocument()
+      expect(sampleDaylightNotices()).toHaveLength(1)
+    },
+  )
+
+  it('no longer asks for the site location before realistic lighting works when there is no site', () => {
+    renderPanel(undefined, REALISTIC_ENVIRONMENT)
+
+    expect(screen.queryByText(OLD_MISSING_LOCATION_TEXT)).toBeNull()
   })
 
-  it('does not show the missing-location notice in schematic mode even when the site has no coordinates', () => {
-    render(
-      <EnvironmentPanel
-        site={undefined}
-        environment={{ ...DEFAULT_ENVIRONMENT_STATE, mode: 'schematic' }}
-        onEnvironmentChange={vi.fn()}
-      />,
-    )
+  it('shows no sample daylight notice when the site has a location and no north bearing', () => {
+    renderPanel(SITE_WITHOUT_TIMEZONE, REALISTIC_ENVIRONMENT)
 
-    expect(screen.queryByText(MISSING_LOCATION_NOTICE)).toBeNull()
+    expect(sampleDaylightNotices()).toHaveLength(0)
+  })
+
+  it('does not show the sample daylight notice in schematic mode even when the site has no coordinates', () => {
+    renderPanel(undefined, { ...DEFAULT_ENVIRONMENT_STATE, mode: 'schematic' })
+
+    expect(sampleDaylightNotices()).toHaveLength(0)
+    expect(screen.getByText(SCHEMATIC_LIGHTING_NOTICE)).toBeInTheDocument()
   })
 
   it('shows the missing-timezone notice when realistic mode is selected and the site has coordinates but no timezone', () => {
-    render(
-      <EnvironmentPanel
-        site={SITE_WITHOUT_TIMEZONE}
-        environment={{ ...DEFAULT_ENVIRONMENT_STATE, mode: 'realistic' }}
-        onEnvironmentChange={vi.fn()}
-      />,
-    )
+    renderPanel(SITE_WITHOUT_TIMEZONE, REALISTIC_ENVIRONMENT)
 
     expect(screen.getByText(MISSING_TIMEZONE_NOTICE)).toBeInTheDocument()
   })
 
   it('does not show the missing-timezone notice in schematic mode even when the site has no timezone', () => {
-    render(
-      <EnvironmentPanel
-        site={SITE_WITHOUT_TIMEZONE}
-        environment={{ ...DEFAULT_ENVIRONMENT_STATE, mode: 'schematic' }}
-        onEnvironmentChange={vi.fn()}
-      />,
-    )
+    renderPanel(SITE_WITHOUT_TIMEZONE, { ...DEFAULT_ENVIRONMENT_STATE, mode: 'schematic' })
 
     expect(screen.queryByText(MISSING_TIMEZONE_NOTICE)).toBeNull()
   })
