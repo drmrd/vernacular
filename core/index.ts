@@ -580,7 +580,7 @@ export { MAX_SHADOW_TEXEL_MM, boundsRadius, shadowFitBounds } from './environmen
 export type { SkyLighting } from './environment/sky-model'
 export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
 export type { SkyDomeInput } from './environment/sky-dome'
-export { skyDomeRadiance } from './environment/sky-dome'
+export { skyDomeRadiance, sunAltitudeOf } from './environment/sky-dome'
 export {
   GROUND_BOUNCE_COLOR,
   GROUND_SURFACE_COLOR,

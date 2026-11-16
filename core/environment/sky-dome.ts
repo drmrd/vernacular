@@ -4,11 +4,16 @@ import type { Vector3 } from '../scene/vector3'
 import { SUNWARD_GAIN, levelCardLight, upperDomeTints } from './daylight-calibration'
 import { GROUND_BOUNCE_COLOR } from './ground-surface'
 
-/** The sky the dome is drawn for: a unit world-frame direction toward the sun, and the cloud cover. */
+/**
+ * The sky the dome is drawn for: a unit world-frame direction toward the sun, and the cloud cover.
+ */
 export type SkyDomeInput = { sunDirection: Vector3; cloudCover: number }
 
-/** The sun's height above the horizon in radians, from its unit direction. */
-function sunAltitudeOf(sky: SkyDomeInput): number {
+/**
+ * The sun's height above the horizon in radians, from its unit direction, with the sine clamped
+ * against rounding.
+ */
+export function sunAltitudeOf(sky: Pick<SkyDomeInput, 'sunDirection'>): number {
   return Math.asin(Math.min(1, Math.max(-1, sky.sunDirection.y)))
 }
 

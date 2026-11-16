@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import { DAYLIGHT_CALIBRATION, type EnvironmentLighting } from '../../core'
+import { DAYLIGHT_CALIBRATION, sunAltitudeOf, type EnvironmentLighting } from '../../core'
 
 import { asScene, type LightingRig } from './lighting-rig'
 import { createSkyEnvironmentTexture, writeSkyEnvironmentTexture } from './sky-environment-map'
@@ -60,10 +60,11 @@ interface SkyMeshGainRow {
  * equal the light dome's, just above the horizon on the side away from the sun, at that sun
  * height. Measured in the scene harness on WebGL 2 on macOS on 2026-11-16, then frozen. A gain
  * set outright at four measured heights (2.07, 4.95, 19.99, and 45.06 degrees) closed the loop
- * to within 0.7 percent of the dome.
+ * to within 0.7 percent of the dome. Those heights are where the table was checked, not rows of it.
  *
- * Five more measured rows (15, 20, 30, 45, and 60 degrees) interpolate from these within 1.74
- * percent. The first row, at 1.07 degrees, is an estimate: its reading was the least certain.
+ * Between its rows the table interpolates within 1.74 percent of the dome at the heights checked
+ * (15, 20, 30, 45, and 60 degrees). The first row, at 1.07 degrees, is an estimate: its reading
+ * was the least certain. The table was measured under a clear sky only.
  *
  * Limits: this matches the horizon away from the sun only. To the side of the sun the horizon
  * reads 45 to 70 percent of the dome, and the zenith stays far darker than the dome. With the
@@ -115,11 +116,6 @@ export function skyMeshGain(sunAltitude: number): THREE.Vector3 {
   const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
   const gain = skyMeshGainAt(sunAltitude)
   return new THREE.Vector3(gain / r, gain / g, gain / b)
-}
-
-/** The sun's altitude in radians from a unit direction, with the sine clamped against rounding. */
-function sunAltitudeOf(lighting: EnvironmentLighting): number {
-  return Math.asin(Math.min(1, Math.max(-1, lighting.sunDirection.y)))
 }
 
 // The SkyMesh addon statically pulls in three/webgpu, which would land the whole WebGPU

@@ -15,7 +15,10 @@ export interface EnvironmentLighting {
   sunColor: LinearRgb
   /** Ambient/hemisphere sky tint in linear-light sRGB. */
   skyColor: LinearRgb
-  /** Direct-sun level, 0 (extinguished) to the full sun's level, fading along the light's path, 0 at and below the horizon. */
+  /**
+   * Direct-sun level, 0 (extinguished) to the full sun's level, fading along the light's path,
+   * 0 at and below the horizon.
+   */
   sunLevel: number
   /** Cloud-cover fraction the sky was computed with; the visible sky mesh reads it. */
   cloudCover: number
@@ -43,8 +46,8 @@ export interface EnvironmentLightingInput {
  * `sunWorldDirection` rotates them through the site north bearing into the
  * y-up world frame (ADR-0139), and `skyLighting` derives the sun and sky tints
  * from the solar altitude and cloud cover. `sunLevel` passes straight through
- * from `skyLighting`, carrying the fade along the light's path, 0 at and below the horizon, so the direct
- * sun fades to nothing as it sets. `skyAmbient` projects the same analytic sky dome into
+ * from `skyLighting`, carrying the fade along the light's path, 0 at and below the horizon, so
+ * the direct sun fades to nothing as it sets. `skyAmbient` projects the same analytic sky dome into
  * spherical-harmonic coefficients for the ambient probe, and `cloudCover` passes
  * straight through so the visible sky mesh can read the value it was computed with.
  * Frame and unit conventions follow those piece functions.

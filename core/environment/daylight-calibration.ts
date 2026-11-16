@@ -114,7 +114,9 @@ const COSINE_WEIGHTED_MEAN_HEIGHT =
   HEIGHT_INTEGRAL_DENOMINATOR / HEIGHT_SQUARED_INTEGRAL_DENOMINATOR
 
 const referenceInput = referenceLightingInput()
-/** The sun's height at the reference place and instant, computed rather than rounded to 45 degrees. */
+/**
+ * The sun's height at the reference place and instant, computed rather than rounded to 45 degrees.
+ */
 const REFERENCE_SUN_ALTITUDE = solarPosition({
   latitude: referenceInput.latLong.latitude,
   longitude: referenceInput.latLong.longitude,
@@ -122,7 +124,10 @@ const REFERENCE_SUN_ALTITUDE = solarPosition({
   utcOffsetMinutes: referenceInput.utcOffsetMinutes,
 }).altitude
 
-/** How many times brighter the clear horizon toward the reference sun is than the horizon away from it. */
+/**
+ * How many times brighter the clear horizon toward the reference sun is than the horizon away from
+ * it.
+ */
 const SUNWARD_HORIZON_RATIO = 3
 /**
  * Strength of the dome's brightening toward the sun's azimuth. On the horizon under the reference
@@ -146,7 +151,10 @@ function rawDomeTint(viewHeight: number): LinearRgb {
   return mixLinearRgb(HORIZON_DOME_TINT, ZENITH_DOME_TINT, clampToUnitInterval(viewHeight))
 }
 
-/** The ratio of direct to diffuse light on a level card: 5 to 1 at 45 degrees, 1 to 1 at the horizon and below. */
+/**
+ * The ratio of direct to diffuse light on a level card: 5 to 1 at 45 degrees, 1 to 1 at the horizon
+ * and below.
+ */
 export function directToDiffuseRatio(sunAltitude: number): number {
   return (
     1 +
@@ -212,7 +220,10 @@ function directBeamCloudTransmission(cloudCover: number): number {
   return clampToUnitInterval(1 - clampToUnitInterval(cloudCover) ** DIRECT_BEAM_CLOUD_EXPONENT)
 }
 
-/** The direct sun's level, the engine's light intensity: the sun scale times the fade and the cloud transmission. */
+/**
+ * The direct sun's level, the engine's light intensity: the sun scale times the fade and the cloud
+ * transmission.
+ */
 export function sunLevelAt(sunAltitude: number, cloudCover: number): number {
   return SUN_SCALE * sunFade(sunAltitude) * directBeamCloudTransmission(cloudCover)
 }
@@ -222,7 +233,10 @@ export function sunColorAt(sunAltitude: number, cloudCover: number): LinearRgb {
   return withLuminance(whiteBalanced(rawSunTint(sunAltitude), cloudCover), 1)
 }
 
-/** The sky level on the level card: the clear direct level over the ratio, floored at night, dimmed by cloud. */
+/**
+ * The sky level on the level card: the clear direct level over the ratio, floored at night, dimmed
+ * by cloud.
+ */
 export function diffuseLevelAt(sunAltitude: number, cloudCover: number): number {
   const clearDirect = (sunLevelAt(sunAltitude, 0) * Math.max(0, Math.sin(sunAltitude))) / Math.PI
   const clearDiffuse = Math.max(
@@ -232,10 +246,15 @@ export function diffuseLevelAt(sunAltitude: number, cloudCover: number): number 
   return clearDiffuse * (1 - OVERCAST_DIFFUSE_DIMMING * clampToUnitInterval(cloudCover))
 }
 
-/** The upper dome's radiance at the horizon and at the zenith; it blends linearly on the view height. */
+/**
+ * The upper dome's radiance at the horizon and at the zenith; it blends linearly on the view
+ * height.
+ */
 export type UpperDomeTints = { horizon: LinearRgb; zenith: LinearRgb }
 
-/** The upper dome's end tints, scaled so the dome's light on the level card is the diffuse level. */
+/**
+ * The upper dome's end tints, scaled so the dome's light on the level card is the diffuse level.
+ */
 export function upperDomeTints(sunAltitude: number, cloudCover: number): UpperDomeTints {
   const meanTint = whiteBalanced(rawDomeTint(COSINE_WEIGHTED_MEAN_HEIGHT), cloudCover)
   const domeScale = diffuseLevelAt(sunAltitude, cloudCover) / linearLuminance(meanTint)
@@ -272,7 +291,10 @@ export const DAYLIGHT_CALIBRATION: DaylightCalibration = {
 }
 
 const referenceCard = levelCardLight(REFERENCE_SUN_ALTITUDE, 0)
-/** The photometric anchor: the lux that one unit of irradiance stands for, fixed by the reference card. */
+/**
+ * The photometric anchor: the lux that one unit of irradiance stands for, fixed by the reference
+ * card.
+ */
 export const LUX_PER_UNIT_IRRADIANCE =
   REFERENCE_HORIZONTAL_ILLUMINANCE_LUX /
   (Math.PI * linearLuminance(addLinearRgb(referenceCard.sun, referenceCard.sky)))
