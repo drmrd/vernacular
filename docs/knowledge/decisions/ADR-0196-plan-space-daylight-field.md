@@ -82,7 +82,8 @@ For a window, the factor is multiplied by the sky's luminance toward one directi
 direction of the sky in front of a vertical opening. That direction points along the aperture's
 outward normal and rises by `atan(2 / pi)` above the horizon. Plan `(x, y)` maps to world
 `(x, up, -y)`. The sky is a function from a direction to a number in which 1 is the mean of the
-open sky. `UNIFORM_SKY` returns 1 everywhere.
+open sky. `UNIFORM_SKY` returns 1 everywhere. A sky value below 0 or `NaN` counts as 0. A value
+above 1 is legal, so nothing caps it. Only a cell's final visibility is capped.
 
 ### The room-average term
 
@@ -120,11 +121,14 @@ aperture 1: ..." with zero-based indexes. The refused kinds are:
 
 - an outline with fewer than three points;
 - a ceiling height that is not a finite number above 0;
+- an outline coordinate that is not a finite number, with a message that names the room;
 - a floor color channel that is not a finite number;
 - a sill or head that is not a finite number, a head that is not above the sill, and a head above
   the ceiling;
 - a reveal depth that is not a finite number of 0 or more;
-- a span of no length, and a span with an end point off the room outline;
+- a span of no length, and a span with an end point more than 1 mm off the room outline
+  (`OUTLINE_TOLERANCE_MM`; the tolerance absorbs the rounding error of a window on an angled wall,
+  and an end point a few millimetres off the wall is still refused);
 - a span whose two sides are both inside, or both outside, the room (it does not lie on the
   outline);
 - a doorway that opens to its own room, and a doorway that opens to a room that does not exist.
@@ -163,12 +167,24 @@ asserted.
 
 - The model reads bright. For a test room of 4000 by 3000 mm with one 1000 by 1200 mm window, the
   mean is about 5.3 percent of the open sky. The standard average daylight factor rule of thumb
-  gives about 3 percent. Three things cause the gap. The glass loses nothing. The first reflection
-  uses the room's mean reflectance, where the split-flux method uses the floor's. The entering
-  flux ignores the reveal and the part of a window that lies below the work plane. The error is
-  below a factor of 2.
+  gives about 3 percent (2.95 percent, from 1.2 x 90 / (60.4 x (1 - 0.628^2))). That figure already
+  assumes glass that passes all of the light, so the glass is not a cause of the gap. Two things
+  cause it. The first reflection uses the room's mean reflectance, where the split-flux method uses
+  the floor's. The entering flux ignores the reveal and the part of a window that lies below the
+  work plane. For a room lit by its own windows, the error against that figure is below a factor of
+  2 (5.3 over 2.95 is about 1.8).
+- The model has no loss in the glass. With clear double glazing, which passes about 0.8 of visible
+  light, the rule of thumb gives about 2.4 percent. The missing loss is a further overestimate on
+  top of the gap above.
 - The doorway weight uses the neighbor's mean illuminance ratio as if it were a radiance. A hall's
   direct term is therefore too high by about one over the mean reflectance, roughly 1.6 times.
+  Together with the gap above, light that a room borrows through a doorway reads about 2.8 times
+  too bright (1.6 times 1.8).
+- A cell whose center lies outside every room holds 1. When a room's walls do not fall on the 100
+  mm grid, some cells along each wall have their center outside the room, so a strip along the
+  inside of each wall reads as open sky. In the harness shell, `sampleSkyVisibility` at the plan
+  point (80, 1500) returns 1, against about 0.042 at the center of the room. The lookup in the
+  engine has to handle this. Issue #753 tracks it.
 - The hall's entering flux stays below the source room's only while the neighbor's mean times the
   door area is below the window area. Ordinary rooms meet that, and the code does not enforce it.
 - The direct term ignores a concave room's own walls. In an L-shaped room, a cell around the inner
@@ -207,14 +223,17 @@ current, the amendments go into the records named here.
 - Window-lit rooms have a tested source of numbers before any engine work starts. If the lighting
   hook spike fails, the engine side waits and the core math is kept.
 - The math has no dependency on the renderer, so both backends agree by construction.
-- The field's error is bounded but not small. The model reads up to a factor of 2 bright, and
-  anything that reads the field as a measurement needs the limits above. The reserved photo mode
+- The field's error is bounded but not small. For a room lit by its own windows, the model reads up
+  to a factor of 2 bright against the figure with lossless glass. Light borrowed through a doorway
+  reads about 2.8 times bright, and real glass widens both. Anything that reads the field as a
+  measurement needs the limits above. The reserved photo mode
   is the accuracy backstop.
 - The field is built from `DaylightRoom` values only. A short adapter from the scene graph, and
   later a mapper from the plan geometry, supply them.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
   `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
-  `room-validation.test.ts`, and `hard-inputs.test.ts`) and by
+  `room-validation.test.ts`, `hard-inputs.test.ts`, `angled-wall.test.ts`,
+  `bad-outline-and-sky.test.ts`, and `sky-direction.test.ts`) and by
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.
