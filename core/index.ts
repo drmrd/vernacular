@@ -591,6 +591,9 @@ export type {
   EnvironmentLightingInput,
 } from './environment/environment-lighting'
 export { computeEnvironmentLighting } from './environment/environment-lighting'
+export { agxNeutralInverse, agxNeutralResponse } from './environment/tone-response'
+export type { MatteSurface } from './environment/light-model'
+export { predictedMatteRadiance, skyAmbientLevel } from './environment/light-model'
 export type {
   LightingMode,
   EnvironmentState,
