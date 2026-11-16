@@ -1,7 +1,13 @@
 // The made-up table names its variants Union.tag, which is not camelCase by design.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import { KNOWN_KEYS, KNOWN_ROOT_TYPE, type KnownKeyTable, type KnownValue } from '../../core'
+import {
+  KNOWN_KEYS,
+  KNOWN_ROOT_TYPE,
+  variantTypeOf,
+  type KnownKeyTable,
+  type KnownValue,
+} from '../../core'
 import { graftWithTable } from './preserve-unknown'
 
 const UNKNOWN_KEY = 'keyFromANewerBuild'
@@ -85,13 +91,16 @@ describe('graftWithTable a known key dropped from a tagged-union value of the sa
 })
 
 type UnionValue = Extract<KnownValue, { kind: 'union' }>
+type UnionVariant = UnionValue['variants'][number]
 
 interface UnionKeyCase {
   readonly table: KnownKeyTable
   readonly union: UnionValue
   readonly from: string
+  readonly fromValue: string
   readonly key: string
   readonly to: string
+  readonly toValue: string
 }
 
 function unionsIn(value: KnownValue): UnionValue[] {
@@ -111,31 +120,45 @@ function unionsOf(table: KnownKeyTable): UnionValue[] {
   return Object.values(table).flatMap((type) => Object.values(type.keys).flatMap(unionsIn))
 }
 
-function tagValue(variantName: string): string {
-  return variantName.slice(variantName.indexOf('.') + 1)
-}
-
 /** Every key a variant defines, paired with every variant it could be dropped for. */
-function casesFor(table: KnownKeyTable, union: UnionValue, from: string): UnionKeyCase[] {
-  const variant = table[from]!
+function casesFor(table: KnownKeyTable, union: UnionValue, from: UnionVariant): UnionKeyCase[] {
+  const variant = table[from.type]!
   return Object.keys(variant.keys)
     .filter((key) => key !== union.tag)
     .flatMap((key) =>
-      union.types
-        .filter((to) => to !== from || variant.optional.includes(key))
-        .map((to) => ({ table, union, from, key, to })),
+      union.variants
+        .filter((to) => to.type !== from.type || variant.optional.includes(key))
+        .map((to) => ({
+          table,
+          union,
+          from: from.type,
+          fromValue: from.value,
+          key,
+          to: to.type,
+          toValue: to.value,
+        })),
     )
 }
 
 function unionKeyCases(table: KnownKeyTable): UnionKeyCase[] {
   return unionsOf(table).flatMap((union) =>
-    union.types.flatMap((from) => casesFor(table, union, from)),
+    union.variants.flatMap((from) => casesFor(table, union, from)),
   )
 }
 
-function expectNoRestoredKey({ table, union, from, key, to }: UnionKeyCase): void {
-  const previous = { [union.tag]: tagValue(from), [key]: 'value from the previous file' }
-  const next = { [union.tag]: tagValue(to) }
+function expectNoRestoredKey({
+  table,
+  union,
+  from,
+  fromValue,
+  key,
+  to,
+  toValue,
+}: UnionKeyCase): void {
+  const previous = { [union.tag]: fromValue, [key]: 'value from the previous file' }
+  const next = { [union.tag]: toValue }
+  expect(variantTypeOf(union, previous[union.tag])).toBe(from)
+  expect(variantTypeOf(union, next[union.tag])).toBe(to)
   expect(graftWithTable(previous, next, { table, at: union })).toEqual(next)
 }
 
@@ -155,7 +178,16 @@ describe('graftWithTable every union position in the table of known keys', () =>
 
 const MADE_UP_TABLE: KnownKeyTable = {
   Holder: {
-    keys: { figure: { kind: 'union', tag: 'type', types: ['Figure.round', 'Figure.square'] } },
+    keys: {
+      figure: {
+        kind: 'union',
+        tag: 'type',
+        variants: [
+          { value: 'round', type: 'Figure.round' },
+          { value: 'square', type: 'Figure.square' },
+        ],
+      },
+    },
     optional: [],
   },
   'Figure.round': {
