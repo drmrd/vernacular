@@ -3,9 +3,18 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as THREE from 'three'
 import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
-import { NEUTRAL_DOME_SPHERICAL_HARMONICS, type EnvironmentLighting } from '../../core'
+import {
+  DAYLIGHT_CALIBRATION,
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  type EnvironmentLighting,
+} from '../../core'
 import { importsStaticValueOf } from '../testing'
-import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
+import {
+  SKY_MESH_GAIN,
+  attachSkyEnvironment,
+  skyMeshGain,
+  updateSkyEnvironment,
+} from './sky-environment'
 import { buildLightingRig, disposeLightingRig, type LightingRig } from './lighting-rig'
 
 /** The sun intensity the rig is built with; any positive value is fine for these tests. */
@@ -199,13 +208,15 @@ describe('attachSkyEnvironment', () => {
     expect(rig.sky?.mieDirectionalG.value).toBe(PINNED_SCATTERING.mieDirectionalG)
   })
 
-  it('records a neutral sky gain on the rig', async () => {
+  it('records the sky mesh gain scaled by the white point on the rig', async () => {
     const { scene, rig } = makeAppliedRig()
 
     await attachSkyEnvironment(scene, rig)
 
     expect(rig.skyGain).toBeInstanceOf(THREE.Vector3)
-    expect(rig.skyGain?.toArray()).toEqual([1, 1, 1])
+    expect(rig.skyGain?.x).toBeCloseTo(skyMeshGain().x, PRECISION)
+    expect(rig.skyGain?.y).toBeCloseTo(skyMeshGain().y, PRECISION)
+    expect(rig.skyGain?.z).toBeCloseTo(skyMeshGain().z, PRECISION)
   })
 
   it('multiplies the sky color by a uniform that reads the rig sky gain', async () => {
@@ -257,6 +268,27 @@ describe('attachSkyEnvironment', () => {
     // it onto the freshly built sky the stash is consumed, so it must be cleared: a later
     // update after the sky exists writes straight through, never through the stash.
     expect(rig.pendingLighting).toBeUndefined()
+  })
+})
+
+describe('skyMeshGain', () => {
+  it('divides the sky mesh gain by each channel of the daylight white point', () => {
+    const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
+
+    expect(Number.isFinite(SKY_MESH_GAIN)).toBe(true)
+    expect(SKY_MESH_GAIN).toBeGreaterThan(0)
+    expect(skyMeshGain().x).toBeCloseTo(SKY_MESH_GAIN / r, PRECISION)
+    expect(skyMeshGain().y).toBeCloseTo(SKY_MESH_GAIN / g, PRECISION)
+    expect(skyMeshGain().z).toBeCloseTo(SKY_MESH_GAIN / b, PRECISION)
+  })
+
+  it('returns a new vector on every call so a caller cannot alias another', () => {
+    const first = skyMeshGain()
+
+    first.set(0, 0, 0)
+
+    expect(skyMeshGain()).not.toBe(first)
+    expect(skyMeshGain().x).toBeGreaterThan(0)
   })
 })
 
@@ -388,6 +420,14 @@ describe('disposeLightingRig', () => {
 
     expect(scene.children).not.toContain(rig.sun)
     expect(scene.children).not.toContain(rig.fill)
+  })
+})
+
+describe('engine public surface', () => {
+  it('keeps the sky mesh gain inside the lighting module, off the engine barrel', async () => {
+    const engine = await import('../index')
+
+    expect(engine).not.toHaveProperty('SKY_MESH_GAIN')
   })
 })
 
