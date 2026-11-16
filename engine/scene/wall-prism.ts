@@ -15,6 +15,7 @@ import {
 import type { MaterialProvider } from '../materials/material-provider'
 
 import { geometryFromSections, thicknessSpanningQuad, type WallSection } from './geometry-utils'
+import { stampSurfaceTable } from './wall-surface-table'
 
 /** The paint surface ref for one named side of a wall's long face. */
 export function wallFaceRef(wallId: string, side: 'left' | 'right'): SurfaceRef {
@@ -55,6 +56,7 @@ export function buildWallPrism(
   const material = sections.map((section) => materials.material(section.role, section.ref))
   const mesh = new THREE.Mesh(geometry, material)
   mesh.userData.entityId = node.id
+  stampSurfaceTable(mesh, sections)
   return mesh
 }
 
