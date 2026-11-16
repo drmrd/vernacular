@@ -205,9 +205,10 @@ change, and this record does not settle them.
   percent of the outdoor light, which renders close to black at exposure 1.
 - The color check's bypass of the field, so that the color gates do not move.
 - The engine texture and the lighting hook that reads it. The lighting hook spike is recorded at
-  the end of this record and passed on both backends. It settles that a lookup of a plan-space
-  texture works inside the scene pass. The engine texture itself stays undecided, because the spike
-  used a throwaway texture.
+  the end of this record. On the development Mac it passed on both backends. It settles that a
+  lookup of a plan-space texture works inside the scene pass. The route of the hook, either the
+  context of the scene pass or the renderer's own context node, is still to be chosen. The engine
+  texture stays undecided, because the spike used a throwaway texture.
 - The bounce channels. They wait for the scene stage of the refactor round, because floor bounce
   adds light and the occlusion context cannot add light.
 
@@ -222,7 +223,7 @@ current, the amendments go into the records named here.
 ## Consequences
 
 - Window-lit rooms have a tested source of numbers before any engine work starts. The lighting
-  hook spike passed, so the engine side does not have to wait, and the core math is kept.
+  hook spike passed, so the engine side does not have to wait.
 - The math has no dependency on the renderer, so both backends agree by construction.
 - The field's error is bounded but not small. For a room lit by its own windows, the model reads up
   to a factor of 2 bright against the figure with lossless glass. Light borrowed through a doorway
@@ -301,12 +302,11 @@ equinox-noon exterior regions did not move.
 
 The scene pass does not have to stay at the plain level. `Renderer.contextNode` is a public context
 that every node material reads when it builds, and a `PassNode` only merges its own context over it
-during its render. All three plain variants (the plain draw, the scene pass, and the renderer
-context) used the same frame budget: 3 render calls and 84 draw calls in the window-light harness, 3
-and 59 in the live view. The renderer context applies to everything drawn through that renderer, so
-at the occlusion level the pass context must carry the product of occlusion and field, as in
-question 1, because the pass context replaces the renderer's `getAO` hook rather than combining with
-it.
+during its render. Both variants and the plain control used the same frame budget: 3 render calls
+and 84 draw calls in the window-light harness, 3 and 59 in the live view. The renderer context
+applies to everything drawn through that renderer, so at the occlusion level the pass context must
+carry the product of occlusion and field, as in question 1, because the pass context replaces the
+renderer's `getAO` hook rather than combining with it.
 
 ```ts
 renderer.contextNode = builtinAOContext(visibility)
