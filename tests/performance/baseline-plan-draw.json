@@ -1,0 +1,62 @@
+{
+  "floor-1": {
+    "total": 2262,
+    "byMethod": {
+      "arc": 5,
+      "beginPath": 472,
+      "clearRect": 1,
+      "closePath": 100,
+      "fill": 48,
+      "fillRect": 2,
+      "fillText": 76,
+      "lineTo": 667,
+      "moveTo": 467,
+      "stroke": 424
+    }
+  },
+  "floor-2": {
+    "total": 2262,
+    "byMethod": {
+      "arc": 5,
+      "beginPath": 472,
+      "clearRect": 1,
+      "closePath": 100,
+      "fill": 48,
+      "fillRect": 2,
+      "fillText": 76,
+      "lineTo": 667,
+      "moveTo": 467,
+      "stroke": 424
+    }
+  },
+  "floor-3": {
+    "total": 2262,
+    "byMethod": {
+      "arc": 5,
+      "beginPath": 472,
+      "clearRect": 1,
+      "closePath": 100,
+      "fill": 48,
+      "fillRect": 2,
+      "fillText": 76,
+      "lineTo": 667,
+      "moveTo": 467,
+      "stroke": 424
+    }
+  },
+  "floor-4": {
+    "total": 2168,
+    "byMethod": {
+      "arc": 5,
+      "beginPath": 450,
+      "clearRect": 1,
+      "closePath": 98,
+      "fill": 48,
+      "fillRect": 2,
+      "fillText": 76,
+      "lineTo": 641,
+      "moveTo": 445,
+      "stroke": 402
+    }
+  }
+}

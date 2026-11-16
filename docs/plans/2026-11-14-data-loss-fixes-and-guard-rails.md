@@ -651,10 +651,13 @@ export const REFERENCE_EDITS: readonly { name: string; command: (project: Projec
 The six edit names are `move-wall-endpoint`, `move-furniture`, `resize-opening`, `paint-surface`,
 `set-ceiling-height`, and `rename-project`.
 
-`tests/performance/baseline.json` holds `sizes` (floors, walls, rooms, openings, stairs, furniture,
-painted surfaces), `planDrawOperations` (for each floor: `total` and `byMethod`), and
-`rebuiltObjects` (for each edit: `floor`, `wallGroup`, `room`, `opening`, `furniture`). Running the
-tests with `UPDATE_PERFORMANCE_BASELINE=1` rewrites the file.
+The baseline is three files in `tests/performance/`, one for each section.
+`baseline-sizes.json` holds `sizes` (floors, walls, rooms, openings, stairs, furniture, painted
+surfaces). `baseline-plan-draw.json` holds `planDrawOperations` (for each floor: `total` and
+`byMethod`). `baseline-scene-rebuild.json` holds `rebuiltObjects` (for each edit and each kind of
+`floor`, `wallGroup`, `room`, `opening`, `furniture`: `rebuilt`, `removed`, and `added`). Running
+the tests with `UPDATE_PERFORMANCE_BASELINE=1` rewrites the plan draw and scene rebuild files; the
+sizes file is only checked.
 
 - [ ] Cycle 7.1, `reference-project.test.ts`: two calls give equal documents and equal JSON. The
       sizes equal `baseline.sizes`, with 4 floors, 200 furniture instances, and openings plus

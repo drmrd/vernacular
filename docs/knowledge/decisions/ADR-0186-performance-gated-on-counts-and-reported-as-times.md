@@ -20,7 +20,7 @@ sourceFiles:
     docs/specs/2026-06-01-vernacular-design.md,
   ]
 status: current
-updated: 2026-11-14
+updated: 2026-11-15
 ---
 
 # ADR-0186: Performance is gated on counts of work and reported as times
@@ -72,7 +72,11 @@ because the plan is drawn in `editor/`.
 - Sections 6.10 and 9.3 of the design specification point to this mechanism in place of
   `engine/profiling/`.
 - The counts show today's behavior as it is. An edit to one wall rebuilds every wall on its floor,
-  and a paint edit rebuilds the floor. Later stages can lower those numbers on purpose.
+  and a paint edit rebuilds the groups of every floor (4 wall groups, 40 rooms, 44 openings, and
+  200 furniture groups on the reference project), because the paint reference belongs to the
+  project. Every edit except a rename rebuilds all four floor wrapper groups. The gate records three
+  numbers for each edit and kind: rebuilt, removed, and added. Later stages can lower those numbers
+  on purpose.
 
 ## References
 

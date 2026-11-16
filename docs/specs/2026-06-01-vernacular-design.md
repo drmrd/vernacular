@@ -516,7 +516,7 @@ Color science is centralized in `core/color/`. OKLab is the internal representat
 - **Target:** 60 fps interactive on integrated GPUs (Intel Iris-class, Apple M1+, recent AMD APUs) with 4 floors, ~200 furniture instances, ~50 architectural elements, paint preview enabled.
 - **Instancing** for repeated furniture (`InstancedMesh`).
 - **Dirty tracking** ensures only changed entities re-derive scene graph nodes.
-- **Frame budget enforcement:** continuous editing operations target 8 ms scene update + 8 ms render. Profiling harness in `engine/profiling/` measures both per-command.
+- **Frame budget enforcement:** continuous editing operations target 8 ms scene update + 8 ms render. Count gates and a method note under `tests/performance/` track the work behind both budgets (ADR-0186).
 - LOD for distant furniture is post-MVP.
 
 ### 6.11 Text rendering
@@ -869,7 +869,7 @@ Layered from broad-and-fast to narrow-and-expensive. No upper bounds on test cou
 
 **Accessibility** runs @axe-core/playwright on every page transition. Color contrast across themes. Keyboard-only navigation tests. Screen reader checklist (manual, documented).
 
-**Performance** uses a render benchmark harness in `engine/profiling/` (p50/p95/p99 frame times at known scene complexities). Bundle-size budget. Lighthouse CI. Memory leak detection via repeated render + GC.
+**Performance** is gated on counts of work for a fixed reference project, with a method note under `tests/performance/` (ADR-0186). Bundle-size budget. Lighthouse CI. Memory leak detection via repeated render + GC.
 
 **Acceptance tests** cover user journeys from the spec. BDD-style names traceable to AC IDs (e.g., "AC5.4: ...").
 

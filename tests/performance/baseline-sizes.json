@@ -1,0 +1,10 @@
+{
+  "floors": 4,
+  "walls": 108,
+  "rooms": 40,
+  "openings": 44,
+  "stairs": 6,
+  "furniture": 200,
+  "dimensions": 16,
+  "paintedSurfaces": 116
+}
