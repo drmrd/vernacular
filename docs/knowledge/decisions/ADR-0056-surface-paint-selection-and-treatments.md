@@ -26,6 +26,7 @@ related:
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0029-schema-registry-migration-framework,
     decisions/ADR-0049-integration-acceptance-gate,
+    decisions/ADR-0086-near-wall-transparency,
   ]
 sourceFiles:
   [
@@ -39,10 +40,18 @@ sourceFiles:
     editor/paint/paint-panel.tsx,
     editor/paint/color-picker.tsx,
     editor/paint/finish-picker.tsx,
+    editor/paint/entity-surface.ts,
+    editor/paint/use-entity-surface-bridge.ts,
+    editor/plan/wall-finish-section.tsx,
+    engine/scene/wall-surface-table.ts,
+    engine/scene/pick-surface.ts,
+    engine/scene/pick-entity.ts,
+    engine/scene/faded-for-picking.ts,
+    engine/scene/near-wall-transparency.ts,
     e2e/tests/journeys/edit-color.spec.ts,
   ]
 status: current
-updated: 2026-06-11
+updated: 2026-11-15
 ---
 
 # ADR-0056: Surface selection, 2D paint rendering, and the surface-treatment union
@@ -98,8 +107,9 @@ later, the 3D preview.
 
 ### The 3D pick and highlight are a documented drop-in seam
 
-When the 3D render track adds wall-face meshes, each carries `userData.surface = SurfaceRef`
-(mirroring `userData.entityId`); a click sets the same `activeSurface`, and the mesh reads it for
+When the 3D render track adds surface meshes, a floor slab carries `userData.surface = SurfaceRef`
+(mirroring `userData.entityId`) and a wall carries a table of surface refs by material group (see
+the 2026-11-15 amendment); a click sets the same `activeSurface`, and the mesh reads it for
 the highlight and reads `resolveSurfacePaint` for its material. No 3D code is written or stubbed
 here beyond the contract. This keeps the painted 3D preview deferred behind the render seam
 (ADR-0045) while making it drop-in.
@@ -158,3 +168,41 @@ is now built (was deferred), and solid-color paint becomes one variant of a trea
 - ADR-0006 (the registry pattern for the future treatment registry).
 - ADR-0029 (the schema-migration framework the v8 to v9 migration uses).
 - ADR-0049 (the integration-acceptance gate this slice flips and extends).
+
+## Amendment 2026-11-15: a wall face can be picked in the 3D view
+
+Issue #730 made a click on a wall face in the 3D view set the paint target. The sentence in
+"The 3D pick and highlight are a documented drop-in seam" that gave every wall-face mesh a
+`userData.surface` stamp is corrected in place: it is false for walls, and a floor slab is the only
+mesh that still carries the stamp.
+
+- **A wall mesh carries a surface table.** One wall mesh holds several faces, so one stamp for the
+  mesh cannot name a face. Each wall mesh carries a table in `userData` (the key constant is
+  `SURFACE_BY_MATERIAL_INDEX_KEY`) that gives a surface reference, or none, for each material group.
+  `buildSectionMesh` builds the mesh, its materials, and the table from one list of wall sections,
+  on both wall build paths (the plain wall and the wall with openings). The reference that a pick
+  returns is therefore the reference whose paint the renderer shows. The surface picker reads the
+  table with the material group of the triangle that the ray hit.
+- **A wall decides at its first hit.** A long face gives that face and its side. A top cap, an end
+  cap, or the reveal of an opening gives no surface, and nothing behind the wall is returned. An
+  object with no table keeps the older behavior: a floor stamp decides, and an object with no
+  surface is skipped.
+- **A faded wall does not take a click.** The near-wall transparency (ADR-0086) fades the wall
+  nearest to the camera, with the openings in it, its junction fills, and furniture attached to it
+  (ADR-0087, ADR-0103, ADR-0140, ADR-0145). The project owner decided on 2026-11-15 that a faded
+  object does not take a click, for the selection (`pickEntityId`) and for the paint target
+  (`pickSurface`) alike. The fade module marks each material that it fades in the one function that
+  also writes the opacity (`applyFadeState`), and both pickers skip a hit on a faded object through
+  one predicate (`isFadedForPicking`). A fill that is held opaque is not faded and behaves as before.
+- **The editor keeps a picked face.** The hook that gives a newly selected entity its default
+  surface keeps the active surface when it already is a surface of that entity
+  (`isSurfaceOfEntity`). The wall finish section takes its side from the active surface and sets it
+  when the user changes the side. Before, the hook reset each wall selection to the left face, and
+  the section kept its own side.
+
+Not decided here:
+
+- What a click on furniture, on a door leaf, on glass, or on a junction fill does to the paint
+  target, and a line hit on the edge overlay of a faded wall. Issue #742 tracks these.
+- Whether the fade itself should depend on the camera's distance from the wall. The owner proposed
+  it, and issue #744 tracks it.

@@ -26,7 +26,7 @@ sourceFiles:
     e2e/tests/scene-near-wall-transparency.spec.ts,
   ]
 status: current
-updated: 2026-07-01
+updated: 2026-11-15
 ---
 
 # ADR-0086: Near-wall transparency in the three-dimensional preview
@@ -130,3 +130,10 @@ camera is grounded (issue #256).
   `<NearWallFade enabled={mode === 'orbit' && revealInterior}>`. The shared `ToolbarToggle`
   in `bridge/react/scene-nav-toolbar.tsx` renders it, and it stays inert while walking
   because the fade still needs orbit mode.
+
+## Note 2026-11-15: the faded state also decides picking
+
+A faded object no longer takes a click, for the selection and for the paint target alike, so a
+click on a faded wall goes to what is behind it. The fade marks each material it fades, and the
+pickers skip a hit on a marked object. The details are in the 2026-11-15 amendment to
+[[ADR-0056-surface-paint-selection-and-treatments]].
