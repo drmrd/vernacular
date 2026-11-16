@@ -16,6 +16,16 @@ describe('resetInteractiveObjects', () => {
     expect(interactiveObjectsAtDefault(store.getSceneSession())).toBe(true)
   })
 
+  it('replaces the stored open set and never mutates the original in place', () => {
+    const seed = new Set([FRONT_DOOR_ID])
+    const store = createSceneSessionStore({ openDoorIds: seed })
+
+    resetInteractiveObjects(store)
+
+    expect([...seed]).toEqual([FRONT_DOOR_ID])
+    expect(store.getSceneSession().openDoorIds).not.toBe(seed)
+  })
+
   it('notifies no subscriber when nothing is open, because nothing changes', () => {
     const store = createSceneSessionStore()
     const listener = vi.fn()
