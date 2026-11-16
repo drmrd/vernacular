@@ -22,28 +22,35 @@ export function surfaceRefOf(object: THREE.Object3D): SurfaceRef | null {
   return null
 }
 
+/** What one ray hit settles: the surface picked (null for none), or undefined to go on. */
+type HitDecision = { surface: SurfaceRef | null } | undefined
+
 /**
- * The surface ref of one ray hit. An object that carries a surface table (a wall
- * mesh) resolves through the material group of the triangle hit, so a long face
- * yields its side's ref and a cap, end, or reveal yields null; any other object
- * falls back to {@link surfaceRefOf}.
+ * Decides what one ray hit means for the pick. An object that carries a surface table
+ * (a wall mesh) always decides: the material group of the triangle hit yields its side's
+ * ref for a long face and null for a cap, end, or reveal. Any other object decides only
+ * when it carries a surface ref ({@link surfaceRefOf}); otherwise the ray goes on.
  */
-function surfaceRefOfHit(hit: THREE.Intersection): SurfaceRef | null {
+function decideHit(hit: THREE.Intersection): HitDecision {
   const table = surfaceTableOf(hit.object)
-  if (table === undefined) return surfaceRefOf(hit.object)
+  if (table === undefined) {
+    const surface = surfaceRefOf(hit.object)
+    return surface === null ? undefined : { surface }
+  }
   // `hit.face` is null for a line or point hit, which has no material group; returning
   // no surface there cannot credit the hit to the wrong surface.
   const materialIndex = hit.face?.materialIndex
-  if (materialIndex === undefined) return null
-  return table[materialIndex] ?? null
+  return { surface: materialIndex === undefined ? null : (table[materialIndex] ?? null) }
 }
 
 /** The surface ref of the nearest object a ray strikes, or null when the ray hits no surface. */
 export function pickSurface(raycaster: THREE.Raycaster, root: THREE.Object3D): SurfaceRef | null {
   for (const hit of raycaster.intersectObject(root, true)) {
-    const surface = surfaceRefOfHit(hit)
-    if (surface !== null) {
-      return surface
+    const decision = decideHit(hit)
+    // A wall is opaque: a surface behind a wall hit that has no paintable surface (a cap,
+    // an end, a reveal) is not what the user clicked, so the ray stops at that hit.
+    if (decision !== undefined) {
+      return decision.surface
     }
   }
   return null
