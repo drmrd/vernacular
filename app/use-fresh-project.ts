@@ -49,16 +49,17 @@ export function useFreshProject(context: FreshProjectContext): FreshProject {
 
   const startFreshProject = () => {
     // A second click while the first id lookup is pending would set a second id.
-    if (error !== null && lookupPendingFor.current === error) return
-    const failure = error
-    lookupPendingFor.current = failure
+    if (error === null || lookupPendingFor.current === error) return
+    const answeredError = error
+    lookupPendingFor.current = answeredError
     // A failed storage resolution leaves no store at all; an in-memory pair keeps the
     // fresh project workable.
     const fallback = freshStorage()
     void storedProjectIds(store ?? fallback.store).then((ids) => {
-      if (lookupPendingFor.current === failure) lookupPendingFor.current = null
+      if (lookupPendingFor.current === answeredError) lookupPendingFor.current = null
       // A retry that ran meanwhile (and loaded, or failed anew) owns the outcome now.
-      if (!mounted.current || currentError.current !== failure) return
+      // A store rejecting two loads with one cached Error makes an older lookup apply; one valid new id still results, so this is accepted.
+      if (!mounted.current || currentError.current !== answeredError) return
       setResolved((current) => current ?? fallback)
       setFreshProjectId(newProjectId(ids))
       setFreshProjectDurable(store !== null)
