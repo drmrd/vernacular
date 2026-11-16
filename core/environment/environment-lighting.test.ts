@@ -22,9 +22,9 @@ import type { Vector3 } from '../scene/vector3'
 
 const COMPOSITION_DECIMAL_PLACES = 10
 
-// The sun level carries the calibrated sun scale; 0.8267 is the clear-sky fraction of it at this
-// site and instant, and the tolerance is 0.1 percent.
-const EQUINOX_NOON_CLEAR_SKY_FRACTION = 0.8267
+// The sun level is the calibrated sun scale times the clear-sky attenuation of the direct sun,
+// exp(-0.21 * (1 / sin h - 1)), with h the sun's height; the tolerance is 0.1 percent.
+const SUN_OPTICAL_DEPTH_OF_CLEAR_SKY = 0.21
 const SUN_LEVEL_RELATIVE_TOLERANCE = 0.001
 
 const LOCAL_NOON_MINUTES = 720
@@ -95,15 +95,18 @@ describe('computeEnvironmentLighting', () => {
     expect(midnight.sunLevel).toBe(0)
   })
 
-  it('reports a sun level of the sun scale times 0.8267 on a clear spring noon at 40 N, 75 W', () => {
-    const { sunLevel } = computeEnvironmentLighting({
+  it('reports a sun level of the sun scale times the clear-sky attenuation at its height on a clear spring noon at 40 N, 75 W', () => {
+    const input: EnvironmentLightingInput = {
       latLong: { latitude: 40.0, longitude: -75.0 },
       northBearing: 0,
       utcOffsetMinutes: -240,
       observedAt: { date: '2026-03-20', minutesSinceMidnight: LOCAL_NOON_MINUTES },
       cloudCover: 0,
-    })
-    const expected = DAYLIGHT_CALIBRATION.sunScale * EQUINOX_NOON_CLEAR_SKY_FRACTION
+    }
+    const { sunLevel } = computeEnvironmentLighting(input)
+    const height = pieceFunctionAngles(input).altitude
+    const attenuation = Math.exp(-SUN_OPTICAL_DEPTH_OF_CLEAR_SKY * (1 / Math.sin(height) - 1))
+    const expected = DAYLIGHT_CALIBRATION.sunScale * attenuation
     expect(Math.abs(sunLevel - expected)).toBeLessThan(expected * SUN_LEVEL_RELATIVE_TOLERANCE)
   })
 

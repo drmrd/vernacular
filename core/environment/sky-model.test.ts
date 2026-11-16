@@ -15,7 +15,7 @@ const MODERATE_SUN_ALTITUDE = 0.7
 const HORIZON_SUN_ALTITUDE = 0.05
 const ON_HORIZON_ALTITUDE = 0
 const JUST_BELOW_HORIZON_ALTITUDE = -0.02
-const EXTINCTION_LIMIT_ALTITUDE = -0.1
+const WELL_BELOW_HORIZON_ALTITUDE = -0.1
 const BELOW_HORIZON_ALTITUDE = -0.2
 // The altitudes a sun descending through the horizon band passes through, in order.
 const DESCENDING_ALTITUDES_THROUGH_HORIZON_BAND = [
@@ -50,8 +50,6 @@ const SUN_COLOR_SAMPLE_ALTITUDES = [
   JUST_BELOW_HORIZON_ALTITUDE,
   BELOW_HORIZON_ALTITUDE,
 ]
-// Fraction of the full sun level the design documents for the sun exactly on the horizon.
-const HORIZON_SUN_LEVEL_FRACTION = 0.35
 
 function luminance(color: LinearRgb): number {
   return relativeLuminance({
@@ -91,21 +89,22 @@ describe('skyLighting', () => {
     expect(horizon.sunLevel).toBeLessThan(high.sunLevel)
   })
 
-  it('reaches the sun scale at the zenith and 0.35 of it exactly on the horizon', () => {
+  it('reaches the sun scale at the zenith and nothing exactly on the horizon', () => {
     const { sunScale } = DAYLIGHT_CALIBRATION
     const zenith = skyLighting(HIGH_SUN_ALTITUDE, CLEAR_SKY)
     const horizon = skyLighting(ON_HORIZON_ALTITUDE, CLEAR_SKY)
     expect(zenith.sunLevel).toBe(sunScale)
-    expect(horizon.sunLevel).toBeCloseTo(HORIZON_SUN_LEVEL_FRACTION * sunScale, 5)
+    expect(horizon.sunLevel).toBe(0)
   })
 
-  it('extinguishes sunLevel once the sun passes the extinction limit below the horizon', () => {
-    const justBelowHorizon = skyLighting(JUST_BELOW_HORIZON_ALTITUDE, CLEAR_SKY)
-    const atExtinctionLimit = skyLighting(EXTINCTION_LIMIT_ALTITUDE, CLEAR_SKY)
-    const wellBelowExtinctionLimit = skyLighting(BELOW_HORIZON_ALTITUDE, CLEAR_SKY)
-    expect(justBelowHorizon.sunLevel).toBeGreaterThan(0)
-    expect(atExtinctionLimit.sunLevel).toBe(0)
-    expect(wellBelowExtinctionLimit.sunLevel).toBe(0)
+  it('keeps sunLevel at 0 at every height below the horizon', () => {
+    for (const altitude of [
+      JUST_BELOW_HORIZON_ALTITUDE,
+      WELL_BELOW_HORIZON_ALTITUDE,
+      BELOW_HORIZON_ALTITUDE,
+    ]) {
+      expect(skyLighting(altitude, CLEAR_SKY).sunLevel).toBe(0)
+    }
   })
 
   it('never lets sunLevel increase as the sun descends through the horizon band', () => {

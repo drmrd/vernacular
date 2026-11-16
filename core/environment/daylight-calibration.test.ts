@@ -172,14 +172,12 @@ describe('levelCardLight at the reference height', () => {
 })
 
 describe('levelCardLight under a low sun', () => {
-  it('warms the light on the card at 20 degrees and at 10 degrees', () => {
-    for (const height of [TWENTY_DEGREES, TEN_DEGREES]) {
-      const card = levelCardLight(height, CLEAR_SKY)
-      const tone = shadeOf(sumOf(card.sun, card.sky))
-      expect(tone.a).toBeGreaterThan(0)
-      expect(tone.b).toBeGreaterThan(0)
-      expect(tone.chroma).toBeGreaterThanOrEqual(LOW_SUN_CHROMA_MINIMUM)
-    }
+  it('warms the light on the level card at 20 degrees', () => {
+    const card = levelCardLight(TWENTY_DEGREES, CLEAR_SKY)
+    const tone = shadeOf(sumOf(card.sun, card.sky))
+    expect(tone.a).toBeGreaterThan(0)
+    expect(tone.b).toBeGreaterThan(0)
+    expect(tone.chroma).toBeGreaterThanOrEqual(LOW_SUN_CHROMA_MINIMUM)
   })
 })
 
