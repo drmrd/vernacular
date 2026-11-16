@@ -65,8 +65,8 @@ function StaticFrame({
   const { bounds, cameraOverride, ambientOcclusionActive } = framing
   const { gl, scene, camera, size } = useThree()
   // The same render seam the live view uses: when the ambient-occlusion pass is active the
-  // frame draws through it, otherwise straight through gl.render, so a schematic or
-  // harness state renders exactly as before. onAmbientOcclusionSettled bubbles the
+  // frame draws through it, otherwise straight through gl.render, so a state without the
+  // pass renders exactly as before. onAmbientOcclusionSettled bubbles the
   // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
   const renderFrame = useAmbientOcclusion(ambientOcclusionActive, onAmbientOcclusionSettled)
   // Draws the mount frame, then redraws once harnessReady flips: the lazy sky has attached and,

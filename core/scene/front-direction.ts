@@ -28,7 +28,7 @@ function dotWithPlanDown(direction: PlanDirection): number {
  */
 const DIRECTION_TIE_TOLERANCE = 1e-9
 
-/** True when `candidate` is a better front than `current`: wider, then nearer plan-down (fronts within a rounding tolerance are equally near), then the opening id that sorts first as a string (so `opening:10` comes before `opening:9`). */
+/** True when `candidate` is a better front than `current`; see `frontDirection` for the rule. */
 function beats(candidate: FrontCandidate, current: FrontCandidate): boolean {
   if (candidate.opening.width !== current.opening.width) {
     return candidate.opening.width > current.opening.width

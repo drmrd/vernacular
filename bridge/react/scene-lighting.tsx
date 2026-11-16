@@ -143,8 +143,7 @@ function useToneMapping(effectiveMode: LightingMode, colorCheck: boolean) {
  * live on the render scene rather than on the keyed geometry group, so a rebuild does
  * not discard them and a lighting change does not rebuild the geometry. Reports the
  * provider's readiness through the optional onReady callback (the harness gates its
- * captured frame on it). Runs only under a real render; coverage-excluded, proven by
- * the scene-webgl tier.
+ * captured frame on it). Unit-tested in scene-lighting.test.tsx.
  */
 export function SceneLighting({
   colorTemperatureK,

@@ -332,7 +332,7 @@ export function WebGPUSceneView() {
   const site = useProjectSite()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
   const doorway = useDoorwayTarget(graph.openings, selectedIds)
-  // The toolbar reads the mode the render resolves to, not the requested one.
+  // The toolbar reads the lighting mode resolved from the user's realistic-lighting choice.
   const lightingMode = effectiveLightingMode(viewEnvironment.environment.mode === 'realistic')
 
   return (
