@@ -49,6 +49,19 @@ describe('a reference in the table of known keys, with an annotation beside it',
   )
 })
 
+describe('a reference in the table of known keys, with a further annotation beside it', () => {
+  it.each([
+    ['examples', [{ a: 'x' }]],
+    ['deprecated', true],
+    ['readOnly', true],
+    ['writeOnly', true],
+  ])('is accepted with %s beside it, and still records the referenced object', (keyword, value) => {
+    const table = buildKnownKeys(schemaWithReference(referenceBeside(keyword as string, value)))
+
+    expect(table.Project?.keys.value).toEqual({ kind: 'object', type: 'Thing' })
+  })
+})
+
 describe('a reference in the table of known keys, with a keyword that is not an annotation', () => {
   it.each([
     ['enum', ['x']],
@@ -59,5 +72,19 @@ describe('a reference in the table of known keys, with a keyword that is not an 
 
     expect(error).not.toBeInstanceOf(TypeError)
     expect(error.message).toMatch(new RegExp(`Project\\.value.*sibling.*${keyword}`))
+  })
+})
+
+describe('the refusal of a reference with keywords beside it', () => {
+  it('names every one of the keywords that it found, and none of the annotations', () => {
+    const property = { ...referenceBeside('default', {}), enum: ['x'], const: 'x', title: 'Thing' }
+
+    const error = refusalOf(schemaWithReference(property))
+
+    expect(error.message).toMatch(/Project\.value/)
+    expect(error.message).toMatch(/default/)
+    expect(error.message).toMatch(/enum/)
+    expect(error.message).toMatch(/const/)
+    expect(error.message).not.toMatch(/title/)
   })
 })
