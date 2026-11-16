@@ -1,15 +1,17 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { sampleCanvasColor } from './scene-helpers'
+import { sampleCanvasColor, settledHarnessCanvas } from './scene-helpers'
 
 // The ambient-occlusion gate (slice A1 of the rendering-realism gates spec, issue #522).
-// The committed pixel baseline for this state passes whether or not the occlusion pass is
-// tuned to the world's millimetre scale, so it never saw the defect class it was meant to
-// catch. This spec measures the occlusion instead of photographing it: it renders the
-// canonical `ambient-occlusion` harness state, samples one patch inside the window head
-// reveal and one on the open wall above it, and asserts the reveal reads darker in OKLab
-// lightness by at least a derived minimum. Occlusion darkens, so lightness is the axis that
-// carries the signal and the whole assertion is one number.
+// The committed pixel baseline for the ambient-occlusion state passes whether or not the
+// occlusion pass is tuned to the world's millimetre scale, so it never saw the defect class it
+// was meant to catch. This spec measures the occlusion instead of photographing it: it renders
+// the canonical `window-light` harness state, an interior camera looking east at the window,
+// samples one patch on the crease where the east wall meets the floor and one on the open
+// floor nearby, and asserts the crease reads darker in OKLab lightness by at least a derived
+// minimum. Occlusion darkens, so lightness is the axis that carries the signal and the whole
+// assertion is one number. Neither patch takes direct sun, so a lighting change moves both
+// alike and the difference stays an occlusion reading.
 //
 // It renders through the deterministic scene harness on the WebGL 2 backend, the same way
 // scene-color-accuracy.spec.ts does, so it runs on darwin Metal and on the linux SwiftShader
@@ -17,11 +19,11 @@ import { sampleCanvasColor } from './scene-helpers'
 // so no baseline moves with it.
 
 // The canonical harness state this gate renders.
-const AMBIENT_OCCLUSION_SCENE = 'ambient-occlusion'
+const WINDOW_LIGHT_QUERY = '&scene=window-light'
 
 // The harness canvas is 320 x 240 CSS pixels at device scale 1, the frame the committed
-// scene-ambient-occlusion baseline already pins. `sampleCanvasColor` centers its 24 px patch
-// on a fraction of the frame, so the patch positions, derived in frame pixels, convert here.
+// scene-window-light baseline already pins. `sampleCanvasColor` centers its 24 px patch on a
+// fraction of the frame, so the patch positions, derived in frame pixels, convert here.
 const HARNESS_CANVAS_WIDTH_PX = 320
 const HARNESS_CANVAS_HEIGHT_PX = 240
 
@@ -29,63 +31,45 @@ function patchCenteredOn(xPx: number, yPx: number): { x: number; y: number } {
   return { x: xPx / HARNESS_CANVAS_WIDTH_PX, y: yPx / HARNESS_CANVAS_HEIGHT_PX }
 }
 
-// The window head reveal on the east wall: the underside of the opening head, which faces
-// back into the wall thickness and is the strongest occlusion signal in this frame.
-const AO_WINDOW_HEAD_PATCH = patchCenteredOn(224, 116)
-// The open wall directly above the same opening, the unoccluded reference. At this framing a
-// 24 px patch spans roughly 780 mm of wall, so the two patches overlap by about a third of
-// their height. The overlap only shrinks the measured contrast, and the probe check below
-// shows the remaining separation is still wide enough to place a threshold in.
-const AO_OPEN_WALL_PATCH = patchCenteredOn(224, 100)
+// The foot of the east wall's room face, where it meets the floor: the interior crease that
+// carries the strongest occlusion signal in this frame (24 px patch at x 182..205, y 100..123).
+const AO_WALL_FLOOR_CREASE_PATCH = patchCenteredOn(194, 112)
+// The open floor toward the south-east corner of the room, the less occluded reference
+// (24 px patch at x 214..237, y 122..145). Both patches mix surfaces, as any patch at a crease
+// must; the probe readings below show the separation is still wide enough for a threshold.
+const AO_OPEN_FLOOR_PATCH = patchCenteredOn(226, 134)
 
 // The derived threshold (spec locked decision 6: derive the tolerance, then freeze it).
-// Re-derived on 2026-09-07 for the rendered normals target (rendering-realism lane 5,
-// issue #471), after lane 4's indirect-only re-derivation. Darwin Metal readings of this
-// frame, as openWallL - revealL:
+// Re-sited on 2026-11-15 (issue #491): once the wall faces were wound outward, the window head
+// reveal this gate sampled in the exterior ambient-occlusion state turned out to be the
+// inside-out head polygon seen through the wall, and the new exterior faces take direct sun.
+// Darwin Metal readings of the window-light frame, as openFloorL - creaseL:
 //
-//   shipped radius, AO_RADIUS_METERS 0.25: +0.0070
-//   wrong-radius probe, AO_RADIUS_METERS 2.5: -0.0016
-//   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0108
+//   shipped radius, AO_RADIUS_METERS 0.25: +0.0302
+//   wrong-radius probe, AO_RADIUS_METERS 2.5: +0.0008
+//   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0012
 //
-// Captures of this frame are byte-deterministic (zero noise band over repeated runs in
-// every derivation to date), so the threshold sits at the midpoint of the shipped
-// reading and the nearer defect reading, (0.0070 - 0.0016) / 2: the margin is 0.0043 to
-// either side. The SwiftShader lane rasterizes the same frame differently, so a reading
-// that lands near this number there is a reason to re-derive the pair, not to nudge the
-// constant.
-const AO_CONTRAST_MINIMUM = 0.0027
-
-// Puts the harness in the ambient-occlusion state and returns its settled canvas.
-async function gotoAmbientOcclusionScene(page: Page): Promise<Locator> {
-  await page.goto(`/?fixture=scene-harness&scene=${AMBIENT_OCCLUSION_SCENE}`)
-  const harness = page.getByTestId('scene-harness')
-  const canvas = harness.locator('canvas')
-  await expect(canvas).toBeVisible()
-  const hasWebGl2 = await page.evaluate(() => {
-    const probe = document.createElement('canvas')
-    return probe.getContext('webgl2') !== null
-  })
-  test.skip(
-    !hasWebGl2,
-    'No WebGL 2 context on this runner; the ambient-occlusion gate self-skips here.',
-  )
-  await expect(harness).toHaveAttribute('data-harness-ready', 'true')
-  return canvas
-}
+// Captures of this frame are byte-deterministic (five identical captures of each build, zero
+// noise band), so the threshold sits at the midpoint of the shipped reading and the nearer
+// defect reading, (0.0302 + 0.0008) / 2: the margin is 0.0147 to either side, and a 2 px shift
+// of both patches in any of eight directions keeps at least 0.0205 of contrast on the shipped
+// radius. The SwiftShader lane rasterizes the same frame differently, so a reading that lands
+// near this number there is a reason to re-derive the pair, not to nudge the constant.
+const AO_CONTRAST_MINIMUM = 0.0155
 
 test.describe('Ambient-occlusion contrast gate', () => {
-  test('the window head reveal renders darker than the open wall above it', async ({ page }) => {
-    const canvas = await gotoAmbientOcclusionScene(page)
+  test('the wall-floor crease renders darker than the open floor beside it', async ({ page }) => {
+    const canvas = await settledHarnessCanvas(page, WINDOW_LIGHT_QUERY)
 
-    const revealL = srgbToOkLab(await sampleCanvasColor(page, canvas, AO_WINDOW_HEAD_PATCH)).L
-    const openWallL = srgbToOkLab(await sampleCanvasColor(page, canvas, AO_OPEN_WALL_PATCH)).L
-    const contrast = openWallL - revealL
+    const creaseL = srgbToOkLab(await sampleCanvasColor(page, canvas, AO_WALL_FLOOR_CREASE_PATCH)).L
+    const openFloorL = srgbToOkLab(await sampleCanvasColor(page, canvas, AO_OPEN_FLOOR_PATCH)).L
+    const contrast = openFloorL - creaseL
 
     expect(
       contrast,
-      `window head reveal L ${revealL.toFixed(4)} against open wall L ${openWallL.toFixed(4)}: ` +
+      `wall-floor crease L ${creaseL.toFixed(4)} against open floor L ${openFloorL.toFixed(4)}: ` +
         `contrast ${contrast.toFixed(4)} is under the derived minimum ${AO_CONTRAST_MINIMUM}, so ` +
-        `the occlusion pass is not darkening the reveal the way a quarter-metre gather does`,
+        `the occlusion pass is not darkening the crease the way a quarter-metre gather does`,
     ).toBeGreaterThanOrEqual(AO_CONTRAST_MINIMUM)
   })
 })

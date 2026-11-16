@@ -19,7 +19,8 @@ const FINISH_CONTRAST_PAINT = 'finish-contrast'
 
 // Where the two sample patches are centered, as fractions of frame width and height. The
 // state looks straight down from just under the ceiling, so on the 320x240 harness canvas the
-// floor covers x 25..294 and y 18..221 and a 25 px band of matte wall runs down each side.
+// camera sees the room face of each wall: the floor covers about x 33..287 and y 25..215, and
+// a band of matte wall about 30 px wide runs down each side before the wall-floor crease.
 // The floor patch is the frame centre, well inside the specular response and clear of the
 // wall-floor junction shading. The wall patch is as far left as sampleCanvasColor can read:
 // its 24 px origin is 320 * 0.0375 - 12 = 0, which keeps the patch on the left wall band and
@@ -30,22 +31,27 @@ const WALL_MATTE_PATCH = { x: 0.0375, y: 0.5 }
 /**
  * The smallest OKLab distance the semi-gloss floor and the matte wall may sample at.
  *
- * Derived on 2026-08-31 on the development Mac; the two readings below are darwin Metal
- * values. Five consecutive captures were taken on each side of the probe, and all five came
- * back byte-identical each time, so the noise band is 0.000000 on both sides:
+ * Re-derived on 2026-11-15 on the development Mac (issue #491); the readings below are darwin
+ * Metal values. Once the wall faces were wound outward, the paint on the walls' outer side
+ * rendered on the exterior, out of this frame, and the gate compared the floor against
+ * unpainted wall: it passed at 0.283 and the collapsed probe moved the distance up, so the
+ * gate could no longer fail. The state now paints the room side of the walls. Five
+ * consecutive captures were taken of each build, and all five came back byte-identical each
+ * time, so the noise band is 0.000000:
  *
- *   shipped registry (semi-gloss roughness 0.3, sheen 0.5, specular 0.4): 0.012026
+ *   shipped registry (semi-gloss roughness 0.3, sheen 0.5, specular 0.4): 0.010278
  *   collapsed probe (the semi-gloss entry set to the matte values, roughness 0.9, sheen 0,
- *   specular 0.04, which is the #520 defect class): 0.001747
+ *   specular 0.04, which is the #520 defect class): 0.000000
+ *   roughness-only probe (semi-gloss roughness set to 0.9, sheen and specular kept): 0.003431
  *
- * The threshold goes between the two readings with a margin of at least twice the noise
- * band, the derivation rule that fixed the 0.06 color-accuracy tolerance (ADR-0157). The true
- * midpoint of the two readings is 0.0068865; rounded to 0.0069, it leaves a margin of
- * 0.012026 - 0.0069 = 0.005126 above and 0.0069 - 0.001747 = 0.005153 below. The noise band
- * over the byte-identical captures is 0.000000 on both sides, so the margin rule (at least
- * twice the noise band) is satisfied on both sides with room to spare.
+ * The threshold goes between the shipped and collapsed readings with a margin of at least
+ * twice the noise band, the derivation rule that fixed the 0.06 color-accuracy tolerance
+ * (ADR-0157). The true midpoint of the two readings is 0.005139; rounded to 0.0051, it leaves
+ * a margin of 0.010278 - 0.0051 = 0.005178 above and 0.0051 below. The roughness-only probe
+ * also falls under it. The noise band over the byte-identical captures is 0.000000, so the
+ * margin rule (at least twice the noise band) is satisfied on both sides with room to spare.
  */
-const FINISH_CONTRAST_MINIMUM = 0.0069
+const FINISH_CONTRAST_MINIMUM = 0.0051
 
 // Puts the harness in the finish-contrast state and returns its settled canvas.
 async function gotoFinishContrast(page: Page): Promise<Locator> {

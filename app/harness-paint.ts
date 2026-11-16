@@ -19,6 +19,9 @@ const DEMO_WALL_IDS = ['south', 'east', 'north', 'west']
 // The finish-contrast gate's shared base color: the floor and every wall paint this
 // same hue but differ in finish, so the gate isolates specular response from hue.
 const FINISH_CONTRAST_HEX = '#808080'
+// The four shell walls run counter-clockwise, so the room lies on each wall's left-hand
+// side (the normal (-dy, dx) of its start-to-end direction); the exterior side stays bare.
+const FINISH_CONTRAST_ROOM_SIDE = 'left'
 
 // A bare six-hex-digit `?paint=` value (e.g. `cc6633`), used by the color-accuracy gate
 // (`?fixture=scene-harness&scene=color-check&paint=<hex>`) to paint the harness floor an
@@ -31,16 +34,21 @@ interface ColorFinish {
   readonly finishId: string
 }
 
-/** Paints the harness floor `floor` and all four demo walls `walls`. */
+/** The wall color and finish, plus the one face of each wall that receives it. */
+interface WallPaint extends ColorFinish {
+  readonly side: 'left' | 'right'
+}
+
+/** Paints the harness floor `floor` and all four demo walls `walls`, on `walls.side` only. */
 function buildFloorAndWallsStore(
   floor: ColorFinish,
-  walls: ColorFinish,
+  walls: WallPaint,
 ): Record<string, SurfaceTreatment> {
   const store: Record<string, SurfaceTreatment> = {
     [surfaceKey({ kind: 'floor', floorId: 'demo' })]: solidTreatment(floor.color, floor.finishId),
   }
   for (const wallId of DEMO_WALL_IDS) {
-    store[surfaceKey({ kind: 'wall-face', wallId, side: 'right' })] = solidTreatment(
+    store[surfaceKey({ kind: 'wall-face', wallId, side: walls.side })] = solidTreatment(
       walls.color,
       walls.finishId,
     )
@@ -51,7 +59,7 @@ function buildFloorAndWallsStore(
 function demoPaintStore(): Record<string, SurfaceTreatment> {
   return buildFloorAndWallsStore(
     { color: colorFromHex(DEMO_FLOOR_HEX), finishId: 'matte' },
-    { color: colorFromHex(DEMO_WALL_HEX), finishId: 'matte' },
+    { color: colorFromHex(DEMO_WALL_HEX), finishId: 'matte', side: 'right' },
   )
 }
 
@@ -59,7 +67,7 @@ function finishContrastPaintStore(): Record<string, SurfaceTreatment> {
   const baseColor = colorFromHex(FINISH_CONTRAST_HEX)
   return buildFloorAndWallsStore(
     { color: baseColor, finishId: 'semi-gloss' },
-    { color: baseColor, finishId: 'matte' },
+    { color: baseColor, finishId: 'matte', side: FINISH_CONTRAST_ROOM_SIDE },
   )
 }
 
