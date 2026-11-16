@@ -143,6 +143,22 @@ export interface SamplePatch {
   readonly y: number
   readonly sizePx?: number
 }
+
+// The harness canvas is 320 x 240 CSS pixels at device scale 1, the frame the committed
+// harness baselines already pin. The regions the pixel gates sample are pixel rectangles on
+// that frame; `sampleCanvasColor` takes a patch center as frame fractions, so they convert.
+export const HARNESS_CANVAS_WIDTH_PX = 320
+export const HARNESS_CANVAS_HEIGHT_PX = 240
+
+// A square region of the frame given by its top-left corner and side, in frame pixels.
+export function squareRegion(originXPx: number, originYPx: number, sizePx: number): SamplePatch {
+  const half = sizePx / 2
+  return {
+    x: (originXPx + half) / HARNESS_CANVAS_WIDTH_PX,
+    y: (originYPx + half) / HARNESS_CANVAS_HEIGHT_PX,
+    sizePx,
+  }
+}
 // The RGBA stride of an ImageData buffer.
 const RGBA_STRIDE = 4
 // The maximum value of an 8-bit sRGB channel, for scaling to a 0..1 fraction.

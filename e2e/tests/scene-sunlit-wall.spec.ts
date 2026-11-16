@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import {
-  logReading,
-  sampleCanvasColor,
-  settledHarnessCanvas,
-  type SamplePatch,
-} from './scene-helpers'
+import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The sunlit-wall gate (issue #491). Every wall face used to be wound inside out, so the
 // shadow pass stored each wall's sun-side plane and every sunlit face was shadowed by its own
@@ -22,22 +17,6 @@ import {
 
 // The canonical harness state this gate renders.
 const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon'
-
-// The harness canvas is 320 x 240 CSS pixels at device scale 1, the frame the committed
-// scene-winter-afternoon baseline already pins. The regions below are pixel rectangles on
-// that frame; `sampleCanvasColor` takes a patch center as frame fractions, so they convert.
-const HARNESS_CANVAS_WIDTH_PX = 320
-const HARNESS_CANVAS_HEIGHT_PX = 240
-
-// A square region of the frame given by its top-left corner and side, in frame pixels.
-function squareRegion(originXPx: number, originYPx: number, sizePx: number): SamplePatch {
-  const half = sizePx / 2
-  return {
-    x: (originXPx + half) / HARNESS_CANVAS_WIDTH_PX,
-    y: (originYPx + half) / HARNESS_CANVAS_HEIGHT_PX,
-    sizePx,
-  }
-}
 
 // The south exterior face, the door wall (outward normal toward world south), clear of the
 // door and the wall edges: x 143..166, y 148..171.

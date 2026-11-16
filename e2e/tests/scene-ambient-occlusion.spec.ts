@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { logReading, sampleCanvasColor, settledHarnessCanvas } from './scene-helpers'
+import {
+  HARNESS_CANVAS_HEIGHT_PX,
+  HARNESS_CANVAS_WIDTH_PX,
+  logReading,
+  sampleCanvasColor,
+  settledHarnessCanvas,
+} from './scene-helpers'
 
 // The ambient-occlusion gate (slice A1 of the rendering-realism gates spec, issue #522).
 // The committed pixel baseline for the ambient-occlusion state passes whether or not the
@@ -21,12 +27,9 @@ import { logReading, sampleCanvasColor, settledHarnessCanvas } from './scene-hel
 // The canonical harness state this gate renders.
 const WINDOW_LIGHT_QUERY = '&scene=window-light'
 
-// The harness canvas is 320 x 240 CSS pixels at device scale 1, the frame the committed
-// scene-window-light baseline already pins. `sampleCanvasColor` centers its 24 px patch on a
-// fraction of the frame, so the patch positions, derived in frame pixels, convert here.
-const HARNESS_CANVAS_WIDTH_PX = 320
-const HARNESS_CANVAS_HEIGHT_PX = 240
-
+// The harness canvas is the frame the committed scene-window-light baseline already pins.
+// `sampleCanvasColor` centers its 24 px patch on a fraction of the frame, so the patch
+// positions, derived in frame pixels, convert here.
 function patchCenteredOn(xPx: number, yPx: number): { x: number; y: number } {
   return { x: xPx / HARNESS_CANVAS_WIDTH_PX, y: yPx / HARNESS_CANVAS_HEIGHT_PX }
 }

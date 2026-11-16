@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import {
-  logReading,
-  sampleCanvasColor,
-  settledHarnessCanvas,
-  type SamplePatch,
-} from './scene-helpers'
+import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } from './scene-helpers'
 
 // The shadow-reach gate. The solar shadow camera used to fit only the building, the casters,
 // so a shadow that ran off the building was cut off a few metres from it and the lawn past
@@ -23,22 +18,6 @@ import {
 
 // The canonical harness state this gate renders.
 const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon'
-
-// The harness canvas is 320 x 240 CSS pixels at device scale 1, the frame the committed
-// scene-winter-afternoon baseline already pins. The regions below are pixel rectangles on
-// that frame; `sampleCanvasColor` takes a patch center as frame fractions, so they convert.
-const HARNESS_CANVAS_WIDTH_PX = 320
-const HARNESS_CANVAS_HEIGHT_PX = 240
-
-// A square region of the frame given by its top-left corner and side, in frame pixels.
-function squareRegion(originXPx: number, originYPx: number, sizePx: number): SamplePatch {
-  const half = sizePx / 2
-  return {
-    x: (originXPx + half) / HARNESS_CANVAS_WIDTH_PX,
-    y: (originYPx + half) / HARNESS_CANVAS_HEIGHT_PX,
-    sizePx,
-  }
-}
 
 // The lawn east of the east wall, past where the old fit cut the shadow off, clear of the
 // building, the far edge of the lawn, and the frame: x 284..307, y 140..163. The shipped shadow
@@ -61,10 +40,10 @@ const SUNLIT_LAWN = squareRegion(28, 140, 24)
  *   shadow fitted to the casters and their shadow on the ground (this fix): sunlit 0.3614,
  *   shadowed 0.3490, gap 0.0124
  *
- * Five captures of each build came back identical to four decimals, so the noise band is 0 on
- * both. The threshold is the midpoint of the two gaps, (0.0124 + 0.0008) / 2 = 0.0066, rounded
- * to 0.007. The margins are 0.0054 below the shipped reading and 0.0062 above the defect
- * reading.
+ * Five captures of each build came back identical to four decimals, so the noise band is under
+ * 0.0001 on both. The threshold is the midpoint of the two gaps, (0.0124 + 0.0008) / 2 = 0.0066,
+ * rounded to 0.007. The margins are 0.0054 below the shipped reading and 0.0062 above the
+ * defect reading.
  */
 const SHADOW_REACH_MIN_GAP = 0.007
 
