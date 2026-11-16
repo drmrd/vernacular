@@ -59,7 +59,8 @@ interface SkyMeshGainRow {
  * for light), by the sun's height. A row is the gain that makes the visible sky's luminance
  * equal the light dome's, just above the horizon on the side away from the sun, at that sun
  * height. Measured in the scene harness on WebGL 2 on macOS on 2026-11-16, then frozen. A gain
- * set at each of the first four rows closed the loop to within 0.7 percent of the dome.
+ * set outright at four measured heights (2.07, 4.95, 19.99, and 45.06 degrees) closed the loop
+ * to within 0.7 percent of the dome.
  *
  * Five more measured rows (15, 20, 30, 45, and 60 degrees) interpolate from these within 1.74
  * percent. The first row, at 1.07 degrees, is an estimate: its reading was the least certain.
