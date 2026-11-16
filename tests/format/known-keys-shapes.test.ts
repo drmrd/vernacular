@@ -172,7 +172,7 @@ const INEXPRESSIBLE_SHAPES: InexpressibleShape[] = [
       properties: { b: { type: 'string' } },
     },
     definitions: definition('A', PLAIN_OBJECT),
-    namesTheShape: /Project\.value.*sibling/,
+    namesTheShape: /Project\.value.*sibling.*type.*properties/,
   },
   {
     label: 'a definition with both properties and anyOf',
