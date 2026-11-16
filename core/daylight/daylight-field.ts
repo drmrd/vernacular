@@ -14,10 +14,13 @@ const OPEN_SKY_VISIBILITY = 1
 
 /** An opening in a room's outline that lets light in from the sky or from a neighbor room. */
 export interface DaylightAperture {
-  /** The two end points of the opening, on the room outline. */
+  /** The two end points of the opening, in plan millimetres, on the room outline. */
   span: readonly [Point, Point]
+  /** Plan millimetres above the room's floor. */
   sill: number
+  /** Plan millimetres above the room's floor. */
   head: number
+  /** Plan millimetres. */
   revealDepth: number
   /** An interior doorway names its neighbor by index. */
   opensTo: 'sky' | { room: number }
@@ -26,6 +29,7 @@ export interface DaylightAperture {
 /** One room as the daylight field sees it. */
 export interface DaylightRoom {
   outline: readonly Point[]
+  /** Plan millimetres above the room's floor. */
   ceilingHeight: number
   floorColor: LinearRgb
   apertures: readonly DaylightAperture[]
@@ -37,6 +41,7 @@ export interface DaylightRoom {
 export interface DaylightField {
   /** Plan millimetres. */
   origin: Point
+  /** Plan millimetres. */
   cellSize: number
   columns: number
   rows: number
@@ -94,7 +99,12 @@ export function daylightFieldCellIndex(field: DaylightField, column: number, row
   return DAYLIGHT_FIELD_VALUES_PER_CELL * (row * field.columns + column)
 }
 
-/** Sky visibility of the cell that contains `point`, or 1 for a point outside the grid. */
+/**
+ * Sky visibility of the cell that contains `point`, or 1 for a point outside the grid. A cell is
+ * the half-open interval from its lower edge to its upper edge, so a point on the far edge of the
+ * grid, a point outside the grid, and a point that is not a finite number all return the open-sky
+ * value.
+ */
 export function sampleSkyVisibility(field: DaylightField, point: Point): number {
   const column = Math.floor((point.x - field.origin.x) / field.cellSize)
   const row = Math.floor((point.y - field.origin.y) / field.cellSize)
