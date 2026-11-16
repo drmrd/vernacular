@@ -13,10 +13,11 @@ import {
 } from '../../core'
 import {
   CODE_RANGE,
+  SOUTH_WEST_VIEW_SOUTH_WALL,
+  SOUTH_WEST_VIEW_WEST_WALL,
   logReading,
   sampleCanvasColor,
   settledHarnessCanvas,
-  squareRegion,
 } from './scene-helpers'
 
 // The tone curve gate. The daylight-reference state paints the four exterior wall faces the
@@ -35,16 +36,8 @@ import {
 // The reference harness state and the white paint this gate renders.
 const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white'
 
-// The south exterior face, below the south window and left of the door, clear of the window
-// sill, the wall's west corner, and the darkening where the wall meets the lawn: x 157..162,
-// y 142..147. The south face is small in this south-west view, and this is the largest square
-// on it that keeps 4 px from every edge, so the region is 6 px.
-const SUNLIT_SOUTH_WALL = squareRegion(157, 142, 6)
-// The west exterior face, in shade at this instant, below the eaves and above the darkening
-// where the wall meets the lawn: x 121..144, y 107..130. The face spans x 116..150 and
-// y 102..141 over these columns and renders one color, so the square keeps at least 5 px from
-// every edge.
-const SHADED_WEST_WALL = squareRegion(121, 107, 24)
+// The regions are the shared wall squares of the south-west view (scene-helpers.ts): at this
+// instant the south face takes the sun and the west face is in shade.
 
 // The south face's outward normal (world south is +z).
 const SOUTH_NORMAL = { x: 0, y: 0, z: 1 }
@@ -103,7 +96,9 @@ test.describe('Tone curve gate', () => {
   test('the sunlit white south wall shows the code the light model predicts', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, DAYLIGHT_REFERENCE_QUERY)
 
-    const measured = luminanceCode(await sampleCanvasColor(page, canvas, SUNLIT_SOUTH_WALL))
+    const measured = luminanceCode(
+      await sampleCanvasColor(page, canvas, SOUTH_WEST_VIEW_SOUTH_WALL),
+    )
     const predicted = predictedSouthWallCode()
     const difference = measured - predicted
     logReading('sunlit south wall code', measured.toFixed(2))
@@ -128,7 +123,7 @@ test.describe('Tone curve gate', () => {
     // and no bound on that cast has been decided, so the reading is recorded for the decision.
     // On 2026-11-16 on the development Mac the region held one color, (147, 169, 157), and read
     // a -0.0285 and b 0.0094 in five of five captures.
-    const shadedWest = srgbToOkLab(await sampleCanvasColor(page, canvas, SHADED_WEST_WALL))
+    const shadedWest = srgbToOkLab(await sampleCanvasColor(page, canvas, SOUTH_WEST_VIEW_WEST_WALL))
     logReading('shaded west wall a', shadedWest.a.toFixed(4))
     logReading('shaded west wall b', shadedWest.b.toFixed(4))
   })
