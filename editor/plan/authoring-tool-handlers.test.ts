@@ -9,7 +9,7 @@ import type {
   SceneGraph,
   WallSceneNode,
 } from '../../core'
-import { FURNITURE_NODE_PREFIX, OPENING_NODE_PREFIX } from '../../core'
+import { createOpening, FURNITURE_NODE_PREFIX, OPENING_NODE_PREFIX } from '../../core'
 import type { LibraryItem } from '../../storage'
 import {
   handleDimensionKey,
@@ -19,6 +19,7 @@ import {
   type AuthoringRun,
 } from './authoring-tool-handlers'
 import { advanceDimensionTool, IDLE_DIMENSION_TOOL } from './dimension-tool'
+import { placementRefusalMessage } from './overlay-announce'
 import { advanceWallTool, IDLE_WALL_TOOL } from './wall-tool'
 import { wasKeystrokeClaimed } from './keyboard-guard'
 
@@ -221,6 +222,32 @@ describe('handleOpeningKey selects what it drops', () => {
 
     expect(dispatch).not.toHaveBeenCalled()
     expect(run.selection.getSelectedIds()).toEqual(new Set())
+  })
+
+  it('refuses a drop on top of a door already in the wall and says why', () => {
+    const dispatch = vi.fn()
+    const existingDoor = createOpening({
+      id: 'existing',
+      type: DOOR_TYPE,
+      hostWallId: 'w1',
+      position: WALL_MIDPOINT_X,
+    })
+    const session = sessionWithOpenings([existingDoor], dispatch)
+    const run = {
+      ...authoringRun(session),
+      candidate: { x: WALL_MIDPOINT_X, y: 0 },
+    }
+
+    handleOpeningKey({
+      ...run,
+      event: enterEvent(),
+      graph: graphWithOneWall(),
+      placementType: DOOR_TYPE,
+    })
+
+    expect(dispatch).not.toHaveBeenCalled()
+    expect(run.selection.getSelectedIds()).toEqual(new Set())
+    expect(run.setAnnouncement).toHaveBeenCalledWith(placementRefusalMessage('opening-overlap'))
   })
 })
 
