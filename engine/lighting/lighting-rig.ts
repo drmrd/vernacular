@@ -68,8 +68,9 @@ export interface LightingRig {
   sky?: SkyMesh
   /**
    * The multiplier on the visible sky's color, solar mode only. The sky's color node reads this
-   * very vector through a uniform, so writing it rescales the sky on the next frame;
-   * attachSkyEnvironment sets it to skyMeshGain(), the measured gain divided by the white point
+   * very vector through a uniform, so writing it rescales the sky on the next frame. It follows
+   * the sun's height: attachSkyEnvironment sets it, and each updateSkyEnvironment rewrites it in
+   * place, to skyMeshGain of the sun's altitude, the measured gain divided by the white point
    * for each channel.
    */
   skyGain?: THREE.Vector3

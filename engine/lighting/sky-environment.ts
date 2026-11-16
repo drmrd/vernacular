@@ -48,36 +48,77 @@ const RAYLEIGH = 1
 const MIE_COEFFICIENT = 0.005
 const MIE_DIRECTIONAL_G = 0.8
 
-/**
- * The one scale between the visible sky mesh's output and the sky dome of `core`, which is the
- * authority for light. Measured in the scene harness and then frozen.
- *
- * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
- * frame, AgX at exposure 1) in the equinox-noon state. Each reading is a region's encoded
- * luminance turned back into scene-linear luminance with agxNeutralInverse.
- *
- * Near the horizon: the 8 px square at x 236 to 243, y 0 to 7, away from the sun, looking 1.2
- * degrees above the horizon (view (-0.385, 0.021, -0.923)). The reading was taken at a
- * provisional gain of 0.25, because the tone curve is flat near the top, and scaled to a gain of
- * 1: 3.844. The dome target is 0.2447, so the gain is 0.0636. At that gain the region reads
- * 0.2450, a closed-loop residual of +0.12 percent.
- *
- * At the zenith: the sky reads 0.0328 at this gain against a dome of 0.4596, a ratio of 0.071.
- * One gain cannot match both places. The gain is fitted near the horizon. The zenith figure is an
- * order-of-magnitude one, because the tone curve inverse is exact only for neutral colors.
- *
- * The scattering constants above are pinned and are not tuned to close this difference.
- */
-export const SKY_MESH_GAIN = 0.0636
+/** One measured row of the visible sky's gain: the gain at a sun height. */
+interface SkyMeshGainRow {
+  readonly sunHeightDegrees: number
+  readonly gain: number
+}
 
 /**
- * The per-channel gain the visible sky is scaled by. Dividing by the white point puts the
- * visible sky in the same white-balanced space as the sun and the dome. A new vector on each
- * call, so a caller may write to it without moving another's gain.
+ * The scale between the visible sky mesh's output and the sky dome of `core` (the authority
+ * for light), by the sun's height. A row is the gain that makes the visible sky's luminance
+ * equal the light dome's, just above the horizon on the side away from the sun, at that sun
+ * height. Measured in the scene harness on WebGL 2 on macOS on 2026-11-16, then frozen. A gain
+ * set at each of the first four rows closed the loop to within 0.7 percent of the dome.
+ *
+ * Five more measured rows (15, 20, 30, 45, and 60 degrees) interpolate from these within 1.74
+ * percent. The first row, at 1.07 degrees, is an estimate: its reading was the least certain.
+ *
+ * Limits: this matches the horizon away from the sun only. To the side of the sun the horizon
+ * reads 45 to 70 percent of the dome, and the zenith stays far darker than the dome. With the
+ * sun under the horizon the mesh is black, so the held end value does not light a night sky.
+ * The scattering constants above are pinned and are not tuned to close these differences.
  */
-export function skyMeshGain(): THREE.Vector3 {
+export const SKY_MESH_GAIN_BY_SUN_HEIGHT: readonly [SkyMeshGainRow, ...SkyMeshGainRow[]] =
+  Object.freeze([
+    { sunHeightDegrees: 1.07, gain: 1.15 },
+    { sunHeightDegrees: 2.07, gain: 0.651 },
+    { sunHeightDegrees: 3.58, gain: 0.353 },
+    { sunHeightDegrees: 4.95, gain: 0.233 },
+    { sunHeightDegrees: 7.54, gain: 0.132 },
+    { sunHeightDegrees: 10.0, gain: 0.0905 },
+    { sunHeightDegrees: 12.5, gain: 0.0692 },
+    { sunHeightDegrees: 73.44, gain: 0.061 },
+  ])
+
+const DEGREES_PER_HALF_TURN = 180
+/** The altitude the gain starts from when no lighting has arrived yet: the high-sun end. */
+const HIGH_SUN_ALTITUDE = Math.PI / 2
+
+/**
+ * The visible sky's gain for a sun altitude in radians. Between two neighboring rows of the
+ * table the natural logarithm of the gain is linear in the height; at or beyond either end the
+ * end row's gain holds.
+ */
+export function skyMeshGainAt(sunAltitude: number): number {
+  const heightDegrees = (sunAltitude * DEGREES_PER_HALF_TURN) / Math.PI
+  const rows = SKY_MESH_GAIN_BY_SUN_HEIGHT
+  const first = rows[0]
+  const last = rows[rows.length - 1] ?? first
+  if (heightDegrees <= first.sunHeightDegrees) return first.gain
+  if (heightDegrees >= last.sunHeightDegrees) return last.gain
+  const upperIndex = rows.findIndex((row) => row.sunHeightDegrees > heightDegrees)
+  const lower = rows[upperIndex - 1] ?? first
+  const upper = rows[upperIndex] ?? last
+  const fraction =
+    (heightDegrees - lower.sunHeightDegrees) / (upper.sunHeightDegrees - lower.sunHeightDegrees)
+  return Math.exp(Math.log(lower.gain) + fraction * (Math.log(upper.gain) - Math.log(lower.gain)))
+}
+
+/**
+ * The per-channel gain the visible sky is scaled by at a sun altitude in radians. Dividing by
+ * the white point puts the visible sky in the same white-balanced space as the sun and the
+ * dome. A new vector on each call, so a caller may write to it without moving another's gain.
+ */
+export function skyMeshGain(sunAltitude: number): THREE.Vector3 {
   const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
-  return new THREE.Vector3(SKY_MESH_GAIN / r, SKY_MESH_GAIN / g, SKY_MESH_GAIN / b)
+  const gain = skyMeshGainAt(sunAltitude)
+  return new THREE.Vector3(gain / r, gain / g, gain / b)
+}
+
+/** The sun's altitude in radians from a unit direction, with the sine clamped against rounding. */
+function sunAltitudeOf(lighting: EnvironmentLighting): number {
+  return Math.asin(Math.min(1, Math.max(-1, lighting.sunDirection.y)))
 }
 
 // The SkyMesh addon statically pulls in three/webgpu, which would land the whole WebGPU
@@ -140,9 +181,11 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
 /** Multiplies the sky's color by the sky mesh gain uniform and records that gain on the rig. The
  *  rig keeps the vector as a live handle on the uniform, so a writer of the vector changes the
  *  visible sky with no shader rebuild. The rig holds a gain only when the sky reads it: without
- *  an addon color node nothing is recorded. */
+ *  an addon color node nothing is recorded. The first gain follows the sun height of the lighting
+ *  that arrived before the sky did, or the high-sun end when none did. */
 function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
-  const gain = skyMeshGain()
+  const stashed = rig.pendingLighting
+  const gain = skyMeshGain(stashed === undefined ? HIGH_SUN_ALTITUDE : sunAltitudeOf(stashed))
   // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",
   // and the typed overloads of `mul` reject a vec3 uniform against that union. The shader widens
   // the uniform to a vec4 with alpha one, so the product keeps the sky opaque.
@@ -198,11 +241,11 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   sky.cloudScale.value = CLOUD_SCALE
   sky.cloudDensity.value = CLOUD_DENSITY
   sky.cloudElevation.value = CLOUD_ELEVATION
+  const stashed = rig.pendingLighting
   applySkyGain(sky, rig, tsl)
   scene.add(sky)
   rig.sky = sky
 
-  const stashed = rig.pendingLighting
   if (stashed !== undefined) {
     applySkyLighting(sky, stashed)
     rig.pendingLighting = undefined
@@ -230,6 +273,7 @@ export function updateSkyEnvironment(rig: LightingRig, lighting: EnvironmentLigh
   const { sky, environment } = rig
   if (sky !== undefined) {
     applySkyLighting(sky, lighting)
+    rig.skyGain?.copy(skyMeshGain(sunAltitudeOf(lighting)))
   } else {
     rig.pendingLighting = lighting
   }
