@@ -24,6 +24,21 @@ import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
 /** The largest radius the sun's shadow frustum may fit, set by the coarsest shadow texel allowed. */
 const MAX_SHADOW_FIT_RADIUS_MM = (MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE) / 2
 
+/** Fits the sun's shadow frustum to the casters and the stretch of ground their shadow reaches. */
+function fitSunShadowToCastersAndGround(
+  scene: THREE.Object3D,
+  lighting: EnvironmentLighting,
+  bounds: Bounds3,
+): void {
+  const fit = shadowFitBounds({
+    casters: bounds,
+    ground: groundExtent(scene),
+    sunDirection: lighting.sunDirection,
+    maxRadius: MAX_SHADOW_FIT_RADIUS_MM,
+  })
+  fitSunShadowToDirection(scene, lighting.sunDirection, fit)
+}
+
 /**
  * Solar-aware lighting under the LightingProvider contract: `apply` builds the same
  * sun-plus-sky rig as the basic provider, and `update` re-aims and re-tints it from a
@@ -57,21 +72,14 @@ export class SolarLightingProvider implements LightingProvider {
   /**
    * Re-tints the sun and sky, re-aims the sun and refits its shadow frustum to the casters
    * and their shadow on the ground when the scene has bounds (a null bounds skips the refit
-   * per the LightingProvider contract), and scales the sun's intensity by the environment `sunIntensity` fraction.
+   * per the LightingProvider contract), and scales the sun's intensity by the environment
+   * `sunIntensity` fraction.
    */
   update(scene: THREE.Object3D, lighting: EnvironmentLighting, bounds: Bounds3 | null): void {
     const rig = this.rig
     if (rig === null) return
     setSunAndSkyColor(scene, lighting.sunColor, lighting.skyColor)
-    if (bounds !== null) {
-      const fit = shadowFitBounds({
-        casters: bounds,
-        ground: groundExtent(scene),
-        sunDirection: lighting.sunDirection,
-        maxRadius: MAX_SHADOW_FIT_RADIUS_MM,
-      })
-      fitSunShadowToDirection(scene, lighting.sunDirection, fit)
-    }
+    if (bounds !== null) fitSunShadowToCastersAndGround(scene, lighting, bounds)
     setSunIntensity(scene, DAYLIGHT_SUN_INTENSITY * lighting.sunIntensity)
     updateSkyEnvironment(rig, lighting)
   }

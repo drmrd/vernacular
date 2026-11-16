@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 
+import { boundsRadius } from '../../core'
 import type { Bounds3, EnvironmentLighting, LinearRgb, Vector3 } from '../../core'
 
 /**
@@ -264,12 +265,7 @@ function fitSunShadowAlongUnitDirection(
     (bounds.min.y + bounds.max.y) / 2,
     (bounds.min.z + bounds.max.z) / 2,
   )
-  const radius =
-    Math.hypot(
-      bounds.max.x - bounds.min.x,
-      bounds.max.y - bounds.min.y,
-      bounds.max.z - bounds.min.z,
-    ) / 2
+  const radius = boundsRadius(bounds)
   const distance = radius * SHADOW_DISTANCE_FACTOR
 
   sun.position.copy(center).addScaledVector(direction, distance)
