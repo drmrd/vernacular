@@ -84,12 +84,3 @@ function constructSceneRenderer(
   renderer.toneMappingExposure = options.toneMappingExposure ?? 1
   return renderer
 }
-
-/** Loads the factory, constructs the renderer, and waits for its backend to initialize. */
-export async function createSceneRenderer(
-  options: SceneRendererOptions = {},
-): Promise<ThreeWebGPU.WebGPURenderer> {
-  const renderer = (await loadSceneRendererFactory())(options)
-  await renderer.init()
-  return renderer
-}

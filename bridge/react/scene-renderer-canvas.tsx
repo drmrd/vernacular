@@ -16,7 +16,7 @@ type SceneRendererStatus = 'loading' | 'starting' | 'ready' | 'failed'
 
 // The repository has no error-reporting channel for the bridge layer yet; a failed start is
 // logged the way the other bridge loaders log theirs, so the cause stays reachable in the console.
-function logStartFailure(stage: string, error: unknown): void {
+function logStartFailure(stage: 'load' | 'start', error: unknown): void {
   console.warn(`Scene renderer failed to ${stage}`, error)
 }
 
@@ -92,7 +92,9 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * A React Three Fiber Canvas on the engine's scene renderer. It shows a blank canvas until the
  * renderer factory loads, then mounts the Canvas with a synchronous renderer factory. Until the
  * renderer's backend has initialized, the frame loop stays off and the children stay unmounted,
- * because Three.js throws on a render, or on most renderer queries, before init() resolves.
+ * because Three.js throws on a render, or on most renderer queries, before init() resolves. The
+ * wrapper can end in a failed state, in which it shows the cannot-render status and mounts no
+ * canvas, and it stays there until it mounts again.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
