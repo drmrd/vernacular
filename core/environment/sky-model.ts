@@ -5,8 +5,8 @@ import { sunColorAt, sunLevelAt } from './daylight-calibration'
 /**
  * The light an outdoor scene needs: the direct sun tint and the ambient sky tint,
  * both colors in linear-light sRGB, plus the sun's level. The sun warms
- * toward the horizon in `sunColor` while `sunLevel` carries the horizon dimming
- * and the below-horizon extinction; the sky stays cooler (bluer) than the sun.
+ * toward the horizon in `sunColor` while `sunLevel` carries the clear-sky
+ * attenuation along the light's path, which is 0 at and below the horizon; the sky stays cooler (bluer) than the sun.
  */
 export interface SkyLighting {
   /** Direct sun tint at luminance 1, warmer near the horizon; the dimming lives in sunLevel, not here. */
@@ -44,9 +44,10 @@ function overcastAdjusted(color: LinearRgb, cloudCover: number): LinearRgb {
  * fraction (0 clear, 1 fully overcast). The sun's color and level come from the
  * daylight calibration: the color is white-balanced at luminance 1, and the level
  * carries the dimming along the light's path through the air, gone at the
- * horizon and below it, and the cloud transmission. The sky color is the tint of the hemisphere fill, which
- * daylight does not read: it blends between named horizon and zenith tints on the
- * sun's elevation and flattens toward grey under cloud while dimming.
+ * horizon and below it, and the cloud transmission. The sky color is the tint of
+ * the hemisphere fill, which daylight does not read: it blends between named
+ * horizon and zenith tints on the sun's elevation and flattens toward grey under
+ * cloud while dimming.
  */
 export function skyLighting(altitude: number, cloudCover: number): SkyLighting {
   const elevation = clampToUnitInterval(Math.sin(altitude))

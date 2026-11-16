@@ -59,8 +59,8 @@ const ZENITH_DOME_TINT: LinearRgb = { r: 0.25, g: 0.45, b: 0.9 }
 
 /**
  * The clear-sky optical depth of the direct sun in the daylight availability formula that
- * ADR-0192 cites: the direct normal illuminance goes as exp(-0.21 / sin h). The same number
- * serves the photometric anchor and the fade of the sun's level.
+ * ADR-0192 cites: the direct normal illuminance goes as exp(-0.21 / sin h). ADR-0192 uses it
+ * when it derives the photometric anchor; in the code it sets the fade of the sun's level.
  */
 export const SUN_OPTICAL_DEPTH = 0.21
 /**
