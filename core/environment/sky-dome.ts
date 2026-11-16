@@ -79,23 +79,20 @@ function sunAltitudeOf(sky: SkyDomeInput): number {
   return Math.asin(Math.min(1, Math.max(-1, sky.sunDirection.y)))
 }
 
+/** How bright the whole dome is for a sun at the given altitude: dimmer as the sun sets. */
+function domeScaleFor(sunAltitude: number): number {
+  const sunElevationFraction = clampToUnitInterval(Math.sin(sunAltitude))
+  return HORIZON_DOME_SCALE + (1 - HORIZON_DOME_SCALE) * sunElevationFraction
+}
+
 /** The upper dome at a view height, before the brightening toward the sun's azimuth. */
-function domeAtHeight(viewHeight: number, sky: SkyDomeInput): LinearRgb {
-  const sunElevationFraction = clampToUnitInterval(Math.sin(sunAltitudeOf(sky)))
-  const domeScale = HORIZON_DOME_SCALE + (1 - HORIZON_DOME_SCALE) * sunElevationFraction
+function domeAtHeight(viewHeight: number, domeScale: number, cloudCover: number): LinearRgb {
   const baseTint = mixLinearRgb(
     HORIZON_DOME_TINT,
     ZENITH_DOME_TINT,
     clampToUnitInterval(viewHeight),
   )
-  return overcastAdjustedDome(scaleLinearRgb(baseTint, domeScale), sky.cloudCover)
-}
-
-function upperDomeRadiance(view: Vector3, sky: SkyDomeInput): LinearRgb {
-  const { sunDirection } = sky
-  const sunwardAlignment = view.x * sunDirection.x + view.z * sunDirection.z
-  const brightening = 1 + SUNWARD_GAIN * (1 - sky.cloudCover) * sunwardAlignment
-  return scaleLinearRgb(domeAtHeight(view.y, sky), brightening)
+  return overcastAdjustedDome(scaleLinearRgb(baseTint, domeScale), cloudCover)
 }
 
 /**
@@ -103,10 +100,10 @@ function upperDomeRadiance(view: Vector3, sky: SkyDomeInput): LinearRgb {
  * cosine-weighted mean of the upper dome. The sun color and level come from the sky model, the
  * same values the environment lighting hands the engine.
  */
-function groundRadiance(sky: SkyDomeInput): LinearRgb {
-  const { sunColor, sunLevel } = skyLighting(sunAltitudeOf(sky), sky.cloudCover)
+function groundRadiance(sky: SkyDomeInput, sunAltitude: number, domeScale: number): LinearRgb {
+  const { sunColor, sunLevel } = skyLighting(sunAltitude, sky.cloudCover)
   const sunIrradianceOverPi = (sunLevel * Math.max(0, sky.sunDirection.y)) / Math.PI
-  const skyMean = domeAtHeight(COSINE_WEIGHTED_MEAN_HEIGHT, sky)
+  const skyMean = domeAtHeight(COSINE_WEIGHTED_MEAN_HEIGHT, domeScale, sky.cloudCover)
   return {
     r: GROUND_SURFACE_COLOR.r * (sunColor.r * sunIrradianceOverPi + skyMean.r),
     g: GROUND_SURFACE_COLOR.g * (sunColor.g * sunIrradianceOverPi + skyMean.g),
@@ -115,12 +112,29 @@ function groundRadiance(sky: SkyDomeInput): LinearRgb {
 }
 
 /**
- * Radiance of the analytic sky dome in a unit view direction (y up), as linear-light sRGB.
+ * Builds the dome's radiance function for one sky. Everything that depends only on the sky (the
+ * sun's altitude, the dome's brightness, the lawn's radiance) is computed here once, so a caller
+ * sampling many directions pays only the per-direction work for each.
  * Above the horizon (y at or above 0) the dome blends a horizon tint into a zenith tint on the
  * view height, dims as the sun sets, flattens toward grey under cloud, and brightens toward the
- * sun's azimuth under a clear sky. Below the horizon it returns the lawn lit by the sun and the
+ * sun's azimuth under a clear sky. Below the horizon it is the lawn lit by the sun and the
  * upper dome.
  */
+export function skyDomeSampler(sky: SkyDomeInput): (view: Vector3) => LinearRgb {
+  const { sunDirection, cloudCover } = sky
+  const sunAltitude = sunAltitudeOf(sky)
+  const domeScale = domeScaleFor(sunAltitude)
+  const ground = groundRadiance(sky, sunAltitude, domeScale)
+  const sunwardGain = SUNWARD_GAIN * (1 - cloudCover)
+  return (view) => {
+    if (view.y < 0) return ground
+    const sunwardAlignment = view.x * sunDirection.x + view.z * sunDirection.z
+    const brightening = 1 + sunwardGain * sunwardAlignment
+    return scaleLinearRgb(domeAtHeight(view.y, domeScale, cloudCover), brightening)
+  }
+}
+
+/** Radiance of the analytic sky dome in a unit view direction (y up), as linear-light sRGB. */
 export function skyDomeRadiance(view: Vector3, sky: SkyDomeInput): LinearRgb {
-  return view.y >= 0 ? upperDomeRadiance(view, sky) : groundRadiance(sky)
+  return skyDomeSampler(sky)(view)
 }

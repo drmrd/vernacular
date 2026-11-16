@@ -1,6 +1,6 @@
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
-import { type SkyDomeInput, skyDomeRadiance } from './sky-dome'
+import { type SkyDomeInput, skyDomeSampler } from './sky-dome'
 
 /*
  * Real spherical-harmonic basis constants up to band 2, transcribed EXACTLY from
@@ -118,6 +118,7 @@ function accumulateDirection(
 export function projectDomeToSphericalHarmonics(sky: SkyDomeInput): number[] {
   const deltaPolar = Math.PI / POLAR_SAMPLE_COUNT
   const deltaAzimuth = FULL_TURN_RAD / AZIMUTH_SAMPLE_COUNT
+  const sampleDome = skyDomeSampler(sky)
   const accumulators: BasisAccumulator[] = SPHERICAL_HARMONIC_BASIS.map((basis) => ({
     basis,
     color: { r: 0, g: 0, b: 0 },
@@ -127,7 +128,7 @@ export function projectDomeToSphericalHarmonics(sky: SkyDomeInput): number[] {
     const solidAngle = Math.sin(polar) * deltaPolar * deltaAzimuth
     for (let azimuthIndex = 0; azimuthIndex < AZIMUTH_SAMPLE_COUNT; azimuthIndex += 1) {
       const direction = directionFromAngles(polar, (azimuthIndex + SAMPLE_MIDPOINT) * deltaAzimuth)
-      const radiance = skyDomeRadiance(direction, sky)
+      const radiance = sampleDome(direction)
       accumulateDirection(accumulators, direction, { radiance, solidAngle })
     }
   }
