@@ -23,7 +23,7 @@ related:
 sourceFiles:
   [docs/specs/2026-07-01-realistic-environmental-lighting.md, engine/renderer/create-renderer.ts]
 status: current
-updated: 2026-07-02
+updated: 2026-11-15
 ---
 
 # ADR-0142: Color-managed renderer with Khronos PBR Neutral tone mapping
@@ -37,8 +37,8 @@ realistic-environmental-lighting epic (`docs/specs/2026-07-01-realistic-environm
 
 ## Context
 
-`createSceneRenderer` in `engine/renderer/create-renderer.ts` is the one place that builds the
-backend renderer. Color accuracy is a headline goal of the epic: a paint chosen in the palette
+The renderer factory in `engine/renderer/create-renderer.ts` is the one place that builds the
+backend renderer (it was `createSceneRenderer`; see the ADR-0004 amendment of 2026-11-15). Color accuracy is a headline goal of the epic: a paint chosen in the palette
 should read as the same color on a wall in the 3D view. Two renderer settings decide that. The
 output color space controls how the linear render result is written to the framebuffer, and the
 tone-mapping operator controls how values above display range are pulled back into it.
@@ -48,7 +48,7 @@ and an unset output color space leans on the backend default rather than saying 
 
 ## Decision
 
-`createSceneRenderer` sets three color-management properties after it constructs the renderer:
+The renderer factory sets three color-management properties after it constructs the renderer:
 
 ```ts
 renderer.outputColorSpace = SRGBColorSpace

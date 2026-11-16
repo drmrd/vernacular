@@ -27,7 +27,7 @@ sourceFiles:
     bridge/react/scene-lighting.tsx,
   ]
 status: current
-updated: 2026-07-03
+updated: 2026-11-15
 ---
 
 # ADR-0147: Tone-mapping operator follows the lighting mode
@@ -63,7 +63,7 @@ The operator becomes a per-mode choice with one owner per layer:
   union; core stays free of three.js.
 - `engine/renderer/tone-mapping.ts` owns the translation. `applyToneMappingOperator` maps the
   domain operator to three's `AgXToneMapping` or `NeutralToneMapping` and writes it to the
-  renderer. `createSceneRenderer` seeds its initial Neutral through this same helper, so the
+  renderer. The renderer factory (`constructSceneRenderer` in `create-renderer.ts`) seeds its initial Neutral through this same helper, so the
   domain-to-constant mapping has exactly one owner.
 - `bridge/react/scene-lighting.tsx` owns the wiring. A layout effect applies the chooser's
   result to the live renderer, keyed on the renderer, the effective mode, and the color check.
