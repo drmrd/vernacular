@@ -9,6 +9,15 @@ export const SUN_OPTICAL_DEPTH_RECORDED = 0.21
 /** The sun scale, the level of a sun at the zenith, frozen to four decimals for this fade. */
 export const FROZEN_SUN_SCALE = 10.9126
 
+/**
+ * The sun's level at the reference height, 10.0056 to four decimals, for the frozen sun scale.
+ * Tests that compare against it allow REFERENCE_SUN_LEVEL_TOLERANCE.
+ */
+export const REFERENCE_SUN_LEVEL = 10.0056
+
+/** The most a level may sit from REFERENCE_SUN_LEVEL, the rounding of the four-decimal figure. */
+export const REFERENCE_SUN_LEVEL_TOLERANCE = 1e-4
+
 const HALF_TURN_IN_DEGREES = 180
 const DEGREES_PER_RADIAN = HALF_TURN_IN_DEGREES / Math.PI
 const ZENITH = Math.PI / 2

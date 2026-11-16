@@ -10,6 +10,7 @@ import {
   kastenYoungAirMass,
   kastenYoungFade,
   LOW_SUN_CHROMA_MINIMUM,
+  REFERENCE_SUN_LEVEL,
   shadeOf,
   SUN_OPTICAL_DEPTH_RECORDED,
 } from './daylight-test-support'
@@ -51,7 +52,6 @@ const AIR_MASS_FORMULA_TOLERANCE = 1e-12
 // A sun 0.0000001 degrees up: its level is about 0.0047, a small step down to 0 on the horizon.
 const JUST_ABOVE_HORIZON = 1e-7 * DEGREES
 const HORIZON_STEP_LEVEL_CEILING = 0.006
-const REFERENCE_SUN_LEVEL = 10.005593
 const HORIZON_STEP_FRACTION_OF_REFERENCE = 0.0005
 
 // The sun level at each height, in degrees, from the light model for this fade.

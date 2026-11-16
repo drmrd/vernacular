@@ -7,7 +7,12 @@ import {
   sunLevelAt,
 } from './daylight-calibration'
 import { referenceLightingInput } from './daylight-reference'
-import { FROZEN_SUN_SCALE, kastenYoungFade } from './daylight-test-support'
+import {
+  FROZEN_SUN_SCALE,
+  kastenYoungFade,
+  REFERENCE_SUN_LEVEL,
+  REFERENCE_SUN_LEVEL_TOLERANCE,
+} from './daylight-test-support'
 import { computeEnvironmentLighting } from './environment-lighting'
 import { predictedMatteRadiance, type MatteSurface } from './light-model'
 import { solarPosition } from './solar-position'
@@ -34,15 +39,12 @@ const SOUTH_FACING_WHITE_WALL: MatteSurface = {
 }
 // The solve gives 10.91255; the scale is frozen to four decimals, so it may sit 0.0001 off.
 const SCALE_TOLERANCE = 1e-4
-const REFERENCE_SUN_LEVEL = 10.0056
-const REFERENCE_LEVEL_TOLERANCE = 1e-4
 
 const BISECTION_LOW = 1 * DEGREES
 const BISECTION_HIGH = 45 * DEGREES
 const BISECTION_STEPS = 60
 const STATED_CROSSING_DEGREES = 12.19
 const CROSSING_TOLERANCE_IN_DEGREES = 0.005
-const OLD_CROSSING_DEGREES = 12.36
 const CROSSING_MARGIN = 0.05 * DEGREES
 const FLOOR_TOLERANCE = 1e-12
 const DIFFUSE_RELATIVE_TOLERANCE = 1e-6
@@ -93,17 +95,16 @@ describe('the sun scale', () => {
 
   it('keeps the sun level at the reference height at 10.0056', () => {
     const level = sunLevelAt(referenceHeight(), CLEAR_SKY)
-    expect(Math.abs(level - REFERENCE_SUN_LEVEL)).toBeLessThan(REFERENCE_LEVEL_TOLERANCE)
+    expect(Math.abs(level - REFERENCE_SUN_LEVEL)).toBeLessThan(REFERENCE_SUN_LEVEL_TOLERANCE)
   })
 })
 
 describe('the night floor of the diffuse level', () => {
-  it('stops binding at about 12.19 degrees, below the 12.36 degrees of the old fade', () => {
+  it('binds below about 12.19 degrees of sun height and not above it', () => {
     const crossingDegrees = nightFloorCrossing() / DEGREES
     expect(Math.abs(crossingDegrees - STATED_CROSSING_DEGREES)).toBeLessThan(
       CROSSING_TOLERANCE_IN_DEGREES,
     )
-    expect(crossingDegrees).toBeLessThan(OLD_CROSSING_DEGREES)
   })
 
   it('holds the diffuse level at the night level just below the crossing', () => {
