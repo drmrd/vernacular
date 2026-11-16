@@ -6,6 +6,7 @@ import {
   linearToSrgb,
   predictedMatteRadiance,
   srgbToLinear,
+  srgbToOkLab,
   type EnvironmentLightingInput,
   type LinearRgb,
   type Srgb,
@@ -33,6 +34,11 @@ const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white
 // y 142..147. The south face is small in this south-west view, and this is the largest square
 // on it that keeps 4 px from every edge, so the region is 6 px.
 const SUNLIT_SOUTH_WALL = squareRegion(157, 142, 6)
+// The west exterior face, in shade at this instant, below the eaves and above the darkening
+// where the wall meets the lawn: x 121..144, y 107..130. The face spans x 116..150 and
+// y 102..141 over these columns and renders one color, so the square keeps at least 5 px from
+// every edge.
+const SHADED_WEST_WALL = squareRegion(121, 107, 24)
 
 // The site and instant of the daylight-reference state (app/harness-environment.ts), which are
 // the reference place and instant of the daylight calibration in core: 40 N, 1.86 E, UTC, north
@@ -129,5 +135,14 @@ test.describe('Tone curve gate', () => {
         `the white code floor ${WHITE_CODE_FLOOR} less the tone curve tolerance, so a white ` +
         `wall in the sun does not read white`,
     ).toBeGreaterThanOrEqual(SUNLIT_WHITE_MINIMUM_CODE)
+
+    // The shaded west wall is logged, not gated. The light model predicts a green cast there,
+    // since the sky dome below the horizon is the green lawn and lights the wall (issue #765),
+    // and no bound on that cast has been decided, so the reading is recorded for the decision.
+    // On 2026-11-16 on the development Mac the region held one color, (147, 169, 157), and read
+    // a -0.0285 and b 0.0094 in five of five captures.
+    const shadedWest = srgbToOkLab(await sampleCanvasColor(page, canvas, SHADED_WEST_WALL))
+    logReading('shaded west wall a', shadedWest.a.toFixed(4))
+    logReading('shaded west wall b', shadedWest.b.toFixed(4))
   })
 })

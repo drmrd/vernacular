@@ -10,9 +10,10 @@ import { logReading, sampleCanvasColor, settledHarnessCanvas, squareRegion } fro
 // white is read as chroma and lightness, the shade and the low sun as the blue-yellow axis b
 // (negative is cool, positive is warm).
 //
-// Every bound sits at the midpoint of this build's reading and the reading of the render
+// Every derived bound sits at the midpoint of this build's reading and the reading of the render
 // before the daylight calibration, which painted the noon wall a dim grey, the shade a strong
-// blue, and the low sun neutral.
+// blue, and the low sun neutral. The shade must also read b under 0, a relation with no
+// midpoint.
 //
 // It renders through the deterministic scene harness on the WebGL 2 backend, so it runs on
 // darwin Metal and on the linux SwiftShader lane and self-skips only where no WebGL 2 context
@@ -67,7 +68,10 @@ const NOON_WHITE_MIN_LIGHTNESS = 0.8141
  *   this build: -0.0094
  *
  * The midpoint is -0.01665, rounded to -0.0167, which clears this build by 0.0073 and the
- * earlier build by 0.0072.
+ * earlier build by 0.0072. The gate also requires b under 0. Together the two bounds hold the
+ * shade between -0.0167 and 0: cool, since a b of 0 or above is neutral or warm, but not the
+ * strong blue of the earlier build. The upper bound is a relation with no midpoint; this build
+ * clears it by 0.0094.
  */
 const SHADE_MIN_B = -0.0167
 
@@ -115,6 +119,11 @@ test.describe('Daylight white gate', () => {
       `afternoon shaded east wall b ${shadedEast.b.toFixed(4)} is under ${SHADE_MIN_B}, so ` +
         `the shade on the white wall reads a strong blue rather than a cool white`,
     ).toBeGreaterThanOrEqual(SHADE_MIN_B)
+    expect(
+      shadedEast.b,
+      `afternoon shaded east wall b ${shadedEast.b.toFixed(4)} is not under 0, so the shade on ` +
+        `the white wall reads neutral or warm rather than cool`,
+    ).toBeLessThan(0)
     expect(
       lowSunSouth.b,
       `afternoon low-sun south wall b ${lowSunSouth.b.toFixed(4)} is under ${LOW_SUN_MIN_B}, ` +
