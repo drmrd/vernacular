@@ -726,3 +726,10 @@ export {
   sampleSkyVisibility,
   SKY_VISIBILITY_CHANNEL,
 } from './daylight/daylight-field'
+export type { DaylightFieldSolver, SkyLuminance } from './daylight/sky-visibility'
+export {
+  createDaylightFieldSolver,
+  DAYLIGHT_WORK_PLANE_HEIGHT_MM,
+  UNIFORM_SKY,
+  UNPAINTED_SURFACE_REFLECTANCE,
+} from './daylight/sky-visibility'
