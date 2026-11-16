@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { levelCardLight } from './daylight-calibration'
 import { referenceLightingInput } from './daylight-reference'
 import { computeEnvironmentLighting } from './environment-lighting'
-import { GROUND_SURFACE_COLOR } from './ground-surface'
+import { GROUND_BOUNCE_COLOR, GROUND_SURFACE_COLOR } from './ground-surface'
 import { skyDomeRadiance, type SkyDomeInput } from './sky-dome'
 import { solarPosition } from './solar-position'
 import { linearToSrgb, type LinearRgb } from '../color/oklab'
@@ -165,15 +166,25 @@ function expectColorsEqual(actual: LinearRgb, expected: LinearRgb): void {
   expect(actual.b).toBeCloseTo(expected.b, AZIMUTH_TOLERANCE_DECIMALS)
 }
 
-/** What a level white card returns from the sun and the sky, times the lawn it lights. */
-function lawnUnderLight(sunColor: LinearRgb, sunLevel: number, sky: SkyDomeInput): LinearRgb {
+/** The light a level white card collects from the sun and the sky, over pi: what the ground reflects. */
+function levelCardLightOf(sunColor: LinearRgb, sunLevel: number, sky: SkyDomeInput): LinearRgb {
   const sunUp = Math.max(0, sky.sunDirection.y)
   const sunScale = (sunLevel * sunUp) / Math.PI
   const skyMean = upperDomeMean(sky)
   return {
-    r: GROUND_SURFACE_COLOR.r * (sunColor.r * sunScale + skyMean.r),
-    g: GROUND_SURFACE_COLOR.g * (sunColor.g * sunScale + skyMean.g),
-    b: GROUND_SURFACE_COLOR.b * (sunColor.b * sunScale + skyMean.b),
+    r: sunColor.r * sunScale + skyMean.r,
+    g: sunColor.g * sunScale + skyMean.g,
+    b: sunColor.b * sunScale + skyMean.b,
+  }
+}
+
+/** The neutral grey ground bounce times the light on a level card. */
+function bounceUnderLight(sunColor: LinearRgb, sunLevel: number, sky: SkyDomeInput): LinearRgb {
+  const card = levelCardLightOf(sunColor, sunLevel, sky)
+  return {
+    r: GROUND_BOUNCE_COLOR.r * card.r,
+    g: GROUND_BOUNCE_COLOR.g * card.g,
+    b: GROUND_BOUNCE_COLOR.b * card.b,
   }
 }
 
@@ -256,10 +267,10 @@ describe('skyDomeRadiance', () => {
     expectColorsClose(towardX, towardMinusZ, EXACT_TOLERANCE)
   })
 
-  it('returns the lawn times the light on a level card for a view below the horizon', () => {
+  it('returns the neutral ground bounce times the light on a level card for a view below the horizon', () => {
     const lighting = computeEnvironmentLighting(referenceLightingInput())
     const sky = { sunDirection: lighting.sunDirection, cloudCover: lighting.cloudCover }
-    const expected = lawnUnderLight(lighting.sunColor, lighting.sunLevel, sky)
+    const expected = bounceUnderLight(lighting.sunColor, lighting.sunLevel, sky)
     for (const view of [
       { x: 0, y: -1, z: 0 },
       { x: 0.6, y: -0.8, z: 0 },
@@ -269,10 +280,29 @@ describe('skyDomeRadiance', () => {
     }
   })
 
-  it('returns the lawn times the sky alone for a view below the horizon once the sun has set', () => {
+  it('returns the neutral ground bounce times the sky alone for a view below the horizon once the sun has set', () => {
     const sky = { sunDirection: sunAlong(0, SUN_BELOW_HORIZON_ALTITUDE), cloudCover: PARTLY_CLOUDY }
-    const expected = lawnUnderLight(WHITE, NO_SUN_LEVEL, sky)
+    const expected = bounceUnderLight(WHITE, NO_SUN_LEVEL, sky)
     const ground = skyDomeRadiance({ x: 0, y: -1, z: 0 }, sky)
     expectColorsClose(ground, expected, QUADRATURE_TOLERANCE)
+  })
+
+  it('adds no hue below the horizon: each channel is the light on a level card times the lawn luminance', () => {
+    const sky = { sunDirection: sunAlong(0, MODERATE_SUN_ALTITUDE), cloudCover: PARTLY_CLOUDY }
+    const { sun, sky: skyOnCard } = levelCardLight(MODERATE_SUN_ALTITUDE, PARTLY_CLOUDY)
+    const card = { r: sun.r + skyOnCard.r, g: sun.g + skyOnCard.g, b: sun.b + skyOnCard.b }
+    const lawnLuminance = linearLuminance(GROUND_SURFACE_COLOR)
+    const ground = skyDomeRadiance({ x: 0.6, y: -0.8, z: 0 }, sky)
+    expect(Math.abs(ground.r / card.r - lawnLuminance)).toBeLessThan(QUADRATURE_TOLERANCE)
+    expect(Math.abs(ground.g / card.g - lawnLuminance)).toBeLessThan(QUADRATURE_TOLERANCE)
+    expect(Math.abs(ground.b / card.b - lawnLuminance)).toBeLessThan(QUADRATURE_TOLERANCE)
+  })
+
+  it('returns a ground of three equal channels below the horizon at the reference instant', () => {
+    const lighting = computeEnvironmentLighting(referenceLightingInput())
+    const sky = { sunDirection: lighting.sunDirection, cloudCover: lighting.cloudCover }
+    const ground = skyDomeRadiance({ x: 0, y: -1, z: 0 }, sky)
+    expect(Math.abs(ground.r - ground.g)).toBeLessThan(EXACT_TOLERANCE)
+    expect(Math.abs(ground.g - ground.b)).toBeLessThan(EXACT_TOLERANCE)
   })
 })

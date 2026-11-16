@@ -44,8 +44,18 @@ const WHITE_CODE_TOLERANCE = 0.5
 const SUNLIT_WALL_CODE_CEILING = 250
 const WALL_REFLECTANCE = 0.85
 const WALL_NORMAL = { x: 0, y: 0, z: 1 }
+const WEST_WALL_NORMAL = { x: -1, y: 0, z: 0 }
+const NORTH_WALL_NORMAL = { x: 0, y: 0, z: -1 }
+const EQUINOX_NOON_INPUT: EnvironmentLightingInput = {
+  latLong: { latitude: 40, longitude: -75 },
+  observedAt: { date: '2026-03-20', minutesSinceMidnight: 720 },
+  utcOffsetMinutes: -300,
+  northBearing: 0,
+  cloudCover: 0,
+}
 
 const SHADE_CHROMA_MINIMUM = 0.02
+const WALL_SHADE_GREEN_CAST_LIMIT = 0.015
 const SHADE_CHROMA_MAXIMUM = 0.1
 const LOW_SUN_CHROMA_MINIMUM = 0.01
 
@@ -186,6 +196,25 @@ describe('the white wall', () => {
   it('records the linear level of code 225 as the sunlit white level', () => {
     expect(WHITE_CODE_FLOOR).toBe(225)
     expect(DAYLIGHT_CALIBRATION.sunlitWhiteLevel).toBe(agxNeutralInverse(225 / BYTE_RANGE))
+  })
+})
+
+describe('a white wall in shade', () => {
+  it('shows no green cast on the west wall at the reference instant', () => {
+    const shade = shadeOf(
+      predictedMatteRadiance(referenceLighting(), wallOf(WALL_REFLECTANCE, WEST_WALL_NORMAL)),
+    )
+    expect(Math.abs(shade.a)).toBeLessThan(WALL_SHADE_GREEN_CAST_LIMIT)
+    expect(shade.b).toBeLessThan(0)
+  })
+
+  it('shows no green cast on the north wall at equinox noon at 40 N, 75 W', () => {
+    const lighting = computeEnvironmentLighting(EQUINOX_NOON_INPUT)
+    const shade = shadeOf(
+      predictedMatteRadiance(lighting, wallOf(WALL_REFLECTANCE, NORTH_WALL_NORMAL)),
+    )
+    expect(Math.abs(shade.a)).toBeLessThan(WALL_SHADE_GREEN_CAST_LIMIT)
+    expect(shade.b).toBeLessThan(0)
   })
 })
 
