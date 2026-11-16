@@ -45,9 +45,15 @@
         "value": {
           "kind": "union",
           "tag": "kind",
-          "types": [
-            "SurfaceTreatment.solid",
-            "SurfaceTreatment.pattern"
+          "variants": [
+            {
+              "value": "solid",
+              "type": "SurfaceTreatment.solid"
+            },
+            {
+              "value": "pattern",
+              "type": "SurfaceTreatment.pattern"
+            }
           ]
         }
       },
@@ -230,10 +236,19 @@
       "source": {
         "kind": "union",
         "tag": "kind",
-        "types": [
-          "UnderlaySource.raster",
-          "UnderlaySource.document",
-          "UnderlaySource.scene"
+        "variants": [
+          {
+            "value": "raster",
+            "type": "UnderlaySource.raster"
+          },
+          {
+            "value": "document",
+            "type": "UnderlaySource.document"
+          },
+          {
+            "value": "scene",
+            "type": "UnderlaySource.scene"
+          }
         ]
       },
       "width": {

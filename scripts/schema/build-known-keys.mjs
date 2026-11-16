@@ -105,11 +105,16 @@ function unionVariantTypes(unionName, definition) {
   const types = new Map()
   for (const variant of variants) {
     const tagValue = variant.properties[tag].const
+    if (typeof tagValue !== 'string') {
+      throw refusal(
+        `Union ${unionName} has a tag value that is not a string: ${JSON.stringify(tagValue)}`,
+      )
+    }
     const typeName = `${unionName}.${tagValue}`
     if (types.has(typeName)) {
       throw refusal(`Union ${unionName} has two variants with the tag value ${tagValue}`)
     }
-    types.set(typeName, variant)
+    types.set(typeName, { value: tagValue, variant })
   }
   return { tag, types }
 }
@@ -141,7 +146,8 @@ function describeReference(schema, node, place) {
   refuseMixedDefinition(name, definition)
   if (isUnionDefinition(definition)) {
     const { tag, types } = unionVariantTypes(name, definition)
-    return { kind: 'union', tag, types: [...types.keys()] }
+    const variants = [...types].map(([type, { value }]) => ({ value, type }))
+    return { kind: 'union', tag, variants }
   }
   if (isObjectDefinition(definition)) return { kind: 'object', type: name }
   if (isScalar(definition)) return LEAF
@@ -210,7 +216,7 @@ export function buildKnownKeys(schema) {
     if (isObjectDefinition(definition)) {
       table[name] = describeType(schema, definition, name)
     } else if (isUnionDefinition(definition)) {
-      for (const [typeName, variant] of unionVariantTypes(name, definition).types) {
+      for (const [typeName, { variant }] of unionVariantTypes(name, definition).types) {
         table[typeName] = describeType(schema, variant, typeName)
       }
     }

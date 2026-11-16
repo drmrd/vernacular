@@ -1,5 +1,5 @@
-import { KNOWN_KEYS, KNOWN_ROOT_TYPE } from '../../core'
-import type { KnownKeyTable, KnownValue, Project } from '../../core'
+import { KNOWN_KEYS, KNOWN_ROOT_TYPE, variantTypeOf } from '../../core'
+import type { KnownKeyTable, KnownUnion, KnownValue, Project } from '../../core'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -155,17 +155,9 @@ function graftMapWithTable(previous: unknown, next: unknown, position: TablePosi
   return result
 }
 
-type KnownUnion = Extract<KnownValue, { kind: 'union' }>
-
 function variantKeysOf(table: KnownKeyTable, name: string): Readonly<Record<string, KnownValue>> {
   const entry = Object.hasOwn(table, name) ? table[name] : undefined
   return entry?.keys ?? {}
-}
-
-// Each variant is a table entry named `Union.tag`, so the variant of a value is the entry whose name
-// has the value's tag after its first dot.
-function variantNamed(union: KnownUnion, tagValue: unknown): string | undefined {
-  return union.types.find((name) => name.slice(name.indexOf('.') + 1) === tagValue)
 }
 
 const allVariantKeys = new WeakMap<KnownUnion, ReadonlySet<string>>()
@@ -175,7 +167,9 @@ function variantKeysOfUnion(table: KnownKeyTable, union: KnownUnion): ReadonlySe
   if (cached !== undefined) {
     return cached
   }
-  const keys = new Set(union.types.flatMap((name) => Object.keys(variantKeysOf(table, name))))
+  const keys = new Set(
+    union.variants.flatMap(({ type }) => Object.keys(variantKeysOf(table, type))),
+  )
   allVariantKeys.set(union, keys)
   return keys
 }
@@ -188,7 +182,7 @@ function unionScope(
   next: Record<string, unknown>,
 ): TypeScope {
   const unionKeys = variantKeysOfUnion(table, union)
-  const variant = Object.hasOwn(next, union.tag) ? variantNamed(union, next[union.tag]) : undefined
+  const variant = Object.hasOwn(next, union.tag) ? variantTypeOf(union, next[union.tag]) : undefined
   // A tag that names no variant of the table is of a variant this reader does not model: it has no
   // keys of its own, a key of another variant takes the next value, and only a key no variant
   // defines is restored.
