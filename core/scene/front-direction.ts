@@ -20,14 +20,22 @@ function dotWithPlanDown(direction: PlanDirection): number {
   return direction.x * PLAN_DOWN.x + direction.y * PLAN_DOWN.y
 }
 
-/** True when `candidate` is a better front than `current`: wider, then nearer plan-down, then the opening id that sorts first as a string (so `opening:10` comes before `opening:9`). */
+/**
+ * Two fronts whose dot products with plan-down differ by no more than this are
+ * equally near. Outward normals are computed from wall endpoints, so
+ * mirror-image walls can differ in the last bits; this is far below any
+ * difference a drawn plan can mean.
+ */
+const DIRECTION_TIE_TOLERANCE = 1e-9
+
+/** True when `candidate` is a better front than `current`: wider, then nearer plan-down (fronts within a rounding tolerance are equally near), then the opening id that sorts first as a string (so `opening:10` comes before `opening:9`). */
 function beats(candidate: FrontCandidate, current: FrontCandidate): boolean {
   if (candidate.opening.width !== current.opening.width) {
     return candidate.opening.width > current.opening.width
   }
   const candidateDot = dotWithPlanDown(candidate.outward)
   const currentDot = dotWithPlanDown(current.outward)
-  if (candidateDot !== currentDot) {
+  if (Math.abs(candidateDot - currentDot) > DIRECTION_TIE_TOLERANCE) {
     return candidateDot > currentDot
   }
   return candidate.opening.id < current.opening.id
@@ -52,7 +60,7 @@ function exteriorDoorsOnFloor(input: FrontDirectionInput, floorId: string): Fron
 /**
  * The plan direction the building faces: the outward normal of the wall that
  * hosts the widest exterior door. Equal widths prefer the direction nearer
- * plan-down, then the opening id that sorts first as a string (so `opening:10`
+ * plan-down (directions within a rounding tolerance are equally near), then the opening id that sorts first as a string (so `opening:10`
  * comes before `opening:9`). With no exterior door it is plan-down.
  */
 export function frontDirection(input: FrontDirectionInput): PlanDirection {
