@@ -32,21 +32,26 @@ const LOW_SUN_QUERY = '&scene=low-sun&paint=daylight-white'
 /**
  * The most OKLab lightness the white west wall may read when it faces a sun 1.51 degrees up.
  *
- * Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness, 320x240
- * frame), at the same instant, camera, and paint on both builds. Readings of this region:
+ * Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
+ * 320x240 frame), after the sun's level came to fade by the Kasten and Young (1989) relative air
+ * mass, at the same instant, camera, and paint on every build. Readings of this region:
  *
  *   before the air-path fade, a sun level of 4.54 (10.01 at the reference instant): L 0.8681,
  *   code 211.10, the region one color (224, 209, 191)
- *   the air-path fade (this build), a sun level of 0.0046: L 0.5224, code 105.60, the region
- *   one color (93, 107, 124)
+ *   the earlier air-path fade, exp(-0.21 * (1 / sin h - 1)), a sun level of 0.0046: L 0.5224,
+ *   code 105.60, the region one color (93, 107, 124)
+ *   the Kasten and Young fade (this build), a sun level of 0.122: L 0.5624, code 116.93, the
+ *   region one color (113, 117, 127)
  *   Linux: not yet recorded for this derivation
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
- * bound is the midpoint, 0.69525, rounded to 0.6953, which clears this build by 0.1729 and the
- * earlier build by 0.1728. The light model in core puts a white wall facing this sun at code
- * 105.76, within 0.2 of the render: the sky alone lights it.
+ * bound is the midpoint of this build and the build before the air-path fade, 0.71523 from the
+ * unrounded reading 0.56236, rounded to 0.7152, which clears this build by 0.1528 and that build
+ * by 0.1529. Under the earlier fade the bound was 0.6953. The light model in core puts a white
+ * wall facing this sun at code 117.32, within 0.4 of the render: the sky lights most of it, and
+ * the sun adds about 12 codes (the model gave 105.76 under the earlier fade).
  */
-const LOW_SUN_WALL_MAX_LIGHTNESS = 0.6953
+const LOW_SUN_WALL_MAX_LIGHTNESS = 0.7152
 
 test.describe('Low sun gate', () => {
   test('a white wall that faces a sun on the horizon reads close to shade', async ({ page }) => {
@@ -56,8 +61,9 @@ test.describe('Low sun gate', () => {
     const shadedSouth = await sampleCanvasColor(page, canvas, SOUTH_WEST_VIEW_SOUTH_WALL)
     const westL = srgbToOkLab(west).L
     logReading('low-sun west wall L', westL.toFixed(4))
-    // The two codes are logged, not gated. On this build the west face read code 105.60 and the
-    // shaded south face 91.47; before the air-path fade they read 211.10 and 92.24.
+    // The two codes are logged, not gated. On this build the west face read code 116.93 and the
+    // shaded south face 91.47; under the earlier fade 105.60 and 91.47; before the air-path fade
+    // 211.10 and 92.24.
     logReading('low-sun west wall code', luminanceCode(west).toFixed(2))
     logReading('shaded south wall code', luminanceCode(shadedSouth).toFixed(2))
 

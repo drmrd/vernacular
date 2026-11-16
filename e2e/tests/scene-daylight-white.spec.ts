@@ -9,8 +9,8 @@ import {
   settledHarnessCanvas,
 } from './scene-helpers'
 
-// The daylight white gate. A white wall in daylight should read white at noon, a little cool
-// where only the sky lights it, and a little warm where a low sun lights it. This spec paints
+// The daylight white gate. A white wall in daylight should read white at noon, cool where only
+// the sky lights it, and a little warm where a low sun lights it. This spec paints
 // the four exterior wall faces the matte daylight white and reads them in OKLab under two
 // states: at equinox noon the south face takes the high sun, and on the winter afternoon the
 // east face stands in shade while the south face takes the low sun from the south-west. Noon
@@ -19,12 +19,13 @@ import {
 // shade from a south-west camera, and that shade is read on the green-red axis a (negative is
 // green): the ground below the horizon lights a shaded wall, and a green ground would tint it.
 //
-// Every derived bound on the first two states sits at the midpoint of this build's reading and
-// the reading of the render before the daylight calibration, which painted the noon wall a dim
-// grey, the shade a cool blue a little weaker than this build's, and the low sun neutral. The
-// shade must also read b under 0, a relation with no midpoint. The bound on the green axis sits at
-// the midpoint of this build's reading and the reading of the build whose dome took the lawn's
-// green color below the horizon.
+// The bounds on noon white and on the low sun sit at the midpoint of this build's reading and the
+// reading of the render before the daylight calibration, which painted the noon wall a dim grey
+// and the low sun neutral. The bound on the shade sits at the midpoint of this build's reading
+// and the reading of the build whose dome took the lawn's green color below the horizon, which
+// warmed the shade. The shade must also read b under 0, a relation with no midpoint. The bound on
+// the green axis sits at the midpoint of this build's reading and the reading of that same
+// green-ground build.
 //
 // It renders through the deterministic scene harness on the WebGL 2 backend, so it runs on
 // darwin Metal and on the linux SwiftShader lane and self-skips only where no WebGL 2 context
@@ -41,13 +42,14 @@ const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white
 // wall square of that view.
 
 // Each reading below was taken on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL
-// 2 harness, 320x240 frame), on this build and on the build before the daylight calibration.
-// The bounds on noon white, on the shade, and on the low sun were derived again on this build,
-// after the ground half of the sky dome turned a neutral grey, the sun's level took the air-path
-// fade, and the visible sky's gain came to follow the sun's height. Five captures of each build
-// came back identical to four decimals, so every noise band is 0. The earlier east wall reading
-// came from the 16 px square at x 186..201, y 143..158, which held one color (92, 99, 113), so the
-// 12 px square inside it reads the same.
+// 2 harness, 320x240 frame). The bounds on noon white were derived after the ground half of the
+// sky dome turned a neutral grey, the sun's level took the air-path fade, and the visible sky's
+// gain came to follow the sun's height. The bounds on the shade and on the low sun were derived
+// again after the sun's level came to fade by the Kasten and Young (1989) relative air mass,
+// which moved both readings of the winter afternoon; the noon readings did not move. Five
+// captures of each build came back identical to four decimals, so every noise band is 0. The
+// before-calibration east wall reading came from the 16 px square at x 186..201, y 143..158,
+// which held one color (92, 99, 113), so the 12 px square inside it reads the same.
 // Linux: not yet recorded for this derivation. The before-calibration readings were not taken
 // on Linux.
 
@@ -75,36 +77,43 @@ const NOON_WHITE_MAX_CHROMA = 0.0043
 const NOON_WHITE_MIN_LIGHTNESS = 0.8148
 
 /**
- * The most OKLab b the shaded white east wall may read on the winter afternoon. The shade is
- * cool on both builds, and this build's shade is the bluer of the two.
+ * The most OKLab b the shaded white east wall may read on the winter afternoon. It guards that
+ * the shade takes the sky's blue once the ground bounce is neutral: when the ground half of the
+ * dome carried the lawn's green, the bounce from below warmed the shade toward neutral.
  *
- *   before the calibration (main): -0.0239
- *   this build: -0.0317 on five of five captures (-0.0317, -0.0317, -0.0317, -0.0317,
- *   -0.0317), noise band 0
+ *   before the ground bounce turned a neutral grey (green ground): -0.0094
+ *   this build: -0.0300 on five of five captures (-0.0300, -0.0300, -0.0300, -0.0300,
+ *   -0.0300), noise band 0; under the earlier fade, exp(-0.21 * (1 / sin h - 1)), -0.0317
  *   measured 2026-11-16 on the development Mac (macOS, WebGL 2 harness)
  *   Linux: not yet recorded for this derivation
  *
- * The midpoint is -0.02780, rounded to -0.0278, which clears this build by 0.0039 and the
- * earlier build by 0.0039. That margin is small, but the reading is byte-stable across captures.
- * The gate also requires b under 0, which this build clears by 0.0317.
+ * The midpoint is -0.01970, rounded to -0.0197, which clears this build by 0.0103 and the
+ * green-ground build by 0.0103. The gate also requires b under 0, which this build clears by
+ * 0.0300.
  *
- * An earlier derivation of this bound pointed the other way: a floor of -0.0167, with the shade
- * less blue than before the calibration, because the dome's ground then carried the lawn's green
- * and warmed the shade. With the neutral grey ground bounce the shade takes the sky's blue alone.
+ * A known consequence: the shaded wall at a low sun is bluer on this build than on the render
+ * before the daylight calibration (-0.0239). A follow-up issue on a white balance that follows
+ * the scene's light tracks it. Earlier derivations of this bound used that render as the defect
+ * reading: a floor of -0.0167 when the green ground made this build's shade the less blue one,
+ * then a ceiling of -0.0278 with a margin of only 0.0039.
  */
-const SHADE_MAX_B = -0.0278
+const SHADE_MAX_B = -0.0197
 
 /**
  * The least OKLab b the white south wall may read in the low winter sun.
  *
  *   before the calibration: 0.0015
- *   this build: 0.0139
+ *   this build: 0.0168 on five of five captures, noise band 0
+ *   measured 2026-11-16 on the development Mac (macOS, WebGL 2 harness)
+ *   Linux: not yet recorded for this derivation
  *
- * The midpoint is 0.0077, which clears each reading by 0.0062. The sun 5 degrees up is much
- * weaker under the air-path fade, so the wall reads less warm than the 0.0257 it read before,
- * when the bound was 0.0136, but still warmer than the earlier build.
+ * The midpoint is 0.00915 (0.00916 from the unrounded reading 0.01682), rounded to 0.0092, which
+ * clears this build by 0.0076 and the earlier build by 0.0077. The sun 5 degrees up is a little
+ * stronger under the Kasten and Young fade than under the earlier fade, which read 0.0139 with a
+ * bound of 0.0077, and weaker than before the air-path fade, which read 0.0257 with a bound of
+ * 0.0136.
  */
-const LOW_SUN_MIN_B = 0.0077
+const LOW_SUN_MIN_B = 0.0092
 
 /**
  * The least OKLab a the shaded white west wall may read in the daylight-reference state
@@ -154,8 +163,8 @@ test.describe('Daylight white gate', () => {
     expect(
       shadedEast.b,
       `afternoon shaded east wall b ${shadedEast.b.toFixed(4)} is over ${SHADE_MAX_B}, so ` +
-        `the shade on the white wall drifts back toward the weaker blue of the render before ` +
-        `the calibration`,
+        `the shade on the white wall loses the sky's blue, as when a green ground bounce ` +
+        `warmed it`,
     ).toBeLessThanOrEqual(SHADE_MAX_B)
     expect(
       shadedEast.b,

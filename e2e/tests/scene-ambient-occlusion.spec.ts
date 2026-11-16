@@ -49,19 +49,23 @@ const AO_OPEN_FLOOR_PATCH = patchCenteredOn(226, 134)
 // Derived again on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2 harness,
 // 320x240 frame), after the ground half of the sky dome turned a neutral grey, the sun's level
 // took the air-path fade, and the visible sky's gain came to follow the sun's height, with both
-// probes repeated. Darwin Metal readings of the window-light frame, as openFloorL - creaseL:
+// probes repeated. Checked again on 2026-11-16 after the sun's level came to fade by the Kasten
+// and Young (1989) relative air mass: the shipped reading moved from +0.0240 to +0.0241 (the sun
+// stands 37 degrees up here, so the probes were not repeated). Darwin Metal readings of the
+// window-light frame, as openFloorL - creaseL:
 //
-//   shipped radius, AO_RADIUS_METERS 0.25: +0.0240
+//   shipped radius, AO_RADIUS_METERS 0.25: +0.0241 (+0.024093 unrounded)
 //   wrong-radius probe, AO_RADIUS_METERS 2.5: -0.0050
 //   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0069
 //   Linux: not yet recorded for this derivation
 //
 // Captures of this frame are byte-deterministic (five identical captures of each build, zero
 // noise band), so the threshold sits at the midpoint of the shipped reading and the nearer
-// defect reading, (0.0240 - 0.0050) / 2 = 0.0095: the margin is 0.0145 below the shipped
-// reading and 0.0145 above the defect reading, and a 2 px shift of both patches in any of eight
-// directions keeps at least 0.0148 of contrast on the shipped radius. Before these three changes
-// the readings were +0.0284, -0.0005, and -0.0029 and the threshold was 0.014.
+// defect reading, (0.024093 - 0.0050) / 2 = 0.009546, rounded to 0.0095: the margin is 0.0146
+// below the shipped reading and 0.0145 above the defect reading, and a 2 px shift of both
+// patches in any of eight directions keeps at least 0.0148 of contrast on the shipped radius.
+// Before the grey ground, the air-path fade, and the sky gain, the readings were +0.0284,
+// -0.0005, and -0.0029 and the threshold was 0.014.
 // The SwiftShader lane rasterizes the same frame differently, so a reading that lands near
 // this number there is a reason to re-derive the pair, not to nudge the constant.
 const AO_CONTRAST_MINIMUM = 0.0095
