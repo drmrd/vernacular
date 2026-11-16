@@ -5,12 +5,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneRendererCanvas } from './scene-renderer-canvas'
 
-type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void }
+type Deferred<T> = {
+  promise: Promise<T>
+  resolve: (value: T) => void
+  reject: (reason: Error) => void
+}
 
 function defer<T>(): Deferred<T> {
   let resolve: (value: T) => void = () => {}
-  const promise = new Promise<T>((done) => (resolve = done))
-  return { promise, resolve }
+  let reject: (reason: Error) => void = () => {}
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done
+    reject = fail
+  })
+  return { promise, resolve, reject }
 }
 
 // The engine's loader and the 3D library's Canvas are the two collaborators of the wrapper.
@@ -169,5 +177,86 @@ describe('SceneRendererCanvas', () => {
 
     expect(warn).not.toHaveBeenCalled()
     expect(error).not.toHaveBeenCalled()
+  })
+})
+
+// The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
+const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
+
+// Vitest fails the whole run on an unhandled rejection but names no test. This listener records
+// the rejections that Node reports while one case runs, so the case that caused one fails itself.
+// Node reports a rejection after the microtask queue drains, hence the timer turn before reading.
+function recordUnhandledRejections(): { read: () => Promise<unknown[]>; stop: () => void } {
+  const seen: unknown[] = []
+  const listener = (reason: unknown): void => {
+    seen.push(reason)
+  }
+  process.on('unhandledRejection', listener)
+  return {
+    read: async () => {
+      await new Promise((turn) => setTimeout(turn, 0))
+      return seen
+    },
+    stop: () => process.off('unhandledRejection', listener),
+  }
+}
+
+describe('SceneRendererCanvas when the renderer cannot start', () => {
+  let start: Harness
+  let rejections: ReturnType<typeof recordUnhandledRejections>
+
+  beforeEach(() => {
+    collaborators.canvasProps = []
+    start = arrangeStartUp()
+    rejections = recordUnhandledRejections()
+  })
+
+  afterEach(() => {
+    rejections.stop()
+  })
+
+  it('shows the cannot-render status and mounts no children when init() rejects', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.queryByTestId('child')).toBeNull()
+  })
+
+  it('leaves no unhandled rejection when init() rejects', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(await rejections.read()).toEqual([])
+  })
+
+  it('shows the same status when the renderer factory fails to load', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
+
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.queryByTestId('canvas')).toBeNull()
+  })
+
+  it('leaves no unhandled rejection when the renderer factory fails to load', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
+
+    expect(await rejections.read()).toEqual([])
+  })
+
+  it('lets a later mount succeed after a failed load', async () => {
+    const failed = renderWrapper()
+    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
+    failed.unmount()
+
+    const retry = arrangeStartUp()
+    renderWrapper()
+    await settle(() => retry.loaded.resolve(retry.factory))
+
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByTestId('canvas')).toBeInTheDocument()
   })
 })
