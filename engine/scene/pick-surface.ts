@@ -31,6 +31,8 @@ export function surfaceRefOf(object: THREE.Object3D): SurfaceRef | null {
 function surfaceRefOfHit(hit: THREE.Intersection): SurfaceRef | null {
   const table = surfaceTableOf(hit.object)
   if (table === undefined) return surfaceRefOf(hit.object)
+  // `hit.face` is null for a line or point hit, which has no material group; returning
+  // no surface there cannot credit the hit to the wrong surface.
   const materialIndex = hit.face?.materialIndex
   if (materialIndex === undefined) return null
   return table[materialIndex] ?? null

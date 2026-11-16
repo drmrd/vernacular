@@ -1,8 +1,9 @@
-import type * as THREE from 'three'
+import * as THREE from 'three'
 
 import type { SurfaceRef } from '../../core'
+import type { MaterialProvider } from '../materials/material-provider'
 
-import type { WallSection } from './geometry-utils'
+import { geometryFromSections, type WallSection } from './geometry-utils'
 
 /**
  * The `userData` key under which a wall mesh carries its surface table: the paint
@@ -19,13 +20,25 @@ export type SurfaceTable = (SurfaceRef | null)[]
  * material groups ({@link geometryFromSections} gives section `i` material index `i`),
  * so a picked group resolves to the ref whose paint the renderer shows on it.
  */
-export function surfaceTableFromSections(sections: WallSection[]): SurfaceTable {
+function surfaceTableFromSections(sections: WallSection[]): SurfaceTable {
   return sections.map((section) => section.ref ?? null)
 }
 
-/** Stamps the surface table onto a wall mesh built from `sections`. */
-export function stampSurfaceTable(mesh: THREE.Mesh, sections: WallSection[]): void {
+/**
+ * Builds a wall mesh from `sections` and stamps its entity id and surface table. Section
+ * `i` is geometry material group `i`, material `i`, and surface table entry `i`, so a
+ * picked group resolves to the ref whose paint the renderer shows on it.
+ */
+export function buildSectionMesh(
+  sections: WallSection[],
+  materials: MaterialProvider,
+  entityId: string,
+): THREE.Mesh {
+  const material = sections.map((section) => materials.material(section.role, section.ref))
+  const mesh = new THREE.Mesh(geometryFromSections(sections), material)
+  mesh.userData.entityId = entityId
   mesh.userData[SURFACE_BY_MATERIAL_INDEX_KEY] = surfaceTableFromSections(sections)
+  return mesh
 }
 
 /** The surface table an object carries, or undefined when it carries none. */
