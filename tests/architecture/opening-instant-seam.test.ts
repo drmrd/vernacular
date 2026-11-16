@@ -13,7 +13,6 @@ const REFERENCE_CONSTANT = 'DAYLIGHT_REFERENCE_INSTANT'
 const REFERENCE_CONSTANT_OWNERS: readonly string[] = [
   'core/environment/opening-instant.ts',
   'core/environment/daylight-reference.ts',
-  'core/environment/daylight-calibration.ts',
   'core/index.ts',
 ]
 

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { Site } from '../model/site'
 import { openingInstant } from './opening-instant'
 
-// A session opens at the March equinox, mid-morning: 10:30 is 630 minutes after midnight. The
-// instant is the same with or without a site, because the sun stands where the daylight
-// calibration expects it either way.
+// A session opens at the March equinox, mid-morning: 10:30 is 630 minutes after midnight. Today the
+// function returns this same instant for every site, located or not; the site parameter is the
+// seam for a later rule that may pick the opening instant from the site.
 const OPENING_INSTANT = { date: '2026-03-20', minutesSinceMidnight: 630 }
 
 const LOCATED_SITE: Site = {

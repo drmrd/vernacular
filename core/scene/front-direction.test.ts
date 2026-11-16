@@ -20,7 +20,7 @@ const ROOM_SIZE = 4000
 const DEFAULT_DOOR_WIDTH = 900
 const DOOR_TYPE = 'single-swing-door'
 const WINDOW_TYPE = 'double-hung-window'
-const UNIT_LENGTH_TOLERANCE = 9
+const DIRECTION_DECIMAL_PLACES = 9
 
 const EAST: PlanDirection = { x: 1, y: 0 }
 const WEST: PlanDirection = { x: -1, y: 0 }
@@ -139,13 +139,13 @@ function sceneOf(boxes: Box[], openings: OpeningSceneNode[]): FrontDirectionInpu
 
 function unitFrontDirection(input: FrontDirectionInput): PlanDirection {
   const front = frontDirection(input)
-  expect(Math.hypot(front.x, front.y)).toBeCloseTo(1, UNIT_LENGTH_TOLERANCE)
+  expect(Math.hypot(front.x, front.y)).toBeCloseTo(1, DIRECTION_DECIMAL_PLACES)
   return front
 }
 
 function expectDirection(actual: PlanDirection, expected: PlanDirection): void {
-  expect(actual.x).toBeCloseTo(expected.x, UNIT_LENGTH_TOLERANCE)
-  expect(actual.y).toBeCloseTo(expected.y, UNIT_LENGTH_TOLERANCE)
+  expect(actual.x).toBeCloseTo(expected.x, DIRECTION_DECIMAL_PLACES)
+  expect(actual.y).toBeCloseTo(expected.y, DIRECTION_DECIMAL_PLACES)
 }
 
 describe('frontDirection', () => {
@@ -256,9 +256,14 @@ function gableFront(reaches: readonly [number, number], ids: readonly [string, s
 describe('frontDirection when two fronts are nearly equally near plan-down', () => {
   // Mirror-image walls at a 3-4-5 slope face (+-0.6, -0.8). Their computed
   // dot products with plan-down differ by about 1e-16 of rounding noise.
-  it('lets the lower opening id decide between mirror-image walls', () => {
+  it('lets the opening id that sorts first decide between mirror-image walls', () => {
     expectDirection(gableFront([4000, 4000], ['a', 'b']), { x: 0.6, y: -0.8 })
     expectDirection(gableFront([4000, 4000], ['b', 'a']), { x: -0.6, y: -0.8 })
+  })
+
+  // 'opening:10' sorts before 'opening:9' as a string; a numeric order would pick the other wall.
+  it('compares ids as strings, so opening:10 sorts first and wins over opening:9', () => {
+    expectDirection(gableFront([4000, 4000], ['10', '9']), { x: 0.6, y: -0.8 })
   })
 
   // Reaches 4000 and 4014 give dot products of 0.8 and 0.80100462, a real difference.

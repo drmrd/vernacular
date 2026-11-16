@@ -16,8 +16,6 @@ const SITE_WITHOUT_TIMEZONE: Site = {
 const SAMPLE_DAYLIGHT_NOTICE =
   'Sample daylight. Set the location and north in the Site panel for true sun angles.'
 
-const OLD_MISSING_LOCATION_TEXT = /Realistic lighting needs the site location/
-
 const MISSING_TIMEZONE_NOTICE =
   'The site has no timezone, so solar time is estimated from its longitude. Set the timezone ' +
   'in the Site panel for exact sun angles.'
@@ -82,6 +80,7 @@ describe('EnvironmentPanel', () => {
 
   it.each([
     ['no site', undefined],
+    ['an empty site', {}],
     ['a site with only a north bearing of 0.5', { northBearing: 0.5 }],
     ['a site with only a north bearing of pi', { northBearing: Math.PI }],
   ] satisfies [string, Site | undefined][])(
@@ -92,12 +91,6 @@ describe('EnvironmentPanel', () => {
       expect(sampleDaylightNotices()).toHaveLength(1)
     },
   )
-
-  it('no longer asks for the site location before realistic lighting works when there is no site', () => {
-    renderPanel(undefined, REALISTIC_ENVIRONMENT)
-
-    expect(screen.queryByText(OLD_MISSING_LOCATION_TEXT)).toBeNull()
-  })
 
   it('shows no sample daylight notice when the site has a location and no north bearing', () => {
     renderPanel(SITE_WITHOUT_TIMEZONE, REALISTIC_ENVIRONMENT)

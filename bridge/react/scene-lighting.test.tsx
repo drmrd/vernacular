@@ -6,8 +6,11 @@ import {
   DEFAULT_CLOUD_COVER,
   daylightSiteFor,
   PLAN_DOWN,
+  referenceLightingInput,
   type EnvironmentLighting,
   type ObservationInstant,
+  type PlanDirection,
+  type Vector3,
 } from '../../core'
 import { SceneLighting } from './scene-lighting'
 
@@ -64,6 +67,28 @@ function sampleSiteLighting(): EnvironmentLighting {
   })
 }
 
+function renderRealistic(front: PlanDirection, observedAt?: ObservationInstant): void {
+  render(
+    <SceneLighting
+      colorTemperatureK={NEUTRAL_COLOR_TEMPERATURE_K}
+      bounds={null}
+      realistic
+      site={{}}
+      front={front}
+      observedAt={observedAt}
+    />,
+  )
+}
+
+function latestSunDirection(): Vector3 | undefined {
+  const latest = collaborators.solarUpdates[collaborators.solarUpdates.length - 1] as
+    | EnvironmentLighting
+    | undefined
+  return latest?.sunDirection
+}
+
+const SIDE_FRONT: PlanDirection = { x: 1, y: 0 }
+
 describe('SceneLighting', () => {
   it.each([
     ['no site', undefined],
@@ -84,5 +109,29 @@ describe('SceneLighting', () => {
       | EnvironmentLighting
       | undefined
     expect(latest?.sunDirection).toEqual(sampleSiteLighting().sunDirection)
+  })
+
+  it('turns the sample sun with a side front, whose implied north bearing is a quarter turn', () => {
+    renderRealistic(SIDE_FRONT, OBSERVED_AT)
+    const sideFrontSun = latestSunDirection()
+    cleanup()
+    collaborators.solarUpdates.length = 0
+    renderRealistic(PLAN_DOWN, OBSERVED_AT)
+    const planDownSun = latestSunDirection()
+
+    const expected = computeEnvironmentLighting({
+      ...referenceLightingInput(),
+      northBearing: Math.PI / 2,
+    }).sunDirection
+    expect(sideFrontSun).toEqual(expected)
+    expect(sideFrontSun).not.toEqual(planDownSun)
+  })
+
+  it('uses the opening instant when no observation instant is given', () => {
+    renderRealistic(PLAN_DOWN)
+
+    expect(latestSunDirection()).toEqual(
+      computeEnvironmentLighting(referenceLightingInput()).sunDirection,
+    )
   })
 })

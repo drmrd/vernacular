@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Site } from '../model/site'
+import type { PlanDirection } from '../scene/front-direction'
 import type { Vector3 } from '../scene/vector3'
 import { DAYLIGHT_REFERENCE_INSTANT, DAYLIGHT_REFERENCE_PLACE } from './daylight-reference'
 import { daylightSampleOf, daylightSiteFor } from './daylight-site'
@@ -11,18 +12,13 @@ import { computeEnvironmentLighting } from './environment-lighting'
 // the front faces due south (spec section 6.1). A plan front is a unit vector in the y-up plan
 // frame; as a world vector it is (front.x, 0, -front.y).
 
-interface PlanFront {
-  readonly x: number
-  readonly y: number
-}
-
-const FRONT_DOWN: PlanFront = { x: 0, y: -1 }
-const FRONT_RIGHT: PlanFront = { x: 1, y: 0 }
-const FRONT_LEFT: PlanFront = { x: -1, y: 0 }
-const FRONT_UP: PlanFront = { x: 0, y: 1 }
-const FRONT_SLANTED: PlanFront = { x: 0.6, y: -0.8 }
-const FOUR_AXIS_FRONTS: readonly PlanFront[] = [FRONT_DOWN, FRONT_RIGHT, FRONT_LEFT, FRONT_UP]
-const SAMPLED_FRONTS: readonly PlanFront[] = [...FOUR_AXIS_FRONTS, FRONT_SLANTED]
+const FRONT_DOWN: PlanDirection = { x: 0, y: -1 }
+const FRONT_RIGHT: PlanDirection = { x: 1, y: 0 }
+const FRONT_LEFT: PlanDirection = { x: -1, y: 0 }
+const FRONT_UP: PlanDirection = { x: 0, y: 1 }
+const FRONT_SLANTED: PlanDirection = { x: 0.6, y: -0.8 }
+const FOUR_AXIS_FRONTS: readonly PlanDirection[] = [FRONT_DOWN, FRONT_RIGHT, FRONT_LEFT, FRONT_UP]
+const SAMPLED_FRONTS: readonly PlanDirection[] = [...FOUR_AXIS_FRONTS, FRONT_SLANTED]
 
 const SPRING_DATE = '2026-03-20'
 const SUMMER_DATE = '2026-07-01'
@@ -72,15 +68,15 @@ function sunAtReferenceInstant(daylightSite: DaylightSite): Vector3 {
   }).sunDirection
 }
 
-function eastOf(front: PlanFront): { x: number; y: number } {
+function eastOf(front: PlanDirection): { x: number; y: number } {
   return { x: -front.y, y: front.x }
 }
 
-function westOf(front: PlanFront): { x: number; y: number } {
+function westOf(front: PlanDirection): { x: number; y: number } {
   return { x: front.y, y: -front.x }
 }
 
-function backOf(front: PlanFront): { x: number; y: number } {
+function backOf(front: PlanDirection): { x: number; y: number } {
   return { x: -front.x, y: -front.y }
 }
 
