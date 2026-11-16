@@ -18,6 +18,7 @@ related:
     decisions/ADR-0142-color-managed-renderer,
     decisions/ADR-0144-solar-lighting-provider-and-sky,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
+    decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
   ]
 sourceFiles:
   [
@@ -27,7 +28,7 @@ sourceFiles:
     bridge/react/scene-lighting.tsx,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # ADR-0147: Tone-mapping operator follows the lighting mode
@@ -105,3 +106,19 @@ the missing-location notice explains.
 - [[ADR-0142-color-managed-renderer]] (the fixed-operator decision this amends).
 - [[ADR-0144-solar-lighting-provider-and-sky]] (the solar rig whose dynamic range motivated the
   split).
+
+## Amendment 2026-11-16: realistic mode no longer needs a site location
+
+Two passages describe a fallback that is gone. Under Decision, the wiring paragraph says that a
+realistic request without a site location falls back to the schematic provider and that the
+operator falls back with it. Under Rationale, the last paragraph says that keying on the effective
+mode keeps that fallback coherent, with the missing-location notice as the only visible change.
+Neither holds now. `effectiveLightingMode(realistic)` in `bridge/react/effective-lighting-mode.ts`
+takes the realistic flag and no site, so the effective mode follows the user's choice alone. A
+project with no location renders realistic lighting at the sample site of
+[[ADR-0193-sample-daylight-for-a-project-with-no-site-location]] and takes AgX like a located one.
+The Environment panel shows a sample daylight notice in place of the missing-location notice.
+
+The rest stands. The layout effect in `bridge/react/scene-lighting.tsx` is still keyed on the
+renderer, the effective mode, and the color check, and `toneMappingOperatorFor` keeps its policy:
+AgX in realistic mode, Neutral in schematic mode, and Neutral in both while the color check is on.

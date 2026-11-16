@@ -22,6 +22,8 @@ related:
     decisions/ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point,
     decisions/ADR-0143-environment-model-foundations,
     decisions/ADR-0139-plan-to-world-orientation,
+    decisions/ADR-0151-ambient-occlusion-render-pipeline,
+    decisions/ADR-0147-per-mode-tone-mapping,
   ]
 sourceFiles:
   [
@@ -40,6 +42,7 @@ sourceFiles:
     editor/environment/environment-panel.tsx,
     app/harness-environment.ts,
     tests/architecture/opening-instant-seam.test.ts,
+    e2e/tests/scene-helpers.ts,
     docs/specs/2026-11-15-daylight-and-shadow.md,
     docs/plans/2026-11-15-daylight-and-shadow.md,
   ]
@@ -54,9 +57,9 @@ updated: 2026-11-16
 Current. Lands with the sample daylight change of the daylight and shadow work. It follows section
 6.1 of `docs/specs/2026-11-15-daylight-and-shadow.md` and decisions 7, 8, and 15 of
 `docs/plans/2026-11-15-daylight-and-shadow.md`. It amends
-[[ADR-0144-solar-lighting-provider-and-sky]] and
-[[ADR-0146-environment-panel-and-session-contract]], and each of those carries an amendment dated
-2026-11-16.
+[[ADR-0144-solar-lighting-provider-and-sky]], [[ADR-0146-environment-panel-and-session-contract]],
+[[ADR-0147-per-mode-tone-mapping]], and [[ADR-0151-ambient-occlusion-render-pipeline]], and each of
+those carries an amendment dated 2026-11-16.
 
 ## Context
 
@@ -116,9 +119,13 @@ is that a true location must give true light, and a sun turned to flatter the en
 wrong for the address the user typed. A polar site with a location keeps its true sun for every
 front, and the tests check it.
 
-A stored north bearing is kept for every front, and north is implied only in the last row. The
-code tests the bearing against `undefined`, so a bearing of exactly 0 is a bearing and not a gap:
-`{ northBearing: 0 }` keeps 0 and reads as `'location'`. A stored bearing is kept also when it
+A stored north bearing is kept for every front, and north is implied only in the last row. A
+bearing counts as missing when it is `undefined` or not a finite number. `daylightSiteFor` and
+`daylightSampleOf` both read `NaN` or an infinite bearing as no bearing, so a site with no location
+and such a bearing gets the implied north and reads as `'location-and-north'`. A located site with
+such a bearing uses 0, as in the second row. A bearing of exactly
+0 is finite, so it is a bearing and not a gap: `{ northBearing: 0 }` keeps 0 and reads as
+`'location'`. A stored bearing is kept also when it
 leaves the front in shade. With a bearing of pi and a front that points plan-down, the sun at the
 default instant meets the front at a cosine of -0.5948, so the front is in shade, and the bearing
 stands. A bearing is something the user set, and the implied north is only a stand-in for a
@@ -206,12 +213,19 @@ The old default, 21 June at noon, is gone with its constant. The architecture te
 `tests/architecture/opening-instant-seam.test.ts` reads the sources of the six layers and checks
 two things. No file there names `DEFAULT_OBSERVATION_INSTANT`. No file that is not a test names
 `DAYLIGHT_REFERENCE_INSTANT`, except `core/environment/opening-instant.ts`,
-`core/environment/daylight-reference.ts`, `core/environment/daylight-calibration.ts`, and the
-`core/index.ts` barrel.
+`core/environment/daylight-reference.ts`, and the `core/index.ts` barrel.
 
 The function takes the site although it does not read it yet. The opening light may become stored
-state later (#737), for example an instant at which a located house's front takes the sun. That
-would change this one function and no caller.
+state later (#737), for example an instant at which a located house's front takes the sun.
+`openingInstant` is the one place that decides the instant, but a rule that depends on the site
+would need more than a new body for it. The live session reads the function once, when
+`core/environment/environment-state.ts` loads: `DEFAULT_ENVIRONMENT_STATE` calls
+`openingInstant({ site: undefined })`, and the store in
+`bridge/environment/environment-session-store.ts` starts from that state. The live view always
+passes the session's `observedAt` to `SceneLighting`, so the default of that prop never calls
+`openingInstant` there. The `sample-daylight` harness state calls it with no site as well. Such a
+rule would therefore also need the session state to be seeded for each project, from that
+project's site.
 
 ### The harness state
 
@@ -226,6 +240,12 @@ Its gate checks two things: the front is sunlit, and the front shows the same su
 reference state. The two states share a camera, so the comparison is direct. The gate's threshold
 and readings live in its spec file under `e2e/tests/`, and this record states neither.
 
+The gate reads two wall squares of the south-west camera view: the south face, which is the front,
+and the west face. Both squares are defined once in `e2e/tests/scene-helpers.ts`, as
+`SOUTH_WEST_VIEW_SOUTH_WALL` and `SOUTH_WEST_VIEW_WEST_WALL`. The tone curve gate in
+`e2e/tests/scene-tone-curve.spec.ts` renders the `daylight-reference` state from the same camera
+and reads the same two squares.
+
 ## Consequences
 
 - Realistic mode lights every project in daylight, located or not, and the panel says when the
@@ -238,6 +258,11 @@ and readings live in its spec file under `e2e/tests/`, and this record states ne
   default.
 - With no stored bearing, the sample sun follows the front. Adding a door wider than the present
   front door on another exterior wall turns the implied north, and the sun with it.
+- `frontDirection` runs on each change of the project graph, since `useFrontDirection` memoizes it
+  on the graph alone. It runs also in schematic mode and for a located site, where the sun does not
+  use its result. A review timed the pure function in Node at 0.9 ms for 25 rooms, 4.6 ms for 3
+  floors of 100 rooms, 70 ms for 900 rooms on one floor, and 155 ms for 10 floors of 400 rooms. No
+  frame time was measured. A tracking issue covers the cost.
 - A located house whose front faces north opens with its front in shade in every session. #737
   covers a better opening instant for such a house. The true-sun rule does not change.
 - Nothing is added to the document. Saved environment scenes hold a time and weather only, so they
@@ -265,3 +290,5 @@ and readings live in its spec file under `e2e/tests/`, and this record states ne
   and instant).
 - [[ADR-0143-environment-model-foundations]] (the stored site and observation time).
 - [[ADR-0139-plan-to-world-orientation]] (the plan frame the front and the bearing live in).
+- [[ADR-0147-per-mode-tone-mapping]] and [[ADR-0151-ambient-occlusion-render-pipeline]] (the
+  operator and the occlusion pass that follow the lighting mode).
