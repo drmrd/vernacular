@@ -1,4 +1,5 @@
-import type { Project } from '../../core'
+import { KNOWN_KEYS, KNOWN_ROOT_TYPE } from '../../core'
+import type { KnownKeyTable, KnownValue, Project } from '../../core'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -96,8 +97,82 @@ export function graftUnknown(previous: unknown, next: unknown): unknown {
   return next
 }
 
+interface TablePosition {
+  table: KnownKeyTable
+  at: KnownValue
+}
+
+interface TypeScope {
+  table: KnownKeyTable
+  keys: Readonly<Record<string, KnownValue>>
+}
+
+function graftKnownMember(
+  key: string,
+  { previous, next }: { previous: Record<string, unknown>; next: Record<string, unknown> },
+  { table, keys }: TypeScope,
+): unknown {
+  const known = keys[key]
+  if (known === undefined || KEYED_COLLECTIONS.has(key)) {
+    return graftMember(key, previous, next)
+  }
+  return key in previous
+    ? graftWithTable(previous[key], next[key], { table, at: known })
+    : next[key]
+}
+
+function graftObjectWithTable(
+  previous: Record<string, unknown>,
+  next: Record<string, unknown>,
+  scope: TypeScope,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(next)) {
+    result[key] = graftKnownMember(key, { previous, next }, scope)
+  }
+  for (const key of Object.keys(previous)) {
+    // A known key the next document lacks was cleared; only a key the table does not know is restored.
+    if (!(key in next) && scope.keys[key] === undefined) {
+      result[key] = previous[key]
+    }
+  }
+  return result
+}
+
+function graftArrayWithTable(
+  previous: readonly unknown[],
+  next: readonly unknown[],
+  position: TablePosition,
+): unknown[] {
+  return next.map((item) => {
+    const id = idOf(item)
+    const match =
+      id === undefined ? undefined : previous.find((candidate) => idOf(candidate) === id)
+    return match === undefined ? item : graftWithTable(match, item, position)
+  })
+}
+
+/** A pure function of the previous value, the next value, the table, and the place in it. */
+export function graftWithTable(
+  previous: unknown,
+  next: unknown,
+  { table, at }: TablePosition,
+): unknown {
+  if (at.kind === 'array' && Array.isArray(previous) && Array.isArray(next)) {
+    return graftArrayWithTable(previous, next, { table, at: at.item })
+  }
+  const knownType = at.kind === 'object' ? table[at.type] : undefined
+  if (knownType !== undefined && isPlainObject(previous) && isPlainObject(next)) {
+    return graftObjectWithTable(previous, next, { table, keys: knownType.keys })
+  }
+  return graftUnknown(previous, next)
+}
+
 /** Apply the preservation overlay, returning a Document that restores dropped unknown data. */
 export function preserveUnknown(previous: unknown, project: Project): Project {
   // The graft only adds keys the typed model omits, so the result is still a Project shape.
-  return graftUnknown(previous, project) as Project
+  return graftWithTable(previous, project, {
+    table: KNOWN_KEYS,
+    at: { kind: 'object', type: KNOWN_ROOT_TYPE },
+  }) as Project
 }
