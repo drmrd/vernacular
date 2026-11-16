@@ -1,17 +1,16 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 
-// Issue #733: the live three-dimensional pane can stay blank, with no walls at all, when the
-// scene view renders again while its renderer is still starting. The live canvas hands React
-// Three Fiber an asynchronous renderer factory, and React Three Fiber configures the canvas
-// again on every render of it. A render that lands while the factory is still pending builds a
-// second renderer and a second default camera that never receive a size, so the pane draws
-// nothing until its size changes.
+// Issue #733: the live three-dimensional pane shows a drawn wall, also when the scene view
+// renders again while the renderer chunk loads and while the renderer initializes. The two
+// holds exist because those are the two windows in which a repeated render could once leave the
+// pane blank: the canvas must not be configured twice before its renderer exists, or the second
+// configuration would build a renderer and camera that never receive a size.
 //
 // The renderer factory awaits the lazily loaded three.js WebGPU module, which carries both the
 // WebGPU backend and three's own WebGL 2 fallback. Holding that chunk's response holds the
 // start-up open on either backend, with no product change and no fixed sleep: the test decides
-// when the start-up may finish. The failing test presses a scene toolbar toggle twice inside
-// that window; the control test holds the same window and presses nothing, which proves that
+// when the start-up may finish. The first test presses a scene toolbar toggle twice inside
+// that window; the second test holds the same window and presses nothing, which proves that
 // the held start-up alone is harmless.
 //
 // The assertion reads only what the renderer drew. Overlays sit on top of the canvas (the
@@ -21,11 +20,11 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // A blank pane never changes, so a bounded poll for a changed frame cannot pass on it; a pane
 // that draws the wall changes, so the poll cannot fail on a correct one.
 //
-// The fix builds the renderer synchronously and mounts the canvas only after that chunk has
-// loaded, so presses inside the chunk window now meet a placeholder, not a canvas. A third test
-// covers the window that remains: the canvas has mounted and the renderer's own init() is still
-// pending. It slows init() by holding navigator.gpu.requestAdapter, which both the WebGPU backend
-// and three's WebGL 2 fallback path call first, until the test lets it through.
+// The first two tests hold the chunk window: the scene view renders against a placeholder
+// there, and the drawn wall must still appear once the chunk loads. The third test holds the
+// initialization window, where the canvas has mounted and the renderer's own init() is pending.
+// It slows init() by holding navigator.gpu.requestAdapter, which both the WebGPU backend and
+// three's WebGL 2 fallback path call first, until the test lets it through.
 //
 // Like the neighbouring live-view specs, it runs in the scene-webgl project (the scene- name
 // prefix routes it there) and self-skips without navigator.gpu, where the live pane shows a
