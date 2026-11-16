@@ -2,12 +2,16 @@ import { describe, it, expect, vi } from 'vitest'
 import * as THREE from 'three'
 import { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 import {
+  MAX_SHADOW_TEXEL_MM,
   NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  boundsRadius as halfDiagonal,
+  shadowFitBounds,
   type Bounds3,
   type EnvironmentLighting,
 } from '../../core'
+import { addGroundPlane, groundExtent } from '../scene/ground-plane'
 import { SolarLightingProvider } from './solar-lighting-provider'
-import { DAYLIGHT_SUN_INTENSITY } from './lighting-rig'
+import { DAYLIGHT_SUN_INTENSITY, SHADOW_MAP_SIZE } from './lighting-rig'
 
 // Fabricated environments: a deliberately loud warm sun under a cool sky. The
 // solar math that would produce real values is core-tested; here we only care
@@ -41,6 +45,27 @@ const skyLitLighting: EnvironmentLighting = {
 
 const bounds: Bounds3 = { min: { x: 0, y: 0, z: 0 }, max: { x: 4000, y: 2600, z: 3000 } }
 const boundsRadius = Math.hypot(4000, 2600, 3000) / 2
+
+// The shell's caster bounds and the winter-afternoon sun (2026-12-21 at 16:00 at 40 N, 75 W) of the
+// daylight plan, supplied as the direction of `EnvironmentLighting`. The sun is normalized here so
+// the expected fit is computed from exactly the direction the provider receives.
+const shellCasters: Bounds3 = { min: { x: 0, y: 0, z: -3000 }, max: { x: 4000, y: 2600, z: 0 } }
+const winterAfternoonSun = new THREE.Vector3(-0.798, 0.0911, 0.5957).normalize()
+const winterAfternoonLighting: EnvironmentLighting = {
+  ...overheadSunLighting,
+  sunDirection: { x: winterAfternoonSun.x, y: winterAfternoonSun.y, z: winterAfternoonSun.z },
+}
+const RELATIVE_PRECISION = 6
+
+/** A scene holding a building over the shell's footprint, with a ground plane when asked for. */
+const shellScene = (withGround: boolean): THREE.Scene => {
+  const scene = new THREE.Scene()
+  const shell = new THREE.Mesh(new THREE.BoxGeometry(4000, 2600, 3000))
+  shell.position.set(2000, 1300, -1500)
+  scene.add(shell)
+  if (withGround) addGroundPlane(scene)
+  return scene
+}
 
 const findSun = (scene: THREE.Object3D): THREE.DirectionalLight =>
   scene.children.find((child) => child instanceof THREE.DirectionalLight) as THREE.DirectionalLight
@@ -223,5 +248,60 @@ describe('SolarLightingProvider', () => {
     // whenReady settles after the fire-and-forget sky-mesh attach completes, so the mesh
     // must already be in the scene with no need to poll for it.
     expect(findSkyMesh(scene)?.isSkyMesh).toBe(true)
+  })
+})
+
+describe('SolarLightingProvider shadow frustum with a ground plane', () => {
+  const fittedSun = (scene: THREE.Scene): THREE.DirectionalLight => {
+    const provider = new SolarLightingProvider()
+    provider.apply(scene)
+    provider.update(scene, winterAfternoonLighting, shellCasters)
+    return findSun(scene)
+  }
+
+  it('covers the shell and its shadow on the ground, reaching past the shell alone', () => {
+    const scene = shellScene(true)
+
+    const sun = fittedSun(scene)
+
+    const expectedRadius = halfDiagonal(
+      shadowFitBounds({
+        casters: shellCasters,
+        ground: groundExtent(scene),
+        sunDirection: winterAfternoonLighting.sunDirection,
+        maxRadius: (MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE) / 2,
+      }),
+    )
+    expect(sun.shadow.camera.right).toBeCloseTo(expectedRadius, RELATIVE_PRECISION)
+    expect(sun.shadow.camera.right).toBeGreaterThan(halfDiagonal(shellCasters))
+  })
+
+  it('scales the normal bias with the fit and leaves the depth bias alone', () => {
+    const sun = fittedSun(shellScene(true))
+
+    const { right } = sun.shadow.camera
+    expect(sun.shadow.normalBias).toBeCloseTo(
+      (Math.SQRT2 / SHADOW_MAP_SIZE) * 2 * right,
+      RELATIVE_PRECISION,
+    )
+    expect(sun.shadow.bias).toBeCloseTo(-Math.SQRT2 / SHADOW_MAP_SIZE, RELATIVE_PRECISION)
+  })
+
+  it('fits the shell alone when the scene has no ground plane', () => {
+    const sun = fittedSun(shellScene(false))
+
+    expect(sun.shadow.camera.right).toBeCloseTo(halfDiagonal(shellCasters), RELATIVE_PRECISION)
+  })
+
+  it('fits nothing when the scene bounds are null, even with a ground plane', () => {
+    const scene = shellScene(true)
+    const provider = new SolarLightingProvider()
+    provider.apply(scene)
+    const camera = findSun(scene).shadow.camera
+    const rightBefore = camera.right
+
+    provider.update(scene, winterAfternoonLighting, null)
+
+    expect(camera.right).toBe(rightBefore)
   })
 })
