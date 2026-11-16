@@ -98,9 +98,10 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * opening's weight, plus the room-average term, capped at 1. A sky aperture weighs the sky's
  * radiance toward its facing; a doorway weighs the mean visibility of the room it opens to, lit by
  * that room's sky apertures alone. The form factors depend on geometry alone, so the solver checks
- * and measures the rooms one time, on the first call of any method, and only re-weights them for
- * later skies; a caller that changes the rooms builds a new solver. A room or an aperture that the
- * field cannot use throws a RangeError that names it.
+ * and measures the rooms one time, and only re-weights them for later skies; a caller that changes
+ * the rooms builds a new solver. That check runs on the first call of any method, not when the
+ * solver is created, so a room or an aperture that the field cannot use throws a RangeError that
+ * names it from that first call.
  */
 export function createDaylightFieldSolver(rooms: readonly DaylightRoom[]): DaylightFieldSolver {
   let geometry: SolverGeometry | null = null
