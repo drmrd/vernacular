@@ -261,6 +261,68 @@ describe('a polar site with a location', () => {
   })
 })
 
+const NON_FINITE_BEARINGS = [
+  ['NaN', NaN],
+  ['Infinity', Infinity],
+  ['-Infinity', -Infinity],
+] as const
+
+function allNumbersOf(daylightSite: DaylightSite): number[] {
+  const sun = sunAtReferenceInstant(daylightSite)
+  return [
+    daylightSite.latLong.latitude,
+    daylightSite.latLong.longitude,
+    daylightSite.northBearing,
+    daylightSite.utcOffsetMinutes,
+    sun.x,
+    sun.y,
+    sun.z,
+  ]
+}
+
+describe('a site with a north bearing that is not a finite number', () => {
+  it.each(NON_FINITE_BEARINGS)(
+    'counts %s as a missing bearing beside a missing location',
+    (_name, northBearing) => {
+      const daylightSite = daylightSiteFor({ northBearing }, FRONT_RIGHT, SPRING_DATE)
+
+      expect(daylightSite.northBearing).toBeCloseTo(Math.PI / 2, BEARING_DECIMAL_PLACES)
+      expect(daylightSite.latLong).toEqual(DAYLIGHT_REFERENCE_PLACE)
+      expect(daylightSite.utcOffsetMinutes).toBe(SAMPLE_OFFSET_MINUTES)
+      expect(daylightSite.sample).toBe('location-and-north')
+      expect(daylightSampleOf({ northBearing })).toBe('location-and-north')
+      expect(allNumbersOf(daylightSite).every(Number.isFinite)).toBe(true)
+    },
+  )
+
+  it.each(NON_FINITE_BEARINGS)(
+    'counts %s as a missing bearing beside a stored location, and is no sample',
+    (_name, northBearing) => {
+      const daylightSite = daylightSiteFor(
+        { latLong: LONDON_LAT_LONG, northBearing },
+        FRONT_RIGHT,
+        SPRING_DATE,
+      )
+
+      expect(daylightSite.northBearing).toBe(0)
+      expect(daylightSite.latLong).toEqual(LONDON_LAT_LONG)
+      expect(daylightSite.sample).toBe('none')
+      expect(allNumbersOf(daylightSite).every(Number.isFinite)).toBe(true)
+    },
+  )
+
+  it('keeps a finite negative bearing beside a missing location', () => {
+    const daylightSite = daylightSiteFor(
+      { northBearing: -STORED_NORTH_BEARING },
+      FRONT_RIGHT,
+      SPRING_DATE,
+    )
+
+    expect(daylightSite.northBearing).toBe(-STORED_NORTH_BEARING)
+    expect(daylightSite.sample).toBe('location')
+  })
+})
+
 describe('daylightSampleOf', () => {
   it.each([
     [
