@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { DAYLIGHT_CALIBRATION, SUN_OPTICAL_DEPTH, sunLevelAt } from './daylight-calibration'
+import { LOW_SUN_CHROMA_MINIMUM, shadeOf } from './daylight-test-support'
 import type { EnvironmentLighting } from './environment-lighting'
 import { predictedMatteRadiance, type MatteSurface } from './light-model'
 import { skyLighting } from './sky-model'
 import { projectDomeToSphericalHarmonics } from './spherical-harmonics'
 import { agxNeutralResponse } from './tone-response'
 import { linearLuminance } from '../color/contrast'
-import { linearToSrgb, srgbToOkLab } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 
 // The sun's level follows the light's path through a clear sky: the level is proportional to
@@ -36,7 +36,6 @@ const WHITE_WALL: MatteSurface = {
   reflectance: { r: WALL_REFLECTANCE, g: WALL_REFLECTANCE, b: WALL_REFLECTANCE },
 }
 const SUN_TERM_TOLERANCE_IN_CODES = 0.01
-const LOW_SUN_CHROMA_MINIMUM = 0.01
 const TEN_DEGREES = 10 * DEGREES
 const THREE_DEGREES_BELOW = -3 * DEGREES
 const FIVE_DEGREES = 5 * DEGREES
@@ -70,22 +69,6 @@ function codeOfWhiteWall(lighting: EnvironmentLighting): number {
   return (
     agxNeutralResponse(linearLuminance(predictedMatteRadiance(lighting, WHITE_WALL))) * BYTE_RANGE
   )
-}
-
-/** The wall's radiance scaled so its largest channel is 1, encoded to sRGB, as an OKLab tone. */
-function shadeOfWhiteWall(lighting: EnvironmentLighting): {
-  a: number
-  b: number
-  chroma: number
-} {
-  const radiance = predictedMatteRadiance(lighting, WHITE_WALL)
-  const largest = Math.max(radiance.r, radiance.g, radiance.b)
-  const lab = srgbToOkLab({
-    r: linearToSrgb(radiance.r / largest),
-    g: linearToSrgb(radiance.g / largest),
-    b: linearToSrgb(radiance.b / largest),
-  })
-  return { a: lab.a, b: lab.b, chroma: Math.hypot(lab.a, lab.b) }
 }
 
 function codeWithAndWithoutSun(height: number): { lit: number; domeOnly: number } {
@@ -150,7 +133,12 @@ describe('a white wall squared up to a low sun', () => {
 
   it('is warmed by a low sun: the wall facing it reads warm at 10 degrees and at 5 degrees', () => {
     for (const height of [TEN_DEGREES, FIVE_DEGREES]) {
-      const tone = shadeOfWhiteWall(lightingWithSunAt(height, sunLevelAt(height, CLEAR_SKY)))
+      const tone = shadeOf(
+        predictedMatteRadiance(
+          lightingWithSunAt(height, sunLevelAt(height, CLEAR_SKY)),
+          WHITE_WALL,
+        ),
+      )
       expect(tone.a).toBeGreaterThan(0)
       expect(tone.b).toBeGreaterThan(0)
       expect(tone.chroma).toBeGreaterThanOrEqual(LOW_SUN_CHROMA_MINIMUM)

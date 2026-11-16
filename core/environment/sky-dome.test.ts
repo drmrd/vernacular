@@ -166,8 +166,15 @@ function expectColorsEqual(actual: LinearRgb, expected: LinearRgb): void {
   expect(actual.b).toBeCloseTo(expected.b, AZIMUTH_TOLERANCE_DECIMALS)
 }
 
-/** The light a level white card collects from the sun and the sky, over pi: what the ground reflects. */
-function levelCardLightOf(sunColor: LinearRgb, sunLevel: number, sky: SkyDomeInput): LinearRgb {
+/**
+ * Computed independently from the dome's quadrature mean: the light a level white card collects
+ * from the sun and the sky, over pi, which is what the ground reflects.
+ */
+function cardLightByQuadrature(
+  sunColor: LinearRgb,
+  sunLevel: number,
+  sky: SkyDomeInput,
+): LinearRgb {
   const sunUp = Math.max(0, sky.sunDirection.y)
   const sunScale = (sunLevel * sunUp) / Math.PI
   const skyMean = upperDomeMean(sky)
@@ -180,7 +187,7 @@ function levelCardLightOf(sunColor: LinearRgb, sunLevel: number, sky: SkyDomeInp
 
 /** The neutral grey ground bounce times the light on a level card. */
 function bounceUnderLight(sunColor: LinearRgb, sunLevel: number, sky: SkyDomeInput): LinearRgb {
-  const card = levelCardLightOf(sunColor, sunLevel, sky)
+  const card = cardLightByQuadrature(sunColor, sunLevel, sky)
   return {
     r: GROUND_BOUNCE_COLOR.r * card.r,
     g: GROUND_BOUNCE_COLOR.g * card.g,

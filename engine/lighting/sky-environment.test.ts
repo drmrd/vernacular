@@ -36,9 +36,9 @@ const DISTINCT_SKY_AMBIENT: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS
  *  a high sun between the table's last two rows, so its expectation goes through skyMeshGainAt. */
 const LOW_SUN_DEGREES = 4.95
 const HIGH_SUN_DEGREES = 45
-/** The gain is compared component by component; this is looser than the pure-function cases
- *  because the rig stores single-precision-friendly values read back through a Vector3. */
-const GAIN_TOLERANCE = 1e-6
+/** The rig's gain is compared with the table's gain component by component. The rig sees the
+ *  altitude as asin(sin h), which differs from h by rounding only. */
+const GAIN_TOLERANCE = 1e-12
 /** Reconstruction and passthrough are exact copies; a loose float tolerance suffices. */
 const PRECISION = 5
 /** The sky scattering constants the module pins; they are the addon's own defaults today. */

@@ -11,12 +11,13 @@ import {
   WHITE_CODE_FLOOR,
 } from './daylight-calibration'
 import { referenceLightingInput } from './daylight-reference'
+import { LOW_SUN_CHROMA_MINIMUM, shadeOf } from './daylight-test-support'
 import { computeEnvironmentLighting, type EnvironmentLightingInput } from './environment-lighting'
 import { predictedMatteRadiance, type MatteSurface } from './light-model'
 import { solarPosition } from './solar-position'
 import { agxNeutralInverse, agxNeutralResponse } from './tone-response'
 import { linearLuminance } from '../color/contrast'
-import { linearToSrgb, srgbToOkLab, type LinearRgb } from '../color/oklab'
+import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 
 // Daylight is calibrated from three stated targets: a white wall in the sun reads code 225
@@ -57,7 +58,6 @@ const EQUINOX_NOON_INPUT: EnvironmentLightingInput = {
 const SHADE_CHROMA_MINIMUM = 0.02
 const WALL_SHADE_GREEN_CAST_LIMIT = 0.015
 const SHADE_CHROMA_MAXIMUM = 0.1
-const LOW_SUN_CHROMA_MINIMUM = 0.01
 
 const REFERENCE_LUX = 80_000
 const LUX_TOLERANCE = 0.01
@@ -98,17 +98,6 @@ function sumOf(a: LinearRgb, b: LinearRgb): LinearRgb {
 
 function wallOf(reflectance: number, normal: Vector3): MatteSurface {
   return { normal, reflectance: { r: reflectance, g: reflectance, b: reflectance } }
-}
-
-/** Scales so the largest channel is 1, encodes to sRGB, and returns the OKLab color. */
-function shadeOf(color: LinearRgb): { a: number; b: number; chroma: number } {
-  const largest = Math.max(color.r, color.g, color.b)
-  const lab = srgbToOkLab({
-    r: linearToSrgb(color.r / largest),
-    g: linearToSrgb(color.g / largest),
-    b: linearToSrgb(color.b / largest),
-  })
-  return { a: lab.a, b: lab.b, chroma: Math.hypot(lab.a, lab.b) }
 }
 
 function expectEqualChannels(color: LinearRgb): void {
