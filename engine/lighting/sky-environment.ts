@@ -110,26 +110,28 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
   sky.cloudCoverage.value = lighting.cloudCover
 }
 
-/** Records a neutral gain on the rig and multiplies the sky's color by a uniform that reads it,
- *  so a later change can scale the visible sky by writing the rig's vector. At one no pixel moves. */
+/** Multiplies the sky's color by a neutral-gain uniform and records that gain on the rig, so a later
+ *  change can scale the visible sky by writing the rig's vector. At one no pixel moves. The rig holds
+ *  a gain only when the sky reads it: without an addon color node nothing is recorded. */
 function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
   const gain = new THREE.Vector3(1, 1, 1)
-  rig.skyGain = gain
   // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",
   // and the typed overloads of `mul` reject a vec3 uniform against that union. The shader widens
   // the uniform to a vec4 with alpha one, so the product keeps the sky opaque.
   const addonColor = sky.material.colorNode as ScalableColorNode | null
   if (addonColor === null) return
   sky.material.colorNode = addonColor.mul(tsl.uniform(gain))
+  rig.skyGain = gain
 }
 
 /**
  * Adds the visible sky and its environment map to an applied rig and zeroes the hemisphere
  * fill (the map carries the ambient; running both double-counts it). The map attaches and the
- * fill zeroes synchronously, before the SkyMesh module loads; the sky is then constructed and
- * added once its lazily imported module resolves, with cloud motion frozen (cloudSpeed 0) so
- * scene baselines stay deterministic. A rig disposed while the module is still loading
- * abandons the attach: the sky never joins the scene and the promise resolves without error.
+ * fill zeroes synchronously, before the SkyMesh and three/tsl modules load; the sky is then
+ * constructed, given its gain, and added once both lazily imported modules resolve, with cloud
+ * motion frozen (cloudSpeed 0) so scene baselines stay deterministic. A rig disposed while the
+ * modules are still loading abandons the attach: the sky never joins the scene and the promise
+ * resolves without error.
  * A failed dynamic import (e.g. a stale chunk URL after a redeploy) is caught here rather than
  * left to the caller: it warns and returns, leaving rig.sky undefined and the promise resolved,
  * so the scene stays lit by the environment and fill already applied synchronously above, just
@@ -148,7 +150,7 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
     ;[loadedModule, tsl] = await Promise.all([loadSkyMeshModule(), loadTslModule()])
   } catch (reason) {
     console.warn(
-      'Failed to load the visible sky module (three/examples/jsm/objects/SkyMesh.js); realistic lighting continues without it',
+      'Failed to load the visible sky modules (three/examples/jsm/objects/SkyMesh.js, three/tsl); realistic lighting continues without it',
       reason,
     )
     return
