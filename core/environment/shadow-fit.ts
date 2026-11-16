@@ -16,8 +16,12 @@ export interface ShadowFitInput {
   maxRadius: number
 }
 
-/** At or below this sun height (the y of the unit sun direction) the sun counts as on the horizon. */
-const HORIZON_SUN_HEIGHT = 1e-6
+/**
+ * The smallest sun height (the y of the unit sun direction) the projection
+ * uses. A lower or negative sun projects as if it stood at this height, so the
+ * fit stays finite and changes continuously through the horizon.
+ */
+const MIN_PROJECTION_SUN_HEIGHT = 1e-6
 
 const DIAGONAL_TO_RADIUS = 0.5
 const QUADRATIC_FOUR = 4
@@ -37,9 +41,12 @@ export function boundsRadius(bounds: Bounds3): number {
  *
  * Each caster corner above the ground plane is projected along the sun ray
  * onto the plane and clamped to the ground rectangle on each axis. Corners at
- * or below the plane cast nothing. With the sun at or below the horizon the
- * projected point takes the limit: the edge of the ground on the side away
- * from the sun. With no ground, the fit is the casters.
+ * or below the plane cast nothing. One rule holds for every sun height: the
+ * sun height is clamped from below at the smallest height the projection uses,
+ * so a low sun with a horizontal component sends the point to the edge of the
+ * ground on the side away from the sun, a zero component keeps the corner's
+ * coordinate, and a sun below the horizon gets the horizon's fit. With no
+ * ground, the fit is the casters.
  *
  * When the radius of that box exceeds `maxRadius`, the box shrinks linearly
  * toward the caster box until its radius equals the cap, so the far end of the
@@ -94,13 +101,9 @@ interface CornerAndSunHeights {
 
 function shadowCoordinate(axis: AxisProjection, sun: CornerAndSunHeights): number {
   const { coordinate, sunComponent, low, high } = axis
-  if (sun.sunHeight > HORIZON_SUN_HEIGHT) {
-    const projected = coordinate - (sunComponent / sun.sunHeight) * sun.height
-    return Math.min(high, Math.max(low, projected))
-  }
-  if (sunComponent > 0) return low
-  if (sunComponent < 0) return high
-  return Math.min(high, Math.max(low, coordinate))
+  const projected =
+    coordinate - (sunComponent / Math.max(sun.sunHeight, MIN_PROJECTION_SUN_HEIGHT)) * sun.height
+  return Math.min(high, Math.max(low, projected))
 }
 
 function shrinkTowardCasters(casters: Bounds3, full: Bounds3, maxRadius: number): Bounds3 {
