@@ -24,7 +24,13 @@ export const DAYLIGHT_WORK_PLANE_HEIGHT_MM = 850
  */
 const SKY_FACING_ELEVATION = Math.atan(2 / Math.PI)
 
-/** How far to each side of the span the side test probes, in plan millimetres. */
+/**
+ * How far to each side of the span the side test probes, in plan millimetres. It must not be
+ * smaller than OUTLINE_TOLERANCE_MM of room-validation.ts, so that a span accepted as on the
+ * outline has one probe on each side of it. The exception is a span that lies inside the room by
+ * exactly that tolerance: its outer probe lands on the outline, and a point on the outline counts
+ * as inside.
+ */
 const SIDE_PROBE_MM = 1
 
 /** A cell center sits half a cell past its lower edge. */
