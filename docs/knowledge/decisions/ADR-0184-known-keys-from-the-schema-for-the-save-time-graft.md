@@ -89,8 +89,9 @@ no graft and saved the loss.
   for undefined.
 - The generator stops with an error that names the place when the schema holds a shape the table
   cannot express: an array of arrays, a tuple, a union with no shared constant tag, a tag value
-  that is not a string, or two variants with one tag value. Such a shape can never be read as a
-  plain value.
+  that is not a string, two variants with one tag value, a scalar (`enum` or `const`) that also
+  carries structure, or a reference with a sibling keyword that is not an annotation. Such a
+  shape can never be read as a plain value.
 
 ## References
 
