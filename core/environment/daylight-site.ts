@@ -1,4 +1,5 @@
 import type { LatLong, Site } from '../model/site'
+import type { PlanDirection } from '../scene/front-direction'
 import { DAYLIGHT_REFERENCE_PLACE } from './daylight-reference'
 import { utcOffsetMinutesFor } from './timezone-offset'
 
@@ -30,7 +31,7 @@ export function daylightSampleOf(site: Site | undefined): DaylightSample {
  */
 export function daylightSiteFor(
   site: Site | undefined,
-  front: { readonly x: number; readonly y: number },
+  front: PlanDirection,
   date: string,
 ): DaylightSite {
   const sample = daylightSampleOf(site)
