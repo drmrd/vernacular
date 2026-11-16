@@ -967,7 +967,7 @@ Duplicate detection is not an ESLint rule. `pnpm dup` runs `jscpd` and only repo
 
 Exceptions sit in one list in `eslint.config.js`, the only place in the config where a limit is raised or a rule is turned off for a file. Each entry names a file, a rule, and the issue that removes the entry. For a size rule it also gives the measured limit of that file. A test fails an entry that is no longer needed. An inline disable comment is also allowed, and it needs a reason (ADR-0185).
 
-Lint holds the purity rules of each layer. `core/` imports no React or Three.js package, and its production files use no global that exists only in a browser. `storage/` imports no React or Three.js package. `engine/` imports no React package. Only `engine/` imports `three`, and only `bridge/` imports `@react-three/*`. The engine testing entry (`engine/testing`) is for test files only, and lint fails a production file of `bridge/`, `editor/`, or `app/` that imports it.
+Lint holds the purity rules of each layer. `core/` imports no React or Three.js package, and its production files use no global that exists only in a browser. `storage/` imports no React or Three.js package. `engine/` imports no React package. Only `engine/` imports `three`, and only `bridge/` imports `@react-three/*`. The engine testing entry (`engine/testing`) is for test files only, and lint fails a production file of `bridge/`, `editor/`, `app/`, or `src/`, or of `engine/` outside `engine/testing/`, that imports it, except that a file of `engine/` named `*-test-support.ts` or `*-test-support.tsx` counts as test support.
 
 A test under `tests/architecture/` fails a cycle of value imports among the files of the six layers. A cycle of type-only imports is allowed.
 

@@ -41,9 +41,12 @@ const reactThreePackages = {
   message: 'Only bridge/ imports @react-three (ADR-0001).',
 }
 
-const engineTestingEntry = {
-  regex: '(^|/)engine/testing(/.*)?$',
-  message: 'The engine testing entry is for tests only.',
+const engineTestingMessage = 'The engine testing entry is for tests only.'
+const engineTestingEntry = { regex: '(^|/)engine/testing(/.*)?$', message: engineTestingMessage }
+// Inside engine/ a relative ./testing or ../testing can be the entry itself, so this pattern adds the relative form to the path form.
+const engineTestingEntryInsideEngine = {
+  regex: '(^|/)engine/testing(/.*)?$|^\\.{1,2}/(\\.\\./)*testing(/.*)?$',
+  message: engineTestingMessage,
 }
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
 
@@ -97,6 +100,23 @@ const layerPurityBlocks = [
       'no-restricted-imports': [
         'error',
         { patterns: [threePackages, reactThreePackages, engineTestingEntry] },
+      ],
+    },
+  },
+  {
+    files: ['src/**'],
+    ignores: testFileGlobs,
+    rules: { 'no-restricted-imports': ['error', { patterns: [engineTestingEntry] }] },
+  },
+  {
+    // Files inside engine/testing/ import their siblings, so they are left out.
+    // Test support modules (named *-test-support) only serve tests, so they are left out too.
+    files: ['engine/**'],
+    ignores: [...testFileGlobs, 'engine/testing/**', '**/*-test-support.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [reactPackages, engineTestingEntryInsideEngine] },
       ],
     },
   },
