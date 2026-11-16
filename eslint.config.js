@@ -41,9 +41,12 @@ const reactThreePackages = {
   message: 'Only bridge/ imports @react-three (ADR-0001).',
 }
 
-const engineTestingEntry = {
+const engineTestingMessage = 'The engine testing entry is for tests only.'
+const engineTestingEntry = { regex: '(^|/)engine/testing(/.*)?$', message: engineTestingMessage }
+// Only inside engine/ can a relative ./testing or ../testing be the entry itself.
+const engineTestingEntryRelative = {
   regex: '(^|/)engine/testing(/.*)?$|^\\.{1,2}/(\\.\\./)*testing(/.*)?$',
-  message: 'The engine testing entry is for tests only.',
+  message: engineTestingMessage,
 }
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
 
@@ -111,7 +114,7 @@ const layerPurityBlocks = [
     files: ['engine/**'],
     ignores: [...testFileGlobs, 'engine/testing/**', '**/*-test-support.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [reactPackages, engineTestingEntry] }],
+      'no-restricted-imports': ['error', { patterns: [reactPackages, engineTestingEntryRelative] }],
     },
   },
 ]
