@@ -58,8 +58,9 @@ const SHADED_EAST_WALL = squareRegion(186, 143, 16)
  *
  * Five captures of the state came back byte-identical, so the noise band is 0. The defect
  * reading is a zero gap, so the threshold sits at the midpoint of the model gap and zero
- * (the two-probe midpoint of ADR-0157's amendment), 0.0859 / 2 rounded down to 0.043. The
- * measured gap sits a little above the model because the model leaves out the specular term.
+ * (the two-probe midpoint of ADR-0157's amendment), 0.0859 / 2 = 0.04295, rounded to 0.043.
+ * The measured gap sits a little above the model because the model leaves out the specular
+ * term. The margins are 0.0454 below the shipped reading and 0.0421 above the defect reading.
  */
 const SUNLIT_WALL_MIN_GAP = 0.043
 
