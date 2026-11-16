@@ -64,6 +64,7 @@ const rejectedImports: readonly ImportCase[] = [
   { filePath: 'src/nested/sample.tsx', specifier: '../../engine/testing' },
   { filePath: 'engine/sample.ts', specifier: './testing' },
   { filePath: 'engine/scene/sample.ts', specifier: '../testing' },
+  { filePath: 'engine/scene/sample-support.ts', specifier: '../testing' },
 ]
 
 const acceptedImports: readonly ImportCase[] = [
@@ -75,6 +76,7 @@ const acceptedImports: readonly ImportCase[] = [
   { filePath: 'bridge/sample.tsx', specifier: 'three-stdlib' },
   { filePath: 'bridge/react/sample.test.ts', specifier: '../../engine/testing' },
   { filePath: 'engine/scene/sample.test.ts', specifier: '../testing' },
+  { filePath: 'engine/scene/sample-test-support.ts', specifier: '../testing' },
   { filePath: 'engine/testing/sample.ts', specifier: './geometry-assertions' },
   { filePath: 'src/sample.test.tsx', specifier: '../engine/testing' },
   { filePath: 'bridge/sample.tsx', specifier: 'react' },
