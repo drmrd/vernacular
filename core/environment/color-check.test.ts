@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { colorCheckLighting, NEUTRAL_REFERENCE_WHITE } from './color-check'
+import { COLOR_CHECK_SUN_LEVEL, colorCheckLighting, NEUTRAL_REFERENCE_WHITE } from './color-check'
 import {
   NEUTRAL_DOME_SPHERICAL_HARMONICS,
   projectDomeToSphericalHarmonics,
@@ -11,11 +11,13 @@ import type { EnvironmentLighting } from './environment-lighting'
 // {0, 0, 1}-style vector.
 const TINTED_SUN_DIRECTION = { x: 0.6, y: 0.75, z: -0.28 }
 
-// A fractional level distinct from both 0 and 1, so "passes through
-// untouched" is observable rather than trivially true of an endpoint.
+// A fractional level distinct from 0, 1 and the color check level, so a
+// pass-through of the incoming level would fail the pinning tests.
 const PARTIAL_SUN_LEVEL = 0.42
 
-const NIGHT_SUN_LEVEL = 0
+const BELOW_HORIZON_SUN_DIRECTION = { x: 0.6, y: -0.2, z: -0.28 }
+const ON_HORIZON_SUN_DIRECTION = { x: 0.6, y: 0, z: -0.28 }
+const OVERCAST_CLOUD_COVER = 1
 
 // A non-neutral cloud cover and its projected sky ambient, so a test that
 // forgets to neutralize skyAmbient cannot pass by coincidence with an
@@ -51,16 +53,38 @@ describe('colorCheckLighting', () => {
     expect(neutralized.sunDirection).toEqual(TINTED_SUN_DIRECTION)
   })
 
-  it('passes a fractional sun level through unchanged', () => {
+  it('pins the sun level at the color check level whatever fractional level came in', () => {
     const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_LEVEL))
 
-    expect(neutralized.sunLevel).toBe(PARTIAL_SUN_LEVEL)
+    expect(COLOR_CHECK_SUN_LEVEL).toBe(1.6)
+    expect(neutralized.sunLevel).toBe(COLOR_CHECK_SUN_LEVEL)
   })
 
-  it('passes a night-time sun level of zero through unchanged', () => {
-    const neutralized = colorCheckLighting(tintedLighting(NIGHT_SUN_LEVEL))
+  it('gives the same sun level under clear and overcast skies', () => {
+    const overcast = colorCheckLighting({
+      ...tintedLighting(PARTIAL_SUN_LEVEL),
+      cloudCover: OVERCAST_CLOUD_COVER,
+    })
 
-    expect(neutralized.sunLevel).toBe(NIGHT_SUN_LEVEL)
+    expect(overcast.sunLevel).toBe(COLOR_CHECK_SUN_LEVEL)
+  })
+
+  it('turns the sun off when its direction points below the horizon', () => {
+    const neutralized = colorCheckLighting({
+      ...tintedLighting(PARTIAL_SUN_LEVEL),
+      sunDirection: BELOW_HORIZON_SUN_DIRECTION,
+    })
+
+    expect(neutralized.sunLevel).toBe(0)
+  })
+
+  it('turns the sun off when its direction lies exactly on the horizon', () => {
+    const neutralized = colorCheckLighting({
+      ...tintedLighting(PARTIAL_SUN_LEVEL),
+      sunDirection: ON_HORIZON_SUN_DIRECTION,
+    })
+
+    expect(neutralized.sunLevel).toBe(0)
   })
 
   it('replaces the sky ambient with the neutral dome spherical harmonics', () => {
