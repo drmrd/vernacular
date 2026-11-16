@@ -165,7 +165,6 @@ export const lintExceptions = [
     issue: 687,
     max: 152,
   },
-  { file: 'engine/scene/wall-builder.ts', rule: 'max-lines', issue: 687, max: 307 },
   { file: 'engine/scene/wall-builder.test.ts', rule: 'max-lines', issue: 687, max: 356 },
   { file: 'editor/shell/inspector.tsx', rule: 'max-lines', issue: 688, max: 427 },
   { file: 'editor/shell/inspector.tsx', rule: 'max-lines-per-function', issue: 688, max: 87 },

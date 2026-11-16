@@ -14,7 +14,13 @@ tags:
     winding,
     bugfix,
   ]
-related: [decisions/ADR-0001-six-layer-architecture]
+related:
+  [
+    decisions/ADR-0001-six-layer-architecture,
+    decisions/ADR-0153-daylight-through-glass-role-stamp,
+    decisions/ADR-0158-millimeter-scale-shadow-and-occlusion-constants,
+    decisions/ADR-0173-ambient-occlusion-normals-target,
+  ]
 sourceFiles:
   [
     docs/specs/2026-06-09-three-dimensional-preview-foundation.md,
@@ -26,11 +32,16 @@ sourceFiles:
     engine/scene/junction-fill-builder.ts,
     engine/scene/furniture-builder.ts,
     engine/scene/wall-prism.ts,
+    engine/scene/wall-builder.ts,
+    engine/scene/wall-face-winding.test.ts,
+    engine/scene/wall-face-winding-shapes.test.ts,
+    engine/scene/wall-paint-side.test.ts,
+    e2e/tests/scene-sunlit-wall.spec.ts,
     engine/scene/near-wall-transparency.ts,
     core/scene/walk-collision.ts,
   ]
 status: current
-updated: 2026-08-31
+updated: 2026-11-15
 ---
 
 # ADR-0139: Map plan north to world -Z so the 3D view is not a mirror of the plan
@@ -80,7 +91,8 @@ north is world `-Z`). `0 - point.y` rather than `-point.y` keeps a floor-line po
 (plan `y = 0`) at a clean world `+0`.
 
 Because the map is now orientation-preserving, the loop sense no longer reverses, so
-the winding compensation is removed: the cap builders in `room-builder.ts`,
+the winding compensation on the horizontal caps is removed (the vertical faces were
+missed; see the 2026-11-15 amendment): the cap builders in `room-builder.ts`,
 `junction-fill-builder.ts`, and `furniture-builder.ts` wind the top cap with the
 natural triangulation and reverse the base instead, `wall-prism.ts` flips its
 perimeter ternary, and the room ceiling reverses to keep its `-Y` normal. The shared
@@ -129,6 +141,66 @@ ADR is the record of that spec correction.
   world `z = 0` on any plan that sits away from the origin. The fix routes every
   conversion in that module through `planToWorld`, and a test now pins a far-from-origin
   wall to its rendered side.
+
+## Amendment 2026-11-15: vertical wall faces were left inside out
+
+The correction above rewound the horizontal caps only. The vertical faces of a wall
+(the two long faces, the end caps of the prism path, and the reveals around
+openings) kept the winding they had under the reflection. That winding had been right
+only because the reflection flipped it, so after the map became a rotation every one
+of those faces had a geometric normal pointing into the wall solid. The sentence above
+that said the winding compensation was removed is corrected in place to say it applied
+to the caps. Issue #491 found the rest.
+
+### The rule
+
+The corner order of every vertical quad gives a normal that points away from the wall
+solid. A long face points away from the wall's centerline, an end cap points away
+from the wall's midpoint along its length, and a reveal points toward the void that
+it bounds. A hole loop runs opposite to the outline, so a reveal uses the same corner
+order as the outer cap. The fix is in `faceQuad` in `wall-prism.ts`, and in the long
+faces and the reveals in `wall-builder.ts`, where a reveal takes its corner order from
+`outerCapPositions`. Nothing in `engine/` or `bridge/` compensated for the old order,
+and stored documents need no migration.
+
+### Why the first correction missed them
+
+Shading hid the problem. The materials cull back faces, so a camera outside a wall
+saw the polygon on the far plane of the wall, whose normal happened to point outward.
+Vertex normals are computed from the winding, so they agreed with it, and the lit
+result looked self-consistent. The only test of the wall faces asserted that the long
+faces were horizontal and opposite to each other, which holds for either winding.
+
+### Consequences of the old winding
+
+- The shadow pass renders the back faces of a front-sided material into the shadow
+  map. With inside-out walls, the back faces seen from the sun were the polygons on
+  the sun-side plane of each wall. The far face of the same wall failed its depth
+  test against that plane, one wall thickness away along the light, so every sunlit
+  wall shadowed itself and no wall took direct sun in daylight. That distance is
+  about 67 shadow texels at equinox noon, which is why no bias or normal offset
+  moved it. This replaces the diagnosis recorded in ADR-0153.
+- The face that a camera or a ray saw was the far face of the wall. Paint on wall side
+  `right` showed on the opposite side in 3D, while the 2D plan was always correct.
+
+### Gates
+
+- A Node test (`wall-face-winding.test.ts`, `wall-face-winding-shapes.test.ts`)
+  asserts the rule for plain walls, walls with two openings, a door that reaches the
+  floor, curved heads, mitred corners, and junction fills.
+- `wall-paint-side.test.ts` pins the paint side of a wall face by the ray that hits it.
+- A scene gate, `e2e/tests/scene-sunlit-wall.spec.ts`, requires the sunlit south wall
+  to be lighter than the east wall in the winter-afternoon harness state by at least
+  0.043 in OKLab L. The measured gap was 0.0009 before the fix and 0.0884 after it.
+- The ambient occlusion contrast gate moved to the window-light state, as recorded in
+  [[ADR-0173-ambient-occlusion-normals-target]]. The finish contrast fixture now paints
+  the room side of its walls.
+- 14 macOS and 13 Linux scene baselines changed, each to the physically correct
+  picture. The Linux images come from the baseline workflow, which passed every scene
+  test and gate on its runner.
+
+Schematic shadows stay off. Whether the schematic look should cast shadows is a
+question for the default-look design, and this fix does not decide it.
 
 ## References
 

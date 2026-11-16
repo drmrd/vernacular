@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { Srgb } from '../../core'
 
 // Shared helpers for the live three-dimensional pane specs (navigation, color
@@ -103,9 +103,38 @@ export async function drawnRoomWithDoorCanvas(page: Page): Promise<Locator> {
   return settledSceneCanvas(page)
 }
 
-// The side of the square sample patch, in screenshot pixels. Averaging a patch rather than
-// reading one pixel damps per-pixel WebGL nondeterminism.
+// Boots the deterministic scene harness with the given query (for example
+// `&scene=winter-afternoon`) and returns its canvas once the lit frame is ready. The harness
+// renders through WebGL 2, so it runs on darwin Metal and on the linux SwiftShader lane and
+// self-skips only where no WebGL 2 context can be created. The harness draws a second frame
+// once the lazily loaded lighting reports ready and marks data-harness-ready in the same
+// commit pass, so awaiting the attribute means a sample reads the sky-lit frame.
+export async function settledHarnessCanvas(page: Page, query: string): Promise<Locator> {
+  await page.goto(`/?fixture=scene-harness${query}`)
+  const harness = page.getByTestId('scene-harness')
+  const canvas = harness.locator('canvas')
+  await expect(canvas).toBeVisible()
+  const hasWebGl2 = await page.evaluate(() => {
+    const probe = document.createElement('canvas')
+    return probe.getContext('webgl2') !== null
+  })
+  test.skip(!hasWebGl2, 'No WebGL 2 context on this runner; the harness gate self-skips here.')
+  await expect(harness).toHaveAttribute('data-harness-ready', 'true')
+  return canvas
+}
+
+// The default side of the square sample patch, in screenshot pixels. Averaging a patch
+// rather than reading one pixel damps per-pixel WebGL nondeterminism.
 const SAMPLE_PATCH_PX = 24
+
+// Where a sample patch sits: its center as fractions (0..1) of the frame width and height,
+// and optionally its side in screenshot pixels when the sampled surface is narrower than the
+// default patch.
+export interface SamplePatch {
+  readonly x: number
+  readonly y: number
+  readonly sizePx?: number
+}
 // The RGBA stride of an ImageData buffer.
 const RGBA_STRIDE = 4
 // The maximum value of an 8-bit sRGB channel, for scaling to a 0..1 fraction.
@@ -162,18 +191,18 @@ async function averageImagePatch({
 // already-cleared buffer (see scene-solar.spec.ts); the compositor screenshot is the source
 // of truth. We screenshot the canvas, hand the PNG back to the page as a data URL, and read
 // pixels from the browser's native decode, so no image-decoding dependency is needed. The
-// optional center fractions (0..1 of width and height) place the patch when the sampled
-// surface is not at frame center.
+// optional patch placement (center fractions of width and height, and a side in pixels)
+// places the patch when the sampled surface is not at frame center.
 export async function sampleCanvasColor(
   page: Page,
   canvas: Locator,
-  center: { x: number; y: number } = { x: 0.5, y: 0.5 },
+  center: SamplePatch = { x: 0.5, y: 0.5 },
 ): Promise<Srgb> {
   const png = await canvas.screenshot()
   const dataUrl = `data:image/png;base64,${png.toString('base64')}`
   return page.evaluate(averageImagePatch, {
     url: dataUrl,
-    patch: SAMPLE_PATCH_PX,
+    patch: center.sizePx ?? SAMPLE_PATCH_PX,
     stride: RGBA_STRIDE,
     max: SRGB_MAX,
     cx: center.x,

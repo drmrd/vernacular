@@ -12,6 +12,7 @@ related:
     decisions/ADR-0152-linux-scene-baseline-lane,
     decisions/ADR-0153-daylight-through-glass-role-stamp,
     decisions/ADR-0156-luminance-calibration-convention,
+    decisions/ADR-0139-plan-to-world-orientation,
   ]
 sourceFiles:
   [
@@ -21,7 +22,7 @@ sourceFiles:
     engine/postprocessing/ambient-occlusion-params.test.ts,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-11-15
 ---
 
 # ADR-0158: Millimeter-scale calibration of the shadow bias pair and the occlusion radius
@@ -150,7 +151,9 @@ declaration, so the conversion is visible and testable instead of folded into a 
   renders are what darken them. A defect that survives every bias knob is not texel-scale acne.
   What this change does deliver is the last-listed exit criterion, constants that are derived
   rather than guessed, so that whenever schematic casting is restored it returns to a defensible
-  calibration. The self-shadowing itself stays open and unexplained.
+  calibration. The self-shadowing was unexplained when this record was written; the
+  amendment in [[ADR-0139-plan-to-world-orientation]] (2026-11-15) traced it to the
+  inside-out vertical wall faces.
 - `SHADOW_BIAS` holds for the current fitter. A change to `SHADOW_DISTANCE_FACTOR` or to the
   symmetric fit breaks the equality between depth range and lateral extent, and the constant would
   have to be re-derived rather than nudged.

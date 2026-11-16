@@ -17,7 +17,7 @@ sourceFiles:
   ]
 status: current
 supersedes: [decisions/ADR-0151-ambient-occlusion-render-pipeline]
-updated: 2026-09-07
+updated: 2026-11-15
 ---
 
 # ADR-0173: Ambient occlusion reads rendered normals, not depth reconstruction
@@ -67,6 +67,12 @@ had just added a depth-only prepass whose color output nothing read.
   ratio 0.0412 (2.9x the gate) and contrast -0.0016.
 - Two independent runner dispatches rendered byte-identical linux baselines (runs
   34080461179 and 34080462540).
+- Since 2026-11-15 (issue #491) the sampled contrast gate reads the `window-light` harness
+  state: it compares the crease at the foot of the east wall's room face with open floor
+  nearby, minimum 0.0155. The window head reveal it sampled before was the inside-out head
+  polygon seen through the wall, so the gate moved when the wall faces were wound outward;
+  the whole-frame baseline keeps the `ambient-occlusion` state at threshold 0.02 and ratio
+  0.011.
 
 ## Consequences
 

@@ -135,13 +135,16 @@ function reverseCorners([first, second, third, fourth]: CapCorners): CapCorners 
   return [fourth, third, second, first]
 }
 
-/** A vertical face quad from `from` to `to`, rising from the base to `height`. */
+/**
+ * A vertical face quad from `from` to `to`, rising from the base to `height`.
+ * The outward normal is on the left of `from -> to` in plan.
+ */
 function faceQuad(from: Point, to: Point, height: number): number[] {
   return thicknessSpanningQuad([
-    cornerWorld(from, 0),
     cornerWorld(to, 0),
-    cornerWorld(to, height),
+    cornerWorld(from, 0),
     cornerWorld(from, height),
+    cornerWorld(to, height),
   ])
 }
 
