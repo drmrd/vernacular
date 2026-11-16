@@ -21,6 +21,12 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // A blank pane never changes, so a bounded poll for a changed frame cannot pass on it; a pane
 // that draws the wall changes, so the poll cannot fail on a correct one.
 //
+// The fix builds the renderer synchronously and mounts the canvas only after that chunk has
+// loaded, so presses inside the chunk window now meet a placeholder, not a canvas. A third test
+// covers the window that remains: the canvas has mounted and the renderer's own init() is still
+// pending. It slows init() by holding navigator.gpu.requestAdapter, which both the WebGPU backend
+// and three's WebGL 2 fallback path call first, until the test lets it through.
+//
 // Like the neighbouring live-view specs, it runs in the scene-webgl project (the scene- name
 // prefix routes it there) and self-skips without navigator.gpu, where the live pane shows a
 // fallback message instead of a canvas.
@@ -49,8 +55,8 @@ type Point = { x: number; y: number }
 interface HeldRendererStartUp {
   // Resolves once the page has asked for the renderer chunk, so the start-up window is open.
   requested: Promise<void>
-  // Lets the held chunk through, so the renderer start-up can finish.
-  release: () => void
+  // Lets the held request through, so the renderer start-up can finish.
+  release: () => void | Promise<void>
 }
 
 // Holds every response for the renderer chunk until release() is called.
@@ -65,6 +71,46 @@ async function holdRendererStartUp(page: Page): Promise<HeldRendererStartUp> {
     await route.continue()
   })
   return { requested, release }
+}
+
+interface AdapterRequestWindow {
+  adapterRequested?: boolean
+  releaseAdapterRequests?: () => void
+}
+
+// Delays every navigator.gpu.requestAdapter call until releaseAdapterRequests() runs in the
+// page, which holds renderer.init() open after the canvas has mounted. Must run before goto.
+async function holdAdapterRequests(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const gpu = (
+      navigator as unknown as {
+        gpu?: { requestAdapter: (...args: unknown[]) => Promise<unknown> }
+      }
+    ).gpu
+    if (gpu === undefined) return
+    const pageWindow = window as unknown as AdapterRequestWindow
+    const original = gpu.requestAdapter.bind(gpu)
+    const released = new Promise<void>((resolve) => {
+      pageWindow.releaseAdapterRequests = resolve
+    })
+    gpu.requestAdapter = async (...args) => {
+      pageWindow.adapterRequested = true
+      await released
+      return original(...args)
+    }
+  })
+}
+
+// The start-up window of an already armed hold: open once the page has asked for an adapter,
+// which only the mounted canvas's renderer does, and closed by release().
+function heldAdapterRequests(page: Page): HeldRendererStartUp {
+  return {
+    requested: page
+      .waitForFunction(() => (window as unknown as AdapterRequestWindow).adapterRequested === true)
+      .then(() => undefined),
+    release: () =>
+      page.evaluate(() => (window as unknown as AdapterRequestWindow).releaseAdapterRequests?.()),
+  }
 }
 
 // The pixels the renderer drew, without the overlays above the canvas.
@@ -113,7 +159,7 @@ async function openSplitViewDuringHeldStartUp(
   await startUp.requested
 
   await duringStartUp()
-  startUp.release()
+  await startUp.release()
 
   await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
   await expect
@@ -176,6 +222,21 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
     test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
 
     const canvas = await openSplitViewDuringHeldStartUp(page, startUp, async () => {})
+    await expectDrawnWallInLivePane(page, canvas)
+  })
+
+  test('shows a drawn wall when the scene view renders again while the renderer initializes', async ({
+    page,
+  }) => {
+    await holdAdapterRequests(page)
+    await page.goto('/')
+
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    const canvas = await openSplitViewDuringHeldStartUp(page, heldAdapterRequests(page), () =>
+      renderSceneViewTwice(page),
+    )
     await expectDrawnWallInLivePane(page, canvas)
   })
 })
