@@ -82,6 +82,23 @@ const SHADOW_ON_LAWN_CAMERA_POSE: CameraPose = {
   far: 40000,
 }
 
+// The reference instant of the daylight calibration: the sample place (40 N, 1.86 E, plan-up
+// as true north, UTC) and the sample instant (the March equinox at 10:30 UTC) under a clear
+// sky. The camera looks from the south-west, so the frame shows the sunlit south wall (the
+// front, by its door) and the west wall in shade.
+const DAYLIGHT_REFERENCE_SITE: Site = {
+  latLong: { latitude: 40, longitude: 1.86 },
+  northBearing: 0,
+  timezone: 'UTC',
+}
+const DAYLIGHT_REFERENCE_MINUTES = 630
+const DAYLIGHT_REFERENCE_CAMERA_POSE: CameraPose = {
+  position: { x: -4500, y: 3200, z: 5000 },
+  target: { x: 2000, y: 1300, z: -1500 },
+  near: 100,
+  far: 40000,
+}
+
 // The color-accuracy gate samples the shell floor under the color-check reference lighting,
 // but the shell is a closed box (floor, four walls, and a ceiling), so the exterior auto-frame
 // hides the floor. This interior camera stands just under the 2600 mm ceiling directly above
@@ -180,6 +197,16 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
       realistic: true,
       scene: 'shell-south-window',
       cameraPose: SHADOW_ON_LAWN_CAMERA_POSE,
+    },
+  ],
+  [
+    'daylight-reference',
+    {
+      site: DAYLIGHT_REFERENCE_SITE,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: DAYLIGHT_REFERENCE_MINUTES },
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: DAYLIGHT_REFERENCE_CAMERA_POSE,
     },
   ],
   [
