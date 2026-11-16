@@ -35,9 +35,10 @@ function isLightingMode(value: string): value is LightingMode {
   return (LIGHTING_MODES as readonly string[]).includes(value)
 }
 
-// Shown in realistic mode when the site lacks a location or a north bearing. Without a
-// location the daylight is computed for a sample place; without a north bearing the front
-// of the building is turned toward the sun. Either way the angles are illustrative.
+// Shown in realistic mode while `daylightSampleOf(site)` is not 'none', that is, when the
+// site has no location. Without a location the sun is computed for a sample place. With no
+// north bearing either, north is implied so that the front faces due south. In both cases
+// the sun angles are a sample, not the site's own.
 const SAMPLE_DAYLIGHT_NOTICE =
   'Sample daylight. Set the location and north in the Site panel for true sun angles.'
 
