@@ -20,6 +20,12 @@ sourceFiles:
     engine/lighting/lighting-rig.test.ts,
     engine/postprocessing/ambient-occlusion-params.ts,
     engine/postprocessing/ambient-occlusion-params.test.ts,
+    core/environment/shadow-fit.ts,
+    core/environment/shadow-fit.test.ts,
+    engine/lighting/solar-lighting-provider.ts,
+    engine/scene/ground-plane.ts,
+    tests/performance/shadow-fit-reach.test.ts,
+    e2e/tests/scene-shadow-reach.spec.ts,
   ]
 status: current
 updated: 2026-11-15
@@ -174,3 +180,62 @@ declaration, so the conversion is visible and testable instead of folded into a 
   coverage-limit assertions).
 - `engine/postprocessing/ambient-occlusion-params.ts` (the converted view-space lengths),
   `node_modules/three/examples/jsm/tsl/display/GTAONode.js` (the r184 uniform semantics).
+
+## Amendment 2026-11-15: the fit covers the receivers
+
+The solar provider used to fit the sun's shadow camera to the bounding sphere of the casters
+alone. The ground plane is not a caster, so a shadow that left the building's footprint fell
+outside the camera. With a low sun the shadow on the lawn was cut off a short way from the
+building, and the rest of the lawn read as sunlit.
+
+The fit now covers the shadow as well. `shadowFitBounds` in `core/environment/shadow-fit.ts`
+computes the box the camera is fitted to:
+
+1. Each corner of the caster box that lies above the ground plane is projected along the sun ray
+   onto the plane. Corners at or below the plane cast nothing and are skipped.
+2. Each projected point is clamped to the ground rectangle, on each horizontal axis.
+3. The fit box is the box of the casters and those points.
+
+A sun at or below the horizon is treated as a sun of height 1e-6, so the fit is continuous through
+the horizon. With no ground plane in the scene, the fit is the caster box. `boundsRadius`, half the
+diagonal of a box, gives the radius the camera is fitted to, so the camera is still a sphere
+around the box and the geometry of the pair above is unchanged.
+
+The fit is capped. When the radius of the fit box exceeds the cap, the box shrinks linearly toward
+the caster box until its radius equals the cap. The far end of the shadow gives way first, and the
+casters are never cut: when their own radius is at or above the cap, the fit is the casters alone.
+
+The cap is written as a texel size, `MAX_SHADOW_TEXEL_MM`, and is 15.5 mm. The provider turns it
+into a radius as `MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE / 2`, which is 15872 mm for the 2048-texel
+map. The value was measured on the reference project at the winter-afternoon sun, direction
+(-0.7980, 0.0911, 0.5957). The uncapped fit of its casters and lawn needs a texel of 15.41 mm, and
+the casters alone need 12.39 mm. The cap is 15.41 mm rounded up to the next half millimeter. The
+measured value is under the 20 mm limit that the plan set for asking the owner. The comment beside the constant records the reference bounds and the date.
+
+The bias pair follows the fit and adds no constant. `normalBias` is still one texel diagonal in
+millimeters, so it scales with the fitted radius as `(sqrt(2) / SHADOW_MAP_SIZE) * 2 * radius`. The
+depth `bias` is unchanged at `-sqrt(2) / SHADOW_MAP_SIZE`, because the camera still spans the same
+distance in depth as it does across the map. A larger fit therefore carries a larger normal offset,
+which the cap bounds.
+
+The fit runs when the lighting is updated: a change of the site, the observed time, the cloud
+cover, the color check, or the caster bounds. It does not run on each frame.
+
+Three things guard it:
+
+- The unit tests of `shadowFitBounds` in `core/environment/shadow-fit.test.ts`, which cover the
+  projection, the clamp to the ground, the horizon, and the cap.
+- `tests/performance/shadow-fit-reach.test.ts`, which measures the cap on the reference project
+  and fails if a change to that project moves the texel size it needs.
+- `e2e/tests/scene-shadow-reach.spec.ts`, a pixel gate in the winter-afternoon scene. It reads the
+  OKLab lightness of two 24 px squares of the lawn, one in the sun and one far east of the east
+  wall where the shadow now lands, and requires the sunlit square to be lighter by at least
+  `SHADOW_REACH_MIN_GAP`, 0.007. The readings were 0.3614 and 0.3490 with the fit over the
+  receivers, a gap of 0.0124, and 0.3614 and 0.3606 with the casters alone, a gap of 0.0008.
+
+Known limits:
+
+- Schematic mode still fits the casters alone, through `fitSunShadowToBounds`.
+- An edit that changes only the grade does not refit until the next lighting change, because the
+  update depends on the caster bounds and not on the ground.
+- The sphere around a long low box wastes shadow-map area. A fit in light space would be tighter.
