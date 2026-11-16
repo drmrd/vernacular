@@ -47,34 +47,30 @@ const FINISH_CONTRAST_THRESHOLD = 0
 const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
 
 // The ambient-occlusion baseline gates the GTAO pass as pixels (rendering-realism lane 2,
-// issue #522; re-derived for lane 4's indirect-only blend and again for lane 5's rendered
-// normals target, issue #471). Each engine change moves what the defect probes can move,
-// so the pair below is re-derived against the refreshed baselines, per the two-probe
-// midpoint variant recorded in ADR-0157's amendment.
+// issue #522; re-derived for lane 4's indirect-only blend, for lane 5's rendered normals
+// target, issue #471, and for the outward wall faces, issue #491). Each engine change moves
+// what the defect probes can move, so the pair below is re-derived against the refreshed
+// baselines, per the two-probe midpoint variant recorded in ADR-0157's amendment.
 //
-// Re-derived on 2026-09-07 on the development Mac (darwin Metal, 320x240 canvas, 76800
-// pixels), against the normals-target baseline:
+// Re-derived on 2026-11-15 on the development Mac (darwin Metal, 320x240 canvas, 76800
+// pixels), against the outward-wall-faces baseline:
 //
-//   noise: five consecutive captures at threshold 0 and maxDiffPixelRatio 0 all passed,
-//   so the render is deterministic and the noise band is 0.000000.
+//   noise: five consecutive captures of each build were byte-identical, so the render is
+//   deterministic and the noise band is 0.000000.
 //   probe A, the no-op radius class (ADR-0158; AO_RADIUS_METERS 0.25 set to 0.00025):
 //   pixels differing at threshold 0.35 / 0.2 / 0.1 / 0.05 / 0.02 / 0 were
-//   0 / 0 / 53 / 358 / 2264 / 34049.
+//   0 / 0 / 7 / 60 / 1796 / 32263.
 //   probe B, the 10x recalibration class (issue #522; AO_RADIUS_METERS 0.25 set to 2.5):
-//   0 / 0 / 57 / 806 / 3134 / 9191.
+//   0 / 0 / 2 / 120 / 2022 / 8012.
 //
 // The weaker probe per rung first clears one percent of the frame at threshold 0.02
-// (probe A, 2264 pixels, ratio 0.0295). The ratio gate goes at the midpoint between the
+// (probe A, 1796 pixels, ratio 0.0234). The ratio gate goes at the midpoint between the
 // zero noise band and that signal, rounded down so it stays at most half the signal:
-// 0.014 (2.1x margin). The linux reading is measured from this lane's seeded red run
-// before merge:
-//
-//   linux red-run reading (probe B seeded as the radius-scaled wiring defect): 3167
-//   pixels, ratio 0.0412, 2.9x this gate's 0.014, so the midpoint rule holds on both
-//   platforms; the sampled contrast gate read -0.0016 there against its 0.0027 minimum
-//   (run 34081251702, 2026-09-07).
+// 0.011 (2.1x margin). The previous derivation's linux red run (run 34081251702,
+// 2026-09-07) read probe B at ratio 0.0412; the linux reading for this derivation comes
+// from the refreshed linux baselines.
 const AMBIENT_OCCLUSION_THRESHOLD = 0.02
-const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.014
+const AMBIENT_OCCLUSION_MAX_DIFF_PIXEL_RATIO = 0.011
 
 // One harness capture: the query string that selects the state, the snapshot it must
 // match, and optional per-capture overrides of the standing shell tolerances.
