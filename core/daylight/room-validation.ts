@@ -11,9 +11,11 @@ const MINIMUM_OUTLINE_POINTS = 3
  * is not parallel to an axis is off the exact line by rounding error. The value is far below any
  * real dimension, so it still refuses an end point that is a few millimetres off the wall.
  * It must not exceed SIDE_PROBE_MM of room-geometry.ts. The side test needs one probe on each side
- * of the outline, so a span that lies off its wall by more than the probe distance has both probes
- * on one side and is refused. At the present equal values, a span that lies off its wall by exactly
- * this distance is also refused, because a probe that lands on the outline counts as inside.
+ * of the outline, and a point that lies on the outline counts as inside. So at the present equal
+ * values, a span that lies inside the room by exactly this distance is refused, because its outer
+ * probe lands on the outline, and a span that lies outside the room by exactly this distance is
+ * accepted. A tolerance larger than the probe distance would let the end point check accept a span
+ * that lies inside the room by more than the probe distance, and the side test would refuse it.
  */
 const OUTLINE_TOLERANCE_MM = 1
 
