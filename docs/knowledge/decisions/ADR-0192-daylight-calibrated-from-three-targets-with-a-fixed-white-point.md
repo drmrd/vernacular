@@ -39,6 +39,7 @@ sourceFiles:
     core/environment/spherical-harmonics.ts,
     core/environment/environment-lighting.ts,
     core/environment/color-check.ts,
+    core/color/linear-rgb.ts,
     engine/lighting/sky-environment.ts,
     engine/lighting/lighting-rig.ts,
     engine/lighting/solar-lighting-provider.ts,
@@ -66,11 +67,12 @@ Current. Lands with the calibration change of the daylight and shadow work, whic
 
 Daylight used to have no stated meaning. The sun was the engine's `DAYLIGHT_SUN_INTENSITY`, 1.6,
 times a 0 to 1 fade from core called `sunIntensity`. The dome's tints were picked by hand in
-`core/environment/sky-dome.ts`, its ground was a fixed brown of `(0.12, 0.1, 0.08)`, and nothing tied
-the sun to the sky or either of them to the tone curve. At the reference instant described below, a
-white wall facing the sun came out light grey: the light model in `core/environment/light-model.ts`
-predicted code 161.34 for it, and the render read 162.67 (measured 2026-11-16). Spec section 6.9
-uses the near-white visible sky of the render before the change as its defect probe for the sky gate.
+`core/environment/sky-dome.ts`, its ground was a fixed brown of `(0.12, 0.1, 0.08)`, and nothing
+tied the sun to the sky or either of them to the tone curve. At the reference instant described
+below, a white wall facing the sun came out light grey: the light model in
+`core/environment/light-model.ts` predicted code 161.34 for it, and the render read 162.67
+(measured 2026-11-16). Spec section 6.9 uses the near-white visible sky of the render before the
+change as its defect probe for the sky gate.
 
 The spec asked for one module that states what daylight should look like and derives the constants
 from that statement, so a later change edits a target and not a pile of tints.
@@ -192,6 +194,11 @@ height: `skyDomeRadiance(view, sky)` takes a unit view vector, `skyDomeSampler(s
 per-sky values once for a caller that samples many directions, and
 `projectDomeToSphericalHarmonics(sky)` projects the result.
 
+The linear color helpers that the calibration, the dome, and the sky model share (clamping,
+mixing, scaling, and the grey of a color) live in `core/color/linear-rgb.ts`.
+`core/environment/spherical-harmonics.ts` exports `SPHERICAL_HARMONIC_BASIS`, so the light model
+and the projection read one basis table.
+
 ### The photometric anchor
 
 The relative scale gets one photometric anchor. The level card at the reference instant receives
@@ -234,12 +241,13 @@ unchanged. The addon's color node takes the multiply on both backends, so the fa
 needed.
 
 `SKY_MESH_GAIN` is 0.0636, measured on 2026-11-16 on the development machine (the scene harness
-forced to WebGL 2, a 320 by 240 frame, AgX at exposure 1) in the `equinox-noon` state. The region is an 8 pixel square at the top of the frame,
-on the side away from the sun, looking 1.2 degrees above the horizon. Each reading is the region's
-encoded luminance turned back into linear luminance with `agxNeutralInverse`. At a gain of 1 the
-region sat too close to the flat top of the curve, so it was read at a provisional gain of 0.25 and
-scaled back: 3.844 at a gain of 1. The dome gives 0.24466 in that direction, so the gain is 0.06364,
-frozen as 0.0636. At that gain the region reads 0.24496, a residual of +0.12 percent. Five captures
+forced to WebGL 2, a 320 by 240 frame, AgX at exposure 1) in the `equinox-noon` state. The region
+is an 8 pixel square at the top of the frame, on the side away from the sun, looking 1.2 degrees
+above the horizon. Each reading is the region's encoded luminance turned back into linear
+luminance with `agxNeutralInverse`. At a gain of 1 the region sat too close to the flat top of the
+curve, so it was read at a provisional gain of 0.25 and scaled back: 3.844 at a gain of 1. The
+dome gives 0.24466 in that direction, so the gain is 0.24466 / 3.844, or 0.06365, frozen as
+0.0636. At that gain the region reads 0.24496, a residual of +0.12 percent. Five captures
 were byte-identical.
 
 At the zenith the same gain leaves the visible sky far too dark: it reads 0.0328 against the dome's
@@ -262,10 +270,11 @@ tone mapping. None of the calibrated values above reach it.
 
 ### Where this departs from the letter of the spec
 
-- The tone curve, transcribed from the pinned three.js build into `core/environment/tone-response.ts`,
-  puts code 225 at linear 2.1 (2.0998), where spec section 6.2 estimated 1.5, and linear 0.18 near
-  code 128, where the spec said 120. The render agrees with the transcription: before the change the
-  light model predicted code 161.34 for the reference wall and the render read 162.67.
+- The tone curve, transcribed from the pinned three.js build into
+  `core/environment/tone-response.ts`, puts code 225 at linear 2.1 (2.0998), where spec section 6.2
+  estimated 1.5, and linear 0.18 near code 128, where the spec said 120. The render agrees with the
+  transcription: before the change the light model predicted code 161.34 for the reference wall
+  and the render read 162.67.
 - With that curve the sun at the reference instant is 7.7 times its earlier level (10.0056 against
   1.2952, a factor of 7.725), where the spec estimated about four. The sky on the card comes out at
   0.45039 against 0.35985 before, above the earlier level where the spec expected a little below.
@@ -275,15 +284,27 @@ tone mapping. None of the calibrated values above reach it.
   recorded above.
 - Spec section 6.9 sets every threshold of the sky gate at a midpoint. The plan uses exact
   relations for two of its tests instead, "not clipped" and "darker than the sunlit white wall",
-  because neither has a free number. The blue of the clear sky and the grey of the overcast sky keep
-  midpoints.
+  because neither has a free number. The blue of the clear sky keeps a midpoint. The overcast sky
+  has no bound: in this view it renders the same pixels as the clear sky, so there is no gap to set
+  one in.
 
 ### Gates
 
 Node tests assert the ratio curve, the white point, the white wall's code, the shade, the warm low
-sun, the lux anchor, and the night floor as plain numbers. The pixel gates of spec section 6.9 land
-with the same change and hold their own readings in their spec files. This record states no
-threshold for them.
+sun, the lux anchor, and the night floor as plain numbers.
+
+The pixel gates keep their readings and thresholds in their spec files under `e2e/tests/`, and this
+record states no threshold for them. Of the gates in spec section 6.9, this change sets the
+daylight white gate, the clear-sky part of the sky gate, and the low edge of the sun-to-shade band.
+The margins of the sunlit-wall gate and the occlusion gate were derived again under the new light.
+
+Two parts are not set, and the header comments of `e2e/tests/scene-sky.spec.ts` and
+`e2e/tests/scene-sun-to-shade.spec.ts` say why. The overcast sky has no bound, because in the
+harness view the overcast frame renders the same sky pixels as the clear one. The sky mesh draws
+its clouds only above the horizon, and this view shows almost no sky above it, so there is no gap
+to set a bound in (#764). The sun-to-shade band has no upper edge. Its probe zeroes the sky's
+ambient light, the shadowed lawn then renders black, and the ratio has no finite value to set an
+edge at (#766).
 
 ## Consequences
 
@@ -294,22 +315,53 @@ threshold for them.
 - The daylight whole-frame baselines are expected to move with the change and refresh with it. The
   schematic baselines must not move, because the schematic rig reads only `SCHEMATIC_SUN_INTENSITY`.
 - The two walls of the sunlit-wall gate no longer receive the same sky light, because of the term
-  toward the sun, so spec section 6.3 asks for that gate's margin to be re-derived.
+  toward the sun. As spec section 6.3 asked, this change derived that gate's margin again, and the
+  occlusion gate's margin with it.
 - A change to a target or to a raw tint needs a new solve of the sun scale. The white point and
-  the dome follow on their own when the module loads, and the wall test catches a stale scale.
+  the dome follow on their own when the module loads, and the wall test catches a stale scale. The
+  night floor is the exception: `DOME_MEAN_LUMINANCE` in `core/environment/daylight-calibration.ts`
+  is a frozen number, so a change to the raw dome tints needs that number updated too.
 - `SKY_MESH_GAIN` is a measurement on one machine and one three.js build. A three.js bump that
   touches the sky addon needs a new measurement.
+- The gain is fitted at one instant and one place, so the visible sky does not follow the dome at
+  other sun heights. At low sun the visible sky band renders near black, and the zenith residual
+  stands (#763).
+- Two parts of the pixel gates are not set (see Gates): the overcast sky has no bound (#764) and
+  the sun-to-shade band has no upper edge (#766). A change that leaves the overcast sky blue, or
+  that drains the sky light out of the shade, passes the gates.
+- Shade on a vertical white wall under a high sun is green, not cool. The lower half of the dome
+  is the lit lawn, and the lawn is brighter than the sky: its luminance is about 0.57 against a
+  zenith of about 0.45 at the reference instant, and about 0.60 against 0.46 at equinox noon. So
+  the cool shade of the checks above holds on the level card only. The light model predicts OKLab
+  a -0.070, b +0.027 for the shaded west wall at the reference instant, and a -0.075, b +0.033 for
+  the north wall at equinox noon. Rendered shaded white walls read a from -0.020 to -0.031. No gate
+  reads the a axis (#765).
+- The sun's fade with height is unchanged and keeps 35 percent of the sun's level at the horizon.
+  Under the scale of 12.36 the light model predicts code 210.5 for a white wall that faces a sun on
+  the horizon, and code 186.5 with the sun 3 degrees below it, while the dome sits at its night
+  level. These are figures from the model, not pixel readings (#771).
+- Two render defects are open: window glass reads dull and green (#767), and the frame edges on a
+  sunlit wall render jagged (#768).
 - Older records that name `sunIntensity` or `DAYLIGHT_SUN_INTENSITY` read with this mapping:
   `sunIntensity` is now `sunLevel`, an absolute level and not a fraction, and
-  `DAYLIGHT_SUN_INTENSITY` is now `SCHEMATIC_SUN_INTENSITY`, for the schematic rig only.
+  `DAYLIGHT_SUN_INTENSITY` is now `SCHEMATIC_SUN_INTENSITY`, for the schematic rig only. Some
+  documents still use the retired names (#769).
 
 ## Not decided
 
-- The edition of the IES Lighting Handbook the anchor's equations come from.
+- The edition of the IES Lighting Handbook the anchor's equations come from (#769).
 - A source for the three-to-one ratio of the horizon toward the sun. A measured or published sky
   distribution can replace the estimate without touching the other targets.
-- How to close the visible sky's zenith residual. That needs a gain that varies with height or a
-  sky that is not the addon's, and neither is chosen.
+- How to make the visible sky follow the dome at every sun height and close its zenith residual.
+  That needs a gain that varies with height or a sky that is not the addon's, and neither is chosen
+  (#763).
+- A bound for the overcast sky, which needs a view or a state where the overcast and clear skies
+  differ (#764), and an upper edge for the sun-to-shade band, which needs a probe that leaves the
+  shadowed lawn above black (#766).
+- Whether shade on a vertical wall should read cool, and whether a gate should read the a axis
+  (#765).
+- Whether the sun should keep 35 percent of its level at the horizon under the calibrated scale
+  (#771).
 - Exposure control at night, and the lamps that will read the lux anchor.
 - The display rule for the daylight field and the color check's bypass of it, which
   [[ADR-0196-plan-space-daylight-field]] leaves to the window-lit rooms work.
