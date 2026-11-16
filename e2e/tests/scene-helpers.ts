@@ -187,6 +187,16 @@ export const DEFAULT_VIEW_EAST_WALL = squareRegion(188, 145, 12)
 // eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
 export const SOUTH_WEST_VIEW_WEST_WALL = squareRegion(121, 107, 24)
 
+/**
+ * The south exterior face seen from the same south-west camera, below the south window, clear
+ * of the window sill, the wall's south-west corner, and the darkening where the wall meets the
+ * lawn: x 157..162, y 143..148. The face is small in this view; in the `daylight-reference` and
+ * `low-sun` frames it spans at least x 153..172 and y 139..152 over these rows and columns, so
+ * this 6 px square keeps at least 4 px from every edge.
+ */
+// eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
+export const SOUTH_WEST_VIEW_SOUTH_WALL = squareRegion(157, 143, 6)
+
 /** The 8-bit code range a display shows: a channel's 0..1 fraction times this is its code. */
 export const CODE_RANGE = 255
 

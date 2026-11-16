@@ -12,10 +12,10 @@ import {
 } from '../../core'
 import {
   CODE_RANGE,
+  SOUTH_WEST_VIEW_SOUTH_WALL,
   logReading,
   sampleCanvasColor,
   settledHarnessCanvas,
-  squareRegion,
 } from './scene-helpers'
 
 // The tone curve gate. The daylight-reference state paints the four exterior wall faces the
@@ -34,11 +34,11 @@ import {
 // The reference harness state and the white paint this gate renders.
 const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white'
 
-// The south exterior face, below the south window and left of the door, clear of the window
-// sill, the wall's west corner, and the darkening where the wall meets the lawn: x 157..162,
-// y 142..147. The south face is small in this south-west view, and this is the largest square
-// on it that keeps 4 px from every edge, so the region is 6 px.
-const SUNLIT_SOUTH_WALL = squareRegion(157, 142, 6)
+// The sunlit south face is the shared south wall square of the south-west view
+// (scene-helpers.ts). It was the square at x 157..162, y 142..147 until the low-sun state took
+// the same camera; it moved down one row to keep 4 px from the window sill in that frame. Both
+// squares held one color in this state, on this build and on the Neutral probe, so the readings
+// are the same.
 
 // The south face's outward normal (world south is +z).
 const SOUTH_NORMAL = { x: 0, y: 0, z: 1 }
@@ -99,7 +99,9 @@ test.describe('Tone curve gate', () => {
   test('the sunlit white south wall shows the code the light model predicts', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, DAYLIGHT_REFERENCE_QUERY)
 
-    const measured = luminanceCode(await sampleCanvasColor(page, canvas, SUNLIT_SOUTH_WALL))
+    const measured = luminanceCode(
+      await sampleCanvasColor(page, canvas, SOUTH_WEST_VIEW_SOUTH_WALL),
+    )
     const predicted = predictedSouthWallCode()
     const difference = measured - predicted
     logReading('sunlit south wall code', measured.toFixed(2))
