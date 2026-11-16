@@ -10,6 +10,10 @@ const MINIMUM_OUTLINE_POINTS = 3
  * It exists for the floating-point error of plan coordinates: a point interpolated along a wall that
  * is not parallel to an axis is off the exact line by rounding error. The value is far below any
  * real dimension, so it still refuses an end point that is a few millimetres off the wall.
+ * It must not exceed SIDE_PROBE_MM of room-geometry.ts. The side test needs one probe on each side
+ * of the outline, so a span that lies off its wall by more than the probe distance has both probes
+ * on one side and is refused. At the present equal values, a span that lies off its wall by exactly
+ * this distance is also refused, because a probe that lands on the outline counts as inside.
  */
 const OUTLINE_TOLERANCE_MM = 1
 
