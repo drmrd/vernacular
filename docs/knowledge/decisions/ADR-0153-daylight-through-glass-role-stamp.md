@@ -84,7 +84,7 @@ byte-stable for the schematic baselines.
 The acceptance capture exposed that no sun shadow had ever rendered in this app.
 
 First, React Three Fiber overwrites `gl.shadowMap.enabled` with `!!shadows` while configuring a
-Canvas, so the flag `createSceneRenderer` sets at construction was reverted on both canvases, which
+Canvas, so the flag the scene renderer factory sets at construction was reverted on both canvases, which
 never passed the prop. The rig's `castShadow`, bias, and frustum fitters were all dead code. Both
 canvases now pass `shadows`, and a source-reading guard test pins the prop the same way the
 ambient-occlusion import guard pins its bundling property.

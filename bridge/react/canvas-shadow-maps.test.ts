@@ -11,7 +11,12 @@ import { resolve } from 'node:path'
 // but without the `shadows` prop on `<Canvas>`, React Three Fiber silently flips that back off
 // and the directional sun's shadows (whose rig, bias, and fitters all exist and are unit-tested
 // elsewhere) never actually render.
-const SOURCE_FILES = ['bridge/react/scene-harness-view.tsx', 'bridge/react/webgpu-scene-view.tsx']
+//
+// Both views render the shared SceneRendererCanvas wrapper, which forwards every prop but `gl`
+// to the real React Three Fiber Canvas. So the guard has two halves: each view passes `shadows`
+// to the wrapper, and the wrapper spreads its props onto the real `<Canvas>`.
+const VIEW_FILES = ['bridge/react/scene-harness-view.tsx', 'bridge/react/webgpu-scene-view.tsx']
+const WRAPPER_FILE = 'bridge/react/scene-renderer-canvas.tsx'
 
 // Finds the `>` that closes the opening tag: the first `>` not preceded by `=`, so the `=>` of
 // an arrow-function prop (like the Canvas `gl` factory) never truncates the tag early. A textual
@@ -25,27 +30,37 @@ function indexOfTagClose(source: string, from: number): number {
   return candidate
 }
 
-// Extracts the opening `<Canvas ...>` tag from a source file's text, scoping the search so a
+// Extracts the opening `<tagName ...>` tag from a source file's text, scoping the search so a
 // stray mention of "shadows" in a comment elsewhere in the file cannot produce a false pass.
-function extractCanvasOpeningTag(source: string): string {
-  const start = source.indexOf('<Canvas')
+// The tag name is followed by whitespace or `>`, so `<Canvas` does not match `<CanvasLike`.
+function extractOpeningTag(source: string, tagName: string): string {
+  const start = source.search(new RegExp(`<${tagName}[\\s>]`))
   if (start === -1) {
-    throw new Error('no <Canvas element found in source')
+    throw new Error(`no <${tagName}> element found in source`)
   }
   const end = indexOfTagClose(source, start)
   if (end === -1) {
-    throw new Error('unterminated <Canvas opening tag')
+    throw new Error(`unterminated <${tagName}> opening tag`)
   }
   return source.slice(start, end + 1)
 }
 
+function readSource(relativePath: string): string {
+  return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
+}
+
 describe('scene canvases enable shadow-map rendering', () => {
-  it('passes the shadows prop on both the harness and live-view Canvas elements', () => {
-    for (const relativePath of SOURCE_FILES) {
-      const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
-      const openingTag = extractCanvasOpeningTag(source)
+  it('passes the shadows prop on both the harness and live-view scene canvas elements', () => {
+    for (const relativePath of VIEW_FILES) {
+      const openingTag = extractOpeningTag(readSource(relativePath), 'SceneRendererCanvas')
 
       expect(openingTag).toMatch(/\bshadows\b/)
     }
+  })
+
+  it('forwards the scene canvas props to the real Canvas element', () => {
+    const openingTag = extractOpeningTag(readSource(WRAPPER_FILE), 'Canvas')
+
+    expect(openingTag).toMatch(/\{\.\.\.canvasProps\}/)
   })
 })

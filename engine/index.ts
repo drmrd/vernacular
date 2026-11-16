@@ -47,8 +47,8 @@ export {
 } from './lighting/lighting-rig'
 export type { RenderBackend } from './renderer/detect-backend'
 export { detectRenderBackend } from './renderer/detect-backend'
-export type { SceneRendererOptions } from './renderer/create-renderer'
-export { createSceneRenderer } from './renderer/create-renderer'
+export type { SceneRendererFactory, SceneRendererOptions } from './renderer/create-renderer'
+export { loadSceneRendererFactory } from './renderer/create-renderer'
 export { applyToneMappingOperator } from './renderer/tone-mapping'
 export type { RenderedPixelReader } from './renderer/sample-rendered-color'
 export {
