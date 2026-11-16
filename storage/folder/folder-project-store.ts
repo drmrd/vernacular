@@ -86,11 +86,36 @@ export class FolderProjectStore {
       return undefined
     }
     try {
-      return parseProjectJson(previousBytes)
+      return this.migrateInMemory(parseProjectJson(previousBytes))
     } catch {
-      // A corrupt prior file must not block saving; skip the overlay and overwrite it.
+      // A corrupt prior file, or one that fails to migrate, must not block saving. Losing the
+      // unknown keys of an unreadable previous file is the lesser harm; refusing to save would lose
+      // the user's edit. So skip the overlay and overwrite the file.
       return undefined
     }
+  }
+
+  /**
+   * The previous document at the target version, so a key a migration removed is not grafted back
+   * as unknown data (ADR-0184). Undefined when the document is not an object or is at a newer
+   * version than the target. The file on disk is never rewritten here. Throws when migration fails.
+   * It looks at the schema version only, not at the registry versions (see the skip below).
+   */
+  private migrateInMemory(raw: unknown): unknown {
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      return undefined
+    }
+    const storedVersion = readStoredSchemaVersion(raw)
+    if (storedVersion === this.targetVersion) {
+      // Skipping saves a migration run on every save. It assumes no pending registry migration
+      // removes or renames a key, which holds while no registry migration exists. Issue #734
+      // tracks the change that removes this assumption.
+      return raw
+    }
+    if (storedVersion !== undefined && storedVersion > this.targetVersion) {
+      return undefined
+    }
+    return this.migrate(raw)
   }
 
   async exists(): Promise<boolean> {

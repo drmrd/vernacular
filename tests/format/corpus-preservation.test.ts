@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
 import { FolderProjectStore } from '../../storage/folder/folder-project-store'
+import { serializeProjectJson } from '../../storage/folder/project-json'
 
 // Extension keys are reverse-DNS namespaces (spec section 6.3), not camelCase by design.
 const COVERED_OUTDOOR_NAMESPACE = 'org.vernacular.covered-outdoor'
@@ -61,4 +62,39 @@ describe('Tier-2 corpus fixture preservation (ADR-0051 forward compatibility)', 
 
     expect(saved.extensions?.[COVERED_OUTDOOR_NAMESPACE]).toEqual(originalCoveredOutdoor)
   })
+})
+
+const FIXTURE_ROOT = 'tests/fixtures/projects'
+
+/** Every project document of the test corpus, as paths relative to the fixture root. */
+function corpusDocuments(): string[] {
+  const names = [FIXTURE_ROOT, `${FIXTURE_ROOT}/corpus`].flatMap((directory) =>
+    readdirSync(resolve(directory))
+      .filter((name) => name.endsWith('.vernacular.json'))
+      .map((name) => `${directory}/${name}`),
+  )
+  return names.sort()
+}
+
+describe('corpus documents survive a folder store round-trip with no edit', () => {
+  it('finds corpus documents to check', () => {
+    expect(corpusDocuments().length).toBeGreaterThan(1)
+  })
+
+  it.each(corpusDocuments())(
+    'saves %s as exactly the serialized migrated document',
+    async (path) => {
+      const directory = new InMemoryDirectory()
+      await directory.writeFile('vernacular.json', new Uint8Array(readFileSync(resolve(path))))
+      const store = new FolderProjectStore(directory)
+
+      const loaded = await store.loadProject()
+      await store.saveProject(loaded)
+
+      const saved = await directory.readFile('vernacular.json')
+      expect(new TextDecoder().decode(saved!)).toBe(
+        new TextDecoder().decode(serializeProjectJson(loaded)),
+      )
+    },
+  )
 })

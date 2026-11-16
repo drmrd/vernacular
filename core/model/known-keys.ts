@@ -5,11 +5,18 @@
 
 import knownKeysData from './known-keys.json' with { type: 'json' }
 
+/** A tagged union: `tag` names the key that holds the tag, and each variant is a table entry. */
+export interface KnownUnion {
+  readonly kind: 'union'
+  readonly tag: string // the key that holds the tag, for example 'kind'
+  readonly variants: readonly { readonly value: string; readonly type: string }[]
+}
+
 export type KnownValue =
   | { readonly kind: 'leaf' } // a scalar, an enum, or an array of scalars
   | { readonly kind: 'opaque' } // the schema leaves the value open
   | { readonly kind: 'object'; readonly type: string }
-  | { readonly kind: 'union'; readonly tag: string; readonly types: readonly string[] } // a tagged union
+  | KnownUnion
   | { readonly kind: 'array'; readonly item: KnownValue }
   | { readonly kind: 'map'; readonly value: KnownValue } // a collection the model owns
 
@@ -32,4 +39,9 @@ export function typesWithExtensions(): GeneratedTypeName[]
 export function typesWithExtensions(table: KnownKeyTable): string[]
 export function typesWithExtensions(table: KnownKeyTable = KNOWN_KEYS): string[] {
   return Object.keys(table).filter((typeName) => table[typeName]?.keys.extensions !== undefined)
+}
+
+/** The table entry name of the variant whose tag value is `tagValue`, or undefined when no variant has it. */
+export function variantTypeOf(union: KnownUnion, tagValue: unknown): string | undefined {
+  return union.variants.find((variant) => variant.value === tagValue)?.type
 }

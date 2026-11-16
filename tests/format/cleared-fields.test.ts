@@ -1,0 +1,113 @@
+import { describe, expect, it } from 'vitest'
+import {
+  CommandRegistry,
+  Dispatcher,
+  createEmptyProject,
+  createFloor,
+  createFurnitureInstance,
+  placeFurniture,
+  registerAllProjectCommands,
+  setFloorPeriod,
+  setFurnitureName,
+  setProjectStyle,
+} from '../../core'
+import type { Command, Project } from '../../core'
+import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
+import { FolderProjectStore } from '../../storage/folder/folder-project-store'
+import { serializeProjectJson } from '../../storage/folder/project-json'
+
+const FLOOR_ID = 'floor-1'
+const FURNITURE_ID = 'furniture-1'
+
+function dispatcherFor(project: Project): Dispatcher<Project> {
+  return new Dispatcher(project, registerAllProjectCommands(new CommandRegistry<Project>()))
+}
+
+/** A project in which every field under test is set, built with the commands that set them. */
+function projectWithEveryFieldSet(): Project {
+  const project = createEmptyProject({
+    name: 'House',
+    units: 'metric',
+    period: 'victorian',
+    appVersion: '0.0.0',
+  })
+  project.floors = [createFloor('Ground', { id: FLOOR_ID })]
+  const dispatcher = dispatcherFor(project)
+  dispatcher.dispatch(setProjectStyle({ styleId: 'italianate' }))
+  dispatcher.dispatch(setFloorPeriod(FLOOR_ID, 'edwardian'))
+  dispatcher.dispatch(
+    placeFurniture(
+      FLOOR_ID,
+      createFurnitureInstance({
+        assetRef: { scope: 'user', contentHash: 'hash-1' },
+        position: { x: 100, y: 200 },
+        footprint: { width: 600, depth: 600 },
+        id: FURNITURE_ID,
+      }),
+    ),
+  )
+  dispatcher.dispatch(setFurnitureName(FLOOR_ID, FURNITURE_ID, 'Armchair'))
+  return project
+}
+
+interface StoredFurniture {
+  id: string
+  name?: string
+}
+
+interface StoredDocument {
+  meta: { style?: unknown }
+  floors: { periodOverride?: unknown; furniture: StoredFurniture[] }[]
+}
+
+function decode(bytes: Uint8Array | undefined): StoredDocument {
+  return JSON.parse(new TextDecoder().decode(bytes!)) as StoredDocument
+}
+
+/** A store whose directory already holds the document that has every field set. */
+async function storeHoldingFullDocument(): Promise<{
+  store: FolderProjectStore
+  directory: InMemoryDirectory
+}> {
+  const directory = new InMemoryDirectory()
+  await directory.writeFile('vernacular.json', serializeProjectJson(projectWithEveryFieldSet()))
+  return { store: new FolderProjectStore(directory), directory }
+}
+
+async function clearSaveAndReload(command: Command<unknown>): Promise<StoredDocument> {
+  const { store, directory } = await storeHoldingFullDocument()
+  const loaded = await store.loadProject()
+  dispatcherFor(loaded).dispatch(command)
+  await store.saveProject(loaded)
+  return decode(await directory.readFile('vernacular.json'))
+}
+
+describe('a cleared field stays cleared across a folder store save', () => {
+  it('starts from a stored document that has every field set', async () => {
+    const { directory } = await storeHoldingFullDocument()
+
+    const stored = decode(await directory.readFile('vernacular.json'))
+
+    expect(stored.meta.style).toEqual({ styleId: 'italianate' })
+    expect(stored.floors[0]?.periodOverride).toBe('edwardian')
+    expect(stored.floors[0]?.furniture[0]?.name).toBe('Armchair')
+  })
+
+  it('keeps the project style cleared', async () => {
+    const saved = await clearSaveAndReload(setProjectStyle(undefined))
+
+    expect('style' in saved.meta).toBe(false)
+  })
+
+  it('keeps a floor period override cleared', async () => {
+    const saved = await clearSaveAndReload(setFloorPeriod(FLOOR_ID, undefined))
+
+    expect('periodOverride' in saved.floors[0]!).toBe(false)
+  })
+
+  it('keeps a furniture name cleared', async () => {
+    const saved = await clearSaveAndReload(setFurnitureName(FLOOR_ID, FURNITURE_ID, ''))
+
+    expect('name' in saved.floors[0]!.furniture[0]!).toBe(false)
+  })
+})

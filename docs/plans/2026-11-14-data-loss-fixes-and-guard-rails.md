@@ -445,10 +445,15 @@ export function preserveUnknown(previous: unknown, project: Project): Project
 - [ ] RED: an underlay source that changes from a raster to a document does not get its old
       `image` back. A paint entry that changes `kind` does not get the old variant's fields back.
       An unknown key on a union value survives when the variant stays.
-- [ ] GREEN: at a `union`, a key that any variant defines is known. The hand-written guard for a
-      changed `kind` goes away if the tests pass without it.
-- [ ] Commits: `test: expect a key of any union variant to count as known`,
-      `fix: treat a key of any union variant as known in the graft`, then the `refactor:` commit.
+- [ ] GREEN: at a `union`, a value whose tag is the same on both sides is grafted as an object of
+      that one variant. Any other union value takes the next value as it is. The hand-written
+      guard for a changed `kind` goes away. (The first form of this cycle, "a key that any variant
+      defines is known", was replaced on 2026-11-15 after the review of the pull request.)
+- [ ] Commits, as built: `test: expect a key of any union variant to count as known`,
+      `fix: treat a key of any union variant as known in the graft`, and its `refactor:` commit;
+      then `test: expect the graft to use the one variant whose tag both values share`,
+      `fix: graft a union value by the one variant that both values share`, and its `refactor:`
+      commit.
 
 ### Cycle 4.4: the previous file is migrated before the graft
 

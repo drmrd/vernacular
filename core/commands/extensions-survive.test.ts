@@ -9,6 +9,7 @@ import {
   KNOWN_KEYS,
   KNOWN_ROOT_TYPE,
   typesWithExtensions,
+  variantTypeOf,
   type KnownValue,
 } from '../model/known-keys'
 import type { Project } from '../model/types'
@@ -52,7 +53,7 @@ class CarrierCollector {
     if (known.kind === 'object') {
       this.visitObject(value, known.type, path)
     } else if (known.kind === 'union' && isJsonObject(value)) {
-      const member = known.types.find((type) => type.endsWith(`.${String(value[known.tag])}`))
+      const member = variantTypeOf(known, value[known.tag])
       this.visitObject(value, member ?? '', path)
     } else if (known.kind === 'array' && Array.isArray(value)) {
       value.forEach((item: unknown, index) => {
