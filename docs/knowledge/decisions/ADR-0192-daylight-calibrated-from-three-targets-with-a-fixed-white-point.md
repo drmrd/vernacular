@@ -310,8 +310,8 @@ tone mapping. None of the calibrated values above reach it.
   lawn's green gave every white wall in shade a green cast (#765).
 - Goal 2 of the spec and decision 2 in its section 4.1 ask that shade be "mildly cool". With the
   neutral ground bounce, a white wall in shade under a low sun reads bluer than that, for the
-  causes the Consequences give. The daylight white gate guards that such shade stays cool and
-  takes no green cast, but it puts no limit on how blue the shade gets. The follow-up on a white
+  causes the Consequences give. The daylight white gate checks that such shade stays cool and
+  has no green cast, but it puts no limit on how blue the shade gets. The follow-up on a white
   balance that follows the scene's light tracks the difference.
 - Spec section 6.3 gives the sky mesh's output a gain. The code makes that gain a table by sun
   height, because one gain, matched at noon, left the visible sky near black at a low sun.
