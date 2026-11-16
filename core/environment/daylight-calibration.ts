@@ -204,11 +204,11 @@ const SUN_SCALE = 10.9126
  * The fraction of the sun's level its height leaves: the clear-sky attenuation
  * exp(-SUN_OPTICAL_DEPTH (m(h) - m(zenith))) for the Kasten and Young relative air mass m, so
  * exactly 1 at the zenith. It falls smoothly as the sun nears the horizon; just above it the
- * level is about 0.005, under 0.05 percent of the reference level, a small step to the 0 it
- * keeps at the horizon and below, wherever the sine of the height is 0 or negative.
+ * level is about 0.005, under 0.05 percent of the reference level, a small step to the 0 it keeps
+ * at and below the horizon. The height is in radians, from minus to plus a quarter turn.
  */
 function sunFade(sunAltitude: number): number {
-  if (sunAltitude <= 0 || Math.sin(sunAltitude) <= 0) return 0
+  if (sunAltitude <= 0) return 0
   return Math.exp(-SUN_OPTICAL_DEPTH * (relativeAirMass(sunAltitude) - ZENITH_AIR_MASS))
 }
 

@@ -60,7 +60,11 @@ interface SkyMeshGainRow {
  * equal the light dome's, just above the horizon on the side away from the sun, at that sun
  * height. Measured in the scene harness on WebGL 2 on macOS on 2026-11-16, then frozen. A gain
  * set outright at four measured heights (2.07, 4.95, 19.99, and 45.06 degrees) closed the loop
- * to within 0.7 percent of the dome. Those heights are where the table was checked, not rows of it.
+ * to within 0.7 percent of the dome. Of those, 2.07 and 4.95 degrees are rows of the table;
+ * 19.99 and 45.06 degrees are heights where it was only checked.
+ *
+ * The rows were measured before the sun's fade moved to the Kasten and Young air mass. Under the
+ * present dome the 12.5 degree row is off by 1.85 percent.
  *
  * Between its rows the table interpolates within 1.74 percent of the dome at the heights checked
  * (15, 20, 30, 45, and 60 degrees). The first row, at 1.07 degrees, is an estimate: its reading
