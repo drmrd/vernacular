@@ -4,7 +4,6 @@ import {
   distance,
   FURNITURE_NODE_PREFIX,
   OPENING_NODE_PREFIX,
-  openingWouldOverlap,
   placeFurniture,
   placeOpening,
   type Point,
@@ -15,7 +14,7 @@ import type { EditorSession, SelectionStore } from '../../bridge'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { placementRefusalMessage } from './overlay-announce'
-import { placeOpeningTarget } from './place-opening'
+import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { selectPlacedEntity } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
 import {
@@ -212,8 +211,8 @@ export function handleDimensionKey(ctx: DimensionKeyContext): void {
 // freshly created opening of the active placement type; on a miss, announce that
 // no wall sits near the candidate and dispatch nothing. A hit that would overlap an
 // opening already in the wall is refused with the same reason the pointer path
-// gives, because the place-opening command does not check. This is a keyboard-only
-// path, so the miss phrasing names the candidate rather than a pointer cursor.
+// gives. This is a keyboard-only path, so the miss phrasing names the candidate
+// rather than a pointer cursor.
 function dropOpening(ctx: OpeningKeyContext): void {
   if (ctx.graph === undefined || ctx.placementType === undefined) {
     return
@@ -229,9 +228,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
     hostWallId: target.hostWallId,
     position: target.position,
   })
-  const existingOpenings =
-    ctx.session.getProject().floors.find((floor) => floor.id === target.floorId)?.openings ?? []
-  if (openingWouldOverlap(opening, existingOpenings)) {
+  if (placementWouldOverlap(ctx.session.getProject(), target.floorId, opening)) {
     ctx.setAnnouncement(placementRefusalMessage('opening-overlap'))
     return
   }

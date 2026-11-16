@@ -1,4 +1,12 @@
-import { distance, WALL_NODE_PREFIX, type Point, type SceneGraph } from '../../core'
+import {
+  distance,
+  openingWouldOverlap,
+  WALL_NODE_PREFIX,
+  type Opening,
+  type Point,
+  type Project,
+  type SceneGraph,
+} from '../../core'
 import { hitTestWalls } from './hit-test'
 import { projectPointOntoWall } from './opening-geometry'
 
@@ -28,4 +36,18 @@ export function placeOpeningTarget(
   const length = distance(wall.start, wall.end)
   const position = Math.max(0, Math.min(projectPointOntoWall(wall.start, wall.end, world), length))
   return { floorId: wall.floorId, hostWallId, position }
+}
+
+/**
+ * Whether placing `opening` on `floorId` would overlap an opening already in the
+ * same wall. Every placement path asks this before it dispatches, because the
+ * place-opening command does not check.
+ */
+export function placementWouldOverlap(
+  project: Project,
+  floorId: string,
+  opening: Opening,
+): boolean {
+  const existing = project.floors.find((floor) => floor.id === floorId)?.openings ?? []
+  return openingWouldOverlap(opening, existing)
 }
