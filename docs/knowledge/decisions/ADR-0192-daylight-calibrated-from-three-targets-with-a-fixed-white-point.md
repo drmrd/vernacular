@@ -115,20 +115,20 @@ Every quantity on the level card is irradiance over pi, so a white card returns 
 | Sun level                               | `sunLevelAt(h, cloudCover)`             | 10.0056                            |
 | Diffuse level on the level card         | `diffuseLevelAt(h, cloudCover)`         | 0.45039                            |
 | Gain of the dome's term toward the sun  | `SUNWARD_GAIN`                          | 0.70695                            |
-| Lux for one unit of irradiance          | `LUX_PER_UNIT_IRRADIANCE`               | 9424.58                            |
+| Lux for one unit of irradiance          | `LUX_PER_UNIT_IRRADIANCE`               | 9424.53                            |
 
 The sunlit white level is `agxNeutralInverse(225 / 255)`, from the tone curve in
 `core/environment/tone-response.ts`.
 
 The sun scale is a frozen literal. The reference wall's luminance is linear in the scale, so it was
 solved once: at a scale of 1, with the night floor described below set aside (the reference sky
-clears it), the wall returned about 0.192423, and 2.099829 / 0.192423 is 10.9126. That solve uses
-the fade with the Kasten and Young air mass from the amendment. The same solve gave 12.3599 under
-the first fade (an independent solve during review got 12.3599048) and 10.9156 under the plain
-`1 / sin h` air mass that came between them. The tests in
-`core/environment/daylight-calibration.test.ts` read the wall back through the light model and the
-tone curve and require code 225 within half a code, so a stale literal fails there. The wall reads
-225.00.
+clears it), the wall returned 0.19242326, and 2.099829 over that is 10.91255. The literal rounds
+it to 10.9126. That solve uses the fade with the Kasten and Young air mass from the amendment. The
+same solve gave 12.3599 under the first fade (an independent solve during review got 12.3599048)
+and 10.9156 under the plain `1 / sin h` air mass that came between them. With the frozen 10.9126
+the reference wall reads code 225.00011 and the sun level at the reference instant is 10.005640.
+The tests in `core/environment/daylight-calibration.test.ts` read the wall back through the light
+model and the tone curve and require code 225 within half a code, so a stale literal fails there.
 
 The dome follows from the sun through target 1. The sky's level on the card is the clear direct
 level on the card divided by the ratio, and the dome's end tints are scaled so that the
@@ -217,7 +217,7 @@ and the projection read one basis table.
 
 The relative scale gets one photometric anchor. The level card at the reference instant receives
 80 000 lux, exported as `REFERENCE_HORIZONTAL_ILLUMINANCE_LUX`. Dividing it by pi times the
-luminance of sun plus sky on the card gives `LUX_PER_UNIT_IRRADIANCE`, 9424.58 lux for one unit of
+luminance of sun plus sky on the card gives `LUX_PER_UNIT_IRRADIANCE`, 9424.53 lux for one unit of
 irradiance.
 
 The number is a decision of the plan. Its physical check is the set of clear-sky daylight
@@ -246,8 +246,7 @@ channel by the white point, so the visible sky sits in the same white-balanced s
 the dome. The vector is recorded on the rig as `skyGain`, and `updateSkyEnvironment` writes the
 gain for the current sun height into it on each update. It reads that height with `sunAltitudeOf`,
 which `core/environment/sky-dome.ts` exports, so the engine and the dome share one helper. The
-three/tsl module loads lazily beside
-the sky mesh module, so the startup path does not grow
+three/tsl module loads lazily beside the sky mesh module, so the startup path does not grow
 ([[ADR-0148-visible-sky-and-sh-light-probe]]).
 
 Spec section 9 named a risk here: the addon assigns its color node on the material, and a gain
@@ -309,6 +308,11 @@ tone mapping. None of the calibrated values above reach it.
 - Spec section 6.3, and call 9 in the table of section 4.2, compute the ground bounce from the lawn
   color. The code keeps only the lawn's luminance and makes the bounce a neutral grey, because the
   lawn's green gave every white wall in shade a green cast (#765).
+- Goal 2 of the spec and decision 2 in its section 4.1 ask that shade be "mildly cool". With the
+  neutral ground bounce, a white wall in shade under a low sun reads bluer than that, for the
+  causes the Consequences give. The daylight white gate guards that such shade stays cool and
+  takes no green cast, but it puts no limit on how blue the shade gets. The follow-up on a white
+  balance that follows the scene's light tracks the difference.
 - Spec section 6.3 gives the sky mesh's output a gain. The code makes that gain a table by sun
   height, because one gain, matched at noon, left the visible sky near black at a low sun.
 - Spec section 6.3 asks the sky mesh to match the dome at the zenith and at the far horizon. A gain
@@ -384,12 +388,15 @@ readings and thresholds live in their spec files.
   hue. The light model predicts OKLab a -0.0044, b -0.0277 for the shaded west wall at the reference
   instant, and a -0.0052, b -0.0261 for the north wall at equinox noon, where the lit lawn gave
   a -0.070 and a -0.075. A gate now reads the a axis.
-- A white wall in shade under a low sun is bluer than it was before the calibration, because the
-  lawn's green bounce no longer offsets the sky's blue. The direction is right, since open shade is
-  lit by the sky. The strength is not: it is what a camera with a fixed daylight white balance
-  records, bluer than a person sees. Three things cause that. Exposure is fixed, the white point is
-  fixed at the reference instant, and no light bounces from the real sunlit ground or from nearby
-  surfaces. A follow-up issue tracks each of the three (see Not decided).
+- A white wall in shade under a low sun is much bluer than under the lawn-colored bounce of the
+  first calibration build, and a little bluer than before the calibration, when the dome's ground
+  was a fixed warm brown. Nothing green or warm below the horizon now offsets the sky's blue. The
+  direction is right, since open shade is lit by the sky. The strength is not: the shade looks the
+  way a camera with a fixed daylight white balance records it, bluer than a person sees it. Two
+  things set that hue: the white point is fixed at the reference instant, and no light bounces from
+  the real sunlit ground or from nearby surfaces. The fixed exposure does not change the hue, but
+  it makes the same shade darker than a person sees it. A follow-up issue tracks each of the three
+  (see Not decided).
 - A sun on the horizon no longer lights a wall; the fade with the air mass answered #771. The light
   model gives a white wall that faces a sun on the horizon, or 3 degrees below it, code 105.4, the
   same as the dome alone, where the first fade gave 210.5 and 186.5. With the sun 1.5 degrees up
@@ -429,6 +436,12 @@ readings and thresholds live in their spec files.
   degree of adaptation below 1, would move the white point part of the way toward the light of the
   moment; a follow-up issue tracks this.
 - A tighter tolerance for the tone curve gate; a follow-up issue tracks this.
+- Refraction near the horizon. The air mass takes the sun's geometric height, while refraction
+  lifts the sun the eye sees. With the refraction step of the ESRA model the level at 1.5 degrees
+  would be 1.56 times higher (1.52 times with Saemundsson's formula); whether to apply it is open.
+- The sky gain table against the present dome. Its rows were measured before the change to the
+  Kasten and Young air mass, and at its 12.5 degree row the dome is now 1.85 percent brighter than
+  the row was matched to (#763).
 - The display rule for the daylight field and the color check's bypass of it, which
   [[ADR-0196-plan-space-daylight-field]] leaves to the window-lit rooms work.
 
@@ -472,8 +485,8 @@ moved the reference wall off code 225, which would have needed a new sun scale.
 
 What this gives up: no surface takes the color of the ground beside it. Bounce from the real ground
 and from floors near a wall is later work, and a follow-up issue tracks it. Shade under a low sun is
-also bluer than before, since nothing green offsets the sky's blue; the Consequences say why that
-is stronger than what a person sees. This answers #765.
+also bluer than under the lawn-colored ground, since nothing green offsets the sky's blue; the
+Consequences say why that is stronger than what a person sees. This answers #765.
 
 ### The sun's level falls with the Kasten and Young air mass
 
@@ -498,15 +511,23 @@ Because the sun is weaker at low heights, the night floor of the diffuse level n
 The fade reached this form in two steps on the same day. The owner first chose the plain air mass
 `1 / sin h`, which is the cited handbook formula as written (sun scale 10.9156, night floor binding
 below 12.36 degrees). The rendered frames then showed that a wall facing a sun 1.5 degrees up got
-no visible sunlight. So the fade was checked against published clear-sky models: the ESRA beam
-model with the Linke turbidity factor and Kasten's 1996 Rayleigh optical thickness, the Ineichen
-and Perez (2002) model, and the Bird model, each turned from watts into light with the Perez
-(1990) luminous efficacy of the direct beam. Against them the plain air mass is right down to
-about 5 degrees and far too dark below 3. At 1.5 degrees its air mass is 38, where Kasten and
-Young give 22. The same optical depth with the Kasten and Young air mass came nearest to the models,
-as light, from 3 to 45 degrees. A smaller optical depth, 0.1354, came nearer in watts, but as light
-it was 1.4 to 2 times too bright from 3 to 10 degrees, because the beam's luminous efficacy falls
-as the sun drops. The owner chose the Kasten and Young air mass the same day.
+no visible sunlight. So the fade was compared with published clear-sky models, each computed from
+its formula: the ESRA beam model with the Linke turbidity factor and Kasten's 1996 Rayleigh
+optical thickness, read from the paper; the Ineichen and Perez (2002) model and the Bird model,
+read from open-source ports of the papers and not from the papers themselves; and the Meinel rule
+of thumb. Each was turned from watts into light with the Perez (1990) luminous efficacy of the
+direct beam, whose coefficients also came from a code port and were not checked against the paper.
+No measured data for a sun this low turned up, so the comparison sets models against models.
+
+Against those models the plain air mass is close down to about 10 degrees, about 20 to 35 percent
+too dark at 5, and far too dark below 3. At 1.5 degrees its air mass is 38, where Kasten and Young
+give 22. The same optical depth with the Kasten and Young air mass came nearest to the models, as
+light, from 3 to 45 degrees. A smaller optical depth, 0.1354, came nearer in watts, but as light it
+was 1.4 to 2 times too bright from 3 to 10 degrees, because the beam's luminous efficacy falls as
+the sun drops. That step from watts to light rests on one published efficacy fit, which is
+extrapolated near the horizon. So confidence is high that the plain air mass is too dark below 3
+degrees, and only medium that this fade is nearer than the smaller optical depth. The owner chose
+the Kasten and Young air mass the same day.
 
 The level as a fraction of its value at 45 degrees:
 
@@ -517,8 +538,9 @@ The level as a fraction of its value at 45 degrees:
 | The plain air mass `1 / sin h` | 0.40         | 0.12         | 0.024        | 0.0004       |
 
 What stays wrong: below 3 degrees this fade is still too dark against those models, by 2 to 5
-times at 1.5 to 2 degrees. At those heights haze alone moves the true value by more than a factor
-of 10, so no single curve is right there. The comparison is about the light that reaches a wall.
+times at 1.5 to 2 degrees. At those heights a rough spectral estimate, made during the comparison
+and neither published nor confirmed, puts the effect of haze alone at more than a factor of 10, so
+no single curve is likely to be right there. The comparison is about the light that reaches a wall.
 How a low sun looks also depends on exposure, which stays 1, and a follow-up issue tracks exposure
 that follows the scene.
 
@@ -538,8 +560,8 @@ night is not designed, and a follow-up issue tracks it. This answers #771.
 The single gain of 0.0636 is gone. `SKY_MESH_GAIN_BY_SUN_HEIGHT` in
 `engine/lighting/sky-environment.ts` holds eight rows, measured in the scene harness (WebGL 2,
 macOS, 2026-11-16). Each row is the gain that makes the visible sky's luminance equal the dome's
-just above the horizon on the side away from the sun. `skyMeshGainAt` interpolates the natural logarithm of the
-gain linearly in the height between rows and holds the end rows beyond the table.
+just above the horizon on the side away from the sun. `skyMeshGainAt` interpolates the natural
+logarithm of the gain linearly in the height between rows and holds the end rows beyond the table.
 `skyMeshGain` divides that gain by the white point, and `updateSkyEnvironment` writes it into the
 rig's `skyGain` vector on each update, so the visible sky follows the sun with no shader rebuild.
 
