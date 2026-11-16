@@ -55,7 +55,7 @@ export function polygonCentroid(polygon: readonly Point[]): Point {
 }
 
 /** True when `point` lies on the segment from `a` to `b` (collinear and within the span). */
-function pointOnEdge(point: Point, a: Point, b: Point): boolean {
+export function pointOnEdge(point: Point, a: Point, b: Point): boolean {
   const cross = (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x)
   if (cross !== 0) {
     return false
