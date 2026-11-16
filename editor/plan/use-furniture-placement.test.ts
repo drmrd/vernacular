@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { act, renderHook, cleanup } from '@testing-library/react'
-import { FURNITURE_NODE_PREFIX, type Command, type PlaceFurnitureParams } from '../../core'
+import { type Command, type PlaceFurnitureParams } from '../../core'
 import { createSelectionStore } from '../../bridge'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { LibraryItem } from '../../storage'
@@ -79,9 +79,7 @@ describe('usePlaceFurniture', () => {
       result.current.onPointerDown(clickAt(FIRST_CLICK_X, FIRST_CLICK_Y))
     })
 
-    expect(selection.getSelectedIds()).toEqual(
-      new Set([`${FURNITURE_NODE_PREFIX}${placedFurnitureId(dispatch, 0)}`]),
-    )
+    expect(selection.getSelectedIds()).toEqual(new Set([placedFurnitureId(dispatch, 0)]))
   })
 
   it('moves the selection to the second piece placed, dropping the first', () => {
@@ -97,9 +95,7 @@ describe('usePlaceFurniture', () => {
     })
 
     expect(dispatch).toHaveBeenCalledTimes(2)
-    expect(selection.getSelectedIds()).toEqual(
-      new Set([`${FURNITURE_NODE_PREFIX}${placedFurnitureId(dispatch, 1)}`]),
-    )
+    expect(selection.getSelectedIds()).toEqual(new Set([placedFurnitureId(dispatch, 1)]))
   })
 
   it('dispatches nothing and leaves the selection empty under another tool', () => {
