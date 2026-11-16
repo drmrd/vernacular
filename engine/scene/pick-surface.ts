@@ -2,6 +2,7 @@ import * as THREE from 'three'
 
 import type { SurfaceRef } from '../../core'
 
+import { isFadedForPicking } from './faded-for-picking'
 import { surfaceTableOf } from './wall-surface-table'
 
 /**
@@ -49,10 +50,15 @@ function decideHit(hit: THREE.Intersection): HitDecision {
  * first. A wall decides at its first hit: a paintable long face gives that face and its
  * side, a cap, an end, or a reveal gives no surface, and nothing behind the wall is
  * returned. Another object decides only when it carries a surface (a floor slab); an
- * object with no surface is skipped.
+ * object with no surface is skipped, and so is a faded object, before any other decision.
  */
 export function pickSurface(raycaster: THREE.Raycaster, root: THREE.Object3D): SurfaceRef | null {
   for (const hit of raycaster.intersectObject(root, true)) {
+    // The user sees through a faded wall (and what fades with it), so the click is for
+    // what is behind it.
+    if (isFadedForPicking(hit.object)) {
+      continue
+    }
     const decision = decideHit(hit)
     // A wall is opaque: a surface behind a wall hit that has no paintable surface (a cap,
     // an end, a reveal) is not what the user clicked, so the ray stops at that hit.

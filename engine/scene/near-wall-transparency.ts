@@ -2,6 +2,8 @@ import * as THREE from 'three'
 
 import { FURNITURE_NODE_PREFIX, type ExteriorWall, type JunctionFadeGroup } from '../../core'
 
+import { markFadedForPicking } from './faded-for-picking'
+
 /** Opacity of a wall the camera looks at from outside, so the interior reads through it. */
 const FADED_OPACITY = 0.1
 
@@ -351,6 +353,7 @@ export function updateNearWallTransparency(
       material.transparent = fade ? true : baseline.transparent
       material.opacity = fade ? FADED_OPACITY : baseline.opacity
       material.depthWrite = fade ? false : baseline.depthWrite
+      markFadedForPicking(material, fade)
     }
   }
 }
@@ -368,6 +371,7 @@ export function restoreNearWallTransparency(targets: NearWallTarget[]): void {
       material.transparent = baseline.transparent
       material.opacity = baseline.opacity
       material.depthWrite = baseline.depthWrite
+      markFadedForPicking(material, false)
     }
   }
 }
