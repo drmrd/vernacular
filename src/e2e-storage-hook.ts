@@ -1,6 +1,12 @@
 import { DEFAULT_PROJECT_ID, resolveSnapshotStore } from '../app'
-import { createEmptyProject, createFloor, type Project } from '../core'
-import { createOpfsProjectStore, IndexedDbRecentProjectStore, WebLocksManager } from '../storage'
+import { CURRENT_SCHEMA_VERSION, createEmptyProject, createFloor, type Project } from '../core'
+import {
+  createOpfsProjectStore,
+  FileSystemDirectory,
+  IndexedDbRecentProjectStore,
+  WebLocksManager,
+  type DirectoryPort,
+} from '../storage'
 
 // End-to-end validation seam for the durable browser adapters (OPFS, IndexedDB
 // recent list, Web Locks). jsdom cannot exercise these, so a Playwright spec
@@ -34,6 +40,8 @@ export interface VernacularE2eStorage {
   opfsPersistSave(): Promise<void>
   opfsPersistName(): Promise<string>
   plantRecoverySnapshot(): Promise<boolean>
+  plantProjectFromNewerBuild(): Promise<boolean>
+  storedFilesOfDefaultProject(): Promise<Record<string, string>>
 }
 
 declare global {
@@ -122,6 +130,44 @@ async function plantRecoverySnapshot(): Promise<boolean> {
   return true
 }
 
+// The OPFS root the durable project store keeps each project's folder in.
+async function opfsRoot(): Promise<DirectoryPort> {
+  return new FileSystemDirectory(await navigator.storage.getDirectory())
+}
+
+// Plants a project written by a newer build at the production project's OPFS
+// location: it lists by name, but this build cannot open it. Reports whether the
+// durable store sees it under the default id, so a wrong path fails loudly.
+async function plantProjectFromNewerBuild(): Promise<boolean> {
+  const project = sampleProject('Newer Build House')
+  const newer = { ...project, meta: { ...project.meta, schemaVersion: CURRENT_SCHEMA_VERSION + 1 } }
+  const root = await opfsRoot()
+  await root.writeFile(
+    `${DEFAULT_PROJECT_ID}/vernacular.json`,
+    new TextEncoder().encode(JSON.stringify(newer)),
+  )
+  const summaries = await (await createOpfsProjectStore()).list()
+  return summaries.some((summary) => summary.id === DEFAULT_PROJECT_ID)
+}
+
+// Every file below `prefix`, keyed by path. A listing of a file is empty and a
+// read of a directory is undefined, which tells the two apart. The fatal decoder
+// keeps the byte order mark, so equal text means equal bytes.
+async function filesUnder(root: DirectoryPort, prefix: string): Promise<Record<string, string>> {
+  const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
+  const files: Record<string, string> = {}
+  for (const name of await root.list(prefix)) {
+    const path = `${prefix}/${name}`
+    const bytes = await root.readFile(path)
+    Object.assign(files, bytes ? { [path]: decoder.decode(bytes) } : await filesUnder(root, path))
+  }
+  return files
+}
+
+async function storedFilesOfDefaultProject(): Promise<Record<string, string>> {
+  return filesUnder(await opfsRoot(), DEFAULT_PROJECT_ID)
+}
+
 /** Attach the durable-adapter test routines to window for the Playwright spec. */
 export function install(): void {
   window.vernacularE2eStorage = {
@@ -131,5 +177,7 @@ export function install(): void {
     opfsPersistSave,
     opfsPersistName,
     plantRecoverySnapshot,
+    plantProjectFromNewerBuild,
+    storedFilesOfDefaultProject,
   }
 }

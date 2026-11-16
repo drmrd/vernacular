@@ -20,7 +20,7 @@ describe('useResolvedSnapshots', () => {
     const injected = makeSnapshots()
     const resolveSnapshots = vi.fn(() => Promise.resolve(makeSnapshots()))
 
-    const { result } = renderHook(() => useResolvedSnapshots(injected, resolveSnapshots))
+    const { result } = renderHook(() => useResolvedSnapshots(injected, resolveSnapshots, 'current'))
 
     expect(result.current).toBe(injected)
     expect(resolveSnapshots).not.toHaveBeenCalled()
@@ -30,7 +30,9 @@ describe('useResolvedSnapshots', () => {
     const resolved = makeSnapshots()
     const resolveSnapshots = vi.fn(() => Promise.resolve(resolved))
 
-    const { result } = renderHook(() => useResolvedSnapshots(undefined, resolveSnapshots))
+    const { result } = renderHook(() =>
+      useResolvedSnapshots(undefined, resolveSnapshots, 'current'),
+    )
 
     expect(result.current).toBeUndefined()
     await waitFor(() => expect(result.current).toBe(resolved))
@@ -38,7 +40,7 @@ describe('useResolvedSnapshots', () => {
   })
 
   it('returns undefined when neither a port nor a resolver is provided', () => {
-    const { result } = renderHook(() => useResolvedSnapshots(undefined, undefined))
+    const { result } = renderHook(() => useResolvedSnapshots(undefined, undefined, 'current'))
 
     expect(result.current).toBeUndefined()
   })
