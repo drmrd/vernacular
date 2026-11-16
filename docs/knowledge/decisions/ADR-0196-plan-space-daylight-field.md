@@ -1,0 +1,220 @@
+---
+slug: decisions/ADR-0196-plan-space-daylight-field
+title: 'ADR-0196: Interior daylight is a plan-space field computed in core'
+type: decision
+tags: [lighting, daylight, core, interior-light, three-dimensional, plan-geometry]
+related:
+  [
+    decisions/ADR-0172-indirect-only-ambient-occlusion,
+    decisions/ADR-0156-luminance-calibration-convention,
+    decisions/ADR-0153-daylight-through-glass-role-stamp,
+    decisions/ADR-0161-sky-specular-environment-map,
+    decisions/ADR-0186-performance-gated-on-counts-and-reported-as-times,
+  ]
+sourceFiles:
+  [
+    core/daylight/daylight-field.ts,
+    core/daylight/form-factor.ts,
+    core/daylight/sky-visibility.ts,
+    core/daylight/room-validation.ts,
+    core/daylight/room-geometry.ts,
+    core/daylight/room-average.ts,
+    core/daylight/doorway-light.ts,
+    tests/daylight/shell-field.test.ts,
+    docs/specs/2026-11-15-daylight-and-shadow.md,
+  ]
+status: proposed
+updated: 2026-11-15
+---
+
+# ADR-0196: Interior daylight is a plan-space field computed in core
+
+## Status
+
+Proposed. This record covers the core math, which is written and tested. The display rule, the
+color check's bypass of the field, the engine texture, and the bounce channels are not decided
+yet, and they are listed below. The record stays proposed until the window-lit rooms land and the
+owner ratifies it. It amends no other record while it is proposed.
+
+## Context
+
+A closed room receives the whole sky today. The environment light carries no visibility, so a
+room with one small window reads as bright as the exterior wall outside it.
+
+The design for daylight and shadow (`docs/specs/2026-11-15-daylight-and-shadow.md`, sections 6.8
+and 8) gives each floor one small grid in plan coordinates. For each cell the grid holds how much
+sky light reaches it through the room's windows. Later it will also hold the light that bounces
+from sunlit floors. Both parts use one data shape.
+
+## Decision
+
+Interior daylight is a plan-space field computed in `core/daylight/`. It is pure TypeScript, so it
+is the same on both rendering backends and has no dependency on React or three.js.
+
+### The data shape
+
+`DaylightField` holds an origin and a cell size in plan millimetres, a column count and a row
+count, and a `Float32Array` with four values for each cell: bounce red, bounce green, bounce
+blue, and sky visibility. The data is row-major, and row 0 starts at the origin's y. The cell size
+is 100 mm (`DAYLIGHT_FIELD_CELL_SIZE_MM`). The origin is the lower corner of the bounding box of
+the floor's room outlines, snapped down to a multiple of the cell size. Sky visibility is channel
+3 (`SKY_VISIBILITY_CHANNEL`). The bounce channels hold 0 for now.
+
+### The inputs
+
+A `DaylightRoom` has an outline, a ceiling height, a floor color, a list of apertures, and an
+optional `openToSky` flag. A `DaylightAperture` has a span of two points on the room outline, a
+sill and a head (both above the floor), a reveal depth, and `opensTo`, which is `'sky'` for a
+window or `{ room: index }` for an interior doorway. A room with `openToSky` holds visibility 1 in
+every cell. A cell whose center lies in no room also holds 1.
+
+### The work plane and the direct term
+
+The field is evaluated on a plane 850 mm above the floor (`DAYLIGHT_WORK_PLANE_HEIGHT_MM`). For
+each cell center and each aperture of the cell's room, the solver takes the configuration factor
+from a point on a horizontal plane to a rectangle on a vertical wall. It uses the closed form for
+that case, with the part of the rectangle below the work plane cut off first. The rectangle is
+first cut down to what the point sees through the reveal: the outer face of the opening, one
+reveal depth further out, is scaled toward the foot of the point and overlapped with the inner
+face.
+
+For a window, the factor is multiplied by the sky's luminance toward one direction, the mean
+direction of the sky in front of a vertical opening. That direction points along the aperture's
+outward normal and rises by `atan(2 / pi)` above the horizon. Plan `(x, y)` maps to world
+`(x, up, -y)`. The sky is a function from a direction to a number in which 1 is the mean of the
+open sky. `UNIFORM_SKY` returns 1 everywhere.
+
+### The room-average term
+
+Light that bounces between the room's surfaces is one number for the whole room. The entering flux
+is the sum over its apertures of half the opening area (width times sill-to-head height) times the
+aperture's weight. The term added to every cell is the flux times the room's mean reflectance,
+divided by the total surface area times one minus that reflectance. The surface area is twice the
+floor area plus the perimeter times the ceiling height. The mean reflectance weights the floor
+color's luminance by the floor area and `UNPAINTED_SURFACE_REFLECTANCE` (0.66, the luminance of
+the wall color `#d8d4cc`) by the rest.
+
+A cell's visibility is the direct term plus the room-average term, clamped at 1. A room with no
+windows and no lit neighbor therefore returns 0.
+
+### The doorway pass
+
+A doorway passes a share of the neighbor room's mean visibility, computed from that neighbor's
+sky apertures alone. The doorway's weight is that mean, so a hall next to a lit room borrows
+light. Light crosses one doorway and no more: a room's own doorways count for nothing when it is
+the source, so two rooms that open only to each other stay dark. A doorway into a room that is
+open to the sky weighs 1 in any direction.
+
+### The cache
+
+The form factors depend on geometry only. `createDaylightFieldSolver(rooms)` validates and
+measures the rooms one time, on the first call of any method, and keeps the form factor from every
+cell to every aperture of its room. Each call to `field(sky)` re-weights those numbers for the
+sky it is given. `geometryPasses` reports how many times the geometry was measured, so a test can
+check that a second sky costs no second pass. A caller that changes the rooms builds a new solver.
+
+### The refusals
+
+Bad input throws a `RangeError` whose message names the place, as "Daylight field room 2,
+aperture 1: ..." with zero-based indexes. The refused kinds are:
+
+- an outline with fewer than three points;
+- a ceiling height that is not a finite number above 0;
+- a floor color channel that is not a finite number;
+- a sill or head that is not a finite number, a head that is not above the sill, and a head above
+  the ceiling;
+- a reveal depth that is not a finite number of 0 or more;
+- a span of no length, and a span with an end point off the room outline;
+- a span whose two sides are both inside, or both outside, the room (it does not lie on the
+  outline);
+- a doorway that opens to its own room, and a doorway that opens to a room that does not exist.
+
+## Why this approach and not the others
+
+The specification weighs four ways to light an interior (its section 5, "Interior light").
+
+- Probes rendered on the GPU would see furniture and future roofs. They are also a large amount of
+  work that all comes after the scene stage, they have to render again on every scrub of the time
+  of day, they leak light through 100 mm walls, and they behave differently on the two backends.
+- Screen-space bounce shows color bleed near what is on screen. It cannot darken a room, because
+  it does not know that a ceiling that is off screen blocks the sky. It may return later as an
+  addition at the highest quality level.
+- A single brightness for each room, set on its materials, has no falloff from the window and
+  cannot add bounce.
+- Baked light maps need unique texture coordinates on every surface and have to be baked again on
+  every scrub.
+
+A plan-space field is the largest of the four to build in total, but it is plain math, it is the
+same on both backends, and it is cheap to update. Because the form factors are cached, a scrub only
+re-weights them. The price is that it is analytic: furniture does not block light, and the field
+does not vary with height.
+
+## What the numbers look like
+
+The harness shell, taken as one room, is 3880 by 2880 mm clear, with the east window and a reveal
+of 120 mm. Under a uniform sky the sky visibility over the room has a mean of 0.049, a minimum of
+0.018, and a maximum of 0.309 at the cell nearest the window. These are the values measured by
+`tests/daylight/shell-field.test.ts`, which asserts only that the mean lies between 0 and 1, that
+the cell nearest the window is the brightest, that every value is finite, and that the values
+fall along the row from the window to the far wall. The measured numbers are reported, not
+asserted.
+
+## Known limits and approximations
+
+- The model reads bright. For a test room of 4000 by 3000 mm with one 1000 by 1200 mm window, the
+  mean is about 5.3 percent of the open sky. The standard average daylight factor rule of thumb
+  gives about 3 percent. Three things cause the gap. The glass loses nothing. The first reflection
+  uses the room's mean reflectance, where the split-flux method uses the floor's. The entering
+  flux ignores the reveal and the part of a window that lies below the work plane. The error is
+  below a factor of 2.
+- The doorway weight uses the neighbor's mean illuminance ratio as if it were a radiance. A hall's
+  direct term is therefore too high by about one over the mean reflectance, roughly 1.6 times.
+- The hall's entering flux stays below the source room's only while the neighbor's mean times the
+  door area is below the window area. Ordinary rooms meet that, and the code does not enforce it.
+- The direct term ignores a concave room's own walls. In an L-shaped room, a cell around the inner
+  corner gets light that it cannot see.
+- Furniture and partial walls do not block light, and the field does not vary with height.
+- A cell whose center lies exactly on a shared wall goes to the room that comes first in the input.
+- A self-intersecting outline cancels its own area with no error.
+- A doorway into a room that is open to the sky weighs 1 in any direction.
+- The single sky direction for each opening is an approximation of the cosine-weighted sky in
+  front of it.
+
+## Not decided yet
+
+The specification puts these in the scope of this record. They wait for the window-lit rooms
+change, and this record does not settle them.
+
+- The display rule: how dark a room is shown. The field is linear, and a real room gets a few
+  percent of the outdoor light, which renders close to black at exposure 1.
+- The color check's bypass of the field, so that the color gates do not move.
+- The engine texture and the lighting hook that reads it. Both wait for the lighting hook spike,
+  which shows whether a lookup of a plan-space texture works inside the scene pass on both
+  backends.
+- The bounce channels. They wait for the scene stage of the refactor round, because floor bounce
+  adds light and the occlusion context cannot add light.
+
+## Will amend
+
+A proposed record amends nothing, so these are listed and left unedited. When this record becomes
+current, the amendments go into the records named here.
+
+- ADR-0172: the occlusion context carries one more factor, the field's sky visibility.
+- ADR-0156: the color check bypasses the field, with visibility 1 and bounce 0.
+
+## Consequences
+
+- Window-lit rooms have a tested source of numbers before any engine work starts. If the lighting
+  hook spike fails, the engine side waits and the core math is kept.
+- The math has no dependency on the renderer, so both backends agree by construction.
+- The field's error is bounded but not small. The model reads up to a factor of 2 bright, and
+  anything that reads the field as a measurement needs the limits above. The reserved photo mode
+  is the accuracy backstop.
+- The field is built from `DaylightRoom` values only. A short adapter from the scene graph, and
+  later a mapper from the plan geometry, supply them.
+- The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
+  `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
+  `room-validation.test.ts`, and `hard-inputs.test.ts`) and by
+  `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
+  last builds the harness shell and reports its mean, minimum, and maximum, and with
+  `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.
