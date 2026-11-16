@@ -1,5 +1,4 @@
 import type * as ThreeWebGPU from 'three/webgpu'
-import type { WebGPURenderer } from 'three/webgpu'
 
 import { applyToneMappingOperator } from './tone-mapping'
 
@@ -23,32 +22,47 @@ export interface SceneRendererOptions {
   toneMappingExposure?: number
 }
 
-/** The parts of the lazily loaded WebGPU build that constructSceneRenderer reads. */
-export type SceneRendererModule = Pick<
+/** The parts of the lazily loaded WebGPU build that the renderer factory reads. */
+type SceneRendererModule = Pick<
   typeof ThreeWebGPU,
   'WebGPURenderer' | 'PCFSoftShadowMap' | 'SRGBColorSpace'
 >
 
 /**
- * Loads the WebGPU build of Three.js. It is imported lazily so the WebGPU build never
- * enters the test or server import graph. A canvas loads it before it mounts, so the
- * renderer itself can then be constructed synchronously.
+ * Constructs a scene renderer. It does not initialize the backend: the caller starts
+ * `renderer.init()` and draws nothing until it resolves.
  */
-export function loadSceneRendererModule(): Promise<SceneRendererModule> {
-  return import('three/webgpu')
+export type SceneRendererFactory = (options?: SceneRendererOptions) => ThreeWebGPU.WebGPURenderer
+
+let rendererFactoryPromise: Promise<SceneRendererFactory> | undefined
+
+/**
+ * Loads the WebGPU build of Three.js and resolves to a synchronous renderer factory over it.
+ * The build is imported lazily so it never enters the test or server import graph. The load
+ * happens once: every call returns the same promise, so a later mount finds it already settled.
+ * A failed load is not kept, so the next call tries again.
+ */
+export function loadSceneRendererFactory(): Promise<SceneRendererFactory> {
+  rendererFactoryPromise ??= import('three/webgpu').then(
+    (rendererModule) => (options) => constructSceneRenderer(rendererModule, options),
+    (error: unknown) => {
+      rendererFactoryPromise = undefined
+      throw error
+    },
+  )
+  return rendererFactoryPromise
 }
 
 /**
  * Constructs the scene renderer for a canvas from the loaded module, without initializing
- * its backend: the caller starts `renderer.init()` and draws nothing until it resolves.
- * This is the one place that constructs a backend renderer. WebGPURenderer auto-selects
+ * its backend. This is the one place that constructs a backend renderer. WebGPURenderer auto-selects
  * WebGPU when it is available and falls back to its own WebGL 2 backend otherwise;
  * `forceWebGL` pins the WebGL 2 backend unconditionally for the deterministic visual baseline.
  */
-export function constructSceneRenderer(
+function constructSceneRenderer(
   rendererModule: SceneRendererModule,
   options: SceneRendererOptions = {},
-): WebGPURenderer {
+): ThreeWebGPU.WebGPURenderer {
   const { WebGPURenderer: Renderer, PCFSoftShadowMap, SRGBColorSpace } = rendererModule
   const renderer = new Renderer({
     canvas: options.canvas,
@@ -71,11 +85,11 @@ export function constructSceneRenderer(
   return renderer
 }
 
-/** Loads the module, constructs the renderer, and waits for its backend to initialize. */
+/** Loads the factory, constructs the renderer, and waits for its backend to initialize. */
 export async function createSceneRenderer(
   options: SceneRendererOptions = {},
-): Promise<WebGPURenderer> {
-  const renderer = constructSceneRenderer(await loadSceneRendererModule(), options)
+): Promise<ThreeWebGPU.WebGPURenderer> {
+  const renderer = (await loadSceneRendererFactory())(options)
   await renderer.init()
   return renderer
 }
