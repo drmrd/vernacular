@@ -27,7 +27,7 @@ type SphericalHarmonicBasis = (direction: Vector3) => number
  * The nine band-0..2 basis functions in three's SphericalHarmonics3 order:
  * Y(0,0); Y(1,-1), Y(1,0), Y(1,1); Y(2,-2), Y(2,-1), Y(2,0), Y(2,1), Y(2,2).
  */
-const SPHERICAL_HARMONIC_BASIS: readonly SphericalHarmonicBasis[] = [
+export const SPHERICAL_HARMONIC_BASIS: readonly SphericalHarmonicBasis[] = [
   () => SH_BAND_0,
   ({ y }) => SH_BAND_1 * y,
   ({ z }) => SH_BAND_1 * z,

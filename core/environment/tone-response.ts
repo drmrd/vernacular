@@ -4,7 +4,8 @@ import { linearToSrgb } from '../color/oklab'
  * The AgX tone curve of the pinned three.js build (0.184.0), transcribed from
  * agxToneMapping in node_modules/three/src/nodes/display/ToneMappingFunctions.js.
  * For a neutral input both AgX matrices keep the value, so only the log encoding,
- * the contrast polynomial, and the power 2.2 remain. core must not import three,
+ * the contrast polynomial, and the power 2.2 remain. The conversions to and from
+ * Rec. 2020 keep a neutral value to four digits, so they are left out. core must not import three,
  * so the numbers live here as named constants.
  */
 
