@@ -29,7 +29,7 @@ export const SUN_DIRECTION = new THREE.Vector3(SUN_REACH_X, SUN_REACH_UP, SUN_RE
 export const DAYLIGHT_SUN_INTENSITY = 1.6
 /** The fill only keeps the unlit faces off black; an equal fill washed them out. */
 const FILL_INTENSITY = 0.5
-/** A 2048px square shadow map: enough resolution for the shell without a large GPU cost. */
+/** Side of the square shadow map in texels: enough resolution for the shell without a large GPU cost. */
 export const SHADOW_MAP_SIZE = 2048
 /**
  * One shadow-map texel's diagonal, as a fraction of the shadow camera's extent, measured in the
