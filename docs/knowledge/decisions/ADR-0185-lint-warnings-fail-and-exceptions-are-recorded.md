@@ -81,7 +81,9 @@ import order inside each layer is left to the later stage specifications.
   `import/no-internal-modules`, because neither was ever configured and no plugin for them is
   installed. It describes `jscpd` as the report that `pnpm dup` prints, not as a lint rule. The
   engine testing entry (`engine/testing`) re-exports the few Three.js names that two `bridge/react`
-  tests need, and lint fails a production file of `bridge/`, `editor/`, or `app/` that imports it.
+  tests need, and lint fails a production file of `bridge/`, `editor/`, `app/`, or `src/`, or of
+  `engine/` outside `engine/testing/`, that imports it. Inside `engine/`, a file named
+  `*-test-support.ts` counts as test support for this rule, so it may import the entry.
 
 ## References
 
