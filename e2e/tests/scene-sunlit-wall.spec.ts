@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { srgbToOkLab } from '../../core'
-import { sampleCanvasColor, settledHarnessCanvas, type SamplePatch } from './scene-helpers'
+import {
+  logReading,
+  sampleCanvasColor,
+  settledHarnessCanvas,
+  type SamplePatch,
+} from './scene-helpers'
 
 // The sunlit-wall gate (issue #491). Every wall face used to be wound inside out, so the
 // shadow pass stored each wall's sun-side plane and every sunlit face was shadowed by its own
@@ -71,6 +76,9 @@ test.describe('Sunlit wall gate', () => {
     const sunlitL = srgbToOkLab(await sampleCanvasColor(page, canvas, SUNLIT_SOUTH_WALL)).L
     const shadedL = srgbToOkLab(await sampleCanvasColor(page, canvas, SHADED_EAST_WALL)).L
     const gap = sunlitL - shadedL
+    logReading('sunlit south wall L', sunlitL.toFixed(4))
+    logReading('shaded east wall L', shadedL.toFixed(4))
+    logReading('sunlit wall gap', gap.toFixed(4))
 
     expect(
       gap,
