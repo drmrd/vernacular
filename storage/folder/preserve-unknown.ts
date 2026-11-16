@@ -5,6 +5,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+// A key from a file can be any name, `__proto__` included; a plain assignment with that name sets
+// the prototype instead of creating a key, so every key from a file is written as an own property.
+function setOwn(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  })
+}
+
 // Top-level members that are keyed collections of modeled entries, not entities. A key absent from
 // `next` here is a user deletion, so it must not be re-grafted (unlike an unknown key on an entity).
 const KEYED_COLLECTIONS = new Set(['roomOverrides', 'paint'])
@@ -34,7 +45,13 @@ function graftKeyedCollection(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(next)) {
-    result[key] = key in previous ? graftKeyedCollectionEntry(previous[key], next[key]) : next[key]
+    setOwn(
+      result,
+      key,
+      Object.hasOwn(previous, key)
+        ? graftKeyedCollectionEntry(previous[key], next[key])
+        : next[key],
+    )
   }
   return result
 }
@@ -45,12 +62,12 @@ function graftObject(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(next)) {
-    result[key] = graftMember(key, previous, next)
+    setOwn(result, key, graftMember(key, previous, next))
   }
   for (const key of Object.keys(previous)) {
     // A key the next document lacks is unknown or reserved data the reader dropped; preserve it.
-    if (!(key in next)) {
-      result[key] = previous[key]
+    if (!Object.hasOwn(next, key)) {
+      setOwn(result, key, previous[key])
     }
   }
   return result
@@ -66,7 +83,7 @@ function graftMember(
   if (KEYED_COLLECTIONS.has(key) && isPlainObject(previousValue) && isPlainObject(nextValue)) {
     return graftKeyedCollection(previousValue, nextValue)
   }
-  return key in previous ? graftUnknown(previousValue, nextValue) : nextValue
+  return Object.hasOwn(previous, key) ? graftUnknown(previousValue, nextValue) : nextValue
 }
 
 function idOf(value: unknown): string | undefined {
@@ -107,16 +124,22 @@ interface TypeScope {
   keys: Readonly<Record<string, KnownValue>>
 }
 
+// Only an own key of the table is known; a name every object inherits, such as `constructor`, is not.
+function knownValueOf(scope: TypeScope, key: string): KnownValue | undefined {
+  return Object.hasOwn(scope.keys, key) ? scope.keys[key] : undefined
+}
+
 function graftKnownMember(
   key: string,
   { previous, next }: { previous: Record<string, unknown>; next: Record<string, unknown> },
-  { table, keys }: TypeScope,
+  scope: TypeScope,
 ): unknown {
-  const known = keys[key]
+  const known = knownValueOf(scope, key)
   if (known === undefined || KEYED_COLLECTIONS.has(key)) {
     return graftMember(key, previous, next)
   }
-  return key in previous
+  const { table } = scope
+  return Object.hasOwn(previous, key)
     ? graftWithTable(previous[key], next[key], { table, at: known })
     : next[key]
 }
@@ -128,12 +151,12 @@ function graftObjectWithTable(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const key of Object.keys(next)) {
-    result[key] = graftKnownMember(key, { previous, next }, scope)
+    setOwn(result, key, graftKnownMember(key, { previous, next }, scope))
   }
   for (const key of Object.keys(previous)) {
     // A known key the next document lacks was cleared; only a key the table does not know is restored.
-    if (!(key in next) && scope.keys[key] === undefined) {
-      result[key] = previous[key]
+    if (!Object.hasOwn(next, key) && knownValueOf(scope, key) === undefined) {
+      setOwn(result, key, previous[key])
     }
   }
   return result
