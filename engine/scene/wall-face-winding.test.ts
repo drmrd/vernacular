@@ -13,7 +13,7 @@ import {
   worldTriangles,
   type Measure,
   type Tally,
-} from './wall-winding-support'
+} from './wall-winding-test-support'
 
 // Face culling and the shadow pass both read a triangle's winding, so every face
 // of a wall solid must be wound to point out of the solid: the long faces and end

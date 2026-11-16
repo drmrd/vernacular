@@ -6,7 +6,7 @@ import type { OpeningSceneNode, Point, SceneGraph, SurfaceRef, WallSceneNode } f
 import { PhysicalMaterialProvider } from '../materials/physical-material-provider'
 
 import { buildScene } from './build-scene'
-import { worldAt } from './wall-winding-support'
+import { worldAt } from './wall-winding-test-support'
 
 // Each long face of a wall shows the paint of its own side. The side names follow
 // the model and the 2D plan: 'left' is the face on the +normal side, where the

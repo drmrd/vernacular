@@ -14,7 +14,7 @@ import {
   type OpeningSpec,
   type Tally,
   type WallSpec,
-} from './wall-winding-support'
+} from './wall-winding-test-support'
 
 // The face winding rule for the wall shapes the plain-wall test leaves out: every
 // triangle of a vertical face winds, and carries vertex normals, away from the wall
