@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:4173'
+const DEFAULT_PREVIEW_PORT = '4173'
+// E2E_PORT lets parallel worktrees each run their own preview server.
+const previewPort = process.env.E2E_PORT ?? DEFAULT_PREVIEW_PORT
+const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${previewPort}`
 
 const SCREENSHOT_DIFF_TOLERANCE = 0.02
 
@@ -82,7 +85,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm preview --port 4173 --strictPort',
+    command: `pnpm preview --port ${previewPort} --strictPort`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
