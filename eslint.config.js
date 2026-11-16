@@ -42,7 +42,7 @@ const reactThreePackages = {
 }
 
 const engineTestingEntry = {
-  regex: '(^|/)engine/testing(/.*)?$',
+  regex: '(^|/)engine/testing(/.*)?$|^\\.{1,2}/(\\.\\./)*testing(/.*)?$',
   message: 'The engine testing entry is for tests only.',
 }
 const testFileGlobs = ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/*-contract.ts']
@@ -98,6 +98,20 @@ const layerPurityBlocks = [
         'error',
         { patterns: [threePackages, reactThreePackages, engineTestingEntry] },
       ],
+    },
+  },
+  {
+    files: ['src/**'],
+    ignores: testFileGlobs,
+    rules: { 'no-restricted-imports': ['error', { patterns: [engineTestingEntry] }] },
+  },
+  {
+    // Files inside engine/testing/ import their siblings, so they are left out.
+    // Test support modules (named *-test-support) only serve tests, so they are left out too.
+    files: ['engine/**'],
+    ignores: [...testFileGlobs, 'engine/testing/**', '**/*-test-support.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [reactPackages, engineTestingEntry] }],
     },
   },
 ]
