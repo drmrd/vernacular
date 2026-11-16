@@ -1,3 +1,7 @@
+/* eslint-disable max-lines --
+ * One describe block per sky-environment entry point (attach, gain, update, dispose, bundle
+ * guard). The attach block grows one case per addon behavior the module must survive, and
+ * the per-file line cap does not suit a behavior-organized suite that wraps the lazy addon. */
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -112,33 +116,48 @@ function reachesUniformHolding(
 }
 
 /**
- * Attaches a sky whose addon constructor leaves DRIFTED_SCATTERING behind, the way a future
+ * Attaches a sky whose addon constructor runs `drift` after the real one, the way a future
  * three release that changed its defaults would. The addon class is wrapped, never the
- * module under test, and the registry is restored so no other case sees the wrapper.
+ * module under test, and the registry is restored so no other case sees the wrapper. A
+ * rejection from the attach propagates, so a failing attach fails the case that asked for it.
  */
-async function attachSkyFromDriftedAddon(): Promise<LightingRig> {
+async function attachSkyFromWrappedAddon(
+  drift: (sky: SkyMesh) => void,
+): Promise<{ scene: THREE.Scene; rig: LightingRig }> {
   vi.resetModules()
   vi.doMock(SKY_ADDON_PATH, async () => {
     const actual = await vi.importActual<Record<string, new () => SkyMesh>>(SKY_ADDON_PATH)
-    class DriftedSkyMesh extends (actual[SKY_ADDON_EXPORT]!) {
+    class WrappedSkyMesh extends (actual[SKY_ADDON_EXPORT]!) {
       constructor() {
         super()
-        this.turbidity.value = DRIFTED_SCATTERING.turbidity
-        this.rayleigh.value = DRIFTED_SCATTERING.rayleigh
-        this.mieCoefficient.value = DRIFTED_SCATTERING.mieCoefficient
-        this.mieDirectionalG.value = DRIFTED_SCATTERING.mieDirectionalG
+        drift(this)
       }
     }
-    return { ...actual, [SKY_ADDON_EXPORT]: DriftedSkyMesh }
+    return { ...actual, [SKY_ADDON_EXPORT]: WrappedSkyMesh }
   })
   try {
     const fresh = await import('./sky-environment')
-    const { scene, rig } = makeAppliedRig()
-    await fresh.attachSkyEnvironment(scene, rig)
-    return rig
+    const applied = makeAppliedRig()
+    await fresh.attachSkyEnvironment(applied.scene, applied.rig)
+    return applied
   } finally {
     vi.doUnmock(SKY_ADDON_PATH)
     vi.resetModules()
+  }
+}
+
+/** The addon leaves DRIFTED_SCATTERING behind instead of its own defaults. */
+function driftScattering(sky: SkyMesh): void {
+  sky.turbidity.value = DRIFTED_SCATTERING.turbidity
+  sky.rayleigh.value = DRIFTED_SCATTERING.rayleigh
+  sky.mieCoefficient.value = DRIFTED_SCATTERING.mieCoefficient
+  sky.mieDirectionalG.value = DRIFTED_SCATTERING.mieDirectionalG
+}
+
+/** The addon builds no color node: it leaves `null` or `undefined` where a node used to be. */
+function dropColorNode(colorNode: null | undefined): (sky: SkyMesh) => void {
+  return (sky) => {
+    sky.material.colorNode = colorNode as unknown as typeof sky.material.colorNode
   }
 }
 
@@ -197,7 +216,7 @@ describe('attachSkyEnvironment', () => {
   })
 
   it('pins the sky scattering constants rather than inheriting the addon defaults', async () => {
-    const rig = await attachSkyFromDriftedAddon()
+    const { rig } = await attachSkyFromWrappedAddon(driftScattering)
 
     // The addon's defaults equal these today, so a plain equality check would pass without
     // the module setting anything. The addon is wrapped to start from other values, so
@@ -233,6 +252,20 @@ describe('attachSkyEnvironment', () => {
       false,
     )
   })
+
+  it.each([[null], [undefined]])(
+    'resolves with the sky attached and no sky gain when the addon color node is %s',
+    async (colorNode) => {
+      const { scene, rig } = await attachSkyFromWrappedAddon(dropColorNode(colorNode))
+
+      // The promise never rejects: with no color node there is nothing to multiply, so the
+      // visible sky stays as the addon built it and the rig records no gain, since a gain
+      // is held only when the sky reads it.
+      expect(sceneHasSkyMesh(scene)).toBe(true)
+      expect(rig.skyGain).toBeUndefined()
+      expect(rig.sky?.material.colorNode).toBe(colorNode)
+    },
+  )
 
   it('replays an update issued before the sky resolves onto the sky once it arrives', async () => {
     const { scene, rig } = makeAppliedRig()
@@ -433,16 +466,16 @@ describe('engine public surface', () => {
 
 describe('sky-environment module imports', () => {
   // This is a source-reading guard, not a behavior test. It pins a *bundling* property no
-  // runtime assertion can observe: this module must not STATICALLY import the SkyMesh addon
-  // or three/webgpu. Either one drags the whole WebGPU node-material system onto the app's
-  // startup path. When this module statically imported the SkyMesh addon (which itself
+  // runtime assertion can observe: this module must not STATICALLY import the SkyMesh addon,
+  // three/webgpu, or three/tsl. Any of them drags the whole WebGPU node-material system onto
+  // the app's startup path. When this module statically imported the SkyMesh addon (which itself
   // statically imports three/webgpu), the app's entry chunk grew from ~2.0MB to ~2.6MB (the
   // deliberately lazy three.webgpu chunk folded into the entry), and cold startup slowed
   // enough to make e2e/tests/environment-panel.spec.ts flaky on firefox under parallel load.
   // The sky mesh must load lazily at attach time. See engine/testing/import-guards.ts for how
   // the static-vs-type-vs-dynamic import distinction is made; that helper is shared with the
   // equivalent ambient-occlusion.test.ts guard.
-  it('never puts the SkyMesh addon or three/webgpu on the startup path via a static import', () => {
+  it('never puts the SkyMesh addon, three/webgpu, or three/tsl on the startup path via a static import', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'engine/lighting/sky-environment.ts'),
       'utf8',
@@ -450,5 +483,6 @@ describe('sky-environment module imports', () => {
 
     expect(importsStaticValueOf(source, 'three/examples/jsm/objects/SkyMesh.js')).toBe(false)
     expect(importsStaticValueOf(source, 'three/webgpu')).toBe(false)
+    expect(importsStaticValueOf(source, 'three/tsl')).toBe(false)
   })
 })
