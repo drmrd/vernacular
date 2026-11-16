@@ -42,8 +42,20 @@ interface RoomLight {
   interreflection: number
 }
 
+/**
+ * Reads the sky's radiance toward a direction as a weight: a value below 0 or `NaN` is no light,
+ * so it counts as 0. A value above 1 is legal (a part of the dome brighter than the mean), so
+ * nothing caps it here; only a cell's final visibility is capped.
+ */
+function readSkyRadiance(sky: SkyLuminance, direction: Vector3): number {
+  const radiance = sky(direction)
+  return Number.isNaN(radiance) || radiance < 0 ? 0 : radiance
+}
+
 function skyWeights(room: RoomGeometry, sky: SkyLuminance): number[] {
-  return room.apertures.map((aperture) => (aperture.kind === 'sky' ? sky(aperture.direction) : 0))
+  return room.apertures.map((aperture) =>
+    aperture.kind === 'sky' ? readSkyRadiance(sky, aperture.direction) : 0,
+  )
 }
 
 /** Weights every aperture of every room by the sky, then sums each room's entering flux. */

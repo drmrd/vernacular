@@ -38,6 +38,20 @@ function requireFinite(value: number, name: string, location: DaylightInputLocat
   }
 }
 
+function validateOutlineCoordinates(
+  outline: readonly Point[],
+  location: DaylightInputLocation,
+): void {
+  for (const [vertexIndex, vertex] of outline.entries()) {
+    if (!(Number.isFinite(vertex.x) && Number.isFinite(vertex.y))) {
+      throw daylightInputError(
+        location,
+        `outline vertex ${vertexIndex} has a coordinate that is not finite; a coordinate must be a finite number`,
+      )
+    }
+  }
+}
+
 function validateRoomValues(room: DaylightRoom, location: DaylightInputLocation): void {
   if (!(Number.isFinite(room.ceilingHeight) && room.ceilingHeight > 0)) {
     throw daylightInputError(location, 'ceiling height must be a finite number above 0')
@@ -109,7 +123,7 @@ function validateAperture(
 
 /**
  * Throws a RangeError for the first room or aperture that the daylight field cannot use: an
- * outline of fewer than three points, a ceiling or floor color that is not a finite number, a
+ * outline of fewer than three points, an outline coordinate that is not a finite number, a ceiling or floor color that is not a finite number, a
  * sill, head, or reveal depth that is not usable, a head above the ceiling, a span of no length or
  * with an end point off the outline, or a doorway that opens to its own room or to a room that
  * does not exist. The side test of the midpoint of each span runs with the geometry pass.
@@ -122,6 +136,7 @@ export function validateDaylightRooms(rooms: readonly DaylightRoom[]): void {
         `an outline needs at least ${MINIMUM_OUTLINE_POINTS} points, and this one has ${room.outline.length}`,
       )
     }
+    validateOutlineCoordinates(room.outline, { room: roomIndex })
     validateRoomValues(room, { room: roomIndex })
     for (const [apertureIndex, aperture] of room.apertures.entries()) {
       validateAperture(
