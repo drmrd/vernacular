@@ -24,7 +24,7 @@ sourceFiles:
     docs/specs/2026-11-15-daylight-and-shadow.md,
   ]
 status: proposed
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # ADR-0196: Interior daylight is a plan-space field computed in core
@@ -237,3 +237,112 @@ current, the amendments go into the records named here.
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.
+
+## Lighting hook spike, 2026-11-15
+
+A throwaway branch tested where a per-room daylight field can enter the lighting of the 3D view, on
+three.js 0.184.0. The field was a half-float `DataTexture` (RGBA, 100 mm cells, linear filtering, no
+mipmaps). Cells whose centers fall in the shell's clear rectangle (plan 60..3940 by 60..2940 mm)
+held sky visibility 0.25 and a warm bounce of (0.2, 0.16, 0.11); every other cell held visibility 1
+and no bounce. A fragment looked the field up by its world position, offset one cell (100 mm) along
+its world normal, with plan (x, y) taken as world (x, -z).
+
+Readings are OKLab L of square pixel regions of the frame. In the harness every variant and its
+control loaded four times (two invocations of two runs each), and in the live view twice. Every load
+of a variant gave the same reading to four decimals as every other load of it, so the noise band is
+0.0000. WebGL 2 means the scene harness on its forced WebGL 2 backend, on the Mac's GPU. WebGPU
+means two things: the same harness with the forced backend switched off (the renderer reported
+`isWebGPUBackend`), and the editor's live view with a drawn room, realistic lighting, a site at 40 N
+75 W, and 2026-03-20 12:00. Both WebGPU runs were on the development Mac. The linux
+software-rendering lane was not run.
+
+| Question                                        | WebGL 2 | WebGPU |
+| ----------------------------------------------- | ------- | ------ |
+| 1. Lookup inside the occlusion context          | Yes     | Yes    |
+| 2. Lookup at the plain level, no occlusion node | Yes     | Yes    |
+| 3a. Added light through `scene.environmentNode` | Yes     | Yes    |
+| 3b. Added light through a custom light node     | Yes     | Yes    |
+
+### Question 1: the lookup
+
+The occlusion term of the scene pass context was multiplied by the field's visibility. In the
+window-light state (interior camera) the interior regions went dark on both backends: the north wall
+went from 0.5547 to 0.3400, the east wall beside the window from 0.5547 to 0.3375, the floor near
+the east wall from 0.6276 to 0.4056, and the floor at the left of the frame from 0.6258 to 0.4051.
+The window-light frame shows nothing outside except through the window, so the exterior check used
+the equinox-noon state (the same shell seen from outside with its top open). There the outer south
+wall (0.6825), the outer east wall (0.6372), and two lawn regions (0.5443, 0.5456) did not move at
+all, while the inner faces of the north and west walls went from 0.5718 to 0.3555 and from 0.5940 to
+0.4144. The WebGPU harness gave the same numbers within 0.0002. In the live view on WebGPU, the far
+wall faces went from 0.5887 to 0.4314 and from 0.5845 to 0.4091, the floor from 0.6490 to 0.4770,
+and both lawn regions and the sky stayed put. The live view darkens less because the faded near
+walls lie over the room, and transparent materials are exempt from the occlusion context.
+
+```ts
+const offset = positionWorld.add(normalWorld.mul(CELL))
+const plan = vec2(offset.x, offset.z.negate())
+const uv = plan.sub(uniform(origin)).div(vec2(COLUMNS * CELL, ROWS * CELL))
+const visibility = texture(field, uv, float(0)).a
+
+scenePass.contextNode = builtinAOContext(occlusion.r.mul(visibility))
+```
+
+### Question 2: the plain level
+
+Two variants ran with no occlusion node in the graph, and both gave the same darkening as
+question 1. The first kept a pipeline scene pass whose context held the field alone. The second
+dropped the pass and set the renderer's own context node before a plain `renderer.render`.
+Window-light north wall: 0.5547 to 0.3400 for both, on both backends. Live view floor: 0.6490 to
+0.4770 for both. The equinox-noon exterior regions did not move.
+
+The scene pass does not have to stay at the plain level. `Renderer.contextNode` is a public context
+that every node material reads when it builds, and a `PassNode` only merges its own context over it
+during its render. All three plain variants (the plain draw, the scene pass, and the renderer
+context) used the same frame budget: 3 render calls and 84 draw calls in the window-light harness, 3
+and 59 in the live view. The renderer context applies to everything drawn through that renderer, so
+at the occlusion level the pass context must carry the product of occlusion and field, as in
+question 1, because the pass context replaces the renderer's `getAO` hook rather than combining with
+it.
+
+```ts
+renderer.contextNode = builtinAOContext(visibility)
+renderer.render(scene, camera)
+```
+
+### Question 3: added light
+
+Both routes added the warm bounce inside the room and nothing outside it, on both backends.
+Window-light north wall: 0.5547 to 0.6468 through the environment and 0.6468 through the light node.
+Floor near the east wall: 0.6276 to 0.6891 through both. Live view floor: 0.6490 to 0.6988 through
+both. The equinox-noon exterior regions and the live-view lawn and sky did not move. Neither route
+adds a render pass. One frame of the occlusion pipeline drew 5 render calls with or without either
+route (127 draw calls in the window-light harness, 160 in equinox-noon, 90 in the live view).
+
+The two routes differ in what they touch. Setting `scene.environmentNode` replaces the
+`scene.environment` path, so the sky map has to be carried over through `pmremTexture`, and the
+bounce also lands in specular reflections (the door wall read 0.6490 against 0.6468 through the
+light node). The light node adds to diffuse irradiance only, but the light class has to be
+registered with the renderer's node library. Both routes put the bounce into indirect diffuse light,
+which the occlusion context multiplies afterwards. If one context carries both window-lit rooms and
+floor bounce, the bounce would be scaled by the room's sky visibility a second time. The bounce
+design has to allow for that.
+
+```ts
+// Environment route
+scene.environmentNode = pmremTexture(skyMap).add(texture(field, uv, float(0)).rgb)
+
+// Light node route
+class BounceLightNode extends AnalyticLightNode {
+  setup({ context }) {
+    context.irradiance.addAssign(texture(field, uv, float(0)).rgb.mul(Math.PI))
+  }
+}
+renderer.library.addLight(BounceLightNode, BounceLight)
+scene.add(new BounceLight())
+```
+
+### Conclusion
+
+Window-lit rooms can land before the scene stage. The field lookup works inside the occlusion
+context on WebGL 2 and on WebGPU, adds no render pass, and reaches the plain level through the
+renderer's context node without a scene pass.
