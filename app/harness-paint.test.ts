@@ -80,8 +80,13 @@ describe('resolveHarnessPaint', () => {
     }
     expect(floorTreatment.finishId).toBe('semi-gloss')
 
-    for (const wallId of ['south', 'east', 'north', 'west']) {
-      const wallKey = surfaceKey({ kind: 'wall-face', wallId, side: 'right' })
+    const shell = HARNESS_FIXTURES.shell
+    const room = centroid(shell.rooms[0]?.polygon ?? [])
+
+    for (const wall of shell.walls) {
+      const wallId = wall.id.slice(WALL_ID_PREFIX.length)
+      const side = roomFacingSide(wall.start, wall.end, room)
+      const wallKey = surfaceKey({ kind: 'wall-face', wallId, side })
       const wallTreatment: SurfaceTreatment | undefined = store?.[wallKey]
       if (wallTreatment?.kind !== 'solid') {
         throw new Error(`expected the ${wallId} wall treatment to be a solid treatment`)
