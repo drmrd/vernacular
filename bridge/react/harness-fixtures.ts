@@ -122,6 +122,22 @@ const SHELL_FIXTURE: SceneGraph = {
   furniture: [],
 }
 
+// The shell with one more double-hung window centered at plan x 800 in the south wall,
+// clear of the door (plan x 1550 to 2450), so a south-facing opening can admit daylight.
+const SOUTH_WINDOW_CENTER_X = 800
+const SHELL_SOUTH_WINDOW: OpeningSceneNode = {
+  ...SHELL_WINDOW,
+  id: 'opening:south-window',
+  hostWallId: 'south',
+  center: { x: SOUTH_WINDOW_CENTER_X, y: 0 },
+  along: { x: 1, y: 0 },
+  normal: { x: 0, y: 1 },
+}
+const SHELL_SOUTH_WINDOW_FIXTURE: SceneGraph = {
+  ...SHELL_FIXTURE,
+  openings: [...SHELL_FIXTURE.openings, SHELL_SOUTH_WINDOW],
+}
+
 // A second fixture that exercises the generalized junction geometry (ADR-0080): a
 // through-wall with a partition teeing into its middle (a T-junction, which
 // buildWallGraph splits at the tee), whose far end is a three-way apex where two bay
@@ -185,6 +201,8 @@ const FURNITURE_FIXTURE: SceneGraph = {
  */
 export const HARNESS_FIXTURES = {
   shell: SHELL_FIXTURE,
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- scene id is a URL query value, not a code identifier
+  'shell-south-window': SHELL_SOUTH_WINDOW_FIXTURE,
   junctions: JUNCTION_FIXTURE,
   furniture: FURNITURE_FIXTURE,
   // eslint-disable-next-line @typescript-eslint/naming-convention -- scene id is a URL query value matching the baseline filename, not a code identifier
