@@ -24,10 +24,10 @@ const SUN_REACH_Z = 0.35
 /** A fixed default sun direction, the rig's initial aim. Treat it as read-only: it is a
  *  shared constant, and the shadow fitter normalizes a clone of it once. */
 export const SUN_DIRECTION = new THREE.Vector3(SUN_REACH_X, SUN_REACH_UP, SUN_REACH_Z)
-/** A key-dominant rig (ADR-0079): the daytime sun runs brighter than the hemisphere fill
- *  so it sets the value of the faces it reaches, and faces at different angles separate
- *  in value rather than reading equally lit. */
-export const DAYLIGHT_SUN_INTENSITY = 1.6
+/** The schematic rig's sun (ADR-0079): it runs brighter than the hemisphere fill so it sets
+ *  the value of the faces it reaches, and faces at different angles separate in value rather
+ *  than reading equally lit. The daylight level comes from core's sun level, not from here. */
+export const SCHEMATIC_SUN_INTENSITY = 1.6
 /** The fill only keeps the unlit faces off black; an equal fill washed them out. */
 const FILL_INTENSITY = 0.5
 /** Side of the square shadow map in texels: enough resolution for the shell without a large GPU cost. */

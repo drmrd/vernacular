@@ -15,8 +15,8 @@ export interface EnvironmentLighting {
   sunColor: LinearRgb
   /** Ambient/hemisphere sky tint in linear-light sRGB. */
   skyColor: LinearRgb
-  /** Direct-sun intensity scale, 0 (extinguished) to 1 (full sun), carrying the horizon extinction ramp. */
-  sunIntensity: number
+  /** Direct-sun level, 0 (extinguished) to the full sun's level, carrying the horizon extinction ramp. */
+  sunLevel: number
   /** Cloud-cover fraction the sky was computed with; the visible sky mesh reads it. */
   cloudCover: number
   /** Nine RGB spherical-harmonic triples of the sky dome, SphericalHarmonics3 order. */
@@ -42,7 +42,7 @@ export interface EnvironmentLightingInput {
  * resolves the sun's horizontal-frame angles for the site and civil instant,
  * `sunWorldDirection` rotates them through the site north bearing into the
  * y-up world frame (ADR-0139), and `skyLighting` derives the sun and sky tints
- * from the solar altitude and cloud cover. `sunIntensity` passes straight through
+ * from the solar altitude and cloud cover. `sunLevel` passes straight through
  * from `skyLighting`, carrying the horizon extinction ramp so the direct sun fades
  * to nothing as it sets. `skyAmbient` projects the same analytic sky dome into
  * spherical-harmonic coefficients for the ambient probe, and `cloudCover` passes
@@ -56,12 +56,12 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
     observedAt: input.observedAt,
     utcOffsetMinutes: input.utcOffsetMinutes,
   })
-  const { sunColor, skyColor, sunIntensity } = skyLighting(angles.altitude, input.cloudCover)
+  const { sunColor, skyColor, sunLevel } = skyLighting(angles.altitude, input.cloudCover)
   return {
     sunDirection: sunWorldDirection(angles, input.northBearing),
     sunColor,
     skyColor,
-    sunIntensity,
+    sunLevel,
     cloudCover: input.cloudCover,
     skyAmbient: projectDomeToSphericalHarmonics(angles.altitude, input.cloudCover),
   }

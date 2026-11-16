@@ -23,10 +23,6 @@ const BAND_FACTORS: readonly number[] = [
   BAND_2_FACTOR,
 ]
 
-/** The sun factor the engine applies today (DAYLIGHT_SUN_INTENSITY in engine/lighting/lighting-rig.ts).
- * The next change replaces `sunIntensity * ENGINE_SUN_FACTOR` with a sun level computed in core. */
-const ENGINE_SUN_FACTOR = 1.6
-
 /** RGB channels carried per spherical-harmonic coefficient. */
 const RGB_CHANNEL_COUNT = 3
 
@@ -58,7 +54,7 @@ function sunTerm(lighting: EnvironmentLighting, normal: Vector3): number {
     0,
     normal.x * sunDirection.x + normal.y * sunDirection.y + normal.z * sunDirection.z,
   )
-  return (lighting.sunIntensity * ENGINE_SUN_FACTOR * facing) / Math.PI
+  return (lighting.sunLevel * facing) / Math.PI
 }
 
 /** What a matte surface returns, with no shadow and no specular term. */

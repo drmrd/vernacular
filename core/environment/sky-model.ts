@@ -2,15 +2,15 @@ import type { LinearRgb } from '../color/oklab'
 
 /**
  * The light an outdoor scene needs: the direct sun tint and the ambient sky tint,
- * both colors in linear-light sRGB, plus the sun's intensity scale. The sun warms
- * toward the horizon in `sunColor` while `sunIntensity` carries the horizon dimming
+ * both colors in linear-light sRGB, plus the sun's level. The sun warms
+ * toward the horizon in `sunColor` while `sunLevel` carries the horizon dimming
  * and the below-horizon extinction; the sky stays cooler (bluer) than the sun.
  */
 export interface SkyLighting {
-  /** Direct sun tint, warmer near the horizon; the dimming lives in sunIntensity, not here. */
+  /** Direct sun tint, warmer near the horizon; the dimming lives in sunLevel, not here. */
   sunColor: LinearRgb
-  /** Direct-sun intensity scale, 0 (extinguished below the horizon) to 1 (full sun overhead). */
-  sunIntensity: number
+  /** Direct-sun level, 0 (extinguished below the horizon) to FULL_SUN_LEVEL (full sun overhead). */
+  sunLevel: number
   /** Ambient/hemisphere sky tint, cooler than the sun. */
   skyColor: LinearRgb
 }
@@ -22,6 +22,9 @@ export interface SkyLighting {
  * real, user-set value.
  */
 export const DEFAULT_CLOUD_COVER = 0
+
+/** The level of the full sun, overhead under a clear sky; it was the engine's daylight sun intensity. */
+export const FULL_SUN_LEVEL = 1.6
 
 /** Direct sun tint with the sun on the horizon: strongly reddened by the long air path. */
 const HORIZON_SUN_TINT: LinearRgb = { r: 1, g: 0.55, b: 0.25 }
@@ -91,17 +94,18 @@ function directBeamCloudTransmission(cloudCover: number): number {
  * Analytic clear-sky lighting model. `altitude` is the sun's height above the
  * horizon in radians (negative once it has set); `cloudCover` is a 0..1
  * fraction (0 clear, 1 fully overcast). Both colors interpolate between named
- * horizon and zenith tints on the sun's elevation; `sunIntensity` carries the
+ * horizon and zenith tints on the sun's elevation; `sunLevel` carries the
  * direct sun's dimming toward the horizon and its extinction just below, so the
  * tint stays at full strength and the scale does the fading. Cloud cover
  * flattens both colors toward grey while dimming them, and also attenuates
- * `sunIntensity` through the cloud transmission curve, extinguishing the
+ * `sunLevel` through the cloud transmission curve, extinguishing the
  * direct beam entirely at full overcast while leaving the ambient sky lit.
  */
 export function skyLighting(altitude: number, cloudCover: number): SkyLighting {
   const elevation = clampToUnitInterval(Math.sin(altitude))
   const extinction = clampToUnitInterval(1 + altitude / HORIZON_EXTINCTION_RADIANS)
-  const sunIntensity =
+  const sunLevel =
+    FULL_SUN_LEVEL *
     extinction *
     (HORIZON_SUN_INTENSITY + (1 - HORIZON_SUN_INTENSITY) * elevation) *
     directBeamCloudTransmission(cloudCover)
@@ -109,7 +113,7 @@ export function skyLighting(altitude: number, cloudCover: number): SkyLighting {
   const clearSky = mixLinearRgb(HORIZON_SKY_TINT, ZENITH_SKY_TINT, elevation)
   return {
     sunColor: overcastAdjusted(clearSun, cloudCover),
-    sunIntensity,
+    sunLevel,
     skyColor: overcastAdjusted(clearSky, cloudCover),
   }
 }
