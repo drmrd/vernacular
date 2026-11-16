@@ -75,7 +75,9 @@ no graft and saved the loss.
 - A cleared optional field stays cleared, and a key that a migration removed stays removed.
 - A field added by a newer schema revision is unknown to an older reader's table, so the reader
   keeps it. That is the tolerant case of ADR-0178. On a union value this holds while the tag
-  stays the same. A value whose tag changed is a new value, and it takes nothing from the old one.
+  stays the same. A value whose tag changed is a new value, and it takes nothing from the old one,
+  at that position or below it. The old value's `extensions` and any union value nested in it are
+  not carried over.
 - The graft no longer repairs a known key that a command dropped. The command test is the guard for
   that, which is why it covers every registered command and fails for one it cannot run.
 - The table and the graft move into the document codec unchanged when the persistence stage builds
