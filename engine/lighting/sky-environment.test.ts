@@ -44,7 +44,7 @@ function makeLighting(): EnvironmentLighting {
     sunDirection: SUN_DIRECTION,
     sunColor: { r: 0.9, g: 0.8, b: 0.6 },
     skyColor: { r: 0.4, g: 0.55, b: 0.9 },
-    sunIntensity: 1.2,
+    sunLevel: 1.2,
     cloudCover: CLOUD_COVER,
     skyAmbient: DISTINCT_SKY_AMBIENT,
   }

@@ -11,7 +11,7 @@ import {
 } from '../../core'
 import { addGroundPlane, groundExtent } from '../scene/ground-plane'
 import { SolarLightingProvider } from './solar-lighting-provider'
-import { DAYLIGHT_SUN_INTENSITY, SHADOW_MAP_SIZE } from './lighting-rig'
+import { SHADOW_MAP_SIZE } from './lighting-rig'
 
 // Fabricated environments: a deliberately loud warm sun under a cool sky. The
 // solar math that would produce real values is core-tested; here we only care
@@ -21,12 +21,12 @@ const overheadSunLighting: EnvironmentLighting = {
   sunDirection: { x: 0, y: 1, z: 0 },
   sunColor: { r: 1, g: 0.5, b: 0.25 },
   skyColor: { r: 0.2, g: 0.4, b: 0.9 },
-  sunIntensity: 1,
+  sunLevel: 1,
   cloudCover: fabricatedCloudCover,
   skyAmbient: NEUTRAL_DOME_SPHERICAL_HARMONICS,
 }
-const duskSunLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0.5 }
-const sunDownLighting: EnvironmentLighting = { ...overheadSunLighting, sunIntensity: 0 }
+const duskSunLighting: EnvironmentLighting = { ...overheadSunLighting, sunLevel: 0.5 }
+const sunDownLighting: EnvironmentLighting = { ...overheadSunLighting, sunLevel: 0 }
 
 // A sky-lit environment with an off-axis sun and a uniform dome at a distinctive level.
 // A uniform dome is pure band 0, so it reconstructs to exactly that level in every
@@ -99,6 +99,14 @@ describe('SolarLightingProvider', () => {
     expect((directional[0] as THREE.DirectionalLight).castShadow).toBe(true)
   })
 
+  it('leaves the sun dark after apply until the first update sets the sun level', () => {
+    const scene = new THREE.Scene()
+
+    new SolarLightingProvider().apply(scene)
+
+    expect(findSun(scene).intensity).toBe(0)
+  })
+
   it('lights the scene from a visible sky mesh and an environment map, zeroing the fill', async () => {
     const scene = new THREE.Scene()
 
@@ -139,10 +147,10 @@ describe('SolarLightingProvider', () => {
     expect(sky.color.r).toBeCloseTo(0.2, precision)
     expect(sky.color.g).toBeCloseTo(0.4, precision)
     expect(sky.color.b).toBeCloseTo(0.9, precision)
-    expect(sun.intensity).toBeCloseTo(DAYLIGHT_SUN_INTENSITY, precision)
+    expect(sun.intensity).toBeCloseTo(overheadSunLighting.sunLevel, precision)
   })
 
-  it('scales the sun intensity by the environment sunIntensity fraction', () => {
+  it('sets the sun intensity to the environment sun level with no engine factor', () => {
     const scene = new THREE.Scene()
     const provider = new SolarLightingProvider()
     provider.apply(scene)
@@ -150,7 +158,7 @@ describe('SolarLightingProvider', () => {
     provider.update(scene, duskSunLighting, bounds)
 
     const precision = 5
-    expect(findSun(scene).intensity).toBeCloseTo(DAYLIGHT_SUN_INTENSITY * 0.5, precision)
+    expect(findSun(scene).intensity).toBeCloseTo(duskSunLighting.sunLevel, precision)
   })
 
   it("aims the sky's sun position at the environment sun direction", async () => {

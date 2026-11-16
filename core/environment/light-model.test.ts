@@ -38,12 +38,9 @@ const LEVEL_FACING_UP = 1 + BAND_1_COSINE_WEIGHT
 const LEVEL_FACING_DOWN = 1 - BAND_1_COSINE_WEIGHT
 const LEVEL_FACING_HORIZONTALLY = 1
 
-// The engine's present factor on the sun intensity (a later cycle moves the sun level into core).
-const ENGINE_SUN_FACTOR = 1.6
-
 const SUN_DIRECTION: Vector3 = { x: 0.6, y: 0.8, z: 0 }
 const SUN_COLOR: LinearRgb = { r: 1, g: 0.9, b: 0.7 }
-const SUN_INTENSITY = 0.75
+const SUN_LEVEL = 0.75
 const REFLECTANCE: LinearRgb = { r: 0.8, g: 0.5, b: 0.2 }
 
 function lightingWithAmbient(skyAmbient: readonly number[]): EnvironmentLighting {
@@ -51,7 +48,7 @@ function lightingWithAmbient(skyAmbient: readonly number[]): EnvironmentLighting
     sunDirection: SUN_DIRECTION,
     sunColor: SUN_COLOR,
     skyColor: { r: 0.5, g: 0.6, b: 0.8 },
-    sunIntensity: SUN_INTENSITY,
+    sunLevel: SUN_LEVEL,
     cloudCover: 0,
     skyAmbient,
   }
@@ -95,8 +92,7 @@ describe('predictedMatteRadiance', () => {
   it('is the reflectance times the sun term plus the sky level for a surface facing the sun', () => {
     const lighting = lightingWithAmbient(gradientAmbient())
     const facing = OBLIQUE_UP.x * SUN_DIRECTION.x + OBLIQUE_UP.y * SUN_DIRECTION.y
-    const sunTerm = (sunChannel: number): number =>
-      (sunChannel * SUN_INTENSITY * ENGINE_SUN_FACTOR * facing) / Math.PI
+    const sunTerm = (sunChannel: number): number => (sunChannel * SUN_LEVEL * facing) / Math.PI
     const skyLevel = 1 + BAND_1_COSINE_WEIGHT * OBLIQUE_UP.y
 
     expectRgbClose(

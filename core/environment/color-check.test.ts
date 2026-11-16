@@ -11,11 +11,11 @@ import type { EnvironmentLighting } from './environment-lighting'
 // {0, 0, 1}-style vector.
 const TINTED_SUN_DIRECTION = { x: 0.6, y: 0.75, z: -0.28 }
 
-// A fractional intensity distinct from both 0 and 1, so "passes through
+// A fractional level distinct from both 0 and 1, so "passes through
 // untouched" is observable rather than trivially true of an endpoint.
-const PARTIAL_SUN_INTENSITY = 0.42
+const PARTIAL_SUN_LEVEL = 0.42
 
-const NIGHT_SUN_INTENSITY = 0
+const NIGHT_SUN_LEVEL = 0
 
 // A non-neutral cloud cover and its projected sky ambient, so a test that
 // forgets to neutralize skyAmbient cannot pass by coincidence with an
@@ -24,12 +24,12 @@ const TINTED_CLOUD_COVER = 0.6
 const TINTED_SUN_ALTITUDE = 0.7
 const TINTED_SKY_AMBIENT = projectDomeToSphericalHarmonics(TINTED_SUN_ALTITUDE, TINTED_CLOUD_COVER)
 
-function tintedLighting(sunIntensity: number): EnvironmentLighting {
+function tintedLighting(sunLevel: number): EnvironmentLighting {
   return {
     sunDirection: TINTED_SUN_DIRECTION,
     sunColor: { r: 1, g: 0.6, b: 0.3 },
     skyColor: { r: 0.4, g: 0.5, b: 0.9 },
-    sunIntensity,
+    sunLevel,
     cloudCover: TINTED_CLOUD_COVER,
     skyAmbient: TINTED_SKY_AMBIENT,
   }
@@ -37,32 +37,32 @@ function tintedLighting(sunIntensity: number): EnvironmentLighting {
 
 describe('colorCheckLighting', () => {
   it('replaces the sun and sky tints with the neutral reference white', () => {
-    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_INTENSITY))
+    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_LEVEL))
 
     expect(neutralized.sunColor).toEqual(NEUTRAL_REFERENCE_WHITE)
     expect(neutralized.skyColor).toEqual(NEUTRAL_REFERENCE_WHITE)
   })
 
   it('leaves the sun direction unchanged', () => {
-    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_INTENSITY))
+    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_LEVEL))
 
     expect(neutralized.sunDirection).toEqual(TINTED_SUN_DIRECTION)
   })
 
-  it('passes a fractional sun intensity through unchanged', () => {
-    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_INTENSITY))
+  it('passes a fractional sun level through unchanged', () => {
+    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_LEVEL))
 
-    expect(neutralized.sunIntensity).toBe(PARTIAL_SUN_INTENSITY)
+    expect(neutralized.sunLevel).toBe(PARTIAL_SUN_LEVEL)
   })
 
-  it('passes a night-time sun intensity of zero through unchanged', () => {
-    const neutralized = colorCheckLighting(tintedLighting(NIGHT_SUN_INTENSITY))
+  it('passes a night-time sun level of zero through unchanged', () => {
+    const neutralized = colorCheckLighting(tintedLighting(NIGHT_SUN_LEVEL))
 
-    expect(neutralized.sunIntensity).toBe(NIGHT_SUN_INTENSITY)
+    expect(neutralized.sunLevel).toBe(NIGHT_SUN_LEVEL)
   })
 
   it('replaces the sky ambient with the neutral dome spherical harmonics', () => {
-    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_INTENSITY))
+    const neutralized = colorCheckLighting(tintedLighting(PARTIAL_SUN_LEVEL))
 
     expect(neutralized.skyAmbient).toEqual(NEUTRAL_DOME_SPHERICAL_HARMONICS)
   })
