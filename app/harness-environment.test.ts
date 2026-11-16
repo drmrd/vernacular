@@ -137,6 +137,27 @@ describe('harnessEnvironmentState', () => {
   })
 })
 
+describe('harnessEnvironmentState daylight reference', () => {
+  it('resolves daylight-reference to a late-morning equinox at the sample site (40 N, 1.86 E) with the south-window shell and a south-west camera', () => {
+    expect(harnessEnvironmentState('daylight-reference')).toEqual({
+      site: {
+        latLong: { latitude: 40, longitude: 1.86 },
+        northBearing: 0,
+        timezone: 'UTC',
+      },
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 630 },
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: {
+        position: { x: -4500, y: 3200, z: 5000 },
+        target: { x: 2000, y: 1300, z: -1500 },
+        near: 100,
+        far: 40000,
+      },
+    })
+  })
+})
+
 describe('harnessEnvironmentState camera poses and fixtures', () => {
   it('resolves window-light to a summer-solstice morning at the canonical site with the shell fixture and an interior camera pose', () => {
     const windowLight = harnessEnvironmentState('window-light')

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   colorFromHex,
   solidTreatment,
+  srgbToLinear,
   surfaceKey,
   type Point,
   type SurfaceTreatment,
@@ -112,5 +113,23 @@ describe('resolveHarnessPaint', () => {
       expect(interiorTreatment?.kind === 'solid' && interiorTreatment.finishId).toBe('matte')
       expect(store?.[surfaceKey({ kind: 'wall-face', wallId, side: exterior })]).toBeUndefined()
     }
+  })
+
+  it('resolves daylight-white to a matte #ededed on the exterior side of the four walls and nothing else', () => {
+    const store = resolveHarnessPaint('daylight-white')
+
+    expect(Object.keys(store ?? {})).toHaveLength(4)
+    for (const wallId of ['south', 'east', 'north', 'west']) {
+      const wallKey = surfaceKey({ kind: 'wall-face', wallId, side: 'right' })
+      expect(store?.[wallKey], `${wallId} wall exterior`).toEqual(
+        solidTreatment(colorFromHex('#ededed'), 'matte'),
+      )
+    }
+  })
+
+  it('states the daylight-white wall color as a linear value of 0.85 within 0.005', () => {
+    const channel = 0xed / 0xff
+
+    expect(Math.abs(srgbToLinear(channel) - 0.85)).toBeLessThan(0.005)
   })
 })
