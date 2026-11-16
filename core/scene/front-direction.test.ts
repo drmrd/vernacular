@@ -219,6 +219,57 @@ describe('frontDirection', () => {
   })
 })
 
+const GABLE_AXIS_X = 100.1
+const GABLE_DEPTH = 3000
+const GABLE_HEIGHT = 4000
+
+/**
+ * A room whose two slanted south walls meet at an apex on the vertical line
+ * x = GABLE_AXIS_X. Equal reaches make the walls mirror images about that line.
+ * Returns the front for doors on both walls, given their opening ids.
+ */
+function gableFront(reaches: readonly [number, number], ids: readonly [string, string]) {
+  const apex = point(GABLE_AXIS_X, -GABLE_DEPTH)
+  const rightFoot = point(GABLE_AXIS_X + reaches[0], 0)
+  const leftFoot = point(GABLE_AXIS_X - reaches[1], 0)
+  const ring = [
+    apex,
+    rightFoot,
+    point(rightFoot.x, GABLE_HEIGHT),
+    point(leftFoot.x, GABLE_HEIGHT),
+    leftFoot,
+  ]
+  const right = wall('right', GROUND_FLOOR, [apex, rightFoot])
+  const left = wall('left', GROUND_FLOOR, [leftFoot, apex])
+  const room: RoomSceneNode = {
+    id: 'room:gable',
+    kind: 'room',
+    floorId: GROUND_FLOOR,
+    polygon: ring,
+    clearPolygon: ring,
+    area: 1,
+  }
+  const openings = [openingOn(right, { id: ids[0] }), openingOn(left, { id: ids[1] })]
+  return unitFrontDirection({ walls: [right, left], rooms: [room], openings })
+}
+
+describe('frontDirection when two fronts are nearly equally near plan-down', () => {
+  // Mirror-image walls at a 3-4-5 slope face (+-0.6, -0.8). Their computed
+  // dot products with plan-down differ by about 1e-16 of rounding noise.
+  it('lets the lower opening id decide between mirror-image walls', () => {
+    expectDirection(gableFront([4000, 4000], ['a', 'b']), { x: 0.6, y: -0.8 })
+    expectDirection(gableFront([4000, 4000], ['b', 'a']), { x: -0.6, y: -0.8 })
+  })
+
+  // Reaches 4000 and 4014 give dot products of 0.8 and 0.80100462, a real difference.
+  it('still prefers the nearer front when it differs by about 1e-3', () => {
+    const nearer = { x: -0.598658163, y: -0.801004622 }
+
+    expectDirection(gableFront([4000, 4014], ['a', 'b']), nearer)
+    expectDirection(gableFront([4000, 4014], ['b', 'a']), nearer)
+  })
+})
+
 describe('frontDirection with two rooms that share a wall', () => {
   const left = box({
     name: 'left',
