@@ -603,7 +603,7 @@ export { NEUTRAL_REFERENCE_WHITE, colorCheckLighting } from './environment/color
 export type { ToneMappingOperator } from './environment/tone-mapping'
 export { toneMappingOperatorFor } from './environment/tone-mapping'
 export { formatHex, parseHex } from './color/hex'
-export { contrastRatio, relativeLuminance } from './color/contrast'
+export { contrastRatio, linearLuminance, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
 export type { Color, NamedColor } from './color/color'
 export { colorFromHex, colorFromOkLab } from './color/color'
@@ -718,3 +718,20 @@ export type {
 export { KNOWN_KEYS, KNOWN_ROOT_TYPE, typesWithExtensions, variantTypeOf } from './model/known-keys'
 export type { KnownKeyTable, KnownType, KnownUnion, KnownValue } from './model/known-keys'
 export { registerAllProjectCommands } from './commands/handlers/register-all-project-commands'
+export type { DaylightAperture, DaylightField, DaylightRoom } from './daylight/daylight-field'
+export {
+  createDaylightField,
+  DAYLIGHT_FIELD_CELL_SIZE_MM,
+  daylightFieldCellIndex,
+  sampleSkyVisibility,
+  SKY_VISIBILITY_CHANNEL,
+} from './daylight/daylight-field'
+export type { DaylightFieldSolver, SkyLuminance } from './daylight/sky-visibility'
+export {
+  createDaylightFieldSolver,
+  DAYLIGHT_WORK_PLANE_HEIGHT_MM,
+  UNIFORM_SKY,
+  UNPAINTED_SURFACE_REFLECTANCE,
+} from './daylight/sky-visibility'
+export type { Reveal, WallRectangle } from './daylight/form-factor'
+export { horizontalPointToWallRectangle, visibleThroughReveal } from './daylight/form-factor'
