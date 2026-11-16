@@ -27,24 +27,25 @@ const SHELL_MAX_DIFF_PIXEL_RATIO = 0.05
 // hair, so the standing shell tolerances never see it and the pair below is derived
 // instead, per the two-probe midpoint variant recorded in ADR-0157's amendment.
 //
-// Derived on 2026-09-06 on the development Mac (darwin Metal, 320x240 canvas, 76800
-// pixels), against the seeded baseline:
+// Re-derived on 2026-11-15 on the development Mac (darwin Metal, 320x240 canvas, 76800
+// pixels), against the baseline with outward wall faces and the room side of the walls
+// painted (issue #491):
 //
-//   noise: five consecutive captures at threshold 0 and maxDiffPixelRatio 0 all passed,
-//   so the render is deterministic and the noise band is 0.000000.
+//   noise: five consecutive captures of each build were byte-identical, so the render is
+//   deterministic and the noise band is 0.000000.
 //   roughness-only probe (semi-gloss roughness 0.3 set to 0.9, sheen and specular kept):
-//   53138 pixels differ at threshold 0 (ratio 0.6919); at threshold 0.02 only 54 pixels
-//   remain (ratio 0.0007), and at 0.1 and above the comparison passes.
+//   46835 pixels differ at threshold 0 (ratio 0.6098); at threshold 0.02 only 9 pixels
+//   remain, and at 0.1 and above the comparison passes.
 //   full-collapse probe (the semi-gloss entry set to the matte values, the #520 defect
-//   class): 53344 pixels differ at threshold 0 (ratio 0.6946).
+//   class): 46919 pixels differ at threshold 0 (ratio 0.6109).
 //
 // So the per-pixel threshold is 0 (any deviation counts; the capture is deterministic)
 // and the ratio gate goes at the midpoint between the zero noise band and the weaker
-// probe signal: 0.6919 / 2 rounded to 0.346. An environmental drift that moves more
-// than a third of the pixels turns this test red; that forces a deliberate baseline
+// probe signal: 0.6098 / 2 rounded down to 0.304. An environmental drift that moves
+// nearly a third of the pixels turns this test red; that forces a deliberate baseline
 // refresh, which is the standing discipline for the scene tier.
 const FINISH_CONTRAST_THRESHOLD = 0
-const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.346
+const FINISH_CONTRAST_MAX_DIFF_PIXEL_RATIO = 0.304
 
 // The ambient-occlusion baseline gates the GTAO pass as pixels (rendering-realism lane 2,
 // issue #522; re-derived for lane 4's indirect-only blend, for lane 5's rendered normals
