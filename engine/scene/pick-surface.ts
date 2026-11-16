@@ -40,10 +40,17 @@ function decideHit(hit: THREE.Intersection): HitDecision {
   // `hit.face` is null for a line or point hit, which has no material group; returning
   // no surface there cannot credit the hit to the wrong surface.
   const materialIndex = hit.face?.materialIndex
-  return { surface: materialIndex === undefined ? null : (table[materialIndex] ?? null) }
+  const wallSurface = materialIndex === undefined ? null : (table[materialIndex] ?? null)
+  return { surface: wallSurface }
 }
 
-/** The surface ref of the nearest object a ray strikes, or null when the ray hits no surface. */
+/**
+ * The surface ref a ray picks, or null when it picks none. The hits are read nearest
+ * first. A wall decides at its first hit: a paintable long face gives that face and its
+ * side, a cap, an end, or a reveal gives no surface, and nothing behind the wall is
+ * returned. Another object decides only when it carries a surface (a floor slab); an
+ * object with no surface is skipped.
+ */
 export function pickSurface(raycaster: THREE.Raycaster, root: THREE.Object3D): SurfaceRef | null {
   for (const hit of raycaster.intersectObject(root, true)) {
     const decision = decideHit(hit)
