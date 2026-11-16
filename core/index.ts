@@ -603,7 +603,7 @@ export { NEUTRAL_REFERENCE_WHITE, colorCheckLighting } from './environment/color
 export type { ToneMappingOperator } from './environment/tone-mapping'
 export { toneMappingOperatorFor } from './environment/tone-mapping'
 export { formatHex, parseHex } from './color/hex'
-export { contrastRatio, relativeLuminance } from './color/contrast'
+export { contrastRatio, linearLuminance, relativeLuminance } from './color/contrast'
 export { readableTextColor } from './color/readable-text-color'
 export type { Color, NamedColor } from './color/color'
 export { colorFromHex, colorFromOkLab } from './color/color'

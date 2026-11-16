@@ -1,3 +1,4 @@
+import { linearLuminance } from '../color/contrast'
 import type { LinearRgb } from '../color/oklab'
 import { polygonArea } from '../geometry/polygon'
 import type { Point } from '../model/types'
@@ -6,11 +7,6 @@ import { OPEN_SKY_VISIBILITY } from './daylight-field'
 
 /** Share of light that an unpainted surface reflects: the luminance of the wall color #d8d4cc. */
 export const UNPAINTED_SURFACE_REFLECTANCE = 0.66
-
-/** Rec. 709 luminance weights of linear red, green, and blue. */
-const LUMINANCE_RED = 0.2126
-const LUMINANCE_GREEN = 0.7152
-const LUMINANCE_BLUE = 0.0722
 
 /**
  * Share of the open sky that a vertical opening sees: the form factor from a vertical plane to the
@@ -33,8 +29,7 @@ export interface OpeningArea {
 }
 
 function floorReflectance(color: LinearRgb): number {
-  const luminance = LUMINANCE_RED * color.r + LUMINANCE_GREEN * color.g + LUMINANCE_BLUE * color.b
-  return Math.min(1, Math.max(0, luminance))
+  return Math.min(1, Math.max(0, linearLuminance(color)))
 }
 
 function outlinePerimeter(outline: readonly Point[]): number {

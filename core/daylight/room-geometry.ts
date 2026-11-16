@@ -148,6 +148,31 @@ function cellCenter(grid: DaylightField, column: number, row: number): Point {
 }
 
 /**
+ * Gives every cell to the first room whose outline contains its center (a center on a wall line
+ * counts as inside) and measures its form factors there. Cells in no room, and cells of a room
+ * open to the sky, are skipped. Returns the cells of each room, in the order of `rooms`.
+ */
+function assignCells(
+  grid: DaylightField,
+  rooms: readonly DaylightRoom[],
+  openings: readonly (readonly Opening[])[],
+): CellView[][] {
+  const cellsByRoom: CellView[][] = rooms.map(() => [])
+  for (let row = 0; row < grid.rows; row++) {
+    for (let column = 0; column < grid.columns; column++) {
+      const center = cellCenter(grid, column, row)
+      const roomIndex = rooms.findIndex((room) => pointInPolygon(center, room.outline))
+      if (roomIndex === -1 || rooms[roomIndex]?.openToSky === true) continue
+      cellsByRoom[roomIndex]?.push({
+        visibilityIndex: daylightFieldCellIndex(grid, column, row) + SKY_VISIBILITY_CHANNEL,
+        factors: (openings[roomIndex] ?? []).map((opening) => openingFormFactor(center, opening)),
+      })
+    }
+  }
+  return cellsByRoom
+}
+
+/**
  * Checks the rooms, then measures the form factor from every cell center at the work plane to
  * every aperture of the cell's room. Throws a RangeError that names the room and the aperture for
  * an input that the field cannot use.
@@ -156,25 +181,12 @@ export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry 
   validateDaylightRooms(rooms)
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
+  const cellsByRoom = assignCells(grid, rooms, openings)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,
     apertures: (openings[index] ?? []).map(apertureGeometry),
-    cells: [],
+    cells: cellsByRoom[index] ?? [],
     surfaces: measureRoomSurfaces(room),
   }))
-  for (let row = 0; row < grid.rows; row++) {
-    for (let column = 0; column < grid.columns; column++) {
-      const center = cellCenter(grid, column, row)
-      // A cell belongs to the first room whose outline contains its center; a center on a wall
-      // line counts as inside.
-      const roomIndex = rooms.findIndex((room) => pointInPolygon(center, room.outline))
-      if (rooms[roomIndex]?.openToSky === true) continue
-      const cellOpenings = openings[roomIndex] ?? []
-      measured[roomIndex]?.cells.push({
-        visibilityIndex: daylightFieldCellIndex(grid, column, row) + SKY_VISIBILITY_CHANNEL,
-        factors: cellOpenings.map((opening) => openingFormFactor(center, opening)),
-      })
-    }
-  }
   return { grid, rooms: measured }
 }
