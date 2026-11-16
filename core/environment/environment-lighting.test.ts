@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DAYLIGHT_CALIBRATION } from './daylight-calibration'
+import { kastenYoungFade } from './daylight-test-support'
 import { computeEnvironmentLighting, type EnvironmentLightingInput } from './environment-lighting'
 import { solarPosition, type SolarAngles } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
@@ -22,10 +23,10 @@ import type { Vector3 } from '../scene/vector3'
 
 const COMPOSITION_DECIMAL_PLACES = 10
 
-// The sun level is the calibrated sun scale times the clear-sky attenuation of the direct sun,
-// exp(-0.21 * (1 / sin h - 1)), with h the sun's height; the tolerance is 0.1 percent.
-const SUN_OPTICAL_DEPTH_OF_CLEAR_SKY = 0.21
-const SUN_LEVEL_RELATIVE_TOLERANCE = 0.001
+// The sun level is the calibrated sun scale times the clear-sky fade of the direct sun,
+// exp(-0.21 * (m(h) - m(zenith))), with m the Kasten and Young relative air mass and h the sun's
+// height; the tolerance is a millionth of the level.
+const SUN_LEVEL_RELATIVE_TOLERANCE = 1e-6
 
 const LOCAL_NOON_MINUTES = 720
 const LOCAL_MIDNIGHT_MINUTES = 0
@@ -95,7 +96,7 @@ describe('computeEnvironmentLighting', () => {
     expect(midnight.sunLevel).toBe(0)
   })
 
-  it('reports a sun level of the sun scale times the clear-sky attenuation at its height on a clear spring noon at 40 N, 75 W', () => {
+  it('reports a sun level of the sun scale times the Kasten and Young fade at its height on a clear spring noon at 40 N, 75 W', () => {
     const input: EnvironmentLightingInput = {
       latLong: { latitude: 40.0, longitude: -75.0 },
       northBearing: 0,
@@ -105,8 +106,7 @@ describe('computeEnvironmentLighting', () => {
     }
     const { sunLevel } = computeEnvironmentLighting(input)
     const height = pieceFunctionAngles(input).altitude
-    const attenuation = Math.exp(-SUN_OPTICAL_DEPTH_OF_CLEAR_SKY * (1 / Math.sin(height) - 1))
-    const expected = DAYLIGHT_CALIBRATION.sunScale * attenuation
+    const expected = DAYLIGHT_CALIBRATION.sunScale * kastenYoungFade(height)
     expect(Math.abs(sunLevel - expected)).toBeLessThan(expected * SUN_LEVEL_RELATIVE_TOLERANCE)
   })
 
