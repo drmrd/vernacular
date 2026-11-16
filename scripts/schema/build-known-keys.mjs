@@ -16,7 +16,8 @@ const EXTENSIONS_DEFINITION = 'Extensions'
 const LEAF = { kind: 'leaf' }
 const OPAQUE = { kind: 'opaque' }
 
-const ANNOTATION_KEYWORDS = new Set(['$ref', 'description', 'title', '$comment'])
+const REFERENCE_KEY = '$ref'
+const ANNOTATION_KEYWORDS = new Set(['description', 'title', '$comment'])
 const UNION_KEYWORDS = ['anyOf', 'oneOf']
 
 const REFUSAL_HINT =
@@ -75,8 +76,9 @@ function isObjectWithNoProperties(node) {
 }
 
 function refuseUnexpressibleNode(place, node) {
-  if (Array.isArray(node.type))
+  if (Array.isArray(node.type)) {
     throw refusal(`${place} has a type list ${JSON.stringify(node.type)}`)
+  }
   if (isObjectWithNoProperties(node)) {
     throw refusal(`${place} is an object with no properties and additionalProperties false`)
   }
@@ -122,7 +124,9 @@ function refuseUnexpressibleDefinition(name, definition) {
 }
 
 function refuseReferenceSiblings(place, node) {
-  const siblings = Object.keys(node).filter((key) => !ANNOTATION_KEYWORDS.has(key))
+  const siblings = Object.keys(node).filter(
+    (key) => key !== REFERENCE_KEY && !ANNOTATION_KEYWORDS.has(key),
+  )
   if (siblings.length > 0) {
     throw refusal(`${place} has a $ref with sibling keywords ${siblings.join(', ')}`)
   }
@@ -210,6 +214,7 @@ export function buildKnownKeys(schema) {
         table[typeName] = describeType(schema, variant, typeName)
       }
     }
+    // Any other definition is a scalar or an array alias; the table reads it where it is referenced.
   }
   return table
 }
