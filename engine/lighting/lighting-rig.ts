@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 
+import { boundsRadius } from '../../core'
 import type { Bounds3, EnvironmentLighting, LinearRgb, Vector3 } from '../../core'
 
 /**
@@ -29,8 +30,8 @@ export const SUN_DIRECTION = new THREE.Vector3(SUN_REACH_X, SUN_REACH_UP, SUN_RE
 export const DAYLIGHT_SUN_INTENSITY = 1.6
 /** The fill only keeps the unlit faces off black; an equal fill washed them out. */
 const FILL_INTENSITY = 0.5
-/** A 2048px square shadow map: enough resolution for the shell without a large GPU cost. */
-const SHADOW_MAP_SIZE = 2048
+/** Side of the square shadow map in texels: enough resolution for the shell without a large GPU cost. */
+export const SHADOW_MAP_SIZE = 2048
 /**
  * One shadow-map texel's diagonal, as a fraction of the shadow camera's extent, measured in the
  * light's image plane. Both shadow constants derive from it, because the depth a fragment is
@@ -264,12 +265,7 @@ function fitSunShadowAlongUnitDirection(
     (bounds.min.y + bounds.max.y) / 2,
     (bounds.min.z + bounds.max.z) / 2,
   )
-  const radius =
-    Math.hypot(
-      bounds.max.x - bounds.min.x,
-      bounds.max.y - bounds.min.y,
-      bounds.max.z - bounds.min.z,
-    ) / 2
+  const radius = boundsRadius(bounds)
   const distance = radius * SHADOW_DISTANCE_FACTOR
 
   sun.position.copy(center).addScaledVector(direction, distance)

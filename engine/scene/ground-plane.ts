@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 
+import type { Bounds3 } from '../../core'
 import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
 
 /**
@@ -44,6 +45,30 @@ interface GroundFootprint {
 /** True when an object is the ground-plane mesh rather than building geometry. */
 export function isGroundPlane(object: THREE.Object3D): boolean {
   return object.userData.ground === true
+}
+
+function findGroundPlane(root: THREE.Object3D): THREE.Object3D | null {
+  let found: THREE.Object3D | null = null
+  root.traverse((object) => {
+    if (found === null && isGroundPlane(object)) found = object
+  })
+  return found
+}
+
+/**
+ * The world-space box of the ground plane under `root`, in millimeters with y up, or `null`
+ * when `root` holds no ground plane. The horizontal bounds come from the plane's geometry and
+ * its world matrix, refreshed through every ancestor, so a parent moved after the plane was
+ * built is reflected. This assumes the plane is flat by construction and its parent chain is
+ * upright and unscaled, as the application builds it. Then `min.y` and `max.y` are both the
+ * plane's world height, exactly equal.
+ */
+export function groundExtent(root: THREE.Object3D): Bounds3 | null {
+  const plane = findGroundPlane(root)
+  if (plane === null) return null
+  const grade = plane.getWorldPosition(new THREE.Vector3()).y // refreshes the ancestors' matrices
+  const { min, max } = new THREE.Box3().setFromObject(plane)
+  return { min: { x: min.x, y: grade, z: min.z }, max: { x: max.x, y: grade, z: max.z } }
 }
 
 // Horizontal extent of the already-built geometry, padded with the site margin so the

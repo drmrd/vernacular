@@ -7,6 +7,7 @@ import {
   fitSunShadowToBounds,
   fitSunShadowToDirection,
   setSunAndSkyColor,
+  SHADOW_MAP_SIZE,
 } from './lighting-rig'
 
 /** A shell roughly 4 m by 3 m in plan and 2.6 m tall, in the project's millimeter world. */
@@ -25,6 +26,12 @@ const LENGTH_PRECISION = 6
 const ANGLE_PRECISION = 6
 /** Enough halvings to pin a coverage angle far finer than the assertions read it. */
 const BISECTION_STEPS = 60
+
+describe('SHADOW_MAP_SIZE', () => {
+  it('is 2048 texels on a side', () => {
+    expect(SHADOW_MAP_SIZE).toBe(2048)
+  })
+})
 
 describe('setLightingColor', () => {
   it('tints the directional sun and the hemisphere sky to a linear color', () => {

@@ -1,6 +1,12 @@
 import type * as THREE from 'three'
 
-import type { Bounds3, EnvironmentLighting } from '../../core'
+import {
+  MAX_SHADOW_TEXEL_MM,
+  shadowFitBounds,
+  type Bounds3,
+  type EnvironmentLighting,
+} from '../../core'
+import { groundExtent } from '../scene/ground-plane'
 
 import type { LightingProvider } from './lighting-provider'
 import {
@@ -8,11 +14,30 @@ import {
   DAYLIGHT_SUN_INTENSITY,
   disposeLightingRig,
   fitSunShadowToDirection,
+  SHADOW_MAP_SIZE,
   setSunAndSkyColor,
   setSunIntensity,
   type LightingRig,
 } from './lighting-rig'
 import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
+
+/** The largest radius the sun's shadow frustum may fit, set by the coarsest shadow texel allowed. */
+const MAX_SHADOW_FIT_RADIUS_MM = (MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE) / 2
+
+/** Fits the sun's shadow frustum to the casters and the stretch of ground their shadow reaches. */
+function fitSunShadowToCastersAndGround(
+  scene: THREE.Object3D,
+  lighting: EnvironmentLighting,
+  bounds: Bounds3,
+): void {
+  const fit = shadowFitBounds({
+    casters: bounds,
+    ground: groundExtent(scene),
+    sunDirection: lighting.sunDirection,
+    maxRadius: MAX_SHADOW_FIT_RADIUS_MM,
+  })
+  fitSunShadowToDirection(scene, lighting.sunDirection, fit)
+}
 
 /**
  * Solar-aware lighting under the LightingProvider contract: `apply` builds the same
@@ -45,17 +70,16 @@ export class SolarLightingProvider implements LightingProvider {
   }
 
   /**
-   * Re-tints the sun and sky, re-aims the sun and refits its shadow frustum when the
-   * scene has bounds (a null bounds skips the refit per the LightingProvider contract),
-   * and scales the sun's intensity by the environment `sunIntensity` fraction.
+   * Re-tints the sun and sky, re-aims the sun and refits its shadow frustum to the casters
+   * and their shadow on the ground when the scene has bounds (a null bounds skips the refit
+   * per the LightingProvider contract), and scales the sun's intensity by the environment
+   * `sunIntensity` fraction.
    */
   update(scene: THREE.Object3D, lighting: EnvironmentLighting, bounds: Bounds3 | null): void {
     const rig = this.rig
     if (rig === null) return
     setSunAndSkyColor(scene, lighting.sunColor, lighting.skyColor)
-    if (bounds !== null) {
-      fitSunShadowToDirection(scene, lighting.sunDirection, bounds)
-    }
+    if (bounds !== null) fitSunShadowToCastersAndGround(scene, lighting, bounds)
     setSunIntensity(scene, DAYLIGHT_SUN_INTENSITY * lighting.sunIntensity)
     updateSkyEnvironment(rig, lighting)
   }

@@ -14,7 +14,12 @@ export {
   buildRoomSubgroup,
   buildWallSubgroup,
 } from './scene/floor-subgroups'
-export { addGroundPlane, isGroundPlane, GRADE_ELEVATION_MM } from './scene/ground-plane'
+export {
+  addGroundPlane,
+  groundExtent,
+  isGroundPlane,
+  GRADE_ELEVATION_MM,
+} from './scene/ground-plane'
 export { applyOpeningMotion, applyOpeningMotionForNode } from './scene/opening-motion'
 export { sceneBounds } from './scene/scene-bounds'
 export { isGlassPane, markShadowCasters } from './scene/shadow-casters'
@@ -40,6 +45,7 @@ export type { LightingProvider } from './lighting/lighting-provider'
 export { BasicLightingProvider } from './lighting/basic-lighting-provider'
 export { SolarLightingProvider } from './lighting/solar-lighting-provider'
 export {
+  SHADOW_MAP_SIZE,
   setLightingColor,
   setSunAndSkyColor,
   fitSunShadowToBounds,

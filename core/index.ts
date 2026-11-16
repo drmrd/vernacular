@@ -575,6 +575,8 @@ export type { SolarAngles, SolarPositionInput } from './environment/solar-positi
 export { solarPosition } from './environment/solar-position'
 export { utcOffsetMinutesFor } from './environment/timezone-offset'
 export { sunWorldDirection } from './environment/sun-world-direction'
+export type { ShadowFitInput } from './environment/shadow-fit'
+export { MAX_SHADOW_TEXEL_MM, boundsRadius, shadowFitBounds } from './environment/shadow-fit'
 export type { SkyLighting } from './environment/sky-model'
 export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
 export { skyDomeRadiance } from './environment/sky-dome'
