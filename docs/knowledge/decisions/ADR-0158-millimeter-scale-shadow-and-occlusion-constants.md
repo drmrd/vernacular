@@ -23,6 +23,7 @@ sourceFiles:
     core/environment/shadow-fit.ts,
     core/environment/shadow-fit.test.ts,
     engine/lighting/solar-lighting-provider.ts,
+    bridge/react/scene-lighting.tsx,
     engine/scene/ground-plane.ts,
     tests/performance/shadow-fit-reach.test.ts,
     e2e/tests/scene-shadow-reach.spec.ts,
@@ -210,13 +211,17 @@ into a radius as `MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE / 2`, which is 15872 mm 
 map. The value was measured on the reference project at the winter-afternoon sun, direction
 (-0.7980, 0.0911, 0.5957). The uncapped fit of its casters and lawn needs a texel of 15.41 mm, and
 the casters alone need 12.39 mm. The cap is 15.41 mm rounded up to the next half millimeter. The
-measured value is under the 20 mm limit that the plan set for asking the owner. The comment beside the constant records the reference bounds and the date.
+plan in `docs/plans/2026-11-15-daylight-and-shadow.md` set 20 mm as the texel size above which the
+cap needed the project owner's decision, and the measured value is under it. The comment beside
+the constant records the reference bounds and the date.
 
 The bias pair follows the fit and adds no constant. `normalBias` is still one texel diagonal in
 millimeters, so it scales with the fitted radius as `(sqrt(2) / SHADOW_MAP_SIZE) * 2 * radius`. The
 depth `bias` is unchanged at `-sqrt(2) / SHADOW_MAP_SIZE`, because the camera still spans the same
-distance in depth as it does across the map. A larger fit therefore carries a larger normal offset,
-which the cap bounds.
+distance in depth as it does across the map. That camera spans twice the fitted radius in depth,
+so the size of the depth `bias` in world units, `(sqrt(2) / SHADOW_MAP_SIZE) * 2 * radius`, grows
+with the fit exactly as `normalBias` does. Both offsets, measured in world units, scale with the
+fitted radius. At the cap radius of 15872 mm each is about 21.9 mm, and the cap bounds both.
 
 The fit runs when the lighting is updated: a change of the site, the observed time, the cloud
 cover, the color check, or the caster bounds. It does not run on each frame.
