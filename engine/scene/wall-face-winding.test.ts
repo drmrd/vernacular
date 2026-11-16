@@ -2,11 +2,18 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
 import { planToWorld } from '../../core'
-import type { OpeningSceneNode, Point, Vector3, WallSceneNode } from '../../core'
+import type { OpeningSceneNode, Point, WallSceneNode } from '../../core'
 import { NeutralMaterialProvider } from '../materials/neutral-material-provider'
-import { readIndex, readNormals, readPositions } from '../testing'
 
 import { buildWalls } from './wall-builder'
+import {
+  inwardLines,
+  tallyFaces,
+  toThree,
+  worldTriangles,
+  type Measure,
+  type Tally,
+} from './wall-winding-support'
 
 // Face culling and the shadow pass both read a triangle's winding, so every face
 // of a wall solid must be wound to point out of the solid: the long faces and end
@@ -28,13 +35,9 @@ const VERTICAL_UP_TOLERANCE = 1e-3
 const ALONG_AXIS_ALIGNMENT = 0.5
 /** mm: a centroid this close to a wall end, the floor, or the wall top lies on it. */
 const POSITION_TOLERANCE_MM = 1
-/** A winding cross product shorter than this belongs to a zero-area triangle. */
-const DEGENERATE_CROSS_LENGTH = 1e-6
-const VERTICES_PER_TRIANGLE = 3
 const ORIGIN: Point = { x: 0, y: 0 }
 
 type FaceClass = 'long face' | 'end cap' | 'reveal' | 'top cap' | 'bottom cap'
-type Measure = 'windingInward' | 'vertexNormalsInward'
 type BuildPath = 'plain prism' | 'opening'
 
 interface WallCase {
@@ -59,14 +62,6 @@ interface WallFrame {
   readonly solidCenter: THREE.Vector3
   readonly voidCenter: THREE.Vector3
 }
-
-interface Tally {
-  total: number
-  windingInward: number
-  vertexNormalsInward: number
-}
-
-const toThree = (v: Vector3): THREE.Vector3 => new THREE.Vector3(v.x, v.y, v.z)
 
 const frameOf = (wall: WallCase): WallFrame => {
   const length = Math.hypot(wall.end.x, wall.end.y)
@@ -127,30 +122,6 @@ const buildWallMeshes = (frame: WallFrame, path: BuildPath): THREE.Mesh[] => {
   )
 }
 
-interface Triangle {
-  readonly corners: THREE.Vector3[]
-  readonly vertexNormals: THREE.Vector3[]
-}
-
-// Every drawn triangle in world space, in the index order as built.
-const trianglesOf = (mesh: THREE.Mesh): Triangle[] => {
-  const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld)
-  const positions = readPositions(mesh.geometry).map((p) =>
-    toThree(p).applyMatrix4(mesh.matrixWorld),
-  )
-  const normals = readNormals(mesh.geometry).map((n) => toThree(n).applyMatrix3(normalMatrix))
-  const index = readIndex(mesh.geometry)
-  const order = index.length > 0 ? index : positions.map((_, vertex) => vertex)
-  const triangles: Triangle[] = []
-  for (let i = 0; i + VERTICES_PER_TRIANGLE <= order.length; i += VERTICES_PER_TRIANGLE) {
-    const ids = order.slice(i, i + VERTICES_PER_TRIANGLE)
-    const corners = ids.map((id) => positions[id] ?? new THREE.Vector3())
-    const vertexNormals = ids.map((id) => normals[id] ?? new THREE.Vector3())
-    triangles.push({ corners, vertexNormals })
-  }
-  return triangles
-}
-
 const isNear = (value: number, target: number): boolean =>
   Math.abs(value - target) < POSITION_TOLERANCE_MM
 
@@ -179,39 +150,24 @@ const outwardOf = (
     ? frame.voidCenter.clone().sub(centroid)
     : centroid.clone().sub(frame.solidCenter)
 
-const tallyWall = (frame: WallFrame, path: BuildPath): Map<FaceClass, Tally> => {
-  const tallies = new Map<FaceClass, Tally>()
-  for (const { corners, vertexNormals } of buildWallMeshes(frame, path).flatMap(trianglesOf)) {
-    const [a, b, c] = corners
-    if (a === undefined || b === undefined || c === undefined) continue
-    const cross = b.clone().sub(a).cross(c.clone().sub(a))
-    if (cross.length() < DEGENERATE_CROSS_LENGTH) continue
-    const winding = cross.normalize()
-    const centroid = a.clone().add(b).add(c).divideScalar(VERTICES_PER_TRIANGLE)
-    const faceClass = classify(frame, centroid, winding)
-    const outward = outwardOf(frame, faceClass, centroid)
-    const tally = tallies.get(faceClass) ?? { total: 0, windingInward: 0, vertexNormalsInward: 0 }
-    tally.total += 1
-    if (winding.dot(outward) <= 0) tally.windingInward += 1
-    const disagrees = vertexNormals.some((n) => n.dot(winding) <= 0 || n.dot(outward) <= 0)
-    if (disagrees) tally.vertexNormalsInward += 1
-    tallies.set(faceClass, tally)
-  }
-  return tallies
-}
+const tallyWall = (frame: WallFrame, path: BuildPath): Map<FaceClass, Tally> =>
+  tallyFaces(
+    buildWallMeshes(frame, path).flatMap((mesh) => worldTriangles(mesh)),
+    ({ centroid, winding }) => {
+      const faceClass = classify(frame, centroid, winding)
+      return { faceClass, outward: outwardOf(frame, faceClass, centroid) }
+    },
+  )
 
 // One line per wall and face class that has inward triangles (or none built at all).
 const inwardReport = (path: BuildPath, classes: readonly FaceClass[], measure: Measure): string[] =>
-  WALL_CASES.flatMap((wall) => {
-    const tallies = tallyWall(frameOf(wall), path)
-    return classes.flatMap((faceClass) => {
-      const tally = tallies.get(faceClass)
-      const label = `${wall.name} wall (${path} path), ${faceClass}`
-      if (tally === undefined) return [`${label}: no triangles were built`]
-      const inward = tally[measure]
-      return inward === 0 ? [] : [`${label}: ${inward} of ${tally.total} triangles point inward`]
-    })
-  })
+  WALL_CASES.flatMap((wall) =>
+    inwardLines(tallyWall(frameOf(wall), path), {
+      label: `${wall.name} wall (${path} path)`,
+      classes,
+      measures: [measure],
+    }),
+  )
 
 describe('wall face winding', () => {
   it('winds every long face and end cap of a plain wall away from the wall solid', () => {
