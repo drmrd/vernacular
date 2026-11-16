@@ -58,7 +58,7 @@ const WHITE_PAINT_REFLECTANCE = srgbToLinear(WHITE_PAINT_CODE / CODE_RANGE)
  *   calibrated daylight under AgX (this build): code 224.86, difference -0.05
  *   probe, daylight mapped to the Neutral operator instead of AgX: code 248.29, difference
  *   +23.38
- *   Linux: not yet recorded for this derivation
+ *   Linux, calibrated daylight under AgX (this build): code 224.86, difference -0.05
  *
  * Five captures of each build came back byte-identical, so the noise band is 0. The tolerance
  * is the midpoint of the two differences' sizes, (0.05 + 23.38) / 2 = 11.715, rounded to 11.7,

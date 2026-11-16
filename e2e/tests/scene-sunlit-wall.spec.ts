@@ -43,7 +43,7 @@ const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon'
  *
  *   calibrated daylight (this build): south 0.6760, east 0.3937, gap 0.2823
  *   under the earlier fade, exp(-0.21 * (1 / sin h - 1)): south 0.6526, east 0.3929, gap 0.2597
- *   Linux: not yet recorded for this derivation
+ *   Linux, calibrated daylight (this build): south 0.6760, east 0.3938, gap 0.2822
  *
  * Five captures came back identical to four decimals, so the noise band is 0. The threshold is
  * half the model gap, 0.2909 / 2 = 0.14543, rounded to 0.145. The east face reads a little above

@@ -59,7 +59,7 @@ const SKY = squareRegion(12, 12, 24)
  *
  *   before the daylight calibration, a near-white sky: -0.0029
  *   calibrated daylight (this build): -0.0104
- *   Linux: not yet recorded for this derivation
+ *   Linux, calibrated daylight (this build): -0.0104
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * bound is the midpoint, -0.00665, rounded to -0.0067, which clears this build by 0.0037 and the
@@ -84,7 +84,7 @@ const CLEAR_SKY_CHANNEL_CEILING = 250
  *   one fixed gain for the visible sky, fitted at equinox noon: 0.3477, a dark brown
  *   (66, 56, 44)
  *   a gain that follows the sun's height (this build): 0.5417, a dim warm grey (122, 109, 94)
- *   Linux: not yet recorded for this derivation
+ *   Linux, a gain that follows the sun's height (this build): 0.5417
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * bound is the midpoint, 0.4447, which clears each reading by 0.0970.

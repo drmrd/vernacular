@@ -38,7 +38,7 @@ const SUNLIT_LAWN = squareRegion(236, 109, 24)
  *
  *   before the daylight calibration: 0.1334 / 0.0764 = 1.7455
  *   calibrated daylight (this build): 0.5978 / 0.1008 = 5.9321
- *   Linux: not yet recorded for this derivation
+ *   Linux, calibrated daylight (this build): 0.5979 / 0.1008 = 5.9329
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * minimum is the midpoint of the two ratios, 3.8388, rounded to 3.839, which clears this build

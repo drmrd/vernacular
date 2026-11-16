@@ -42,7 +42,7 @@ const LOW_SUN_QUERY = '&scene=low-sun&paint=daylight-white'
  *   code 105.60, the region one color (93, 107, 124)
  *   the Kasten and Young fade (this build), a sun level of 0.122: L 0.5624, code 116.93, the
  *   region one color (113, 117, 127)
- *   Linux: not yet recorded for this derivation
+ *   Linux, the Kasten and Young fade (this build), a sun level of 0.122: L 0.5624, code 116.93
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * bound is the midpoint of this build and the build before the air-path fade, 0.71523 from the

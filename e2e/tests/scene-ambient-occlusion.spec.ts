@@ -57,7 +57,7 @@ const AO_OPEN_FLOOR_PATCH = patchCenteredOn(226, 134)
 //   shipped radius, AO_RADIUS_METERS 0.25: +0.0241 (+0.024093 unrounded)
 //   wrong-radius probe, AO_RADIUS_METERS 2.5: -0.0050
 //   no-op radius probe, AO_RADIUS_METERS 0.00025: -0.0069
-//   Linux: not yet recorded for this derivation
+//   Linux, shipped radius, AO_RADIUS_METERS 0.25: +0.0238 (the two probes were not taken)
 //
 // Captures of this frame are byte-deterministic (five identical captures of each build, zero
 // noise band), so the threshold sits at the midpoint of the shipped reading and the nearer

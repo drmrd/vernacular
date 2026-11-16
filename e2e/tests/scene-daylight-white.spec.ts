@@ -50,8 +50,8 @@ const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white
 // captures of each build came back identical to four decimals, so every noise band is 0. The
 // before-calibration east wall reading came from the 16 px square at x 186..201, y 143..158,
 // which held one color (92, 99, 113), so the 12 px square inside it reads the same.
-// Linux: not yet recorded for this derivation. The before-calibration readings were not taken
-// on Linux.
+// Linux: noon white wall chroma 0.0013 and L 0.9125; the other readings are on their own lines.
+// The before-calibration readings were not taken on Linux.
 
 /**
  * The most chroma the white south wall may show in the noon sun.
@@ -85,7 +85,7 @@ const NOON_WHITE_MIN_LIGHTNESS = 0.8148
  *   this build: -0.0300 on five of five captures (-0.0300, -0.0300, -0.0300, -0.0300,
  *   -0.0300), noise band 0; under the earlier fade, exp(-0.21 * (1 / sin h - 1)), -0.0317
  *   measured 2026-11-16 on the development Mac (macOS, WebGL 2 harness)
- *   Linux: not yet recorded for this derivation
+ *   Linux, this build: -0.0300
  *
  * The midpoint is -0.01970, rounded to -0.0197, which clears this build by 0.0103 and the
  * green-ground build by 0.0103. The gate also requires b under 0, which this build clears by
@@ -105,7 +105,7 @@ const SHADE_MAX_B = -0.0197
  *   before the calibration: 0.0015
  *   this build: 0.0168 on five of five captures, noise band 0
  *   measured 2026-11-16 on the development Mac (macOS, WebGL 2 harness)
- *   Linux: not yet recorded for this derivation
+ *   Linux, this build: 0.0168
  *
  * The midpoint is 0.00915 (0.00916 from the unrounded reading 0.01682), rounded to 0.0092, which
  * clears this build by 0.0076 and the earlier build by 0.0077. The sun 5 degrees up is a little
@@ -123,7 +123,7 @@ const LOW_SUN_MIN_B = 0.0092
  *   before the ground half of the sky dome turned a neutral grey (the lawn's green color
  *   lit the wall): -0.0285, a clear sage-green cast, the region one color (147, 169, 157)
  *   this build, a grey ground with the lawn's luminance: -0.0036, the region (160, 166, 173)
- *   Linux: not yet recorded for this derivation
+ *   Linux, this build: -0.0027
  *
  * Five captures of each build came back identical to four decimals, so the noise band is 0. The
  * midpoint is -0.01605, rounded to -0.0161, which clears this build by 0.0125 and the green
