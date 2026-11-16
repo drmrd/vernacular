@@ -1,9 +1,17 @@
-import { pointOnEdge } from '../geometry/polygon'
+import { pointOnSegment } from '../geometry/segment'
 import type { Point } from '../model/types'
 import type { DaylightAperture, DaylightRoom } from './daylight-field'
 
 /** Fewest outline points that enclose a floor area. */
 const MINIMUM_OUTLINE_POINTS = 3
+
+/**
+ * How far, in millimetres, a span end point may sit from the room outline and still count as on it.
+ * It exists for the floating-point error of plan coordinates: a point interpolated along a wall that
+ * is not parallel to an axis is off the exact line by rounding error. The value is far below any
+ * real dimension, so it still refuses an end point that is a few millimetres off the wall.
+ */
+const OUTLINE_TOLERANCE_MM = 1
 
 /** Where a bad daylight input sits among the rooms of one floor; both indexes are zero-based. */
 export interface DaylightInputLocation {
@@ -60,7 +68,7 @@ function validateApertureHeights(
 function pointOnOutline(point: Point, outline: readonly Point[]): boolean {
   return outline.some((current, index) => {
     const previous = outline[(index + outline.length - 1) % outline.length] ?? current
-    return pointOnEdge(point, previous, current)
+    return pointOnSegment(point, previous, current, OUTLINE_TOLERANCE_MM)
   })
 }
 
