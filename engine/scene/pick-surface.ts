@@ -2,11 +2,15 @@ import * as THREE from 'three'
 
 import type { SurfaceRef } from '../../core'
 
+import { isFadedForPicking } from './faded-for-picking'
+import { surfaceTableOf } from './wall-surface-table'
+
 /**
- * The surface ref carried on a renderable object or the nearest ancestor that has one
- * (ADR-0056: a paintable surface mesh carries `userData.surface`). A hit on the floor
- * slab resolves to that floor's SurfaceRef, the same ref the 2D plan paints. Returns
- * null when no ancestor carries a surface ref.
+ * The stamp lookup that floor slabs use: the surface ref carried on an object or its
+ * nearest ancestor (ADR-0056: a paintable surface mesh carries `userData.surface`), or
+ * null when none does. A wall is not found this way; it carries a table of surface refs
+ * by material group (`SURFACE_BY_MATERIAL_INDEX_KEY`) and is resolved from the triangle
+ * hit. A faded object is skipped before either lookup.
  */
 export function surfaceRefOf(object: THREE.Object3D): SurfaceRef | null {
   let current: THREE.Object3D | null = object
@@ -20,12 +24,47 @@ export function surfaceRefOf(object: THREE.Object3D): SurfaceRef | null {
   return null
 }
 
-/** The surface ref of the nearest object a ray strikes, or null when the ray hits no surface. */
+/** What one ray hit settles: the surface picked (null for none), or undefined to go on. */
+type HitDecision = { surface: SurfaceRef | null } | undefined
+
+/**
+ * Decides what one ray hit means for the pick. An object that carries a surface table
+ * (a wall mesh) always decides: the material group of the triangle hit yields its side's
+ * ref for a long face and null for a cap, end, or reveal. Any other object decides only
+ * when it carries a surface ref ({@link surfaceRefOf}); otherwise the ray goes on.
+ */
+function decideHit(hit: THREE.Intersection): HitDecision {
+  const table = surfaceTableOf(hit.object)
+  if (table === undefined) {
+    const surface = surfaceRefOf(hit.object)
+    return surface === null ? undefined : { surface }
+  }
+  // `hit.face` is null for a line or point hit, which has no material group; returning
+  // no surface there cannot credit the hit to the wrong surface.
+  const materialIndex = hit.face?.materialIndex
+  const wallSurface = materialIndex === undefined ? null : (table[materialIndex] ?? null)
+  return { surface: wallSurface }
+}
+
+/**
+ * The surface ref a ray picks, or null when it picks none. The hits are read nearest
+ * first. A wall decides at its first hit: a paintable long face gives that face and its
+ * side, a cap, an end, or a reveal gives no surface, and nothing behind the wall is
+ * returned. Another object decides only when it carries a surface (a floor slab); an
+ * object with no surface is skipped, and so is a faded object, before any other decision.
+ */
 export function pickSurface(raycaster: THREE.Raycaster, root: THREE.Object3D): SurfaceRef | null {
   for (const hit of raycaster.intersectObject(root, true)) {
-    const surface = surfaceRefOf(hit.object)
-    if (surface !== null) {
-      return surface
+    // The user sees through a faded wall (and what fades with it), so the click is for
+    // what is behind it.
+    if (isFadedForPicking(hit.object)) {
+      continue
+    }
+    const decision = decideHit(hit)
+    // A wall is opaque: a surface behind a wall hit that has no paintable surface (a cap,
+    // an end, a reveal) is not what the user clicked, so the ray stops at that hit.
+    if (decision !== undefined) {
+      return decision.surface
     }
   }
   return null

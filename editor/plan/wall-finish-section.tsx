@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useCallback } from 'react'
 import type { Color, Command, SurfaceRef, SurfaceTreatment } from '../../core'
-import { useHighlightedSurface } from '../../bridge'
+import { useActiveSurface, useHighlightedSurface, useSurfaceSelection } from '../../bridge'
 import { SectionLabel, Segmented } from '../design-system'
 import { useWallFaceHighlight } from './use-wall-face-highlight'
 import { ColorPicker } from '../paint/color-picker'
@@ -56,6 +56,22 @@ function previewedSide(
   return highlighted.side
 }
 
+/**
+ * The wall face the section shows and edits. It is the active surface when that
+ * surface is a face of this wall (so a 3D pick, the chips, and the readout name one
+ * face), otherwise the left face. Choosing a side makes that face the active surface.
+ */
+function useActiveWallSide(wallId: string): ['left' | 'right', (side: 'left' | 'right') => void] {
+  const active = useActiveSurface()
+  const surfaceSelection = useSurfaceSelection()
+  const side = active?.kind === 'wall-face' && active.wallId === wallId ? active.side : 'left'
+  const selectSide = useCallback(
+    (next: 'left' | 'right') => surfaceSelection.select({ kind: 'wall-face', wallId, side: next }),
+    [surfaceSelection, wallId],
+  )
+  return [side, selectSide]
+}
+
 interface WallFaceSwitchProps {
   side: 'left' | 'right'
   preview: 'left' | 'right' | undefined
@@ -90,7 +106,7 @@ export function WallFinishSection({
   recent,
   dispatch,
 }: WallFinishSectionProps) {
-  const [side, setSide] = useState<'left' | 'right'>('left')
+  const [side, selectSide] = useActiveWallSide(wallId)
   const onHoverFace = useWallFaceHighlight(wallId, side)
   const highlighted = useHighlightedSurface()
   const preview = previewedSide(highlighted, wallId, side)
@@ -102,7 +118,7 @@ export function WallFinishSection({
     <section className="finish-section">
       <SectionLabel>Finish</SectionLabel>
       <p className="finish-section__hint">A and B are the wall&apos;s two paintable faces.</p>
-      <WallFaceSwitch side={side} preview={preview} onSelect={setSide} onHover={onHoverFace} />
+      <WallFaceSwitch side={side} preview={preview} onSelect={selectSide} onHover={onHoverFace} />
       <ColorPicker surface={ref} finishId={finishId} recent={recent} dispatch={dispatch} />
       <PerceivedColorReadout surface={ref} reference={reference} />
       {treatment?.kind === 'solid' ? (

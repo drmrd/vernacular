@@ -24,7 +24,6 @@ import {
 import type { MaterialProvider } from '../materials/material-provider'
 
 import {
-  geometryFromSections,
   reverseTriangleWinding,
   thicknessSpanningQuad,
   type Triangle,
@@ -33,6 +32,7 @@ import {
 import { tessellateContourLoop } from './contour-tessellation'
 import { buildJunctionFill } from './junction-fill-builder'
 import { buildWallPrism, wallFaceRef } from './wall-prism'
+import { buildSectionMesh } from './wall-surface-table'
 
 /** Inputs for building a floor's walls from its planar graph. */
 export interface WallBuildInput {
@@ -433,9 +433,5 @@ function buildOpeningWallMesh(target: OpeningWall, input: WallBuildInput): THREE
   const outline = triangulatedWallOutline(frame, target.openings)
   const wallId = target.wall.id.slice(WALL_NODE_PREFIX.length)
   const sections = openingWallSections(frame, outline, wallId)
-  const geometry = geometryFromSections(sections)
-  const materials = sections.map((section) => input.materials.material(section.role, section.ref))
-  const mesh = new THREE.Mesh(geometry, materials)
-  mesh.userData.entityId = target.wall.id
-  return mesh
+  return buildSectionMesh(sections, input.materials, target.wall.id)
 }

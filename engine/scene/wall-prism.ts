@@ -14,7 +14,8 @@ import {
 } from '../../core'
 import type { MaterialProvider } from '../materials/material-provider'
 
-import { geometryFromSections, thicknessSpanningQuad, type WallSection } from './geometry-utils'
+import { thicknessSpanningQuad, type WallSection } from './geometry-utils'
+import { buildSectionMesh } from './wall-surface-table'
 
 /** The paint surface ref for one named side of a wall's long face. */
 export function wallFaceRef(wallId: string, side: 'left' | 'right'): SurfaceRef {
@@ -51,11 +52,7 @@ export function buildWallPrism(
     wallHeight(node),
     node.id.slice(WALL_NODE_PREFIX.length),
   )
-  const geometry = geometryFromSections(sections)
-  const material = sections.map((section) => materials.material(section.role, section.ref))
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.userData.entityId = node.id
-  return mesh
+  return buildSectionMesh(sections, materials, node.id)
 }
 
 /** The square footprint of a free-standing wall: its centerline offset half the
