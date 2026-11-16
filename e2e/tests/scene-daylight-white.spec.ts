@@ -3,6 +3,7 @@ import { srgbToOkLab } from '../../core'
 import {
   DEFAULT_VIEW_EAST_WALL,
   DEFAULT_VIEW_SOUTH_WALL,
+  SOUTH_WEST_VIEW_WEST_WALL,
   logReading,
   sampleCanvasColor,
   settledHarnessCanvas,
@@ -14,12 +15,15 @@ import {
 // states: at equinox noon the south face takes the high sun, and on the winter afternoon the
 // east face stands in shade while the south face takes the low sun from the south-west. Noon
 // white is read as chroma and lightness, the shade and the low sun as the blue-yellow axis b
-// (negative is cool, positive is warm).
+// (negative is cool, positive is warm). A third state, daylight-reference, shows the west face in
+// shade from a south-west camera, and that shade is read on the green-red axis a (negative is
+// green): the ground below the horizon lights a shaded wall, and a green ground would tint it.
 //
-// Every derived bound sits at the midpoint of this build's reading and the reading of the render
-// before the daylight calibration, which painted the noon wall a dim grey, the shade a strong
-// blue, and the low sun neutral. The shade must also read b under 0, a relation with no
-// midpoint.
+// Every derived bound on the first two states sits at the midpoint of this build's reading and
+// the reading of the render before the daylight calibration, which painted the noon wall a dim
+// grey, the shade a strong blue, and the low sun neutral. The shade must also read b under 0, a
+// relation with no midpoint. The bound on the green axis sits at the midpoint of this build's
+// reading and the reading of the build whose dome took the lawn's green color below the horizon.
 //
 // It renders through the deterministic scene harness on the WebGL 2 backend, so it runs on
 // darwin Metal and on the linux SwiftShader lane and self-skips only where no WebGL 2 context
@@ -28,9 +32,12 @@ import {
 // The canonical harness states this gate renders, each with the white paint.
 const EQUINOX_NOON_QUERY = '&scene=equinox-noon&paint=daylight-white'
 const WINTER_AFTERNOON_QUERY = '&scene=winter-afternoon&paint=daylight-white'
+const DAYLIGHT_REFERENCE_QUERY = '&scene=daylight-reference&paint=daylight-white'
 
-// Both states share the default camera, so the gate reads the shared south and east wall squares
-// of the default view (scene-helpers.ts), the same squares as the sunlit wall gate.
+// The first two states share the default camera, so the gate reads the shared south and east
+// wall squares of the default view (scene-helpers.ts), the same squares as the sunlit wall gate.
+// The daylight-reference state has its own south-west camera, and the gate reads the shared west
+// wall square of that view.
 
 // Each reading below was taken on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL
 // 2 harness, 320x240 frame), on this build and on the build before the daylight calibration.
@@ -93,6 +100,22 @@ const SHADE_MIN_B = -0.0167
  */
 const LOW_SUN_MIN_B = 0.0077
 
+/**
+ * The least OKLab a the shaded white west wall may read in the daylight-reference state
+ * (issue #765). Measured on 2026-11-16 on the development Mac (macOS, Apple Metal, WebGL 2
+ * harness, 320x240 frame), in the same region and state on both builds:
+ *
+ *   before the ground half of the sky dome turned a neutral grey (the lawn's green color
+ *   lit the wall): -0.0285, a clear sage-green cast, the region one color (147, 169, 157)
+ *   this build, a grey ground with the lawn's luminance: -0.0036, the region (160, 166, 173)
+ *   Linux: not yet recorded for this derivation
+ *
+ * Five captures of each build came back identical to four decimals, so the noise band is 0. The
+ * midpoint is -0.01605, rounded to -0.0161, which clears this build by 0.0125 and the green
+ * ground by 0.0124.
+ */
+const SHADE_MIN_A = -0.0161
+
 test.describe('Daylight white gate', () => {
   test('the white south wall reads white in the noon sun', async ({ page }) => {
     const canvas = await settledHarnessCanvas(page, EQUINOX_NOON_QUERY)
@@ -137,5 +160,19 @@ test.describe('Daylight white gate', () => {
       `afternoon low-sun south wall b ${lowSunSouth.b.toFixed(4)} is under ${LOW_SUN_MIN_B}, ` +
         `so the low sun does not warm the white wall`,
     ).toBeGreaterThanOrEqual(LOW_SUN_MIN_B)
+  })
+
+  test('the white wall in shade takes no green cast from the ground', async ({ page }) => {
+    const canvas = await settledHarnessCanvas(page, DAYLIGHT_REFERENCE_QUERY)
+
+    const shadedWest = srgbToOkLab(await sampleCanvasColor(page, canvas, SOUTH_WEST_VIEW_WEST_WALL))
+    logReading('shaded west wall a', shadedWest.a.toFixed(4))
+    logReading('shaded west wall b', shadedWest.b.toFixed(4))
+
+    expect(
+      shadedWest.a,
+      `shaded west wall a ${shadedWest.a.toFixed(4)} is under ${SHADE_MIN_A}, so the ground ` +
+        `below the horizon gives the white wall in shade a green cast`,
+    ).toBeGreaterThanOrEqual(SHADE_MIN_A)
   })
 })
