@@ -39,7 +39,7 @@ export const Default: Story = {
   },
 }
 
-export const MissingLocation: Story = {
+export const SampleDaylight: Story = {
   args: { site: undefined, environment: REALISTIC },
 }
 

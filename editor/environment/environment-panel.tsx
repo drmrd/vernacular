@@ -2,6 +2,7 @@ import type { ChangeEvent, ReactElement } from 'react'
 import type { EnvironmentState, LightingMode, ObservationInstant, Site } from '../../core'
 import {
   MINUTES_PER_DAY,
+  daylightSampleOf,
   formatObservationDateTime,
   isObservationInstantIso,
   observationInstantToIso,
@@ -34,10 +35,11 @@ function isLightingMode(value: string): value is LightingMode {
   return (LIGHTING_MODES as readonly string[]).includes(value)
 }
 
-// Shown when realistic lighting is requested but the site has no coordinates to
-// place the sun; the bridge falls back to schematic lighting until they are set.
-const MISSING_LOCATION_NOTICE =
-  'Realistic lighting needs the site location. Set latitude and longitude in the Site panel; until then the view falls back to schematic lighting.'
+// Shown in realistic mode when the site lacks a location or a north bearing. Without a
+// location the daylight is computed for a sample place; without a north bearing the front
+// of the building is turned toward the sun. Either way the angles are illustrative.
+const SAMPLE_DAYLIGHT_NOTICE =
+  'Sample daylight. Set the location and north in the Site panel for true sun angles.'
 
 // Shown when the site has coordinates but no timezone; solar time is then
 // estimated from the longitude alone, which is close but not exact.
@@ -91,14 +93,14 @@ function EnvironmentNotices({
       </p>
     )
   }
-  if (site?.latLong === undefined) {
+  if (daylightSampleOf(site) !== 'none') {
     return (
       <p role="status" aria-live="polite">
-        {MISSING_LOCATION_NOTICE}
+        {SAMPLE_DAYLIGHT_NOTICE}
       </p>
     )
   }
-  if (site.timezone === undefined) {
+  if (site?.latLong !== undefined && site.timezone === undefined) {
     return (
       <p role="status" aria-live="polite">
         {MISSING_TIMEZONE_NOTICE}
