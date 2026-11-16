@@ -14,6 +14,7 @@ const GLOBAL_RULE = 'no-restricted-globals'
 interface ImportCase {
   readonly filePath: string
   readonly specifier: string
+  readonly statement?: 'type-import' | 'reexport'
 }
 
 async function purityRuleIds(code: string, filePath: string): Promise<(string | null)[]> {
@@ -24,7 +25,13 @@ async function purityRuleIds(code: string, filePath: string): Promise<(string | 
     .filter((ruleId) => ruleId !== null && purityRules.includes(ruleId))
 }
 
-function importSample(specifier: string): string {
+function importSample(specifier: string, statement?: ImportCase['statement']): string {
+  if (statement === 'type-import') {
+    return `import type { Imported } from '${specifier}'\nexport type Value = Imported\n`
+  }
+  if (statement === 'reexport') {
+    return `export * from '${specifier}'\n`
+  }
   return `import * as imported from '${specifier}'\nexport const value = imported\n`
 }
 
@@ -65,6 +72,16 @@ const rejectedImports: readonly ImportCase[] = [
   { filePath: 'engine/sample.ts', specifier: './testing' },
   { filePath: 'engine/scene/sample.ts', specifier: '../testing' },
   { filePath: 'engine/scene/sample-support.ts', specifier: '../testing' },
+  { filePath: 'engine/scene/sample.ts', specifier: '../testing/index' },
+  { filePath: 'engine/scene/sample.ts', specifier: '../testing/index.js' },
+  { filePath: 'engine/scene/deep/sample.ts', specifier: '../../testing/helpers' },
+  { filePath: 'engine/scene/sample.ts', specifier: '../testing', statement: 'type-import' },
+  { filePath: 'engine/scene/sample.ts', specifier: '../testing', statement: 'reexport' },
+  { filePath: 'bridge/react/sample.tsx', specifier: '../../engine/testing/index' },
+  { filePath: 'editor/sample.tsx', specifier: '../engine/testing/index' },
+  { filePath: 'app/sample.tsx', specifier: '../engine/testing/index' },
+  { filePath: 'src/sample.tsx', specifier: '../engine/testing/index' },
+  { filePath: 'editor/shell/sample-test-support.tsx', specifier: '../../engine/testing' },
 ]
 
 const acceptedImports: readonly ImportCase[] = [
@@ -79,6 +96,20 @@ const acceptedImports: readonly ImportCase[] = [
   { filePath: 'engine/scene/sample-test-support.ts', specifier: '../testing' },
   { filePath: 'engine/testing/sample.ts', specifier: './geometry-assertions' },
   { filePath: 'src/sample.test.tsx', specifier: '../engine/testing' },
+  { filePath: 'engine/scene/sample-test-support.tsx', specifier: '../testing' },
+  ...[
+    'engine/sample.ts',
+    'bridge/sample.ts',
+    'editor/sample.ts',
+    'app/sample.ts',
+    'src/sample.ts',
+  ].flatMap((filePath) =>
+    ['@testing-library/react', '../testing-utils'].map((specifier) => ({ filePath, specifier })),
+  ),
+  { filePath: 'editor/shell/sample.ts', specifier: './testing/helpers' },
+  { filePath: 'bridge/sample.ts', specifier: '../testing/helpers' },
+  { filePath: 'app/sample.ts', specifier: './testing/helpers' },
+  { filePath: 'src/sample.ts', specifier: '../testing/helpers' },
   { filePath: 'bridge/sample.tsx', specifier: 'react' },
   { filePath: 'bridge/sample.tsx', specifier: 'react/jsx-runtime' },
   { filePath: 'editor/sample.tsx', specifier: 'react' },
@@ -91,8 +122,8 @@ describe('layer purity: imports', () => {
   it.each(rejectedImports)(
     'rejects $filePath importing $specifier',
     { timeout: LINT_TIMEOUT_MS },
-    async ({ filePath, specifier }) => {
-      const ids = await purityRuleIds(importSample(specifier), filePath)
+    async ({ filePath, specifier, statement }) => {
+      const ids = await purityRuleIds(importSample(specifier, statement), filePath)
       expect(ids).toContain(IMPORT_RULE)
     },
   )
@@ -100,8 +131,8 @@ describe('layer purity: imports', () => {
   it.each(acceptedImports)(
     'allows $filePath importing $specifier',
     { timeout: LINT_TIMEOUT_MS },
-    async ({ filePath, specifier }) => {
-      const ids = await purityRuleIds(importSample(specifier), filePath)
+    async ({ filePath, specifier, statement }) => {
+      const ids = await purityRuleIds(importSample(specifier, statement), filePath)
       expect(ids).toEqual([])
     },
   )
