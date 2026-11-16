@@ -330,22 +330,6 @@ function isOuterBoundaryEdge(from: THREE.Vector2, to: THREE.Vector2, frame: Edge
 }
 
 /**
- * World positions for one reveal quad (two triangles) bridging the interior and
- * exterior faces along the void edge `from -> to`, wound so its normal points
- * inward toward the void interior (away from the wall material).
- */
-function revealQuad(frame: EdgeFrame, from: THREE.Vector2, to: THREE.Vector2): number[] {
-  // The outer cap's `from -> to` corner order: a hole loop runs opposite to the
-  // outline, so the same order turns the reveal normal toward the void.
-  return thicknessSpanningQuad([
-    edgeLocalToWorld(frame, from, SIDE_INTERIOR),
-    edgeLocalToWorld(frame, to, SIDE_INTERIOR),
-    edgeLocalToWorld(frame, to, SIDE_EXTERIOR),
-    edgeLocalToWorld(frame, from, SIDE_EXTERIOR),
-  ])
-}
-
-/**
  * World positions for the reveal faces lining every void: a quad spanning the wall
  * thickness along each void-boundary edge that does not lie on the wall's outer
  * outline (a door's floor edge sits on `v = 0`, so it is skipped). The closing edge
@@ -358,7 +342,9 @@ function revealPositions(frame: EdgeFrame, holeLoops: THREE.Vector2[][]): number
       const from = loop[index] as THREE.Vector2
       const to = loop[(index + 1) % loop.length] as THREE.Vector2
       if (isOuterBoundaryEdge(from, to, frame)) continue
-      positions.push(...revealQuad(frame, from, to))
+      // A hole loop runs opposite to the outline, so the outer cap's corner order
+      // turns the reveal normal toward the void.
+      positions.push(...outerCapPositions(frame, from, to))
     }
   }
   return positions
@@ -373,6 +359,8 @@ function openingWallSections(
   wallId: string,
 ): WallSection[] {
   const [base, baseEnd, topEnd, top] = outlineRectangle(frame)
+  // The interior face looks the opposite way from the exterior face, so it takes
+  // the reversed outline to wind outward.
   const reversed: TriangulatedOutline = {
     ...outline,
     triangles: reverseTriangleWinding(outline.triangles),
