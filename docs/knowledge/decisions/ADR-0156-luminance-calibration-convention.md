@@ -13,6 +13,7 @@ related:
     decisions/ADR-0079-three-dimensional-lighting-legibility,
     decisions/ADR-0130-finishes-system-architecture,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
+    decisions/ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point,
   ]
 sourceFiles:
   [
@@ -21,9 +22,10 @@ sourceFiles:
     engine/renderer/create-renderer.ts,
     engine/renderer/tone-mapping.ts,
     core/registries/finishes.ts,
+    core/environment/color-check.ts,
   ]
 status: current
-updated: 2026-07-12
+updated: 2026-11-16
 ---
 
 # ADR-0156: Luminance calibration convention for the color-accuracy gate
@@ -131,3 +133,40 @@ instead of passing in silence.
 - [[ADR-0144-solar-lighting-provider-and-sky]] (the solar rig and the sun-intensity fade).
 - [[ADR-0079-three-dimensional-lighting-legibility]] (the key-dominant rig).
 - [[ADR-0130-finishes-system-architecture]] (the finishes registry the gate tunes against).
+
+## Amendment 2026-11-16: the check's sun is pinned and daylight is calibrated apart from it
+
+The calibration change gave daylight a meaning of its own
+([[ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point]]). This record keeps
+the color check's condition and states it as the code now holds it.
+
+What the check measures: how a known paint reproduces under one fixed, neutral condition. That
+condition is a white sun at level 1.6 with no horizon fade and no cloud dimming, a uniform white
+dome of radiance 1 (the neutral coefficients `NEUTRAL_DOME_SPHERICAL_HARMONICS`, which
+`colorCheckLighting` puts in place of the sky's own since
+[[ADR-0148-visible-sky-and-sh-light-probe]] and which the environment map of
+[[ADR-0161-sky-specular-environment-map]] carries), exposure 1, and Khronos PBR Neutral tone
+mapping. Decision 1 above calls the ambient "sky-derived", and it is that neutral dome that the
+check reads. The check does not measure daylight.
+
+The code is corrected to match decision 1. `colorCheckLighting` used to pass the environment's
+fade through, so the check's sun was 1.6 times the fade at the sun height of the state it rendered,
+which this record never allowed. It now sets the sun level to `COLOR_CHECK_SUN_LEVEL`, exported from
+`core/environment/color-check.ts` and equal to 1.6, whenever the sun is above the horizon. When the
+sun direction's `y` is at or below 0 the check's sun is off, at level 0. The sunlit walls of the
+color-check whole-frame baseline are expected to get brighter, and that baseline refreshes with the
+change. The
+targets and tolerances of [[ADR-0157-color-accuracy-gate]] do not move.
+
+Daylight is calibrated separately. Its sun scale, white point, dome levels, and photometric anchor
+are stated in ADR-0192, and none of them reach the check. Decision 4 still holds for the check,
+which stays relative: its 1.6 is a renderer-linear level and not a photometric one.
+
+Two names in the context section above are retired:
+
+- `EnvironmentLighting.sunIntensity`, a 0 to 1 fade, is now `sunLevel`, the sun light's actual
+  level. In solar mode the provider sets the light to `sunLevel` directly, and the engine no longer
+  multiplies by a constant of its own.
+- `DAYLIGHT_SUN_INTENSITY` in `engine/lighting/lighting-rig.ts` is now `SCHEMATIC_SUN_INTENSITY`.
+  It is still 1.6, and only the schematic rig reads it, so the 3.2 to 1 relationship with the fill
+  of 0.5 still describes that rig.

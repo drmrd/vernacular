@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { Bounds3 } from '../../core'
+import { type Bounds3, GROUND_SURFACE_HEX } from '../../core'
 import { groundPlaneDepthBiasParameters } from '../materials/role-appearance'
 
 /**
@@ -21,11 +21,6 @@ export const GRADE_ELEVATION_MM = 0
  * picking, and selection can tell the site surface apart from building geometry.
  */
 export const GROUND_PLANE_NAME = 'ground-plane'
-
-// Mowed-lawn green standing in for grass. Pulling a grass texture through the
-// content-addressed asset pipeline is out of scope here (a follow-up), so a flat
-// color carries the ground for now.
-const GRASS_COLOR = 0x5f8a4f
 
 // Lawn margin around the building footprint, in millimeters, so the ground reads as a
 // site the building sits on rather than a slab cut to the walls.
@@ -94,7 +89,11 @@ function groundFootprint(sceneRoot: THREE.Object3D): GroundFootprint {
 function groundMesh(footprint: GroundFootprint, gradeElevation: number): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(footprint.width, footprint.depth)
   const material = new THREE.MeshStandardMaterial({
-    color: GRASS_COLOR,
+    // Mowed-lawn green standing in for grass; the sky dome's ground bounce keeps only this
+    // color's luminance.
+    // Pulling a grass texture through the content-addressed asset pipeline is out of scope
+    // here (a follow-up), so a flat color carries the ground for now.
+    color: GROUND_SURFACE_HEX,
     ...groundPlaneDepthBiasParameters(),
   })
   const mesh = new THREE.Mesh(geometry, material)

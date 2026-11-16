@@ -1,10 +1,19 @@
+/* eslint-disable max-lines --
+ * One describe block per sky-environment entry point (attach, gain, update, dispose, bundle
+ * guard). The attach block grows one case per addon behavior the module must survive, and
+ * the per-file line cap does not suit a behavior-organized suite that wraps the lazy addon. */
 import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as THREE from 'three'
-import { NEUTRAL_DOME_SPHERICAL_HARMONICS, type EnvironmentLighting } from '../../core'
+import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
+import {
+  DAYLIGHT_CALIBRATION,
+  NEUTRAL_DOME_SPHERICAL_HARMONICS,
+  type EnvironmentLighting,
+} from '../../core'
 import { importsStaticValueOf } from '../testing'
-import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
+import { attachSkyEnvironment, skyMeshGainAt, updateSkyEnvironment } from './sky-environment'
 import { buildLightingRig, disposeLightingRig, type LightingRig } from './lighting-rig'
 
 /** The sun intensity the rig is built with; any positive value is fine for these tests. */
@@ -23,18 +32,63 @@ const DISTINCT_DOME_RADIANCE = 3
 const DISTINCT_SKY_AMBIENT: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS.map(
   (coefficient) => coefficient * DISTINCT_DOME_RADIANCE,
 )
+/** The sun heights, in degrees, the gain-tracking cases aim at: a low sun on a table row, and
+ *  a high sun between the table's last two rows, so its expectation goes through skyMeshGainAt. */
+const LOW_SUN_DEGREES = 4.95
+const HIGH_SUN_DEGREES = 45
+/** The rig's gain is compared with the table's gain component by component. The rig sees the
+ *  altitude as asin(sin h), which differs from h by rounding only. */
+const GAIN_TOLERANCE = 1e-12
 /** Reconstruction and passthrough are exact copies; a loose float tolerance suffices. */
 const PRECISION = 5
+/** The sky scattering constants the module pins; they are the addon's own defaults today. */
+const PINNED_SCATTERING = { turbidity: 2, rayleigh: 1, mieCoefficient: 0.005, mieDirectionalG: 0.8 }
+/** Scattering constants unlike the pinned ones, standing in for a future addon default drift. */
+const DRIFTED_SCATTERING = {
+  turbidity: 10,
+  rayleigh: 3,
+  mieCoefficient: 0.05,
+  mieDirectionalG: 0.5,
+}
+const SKY_ADDON_PATH = 'three/examples/jsm/objects/SkyMesh.js'
+/** The addon's export name, held as a value so a wrapped module can re-export under it. */
+const SKY_ADDON_EXPORT = 'SkyMesh'
 
 function makeLighting(): EnvironmentLighting {
   return {
     sunDirection: SUN_DIRECTION,
     sunColor: { r: 0.9, g: 0.8, b: 0.6 },
     skyColor: { r: 0.4, g: 0.55, b: 0.9 },
-    sunIntensity: 1.2,
+    sunLevel: 1.2,
     cloudCover: CLOUD_COVER,
     skyAmbient: DISTINCT_SKY_AMBIENT,
   }
+}
+
+/** Lighting whose sun sits the given number of degrees above the horizon. */
+function makeLightingWithSunHeight(degrees: number): EnvironmentLighting {
+  const height = toRadians(degrees)
+  return {
+    ...makeLighting(),
+    sunDirection: { x: Math.cos(height), y: Math.sin(height), z: 0 },
+  }
+}
+
+/**
+ * Asserts the rig's sky gain is the table gain for this sun altitude (radians) divided by
+ * each white point channel, which is what skyMeshGain returns. The expectation is built from
+ * skyMeshGainAt so a gain that ignores the sun's height cannot satisfy it by coincidence.
+ */
+function expectSkyGainForAltitude(rig: LightingRig, altitude: number): void {
+  const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
+  const gain = skyMeshGainAt(altitude)
+  expect(Math.abs(rig.skyGain!.x - gain / r)).toBeLessThan(GAIN_TOLERANCE)
+  expect(Math.abs(rig.skyGain!.y - gain / g)).toBeLessThan(GAIN_TOLERANCE)
+  expect(Math.abs(rig.skyGain!.z - gain / b)).toBeLessThan(GAIN_TOLERANCE)
+}
+
+function toRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180
 }
 
 /** A scene with the solar rig already applied: the state attachSkyEnvironment expects. */
@@ -74,6 +128,65 @@ function expectSkyMatchesLighting(rig: LightingRig): void {
   expect(sunPosition?.y).toBeCloseTo(SUN_DIRECTION.y, PRECISION)
   expect(sunPosition?.z).toBeCloseTo(SUN_DIRECTION.z, PRECISION)
   expect(rig.sky?.cloudCoverage.value).toBeCloseTo(CLOUD_COVER, PRECISION)
+}
+
+/** True when a uniform node holding exactly this object is reachable from the node. */
+function reachesUniformHolding(
+  root: { traverse: (cb: (node: object) => void) => void },
+  held: object,
+) {
+  let reached = false
+  root.traverse((node) => {
+    const uniform = node as { isUniformNode?: boolean; value?: unknown }
+    reached = reached || (uniform.isUniformNode === true && uniform.value === held)
+  })
+  return reached
+}
+
+/**
+ * Attaches a sky whose addon constructor runs `drift` after the real one, the way a future
+ * three release that changed its defaults would. The addon class is wrapped, never the
+ * module under test, and the registry is restored so no other case sees the wrapper. A
+ * rejection from the attach propagates, so a failing attach fails the case that asked for it.
+ */
+async function attachSkyFromWrappedAddon(
+  drift: (sky: SkyMesh) => void,
+): Promise<{ scene: THREE.Scene; rig: LightingRig }> {
+  vi.resetModules()
+  vi.doMock(SKY_ADDON_PATH, async () => {
+    const actual = await vi.importActual<Record<string, new () => SkyMesh>>(SKY_ADDON_PATH)
+    class WrappedSkyMesh extends (actual[SKY_ADDON_EXPORT]!) {
+      constructor() {
+        super()
+        drift(this)
+      }
+    }
+    return { ...actual, [SKY_ADDON_EXPORT]: WrappedSkyMesh }
+  })
+  try {
+    const fresh = await import('./sky-environment')
+    const applied = makeAppliedRig()
+    await fresh.attachSkyEnvironment(applied.scene, applied.rig)
+    return applied
+  } finally {
+    vi.doUnmock(SKY_ADDON_PATH)
+    vi.resetModules()
+  }
+}
+
+/** The addon leaves DRIFTED_SCATTERING behind instead of its own defaults. */
+function driftScattering(sky: SkyMesh): void {
+  sky.turbidity.value = DRIFTED_SCATTERING.turbidity
+  sky.rayleigh.value = DRIFTED_SCATTERING.rayleigh
+  sky.mieCoefficient.value = DRIFTED_SCATTERING.mieCoefficient
+  sky.mieDirectionalG.value = DRIFTED_SCATTERING.mieDirectionalG
+}
+
+/** The addon builds no color node: it leaves `null` or `undefined` where a node used to be. */
+function dropColorNode(colorNode: null | undefined): (sky: SkyMesh) => void {
+  return (sky) => {
+    sky.material.colorNode = colorNode as unknown as typeof sky.material.colorNode
+  }
 }
 
 describe('attachSkyEnvironment', () => {
@@ -130,6 +243,67 @@ describe('attachSkyEnvironment', () => {
     expect(rig.sky?.showSunDisc.value).toBe(1)
   })
 
+  it('pins the sky scattering constants rather than inheriting the addon defaults', async () => {
+    const { rig } = await attachSkyFromWrappedAddon(driftScattering)
+
+    // The addon's defaults equal these today, so a plain equality check would pass without
+    // the module setting anything. The addon is wrapped to start from other values, so
+    // only a module that writes the constants itself still reads them back here.
+    expect(rig.sky?.turbidity.value).toBe(PINNED_SCATTERING.turbidity)
+    expect(rig.sky?.rayleigh.value).toBe(PINNED_SCATTERING.rayleigh)
+    expect(rig.sky?.mieCoefficient.value).toBe(PINNED_SCATTERING.mieCoefficient)
+    expect(rig.sky?.mieDirectionalG.value).toBe(PINNED_SCATTERING.mieDirectionalG)
+  })
+
+  it('records the high-sun gain on the rig when no update arrived before the sky did', async () => {
+    const { scene, rig } = makeAppliedRig()
+
+    await attachSkyEnvironment(scene, rig)
+
+    // With no lighting yet, the sun is taken to be overhead: the end of the table.
+    expect(rig.skyGain).toBeInstanceOf(THREE.Vector3)
+    expectSkyGainForAltitude(rig, Math.PI / 2)
+  })
+
+  it('sets the sky gain from the sun height of an update issued before the sky resolves', async () => {
+    const { scene, rig } = makeAppliedRig()
+
+    const attached = attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(LOW_SUN_DEGREES))
+    await attached
+
+    expectSkyGainForAltitude(rig, toRadians(LOW_SUN_DEGREES))
+  })
+
+  it('multiplies the sky color by a uniform that reads the rig sky gain', async () => {
+    const { SkyMesh: PristineSkyMesh } = await import(SKY_ADDON_PATH)
+    const { scene, rig } = makeAppliedRig()
+
+    await attachSkyEnvironment(scene, rig)
+
+    // A later write to rig.skyGain has to reach the shader, so the node graph must hold
+    // a uniform over that very vector, not a copy. A pristine addon sky holds none.
+    expect(rig.skyGain).toBeDefined()
+    expect(reachesUniformHolding(rig.sky!.material.colorNode!, rig.skyGain!)).toBe(true)
+    expect(reachesUniformHolding(new PristineSkyMesh().material.colorNode, rig.skyGain!)).toBe(
+      false,
+    )
+  })
+
+  it.each([[null], [undefined]])(
+    'resolves with the sky attached and no sky gain when the addon color node is %s',
+    async (colorNode) => {
+      const { scene, rig } = await attachSkyFromWrappedAddon(dropColorNode(colorNode))
+
+      // The promise never rejects: with no color node there is nothing to multiply, so the
+      // visible sky stays as the addon built it and the rig records no gain, since a gain
+      // is held only when the sky reads it.
+      expect(sceneHasSkyMesh(scene)).toBe(true)
+      expect(rig.skyGain).toBeUndefined()
+      expect(rig.sky?.material.colorNode).toBe(colorNode)
+    },
+  )
+
   it('replays an update issued before the sky resolves onto the sky once it arrives', async () => {
     const { scene, rig } = makeAppliedRig()
 
@@ -178,6 +352,40 @@ describe('updateSkyEnvironment', () => {
     expect(sunPosition?.x).toBeCloseTo(SUN_DIRECTION.x, PRECISION)
     expect(sunPosition?.y).toBeCloseTo(SUN_DIRECTION.y, PRECISION)
     expect(sunPosition?.z).toBeCloseTo(SUN_DIRECTION.z, PRECISION)
+  })
+
+  it.each([LOW_SUN_DEGREES, HIGH_SUN_DEGREES])(
+    'keeps the sky gain in step with a sun %s degrees above the horizon',
+    async (degrees) => {
+      const { scene, rig } = makeAppliedRig()
+      await attachSkyEnvironment(scene, rig)
+
+      updateSkyEnvironment(rig, makeLightingWithSunHeight(degrees))
+
+      expectSkyGainForAltitude(rig, toRadians(degrees))
+    },
+  )
+
+  it('brightens the visible sky when an update lowers the sun', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(HIGH_SUN_DEGREES))
+    const highSunGain = rig.skyGain!.y
+
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(LOW_SUN_DEGREES))
+
+    expect(rig.skyGain!.y).toBeGreaterThan(highSunGain)
+  })
+
+  it('writes the sky gain into the same vector the shader uniform holds across updates', async () => {
+    const { scene, rig } = makeAppliedRig()
+    await attachSkyEnvironment(scene, rig)
+    const gainBefore = rig.skyGain!
+
+    updateSkyEnvironment(rig, makeLightingWithSunHeight(LOW_SUN_DEGREES))
+
+    expect(rig.skyGain).toBe(gainBefore)
+    expect(reachesUniformHolding(rig.sky!.material.colorNode!, gainBefore)).toBe(true)
   })
 
   it("drives the sky's cloud coverage from the lighting's cloud cover", async () => {
@@ -298,18 +506,27 @@ describe('disposeLightingRig', () => {
   })
 })
 
+describe('engine public surface', () => {
+  it('keeps the sky mesh gain table and its lookup inside the lighting module, off the engine barrel', async () => {
+    const engine = await import('../index')
+
+    expect(engine).not.toHaveProperty('SKY_MESH_GAIN_BY_SUN_HEIGHT')
+    expect(engine).not.toHaveProperty('skyMeshGainAt')
+  })
+})
+
 describe('sky-environment module imports', () => {
   // This is a source-reading guard, not a behavior test. It pins a *bundling* property no
-  // runtime assertion can observe: this module must not STATICALLY import the SkyMesh addon
-  // or three/webgpu. Either one drags the whole WebGPU node-material system onto the app's
-  // startup path. When this module statically imported the SkyMesh addon (which itself
+  // runtime assertion can observe: this module must not STATICALLY import the SkyMesh addon,
+  // three/webgpu, or three/tsl. Any of them drags the whole WebGPU node-material system onto
+  // the app's startup path. When this module statically imported the SkyMesh addon (which itself
   // statically imports three/webgpu), the app's entry chunk grew from ~2.0MB to ~2.6MB (the
   // deliberately lazy three.webgpu chunk folded into the entry), and cold startup slowed
   // enough to make e2e/tests/environment-panel.spec.ts flaky on firefox under parallel load.
   // The sky mesh must load lazily at attach time. See engine/testing/import-guards.ts for how
   // the static-vs-type-vs-dynamic import distinction is made; that helper is shared with the
   // equivalent ambient-occlusion.test.ts guard.
-  it('never puts the SkyMesh addon or three/webgpu on the startup path via a static import', () => {
+  it('never puts the SkyMesh addon, three/webgpu, or three/tsl on the startup path via a static import', () => {
     const source = readFileSync(
       resolve(process.cwd(), 'engine/lighting/sky-environment.ts'),
       'utf8',
@@ -317,5 +534,6 @@ describe('sky-environment module imports', () => {
 
     expect(importsStaticValueOf(source, 'three/examples/jsm/objects/SkyMesh.js')).toBe(false)
     expect(importsStaticValueOf(source, 'three/webgpu')).toBe(false)
+    expect(importsStaticValueOf(source, 'three/tsl')).toBe(false)
   })
 })

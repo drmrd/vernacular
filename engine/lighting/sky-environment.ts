@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-import type { EnvironmentLighting } from '../../core'
+import { DAYLIGHT_CALIBRATION, sunAltitudeOf, type EnvironmentLighting } from '../../core'
 
 import { asScene, type LightingRig } from './lighting-rig'
 import { createSkyEnvironmentTexture, writeSkyEnvironmentTexture } from './sky-environment-map'
@@ -40,6 +40,87 @@ const CLOUD_DENSITY = 0.4
 /** Pinned defensively: matches the r184 addon's own cloudElevation default so an addon version
  *  bump cannot silently drift scene baselines. */
 const CLOUD_ELEVATION = 0.5
+/* The four scattering constants are pinned defensively: each matches the r184 addon's own default
+ * (turbidity, rayleigh, mieCoefficient, mieDirectionalG) so an addon version bump cannot silently
+ * drift scene baselines. */
+const TURBIDITY = 2
+const RAYLEIGH = 1
+const MIE_COEFFICIENT = 0.005
+const MIE_DIRECTIONAL_G = 0.8
+
+/** One measured row of the visible sky's gain: the gain at a sun height. */
+interface SkyMeshGainRow {
+  readonly sunHeightDegrees: number
+  readonly gain: number
+}
+
+/**
+ * The scale between the visible sky mesh's output and the sky dome of `core` (the authority
+ * for light), by the sun's height. A row is the gain that makes the visible sky's luminance
+ * equal the light dome's, just above the horizon on the side away from the sun, at that sun
+ * height. Measured in the scene harness on WebGL 2 on macOS on 2026-11-16, then frozen. A gain
+ * set outright at four measured heights (2.07, 4.95, 19.99, and 45.06 degrees) closed the loop
+ * to within 0.7 percent of the dome. Of those, 2.07 and 4.95 degrees are rows of the table;
+ * 19.99 and 45.06 degrees are heights where it was only checked.
+ *
+ * The rows were measured before the sun's fade moved to the Kasten and Young air mass. Under the
+ * present dome the 12.5 degree row is off by 1.85 percent.
+ *
+ * Between its rows the table interpolates within 1.74 percent of the dome at the heights checked
+ * (15, 20, 30, 45, and 60 degrees). The first row, at 1.07 degrees, is an estimate: its reading
+ * was the least certain. The table was measured under a clear sky only.
+ *
+ * Limits: this matches the horizon away from the sun only. To the side of the sun the horizon
+ * reads 45 to 70 percent of the dome, and the zenith stays far darker than the dome. With the
+ * sun under the horizon the mesh is black, so the held end value does not light a night sky.
+ * The scattering constants above are pinned and are not tuned to close these differences.
+ */
+export const SKY_MESH_GAIN_BY_SUN_HEIGHT: readonly [SkyMeshGainRow, ...SkyMeshGainRow[]] =
+  Object.freeze([
+    { sunHeightDegrees: 1.07, gain: 1.15 },
+    { sunHeightDegrees: 2.07, gain: 0.651 },
+    { sunHeightDegrees: 3.58, gain: 0.353 },
+    { sunHeightDegrees: 4.95, gain: 0.233 },
+    { sunHeightDegrees: 7.54, gain: 0.132 },
+    { sunHeightDegrees: 10.0, gain: 0.0905 },
+    { sunHeightDegrees: 12.5, gain: 0.0692 },
+    { sunHeightDegrees: 73.44, gain: 0.061 },
+  ])
+
+const DEGREES_PER_HALF_TURN = 180
+/** The altitude the gain starts from when no lighting has arrived yet: the high-sun end. */
+const HIGH_SUN_ALTITUDE = Math.PI / 2
+
+/**
+ * The visible sky's gain for a sun altitude in radians. Between two neighboring rows of the
+ * table the natural logarithm of the gain is linear in the height; at or beyond either end the
+ * end row's gain holds.
+ */
+export function skyMeshGainAt(sunAltitude: number): number {
+  const heightDegrees = (sunAltitude * DEGREES_PER_HALF_TURN) / Math.PI
+  const rows = SKY_MESH_GAIN_BY_SUN_HEIGHT
+  const first = rows[0]
+  const last = rows[rows.length - 1] ?? first
+  if (heightDegrees <= first.sunHeightDegrees) return first.gain
+  if (heightDegrees >= last.sunHeightDegrees) return last.gain
+  const upperIndex = rows.findIndex((row) => row.sunHeightDegrees > heightDegrees)
+  const lower = rows[upperIndex - 1] ?? first
+  const upper = rows[upperIndex] ?? last
+  const fraction =
+    (heightDegrees - lower.sunHeightDegrees) / (upper.sunHeightDegrees - lower.sunHeightDegrees)
+  return Math.exp(Math.log(lower.gain) + fraction * (Math.log(upper.gain) - Math.log(lower.gain)))
+}
+
+/**
+ * The per-channel gain the visible sky is scaled by at a sun altitude in radians. Dividing by
+ * the white point puts the visible sky in the same white-balanced space as the sun and the
+ * dome. A new vector on each call, so a caller may write to it without moving another's gain.
+ */
+export function skyMeshGain(sunAltitude: number): THREE.Vector3 {
+  const { r, g, b } = DAYLIGHT_CALIBRATION.whitePoint
+  const gain = skyMeshGainAt(sunAltitude)
+  return new THREE.Vector3(gain / r, gain / g, gain / b)
+}
 
 // The SkyMesh addon statically pulls in three/webgpu, which would land the whole WebGPU
 // build in the app's entry chunk. Loading its module through a dynamic import keeps it on a
@@ -52,13 +133,28 @@ function loadSkyMeshModule(): Promise<typeof import('three/examples/jsm/objects/
   return skyMeshModule
 }
 
+// The TSL module is loaded the same way, beside the SkyMesh module, so the uniform that carries
+// the sky gain never puts three/tsl on the startup path either.
+let tslModule: Promise<typeof import('three/tsl')> | undefined
+
+function loadTslModule(): Promise<typeof import('three/tsl')> {
+  tslModule ??= import('three/tsl')
+  return tslModule
+}
+
 // A type-only alias for the resolved sky mesh, derived from the lazily loaded module's own
 // type via `typeof import(...)` rather than a static `import type { SkyMesh } from ...`
 // statement: the latter's `from '<specifier>'` text is exactly what the guard test below
 // checks for, so this keeps the module's only reference to the specifier inside a dynamic
 // `import(...)`, matching how `loadSkyMeshModule` above already refers to it.
 type SkyMeshModule = typeof import('three/examples/jsm/objects/SkyMesh.js')
+type TslModule = typeof import('three/tsl')
 type SkyMesh = InstanceType<SkyMeshModule['SkyMesh']>
+type SkyColorNode = NonNullable<SkyMesh['material']['colorNode']>
+/** The one operation the gain needs from the addon's color node, narrowed from its union type. */
+interface ScalableColorNode {
+  mul(factor: unknown): SkyColorNode
+}
 
 /**
  * Builds the sky's environment map, records it on the rig, and hands it to the scene at the
@@ -83,13 +179,32 @@ function applySkyLighting(sky: SkyMesh, lighting: EnvironmentLighting): void {
   sky.cloudCoverage.value = lighting.cloudCover
 }
 
+/** Multiplies the sky's color by the sky mesh gain uniform and records that gain on the rig. The
+ *  rig keeps the vector as a live handle on the uniform, so a writer of the vector changes the
+ *  visible sky with no shader rebuild. The rig holds a gain only when the sky reads it: without
+ *  an addon color node nothing is recorded. The first gain follows the sun height of the lighting
+ *  that arrived before the sky did, or the high-sun end when none did. */
+function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
+  const stashed = rig.pendingLighting
+  const gain = skyMeshGain(stashed === undefined ? HIGH_SUN_ALTITUDE : sunAltitudeOf(stashed))
+  // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",
+  // and the typed overloads of `mul` reject a vec3 uniform against that union. The shader widens
+  // the uniform to a vec4 with alpha one, so the product keeps the sky opaque.
+  const addonColor = sky.material.colorNode as ScalableColorNode | null | undefined
+  // `== null` covers a missing node of either kind: null or undefined.
+  if (addonColor == null) return
+  sky.material.colorNode = addonColor.mul(tsl.uniform(gain))
+  rig.skyGain = gain
+}
+
 /**
  * Adds the visible sky and its environment map to an applied rig and zeroes the hemisphere
  * fill (the map carries the ambient; running both double-counts it). The map attaches and the
- * fill zeroes synchronously, before the SkyMesh module loads; the sky is then constructed and
- * added once its lazily imported module resolves, with cloud motion frozen (cloudSpeed 0) so
- * scene baselines stay deterministic. A rig disposed while the module is still loading
- * abandons the attach: the sky never joins the scene and the promise resolves without error.
+ * fill zeroes synchronously, before the SkyMesh and three/tsl modules load; the sky is then
+ * constructed, given its gain, and added once both lazily imported modules resolve, with cloud
+ * motion frozen (cloudSpeed 0) so scene baselines stay deterministic. A rig disposed while the
+ * modules are still loading abandons the attach: the sky never joins the scene and the promise
+ * resolves without error.
  * A failed dynamic import (e.g. a stale chunk URL after a redeploy) is caught here rather than
  * left to the caller: it warns and returns, leaving rig.sky undefined and the promise resolved,
  * so the scene stays lit by the environment and fill already applied synchronously above, just
@@ -103,11 +218,12 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   attachEnvironmentMap(scene, rig)
 
   let loadedModule: SkyMeshModule
+  let tsl: TslModule
   try {
-    loadedModule = await loadSkyMeshModule()
+    ;[loadedModule, tsl] = await Promise.all([loadSkyMeshModule(), loadTslModule()])
   } catch (reason) {
     console.warn(
-      'Failed to load the visible sky module (three/examples/jsm/objects/SkyMesh.js); realistic lighting continues without it',
+      'Failed to load the visible sky modules (three/examples/jsm/objects/SkyMesh.js, three/tsl); realistic lighting continues without it',
       reason,
     )
     return
@@ -117,15 +233,20 @@ export async function attachSkyEnvironment(scene: THREE.Object3D, rig: LightingR
   const { SkyMesh } = loadedModule
   const sky = new SkyMesh()
   sky.scale.setScalar(SKY_SCALE)
+  sky.turbidity.value = TURBIDITY
+  sky.rayleigh.value = RAYLEIGH
+  sky.mieCoefficient.value = MIE_COEFFICIENT
+  sky.mieDirectionalG.value = MIE_DIRECTIONAL_G
   sky.cloudSpeed.value = FROZEN_CLOUD_SPEED
   sky.showSunDisc.value = SUN_DISC_ON
   sky.cloudScale.value = CLOUD_SCALE
   sky.cloudDensity.value = CLOUD_DENSITY
   sky.cloudElevation.value = CLOUD_ELEVATION
+  const stashed = rig.pendingLighting
+  applySkyGain(sky, rig, tsl)
   scene.add(sky)
   rig.sky = sky
 
-  const stashed = rig.pendingLighting
   if (stashed !== undefined) {
     applySkyLighting(sky, stashed)
     rig.pendingLighting = undefined
@@ -153,6 +274,7 @@ export function updateSkyEnvironment(rig: LightingRig, lighting: EnvironmentLigh
   const { sky, environment } = rig
   if (sky !== undefined) {
     applySkyLighting(sky, lighting)
+    rig.skyGain?.copy(skyMeshGain(sunAltitudeOf(lighting)))
   } else {
     rig.pendingLighting = lighting
   }

@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import { DAYLIGHT_CALIBRATION } from './daylight-calibration'
+import { kastenYoungFade } from './daylight-test-support'
 import { computeEnvironmentLighting, type EnvironmentLightingInput } from './environment-lighting'
 import { solarPosition, type SolarAngles } from './solar-position'
 import { sunWorldDirection } from './sun-world-direction'
 import { skyLighting } from './sky-model'
-import { evaluateSphericalHarmonics, SH_COEFFICIENT_COUNT } from './spherical-harmonics'
+import {
+  evaluateSphericalHarmonics,
+  projectDomeToSphericalHarmonics,
+  SH_COEFFICIENT_COUNT,
+} from './spherical-harmonics'
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
 
@@ -16,6 +22,11 @@ import type { Vector3 } from '../scene/vector3'
 // the underlying math.
 
 const COMPOSITION_DECIMAL_PLACES = 10
+
+// The sun level is the calibrated sun scale times the clear-sky fade of the direct sun,
+// exp(-0.21 * (m(h) - m(zenith))), with m the Kasten and Young relative air mass and h the sun's
+// height; the tolerance is a millionth of the level.
+const SUN_LEVEL_RELATIVE_TOLERANCE = 1e-6
 
 const LOCAL_NOON_MINUTES = 720
 const LOCAL_MIDNIGHT_MINUTES = 0
@@ -75,14 +86,28 @@ describe('computeEnvironmentLighting', () => {
     expect(skyColor.b).toBeCloseTo(expected.skyColor.b, COMPOSITION_DECIMAL_PLACES)
   })
 
-  it('reports a positive sunIntensity at local noon and none at local midnight', () => {
+  it('reports a positive sunLevel at local noon and none at local midnight', () => {
     const noon = computeEnvironmentLighting(equinoxNoonInput())
     const midnight = computeEnvironmentLighting({
       ...equinoxNoonInput(),
       observedAt: { date: '2026-03-20', minutesSinceMidnight: LOCAL_MIDNIGHT_MINUTES },
     })
-    expect(noon.sunIntensity).toBeGreaterThan(0)
-    expect(midnight.sunIntensity).toBe(0)
+    expect(noon.sunLevel).toBeGreaterThan(0)
+    expect(midnight.sunLevel).toBe(0)
+  })
+
+  it('reports a sun level of the sun scale times the Kasten and Young fade at its height on a clear spring noon at 40 N, 75 W', () => {
+    const input: EnvironmentLightingInput = {
+      latLong: { latitude: 40.0, longitude: -75.0 },
+      northBearing: 0,
+      utcOffsetMinutes: -240,
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: LOCAL_NOON_MINUTES },
+      cloudCover: 0,
+    }
+    const { sunLevel } = computeEnvironmentLighting(input)
+    const height = pieceFunctionAngles(input).altitude
+    const expected = DAYLIGHT_CALIBRATION.sunScale * kastenYoungFade(height)
+    expect(Math.abs(sunLevel - expected)).toBeLessThan(expected * SUN_LEVEL_RELATIVE_TOLERANCE)
   })
 
   it('leaves a frozen input untouched', () => {
@@ -108,5 +133,16 @@ describe('computeEnvironmentLighting', () => {
     const noonZenith = evaluateSphericalHarmonics(noon.skyAmbient, ZENITH_DIRECTION)
     const midnightZenith = evaluateSphericalHarmonics(midnight.skyAmbient, ZENITH_DIRECTION)
     expect(summedIntensity(midnightZenith)).toBeLessThan(summedIntensity(noonZenith))
+  })
+
+  it('projects the sky ambient from the dome of the world-frame sun direction and the cloud cover', () => {
+    const input = equinoxNoonInput()
+    const { sunDirection, cloudCover, skyAmbient } = computeEnvironmentLighting(input)
+    const expected = projectDomeToSphericalHarmonics({ sunDirection, cloudCover })
+
+    expect(skyAmbient).toHaveLength(expected.length)
+    expected.forEach((coefficient, index) => {
+      expect(skyAmbient[index]).toBeCloseTo(coefficient, COMPOSITION_DECIMAL_PLACES)
+    })
   })
 })

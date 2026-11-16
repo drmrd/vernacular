@@ -13,6 +13,7 @@ related:
     decisions/ADR-0158-millimeter-scale-shadow-and-occlusion-constants,
     decisions/ADR-0130-finishes-system-architecture,
     decisions/ADR-0079-three-dimensional-lighting-legibility,
+    decisions/ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point,
   ]
 sourceFiles:
   [
@@ -20,9 +21,12 @@ sourceFiles:
     engine/lighting/sky-environment.ts,
     engine/lighting/lighting-rig.ts,
     engine/lighting/solar-lighting-provider.ts,
+    core/environment/sky-dome.ts,
+    core/environment/ground-surface.ts,
+    core/environment/spherical-harmonics.ts,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-11-16
 ---
 
 # ADR-0161: The sky as a specular environment map
@@ -200,3 +204,34 @@ that already holds the right sky.
 - [[ADR-0130-finishes-system-architecture]] (the finish parameters this makes visible).
 - `node_modules/three/src/nodes/lighting/EnvironmentNode.js` and
   `node_modules/three/src/nodes/pmrem/PMREMNode.js` (the r184 filtering and caching this rests on).
+
+## Amendment 2026-11-16: the map carries the dome's term toward the sun and its computed ground
+
+The calibration change of
+[[ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point]] changes the dome that
+this map is built from. The map itself is built the same way: it is still reconstructed from
+`EnvironmentLighting.skyAmbient`, so the specular environment and the diffuse ambient are still one
+field, and the color check still reaches it through the neutral coefficients with no branch in the
+engine.
+
+What the coefficients carry is different. The dome now brightens toward the sun's azimuth, by the
+factor `1 + SUNWARD_GAIN * (1 - cloudCover) * (view.x * sun.x + view.z * sun.z)`, so the map is
+brighter on the sun's side of the sky and a glossy surface reflects that. The term sums to zero
+around each ring of the dome, so it moves light between directions without changing the light on a
+level card. Below the horizon the dome is now a neutral grey with the lawn's luminance times the
+light a level card receives from the sun and the upper dome, in place of the fixed brown tint. So
+the lower half of the map is about as bright as the lit lawn but has no hue, and a glossy surface
+does not reflect the lawn's green from it.
+
+Two signatures changed with it. `skyDomeRadiance(view, sky)` takes a unit view vector and a
+`SkyDomeInput`, `{ sunDirection, cloudCover }`, and `projectDomeToSphericalHarmonics(sky)` takes the
+same input in place of a sun altitude and a cloud cover. The engine still receives the twenty-seven
+coefficients and writes the map from them, and the size, the clamp at zero, the invalidation by
+value, and the teardown above are unchanged.
+
+`scene.environmentIntensity` stays at 1. The white point is applied in `core`, before the
+coefficients are projected, so the map and the sun share one white-balanced space with no scale in
+the engine. The visible sky mesh is calibrated separately: its color node is multiplied by a gain
+for the sun's height from `SKY_MESH_GAIN_BY_SUN_HEIGHT`, divided by the white point, which brings
+the mesh to the dome just above the horizon on the side away from the sun. That gain applies to the
+mesh alone and never to the map.

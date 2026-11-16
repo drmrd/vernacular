@@ -1,69 +1,60 @@
+import { clampToUnitInterval, mixLinearRgb, scaleLinearRgb } from '../color/linear-rgb'
 import type { LinearRgb } from '../color/oklab'
+import type { Vector3 } from '../scene/vector3'
+import { SUNWARD_GAIN, levelCardLight, upperDomeTints } from './daylight-calibration'
+import { GROUND_BOUNCE_COLOR } from './ground-surface'
 
-/** Dome tint at the horizon: a dim, nearly grey band, matching the sky model's ambient. */
-const HORIZON_DOME_TINT: LinearRgb = { r: 0.45, g: 0.45, b: 0.5 }
-/** Dome tint at the zenith: a saturated daytime blue, bluer than the horizon band. */
-const ZENITH_DOME_TINT: LinearRgb = { r: 0.25, g: 0.45, b: 0.9 }
-/** Ground bounce for a below-horizon view: dim and desaturated, dimmer than the sky. */
-const GROUND_DOME_TINT: LinearRgb = { r: 0.12, g: 0.1, b: 0.08 }
-/** Fraction of full dome brightness that remains once the sun reaches the horizon. */
-const HORIZON_DOME_SCALE = 0.35
-/** Fraction of dome brightness a fully overcast sky removes, alongside flattening it toward grey. */
-const OVERCAST_DOME_DIMMING = 0.3
-// Mirrors sky-model.ts's private RGB-blend helpers; kept private on purpose so the two models can tune independently.
-const RGB_CHANNEL_COUNT = 3
+/**
+ * The sky the dome is drawn for: a unit world-frame direction toward the sun, and the cloud cover.
+ */
+export type SkyDomeInput = { sunDirection: Vector3; cloudCover: number }
 
-function clampToUnitInterval(value: number): number {
-  return Math.min(1, Math.max(0, value))
-}
-
-function mixLinearRgb(from: LinearRgb, to: LinearRgb, fraction: number): LinearRgb {
-  return {
-    r: from.r + (to.r - from.r) * fraction,
-    g: from.g + (to.g - from.g) * fraction,
-    b: from.b + (to.b - from.b) * fraction,
-  }
-}
-
-function scaleLinearRgb(color: LinearRgb, factor: number): LinearRgb {
-  return { r: color.r * factor, g: color.g * factor, b: color.b * factor }
-}
-
-/** The grey a color flattens toward under cloud: its own channel mean. */
-function greyOf(color: LinearRgb): LinearRgb {
-  const mean = (color.r + color.g + color.b) / RGB_CHANNEL_COUNT
-  return { r: mean, g: mean, b: mean }
-}
-
-/** Clouds scatter dome light toward grey and absorb some of it outright. */
-function overcastAdjustedDome(color: LinearRgb, cloudCover: number): LinearRgb {
-  const flattened = mixLinearRgb(color, greyOf(color), cloudCover)
-  return scaleLinearRgb(flattened, 1 - OVERCAST_DOME_DIMMING * cloudCover)
+/**
+ * The sun's height above the horizon in radians, from its unit direction, with the sine clamped
+ * against rounding.
+ */
+export function sunAltitudeOf(sky: Pick<SkyDomeInput, 'sunDirection'>): number {
+  return Math.asin(Math.min(1, Math.max(-1, sky.sunDirection.y)))
 }
 
 /**
- * Radiance of the analytic sky dome in a view direction, as linear-light sRGB.
- * `viewElevation` is the view direction's angle above the horizon in radians
- * (negative looks at the ground); `sunAltitude` and `cloudCover` mean what they
- * mean in skyLighting. Above the horizon the dome blends a horizon tint into a
- * zenith tint on sin(viewElevation); below it returns the ground bounce. The
- * whole dome dims as the sun sets and flattens toward grey under cloud, matching
- * the sky model's ambient behavior.
+ * The neutral grey ground bounce under the light a level card receives: the direct sun's
+ * irradiance over pi plus the cosine-weighted mean of the upper dome, both from the daylight
+ * calibration.
  */
-export function skyDomeRadiance(
-  viewElevation: number,
-  sunAltitude: number,
-  cloudCover: number,
-): LinearRgb {
-  const sunElevationFraction = clampToUnitInterval(Math.sin(sunAltitude))
-  const domeScale = HORIZON_DOME_SCALE + (1 - HORIZON_DOME_SCALE) * sunElevationFraction
-  const baseTint =
-    viewElevation >= 0
-      ? mixLinearRgb(
-          HORIZON_DOME_TINT,
-          ZENITH_DOME_TINT,
-          clampToUnitInterval(Math.sin(viewElevation)),
-        )
-      : GROUND_DOME_TINT
-  return overcastAdjustedDome(scaleLinearRgb(baseTint, domeScale), cloudCover)
+function groundRadiance(sunAltitude: number, cloudCover: number): LinearRgb {
+  const { sun, sky } = levelCardLight(sunAltitude, cloudCover)
+  return {
+    r: GROUND_BOUNCE_COLOR.r * (sun.r + sky.r),
+    g: GROUND_BOUNCE_COLOR.g * (sun.g + sky.g),
+    b: GROUND_BOUNCE_COLOR.b * (sun.b + sky.b),
+  }
+}
+
+/**
+ * Builds the dome's radiance function for one sky. Everything that depends only on the sky (the
+ * sun's altitude, the dome's end tints, the ground's radiance) is computed here once, so a caller
+ * sampling many directions pays only the per-direction work for each.
+ * Above the horizon (y at or above 0) the dome blends the calibrated horizon tint into the zenith
+ * tint on the view height and brightens toward the sun's azimuth under a clear sky. Below the
+ * horizon it is the neutral grey ground bounce lit by the sun and the upper dome.
+ */
+export function skyDomeSampler(sky: SkyDomeInput): (view: Vector3) => LinearRgb {
+  const { sunDirection, cloudCover } = sky
+  const sunAltitude = sunAltitudeOf(sky)
+  const dome = upperDomeTints(sunAltitude, cloudCover)
+  const ground = groundRadiance(sunAltitude, cloudCover)
+  const sunwardGain = SUNWARD_GAIN * (1 - cloudCover)
+  return (view) => {
+    if (view.y < 0) return ground
+    const sunwardAlignment = view.x * sunDirection.x + view.z * sunDirection.z
+    const brightening = 1 + sunwardGain * sunwardAlignment
+    const radiance = mixLinearRgb(dome.horizon, dome.zenith, clampToUnitInterval(view.y))
+    return scaleLinearRgb(radiance, brightening)
+  }
+}
+
+/** Radiance of the analytic sky dome in a unit view direction (y up), as linear-light sRGB. */
+export function skyDomeRadiance(view: Vector3, sky: SkyDomeInput): LinearRgb {
+  return skyDomeSampler(sky)(view)
 }

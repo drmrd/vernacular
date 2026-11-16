@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { describe, it, expect } from 'vitest'
 
-import type { RoomSceneNode, SceneGraph } from '../../core'
+import { GROUND_SURFACE_HEX, type RoomSceneNode, type SceneGraph } from '../../core'
 import { findByEntityId } from '../testing'
 
 import { buildScene } from './build-scene'
@@ -63,6 +63,18 @@ describe('addGroundPlane', () => {
     const material = (ground as THREE.Mesh).material as THREE.MeshStandardMaterial
     expect(material.color.g).toBeGreaterThan(material.color.r)
     expect(material.color.g).toBeGreaterThan(material.color.b)
+  })
+
+  it('paints the ground plane with the lawn color', () => {
+    const root = new THREE.Group()
+
+    addGroundPlane(root)
+
+    const ground = root.children.find(isGroundPlane)
+    expect(ground).toBeDefined()
+    if (!ground) return
+    const material = (ground as THREE.Mesh).material as THREE.MeshStandardMaterial
+    expect(`#${material.color.getHexString()}`).toBe(GROUND_SURFACE_HEX)
   })
 
   it('seats the ground plane at the supplied grade elevation', () => {

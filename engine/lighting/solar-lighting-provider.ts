@@ -11,7 +11,6 @@ import { groundExtent } from '../scene/ground-plane'
 import type { LightingProvider } from './lighting-provider'
 import {
   buildLightingRig,
-  DAYLIGHT_SUN_INTENSITY,
   disposeLightingRig,
   fitSunShadowToDirection,
   SHADOW_MAP_SIZE,
@@ -21,7 +20,9 @@ import {
 } from './lighting-rig'
 import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
 
-/** The largest radius the sun's shadow frustum may fit, set by the coarsest shadow texel allowed. */
+/**
+ * The largest radius the sun's shadow frustum may fit, set by the coarsest shadow texel allowed.
+ */
 const MAX_SHADOW_FIT_RADIUS_MM = (MAX_SHADOW_TEXEL_MM * SHADOW_MAP_SIZE) / 2
 
 /** Fits the sun's shadow frustum to the casters and the stretch of ground their shadow reaches. */
@@ -43,16 +44,18 @@ function fitSunShadowToCastersAndGround(
  * Solar-aware lighting under the LightingProvider contract: `apply` builds the same
  * sun-plus-sky rig as the basic provider, and `update` re-aims and re-tints it from a
  * computed EnvironmentLighting so the light follows the site, date, and time. The sun's
- * intensity fades with the environment `sunIntensity` scalar, which carries the horizon
- * extinction ramp, so night scenes stay lit by the sky's environment map rather than
- * the fill, which realistic mode zeroes.
+ * intensity is the environment `sunLevel`, which carries the fade along the
+ * light's path (0 at and below the horizon), so night scenes stay lit by the sky's environment
+ * map rather than the fill, which realistic mode zeroes.
  */
 export class SolarLightingProvider implements LightingProvider {
   private rig: LightingRig | null = null
   private skyAttachmentReady: Promise<void> | null = null
 
   apply(scene: THREE.Object3D): void {
-    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY, true)
+    // The sun starts dark: `update` sets its level from the environment lighting, and both run in
+    // layout effects of one React commit, so no frame renders between them.
+    this.rig = buildLightingRig(scene, 0, true)
     // The visible sky loads off the startup path, so `apply` stores its attach promise rather
     // than awaiting it, which keeps `apply` synchronous. `dispose` clears the stored promise,
     // which abandons the attach if it is still in flight. attachSkyEnvironment never rejects: a
@@ -72,15 +75,15 @@ export class SolarLightingProvider implements LightingProvider {
   /**
    * Re-tints the sun and sky, re-aims the sun and refits its shadow frustum to the casters
    * and their shadow on the ground when the scene has bounds (a null bounds skips the refit
-   * per the LightingProvider contract), and scales the sun's intensity by the environment
-   * `sunIntensity` fraction.
+   * per the LightingProvider contract), and sets the sun's intensity to the environment
+   * `sunLevel`.
    */
   update(scene: THREE.Object3D, lighting: EnvironmentLighting, bounds: Bounds3 | null): void {
     const rig = this.rig
     if (rig === null) return
     setSunAndSkyColor(scene, lighting.sunColor, lighting.skyColor)
     if (bounds !== null) fitSunShadowToCastersAndGround(scene, lighting, bounds)
-    setSunIntensity(scene, DAYLIGHT_SUN_INTENSITY * lighting.sunIntensity)
+    setSunIntensity(scene, lighting.sunLevel)
     updateSkyEnvironment(rig, lighting)
   }
 

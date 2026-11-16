@@ -579,7 +579,13 @@ export type { ShadowFitInput } from './environment/shadow-fit'
 export { MAX_SHADOW_TEXEL_MM, boundsRadius, shadowFitBounds } from './environment/shadow-fit'
 export type { SkyLighting } from './environment/sky-model'
 export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
-export { skyDomeRadiance } from './environment/sky-dome'
+export type { SkyDomeInput } from './environment/sky-dome'
+export { skyDomeRadiance, sunAltitudeOf } from './environment/sky-dome'
+export {
+  GROUND_BOUNCE_COLOR,
+  GROUND_SURFACE_COLOR,
+  GROUND_SURFACE_HEX,
+} from './environment/ground-surface'
 export {
   NEUTRAL_DOME_SPHERICAL_HARMONICS,
   SH_COEFFICIENT_COUNT,
@@ -591,6 +597,28 @@ export type {
   EnvironmentLightingInput,
 } from './environment/environment-lighting'
 export { computeEnvironmentLighting } from './environment/environment-lighting'
+export { agxNeutralInverse, agxNeutralResponse } from './environment/tone-response'
+export {
+  DAYLIGHT_REFERENCE_INSTANT,
+  DAYLIGHT_REFERENCE_PLACE,
+  referenceLightingInput,
+} from './environment/daylight-reference'
+export type { MatteSurface } from './environment/light-model'
+export { predictedMatteRadiance, skyAmbientLevel } from './environment/light-model'
+export type { DaylightCalibration, LevelCardLight } from './environment/daylight-calibration'
+export {
+  DAYLIGHT_CALIBRATION,
+  LUX_PER_UNIT_IRRADIANCE,
+  NIGHT_DIFFUSE_LEVEL,
+  REFERENCE_HORIZONTAL_ILLUMINANCE_LUX,
+  SUN_OPTICAL_DEPTH,
+  WHITE_CODE_FLOOR,
+  diffuseLevelAt,
+  directToDiffuseRatio,
+  levelCardLight,
+  relativeAirMass,
+  sunLevelAt,
+} from './environment/daylight-calibration'
 export type {
   LightingMode,
   EnvironmentState,
