@@ -82,12 +82,15 @@ no graft and saved the loss.
 
 - Each variant of a tagged union is its own entry, named `Union.tag`, for example
   `UnderlaySource.raster`.
-- A `union` value records its tag key and the names of its variant entries.
+- A `union` value records its tag key and a list of its variants. Each variant pairs a tag value
+  with the name of its entry, and `variantTypeOf` in `core/` finds a variant by its tag value. No
+  code reads a tag value out of an entry name.
 - `KNOWN_KEYS` is typed with the generated type names, so a lookup by a known name needs no check
   for undefined.
 - The generator stops with an error that names the place when the schema holds a shape the table
-  cannot express: an array of arrays, a tuple, a union with no shared constant tag, or two variants
-  with one tag value. Such a shape can never be read as a plain value.
+  cannot express: an array of arrays, a tuple, a union with no shared constant tag, a tag value
+  that is not a string, or two variants with one tag value. Such a shape can never be read as a
+  plain value.
 
 ## References
 
