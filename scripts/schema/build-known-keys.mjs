@@ -17,7 +17,19 @@ const LEAF = { kind: 'leaf' }
 const OPAQUE = { kind: 'opaque' }
 
 const REFERENCE_KEY = '$ref'
-const ANNOTATION_KEYWORDS = new Set(['description', 'title', '$comment'])
+// Annotations never change which keys a value holds, so they may sit beside a $ref. `default` stays
+// refused on purpose: the save-time graft may read it one day.
+const ANNOTATION_KEYWORDS = new Set([
+  'description',
+  'title',
+  '$comment',
+  'examples',
+  'deprecated',
+  'readOnly',
+  'writeOnly',
+])
+const SCALAR_KEYWORDS = ['enum', 'const']
+const STRUCTURAL_KEYWORDS = ['properties', 'items', 'anyOf']
 const UNION_KEYWORDS = ['anyOf', 'oneOf']
 
 const REFUSAL_HINT =
@@ -54,7 +66,18 @@ function isObjectDefinition(definition) {
   return definition.type === 'object' && definition.properties !== undefined
 }
 
+function refuseScalarWithStructure(place, node) {
+  const scalarKeyword = SCALAR_KEYWORDS.find((keyword) => keyword in node)
+  const structuralKeyword = STRUCTURAL_KEYWORDS.find((keyword) => keyword in node)
+  if (scalarKeyword !== undefined && structuralKeyword !== undefined) {
+    throw refusal(
+      `${place} has ${scalarKeyword} beside the structural keyword ${structuralKeyword}`,
+    )
+  }
+}
+
 function refuseMixedDefinition(name, definition) {
+  refuseScalarWithStructure(`Definition ${name}`, definition)
   const keyword = unionKeyword(definition)
   if (keyword !== undefined && definition.properties !== undefined) {
     throw refusal(`Definition ${name} mixes properties with ${keyword}`)
@@ -76,6 +99,7 @@ function isObjectWithNoProperties(node) {
 }
 
 function refuseUnexpressibleNode(place, node) {
+  refuseScalarWithStructure(place, node)
   if (Array.isArray(node.type)) {
     throw refusal(`${place} has a type list ${JSON.stringify(node.type)}`)
   }
