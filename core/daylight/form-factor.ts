@@ -17,8 +17,12 @@ function cornerTerm(x: number, z: number, distance: number): number {
 
 /**
  * Form factor from a point on a horizontal plane to a rectangle on a vertical wall at `distance`.
- * Source: closed form of the differential area to perpendicular rectangle view factor (spec 6.8),
- * with the part below the point's height cut off.
+ * Source: the configuration factor from a differential planar element to a rectangle in a plane
+ * perpendicular to the element's plane, as tabulated in J. R. Howell, "A Catalog of Radiation Heat
+ * Transfer Configuration Factors", and in Siegel and Howell, "Thermal Radiation Heat Transfer"
+ * (specification section 6.8), with the part below the point's height cut off.
+ * Hand checks: a wall that fills a quarter-space (x from 0, z from 0, both without end) gives 0.25,
+ * and a wall that fills the half-space above the point's plane gives 0.5.
  */
 export function horizontalPointToWallRectangle(rectangle: WallRectangle, distance: number): number {
   const { x0, x1, z1 } = rectangle
