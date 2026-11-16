@@ -23,6 +23,24 @@ export interface ShadowFitInput {
  */
 const MIN_PROJECTION_SUN_HEIGHT = 1e-6
 
+/**
+ * The largest size of one shadow map texel on the ground, in millimetres, that
+ * the fit may reach before the far end of the shadow gives way. The cap on the
+ * fit's radius is this value times the shadow map size divided by 2; the engine
+ * supplies the map size.
+ *
+ * Derivation: the texel size that keeps the whole lawn shadow of the reference
+ * project at the winter-afternoon sun (-0.7980, 0.0911, 0.5957) is 15.41 mm,
+ * rounded up to the next half millimetre. The casters alone need 12.39 mm. The
+ * reference bounds run from (-57, -250, -10057) to (20057, 11438, 57) mm, and
+ * its ground extent from (-5057, 0, -15057) to (25057, 0, 5057) mm. Measured on
+ * 2026-11-15.
+ *
+ * The test tests/performance/shadow-fit-reach.test.ts holds the derivation, so a
+ * change of the reference project that moves the needed size fails that test.
+ */
+export const MAX_SHADOW_TEXEL_MM = 15.5
+
 const DIAGONAL_TO_RADIUS = 0.5
 const QUADRATIC_FOUR = 4
 
