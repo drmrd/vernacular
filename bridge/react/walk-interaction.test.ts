@@ -213,4 +213,36 @@ describe('restoreOpenings', () => {
 
     expect(openness.get(DOOR_ID)).toBe(partWayOpen)
   })
+
+  it('poses a rebuilt scene at the openness a door carried, while the session holds it open', () => {
+    const door = frontDoor()
+    const earlierScene = sceneWith(door)
+    const rebuiltScene = sceneWith(door)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const openness = new Map<string, number>()
+
+    tickOpenings({ root: earlierScene, openings: [door], interaction: open, openness }, FULL_STEP)
+    restoreOpenings({ root: rebuiltScene, openings: [door], interaction: open, openness })
+
+    expect(fillGroupPose(rebuiltScene, DOOR_ID)).toEqual(fillGroupPose(earlierScene, DOOR_ID))
+  })
+
+  it('poses a rebuilt scene at the carried openness even after the session let go of the door', () => {
+    const door = frontDoor()
+    const earlierScene = sceneWith(door)
+    const rebuiltScene = sceneWith(door)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const openness = new Map<string, number>()
+
+    tickOpenings({ root: earlierScene, openings: [door], interaction: open, openness }, FULL_STEP)
+    restoreOpenings({
+      root: rebuiltScene,
+      openings: [door],
+      interaction: emptyOpeningInteraction(),
+      openness,
+    })
+
+    expect(fillGroupPose(rebuiltScene, DOOR_ID)).toEqual(fillGroupPose(earlierScene, DOOR_ID))
+    expect(openness.get(DOOR_ID)).toBe(FULLY_OPEN)
+  })
 })
