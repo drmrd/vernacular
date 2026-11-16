@@ -1,7 +1,5 @@
 import { useFrame } from '@react-three/fiber'
 
-import { type Site } from '../../core'
-
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
 
 // Any nonzero useFrame priority disables React Three Fiber's automatic render for a canvas,
@@ -13,9 +11,9 @@ const AO_RENDER_PRIORITY = 1
 /**
  * Takes over the live canvas's per-frame draw, routing it through the ambient-occlusion pass
  * when the effective lighting mode is realistic and straight through the renderer otherwise.
- * The effective-mode gate (ambientOcclusionActiveFor) mirrors scene-lighting.tsx: a realistic
- * request without a located site falls back to schematic, so AO, the solar provider, and AgX
- * turn on together. Rendering nothing itself, it only registers the takeover; it mounts inside
+ * The effective-mode gate (ambientOcclusionActiveFor) mirrors scene-lighting.tsx, so AO, the
+ * solar provider, and AgX turn on together for the same request, with or without a site
+ * location. Rendering nothing itself, it only registers the takeover; it mounts inside
  * the live Canvas alongside the other useFrame drivers.
  *
  * The two build callbacks are the live view's readiness seam: they report when a pipeline build
@@ -24,17 +22,15 @@ const AO_RENDER_PRIORITY = 1
  */
 export function AmbientOcclusionRenderTakeover({
   realistic,
-  site,
   onPipelineBuildStarted,
   onPipelineSettled,
 }: {
   realistic: boolean
-  site: Site | undefined
   onPipelineBuildStarted: () => void
   onPipelineSettled: () => void
 }) {
   const renderFrame = useAmbientOcclusion(
-    ambientOcclusionActiveFor(realistic, site),
+    ambientOcclusionActiveFor(realistic),
     onPipelineSettled,
     onPipelineBuildStarted,
   )
