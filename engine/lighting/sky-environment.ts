@@ -146,8 +146,9 @@ function applySkyGain(sky: SkyMesh, rig: LightingRig, tsl: TslModule): void {
   // The addon builds a vec4 (the sky color with alpha one), but its type says only "some node",
   // and the typed overloads of `mul` reject a vec3 uniform against that union. The shader widens
   // the uniform to a vec4 with alpha one, so the product keeps the sky opaque.
-  const addonColor = sky.material.colorNode as ScalableColorNode | null
-  if (addonColor === null) return
+  const addonColor = sky.material.colorNode as ScalableColorNode | null | undefined
+  // `== null` covers a missing node of either kind: null or undefined.
+  if (addonColor == null) return
   sky.material.colorNode = addonColor.mul(tsl.uniform(gain))
   rig.skyGain = gain
 }
