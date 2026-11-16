@@ -6,10 +6,11 @@ import { isFadedForPicking } from './faded-for-picking'
 import { surfaceTableOf } from './wall-surface-table'
 
 /**
- * The surface ref carried on a renderable object or the nearest ancestor that has one
- * (ADR-0056: a paintable surface mesh carries `userData.surface`). A hit on the floor
- * slab resolves to that floor's SurfaceRef, the same ref the 2D plan paints. Returns
- * null when no ancestor carries a surface ref.
+ * The stamp lookup that floor slabs use: the surface ref carried on an object or its
+ * nearest ancestor (ADR-0056: a paintable surface mesh carries `userData.surface`), or
+ * null when none does. A wall is not found this way; it carries a table of surface refs
+ * by material group (`SURFACE_BY_MATERIAL_INDEX_KEY`) and is resolved from the triangle
+ * hit. A faded object is skipped before either lookup.
  */
 export function surfaceRefOf(object: THREE.Object3D): SurfaceRef | null {
   let current: THREE.Object3D | null = object

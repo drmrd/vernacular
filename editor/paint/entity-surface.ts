@@ -11,10 +11,13 @@ export function wallFaceForSelection(selectedIds: ReadonlySet<string>): SurfaceR
     return null
   }
   const [id] = selectedIds
-  if (id === undefined || !id.startsWith(WALL_NODE_PREFIX)) {
-    return null
-  }
-  return { kind: 'wall-face', wallId: id.slice(WALL_NODE_PREFIX.length), side: 'left' }
+  const wallId = id === undefined ? null : wallIdOf(id)
+  return wallId === null ? null : { kind: 'wall-face', wallId, side: 'left' }
+}
+
+/** The wall id inside a `wall:` entity id, or null when the entity is not a wall. */
+function wallIdOf(entityId: string): string | null {
+  return entityId.startsWith(WALL_NODE_PREFIX) ? entityId.slice(WALL_NODE_PREFIX.length) : null
 }
 
 /**
@@ -23,9 +26,5 @@ export function wallFaceForSelection(selectedIds: ReadonlySet<string>): SurfaceR
  * it. A wall owns both of its faces; any other entity owns none that this module knows.
  */
 export function isSurfaceOfEntity(surface: SurfaceRef, entityId: string): boolean {
-  return (
-    surface.kind === 'wall-face' &&
-    entityId.startsWith(WALL_NODE_PREFIX) &&
-    surface.wallId === entityId.slice(WALL_NODE_PREFIX.length)
-  )
+  return surface.kind === 'wall-face' && surface.wallId === wallIdOf(entityId)
 }
