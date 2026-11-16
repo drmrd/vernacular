@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Site } from '../core'
+import { computeEnvironmentLighting, utcOffsetMinutesFor, type Site } from '../core'
 import {
   harnessEnvironmentState,
   resolveHarnessScene,
@@ -155,6 +155,51 @@ describe('harnessEnvironmentState daylight reference', () => {
         far: 40000,
       },
     })
+  })
+})
+
+describe('harnessEnvironmentState low sun', () => {
+  const lowSunInstant = { date: '2026-03-25', minutesSinceMidnight: 1145 }
+  const DEGREES_PER_RADIAN = 180 / Math.PI
+  const WEST_WALL_OUTWARD_NORMAL = { x: -1, z: 0 }
+  const MIN_SUN_HEIGHT_DEGREES = 1
+  const MAX_SUN_HEIGHT_DEGREES = 2
+  const MIN_COSINE_TO_WEST_WALL = 0.95
+
+  function lowSunLighting(): ReturnType<typeof computeEnvironmentLighting> {
+    return computeEnvironmentLighting({
+      latLong: { latitude: 40, longitude: -75 },
+      northBearing: 0,
+      utcOffsetMinutes: utcOffsetMinutesFor('America/New_York', lowSunInstant.date),
+      observedAt: lowSunInstant,
+      cloudCover: 0,
+    })
+  }
+
+  it('resolves low-sun to a late-March evening at the canonical site with the south-window shell and the daylight-reference camera', () => {
+    expect(harnessEnvironmentState('low-sun')).toEqual({
+      site: canonicalSite,
+      observedAt: lowSunInstant,
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: harnessEnvironmentState('daylight-reference')?.cameraPose,
+    })
+  })
+
+  it('puts the sun between 1 and 2 degrees above the horizon at the low-sun instant', () => {
+    const sunHeightDegrees = Math.asin(lowSunLighting().sunDirection.y) * DEGREES_PER_RADIAN
+
+    expect(sunHeightDegrees).toBeGreaterThan(MIN_SUN_HEIGHT_DEGREES)
+    expect(sunHeightDegrees).toBeLessThan(MAX_SUN_HEIGHT_DEGREES)
+  })
+
+  it('puts the sun in the west at the low-sun instant, facing the outward normal of the west wall', () => {
+    const { x, z } = lowSunLighting().sunDirection
+    const horizontalLength = Math.hypot(x, z)
+    const cosineToWestWall =
+      (x * WEST_WALL_OUTWARD_NORMAL.x + z * WEST_WALL_OUTWARD_NORMAL.z) / horizontalLength
+
+    expect(cosineToWestWall).toBeGreaterThan(MIN_COSINE_TO_WEST_WALL)
   })
 })
 
