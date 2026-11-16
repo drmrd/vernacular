@@ -579,7 +579,9 @@ export type { ShadowFitInput } from './environment/shadow-fit'
 export { MAX_SHADOW_TEXEL_MM, boundsRadius, shadowFitBounds } from './environment/shadow-fit'
 export type { SkyLighting } from './environment/sky-model'
 export { DEFAULT_CLOUD_COVER, skyLighting } from './environment/sky-model'
+export type { SkyDomeInput } from './environment/sky-dome'
 export { skyDomeRadiance } from './environment/sky-dome'
+export { GROUND_SURFACE_COLOR, GROUND_SURFACE_HEX } from './environment/ground-surface'
 export {
   NEUTRAL_DOME_SPHERICAL_HARMONICS,
   SH_COEFFICIENT_COUNT,

@@ -1,6 +1,6 @@
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
-import { skyDomeRadiance } from './sky-dome'
+import { type SkyDomeInput, skyDomeRadiance } from './sky-dome'
 
 /*
  * Real spherical-harmonic basis constants up to band 2, transcribed EXACTLY from
@@ -79,8 +79,8 @@ interface BasisAccumulator {
   color: LinearRgb
 }
 
-/** A polar ring's shared radiance and per-direction solid angle, reused across its azimuth sweep. */
-interface SkyRingSample {
+/** One direction's dome radiance and the solid angle its grid cell covers. */
+interface SkyDirectionSample {
   radiance: LinearRgb
   solidAngle: number
 }
@@ -98,13 +98,13 @@ function directionFromAngles(polar: number, azimuth: number): Vector3 {
 function accumulateDirection(
   accumulators: readonly BasisAccumulator[],
   direction: Vector3,
-  ring: SkyRingSample,
+  sample: SkyDirectionSample,
 ): void {
   for (const accumulator of accumulators) {
-    const weight = accumulator.basis(direction) * ring.solidAngle
-    accumulator.color.r += ring.radiance.r * weight
-    accumulator.color.g += ring.radiance.g * weight
-    accumulator.color.b += ring.radiance.b * weight
+    const weight = accumulator.basis(direction) * sample.solidAngle
+    accumulator.color.r += sample.radiance.r * weight
+    accumulator.color.g += sample.radiance.g * weight
+    accumulator.color.b += sample.radiance.b * weight
   }
 }
 
@@ -115,7 +115,7 @@ function accumulateDirection(
  * directly per direction in a single pass rather than materializing an intermediate
  * sample array.
  */
-export function projectDomeToSphericalHarmonics(sunAltitude: number, cloudCover: number): number[] {
+export function projectDomeToSphericalHarmonics(sky: SkyDomeInput): number[] {
   const deltaPolar = Math.PI / POLAR_SAMPLE_COUNT
   const deltaAzimuth = FULL_TURN_RAD / AZIMUTH_SAMPLE_COUNT
   const accumulators: BasisAccumulator[] = SPHERICAL_HARMONIC_BASIS.map((basis) => ({
@@ -124,13 +124,11 @@ export function projectDomeToSphericalHarmonics(sunAltitude: number, cloudCover:
   }))
   for (let polarIndex = 0; polarIndex < POLAR_SAMPLE_COUNT; polarIndex += 1) {
     const polar = (polarIndex + SAMPLE_MIDPOINT) * deltaPolar
-    const ring: SkyRingSample = {
-      radiance: skyDomeRadiance(Math.asin(Math.cos(polar)), sunAltitude, cloudCover),
-      solidAngle: Math.sin(polar) * deltaPolar * deltaAzimuth,
-    }
+    const solidAngle = Math.sin(polar) * deltaPolar * deltaAzimuth
     for (let azimuthIndex = 0; azimuthIndex < AZIMUTH_SAMPLE_COUNT; azimuthIndex += 1) {
-      const azimuth = (azimuthIndex + SAMPLE_MIDPOINT) * deltaAzimuth
-      accumulateDirection(accumulators, directionFromAngles(polar, azimuth), ring)
+      const direction = directionFromAngles(polar, (azimuthIndex + SAMPLE_MIDPOINT) * deltaAzimuth)
+      const radiance = skyDomeRadiance(direction, sky)
+      accumulateDirection(accumulators, direction, { radiance, solidAngle })
     }
   }
   return accumulators.flatMap(({ color }) => [color.r, color.g, color.b])

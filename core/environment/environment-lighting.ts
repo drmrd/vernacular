@@ -57,12 +57,13 @@ export function computeEnvironmentLighting(input: EnvironmentLightingInput): Env
     utcOffsetMinutes: input.utcOffsetMinutes,
   })
   const { sunColor, skyColor, sunLevel } = skyLighting(angles.altitude, input.cloudCover)
+  const sunDirection = sunWorldDirection(angles, input.northBearing)
   return {
-    sunDirection: sunWorldDirection(angles, input.northBearing),
+    sunDirection,
     sunColor,
     skyColor,
     sunLevel,
     cloudCover: input.cloudCover,
-    skyAmbient: projectDomeToSphericalHarmonics(angles.altitude, input.cloudCover),
+    skyAmbient: projectDomeToSphericalHarmonics({ sunDirection, cloudCover: input.cloudCover }),
   }
 }
