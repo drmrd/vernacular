@@ -16,3 +16,16 @@ export function wallFaceForSelection(selectedIds: ReadonlySet<string>): SurfaceR
   }
   return { kind: 'wall-face', wallId: id.slice(WALL_NODE_PREFIX.length), side: 'left' }
 }
+
+/**
+ * Whether a paint surface is one of the surfaces of an entity, so a surface that a
+ * 3D click already picked on the entity survives the selection change that follows
+ * it. A wall owns both of its faces; any other entity owns none that this module knows.
+ */
+export function isSurfaceOfEntity(surface: SurfaceRef, entityId: string): boolean {
+  return (
+    surface.kind === 'wall-face' &&
+    entityId.startsWith(WALL_NODE_PREFIX) &&
+    surface.wallId === entityId.slice(WALL_NODE_PREFIX.length)
+  )
+}
