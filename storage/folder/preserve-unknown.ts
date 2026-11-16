@@ -104,7 +104,7 @@ function graftKnownMember(
   const known = knownValueOf(scope, key)
   if (known === undefined) {
     // A key of another variant of the union is known but has no kind here; the next value stands.
-    return isKnownKey(scope, key) ? next[key] : graftUntypedMember(key, previous, next)
+    return scope.unionKeys?.has(key) === true ? next[key] : graftUntypedMember(key, previous, next)
   }
   const { table } = scope
   return Object.hasOwn(previous, key)
@@ -163,21 +163,35 @@ function variantKeysOf(table: KnownKeyTable, name: string): Readonly<Record<stri
 }
 
 // Each variant is a table entry named `Union.tag`, so the variant of a value is the entry whose name
-// ends in the value's tag.
+// has the value's tag after its first dot.
 function variantNamed(union: KnownUnion, tagValue: unknown): string | undefined {
   return union.types.find((name) => name.slice(name.indexOf('.') + 1) === tagValue)
 }
 
-// A next value whose tag names no variant of the table is of a variant this reader does not model:
-// every key of every variant still counts as known (a key it drops stays dropped, a key it keeps
-// takes the next value as it is), and only a key no variant defines is restored.
+const allVariantKeys = new WeakMap<KnownUnion, ReadonlySet<string>>()
+
+function variantKeysOfUnion(table: KnownKeyTable, union: KnownUnion): ReadonlySet<string> {
+  const cached = allVariantKeys.get(union)
+  if (cached !== undefined) {
+    return cached
+  }
+  const keys = new Set(union.types.flatMap((name) => Object.keys(variantKeysOf(table, name))))
+  allVariantKeys.set(union, keys)
+  return keys
+}
+
+// The scope holds the keys of the next value's variant plus every key any variant defines, because a
+// key of any variant is known and the graft never restores it.
 function unionScope(
   table: KnownKeyTable,
   union: KnownUnion,
   next: Record<string, unknown>,
 ): TypeScope {
-  const unionKeys = new Set(union.types.flatMap((name) => Object.keys(variantKeysOf(table, name))))
+  const unionKeys = variantKeysOfUnion(table, union)
   const variant = Object.hasOwn(next, union.tag) ? variantNamed(union, next[union.tag]) : undefined
+  // A tag that names no variant of the table is of a variant this reader does not model: it has no
+  // keys of its own, a key of another variant takes the next value, and only a key no variant
+  // defines is restored.
   const keys = variant === undefined ? {} : variantKeysOf(table, variant)
   return { table, keys, unionKeys }
 }
