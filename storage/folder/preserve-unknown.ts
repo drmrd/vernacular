@@ -90,6 +90,12 @@ function knownValueOf(scope: TypeScope, key: string): KnownValue | undefined {
   return Object.hasOwn(scope.keys, key) ? scope.keys[key] : undefined
 }
 
+// A type is known only as an own entry of the table; a name every object inherits, such as
+// `toString`, is not a type.
+function knownTypeOf(table: KnownKeyTable, typeName: string): KnownKeyTable[string] | undefined {
+  return Object.hasOwn(table, typeName) ? table[typeName] : undefined
+}
+
 function graftKnownMember(
   key: string,
   { previous, next }: { previous: Record<string, unknown>; next: Record<string, unknown> },
@@ -193,7 +199,7 @@ export function graftWithTable(
   if (at.kind === 'union') {
     return graftUnionWithTable(previous, next, { table, union: at })
   }
-  const knownType = at.kind === 'object' ? table[at.type] : undefined
+  const knownType = at.kind === 'object' ? knownTypeOf(table, at.type) : undefined
   if (knownType !== undefined && isPlainObject(previous) && isPlainObject(next)) {
     return graftObjectWithTable(previous, next, { table, keys: knownType.keys })
   }
