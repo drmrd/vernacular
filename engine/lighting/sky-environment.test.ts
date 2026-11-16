@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as THREE from 'three'
+import type { SkyMesh } from 'three/examples/jsm/objects/SkyMesh.js'
 import { NEUTRAL_DOME_SPHERICAL_HARMONICS, type EnvironmentLighting } from '../../core'
 import { importsStaticValueOf } from '../testing'
 import { attachSkyEnvironment, updateSkyEnvironment } from './sky-environment'
@@ -25,6 +26,18 @@ const DISTINCT_SKY_AMBIENT: readonly number[] = NEUTRAL_DOME_SPHERICAL_HARMONICS
 )
 /** Reconstruction and passthrough are exact copies; a loose float tolerance suffices. */
 const PRECISION = 5
+/** The sky scattering constants the module pins; they are the addon's own defaults today. */
+const PINNED_SCATTERING = { turbidity: 2, rayleigh: 1, mieCoefficient: 0.005, mieDirectionalG: 0.8 }
+/** Scattering constants unlike the pinned ones, standing in for a future addon default drift. */
+const DRIFTED_SCATTERING = {
+  turbidity: 10,
+  rayleigh: 3,
+  mieCoefficient: 0.05,
+  mieDirectionalG: 0.5,
+}
+const SKY_ADDON_PATH = 'three/examples/jsm/objects/SkyMesh.js'
+/** The addon's export name, held as a value so a wrapped module can re-export under it. */
+const SKY_ADDON_EXPORT = 'SkyMesh'
 
 function makeLighting(): EnvironmentLighting {
   return {
@@ -74,6 +87,50 @@ function expectSkyMatchesLighting(rig: LightingRig): void {
   expect(sunPosition?.y).toBeCloseTo(SUN_DIRECTION.y, PRECISION)
   expect(sunPosition?.z).toBeCloseTo(SUN_DIRECTION.z, PRECISION)
   expect(rig.sky?.cloudCoverage.value).toBeCloseTo(CLOUD_COVER, PRECISION)
+}
+
+/** True when a uniform node holding exactly this object is reachable from the node. */
+function reachesUniformHolding(
+  root: { traverse: (cb: (node: object) => void) => void },
+  held: object,
+) {
+  let reached = false
+  root.traverse((node) => {
+    const uniform = node as { isUniformNode?: boolean; value?: unknown }
+    reached = reached || (uniform.isUniformNode === true && uniform.value === held)
+  })
+  return reached
+}
+
+/**
+ * Attaches a sky whose addon constructor leaves DRIFTED_SCATTERING behind, the way a future
+ * three release that changed its defaults would. The addon class is wrapped, never the
+ * module under test, and the registry is restored so no other case sees the wrapper.
+ */
+async function attachSkyFromDriftedAddon(): Promise<LightingRig> {
+  vi.resetModules()
+  vi.doMock(SKY_ADDON_PATH, async () => {
+    const actual = await vi.importActual<Record<string, new () => SkyMesh>>(SKY_ADDON_PATH)
+    class DriftedSkyMesh extends (actual[SKY_ADDON_EXPORT]!) {
+      constructor() {
+        super()
+        this.turbidity.value = DRIFTED_SCATTERING.turbidity
+        this.rayleigh.value = DRIFTED_SCATTERING.rayleigh
+        this.mieCoefficient.value = DRIFTED_SCATTERING.mieCoefficient
+        this.mieDirectionalG.value = DRIFTED_SCATTERING.mieDirectionalG
+      }
+    }
+    return { ...actual, [SKY_ADDON_EXPORT]: DriftedSkyMesh }
+  })
+  try {
+    const fresh = await import('./sky-environment')
+    const { scene, rig } = makeAppliedRig()
+    await fresh.attachSkyEnvironment(scene, rig)
+    return rig
+  } finally {
+    vi.doUnmock(SKY_ADDON_PATH)
+    vi.resetModules()
+  }
 }
 
 describe('attachSkyEnvironment', () => {
@@ -128,6 +185,42 @@ describe('attachSkyEnvironment', () => {
     expect(scene.children).toContain(rig.sky)
     expect(rig.sky?.cloudSpeed.value).toBe(0)
     expect(rig.sky?.showSunDisc.value).toBe(1)
+  })
+
+  it('pins the sky scattering constants rather than inheriting the addon defaults', async () => {
+    const rig = await attachSkyFromDriftedAddon()
+
+    // The addon's defaults equal these today, so a plain equality check would pass without
+    // the module setting anything. The addon is wrapped to start from other values, so
+    // only a module that writes the constants itself still reads them back here.
+    expect(rig.sky?.turbidity.value).toBe(PINNED_SCATTERING.turbidity)
+    expect(rig.sky?.rayleigh.value).toBe(PINNED_SCATTERING.rayleigh)
+    expect(rig.sky?.mieCoefficient.value).toBe(PINNED_SCATTERING.mieCoefficient)
+    expect(rig.sky?.mieDirectionalG.value).toBe(PINNED_SCATTERING.mieDirectionalG)
+  })
+
+  it('records a neutral sky gain on the rig', async () => {
+    const { scene, rig } = makeAppliedRig()
+
+    await attachSkyEnvironment(scene, rig)
+
+    expect(rig.skyGain).toBeInstanceOf(THREE.Vector3)
+    expect(rig.skyGain?.toArray()).toEqual([1, 1, 1])
+  })
+
+  it('multiplies the sky color by a uniform that reads the rig sky gain', async () => {
+    const { SkyMesh: PristineSkyMesh } = await import(SKY_ADDON_PATH)
+    const { scene, rig } = makeAppliedRig()
+
+    await attachSkyEnvironment(scene, rig)
+
+    // A later write to rig.skyGain has to reach the shader, so the node graph must hold
+    // a uniform over that very vector, not a copy. A pristine addon sky holds none.
+    expect(rig.skyGain).toBeDefined()
+    expect(reachesUniformHolding(rig.sky!.material.colorNode!, rig.skyGain!)).toBe(true)
+    expect(reachesUniformHolding(new PristineSkyMesh().material.colorNode, rig.skyGain!)).toBe(
+      false,
+    )
   })
 
   it('replays an update issued before the sky resolves onto the sky once it arrives', async () => {
