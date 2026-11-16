@@ -20,7 +20,7 @@ function dotWithPlanDown(direction: PlanDirection): number {
   return direction.x * PLAN_DOWN.x + direction.y * PLAN_DOWN.y
 }
 
-/** True when `candidate` is a better front than `current`: wider, then nearer plan-down, then lower id. */
+/** True when `candidate` is a better front than `current`: wider, then nearer plan-down, then the opening id that sorts first as a string (so `opening:10` comes before `opening:9`). */
 function beats(candidate: FrontCandidate, current: FrontCandidate): boolean {
   if (candidate.opening.width !== current.opening.width) {
     return candidate.opening.width > current.opening.width
@@ -52,7 +52,8 @@ function exteriorDoorsOnFloor(input: FrontDirectionInput, floorId: string): Fron
 /**
  * The plan direction the building faces: the outward normal of the wall that
  * hosts the widest exterior door. Equal widths prefer the direction nearer
- * plan-down, then the lower opening id. With no exterior door it is plan-down.
+ * plan-down, then the opening id that sorts first as a string (so `opening:10`
+ * comes before `opening:9`). With no exterior door it is plan-down.
  */
 export function frontDirection(input: FrontDirectionInput): PlanDirection {
   const floorIds = [...new Set(input.walls.map((wall) => wall.floorId))]
