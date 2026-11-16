@@ -1,4 +1,4 @@
-import { Canvas, useThree, type GLProps } from '@react-three/fiber'
+import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
@@ -8,13 +8,13 @@ import {
   type Site,
   type SurfaceTreatment,
 } from '../../core'
-import { createSceneRenderer } from '../../engine'
 import { ADJACENT_ROOMS_CAMERA_POSE } from './adjacent-rooms-fixture'
 import { applyCameraPose, fitCameraToBounds } from './fit-camera'
 import { buildFramedScene } from './framed-scene'
 import { HARNESS_FIXTURES, type HarnessScene } from './harness-fixtures'
 import { SCENE_READY_ATTRIBUTE } from './scene-readiness'
 import { SceneLighting } from './scene-lighting'
+import { SceneRendererCanvas } from './scene-renderer-canvas'
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
 
 // Re-exported so the fixtures' own module owns the geometry while every existing
@@ -208,15 +208,6 @@ function harnessAmbientOcclusionActive(environment: HarnessEnvironment | undefin
   return ambientOcclusionActiveFor(environment?.realistic ?? false, environment?.site)
 }
 
-// Constructs the harness renderer, forcing the WebGL 2 backend so the committed baseline is a
-// hardware-WebGL render that never collides with a future WebGPU baseline. Pulled out of the
-// Canvas element as a stable module value so SceneHarnessView stays within the length limit.
-const createHarnessRenderer: GLProps = (defaultProps) =>
-  createSceneRenderer({
-    canvas: defaultProps.canvas as HTMLCanvasElement,
-    forceWebGL: true,
-  })
-
 // Builds and frames the selected fixture, memoized on the scene key and paint so the static
 // frame reuses one derived scene graph across re-renders. Pulled out of SceneHarnessView so
 // the component stays within the length limit.
@@ -238,16 +229,18 @@ export function SceneHarnessView({
 
   // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows, so the Canvas
   // `shadows` prop keeps create-renderer's shadowMap setup (and its PCFSoftShadowMap type) alive.
+  // forceWebGL pins the WebGL 2 backend so the committed baseline is a hardware-WebGL render
+  // that never collides with a future WebGPU baseline.
   return (
     <div
       data-testid="scene-harness"
       {...{ [SCENE_READY_ATTRIBUTE]: harnessReady ? 'true' : 'false' }}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
-      <Canvas
+      <SceneRendererCanvas
         frameloop="never"
         camera={harnessCameraProps(cameraOverride ?? pose)}
-        gl={createHarnessRenderer}
+        forceWebGL
         shadows
       >
         <color attach="background" args={[HARNESS_BACKGROUND]} />
@@ -263,7 +256,7 @@ export function SceneHarnessView({
           harnessReady={harnessReady}
           onAmbientOcclusionSettled={handleAmbientOcclusionSettled}
         />
-      </Canvas>
+      </SceneRendererCanvas>
     </div>
   )
 }

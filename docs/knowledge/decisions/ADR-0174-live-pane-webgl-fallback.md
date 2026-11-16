@@ -18,7 +18,7 @@ sourceFiles:
     engine/renderer/create-renderer.ts,
   ]
 status: current
-updated: 2026-09-07
+updated: 2026-11-15
 ---
 
 # ADR-0174: The live 3D pane renders on WebGL 2 instead of refusing to render
@@ -35,7 +35,7 @@ showed a design-system empty state reading "Your browser does not support WebGPU
 WebGPU-capable browser". Both asked `detectRenderBackend()`, whose union is `'webgpu' | 'unsupported'`
 because ADR-0004 deferred the WebGL 2 path as a post-MVP fast-follow.
 
-The deferral no longer matches the renderer. `createSceneRenderer` builds a `WebGPURenderer`, which
+The deferral no longer matches the renderer. The scene renderer factory (ADR-0004 amendment of 2026-11-15) builds a `WebGPURenderer`, which
 picks WebGPU when an adapter is there and drops to its own WebGL 2 backend when it is not, and
 `forceWebGL` pins that same backend for the deterministic harness. Every committed scene baseline is
 therefore a WebGL 2 render (ADR-0151), so the path the gates refused is the path CI has been

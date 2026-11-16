@@ -3,19 +3,25 @@ slug: decisions/ADR-0004-three-js-r3f-webgpu
 title: 'ADR-0004: Three.js + React Three Fiber on WebGPU renderer stack'
 type: decision
 tags: [architecture, rendering, three-js, webgpu, react-three-fiber, engine]
-related: [decisions/ADR-0001-six-layer-architecture, decisions/ADR-0018-scene-graph-derivation]
+related:
+  [
+    decisions/ADR-0001-six-layer-architecture,
+    decisions/ADR-0018-scene-graph-derivation,
+    decisions/ADR-0174-live-pane-webgl-fallback,
+  ]
 sourceFiles:
   [
     docs/specs/2026-06-01-vernacular-design.md,
     engine/index.ts,
     engine/renderer/create-renderer.ts,
     engine/renderer/detect-backend.ts,
+    bridge/react/scene-renderer-canvas.tsx,
     engine/scene/build-scene.ts,
     engine/lighting/lighting-provider.ts,
     engine/lighting/basic-lighting-provider.ts,
   ]
 status: current
-updated: 2026-06-02
+updated: 2026-11-15
 ---
 
 # ADR-0004: Three.js + React Three Fiber on WebGPU renderer stack
@@ -75,17 +81,19 @@ It exposes a small, renderer-agnostic surface through `engine/index.ts`:
   `'webgpu'` when `navigator.gpu` is present and `'unsupported'` otherwise. The
   WebGL2 path is deliberately absent from the union for now; it is the deferred
   fallback.
-- One renderer factory, `createSceneRenderer()`
+- One renderer factory, reached through `loadSceneRendererFactory()`
   (`engine/renderer/create-renderer.ts`), which lazily `import('three/webgpu')`
-  inside the async function, constructs the `WebGPURenderer`, and awaits its
-  `init()`. The dynamic import keeps the WebGPU build out of the test and server
-  import graph, so plain Node and jsdom never load it. This is the one place
-  that constructs a backend renderer.
+  once and resolves to a synchronous factory that constructs the `WebGPURenderer`
+  without calling `init()`. The dynamic import keeps the WebGPU build out of the
+  test and server import graph, so plain Node and jsdom never load it. This is
+  the one place that constructs a backend renderer. (Corrected 2026-11-15: this
+  was an async `createSceneRenderer()` that awaited `init()`; see the amendment
+  below.)
 
 `bridge/` imports `@react-three/fiber`, which is a separate package, but never
-imports `three` directly. The R3F `<Canvas>` there is handed the engine's
-`createSceneRenderer` as its `gl` factory, so the renderer construction still
-lives in the engine. The bridge's `SceneCanvas` consults `detectRenderBackend()`
+imports `three` directly. The R3F `<Canvas>` there is handed a synchronous
+factory built from the engine's `loadSceneRendererFactory()` as its `gl` prop, so
+the renderer construction still lives in the engine. The bridge's `SceneCanvas` consults `detectRenderBackend()`
 and renders a WebGPU-unavailable accessible fallback (`role="status"`) when
 WebGPU is absent, so the R3F canvas only mounts when the backend can support it.
 See ADR-0019 for the bridge side of this seam.
@@ -99,7 +107,7 @@ See ADR-0019 for the bridge side of this seam.
 - **Ship the WebGL2 fallback now.** Deferred per the specification, which makes
   WebGL2 a post-MVP fast-follow. The seams are in place for it: the
   `RenderBackend` union, `detectRenderBackend`, and the single
-  `createSceneRenderer` factory are the three points a WebGL2 path extends, and
+  scene renderer factory are the three points a WebGL2 path extends, and
   none of the higher layers would change.
 
 ## Consequences
@@ -125,5 +133,56 @@ See ADR-0019 for the bridge side of this seam.
 - ADR-0018 (scene-graph derivation, the pure projection this renderer consumes).
 - ADR-0019 (the bridge dispatch boundary and the R3F canvas that drives this
   renderer).
-  </content>
-  </invoke>
+
+## Amendment 2026-11-15: the factory handed to the 3D library is synchronous
+
+The renderer factory section above said that the canvas received an async
+`createSceneRenderer()` that awaited `init()`. That was corrected in place: the
+engine now exports `loadSceneRendererFactory()`, `createSceneRenderer` is gone,
+and the bridge owns `init()`. Issue #733 found why.
+
+### The rule
+
+The factory that React Three Fiber receives as `gl` is synchronous and does not
+call `init()`. `loadSceneRendererFactory()` loads the renderer module one time,
+caches the promise, and does not cache a failed load, so the next call tries
+again. `SceneRendererCanvas` (`bridge/react/scene-renderer-canvas.tsx`) waits for
+that factory before it mounts the canvas, passes the synchronous factory to the
+library, starts `renderer.init()` itself, and keeps the frame loop off and the
+children unmounted until `init()` resolves. The live view and the scene harness
+view both use it; the harness forces the WebGL 2 backend.
+
+### Why
+
+The library runs its canvas setup again on each render of the canvas, and each run
+acts on a store snapshot taken before its own `await`. With an async factory, a
+render of the scene view that landed while the factory promise was pending started
+a second setup. That setup built a second renderer and a second default camera,
+and neither was sized. The late renderer kept a 300 by 150 drawing buffer, so
+every render pass was rejected, and the late camera kept an aspect of 0. Either
+fault alone left the 3D pane blank until it changed size. A slowed start plus two
+toolbar presses reproduced it every time. Setup that reads a snapshot across an
+await is not safe to re-run, so the await moved out of the library's reach.
+
+### The failed state
+
+A failed module load or a failed `init()` ends the component in a failed state. It
+shows the existing status "This browser cannot render the 3D view." and mounts no
+canvas, and it stays there until it mounts again.
+
+### What remains
+
+- The library still awaits the factory's result for one microtask, so only a render
+  of the canvas inside that same task could reach the window. No such path exists
+  today.
+- The renderer is not released on unmount, a constructor throw is not caught, and a
+  failed load has no message of its own (issue #746).
+- A readiness signal that names the drawn document revision is not built (issue
+  #747).
+
+### Tests
+
+`e2e/tests/scene-live-view-startup.spec.ts` renders the view again while the
+renderer chunk loads and while the renderer initializes, plus a control.
+`bridge/react/scene-renderer-canvas.test.tsx` covers the wrapper, and
+`engine/renderer/create-renderer.test.ts` covers the factory and its caching.

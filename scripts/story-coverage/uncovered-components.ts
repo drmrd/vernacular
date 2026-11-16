@@ -164,6 +164,18 @@ export const UNCOVERED_COMPONENTS: {
       'scene-session context provider that only has meaning wrapping the editor shell and the scene view; an isolated browser-mode story is not feasible, so it is a permanent allowlist candidate (see ADR-0111).',
   },
   {
+    component: 'SceneRendererCanvas',
+    file: 'bridge/react/scene-renderer-canvas.tsx',
+    reason:
+      'wraps the R3F Canvas and loads the GPU renderer, which needs a real GPU context; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
+  },
+  {
+    component: 'SceneUnsupportedStatus',
+    file: 'bridge/react/scene-unsupported-status.tsx',
+    reason:
+      'one static status element extracted from scene-canvas.tsx, which renders it as its fallback; no story shows it today, and a new story would auto-enroll in the story visual suite and need a -linux baseline that only the refresh workflow can render, so it stays recorded here until that baseline is seeded (see ADR-0111).',
+  },
+  {
     component: 'SceneSelection',
     file: 'bridge/react/scene-selection.tsx',
     reason:
