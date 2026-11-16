@@ -187,9 +187,10 @@ mesh that still carries the stamp.
   cap, or the reveal of an opening gives no surface, and nothing behind the wall is returned. An
   object with no table keeps the older behavior: a floor stamp decides, and an object with no
   surface is skipped.
-- **A faded wall does not take a click.** The near-wall transparency (ADR-0086) fades the wall
-  nearest to the camera, with the openings in it, its junction fills, and furniture attached to it
-  (ADR-0087, ADR-0103, ADR-0140, ADR-0145). The project owner decided on 2026-11-15 that a faded
+- **A faded wall does not take a click.** The near-wall transparency (ADR-0086) fades each
+  exterior wall that the camera sees from outside, often two of them in a diagonal view, with the
+  openings in it, its junction fills, and furniture attached to it (ADR-0087, ADR-0103, ADR-0140,
+  ADR-0145). The project owner decided on 2026-11-15 that a faded
   object does not take a click, for the selection (`pickEntityId`) and for the paint target
   (`pickSurface`) alike. The fade module marks each material that it fades in the one function that
   also writes the opacity (`applyFadeState`), and both pickers skip a hit on a faded object through
@@ -198,7 +199,10 @@ mesh that still carries the stamp.
   surface keeps the active surface when it already is a surface of that entity
   (`isSurfaceOfEntity`). The wall finish section takes its side from the active surface and sets it
   when the user changes the side. Before, the hook reset each wall selection to the left face, and
-  the section kept its own side.
+  the section kept its own side. One effect is new: the chosen side of a wall now lasts. When the
+  user selects another thing and then the same wall again, the section opens on the side that was
+  active for that wall, because the hook never clears a face of the wall it selects. A click on a
+  top cap names no face, so the wall then gets its default face unless one of its faces is active.
 
 Not decided here:
 
