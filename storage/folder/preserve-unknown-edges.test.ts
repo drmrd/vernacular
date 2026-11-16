@@ -1,7 +1,7 @@
 // The made-up table names its types in PascalCase, as the generated table does.
 /* eslint-disable @typescript-eslint/naming-convention */
 import { describe, expect, it } from 'vitest'
-import type { KnownKeyTable, KnownValue } from '../../core'
+import type { KnownKeyTable, KnownType, KnownValue } from '../../core'
 import { graftWithTable } from './preserve-unknown'
 
 const UNKNOWN_KEY = 'keyFromANewerBuild'
@@ -148,5 +148,43 @@ describe('graftWithTable an object value whose type has no entry in the table', 
     const previous = { id: 'x', [UNKNOWN_KEY]: 'kept', label: 'old' }
     const grafted = graftWithTable(previous, { id: 'x' }, { table: TABLE, at: objectAt('Missing') })
     expect(grafted).toEqual(previous)
+  })
+})
+
+const INHERITED_NAMES = ['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__']
+
+describe('graftWithTable a type named like a property every object inherits', () => {
+  it.each(INHERITED_NAMES)(
+    'treats the object type %s as missing when the table has no own entry of that name',
+    (name) => {
+      const previous = { id: 'x', [UNKNOWN_KEY]: 'kept', label: 'old' }
+      const grafted = graftWithTable(previous, { id: 'x' }, { table: TABLE, at: objectAt(name) })
+      expect(grafted).toEqual(previous)
+    },
+  )
+
+  it.each(INHERITED_NAMES)(
+    'treats the union variant type %s as missing when the table has no own entry of that name',
+    (name) => {
+      const union: KnownValue = {
+        kind: 'union',
+        tag: 'kind',
+        variants: [{ value: 'only', type: name }],
+      }
+      const previous = { kind: 'only', [UNKNOWN_KEY]: 'kept', label: 'old' }
+      const grafted = graftWithTable(previous, { kind: 'only' }, { table: TABLE, at: union })
+      expect(grafted).toEqual(previous)
+    },
+  )
+
+  it('uses an own table entry named constructor, so a known key the next value dropped stays dropped', () => {
+    const entry: KnownType = {
+      keys: { id: { kind: 'leaf' }, label: { kind: 'leaf' } },
+      optional: ['label'],
+    }
+    const table: KnownKeyTable = { constructor: entry }
+    const previous = { id: 'x', label: 'old', [UNKNOWN_KEY]: 'kept' }
+    const grafted = graftWithTable(previous, { id: 'x' }, { table, at: objectAt('constructor') })
+    expect(grafted).toEqual({ id: 'x', [UNKNOWN_KEY]: 'kept' })
   })
 })
