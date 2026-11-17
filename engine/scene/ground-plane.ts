@@ -43,11 +43,13 @@ export function isGroundPlane(object: THREE.Object3D): boolean {
 }
 
 function findGroundPlane(root: THREE.Object3D): THREE.Object3D | null {
-  let found: THREE.Object3D | null = null
-  root.traverse((object) => {
-    if (found === null && isGroundPlane(object)) found = object
-  })
-  return found
+  let level: THREE.Object3D[] = [root]
+  while (level.length > 0) {
+    const plane = level.find(isGroundPlane)
+    if (plane !== undefined) return plane
+    level = level.flatMap((object) => object.children)
+  }
+  return null
 }
 
 /**
@@ -57,6 +59,11 @@ function findGroundPlane(root: THREE.Object3D): THREE.Object3D | null {
  * built is reflected. This assumes the plane is flat by construction and its parent chain is
  * upright and unscaled, as the application builds it. Then `min.y` and `max.y` are both the
  * plane's world height, exactly equal.
+ *
+ * The search looks at `root`, then its children in order, then their children, level by level,
+ * and stops at the first ground plane. A plane nearer `root` wins; between planes at the same
+ * depth, the first in child order wins. It examines no object below the plane's level and none
+ * after the plane on that level.
  */
 export function groundExtent(root: THREE.Object3D): Bounds3 | null {
   const plane = findGroundPlane(root)
