@@ -14,10 +14,11 @@ sourceFiles:
   [
     .github/workflows/ci.yml,
     e2e/tests/scene-live-view-visual-regression.spec.ts,
+    e2e/tests/journeys/perceived-color-readout.spec.ts,
     scripts/ci/decide.mjs,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # ADR-0171: Live-view WebGPU visual regression runs on a macOS CI lane
@@ -32,6 +33,13 @@ Current. Rendering-realism lane 3 (issue #469), decided in the gates-first spec 
 > committed `-darwin` baseline at the standing tolerances, so points 1 and 2 of the decision hold
 > on the new image. A move to a later image is a deliberate change that needs the same proof.
 
+> Amended on 2026-11-16 (issue #745). The job now runs a second spec on the same adapter: the
+> perceived-color journey (`e2e/tests/journeys/perceived-color-readout.spec.ts`), under the
+> `chromium` project, after the visual diff. Its step sets `E2E_REQUIRE_WEBGPU=1`, so a runner
+> that gives no WebGPU adapter fails the step instead of skipping it. For the journey, this closes
+> the silent-skip gap that the Consequences section describes. The visual spec still self-skips
+> without an adapter.
+
 ## Context
 
 The live-view visual spec (`e2e/tests/scene-live-view-visual-regression.spec.ts`) pixel-tests
@@ -44,7 +52,8 @@ reached main unseen, and ADR-0151 had already recorded the backend-split risk as
 ## Decision
 
 CI runs the live-view spec in a dedicated `live-view-visual` job on the `macos-15` runner,
-aggregated by `ci-complete` like every other heavy job.
+aggregated by `ci-complete` like every other heavy job. Since 2026-11-16 the job also runs the
+perceived-color journey on the same adapter (see the amendment above).
 
 1. **The runner is `macos-15`.** It was `macos-14` when the lane landed. A probe on the lane
    branch (run 34067553157, on `macos-14`) showed its chromium exposes a Metal-backed WebGPU
@@ -86,7 +95,8 @@ for this gate must move the rendered scene, not the opening vantage.
   removes the adapter would surface as a silent skip, not a failure. The job's `--reporter=list`
   output names the skip when it happens; a skip on a pull request that should exercise the
   live view is a signal to investigate the runner image, and a follow-up gate that fails on
-  an unexpected skip is open as a hardening option.
+  an unexpected skip is open as a hardening option. The perceived-color journey already has
+  that gate: its step sets `E2E_REQUIRE_WEBGPU=1`, and the spec then fails without an adapter.
 
 ## References
 
