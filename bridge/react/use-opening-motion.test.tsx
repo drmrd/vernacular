@@ -96,6 +96,21 @@ function builtAndOpenPoses(env: ReturnType<typeof hookEnvironment>) {
 }
 
 describe('useOpeningMotion', () => {
+  it('poses a new root at the open pose its door carried, before any tick', () => {
+    const env = hookEnvironment()
+    const { openPose } = builtAndOpenPoses(env)
+    const rootA = env.buildRoot()
+    const stored = new Set([env.doorId])
+    const { result, rerender } = renderMotion(env, { root: rootA, stored })
+    tickOpeningMotion(rootA, result.current, FULL_STEP)
+    expect(fillGroupPose(rootA, env.doorId)).toEqual(openPose)
+
+    const rootB = env.buildRoot()
+    rerender({ root: rootB, stored })
+
+    expect(fillGroupPose(rootB, env.doorId)).toEqual(openPose)
+  })
+
   it('swings a door that was open back to its built pose once the stored set is emptied', () => {
     const env = hookEnvironment()
     const { shutPose, openPose } = builtAndOpenPoses(env)
@@ -120,6 +135,9 @@ describe('useOpeningMotion', () => {
 
     const rootB = env.buildRoot()
     rerender({ root: rootB, stored: new Set() })
+    // The door has not swung yet, so its carried openness still reads as open and the new
+    // root is posed open. Only the tick that follows swings it shut.
+    expect(fillGroupPose(rootB, env.doorId)).toEqual(openPose)
     tickOpeningMotion(rootB, result.current, FULL_STEP)
 
     expect(fillGroupPose(rootB, env.doorId)).toEqual(shutPose)
@@ -135,6 +153,9 @@ describe('useOpeningMotion', () => {
 
     const rootB = env.buildRoot()
     rerender({ root: rootB, stored: new Set([env.doorId]) })
+    // The door carries no openness yet, but the session holds it open, so the new root seats
+    // it fully open at once, before any tick.
+    expect(fillGroupPose(rootB, env.doorId)).toEqual(openPose)
     tickOpeningMotion(rootB, result.current, FULL_STEP)
 
     expect(fillGroupPose(rootB, env.doorId)).toEqual(openPose)
