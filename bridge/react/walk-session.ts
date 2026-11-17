@@ -8,13 +8,11 @@ import type { RefObject } from 'react'
 import {
   emptyOpeningInteraction,
   WALK_EYE_HEIGHT_MM,
-  type OpeningInteractionState,
-  type OpeningSceneNode,
   type SceneGraph,
   type WalkInput,
   type WalkState,
 } from '../../core'
-import type { SceneRoot } from '../../engine'
+import type { OpeningMotionRefs } from './use-opening-motion'
 import { interactFromWalk } from './walk-interaction'
 
 // Maps a keyboard code to the movement flag it drives. A Map keeps the lookup result
@@ -99,24 +97,18 @@ export function initialWalkState(floorElevationMm: number): WalkState {
   }
 }
 
-// The refs a walk advances: the walker's pose, the input held down, the live openings,
-// the open/closed view-state, and each opening's in-flight openness. A session starts
-// them and the frame loop steps the same refs.
-export interface WalkRefs {
+// The refs a walk advances: the walker's pose and held input, plus the opening refs
+// useOpeningMotion owns. A session starts them and the frame loop steps the same refs.
+export interface WalkRefs extends OpeningMotionRefs {
   state: RefObject<WalkState>
   input: RefObject<WalkInput>
-  openings: RefObject<OpeningSceneNode[]>
-  interaction: RefObject<OpeningInteractionState>
-  openness: RefObject<Map<string, number>>
 }
 
 // What a walk session needs from the live canvas: the camera it drives, the element it
-// captures the pointer on, the scene it seats restored doors in, and the elevation of
-// the floor being walked.
+// captures the pointer on, and the elevation of the floor being walked.
 export interface WalkSessionHost {
   camera: WalkCamera
   domElement: HTMLElement
-  root: SceneRoot
   floorElevationMm: number
 }
 

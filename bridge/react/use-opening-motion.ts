@@ -37,22 +37,22 @@ function useActiveFloorOpenings(): OpeningSceneNode[] {
 // the store's set whenever that set changes, so a reset made in orbit mode reaches the live
 // scene. The walk keys report their own changes to the store, and following a set with the
 // same doors keeps the same state, so that echo changes nothing.
-function useFollowedOpenings(savedOpenDoorIds: ReadonlySet<string>): OpeningMotionRefs {
+function useFollowedOpenings(storedOpenDoorIds: ReadonlySet<string>): OpeningMotionRefs {
   const openings = useActiveFloorOpenings()
   const openingsRef = useRef<OpeningSceneNode[]>(openings)
   openingsRef.current = openings
-  const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(savedOpenDoorIds) })
+  const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(storedOpenDoorIds) })
   const opennessRef = useRef<Map<string, number>>(new Map())
   useEffect(() => {
-    interactionRef.current = followStoredOpenings(interactionRef.current, savedOpenDoorIds)
-  }, [savedOpenDoorIds])
+    interactionRef.current = followStoredOpenings(interactionRef.current, storedOpenDoorIds)
+  }, [storedOpenDoorIds])
   return { openings: openingsRef, interaction: interactionRef, openness: opennessRef }
 }
 
 // Poses the openings on every newly built scene root where the session left them, in orbit
 // mode as well as walk mode, so a rebuilt scene never shows a door shut that the session
-// holds open. The refs are read as the root arrives; they are refreshed on every render, so
-// they are not dependencies.
+// holds open. The ref objects never change, so only a new root re-runs this; their current
+// values are read as it arrives.
 function useRestoreOpeningsOnNewRoot(root: SceneRoot, refs: OpeningMotionRefs): void {
   const { openings, interaction, openness } = refs
   useEffect(() => {
@@ -73,9 +73,9 @@ function useRestoreOpeningsOnNewRoot(root: SceneRoot, refs: OpeningMotionRefs): 
  */
 export function useOpeningMotion(
   root: SceneRoot,
-  savedOpenDoorIds: ReadonlySet<string>,
+  storedOpenDoorIds: ReadonlySet<string>,
 ): OpeningMotionRefs {
-  const refs = useFollowedOpenings(savedOpenDoorIds)
+  const refs = useFollowedOpenings(storedOpenDoorIds)
   useRestoreOpeningsOnNewRoot(root, refs)
   return refs
 }

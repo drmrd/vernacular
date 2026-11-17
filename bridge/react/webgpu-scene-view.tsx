@@ -92,7 +92,7 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
         root={root}
         savedWalkPose={nav.walkPose}
         onWalkPose={nav.noteWalkPose}
-        savedOpenDoorIds={nav.openDoorIds}
+        storedOpenDoorIds={nav.openDoorIds}
         onOpenDoors={nav.noteOpenDoors}
       />
     </>
