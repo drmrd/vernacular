@@ -229,3 +229,31 @@ describe('shadowFitBounds near the horizon', () => {
     expect(fit.max.z).toBe(CASTERS.max.z)
   })
 })
+
+describe('shadowFitBounds with input that is not finite', () => {
+  function fitFor(sunDirection: Vector3): Bounds3 {
+    return shadowFitBounds({
+      casters: CASTERS,
+      ground: GROUND,
+      sunDirection,
+      maxRadius: NO_CAP,
+    })
+  }
+
+  it.each([
+    ['x is NaN', { ...FORTY_FIVE_DEGREES, x: Number.NaN }],
+    ['y is NaN', { ...FORTY_FIVE_DEGREES, y: Number.NaN }],
+    ['z is Infinity', { ...FORTY_FIVE_DEGREES, z: Number.POSITIVE_INFINITY }],
+    ['x is -Infinity', { ...FORTY_FIVE_DEGREES, x: Number.NEGATIVE_INFINITY }],
+    ['y is -Infinity', { ...FORTY_FIVE_DEGREES, y: Number.NEGATIVE_INFINITY }],
+  ])('gives the casters, with every value finite, when the sun direction %s', (_name, sun) => {
+    const fit = fitFor(sun)
+    expect(fit).toEqual(CASTERS)
+    expect(numbersOf(fit).every(Number.isFinite)).toBe(true)
+  })
+
+  it('gives a copy of the casters, not the box that was passed in', () => {
+    const fit = fitFor({ ...FORTY_FIVE_DEGREES, x: Number.NaN })
+    expect(fit).not.toBe(CASTERS)
+  })
+})
