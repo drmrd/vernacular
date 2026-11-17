@@ -1,4 +1,5 @@
 import { act, cleanup, render } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSceneSessionStore } from '../scene-session/scene-session-store'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
@@ -144,6 +145,24 @@ describe('AmbientOcclusionRenderTakeover readiness while a pipeline build is in 
 
     await settleBuild(0)
     expect(drawFrame()).toBe(false)
+
+    await settleBuild(1)
+    expect(drawFrame()).toBe(true)
+  })
+
+  it('keeps waiting for the new build when both effects run again in one flush', async () => {
+    render(
+      <StrictMode>
+        <ProbeInSession realistic />
+      </StrictMode>,
+    )
+    // Strict mode runs each effect as setup, cleanup, setup: two builds start in one flush.
+    expect(collaborators.builds).toHaveLength(2)
+    expect(drawFrame()).toBe(false)
+
+    await settleBuild(0)
+    expect(drawFrame()).toBe(false)
+    expect(buildAt(0).pipeline.dispose).toHaveBeenCalledTimes(1)
 
     await settleBuild(1)
     expect(drawFrame()).toBe(true)
