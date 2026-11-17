@@ -133,6 +133,23 @@ describe('listing the projects of a store', () => {
     expect(summaries[0]?.lastChangedAt).not.toBe(summaries[1]?.lastChangedAt)
     expect(root.reads).toBe(0)
   })
+
+  it('still names a project whose time of last change cannot be read, without a time', async () => {
+    const inner = await seededRoot()
+    const root = new (class extends ReadCountingDirectory {
+      override async modifiedAt(path: string): Promise<string | undefined> {
+        if (path.startsWith('b/')) throw new Error('the time cannot be read')
+        return super.modifiedAt(path)
+      }
+    })(inner)
+
+    const summaries = await storeOver(root).list()
+
+    expect(summaries).toEqual([
+      { id: 'a', lastChangedAt: await inner.modifiedAt('a/vernacular.json') },
+      { id: 'b', lastChangedAt: undefined },
+    ])
+  })
 })
 
 describe('deleting a project from a workspace store', () => {
