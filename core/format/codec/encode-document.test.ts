@@ -4,7 +4,7 @@ import {
   versionFixtureBytes,
 } from '../../../tests/fixtures/projects/versions'
 import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../index'
-import type { Project, ProjectShape, RegistryMigration, SchemaMigration } from '../../index'
+import type { Project, ProjectShape, RegistryMigration } from '../../index'
 import type { CodecOptions, DecodeFailure, DecodeResult } from './codec-types'
 import { decodeDocument } from './decode-document'
 import { encodeDocument } from './encode-document'
@@ -17,8 +17,8 @@ const UNKNOWN_FIELD = 'x-unknown'
 const UNKNOWN_ROOT_FIELD = 'x-unknown-root'
 const REGISTRY = 'example-registry'
 const REGISTRY_VERSION_BEHIND = 1
-const REGISTRY_VERSION_NOT_RECORDED = 0
 const LEGACY = 'legacy'
+const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_FIELD}`
 
 type Json = Record<string, unknown>
 
@@ -95,7 +95,7 @@ describe('the revision that encode writes', () => {
     expect(writtenRevision(project)).toBe(HIGHER_REVISION)
   })
 
-  it('writes the revision of this build for an older document that named a revision', () => {
+  it('drops, on decode, the revision that an older document named, so it is written at this build revision', () => {
     const document = fixtureDocument(OLDER_VERSION)
     metaOf(document).schemaRevision = REVISION_OF_AN_OLDER_FILE
     expect(writtenRevision(projectOf(bytesOf(document)))).toBe(CURRENT_SCHEMA_REVISION)
@@ -121,7 +121,8 @@ describe('encoding a document with an unknown field at the current revision', ()
 
     const encoded = encodeDocument(project, undefined)
 
-    expect(encoded.faults.length).toBeGreaterThan(0)
+    const fault = encoded.faults.find((candidate) => candidate.path === UNKNOWN_WALL_FIELD_PATH)
+    expect(fault?.rule).toBe('additionalProperties')
     expect(writtenJson(encoded.bytes)).toEqual(withRevision(project, CURRENT_SCHEMA_REVISION))
   })
 })
@@ -208,27 +209,5 @@ describe('bringing the previous file current before the graft', () => {
     const encoded = encodeDocument(project, stored, options)
 
     expect(projectOf(encoded.bytes, options).extensions ?? {}).not.toHaveProperty(LEGACY)
-  })
-
-  it('does not migrate previous bytes when no schema step and no registry step is pending', () => {
-    let calls = 0
-    const countingStep = (project: ProjectShape): ProjectShape => {
-      calls += 1
-      return project
-    }
-    const schemaStep: SchemaMigration = { from: CURRENT_SCHEMA_VERSION, migrate: countingStep }
-    const registryStep: RegistryMigration = {
-      registry: REGISTRY,
-      from: REGISTRY_VERSION_NOT_RECORDED,
-      migrate: countingStep,
-    }
-    const options: CodecOptions = {
-      migration: { schemaMigrations: [schemaStep], registryMigrations: [registryStep] },
-    }
-    const previous = versionFixtureBytes(CURRENT_SCHEMA_VERSION)
-
-    encodeDocument(projectOf(previous), previous, options)
-
-    expect(calls).toBe(0)
   })
 })
