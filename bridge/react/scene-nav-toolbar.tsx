@@ -2,8 +2,8 @@ import type { CameraPreset, LightingMode } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
 import { SceneDisplayOptions } from './scene-display-options'
-import { SceneObjectControls } from './scene-object-controls'
 import { ModeToggle, ScopeToggle } from './scene-nav-segmented-toggles'
+import { SceneObjectControls } from './scene-object-controls'
 import type { SceneScope } from './view-scene-graph'
 
 import './scene-nav-toolbar.css'
