@@ -417,6 +417,7 @@ export type {
   HingeMotion,
   NoMotion,
   OpeningMotion,
+  OpeningPartId,
   SlideAxis,
   SlideMotion,
 } from './scene/opening-motion'

@@ -5,9 +5,17 @@ import {
 } from '../registries/element-types'
 import { getEntry } from '../registries/registry'
 
+import { type HungSash, SASH_FRAME_WIDTH_MM } from './opening-fill'
 import { planToWorld } from './plan-to-world'
 import type { OpeningSceneNode } from './scene-graph'
 import type { Vector3 } from './vector3'
+
+/**
+ * The part of an opening's fill that a motion drives. 'primary' is the whole fill (a door
+ * leaf, a pair of leaves, a whole sash). A HungSash is only the fill parts whose `sash`
+ * names it.
+ */
+export type OpeningPartId = 'primary' | HungSash
 
 /** Rotation of a leaf or sash about a fixed edge. */
 export interface HingeMotion {
@@ -21,7 +29,7 @@ export interface HingeMotion {
   /** Signed swing angle (radians) at full openness. */
   openAngle: number
   /** The part this motion drives (the representative moving leaf or sash). */
-  partId: string
+  partId: OpeningPartId
   /** How many parts move together in the full opening; a double has two. */
   partCount: number
 }
@@ -29,7 +37,10 @@ export interface HingeMotion {
 /** The axis a slide motion travels along. */
 export type SlideAxis = 'along-wall' | 'vertical'
 
-/** Translation of a leaf or sash along an axis. */
+/**
+ * Translation of a leaf or sash along an axis. A hung window moves its lower sash only, by
+ * the height of that sash.
+ */
 export interface SlideMotion {
   kind: 'slide'
   /** Whether the part slides along the wall or vertically. */
@@ -37,7 +48,7 @@ export interface SlideMotion {
   /** World translation applied at full openness. */
   travel: Vector3
   /** The part this motion drives (the representative moving leaf or sash). */
-  partId: string
+  partId: OpeningPartId
   /** How many parts move together in the full opening; a double has two. */
   partCount: number
 }
@@ -55,7 +66,7 @@ const QUARTER_TURN_RAD = Math.PI / 2
 // Openings hinged on a jamb turn about the vertical (world Y) axis.
 const WORLD_UP: Vector3 = { x: 0, y: 1, z: 0 }
 // The motion drives one representative part; partCount records how many move together.
-const REPRESENTATIVE_PART = 'primary'
+const REPRESENTATIVE_PART: OpeningPartId = 'primary'
 const SINGLE_PART = 1
 const PAIRED_PARTS = 2
 
@@ -64,7 +75,8 @@ const NO_MOTION: NoMotion = { kind: 'none' }
 /**
  * Resolves how an opening moves from its element type, reading the type's
  * operation family from the registry. A swing door hinges on a jamb; a fixed
- * window or a cased opening has no moving part.
+ * window or a cased opening has no moving part. A hung window raises its lower
+ * sash only.
  */
 export function openingMotion(type: string, opening: OpeningSceneNode): OpeningMotion {
   const params = getEntry(builtinElementTypes, type)?.opening
@@ -79,7 +91,7 @@ export function openingMotion(type: string, opening: OpeningSceneNode): OpeningM
     case 'slide':
       return alongWallSlide(opening, partCountOf(params))
     case 'window-hung':
-      return verticalSlide(opening, PAIRED_PARTS)
+      return lowerSashRise(opening)
     case 'window-slide':
       return alongWallSlide(opening, SINGLE_PART)
     case 'window-crank':
@@ -176,13 +188,17 @@ function alongWallSlide(opening: OpeningSceneNode, partCount: number): SlideMoti
   }
 }
 
-/** A slide straight up (world +Y) by the opening height, the way a sash raises. */
-function verticalSlide(opening: OpeningSceneNode, partCount: number): SlideMotion {
+/**
+ * A rise of the lower sash, meeting rail included, until its top meets the head. The lower
+ * sash sits one meeting-rail half-width above the middle of the opening, so it rises half
+ * the height less that half-width.
+ */
+function lowerSashRise(opening: OpeningSceneNode): SlideMotion {
   return {
     kind: 'slide',
     axis: 'vertical',
-    travel: { x: 0, y: opening.height, z: 0 },
-    partId: REPRESENTATIVE_PART,
-    partCount,
+    travel: { x: 0, y: opening.height / 2 - SASH_FRAME_WIDTH_MM / 2, z: 0 },
+    partId: 'lower',
+    partCount: SINGLE_PART,
   }
 }
