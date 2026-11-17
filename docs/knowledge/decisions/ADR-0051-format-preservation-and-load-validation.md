@@ -32,9 +32,10 @@ sourceFiles:
   [
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
     docs/plans/2026-06-11-vernacular-format-preservation.md,
+    core/format/codec/graft.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0051: Forward-compatibility preservation and load-time validation for the floor plan format
@@ -66,7 +67,8 @@ gate, and the optional Strict profile.
 > the previous file has and the saved Document lacks comes back only when a table generated from
 > the schema does not know that key. The hand-written list of keyed maps goes away, and the
 > previous file is migrated in memory before the graft. The duty to preserve unknown data is
-> unchanged. Until that work lands, the overlay restores every missing key, as described below.
+> unchanged. That work has landed: the overlay is now the graft in `core/format/codec/graft.ts`,
+> and every store saves through it.
 
 ## Context
 
@@ -94,9 +96,9 @@ a passthrough carrier on the typed model versus a raw-document overlay in the co
    the structural pipeline already preserves unknown data, the guarantee is implicit and could
    regress silently (for example if a future loader validated-and-stripped against the
    `additionalProperties: false` CORE schema). A single named backstop owns the guarantee:
-   `storage/folder/preserve-unknown.ts` re-grafts, on save, any value the prior on-disk Document
-   carried that the saved Document dropped. The overlay merges entity objects by key union (the saved
-   value wins on shared keys; a previous-only key is restored), reconciles id-arrays by identity, and
+   `storage/folder/preserve-unknown.ts` (now `core/format/codec/graft.ts`) re-grafts, on save, any
+   value the prior on-disk Document carried that the saved Document dropped. The overlay merges
+   entity objects by key union (the saved value wins on shared keys; a previous-only key is restored), reconciles id-arrays by identity, and
    reconciles the keyed maps `roomOverrides` and `paint` by key, so deletions are never resurrected.
    It reads the prior `vernacular.json` at save time, so it is stateless and needs no app-lifecycle
    coupling. One refinement (2026-08-31): a keyed-collection entry whose `kind` discriminant

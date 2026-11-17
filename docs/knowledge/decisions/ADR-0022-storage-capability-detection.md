@@ -9,6 +9,7 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0023-service-worker-scaffold,
     decisions/ADR-0030-additive-storage-capabilities,
+    decisions/ADR-0211-stored-indexeddb-records-become-files,
   ]
 sourceFiles:
   [
@@ -19,15 +20,22 @@ sourceFiles:
     storage/index.ts,
     app/app.tsx,
     e2e/tests/storage-capabilities.spec.ts,
+    storage/indexeddb/indexeddb-directory.ts,
     eslint.config.js,
   ]
 status: current
-updated: 2026-06-03
+updated: 2026-11-17
 ---
 
 # ADR-0022: Read-only storage capability detection behind an injectable host
 
 ## Status
+
+> Updated on 2026-11-17. The IndexedDB store is no longer tested only end to end. It is the common
+> document store over `storage/indexeddb/indexeddb-directory.ts`
+> ([[ADR-0211-stored-indexeddb-records-become-files]], ADR-0028), and its tests run in a real
+> browser under `pnpm test:storage-browser`, the CI job `storage-browser`. The contrast drawn in
+> "Why fully unit-tested, unlike the durable stores" below describes the first form.
 
 Accepted, landed. The probe (`probeStorageCapabilities`), the derived helpers
 (`isStorageDegraded`, `summarizeStorageCapabilities`), and their unit tests live
