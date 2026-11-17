@@ -130,7 +130,9 @@ aperture 1: ..." with zero-based indexes. The refused kinds are:
   (`OUTLINE_TOLERANCE_MM`; the tolerance absorbs the rounding error of a window on an angled wall,
   and an end point a few millimetres off the wall is still refused);
 - a span whose two sides are both inside, or both outside, the room (it does not lie on the
-  outline);
+  outline). The side test probes twice the outline tolerance (2 mm) to each side of the span's
+  midpoint, so a span that lies off its wall by up to the tolerance, inside or outside the room, is
+  accepted with the right outside;
 - a doorway that opens to its own room, and a doorway that opens to a room that does not exist.
 
 ## Why this approach and not the others
@@ -234,7 +236,7 @@ current, the amendments go into the records named here.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
   `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
   `room-validation.test.ts`, `hard-inputs.test.ts`, `angled-wall.test.ts`,
-  `bad-outline-and-sky.test.ts`, and `sky-direction.test.ts`) and by
+  `bad-outline-and-sky.test.ts`, `sky-direction.test.ts`, and `span-at-tolerance.test.ts`) and by
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.

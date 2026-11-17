@@ -9,15 +9,11 @@ const MINIMUM_OUTLINE_POINTS = 3
  * How far, in millimetres, a span end point may sit from the room outline and still count as on it.
  * It exists for the floating-point error of plan coordinates: a point interpolated along a wall that
  * is not parallel to an axis is off the exact line by rounding error. The value is far below any
- * real dimension, so it still refuses an end point that is a few millimetres off the wall.
- * It must not exceed SIDE_PROBE_MM of room-geometry.ts. The side test needs one probe on each side
- * of the outline, and a point that lies on the outline counts as inside. So at the present equal
- * values, a span that lies inside the room by exactly this distance is refused, because its outer
- * probe lands on the outline, and a span that lies outside the room by exactly this distance is
- * accepted. A tolerance larger than the probe distance would let the end point check accept a span
- * that lies inside the room by more than the probe distance, and the side test would refuse it.
+ * real dimension, so it still refuses an end point that is a few millimetres off the wall. The side
+ * test in room-geometry.ts probes twice this distance from the span, so a span that this check
+ * accepts, on either side of the wall, keeps both of its probes off the outline.
  */
-const OUTLINE_TOLERANCE_MM = 1
+export const OUTLINE_TOLERANCE_MM = 1
 
 /** Where a bad daylight input sits among the rooms of one floor; both indexes are zero-based. */
 export interface DaylightInputLocation {
