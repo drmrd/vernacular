@@ -2,7 +2,7 @@
 slug: decisions/ADR-0216-hung-window-sashes-stay-in-their-frame
 title: 'ADR-0216: Hung-window sashes ride two tracks, and the lower sash rises inside its frame'
 type: decision
-tags: [core, engine, openings, windows, sash, walk-mode, animation, 3d-preview, reach]
+tags: [core, engine, openings, windows, sash, walk-mode, animation, 3d-preview, reach, scene-graph]
 related:
   [
     decisions/ADR-0128-opening-animation-motion-model,
@@ -15,6 +15,11 @@ sourceFiles:
     core/scene/opening-fill.ts,
     core/scene/opening-motion.ts,
     core/scene/opening-reach.ts,
+    core/scene/opening-room-side.ts,
+    core/scene/wall-half.ts,
+    core/scene/scene-graph.ts,
+    core/scene/scene-graph-deriver.ts,
+    bridge/react/harness-fixtures.ts,
     engine/scene/opening-fill-builder.ts,
     engine/scene/opening-motion.ts,
   ]
@@ -46,12 +51,14 @@ travel. A fully open hung window therefore sat out of reach above the head. By t
 with the eye at 1700 mm could not close it by looking at it; this was not run.
 
 The fill could not move one sash on its own. Its parts named no sash, and every box sat on the wall
-centerline. Had only the lower sash risen, it would have shared its plane with the upper sash.
+centerline. Had only the lower sash risen, it would have shared its plane with the upper sash. Nor
+could the fill tell the room side of a window: the opening node did not say which side of its wall
+lies in a room.
 
-In a real hung window each sash runs in its own track in the frame. The lower sash rises past the
-upper one, nothing leaves the frame, and the open area is at most about half the height. The spec
-for walk-mode opening animations already named the lower sash as the one representative part of a
-hung window (`docs/specs/2026-06-28-walk-mode-opening-animations.md`).
+In a real hung window each sash runs in its own track in the frame. The lower sash runs in the track
+nearer the room. It rises past the upper one, nothing leaves the frame, and the open area is at most
+about half the height. The spec for walk-mode opening animations already named the lower sash as the
+one representative part of a hung window (`docs/specs/2026-06-28-walk-mode-opening-animations.md`).
 
 ## Decision
 
@@ -63,13 +70,73 @@ along the opening's normal. Every part of a hung-window fill carries both. No ot
 either, so doors and undivided sashes keep their parts as they were.
 
 The meeting rail belongs to the lower sash. The lower sash, with its head rail, bottom rail, two
-stiles, glass, and the meeting rail, sits on the side that the opening's `facing` names: its offset is
-`+depth / 2` for `'positive'` and `-depth / 2` for `'negative'`. The upper sash sits on the opposite
-track, at the opposite offset. The single-hung window follows the same rule with its fixed upper sash
-of a head rail, a bottom rail, and one pane.
+stiles, glass, and the meeting rail, sits on the room side of the wall: its offset is `+depth / 2`
+when that side is `'positive'` and `-depth / 2` when it is `'negative'`. The upper sash sits on the
+opposite track, at the opposite offset. The single-hung window follows the same rule with its fixed
+upper sash of a head rail, a bottom rail, and one pane.
 
-`facing` stands in for the room side. The fill receives only the opening node and the registry, and
-the node does not say which side of its wall is outside.
+The fill reads the side as `node.roomSide ?? node.orientation.facing`. The next two sections say
+how the room side is found and carried to the node. `facing` decides only when the node has no room
+side: on a wall between two rooms, or on a wall that bounds no room at the opening.
+
+### The room side is found at the opening
+
+`openingRoomSide(node, rooms, rawWallThickness)` in `core/scene/opening-room-side.ts` returns the
+side of the host wall that lies in a room at the opening. It takes two sample points on the line
+through the center of the opening along its `normal`, one past each face of the wall. Each lies at
+the same distance from the wall centerline:
+
+```
+d = max(rawWallThickness, hostThickness) / 2 + OPENING_ROOM_SIDE_SAMPLE_MM
+```
+
+`OPENING_ROOM_SIDE_SAMPLE_MM` is 50. A point is in a room when it lies inside the clear polygon of a
+room on the opening's floor and inside none of that room's holes. Rooms of other floors do not count.
+When only the point on the positive side is in a room, the result is `'positive'`; when only the
+point on the negative side is, it is `'negative'`. The signs are those of `facing`: positive is the
+wall's left-hand normal, from its start to its end. When both points or neither lie in a room, the
+result is `undefined`.
+
+The side is sampled at the opening and not at the middle of the wall. `exteriorWalls` in
+`core/scene/exterior-walls.ts` already finds the outward normal of a wall, but it samples only the
+midpoint. A long wall can bound a room along only part of its length. Its midpoint can then lie
+beside a room that the opening is nowhere near, or beside no room while the opening stands in front
+of one.
+
+The sample clears the larger of the two thicknesses. Today a room is inset by the raw thickness of
+its walls (issue #674). Once that issue is fixed, rooms will follow the faces of the construction
+profile, whose thickness is the effective `hostThickness`. The larger of the two puts the sample past
+the face that the room uses in either case. `HALF` in `core/scene/wall-half.ts` is the divisor that
+reaches a face from the centerline; `exteriorWalls` and `openingRoomSide` share it.
+
+### Every opening node carries its room side
+
+`OpeningSceneNode` gains an optional `roomSide`, typed like `facing`. `withRoomSide` sets it from
+`openingRoomSide` and leaves the key off when there is no single side. Every derived opening node
+goes through it, doors included, though only the hung fill reads it. Both derivation paths set it
+with the rooms of the same floor and the raw thickness of the host wall: `deriveSceneGraph` through
+`deriveOpeningNodesForFloor` in `core/scene/scene-graph.ts`, and the memoized deriver in
+`core/scene/scene-graph-deriver.ts`.
+
+The memoized deriver reuses a cached opening node while the opening and its host wall are the same
+objects, and while the room side still holds. The side holds when the floor's array
+of room nodes is the same object as when the node was cached. Otherwise the deriver runs
+`openingRoomSide` again on the new rooms, and the side holds when it comes out equal; the deriver then
+remembers the new array. When the side does not hold, the deriver builds a new node.
+
+The live view reuses the 3D group of an opening while its node is the same object. Without this
+check, a room edit that moved the room side would leave the old node in place, and the view would keep
+the lower sash on the old side. An edit that leaves the side alone, such as a room that grows away
+from the opening or a new room name, keeps the node and its group.
+
+### The scene harness uses the same rule
+
+The scene harness in `bridge/react/harness-fixtures.ts` builds its opening nodes by hand. Its wall
+shell now passes them through `withRoomSide`, with the shell room and the 120 mm shell thickness,
+which is both the raw and the effective thickness there. The south door and the south window keep the
+positive side that their `facing` gave them. The east window faces `'positive'`, but its room lies on
+the negative side, so its sashes change tracks. The fixture of two adjacent rooms comes from the real
+derivation; its one opening is a door in the shared wall, which has no single room side.
 
 ### The depth of the sashes follows the wall
 
@@ -162,8 +229,8 @@ built in place and a mesh position of zero. A hinge, or a slide for `'primary'`,
 whole group. At openness 0 every part sits exactly as built. Edge lines are children of their mesh,
 so they move with it.
 
-No schema change and no registry version change come with this. The fill parts and the motion are
-derived scene data and are never stored.
+No schema change and no registry version change come with this. The fill parts, the room side, and
+the motion are derived scene data and are never stored.
 
 ## Alternatives considered
 
@@ -178,13 +245,20 @@ and 78 mm, a bar face of one sash and a glass face of the other would share a pl
 once the lower sash rises. A depth with no floor was also rejected: at a 6 mm sash the two panes meet
 at the centerline in one plane, and below that the glass is deeper than its own bars.
 
-Carrying the room side of each opening through the scene graph now. Pure `core/` can derive it:
-`exteriorWalls` in `core/scene/exterior-walls.ts` returns the outward normal of a wall when exactly
-one face lies in a room. Carrying it to the fill needs a new field on the opening node and a cache
-that changes when rooms change. Today the deriver caches an opening node by the opening and its host
-wall, and the live view reuses an opening's group while its node is unchanged, while rooms change
-when other walls change. Rejected for this fix as too wide. `facing` decides the side until that
-work lands.
+`facing` alone as the side of the lower sash. This was the first form of this fix. The fill needed no
+new input, and the room side was to follow in a later change. Rejected after the owner looked
+closely at the result: from inside the one room that the live check draws, the lower sash stood on
+the outer track. `facing` defaults to `'positive'`, the left-hand side of the wall in the direction it
+was drawn, so it says nothing about where the room is. A real hung window keeps its lower sash toward
+the room whichever way its wall was drawn.
+
+Carrying the room side through the scene graph was first rejected as too wide for this fix. It needs
+a new field on the opening node and a cache check for a change of rooms. It is what was built, as the
+decision above describes.
+
+The outward normal from `exteriorWalls` as the room side. Rejected: it samples the middle of the wall.
+On a wall that bounds a room along only part of its length, a test shows that `exteriorWalls` does not
+list the wall at all, while a window beside the room has a clear room side.
 
 A step across the wall during the motion only, with one plane when shut. That would have kept the
 closed look of every hung window as it was. Rejected: the sash would move on a slant, which no real sash does.
@@ -197,9 +271,17 @@ given above.
 - A user who opens a hung window in the 3D view sees the lower sash rise inside the frame until its
   meeting rail meets the head. The upper sash stays put. Nothing appears above the head of the
   frame, and the open area is just under half the height.
-- A closed hung window looks different too. Its two sashes sit on stepped planes: seen from the side
-  `facing` names, the upper sash is set back behind the lower one by one sash depth. This holds for
-  every hung window, opened or not.
+- A closed hung window looks different too. Its two sashes sit on stepped planes: seen from the room,
+  the upper sash is set back behind the lower one by one sash depth. On a wall with no single room
+  side, the side that `facing` names takes the place of the room. This holds for every hung window,
+  opened or not.
+- On a wall with a room on one side only, the "Flip swing" button of the inspector no longer moves
+  the sashes of a hung window. It still changes the stored `facing`, but the room side wins. The
+  button still decides the side on a wall between two rooms or a wall that bounds no room at the
+  opening. Issue #827 now covers only the label of that button and what it should do for a hung
+  window.
+- A room edit can now replace an opening node, and so rebuild its 3D group, when the edit moves the
+  room side of the opening. An edit that leaves the side alone keeps both.
 - The walker can close an open hung window by looking anywhere in its frame, and not by looking at
   the wall above it. So the open key now closes a hung window from the pose that opened it. Doors
   are unchanged. Issue #817 asks what that key must do for a fully open opening.
@@ -212,7 +294,9 @@ given above.
   `e2e/tests/scene-visual-regression.spec.ts` and `e2e/tests/scene-solar.spec.ts`,
   `LIVE_VIEW_THRESHOLD` and `LIVE_VIEW_MAX_DIFF_PIXEL_RATIO` in
   `e2e/tests/scene-live-view-visual-regression.spec.ts`). The Linux captures (ADR-0152) are checked
-  by the CI job of the pull request.
+  by the CI job of the pull request. That run came before the lower sash moved to the room side.
+  The move puts the sashes of the east window of the harness shell on the other tracks; this record
+  reports no capture run after it.
 
 ## Evidence
 
@@ -247,6 +331,49 @@ The rules are proven by unit tests.
 - `bridge/react/walk-interaction.test.ts`, the case "raises a window sash instead of swinging it when
   ticked open", now checks that a child of the group rose and the group did not turn.
 
+The tests above build their opening nodes with no room side, so they now prove that `facing` decides
+when the node has none. These tests prove the room side:
+
+- `core/scene/opening-room-side.test.ts`, block "openingRoomSide": a window on the south wall of a
+  room gets `'positive'` when the room is drawn counter-clockwise and `'negative'` when the same room
+  is drawn clockwise, so the side follows the room and not the drawing direction. A wall between two
+  rooms and a free wall that bounds no room give no side. On a 10 m wall that bounds a room along its
+  first 4 m, a window beside the room finds the side, a window at 7 m finds none, and `exteriorWalls`
+  does not list the wall. Rooms of another floor do not count, a sample inside a hole of a room
+  counts as outside, and a 200 mm raw wall with a thinner construction profile still finds the side.
+- `core/scene/opening-room-side-faces.test.ts`, block "openingRoomSide past the face that the room
+  uses": the side is found for a 400 mm raw wall with a 115 mm profile, and for a room inset by a
+  masonry profile thicker than the raw thickness, built by hand as rooms will be once issue #674 is
+  fixed. The corner cases are under Limits. A window on a free wall that stands inside one room gets
+  no side.
+- `core/scene/opening-fill-room-side.test.ts`, block "openingFill hung-window sashes follow the room
+  side of the opening": the room side wins over `facing` in both directions and agrees with it when
+  the two match; a 90 mm wall keeps its 22.5 mm offsets on the room side; a single-hung window puts
+  its six lower parts and three upper parts on the tracks of its room side; a door, a picture window,
+  and a sliding window with a room side still carry no sash and no track.
+- `core/scene/scene-graph-openings.test.ts`, block "the room side of a derived opening node": the key
+  is absent when no room is given, and the pure derivation gives `'positive'` and `'negative'` for the
+  two drawing directions of the room.
+- `core/scene/scene-graph-deriver.test.ts`, block "createSceneGraphDeriver opening room side": a warm
+  deriver builds a new node without a side when a wall of the room is removed, a new node with
+  `'negative'` when the room moves to the other side of the wall, and a new node with a side when a
+  wall closes a room beside a window that had none. It keeps the same node object when the room grows
+  on the same side and when only the room overrides change.
+- `core/scene/scene-graph-deriver-parity.test.ts`: the pure projection and a cold deriver both give
+  the door of the two-storey project the positive side, which equality alone cannot show, since both
+  could omit it. A warm deriver after a wall of the room is removed gives the same scene graph as the
+  pure projection.
+- `bridge/react/harness-fixtures.test.ts`, block "the room side of the harness openings": every
+  opening of every fixture carries the side that the rule finds, and the key only when there is one.
+  The south door and the south window are on the positive side and the east window on the negative
+  side.
+
+The unit tests prove the side. A close view from inside the live check's room was the evidence for
+the defect. After the fix, four close views of that window were taken on the live view and read by
+eye: from inside the room the lower sash is nearer to the camera, and when it is raised it stands
+in front of the upper sash; from outside the upper sash is nearer. No automated check compares
+those views.
+
 A live check runs on a real WebGPU view, in one browser, on a development Mac and in the macOS
 live-view job of CI. It is the case "keeps the sashes of an open hung window inside its frame, and
 reaches it again with the open key" in `e2e/tests/journeys/close-doors-and-windows.spec.ts`, with
@@ -260,15 +387,23 @@ open key from the pose that opened the window closes it again.
 
 ## Limits
 
-- `facing` stands in for the room side. It is a stored choice that defaults to `'positive'`, the
-  wall's left-hand normal from its start to its end, and only the "Flip swing" button of the
-  inspector changes it. On an exterior wall whose left side is outside, a window at the default
-  shows its lower sash on the outer track. In a real window the lower sash is on the room side.
-  Issue #827 is to put it there once the kernel gives the outside of a wall, with `facing`
-  deciding only on a wall that has no outside. How often the default side is wrong depends on the
-  direction walls are drawn, which was not traced. In the one room that the live check draws, a
-  close view from inside the room showed the lower sash on the outer track. The label "Flip swing" does not say that it
-  moves the sash.
+- On a wall between two rooms, or a wall that bounds no room at the opening, `facing` still decides.
+  It is a stored choice that defaults to `'positive'`, the wall's left-hand normal from its start to
+  its end, and only the "Flip swing" button of the inspector changes it. The label of that button
+  does not say that it moves the sash, and on a wall with one room side it no longer moves the sashes
+  of a hung window. Issue #827 covers both.
+- The room side is a point test 50 mm past the face. A space narrower than that beside a wall does
+  not count as a room side, and neither does a room whose clear polygon begins farther than 50 mm
+  from the face.
+- An opening very near a corner can sample into the thickness of the neighboring wall. The tests
+  show both outcomes. A 300 mm window centered 150 mm from an inside corner of 114 mm walls finds
+  its room side. The same window beside a 400 mm neighboring wall finds none, because its sample
+  falls inside that wall's thickness, outside the room; `facing` then decides. A window centered
+  150 mm from the reflex corner of an L-shaped room finds its room side.
+- `exteriorWalls` keeps its midpoint sample and its check without holes, so the two rules can
+  disagree about the same wall. Bringing it in line is left to a follow-up issue.
+- The run-time cost of the sampling was not measured. Each derived opening tests two points against
+  the rooms of its floor, and the warm deriver tests them again whenever the room array changes.
 - Only the lower sash moves, on the double-hung window as well. A real double-hung window can also
   lower its upper sash. The 3D view does not tell the two hung types apart by their motion.
 - In a wall thinner than 40 mm the sashes stand proud of the wall faces, by up to 19.5 mm on each
@@ -288,6 +423,8 @@ open key from the pose that opened the window closes it again.
 ## References
 
 - Issue #792.
+- Issue #827: the label and the behavior of "Flip swing" for a hung window.
+- Issue #674: rooms inset by the raw wall thickness.
 - [[ADR-0128-opening-animation-motion-model]]: the motion model and the part identifier this record
   uses.
 - [[ADR-0081-three-dimensional-opening-fill]]: the fill parts and the hung-window fill kind.
