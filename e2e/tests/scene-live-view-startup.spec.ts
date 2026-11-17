@@ -6,9 +6,10 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // pane blank: the canvas must not be configured twice before its renderer exists, or the second
 // configuration would build a renderer and camera that never receive a size.
 //
-// The renderer factory awaits the lazily loaded three.js WebGPU module, which carries both the
-// WebGPU backend and three's own WebGL 2 fallback. Holding that chunk's response holds the
-// start-up open on either backend, with no product change and no fixed sleep: the test decides
+// The renderer factory is synchronous. The canvas wrapper waits for the lazily loaded three.js
+// WebGPU module before it builds a renderer, and that module carries both the WebGPU backend and
+// three's own WebGL 2 fallback. Holding that chunk's response holds the start-up open on either
+// backend, with no product change and no fixed sleep: the test decides
 // when the start-up may finish. The first test presses a scene toolbar toggle twice inside
 // that window; the second test holds the same window and presses nothing, which proves that
 // the held start-up alone is harmless.
@@ -27,8 +28,9 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // three's WebGL 2 fallback path call first, until the test lets it through.
 //
 // Like the neighbouring live-view specs, it runs in the scene-webgl project (the scene- name
-// prefix routes it there) and self-skips without navigator.gpu, where the live pane shows a
-// fallback message instead of a canvas.
+// prefix routes it there) and self-skips without navigator.gpu. The holds are written for the
+// WebGPU path, and the adapter hold needs navigator.gpu. A browser without it still mounts a
+// canvas, which three draws through its WebGL 2 fallback; it does not get a fallback message.
 
 const RENDERER_CHUNK = /\/assets\/three\.webgpu-[^/]+\.js$/
 
