@@ -92,6 +92,9 @@
       "schemaVersion": {
         "kind": "leaf"
       },
+      "schemaRevision": {
+        "kind": "leaf"
+      },
       "appVersion": {
         "kind": "leaf"
       },
@@ -107,6 +110,7 @@
     },
     "optional": [
       "style",
+      "schemaRevision",
       "extensions"
     ]
   },

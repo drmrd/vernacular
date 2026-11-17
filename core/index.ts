@@ -41,6 +41,7 @@ export type {
   NewWallOptions,
 } from './model/factories'
 export {
+  CURRENT_SCHEMA_REVISION,
   CURRENT_SCHEMA_VERSION,
   DEFAULT_CEILING_HEIGHT_MM,
   DEFAULT_FURNITURE_FOOTPRINT_MM,
