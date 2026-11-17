@@ -1,4 +1,4 @@
-import { withRoomSide } from './opening-room-side'
+import { openingRoomSide, withRoomSide } from './opening-room-side'
 import {
   deriveDimensionNodesForFloor,
   deriveFloorNode,
@@ -61,18 +61,38 @@ function memoizeByRef<K extends object, V>(cache: WeakMap<K, V>, key: K, derive:
   return value
 }
 
-/** The opening node plus the host-wall reference it was derived against. */
+/** The opening node plus the host-wall reference and the room nodes it was derived against. */
 interface CachedOpeningNode {
   hostWall: Wall
+  rooms: readonly RoomSceneNode[]
   node: OpeningSceneNode
 }
 
 /**
- * Derives a floor's opening nodes, reusing each cached node while both its
- * source `Opening` reference and its host wall reference are unchanged. A
- * replaced host wall changes the opening geometry without changing the opening
- * reference, so the cache compares the host wall too. Module-scope so the
- * deriver closure stays under its line cap, like `memoizeByRef`.
+ * Whether the cached node's room side still holds. The same room-node array means nothing moved;
+ * otherwise the side is sampled again, and the new array is remembered when the side is unchanged.
+ */
+function roomSideHolds(cached: CachedOpeningNode, rooms: readonly RoomSceneNode[]): boolean {
+  if (cached.rooms === rooms) {
+    return true
+  }
+  const holds =
+    openingRoomSide(cached.node, rooms, cached.hostWall.thickness) === cached.node.roomSide
+  if (holds) {
+    cached.rooms = rooms
+  }
+  return holds
+}
+
+/**
+ * Derives a floor's opening nodes. Reuses a cached node only while the Opening and its host Wall
+ * references are unchanged AND the opening's room side is unchanged: the floor's room-node array is
+ * the same reference as when the node was cached, or openingRoomSide(cachedNode, rooms) still
+ * equals cachedNode.roomSide (then the new array is remembered). Otherwise it derives a new node,
+ * so a view that reuses a 3D group by node reference rebuilds a window exactly when its side
+ * changes. A replaced host wall changes the opening geometry without changing the opening
+ * reference, so the cache compares the host wall too. Module-scope so the deriver closure stays
+ * under its line cap, like `memoizeByRef`.
  */
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
@@ -85,7 +105,7 @@ function openingNodesFor(
       return []
     }
     const cached = openingCache.get(opening)
-    if (cached !== undefined && cached.hostWall === hostWall) {
+    if (cached !== undefined && cached.hostWall === hostWall && roomSideHolds(cached, rooms)) {
       return [cached.node]
     }
     const node = withRoomSide(
@@ -93,7 +113,7 @@ function openingNodesFor(
       rooms,
       hostWall.thickness,
     )
-    openingCache.set(opening, { hostWall, node })
+    openingCache.set(opening, { hostWall, rooms, node })
     return [node]
   })
 }
