@@ -1,8 +1,9 @@
 import { Canvas, type CanvasProps, type GLProps } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   loadSceneRendererFactory,
+  releaseSceneRenderer,
   type SceneRendererFactory,
   type SceneRendererOptions,
 } from '../../engine'
@@ -44,6 +45,26 @@ function useSceneRendererFactory(
   return rendererFactory
 }
 
+type HeldRenderer = {
+  renderer: ReturnType<SceneRendererFactory>
+  started: Promise<unknown>
+}
+
+// Keeps the renderer the wrapper built, and releases it once: on demand, or when the wrapper
+// unmounts, also while its init() is still pending. Releasing clears the ref, so a renderer
+// released after a failed start is not released again on unmount.
+function useRendererRelease() {
+  const held = useRef<HeldRenderer | null>(null)
+  const release = useCallback(() => {
+    const current = held.current
+    if (current === null) return
+    held.current = null
+    void releaseSceneRenderer(current.renderer, current.started)
+  }, [])
+  useEffect(() => release, [release])
+  return { held, release }
+}
+
 // React Three Fiber's Canvas re-runs its setup on every render, and each run reads the
 // canvas state once and then awaits the renderer factory. An asynchronous factory leaves a
 // window in which a second render starts a second setup that builds a second renderer and a
@@ -55,6 +76,7 @@ function useSceneRendererFactory(
 function useSceneRendererStart(forceWebGL: boolean) {
   const [status, setStatus] = useState<SceneRendererStatus>('loading')
   const rendererFactory = useSceneRendererFactory(setStatus)
+  const { held, release } = useRendererRelease()
   const mounted = useRef(true)
   useEffect(() => {
     mounted.current = true
@@ -69,18 +91,21 @@ function useSceneRendererStart(forceWebGL: boolean) {
       // OffscreenCanvas branch of DefaultGLProps applies only to its worker path).
       const canvas = defaultProps.canvas as HTMLCanvasElement
       const renderer = rendererFactory({ canvas, forceWebGL })
-      renderer.init().then(
+      const started = renderer.init()
+      held.current = { renderer, started }
+      started.then(
         () => {
           if (mounted.current) setStatus('ready')
         },
         (error: unknown) => {
           logStartFailure('start', error)
+          release()
           if (mounted.current) setStatus('failed')
         },
       )
       return renderer
     }
-  }, [rendererFactory, forceWebGL])
+  }, [rendererFactory, forceWebGL, held, release])
   return { createRenderer, status }
 }
 
@@ -94,7 +119,10 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * renderer's backend has initialized, the frame loop stays off and the children stay unmounted,
  * because Three.js throws on a render, or on most renderer queries, before init() resolves. The
  * wrapper can end in a failed state, in which it shows the cannot-render status and mounts no
- * canvas, and it stays there until it mounts again.
+ * canvas, and it stays there until it mounts again. Every renderer the wrapper builds is released
+ * exactly once through the engine's releaseSceneRenderer: when its init() rejects, and otherwise
+ * when the wrapper unmounts, also while init() is still pending. Opening and closing the view any
+ * number of times therefore leaves no renderer and no animation loop alive.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
