@@ -154,18 +154,49 @@ Known gaps:
   open on another floor stays open after a reset until that floor becomes active, and a rebuild can
   show it shut while the store holds it open. A follow-up issue tracks this.
 - A rebuilt open door can show shut for one frame. The effect that poses a new root is a plain
-  effect, which runs after paint, and the tick now runs in orbit mode as well. A layout effect
-  should close the gap, but it changes the timing of every rebuild. A follow-up issue tracks this.
+  effect, which runs after paint, and the tick now runs in orbit mode as well. The live run looked
+  for this flash and did not see it, but it sampled only about 10 frames each second, so a flash
+  shorter than about 100 ms is not excluded. A layout effect should close the gap, but it changes
+  the timing of every rebuild. A follow-up issue tracks this.
 - The tick costs something in orbit mode even when nothing moves. For each opening on the active
   floor at rest on its target, each frame does two lookups (its open state and its openness) and a
   compare. The frame cost is not measured. A follow-up issue tracks this.
 - The React wiring between the store and the frame loop has no unit test. Unit tests cover
   `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the `useInteractiveObjects`
   hook against a store, and the toolbar control. Nothing tests `useOpeningMotion` or the frame
-  callback in `WalkCameraControls`, because that code runs only under a real WebGPU canvas. A live
-  proof on a WebGPU view is pending. A follow-up issue tracks this.
+  callback in `WalkCameraControls`, because that code runs only under a real WebGPU canvas. The
+  live run described under Evidence was a script, not a committed test, so no automated test
+  covers this wiring yet. A follow-up issue tracks this.
 - A disabled control gives its reason only in its `title` attribute. Nothing visible in the toolbar
   says why the button is disabled. A follow-up issue tracks this.
+
+## Evidence
+
+On 2026-11-16 the feature ran on a live WebGPU view on the development Mac. The extended run used
+commit `1f5f1f7c`. A scripted browser compared screenshots of the canvas at 1280 x 720. Two frames of
+the never-opened scene were identical, so equal frames differed by exactly zero.
+
+- The control is disabled with the "Nothing to close" title while nothing is open, and enabled with
+  the "Shuts every door and window" title once a door opens.
+- A press in orbit mode animates the door shut. Frames were captured in mid swing, and the last
+  frame is identical to the frame from before the door was ever opened.
+- A press in walk mode also animates and ends shut. The reset is not written back: walking on after
+  it shows the shut door, the door blocks the walker, and the E key opens it again.
+- A door that the session holds open stays open across an edge-overlay rebuild, a paint edit, and a
+  switch to the plan view and back. On the previous main commit the edge-overlay round trip returned
+  the door to shut.
+- A window closes by the same control, and a window and a door that stand open at one time close
+  together in the same frames.
+- The toolbar keeps its height of 140 px at 1280 x 720, so the canvas size and the pixel baselines
+  are unchanged.
+
+Limits:
+
+- The run sampled about 10 frames each second. A flash of a shut door shorter than about 100 ms
+  during a rebuild is not excluded.
+- This was a scripted run, not a committed test. No automated test covers the wiring between the
+  session store and the frame loop yet.
+- The whole-building case in Known gaps was not run.
 
 ## References
 
