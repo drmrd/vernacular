@@ -83,8 +83,9 @@
           "$ref": "#/definitions/SchemaVersion"
         },
         "schemaRevision": {
-          "type": "number",
-          "description": "Additive revision within `schemaVersion`; a revision adds optional fields without changing how older documents read. Absent means revision 0. See ADR-0178."
+          "type": "integer",
+          "description": "Additive revision within `schemaVersion`; a revision adds optional fields without changing how older documents read. Absent means revision 0. See ADR-0178.",
+          "minimum": 0
         },
         "appVersion": {
           "type": "string"

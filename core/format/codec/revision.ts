@@ -3,13 +3,16 @@ import type { Project } from '../../model/types'
 import type { SchemaMode } from '../current-schema'
 import { isInteger } from './json-values'
 
-/** The revision of a document that stores none, or none that is an integer. */
+/** The revision of a document that stores none, or none that is an integer of zero or more. */
 const UNREADABLE_REVISION = 0
 
-/** The stored `meta.schemaRevision` when it is an integer; the unreadable revision otherwise. */
+/**
+ * The stored `meta.schemaRevision` when it is an integer of zero or more; the unreadable revision
+ * otherwise, as for the schema, which publishes a revision as a non-negative integer.
+ */
 export function readRevision(document: Project): number {
   const revision = document.meta.schemaRevision
-  return isInteger(revision) ? revision : UNREADABLE_REVISION
+  return isInteger(revision) && revision >= UNREADABLE_REVISION ? revision : UNREADABLE_REVISION
 }
 
 /** A revision above this build's is read tolerantly (a newer build wrote it); any other strictly. */
