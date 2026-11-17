@@ -81,6 +81,17 @@ function validateApertureHeights(
   }
 }
 
+function validateNetTransmittance(
+  aperture: DaylightAperture,
+  location: DaylightInputLocation,
+): void {
+  const { netTransmittance } = aperture
+  if (netTransmittance === undefined) return
+  if (!(Number.isFinite(netTransmittance) && netTransmittance >= 0 && netTransmittance <= 1)) {
+    throw daylightInputError(location, 'net transmittance must be a finite number from 0 to 1')
+  }
+}
+
 function pointOnOutline(point: Point, outline: readonly Point[]): boolean {
   return outline.some((current, index) => {
     const previous = outline[(index + outline.length - 1) % outline.length] ?? current
@@ -109,6 +120,7 @@ function validateAperture(
 ): void {
   const { room, roomCount } = context
   validateApertureHeights(aperture, room.ceilingHeight, location)
+  validateNetTransmittance(aperture, location)
   validateApertureSpan(aperture, room.outline, location)
   if (aperture.opensTo === 'sky') return
   const neighbor = aperture.opensTo.room
@@ -127,7 +139,7 @@ function validateAperture(
  * Throws a RangeError for the first room or aperture that the daylight field cannot use: an
  * outline of fewer than three points, an outline coordinate that is not a finite number, a
  * ceiling or floor color that is not a finite number, a sill, head, or reveal depth that is not
- * usable, a head above the ceiling, a span of no length or with an end point off the outline, or a
+ * usable, a head above the ceiling, a net transmittance outside 0 to 1, a span of no length or with an end point off the outline, or a
  * doorway that opens to its own room or to a room that does not exist. The side test of the
  * midpoint of each span runs with the geometry pass.
  */
