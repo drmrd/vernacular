@@ -1,6 +1,8 @@
 import { pointInPolygon } from '../geometry/polygon'
 import type { Point } from '../model/types'
 import type { Vector3 } from '../scene/vector3'
+import type { CellCopy } from './cells-under-walls'
+import { cellCenter, findCellsUnderWalls, NO_ROOM } from './cells-under-walls'
 import type { DaylightAperture, DaylightField, DaylightRoom } from './daylight-field'
 import {
   createDaylightField,
@@ -34,9 +36,6 @@ const SKY_FACING_ELEVATION = Math.atan(2 / Math.PI)
  */
 const SIDE_PROBE_MM = 2 * OUTLINE_TOLERANCE_MM
 
-/** A cell center sits half a cell past its lower edge. */
-const CELL_CENTER_OFFSET = 0.5
-
 /** One cell of a room, with the form factor from its center to each aperture of the room. */
 export interface CellView {
   visibilityIndex: number
@@ -60,10 +59,20 @@ export interface RoomGeometry {
   surfaces: RoomSurfaces
 }
 
-/** The measured geometry of one floor: the empty grid and each room's cached form factors. */
+/**
+ * The measured geometry of one floor: the empty grid, each room's cached form factors, and the
+ * cells under the walls that copy a room cell's value.
+ */
 export interface SolverGeometry {
   grid: DaylightField
   rooms: readonly RoomGeometry[]
+  cellsUnderWalls: readonly CellCopy[]
+}
+
+/** The cells of each room, and the room of every cell in row-major order, or `NO_ROOM`. */
+interface CellAssignment {
+  cellsByRoom: CellView[][]
+  roomOfCell: Int32Array
 }
 
 interface Opening {
@@ -157,53 +166,50 @@ function roomOpenings(room: DaylightRoom, roomIndex: number): Opening[] {
   }))
 }
 
-function cellCenter(grid: DaylightField, column: number, row: number): Point {
-  return {
-    x: grid.origin.x + (column + CELL_CENTER_OFFSET) * grid.cellSize,
-    y: grid.origin.y + (row + CELL_CENTER_OFFSET) * grid.cellSize,
-  }
-}
-
 /**
  * Gives every cell to the first room whose outline contains its center (a center on a wall line
  * counts as inside) and measures its form factors there. Cells in no room, and cells of a room
- * open to the sky, are skipped. Returns the cells of each room, in the order of `rooms`.
+ * open to the sky, get no form factors. Returns the cells of each room, in the order of `rooms`,
+ * and the room of every cell; a cell of a room open to the sky still names its room.
  */
 function assignCells(
   grid: DaylightField,
   rooms: readonly DaylightRoom[],
   openings: readonly (readonly Opening[])[],
-): CellView[][] {
+): CellAssignment {
   const cellsByRoom: CellView[][] = rooms.map(() => [])
+  const roomOfCell = new Int32Array(grid.columns * grid.rows).fill(NO_ROOM)
   for (let row = 0; row < grid.rows; row++) {
     for (let column = 0; column < grid.columns; column++) {
       const center = cellCenter(grid, column, row)
       const roomIndex = rooms.findIndex((room) => pointInPolygon(center, room.outline))
-      if (roomIndex === -1 || rooms[roomIndex]?.openToSky === true) continue
+      roomOfCell[row * grid.columns + column] = roomIndex
+      if (roomIndex === NO_ROOM || rooms[roomIndex]?.openToSky === true) continue
       cellsByRoom[roomIndex]?.push({
         visibilityIndex: daylightFieldCellIndex(grid, column, row) + SKY_VISIBILITY_CHANNEL,
         factors: (openings[roomIndex] ?? []).map((opening) => openingFormFactor(center, opening)),
       })
     }
   }
-  return cellsByRoom
+  return { cellsByRoom, roomOfCell }
 }
 
 /**
  * Checks the rooms, then measures the form factor from every cell center at the work plane to
- * every aperture of the cell's room. Throws a RangeError that names the room and the aperture for
+ * every aperture of the cell's room, and finds the room cell that each cell under a wall copies.
+ * Throws a RangeError that names the room and the aperture for
  * an input that the field cannot use.
  */
 export function measureGeometry(rooms: readonly DaylightRoom[]): SolverGeometry {
   validateDaylightRooms(rooms)
   const grid = createDaylightField(rooms)
   const openings = rooms.map(roomOpenings)
-  const cellsByRoom = assignCells(grid, rooms, openings)
+  const { cellsByRoom, roomOfCell } = assignCells(grid, rooms, openings)
   const measured: RoomGeometry[] = rooms.map((room, index) => ({
     openToSky: room.openToSky === true,
     apertures: (openings[index] ?? []).map(apertureGeometry),
     cells: cellsByRoom[index] ?? [],
     surfaces: measureRoomSurfaces(room),
   }))
-  return { grid, rooms: measured }
+  return { grid, rooms: measured, cellsUnderWalls: findCellsUnderWalls(grid, rooms, roomOfCell) }
 }

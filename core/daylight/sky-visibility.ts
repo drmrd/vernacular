@@ -1,5 +1,6 @@
 import type { Vector3 } from '../scene/vector3'
 import type { DaylightField, DaylightRoom } from './daylight-field'
+import { OPEN_SKY_VISIBILITY } from './daylight-field'
 import { apertureWeights, doorwayLuminance } from './doorway-light'
 import { cellVisibility, enteringFlux, roomAverageTerm } from './room-average'
 import type { RoomGeometry, SolverGeometry } from './room-geometry'
@@ -74,7 +75,10 @@ function lightRooms(geometry: SolverGeometry, sky: SkyLuminance): RoomLight[] {
   })
 }
 
-/** Weights the cached form factors; cells in no room and open-sky rooms keep 1. */
+/**
+ * Weights the cached form factors, then copies each source value into its cell under a wall.
+ * Open-sky rooms and the other cells in no room keep 1.
+ */
 function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): DaylightField {
   const field = {
     ...geometry.grid,
@@ -92,6 +96,9 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
       )
     }
   }
+  for (const copy of geometry.cellsUnderWalls) {
+    field.data[copy.targetIndex] = field.data[copy.sourceIndex] ?? OPEN_SKY_VISIBILITY
+  }
   return field
 }
 
@@ -102,11 +109,16 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * radiance toward its facing times its net transmittance; a doorway weighs the luminance of the
  * room it opens to times its net transmittance (that luminance is its mean
  * visibility, lit by that room's sky apertures alone, times its mean reflectance; 1 for a room
- * open to the sky). The form factors depend on geometry alone, so the solver checks and measures
- * the rooms one time, and only re-weights them for later skies; a caller that changes the rooms
- * builds a new solver. That check runs on the first call of any method, not when the
- * solver is created, so a room or an aperture that the field cannot use throws a RangeError that
- * names it from that first call.
+ * open to the sky). A cell whose center lies in no room, with a cell of a room (a room open to the
+ * sky counts) among its eight neighbors, holds the sky visibility of one such neighbor; only cells
+ * whose center lies in a room are sources. The room is the one whose outline lies nearest the
+ * cell's center, and on an equal distance the first in the input; among its neighbors the source is
+ * the nearest, and on a tie the first in the order left, right, below, above, lower left, lower
+ * right, upper left, upper right. Every other cell in no room holds 1. The form factors depend on
+ * geometry alone, so the solver checks and measures the rooms one time, and only re-weights them
+ * for later skies; a caller that changes the rooms builds a new solver. That check runs on the
+ * first call of any method, not when the solver is created, so a room or an aperture that the
+ * field cannot use throws a RangeError that names it from that first call.
  */
 export function createDaylightFieldSolver(rooms: readonly DaylightRoom[]): DaylightFieldSolver {
   let geometry: SolverGeometry | null = null
