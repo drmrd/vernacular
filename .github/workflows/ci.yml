@@ -315,9 +315,9 @@ jobs:
           E2E_REQUIRE_WEBGPU: '1'
         run: pnpm exec playwright test --project=chromium e2e/tests/journeys/perceived-color-readout.spec.ts --reporter=list
       - name: Close-openings journey (chromium project)
-        # The run takes about a minute on the development Mac. Each of its five tests may take up
+        # The run takes about a minute on the development Mac. Each of its six tests may take up
         # to 120 s, and retries: 2 can run a failed test three times, so a failing run could last
-        # 30 minutes or more. Fifteen minutes is about fifteen times the local run, enough for a
+        # 36 minutes or more. Fifteen minutes is about fifteen times the local run, enough for a
         # slow runner and a retry or two, and it ends a hung run early.
         timeout-minutes: 15
         env:
