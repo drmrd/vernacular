@@ -30,6 +30,11 @@ function warnGraftDropped(failure: GraftDropped): void {
 /** A decode failure of the one kind the interim rule opens anyway. */
 export type FormatRulesFailure = Extract<DecodeFailure, { readonly kind: 'format-rules' }>
 
+/** Whether the interim rule opens a document with this failure anyway. */
+export function mayOpenDespiteFaults(failure: DecodeFailure): failure is FormatRulesFailure {
+  return failure.kind === 'format-rules'
+}
+
 /**
  * The interim rule, in one place: a document that only breaks the format rules is opened anyway,
  * as its migrated document, with its faults reported in a warning. The cast of the failed document
@@ -52,7 +57,7 @@ export function openDecodedDocument(bytes: Uint8Array, options?: CodecOptions): 
     return { project: result.value.project, migratedFrom: result.value.migratedFrom }
   }
   const { failure } = result
-  if (failure.kind !== 'format-rules') {
+  if (!mayOpenDespiteFaults(failure)) {
     throw new DocumentDecodeError(failure)
   }
   return { project: openDespiteFaults(failure), migratedFrom: failure.migratedFrom }

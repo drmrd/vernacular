@@ -16,7 +16,8 @@ import type { ProjectFiles, RemovableProjectFiles } from '../project-files/proje
 import { collectReferencedAssets } from '../zip/export-project-bundle'
 import { writeBackup } from './document-backups'
 import { DocumentDecodeError } from './document-decode-error'
-import { openDespiteFaults, warnAboutEncodeProblems } from './open-decoded'
+import { mayOpenDespiteFaults, openDespiteFaults, warnAboutEncodeProblems } from './open-decoded'
+import type { FormatRulesFailure } from './open-decoded'
 import { createProjectSnapshots } from './project-snapshots'
 import type { ProjectSnapshots } from './project-snapshots'
 import { listStoredFiles } from './stored-files'
@@ -46,9 +47,18 @@ export interface ProjectSummary {
   readonly lastChangedAt: string | undefined
 }
 
+const PACK_SCOPE_PREFIX = 'pack:'
+
+type DecodedRead = Extract<StoreRead, { readonly ok: true }>
+
+/** A stored document file with the outcome of decoding exactly those bytes. */
+type StoredRead =
+  | { readonly bytes: Uint8Array; readonly decoded: DecodedRead }
+  | { readonly bytes: Uint8Array; readonly failure: DecodeFailure }
+
 function hashesToCopy(project: Project): string[] {
   const references = collectReferencedAssets(project).filter(
-    (reference) => !reference.scope.startsWith('pack:'),
+    (reference) => !reference.scope.startsWith(PACK_SCOPE_PREFIX),
   )
   return [...new Set(references.map((reference) => reference.contentHash))]
 }
@@ -82,14 +92,25 @@ export class DocumentStore {
 
   /** Decodes the project's document. A failed decode writes nothing; a migrated one is backed up. */
   async read(id: string): Promise<StoreRead> {
+    const stored = await this.readStored(id)
+    if (stored === undefined) {
+      return { ok: false, failure: { kind: 'not-found' } }
+    }
+    return 'failure' in stored
+      ? { ok: false, failure: { kind: 'decode', decode: stored.failure } }
+      : stored.decoded
+  }
+
+  /** The document file and its decoded outcome; undefined when the project has no document file. */
+  private async readStored(id: string): Promise<StoredRead | undefined> {
     const directory = this.files.projectDirectory(id)
     const bytes = await directory.readFile(PROJECT_FILE)
     if (bytes === undefined) {
-      return { ok: false, failure: { kind: 'not-found' } }
+      return undefined
     }
     const result = decodeDocument(bytes, this.options)
     if (!result.ok) {
-      return { ok: false, failure: { kind: 'decode', decode: result.failure } }
+      return { bytes, failure: result.failure }
     }
     if (result.value.migratedFrom !== undefined) {
       await writeBackup(directory, 'pre-migration', {
@@ -98,11 +119,13 @@ export class DocumentStore {
       })
     }
     const lastChangedAt = await directory.modifiedAt(PROJECT_FILE)
-    return {
+    const { value } = result
+    const decoded: DecodedRead = {
       ok: true,
-      value: result.value,
+      value,
       ...(lastChangedAt === undefined ? {} : { lastChangedAt }),
     }
+    return { bytes, decoded }
   }
 
   /**
@@ -158,36 +181,51 @@ export class DocumentStore {
 
   /**
    * Interim: opens a document that breaks the format rules, after the migration backup when the
-   * file was migrated. The rule itself lives in `openDespiteFaults`.
+   * file was migrated. The rule itself lives in `openDespiteFaults`. The backup holds the file as
+   * stored at the time of this call, which is part of the interim rule; a later change removes this
+   * method, because a caller that holds only the failure cannot name the bytes that failed.
    */
   async openDespiteFormatFaults(id: string, failure: DecodeFailure): Promise<Project> {
-    if (failure.kind !== 'format-rules') {
+    if (!mayOpenDespiteFaults(failure)) {
       throw new DocumentDecodeError(failure)
     }
-    if (failure.migratedFrom !== undefined) {
-      const directory = this.files.projectDirectory(id)
-      const bytes = await directory.readFile(PROJECT_FILE)
-      if (bytes === undefined) {
-        throw new ProjectNotFoundError(id)
-      }
-      await writeBackup(directory, 'pre-migration', { version: failure.migratedFrom, bytes })
+    if (failure.migratedFrom === undefined) {
+      return openDespiteFaults(failure)
     }
-    return openDespiteFaults(failure)
+    const bytes = await this.files.projectDirectory(id).readFile(PROJECT_FILE)
+    if (bytes === undefined) {
+      throw new ProjectNotFoundError(id)
+    }
+    return this.backUpAndOpen(id, failure, bytes)
   }
 
   /** Interim: `read` with the interim policy, throwing on failure. */
   async load(id: string): Promise<Project> {
-    const read = await this.read(id)
-    if (read.ok) {
-      return read.value.project
-    }
-    if (read.failure.kind === 'not-found') {
+    const stored = await this.readStored(id)
+    if (stored === undefined) {
       throw new ProjectNotFoundError(id)
     }
-    if (read.failure.decode.kind === 'format-rules') {
-      return this.openDespiteFormatFaults(id, read.failure.decode)
+    if (!('failure' in stored)) {
+      return stored.decoded.value.project
     }
-    throw new DocumentDecodeError(read.failure.decode)
+    const { failure, bytes } = stored
+    if (!mayOpenDespiteFaults(failure)) {
+      throw new DocumentDecodeError(failure)
+    }
+    return this.backUpAndOpen(id, failure, bytes)
+  }
+
+  /** The migration backup of the given bytes, when the file was migrated, then the interim open. */
+  private async backUpAndOpen(
+    id: string,
+    failure: FormatRulesFailure,
+    bytes: Uint8Array,
+  ): Promise<Project> {
+    if (failure.migratedFrom !== undefined) {
+      const directory = this.files.projectDirectory(id)
+      await writeBackup(directory, 'pre-migration', { version: failure.migratedFrom, bytes })
+    }
+    return openDespiteFaults(failure)
   }
 }
 

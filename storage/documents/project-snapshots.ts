@@ -13,7 +13,10 @@ export interface ProjectSnapshots {
   restore(): Promise<DecodeResult | undefined>
 }
 
-/** The snapshots of the project whose directory is `directory`. */
+/**
+ * The snapshots of the project whose directory is `directory`. The seam exists because the snapshot
+ * store moves bytes; this puts the codec in front of it.
+ */
 export function createProjectSnapshots(
   directory: DirectoryPort,
   options?: CodecOptions,
