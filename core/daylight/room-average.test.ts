@@ -28,10 +28,14 @@ const WHITE: LinearRgb = { r: 1, g: 1, b: 1 }
 // Half of the opening area times the default net transmittance: 0.5 * 0.8 * 1000 * 1200.
 const EXPECTED_FLUX = 480000
 const EXPECTED_SURFACE_AREA = 60400000
-// Flux times reflectance over the absorbing area, before the first reflection:
-// 480000 * 0.6282119 / 22456000, where 22456000 = 60400000 * (1 - 0.6282119).
-const EXPECTED_INTERREFLECTION = 0.013428
+// Flux times the floor reflectance over the absorbing area, for the first reflection:
+// 480000 * 0.5 / 22456000, where 22456000 = 60400000 * (1 - 0.6282119) and 0.5 is the gray floor.
+const EXPECTED_INTERREFLECTION = 0.010688
 const EXPECTED_REFLECTANCE = 0.62821
+// The direct term of the test room is 0.8 * 0.035785 = 0.028628; adding the inter-reflection of
+// 0.010688 gives 0.039316. That is below 0.052570 (the mean with no glass loss) and above 0.0236,
+// the rule of thumb for the same net transmittance.
+const EXPECTED_MEAN_VISIBILITY = 0.039316
 
 const EAST_SPAN: readonly [Point, Point] = [
   { x: ROOM_WIDTH, y: 1000 },
@@ -99,13 +103,13 @@ describe('the room-average term', () => {
     expect(solver.enteringFlux(0, UNIFORM_SKY)).toBeCloseTo(EXPECTED_FLUX, 3)
   })
 
-  it('gives 0.013428 for the inter-reflection of the test room', () => {
+  it('gives 0.010688 for the inter-reflection of the test room', () => {
     const solver = createDaylightFieldSolver([testRoom()])
     const gap = Math.abs(solver.interreflection(0, UNIFORM_SKY) - EXPECTED_INTERREFLECTION)
     expect(gap).toBeLessThan(TABULATED_TOLERANCE)
   })
 
-  it('holds flux times reflectance over the surface area and the absorbed share of the bounce', () => {
+  it('holds flux times the floor reflectance over the surface area and the absorbed share of the bounce', () => {
     const solver = createDaylightFieldSolver([testRoom()])
     const floorArea = ROOM_WIDTH * ROOM_DEPTH
     const perimeter = 2 * (ROOM_WIDTH + ROOM_DEPTH)
@@ -116,9 +120,15 @@ describe('the room-average term', () => {
     const bounce = solver.interreflection(0, UNIFORM_SKY)
     expect(Math.abs(surfaceArea - EXPECTED_SURFACE_AREA)).toBeLessThan(TOLERANCE)
     expect(Math.abs(reflectance - EXPECTED_REFLECTANCE)).toBeLessThan(TABULATED_TOLERANCE)
-    expect(Math.abs(bounce * surfaceArea * (1 - reflectance) - flux * reflectance)).toBeLessThan(
+    expect(Math.abs(bounce * surfaceArea * (1 - reflectance) - flux * GRAY.g)).toBeLessThan(
       TOLERANCE,
     )
+  })
+
+  it('gives a mean of 0.039316 over the test room, toward the rule of thumb', () => {
+    const field = createDaylightFieldSolver([testRoom()]).field(UNIFORM_SKY)
+    const mean = meanOverRegion(field, { x0: 0, x1: ROOM_WIDTH, depth: ROOM_DEPTH })
+    expect(Math.abs(mean - EXPECTED_MEAN_VISIBILITY)).toBeLessThan(TABULATED_TOLERANCE)
   })
 
   it('receives no more direct light on its cells than the flux that enters the room', () => {
