@@ -374,7 +374,7 @@ interface DaylightAperture {
 }
 ```
 
-A 12 by 9 m floor is 120 by 90 cells. A cell outside every room holds visibility 1 and no bounce. The shape, the texture format, the lookup, and the invalidation are the same for both parts.
+A 12 by 9 m floor is 120 by 90 cells, plus a margin of two cells on every side (124 by 94). A cell outside every room holds visibility 1 and no bounce, unless one of its eight neighbors is a room cell; then it holds that room's visibility (ADR-0196). The shape, the texture format, the lookup, and the invalidation are the same for both parts.
 
 Window-lit rooms fill the visibility channel. For each cell it is the share of sky light that arrives through the room's windows, from each window's size, sill, reveal depth, and facing, the dome's radiance toward it, and a room-average term for light reflected between the room's surfaces. An interior doorway passes a share of the neighbor room's mean, so a hall borrows light. The bounce channels hold zero.
 
