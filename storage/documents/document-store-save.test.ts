@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, decodeDocument, encodeDocument } from '../../core'
+import { CURRENT_SCHEMA_VERSION, createWall, decodeDocument, encodeDocument } from '../../core'
 import type { CodecOptions, Project, SchemaMigration } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
@@ -162,4 +162,40 @@ describe('saving over a previous file that cannot be read', () => {
       expect(warned.some((text) => text.includes(reason.failure.kind))).toBe(true)
     },
   )
+})
+
+function growAndRename(project: Project): void {
+  project.meta.name = 'Mutated'
+  project.floors[0]!.walls.push(
+    createWall({ x: 0, y: 0 }, { x: 1, y: 1 }, { id: 'wall-extra', thickness: 100 }),
+  )
+}
+
+describe('the state a store keeps', () => {
+  it('is isolated from a later change to the project that was saved', async () => {
+    const store = storeOver(await rootHolding(undefined))
+    const project = validProject()
+    const savedName = project.meta.name
+    const savedWalls = project.floors[0]!.walls.length
+    await store.save('a', project)
+
+    growAndRename(project)
+
+    const loaded = await store.load('a')
+    expect(loaded.meta.name).toBe(savedName)
+    expect(loaded.floors[0]!.walls).toHaveLength(savedWalls)
+  })
+
+  it('is isolated from a change to a project that was loaded', async () => {
+    const store = storeOver(await rootHolding(currentBytes()))
+    const firstLoad = await store.load('a')
+    const loadedName = firstLoad.meta.name
+    const loadedWalls = firstLoad.floors[0]!.walls.length
+
+    growAndRename(firstLoad)
+
+    const secondLoad = await store.load('a')
+    expect(secondLoad.meta.name).toBe(loadedName)
+    expect(secondLoad.floors[0]!.walls).toHaveLength(loadedWalls)
+  })
 })

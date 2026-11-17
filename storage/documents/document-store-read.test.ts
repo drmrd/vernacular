@@ -5,6 +5,7 @@ import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import {
   bytesOf,
   fixtureDocument,
+  metaOf,
   UNKNOWN_WALL_FIELD_PATH,
   withUnknownWallField,
 } from '../../tests/fixtures/projects/versions/fixture-documents'
@@ -20,6 +21,12 @@ const DOCUMENT_PATH = 'a/vernacular.json'
 const BACKUP_DIRECTORY = 'a/.house-backups'
 const STORED_AT = new Date('2026-03-04T05:06:07.000Z')
 const NOT_JSON = new TextEncoder().encode('{ not json')
+
+function newerVersionBytes(): Uint8Array {
+  const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+  metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+  return bytesOf(document)
+}
 
 const throwingStep: SchemaMigration = {
   from: OLDER_VERSION,
@@ -127,6 +134,11 @@ describe('reading a stored document through the store', () => {
 describe('a read that fails', () => {
   const cases: { name: string; bytes: Uint8Array; options?: CodecOptions; kind: string }[] = [
     { name: 'bytes that are not JSON', bytes: NOT_JSON, kind: 'not-json' },
+    {
+      name: 'a document saved at a newer schema version',
+      bytes: newerVersionBytes(),
+      kind: 'newer-version',
+    },
     {
       name: 'a migration that throws',
       bytes: versionFixtureBytes(OLDER_VERSION),

@@ -14,10 +14,11 @@ import {
 } from '../../core'
 import type { Command, Project } from '../../core'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
-import { FolderProjectStore } from '../../storage/folder/folder-project-store'
+import { DocumentStore, FolderFiles } from '../../storage'
 
 const FLOOR_ID = 'floor-1'
 const FURNITURE_ID = 'furniture-1'
+const PROJECT_ID = 'house'
 
 function dispatcherFor(project: Project): Dispatcher<Project> {
   return new Dispatcher(project, registerAllProjectCommands(new CommandRegistry<Project>()))
@@ -66,7 +67,7 @@ function decode(bytes: Uint8Array | undefined): StoredDocument {
 
 /** A store whose directory already holds the document that has every field set. */
 async function storeHoldingFullDocument(): Promise<{
-  store: FolderProjectStore
+  store: DocumentStore
   directory: InMemoryDirectory
 }> {
   const directory = new InMemoryDirectory()
@@ -74,18 +75,21 @@ async function storeHoldingFullDocument(): Promise<{
     'vernacular.json',
     encodeDocument(projectWithEveryFieldSet(), undefined).bytes,
   )
-  return { store: new FolderProjectStore(directory), directory }
+  return {
+    store: new DocumentStore(new FolderFiles(PROJECT_ID, directory, { durable: true })),
+    directory,
+  }
 }
 
 async function clearSaveAndReload(command: Command<unknown>): Promise<StoredDocument> {
   const { store, directory } = await storeHoldingFullDocument()
-  const loaded = await store.loadProject()
+  const loaded = await store.load(PROJECT_ID)
   dispatcherFor(loaded).dispatch(command)
-  await store.saveProject(loaded)
+  await store.save(PROJECT_ID, loaded)
   return decode(await directory.readFile('vernacular.json'))
 }
 
-describe('a cleared field stays cleared across a folder store save', () => {
+describe('a cleared field stays cleared across a document store save', () => {
   it('starts from a stored document that has every field set', async () => {
     const { directory } = await storeHoldingFullDocument()
 

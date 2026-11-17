@@ -10,7 +10,8 @@ import {
   type Project,
 } from '../../core'
 import { InMemoryAssetCache } from '../in-memory-asset-cache'
-import { collectReferencedAssets, exportProjectBundle } from './export-project-bundle'
+import { collectReferencedAssets } from '../project-files/referenced-assets'
+import { exportProjectBundle } from './export-project-bundle'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
 
 const FURNITURE_HASH = 'f'.repeat(64)
