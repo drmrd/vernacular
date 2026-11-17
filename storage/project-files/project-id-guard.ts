@@ -1,14 +1,28 @@
 import { ASSET_DIRECTORY_PREFIX } from '../directory-asset-cache'
 
-const RESERVED_IDS: readonly string[] = ['.', '..', ASSET_DIRECTORY_PREFIX]
+const DOT_SEGMENTS: readonly string[] = ['.', '..']
 
-/**
- * A project id that cannot name a project directory. The message is the id as
- * written, so that a caller can match on it; the error name carries the reason.
- */
+/** Why `id` cannot name a project directory, or undefined when it can. */
+function invalidReason(id: string): string | undefined {
+  if (id === '') {
+    return 'an id cannot be empty'
+  }
+  if (id.includes('/') || id.includes('\\')) {
+    return 'an id is one path segment, so it cannot hold a slash or a backslash'
+  }
+  if (DOT_SEGMENTS.includes(id)) {
+    return 'an id cannot be a dot segment'
+  }
+  if (id === ASSET_DIRECTORY_PREFIX) {
+    return `"${ASSET_DIRECTORY_PREFIX}" is reserved for the shared asset pool`
+  }
+  return undefined
+}
+
+/** A project id that cannot name a project directory. The message says why. */
 export class InvalidProjectIdError extends Error {
-  constructor(id: string) {
-    super(id)
+  constructor(id: string, reason: string) {
+    super(`${JSON.stringify(id)} is not a valid project id: ${reason}.`)
     this.name = 'InvalidProjectIdError'
   }
 }
@@ -19,8 +33,8 @@ export class InvalidProjectIdError extends Error {
  * leave its own directory.
  */
 export function assertProjectId(id: string): void {
-  const isOneSegment = id !== '' && !id.includes('/') && !id.includes('\\')
-  if (!isOneSegment || RESERVED_IDS.includes(id)) {
-    throw new InvalidProjectIdError(id)
+  const reason = invalidReason(id)
+  if (reason !== undefined) {
+    throw new InvalidProjectIdError(id, reason)
   }
 }
