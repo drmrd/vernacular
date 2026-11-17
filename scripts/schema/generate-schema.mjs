@@ -73,10 +73,17 @@ function checkSchema(content) {
   return verdict.ok
 }
 
+/** The drift message for a derived file; `stored` is null when the file does not exist. */
+function driftMessage(path, stored) {
+  const state = stored === null ? 'is missing' : 'is out of date'
+  return `Schema drift: ${path} ${state}. Run \`pnpm schema:generate\`.`
+}
+
 function checkDerivedFile({ path, content }) {
-  const current = (readIfExists(path) ?? '') === content
-  if (!current) console.error(`Schema drift: ${path} is out of date. Run \`pnpm schema:generate\`.`)
-  return current
+  const stored = readIfExists(path)
+  if (stored === content) return true
+  console.error(driftMessage(path, stored))
+  return false
 }
 
 const schema = buildProjectSchema()
