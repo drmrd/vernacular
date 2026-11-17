@@ -269,6 +269,11 @@ jobs:
     # The image is pinned by number so that a move to a newer one is a deliberate change.
     # macOS minutes bill at 10x linux, so the job shares the e2e gate: it runs only when the
     # PR touches a path that can move the live frame (ADR-0171).
+    # The same adapter also runs the perceived-color journey, which clicks a painted wall face
+    # in the live pane and checks that the inspector shows the sampled color for that face.
+    # It self-skips on the linux e2e runner, so this job is where it actually runs. The spec
+    # asks for the full Chromium build and the darwin GPU flags itself, so it runs under the
+    # chromium project with the browsers installed below.
     if: needs.decide.outputs.e2e == 'true'
     steps:
       - name: Checkout
@@ -298,6 +303,8 @@ jobs:
         run: pnpm build
       - name: Live-view visual-regression diff (scene-webgl project)
         run: pnpm exec playwright test --project=scene-webgl e2e/tests/scene-live-view-visual-regression.spec.ts --reporter=list
+      - name: Perceived-color readout journey (chromium project)
+        run: pnpm exec playwright test --project=chromium e2e/tests/journeys/perceived-color-readout.spec.ts --reporter=list
       - name: Upload live-view diff on failure
         if: failure()
         uses: actions/upload-artifact@v4
