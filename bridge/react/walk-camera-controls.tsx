@@ -39,9 +39,11 @@ const LOOK_SENSITIVITY_RAD_PER_PX = 0.0025
 const WALK_RADIUS_MM = 250
 
 // Resumes the walk state (or seeds it from the camera the first time), takes control of the
-// camera, and wires the keyboard, click-to-capture, and pointer-look listeners. The doors
-// are already posed: the opening motion hook poses each new scene root, and its per-frame
-// tick keeps the root on the open set. Movement keys act independently of pointer capture;
+// camera, and wires the keyboard, click-to-capture, and pointer-look listeners. Starting a
+// walk poses no door: the opening motion hook poses each new scene root, and its per-frame
+// tick keeps the active floor's openings on the open set. An opening on a floor that was not
+// active when its scene was rebuilt is not posed until the floor-scope follow-up work (a
+// known gap, recorded in ADR-0198). Movement keys act independently of pointer capture;
 // the pointer only drives look while captured. Returns a teardown that hands the pose back,
 // removes the listeners, releases capture, and clears held input.
 function startWalk(session: WalkSession): () => void {
@@ -175,8 +177,8 @@ function useWalkPoseHandoff(
 }
 
 // The props a walk session reads: everything the component takes except the scene root,
-// which reaches the session through its host, and the stored open set, which the opening
-// motion hook follows.
+// which only the opening motion hook and the frame callback use, and the stored open set,
+// which the opening motion hook follows.
 type WalkSessionProps = Omit<WalkCameraControlsProps, 'root' | 'storedOpenDoorIds'>
 
 // Runs a walk session for as long as walk mode is on: it holds the walker's pose and held
@@ -238,10 +240,14 @@ function useWalkSession(
  * reports the pose back, so the walk survives a view switch and a detour through orbit
  * (ADR-0170). The openings stay live in orbit mode too: useOpeningMotion has them follow
  * the doors the session store holds open and poses each new scene root, and the
- * per-frame tick swings them toward that set in either mode. The unit test of the
- * opening motion hook (use-opening-motion.test.tsx) covers that follow, the pose of a
- * new root, and the tick; the frame callback below runs only under a real WebGPU canvas
- * (foundation 6.3), so no unit test reaches it.
+ * per-frame tick swings the active floor's openings toward that set in either mode. A
+ * walk start poses nothing itself. An opening on a floor that was not active when its
+ * scene was rebuilt is not posed until the floor-scope follow-up work (a known gap,
+ * recorded in ADR-0198). The unit test of the opening motion hook
+ * (use-opening-motion.test.tsx) covers the follow of the stored set, the pose of a new
+ * root before any tick, and the order of the two when both arrive in one render. The
+ * frame callback below runs only under a real WebGPU canvas (foundation 6.3), so no
+ * automated test reaches it.
  */
 export function WalkCameraControls(props: WalkCameraControlsProps) {
   // Kept as one props object because the session hook reads the same shape minus the root
