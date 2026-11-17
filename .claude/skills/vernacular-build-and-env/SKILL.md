@@ -51,7 +51,7 @@ Recreate a working Vernacular development environment from a bare clone, and rec
 
 | Command             | Runs                                                                                                  |
 | ------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pnpm typecheck`    | `tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json`                                                   |
+| `pnpm typecheck`    | `tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json && tsc --noEmit -p tsconfig.tooling.json`          |
 | `pnpm lint`         | `eslint .` (warnings also count against you; see vernacular-change-control for the zero-problems bar) |
 | `pnpm format:check` | `prettier --check .` (Prettier 3 also honors `.gitignore`)                                            |
 | `pnpm test`         | `vitest run --project unit`                                                                           |
