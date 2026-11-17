@@ -774,3 +774,10 @@ export {
 export type { Reveal, WallRectangle } from './daylight/form-factor'
 export { horizontalPointToWallRectangle, visibleThroughReveal } from './daylight/form-factor'
 export type { FormatFault } from './format/codec/codec-types'
+export type {
+  CodecOptions,
+  DecodedDocument,
+  DecodeFailure,
+  DecodeResult,
+} from './format/codec/codec-types'
+export { decodeDocument } from './format/codec/decode-document'
