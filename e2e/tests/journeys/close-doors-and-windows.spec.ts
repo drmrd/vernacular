@@ -47,6 +47,12 @@ import {
 // policy as the perceived-color journey: it skips without one, and E2E_REQUIRE_WEBGPU=1 turns
 // the skip into a failure, which the macOS live-view job sets.
 //
+// What it proves about frames: no frame that the sampler read shows an opening in the wrong
+// state. It does not prove that the sampler reads every frame the page draws. Blank readings
+// from a canvas that has not drawn yet are dropped, and the check after the view switch rests
+// on only a few drawn readings (the run prints the counts). A flash of the wrong state that falls
+// between two reads would escape it, which issue #778 tracks.
+//
 // One thing is not asserted. On a fresh page the walker starts at a pose where the door is out
 // of sight, so the walker's first frames cannot show its leaf, and that case reads the control
 // and the orbit view instead. Walker views are also never compared by pixels across a scene
@@ -202,8 +208,9 @@ test('keeps an open door open through scene rebuilds and a view switch, and stil
     within(upper, 'the leaf shut after the paint edit'),
   )
 
-  // Scenario 8: going to the plan view and back mounts a new 3D canvas. The door shows open
-  // from the first frame of it, and the control still closes it.
+  // Scenario 8: going to the plan view and back mounts a new 3D canvas. No frame read across
+  // the switch shows the door shut, the settled view shows it open, and the control still
+  // closes it.
   const beforeSwitch = await reopenSeenFromOrbit(page, canvas)
   const remount = await switchViewsWhileWatching(page, region)
   await views.expectSame(
@@ -331,7 +338,7 @@ test('starts a walk on a fresh page with nothing opened and the door shut', asyn
   )
 })
 
-test('shows each door in the right state from the first frame of a walk', async ({ page }) => {
+test('shows each door in the right state in the frames read as a walk starts', async ({ page }) => {
   const { canvas, views } = await startOnLiveRoom(page, SUBJECT)
 
   // The door's region in the walker's view, and what that region reads when open and shut.
@@ -343,7 +350,7 @@ test('shows each door in the right state from the first frame of a walk', async 
   const shutSignature = await signatureOf(page, region)
   await openWithKey(page, canvas, shutView)
 
-  // Scenario 11, after orbit mode with the door open: the first walker frames show it open.
+  // Scenario 11, after orbit mode with the door open: no walker frame read as the walk starts shows it shut.
   await enterOrbit(page)
   const resumedOpen = await startWalkWhileWatching(page, canvas, region)
   expectNeverShowing(resumedOpen.readings, shutSignature, 'the door as the walk resumes, open')
@@ -353,7 +360,7 @@ test('shows each door in the right state from the first frame of a walk', async 
     within(region, 'the door leaf, open at walk start'),
   )
 
-  // Scenario 11, after a reset made in orbit mode: the first walker frames show it shut.
+  // Scenario 11, after a reset made in orbit mode: no walker frame read as the walk starts shows it open.
   await enterOrbit(page)
   const orbitOpen = await stableFrame(canvas)
   await closeControl(page).click()

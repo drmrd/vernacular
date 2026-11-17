@@ -33,6 +33,8 @@ import { guardLiveSceneSupport } from '../live-webgpu'
 const FIRST_STRIDE_MS = 350
 const STEP_MS = 80
 const MAX_STEPS = 30
+// Each wrong hit costs a trip to orbit mode and back, so the search gives up after a few.
+const MAX_WRONG_HITS = 3
 
 // The door seen from the south in orbit mode: the frame before anything opened, the frame
 // with the door open, and the door's region. The door is opened by the walker with the key.
@@ -57,8 +59,9 @@ export async function reopenSeenFromOrbit(page: Page, canvas: Locator): Promise<
 
 // The opening a search must end with open: the south view in orbit mode must differ from the
 // all-shut view inside the wanted region. The key is the sideways key the walker strafes with.
-// When another opening is already open, that one cannot be hit again (see wantedOpening), and a
-// wrong hit means the walker stands at a shut opening that the search did not expect.
+// When another opening is already open, the search expects the key to leave it alone, because
+// from the head-on pose that opened it the key does nothing to it (see wantedOpening). A press
+// after a strafe could still swing it, so a change that is not the wanted opening then fails.
 export interface SearchTarget {
   readonly key: string
   readonly never: Buffer
@@ -84,7 +87,7 @@ async function wantedOpening(
   if (!(await viewsOf(page).equal(orbit, target.never, target.wanted))) return orbit
   if (target.otherOpen) {
     throw new Error(
-      'the open key opened an opening other than the wanted one, while another opening was open',
+      'the open key changed an opening other than the wanted one, while another opening was open',
     )
   }
   logReading('search', 'the open key opened a wrong opening; shutting it with the control')
@@ -98,17 +101,26 @@ async function wantedOpening(
 // Walks sideways in steps from where the walker stands, pressing the open key after each step,
 // until the key opens the wanted opening, and returns the orbit frame that shows it open. The
 // walker's pose is found by this search because a held key moves it by an amount that depends
-// on the frame rate. An opening that the key opens by mistake on the way is shut again.
+// on the frame rate. An opening that the key opens by mistake on the way is shut again, up to
+// MAX_WRONG_HITS times, so that a wanted opening that never shows fails with its own message
+// long before the test timeout.
 export async function strafeUntilOpened(
   page: Page,
   canvas: Locator,
   target: SearchTarget,
 ): Promise<Buffer> {
   await strafe(page, target.key, FIRST_STRIDE_MS)
+  let wrongHits = 0
   for (let step = 0; step < MAX_STEPS; step++) {
     if (await openKeyChangesView(page, canvas)) {
       const opened = await wantedOpening(page, canvas, target)
       if (opened !== null) return opened
+      wrongHits += 1
+      if (wrongHits >= MAX_WRONG_HITS) {
+        throw new Error(
+          `the wanted opening did not show after ${wrongHits} presses that opened another one (${target.key})`,
+        )
+      }
     }
     await strafe(page, target.key, STEP_MS)
   }
@@ -150,12 +162,12 @@ export async function paintFloorWhileWatching(
 }
 
 // Goes to the plan view and back to the 3D view while a sampler reads the region, which
-// unmounts the 3D canvas and mounts a new one. Returns the settled frame of the new canvas.
+// unmounts the 3D canvas and mounts a new one (settledSceneCanvas clicks the 3D view button).
+// Returns the settled frame of the new canvas.
 export async function switchViewsWhileWatching(page: Page, region: Region): Promise<Watched> {
   await startSampling(page, region)
   await page.getByRole('button', { name: 'Plan view', exact: true }).click()
   await expect(liveCanvas(page)).toHaveCount(0)
-  await page.getByRole('button', { name: '3D view', exact: true }).click()
   const canvas = await settledSceneCanvas(page)
   const frame = await settledLiveFrame(page, canvas)
   return { frame, readings: await stopSampling(page) }

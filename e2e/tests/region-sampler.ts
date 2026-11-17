@@ -123,8 +123,8 @@ export async function startSamplingTogether(
 // A canvas that has not drawn yet reads as all zeros, and says nothing about the door, so those
 // readings are dropped. They can only come before the first drawn reading of a canvas, such as
 // the first frames of one that has just mounted. A blank reading after a drawn one on the same
-// canvas would mean the sampler lost frames, which could hide the very frame a journey looks
-// for, so it fails here. The count of blank readings before the first drawn one is printed.
+// canvas most likely means that the drawing buffer was cleared before the sampler read it,
+// which would leave frames unread, perhaps the very frame a journey looks for, so it fails here. The count of blank readings before the first drawn one is printed.
 function drawn(samples: readonly number[][]): Signature[] {
   const readings: Signature[] = []
   const seen = new Set<number>()
