@@ -32,7 +32,7 @@ export class SnapshotStore {
   }
 
   async writeSnapshot(project: Project): Promise<void> {
-    const bytes = encodeForWrite(project, undefined)
+    const bytes = encodeForWrite(project)
     await this.ensureSessionStart(bytes)
     await this.directory.writeFile(
       `${AUTOSAVE_DIR}/${SNAPSHOT_PREFIX}${this.now()}${SNAPSHOT_SUFFIX}`,

@@ -21,6 +21,13 @@ export interface FolderProjectStoreOptions {
   migration?: MigrateOptions
 }
 
+/** The stored version that a failed migration started from; undefined for any other error. */
+function migrationFailedFrom(error: unknown): number | undefined {
+  const isMigrationFailure =
+    error instanceof DocumentDecodeError && error.failure.kind === 'migration-failed'
+  return isMigrationFailure ? error.failure.fromVersion : undefined
+}
+
 /**
  * Reads and writes one project folder (vernacular.json at the directory root) through
  * a DirectoryPort and the document codec. Save encodes immediately, so the stored snapshot is
@@ -54,8 +61,9 @@ export class FolderProjectStore {
     try {
       opened = openDecodedDocument(bytes, this.codecOptions)
     } catch (error) {
-      if (error instanceof DocumentDecodeError && error.failure.kind === 'migration-failed') {
-        await this.backUp(error.failure.fromVersion, bytes)
+      const failedFrom = migrationFailedFrom(error)
+      if (failedFrom !== undefined) {
+        await this.backUp(failedFrom, bytes)
       }
       throw error
     }
@@ -72,7 +80,8 @@ export class FolderProjectStore {
   async saveProject(project: Project): Promise<void> {
     // The codec grafts the unknown or reserved data of the stored file that the app's edit-dispatch
     // path dropped (VFPF section 6.4). With no stored file, or an unreadable one, it writes the
-    // project directly: refusing to save would lose the user's edit.
+    // project directly: refusing to save would lose the user's edit. A stored file that cannot be
+    // decoded gets no graft: the codec reports it as dropped, and this store does not act on it yet.
     const previous = await this.directory.readFile(PROJECT_FILE)
     const bytes = encodeForWrite(project, previous, this.codecOptions)
     await this.directory.writeFile(PROJECT_FILE, bytes)

@@ -17,7 +17,9 @@ function warnFaults(message: string, faults: readonly FormatFault[]): void {
  * Read stored bytes through the codec: the one place where every read path decides what a failed
  * decode means. Interim rule: a document that only breaks the format rules is opened anyway, as its
  * migrated document, with its faults reported in a warning. Every other failure throws a
- * DocumentDecodeError that carries the failure.
+ * DocumentDecodeError that carries the failure. The cast of the failed document to a Project is the
+ * deliberate gap of this interim rule: the document failed the check and still opens, and the later
+ * refusal to open such a document removes the cast.
  */
 export function openDecodedDocument(bytes: Uint8Array, options?: CodecOptions): OpenedDocument {
   const result = decodeDocument(bytes, options)
@@ -38,7 +40,7 @@ export function openDecodedDocument(bytes: Uint8Array, options?: CodecOptions): 
  */
 export function encodeForWrite(
   project: Project,
-  previous: Uint8Array | undefined,
+  previous?: Uint8Array,
   options?: CodecOptions,
 ): Uint8Array {
   const { bytes, faults } = encodeDocument(project, previous, options)
