@@ -84,7 +84,9 @@ never writes to the store, so a reset is not reported back.
 Each newly built scene root is posed from the session. An effect keyed on the root calls
 `restoreOpenings`. An opening that carries an openness is posed at that openness. An opening the
 session holds open, with no openness yet, is seated fully open. Every other opening keeps its built
-pose. This fixes the rebuild defect described above.
+pose. This fixes the rebuild defect described above. Starting a walk restores nothing. The hook has
+already posed each root, and the tick keeps it posed in both camera modes, so a walk begins with
+every door in the state the session holds.
 
 The per-frame opening tick runs in orbit mode too. The frame callback in
 `bridge/react/walk-camera-controls.tsx` runs the walk step only in walk mode, then calls
@@ -149,24 +151,30 @@ call; the rig in `webgpu-scene-view.tsx` is unchanged.
 
 Known gaps:
 
-- Only the active floor's openings follow a reset in the whole-building view. The follow, the
-  restore, and the tick all read `useActiveFloorOpenings` in `use-opening-motion.ts`. A door left
-  open on another floor stays open after a reset until that floor becomes active, and a rebuild can
-  show it shut while the store holds it open. A follow-up issue tracks this.
+- Only the active floor's openings are posed or swung in the whole-building view. The follow
+  replaces the open set for every floor, because it works on door ids and reads no openings. The
+  restore of a new root and the per-frame tick read `useActiveFloorOpenings` in
+  `use-opening-motion.ts`. A door left open on another floor stays open after a reset until that
+  floor becomes active, and a rebuild can show it shut while the store holds it open. By reading the
+  code, a door that is open on one floor and reset while another floor is active is posed open and
+  then swings shut when the user returns to that floor. This was not run. A follow-up issue tracks
+  this.
 - A rebuilt open door can show shut for one frame. The effect that poses a new root is a plain
   effect, which runs after paint, and the tick now runs in orbit mode as well. The live run looked
   for this flash and did not see it, but it sampled only about 10 frames each second, so a flash
   shorter than about 100 ms is not excluded. A layout effect should close the gap, but it changes
   the timing of every rebuild. A follow-up issue tracks this.
-- The tick costs something in orbit mode even when nothing moves. For each opening on the active
-  floor at rest on its target, each frame does two lookups (its open state and its openness) and a
-  compare. The frame cost is not measured. A follow-up issue tracks this.
-- The React wiring between the store and the frame loop has no unit test. Unit tests cover
-  `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the `useInteractiveObjects`
-  hook against a store, and the toolbar control. Nothing tests `useOpeningMotion` or the frame
-  callback in `WalkCameraControls`, because that code runs only under a real WebGPU canvas. The
-  live run described under Evidence was a script, not a committed test, so no automated test
-  covers this wiring yet. A follow-up issue tracks this.
+- The tick does work in orbit mode even when nothing moves. For each opening on the active floor at
+  rest on its target, each frame does two lookups (its open state and its openness) and a compare.
+  The frame cost is not measured.
+- The frame callback in `bridge/react/walk-camera-controls.tsx` has no automated test. It calls the
+  walk step and then the opening tick, and it runs only under a real WebGPU canvas. Unit tests
+  cover `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the
+  `useInteractiveObjects` hook against a store, the toolbar control, and `useOpeningMotion` itself.
+  The hook imports nothing from the canvas library, and `bridge/react/use-opening-motion.test.tsx`
+  checks that the live openings follow the stored set and that a new root is posed from the newest
+  set when both arrive in one render. The live run described under Evidence covers the frame
+  callback. It was a script, not a committed test.
 - A disabled control gives its reason only in its `title` attribute. Nothing visible in the toolbar
   says why the button is disabled. A follow-up issue tracks this.
 
@@ -187,15 +195,23 @@ the never-opened scene were identical, so equal frames differed by exactly zero.
   the door to shut.
 - A window closes by the same control, and a window and a door that stand open at one time close
   together in the same frames.
-- The toolbar keeps its height of 140 px at 1280 x 720, so the canvas size and the pixel baselines
-  are unchanged.
+- The toolbar keeps its height of 140 px at 1280 x 720. The live-view pixel test
+  (`e2e/tests/scene-live-view-visual-regression.spec.ts`, in the `scene-webgl` project) passed on
+  the development Mac at commit `be7d25b9` on 2026-11-16, and the toolbar's height and the canvas
+  size are the same as on `main`.
+
+The scripted run was repeated at commit `be7d25b9`, after the call that restored the openings when a
+walk starts was removed as redundant. It made the same checks as before and five more on the
+walk-start path: a walk after orbit on the same scene, after a rebuild, after a reset, on a fresh
+page, and after a switch to the plan view and back. In each the door was in the expected state from
+the first frame of the walk.
 
 Limits:
 
 - The run sampled about 10 frames each second. A flash of a shut door shorter than about 100 ms
   during a rebuild is not excluded.
-- This was a scripted run, not a committed test. No automated test covers the wiring between the
-  session store and the frame loop yet.
+- This was a scripted run, not a committed test. No automated test covers the frame callback that
+  calls the walk step and the opening tick.
 - The whole-building case in Known gaps was not run.
 
 ## References
