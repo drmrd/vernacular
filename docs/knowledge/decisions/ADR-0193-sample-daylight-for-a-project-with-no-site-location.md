@@ -242,9 +242,11 @@ and readings live in its spec file under `e2e/tests/`, and this record states ne
 
 The gate reads two wall squares of the south-west camera view: the south face, which is the front,
 and the west face. Both squares are defined once in `e2e/tests/scene-helpers.ts`, as
-`SOUTH_WEST_VIEW_SOUTH_WALL` and `SOUTH_WEST_VIEW_WEST_WALL`. The tone curve gate in
-`e2e/tests/scene-tone-curve.spec.ts` renders the `daylight-reference` state from the same camera
-and reads the same two squares.
+`SOUTH_WEST_VIEW_SOUTH_WALL` (x 157..162, y 143..148) and `SOUTH_WEST_VIEW_WEST_WALL`
+(x 121..144, y 107..130). Other gates read them from the same camera too. The tone curve gate in
+`e2e/tests/scene-tone-curve.spec.ts` renders the `daylight-reference` state and reads the south
+square. The low sun gate in `e2e/tests/scene-low-sun.spec.ts` renders the `low-sun` state and
+reads both squares.
 
 ## Consequences
 
