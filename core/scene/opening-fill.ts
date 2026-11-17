@@ -41,8 +41,8 @@ export interface OpeningFillPart {
    * Where the box's center sits across the wall (mm), from the centerline along the opening's
    * normal; omitted (not 0) means centered. A hung window's lower sash takes half its sash
    * depth (HUNG_SASH_TRACK_OFFSET_MM, 25 mm, in a wall of 100 mm or more; less in a thinner
-   * wall) times the facing sign (+1 'positive', -1 'negative'), the upper sash the opposite.
-   * `facing` stands in for the room side, which the fill cannot see yet.
+   * wall) times the sign of the room side (+1 'positive', -1 'negative'), the upper sash the
+   * opposite. The room side is the node's `roomSide`; `facing` decides only when the node has none.
    */
   readonly acrossOffset?: number
 }
@@ -242,8 +242,9 @@ function hungSashDepth(hostThickness: number): number {
  * fills its own band, so the window reads as two panes rather than one. `fixedSash`
  * names the sash that is fixed shut (a single-hung window's upper sash); a
  * double-hung window passes no `fixedSash`, so both sashes stay operable. The two
- * sashes sit on separate tracks across the wall, the lower one toward the opening's
- * facing side; the meeting rail belongs to the lower sash. In a wall thinner than 100 mm
+ * sashes sit on separate tracks across the wall, the lower one on the room side of the
+ * wall (as in a real hung window), which is the opening's `roomSide` when the node has
+ * one and its `facing` side otherwise; the meeting rail belongs to the lower sash. In a wall thinner than 100 mm
  * the sashes are thinner than 50 mm so that they stay inside the wall faces (see
  * `hungSashDepth`), and each track sits half a sash depth from the centerline.
  */
@@ -260,7 +261,8 @@ function hungWindowSashParts(node: OpeningSceneNode, fixedSash?: HungSash): Open
     { min: railBottom, max: railTop },
   )
   const depth = hungSashDepth(node.hostThickness)
-  const lowerOffset = node.orientation.facing === 'negative' ? -depth / 2 : depth / 2
+  const lowerSide = node.roomSide ?? node.orientation.facing
+  const lowerOffset = lowerSide === 'negative' ? -depth / 2 : depth / 2
   const lowerSash = [
     ...sashAssembly(halfWidth, { min: sill, max: railBottom }, fixedSash === 'lower'),
     meetingRail,
