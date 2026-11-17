@@ -1,5 +1,5 @@
 import { act, cleanup, render } from '@testing-library/react'
-import { StrictMode } from 'react'
+import { StrictMode, useMemo } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSceneSessionStore } from '../scene-session/scene-session-store'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
@@ -53,21 +53,31 @@ let store = createSceneSessionStore()
 // and the tests can count exactly when the takeover reports a settled build.
 const settleSpy = vi.fn(() => notes.notePipelineSettled())
 
-function Probe({ realistic }: { realistic: boolean }) {
+interface ProbeProps {
+  realistic: boolean
+  // When set, the settle callback is a wrapper that takes a new identity with each version.
+  settleVersion?: number
+}
+
+function Probe({ realistic, settleVersion }: ProbeProps) {
   notes = useLiveViewReadiness()
+  const versionedSettle = useMemo(
+    () => Object.assign(() => settleSpy(), { version: settleVersion }),
+    [settleVersion],
+  )
   return (
     <AmbientOcclusionRenderTakeover
       realistic={realistic}
       onPipelineBuildStarted={notes.notePipelineBuildStarted}
-      onPipelineSettled={settleSpy}
+      onPipelineSettled={settleVersion === undefined ? settleSpy : versionedSettle}
     />
   )
 }
 
-function ProbeInSession({ realistic }: { realistic: boolean }) {
+function ProbeInSession(props: ProbeProps) {
   return (
     <SceneSessionProvider store={store}>
-      <Probe realistic={realistic} />
+      <Probe {...props} />
     </SceneSessionProvider>
   )
 }
@@ -157,6 +167,23 @@ describe('AmbientOcclusionRenderTakeover readiness while a pipeline build is in 
       </StrictMode>,
     )
     // Strict mode runs each effect as setup, cleanup, setup: two builds start in one flush.
+    expect(collaborators.builds).toHaveLength(2)
+    expect(drawFrame()).toBe(false)
+
+    await settleBuild(0)
+    expect(drawFrame()).toBe(false)
+    expect(buildAt(0).pipeline.dispose).toHaveBeenCalledTimes(1)
+
+    await settleBuild(1)
+    expect(drawFrame()).toBe(true)
+  })
+
+  it('keeps waiting for the new build when the settle callback changes identity during a build', async () => {
+    const view = render(<ProbeInSession realistic settleVersion={1} />)
+    expect(collaborators.builds).toHaveLength(1)
+    expect(drawFrame()).toBe(false)
+
+    view.rerender(<ProbeInSession realistic settleVersion={2} />)
     expect(collaborators.builds).toHaveLength(2)
     expect(drawFrame()).toBe(false)
 
