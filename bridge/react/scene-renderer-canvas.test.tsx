@@ -284,6 +284,21 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
     expect(await rejections.read()).toEqual([])
   })
 
+  it('lets a later mount succeed after a failed load', async () => {
+    const failed = renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+    failed.unmount()
+
+    const later = arrangeStartUp()
+    const { container } = renderWrapper()
+    await settle(() => later.loaded.resolve(later.factory))
+
+    expect(screen.getByTestId('canvas')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(failureKindIn(container)).toBeNull()
+  })
+
   it('calls reloadPage exactly once when Reload page is pressed', async () => {
     const reloadPage = vi.fn()
     renderWrapper({ reloadPage })
