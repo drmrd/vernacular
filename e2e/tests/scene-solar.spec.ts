@@ -5,9 +5,11 @@ import { test, expect, type Page } from '@playwright/test'
 // query parameter. The named states resolve in app/harness-environment.ts to a fixed
 // observation instant. Most states also pin a located site (latitude 40 north, longitude
 // 75 west, America/New_York), driving the SolarLightingProvider deterministically so each
-// baseline pins one sun position. The sample-daylight state is the one with no site
-// location: it pins the opening instant, and the sun comes from the sample place with
-// north implied by the front of the building, so its baseline pins one sun position too.
+// baseline pins one sun position. The daylight-reference state pins a different site,
+// DAYLIGHT_REFERENCE_SITE in app/harness-environment.ts (time zone UTC). The
+// sample-daylight state is the one with no site location: it pins the opening instant,
+// and the sun comes from the sample place with north implied by the front of the
+// building, so its baseline pins one sun position too.
 // The -darwin baselines are renders from the development Mac's Metal tier,
 // regenerated locally with --update-snapshots=all (ADR-0149); the -linux baselines are
 // rendered on the CI runner by the refresh-scene-baselines workflow and checked there by
