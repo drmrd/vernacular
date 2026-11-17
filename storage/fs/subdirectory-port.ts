@@ -4,7 +4,7 @@ import type { DirectoryPort } from './directory-port'
  * A DirectoryPort view rooted at `prefix` inside another DirectoryPort. Every
  * operation forwards to `root` with `prefix/` prepended, so a store written
  * against the root path `vernacular.json` reads and writes `prefix/vernacular.json`.
- * This lets one FolderProjectStore operate inside a per-project subdirectory.
+ * This lets one project store operate inside a per-project subdirectory.
  */
 export class SubdirectoryPort implements DirectoryPort {
   constructor(

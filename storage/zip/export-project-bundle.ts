@@ -3,8 +3,6 @@ import type { AssetCache } from '../asset-cache'
 import { collectReferencedAssets } from '../project-files/referenced-assets'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
 
-export { collectReferencedAssets }
-
 /** Reports incremental work: `completed` of `total` units finished so far. */
 export type ExportProgress = (completed: number, total: number) => void
 
