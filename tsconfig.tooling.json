@@ -6,13 +6,9 @@
   "compilerOptions": {
     // node: the scripts use Node built-ins and `process`.
     // @testing-library/jest-dom: the Storybook decorator test uses its matchers.
-    "types": ["node", "@testing-library/jest-dom"]
+    "types": ["node", "@testing-library/jest-dom"],
+    // allowJs: the tests import the .mjs scripts, and their types come from the scripts' JSDoc.
+    "allowJs": true
   },
-  "include": [
-    ".storybook/**/*.ts",
-    ".storybook/**/*.tsx",
-    "scripts/**/*.ts",
-    "scripts/**/*.mts",
-    "scripts/**/*.d.mts"
-  ]
+  "include": [".storybook/**/*.ts", ".storybook/**/*.tsx", "scripts/**/*.ts", "scripts/**/*.mts"]
 }
