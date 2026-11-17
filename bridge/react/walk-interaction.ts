@@ -63,7 +63,12 @@ export function tickOpenings(tick: OpeningTick, dtSeconds: number): void {
   }
 }
 
-/** Poses every opening on the given root where the session left it, so a newly built or rebuilt root never shows a door out of place: an opening that carries an openness is posed at that openness, an opening held open with none is seated fully open and recorded so, and every other opening keeps its built pose. */
+/**
+ * Poses every opening on the given root where the session left it, so a newly built or rebuilt
+ * root never shows a door out of place: an opening that carries an openness is posed at that
+ * openness, an opening held open with none is seated fully open and recorded so, and every other
+ * opening keeps its built pose.
+ */
 export function restoreOpenings(tick: OpeningTick): void {
   for (const node of tick.openings) {
     const carried = tick.openness.get(node.id)
