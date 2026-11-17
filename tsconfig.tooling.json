@@ -1,0 +1,18 @@
+// Type-checks the two groups of files that no other project covers. This config covers both:
+// .storybook/ (every .ts and .tsx file) and the TypeScript and declaration files under scripts/.
+// `pnpm typecheck` runs this project after the application and end-to-end ones. It emits nothing.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // node: the scripts use Node built-ins and `process`.
+    // @testing-library/jest-dom: the Storybook decorator test uses its matchers.
+    "types": ["node", "@testing-library/jest-dom"]
+  },
+  "include": [
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    "scripts/**/*.d.mts"
+  ]
+}
