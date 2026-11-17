@@ -59,8 +59,8 @@ const graph: SceneGraph = {
   furniture: [furnitureFromCatalog(FURNITURE_ID, 'hash-armchair')],
 }
 
-// A minimal library item for a stubbed asset source, the same shape the entity-labels
-// tests use, keyed by the content hash the hook resolves against.
+// A minimal library item for a stubbed asset source, the same shape the catalog names
+// hook tests use, keyed by the content hash the hook resolves against.
 function libraryItem(contentHash: string, name: string): LibraryItem {
   return {
     reference: { scope: 'project', contentHash },
