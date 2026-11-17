@@ -8,7 +8,11 @@ import type { Bounds3, Vector3 } from '../scene/vector3'
 export interface ShadowFitInput {
   /** The box around everything that casts a shadow. */
   casters: Bounds3
-  /** The ground plane's extent (`min.y` equals `max.y`), or null when there is no ground. */
+  /**
+   * The ground plane's extent (`min.y` equals `max.y`), or null when there is
+   * no ground. A ground box with a number that is not finite counts as no
+   * ground.
+   */
   ground: Bounds3 | null
   /**
    * Unit vector from the scene toward the sun. A direction with a component
@@ -70,8 +74,9 @@ export function boundsRadius(bounds: Bounds3): number {
  * so a low sun with a horizontal component sends the point to the edge of the
  * ground on the side away from the sun, a zero component keeps the corner's
  * coordinate, and a sun below the horizon gets the horizon's fit. With no
- * ground, with a sun direction that has a component that is not finite, and
- * with a `maxRadius` of `NaN`, the fit is a copy of the casters.
+ * ground, with a ground box that has a number that is not finite, with a sun
+ * direction that has a component that is not finite, and with a `maxRadius` of
+ * `NaN`, the fit is a copy of the casters.
  *
  * When the radius of that box exceeds `maxRadius`, the box shrinks linearly
  * toward the caster box until its radius equals the cap, so the far end of the
@@ -80,11 +85,16 @@ export function boundsRadius(bounds: Bounds3): number {
  */
 export function shadowFitBounds(input: ShadowFitInput): Bounds3 {
   const { casters, ground, sunDirection, maxRadius } = input
-  if (ground === null || !isFiniteVector(sunDirection) || Number.isNaN(maxRadius)) {
+  if (ground === null || !isFiniteBounds(ground) || !isFiniteVector(sunDirection)) {
     return copyBounds(casters)
   }
+  if (Number.isNaN(maxRadius)) return copyBounds(casters)
   const withShadow = unionOf(casters, shadowPoints(casters, ground, sunDirection))
   return shrinkTowardCasters(casters, withShadow, maxRadius)
+}
+
+function isFiniteBounds(bounds: Bounds3): boolean {
+  return isFiniteVector(bounds.min) && isFiniteVector(bounds.max)
 }
 
 function isFiniteVector(vector: Vector3): boolean {
