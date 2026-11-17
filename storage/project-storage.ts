@@ -6,7 +6,7 @@ import { DirectoryAssetCache } from './directory-asset-cache'
 import { IndexedDbDirectory } from './indexeddb/indexeddb-directory'
 import {
   DEFAULT_PROJECT_DATABASE_NAME,
-  createDefaultProjectStore,
+  IndexedDbProjectStore,
 } from './indexeddb/indexeddb-project-store'
 
 /**
@@ -35,13 +35,14 @@ export async function createOpfsProjectStorage(): Promise<ProjectStorage> {
 }
 
 /**
- * The default pair for hosts without OPFS: the IndexedDB project store paired with a
- * DirectoryAssetCache over the same database, so asset bytes sit in the shared pool at `assets/`
+ * The default pair for hosts without OPFS: one IndexedDB directory serves both the IndexedDB
+ * project store and a DirectoryAssetCache, so asset bytes sit in the shared pool at `assets/`
  * and survive a reload, as they do on the OPFS backend (ADR-0042).
  */
 export function createDefaultProjectStorage(): ProjectStorage {
+  const directory = new IndexedDbDirectory(DEFAULT_PROJECT_DATABASE_NAME)
   return {
-    store: createDefaultProjectStore(),
-    assets: new DirectoryAssetCache(new IndexedDbDirectory(DEFAULT_PROJECT_DATABASE_NAME)),
+    store: new IndexedDbProjectStore(directory),
+    assets: new DirectoryAssetCache(directory),
   }
 }

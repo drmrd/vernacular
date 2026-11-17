@@ -17,10 +17,7 @@ export type { ScopedAssetSource, AssetRegistryOptions } from './assets/asset-reg
 export type { ProjectStorage } from './project-storage'
 export { createOpfsProjectStorage, createDefaultProjectStorage } from './project-storage'
 export { InMemoryProjectStore } from './in-memory-project-store'
-export {
-  IndexedDbProjectStore,
-  createDefaultProjectStore,
-} from './indexeddb/indexeddb-project-store'
+export { IndexedDbProjectStore } from './indexeddb/indexeddb-project-store'
 export { IndexedDbDirectory } from './indexeddb/indexeddb-directory'
 export { IndexedDbUserLibraryIndex } from './indexeddb/indexeddb-user-library-index'
 export {
