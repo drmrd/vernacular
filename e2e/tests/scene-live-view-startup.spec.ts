@@ -243,8 +243,8 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
 })
 
 test.describe('Live three-dimensional pane after a failed renderer load', () => {
-  // A browser keeps the failure of a dynamic import for the life of the page: an in-place retry
-  // of the same module never reaches the network. Only a reload asks for the chunk again, which
+  // Chromium 148 kept the failure of a dynamic import for the life of the page: an in-place retry
+  // of the same module never reached the network. A reloaded page asks for the chunk again, which
   // the wrapper's unit tests cannot show because they replace the loader.
   test('shows the live canvas after Reload page once the renderer chunk can be fetched again', async ({
     page,
