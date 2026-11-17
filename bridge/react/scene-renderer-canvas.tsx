@@ -92,6 +92,43 @@ function useRendererRelease(): RendererRelease {
   return { hold, isCurrent, release }
 }
 
+type RendererBuild = RendererRelease & {
+  canvas: HTMLCanvasElement
+  rendererFactory: SceneRendererFactory
+  forceWebGL: boolean
+  setStatus: (status: SceneRendererStatus) => void
+}
+
+// Builds one renderer for the gl function and makes it the current one. Only the current
+// renderer's init() may move the status on, so a renderer that a newer one replaced cannot
+// overwrite the newer one's status. A factory that throws ends in the cannot-render status.
+function buildCurrentRenderer(build: RendererBuild): HeldRenderer['renderer'] {
+  const { canvas, rendererFactory, forceWebGL, setStatus, hold, isCurrent, release } = build
+  let renderer: HeldRenderer['renderer']
+  try {
+    renderer = rendererFactory({ canvas, forceWebGL })
+  } catch (error) {
+    logStartFailure('build', error)
+    setStatus('failed')
+    // GLProps types a gl function as all-Renderer or all-Promise, and this one returns both.
+    return NEVER_SETTLES as unknown as HeldRenderer['renderer']
+  }
+  const started = renderer.init()
+  hold(renderer, started)
+  started.then(
+    () => {
+      if (isCurrent(renderer)) setStatus('ready')
+    },
+    (error: unknown) => {
+      logStartFailure('start', error)
+      if (!isCurrent(renderer)) return
+      release()
+      setStatus('failed')
+    },
+  )
+  return renderer
+}
+
 // React Three Fiber's Canvas re-runs its setup on every render, and each run reads the
 // canvas state once and then awaits the renderer factory. An asynchronous factory leaves a
 // window in which a second render starts a second setup that builds a second renderer and a
@@ -108,34 +145,18 @@ function useSceneRendererStart(forceWebGL: boolean) {
   const { hold, isCurrent, release } = useRendererRelease()
   const createRenderer = useMemo<GLProps | null>(() => {
     if (rendererFactory === null) return null
-    return (defaultProps) => {
-      // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here (the
-      // OffscreenCanvas branch of DefaultGLProps applies only to its worker path).
-      const canvas = defaultProps.canvas as HTMLCanvasElement
-      let renderer: HeldRenderer['renderer']
-      try {
-        renderer = rendererFactory({ canvas, forceWebGL })
-      } catch (error) {
-        logStartFailure('build', error)
-        setStatus('failed')
-        // GLProps types a gl function as all-Renderer or all-Promise, and this one returns both.
-        return NEVER_SETTLES as unknown as HeldRenderer['renderer']
-      }
-      const started = renderer.init()
-      hold(renderer, started)
-      started.then(
-        () => {
-          if (isCurrent(renderer)) setStatus('ready')
-        },
-        (error: unknown) => {
-          logStartFailure('start', error)
-          if (!isCurrent(renderer)) return
-          release()
-          setStatus('failed')
-        },
-      )
-      return renderer
-    }
+    return (defaultProps) =>
+      buildCurrentRenderer({
+        // React Three Fiber's web Canvas always supplies an HTMLCanvasElement here (the
+        // OffscreenCanvas branch of DefaultGLProps applies only to its worker path).
+        canvas: defaultProps.canvas as HTMLCanvasElement,
+        rendererFactory,
+        forceWebGL,
+        setStatus,
+        hold,
+        isCurrent,
+        release,
+      })
   }, [rendererFactory, forceWebGL, hold, isCurrent, release])
   const retryLoad = useCallback(() => {
     setStatus('loading')
@@ -154,8 +175,8 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * renderer's backend has initialized, the frame loop stays off and the children stay unmounted,
  * because Three.js throws on a render, or on most renderer queries, before init() resolves. Every
  * renderer the wrapper builds is released exactly once through the engine's releaseSceneRenderer:
- * when its init() rejects, and otherwise when the wrapper unmounts, also while init() is still
- * pending. Opening and closing the view any number of times therefore leaves no renderer and no
+ * when its init() rejects, when a newer renderer replaces it, and otherwise when the wrapper
+ * unmounts, also while init() is still pending. Opening and closing the view any number of times therefore leaves no renderer and no
  * animation loop alive. A renderer module that does not load ends in a could-not-load state with a
  * Retry. A renderer that cannot be built or started ends in the cannot-render state. Each stays
  * until a retry or a new mount. Under StrictMode the library may ask for a renderer twice; the
