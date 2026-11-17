@@ -30,8 +30,10 @@ const DEFAULT_BASE = 'origin/main'
 // - index.html: it is the entry document of the bundle that the suite loads.
 // - public/: it is served at run time for the end-to-end suite, and it is copied
 //   into the story build, where the stories use the mock service worker in it.
-// - e2e/stories/: its spec and baselines run only in the story job, so the
-//   e2e/ entry alone gives the wrong suite.
+// - .storybook/: its main file, its preview, and its decorators shape every
+//   story.
+// - e2e/stories/: its spec and baselines run only in the story job. The e2e/
+//   entry of the end-to-end list does not turn that job on.
 // - scripts/serve-static.mjs: it is the server of the story visuals.
 // - scripts/story-index.mjs: the story visual spec imports it.
 // - pnpm-lock.yaml: it sets the version of every tool and library that a heavy
