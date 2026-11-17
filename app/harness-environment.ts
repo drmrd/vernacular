@@ -24,7 +24,8 @@ export interface HarnessEnvironmentState {
 }
 
 // The one canonical harness site (40 N, 75 W, plan-up as true north, Eastern time).
-// Both named states share it so their baselines differ only in the observation instant.
+// Every named state shares it except two: daylight-reference uses
+// DAYLIGHT_REFERENCE_SITE below, and sample-daylight has no site.
 const CANONICAL_SITE: Site = {
   latLong: { latitude: 40, longitude: -75 },
   northBearing: 0,
