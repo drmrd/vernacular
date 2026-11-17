@@ -14,6 +14,30 @@ export const STRICT_VALIDATOR_PATH = 'core/format/generated/current-schema-valid
 /** Repository-relative path of the tolerant validator. */
 export const TOLERANT_VALIDATOR_PATH = 'core/format/generated/tolerant-schema-validator.js'
 
+/** Repository-relative path of the declaration of the strict validator. */
+export const STRICT_DECLARATION_PATH = 'core/format/generated/current-schema-validator.d.ts'
+
+/** Repository-relative path of the declaration of the tolerant validator. */
+export const TOLERANT_DECLARATION_PATH = 'core/format/generated/tolerant-schema-validator.d.ts'
+
+const VALIDATOR_DECLARATION = `import type { ErrorObject } from 'ajv'
+
+/** Standalone validator generated with the schema (\`pnpm schema:generate\`). */
+declare function validate(document: unknown): boolean
+declare namespace validate {
+  /** The faults of the latest call; null after a call that passed. */
+  let errors: ErrorObject[] | null
+}
+
+export { validate }
+export default validate
+`
+
+/** The text of the declaration that both validators share. */
+export function buildValidatorDeclaration() {
+  return VALIDATOR_DECLARATION
+}
+
 /** A copy of a schema in which no object rejects unknown fields. */
 export function withoutClosedObjects(node) {
   if (Array.isArray(node)) return node.map(withoutClosedObjects)

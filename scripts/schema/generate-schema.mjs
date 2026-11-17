@@ -19,8 +19,11 @@ import {
 } from './build-schema.mjs'
 import { buildKnownKeys } from './build-known-keys.mjs'
 import {
+  buildValidatorDeclaration,
   buildValidatorSources,
+  STRICT_DECLARATION_PATH,
   STRICT_VALIDATOR_PATH,
+  TOLERANT_DECLARATION_PATH,
   TOLERANT_VALIDATOR_PATH,
 } from './build-validators.mjs'
 
@@ -90,6 +93,8 @@ const derivedOutputs = [
   knownKeysOutput,
   { path: STRICT_VALIDATOR_PATH, content: validatorSources.strict },
   { path: TOLERANT_VALIDATOR_PATH, content: validatorSources.tolerant },
+  { path: STRICT_DECLARATION_PATH, content: buildValidatorDeclaration() },
+  { path: TOLERANT_DECLARATION_PATH, content: buildValidatorDeclaration() },
 ]
 
 if (process.argv.includes('--check')) {
