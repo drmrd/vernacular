@@ -12,7 +12,7 @@ import {
   createStair,
   createWall,
 } from '../model/factories'
-import type { Floor, Opening, Project, Wall } from '../model/types'
+import type { Floor, Opening, Point, Project, Wall } from '../model/types'
 import { ROOM_ID_PREFIX } from '../topology/rooms'
 import { OPENING_NODE_PREFIX } from './scene-graph'
 import { createSceneGraphDeriver } from './scene-graph-deriver'
@@ -412,5 +412,108 @@ describe('createSceneGraphDeriver room reuse keyed on the floor walls', () => {
     const second = derive(named)
 
     expect(onlyRoom(second)).not.toBe(onlyRoom(first))
+  })
+})
+
+describe('createSceneGraphDeriver opening room side', () => {
+  const WALL_THICKNESS = 114
+  const ROOM_WIDTH = 4000
+  const ROOM_DEPTH = 3000
+  const GROWN_DEPTH = 3500
+  const WINDOW_POSITION = 2000
+  const WINDOW_WIDTH = 900
+
+  function wall(id: string, start: Point, end: Point): Wall {
+    return createWall(start, end, { id, thickness: WALL_THICKNESS })
+  }
+
+  const south = wall('w-south', { x: 0, y: 0 }, { x: ROOM_WIDTH, y: 0 })
+  const east = wall('w-east', { x: ROOM_WIDTH, y: 0 }, { x: ROOM_WIDTH, y: ROOM_DEPTH })
+  const north = wall('w-north', { x: ROOM_WIDTH, y: ROOM_DEPTH }, { x: 0, y: ROOM_DEPTH })
+  const west = wall('w-west', { x: 0, y: ROOM_DEPTH }, { x: 0, y: 0 })
+  const hungWindow = createOpening({
+    type: 'double-hung-window',
+    hostWallId: 'w-south',
+    position: WINDOW_POSITION,
+    width: WINDOW_WIDTH,
+    id: 'o1',
+  })
+
+  function floorWith(walls: Wall[]): Floor {
+    return { ...createFloor('Ground', { id: 'g', walls }), openings: [hungWindow] }
+  }
+
+  function windowNode(graph: ReturnType<ReturnType<typeof createSceneGraphDeriver>>) {
+    const node = graph.openings.find((candidate) => candidate.id === `${OPENING_NODE_PREFIX}o1`)
+    if (node === undefined) throw new Error('expected an opening node for o1')
+    return node
+  }
+
+  /** The first derive of the closed room: the window looks into it from the positive side. */
+  function warmDeriver() {
+    const derive = createSceneGraphDeriver()
+    const first = windowNode(derive(projectWith([floorWith([south, east, north, west])])))
+    expect(first.roomSide).toBe('positive')
+    return { derive, first }
+  }
+
+  it('derives a new node without a room side when a wall of the room is removed', () => {
+    const { derive, first } = warmDeriver()
+
+    const second = windowNode(derive(projectWith([floorWith([south, east, west])])))
+
+    expect(second).not.toBe(first)
+    expect('roomSide' in second).toBe(false)
+  })
+
+  it('derives a new node with the room side when the room moves to the other side', () => {
+    const { derive, first } = warmDeriver()
+    const below = [
+      wall('w-east', { x: ROOM_WIDTH, y: 0 }, { x: ROOM_WIDTH, y: -ROOM_DEPTH }),
+      wall('w-north', { x: ROOM_WIDTH, y: -ROOM_DEPTH }, { x: 0, y: -ROOM_DEPTH }),
+      wall('w-west', { x: 0, y: -ROOM_DEPTH }, { x: 0, y: 0 }),
+    ]
+
+    const second = windowNode(derive(projectWith([floorWith([south, ...below])])))
+
+    expect(second).not.toBe(first)
+    expect(second.roomSide).toBe('negative')
+  })
+
+  it('gives a room side to a node that had none when a wall closes a room beside it', () => {
+    const derive = createSceneGraphDeriver()
+    const open = windowNode(derive(projectWith([floorWith([south, east, west])])))
+    expect('roomSide' in open).toBe(false)
+
+    const closed = windowNode(derive(projectWith([floorWith([south, east, north, west])])))
+
+    expect(closed).not.toBe(open)
+    expect(closed.roomSide).toBe('positive')
+  })
+
+  it('keeps the node when the room grows but stays on the same side of the opening', () => {
+    const { derive, first } = warmDeriver()
+    const grown = [
+      wall('w-east', { x: ROOM_WIDTH, y: 0 }, { x: ROOM_WIDTH, y: GROWN_DEPTH }),
+      wall('w-north', { x: ROOM_WIDTH, y: GROWN_DEPTH }, { x: 0, y: GROWN_DEPTH }),
+      wall('w-west', { x: 0, y: GROWN_DEPTH }, { x: 0, y: 0 }),
+    ]
+
+    const second = windowNode(derive(projectWith([floorWith([south, ...grown])])))
+
+    expect(second).toBe(first)
+    expect(second.roomSide).toBe('positive')
+  })
+
+  it('keeps the node when only the room overrides change', () => {
+    const { derive, first } = warmDeriver()
+    const floor = floorWith([south, east, north, west])
+    const roomId = derive(projectWith([floor])).rooms[0]!.id
+    const named: Project = {
+      ...projectWith([floor]),
+      roomOverrides: { [roomId.slice(ROOM_ID_PREFIX.length)]: { name: 'Parlor' } },
+    }
+
+    expect(windowNode(derive(named))).toBe(first)
   })
 })

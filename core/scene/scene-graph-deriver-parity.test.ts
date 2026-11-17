@@ -98,3 +98,20 @@ describe('createSceneGraphDeriver parity with deriveSceneGraph', () => {
     expect(derive(regraded).gradeElevation).toBe(DAYLIGHT_BASEMENT_GRADE_MM)
   })
 })
+
+describe('a warm createSceneGraphDeriver after a change of the rooms', () => {
+  it('derives the same scene graph as the pure projection when a wall of the room is removed', () => {
+    const project = twoStoreyProject()
+    const derive = createSceneGraphDeriver()
+    derive(project)
+
+    const [ground, ...upperFloors] = project.floors
+    const withoutNorth: Floor = {
+      ...ground!,
+      walls: ground!.walls.filter((wall) => wall.id !== 'w-north'),
+    }
+    const edited = { ...project, floors: [withoutNorth, ...upperFloors] }
+
+    expect(derive(edited)).toStrictEqual(deriveSceneGraph(edited))
+  })
+})
