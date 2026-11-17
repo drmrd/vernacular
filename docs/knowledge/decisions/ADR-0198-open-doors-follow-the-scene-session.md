@@ -46,7 +46,7 @@ Clearing `openDoorIds` in the store did nothing to the live scene. There were th
 
 1. The walk controller read the stored set once, as the starting value of a ref in
    `bridge/react/walk-camera-controls.tsx`. A later write from anywhere else never reached that
-   ref. Worse, the next E or R press wrote the stale ref back to the store and undid the reset.
+   ref. Worse, the next E press wrote the stale ref back to the store and undid the reset.
 2. The per-frame opening tick (`tickOpenings` in `bridge/react/walk-interaction.ts`) ran inside the
    walk step, and the frame callback returned early outside walk mode. In orbit mode each opening
    kept the last pose the tick gave it, because the engine helper moves the fill group itself. A
@@ -85,8 +85,15 @@ Each newly built scene root is posed from the session. An effect keyed on the ro
 `restoreOpenings`. An opening that carries an openness is posed at that openness. An opening the
 session holds open, with no openness yet, is seated fully open. Every other opening keeps its built
 pose. This fixes the rebuild defect described above. Starting a walk restores nothing. The hook has
-already posed each root, and the tick keeps it posed in both camera modes, so a walk begins with
-every door in the state the session holds.
+already posed each root, and the tick keeps the active floor's openings posed in both camera modes,
+so a walk begins with every door on the active floor in the state the session holds.
+
+One case changed. In whole-building scope, a door that is open on one floor, with another floor
+active during a rebuild, is not posed when the user returns to that floor. It shows shut while the
+session holds it open, and the walker passes through it. `main` behaves the same way. An earlier
+version of this change restored the openings when a walk started, and that covered this one path.
+The restore was removed because the hook made it redundant for the active floor. The case belongs to
+the floor-scope gap under Known gaps.
 
 The per-frame opening tick runs in orbit mode too. The frame callback in
 `bridge/react/walk-camera-controls.tsx` runs the walk step only in walk mode, then calls
@@ -124,7 +131,7 @@ The owner chose the following on 2026-11-16.
 ## Alternatives considered
 
 A reset of the store alone, with no change to the live view. Rejected: for the three reasons in
-Context it changed nothing on screen, and the next E or R press would have undone it.
+Context it changed nothing on screen, and the next E press would have undone it.
 
 An instant snap to shut in orbit mode, with no orbit tick. This was the smaller change and cost
 nothing per frame. Rejected because the same action would then have two different motions
@@ -138,12 +145,14 @@ A separate scene component for the openings, mounted beside the walk controls in
 That would have made ownership clearer. Rejected because it would have changed the shared view file more,
 and it would have had to pass the opening refs into the walk controls, which still need them for the E key and for
 collision. The opening motion moved into its own hook, `useOpeningMotion`, which the walk controls
-call; the rig in `webgpu-scene-view.tsx` is unchanged.
+call. The camera rig logic in `webgpu-scene-view.tsx` is unchanged, but the file changed in three
+small ways: one import, two props passed to the toolbar, and the prop name `storedOpenDoorIds` on
+the walk controls.
 
 ## Consequences
 
 - A door opened in walk mode stays open in orbit mode, and it survives a scene rebuild or a
-  view-mode switch at the pose the session gives it. A reset in orbit mode also reaches the walk
+  view-mode switch at the pose the session gives it, on the active floor. A reset in orbit mode also reaches the walk
   collision world, which reads the same interaction state, so the next walk treats those doors as
   shut.
 - The R key and the toolbar button reach the same state by two code paths. The R key does not call
@@ -157,13 +166,20 @@ Known gaps:
   `use-opening-motion.ts`. A door left open on another floor stays open after a reset until that
   floor becomes active, and a rebuild can show it shut while the store holds it open. By reading the
   code, a door that is open on one floor and reset while another floor is active is posed open and
-  then swings shut when the user returns to that floor. This was not run. A follow-up issue tracks
-  this.
+  then swings shut when the user returns to that floor. This was not run. A door that is open on
+  one floor, with another floor active during a rebuild, is not posed when the user returns to that
+  floor: it shows shut while the session holds it open, and the walker passes through it. This
+  case was found by reading the code and was not run. A follow-up issue tracks this.
+- The stored set can keep the id of a door that no longer exists. After a user deletes a door that
+  is open, or undoes its insertion, its id stays in the stored set, so the toolbar control stays
+  enabled with nothing to close until one press of the control or of the R key empties the set.
+  This was found by reading the code and was not reproduced. A follow-up issue tracks this.
 - A rebuilt open door can show shut for one frame. The effect that poses a new root is a plain
-  effect, which runs after paint, and the tick now runs in orbit mode as well. The live run looked
-  for this flash and did not see it, but it sampled only about 10 frames each second, so a flash
-  shorter than about 100 ms is not excluded. A layout effect should close the gap, but it changes
-  the timing of every rebuild. A follow-up issue tracks this.
+  effect, which runs after paint, and the tick now runs in orbit mode as well. The live runs looked
+  for this flash and did not see it. The first two runs sampled about 10 frames each second, and
+  the repeat run sampled a frame about every 8 ms, so a flash shorter than one sampled frame is not
+  excluded. A layout effect should close the gap, but it changes the timing of every rebuild. A
+  follow-up issue tracks this.
 - The tick does work in orbit mode even when nothing moves. For each opening on the active floor at
   rest on its target, each frame does two lookups (its open state and its openness) and a compare.
   The frame cost is not measured.
@@ -172,9 +188,11 @@ Known gaps:
   cover `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the
   `useInteractiveObjects` hook against a store, the toolbar control, and `useOpeningMotion` itself.
   The hook imports nothing from the canvas library, and `bridge/react/use-opening-motion.test.tsx`
-  checks that the live openings follow the stored set and that a new root is posed from the newest
-  set when both arrive in one render. The live run described under Evidence covers the frame
-  callback. It was a script, not a committed test.
+  checks three things: the live openings follow the stored set, a new root is posed at the open
+  pose its door carried before any tick, and a new root that arrives in the same render as a new
+  stored set is posed from the pose its door carried and from the set that arrived with it, before
+  any tick. The live run described under Evidence covers the frame callback. It was a script, not a
+  committed test.
 - A disabled control gives its reason only in its `title` attribute. Nothing visible in the toolbar
   says why the button is disabled. A follow-up issue tracks this.
 
@@ -208,8 +226,9 @@ the first frame of the walk.
 
 Limits:
 
-- The run sampled about 10 frames each second. A flash of a shut door shorter than about 100 ms
-  during a rebuild is not excluded.
+- The first two runs sampled about 10 frames each second, and the repeat run at commit `be7d25b9`
+  sampled a frame about every 8 ms. A flash of a shut door shorter than one sampled frame during a
+  rebuild is not excluded.
 - This was a scripted run, not a committed test. No automated test covers the frame callback that
   calls the walk step and the opening tick.
 - The whole-building case in Known gaps was not run.
