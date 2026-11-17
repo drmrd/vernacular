@@ -10,55 +10,21 @@ import {
   listLegacyPaths,
   readLegacyFile,
 } from './legacy-records'
+import {
+  BLOCKED_OPEN_WAIT_MILLISECONDS,
+  startOpen,
+  waitForOpen,
+  type OpenAttempt,
+} from './open-attempt'
 
 const DATABASE_VERSION = 2
-const BLOCKED_MESSAGE =
-  'Another tab holds the storage open with an older version of the app. Close that tab and try again.'
+/** The first call of an open request rejects as soon as the browser reports the block. */
+const NO_GRACE_MILLISECONDS = 0
 /** Sorts after every character that can appear in a path, so it ends a prefix range. */
 const HIGHEST_CODE_UNIT = '\uffff'
 
 function pathsUnder(directoryPath: string): IDBKeyRange {
   return IDBKeyRange.bound(directoryPath, directoryPath + HIGHEST_CODE_UNIT)
-}
-
-/**
- * Opens the database and calls `onRelease` when the connection is no longer
- * usable: the open failed or was blocked, or another connection asked this one
- * to close. A blocked open rejects at once. The browser still finishes it when
- * the blocking connection closes, and then this function closes the connection
- * that nobody asked for.
- */
-function connect(databaseName: string, onRelease: () => void): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    let abandoned = false
-    const request = indexedDB.open(databaseName, DATABASE_VERSION)
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(FILES_STORE)) {
-        request.result.createObjectStore(FILES_STORE, { keyPath: 'path' })
-      }
-    }
-    request.onblocked = () => {
-      abandoned = true
-      onRelease()
-      reject(new Error(BLOCKED_MESSAGE))
-    }
-    request.onsuccess = () => {
-      const database = request.result
-      if (abandoned) {
-        database.close()
-        return
-      }
-      database.onversionchange = () => {
-        database.close()
-        onRelease()
-      }
-      resolve(database)
-    }
-    request.onerror = () => {
-      onRelease()
-      reject(request.error ?? new Error('Failed to open IndexedDB'))
-    }
-  })
 }
 
 function childNames(paths: string[], directoryPath: string): string[] {
@@ -90,9 +56,19 @@ export interface IndexedDbDirectoryOptions {
  * closes when another connection asks to delete or upgrade the database. When
  * the conversion fails, the connection closes and the next call opens and
  * converts again.
+ *
+ * While a tab of an older build holds the database open, the upgrade is blocked
+ * and the browser keeps the open request pending. The first call rejects at once
+ * with a message about the other tab. Every later call waits a short fixed time
+ * for the pending request and then rejects with the same message; no call waits
+ * without end, and no second request starts while one is pending. When the other
+ * tab lets go, the next call gets the connection of that request. A connection
+ * that arrives while no call waits is closed.
  */
 export class IndexedDbDirectory implements DirectoryPort {
   private connection: Promise<IDBDatabase> | undefined
+  /** The open request that the browser has not finished; at most one exists. */
+  private attempt: OpenAttempt | undefined
   private readonly convertLegacy: (database: IDBDatabase) => Promise<void>
 
   constructor(
@@ -169,10 +145,57 @@ export class IndexedDbDirectory implements DirectoryPort {
   }
 
   private open(): Promise<IDBDatabase> {
-    this.connection ??= connect(this.databaseName, () => {
-      this.connection = undefined
-    }).then((database) => this.converted(database))
+    if (this.connection === undefined) {
+      const connection = this.connect()
+      this.connection = connection
+      connection.catch(() => {
+        if (this.connection === connection) {
+          this.connection = undefined
+        }
+      })
+    }
     return this.connection
+  }
+
+  private async connect(): Promise<IDBDatabase> {
+    return this.converted(await this.arrive())
+  }
+
+  /**
+   * The connection of the open request. A call that starts the request rejects at
+   * once when the browser reports a block. A call that finds the request still
+   * pending waits a short time for it and then rejects, so that no call waits
+   * without end while another tab holds the upgrade up.
+   */
+  private async arrive(): Promise<IDBDatabase> {
+    const pending = this.attempt
+    const attempt = pending ?? this.startAttempt()
+    const database = await waitForOpen(
+      attempt,
+      pending === undefined ? NO_GRACE_MILLISECONDS : BLOCKED_OPEN_WAIT_MILLISECONDS,
+    )
+    database.onversionchange = () => {
+      database.close()
+      this.connection = undefined
+    }
+    return database
+  }
+
+  private startAttempt(): OpenAttempt {
+    const attempt = startOpen(this.databaseName, DATABASE_VERSION)
+    this.attempt = attempt
+    attempt.result.then(
+      (database) => {
+        this.attempt = undefined
+        if (this.connection === undefined) {
+          database.close()
+        }
+      },
+      () => {
+        this.attempt = undefined
+      },
+    )
+    return attempt
   }
 
   private async converted(database: IDBDatabase): Promise<IDBDatabase> {
@@ -180,7 +203,6 @@ export class IndexedDbDirectory implements DirectoryPort {
       await this.convertLegacy(database)
     } catch (error) {
       database.close()
-      this.connection = undefined
       throw error
     }
     return database

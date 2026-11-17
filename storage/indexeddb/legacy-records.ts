@@ -231,10 +231,10 @@ async function convertRecord(database: IDBDatabase, id: string, readBack: ReadBa
 
 /**
  * Turns each legacy project record into the file `<id>/vernacular.json`. Each
- * record converts on its own: one that fails stays, and the others still
- * convert. A record converts only when JSON keeps its object unchanged, apart
- * from properties whose value is undefined; any other record stays and is
- * served as JSON text. The file is written with a token of its own, then read
+ * record converts on its own: one that fails stays and is reported with one
+ * warning, and the others still convert. A record converts only when JSON keeps
+ * its object unchanged, apart from properties whose value is undefined; any
+ * other record stays without a warning and is served as JSON text. The file is written with a token of its own, then read
  * back, and the record goes only when the read-back equals the bytes written and
  * the file and the record still hold them. On a mismatch the stored bytes are
  * wrong, so the file goes while it still carries the token and the record
@@ -257,8 +257,9 @@ export async function convertLegacyRecords(
   for (const id of keys.filter(isLegacyProjectId)) {
     try {
       await convertRecord(database, id, readBack)
-    } catch {
+    } catch (error) {
       // The record stays and the next open tries it again.
+      console.warn(`The legacy record "${id}" did not convert and stays.`, error)
     }
   }
 }
