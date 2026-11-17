@@ -286,8 +286,8 @@ accompanying ADR.
   hard rejection, because migrations are the user-facing compatibility path.
 - **Drift guard.** Continuous integration regenerates the schema and fails if the committed
   schema differs from the regenerated one, keeping the published schema in lockstep with the
-  types. Once the application adopts `schemaRevision` (section 7), the guard also fails when the
-  generated schema changes and neither `schemaRevision` nor `schemaVersion` increments.
+  types. The guard also fails when the generated schema changes and neither `schemaVersion` nor
+  `schemaRevision` increments (ADR-0178).
 - **Layering.** Generation and validation live in `core/` and `scripts/` only; they import no
   React and no Three.js, consistent with the layer boundaries (ADR-0001). New dependencies (the
   generator and the validator) honor the dependency cooldown and exact-version pinning.
