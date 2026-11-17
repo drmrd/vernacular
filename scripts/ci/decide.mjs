@@ -19,6 +19,17 @@ const DEFAULT_BASE = 'origin/main'
 //   retries of the end-to-end run.
 // - playwright.stories.config.ts: it sets the story server, the snapshot path,
 //   and the tolerance of the story visuals.
+// - vite.config.ts: it shapes the build and the preview of the end-to-end run
+//   and the story build; the check build proves only that it compiles.
+// - vitest.config.ts: it defines the story test project, which runs only in the
+//   story job.
+// - src/: the bootstrap, the service worker, and the storage hook run in a
+//   browser only in the end-to-end suite. The test setup file in it also turns
+//   the suite on, which is accepted.
+// - index.html: it is the entry document of the bundle that the suite loads.
+// - public/: it is served at run time, with the manifest and the starter pack.
+// - e2e/stories/: its spec and baselines run only in the story job, so the
+//   e2e/ entry alone gives the wrong suite.
 //
 // Out on purpose:
 // - tsconfig*.json: the typecheck and the build in the check job prove them.
@@ -29,8 +40,27 @@ const DEFAULT_BASE = 'origin/main'
 // Not decided yet:
 // - package.json, pnpm-lock.yaml, core/, storage/, and .github/workflows/
 //   can each change a heavy suite. ADR-0171 states the open choices for them.
-const E2E_PATHS = ['app/', 'editor/', 'bridge/', 'engine/', 'e2e/', 'playwright.config.ts']
-const VISUAL_PATHS = ['editor/', 'bridge/react/', '.storybook/', 'playwright.stories.config.ts']
+const E2E_PATHS = [
+  'app/',
+  'editor/',
+  'bridge/',
+  'engine/',
+  'e2e/',
+  'playwright.config.ts',
+  'vite.config.ts',
+  'index.html',
+  'src/',
+  'public/',
+]
+const VISUAL_PATHS = [
+  'editor/',
+  'bridge/react/',
+  '.storybook/',
+  'playwright.stories.config.ts',
+  'e2e/stories/',
+  'vite.config.ts',
+  'vitest.config.ts',
+]
 const VISUAL_SUFFIX = '.stories.tsx'
 
 /** @typedef {{ e2e: boolean, visual: boolean, lighthouse: boolean }} Decision */
