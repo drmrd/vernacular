@@ -9,6 +9,11 @@ import type { DirectoryHandleStore } from './directory-handle-store'
  * folder. It is the document store over folder files, and it has no delete, so no method removes a
  * file from the folder. The native folder picker and the handle-permission flow are browser-only
  * seams that Playwright cannot drive, so `open` and `reopen` are validated manually.
+ *
+ * `open` and `reopen` bind the caller's id to the folder and never read an identity from it. A
+ * folder that already holds a document is opened under the new id, and the first save writes over
+ * its `vernacular.json`: the codec grafts the unknown data of the previous file, and the wrapper
+ * keeps a `last-valid-` backup when the new document has faults.
  */
 export class FileSystemFolderProjectStore extends DocumentStore {
   constructor(id: string, folder: DirectoryPort) {

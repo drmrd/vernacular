@@ -26,6 +26,7 @@ export interface IndexedDbStore {
 
 /**
  * What the application means by a project store: the document store with the codec in front, or
- * for now the IndexedDB store, which cannot be one.
+ * for now the IndexedDB store, which cannot be one. It is a union because the IndexedDB store is
+ * not on the byte port yet; when that store moves, this type becomes the document store alone.
  */
 export type ProjectStore = DocumentStore | IndexedDbStore

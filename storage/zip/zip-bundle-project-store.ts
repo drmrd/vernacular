@@ -36,7 +36,7 @@ export class ZipBundleProjectStore extends DocumentStore {
     super(new FolderFiles(bundleId, directory, { durable: false }))
   }
 
-  /** Rejects a foreign id with the id-keyed error, as the bundle holds one project. */
+  /** The wrapper reads whatever is at the root; this override keeps the id-keyed not-found error. */
   override async load(id: string): Promise<Project> {
     if (id !== this.bundleId) {
       throw new ProjectNotFoundError(id)
