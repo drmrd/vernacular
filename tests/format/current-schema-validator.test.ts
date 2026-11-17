@@ -182,13 +182,14 @@ describe('the schema revision of a document', () => {
 
 /**
  * Lay out a scratch copy of the repository in which every entry is a symlink to
- * the real one, except the file at `path`, which holds `content`. The schema
- * script reads and writes paths relative to its working directory.
+ * the real one, except the file at `path`, which holds `content`, or is left out
+ * when `content` is undefined. The schema script reads and writes paths relative
+ * to its working directory.
  */
 function mirrorWithFile(
   dirs: { real: string; copy: string },
   path: readonly string[],
-  content: string,
+  content: string | undefined,
 ): void {
   const [head, ...rest] = path
   if (head === undefined) return
@@ -198,13 +199,13 @@ function mirrorWithFile(
     if (entry !== head) symlinkSync(join(dirs.real, entry), join(dirs.copy, entry))
   }
   if (rest.length === 0) {
-    writeFileSync(join(dirs.copy, head), content)
+    if (content !== undefined) writeFileSync(join(dirs.copy, head), content)
     return
   }
   mirrorWithFile({ real: join(dirs.real, head), copy: join(dirs.copy, head) }, rest, content)
 }
 
-function runSchemaCheck(file: string, change: (committed: string) => string) {
+function runSchemaCheck(file: string, change: (committed: string) => string | undefined) {
   const real = resolve('.')
   const root = mkdtempSync(join(tmpdir(), 'generated-validator-'))
   try {
@@ -246,6 +247,17 @@ describe('the generated validators under drift control', () => {
     () => {
       const result = runSchemaCheck(STRICT_VALIDATOR_FILE, (committed) => committed)
       expect(result.status).toBe(0)
+    },
+  )
+
+  it(
+    'makes the schema check fail and name the schema file when that file is absent',
+    { timeout: CHECK_TIMEOUT_MS },
+    () => {
+      const file = schemaPath(SCHEMA_VERSION, SCHEMA_REVISION)
+      const result = runSchemaCheck(file, () => undefined)
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain(file)
     },
   )
 })
