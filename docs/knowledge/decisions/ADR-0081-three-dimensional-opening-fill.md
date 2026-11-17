@@ -37,6 +37,7 @@ related:
     decisions/ADR-0018-scene-graph-derivation,
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0004-three-js-r3f-webgpu,
+    decisions/ADR-0216-hung-window-sashes-stay-in-their-frame,
   ]
 sourceFiles:
   [
@@ -54,7 +55,7 @@ sourceFiles:
     e2e/tests/scene-visual-regression.spec.ts,
   ]
 status: current
-updated: 2026-08-14
+updated: 2026-11-17
 ---
 
 # ADR-0081: Opening fill as box parts, the fill-kind resolver, and the opening-bodied scene
@@ -122,6 +123,8 @@ parts. A part is an axis-aligned box in the opening local frame (foundation sect
 3.2): an extent along the wall, an extent in height, a thickness across the wall on
 the centerline, and a surface role. A door is one or two parts, a window is a glass
 part plus four frame parts, and a cased or unrecognized opening is no parts.
+(Corrected 2026-11-17: a hung-window part now sits off the centerline, on the track
+of its sash; see ADR-0216.)
 
 Authoring every body as boxes is the decision that keeps the fill simple. A window
 sash is naturally a rectangular ring, but a ring with a hole forces the builder onto
@@ -220,6 +223,12 @@ and `hungWindowSashParts` is the new `window-sash-hung` case that stacks two
 builds one box per returned part regardless of count, so a hung window is just more
 parts through the same primitive. The original slice claimed this additive property,
 and the hung window is the first case that puts it to work.
+
+(Updated 2026-11-17: the hung fill is no longer operation-agnostic in one respect.
+Each part names its sash, the two sashes sit on separate tracks across the wall with
+a depth that follows the wall, and `buildOpeningFill` changed to place each box on
+its track and stamp its sash. The slide-animation seam named above now moves the
+lower sash only. See ADR-0216.)
 
 ## Consequences
 

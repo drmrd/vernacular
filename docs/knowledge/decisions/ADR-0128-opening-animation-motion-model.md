@@ -20,6 +20,7 @@ related:
     decisions/ADR-0038-openings-doors-and-windows,
     decisions/ADR-0006-registry-pattern,
     decisions/ADR-0121-opening-type-conversion-resets-type-defining-dimensions,
+    decisions/ADR-0216-hung-window-sashes-stay-in-their-frame,
   ]
 sourceFiles:
   [
@@ -30,7 +31,7 @@ sourceFiles:
     engine/scene/opening-motion.ts,
   ]
 status: current
-updated: 2026-06-28
+updated: 2026-11-17
 ---
 
 # ADR-0128: Opening animation motion model
@@ -106,7 +107,9 @@ representative part per opening, with fold and pivot falling back to a hinge so 
 read as opening. The motion API carries a part identifier and the resolver reports a part count from
 the start, so a later pass can add the fold and pivot motions and multi-part motion (both leaves,
 both sashes, every bifold panel) without reshaping the resolver or the applier. That follow-up is
-tracked outside this record.
+tracked outside this record. (Updated 2026-11-17: a hung window now uses this seam. Its motion names
+the lower sash, the engine moves only the meshes of that sash, and the reach test keeps the shut
+rectangle of a part that slides inside its frame. See ADR-0216.)
 
 ## Consequences
 
