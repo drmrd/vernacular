@@ -1,0 +1,505 @@
+{
+  "meta": {
+    "name": "Alder Street Cottage",
+    "units": "imperial",
+    "period": "victorian",
+    "style": {
+      "styleId": "italianate",
+      "vernacular": true
+    },
+    "schemaVersion": 9,
+    "appVersion": "0.2.0",
+    "registryVersions": {}
+  },
+  "floors": [
+    {
+      "id": "e25a35bb-afd2-41c1-be6a-ae1a568c0c44",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 3048,
+      "styleOverride": {
+        "styleId": "italianate",
+        "vernacular": true
+      },
+      "walls": [
+        {
+          "id": "c005f9d3-82f6-48aa-acc7-c2070a4ff040",
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 7200,
+            "y": 0
+          },
+          "thickness": 231
+        },
+        {
+          "id": "0c87bf96-3a82-47ed-9892-af81fea8fa56",
+          "start": {
+            "x": 7200,
+            "y": 0
+          },
+          "end": {
+            "x": 7200,
+            "y": 5400
+          },
+          "thickness": 231
+        },
+        {
+          "id": "4f569a60-0c63-4ad1-8232-9a5507bf31d9",
+          "start": {
+            "x": 7200,
+            "y": 5400
+          },
+          "end": {
+            "x": 0,
+            "y": 5400
+          },
+          "thickness": 231
+        },
+        {
+          "id": "34531aec-7a16-437f-a6d3-23cc8779f148",
+          "start": {
+            "x": 0,
+            "y": 5400
+          },
+          "end": {
+            "x": 0,
+            "y": 0
+          },
+          "thickness": 231
+        }
+      ],
+      "underlays": [
+        {
+          "id": "e3fd195e-668d-4d94-9e7f-9f8667ecd1d6",
+          "source": {
+            "kind": "raster",
+            "image": {
+              "scope": "project",
+              "contentHash": "c1d760f319918583f62cac44667240fb92d2aa715f6022cbf361269a5200e5e4"
+            }
+          },
+          "width": 2480,
+          "height": 3508,
+          "placement": {
+            "offset": {
+              "x": -350,
+              "y": -420
+            },
+            "millimetersPerPixel": 2.4,
+            "rotation": 0.0174532925199433
+          },
+          "opacity": 0.5,
+          "visible": true
+        },
+        {
+          "id": "c901b121-ef11-421f-8d50-89873da7bf9f",
+          "source": {
+            "kind": "document",
+            "document": {
+              "scope": "user",
+              "contentHash": "9506158105619d532bf71a62415ae98aae6a31311e5fb963ab5d1c5c477ade93"
+            },
+            "page": 2
+          },
+          "width": 1654,
+          "height": 2339,
+          "placement": {
+            "offset": {
+              "x": 120,
+              "y": -80
+            },
+            "millimetersPerPixel": 4.1,
+            "rotation": 0
+          },
+          "opacity": 0.35,
+          "visible": false
+        },
+        {
+          "id": "457503cf-ccf0-4cec-bb72-693b17f15c83",
+          "source": {
+            "kind": "scene",
+            "scene": {
+              "scope": "user",
+              "contentHash": "fb407a42940cde7c23baec0d7933c6e57f372ef7db94f043920616aa0026cfb6"
+            }
+          },
+          "width": 1920,
+          "height": 1080,
+          "placement": {
+            "offset": {
+              "x": 0,
+              "y": 0
+            },
+            "millimetersPerPixel": 5.6,
+            "rotation": -0.2617993877991494
+          },
+          "opacity": 0.6,
+          "visible": true
+        }
+      ],
+      "openings": [
+        {
+          "id": "df6bd0e5-ea91-4fa1-927c-f0e376b26c37",
+          "type": "single-swing-door",
+          "hostWallId": "c005f9d3-82f6-48aa-acc7-c2070a4ff040",
+          "position": 3600,
+          "width": 914,
+          "height": 2134,
+          "sillHeight": 0,
+          "orientation": {
+            "hinge": "start",
+            "facing": "positive"
+          }
+        },
+        {
+          "id": "cc5ac9b7-1809-438f-8f1f-47abd0a3c2ae",
+          "type": "double-hung-window",
+          "hostWallId": "0c87bf96-3a82-47ed-9892-af81fea8fa56",
+          "position": 2700,
+          "width": 914,
+          "height": 1524,
+          "sillHeight": 762,
+          "orientation": {
+            "hinge": "end",
+            "facing": "negative"
+          }
+        },
+        {
+          "id": "59f448bc-c7a5-4350-aa1f-43f39bdb3ad3",
+          "type": "double-hung-window",
+          "hostWallId": "4f569a60-0c63-4ad1-8232-9a5507bf31d9",
+          "position": 1800,
+          "width": 1067,
+          "height": 1676,
+          "sillHeight": 686,
+          "orientation": {
+            "hinge": "start",
+            "facing": "positive"
+          }
+        }
+      ],
+      "dimensions": [
+        {
+          "id": "607911ff-e083-49d2-8a4d-0d52e8d3c832",
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 7200,
+            "y": 0
+          },
+          "offset": -450
+        },
+        {
+          "id": "009dbfb4-47ea-464b-b825-548730660436",
+          "start": {
+            "x": 7200,
+            "y": 0
+          },
+          "end": {
+            "x": 7200,
+            "y": 5400
+          },
+          "offset": 450
+        }
+      ]
+    },
+    {
+      "id": "adb775f8-015f-4c9c-bd13-45b0f35375fe",
+      "name": "Upper Floor",
+      "elevation": 3150,
+      "defaultCeilingHeight": 2743,
+      "periodOverride": "edwardian",
+      "styleOverride": {
+        "styleId": "queen-anne"
+      },
+      "walls": [
+        {
+          "id": "222db53c-e011-4447-9f97-f3034604a310",
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 7200,
+            "y": 0
+          },
+          "thickness": 135
+        },
+        {
+          "id": "aa66b9c7-ff81-458e-8de2-56ff36fe8b04",
+          "start": {
+            "x": 7200,
+            "y": 0
+          },
+          "end": {
+            "x": 7200,
+            "y": 5400
+          },
+          "thickness": 135
+        },
+        {
+          "id": "59cf9bea-cece-4125-b0ae-9e25ac857a79",
+          "start": {
+            "x": 7200,
+            "y": 5400
+          },
+          "end": {
+            "x": 0,
+            "y": 5400
+          },
+          "thickness": 135
+        },
+        {
+          "id": "834a70ec-fac1-431f-8402-bfaf772f74aa",
+          "start": {
+            "x": 0,
+            "y": 5400
+          },
+          "end": {
+            "x": 0,
+            "y": 0
+          },
+          "thickness": 135
+        }
+      ],
+      "underlays": [],
+      "openings": [
+        {
+          "id": "a41d7828-8699-4d02-91f8-afe0d3bd114d",
+          "type": "double-hung-window",
+          "hostWallId": "222db53c-e011-4447-9f97-f3034604a310",
+          "position": 1800,
+          "width": 914,
+          "height": 1524,
+          "sillHeight": 762,
+          "orientation": {
+            "hinge": "start",
+            "facing": "positive"
+          }
+        },
+        {
+          "id": "e333b50e-03a5-4614-b9de-77bdfeb814ab",
+          "type": "single-hung-window",
+          "hostWallId": "59cf9bea-cece-4125-b0ae-9e25ac857a79",
+          "position": 5400,
+          "width": 762,
+          "height": 1372,
+          "sillHeight": 838,
+          "orientation": {
+            "hinge": "end",
+            "facing": "negative"
+          }
+        }
+      ],
+      "dimensions": [
+        {
+          "id": "0e596ddf-c21c-4568-8ef5-a93cb83c5ea8",
+          "start": {
+            "x": 0,
+            "y": 0
+          },
+          "end": {
+            "x": 0,
+            "y": 5400
+          },
+          "offset": -450
+        }
+      ]
+    }
+  ],
+  "stairs": [
+    {
+      "id": "7cf1a83f-ec65-41eb-af0b-28a707b71f17",
+      "runType": "straight",
+      "position": {
+        "x": 6150,
+        "y": 900
+      },
+      "width": 914,
+      "length": 3200,
+      "rotation": 1.5707963267948966,
+      "connection": {
+        "fromFloorId": "e25a35bb-afd2-41c1-be6a-ae1a568c0c44",
+        "toFloorId": "adb775f8-015f-4c9c-bd13-45b0f35375fe"
+      }
+    }
+  ],
+  "roomOverrides": {
+    "0c87bf96-3a82-47ed-9892-af81fea8fa56-34531aec-7a16-437f-a6d3-23cc8779f148-4f569a60-0c63-4ad1-8232-9a5507bf31d9-c005f9d3-82f6-48aa-acc7-c2070a4ff040": {
+      "name": "Front Parlor",
+      "purpose": "parlor",
+      "subPurpose": "Reception Room",
+      "periodOverride": "victorian",
+      "styleOverride": {
+        "styleId": "gothic-revival",
+        "vernacular": true
+      },
+      "ceilingHeight": 3200
+    },
+    "222db53c-e011-4447-9f97-f3034604a310-59cf9bea-cece-4125-b0ae-9e25ac857a79-834a70ec-fac1-431f-8402-bfaf772f74aa-aa66b9c7-ff81-458e-8de2-56ff36fe8b04": {
+      "name": "Primary Bedroom",
+      "purpose": "primary-bedroom",
+      "styleOverride": {
+        "styleId": "queen-anne"
+      },
+      "customPolygon": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 7200,
+          "y": 0
+        },
+        {
+          "x": 7200,
+          "y": 3900
+        },
+        {
+          "x": 5400,
+          "y": 3900
+        },
+        {
+          "x": 5400,
+          "y": 5400
+        },
+        {
+          "x": 0,
+          "y": 5400
+        }
+      ]
+    }
+  },
+  "palettes": [
+    {
+      "id": "3eb5b7ea-cf6d-4046-84d6-3929b8ff8083",
+      "name": "Front parlor scheme",
+      "description": "Colors sampled from the surviving plaster and trim in the front parlor.",
+      "periods": ["victorian"],
+      "colors": [
+        {
+          "name": "Plaster Cream",
+          "color": {
+            "oklab": {
+              "L": 0.904698190579708,
+              "a": 0.000478713848179102,
+              "b": 0.032161398407727027
+            },
+            "srgbHex": "#e8dfc8",
+            "originalSpec": "parlor-sample-1"
+          }
+        },
+        {
+          "name": "Verdigris",
+          "color": {
+            "oklab": {
+              "L": 0.5976748659353801,
+              "a": -0.0516093649895083,
+              "b": 0.007083671050323925
+            },
+            "srgbHex": "#5f8a7c"
+          }
+        },
+        {
+          "name": "Oxblood",
+          "color": {
+            "oklab": {
+              "L": 0.38513069998378185,
+              "a": 0.08840379069210383,
+              "b": 0.03690393440683298
+            },
+            "srgbHex": "#6e2b2b",
+            "originalSpec": "trim-sample-4"
+          }
+        }
+      ]
+    }
+  ],
+  "paint": {
+    "wall-face:c005f9d3-82f6-48aa-acc7-c2070a4ff040:left": {
+      "kind": "solid",
+      "color": {
+        "oklab": {
+          "L": 0.904698190579708,
+          "a": 0.000478713848179102,
+          "b": 0.032161398407727027
+        },
+        "srgbHex": "#e8dfc8",
+        "originalSpec": "parlor-sample-1"
+      },
+      "finishId": "flat"
+    },
+    "wall-face:0c87bf96-3a82-47ed-9892-af81fea8fa56:right": {
+      "kind": "solid",
+      "color": {
+        "oklab": {
+          "L": 0.5976748659353801,
+          "a": -0.0516093649895083,
+          "b": 0.007083671050323925
+        },
+        "srgbHex": "#5f8a7c"
+      },
+      "finishId": "eggshell"
+    },
+    "ceiling:e25a35bb-afd2-41c1-be6a-ae1a568c0c44": {
+      "kind": "solid",
+      "color": {
+        "oklab": {
+          "L": 0.953540936372177,
+          "a": 0.001735784601620216,
+          "b": 0.013012338309158156
+        },
+        "srgbHex": "#f4efe6"
+      },
+      "finishId": "flat"
+    },
+    "floor:e25a35bb-afd2-41c1-be6a-ae1a568c0c44": {
+      "kind": "solid",
+      "color": {
+        "oklab": {
+          "L": 0.5771472380100435,
+          "a": 0.033631208235372245,
+          "b": 0.08096911141263513
+        },
+        "srgbHex": "#9c6f3d"
+      },
+      "finishId": "satin"
+    }
+  },
+  "site": {
+    "latLong": {
+      "latitude": 39.2904,
+      "longitude": -76.6122
+    },
+    "northBearing": 0.3490658503988659,
+    "obstructions": [
+      {
+        "id": "19c6cb13-1456-4101-b72c-4b53f4fc7b35",
+        "footprint": [
+          {
+            "x": 9500,
+            "y": -2000
+          },
+          {
+            "x": 12500,
+            "y": -2000
+          },
+          {
+            "x": 12500,
+            "y": 1000
+          },
+          {
+            "x": 9500,
+            "y": 1000
+          }
+        ],
+        "height": 8200
+      }
+    ]
+  }
+}
