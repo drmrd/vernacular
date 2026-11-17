@@ -1,6 +1,6 @@
 import type { Vector3 } from '../scene/vector3'
 import type { DaylightField, DaylightRoom } from './daylight-field'
-import { apertureWeights, skyLitMeanVisibility } from './doorway-light'
+import { apertureWeights, doorwayLuminance } from './doorway-light'
 import { cellVisibility, enteringFlux, roomAverageTerm } from './room-average'
 import type { RoomGeometry, SolverGeometry } from './room-geometry'
 import { measureGeometry } from './room-geometry'
@@ -61,11 +61,11 @@ function skyWeights(room: RoomGeometry, sky: SkyLuminance): number[] {
 /** Weights every aperture of every room by the sky, then sums each room's entering flux. */
 function lightRooms(geometry: SolverGeometry, sky: SkyLuminance): RoomLight[] {
   const skyOnly = geometry.rooms.map((room) => skyWeights(room, sky))
-  const skyLitMeans = geometry.rooms.map((room, index) =>
-    skyLitMeanVisibility(room, skyOnly[index] ?? []),
+  const doorwayLuminances = geometry.rooms.map((room, index) =>
+    doorwayLuminance(room, skyOnly[index] ?? []),
   )
   return geometry.rooms.map((room, index) => {
-    const weights = apertureWeights(room, skyOnly[index] ?? [], skyLitMeans)
+    const weights = apertureWeights(room, skyOnly[index] ?? [], doorwayLuminances)
     const flux = enteringFlux(room.apertures, weights)
     return { weights, enteringFlux: flux, interreflection: roomAverageTerm(flux, room.surfaces) }
   })
@@ -96,8 +96,8 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * Creates a solver for the rooms of one floor. A cell's visibility is the sum over its room's
  * apertures of the form factor from the cell center at the work plane to the opening, times the
  * opening's weight, plus the room-average term, capped at 1. A sky aperture weighs the sky's
- * radiance toward its facing; a doorway weighs the mean visibility of the room it opens to, lit by
- * that room's sky apertures alone. The form factors depend on geometry alone, so the solver checks
+ * radiance toward its facing; a doorway weighs the luminance of the room it opens to (its mean visibility, lit by
+ * that room's sky apertures alone, times its mean reflectance; 1 for a room open to the sky). The form factors depend on geometry alone, so the solver checks
  * and measures the rooms one time, and only re-weights them for later skies; a caller that changes
  * the rooms builds a new solver. That check runs on the first call of any method, not when the
  * solver is created, so a room or an aperture that the field cannot use throws a RangeError that

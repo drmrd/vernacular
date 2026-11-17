@@ -21,15 +21,27 @@ export function skyLitMeanVisibility(room: RoomGeometry, skyWeights: readonly nu
 }
 
 /**
+ * Luminance that a doorway into this room shows to its neighbor, relative to the open sky: a room
+ * open to the sky shows the sky and passes 1, and any other room shows its lit surfaces, so it
+ * passes its sky-lit mean visibility times its mean reflectance.
+ */
+export function doorwayLuminance(room: RoomGeometry, skyWeights: readonly number[]): number {
+  if (room.openToSky) return OPEN_SKY_VISIBILITY
+  return skyLitMeanVisibility(room, skyWeights) * room.surfaces.meanReflectance
+}
+
+/**
  * The weight of each aperture of a room, relative to the open sky: a sky aperture keeps its sky
- * weight, and a doorway takes the sky-lit mean visibility of the room it opens to.
+ * weight, and a doorway takes the luminance of the room it opens to.
  */
 export function apertureWeights(
   room: RoomGeometry,
   skyWeights: readonly number[],
-  skyLitMeans: readonly number[],
+  doorwayLuminances: readonly number[],
 ): number[] {
   return room.apertures.map((aperture, index) =>
-    aperture.kind === 'sky' ? (skyWeights[index] ?? 0) : (skyLitMeans[aperture.neighbor] ?? 0),
+    aperture.kind === 'sky'
+      ? (skyWeights[index] ?? 0)
+      : (doorwayLuminances[aperture.neighbor] ?? 0),
   )
 }
