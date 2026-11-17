@@ -68,6 +68,14 @@ sill and a head (both above the floor), a reveal depth, and `opensTo`, which is 
 window or `{ room: index }` for an interior doorway. A room with `openToSky` holds visibility 1 in
 every cell. A cell whose center lies in no room also holds 1.
 
+An aperture may carry a `netTransmittance` from 0 to 1: the share of visible light that the
+opening passes over its whole area, which includes the frame and the sash. A window that names
+none passes 0.8 (`DEFAULT_WINDOW_NET_TRANSMITTANCE`). That is the net value for the opening, not a
+value for the glass: single glazing passes about 0.9, and the frame, the sash, and any glazing bars
+take about one tenth more. Dirt has no factor. Whether dirt and glazing bars need factors of their
+own is a question for after the beta, and issue #805 tracks it. A doorway that names none passes 1
+(`OPEN_DOORWAY_NET_TRANSMITTANCE`).
+
 ### The work plane and the direct term
 
 The field is evaluated on a plane 850 mm above the floor (`DAYLIGHT_WORK_PLANE_HEIGHT_MM`). For
@@ -78,22 +86,24 @@ first cut down to what the point sees through the reveal: the outer face of the 
 reveal depth further out, is scaled toward the foot of the point and overlapped with the inner
 face.
 
-For a window, the factor is multiplied by the sky's luminance toward one direction, the mean
-direction of the sky in front of a vertical opening. That direction points along the aperture's
-outward normal and rises by `atan(2 / pi)` above the horizon. Plan `(x, y)` maps to world
-`(x, up, -y)`. The sky is a function from a direction to a number in which 1 is the mean of the
-open sky. `UNIFORM_SKY` returns 1 everywhere. A sky value below 0 or `NaN` counts as 0. A value
-above 1 is legal, so nothing caps it. Only a cell's final visibility is capped.
+For a window, the factor is multiplied by the window's net transmittance and by the sky's
+luminance toward one direction, the mean direction of the sky in front of a vertical opening. That
+direction points along the aperture's outward normal and rises by `atan(2 / pi)` above the
+horizon. Plan `(x, y)` maps to world `(x, up, -y)`. The sky is a function from a direction to a
+number in which 1 is the mean of the open sky. `UNIFORM_SKY` returns 1 everywhere. A sky value
+below 0 or `NaN` counts as 0. A value above 1 is legal, so nothing caps it. Only a cell's final
+visibility is capped.
 
 ### The room-average term
 
 Light that bounces between the room's surfaces is one number for the whole room. The entering flux
 is the sum over its apertures of half the opening area (width times sill-to-head height) times the
-aperture's weight. The term added to every cell is the flux times the room's mean reflectance,
-divided by the total surface area times one minus that reflectance. The surface area is twice the
-floor area plus the perimeter times the ceiling height. The mean reflectance weights the floor
-color's luminance by the floor area and `UNPAINTED_SURFACE_REFLECTANCE` (0.66, the luminance of
-the wall color `#d8d4cc`) by the rest.
+aperture's net transmittance and its weight. The term added to every cell is the flux times the
+floor's reflectance, which the light from the sky meets first, divided by the total surface area
+times one minus the room's mean reflectance, which governs the later bounces. The surface area is
+twice the floor area plus the perimeter times the ceiling height. The mean reflectance weights the
+floor color's luminance by the floor area and `UNPAINTED_SURFACE_REFLECTANCE` (0.66, the luminance
+of the wall color `#d8d4cc`) by the rest.
 
 A cell's visibility is the direct term plus the room-average term, clamped at 1. A room with no
 windows and no lit neighbor therefore returns 0.
@@ -101,10 +111,11 @@ windows and no lit neighbor therefore returns 0.
 ### The doorway pass
 
 A doorway passes a share of the neighbor room's mean visibility, computed from that neighbor's
-sky apertures alone. The doorway's weight is that mean, so a hall next to a lit room borrows
-light. Light crosses one doorway and no more: a room's own doorways count for nothing when it is
-the source, so two rooms that open only to each other stay dark. A doorway into a room that is
-open to the sky weighs 1 in any direction.
+sky apertures alone. The doorway's weight is that mean times the neighbor's mean reflectance, the
+luminance of the surfaces that the doorway shows, times the doorway's own net transmittance. So a
+hall next to a lit room borrows light. Light crosses one doorway and no more: a room's own
+doorways count for nothing when it is the source, so two rooms that open only to each other stay
+dark. A doorway into a room that is open to the sky weighs 1 in any direction.
 
 ### The cache
 
@@ -126,6 +137,7 @@ aperture 1: ..." with zero-based indexes. The refused kinds are:
 - a sill or head that is not a finite number, a head that is not above the sill, and a head above
   the ceiling;
 - a reveal depth that is not a finite number of 0 or more;
+- a net transmittance that is not a finite number from 0 to 1;
 - a span of no length, and a span with an end point more than 1 mm off the room outline
   (`OUTLINE_TOLERANCE_MM`; the tolerance absorbs the rounding error of a window on an angled wall,
   and an end point a few millimetres off the wall is still refused);
@@ -158,37 +170,34 @@ does not vary with height.
 ## What the numbers look like
 
 The harness shell, taken as one room, is 3880 by 2880 mm clear, with the east window and a reveal
-of 120 mm. Under a uniform sky the sky visibility over the room has a mean of 0.049, a minimum of
-0.018, and a maximum of 0.309 at the cell nearest the window. These are the values measured by
-`tests/daylight/shell-field.test.ts`, which asserts only that the mean lies between 0 and 1, that
-the cell nearest the window is the brightest, that every value is finite, and that the values
-fall along the row from the window to the far wall. The measured numbers are reported, not
-asserted.
+of 120 mm, at the default net transmittance of 0.8. Under a uniform sky the sky visibility over
+the room has a mean of 0.036, a minimum of 0.011, and a maximum of 0.245 at the cell nearest the
+window. These are the values measured by `tests/daylight/shell-field.test.ts`, which asserts only
+that the mean lies between 0 and 1, that the cell nearest the window is the brightest, that every
+value is finite, and that the values fall along the row from the window to the far wall. The
+measured numbers are reported, not asserted.
 
 ## Known limits and approximations
 
-- The model reads bright. For a test room of 4000 by 3000 mm with one 1000 by 1200 mm window, the
-  mean is about 5.3 percent of the open sky. The standard average daylight factor rule of thumb
-  gives about 3 percent (2.95 percent, from 1.2 x 90 / (60.4 x (1 - 0.628^2))). That figure already
-  assumes glass that passes all of the light, so the glass is not a cause of the gap. Two things
-  cause it. The first reflection uses the room's mean reflectance, where the split-flux method uses
-  the floor's. The entering flux ignores the reveal and the part of a window that lies below the
-  work plane. For a room lit by its own windows, the error against that figure is below a factor of
-  2 (5.3 over 2.95 is about 1.8).
-- The model has no loss in the glass. With clear double glazing, which passes about 0.8 of visible
-  light, the rule of thumb gives about 2.4 percent. The missing loss is a further overestimate on
-  top of the gap above.
-- The doorway weight uses the neighbor's mean illuminance ratio as if it were a radiance. A hall's
-  direct term is therefore too high by about one over the mean reflectance, roughly 1.6 times.
-  Together with the gap above, light that a room borrows through a doorway reads about 2.9 times
-  too bright (1.6 times 1.8).
+- The model reads bright. For a test room of 4000 by 3000 mm with one 1000 by 1200 mm window at
+  the default net transmittance of 0.8, the mean is about 3.9 percent of the open sky. The standard
+  average daylight factor rule of thumb gives about 2.4 percent for the same room and transmittance
+  (0.8 x 1.2 x 90 / (60.4 x (1 - 0.628^2))), a factor of about 1.7. The first reflection uses the
+  floor alone, where the split-flux method also counts the lower walls and adds light reflected
+  from the ground. Issue #803 tracks the full method for the 1.0 milestone, with the floor and the
+  lower walls as its first step. The entering flux ignores the reveal, and issue #804 tracks that
+  for 1.0. Light that enters below the work plane is counted, as the split-flux method also counts
+  the whole window.
+- Light that a room borrows through a doorway carries the source room's error, so it reads about
+  1.7 times bright.
 - A cell whose center lies outside every room holds 1. When a room's walls do not fall on the 100
   mm grid, some cells along each wall have their center outside the room, so a strip along the
   inside of each wall reads as open sky. In the harness shell, `sampleSkyVisibility` at the plan
   point (80, 1500) returns 1, against about 0.042 at the center of the room. The lookup in the
   engine has to handle this. Issue #753 tracks it.
-- The hall's entering flux stays below the source room's only while the neighbor's mean times the
-  door area is below the window area. Ordinary rooms meet that, and the code does not enforce it.
+- The code does not cap a hall's flux at the source room's. In the sweep of
+  `core/daylight/doorway-luminance.test.ts`, the hall receives at most 0.72 of the source's flux,
+  for a source room of 500 by 6000 mm with a white floor.
 - The direct term ignores a concave room's own walls. In an L-shaped room, a cell around the inner
   corner gets light that it cannot see.
 - Furniture and partial walls do not block light, and the field does not vary with height.
@@ -227,16 +236,17 @@ current, the amendments go into the records named here.
 - Window-lit rooms have a tested source of numbers before any engine work starts. The lighting
   hook spike passed, so the engine side does not have to wait.
 - The math has no dependency on the renderer, so both backends agree by construction.
-- The field's error is bounded but not small. For a room lit by its own windows, the model reads up
-  to a factor of 2 bright against the figure with lossless glass. Light borrowed through a doorway
-  reads about 2.9 times bright, and real glass widens both. Anything that reads the field as a
+- The field's error is bounded but not small. For a room lit by its own windows, the model reads
+  about 1.7 times bright against the rule of thumb at the same net transmittance. Light borrowed
+  through a doorway reads about 1.7 times bright too. Anything that reads the field as a
   measurement needs the limits above. The reserved photo mode is the accuracy backstop.
 - The field is built from `DaylightRoom` values only. A short adapter from the scene graph, and
   later a mapper from the plan geometry, supply them.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
   `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
   `room-validation.test.ts`, `hard-inputs.test.ts`, `angled-wall.test.ts`,
-  `bad-outline-and-sky.test.ts`, `sky-direction.test.ts`, and `span-at-tolerance.test.ts`) and by
+  `bad-outline-and-sky.test.ts`, `sky-direction.test.ts`, `span-at-tolerance.test.ts`,
+  `doorway-luminance.test.ts`, and `net-transmittance.test.ts`) and by
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.
