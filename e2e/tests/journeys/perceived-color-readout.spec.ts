@@ -209,7 +209,7 @@ test('shows the perceived color of a painted surface clicked in the live 3D view
   const unpainted = await perceivedHexOf(chip)
 
   // Paint the face, wait for the painted frame, then click the face again. The wait works
-  // around a product defect (issue ISSUE-click-after-paint): a click before the first frame
+  // around a product defect (issue #776): a click before the first frame
   // after a paint can pick the faded near wall, and the readout then shows the far wall's
   // pixel under the near wall's name. The mechanism is inferred, not proven: painting rebuilds
   // the wall meshes, and the rebuilt near wall is most likely marked as faded only when the
