@@ -1,6 +1,4 @@
 import { DocumentStore } from '../documents/document-store'
-import { ProjectNotFoundError } from '../project-store'
-import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import type { DirectoryPort } from '../fs/directory-port'
 import { FolderFiles } from '../project-files/folder-files'
@@ -30,18 +28,10 @@ async function collectFilePaths(directory: DirectoryPort, prefix: string): Promi
  */
 export class ZipBundleProjectStore extends DocumentStore {
   constructor(
-    private readonly bundleId: string,
+    bundleId: string,
     private readonly directory: DirectoryPort = new InMemoryDirectory(),
   ) {
     super(new FolderFiles(bundleId, directory, { durable: false }))
-  }
-
-  /** The wrapper reads whatever is at the root; this override keeps the id-keyed not-found error. */
-  override async load(id: string): Promise<Project> {
-    if (id !== this.bundleId) {
-      throw new ProjectNotFoundError(id)
-    }
-    return super.load(id)
   }
 
   static async fromBundle(id: string, bytes: Uint8Array): Promise<ZipBundleProjectStore> {

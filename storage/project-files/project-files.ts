@@ -10,6 +10,11 @@ export interface ProjectFiles {
   readonly durable: boolean
   /** The ids that hold a document file. Never reads the file. */
   ids(): Promise<string[]>
+  /**
+   * Whether this store can hold a project under the id. A read of an id it does not hold finds
+   * nothing; a write to one is refused by `projectDirectory`, which throws.
+   */
+  holds(id: string): boolean
   /** One project's directory: vernacular.json, .house-backups/, .house-autosave/. */
   projectDirectory(id: string): DirectoryPort
   /** The asset cache that this project reads and writes. */

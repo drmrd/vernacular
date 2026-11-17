@@ -55,6 +55,11 @@ export class FolderFiles implements ProjectFiles {
     return names.includes(PROJECT_FILE) ? [this.id] : []
   }
 
+  /** Only the id this folder was bound to. */
+  holds(id: string): boolean {
+    return id === this.id
+  }
+
   projectDirectory(id: string): DirectoryPort {
     this.requireOwnId(id)
     return this.folder
@@ -74,7 +79,7 @@ export class FolderFiles implements ProjectFiles {
   }
 
   private requireOwnId(id: string): void {
-    if (id !== this.id) {
+    if (!this.holds(id)) {
       throw new Error(`This folder holds project "${this.id}", not "${id}".`)
     }
   }

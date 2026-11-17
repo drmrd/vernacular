@@ -109,6 +109,9 @@ export class DocumentStore {
 
   /** The document file and its decoded outcome; undefined when the project has no document file. */
   private async readStored(id: string): Promise<StoredRead | undefined> {
+    if (!this.files.holds(id)) {
+      return undefined
+    }
     const directory = this.files.projectDirectory(id)
     const bytes = await directory.readFile(PROJECT_FILE)
     if (bytes === undefined) {
@@ -124,7 +127,7 @@ export class DocumentStore {
         bytes,
       })
     }
-    const lastChangedAt = await directory.modifiedAt(PROJECT_FILE)
+    const lastChangedAt = await this.changedAt(id)
     const { value } = result
     const decoded: DecodedRead = {
       ok: true,
@@ -200,7 +203,9 @@ export class DocumentStore {
     if (failure.migratedFrom === undefined) {
       return openDespiteFaults(failure)
     }
-    const bytes = await this.files.projectDirectory(id).readFile(PROJECT_FILE)
+    const bytes = this.files.holds(id)
+      ? await this.files.projectDirectory(id).readFile(PROJECT_FILE)
+      : undefined
     if (bytes === undefined) {
       throw new ProjectNotFoundError(id)
     }

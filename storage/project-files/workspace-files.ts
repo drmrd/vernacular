@@ -31,6 +31,12 @@ export class WorkspaceFiles implements RemovableProjectFiles {
     return candidates.filter((_name, index) => documentFlags[index]).sort()
   }
 
+  /** Any id: the id guard in `projectDirectory` rejects an id that is not a safe name. */
+  holds(_id: string): boolean {
+    void _id
+    return true
+  }
+
   projectDirectory(id: string): DirectoryPort {
     assertProjectId(id)
     return new SubdirectoryPort(this.root, id)
