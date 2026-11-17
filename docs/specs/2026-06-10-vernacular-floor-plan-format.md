@@ -266,28 +266,32 @@ accompanying ADR.
   Unknown `extensions` are always preserved regardless of version or revision.
 
 - **Adoption (non-normative).** Versions 8 through 17 predate the revision and each incremented
-  `schemaVersion`, including for additive changes. The application adopts `schemaRevision` with
-  the document codec work described in `2026-11-14-architecture-refactor-round.md`. Until then
-  it writes no revision, every Document is at revision 0, and the application validates in
-  development builds only and tolerates unknown fields. That work also decides how a validation
-  error is reported (section 8 still rules out a user-facing hard rejection).
+  `schemaVersion`, including for additive changes. The application writes `schemaRevision` on
+  every save, as the higher of the Document's revision and its own, and reads a Document without
+  it as revision 0. A Document migrated from an older version carries no revision until its next
+  save. The document codec work described in `2026-11-14-architecture-refactor-round.md` decides
+  how a validation error is reported (section 8 still rules out a user-facing hard rejection).
 
 ## 8. Schema generation and validation
 
 - **Generated from the types.** The CORE JSON Schema is generated from the `core/model/`
   TypeScript types by a build step (for example `pnpm schema:generate`) and committed to the
-  repository under `schema/<version>/vernacular.schema.json` with a stable `$id`. The
-  TypeScript types remain the single source of truth; the generated schema is the published
-  artifact. The recommended `$id` base is a versioned, repository-scoped URI; resolvable hosting
-  is optional, since a JSON Schema `$id` is an identifier first.
+  repository at the path of the current version and revision, with a stable `$id`:
+  `schema/<version>/vernacular.schema.json` for revision 0 and
+  `schema/<version>/revision-<revision>/vernacular.schema.json` above it (section 7, ADR-0178).
+  Two validators are generated from that schema into `core/format/generated/`: a strict one, and
+  a tolerant one with every `additionalProperties: false` removed. The TypeScript types remain
+  the single source of truth; the generated schema is the published artifact. The recommended
+  `$id` base is a versioned, repository-scoped URI; resolvable hosting is optional, since a JSON
+  Schema `$id` is an identifier first.
 - **Validation.** A validator in `core/` (an Ajv instance over the generated schema) validates
   a Document against a profile (section 3). It is used in continuous integration and tests, and
   MAY run on app load after migration as a development and safety gate; it is not a user-facing
   hard rejection, because migrations are the user-facing compatibility path.
-- **Drift guard.** Continuous integration regenerates the schema and fails if the committed
-  schema differs from the regenerated one, keeping the published schema in lockstep with the
-  types. The guard also fails when the generated schema changes and neither `schemaVersion` nor
-  `schemaRevision` increments (ADR-0178).
+- **Drift guard.** Continuous integration regenerates the schema and both validators and fails if
+  a committed file differs from the regenerated one, keeping the published schema and the
+  validators in lockstep with the types. The guard also fails when the generated schema changes
+  and neither `schemaVersion` nor `schemaRevision` increments (ADR-0178).
 - **Layering.** Generation and validation live in `core/` and `scripts/` only; they import no
   React and no Three.js, consistent with the layer boundaries (ADR-0001). New dependencies (the
   generator and the validator) honor the dependency cooldown and exact-version pinning.
