@@ -1,10 +1,11 @@
 // Guards the renderer library's decision to upload a mesh again. Render objects with the same
 // shader share one observer, and a mesh that moved must be uploaded whatever its place in the
 // draw order. Otherwise a door that draws second once it is shut stays drawn part-open. The test
-// reads the library's observer module because that module makes the decision. Its declared types
-// are too narrow for plain render objects, so the test types the parts it uses.
+// reads the observer from the build that the application loads (three/webgpu), so it also guards
+// the patch of that build. Its declared types are too narrow for plain render objects, so the
+// test types the parts it uses. See ADR-0217.
 import * as THREE from 'three'
-import NodeMaterialObserverModule from 'three/src/materials/nodes/manager/NodeMaterialObserver.js'
+import { NodeMaterialObserver as NodeMaterialObserverClass } from 'three/webgpu'
 import { describe, expect, it } from 'vitest'
 
 import type { HingeMotion } from '../../core'
@@ -35,7 +36,7 @@ interface ObserverBuilder {
   context: object
 }
 
-const NodeMaterialObserver = NodeMaterialObserverModule as unknown as new (
+const NodeMaterialObserver = NodeMaterialObserverClass as unknown as new (
   builder: ObserverBuilder,
 ) => Observer
 
