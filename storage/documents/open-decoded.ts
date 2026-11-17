@@ -1,5 +1,5 @@
 import { decodeDocument, encodeDocument } from '../../core'
-import type { CodecOptions, FormatFault, Project } from '../../core'
+import type { CodecOptions, FormatFault, GraftDropped, Project } from '../../core'
 import { DocumentDecodeError } from './document-decode-error'
 
 /** A document that a store or an import opened from stored bytes. */
@@ -11,6 +11,13 @@ export interface OpenedDocument {
 
 function warnFaults(message: string, faults: readonly FormatFault[]): void {
   console.warn(message, faults)
+}
+
+function warnGraftDropped(failure: GraftDropped): void {
+  console.warn(
+    'The previous stored document could not be read, so its unknown data is not kept.',
+    failure,
+  )
 }
 
 /**
@@ -36,14 +43,16 @@ export function openDecodedDocument(bytes: Uint8Array, options?: CodecOptions): 
 
 /**
  * The bytes to store for a project, written over `previous` so unknown data carries over. A failed
- * check is reported in a warning and never blocks the write.
+ * check is reported in a warning and never blocks the write; so is a previous document that could
+ * not be read, because its unknown data is then dropped.
  */
 export function encodeForWrite(
   project: Project,
   previous?: Uint8Array,
   options?: CodecOptions,
 ): Uint8Array {
-  const { bytes, faults } = encodeDocument(project, previous, options)
+  const { bytes, faults, graftDropped } = encodeDocument(project, previous, options)
+  if (graftDropped !== undefined) warnGraftDropped(graftDropped)
   if (faults.length > 0) {
     warnFaults('The document being written breaks the format rules; writing it anyway.', faults)
   }

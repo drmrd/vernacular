@@ -25,29 +25,33 @@ function readPrevious(previous: Uint8Array | undefined, options: CodecOptions): 
 }
 
 /**
- * A revision never goes down: the higher of the document's and the build's. No versions are
- * compared because a project in memory is always at the build's version.
+ * A revision never goes down within one version: the highest of the project's, the previous
+ * stored document's, and the build's. A previous document whose version rose carries no revision
+ * after it was brought current, so it counts as none. No versions are compared otherwise because
+ * a project in memory is always at the build's version.
  */
-function revisionToWrite(project: Project): number {
-  return Math.max(readRevision(project), CURRENT_SCHEMA_REVISION)
+function revisionToWrite(project: Project, previous: unknown): number {
+  const previousRevision = previous === undefined ? 0 : readRevision(previous as Project)
+  return Math.max(readRevision(project), previousRevision, CURRENT_SCHEMA_REVISION)
 }
 
 /**
- * Encode a document: check it against the current schema, graft the unknown data of the previous
- * stored document, write `meta.schemaRevision`, and serialize (ADR-0178). A document at a higher
- * revision than the build's is checked tolerantly. A failed check never blocks a save: the faults
- * are reported and the bytes still hold the document. Pure: no I/O.
+ * Encode a document: graft the unknown data of the previous stored document, write
+ * `meta.schemaRevision`, check the document that is written against the current schema, and
+ * serialize (ADR-0178). A document written at a higher revision than the build's is checked
+ * tolerantly. A failed check never blocks a save: the faults are reported and the bytes still hold
+ * the document. Pure: no I/O.
  */
 export function encodeDocument(
   project: Project,
   previous: Uint8Array | undefined,
   options: CodecOptions = {},
 ): EncodedDocument {
-  const schemaRevision = revisionToWrite(project)
-  const stamped: Project = { ...project, meta: { ...project.meta, schemaRevision } }
-  const faults = checkCurrentSchema(stamped, checkModeFor(schemaRevision))
   const { document, graftDropped } = readPrevious(previous, options)
+  const schemaRevision = revisionToWrite(project, document)
+  const stamped: Project = { ...project, meta: { ...project.meta, schemaRevision } }
   const written = document === undefined ? stamped : preserveUnknown(document, stamped)
+  const faults = checkCurrentSchema(written, checkModeFor(schemaRevision))
   const bytes = serializeDocumentJson(written)
   return graftDropped === undefined ? { bytes, faults } : { bytes, faults, graftDropped }
 }

@@ -8,7 +8,11 @@ export function serializeDocumentJson(project: Project): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(project, null, 2) + '\n')
 }
 
-/** Parse the UTF-8 JSON bytes of a document. Throws on bytes that are not UTF-8 JSON. */
+/**
+ * Parse the UTF-8 JSON bytes of a document. Throws on text that is not JSON. The bytes are decoded
+ * leniently, as stored text was always read: an invalid byte becomes U+FFFD, so one bad byte in a
+ * string does not make the file unreadable.
+ */
 export function parseDocumentJson(bytes: Uint8Array): unknown {
-  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+  return JSON.parse(new TextDecoder('utf-8').decode(bytes))
 }
