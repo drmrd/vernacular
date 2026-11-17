@@ -188,16 +188,23 @@ measured numbers are reported, not asserted.
   lower walls as its first step. The entering flux ignores the reveal, and issue #804 tracks that
   for 1.0. Light that enters below the work plane is counted, as the split-flux method also counts
   the whole window.
-- Light that a room borrows through a doorway carries the source room's error, so it reads about
-  1.7 times bright.
+- Light that a room borrows through a doorway carries the source room's error, because the
+  doorway's weight uses the source's mean visibility. How bright that light reads has not been
+  measured.
+- A doorway's entering flux keeps the factor of one half that a window gets for facing half of the
+  open sky (`core/daylight/room-average.ts`). A doorway faces a whole hemisphere of the neighbor
+  room, so for a neighbor of even luminance the hall's room-average term is half of what that
+  hemisphere passes, and the hall reads dark by that much.
 - A cell whose center lies outside every room holds 1. When a room's walls do not fall on the 100
   mm grid, some cells along each wall have their center outside the room, so a strip along the
   inside of each wall reads as open sky. In the harness shell, `sampleSkyVisibility` at the plan
-  point (80, 1500) returns 1, against about 0.042 at the center of the room. The lookup in the
+  point (80, 1500) returns 1, against about 0.028 at the center of the room. The lookup in the
   engine has to handle this. Issue #753 tracks it.
-- The code does not cap a hall's flux at the source room's. In the sweep of
-  `core/daylight/doorway-luminance.test.ts`, the hall receives at most 0.72 of the source's flux,
-  for a source room of 500 by 6000 mm with a white floor.
+- The code does not cap a hall's flux at the source room's, and a hall can receive more. In the
+  sweep of ordinary rooms in `core/daylight/doorway-luminance.test.ts`, the hall receives at most
+  0.724 of the source's flux, for a source room of 500 by 6000 mm with a white floor. That test
+  holds the ratio at 0.73 or below. A source of 100 by 40000 mm with a 6000 mm ceiling and a white
+  floor gives the hall 1.055 times the source's flux.
 - The direct term ignores a concave room's own walls. In an L-shaped room, a cell around the inner
   corner gets light that it cannot see.
 - Furniture and partial walls do not block light, and the field does not vary with height.
@@ -236,10 +243,10 @@ current, the amendments go into the records named here.
 - Window-lit rooms have a tested source of numbers before any engine work starts. The lighting
   hook spike passed, so the engine side does not have to wait.
 - The math has no dependency on the renderer, so both backends agree by construction.
-- The field's error is bounded but not small. For a room lit by its own windows, the model reads
-  about 1.7 times bright against the rule of thumb at the same net transmittance. Light borrowed
-  through a doorway reads about 1.7 times bright too. Anything that reads the field as a
-  measurement needs the limits above. The reserved photo mode is the accuracy backstop.
+- The field's error is bounded but not small. For the window-lit test room above, the model reads
+  about 1.7 times bright against the rule of thumb at the same net transmittance. Other rooms and
+  light borrowed through a doorway have not been measured against it. Anything that reads the field
+  as a measurement needs the limits above. The reserved photo mode is the accuracy backstop.
 - The field is built from `DaylightRoom` values only. A short adapter from the scene graph, and
   later a mapper from the plan geometry, supply them.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
