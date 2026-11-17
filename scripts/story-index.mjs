@@ -1,6 +1,10 @@
 // Takes the raw file TEXT (not a parsed object) so the caller owns when disk
 // I/O happens. Stays dependency-free to honor the 30-day dependency cooldown.
 
+/**
+ * @param {string} indexJsonText
+ * @returns {string[]}
+ */
 export function readStoryIds(indexJsonText) {
   let index
   try {

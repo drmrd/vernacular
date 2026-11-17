@@ -1,0 +1,17 @@
+// Type-checks the end-to-end tests and the Playwright configs, which tsconfig.json leaves out.
+// `pnpm typecheck` runs this project after the application one. It emits nothing.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "@webgpu/types"],
+    "allowJs": true
+  },
+  "include": [
+    "e2e",
+    "playwright.config.ts",
+    "playwright.stories.config.ts",
+    "src/e2e-storage-hook.ts",
+    "src/vite-env.d.ts",
+    "storage/**/*.d.ts"
+  ]
+}
