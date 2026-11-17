@@ -78,3 +78,76 @@ describe('runDecide', () => {
     expect(d.outputs).toMatchObject({ e2e: 'false', visual: 'false', lighthouse: 'false' })
   })
 })
+
+describe('the paths that shape a heavy run', () => {
+  async function decideFor(options) {
+    const d = deps(options)
+    await runDecide(['--base', 'origin/main'], d)
+    return d.outputs
+  }
+
+  it('runs the end-to-end suite for a change to the end-to-end Playwright config', async () => {
+    const outputs = await decideFor({ changed: ['playwright.config.ts'] })
+    expect(outputs).toEqual({ e2e: 'true', visual: 'false', lighthouse: 'false' })
+  })
+
+  it('runs the visual suite for a change to the stories Playwright config', async () => {
+    const outputs = await decideFor({ changed: ['playwright.stories.config.ts'] })
+    expect(outputs).toEqual({ e2e: 'false', visual: 'true', lighthouse: 'false' })
+  })
+
+  it.each(['README.md', 'docs/specs/x.md', 'scripts/ci/decide.mjs', 'tsconfig.json'])(
+    'turns no heavy suite on for a change to only %s',
+    async (path) => {
+      const outputs = await decideFor({ changed: [path] })
+      expect(outputs).toEqual({ e2e: 'false', visual: 'false', lighthouse: 'false' })
+    },
+  )
+
+  const NOT_ASSERTED = expect.any(String)
+
+  it.each([
+    { path: 'vite.config.ts', e2e: 'true', visual: 'true' },
+    { path: 'vitest.config.ts', e2e: 'false', visual: 'true' },
+    { path: 'index.html', e2e: 'true', visual: 'false' },
+    { path: 'src/main.tsx', e2e: 'true', visual: 'false' },
+    { path: 'src/service-worker.ts', e2e: 'true', visual: 'false' },
+    { path: 'public/manifest.webmanifest', e2e: 'true', visual: 'true' },
+    { path: 'e2e/stories/story-visual.spec.ts', e2e: NOT_ASSERTED, visual: 'true' },
+  ])('turns the suites on for a change to only $path', async ({ path, e2e, visual }) => {
+    const outputs = await decideFor({ changed: [path] })
+    expect(outputs).toEqual({ e2e, visual, lighthouse: 'false' })
+  })
+
+  it.each([
+    { path: 'public/mockServiceWorker.js', e2e: 'true', visual: 'true' },
+    { path: 'src/setupTests.ts', e2e: 'true', visual: 'true' },
+    { path: 'scripts/serve-static.mjs', e2e: 'false', visual: 'true' },
+    { path: 'scripts/story-index.mjs', e2e: 'false', visual: 'true' },
+    { path: 'pnpm-lock.yaml', e2e: 'true', visual: 'true' },
+  ])(
+    'turns the suites on for the lockfile and the files that the story job loads: $path',
+    async ({ path, e2e, visual }) => {
+      const outputs = await decideFor({ changed: [path] })
+      expect(outputs).toEqual({ e2e, visual, lighthouse: 'false' })
+    },
+  )
+
+  it.each(['package.json', 'scripts/knowledge-index.mjs'])(
+    'turns no heavy suite on for a change to only %s',
+    async (path) => {
+      const outputs = await decideFor({ changed: [path] })
+      expect(outputs).toEqual({ e2e: 'false', visual: 'false', lighthouse: 'false' })
+    },
+  )
+
+  it('keeps the story visuals off for an end-to-end test outside the stories folder', async () => {
+    const outputs = await decideFor({ changed: ['e2e/tests/x.spec.ts'] })
+    expect(outputs).toEqual({ e2e: 'true', visual: 'false', lighthouse: 'false' })
+  })
+
+  it('skips the end-to-end suite on a draft even for a change to the Playwright config', async () => {
+    const outputs = await decideFor({ changed: ['playwright.config.ts'], draft: true })
+    expect(outputs.e2e).toBe('false')
+  })
+})

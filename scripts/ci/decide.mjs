@@ -12,8 +12,73 @@ import { appendFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const DEFAULT_BASE = 'origin/main'
-const E2E_PATHS = ['app/', 'editor/', 'bridge/', 'engine/', 'e2e/']
-const VISUAL_PATHS = ['editor/', 'bridge/react/', '.storybook/']
+// The two lists below choose the heavy suites for a pull request.
+//
+// In, and why:
+// - playwright.config.ts: it sets the projects, the port, the server, and the
+//   retries of the end-to-end run.
+// - playwright.stories.config.ts: it sets the story server, the snapshot path,
+//   and the tolerance of the story visuals.
+// - vite.config.ts: it shapes the build and the preview of the end-to-end run
+//   and the story build; the check build proves only that it compiles.
+// - vitest.config.ts: it defines the story test project, which runs only in the
+//   story job.
+// - src/: the bootstrap, the service worker, and the storage hook run in a
+//   browser only in the end-to-end suite. src/setupTests.ts is also a setup file
+//   of the story test project (through vite.config.ts), so it turns on the story
+//   job too.
+// - index.html: it is the entry document of the bundle that the suite loads.
+// - public/: it is served at run time for the end-to-end suite, and it is copied
+//   into the story build, where the stories use the mock service worker in it.
+// - .storybook/: its main file, its preview, and its decorators shape every
+//   story.
+// - e2e/stories/: its spec and baselines run only in the story job. The e2e/
+//   entry of the end-to-end list does not turn that job on.
+// - scripts/serve-static.mjs: it is the server of the story visuals.
+// - scripts/story-index.mjs: the story visual spec imports it.
+// - pnpm-lock.yaml: it sets the version of every tool and library that a heavy
+//   suite runs.
+//
+// Out on purpose:
+// - tsconfig*.json: the typecheck and the build in the check job prove them; an
+//   option that changes the emitted code is an accepted gap.
+// - The rest of scripts/: its unit tests prove it.
+// - package.json: a version change also changes the lockfile, and a release pull
+//   request changes this file for the version alone; a change of a script alone
+//   is an accepted gap.
+// - lighthouserc.json: Lighthouse never runs on a pull request.
+// - .nvmrc: the check job proves the Node version.
+//
+// Not decided yet:
+// - core/, storage/, and .github/workflows/ can each change a heavy suite.
+//   ADR-0171 states the open choices for them.
+const E2E_PATHS = [
+  'app/',
+  'editor/',
+  'bridge/',
+  'engine/',
+  'e2e/',
+  'playwright.config.ts',
+  'vite.config.ts',
+  'index.html',
+  'src/',
+  'public/',
+  'pnpm-lock.yaml',
+]
+const VISUAL_PATHS = [
+  'editor/',
+  'bridge/react/',
+  '.storybook/',
+  'playwright.stories.config.ts',
+  'e2e/stories/',
+  'vite.config.ts',
+  'vitest.config.ts',
+  'public/',
+  'src/setupTests.ts',
+  'scripts/serve-static.mjs',
+  'scripts/story-index.mjs',
+  'pnpm-lock.yaml',
+]
 const VISUAL_SUFFIX = '.stories.tsx'
 
 /** @typedef {{ e2e: boolean, visual: boolean, lighthouse: boolean }} Decision */
