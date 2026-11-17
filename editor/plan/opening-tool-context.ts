@@ -21,7 +21,7 @@ export interface OpeningToolValue {
   placementType: string
   /** Choose the element-type id to place next. */
   setPlacementType: (id: string) => void
-  /** Why the last placement click put nothing down, or null when it landed. */
+  /** Why the last placement put nothing down, or null when it landed. */
   placementRefusal: PlacementRefusal | null
   /** Report a refused placement, or clear the notice with null. */
   setPlacementRefusal: (refusal: PlacementRefusal | null) => void
@@ -45,7 +45,7 @@ export function useOpeningTool(): OpeningToolValue {
 
 /**
  * Retires the standing refusal whenever the active tool changes. A refusal is about
- * one click under one tool, so putting that tool down ends it rather than parking it
+ * one placement under one tool, so putting that tool down ends it rather than parking it
  * for the next time the tool comes back.
  */
 export function useForgetRefusalOnToolChange(tool: ToolId): void {
@@ -62,9 +62,10 @@ export interface OpeningToolProviderProps {
 /**
  * Holds the shared placement-tool state so the type chooser, the pointer glue,
  * and the overlay read and write one source: the element type the place-opening
- * tool places next, and why the last placement click was refused. The refusal
- * rides here rather than in the opening hook alone because the stair tool refuses
- * for its own reason and the overlay reports both from one place. Mirrors the
+ * tool places next, and why the last placement was refused. The refusal rides
+ * here rather than in the opening hook alone because the stair tool refuses for
+ * its own reason, the keyboard opening drop reports too, and the overlay reports
+ * all of them from one place. Mirrors the
  * underlay provider: a memoized value keeps the context referentially stable
  * across renders that change neither.
  */

@@ -36,7 +36,7 @@ export function snapAnnouncement(snap: SnapResult | null): string {
   return `Snapped to ${snapLabel(snap)}`
 }
 
-/** Why a pointer placement put nothing on the plan. */
+/** Why a placement put nothing on the plan. */
 export type PlacementRefusal = 'no-host-wall' | 'opening-overlap' | 'no-floor-above'
 
 /**
@@ -62,7 +62,7 @@ function refusingTool(refusal: PlacementRefusal): ToolId {
 }
 
 /**
- * Why the last placement click put nothing on the plan, while the tool that raised
+ * Why the last placement put nothing on the plan, while the tool that raised
  * it is still in hand. Empty when nothing has been refused, or when the refusal
  * belongs to another tool: a stair refusal has nothing to say under the opening
  * tool.

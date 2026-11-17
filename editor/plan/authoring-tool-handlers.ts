@@ -212,8 +212,10 @@ export function handleDimensionKey(ctx: DimensionKeyContext): void {
 // freshly created opening of the active placement type; on a miss, announce that
 // no wall sits near the candidate and dispatch nothing. A hit that would overlap an
 // opening already in the wall is refused with the same reason the pointer path
-// gives. This is a keyboard-only path, so the miss phrasing names the candidate
-// rather than a pointer cursor.
+// gives. Every outcome also goes to the placement notice (a refusal reason, or null
+// when the opening lands), so a keyboard refusal shows on the canvas as a pointer
+// refusal does. This is a keyboard-only path, so the miss phrasing names the
+// candidate rather than a pointer cursor.
 function dropOpening(ctx: OpeningKeyContext): void {
   if (ctx.graph === undefined || ctx.placementType === undefined) {
     return

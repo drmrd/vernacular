@@ -187,10 +187,11 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
 
 /**
  * Binds the creative-tool authoring keystrokes to the window. While the
- * draw-wall or dimension tool is active, arrow keys nudge a keyboard-reachable
- * candidate point by a grid step and Enter drops a wall vertex or a dimension
- * endpoint at the candidate by dispatching the same commands the pointer path
- * dispatches. Inert under any other tool and ignored while a form control is
+ * draw-wall, dimension, place-opening, or place-furniture tool is active, arrow
+ * keys nudge a keyboard-reachable candidate point by a grid step and Enter drops
+ * a wall vertex, a dimension endpoint, an opening, or the armed furniture at the
+ * candidate by dispatching the same commands the pointer path dispatches. Inert
+ * under any other tool and ignored while a form control is
  * focused, mirroring the selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
