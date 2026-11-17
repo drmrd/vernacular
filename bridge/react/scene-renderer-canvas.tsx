@@ -154,13 +154,13 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * A React Three Fiber Canvas on the engine's scene renderer. It shows a blank canvas until the
  * renderer factory loads, then mounts the Canvas with a synchronous renderer factory. Until the
  * renderer's backend has initialized, the frame loop stays off and the children stay unmounted,
- * because Three.js throws on a render, or on most renderer queries, before init() resolves. The
- * Every renderer the wrapper builds is released
- * exactly once through the engine's releaseSceneRenderer: when its init() rejects, and otherwise
- * when the wrapper unmounts, also while init() is still pending. Opening and closing the view any
- * number of times therefore leaves no renderer and no animation loop alive. A renderer module that
- * does not load ends in a could-not-load state with a Retry. A renderer that cannot be built or
- * started ends in the cannot-render state. Each stays until a retry or a new mount.
+ * because Three.js throws on a render, or on most renderer queries, before init() resolves. Every
+ * renderer the wrapper builds is released exactly once through the engine's releaseSceneRenderer:
+ * when its init() rejects, and otherwise when the wrapper unmounts, also while init() is still
+ * pending. Opening and closing the view any number of times therefore leaves no renderer and no
+ * animation loop alive. A renderer module that does not load ends in a could-not-load state with a
+ * Retry. A renderer that cannot be built or started ends in the cannot-render state. Each stays
+ * until a retry or a new mount.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
