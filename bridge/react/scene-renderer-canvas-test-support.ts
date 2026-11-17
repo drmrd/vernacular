@@ -17,6 +17,7 @@ export function defer<T>(): Deferred<T> {
   return { promise, resolve, reject }
 }
 
+// act flushes React's effects and state updates; one microtask turn lets a promise reaction run.
 export async function settle(resolve: () => void): Promise<void> {
   await act(async () => {
     resolve()

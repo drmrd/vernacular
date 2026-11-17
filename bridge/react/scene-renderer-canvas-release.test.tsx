@@ -103,7 +103,6 @@ describe('SceneRendererCanvas releasing the renderers it builds', () => {
     expect(built).toHaveLength(openings)
     expect(collaborators.released).toHaveLength(openings)
     expect(new Set(collaborators.released)).toEqual(new Set(built))
-    expect(built.length - collaborators.released.length).toBe(0)
     expect(peakLive).toBeLessThanOrEqual(1)
     expect(runningLoops(built)).toBe(0)
   })

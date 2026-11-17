@@ -1,25 +1,10 @@
 import { useEffect, type ReactNode } from 'react'
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneRendererCanvas } from './scene-renderer-canvas'
-
-type Deferred<T> = {
-  promise: Promise<T>
-  resolve: (value: T) => void
-  reject: (reason: Error) => void
-}
-
-function defer<T>(): Deferred<T> {
-  let resolve: (value: T) => void = () => {}
-  let reject: (reason: Error) => void = () => {}
-  const promise = new Promise<T>((done, fail) => {
-    resolve = done
-    reject = fail
-  })
-  return { promise, resolve, reject }
-}
+import { defer, settle, type Deferred } from './scene-renderer-canvas-test-support'
 
 // The engine's loader and the 3D library's Canvas are the two collaborators of the wrapper.
 // Each case decides when the factory loads and when the renderer's init() settles, so the
@@ -27,23 +12,31 @@ function defer<T>(): Deferred<T> {
 const collaborators = vi.hoisted(() => ({
   loadFactory: (() => Promise.resolve(() => ({}))) as () => Promise<unknown>,
   canvasProps: [] as Array<Record<string, unknown>>,
+  glResults: [] as unknown[],
+  released: [] as unknown[],
 }))
 
 vi.mock('../../engine', () => ({
   loadSceneRendererFactory: () => collaborators.loadFactory(),
-  releaseSceneRenderer: () => Promise.resolve(),
+  releaseSceneRenderer: (renderer: unknown) => {
+    collaborators.released.push(renderer)
+    return Promise.resolve()
+  },
 }))
 
 // The stand-in Canvas records every render's props, renders its children as the real one does
 // once its scene is ready, and builds its renderer through the supplied gl function, again only
-// when that function changes, as the library does for a changed renderer factory.
+// when that function changes, as the library does for a changed renderer factory. It keeps what
+// each gl call returned.
 vi.mock('@react-three/fiber', () => ({
   // A component export legitimately keeps its PascalCase name in the mock.
   // eslint-disable-next-line @typescript-eslint/naming-convention
   Canvas: ({ gl, children, ...props }: CanvasProps) => {
     collaborators.canvasProps.push({ gl, children, ...props })
     useEffect(() => {
-      if (typeof gl === 'function') gl({ canvas: document.createElement('canvas') } as never)
+      if (typeof gl === 'function') {
+        collaborators.glResults.push(gl({ canvas: document.createElement('canvas') } as never))
+      }
     }, [gl])
     return <div data-testid="canvas">{children}</div>
   },
@@ -67,13 +60,6 @@ function arrangeStartUp(): Harness {
   const loaded = defer<unknown>()
   collaborators.loadFactory = () => loaded.promise
   return { renderer, factory, loaded, initialized }
-}
-
-async function settle(resolve: () => void): Promise<void> {
-  await act(async () => {
-    resolve()
-    await Promise.resolve()
-  })
 }
 
 function glOfRender(index: number): GLProps {
@@ -208,6 +194,8 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
 
   beforeEach(() => {
     collaborators.canvasProps = []
+    collaborators.glResults = []
+    collaborators.released = []
     start = arrangeStartUp()
     rejections = recordUnhandledRejections()
   })
@@ -259,5 +247,25 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
 
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByTestId('canvas')).toBeInTheDocument()
+  })
+
+  it('shows the cannot-render status and builds nothing to release when the renderer factory throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const factory = vi.fn(() => {
+      throw new Error('no WebGPU adapter')
+    })
+    renderWrapper()
+    await settle(() => start.loaded.resolve(factory))
+
+    expect(warn).toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.queryByTestId('child')).toBeNull()
+    expect(screen.queryByTestId('canvas')).toBeNull()
+    expect(collaborators.glResults).toHaveLength(1)
+    expect(collaborators.glResults[0]).toEqual(
+      expect.objectContaining({ then: expect.any(Function) }),
+    )
+    expect(collaborators.released).toEqual([])
+    expect(await rejections.read()).toEqual([])
   })
 })
