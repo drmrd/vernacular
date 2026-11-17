@@ -20,10 +20,13 @@
  *
  * The walk fails loudly rather than skipping what it does not understand: a
  * keyword outside the supported set, a `type` that is not a single name, an
- * object with both `properties` and object-valued `additionalProperties`, a
- * reference outside `#/definitions/`, and a union variant without a `const`
- * discriminator each throw an Error that names the schema path. A reference
- * cycle ends the walk at the second visit of the referenced definition.
+ * object with `properties` beside an `anyOf`, an object with both `properties`
+ * and object-valued `additionalProperties`, a reference outside
+ * `#/definitions/`, and a union variant without a `const` discriminator each
+ * throw an Error that names the schema path. A reference cycle is cut short
+ * below the property that closes it: that property is recorded, present or
+ * absent, and the walk does not descend into the definition that it refers to
+ * while the walk is already inside that definition.
  */
 
 export interface JsonSchema {
