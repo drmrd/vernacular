@@ -13,7 +13,7 @@ import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import { CANDIDATE_STEP_MM, nudgeCandidate } from './keyboard-candidate'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
-import { placementRefusalMessage } from './overlay-announce'
+import { placementRefusalMessage, type PlacementRefusal } from './overlay-announce'
 import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
 import { selectPlacedEntity } from './select-placed-entity'
 import { advanceWallTool, cancelWallTool, wallRunEnded, type WallToolState } from './wall-tool'
@@ -58,6 +58,7 @@ export interface OpeningKeyContext extends AuthoringRun {
   event: KeyboardEvent
   graph: SceneGraph | undefined
   placementType: string | undefined
+  setPlacementRefusal: (refusal: PlacementRefusal | null) => void
 }
 
 // One keystroke while the place-furniture tool is active: the shared run plus the
@@ -220,6 +221,7 @@ function dropOpening(ctx: OpeningKeyContext): void {
   ctx.event.preventDefault()
   const target = placeOpeningTarget(ctx.graph, ctx.candidate, DEFAULT_HIT_TOLERANCE_MM)
   if (target === null) {
+    ctx.setPlacementRefusal('no-host-wall')
     ctx.setAnnouncement('No wall near the candidate')
     return
   }
@@ -229,9 +231,11 @@ function dropOpening(ctx: OpeningKeyContext): void {
     position: target.position,
   })
   if (placementWouldOverlap(ctx.session.getProject(), target.floorId, opening)) {
+    ctx.setPlacementRefusal('opening-overlap')
     ctx.setAnnouncement(placementRefusalMessage('opening-overlap'))
     return
   }
+  ctx.setPlacementRefusal(null)
   ctx.session.dispatch(placeOpening(target.floorId, opening))
   selectPlacedEntity(ctx.selection, OPENING_NODE_PREFIX, opening.id)
   ctx.setAnnouncement(openingAnnouncement(ctx.placementType))

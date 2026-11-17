@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type Point, type SceneGraph } from '../../core'
 import type { LibraryItem } from '../../storage'
 import type { EditorSession, SelectionStore } from '../../bridge'
@@ -13,8 +13,10 @@ import {
   handleWallKey,
   type AuthoringRun,
   type DimensionKeyContext,
+  type OpeningKeyContext,
   type WallKeyContext,
 } from './authoring-tool-handlers'
+import { useOpeningTool } from './opening-tool-context'
 
 // The keyboard authoring run seeds its candidate at the world origin when no
 // viewport is supplied, so the candidate is reachable before any pointer move.
@@ -69,6 +71,7 @@ interface AuthoringTools {
   placementType: string | undefined
   armed: LibraryItem | null
   rotation: number
+  setPlacementRefusal: OpeningKeyContext['setPlacementRefusal']
 }
 
 // A tool-state slot's current value and setter, paired so the call site can
@@ -86,6 +89,7 @@ interface AuthoringPlacementDeps {
   placementType: string | undefined
   armed: LibraryItem | null
   rotation: number
+  setPlacementRefusal: OpeningKeyContext['setPlacementRefusal']
 }
 
 // Assembles the AuthoringTools payload the window listener routes a keystroke
@@ -112,6 +116,7 @@ function buildAuthoringTools(
     placementType: toolState.placement.placementType,
     armed: toolState.placement.armed,
     rotation: toolState.placement.rotation,
+    setPlacementRefusal: toolState.placement.setPlacementRefusal,
   }
 }
 
@@ -141,7 +146,13 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
       handleWallKey({ ...run, event, toolState: tools.wallState, setToolState: tools.setWallState })
       return
     case 'place-opening':
-      handleOpeningKey({ ...run, event, graph: tools.graph, placementType: tools.placementType })
+      handleOpeningKey({
+        ...run,
+        event,
+        graph: tools.graph,
+        placementType: tools.placementType,
+        setPlacementRefusal: tools.setPlacementRefusal,
+      })
       return
     case 'dimension':
       handleDimensionKey({
@@ -159,6 +170,21 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
   }
 }
 
+// The placement values the opening and furniture branches read, with the optional
+// deps defaulted and the placement notice setter taken from the opening-tool
+// context. Memoized so the keydown listener is only reinstalled when one of them
+// actually changes.
+function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
+  const { setPlacementRefusal } = useOpeningTool()
+  const { graph, placementType } = deps
+  const armed = deps.armed ?? null
+  const rotation = deps.rotation ?? 0
+  return useMemo(
+    () => ({ graph, placementType, armed, rotation, setPlacementRefusal }),
+    [graph, placementType, armed, rotation, setPlacementRefusal],
+  )
+}
+
 /**
  * Binds the creative-tool authoring keystrokes to the window. While the
  * draw-wall or dimension tool is active, arrow keys nudge a keyboard-reachable
@@ -168,9 +194,8 @@ function routeAuthoringKey(tools: AuthoringTools, event: KeyboardEvent): void {
  * focused, mirroring the selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
-  const { session, selection, tool, activeFloorId, graph, placementType } = deps
-  const armed = deps.armed ?? null
-  const rotation = deps.rotation ?? 0
+  const { session, selection, tool, activeFloorId } = deps
+  const placement = usePlacementDeps(deps)
   const [candidate, setCandidate] = useState<Point>(ORIGIN)
   const [wallToolState, setWallToolState] = useState<WallToolState>(IDLE_WALL_TOOL)
   const [dimensionToolState, setDimensionToolState] =
@@ -189,7 +214,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
         {
           wall: { state: wallToolState, setState: setWallToolState },
           dimension: { state: dimensionToolState, setState: setDimensionToolState },
-          placement: { graph, placementType, armed, rotation },
+          placement,
         },
       ),
     )
@@ -201,10 +226,7 @@ export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
     candidate,
     wallToolState,
     dimensionToolState,
-    graph,
-    placementType,
-    armed,
-    rotation,
+    placement,
   ])
 
   return { candidate, announcement, clearAnnouncement }
