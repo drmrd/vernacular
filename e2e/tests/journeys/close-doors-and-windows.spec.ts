@@ -55,10 +55,11 @@ import {
 // between two reads would escape it, which issue #778 tracks.
 //
 // The last window scenario is about the hung window of issue #792. It selects the shut window
-// through the list of 3D entities, which draws an outline around its frame, and checks that the
-// pixels the open window changes stay inside that outline (only the lower sash rises, inside its
-// frame), that the open window does not flicker, and that a second press of the open key from the
-// pose that opened it shuts the window again.
+// through the list of 3D entities, which draws an outline around its frame, and checks that
+// nothing of the open window appears outside that outline, that the open window does not flicker,
+// and that a second press of the open key from the pose that opened it shuts the window again.
+// The outline check does not show that only the lower sash rises, because the wall hides the
+// parts above the head. The unit tests in engine/scene/opening-motion.test.ts guard that.
 //
 // One thing is not asserted. On a fresh page the walker starts at a pose where the door is out
 // of sight, so the walker's first frames cannot show its leaf, and that case reads the control
