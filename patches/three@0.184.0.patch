@@ -1,0 +1,108 @@
+diff --git a/build/three.webgpu.js b/build/three.webgpu.js
+index da6128d25f3443904c6be038b761365b7c884168..2c6736188c286e9d35b8e8a7a8a3c0a989c7c12d 100644
+--- a/build/three.webgpu.js
++++ b/build/three.webgpu.js
+@@ -700,11 +700,15 @@ class NodeMaterialObserver {
+ 
+ 		const { renderId } = nodeFrame;
+ 
++		let refresh = false;
++
+ 		if ( this.renderId !== renderId ) {
+ 
+ 			this.renderId = renderId;
+ 
+-			return true;
++			// no early out here: run the equals() pass below so the recorded state stays in step (as three r186 does)
++
++			refresh = true;
+ 
+ 		}
+ 
+@@ -712,12 +716,12 @@ class NodeMaterialObserver {
+ 		const isBundle = renderObject.bundle !== null && renderObject.bundle.static === true && this.getRenderObjectData( renderObject ).version === renderObject.bundle.version;
+ 
+ 		if ( isStatic || isBundle )
+-			return false;
++			return refresh;
+ 
+ 		const lightsData = this.getLights( renderObject.lightsNode, renderId );
+ 		const notEqual = this.equals( renderObject, lightsData, renderId ) !== true;
+ 
+-		return notEqual;
++		return refresh || notEqual;
+ 
+ 	}
+ 
+diff --git a/build/three.webgpu.nodes.js b/build/three.webgpu.nodes.js
+index 6834eb44a42521d85dd0da42bc84c09f286c9d3b..0f0007ad347890bd58809643f29fd6a41aa6005e 100644
+--- a/build/three.webgpu.nodes.js
++++ b/build/three.webgpu.nodes.js
+@@ -700,11 +700,15 @@ class NodeMaterialObserver {
+ 
+ 		const { renderId } = nodeFrame;
+ 
++		let refresh = false;
++
+ 		if ( this.renderId !== renderId ) {
+ 
+ 			this.renderId = renderId;
+ 
+-			return true;
++			// no early out here: run the equals() pass below so the recorded state stays in step (as three r186 does)
++
++			refresh = true;
+ 
+ 		}
+ 
+@@ -712,12 +716,12 @@ class NodeMaterialObserver {
+ 		const isBundle = renderObject.bundle !== null && renderObject.bundle.static === true && this.getRenderObjectData( renderObject ).version === renderObject.bundle.version;
+ 
+ 		if ( isStatic || isBundle )
+-			return false;
++			return refresh;
+ 
+ 		const lightsData = this.getLights( renderObject.lightsNode, renderId );
+ 		const notEqual = this.equals( renderObject, lightsData, renderId ) !== true;
+ 
+-		return notEqual;
++		return refresh || notEqual;
+ 
+ 	}
+ 
+diff --git a/src/materials/nodes/manager/NodeMaterialObserver.js b/src/materials/nodes/manager/NodeMaterialObserver.js
+index 29e26ebd184194778f88326ca6a3d47da3b94c8d..68d61a181f103db0a5536474b574acecb0a90c0d 100644
+--- a/src/materials/nodes/manager/NodeMaterialObserver.js
++++ b/src/materials/nodes/manager/NodeMaterialObserver.js
+@@ -692,11 +692,15 @@ class NodeMaterialObserver {
+ 
+ 		const { renderId } = nodeFrame;
+ 
++		let refresh = false;
++
+ 		if ( this.renderId !== renderId ) {
+ 
+ 			this.renderId = renderId;
+ 
+-			return true;
++			// no early out here: run the equals() pass below so the recorded state stays in step (as three r186 does)
++
++			refresh = true;
+ 
+ 		}
+ 
+@@ -704,12 +708,12 @@ class NodeMaterialObserver {
+ 		const isBundle = renderObject.bundle !== null && renderObject.bundle.static === true && this.getRenderObjectData( renderObject ).version === renderObject.bundle.version;
+ 
+ 		if ( isStatic || isBundle )
+-			return false;
++			return refresh;
+ 
+ 		const lightsData = this.getLights( renderObject.lightsNode, renderId );
+ 		const notEqual = this.equals( renderObject, lightsData, renderId ) !== true;
+ 
+-		return notEqual;
++		return refresh || notEqual;
+ 
+ 	}
+ 
