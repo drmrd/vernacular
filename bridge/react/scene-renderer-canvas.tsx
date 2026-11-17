@@ -30,7 +30,6 @@ const NEVER_SETTLES = new Promise<never>(() => {})
 
 function useSceneRendererFactory(
   setStatus: (status: SceneRendererStatus) => void,
-  loadAttempt: number,
 ): SceneRendererFactory | null {
   const [rendererFactory, setRendererFactory] = useState<SceneRendererFactory | null>(null)
   useEffect(() => {
@@ -49,7 +48,7 @@ function useSceneRendererFactory(
     return () => {
       cancelled = true
     }
-  }, [setStatus, loadAttempt])
+  }, [setStatus])
   return rendererFactory
 }
 
@@ -144,8 +143,7 @@ function buildCurrentRenderer(build: RendererBuild): HeldRenderer['renderer'] {
 // and only the current renderer's init() can set the status.
 function useSceneRendererStart(forceWebGL: boolean) {
   const [status, setStatus] = useState<SceneRendererStatus>('loading')
-  const [loadAttempt, setLoadAttempt] = useState(0)
-  const rendererFactory = useSceneRendererFactory(setStatus, loadAttempt)
+  const rendererFactory = useSceneRendererFactory(setStatus)
   const { hold, isCurrent, release } = useRendererRelease()
   const createRenderer = useMemo<GLProps | null>(() => {
     if (rendererFactory === null) return null
@@ -162,16 +160,26 @@ function useSceneRendererStart(forceWebGL: boolean) {
         release,
       })
   }, [rendererFactory, forceWebGL, hold, isCurrent, release])
-  const retryLoad = useCallback(() => {
-    setStatus('loading')
-    setLoadAttempt((attempt) => attempt + 1)
-  }, [])
-  return { createRenderer, status, retryLoad }
+  return { createRenderer, status }
+}
+
+function reloadBrowserPage(): void {
+  window.location.reload()
 }
 
 /** The Canvas props a scene canvas takes: everything but the renderer, which it builds. */
 export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
-  Pick<SceneRendererOptions, 'forceWebGL'>
+  Pick<SceneRendererOptions, 'forceWebGL'> & {
+    /**
+     * Called once when the user presses Reload page in the could-not-load alert. The default
+     * reloads the browser page. The button reloads the page instead of loading the renderer
+     * module again because the browser keeps a failed dynamic import for that address, sends no
+     * second request, and rejects the next import() at once. The page's unload guard arms a
+     * beforeunload listener while the project has unsaved changes, so the browser asks the user
+     * to confirm before the reload discards them.
+     */
+    reloadPage?: () => void
+  }
 
 /**
  * A React Three Fiber Canvas on the engine's scene renderer. It shows a blank canvas until the
@@ -182,19 +190,24 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * when its init() rejects, when a newer renderer replaces it, when a later build fails (the held
  * renderer is no longer the one the canvas asked for last), and otherwise when the wrapper
  * unmounts, also while init() is still pending. Opening and closing the view any number of times
- * therefore leaves no renderer and no animation loop alive. A renderer module that does not load ends in a could-not-load state with a
- * Retry. A renderer that cannot be built or started ends in the cannot-render state. Each stays
- * until a retry or a new mount. Under StrictMode the library may ask for a renderer twice; the
- * wrapper follows the last one and releases the other.
+ * therefore leaves no renderer and no animation loop alive. A renderer module that does not
+ * load ends in a could-not-load state with a Reload page button; the wrapper makes no second
+ * load attempt in place, because the browser keeps a failed dynamic import and does not fetch
+ * it again, so only a page reload can recover. The page's unload guard asks the user to confirm
+ * the reload while the project has unsaved changes. A renderer that cannot be built or started
+ * ends in the cannot-render state. Each stays until the page goes away or a new mount. Under
+ * StrictMode the library may ask for a renderer twice; the wrapper follows the last one and
+ * releases the other.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
   frameloop = 'always',
+  reloadPage = reloadBrowserPage,
   children,
   ...canvasProps
 }: SceneRendererCanvasProps) {
-  const { createRenderer, status, retryLoad } = useSceneRendererStart(forceWebGL)
-  if (status === 'load-failed') return <SceneLoadFailedStatus onRetry={retryLoad} />
+  const { createRenderer, status } = useSceneRendererStart(forceWebGL)
+  if (status === 'load-failed') return <SceneLoadFailedStatus onReload={reloadPage} />
   if (status === 'failed') return <SceneUnsupportedStatus />
   if (createRenderer === null) return <canvas style={LOADING_CANVAS_STYLE} />
   const initialized = status === 'ready'
