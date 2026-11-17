@@ -79,15 +79,22 @@ export class DocumentStore {
     this.durable = files.durable
   }
 
-  /** The projects that hold a document, sorted by id. Reads no document. */
+  /**
+   * The projects that hold a document, sorted by id. Reads no document. A project whose time of
+   * last change cannot be read is listed with `lastChangedAt` undefined; a failure to list the ids
+   * themselves still rejects.
+   */
   async list(): Promise<ProjectSummary[]> {
     const ids = [...(await this.files.ids())].sort()
-    return Promise.all(
-      ids.map(async (id) => ({
-        id,
-        lastChangedAt: await this.files.projectDirectory(id).modifiedAt(PROJECT_FILE),
-      })),
-    )
+    return Promise.all(ids.map(async (id) => ({ id, lastChangedAt: await this.changedAt(id) })))
+  }
+
+  private async changedAt(id: string): Promise<string | undefined> {
+    try {
+      return await this.files.projectDirectory(id).modifiedAt(PROJECT_FILE)
+    } catch {
+      return undefined
+    }
   }
 
   /** Decodes the project's document. A failed decode writes nothing; a migrated one is backed up. */
