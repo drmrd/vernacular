@@ -18,3 +18,17 @@ export function sceneReadinessProps(ready: boolean): Record<string, string> {
     [SCENE_READY_ATTRIBUTE]: ready ? 'true' : 'false',
   }
 }
+
+/** Why the scene renderer could not run: its module did not load, or it could not be built or started. */
+export type SceneRendererFailureKind = 'load' | 'start'
+
+/**
+ * Marks the element that stands in for the 3D canvas when its renderer failed. The value is a
+ * SceneRendererFailureKind. The editor's scene pane reads it to drop its loading and empty-floor
+ * overlays.
+ */
+export const SCENE_RENDERER_FAILED_ATTRIBUTE = 'data-scene-renderer-failed'
+
+export function sceneRendererFailedProps(kind: SceneRendererFailureKind): Record<string, string> {
+  return { [SCENE_RENDERER_FAILED_ATTRIBUTE]: kind }
+}
