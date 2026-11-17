@@ -24,3 +24,7 @@ public/mockServiceWorker.js
 # Generated table of known keys (ADR-0184). The schema-drift guard compares it
 # byte-for-byte with the generator's output, so Prettier must not reformat it.
 core/model/known-keys.json
+
+# Standalone validators generated with the schema. The drift guard compares them
+# byte-for-byte with the generator output, so Prettier must not reformat them.
+core/format/generated/

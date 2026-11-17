@@ -2,9 +2,10 @@
 //
 // Write side of CORE schema generation. Serializes buildProjectSchema() to the path for the
 // current version and revision (see schemaPath) and the table of known keys to
-// core/model/known-keys.json, or (with --check) verifies both committed files match the
+// core/model/known-keys.json, or (with --check) verifies every committed file matches the
 // regenerated output. The schema check uses driftVerdict: a changed schema must come with a
-// higher version or revision (ADR-0178). Drift exits non-zero.
+// higher version or revision (ADR-0178). It also writes the strict and the tolerant validator
+// for the current schema as standalone modules under core/format/generated/. Drift exits non-zero.
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -17,6 +18,11 @@ import {
   SCHEMA_VERSION,
 } from './build-schema.mjs'
 import { buildKnownKeys } from './build-known-keys.mjs'
+import {
+  buildValidatorSources,
+  STRICT_VALIDATOR_PATH,
+  TOLERANT_VALIDATOR_PATH,
+} from './build-validators.mjs'
 
 const JSON_INDENT = 2
 const EXIT_DRIFT = 1
@@ -64,13 +70,14 @@ function checkSchema(content) {
   return verdict.ok
 }
 
-function checkKnownKeys({ path, content }) {
+function checkDerivedFile({ path, content }) {
   const current = (readIfExists(path) ?? '') === content
   if (!current) console.error(`Schema drift: ${path} is out of date. Run \`pnpm schema:generate\`.`)
   return current
 }
 
 const schema = buildProjectSchema()
+const validatorSources = buildValidatorSources(schema)
 const schemaOutput = {
   path: schemaPath(SCHEMA_VERSION, SCHEMA_REVISION),
   content: serialize(schema),
@@ -79,13 +86,18 @@ const knownKeysOutput = {
   path: 'core/model/known-keys.json',
   content: serialize(buildKnownKeys(schema)),
 }
+const derivedOutputs = [
+  knownKeysOutput,
+  { path: STRICT_VALIDATOR_PATH, content: validatorSources.strict },
+  { path: TOLERANT_VALIDATOR_PATH, content: validatorSources.tolerant },
+]
 
 if (process.argv.includes('--check')) {
-  const upToDate = [checkSchema(schemaOutput.content), checkKnownKeys(knownKeysOutput)]
+  const upToDate = [checkSchema(schemaOutput.content), ...derivedOutputs.map(checkDerivedFile)]
   if (upToDate.includes(false)) process.exit(EXIT_DRIFT)
-  console.log(`${schemaOutput.path} and ${knownKeysOutput.path} are up to date.`)
+  console.log(`${schemaOutput.path} and the files derived from it are up to date.`)
 } else {
-  for (const { path, content } of [schemaOutput, knownKeysOutput]) {
+  for (const { path, content } of [schemaOutput, ...derivedOutputs]) {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, content)
     console.log(`Wrote ${path}`)
