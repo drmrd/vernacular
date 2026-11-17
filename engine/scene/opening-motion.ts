@@ -3,7 +3,9 @@ import * as THREE from 'three'
 import {
   openingMotion,
   type HingeMotion,
+  type HungSash,
   type OpeningMotion,
+  type OpeningPartId,
   type OpeningSceneNode,
   type SlideMotion,
 } from '../../core'
@@ -63,19 +65,31 @@ export function applyOpeningMotionForNode(
  * group for the 'primary' part, or only the meshes of the named sash for a hung window.
  */
 function applySlide(group: THREE.Object3D, motion: SlideMotion, openness: number): void {
-  if (motion.partId === 'primary') {
-    group.quaternion.identity()
-    group.position.set(
-      motion.travel.x * openness,
-      motion.travel.y * openness,
-      motion.travel.z * openness,
-    )
+  if (isSashPart(motion.partId)) {
+    slideSash(group, motion, openness)
     return
   }
-  slideSash(group, motion, openness)
+  group.quaternion.identity()
+  group.position.set(
+    motion.travel.x * openness,
+    motion.travel.y * openness,
+    motion.travel.z * openness,
+  )
 }
 
-/** Rests the group at its built transform and translates only the meshes of the motion's sash. */
+/** True when the part id names one sash of a hung window rather than the whole opening. */
+function isSashPart(partId: OpeningPartId): partId is HungSash {
+  return partId === 'lower' || partId === 'upper'
+}
+
+/**
+ * Rests the group at its built transform and translates only the meshes of the motion's sash.
+ * This relies on how the fill builder lays a fill out: it adds each part mesh flat to the group,
+ * with its vertices built in place and a mesh position of zero. The meshes of a sash are
+ * therefore direct children of the group, and a position of zero is the built pose. So every
+ * child that is not of the moving sash is put back at zero. A nested child, or a child built
+ * with a position other than zero, would break this.
+ */
 function slideSash(group: THREE.Object3D, motion: SlideMotion, openness: number): void {
   group.quaternion.identity()
   group.position.set(0, 0, 0)
