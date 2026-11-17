@@ -145,9 +145,9 @@ A separate scene component for the openings, mounted beside the walk controls in
 That would have made ownership clearer. Rejected because it would have changed the shared view file more,
 and it would have had to pass the opening refs into the walk controls, which still need them for the E key and for
 collision. The opening motion moved into its own hook, `useOpeningMotion`, which the walk controls
-call. The camera rig logic in `webgpu-scene-view.tsx` is unchanged, but the file changed in three
-small ways: one import, two props passed to the toolbar, and the prop name `storedOpenDoorIds` on
-the walk controls.
+call. The camera rig logic in `webgpu-scene-view.tsx` is unchanged, but the file changed in four
+small ways: one import, one call to `useInteractiveObjects()` in the toolbar component, two props
+passed to the toolbar, and the prop name `storedOpenDoorIds` on the walk controls.
 
 ## Consequences
 
@@ -183,8 +183,10 @@ Known gaps:
 - The tick does work in orbit mode even when nothing moves. For each opening on the active floor at
   rest on its target, each frame does two lookups (its open state and its openness) and a compare.
   The frame cost is not measured.
-- The frame callback in `bridge/react/walk-camera-controls.tsx` has no automated test. It calls the
-  walk step and then the opening tick, and it runs only under a real WebGPU canvas. Unit tests
+- No automated test asserts the opening tick in the frame callback of
+  `bridge/react/walk-camera-controls.tsx`, or its order after the walk step. One end-to-end test
+  (`e2e/tests/scene-navigation.spec.ts`) holds W in walk mode on the live view, so the callback
+  runs there where WebGPU exists, but it checks only that the frame changes. Unit tests
   cover `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the
   `useInteractiveObjects` hook against a store, the toolbar control, and `useOpeningMotion` itself.
   The hook imports nothing from the canvas library, and `bridge/react/use-opening-motion.test.tsx`
@@ -229,8 +231,8 @@ Limits:
 - The first two runs sampled about 10 frames each second, and the repeat run at commit `be7d25b9`
   sampled a frame about every 8 ms. A flash of a shut door shorter than one sampled frame during a
   rebuild is not excluded.
-- This was a scripted run, not a committed test. No automated test covers the frame callback that
-  calls the walk step and the opening tick.
+- This was a scripted run, not a committed test. No automated test asserts the opening tick in the
+  frame callback, or its order after the walk step.
 - The whole-building case in Known gaps was not run.
 
 ## References
