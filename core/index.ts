@@ -380,6 +380,7 @@ export {
 } from './scene/scene-graph'
 export type { ExteriorWall } from './scene/exterior-walls'
 export { exteriorWalls } from './scene/exterior-walls'
+export { OPENING_ROOM_SIDE_SAMPLE_MM, openingRoomSide } from './scene/opening-room-side'
 export type { FrontDirectionInput, PlanDirection } from './scene/front-direction'
 export { PLAN_DOWN, frontDirection } from './scene/front-direction'
 export type { WallPlanSegment } from './scene/wall-attached-furniture'
