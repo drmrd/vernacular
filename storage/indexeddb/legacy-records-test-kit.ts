@@ -74,10 +74,7 @@ function settled(transaction: IDBTransaction): Promise<void> {
  * Creates the database as the first layout left it (version 1, one `projects` store keyed by
  * `id`), puts the records in, and closes that connection before anything else opens the database.
  */
-export async function seedFirstLayout(
-  name: string,
-  records: readonly FirstLayoutRecord[],
-): Promise<void> {
+export async function seedFirstLayout(name: string, records: readonly object[]): Promise<void> {
   const database = await openDatabase(name, FIRST_LAYOUT_VERSION, (upgrading) => {
     upgrading.createObjectStore(FIRST_LAYOUT_STORE, { keyPath: 'id' })
   })
@@ -143,4 +140,22 @@ export function objectFrom(bytes: Uint8Array): unknown {
 /** A directory that leaves the records of the first layout alone, so a test sees them as they are. */
 export function directoryWithoutConversion(name: string): IndexedDbDirectory {
   return new IndexedDbDirectory(name, { convertLegacy: () => Promise.resolve() })
+}
+
+/** Puts a record into the `files` store through a raw connection, as another tab's save would. */
+export async function putFileRecord(name: string, record: FileRecord): Promise<void> {
+  const database = await openDatabase(name, undefined)
+  try {
+    const transaction = database.transaction(FILE_STORE, 'readwrite')
+    transaction.objectStore(FILE_STORE).put(record)
+    await settled(transaction)
+  } finally {
+    database.close()
+  }
+}
+
+/** The raw `id` values of the records that the `projects` store still holds, in key order. */
+export async function firstLayoutIdsOf(name: string): Promise<unknown[]> {
+  const records = (await firstLayoutRecordsOf(name)) ?? []
+  return records.map((record) => record.id)
 }
