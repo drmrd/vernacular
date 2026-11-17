@@ -782,6 +782,7 @@ export type {
   DecodeResult,
   EncodedDocument,
   GraftDropped,
+  ReadFailure,
 } from './format/codec/codec-types'
 export { decodeDocument } from './format/codec/decode-document'
 export { encodeDocument } from './format/codec/encode-document'

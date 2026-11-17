@@ -1,13 +1,10 @@
 import { CURRENT_SCHEMA_REVISION } from '../../model/factories'
 import type { Project } from '../../model/types'
 import type { SchemaMode } from '../current-schema'
+import { isInteger } from './json-values'
 
 /** The revision of a document that stores none, or none that is an integer. */
 const UNREADABLE_REVISION = 0
-
-export function isInteger(value: unknown): value is number {
-  return Number.isInteger(value)
-}
 
 /** The stored `meta.schemaRevision` when it is an integer; the unreadable revision otherwise. */
 export function readRevision(document: Project): number {

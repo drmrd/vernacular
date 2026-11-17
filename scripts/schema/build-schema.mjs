@@ -14,7 +14,7 @@ const FACTORIES_PATH = 'core/model/factories.ts'
 const factoriesSource = readFileSync(FACTORIES_PATH, 'utf8')
 
 function readFactoriesConstant(name) {
-  const match = factoriesSource.match(new RegExp(`${name}\\s*=\\s*(\\d+)`))
+  const match = factoriesSource.match(new RegExp(`export const ${name}\\s*=\\s*(\\d+)`))
   if (match === null) throw new Error(`Could not read ${name} from ${FACTORIES_PATH}`)
   return Number(match[1])
 }

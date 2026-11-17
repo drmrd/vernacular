@@ -5,7 +5,7 @@ import type { CodecOptions, DecodeResult } from './codec-types'
 import { readStoredDocument } from './read-stored-document'
 import { checkModeFor, readRevision } from './revision'
 
-function checkMigrated(project: Project, migratedFrom: number | undefined): DecodeResult {
+function checkRead(project: Project, migratedFrom: number | undefined): DecodeResult {
   const revision = readRevision(project)
   const faults = checkCurrentSchema(project, checkModeFor(revision))
   if (faults.length > 0) {
@@ -25,5 +25,5 @@ function checkMigrated(project: Project, migratedFrom: number | undefined): Deco
 export function decodeDocument(bytes: Uint8Array, options: CodecOptions = {}): DecodeResult {
   const read = readStoredDocument(bytes, options)
   if (!read.ok) return read
-  return checkMigrated(read.document, read.versionRaised ? read.storedVersion : undefined)
+  return checkRead(read.document, read.versionRaised ? read.storedVersion : undefined)
 }

@@ -1,7 +1,16 @@
 import type { ErrorObject } from 'ajv'
-import type { FormatFault } from './codec/codec-types'
 import validateStrict from './generated/current-schema-validator.js'
 import validateTolerant from './generated/tolerant-schema-validator.js'
+
+/** One reason that a document fails a check against the schema. */
+export interface FormatFault {
+  /** JSON pointer; for an unknown field, the field's own path. */
+  readonly path: string
+  /** The schema keyword that the document fails, such as `required` or `type`. */
+  readonly rule: string
+  /** A readable statement of the failure. */
+  readonly message: string
+}
 
 const ADDITIONAL_PROPERTIES = 'additionalProperties'
 

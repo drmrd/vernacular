@@ -1,13 +1,12 @@
-import { isMigrationPending, migrateProject } from '../../migrations/migrate'
+import { isMigrationPending, migrateProject, targetVersionOf } from '../../migrations/migrate'
 import { MalformedProjectError, UnsupportedSchemaVersionError } from '../../migrations/types'
-import { CURRENT_SCHEMA_VERSION } from '../../model/factories'
 import type { Project } from '../../model/types'
-import type { CodecOptions, GraftDropped } from './codec-types'
+import type { CodecOptions, ReadFailure } from './codec-types'
 import { parseDocumentJson } from './document-json'
-import { isInteger } from './revision'
+import { asRecord, isInteger } from './json-values'
 
-const NOT_JSON_FALLBACK = 'The bytes are not UTF-8 JSON.'
-const MIGRATION_FAILED_FALLBACK = 'The migration failed.'
+const NOT_JSON_FALLBACK = 'The bytes are not UTF-8 JSON'
+const MIGRATION_FAILED_FALLBACK = 'The migration failed'
 
 /**
  * Stored bytes brought to the current version, not yet checked against the schema. `document` is
@@ -22,7 +21,7 @@ export type StoredDocumentRead =
       /** True when the stored version was below the target, so the document was migrated up. */
       readonly versionRaised: boolean
     }
-  | { readonly ok: false; readonly failure: GraftDropped }
+  | { readonly ok: false; readonly failure: ReadFailure }
 
 /** The message of a thrown value; `fallback` stands in when the message is empty. */
 function describeError(error: unknown, fallback: string): string {
@@ -38,11 +37,6 @@ function parseJson(bytes: Uint8Array): { json: unknown } | { message: string } {
   }
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  const isRecord = typeof value === 'object' && value !== null && !Array.isArray(value)
-  return isRecord ? (value as Record<string, unknown>) : undefined
-}
-
 /** The stored `meta.schemaVersion` when it is an integer; undefined for anything else. */
 function readStoredVersion(json: unknown): number | undefined {
   const version = asRecord(asRecord(json)?.meta)?.schemaVersion
@@ -50,7 +44,7 @@ function readStoredVersion(json: unknown): number | undefined {
 }
 
 /** The mapping from what a migration throws to a failure; `storedVersion` starts the chain. */
-function migrationFailure(error: unknown, storedVersion: number): GraftDropped {
+function migrationFailure(error: unknown, storedVersion: number): ReadFailure {
   if (error instanceof MalformedProjectError) return { kind: 'not-a-project' }
   if (error instanceof UnsupportedSchemaVersionError) {
     return {
@@ -79,7 +73,7 @@ function migrateWhenPending(json: unknown, options: CodecOptions): Project {
   return pending ? migrateProject(json, options.migration) : (json as Project)
 }
 
-function failed(failure: GraftDropped): StoredDocumentRead {
+function failed(failure: ReadFailure): StoredDocumentRead {
   return { ok: false, failure }
 }
 
@@ -93,7 +87,7 @@ export function readStoredDocument(bytes: Uint8Array, options: CodecOptions): St
   if ('message' in parsed) return failed({ kind: 'not-json', message: parsed.message })
   const storedVersion = readStoredVersion(parsed.json)
   if (storedVersion === undefined) return failed({ kind: 'not-a-project' })
-  const targetVersion = options.migration?.targetVersion ?? CURRENT_SCHEMA_VERSION
+  const targetVersion = targetVersionOf(options.migration)
   if (storedVersion > targetVersion) {
     return failed({ kind: 'newer-version', version: storedVersion, buildVersion: targetVersion })
   }

@@ -1,9 +1,5 @@
 import { parseDocumentJson } from './codec/document-json'
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  const isRecord = typeof value === 'object' && value !== null && !Array.isArray(value)
-  return isRecord ? (value as Record<string, unknown>) : undefined
-}
+import { asRecord } from './codec/json-values'
 
 /**
  * The display name of a stored document, read without a migration or a schema check, so a project

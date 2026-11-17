@@ -1,15 +1,8 @@
 import type { MigrateOptions } from '../../migrations/migrate'
 import type { Project } from '../../model/types'
+import type { FormatFault } from '../current-schema'
 
-/** One reason that a document fails a check against the schema. */
-export interface FormatFault {
-  /** JSON pointer; for an unknown field, the field's own path. */
-  readonly path: string
-  /** The schema keyword that the document fails, such as `required` or `type`. */
-  readonly rule: string
-  /** A readable statement of the failure. */
-  readonly message: string
-}
+export type { FormatFault }
 
 /** Why stored bytes did not decode to a document. */
 export type DecodeFailure =
@@ -57,8 +50,11 @@ export interface CodecOptions {
   readonly migration?: MigrateOptions
 }
 
+/** Every way that stored bytes can fail to be read, before the schema check runs. */
+export type ReadFailure = Exclude<DecodeFailure, { readonly kind: 'format-rules' }>
+
 /** Why encode wrote with no graft: the previous bytes failed to decode this way. */
-export type GraftDropped = Exclude<DecodeFailure, { readonly kind: 'format-rules' }>
+export type GraftDropped = ReadFailure
 
 /** The bytes of an encoded document; `faults` is empty when the document passes. */
 export interface EncodedDocument {

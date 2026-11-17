@@ -18,7 +18,8 @@ export interface MigrateOptions {
   targetVersion?: number
 }
 
-function targetVersionOf(options: MigrateOptions): number {
+/** The version a migration brings a document to: the option when given, else the current one. */
+export function targetVersionOf(options: MigrateOptions = {}): number {
   return options.targetVersion ?? CURRENT_SCHEMA_VERSION
 }
 
