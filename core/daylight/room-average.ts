@@ -62,7 +62,8 @@ export function measureRoomSurfaces(room: DaylightRoom): RoomSurfaces {
 
 /**
  * Light that enters a room, in plan square millimetres of open sky: the sum over its openings of
- * half the opening area times the opening's weight (the radiance it faces, relative to the open sky).
+ * half the opening area times the opening's weight (the radiance it faces times its net
+ * transmittance, relative to the open sky).
  */
 export function enteringFlux(openings: readonly OpeningArea[], weights: readonly number[]): number {
   return openings.reduce(

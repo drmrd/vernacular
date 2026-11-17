@@ -6,7 +6,8 @@ import type { RoomGeometry } from './room-geometry'
  * Mean sky visibility of a room lit by its sky apertures alone, from 0 to 1. Its own doorways count
  * for nothing, so light crosses one doorway and no more, and rooms that open only to each other
  * stay dark. `skyWeights` holds, for each aperture of the room, the sky's relative radiance toward
- * a sky aperture and 0 for a doorway. A room with no cell has a mean of 0.
+ * a sky aperture times its net transmittance, and 0 for a doorway. A room with no cell has a
+ * mean of 0.
  */
 export function skyLitMeanVisibility(room: RoomGeometry, skyWeights: readonly number[]): number {
   if (room.cells.length === 0) return 0
@@ -31,7 +32,7 @@ export function doorwayLuminance(room: RoomGeometry, skyWeights: readonly number
 
 /**
  * The weight of each aperture of a room, relative to the open sky: a sky aperture keeps its sky
- * weight, and a doorway takes the luminance of the room it opens to.
+ * weight, and a doorway takes the luminance of the room it opens to times its net transmittance.
  */
 export function apertureWeights(
   room: RoomGeometry,

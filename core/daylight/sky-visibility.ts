@@ -99,7 +99,8 @@ function fillField(geometry: SolverGeometry, light: readonly RoomLight[]): Dayli
  * Creates a solver for the rooms of one floor. A cell's visibility is the sum over its room's
  * apertures of the form factor from the cell center at the work plane to the opening, times the
  * opening's weight, plus the room-average term, capped at 1. A sky aperture weighs the sky's
- * radiance toward its facing; a doorway weighs the luminance of the room it opens to (its mean
+ * radiance toward its facing times its net transmittance; a doorway weighs the luminance of the
+ * room it opens to times its net transmittance (that luminance is its mean
  * visibility, lit by that room's sky apertures alone, times its mean reflectance; 1 for a room
  * open to the sky). The form factors depend on geometry alone, so the solver checks and measures
  * the rooms one time, and only re-weights them for later skies; a caller that changes the rooms
