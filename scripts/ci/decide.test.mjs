@@ -104,6 +104,21 @@ describe('the paths that shape a heavy run', () => {
     },
   )
 
+  const NOT_ASSERTED = expect.any(String)
+
+  it.each([
+    { path: 'vite.config.ts', e2e: 'true', visual: 'true' },
+    { path: 'vitest.config.ts', e2e: 'false', visual: 'true' },
+    { path: 'index.html', e2e: 'true', visual: 'false' },
+    { path: 'src/main.tsx', e2e: 'true', visual: 'false' },
+    { path: 'src/service-worker.ts', e2e: 'true', visual: 'false' },
+    { path: 'public/manifest.webmanifest', e2e: 'true', visual: 'false' },
+    { path: 'e2e/stories/story-visual.spec.ts', e2e: NOT_ASSERTED, visual: 'true' },
+  ])('turns the suites on for a change to only $path', async ({ path, e2e, visual }) => {
+    const outputs = await decideFor({ changed: [path] })
+    expect(outputs).toEqual({ e2e, visual, lighthouse: 'false' })
+  })
+
   it('skips the end-to-end suite on a draft even for a change to the Playwright config', async () => {
     const outputs = await decideFor({ changed: ['playwright.config.ts'], draft: true })
     expect(outputs.e2e).toBe('false')
