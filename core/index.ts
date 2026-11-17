@@ -513,6 +513,7 @@ export {
   MalformedProjectError,
   MigrationFailedError,
   UnsupportedSchemaVersionError,
+  isMigrationPending,
   migrateProject,
 } from './migrations'
 export { distance, rotatePoint, translatePoint } from './geometry/point'
@@ -779,5 +780,9 @@ export type {
   DecodedDocument,
   DecodeFailure,
   DecodeResult,
+  EncodedDocument,
+  GraftDropped,
 } from './format/codec/codec-types'
 export { decodeDocument } from './format/codec/decode-document'
+export { encodeDocument } from './format/codec/encode-document'
+export { graftUnknown, graftWithTable, preserveUnknown } from './format/codec/graft'

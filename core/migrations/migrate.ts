@@ -80,6 +80,24 @@ function applyRegistryMigrations(
   return working
 }
 
+/**
+ * Whether `migrateProject` with the same options would change the document: its schema version is
+ * below the target, or a registry named in `meta.registryVersions` has a step from its stored
+ * version. Throws `MalformedProjectError` when the document has no numeric schema version.
+ */
+export function isMigrationPending(raw: unknown, options: MigrateOptions = {}): boolean {
+  const target = options.targetVersion ?? CURRENT_SCHEMA_VERSION
+  const schemaVersion = readSchemaVersion(raw)
+  if (schemaVersion !== target) return schemaVersion < target
+  const registryVersions = readRegistryVersions(raw as ProjectShape)
+  if (registryVersions === undefined) return false
+  const migrations = options.registryMigrations ?? REGISTRY_MIGRATIONS
+  return Object.keys(registryVersions).some(
+    (registry) =>
+      findRegistryMigration(migrations, registry, registryVersions[registry] ?? 0) !== undefined,
+  )
+}
+
 export function migrateProject(raw: unknown, options: MigrateOptions = {}): Project {
   const target = options.targetVersion ?? CURRENT_SCHEMA_VERSION
   const schemaVersion = readSchemaVersion(raw)

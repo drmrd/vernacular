@@ -1,4 +1,4 @@
-export { migrateProject, type MigrateOptions } from './migrate'
+export { isMigrationPending, migrateProject, type MigrateOptions } from './migrate'
 export {
   MalformedProjectError,
   MigrationFailedError,

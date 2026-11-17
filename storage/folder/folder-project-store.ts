@@ -1,7 +1,6 @@
 import type { Project } from '../../core'
-import { CURRENT_SCHEMA_VERSION, migrateProject } from '../../core'
+import { CURRENT_SCHEMA_VERSION, migrateProject, preserveUnknown } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
-import { preserveUnknown } from './preserve-unknown'
 import { parseProjectJson, serializeProjectJson } from './project-json'
 
 /** Canonical project file name written at the root of each project folder. */

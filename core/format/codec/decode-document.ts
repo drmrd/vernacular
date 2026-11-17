@@ -4,6 +4,7 @@ import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../model/fac
 import type { Project } from '../../model/types'
 import { checkCurrentSchema } from '../current-schema'
 import type { CodecOptions, DecodeFailure, DecodeResult } from './codec-types'
+import { parseDocumentJson } from './document-json'
 
 const UNREADABLE_REVISION = 0
 const NOT_JSON_FALLBACK = 'The bytes are not UTF-8 JSON.'
@@ -25,7 +26,7 @@ function isInteger(value: unknown): value is number {
 
 function parseJson(bytes: Uint8Array): { json: unknown } | { message: string } {
   try {
-    return { json: JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) }
+    return { json: parseDocumentJson(bytes) }
   } catch (error) {
     return { message: describeError(error, NOT_JSON_FALLBACK) }
   }

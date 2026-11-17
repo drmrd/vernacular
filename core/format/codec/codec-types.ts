@@ -56,3 +56,15 @@ export interface CodecOptions {
    */
   readonly migration?: MigrateOptions
 }
+
+/** Why encode wrote with no graft: the previous bytes failed to decode this way. */
+export type GraftDropped = Exclude<DecodeFailure, { readonly kind: 'format-rules' }>
+
+/** The bytes of an encoded document; `faults` is empty when the document passes. */
+export interface EncodedDocument {
+  /** Returned whether or not the document passes the check: a fault never blocks a save. */
+  readonly bytes: Uint8Array
+  readonly faults: readonly FormatFault[]
+  /** Set when the previous bytes could not be read, so no unknown data was grafted. */
+  readonly graftDropped?: GraftDropped
+}
