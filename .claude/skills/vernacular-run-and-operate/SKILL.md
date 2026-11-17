@@ -42,7 +42,7 @@ Everything here runs through pnpm scripts in `package.json` on fixed, verifiable
 
 Key operational facts:
 
-- The e2e base URL is overridable with the `E2E_BASE_URL` env var (`playwright.config.ts`).
+- The e2e preview port is `E2E_PORT` (default 4173; an empty value is used as is, not defaulted) and the base URL is overridable with `E2E_BASE_URL` (`playwright.config.ts`).
 - Locally Playwright reuses an existing server (`reuseExistingServer: !process.env.CI`). A stale preview on 4173 serves old bytes: after `pnpm build`, kill any old preview before re-running e2e.
 - The story static server 404s on `/` (no index fallback); Playwright probes `/index.html` for readiness. If you serve `storybook-static/` yourself, request a real file.
 

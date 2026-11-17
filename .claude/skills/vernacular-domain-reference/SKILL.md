@@ -235,9 +235,9 @@ finished values through the `LightingProvider` seam.
   for unknown ids. Lives in core, not the bridge, by recorded decision.
 - `skyLighting` (`core/environment/sky-model.ts`): sun and sky tints from altitude and cloud
   cover, with its own horizon and zenith curves; the sun dims toward the horizon and
-  extinguishes just below it (`sunIntensity` falls to zero). `DEFAULT_CLOUD_COVER = 0`.
+  extinguishes just below it (`sunLevel` falls to zero). `DEFAULT_CLOUD_COVER = 0`.
 - `computeEnvironmentLighting` (`core/environment/environment-lighting.ts`) composes
-  `EnvironmentLighting`: sun direction, sun color, sky color, `sunIntensity`, `cloudCover`, and
+  `EnvironmentLighting`: sun direction, sun color, sky color, `sunLevel`, `cloudCover`, and
   `skyAmbient`.
 
 ### 5.2 Sky dome and spherical-harmonics probe (ADR-0148)
@@ -266,10 +266,11 @@ finished values through the `LightingProvider` seam.
   shadow refit a no-op).
 - `BasicLightingProvider`: static schematic rig; `update` is a documented no-op.
 - `SolarLightingProvider`: sets sun and sky colors independently, refits the shadow frustum
-  along the computed direction, scales the direct sun by `sunIntensity` (night scenes stay
+  along the computed direction, sets the direct sun to `sunLevel` (night scenes stay
   sky-lit, never black).
-- Both providers build the same rig via `buildLightingRig` at `DAYLIGHT_SUN_INTENSITY` (1.6) in
-  `engine/lighting/lighting-rig.ts`, so the modes cannot drift structurally.
+- Both providers build the same rig via `buildLightingRig` in `engine/lighting/lighting-rig.ts`
+  (the basic one at `SCHEMATIC_SUN_INTENSITY` (1.6), the solar one dark until `update`), so the
+  modes cannot drift structurally.
 
 ### 5.4 GTAO ambient occlusion (ADR-0151)
 
@@ -453,7 +454,7 @@ repo root):
 | 2D y flip                               | `grep -n "point.y" editor/plan/viewport.ts`                                                                              |
 | Output color space and exposure default | `grep -n "outputColorSpace\|toneMappingExposure" engine/renderer/create-renderer.ts`                                     |
 | Per-mode operator policy                | `cat core/environment/tone-mapping.ts engine/renderer/tone-mapping.ts`                                                   |
-| DAYLIGHT_SUN_INTENSITY 1.6              | `grep -n "DAYLIGHT_SUN_INTENSITY" engine/lighting/lighting-rig.ts`                                                       |
+| SCHEMATIC_SUN_INTENSITY 1.6             | `grep -n "SCHEMATIC_SUN_INTENSITY" engine/lighting/lighting-rig.ts`                                                      |
 | SH_COEFFICIENT_COUNT 27                 | `grep -n "SH_COEFFICIENT_COUNT" core/environment/spherical-harmonics.ts`                                                 |
 | AO params r184-only                     | `cat engine/postprocessing/ambient-occlusion-params.ts`                                                                  |
 | Harness state names                     | `grep -n "equinox-noon\|winter-afternoon\|color-check\|overcast-noon\|ambient-occlusion" app/harness-environment.ts`     |

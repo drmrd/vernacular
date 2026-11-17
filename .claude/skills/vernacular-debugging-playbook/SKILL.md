@@ -139,7 +139,7 @@ pnpm exec playwright test e2e/tests/<spec>.spec.ts --project=chromium --repeat-e
 
 ## 6. Storage silently falls back from OPFS to IndexedDB
 
-Story: an e2e storage investigation found the app under test was an OLD build served by a leftover preview server; `playwright.config.ts` sets `reuseExistingServer: !process.env.CI`, so any process already on port 4173 wins and your rebuilt code never runs.
+Story: an e2e storage investigation found the app under test was an OLD build served by a leftover preview server; `playwright.config.ts` sets `reuseExistingServer: !process.env.CI`, so any process already on the preview port (4173, or `E2E_PORT`) wins and your rebuilt code never runs.
 
 OPFS (origin-private file system, the browser's private durable directory) is preferred; `storage/select-project-store.ts` picks OPFS, then IndexedDB, and never throws. Detection is `typeof navigator.storage?.getDirectory === 'function'` (`storage/storage-capabilities.ts`).
 
