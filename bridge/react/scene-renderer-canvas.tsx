@@ -109,6 +109,9 @@ function buildCurrentRenderer(build: RendererBuild): HeldRenderer['renderer'] {
     renderer = rendererFactory({ canvas, forceWebGL })
   } catch (error) {
     logStartFailure('build', error)
+    // A renderer still held from an earlier call is no longer the one the canvas asked for last.
+    // If it stayed held, its init() result would mark the wrapper ready again and mount the
+    // canvas a second time, and nothing else would release it.
     release()
     setStatus('failed')
     // GLProps types a gl function as all-Renderer or all-Promise, and this one returns both.
@@ -176,9 +179,10 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * renderer's backend has initialized, the frame loop stays off and the children stay unmounted,
  * because Three.js throws on a render, or on most renderer queries, before init() resolves. Every
  * renderer the wrapper builds is released exactly once through the engine's releaseSceneRenderer:
- * when its init() rejects, when a newer renderer replaces it, when a later build fails, and
- * otherwise when the wrapper unmounts, also while init() is still pending. Opening and closing the view any number of times therefore leaves no renderer and no
- * animation loop alive. A renderer module that does not load ends in a could-not-load state with a
+ * when its init() rejects, when a newer renderer replaces it, when a later build fails (the held
+ * renderer is no longer the one the canvas asked for last), and otherwise when the wrapper
+ * unmounts, also while init() is still pending. Opening and closing the view any number of times
+ * therefore leaves no renderer and no animation loop alive. A renderer module that does not load ends in a could-not-load state with a
  * Retry. A renderer that cannot be built or started ends in the cannot-render state. Each stays
  * until a retry or a new mount. Under StrictMode the library may ask for a renderer twice; the
  * wrapper follows the last one and releases the other.
