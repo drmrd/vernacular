@@ -34,8 +34,9 @@ updated: 2026-11-17
 Current. Landed with the fix for issue #746. This record extends ADR-0004 and its amendment of
 2026-11-15, which made `SceneRendererCanvas` the one owner of the renderer's start. It replaces two
 passages of that amendment ("The failed state" and two bullets of "What remains"), which now point
-here. The same change corrected four older sentences of ADR-0004 that ADR-0174 had made stale. It
-supersedes nothing.
+here. The same change corrected four older sentences of ADR-0004. ADR-0174 had made three of them
+stale, and the amendment of 2026-11-15 the fourth, which named the async factory with an awaited
+`init()` as the supported path. It supersedes nothing.
 
 ## Context
 
@@ -65,11 +66,19 @@ A failed load of the renderer module, usually a network error, showed "This brow
 the 3D view." The browser can render. A reload of the page may work, and the message did not say
 so.
 
-The app runs under React StrictMode. In development the library's setup can then run twice and ask
-for two renderers. The wrapper started `init()` on both and tied neither result to its renderer.
-The first renderer was never released. Its `init()` could mark the wrapper ready while the renderer
-the library kept was still starting, or failed for a renderer that nothing used. This is the
-one-microtask window that the ADR-0004 amendment named.
+The library asks for a renderer once per setup, and only while it holds none. Each setup waits one
+microtask on the result of `gl` before it stores the renderer. A second setup that starts inside
+that microtask therefore asks for a second renderer. This is the one-microtask window that the
+ADR-0004 amendment named. The wrapper had nothing for that case: it would start `init()` on both
+renderers and tie neither result to its renderer. The first renderer would never be released. Its
+`init()` could mark the wrapper ready while the renderer the library kept was still starting, or
+failed for a renderer that nothing used.
+
+React StrictMode, which the app uses in development, does not open that window by itself. By the
+source of `@react-three/fiber` 9.6.1, the canvas starts a setup only once it has a measured size,
+and the size is still 0 when StrictMode runs the mount effects twice. The simulated unmount then
+finds no root to tear down. Two requests need two setups in one task, and no path in the app is
+known to do that. This was read from the source and not run.
 
 On every failure the editor's scene pane kept its "Building the scene..." overlay, because the live
 view's readiness node never turns ready. The overlay sat over the failure text and said the wrong
@@ -121,7 +130,8 @@ return either. This one can, so its return carries a type cast.
 The current renderer is the one the library asked for last, which is also the one the library
 keeps. Only its `init()` can mark the wrapper ready or failed. The result of a renderer that a newer
 one replaced changes nothing. After unmount nothing is current, so a late result changes nothing
-either. This closes the window that the ADR-0004 amendment named.
+either. This closes the window that the ADR-0004 amendment named, for any path that would open it.
+The tests force that case with a stand-in canvas.
 
 A failed build while an earlier renderer is still starting releases that earlier renderer. It is no
 longer the one the canvas asked for last. Had it stayed held, its `init()` would have marked the
@@ -225,7 +235,9 @@ would grow into a list of lifecycle patches. ADR-0004 is corrected in place inst
   the failure, and the pane's overlays no longer cover them.
 - Recovering from a failed load costs a page reload. The camera and other session state outside the
   project are lost, and a user with unsaved edits sees the browser's leave prompt first.
-- The engine exports one more function. Each bridge test that mocks the engine stubs it.
+- The engine exports one more function. The three test files of the wrapper stub it in their engine
+  mock. Other bridge tests that mock the engine, such as `bridge/react/scene-lighting.test.tsx`,
+  render no scene canvas and do not need it.
 - The failure kind and the marker attribute are seams. Issue #692 may reuse or replace them when it
   routes failures into a pane boundary and the session's notification channel.
 - The failure views are still unstyled. `.scene-canvas__fallback` has no CSS rule, as before.
@@ -260,8 +272,10 @@ and presses "Reload page". After the reload the 3D pane shows one sized canvas a
 browser has requested the chunk again. The case runs in one browser, in the `scene-webgl` project,
 and skips itself without WebGPU.
 
-`bridge/react/scene-renderer-canvas-strict-mode.test.tsx` renders the wrapper under StrictMode, where
-the stand-in canvas asks for two renderers. The first renderer's resolved or rejected start does not
+`bridge/react/scene-renderer-canvas-strict-mode.test.tsx` renders the wrapper under StrictMode with a
+stand-in canvas that calls `gl` in a plain effect, which StrictMode runs twice. The stand-in
+therefore asks for two renderers. That is a worst case: by its source, the real library asks for one
+here. The first renderer's resolved or rejected start does not
 change the state. The first renderer is released once while the wrapper is mounted, and the second
 once on unmount. The other outcomes still hold. When the second build fails, the cannot-render
 status stays, the first renderer is released once whether its start then resolves or rejects, and
@@ -284,15 +298,22 @@ hands each renderer over once. The engine test proves what the release then does
 - No test runs a real three.js renderer. That `dispose()` after a resolved start stops the loop and
   frees the device, and that an early or late `dispose()` misbehaves, was read from the three.js
   0.184 source.
-- The behavior of the real library with two renderers under StrictMode was read from the source of
-  `@react-three/fiber` 9.6.1 and not run. The StrictMode tests use a stand-in canvas with no cleanup
-  of its own.
+- That the real library asks for one renderer under StrictMode, and two only when two setups start
+  in one task, was read from the source of `@react-three/fiber` 9.6.1 and not run. The StrictMode
+  tests force two requests with a stand-in canvas that has no cleanup of its own, so the
+  current-renderer rule is tested only against that forced case.
 - A `dispose()` that throws would reject the release promise. The wrapper discards that promise and
   does not catch the rejection, so the browser would report it. Not verified.
 - That the browser keeps a failed dynamic import was seen in one browser, Chromium 148. Other
   browsers were not run. The reload does not depend on it, since a new page fetches the chunk again.
 - The end-to-end case for the reload runs in one browser only, and only where WebGPU exists. It does
   not cover unsaved edits, so the leave prompt on reload is not tested here.
+- No CI job runs the reload case with WebGPU. The macOS live-view job, the one with WebGPU flags,
+  runs only the specs it names, and this spec is not among them. The chromium e2e job ignores
+  `scene-*` specs. The Linux scene-visual job runs the whole `scene-webgl` project, this spec
+  included, but launches the browser without WebGPU flags, and the case skips itself where
+  `navigator.gpu` is absent. Whether it is absent on that runner was not checked. The case ran on
+  the development Mac only.
 - Within one page, a later mount of the wrapper after a failed load imports the same address again.
   By the live run, that import fails at once, so reopening the 3D view shows the same alert. This
   is inferred and not tested; the unit test of a later mount uses a stubbed loader.
@@ -301,8 +322,8 @@ hands each renderer over once. The engine test proves what the release then does
   has confirmed that the console stays clean.
 - A start that fails after its backend took a GPU device or a WebGL context would keep it, because
   the release calls nothing after a failed start. This case is rare and not tested.
-- Under StrictMode the library's simulated unmount schedules its own teardown while the canvas stays
-  mounted. That quirk affects development only and is out of scope here.
+- Under StrictMode the library's simulated unmount runs while the canvas has no measured size and no
+  root, so it tears nothing down. This was read from the source and not run.
 
 ## References
 
