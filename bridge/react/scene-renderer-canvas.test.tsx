@@ -4,6 +4,7 @@ import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneRendererCanvas } from './scene-renderer-canvas'
+import { SCENE_RENDERER_FAILED_ATTRIBUTE } from './scene-readiness'
 import {
   defer,
   recordUnhandledRejections,
@@ -77,6 +78,12 @@ function latestCanvasProps(): Record<string, unknown> {
 
 const CHILD = <div data-testid="child" />
 
+// The failure kind that the wrapper's stand-in element declares, or null when none is shown.
+function failureKindIn(container: HTMLElement): string | null {
+  const marked = container.querySelector(`[${SCENE_RENDERER_FAILED_ATTRIBUTE}]`)
+  return marked?.getAttribute(SCENE_RENDERER_FAILED_ATTRIBUTE) ?? null
+}
+
 function renderWrapper(props: Parameters<typeof SceneRendererCanvas>[0] = {}) {
   const ui = (): ReactNode => <SceneRendererCanvas {...props}>{CHILD}</SceneRendererCanvas>
   const view = render(ui())
@@ -99,6 +106,7 @@ describe('SceneRendererCanvas', () => {
     const { container } = renderWrapper()
 
     expect(container.querySelector('canvas')).not.toBeNull()
+    expect(failureKindIn(container)).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
     expect(collaborators.canvasProps).toHaveLength(0)
   })
@@ -125,12 +133,13 @@ describe('SceneRendererCanvas', () => {
   })
 
   it('passes the caller frame loop and the children through once init() resolves', async () => {
-    renderWrapper({ frameloop: 'demand' })
+    const { container } = renderWrapper({ frameloop: 'demand' })
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.resolve())
 
     expect(latestCanvasProps().frameloop).toBe('demand')
     expect(screen.getByTestId('child')).toBeInTheDocument()
+    expect(failureKindIn(container)).toBeNull()
   })
 
   it('starts init() exactly once for one mounted wrapper, also after re-renders', async () => {
@@ -194,12 +203,13 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
   })
 
   it('shows the cannot-render status and mounts no children when init() rejects', async () => {
-    renderWrapper()
+    const { container } = renderWrapper()
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
 
     expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
     expect(screen.queryByTestId('child')).toBeNull()
+    expect(failureKindIn(container)).toBe('start')
   })
 
   it('offers no retry when init() rejects', async () => {
@@ -223,11 +233,12 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     const factory = vi.fn(() => {
       throw new Error('no WebGPU adapter')
     })
-    renderWrapper()
+    const { container } = renderWrapper()
     await settle(() => start.loaded.resolve(factory))
 
     expect(warn).toHaveBeenCalled()
     expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(failureKindIn(container)).toBe('start')
     expect(screen.queryByTestId('child')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
     expect(collaborators.glResults).toHaveLength(1)
@@ -256,10 +267,11 @@ describe('SceneRendererCanvas when the renderer module does not load', () => {
   })
 
   it('shows the could-not-load alert with a Retry button and no cannot-render status', async () => {
-    renderWrapper()
+    const { container } = renderWrapper()
     await settle(() => start.loaded.reject(LOAD_FAILURE))
 
     expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(failureKindIn(container)).toBe('load')
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
