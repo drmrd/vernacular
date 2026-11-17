@@ -191,13 +191,15 @@ function alongWallSlide(opening: OpeningSceneNode, partCount: number): SlideMoti
 /**
  * A rise of the lower sash, meeting rail included, until its top meets the head. The lower
  * sash sits one meeting-rail half-width above the middle of the opening, so it rises half
- * the height less that half-width.
+ * the height less that half-width. The rise stops at zero: a window no higher than its sash
+ * frame has no room to open, and a negative rise would move the sash down out of the frame
+ * at the sill.
  */
 function lowerSashRise(opening: OpeningSceneNode): SlideMotion {
   return {
     kind: 'slide',
     axis: 'vertical',
-    travel: { x: 0, y: opening.height / 2 - SASH_FRAME_WIDTH_MM / 2, z: 0 },
+    travel: { x: 0, y: Math.max(0, opening.height / 2 - SASH_FRAME_WIDTH_MM / 2), z: 0 },
     partId: 'lower',
     partCount: SINGLE_PART,
   }
