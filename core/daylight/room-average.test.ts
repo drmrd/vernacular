@@ -153,6 +153,7 @@ describe('the room-average term', () => {
     const direct = visibilitiesInside(solver.field(UNIFORM_SKY), TEST_ROOM_REGION).map(
       (visibility) => visibility - bounce,
     )
+    expect(direct.length).toBeGreaterThan(0)
     const received = direct.reduce((sum, value) => sum + value, 0) * CELL_SIZE * CELL_SIZE
     expect(solver.enteringFlux(0, UNIFORM_SKY)).toBeGreaterThan(0)
     expect(received).toBeLessThanOrEqual(solver.enteringFlux(0, UNIFORM_SKY))
@@ -163,6 +164,7 @@ describe('the room-average term', () => {
     const solver = createDaylightFieldSolver([testRoom([lowWindow])])
     const bounce = solver.interreflection(0, UNIFORM_SKY)
     const inside = visibilitiesInside(solver.field(UNIFORM_SKY), TEST_ROOM_REGION)
+    expect(inside.length).toBeGreaterThan(0)
     const gaps = inside.map((value) => Math.abs(value - bounce))
     expect(bounce).toBeGreaterThan(0)
     expect(Math.max(...gaps)).toBeLessThan(TOLERANCE)
