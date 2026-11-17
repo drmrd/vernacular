@@ -129,6 +129,9 @@ function assertSupportedShape(schema: JsonSchema, pointer: string): void {
   if (schema.$ref !== undefined && !schema.$ref.startsWith(REFERENCE_PREFIX)) {
     throw new Error(`The coverage walk does not support the reference ${schema.$ref} at ${pointer}`)
   }
+  if (schema.properties !== undefined && schema.anyOf !== undefined) {
+    throw new Error(`The coverage walk does not support properties beside anyOf at ${pointer}`)
+  }
   if (schema.properties !== undefined && mapValueSchema(schema) !== undefined) {
     throw new Error(
       `The coverage walk does not support properties beside a value schema at ${pointer}`,
@@ -278,12 +281,11 @@ function recordPresence(shape: Shape, cursor: Cursor, walk: Walk): void {
 }
 
 function visit(cursor: Cursor, walk: Walk): void {
-  guarded(cursor.schema, walk, () => {
-    const shape = shapeOf(cursor.schema, walk.root)
-    const here = { ...cursor, path: cursor.path + PATH_SUFFIX[shape.kind] }
-    recordPresence(shape, here, walk)
-    visitShape(shape, here, walk)
-  })
+  const shape = shapeOf(cursor.schema, walk.root)
+  const here = { ...cursor, path: cursor.path + PATH_SUFFIX[shape.kind] }
+  // The property is required even where the descent below it stops on a cycle.
+  recordPresence(shape, here, walk)
+  guarded(cursor.schema, walk, () => visitShape(shape, here, walk))
 }
 
 function visitProperties(properties: Record<string, JsonSchema>, cursor: Cursor, walk: Walk): void {

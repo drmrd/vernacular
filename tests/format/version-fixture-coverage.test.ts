@@ -75,7 +75,7 @@ describe('the schema coverage walk', () => {
     expect(schemaCoverage(schema, {})).toEqual([])
   })
 
-  it('ends on a reference cycle', () => {
+  describe('on a reference cycle', () => {
     const schema = schemaOf({
       type: 'object',
       properties: { root: { $ref: '#/definitions/node' } },
@@ -86,8 +86,19 @@ describe('the schema coverage walk', () => {
         },
       },
     })
-    const document = { root: { label: 'a', next: { label: 'b' } } }
-    expect(missingSchemaPaths(schema, document)).toEqual([])
+
+    it('ends, and requires the property that closes the loop', () => {
+      const document = { root: { label: 'a', next: { label: 'b' } } }
+      expect(schemaCoverage(schema, document)).toEqual([
+        { path: 'root', present: true },
+        { path: 'root.label', present: true },
+        { path: 'root.next', present: true },
+      ])
+    })
+
+    it('reports the property that closes the loop when the document lacks it', () => {
+      expect(missingSchemaPaths(schema, { root: { label: 'a' } })).toEqual(['root.next'])
+    })
   })
 
   it.each([
@@ -103,6 +114,14 @@ describe('the schema coverage walk', () => {
         additionalProperties: { type: 'number' },
       },
       'properties beside a value schema',
+    ],
+    [
+      'properties beside a union',
+      {
+        properties: { a: { type: 'string' } },
+        anyOf: [{ type: 'object', properties: { kind: { const: 'x' } } }],
+      },
+      'properties beside anyOf',
     ],
     ['a reference outside the definitions', { $ref: '#/other/Thing' }, 'reference'],
   ])('throws on %s and names the schema path', (_name, shape, mention) => {
