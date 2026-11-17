@@ -126,7 +126,7 @@ export interface WalkSession extends WalkRefs, WalkSessionHost {
   savedWalkPose: WalkState | null
   /** Reports the pose the walker ended on, so the next session can resume it. */
   onWalkPose: (pose: WalkState) => void
-  /** Reports which doors stand open, so the next session opens the same ones. */
+  /** Reports which doors stand open, so the store and the other view follow the walker at once. */
   onOpenDoors: (openIds: ReadonlySet<string>) => void
 }
 

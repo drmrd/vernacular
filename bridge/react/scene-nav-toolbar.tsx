@@ -1,8 +1,8 @@
 import type { CameraPreset, LightingMode } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
-import { SceneObjectControls } from './scene-object-controls'
 import { SceneDisplayOptions } from './scene-display-options'
+import { SceneObjectControls } from './scene-object-controls'
 import { ModeToggle, ScopeToggle } from './scene-nav-segmented-toggles'
 import type { SceneScope } from './view-scene-graph'
 
@@ -53,7 +53,10 @@ interface SceneNavToolbarProps {
   onToggleUnderground?: () => void
   edgeOverlay?: boolean
   onToggleEdgeOverlay?: () => void
-  /** True when no interactive object (today: no door or window) is out of its default state; the close control is disabled then. Omitted means true. */
+  /**
+   * True when no interactive object (no door or window) is out of its default state; the
+   * close control is disabled then. Omitted means true.
+   */
   interactiveObjectsAtDefault?: boolean
   /** Returns every interactive object to its default state; the close control calls it. */
   onResetInteractiveObjects?: () => void
