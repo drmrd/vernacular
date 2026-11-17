@@ -300,6 +300,11 @@ describe('shadowFitBounds with input that is not finite', () => {
         },
         OVERHEAD,
       ],
+      [
+        'max.x is Infinity',
+        { ...GROUND, max: { ...GROUND.max, x: Number.POSITIVE_INFINITY } },
+        FORTY_FIVE_DEGREES,
+      ],
     ])('gives a copy of the casters, with every value finite, when %s', (_name, ground, sun) => {
       const fit = shadowFitBounds({
         casters: CASTERS,
