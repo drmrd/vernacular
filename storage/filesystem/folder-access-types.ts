@@ -14,12 +14,15 @@ export interface FolderAccess {
   forget(id: string): Promise<void>
   /**
    * The state of read and write access to the folder remembered under `id`, as the browser
-   * reports it; 'missing' when no folder is remembered under that id.
+   * reports it; 'missing' when no folder is remembered under that id, and also when the browser
+   * cannot answer for the folder.
    */
   permission(id: string): Promise<'granted' | 'prompt' | 'denied' | 'missing'>
   /**
    * After a user gesture: requests access and returns the folder's files. The answer is 'missing'
-   * when no folder is remembered under `id`, and 'denied' when the request is not granted.
+   * when no folder is remembered under `id` or the browser cannot find it, and 'denied' when the
+   * request is not granted, also for a request with no user gesture. Any other error of the
+   * request rejects.
    */
   reopen(id: string): Promise<FolderFiles | 'denied' | 'missing'>
 }

@@ -9,13 +9,6 @@ interface StoredHandle {
   handle: FileSystemDirectoryHandle
 }
 
-function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'))
-  })
-}
-
 function openDatabase(databaseName: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, DB_VERSION)
@@ -35,37 +28,57 @@ function openDatabase(databaseName: string): Promise<IDBDatabase> {
  * unit tests, since jsdom implements neither IndexedDB nor the File System
  * Access API.
  */
+/**
+ * Opens the database, runs one request in one transaction, and closes the connection again, also
+ * when the work fails. Resolves with the request's result once the transaction has completed.
+ */
+async function withStore<T>(
+  databaseName: string,
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
+  const database = await openDatabase(databaseName)
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, mode)
+      const request = run(transaction.objectStore(STORE_NAME))
+      transaction.oncomplete = () => resolve(request.result)
+      transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB request failed'))
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('IndexedDB transaction aborted'))
+    })
+  } finally {
+    database.close()
+  }
+}
+
 export class DirectoryHandleStore implements FolderHandles {
   constructor(private readonly databaseName: string = DEFAULT_DATABASE_NAME) {}
 
   async put(id: string, handle: FileSystemDirectoryHandle): Promise<void> {
-    const db = await openDatabase(this.databaseName)
     const record: StoredHandle = { id, handle }
-    await promisify(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(record))
+    await withStore(this.databaseName, 'readwrite', (store) => store.put(record))
   }
 
   async get(id: string): Promise<FileSystemDirectoryHandle | undefined> {
-    const db = await openDatabase(this.databaseName)
-    const record = await promisify(
-      db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(id) as IDBRequest<
-        StoredHandle | undefined
-      >,
+    const record = await withStore(
+      this.databaseName,
+      'readonly',
+      (store) => store.get(id) as IDBRequest<StoredHandle | undefined>,
     )
     return record?.handle
   }
 
   async remove(id: string): Promise<void> {
-    const db = await openDatabase(this.databaseName)
-    await promisify(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id))
+    await withStore(this.databaseName, 'readwrite', (store) => store.delete(id))
   }
 
   /** Every stored handle with its id, in no particular order. */
   async entries(): Promise<RememberedFolder[]> {
-    const db = await openDatabase(this.databaseName)
-    const records = await promisify(
-      db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll() as IDBRequest<
-        StoredHandle[]
-      >,
+    const records = await withStore(
+      this.databaseName,
+      'readonly',
+      (store) => store.getAll() as IDBRequest<StoredHandle[]>,
     )
     return records.map(({ id, handle }) => ({ id, handle }))
   }

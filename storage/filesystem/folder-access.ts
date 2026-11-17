@@ -9,11 +9,18 @@ export { InMemoryFolderAccess } from './in-memory-folder-access'
 
 const READ_WRITE = { mode: 'readwrite' } as const
 
-/** True for the rejection that the picker gives when the user cancels. */
-function isAbort(error: unknown): boolean {
-  return (
-    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
-  )
+/** The `name` of a thrown value, read without assuming that it is an Error instance. */
+function errorName(error: unknown): unknown {
+  return typeof error === 'object' && error !== null && 'name' in error ? error.name : undefined
+}
+
+/** The answer for a failed access request, or undefined when the failure is not one to answer. */
+function answerForRequestFailure(error: unknown): 'denied' | 'missing' | undefined {
+  const name = errorName(error)
+  if (name === 'SecurityError' || name === 'NotAllowedError') {
+    return 'denied'
+  }
+  return name === 'NotFoundError' ? 'missing' : undefined
 }
 
 /** Orders folders by id in code-unit order. */
@@ -22,6 +29,18 @@ function byId(a: RememberedFolder, b: RememberedFolder): number {
     return 0
   }
   return a.id < b.id ? -1 : 1
+}
+
+/** Whether the two are the same entry; a handle that cannot answer is not the same entry. */
+async function isSameEntryOrFalse(
+  known: FileSystemDirectoryHandle,
+  handle: FileSystemDirectoryHandle,
+): Promise<boolean> {
+  try {
+    return await known.isSameEntry(handle)
+  } catch {
+    return false
+  }
 }
 
 /** Folder access through the browser's directory picker and the store of remembered handles. */
@@ -39,7 +58,7 @@ export class BrowserFolderAccess implements FolderAccess {
     try {
       return await window.showDirectoryPicker(READ_WRITE)
     } catch (error) {
-      if (isAbort(error)) {
+      if (errorName(error) === 'AbortError') {
         return undefined
       }
       throw error
@@ -50,7 +69,7 @@ export class BrowserFolderAccess implements FolderAccess {
     const remembered = await this.handles.entries()
     const ascending = [...remembered].sort(byId)
     for (const folder of ascending) {
-      if (await folder.handle.isSameEntry(handle)) {
+      if (await isSameEntryOrFalse(folder.handle, handle)) {
         return folder.id
       }
     }
@@ -70,7 +89,11 @@ export class BrowserFolderAccess implements FolderAccess {
     if (handle === undefined) {
       return 'missing'
     }
-    return handle.queryPermission(READ_WRITE)
+    try {
+      return await handle.queryPermission(READ_WRITE)
+    } catch {
+      return 'missing'
+    }
   }
 
   async reopen(id: string): Promise<FolderFiles | 'denied' | 'missing'> {
@@ -78,12 +101,28 @@ export class BrowserFolderAccess implements FolderAccess {
     if (handle === undefined) {
       return 'missing'
     }
-    if ((await handle.requestPermission(READ_WRITE)) !== 'granted') {
-      return 'denied'
+    const answer = await this.requestAccess(handle)
+    if (answer === 'denied' || answer === 'missing') {
+      return answer
     }
     return new FolderFiles(id, new FileSystemDirectory(handle), {
       durable: true,
       ...this.options,
     })
+  }
+
+  /** 'granted' when the browser grants access; otherwise the answer that `reopen` gives. */
+  private async requestAccess(
+    handle: FileSystemDirectoryHandle,
+  ): Promise<'granted' | 'denied' | 'missing'> {
+    try {
+      return (await handle.requestPermission(READ_WRITE)) === 'granted' ? 'granted' : 'denied'
+    } catch (error) {
+      const answer = answerForRequestFailure(error)
+      if (answer === undefined) {
+        throw error
+      }
+      return answer
+    }
   }
 }
