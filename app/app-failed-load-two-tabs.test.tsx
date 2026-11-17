@@ -48,6 +48,9 @@ interface SharedStorage {
   gate: Promise<void>
 }
 
+/** What a store resolves when a save found nothing to report. */
+const SAVE_REPORT = { faults: [], backedUp: false }
+
 async function storageWithAFailedProject(): Promise<SharedStorage> {
   const root = new InMemoryDirectory()
   await root.writeFile(`${FAILED_ID}/vernacular.json`, projectFromANewerBuild())
@@ -58,6 +61,7 @@ async function storageWithAFailedProject(): Promise<SharedStorage> {
     await storage.gate
     await save(id, project)
     storage.saved.push(id)
+    return SAVE_REPORT
   })
   return storage
 }
