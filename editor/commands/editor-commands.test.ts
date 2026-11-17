@@ -134,7 +134,7 @@ describe('createEditorCommands', () => {
     expect(context.selection.getSelectedIds().size).toBe(0)
   })
 
-  it('removes a selected furniture piece, which the scene graph never carries', () => {
+  it('removes a selected furniture piece, which the selection holds under its raw id', () => {
     const { context, floorId } = buildContext()
     const furniture = createFurnitureInstance({
       assetRef: { scope: 'user', contentHash: 'sofa-hash' },
