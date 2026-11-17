@@ -169,17 +169,17 @@ Known gaps:
   then swings shut when the user returns to that floor. This was not run. A door that is open on
   one floor, with another floor active during a rebuild, is not posed when the user returns to that
   floor: it shows shut while the session holds it open, and the walker passes through it. This
-  case was found by reading the code and was not run. A follow-up issue tracks this.
+  case was found by reading the code and was not run. Issue #777 tracks this.
 - The stored set can keep the id of a door that no longer exists. After a user deletes a door that
   is open, or undoes its insertion, its id stays in the stored set, so the toolbar control stays
   enabled with nothing to close until one press of the control or of the R key empties the set.
-  This was found by reading the code and was not reproduced. A follow-up issue tracks this.
+  This was found by reading the code and was not reproduced. Issue #780 tracks this.
 - A rebuilt open door can show shut for one frame. The effect that poses a new root is a plain
   effect, which runs after paint, and the tick now runs in orbit mode as well. The live runs looked
   for this flash and did not see it. The first two runs sampled about 10 frames each second, and
   the repeat run sampled a frame about every 8 ms, so a flash shorter than one sampled frame is not
-  excluded. A layout effect should close the gap, but it changes the timing of every rebuild. A
-  follow-up issue tracks this.
+  excluded. A layout effect should close the gap, but it changes the timing of every rebuild.
+  Issue #778 tracks this.
 - The tick does work in orbit mode even when nothing moves. For each opening on the active floor at
   rest on its target, each frame does two lookups (its open state and its openness) and a compare.
   The frame cost is not measured.
@@ -196,7 +196,7 @@ Known gaps:
   any tick. The live run described under Evidence covers the frame callback. It was a script, not a
   committed test.
 - A disabled control gives its reason only in its `title` attribute. Nothing visible in the toolbar
-  says why the button is disabled. A follow-up issue tracks this.
+  says why the button is disabled. Issue #779 tracks this.
 
 ## Evidence
 
