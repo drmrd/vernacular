@@ -196,6 +196,7 @@ describe('handleOpeningKey selects what it drops', () => {
       event: enterEvent(),
       graph: graphWithOneWall(),
       placementType: DOOR_TYPE,
+      setPlacementRefusal: vi.fn(),
     })
 
     expect(dispatch).toHaveBeenCalledTimes(1)
@@ -218,6 +219,7 @@ describe('handleOpeningKey selects what it drops', () => {
       event: enterEvent(),
       graph: graphWithOneWall(),
       placementType: DOOR_TYPE,
+      setPlacementRefusal: vi.fn(),
     })
 
     expect(dispatch).not.toHaveBeenCalled()
@@ -243,6 +245,7 @@ describe('handleOpeningKey selects what it drops', () => {
       event: enterEvent(),
       graph: graphWithOneWall(),
       placementType: DOOR_TYPE,
+      setPlacementRefusal: vi.fn(),
     })
 
     expect(dispatch).not.toHaveBeenCalled()
