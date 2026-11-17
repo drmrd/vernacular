@@ -29,7 +29,14 @@ function sameProperties(stored: Record<string, unknown>, parsed: Record<string, 
   )
 }
 
-/** Whether the stored value equals what JSON keeps of it: nothing but undefined properties may be lost. */
+/**
+ * Whether the stored value equals what JSON keeps of it: nothing but undefined
+ * properties may be lost. Two cases count as equal although JSON changes them:
+ * `-0` equals `0`, and named properties of an array are not compared. A project
+ * holds neither, since a coordinate that rounds to `-0` means the same place and
+ * no project keeps data on an array object; stopping a conversion for either
+ * would leave a good record unconverted for no loss.
+ */
 function sameInJson(stored: unknown, parsed: unknown): boolean {
   if (Array.isArray(stored)) {
     return Array.isArray(parsed) && sameElements(stored, parsed)

@@ -124,29 +124,48 @@ function sameBytes(stored: Uint8Array | undefined, bytes: Uint8Array): boolean {
   return stored !== undefined && bytesEqual(stored, bytes)
 }
 
+/** What one conversion wrote: the file bytes and the token that marks the file as its own. */
+interface WrittenFile {
+  bytes: Uint8Array
+  token: string
+}
+
+function convertedFile(path: string, written: WrittenFile): FileRecord {
+  return {
+    path,
+    bytes: written.bytes,
+    modifiedAt: new Date().toISOString(),
+    convertedBy: written.token,
+  }
+}
+
 /**
  * One transaction over both stores reads the record and the file. A record that
- * JSON keeps faithfully and that has no file gets its file. A record whose file
- * holds the same bytes, left by an earlier conversion, loses the record. A file
- * with other bytes changes nothing. Resolves with the bytes written, if any.
+ * JSON keeps faithfully and that has no file gets its file, marked with a new
+ * token. A file with the same bytes, left by an earlier conversion, lets the
+ * record go; the token stays on that file, which every reader treats as an
+ * ordinary file. A marked file with other bytes is a converted file that went
+ * wrong and was not deleted, so it is replaced by a new marked file. An
+ * unmarked file with other bytes was saved by someone and changes nothing.
+ * Resolves with what was written, if anything.
  */
-function writeFileOfRecord(database: IDBDatabase, id: string): Promise<Uint8Array | undefined> {
+function writeFileOfRecord(database: IDBDatabase, id: string): Promise<WrittenFile | undefined> {
   const transaction = database.transaction([FILES_STORE, LEGACY_STORE], 'readwrite')
   const files = transaction.objectStore(FILES_STORE)
   const records = transaction.objectStore(LEGACY_STORE)
   const path = legacyPath(id)
-  let written: Uint8Array | undefined
+  let written: WrittenFile | undefined
   onResult(records.get(id), (record: LegacyRecord | undefined) => {
     const bytes = record === undefined ? undefined : faithfulJsonBytes(record.project)
     if (bytes === undefined) {
       return
     }
     onResult(files.get(path), (file: FileRecord | undefined) => {
-      if (file === undefined) {
-        files.put({ path, bytes, modifiedAt: new Date().toISOString() } satisfies FileRecord)
-        written = bytes
-      } else if (sameBytes(bytesOfFile(file), bytes)) {
+      if (file !== undefined && sameBytes(bytesOfFile(file), bytes)) {
         records.delete(id)
+      } else if (file === undefined || file.convertedBy !== undefined) {
+        written = { bytes, token: crypto.randomUUID() }
+        files.put(convertedFile(path, written))
       }
     })
   })
@@ -174,33 +193,39 @@ function deleteRecordWhenUnchanged(
   return finish(transaction)
 }
 
-/** Deletes the file in one transaction, only when it still holds exactly the bytes this conversion wrote. */
-function deleteFileWhenUnchanged(
-  database: IDBDatabase,
-  path: string,
-  bytes: Uint8Array,
-): Promise<void> {
-  const transaction = database.transaction(FILES_STORE, 'readwrite')
+/**
+ * Deletes the file in one transaction, only while it still carries the token of
+ * this conversion and the record is still there. The token is compared, not the
+ * bytes: a file that read back wrong holds wrong bytes. A save by another tab
+ * removes the token, so that file stays.
+ */
+function deleteFileWhenStillOurs(database: IDBDatabase, id: string, token: string): Promise<void> {
+  const transaction = database.transaction([FILES_STORE, LEGACY_STORE], 'readwrite')
   const files = transaction.objectStore(FILES_STORE)
+  const path = legacyPath(id)
   onResult(files.get(path), (file: FileRecord | undefined) => {
-    if (sameBytes(bytesOfFile(file), bytes)) {
-      files.delete(path)
+    if (file?.convertedBy !== token) {
+      return
     }
+    onResult(transaction.objectStore(LEGACY_STORE).getKey(id), (key) => {
+      if (key !== undefined) {
+        files.delete(path)
+      }
+    })
   })
   return finish(transaction)
 }
 
 async function convertRecord(database: IDBDatabase, id: string, readBack: ReadBack): Promise<void> {
-  const bytes = await writeFileOfRecord(database, id)
-  if (bytes === undefined) {
+  const written = await writeFileOfRecord(database, id)
+  if (written === undefined) {
     return
   }
-  const path = legacyPath(id)
-  const stored = await readBack(path)
-  if (stored !== undefined && bytesEqual(stored, bytes)) {
-    await deleteRecordWhenUnchanged(database, id, bytes)
+  const stored = await readBack(legacyPath(id))
+  if (stored !== undefined && bytesEqual(stored, written.bytes)) {
+    await deleteRecordWhenUnchanged(database, id, written.bytes)
   } else {
-    await deleteFileWhenUnchanged(database, path, bytes)
+    await deleteFileWhenStillOurs(database, id, written.token)
   }
 }
 
@@ -209,11 +234,13 @@ async function convertRecord(database: IDBDatabase, id: string, readBack: ReadBa
  * record converts on its own: one that fails stays, and the others still
  * convert. A record converts only when JSON keeps its object unchanged, apart
  * from properties whose value is undefined; any other record stays and is
- * served as JSON text. The file is written, then read back, and the record goes
- * only when the read-back equals the bytes written and the file and the record
- * still hold them; on a mismatch only a file that still holds the bytes written
- * is removed. A file with equal bytes left by an earlier conversion lets the
- * record go; a file with other bytes is left alone with the record. A record
+ * served as JSON text. The file is written with a token of its own, then read
+ * back, and the record goes only when the read-back equals the bytes written and
+ * the file and the record still hold them. On a mismatch the stored bytes are
+ * wrong, so the file goes while it still carries the token and the record
+ * stays. A file with equal bytes left by an earlier conversion lets the record
+ * go; a token-marked file with other bytes is replaced; an unmarked file with
+ * other bytes was saved by someone and is left alone with the record. A record
  * whose id cannot name a project directory is ignored. A database without the
  * legacy store converts nothing.
  */

@@ -6,6 +6,8 @@ export interface FileRecord {
   path: string
   bytes: Uint8Array
   modifiedAt: string
+  /** Set only by the conversion of a legacy record: the token of that one conversion. A save never writes it. */
+  convertedBy?: string
 }
 
 /** Resolves with the result of a request, or rejects with its error. */
