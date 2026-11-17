@@ -8,11 +8,21 @@ import type { Bounds3, Vector3 } from '../scene/vector3'
 export interface ShadowFitInput {
   /** The box around everything that casts a shadow. */
   casters: Bounds3
-  /** The ground plane's extent (`min.y` equals `max.y`), or null when there is no ground. */
+  /**
+   * The ground plane's extent (`min.y` equals `max.y`), or null when there is
+   * no ground. A ground box with a number that is not finite counts as no
+   * ground.
+   */
   ground: Bounds3 | null
-  /** Unit vector from the scene toward the sun. */
+  /**
+   * Unit vector from the scene toward the sun. A direction with a component
+   * that is not finite gives a copy of the casters.
+   */
   sunDirection: Vector3
-  /** The cap on the radius of the fitted sphere, in millimetres. */
+  /**
+   * The cap on the radius of the fitted sphere, in millimetres. `NaN` gives a
+   * copy of the casters; `Infinity` means no cap.
+   */
   maxRadius: number
 }
 
@@ -63,8 +73,9 @@ export function boundsRadius(bounds: Bounds3): number {
  * sun height is clamped from below at the smallest height the projection uses,
  * so a low sun with a horizontal component sends the point to the edge of the
  * ground on the side away from the sun, a zero component keeps the corner's
- * coordinate, and a sun below the horizon gets the horizon's fit. With no
- * ground, the fit is the casters.
+ * coordinate, and a sun below the horizon gets the horizon's fit. Input with
+ * no usable shadow gives a copy of the casters; the fields of `ShadowFitInput`
+ * state the cases.
  *
  * When the radius of that box exceeds `maxRadius`, the box shrinks linearly
  * toward the caster box until its radius equals the cap, so the far end of the
@@ -72,12 +83,31 @@ export function boundsRadius(bounds: Bounds3): number {
  * at or above the cap, the fit is the casters alone.
  */
 export function shadowFitBounds(input: ShadowFitInput): Bounds3 {
+  if (!hasUsableShadow(input)) return copyBounds(input.casters)
   const { casters, ground, sunDirection, maxRadius } = input
-  if (ground === null) {
-    return copyBounds(casters)
-  }
   const withShadow = unionOf(casters, shadowPoints(casters, ground, sunDirection))
   return shrinkTowardCasters(casters, withShadow, maxRadius)
+}
+
+type ShadowFitInputWithGround = ShadowFitInput & { ground: Bounds3 }
+
+/** False for no ground, a ground box or a sun direction that is not finite, or a cap of `NaN`. */
+function hasUsableShadow(input: ShadowFitInput): input is ShadowFitInputWithGround {
+  const { ground, sunDirection, maxRadius } = input
+  return (
+    ground !== null &&
+    isFiniteBounds(ground) &&
+    isFiniteVector(sunDirection) &&
+    !Number.isNaN(maxRadius)
+  )
+}
+
+function isFiniteBounds(bounds: Bounds3): boolean {
+  return isFiniteVector(bounds.min) && isFiniteVector(bounds.max)
+}
+
+function isFiniteVector(vector: Vector3): boolean {
+  return Number.isFinite(vector.x) && Number.isFinite(vector.y) && Number.isFinite(vector.z)
 }
 
 function shadowPoints(casters: Bounds3, ground: Bounds3, sunDirection: Vector3): Vector3[] {
