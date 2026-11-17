@@ -3,6 +3,8 @@ import type { DirectoryPort } from '../fs/directory-port'
 const DATABASE_VERSION = 2
 const FILES_STORE = 'files'
 /** Sorts after every character that can appear in a path, so it ends a prefix range. */
+const BLOCKED_MESSAGE =
+  'Another tab holds the storage open with an older version of the app. Close that tab and try again.'
 const HIGHEST_CODE_UNIT = '￿'
 
 interface FileRecord {
@@ -28,6 +30,46 @@ function finish(transaction: IDBTransaction): Promise<void> {
 
 function pathsUnder(directoryPath: string): IDBKeyRange {
   return IDBKeyRange.bound(directoryPath, directoryPath + HIGHEST_CODE_UNIT)
+}
+
+/**
+ * Opens the database and calls `onRelease` when the connection is no longer
+ * usable: the open failed or was blocked, or another connection asked this one
+ * to close. A blocked open rejects at once. The browser still finishes it when
+ * the blocking connection closes, and then this function closes the connection
+ * that nobody asked for.
+ */
+function connect(databaseName: string, onRelease: () => void): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    let abandoned = false
+    const request = indexedDB.open(databaseName, DATABASE_VERSION)
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(FILES_STORE)) {
+        request.result.createObjectStore(FILES_STORE, { keyPath: 'path' })
+      }
+    }
+    request.onblocked = () => {
+      abandoned = true
+      onRelease()
+      reject(new Error(BLOCKED_MESSAGE))
+    }
+    request.onsuccess = () => {
+      const database = request.result
+      if (abandoned) {
+        database.close()
+        return
+      }
+      database.onversionchange = () => {
+        database.close()
+        onRelease()
+      }
+      resolve(database)
+    }
+    request.onerror = () => {
+      onRelease()
+      reject(request.error ?? new Error('Failed to open IndexedDB'))
+    }
+  })
 }
 
 /**
@@ -95,24 +137,8 @@ export class IndexedDbDirectory implements DirectoryPort {
   }
 
   private open(): Promise<IDBDatabase> {
-    this.connection ??= new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.databaseName, DATABASE_VERSION)
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(FILES_STORE)) {
-          request.result.createObjectStore(FILES_STORE, { keyPath: 'path' })
-        }
-      }
-      request.onsuccess = () => {
-        request.result.onversionchange = () => {
-          request.result.close()
-          this.connection = undefined
-        }
-        resolve(request.result)
-      }
-      request.onerror = () => {
-        this.connection = undefined
-        reject(request.error ?? new Error('Failed to open IndexedDB'))
-      }
+    this.connection ??= connect(this.databaseName, () => {
+      this.connection = undefined
     })
     return this.connection
   }
