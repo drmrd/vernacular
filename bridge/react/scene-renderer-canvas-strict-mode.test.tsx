@@ -7,6 +7,7 @@ import { SceneRendererCanvas } from './scene-renderer-canvas'
 import {
   buildFakeRenderer,
   defer,
+  recordUnhandledRejections,
   settle,
   type Deferred,
   type FakeRenderer,
@@ -190,5 +191,64 @@ describe('SceneRendererCanvas under StrictMode with the other outcomes', () => {
     await startUpWithTwoRenderers(session, { forceWebGL: true })
 
     expect(session.factory).toHaveBeenCalledWith(expect.objectContaining({ forceWebGL: true }))
+  })
+})
+
+describe('SceneRendererCanvas under StrictMode when the newer renderer fails to build', () => {
+  let session: Session
+  let rejections: ReturnType<typeof recordUnhandledRejections>
+
+  beforeEach(() => {
+    collaborators.canvasProps = []
+    collaborators.released = []
+    session = arrangeSession()
+    rejections = recordUnhandledRejections()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    rejections.stop()
+    vi.restoreAllMocks()
+  })
+
+  // The first gl call builds a renderer whose init() stays pending; every later call's factory throws.
+  async function startUpWithFailingSecondBuild() {
+    const first = defer<void>()
+    const firstRenderer = buildFakeRenderer(first)
+    const factory = vi
+      .fn()
+      .mockReturnValueOnce(firstRenderer)
+      .mockImplementation(() => {
+        throw new Error('no WebGPU adapter')
+      })
+    renderStrict()
+    await settle(() => session.loaded.resolve(factory))
+    return { first, firstRenderer, factory }
+  }
+
+  it('keeps the cannot-render status and releases the first renderer once when its init() resolves after the failed build', async () => {
+    const { first, firstRenderer, factory } = await startUpWithFailingSecondBuild()
+
+    await settle(() => first.resolve())
+
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.queryByTestId('child')).toBeNull()
+    // A third call would mean that the wrapper mounted the canvas again after the failure.
+    expect.soft(factory).toHaveBeenCalledTimes(2)
+    expect(collaborators.released).toEqual([firstRenderer])
+    expect(await rejections.read()).toEqual([])
+  })
+
+  it('keeps the cannot-render status and releases the first renderer once when its init() rejects after the failed build', async () => {
+    const { first, firstRenderer, factory } = await startUpWithFailingSecondBuild()
+
+    await settle(() => first.reject(new Error('no usable GPU backend')))
+
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.queryByTestId('child')).toBeNull()
+    // A third call would mean that the wrapper mounted the canvas again after the failure.
+    expect.soft(factory).toHaveBeenCalledTimes(2)
+    expect(collaborators.released).toEqual([firstRenderer])
+    expect(await rejections.read()).toEqual([])
   })
 })

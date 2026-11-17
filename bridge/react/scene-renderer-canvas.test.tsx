@@ -4,7 +4,12 @@ import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneRendererCanvas } from './scene-renderer-canvas'
-import { defer, settle, type Deferred } from './scene-renderer-canvas-test-support'
+import {
+  defer,
+  recordUnhandledRejections,
+  settle,
+  type Deferred,
+} from './scene-renderer-canvas-test-support'
 
 // The engine's loader and the 3D library's Canvas are the two collaborators of the wrapper.
 // Each case decides when the factory loads and when the renderer's init() settles, so the
@@ -171,24 +176,6 @@ describe('SceneRendererCanvas', () => {
 const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
 const COULD_NOT_LOAD_MESSAGE =
   'Could not load the 3D view. Check your network connection, then retry.'
-
-// Vitest fails the whole run on an unhandled rejection but names no test. This listener records
-// the rejections that Node reports while one case runs, so the case that caused one fails itself.
-// Node reports a rejection after the microtask queue drains, hence the timer turn before reading.
-function recordUnhandledRejections(): { read: () => Promise<unknown[]>; stop: () => void } {
-  const seen: unknown[] = []
-  const listener = (reason: unknown): void => {
-    seen.push(reason)
-  }
-  process.on('unhandledRejection', listener)
-  return {
-    read: async () => {
-      await new Promise((turn) => setTimeout(turn, 0))
-      return seen
-    },
-    stop: () => process.off('unhandledRejection', listener),
-  }
-}
 
 describe('SceneRendererCanvas when the renderer cannot start', () => {
   let start: Harness

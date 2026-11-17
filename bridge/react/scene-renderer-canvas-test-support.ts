@@ -42,3 +42,21 @@ export function buildFakeRenderer(started: Deferred<void>): FakeRenderer {
   }
   return renderer
 }
+
+// Vitest fails the whole run on an unhandled rejection but names no test. This listener records
+// the rejections that Node reports while one case runs, so the case that caused one fails itself.
+// Node reports a rejection after the microtask queue drains, hence the timer turn before reading.
+export function recordUnhandledRejections(): { read: () => Promise<unknown[]>; stop: () => void } {
+  const seen: unknown[] = []
+  const listener = (reason: unknown): void => {
+    seen.push(reason)
+  }
+  process.on('unhandledRejection', listener)
+  return {
+    read: async () => {
+      await new Promise((turn) => setTimeout(turn, 0))
+      return seen
+    },
+    stop: () => process.off('unhandledRejection', listener),
+  }
+}
