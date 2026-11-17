@@ -1,6 +1,7 @@
 import { pointInPolygon } from '../geometry/polygon'
 import type { OpeningOrientation, Point } from '../model/types'
 import type { OpeningSceneNode, RoomSceneNode } from './scene-graph'
+import { HALF } from './wall-half'
 
 /**
  * How far past each wall face, in mm, the room side of an opening is sampled. Far enough that
@@ -9,10 +10,10 @@ import type { OpeningSceneNode, RoomSceneNode } from './scene-graph'
  */
 export const OPENING_ROOM_SIDE_SAMPLE_MM = 50
 
-/** Halves a wall's thickness to reach a face from its centerline. */
-const HALF = 2
-
-/** True when the point lies in the room's clear polygon and in none of its holes. */
+/**
+ * True when the point lies in the room's clear polygon and in none of its holes. Unlike
+ * `insideAnyRoom` in exterior-walls.ts, this excludes holes; the two are kept apart on purpose.
+ */
 function insideRoom(point: Point, room: RoomSceneNode): boolean {
   if (!pointInPolygon(point, room.clearPolygon)) return false
   return !(room.holes ?? []).some((hole) => pointInPolygon(point, hole))
