@@ -29,7 +29,7 @@ sourceFiles:
     e2e/tests/scene-shadow-reach.spec.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0158: Millimeter-scale calibration of the shadow bias pair and the occlusion radius
@@ -244,3 +244,70 @@ Known limits:
 - An edit that changes only the grade does not refit until the next lighting change, because the
   update depends on the caster bounds and not on the ground.
 - The sphere around a long low box wastes shadow-map area. A fit in light space would be tighter.
+
+## Amendment 2026-11-17: input that is not finite
+
+Issue #758 reported that `shadowFitBounds` did not check its numbers. A `NaN` in the sun direction
+or in the cap gave a box of six `NaN` values. An infinite component of the direction mostly gave a
+finite box that meant nothing. The rule in `core/environment/shadow-fit.ts` is now:
+
+- A sun direction with any component that is not finite (`NaN`, `Infinity`, `-Infinity`) gives a
+  copy of the caster box.
+- A cap (`maxRadius`) of `NaN` gives a copy of the caster box.
+- A cap of `Infinity` means no cap. A cap of `-Infinity` gives the casters, as each cap below the
+  radius of the casters does.
+- The function never throws. A copy is a new object, as on the path with no ground plane.
+
+The fit falls back instead of throwing a `RangeError` because of where it runs. Its one caller is
+`update` in `engine/lighting/solar-lighting-provider.ts`, which has no catch, and `update` runs in
+a layout effect in `bridge/react/scene-lighting.tsx`. No error boundary stands above it: a search
+of `app/`, `bridge/`, `editor/`, `engine/` and `src/` finds none, and `src/main.tsx` calls
+`createRoot` with no error options. A throw is therefore expected to take the whole application
+down. That expectation is a reading of how the libraries treat an uncaught error. It was not run.
+
+The daylight field makes the same split ([[ADR-0196-plan-space-daylight-field]]). It throws only for
+document values that a person can find and fix, such as a ceiling height, and its message names
+the room. Its sky input for each instant does not throw: a sky that gives `NaN` still yields
+finite visibilities. The direction of the sun is an input of that second kind.
+
+Alternatives considered:
+
+- A `RangeError` from the fit, with a catch in the provider that skips the refit. That is two
+  changes for the same visible result.
+- Each cap that is not finite gives the casters. The rule is shorter, but it removes the natural
+  way to say "no cap", which is `Infinity`.
+
+No shipped path gives such a direction today. The direction comes from the site and the observed
+time through `solarPosition` and `sunWorldDirection`, and a `NaN` in either passes through. These
+guards stop it:
+
+- Both schema validators under `core/format/generated/` require latitude and longitude to be
+  finite numbers.
+- `usableNorthBearing` in `core/environment/daylight-site.ts` treats a bearing that is not finite
+  as missing.
+- The site editor (`editor/metadata/site-editor.tsx`) dispatches a location only when neither
+  coordinate reads as `NaN`.
+- The observation date and time input (`editor/environment/environment-panel.tsx`) ignores a value
+  that does not have the `YYYY-MM-DDThh:mm` shape.
+
+The handler of `setSiteLocation` (`core/commands/handlers/site-commands.ts`) checks nothing, so a
+future caller could still store a coordinate that is not finite.
+
+The cost is that a programming error that makes the cap `NaN` now gives a shorter shadow, the
+casters alone, with no error. The test "covers the shell and its shadow on the ground, reaching past
+the shell alone" in `engine/lighting/solar-lighting-provider.test.ts` catches that in the provider:
+it requires the fitted radius to exceed half the diagonal of the casters, and a fit of the casters
+alone equals it.
+
+Known limit: the fit is finite for such input, but the engine still aims the sun with the raw
+direction. `fitSunShadowToDirection` in `engine/lighting/lighting-rig.ts` normalizes it and places
+the sun along it, so the sun and its shadow are wrong. A follow-up issue covers that guard.
+
+Out of scope, as the issue states: caster boxes that are not finite.
+
+The describe block "shadowFitBounds with input that is not finite" in
+`core/environment/shadow-fit.test.ts` guards the rule. It covers five directions, the copy, and,
+in its nested block "with a cap on the radius that is not a finite number", the three caps.
+`pnpm exec vitest run core/environment/shadow-fit.test.ts --project unit` passed 30 tests. The other
+two test files of the fit passed as well: `engine/lighting/solar-lighting-provider.test.ts` with 16
+tests and `tests/performance/shadow-fit-reach.test.ts` with 5.
