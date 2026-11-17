@@ -31,7 +31,7 @@ sourceFiles:
     resources/floor-plans/CONVENTIONS.md,
   ]
 status: current
-updated: 2026-06-11
+updated: 2026-11-17
 ---
 
 # ADR-0052: Representability tiers and the corpus-as-conformant-fixtures contract
@@ -83,7 +83,8 @@ fixture corpus an enforced conformance gate:
   `extensions` namespace (for example `org.vernacular.covered-outdoor` for porches, carports,
   and terraces), which stays CORE-conformant because `extensions` is an open object. Tier 2
   doubles as the corpus of preservation round-trip fixtures: a real fixture is loaded and
-  saved through `FolderProjectStore` and its reserved data is asserted to survive unchanged,
+  saved through the document store over one project folder (`FolderProjectStore` until
+  2026-11-17) and its reserved data is asserted to survive unchanged,
   exercising ADR-0051 end to end.
 
 A single conformance gate (`tests/format/corpus-conformance.test.ts`) discovers every

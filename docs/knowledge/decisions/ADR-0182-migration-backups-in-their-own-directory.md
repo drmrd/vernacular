@@ -14,13 +14,14 @@ related:
   ]
 sourceFiles:
   [
-    storage/folder/folder-project-store.ts,
+    storage/documents/document-store.ts,
+    storage/documents/document-backups.ts,
     storage/snapshots/snapshot-store.ts,
     bridge/autosave/create-autosave.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0182: Migration backups live in their own directory until the project is deleted
@@ -30,8 +31,10 @@ updated: 2026-11-15
 Current. The owner chose the directory and the lifetime on 2026-11-14 and approved the rest the
 same day, with section 5.2 of `docs/specs/2026-11-14-data-loss-fixes-and-guard-rails.md`. It
 supersedes the part of ADR-0029 that puts the backup in `.house-autosave/`, and it narrows what the
-prune of ADR-0119 removes. The code changes with #670. Until then the backup is written to
-`.house-autosave/` and the prune empties that directory.
+prune of ADR-0119 removes. The code changed on 2026-11-17 (#670). The document store wrapper
+(`storage/documents/document-store.ts`) writes the backup through
+`storage/documents/document-backups.ts` into `.house-backups/`, for every store kind. The snapshot
+prune (`storage/snapshots/snapshot-store.ts`) removes only the snapshot files it wrote.
 
 > Amended by [[ADR-0190-strict-check-refuses-and-two-classes-of-repair]] on 2026-11-15. The backup
 > is written after a decode that migrated and succeeded, before the document reaches the caller,
@@ -75,7 +78,8 @@ load deletes the backup (#670). A bad migration is usually noticed long after th
 - A backup that an earlier build left in `.house-autosave/` is no longer pruned. It stays where it
   is.
 - The application still has no way to restore a backup from the interface.
-- The IndexedDB store neither migrates nor backs up. That changes with the document codec (#672).
+- The IndexedDB store migrates and backs up like the other stores. Since 2026-11-17 it keeps
+  projects as files and uses the same wrapper (#672).
 - The folder layout in the format specification (section 2.2) and in the design specification
   (section 3.3) gains `.house-backups/`. Section 7 of the format specification and sections 3.4 and
   5.5 of the design specification name the new location.

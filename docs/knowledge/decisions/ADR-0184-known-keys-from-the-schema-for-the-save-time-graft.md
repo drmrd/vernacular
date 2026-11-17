@@ -13,7 +13,7 @@ related:
 sourceFiles:
   [
     core/format/codec/graft.ts,
-    storage/folder/folder-project-store.ts,
+    storage/documents/document-store.ts,
     scripts/schema/generate-schema.mjs,
     core/commands/handlers/project-commands.ts,
     core/model/known-keys.ts,
@@ -87,8 +87,9 @@ no graft and saved the loss.
   not carried over.
 - The graft no longer repairs a known key that a command dropped. The command test is the guard for
   that, which is why it covers every registered command and fails for one it cannot run.
-- The table and the graft move into the document codec unchanged when the persistence stage builds
-  it. Every store then gets the same behavior (#672).
+- The table and the graft moved into the document codec unchanged. Since 2026-11-17 every store,
+  the IndexedDB store included, saves through the codec wrapper
+  (`storage/documents/document-store.ts`), so every store grafts the same way (#672).
 - A wrong table loses data. The tests generated from the table cannot catch that on their own, so a
   round trip of the test corpus and three end-to-end cases check it independently.
 
