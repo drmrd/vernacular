@@ -73,10 +73,9 @@ export function boundsRadius(bounds: Bounds3): number {
  * sun height is clamped from below at the smallest height the projection uses,
  * so a low sun with a horizontal component sends the point to the edge of the
  * ground on the side away from the sun, a zero component keeps the corner's
- * coordinate, and a sun below the horizon gets the horizon's fit. With no
- * ground, with a ground box that has a number that is not finite, with a sun
- * direction that has a component that is not finite, and with a `maxRadius` of
- * `NaN`, the fit is a copy of the casters.
+ * coordinate, and a sun below the horizon gets the horizon's fit. Input with
+ * no usable shadow gives a copy of the casters; the fields of `ShadowFitInput`
+ * state the cases.
  *
  * When the radius of that box exceeds `maxRadius`, the box shrinks linearly
  * toward the caster box until its radius equals the cap, so the far end of the
@@ -84,13 +83,23 @@ export function boundsRadius(bounds: Bounds3): number {
  * at or above the cap, the fit is the casters alone.
  */
 export function shadowFitBounds(input: ShadowFitInput): Bounds3 {
+  if (!hasUsableShadow(input)) return copyBounds(input.casters)
   const { casters, ground, sunDirection, maxRadius } = input
-  if (ground === null || !isFiniteBounds(ground) || !isFiniteVector(sunDirection)) {
-    return copyBounds(casters)
-  }
-  if (Number.isNaN(maxRadius)) return copyBounds(casters)
   const withShadow = unionOf(casters, shadowPoints(casters, ground, sunDirection))
   return shrinkTowardCasters(casters, withShadow, maxRadius)
+}
+
+type ShadowFitInputWithGround = ShadowFitInput & { ground: Bounds3 }
+
+/** False for no ground, a ground box or a sun direction that is not finite, or a cap of `NaN`. */
+function hasUsableShadow(input: ShadowFitInput): input is ShadowFitInputWithGround {
+  const { ground, sunDirection, maxRadius } = input
+  return (
+    ground !== null &&
+    isFiniteBounds(ground) &&
+    isFiniteVector(sunDirection) &&
+    !Number.isNaN(maxRadius)
+  )
 }
 
 function isFiniteBounds(bounds: Bounds3): boolean {
