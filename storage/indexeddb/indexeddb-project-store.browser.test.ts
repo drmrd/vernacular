@@ -190,7 +190,13 @@ describe('the recovery snapshots and assets of the IndexedDB store', () => {
     expect(await snapshots.isRecoverable()).toBe(true)
     expect((await snapshots.restore())?.ok).toBe(true)
     const files = await store.storedFiles('current')
-    expect(pathsStartingWith(files, AUTOSAVE_FOLDER)).toHaveLength(1)
+    const names = pathsStartingWith(files, AUTOSAVE_FOLDER).map((path) =>
+      path.slice(AUTOSAVE_FOLDER.length),
+    )
+    expect(names).toContain('session-start.json')
+    const rolling = names.filter((name) => name !== 'session-start.json')
+    expect(rolling).toHaveLength(1)
+    expect(rolling[0]).toMatch(/^snapshot-.*\.json$/)
   })
 
   it('serves one asset pool that outlives the store instance', async () => {
