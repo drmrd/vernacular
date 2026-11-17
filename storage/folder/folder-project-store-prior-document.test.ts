@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   CURRENT_SCHEMA_REVISION,
   createEmptyProject,
@@ -145,5 +145,22 @@ describe('FolderProjectStore save without a graft when the previous file cannot 
     const written = JSON.parse(JSON.stringify(next)) as StoredDocument
     written.meta.schemaRevision = CURRENT_SCHEMA_REVISION
     expect(decode(await directory.readFile('vernacular.json'))).toEqual(written)
+  })
+})
+
+describe('FolderProjectStore save over a stored file that cannot be read', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('warns, naming the kind of failure, because no unknown data can be kept', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const directory = await directoryHolding(encode('{ this is not json'))
+    const store = new FolderProjectStore(directory)
+
+    await store.saveProject(nextProject())
+
+    const warned = warn.mock.calls.map((args) => JSON.stringify(args))
+    expect(warned.some((text) => text.includes('not-json'))).toBe(true)
   })
 })
