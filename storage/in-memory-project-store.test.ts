@@ -19,10 +19,24 @@ describe('InMemoryProjectStore', () => {
     expect((await store.load('p1')).meta.name).toBe('Sample')
   })
 
-  it('lists saved projects as summaries', async () => {
+  it('lists a saved project by id and time of last change, with no name', async () => {
     const store = new InMemoryProjectStore()
     await store.save('p1', sampleProject())
-    expect(await store.list()).toEqual([{ id: 'p1', name: 'Sample' }])
+
+    const [summary, ...others] = await store.list()
+
+    expect(others).toEqual([])
+    expect(Object.keys(summary ?? {}).sort()).toEqual(['id', 'lastChangedAt'])
+    expect(summary?.id).toBe('p1')
+    expect(Number.isNaN(Date.parse(String(summary?.lastChangedAt)))).toBe(false)
+  })
+
+  it('lists the saved projects sorted by id', async () => {
+    const store = new InMemoryProjectStore()
+    await store.save('b', sampleProject())
+    await store.save('a', sampleProject())
+
+    expect((await store.list()).map((summary) => summary.id)).toEqual(['a', 'b'])
   })
 
   it('throws when loading an unknown id', async () => {

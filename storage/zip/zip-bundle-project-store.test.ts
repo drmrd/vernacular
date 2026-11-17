@@ -3,8 +3,11 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
 import type { Project } from '../../core'
+import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { ProjectNotFoundError } from '../project-store'
 import { ZipBundleProjectStore } from './zip-bundle-project-store'
+
+const SAVED_AT = '2026-03-04T05:06:07.000Z'
 
 function sampleProject() {
   return createEmptyProject({
@@ -40,11 +43,32 @@ describe('ZipBundleProjectStore', () => {
     await expect(store.load('other')).rejects.toBeInstanceOf(ProjectNotFoundError)
   })
 
-  it('lists nothing before a save and its single project after', async () => {
-    const store = new ZipBundleProjectStore('house')
+  it('lists nothing before a save and its single project, with no name, after', async () => {
+    const directory = new InMemoryDirectory({ now: () => new Date(SAVED_AT) })
+    const store = new ZipBundleProjectStore('house', directory)
     expect(await store.list()).toEqual([])
 
     await store.save('house', sampleProject())
-    expect(await store.list()).toEqual([{ id: 'house', name: 'My House' }])
+    expect(await store.list()).toEqual([{ id: 'house', lastChangedAt: SAVED_AT }])
+  })
+
+  it('lists the project of a reopened bundle by id and time of last change only', async () => {
+    const store = new ZipBundleProjectStore('house')
+    await store.save('house', sampleProject())
+    const reopened = await ZipBundleProjectStore.fromBundle('house', await store.exportBundle())
+
+    const [summary, ...others] = await reopened.list()
+
+    expect(others).toEqual([])
+    expect(Object.keys(summary ?? {}).sort()).toEqual(['id', 'lastChangedAt'])
+    expect(summary?.id).toBe('house')
+  })
+
+  it('lists its project when the stored bytes are not JSON, without parsing them', async () => {
+    const directory = new InMemoryDirectory({ now: () => new Date(SAVED_AT) })
+    await directory.writeFile('vernacular.json', new TextEncoder().encode('{ this is not json'))
+    const store = new ZipBundleProjectStore('house', directory)
+
+    expect(await store.list()).toEqual([{ id: 'house', lastChangedAt: SAVED_AT }])
   })
 })
