@@ -80,6 +80,8 @@ function openedFrame(shut: OpeningFrame, motion: OpeningMotion, openness: number
     case 'hinge':
       return swungFrame(shut, motion, openness)
     case 'slide':
+      // A hung window's frame does not move, only a sash inside it.
+      if (motion.partId !== 'primary') return shut
       return { ...shut, center: add(shut.center, scale(motion.travel, openness)) }
     default:
       return shut
@@ -128,7 +130,10 @@ function reachDistance(ray: ReachRay, node: OpeningSceneNode, limit: ReachLimit)
  * view. A short ray runs from the eye along the look direction; each opening is
  * tested as the rectangle its leaf or sash fills (spec section 3.2), and the
  * nearest one the ray crosses within `reachMm` wins. The direction need not be
- * normalized; it is normalized here so the reach is measured in millimeters.
+ * normalized; it is normalized here so the reach is measured in millimeters. A hung
+ * window is tested as its own shut rectangle at every openness: its frame does not
+ * move, only a sash inside it, so looking anywhere in the frame of an open hung
+ * window reaches it, and looking at the wall above the head does not.
  */
 // eslint-disable-next-line max-params -- the eye and the look direction are independent ray inputs, the openings are the world being tested, and the options bundle the per-opening openness and the reach limit; none collapse into another.
 export function openingUnderReach(
