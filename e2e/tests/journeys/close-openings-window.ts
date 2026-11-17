@@ -27,10 +27,12 @@ import { openDoorSeenFromOrbit, strafeUntilOpened } from './close-openings-flows
 // The window's name in the list of 3D entities: the first hung window in the room.
 const WINDOW_NAME = 'Double Hung Window 1'
 const SIDEWAYS_KEY = 'KeyA'
-// How long the open window is watched, in milliseconds of animation time.
 const READING_DIGITS = 3
-const WATCH_MS = 400
-// Fewer readings than this in the watch would say little about the frames in between.
+// How many animation frames the open window is watched for. The watch counts frames and not
+// time, so that a slow machine gets the same number of readings as a fast one.
+const WATCH_FRAMES = 12
+// Fewer drawn readings than this in the watch would say little about the frames in between. A
+// canvas that stopped drawing gives fewer.
 const MIN_WATCHED_FRAMES = 5
 
 function windowOption(page: Page): Locator {
@@ -126,28 +128,30 @@ export async function openWindowSeenFromOrbit(
   return { never: door.never, open }
 }
 
-// Resolves after the page has drawn frames for the given time.
-function afterMilliseconds(duration: number): Promise<void> {
+// Resolves after the page has run the given number of animation frames. It runs in the page, so
+// it uses nothing from this module.
+function afterFrames(count: number): Promise<void> {
   return new Promise((resolve) => {
-    const start = performance.now()
+    let seen = 0
     const tick = (): void => {
-      if (performance.now() - start >= duration) resolve()
+      seen += 1
+      if (seen >= count) resolve()
       else requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
   })
 }
 
-// Reads the region of the open window on every frame for a short time, and again as a whole
-// screenshot after it. The window does not move, so the sashes where they overlap must not
-// change from frame to frame.
+// Reads the region of the open window on every frame for a fixed number of frames, and again as
+// a whole screenshot after it. The window does not move, so the sashes where they overlap must
+// not change from frame to frame.
 export async function expectWindowSteady(
   page: Page,
   canvas: Locator,
   open: { frame: Buffer; region: Region },
 ): Promise<void> {
   await startSampling(page, open.region)
-  await page.evaluate(afterMilliseconds, WATCH_MS)
+  await page.evaluate(afterFrames, WATCH_FRAMES)
   const readings = await stopSampling(page)
   const [first] = readings
   if (first === undefined) throw new Error('the 3D canvas drew no frame to read')
