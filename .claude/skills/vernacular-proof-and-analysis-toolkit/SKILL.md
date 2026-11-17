@@ -263,7 +263,7 @@ future ADR must satisfy, not as settled method.
 
 A luminance-calibration argument must pin down:
 
-1. **What the current constants mean.** Sun intensity is `DAYLIGHT_SUN_INTENSITY = 1.6`
+1. **What the current constants mean.** The schematic sun intensity is `SCHEMATIC_SUN_INTENSITY = 1.6`
    (`engine/lighting/lighting-rig.ts`) and default tone-mapping exposure is 1
    (`renderer.toneMappingExposure = options.toneMappingExposure ?? 1` in
    `engine/renderer/create-renderer.ts`). Neither has stated units or an anchor today. The
@@ -399,7 +399,7 @@ re-verify each from the repo root:
 - Reconciler single-floor gap: `grep -n "graph.nodes\[0\]" bridge/react/framed-scene-reconciler.ts`
 - Probe script and workflow: `ls scripts/ci-probes/webgl2-probe.mjs .github/workflows/webgl2-probe.yml`
 - Readiness contract: `grep -n "data-harness-ready" bridge/react/scene-harness-view.tsx e2e/tests/scene-solar.spec.ts`
-- Sun intensity and exposure defaults: `grep -n "DAYLIGHT_SUN_INTENSITY = " engine/lighting/lighting-rig.ts && grep -n "toneMappingExposure" engine/renderer/create-renderer.ts`
+- Sun intensity and exposure defaults: `grep -n "SCHEMATIC_SUN_INTENSITY = " engine/lighting/lighting-rig.ts && grep -n "toneMappingExposure" engine/renderer/create-renderer.ts`
 - Calibration ADR still owed: `gh issue view 449 --json state,title`
 - Mutation lane health (red as of 2026-07-05): `gh run list --workflow=mutation.yml --limit 3`
 - Stryker thresholds and mutate target: `cat stryker.conf.json`

@@ -1,6 +1,6 @@
 ---
 name: vernacular-config-and-flags
-description: 'Use when locating, changing, or adding a Vernacular configuration axis: URL query params (fixture=scene-harness, temp, paint, scene, e2e, e2e-storage), import.meta.env PROD/DEV gates, localStorage/IndexedDB/OPFS keys, ci-coupling.json, CI labels and slash commands (run:e2e, run:visual, ci:full, ci:skip-heavy), screenshot diff tolerances, Stryker or Lighthouse thresholds, .npmrc cooldown, release-please knobs, Playwright env vars (CI, E2E_BASE_URL, PLAYWRIGHT_VERSION).'
+description: 'Use when locating, changing, or adding a Vernacular configuration axis: URL query params (fixture=scene-harness, temp, paint, scene, e2e, e2e-storage), import.meta.env PROD/DEV gates, localStorage/IndexedDB/OPFS keys, ci-coupling.json, CI labels and slash commands (run:e2e, run:visual, ci:full, ci:skip-heavy), screenshot diff tolerances, Stryker or Lighthouse thresholds, .npmrc cooldown, release-please knobs, Playwright env vars (CI, E2E_PORT, E2E_BASE_URL, PLAYWRIGHT_VERSION).'
 ---
 
 # Vernacular configuration and flags
@@ -202,7 +202,7 @@ Consumed by `.github/workflows/release-please.yml` on push to main. Release oper
 | Variable             | Default                              | Effect                                                                                                                                                                                                        | Read in                                                                 |
 | -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `CI`                 | unset locally; set on GitHub runners | `forbidOnly` on, retries 2, workers 1, reporters `github` + `html`, no webServer reuse                                                                                                                        | both `playwright.config.ts` and `playwright.stories.config.ts`          |
-| `E2E_BASE_URL`       | `http://localhost:4173`              | Overrides the app e2e base URL and the webServer health-check URL                                                                                                                                             | `playwright.config.ts` only (the stories config pins its own port 6107) |
+| `E2E_BASE_URL`       | `http://localhost:${E2E_PORT}`       | Overrides the app e2e base URL and the webServer health-check URL                                                                                                                                             | `playwright.config.ts` only (the stories config pins its own port 6107) |
 | `PLAYWRIGHT_VERSION` | derived, not user-set                | Computed inside the `e2e:update-snapshots` and `stories:update-snapshots` scripts from the installed `@playwright/test` version; selects the docker image tag `mcr.microsoft.com/playwright:v<version>-noble` | `package.json` scripts                                                  |
 | `process.platform`   | host value                           | `darwin` adds the scene-webgl GPU launch flags (`--enable-unsafe-webgpu --use-angle=metal --use-gpu-in-tests --ignore-gpu-blocklist`); every other platform gets no extra flags and falls back to SwiftShader | `playwright.config.ts`                                                  |
 
@@ -248,4 +248,4 @@ Everything above verified against the working tree on 2026-07-05 (main, post v0.
 - Cooldown: `grep -c "minimum-release-age-exclude" .npmrc` (expect 56) and `grep -n "minimum-release-age=" .npmrc`
 - ADR-0013 still absent: `ls docs/knowledge/decisions | grep -c 0013` (expect 0)
 - Release knobs: `cat release-please-config.json`; current version: `rg -n '"version"' package.json`
-- Playwright env: `rg -n "E2E_BASE_URL|process.env.CI|process.platform" playwright.config.ts playwright.stories.config.ts`
+- Playwright env: `rg -n "E2E_PORT|E2E_BASE_URL|process.env.CI|process.platform" playwright.config.ts playwright.stories.config.ts`
