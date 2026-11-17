@@ -129,6 +129,19 @@ describe('the current schema check of a document', () => {
       expect(typeFault?.rule).toBe('type')
     },
   )
+
+  it.each([
+    { name: 'NaN', value: Number.NaN, mode: 'strict' },
+    { name: 'NaN', value: Number.NaN, mode: 'tolerant' },
+    { name: 'Infinity', value: Number.POSITIVE_INFINITY, mode: 'strict' },
+    { name: 'Infinity', value: Number.POSITIVE_INFINITY, mode: 'tolerant' },
+  ] as const)('reports $name on a known number field in $mode mode', ({ value, mode }) => {
+    const document = currentDocument()
+    firstWall(document).thickness = value
+    const faults = faultsOf(document, mode)
+    expect(faults.length).toBeGreaterThan(0)
+    expect(faults.map((fault) => fault.path)).toContain('/floors/0/walls/0/thickness')
+  })
 })
 
 /**
