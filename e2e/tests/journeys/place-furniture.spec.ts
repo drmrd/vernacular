@@ -24,6 +24,10 @@ test('places a starter-pack furniture piece and edits it in the inspector', asyn
   const drop = { x: box.width * 0.5, y: box.height * 0.5 }
   await selectors.planCanvas(page).click({ position: drop })
 
+  // A just-placed piece is selected at once, so the inspector shows it before any
+  // second click.
+  await expect(page.getByRole('heading', { name: 'Furniture' })).toBeVisible()
+
   // Select it back: the select tool plus a click where it was dropped lands on the
   // footprint, proving the piece placed and is hit-testable.
   await selectors.selectTool(page).click()

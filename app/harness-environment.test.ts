@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Site } from '../core'
+import { computeEnvironmentLighting, openingInstant, utcOffsetMinutesFor, type Site } from '../core'
 import {
   harnessEnvironmentState,
   resolveHarnessScene,
@@ -10,11 +10,11 @@ import {
 // reference cases in core/environment/solar-position.test.ts, and the
 // America/New_York timezone exercised in core/environment/timezone-offset.test.ts,
 // so harness baselines reuse the solar model's verified reference geometry.
-const canonicalSite: Site = {
+const canonicalSite = {
   latLong: { latitude: 40, longitude: -75 },
   northBearing: 0,
   timezone: 'America/New_York',
-}
+} satisfies Site
 
 // The shell room's clear floor lives at plan (60,60)..(3940,2940), 2600 mm tall; planToWorld
 // maps plan (x, y) to world (x, height, -y), so a camera target on the floor sits within these
@@ -134,6 +134,87 @@ describe('harnessEnvironmentState', () => {
     expect(pose?.position.y).toBeGreaterThan(0)
     expect(pose?.target.y).toBe(0)
     expect(pose?.target.z).toBeLessThan(-3060)
+  })
+})
+
+describe('harnessEnvironmentState daylight reference', () => {
+  it('resolves daylight-reference to a late-morning equinox at the sample site (40 N, 1.86 E) with the south-window shell and a south-west camera', () => {
+    expect(harnessEnvironmentState('daylight-reference')).toEqual({
+      site: {
+        latLong: { latitude: 40, longitude: 1.86 },
+        northBearing: 0,
+        timezone: 'UTC',
+      },
+      observedAt: { date: '2026-03-20', minutesSinceMidnight: 630 },
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: {
+        position: { x: -4500, y: 3200, z: 5000 },
+        target: { x: 2000, y: 1300, z: -1500 },
+        near: 100,
+        far: 40000,
+      },
+    })
+  })
+})
+
+describe('harnessEnvironmentState low sun', () => {
+  const lowSunInstant = { date: '2026-03-25', minutesSinceMidnight: 1145 }
+  const DEGREES_PER_RADIAN = 180 / Math.PI
+  const WEST_WALL_OUTWARD_NORMAL = { x: -1, z: 0 }
+  const MIN_SUN_HEIGHT_DEGREES = 1
+  const MAX_SUN_HEIGHT_DEGREES = 2
+  const MIN_COSINE_TO_WEST_WALL = 0.95
+
+  function lowSunLighting(): ReturnType<typeof computeEnvironmentLighting> {
+    return computeEnvironmentLighting({
+      latLong: canonicalSite.latLong,
+      northBearing: canonicalSite.northBearing,
+      utcOffsetMinutes: utcOffsetMinutesFor(canonicalSite.timezone, lowSunInstant.date),
+      observedAt: lowSunInstant,
+      cloudCover: 0,
+    })
+  }
+
+  it('resolves low-sun to a late-March evening at the canonical site with the south-window shell and the daylight-reference camera', () => {
+    expect(harnessEnvironmentState('low-sun')).toEqual({
+      site: canonicalSite,
+      observedAt: lowSunInstant,
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: harnessEnvironmentState('daylight-reference')?.cameraPose,
+    })
+  })
+
+  it('puts the sun between 1 and 2 degrees above the horizon at the low-sun instant', () => {
+    const sunHeightDegrees = Math.asin(lowSunLighting().sunDirection.y) * DEGREES_PER_RADIAN
+
+    expect(sunHeightDegrees).toBeGreaterThan(MIN_SUN_HEIGHT_DEGREES)
+    expect(sunHeightDegrees).toBeLessThan(MAX_SUN_HEIGHT_DEGREES)
+  })
+
+  it('puts the sun in the west at the low-sun instant, facing the outward normal of the west wall', () => {
+    const { x, z } = lowSunLighting().sunDirection
+    const horizontalLength = Math.hypot(x, z)
+    const cosineToWestWall =
+      (x * WEST_WALL_OUTWARD_NORMAL.x + z * WEST_WALL_OUTWARD_NORMAL.z) / horizontalLength
+
+    expect(cosineToWestWall).toBeGreaterThan(MIN_COSINE_TO_WEST_WALL)
+  })
+})
+
+describe('harnessEnvironmentState sample daylight', () => {
+  it('resolves sample-daylight to the opening instant in the south-window shell with no site and the daylight-reference camera', () => {
+    const sampleDaylight = harnessEnvironmentState('sample-daylight')
+
+    expect(sampleDaylight).toEqual({
+      site: {},
+      observedAt: openingInstant({ site: undefined }),
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: harnessEnvironmentState('daylight-reference')?.cameraPose,
+    })
+    expect(sampleDaylight?.observedAt).toEqual({ date: '2026-03-20', minutesSinceMidnight: 630 })
   })
 })
 

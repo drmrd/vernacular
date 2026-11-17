@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import type { EditorSession } from '../../bridge'
 import { createSelectionStore } from '../../bridge'
 import type { Command, PlaceFurnitureParams, PlaceOpeningParams } from '../../core'
-import { createOpening, FURNITURE_NODE_PREFIX, OPENING_NODE_PREFIX } from '../../core'
+import { createOpening, OPENING_NODE_PREFIX } from '../../core'
 import type { LibraryItem } from '../../storage'
 import {
   handleDimensionKey,
@@ -228,9 +228,7 @@ describe('handleFurnitureKey selects what it drops', () => {
 
     expect(dispatch).toHaveBeenCalledTimes(1)
     const [command] = dispatch.mock.calls[0] as [Command<PlaceFurnitureParams>]
-    expect(run.selection.getSelectedIds()).toEqual(
-      new Set([`${FURNITURE_NODE_PREFIX}${command.params.furniture.id}`]),
-    )
+    expect(run.selection.getSelectedIds()).toEqual(new Set([command.params.furniture.id]))
   })
 
   it('drops and selects nothing with no item armed', () => {

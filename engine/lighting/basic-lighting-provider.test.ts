@@ -7,6 +7,7 @@ import {
   type EnvironmentLighting,
 } from '../../core'
 import { BasicLightingProvider } from './basic-lighting-provider'
+import { SCHEMATIC_SUN_INTENSITY } from './lighting-rig'
 
 describe('BasicLightingProvider', () => {
   it('adds a directional sun and a hemisphere fill light to the scene', () => {
@@ -18,6 +19,19 @@ describe('BasicLightingProvider', () => {
     const hemisphere = scene.children.filter((child) => child instanceof THREE.HemisphereLight)
     expect(directional).toHaveLength(1)
     expect(hemisphere).toHaveLength(1)
+  })
+
+  it('lights the schematic sun at the fixed schematic intensity of 1.6', () => {
+    const scene = new THREE.Scene()
+
+    new BasicLightingProvider().apply(scene)
+
+    const sun = scene.children.find(
+      (child) => child instanceof THREE.DirectionalLight,
+    ) as THREE.DirectionalLight
+    const schematicSunIntensity = 1.6
+    expect(SCHEMATIC_SUN_INTENSITY).toBe(schematicSunIntensity)
+    expect(sun.intensity).toBe(schematicSunIntensity)
   })
 
   it('makes the rig key dominant: the sun is brighter than the hemisphere fill', () => {
@@ -111,7 +125,7 @@ describe('BasicLightingProvider', () => {
       sunDirection: { x: 0, y: 1, z: 0 },
       sunColor: { r: 1, g: 0, b: 0 },
       skyColor: { r: 0, g: 0, b: 1 },
-      sunIntensity: 1,
+      sunLevel: 1,
       cloudCover: fabricatedCloudCover,
       skyAmbient: NEUTRAL_DOME_SPHERICAL_HARMONICS,
     }

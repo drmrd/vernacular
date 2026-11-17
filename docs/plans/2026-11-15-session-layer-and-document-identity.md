@@ -7,12 +7,15 @@
 **Goal:** close #588, #591, #631, #672, and #673, and with them #685, so that the workspace holds
 many projects with their own ids and addresses, every store reads and writes through one codec, a
 project that breaks the format rules does not open as if nothing were wrong, and application logic
-that needs no React has a layer of its own.
+that needs no React has a layer of its own. It also closes two follow-ups on the save path: #734 in
+pull request 2, and #741 in pull requests 2, 3, and 14.
 
 **Architecture:** thirteen pull requests in seven lanes. The codec, the stores, and the session
 layer land one after the other. Then the identity, assets, and settings lanes run in parallel. The
 Projects page follows, then the failed-open pull request, and temporary storage closes the stage.
-The refusal to open an invalid document goes live only in pull request 12, with the dialog.
+The refusal to open an invalid document goes live only in pull request 12, with the dialog. A
+fourteenth pull request, for the newer stored file of #741, waits for a specification amendment and
+lands after 13.
 
 **Tech stack:** TypeScript, Vitest (the unit project on jsdom, and a new browser-mode project on
 Chromium for IndexedDB and the origin private file system), Ajv standalone code generation, fflate,
@@ -66,7 +69,8 @@ the description.
   `test:` commit that is not a cycle's RED (a benchmark, an end-to-end journey) lands after the
   cycle's `refactor:` commit, never between `feat:` and `refactor:`.
 - No decision record is needed beyond ADR-0187 to ADR-0191. If a lane finds that it needs one, the
-  orchestrator assigns the number.
+  orchestrator assigns the number. Two exceptions are known: cycle 2.4 adds a sentence to ADR-0184
+  (#734), and pull request 14 needs a record of its own before it starts (#741).
 - Each pull request passes `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test`,
   `pnpm build`, and `pnpm rgb:audit --range origin/main..HEAD`, and from pull request 3
   `pnpm test:storage-browser`, each checked for its own exit code. `/clean-code-review` and
@@ -215,21 +219,22 @@ the cycle named.
 
 ## Order and lanes
 
-| #   | Pull request                          | Branch                                   | Issues     | Lane              | Starts after    |
-| --- | ------------------------------------- | ---------------------------------------- | ---------- | ----------------- | --------------- |
-| 1   | A fixture for every schema version    | `feat/fixtures-for-every-schema-version` | #631       | Codec             | the first stage |
-| 2   | One document codec                    | `feat/one-document-codec`                | #631, #672 | Codec             | 1               |
-| 3   | Byte stores and one conformance suite | `feat/byte-stores-and-conformance-suite` | #672       | Stores            | 2               |
-| 4   | The session layer                     | `feat/session-layer`                     | #685       | Session layer     | 3               |
-| 5   | The document handle and the flows     | `feat/document-handle-and-flows`         | #685, #588 | Session layer     | 4               |
-| 6   | The project index and the preview     | `feat/project-index-and-preview`         | #588       | Identity          | 5               |
-| 7   | Addresses and start                   | `feat/project-addresses-and-start`       | #588       | Identity          | 6               |
-| 8   | Assets travel with documents          | `fix/assets-travel-with-documents`       | #673, #672 | Assets            | 5               |
-| 9   | The settings port                     | `feat/settings-port`                     | #685       | Settings          | 5               |
-| 10  | The Projects page                     | `feat/projects-page`                     | #588       | Projects page     | 7 and 8         |
-| 11  | Card actions                          | `feat/project-card-actions`              | #588       | Projects page     | 10              |
-| 12  | A project that does not open          | `feat/failed-open-dialog-and-repairs`    | #631       | Failed open       | 11              |
-| 13  | Temporary storage says so             | `fix/temporary-storage-says-so`          | #591       | Temporary storage | 12              |
+| #   | Pull request                          | Branch                                   | Issues                 | Lane              | Starts after    |
+| --- | ------------------------------------- | ---------------------------------------- | ---------------------- | ----------------- | --------------- |
+| 1   | A fixture for every schema version    | `feat/fixtures-for-every-schema-version` | #631                   | Codec             | the first stage |
+| 2   | One document codec                    | `feat/one-document-codec`                | #631, #672, #734, #741 | Codec             | 1               |
+| 3   | Byte stores and one conformance suite | `feat/byte-stores-and-conformance-suite` | #672, #741             | Stores            | 2               |
+| 4   | The session layer                     | `feat/session-layer`                     | #685                   | Session layer     | 3               |
+| 5   | The document handle and the flows     | `feat/document-handle-and-flows`         | #685, #588             | Session layer     | 4               |
+| 6   | The project index and the preview     | `feat/project-index-and-preview`         | #588                   | Identity          | 5               |
+| 7   | Addresses and start                   | `feat/project-addresses-and-start`       | #588                   | Identity          | 6               |
+| 8   | Assets travel with documents          | `fix/assets-travel-with-documents`       | #673, #672             | Assets            | 5               |
+| 9   | The settings port                     | `feat/settings-port`                     | #685                   | Settings          | 5               |
+| 10  | The Projects page                     | `feat/projects-page`                     | #588                   | Projects page     | 7 and 8         |
+| 11  | Card actions                          | `feat/project-card-actions`              | #588                   | Projects page     | 10              |
+| 12  | A project that does not open          | `feat/failed-open-dialog-and-repairs`    | #631                   | Failed open       | 11              |
+| 13  | Temporary storage says so             | `fix/temporary-storage-says-so`          | #591                   | Temporary storage | 12              |
+| 14  | A save that finds a newer stored file | `fix/keep-a-newer-stored-file`           | #741                   | Newer stored file | 13              |
 
 Pull requests 1 to 5 land in order. Pull request 1 comes first because a migration that produces a
 document the current schema rejects needs a lossless step at the next `schemaVersion` before the
@@ -238,13 +243,16 @@ discard prompt: from then on every path that replaces the open project writes it
 After pull request 5, three lanes run in parallel in sibling worktrees: identity (6, then 7),
 assets (8), and settings (9). The Projects page lane waits for 7 and 8, the needs that spec section
 6 gives it. Pull requests 12 and 13 then land one after the other, because both edit the handle,
-the Projects screen, and `app/app.tsx`.
+the Projects screen, and `app/app.tsx`. Pull request 14 starts only after a specification amendment
+and its decision record are approved (see its section), and lands after 13, because it edits the
+document store, the handle, and the Projects screen too.
 
 File fences, in addition to spec section 6. A lane edits a file outside its fence only where the
 table of shared files lists it.
 
 - **Codec (1, 2):** `tests/fixtures/projects/versions/`, `core/migrations/schema/` (for a lossless
-  step), `core/format/`, `core/model/factories.ts`, `core/commands/testing/`, `scripts/schema/`,
+  step), `core/migrations/migrate.ts`, `core/migrations/migrate.test.ts`, and
+  `core/migrations/index.ts` (for `isMigrationPending`, #734), `core/format/`, `core/model/factories.ts`, `core/commands/testing/`, `scripts/schema/`,
   `schema/`, `tests/format/`, `storage/folder/`, `storage/snapshots/`, `storage/import/`,
   `app/validate-loaded-project.ts`, `.prettierignore`, `tests/performance/encode-time.bench.ts`,
   `tests/architecture/codec-only-callers.test.ts`, one `ignores` line in `eslint.config.js`.
@@ -275,6 +283,12 @@ table of shared files lists it.
   `editor/projects/repair-choice-dialog.tsx`, `editor/projects/failure-sentences.ts`,
   `session/flows/open-failed.ts`, `storage/documents/open-despite-format-faults.ts`.
 - **Temporary storage (13):** `app/use-degraded-storage-banner.ts`, `app/temporary-storage.test.tsx`.
+- **Newer stored file (14):** `session/flows/choose-kept-file.ts` and the files its amendment
+  names. It edits `storage/documents/`, `session/handle/`, and the Projects screen through the table
+  below. If the choice of the user sits on the project card or in the failed-open dialog, it also
+  edits `session/projects/` and `editor/projects/`, and the amendment must extend the table of
+  shared files: pull request 14 joins the row for `session/projects/`, and `editor/projects/` gets
+  a row of its own, in merge order after 12.
 
 Files that more than one pull request edits have a fixed merge order. Where two of them run in
 parallel, the one that merges second rebases. Every other file belongs to one fence above.
@@ -283,23 +297,25 @@ parallel, the one that merges second rebases. Every other file belongs to one fe
 | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `core/index.ts`                                                                                                                           | 2, 6, 12                                                     |
 | `storage/index.ts`                                                                                                                        | 2, 3, 5, then 6, 8, and 9 as they merge, then 13             |
-| `session/index.ts`                                                                                                                        | 4, 5, then 6, 7, 8, and 9 as they merge, then 10, 11, 12, 13 |
+| `session/index.ts`                                                                                                                        | 4, 5, then 6, 7, 8, and 9 as they merge, then 10 to 14       |
 | `package.json`                                                                                                                            | 3, then 6, 8, and 9 as they merge                            |
 | `app/app.tsx`                                                                                                                             | 2, 4, 5, then 6, 7, and 9 as they merge, then 10, 11, 12, 13 |
 | `eslint.config.js`                                                                                                                        | 2, 4, 5, 9                                                   |
 | `src/main.tsx`                                                                                                                            | 5, 7                                                         |
 | `src/e2e-storage-hook.ts`                                                                                                                 | 5, 6, 10, 12                                                 |
 | `storage/import/`, `storage/zip/`                                                                                                         | 2 and 3, then 8                                              |
-| `storage/folder/`, `storage/snapshots/`, `storage/documents/`                                                                             | 2, 3, 12                                                     |
+| `storage/folder/`, `storage/snapshots/`, `storage/documents/`                                                                             | 2, 3, 12, and 14 (`storage/documents/` only)                 |
 | `storage/project-storage.ts`                                                                                                              | 3, 13                                                        |
 | `session/ports.ts`                                                                                                                        | 5, 6                                                         |
-| `session/handle/`                                                                                                                         | 5, 6, 12, 13                                                 |
+| `session/handle/`                                                                                                                         | 5, 6, 12, 13, 14                                             |
 | `session/autosave/`                                                                                                                       | 4, 5, 13                                                     |
 | `session/projects/`                                                                                                                       | 6, 10, 11, 12                                                |
 | `session/flows/import-file.ts`, `export-archive.ts`                                                                                       | 5, 8, 12                                                     |
 | `app/create-session-ports.ts`                                                                                                             | 5, then 6, 8, and 9 as each needs, then 13                   |
 | The four flow adapters in `app/` (`use-project-actions.ts`, `use-open-file-action.ts`, `use-export-actions.ts`, `use-workspace-state.ts`) | 2 (one line), 5, then 6, 7, and 8 as they merge              |
-| `app/projects-screen.tsx` and its test                                                                                                    | 10, 11, 12, 13                                               |
+| `app/projects-screen.tsx` and its test                                                                                                    | 10, 11, 12, 13, 14                                           |
+| `app/use-handle-notices.ts` and its test                                                                                                  | 5, 14                                                        |
+| `tests/storage/conformance/`                                                                                                              | 3, 14                                                        |
 | `app/app-failed-load.test.tsx`                                                                                                            | 10, 13                                                       |
 | `editor/shell/project-menu.tsx`                                                                                                           | 6, 10, 11                                                    |
 | `editor/shell/editor-shell.tsx`                                                                                                           | 4, 13                                                        |
@@ -314,6 +330,7 @@ Documents that change with the code (spec section 8):
 | -------------------------------------------------------------------------------- | ------------- |
 | `ARCHITECTURE.md`, `CLAUDE.md`, `.claude/rules.md`, design spec section 2.1      | 4, texts      |
 | Format spec section 7 and `schema/README.md` (the revision path)                 | cycle 2.1     |
+| ADR-0184 (the previous file is current on every registry version, #734)          | cycle 2.4     |
 | Format spec 7, design spec 5.5, first-stage spec 5.2 point 2 (the backup moment) | 3, texts      |
 | Design spec section 5.3 (ids, addresses, the index)                              | 7, texts      |
 | Design spec section 7.7 (the settings port)                                      | 9, texts      |
@@ -321,6 +338,8 @@ Documents that change with the code (spec section 8):
 | First-stage spec section 5.2 (the unchecked copy)                                | 11, texts     |
 | Format spec sections 7 and 8, design spec 5.5 (the refusal and the repairs)      | cycle 12.7    |
 | First-stage spec section 5.3 (the start-new control)                             | 13, texts     |
+| The amendment for a newer stored file, its record, and ADR-0184 (#741)           | before 14     |
+| The texts that amendment changes (see pull request 14)                           | before 14     |
 | Skill notes under `.claude/skills/`                                              | after 5 and 7 |
 
 ---
@@ -363,7 +382,7 @@ project of pull request 3 can use them too.
 
 ---
 
-## Pull request 2: one document codec (#631, #672)
+## Pull request 2: one document codec (#631, #672, #734, #741)
 
 Spec 5.2. The strict check is built and every read and write goes through it, but the application
 does not act on a failed check: the call sites open the migrated document and `console.warn` the
@@ -397,14 +416,22 @@ export interface DecodedDocument {
 export type DecodeResult =
   | { readonly ok: true; readonly value: DecodedDocument }
   | { readonly ok: false; readonly failure: DecodeFailure }
+/** Why encode wrote with no graft (#741): the previous bytes failed to decode this way. */
+export type GraftDropped = Exclude<DecodeFailure, { readonly kind: 'format-rules' }>
 /** `faults` is empty when the document passes; the bytes are returned either way. */
 export interface EncodedDocument {
   readonly bytes: Uint8Array
   readonly faults: readonly FormatFault[]
+  readonly graftDropped?: GraftDropped
 }
 export interface CodecOptions {
-  readonly migrate?: (raw: unknown) => Project
-  readonly targetVersion?: number
+  /**
+   * The one source of migration for the codec (#734). `migrateProject` and `isMigrationPending`
+   * both read it, so a test that injects a step changes what is run and what counts as pending
+   * together. Defaults to `{}`: the registered schema and registry steps, and the current schema
+   * version as the target. The codec passes it on unchanged and holds no `targetVersion` of its own.
+   */
+  readonly migration?: MigrateOptions
 }
 
 export function decodeDocument(bytes: Uint8Array, options?: CodecOptions): DecodeResult
@@ -415,6 +442,8 @@ export function encodeDocument(
 ): EncodedDocument
 // core/format/current-schema.ts
 export function checkCurrentSchema(document: unknown, mode: 'strict' | 'tolerant'): FormatFault[]
+// core/migrations/migrate.ts, beside migrateProject and over the same two lists (#734)
+export function isMigrationPending(raw: unknown, options?: MigrateOptions): boolean
 ```
 
 `graftWithTable` and `preserveUnknown` move unchanged to `core/format/codec/graft.ts`. The JSON
@@ -459,7 +488,8 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
 - [ ] RED in `core/format/codec/decode-document.test.ts`:
   - bytes that are not JSON give `not-json`; `[]`, `null`, `"x"`, and `{}` give `not-a-project`;
   - `CURRENT_SCHEMA_VERSION + 1` gives `newer-version` with both numbers;
-  - an injected migration that throws gives `migration-failed` with the stored version;
+  - an injected schema step that throws (`migration: { schemaMigrations }`) gives
+    `migration-failed` with the stored version;
   - every version fixture decodes, with `migratedFrom` set below the current version;
   - `x-unknown` on a wall at the current revision gives `format-rules` with the path
     `/floors/0/walls/0/x-unknown`;
@@ -478,11 +508,31 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
 - [ ] RED in `core/format/codec/encode-document.test.ts`: encode writes `CURRENT_SCHEMA_REVISION`
       and keeps a higher revision; a document read at a higher revision encodes with no fault, and
       its unknown field survives a second decode; an unknown key in the previous bytes survives;
-      previous bytes that do not parse or migrate are ignored; an unknown field at the current
-      revision gives non-empty `faults` and bytes that hold the document; the older-version fixture
-      given `schemaRevision: 3` encodes with `CURRENT_SCHEMA_REVISION`; decode of encode is equal
-      for every fixture.
-- [ ] GREEN: `encodeDocument`, grafting at the root of `KNOWN_KEYS`.
+      previous bytes that are not JSON, are not a project, are at a newer version, or fail to
+      migrate are ignored, and `graftDropped` carries that `DecodeFailure` as it is, with its own
+      fields (`not-json` and `migration-failed` have a `message`, `not-a-project` has none,
+      `newer-version` has both versions) (#741); an
+      unknown field at the current revision gives non-empty `faults` and bytes that hold the
+      document; the older-version fixture given `schemaRevision: 3` encodes with
+      `CURRENT_SCHEMA_REVISION`; decode of encode is equal for every fixture.
+- [ ] RED for #734, in the same file and in `core/migrations/migrate.test.ts`: the previous file is
+      brought current before the graft whenever any migration is pending for it.
+  - With an injected registry migration that drops a key named `legacy`
+    (`migration: { registryMigrations }`, the only option the test passes), a stored file at the
+    current schema version, one registry version behind and carrying `legacy`, goes through decode,
+    encode, and decode again, and `legacy` is absent. There is no second option to forget: one
+    object feeds both the migration and the pending check.
+  - A previous file with no schema step and no registry step pending is not migrated (an injected
+    step that counts its calls).
+  - `isMigrationPending` is true below the target version, true at it when a registry in
+    `meta.registryVersions` has a step from its stored version, and false otherwise.
+- [ ] GREEN: `encodeDocument`, grafting at the root of `KNOWN_KEYS`. It runs `migrateProject` on the
+      previous document when `isMigrationPending` says so, and only then, passing both the same
+      `options.migration`. The first stage's skip,
+      which looks at the schema version alone, is not carried over. `isMigrationPending` sits
+      beside `migrateProject`. ADR-0184 gains the sentence that the previous file is current on
+      its schema version and on every registry version before the graft (#734). No registry
+      migration that removes or renames a key may land before this cycle merges.
 - [ ] `tests/performance/encode-time.bench.ts` runs `encodeDocument` on `createReferenceProject()`
       with its own bytes as the previous file. Run it with `pnpm exec vitest bench --project unit`
       on `main` and on the branch on one machine; both medians go in the description.
@@ -521,17 +571,17 @@ helpers move to `core/format/codec/document-json.ts` as `parseDocumentJson` and
 
 - [ ] RED in `tests/architecture/codec-only-callers.test.ts`, with `readLayerSources`: no
       production file outside `core/format/` and `core/migrations/` names `migrateProject`,
-      `createDocumentValidator`, `createTolerantValidator`, `createStrictValidator`,
-      `checkCurrentSchema`, `parseDocumentJson`, or `serializeDocumentJson`; a planted sample is
-      named in the failure.
+      `isMigrationPending`, `createDocumentValidator`, `createTolerantValidator`,
+      `createStrictValidator`, `checkCurrentSchema`, `parseDocumentJson`, or
+      `serializeDocumentJson`; a planted sample is named in the failure.
 - [ ] GREEN: nothing if cycle 2.5 is complete; otherwise the remaining call site.
 - [ ] Commit: `test: expect only the codec to migrate, parse, serialize, and validate`.
 
-The description states the bundle delta and the encode times.
+The description states the bundle delta and the encode times, and says "Closes #734".
 
 ---
 
-## Pull request 3: byte stores and one conformance suite (#672)
+## Pull request 3: byte stores and one conformance suite (#672, #741)
 
 Spec 5.3, and point 4 of spec 5.6.
 
@@ -562,6 +612,11 @@ export type StoreRead =
 export interface SaveReport {
   readonly faults: readonly FormatFault[]
   readonly backedUp: boolean
+  /**
+   * Why this save wrote with no graft (#741); undefined when it grafted or had no previous file.
+   * Nothing reads it before pull request 14, so until then the console warning is the only report.
+   */
+  readonly graftDropped?: GraftDropped
 }
 export interface ProjectSummary {
   readonly id: string
@@ -637,9 +692,15 @@ callers. `SnapshotStore` moves bytes only.
   - a save with an unknown field returns `faults` and `backedUp: true`, and a backup holds the
     bytes of the last stored file that passed; a second faulty save adds no backup;
   - `load()` of a migrated document that fails the check writes the migration backup first;
-  - after `delete('a')`, a listing of the root shows nothing under `a`.
+  - after `delete('a')`, a listing of the root shows nothing under `a`;
+  - a dropped graft is reported (#741): a save over a previous file at a newer version, one that is
+    not JSON, and one whose migration throws each still writes, returns `graftDropped` with that
+    failure, and `console.warn` receives the reason. Until pull request 14, the save over a newer
+    file still replaces it.
 - [ ] GREEN: `DocumentStore` and `WorkspaceDocumentStore`. Backup names keep the first-stage rule,
-      with the prefix `last-valid-` for a fault backup.
+      with the prefix `last-valid-` for a fault backup. `save` passes the `graftDropped` of encode
+      to its report and warns with it. No caller reads `SaveReport.graftDropped` before pull request
+      14, so the console warning is the only diagnostic until then.
 - [ ] Commits: `test: expect the store to back up after a successful migrated decode`,
       `feat: put the codec in front of every store`.
 
@@ -1799,13 +1860,107 @@ The description says "Closes #591".
 
 ---
 
-## After the last pull request
+## Pull request 14: a save that finds a newer stored file (#741)
+
+Not in the spec. On 2026-11-16 the owner decided the newer-file case of #741 as "keep both files":
+when a save finds a stored file that a newer build wrote, the save writes this document beside the
+newer file and tells the user, with a second file name, a notice, and a way to choose between the
+two. The other half of #741, the report of a dropped graft, lands in cycles 2.4 and 3.2. Until this
+pull request lands, a save over a newer file replaces it, as it does today, and only warns.
+
+The lock of ADR-0189 keeps two tabs of one browser out of this case. It does not keep out a sync
+tool, a second device, or another program that writes a picked folder, so the case is mostly that
+of a folder project.
+
+**Before it starts.** The spec and the decision records do not hold this behavior, and some of
+their text contradicts it. A specification amendment with a decision record settles it first; the
+orchestrator assigns the record's number. The amendment changes:
+
+- first-stage spec section 5.1 point 6, which says a save over a file at a newer version goes on
+  without a graft, so the newer file is replaced;
+- format spec section 2.2, whose folder layout holds one document, `vernacular.json`, and no second
+  document file;
+- spec section 5.3 points 5 and 8, if the second file sits in the project's directory: `list()`
+  finds a project by its document file, and a folder project follows the format's layout;
+- ADR-0184, which #741 asks to state the three cases of a save with no graft and what the store
+  does in each;
+- spec section 5.3 point 7, "The picked-folder store never removes a file from the folder", and the
+  last line of its "Done when", "No method of the picked-folder store removes a file it did not
+  write". The choice of the user may remove the other file (point 5 below), and this case is mostly
+  a folder project, so the amendment states whether the choice may remove a file that this build
+  did not write;
+- design spec section 3.3, whose layout shows one document per project folder (`project.json`),
+  and ADR-0047, whose decision 1 names `vernacular.json` as the one canonical Document of a
+  project.
+
+Open design points for the amendment:
+
+1. The second file's name and place: beside `vernacular.json` under a name the format reserves, or a
+   new project with its own id. Whether an archive store keeps both at all.
+2. Where the next saves go once both files exist.
+3. What the next open does. This build refuses the newer file (`newer-version`, and ADR-0190 has no
+   read-only mode), so the open must find the second file, or this build cannot reach the user's
+   work.
+4. The notice: its wording (decision 22 has none), when it shows, and how often.
+5. How the user chooses, and where: on the card, in the failed-open dialog, or both. What each
+   choice does with the other file (kept as a backup, exported, or removed), and what the record
+   and the card show while both files exist.
+6. Whether a higher `schemaRevision` at the same version counts as a newer build. The graft already
+   keeps the added fields of such a file, so today only a higher `schemaVersion` drops the graft.
+7. Which store kinds the conformance suite runs the case on.
+
+The cycles below are an outline. The amendment fixes their names, files, and sentences.
+
+### Cycle 14.1: the store keeps both files
+
+- [ ] RED in `storage/documents/document-store.test.ts`: a save whose previous file decodes as
+      `newer-version` leaves that file byte-identical, writes this document under the second name,
+      and its report names the second file; the next save goes where the amendment says (point 2);
+      the case of cycle 3.2 that expects the newer file replaced changes with it. A conformance case
+      checks that the newer file survives a save byte for byte on each target the amendment names.
+- [ ] GREEN: `DocumentStore.save`.
+- [ ] Commits: `test: expect a save to keep a newer stored file and write beside it`,
+      `fix: keep a newer stored file and save beside it`.
+
+### Cycle 14.2: the user is told
+
+- [ ] RED in `session/handle/document-handle.test.ts`: a save that kept both files emits its notice
+      as often as the amendment says; in `app/use-handle-notices.test.tsx`, the notice shows its
+      sentence.
+- [ ] GREEN: the notice joins `onNotice` and the adapter.
+- [ ] Commits: `test: expect a notice when a save keeps both files`,
+      `feat: tell the user when a save keeps both files`.
+
+### Cycle 14.3: the user chooses
+
+- [ ] RED in `session/flows/choose-kept-file.test.ts` and in the test of the control the amendment
+      names: each choice leaves the files the amendment says; nothing is removed before the user
+      chooses; the next open reaches this build's file.
+- [ ] GREEN: the flow and its control.
+- [ ] Commits: `test: expect a choice between the two kept files`,
+      `feat: choose between the two kept files`.
+
+### Texts
+
+- [ ] The amendment, its record, and the ADR-0184 text are approved and landed in their own
+      documents change before this pull request starts, as the sections above say. Commit:
+      `docs: describe a save that keeps a newer stored file`.
+
+The description says "Closes #741".
+
+---
+
+## After pull request 13
+
+Pull request 13 ends the stage. Pull request 14 waits for a specification amendment that has no
+date, so it lands after #685 closes and is tracked by #741, not by this list.
 
 - [ ] No entry in the lint exception list names #685. If one does, its file is split first.
 - [ ] After pull requests 5 and 7, check the skill notes under `.claude/skills/` for six layers,
       `bridge/session/`, one project slot, `'current'` as the only id, and the recent-project
       store, and refresh what is stale.
-- [ ] Close #685 and tick the second line of the list in #682.
+- [ ] Once pull request 13 has merged, close #685 and tick the second line of the list in #682.
+      Do not wait for pull request 14.
 - [ ] File an issue for anything a lane scoped down.
 
 ## Coverage
@@ -1895,3 +2050,12 @@ Bullets are numbered in the order of each "Done when" list.
 | 7    | #631                                                                            | 2.3, 12.3                |
 | 7    | #672                                                                            | 2.5, 3.5, 3.6, 8.3       |
 | 7    | #673                                                                            | 8.3                      |
+| none | #734 The previous file is current on every registry version before the graft    | 2.4                      |
+| none | #741 A dropped graft is reported with its reason                                | 2.4, 3.2                 |
+| none | #741 A save keeps a newer stored file, tells the user, and offers a choice      | 14.1, 14.2, 14.3         |
+| none | #741 ADR-0184 states the three cases of a save with no graft, and each outcome  | open (see below)         |
+
+The third "Done when" of #741 has no cycle yet. The plan leaves its timing open: the owner decides
+whether pull request 3 states the two cases it settles (a previous file that is not JSON, and one
+whose migration throws) or whether all three wait for the amendment of pull request 14, which
+settles the newer-file case.

@@ -4,7 +4,7 @@ import type { Bounds3, EnvironmentLighting } from '../../core'
 import type { LightingProvider } from './lighting-provider'
 import {
   buildLightingRig,
-  DAYLIGHT_SUN_INTENSITY,
+  SCHEMATIC_SUN_INTENSITY,
   disposeLightingRig,
   type LightingRig,
 } from './lighting-rig'
@@ -20,7 +20,7 @@ export class BasicLightingProvider implements LightingProvider {
     // way sun intensity is already a provider-owned parameter of buildLightingRig.
     // ADR-0153 records the investigation and the conditions for restoring schematic
     // shadows.
-    this.rig = buildLightingRig(scene, DAYLIGHT_SUN_INTENSITY, false)
+    this.rig = buildLightingRig(scene, SCHEMATIC_SUN_INTENSITY, false)
   }
 
   /** The schematic rig is static by design, so environment updates change nothing. */

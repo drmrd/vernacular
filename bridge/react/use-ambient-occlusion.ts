@@ -1,7 +1,6 @@
 import { useThree } from '@react-three/fiber'
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 
-import { type Site } from '../../core'
 import {
   AO_DEFAULT_PARAMS,
   ambientOcclusionParamsFor,
@@ -13,13 +12,13 @@ import {
 import { effectiveLightingMode } from './effective-lighting-mode'
 
 /**
- * Whether the ambient-occlusion pass runs for a view: true only in realistic mode with a
- * located site. Routes the request through the effectiveLightingMode predicate shared with
- * scene-lighting.tsx so AO, the solar provider, and AgX turn on together. A realistic request
- * without a located site, and any schematic view, fall back to the plain renderer draw.
+ * Whether the ambient-occlusion pass runs for a view: true only in realistic mode, with or
+ * without a site location. Routes the request through the effectiveLightingMode predicate
+ * shared with scene-lighting.tsx so AO, the solar provider, and AgX turn on together. A
+ * schematic view falls back to the plain renderer draw.
  */
-export function ambientOcclusionActiveFor(realistic: boolean, site: Site | undefined): boolean {
-  return ambientOcclusionParamsFor(effectiveLightingMode(realistic, site)) !== null
+export function ambientOcclusionActiveFor(realistic: boolean): boolean {
+  return ambientOcclusionParamsFor(effectiveLightingMode(realistic)) !== null
 }
 
 /**
@@ -113,8 +112,7 @@ function runAmbientOcclusionBuild(
  * the build token so any in-flight build cannot install a now-stale pipeline. It calls setSize
  * on canvas-size changes. The returned renderFrame is stable and reads the live pipeline at
  * call time, so a caller registers it once and it follows the active state, falling back to a
- * plain renderer draw whenever the pipeline is null (schematic, the no-location realistic
- * fallback, or a failed build).
+ * plain renderer draw whenever the pipeline is null (schematic or a failed build).
  *
  * The optional `onSettled` fires once the active build's promise settles, however it settles
  * (install, stale-discard, or failure), so a caller drawing a single deterministic frame (the

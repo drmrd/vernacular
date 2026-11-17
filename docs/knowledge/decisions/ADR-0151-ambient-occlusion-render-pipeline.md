@@ -10,6 +10,7 @@ related:
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0148-visible-sky-and-sh-light-probe,
     decisions/ADR-0149-harness-lighting-readiness,
+    decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
   ]
 sourceFiles:
   [
@@ -24,7 +25,7 @@ sourceFiles:
     e2e/tests/scene-solar.spec.ts,
   ]
 status: current
-updated: 2026-09-07
+updated: 2026-11-16
 ---
 
 # ADR-0151: The ambient-occlusion render pipeline and its frame takeover
@@ -128,3 +129,20 @@ values and re-renders every affected baseline. That migration is out of scope he
   user-facing control, so there is no schema bump and no migration.
 - The specular image-based-lighting work (issue #449) and the deferred indirect-only split remain
   the next indirect-light refinements.
+
+## Amendment 2026-11-16: realistic mode no longer needs a site location
+
+Three statements in this record describe a fallback that is gone. The section "One render seam
+feeds both canvases, gated on the effective mode" says that a realistic request resolves to
+realistic only with a located site and otherwise falls back to schematic, and both that section and
+the first consequence name a no-location realistic fallback that takes the plain `gl.render` path.
+None of that holds now. `effectiveLightingMode(realistic)` in
+`bridge/react/effective-lighting-mode.ts` and `ambientOcclusionActiveFor(realistic)` in
+`bridge/react/use-ambient-occlusion.ts` take the realistic flag and no site, so the mode follows
+the user's choice alone. A project with no location renders realistic lighting at the sample site
+of [[ADR-0193-sample-daylight-for-a-project-with-no-site-location]], and the occlusion pass runs for
+it as for a located site. A missing location no longer sends a frame down the plain draw; schematic
+mode still takes it.
+
+The shared predicate stands. The occlusion pass, the solar provider, and the AgX operator still
+turn on together, now for the realistic flag alone.

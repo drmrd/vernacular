@@ -1,17 +1,11 @@
 import { useCallback, type PointerEvent } from 'react'
-import {
-  createOpening,
-  OPENING_NODE_PREFIX,
-  placeOpening,
-  type Point,
-  type SceneGraph,
-} from '../../core'
+import { createOpening, placeOpening, type Point, type SceneGraph } from '../../core'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { DEFAULT_HIT_TOLERANCE_MM } from './hit-test'
 import { useOpeningTool } from './opening-tool-context'
 import { placementWouldOverlap, placeOpeningTarget } from './place-opening'
-import { selectPlacedEntity } from './select-placed-entity'
+import { selectPlacedOpening } from './select-placed-entity'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -69,7 +63,7 @@ export function useOpeningPlacement(deps: OpeningPlacementDeps): OpeningPlacemen
       }
       setPlacementRefusal(null)
       session.dispatch(placeOpening(target.floorId, opening))
-      selectPlacedEntity(selection, OPENING_NODE_PREFIX, opening.id)
+      selectPlacedOpening(selection, opening.id)
     },
     [session, graph, tool, viewport, placementType, selection, setPlacementRefusal],
   )

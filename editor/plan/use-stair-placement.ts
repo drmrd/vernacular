@@ -1,10 +1,10 @@
 import { useCallback, type PointerEvent } from 'react'
-import { STAIR_NODE_PREFIX, type Point } from '../../core'
+import { type Point } from '../../core'
 import type { EditorSession, SelectionStore } from '../../bridge'
 import type { ToolId } from '../tools/active-tool-context'
 import { useOpeningTool } from './opening-tool-context'
 import { stairPlacementCommand } from './place-stair'
-import { selectPlacedEntity } from './select-placed-entity'
+import { selectPlacedStair } from './select-placed-entity'
 import { eventToCanvas } from './use-viewport-controls'
 import { screenToWorld, type Viewport } from './viewport'
 
@@ -49,7 +49,7 @@ export function useStairPlacement(deps: StairPlacementDeps): StairPlacement {
       }
       setPlacementRefusal(null)
       session.dispatch(command)
-      selectPlacedEntity(selection, STAIR_NODE_PREFIX, command.params.stair.id)
+      selectPlacedStair(selection, command.params.stair.id)
     },
     [session, tool, viewport, activeFloorId, setPlacementRefusal, selection],
   )

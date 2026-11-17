@@ -1,6 +1,6 @@
 import type { LinearRgb } from '../color/oklab'
 import type { Vector3 } from '../scene/vector3'
-import { skyDomeRadiance } from './sky-dome'
+import { type SkyDomeInput, skyDomeSampler } from './sky-dome'
 
 /*
  * Real spherical-harmonic basis constants up to band 2, transcribed EXACTLY from
@@ -19,7 +19,7 @@ const SH_BAND_2_SECTORAL = 0.546274
 const ZONAL_Z_SQUARED_MULTIPLIER = 3
 
 /** RGB channels carried per spherical-harmonic coefficient. */
-const RGB_CHANNEL_COUNT = 3
+export const RGB_CHANNEL_COUNT = 3
 
 type SphericalHarmonicBasis = (direction: Vector3) => number
 
@@ -27,7 +27,7 @@ type SphericalHarmonicBasis = (direction: Vector3) => number
  * The nine band-0..2 basis functions in three's SphericalHarmonics3 order:
  * Y(0,0); Y(1,-1), Y(1,0), Y(1,1); Y(2,-2), Y(2,-1), Y(2,0), Y(2,1), Y(2,2).
  */
-const SPHERICAL_HARMONIC_BASIS: readonly SphericalHarmonicBasis[] = [
+export const SPHERICAL_HARMONIC_BASIS: readonly SphericalHarmonicBasis[] = [
   () => SH_BAND_0,
   ({ y }) => SH_BAND_1 * y,
   ({ z }) => SH_BAND_1 * z,
@@ -51,7 +51,7 @@ const SAMPLE_MIDPOINT = 0.5
 /** One full revolution in radians. */
 const FULL_TURN_RAD = Math.PI * 2
 
-function coefficientAt(coefficients: readonly number[], index: number): number {
+export function coefficientAt(coefficients: readonly number[], index: number): number {
   return coefficients[index] ?? 0
 }
 
@@ -79,8 +79,8 @@ interface BasisAccumulator {
   color: LinearRgb
 }
 
-/** A polar ring's shared radiance and per-direction solid angle, reused across its azimuth sweep. */
-interface SkyRingSample {
+/** One direction's dome radiance and the solid angle its grid cell covers. */
+interface SkyDirectionSample {
   radiance: LinearRgb
   solidAngle: number
 }
@@ -98,13 +98,13 @@ function directionFromAngles(polar: number, azimuth: number): Vector3 {
 function accumulateDirection(
   accumulators: readonly BasisAccumulator[],
   direction: Vector3,
-  ring: SkyRingSample,
+  sample: SkyDirectionSample,
 ): void {
   for (const accumulator of accumulators) {
-    const weight = accumulator.basis(direction) * ring.solidAngle
-    accumulator.color.r += ring.radiance.r * weight
-    accumulator.color.g += ring.radiance.g * weight
-    accumulator.color.b += ring.radiance.b * weight
+    const weight = accumulator.basis(direction) * sample.solidAngle
+    accumulator.color.r += sample.radiance.r * weight
+    accumulator.color.g += sample.radiance.g * weight
+    accumulator.color.b += sample.radiance.b * weight
   }
 }
 
@@ -115,22 +115,21 @@ function accumulateDirection(
  * directly per direction in a single pass rather than materializing an intermediate
  * sample array.
  */
-export function projectDomeToSphericalHarmonics(sunAltitude: number, cloudCover: number): number[] {
+export function projectDomeToSphericalHarmonics(sky: SkyDomeInput): number[] {
   const deltaPolar = Math.PI / POLAR_SAMPLE_COUNT
   const deltaAzimuth = FULL_TURN_RAD / AZIMUTH_SAMPLE_COUNT
+  const sampleDome = skyDomeSampler(sky)
   const accumulators: BasisAccumulator[] = SPHERICAL_HARMONIC_BASIS.map((basis) => ({
     basis,
     color: { r: 0, g: 0, b: 0 },
   }))
   for (let polarIndex = 0; polarIndex < POLAR_SAMPLE_COUNT; polarIndex += 1) {
     const polar = (polarIndex + SAMPLE_MIDPOINT) * deltaPolar
-    const ring: SkyRingSample = {
-      radiance: skyDomeRadiance(Math.asin(Math.cos(polar)), sunAltitude, cloudCover),
-      solidAngle: Math.sin(polar) * deltaPolar * deltaAzimuth,
-    }
+    const solidAngle = Math.sin(polar) * deltaPolar * deltaAzimuth
     for (let azimuthIndex = 0; azimuthIndex < AZIMUTH_SAMPLE_COUNT; azimuthIndex += 1) {
-      const azimuth = (azimuthIndex + SAMPLE_MIDPOINT) * deltaAzimuth
-      accumulateDirection(accumulators, directionFromAngles(polar, azimuth), ring)
+      const direction = directionFromAngles(polar, (azimuthIndex + SAMPLE_MIDPOINT) * deltaAzimuth)
+      const radiance = sampleDome(direction)
+      accumulateDirection(accumulators, direction, { radiance, solidAngle })
     }
   }
   return accumulators.flatMap(({ color }) => [color.r, color.g, color.b])

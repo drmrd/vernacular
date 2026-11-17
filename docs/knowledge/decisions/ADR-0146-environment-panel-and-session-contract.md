@@ -9,6 +9,7 @@ related:
     decisions/ADR-0144-solar-lighting-provider-and-sky,
     decisions/ADR-0147-per-mode-tone-mapping,
     decisions/ADR-0065-three-dimensional-lighting-and-color-temperature,
+    decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
   ]
 sourceFiles:
   [
@@ -23,7 +24,7 @@ sourceFiles:
     editor/shell/tool-rail.tsx,
   ]
 status: current
-updated: 2026-08-17
+updated: 2026-11-16
 ---
 
 # ADR-0146: Environment panel and the session-state contract behind it
@@ -153,3 +154,30 @@ why in a short status note, following this record's existing missing-location
 notice pattern. The contract itself is unchanged: the panel still owns the
 shared session and the toolbar still keeps only the color-temperature slider,
 which now also receives the effective lighting mode.
+
+## Amendment 2026-11-16: the sample daylight notice replaces the missing-location notice
+
+The first sentence of "A missing location or timezone degrades with an explanation" no longer
+holds. Realistic mode without a site location renders daylight at a sample site, not the schematic
+rig ([[ADR-0193-sample-daylight-for-a-project-with-no-site-location]]). So the panel no longer says
+"Realistic lighting needs the site location". In realistic mode, while `daylightSampleOf(site)` is
+not `'none'`, it shows this notice instead:
+
+> Sample daylight. Set the location and north in the Site panel for true sun angles.
+
+That is every site without a location, also one with a stored north bearing. The notice keeps the
+pattern of this record, a `role="status"` paragraph that points at the Site panel. The timezone
+notice and the longitude estimate are unchanged: a located site with no timezone still gets them.
+Schematic mode still shows its own notice.
+
+The default instant of the session contract moved too. `DEFAULT_ENVIRONMENT_STATE.observedAt` now
+comes from `openingInstant({ site: undefined })`, which is 20 March 2026 at 10:30, where it used to
+be 21 June at noon. ADR-0193 records that seam.
+
+The section on the color check names a retired field. `EnvironmentLighting.sunIntensity` is now
+`sunLevel`, the sun light's actual level and not a fraction
+([[ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point]]). The check also no
+longer passes it through: `colorCheckLighting` sets `sunLevel` to `COLOR_CHECK_SUN_LEVEL`, 1.6,
+while the sun is above the horizon and to 0 below it
+([[ADR-0156-luminance-calibration-convention]]). The check still keeps the sun's direction, so
+shadows read as before.

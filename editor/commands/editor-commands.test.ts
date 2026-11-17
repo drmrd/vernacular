@@ -9,8 +9,20 @@ import {
   createFurnitureInstance,
   placeFurniture,
 } from '../../core'
+import type { LibraryItem } from '../../storage'
+import { handleFurnitureKey } from '../plan/authoring-tool-handlers'
 
 const WALL_NODE_ID_PREFIX = 'wall:'
+
+const sofa: LibraryItem = {
+  reference: { scope: 'user', contentHash: 'sofa-hash' },
+  name: 'Sofa',
+  kind: 'furniture',
+  categories: [],
+  eras: [],
+  footprint: { width: 800, depth: 900 },
+  height: 750,
+}
 
 function buildContext(): {
   context: CommandContext
@@ -122,7 +134,7 @@ describe('createEditorCommands', () => {
     expect(context.selection.getSelectedIds().size).toBe(0)
   })
 
-  it('removes a selected furniture piece, which the scene graph never carries', () => {
+  it('removes a selected furniture piece, which the selection holds under its raw id', () => {
     const { context, floorId } = buildContext()
     const furniture = createFurnitureInstance({
       assetRef: { scope: 'user', contentHash: 'sofa-hash' },
@@ -139,6 +151,26 @@ describe('createEditorCommands', () => {
 
     expect(context.session.getProject().floors[0]!.furniture).toHaveLength(0)
     expect(context.selection.getSelectedIds().size).toBe(0)
+  })
+
+  it('removes the furniture piece the place-furniture tool just dropped and selected', () => {
+    const { context } = buildContext()
+    handleFurnitureKey({
+      session: context.session,
+      selection: context.selection,
+      activeFloorId: context.activeFloorId,
+      candidate: { x: 1000, y: 1000 },
+      setCandidate: vi.fn(),
+      setAnnouncement: vi.fn(),
+      event: new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }),
+      armed: sofa,
+      rotation: 0,
+    })
+    expect(context.session.getProject().floors[0]!.furniture).toHaveLength(1)
+
+    commandById('delete-selection').run(context)
+
+    expect(context.session.getProject().floors[0]!.furniture).toHaveLength(0)
   })
 
   it('clears the selection when deselect runs', () => {

@@ -24,6 +24,7 @@ related:
     decisions/ADR-0139-plan-to-world-orientation,
     decisions/ADR-0142-color-managed-renderer,
     decisions/ADR-0143-environment-model-foundations,
+    decisions/ADR-0193-sample-daylight-for-a-project-with-no-site-location,
   ]
 sourceFiles:
   [
@@ -43,7 +44,7 @@ sourceFiles:
     e2e/tests/scene-solar.spec.ts,
   ]
 status: current
-updated: 2026-07-03
+updated: 2026-11-16
 ---
 
 # ADR-0144: Solar lighting provider and sky
@@ -203,3 +204,28 @@ the two states render only on the CI runner, as all visual baselines do.
 - [[ADR-0142-color-managed-renderer]] (slice 0's renderer color management).
 - [[ADR-0143-environment-model-foundations]] (slice 0's site, timezone, and observation-time
   model).
+
+## Amendment 2026-11-16: daylight renders at a sample site when the project has no location
+
+The section "Realistic lighting is a per-view mode with a schematic fallback" no longer holds in
+one part. Realistic mode without a `Site.latLong` does not fall back to the schematic provider any
+more. `effectiveLightingMode` takes the realistic flag alone, and `SceneLighting` computes the sun
+from `daylightSiteFor(site, front, observedAt.date)` for every site. Without a location the sun is
+computed for a sample place: latitude 40, longitude 1.86 east, at a UTC offset of 0. If the site
+has no north bearing either, north is implied so that the front of the building faces due south.
+[[ADR-0193-sample-daylight-for-a-project-with-no-site-location]] records the sample site, the
+front direction, the opening instant, and the panel's notice.
+
+The rest of that section stands: realistic lighting is still a per-view session flag, off the
+model and off undo, and toggling it still swaps the provider on the persistent render scene. The
+note at the fallback in `bridge/react/scene-lighting.tsx` went with the fallback, so of the two
+forward citations under Consequences only the one in `core/environment/timezone-offset.ts` remains.
+
+Two names in this record are retired
+([[ADR-0192-daylight-calibrated-from-three-targets-with-a-fixed-white-point]]):
+
+- `EnvironmentLighting.sunIntensity`, a 0 to 1 fade, is now `sunLevel`, the sun light's actual
+  level. `SolarLightingProvider.update` sets the light to `sunLevel` and no longer scales a
+  constant of its own.
+- `DAYLIGHT_SUN_INTENSITY` in `engine/lighting/lighting-rig.ts` is now `SCHEMATIC_SUN_INTENSITY`,
+  still 1.6, and only the schematic rig reads it.

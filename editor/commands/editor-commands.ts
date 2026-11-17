@@ -2,9 +2,10 @@ import { deleteEntities, removeFurniture } from '../../core'
 import { selectedEntityIds } from '../plan/selection-entities'
 import type { CommandContext, EditorCommand } from './command'
 
-// Furniture never reaches the scene graph, so the generic deleteEntities cannot
-// remove it. The ids of the selected pieces come from the active floor instead;
-// furniture carries raw, unprefixed ids, so the selection is matched directly.
+// The generic deleteEntities only strips wall, opening, and dimension prefixes, and
+// a selected furniture piece is held under its raw, unprefixed id rather than its
+// prefixed scene node id, so that path never sees it. The ids of the selected
+// pieces come from the active floor instead, matched against the selection directly.
 function selectedFurnitureIds(context: CommandContext, floorId: string): string[] {
   const floor = context.session.getProject().floors.find((entry) => entry.id === floorId)
   const selected = context.selection.getSelectedIds()

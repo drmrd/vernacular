@@ -81,6 +81,21 @@ function floorPaintStore(hex: string): Record<string, SurfaceTreatment> {
   }
 }
 
+// A neutral white paint with a reflectance of about 0.85 (the linear value of `#ededed`,
+// within 0.005), which the daylight gates read. It covers the exterior (right) face of all
+// four walls and no floor.
+const DAYLIGHT_WHITE_HEX = '#ededed'
+const DAYLIGHT_WHITE_EXTERIOR_SIDE = 'right'
+
+function daylightWhitePaintStore(): Record<string, SurfaceTreatment> {
+  const store: Record<string, SurfaceTreatment> = {}
+  for (const wallId of DEMO_WALL_IDS) {
+    store[surfaceKey({ kind: 'wall-face', wallId, side: DAYLIGHT_WHITE_EXTERIOR_SIDE })] =
+      solidTreatment(colorFromHex(DAYLIGHT_WHITE_HEX), 'matte')
+  }
+  return store
+}
+
 /**
  * Resolves the `?paint=` harness query parameter to a paint store: `'demo'` paints the
  * fixed demo floor and walls, `'finish-contrast'` paints the floor and walls one shared
@@ -92,6 +107,7 @@ export function resolveHarnessPaint(
 ): Record<string, SurfaceTreatment> | undefined {
   if (paintParam === 'demo') return demoPaintStore()
   if (paintParam === 'finish-contrast') return finishContrastPaintStore()
+  if (paintParam === 'daylight-white') return daylightWhitePaintStore()
   if (paintParam !== null && FLOOR_HEX_PATTERN.test(paintParam)) return floorPaintStore(paintParam)
   return undefined
 }

@@ -4,7 +4,8 @@ import { type EntityScreenPosition } from '../../engine'
 import { AmbientOcclusionRenderTakeover } from './ambient-occlusion-render-takeover'
 import { CameraControlsHint } from './camera-controls-hint'
 import { effectiveLightingMode } from './effective-lighting-mode'
-import { entityLabels, useCatalogNames } from './entity-labels'
+import { entityLabels } from './entity-labels'
+import { useCatalogNames } from './use-catalog-names'
 import type { FramedScene } from './framed-scene'
 import { FurnitureModelSignals } from './furniture-model-signals'
 import { LiveSceneFrameSignal, useFirstFrameReadiness } from './live-scene-frame-signal'
@@ -27,6 +28,7 @@ import type { BuildingViewState } from './use-building-view-state'
 import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
 import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
+import { useFrontDirection } from './use-front-direction'
 import { useProjectSite } from './use-project-site'
 import { useSceneEnvironment, type SceneEnvironmentState } from './use-scene-environment'
 import { useSceneNavigation, type SceneNavigationState } from './use-scene-navigation'
@@ -107,12 +109,14 @@ interface ViewSceneLightingProps {
 // observation instant, cloud cover, and color check flow straight through.
 function ViewSceneLighting({ viewEnvironment, site, bounds }: ViewSceneLightingProps) {
   const { colorTemperatureK, environment } = viewEnvironment
+  const front = useFrontDirection()
   return (
     <SceneLighting
       colorTemperatureK={colorTemperatureK}
       bounds={bounds}
       realistic={environment.mode === 'realistic'}
       site={site}
+      front={front}
       observedAt={environment.observedAt}
       cloudCover={environment.cloudCover}
       colorCheck={environment.colorCheck}
@@ -170,7 +174,6 @@ function LiveSceneContents(props: LiveSceneCanvasProps & { readiness: LiveViewRe
       <SceneCameraRig nav={nav} framed={framed} opening={opening} />
       <AmbientOcclusionRenderTakeover
         realistic={viewEnvironment.environment.mode === 'realistic'}
-        site={site}
         onPipelineBuildStarted={readiness.notePipelineBuildStarted}
         onPipelineSettled={readiness.notePipelineSettled}
       />
@@ -330,9 +333,8 @@ export function WebGPUSceneView() {
   const site = useProjectSite()
   const { proxies, selectedIds, onSelect, setPositions } = useSceneProxies(graph)
   const doorway = useDoorwayTarget(graph.openings, selectedIds)
-  // The toolbar reads the mode the render resolves to, not the requested one, so a
-  // realistic request without a site location keeps the schematic controls live.
-  const lightingMode = effectiveLightingMode(viewEnvironment.environment.mode === 'realistic', site)
+  // The toolbar reads the lighting mode resolved from the user's realistic-lighting choice.
+  const lightingMode = effectiveLightingMode(viewEnvironment.environment.mode === 'realistic')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

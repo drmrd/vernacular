@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_OBSERVATION_INSTANT,
   MINUTES_PER_DAY,
   formatObservationDateTime,
   observationInstantToIso,
@@ -12,11 +11,6 @@ const NOON = 12 * 60
 const QUARTER_PAST_NINE_AM = 9 * 60 + 15
 
 describe('observation-time helpers', () => {
-  it('defaults to summer-solstice noon', () => {
-    expect(DEFAULT_OBSERVATION_INSTANT.date).toBe('2026-06-21')
-    expect(DEFAULT_OBSERVATION_INSTANT.minutesSinceMidnight).toBe(NOON)
-  })
-
   it('spans a full day in minutes', () => {
     expect(MINUTES_PER_DAY).toBe(1440)
   })
