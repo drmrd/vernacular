@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  CURRENT_SCHEMA_REVISION,
   CURRENT_SCHEMA_VERSION,
   createEmptyProject,
   createFloor,
@@ -85,7 +86,10 @@ describe('FolderProjectStore', () => {
     await store.saveProject(project)
 
     const loaded = await store.loadProject()
-    expect({ ...loaded, meta: { ...loaded.meta, schemaRevision: undefined } }).toEqual(project)
+    expect(loaded).toEqual({
+      ...project,
+      meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION },
+    })
   })
 
   it('writes the canonical Document to vernacular.json', async () => {

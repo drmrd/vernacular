@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Project } from '../../core'
-import { createEmptyProject } from '../../core'
+import { CURRENT_SCHEMA_REVISION, createEmptyProject } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import type { ProjectSummary } from '../project-store'
 import { ProjectNotFoundError } from '../project-store'
@@ -15,6 +15,11 @@ function projectNamed(name: string): Project {
   })
 }
 
+/** The document a store hands back: the saved project, stamped with the revision of this build. */
+function withCurrentRevision(project: Project): Project {
+  return { ...project, meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION } }
+}
+
 describe('OpfsProjectStore', () => {
   it('round-trips each project under its own id namespace', async () => {
     const root = new InMemoryDirectory()
@@ -25,8 +30,8 @@ describe('OpfsProjectStore', () => {
     await store.save('alpha', projectA)
     await store.save('beta', projectB)
 
-    expect(await store.load('alpha')).toEqual(projectA)
-    expect(await store.load('beta')).toEqual(projectB)
+    expect(await store.load('alpha')).toEqual(withCurrentRevision(projectA))
+    expect(await store.load('beta')).toEqual(withCurrentRevision(projectB))
     expect(await root.readFile('alpha/vernacular.json')).toBeDefined()
   })
 

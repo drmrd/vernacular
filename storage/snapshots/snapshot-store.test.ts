@@ -1,7 +1,12 @@
 // @vitest-environment node
 // Pure storage logic; node aligns TextEncoder/Uint8Array realms with serialization.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CURRENT_SCHEMA_VERSION, createEmptyProject, type Project } from '../../core'
+import {
+  CURRENT_SCHEMA_REVISION,
+  CURRENT_SCHEMA_VERSION,
+  createEmptyProject,
+  type Project,
+} from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { SnapshotStore } from './snapshot-store'
@@ -42,6 +47,11 @@ function projectNamed(name: string): Project {
   })
   project.meta.name = name
   return project
+}
+
+/** The document a store hands back: the saved project, stamped with the revision of this build. */
+function withCurrentRevision(project: Project): Project {
+  return { ...project, meta: { ...project.meta, schemaRevision: CURRENT_SCHEMA_REVISION } }
 }
 
 /** A `now` that returns each supplied timestamp in turn across successive calls. */
@@ -93,7 +103,7 @@ describe('SnapshotStore', () => {
     await store.writeSnapshot(projectNamed('A'))
     await store.writeSnapshot(projectNamed('B'))
 
-    expect(await store.restore()).toEqual(projectNamed('B'))
+    expect(await store.restore()).toEqual(withCurrentRevision(projectNamed('B')))
   })
 
   it('restores nothing on a fresh store', async () => {

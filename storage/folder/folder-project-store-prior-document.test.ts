@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor, encodeDocument } from '../../core'
+import {
+  CURRENT_SCHEMA_REVISION,
+  createEmptyProject,
+  createFloor,
+  encodeDocument,
+} from '../../core'
 import type { Project, ProjectShape, SchemaMigration } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FolderProjectStore } from './folder-project-store'
@@ -137,8 +142,8 @@ describe('FolderProjectStore save without a graft when the previous file cannot 
 
     await expect(store.saveProject(next)).resolves.toBeUndefined()
 
-    expect(decode(await directory.readFile('vernacular.json'))).toEqual(
-      JSON.parse(JSON.stringify(next)),
-    )
+    const written = JSON.parse(JSON.stringify(next)) as StoredDocument
+    written.meta.schemaRevision = CURRENT_SCHEMA_REVISION
+    expect(decode(await directory.readFile('vernacular.json'))).toEqual(written)
   })
 })
