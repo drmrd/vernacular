@@ -6,7 +6,7 @@ import {
   createWall,
   encodeDocument,
 } from '../../core'
-import type { Project } from '../../core'
+import type { Project, ProjectShape } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-store'
@@ -146,8 +146,10 @@ describe('FolderProjectStore', () => {
     const { directory, seedBytes } = seededDirectory(1)
     await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory, {
-      migrate: bumpSchemaVersionTo(2),
-      targetVersion: 2,
+      migration: {
+        schemaMigrations: [{ from: 1, migrate: (project: ProjectShape) => project }],
+        targetVersion: 2,
+      },
     })
 
     const loaded = await store.loadProject()
@@ -160,10 +162,17 @@ describe('FolderProjectStore', () => {
     const { directory, seedBytes } = seededDirectory(1)
     await directory.writeFile('vernacular.json', seedBytes)
     const store = new FolderProjectStore(directory, {
-      migrate: () => {
-        throw new Error('migration boom')
+      migration: {
+        schemaMigrations: [
+          {
+            from: 1,
+            migrate: () => {
+              throw new Error('migration boom')
+            },
+          },
+        ],
+        targetVersion: 2,
       },
-      targetVersion: 2,
     })
 
     await expect(store.loadProject()).rejects.toMatchObject({
