@@ -78,3 +78,34 @@ describe('runDecide', () => {
     expect(d.outputs).toMatchObject({ e2e: 'false', visual: 'false', lighthouse: 'false' })
   })
 })
+
+describe('the paths that shape a heavy run', () => {
+  async function decideFor(options) {
+    const d = deps(options)
+    await runDecide(['--base', 'origin/main'], d)
+    return d.outputs
+  }
+
+  it('runs the end-to-end suite for a change to the end-to-end Playwright config', async () => {
+    const outputs = await decideFor({ changed: ['playwright.config.ts'] })
+    expect(outputs).toEqual({ e2e: 'true', visual: 'false', lighthouse: 'false' })
+  })
+
+  it('runs the visual suite for a change to the stories Playwright config', async () => {
+    const outputs = await decideFor({ changed: ['playwright.stories.config.ts'] })
+    expect(outputs).toEqual({ e2e: 'false', visual: 'true', lighthouse: 'false' })
+  })
+
+  it.each(['README.md', 'docs/specs/x.md', 'scripts/ci/decide.mjs', 'tsconfig.json'])(
+    'turns no heavy suite on for a change to only %s',
+    async (path) => {
+      const outputs = await decideFor({ changed: [path] })
+      expect(outputs).toEqual({ e2e: 'false', visual: 'false', lighthouse: 'false' })
+    },
+  )
+
+  it('skips the end-to-end suite on a draft even for a change to the Playwright config', async () => {
+    const outputs = await decideFor({ changed: ['playwright.config.ts'], draft: true })
+    expect(outputs.e2e).toBe('false')
+  })
+})
