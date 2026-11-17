@@ -94,6 +94,9 @@ test.describe('Opening edit overlap guard', () => {
     // yet stay clearly to its left rather than overlapping it (proving the guard clamped
     // the move flush against the neighbor).
     const [dragged, neighbor] = await openingCenterXs(page)
+    if (neighbor === undefined) {
+      throw new Error('Expected two openings after the drag')
+    }
     expect(dragged).toBeGreaterThan(box.x + box.width * 0.4)
     expect(dragged).toBeLessThan(neighbor - box.width * 0.03)
   })

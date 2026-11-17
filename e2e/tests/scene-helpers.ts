@@ -248,9 +248,9 @@ async function averageImagePatch({
   let green = 0
   let blue = 0
   for (let index = 0; index < data.length; index += stride) {
-    red += data[index]
-    green += data[index + 1]
-    blue += data[index + 2]
+    red += data[index] ?? 0
+    green += data[index + 1] ?? 0
+    blue += data[index + 2] ?? 0
   }
   const pixels = data.length / stride
   return { r: red / pixels / max, g: green / pixels / max, b: blue / pixels / max }
