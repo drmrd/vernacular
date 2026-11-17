@@ -18,6 +18,10 @@ export interface MigrateOptions {
   targetVersion?: number
 }
 
+function targetVersionOf(options: MigrateOptions): number {
+  return options.targetVersion ?? CURRENT_SCHEMA_VERSION
+}
+
 function readSchemaVersion(raw: unknown): number {
   if (typeof raw !== 'object' || raw === null) {
     throw new MalformedProjectError()
@@ -83,10 +87,13 @@ function applyRegistryMigrations(
 /**
  * Whether `migrateProject` with the same options would change the document: its schema version is
  * below the target, or a registry named in `meta.registryVersions` has a step from its stored
- * version. Throws `MalformedProjectError` when the document has no numeric schema version.
+ * version. Answers false for a version above the target, where `migrateProject` throws instead.
+ * Both functions read the same two lists the same way: a registry that `meta.registryVersions`
+ * does not name is ignored by both, and a missing registry version counts as 0. Throws
+ * `MalformedProjectError` when the document has no numeric schema version.
  */
 export function isMigrationPending(raw: unknown, options: MigrateOptions = {}): boolean {
-  const target = options.targetVersion ?? CURRENT_SCHEMA_VERSION
+  const target = targetVersionOf(options)
   const schemaVersion = readSchemaVersion(raw)
   if (schemaVersion !== target) return schemaVersion < target
   const registryVersions = readRegistryVersions(raw as ProjectShape)
@@ -99,7 +106,7 @@ export function isMigrationPending(raw: unknown, options: MigrateOptions = {}): 
 }
 
 export function migrateProject(raw: unknown, options: MigrateOptions = {}): Project {
-  const target = options.targetVersion ?? CURRENT_SCHEMA_VERSION
+  const target = targetVersionOf(options)
   const schemaVersion = readSchemaVersion(raw)
   if (schemaVersion > target) {
     throw new UnsupportedSchemaVersionError(schemaVersion, target)

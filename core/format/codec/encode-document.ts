@@ -2,11 +2,10 @@ import { CURRENT_SCHEMA_REVISION } from '../../model/factories'
 import type { Project } from '../../model/types'
 import { checkCurrentSchema } from '../current-schema'
 import type { CodecOptions, EncodedDocument, GraftDropped } from './codec-types'
-import { decodeDocument } from './decode-document'
 import { serializeDocumentJson } from './document-json'
 import { preserveUnknown } from './graft'
-
-const UNREADABLE_REVISION = 0
+import { readStoredDocument } from './read-stored-document'
+import { checkModeFor, readRevision } from './revision'
 
 /** What the previous stored bytes give to the graft: a document, or the reason for none. */
 interface PreviousDocument {
@@ -15,25 +14,22 @@ interface PreviousDocument {
 }
 
 /**
- * The previous stored document as the build reads it: migrated when a migration is pending (the
- * decode runs the chain, which changes nothing when none is), so a step that removed data is not
- * undone by the graft. A document that only fails the format rules still serves the graft.
+ * The previous stored document as the build reads it: migrated when a migration is pending, so a
+ * step that removed data is not undone by the graft. The format rules are not checked on it: a
+ * document that only breaks them still serves the graft.
  */
 function readPrevious(previous: Uint8Array | undefined, options: CodecOptions): PreviousDocument {
   if (previous === undefined) return {}
-  const decoded = decodeDocument(previous, options)
-  if (decoded.ok) return { document: decoded.value.project }
-  const { failure } = decoded
-  return failure.kind === 'format-rules'
-    ? { document: failure.document }
-    : { graftDropped: failure }
+  const read = readStoredDocument(previous, options)
+  return read.ok ? { document: read.document } : { graftDropped: read.failure }
 }
 
-/** Within one version a revision never goes down: the higher of the document's and the build's. */
+/**
+ * A revision never goes down: the higher of the document's and the build's. No versions are
+ * compared because a project in memory is always at the build's version.
+ */
 function revisionToWrite(project: Project): number {
-  const revision = project.meta.schemaRevision
-  const own = Number.isInteger(revision) ? (revision as number) : UNREADABLE_REVISION
-  return Math.max(own, CURRENT_SCHEMA_REVISION)
+  return Math.max(readRevision(project), CURRENT_SCHEMA_REVISION)
 }
 
 /**
@@ -49,8 +45,7 @@ export function encodeDocument(
 ): EncodedDocument {
   const schemaRevision = revisionToWrite(project)
   const stamped: Project = { ...project, meta: { ...project.meta, schemaRevision } }
-  const mode = schemaRevision > CURRENT_SCHEMA_REVISION ? 'tolerant' : 'strict'
-  const faults = checkCurrentSchema(stamped, mode)
+  const faults = checkCurrentSchema(stamped, checkModeFor(schemaRevision))
   const { document, graftDropped } = readPrevious(previous, options)
   const written = document === undefined ? stamped : preserveUnknown(document, stamped)
   const bytes = serializeDocumentJson(written)
