@@ -31,4 +31,8 @@ export class SubdirectoryPort implements DirectoryPort {
   list(prefix: string): Promise<string[]> {
     return this.root.list(this.prefixed(prefix))
   }
+
+  modifiedAt(path: string): Promise<string | undefined> {
+    return this.root.modifiedAt(this.prefixed(path))
+  }
 }

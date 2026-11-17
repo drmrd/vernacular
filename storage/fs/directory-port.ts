@@ -22,4 +22,9 @@ export interface DirectoryPort {
    * to tell files (empty listing) apart from directories (non-empty listing).
    */
   list(prefix: string): Promise<string[]>
+  /**
+   * The ISO 8601 time of the last change of the file at `path`, or undefined
+   * when no file is there.
+   */
+  modifiedAt(path: string): Promise<string | undefined>
 }

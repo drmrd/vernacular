@@ -9,10 +9,19 @@ function isNotFound(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'NotFoundError'
 }
 
+async function isEmptyDirectory(dir: FileSystemDirectoryHandle): Promise<boolean> {
+  const names: string[] = []
+  for await (const name of dir.keys()) {
+    names.push(name)
+  }
+  return names.length === 0
+}
+
 /**
  * DirectoryPort over the File System Access API. Backs the durable OPFS store
  * and any user-granted folder handle. Paths are forward-slash with no leading
- * slash, matching the DirectoryPort contract.
+ * slash, matching the DirectoryPort contract. Removing a file also removes any
+ * directory that the removal leaves empty, so no empty directory stays behind.
  */
 export class FileSystemDirectory implements DirectoryPort {
   constructor(private readonly root: FileSystemDirectoryHandle) {}
@@ -87,6 +96,47 @@ export class FileSystemDirectory implements DirectoryPort {
       // Removing an absent file is a no-op per the DirectoryPort contract.
       if (isNotFound(error)) {
         return
+      }
+      throw error
+    }
+    await this.pruneEmptyDirectories(dirs)
+  }
+
+  /** Removes each directory the removed file left empty, innermost first; the root stays. */
+  private async pruneEmptyDirectories(segments: string[]): Promise<void> {
+    const remaining = [...segments]
+    while (remaining.length > 0) {
+      const dir = await this.resolveDir(remaining, { create: false })
+      const name = remaining.pop() ?? ''
+      const parent = await this.resolveDir(remaining, { create: false })
+      if (dir === undefined || parent === undefined || !(await isEmptyDirectory(dir))) {
+        return
+      }
+      try {
+        await parent.removeEntry(name)
+      } catch (error) {
+        // A concurrent write that refilled the directory, or a concurrent
+        // removal, leaves nothing to prune.
+        if (error instanceof DOMException) {
+          return
+        }
+        throw error
+      }
+    }
+  }
+
+  async modifiedAt(path: string): Promise<string | undefined> {
+    const { dirs, name } = this.split(path)
+    const dir = await this.resolveDir(dirs, { create: false })
+    if (dir === undefined) {
+      return undefined
+    }
+    try {
+      const file = await (await dir.getFileHandle(name)).getFile()
+      return new Date(file.lastModified).toISOString()
+    } catch (error) {
+      if (isNotFound(error)) {
+        return undefined
       }
       throw error
     }
