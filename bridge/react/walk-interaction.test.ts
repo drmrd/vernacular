@@ -10,7 +10,12 @@ import {
 } from '../../core'
 import { buildScene, NeutralMaterialProvider, type SceneRoot } from '../../engine'
 
-import { interactFromWalk, restoreOpenings, tickOpenings } from './walk-interaction'
+import {
+  followStoredOpenings,
+  interactFromWalk,
+  restoreOpenings,
+  tickOpenings,
+} from './walk-interaction'
 
 const DOOR_ID = 'opening:front-door'
 
@@ -212,5 +217,88 @@ describe('restoreOpenings', () => {
     })
 
     expect(openness.get(DOOR_ID)).toBe(partWayOpen)
+  })
+
+  it('poses a rebuilt scene at the openness a door carried, while the session holds it open', () => {
+    const door = frontDoor()
+    const earlierScene = sceneWith(door)
+    const rebuiltScene = sceneWith(door)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const openness = new Map<string, number>()
+
+    tickOpenings({ root: earlierScene, openings: [door], interaction: open, openness }, FULL_STEP)
+    restoreOpenings({ root: rebuiltScene, openings: [door], interaction: open, openness })
+
+    expect(fillGroupPose(rebuiltScene, DOOR_ID)).toEqual(fillGroupPose(earlierScene, DOOR_ID))
+  })
+
+  it('poses a rebuilt scene at the carried openness even after the session let go of the door', () => {
+    const door = frontDoor()
+    const earlierScene = sceneWith(door)
+    const rebuiltScene = sceneWith(door)
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+    const openness = new Map<string, number>()
+
+    tickOpenings({ root: earlierScene, openings: [door], interaction: open, openness }, FULL_STEP)
+    restoreOpenings({
+      root: rebuiltScene,
+      openings: [door],
+      interaction: emptyOpeningInteraction(),
+      openness,
+    })
+
+    expect(fillGroupPose(rebuiltScene, DOOR_ID)).toEqual(fillGroupPose(earlierScene, DOOR_ID))
+    expect(openness.get(DOOR_ID)).toBe(FULLY_OPEN)
+  })
+})
+
+describe('followStoredOpenings', () => {
+  it('closes every door when the session store holds none open', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set())
+
+    expect(isOpeningOpen(followed, DOOR_ID)).toBe(false)
+  })
+
+  it('leaves the interaction as it is when the store holds the same doors open', () => {
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set([DOOR_ID]))
+
+    expect(followed).toBe(open)
+  })
+
+  it('opens a door the store holds open that the interaction lacks, holding a copy of the stored set', () => {
+    const stored: ReadonlySet<string> = new Set([DOOR_ID])
+
+    const followed = followStoredOpenings(emptyOpeningInteraction(), stored)
+
+    expect(isOpeningOpen(followed, DOOR_ID)).toBe(true)
+    expect(followed.openIds).not.toBe(stored)
+  })
+
+  it('swaps to the stored door when the interaction and the store hold equal counts of different doors', () => {
+    const otherDoorId = 'opening:back-door'
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set([otherDoorId]))
+
+    expect(isOpeningOpen(followed, otherDoorId)).toBe(true)
+    expect(isOpeningOpen(followed, DOOR_ID)).toBe(false)
+  })
+
+  it('lets a door that was swung fully open swing back to its built pose once the store closes it', () => {
+    const door = frontDoor()
+    const root = sceneWith(door)
+    const builtPose = fillGroupPose(root, DOOR_ID)
+    const openness = new Map([[DOOR_ID, FULLY_OPEN]])
+    const open = toggleOpening(emptyOpeningInteraction(), DOOR_ID)
+
+    const followed = followStoredOpenings(open, new Set())
+    tickOpenings({ root, openings: [door], interaction: followed, openness }, FULL_STEP)
+
+    expect(openness.get(DOOR_ID)).toBe(0)
+    expect(fillGroupPose(root, DOOR_ID)).toEqual(builtPose)
   })
 })

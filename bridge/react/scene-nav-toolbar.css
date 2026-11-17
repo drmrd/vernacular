@@ -97,16 +97,11 @@
   outline-offset: 1px;
 }
 
-/* The camera presets sit as one wrapping cluster of buttons. */
-.scene-nav-toolbar__presets {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-/* The display-options cluster (the surface-edge overlay toggle) sits beside the
-   presets as another secondary-tier group of view-only toggles. */
+/* The secondary-tier groups each sit as one wrapping cluster of buttons: the camera
+   presets, then the scene objects (the close doors and windows control), then the
+   display options (the surface-edge overlay toggle). */
+.scene-nav-toolbar__presets,
+.scene-nav-toolbar__objects,
 .scene-nav-toolbar__display {
   display: inline-flex;
   flex-wrap: wrap;

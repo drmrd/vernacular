@@ -27,6 +27,7 @@ import { useSelection, useSelectionIds } from './selection-context'
 import type { BuildingViewState } from './use-building-view-state'
 import { useDoorwayTarget, type DoorwayTarget } from './use-doorway-target'
 import { useFramedScene } from './use-framed-scene'
+import { useInteractiveObjects } from './use-interactive-objects'
 import { useLiveViewReadiness, type LiveViewReadinessNotes } from './use-live-view-readiness'
 import { useFrontDirection } from './use-front-direction'
 import { useProjectSite } from './use-project-site'
@@ -91,7 +92,7 @@ function SceneCameraRig({ nav, framed, opening }: SceneCameraRigProps) {
         root={root}
         savedWalkPose={nav.walkPose}
         onWalkPose={nav.noteWalkPose}
-        savedOpenDoorIds={nav.openDoorIds}
+        storedOpenDoorIds={nav.openDoorIds}
         onOpenDoors={nav.noteOpenDoors}
       />
     </>
@@ -294,6 +295,7 @@ function SceneViewToolbar({
   doorway,
   lightingMode,
 }: SceneViewToolbarProps) {
+  const interactiveObjects = useInteractiveObjects()
   return (
     <SceneNavToolbar
       mode={nav.mode}
@@ -315,6 +317,8 @@ function SceneViewToolbar({
       onToggleUnderground={buildingView.toggleUnderground}
       edgeOverlay={edgeOverlay}
       onToggleEdgeOverlay={onToggleEdgeOverlay}
+      interactiveObjectsAtDefault={interactiveObjects.atDefault}
+      onResetInteractiveObjects={interactiveObjects.reset}
     />
   )
 }

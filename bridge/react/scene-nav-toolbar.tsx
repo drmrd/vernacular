@@ -2,6 +2,8 @@ import type { CameraPreset, LightingMode } from '../../core'
 
 import { EnvironmentControls } from './environment-controls'
 import { SceneDisplayOptions } from './scene-display-options'
+import { ModeToggle, ScopeToggle } from './scene-nav-segmented-toggles'
+import { SceneObjectControls } from './scene-object-controls'
 import type { SceneScope } from './view-scene-graph'
 
 import './scene-nav-toolbar.css'
@@ -20,16 +22,6 @@ export type PresetChoice = CameraPreset | 'doorway'
  * fields has to be changed in both places at once.
  */
 type DoorwayChoice = { name: string; selected: boolean }
-
-const NAV_MODE_BUTTONS: ReadonlyArray<{ label: string; mode: NavMode }> = [
-  { label: 'Orbit', mode: 'orbit' },
-  { label: 'Walk', mode: 'walk' },
-]
-
-const VIEW_SCOPE_BUTTONS: ReadonlyArray<{ label: string; scope: SceneScope }> = [
-  { label: 'This floor', scope: 'floor' },
-  { label: 'Whole building', scope: 'building' },
-]
 
 const PRESET_VIEW_BUTTONS: ReadonlyArray<{ label: string; preset: CameraPreset }> = [
   { label: 'Top down', preset: 'top' },
@@ -61,54 +53,13 @@ interface SceneNavToolbarProps {
   onToggleUnderground?: () => void
   edgeOverlay?: boolean
   onToggleEdgeOverlay?: () => void
-}
-
-interface ScopeToggleProps {
-  scope: SceneScope
-  onScopeChange: (scope: SceneScope) => void
-}
-
-/** Whether the view frames a single floor or the whole building, as a segmented toggle. */
-function ScopeToggle({ scope, onScopeChange }: ScopeToggleProps) {
-  return (
-    <div role="group" aria-label="View scope" className="scene-nav-toolbar__modes">
-      {VIEW_SCOPE_BUTTONS.map(({ label, scope: buttonScope }) => (
-        <button
-          key={buttonScope}
-          type="button"
-          className="scene-nav-toolbar__mode"
-          aria-pressed={scope === buttonScope}
-          onClick={() => onScopeChange(buttonScope)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-interface ModeToggleProps {
-  mode: NavMode
-  onModeChange: (mode: NavMode) => void
-}
-
-/** The orbit/walk camera modes as a segmented toggle; the active mode is pressed. */
-function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
-  return (
-    <div role="group" aria-label="Camera mode" className="scene-nav-toolbar__modes">
-      {NAV_MODE_BUTTONS.map(({ label, mode: buttonMode }) => (
-        <button
-          key={buttonMode}
-          type="button"
-          className="scene-nav-toolbar__mode"
-          aria-pressed={mode === buttonMode}
-          onClick={() => onModeChange(buttonMode)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  )
+  /**
+   * True when no interactive object (no door or window) is out of its default state; the
+   * close control is disabled then. Omitted means true.
+   */
+  interactiveObjectsAtDefault?: boolean
+  /** Returns every interactive object to its default state; the close control calls it. */
+  onResetInteractiveObjects?: () => void
 }
 
 interface ToolbarToggleProps {
@@ -293,7 +244,7 @@ function PrimaryCluster(props: PrimaryClusterProps) {
         disabled={props.scope === 'floor'}
       />
       <ModeToggle mode={props.mode} onModeChange={props.onModeChange} />
-      {/* Click-to-select is opt-in: a pressed toggle reflects whether selecting is currently on. */}
+      {/* Click-to-select defaults on: a pressed toggle reflects whether selecting is currently on. */}
       <ToolbarToggle
         label="Select"
         pressed={props.selectionEnabled}
@@ -353,7 +304,7 @@ const TOOLBAR_DEFAULTS: DefaultedToolbarProps = {
 /** The toolbar props with every defaulted one resolved to a value. */
 type ResolvedToolbarProps = SceneNavToolbarProps & DefaultedToolbarProps
 
-/** The toolbar's four clusters, in reading order: primary, presets, display, environment. */
+/** The toolbar's five clusters, in reading order: primary, presets, scene objects, display, environment. */
 function ToolbarClusters(props: ResolvedToolbarProps) {
   return (
     <>
@@ -371,6 +322,10 @@ function ToolbarClusters(props: ResolvedToolbarProps) {
         onReset={props.onReset}
       />
       <CameraPresetButtons onPreset={props.onPreset} doorway={props.doorway} mode={props.mode} />
+      <SceneObjectControls
+        atDefault={props.interactiveObjectsAtDefault}
+        onReset={props.onResetInteractiveObjects}
+      />
       <SceneDisplayOptions
         edgeOverlay={props.edgeOverlay}
         onToggleEdgeOverlay={props.onToggleEdgeOverlay}
@@ -391,7 +346,9 @@ function ToolbarClusters(props: ResolvedToolbarProps) {
  * hide underground levels such as a basement), a toggle between the orbit and walk
  * camera modes, a control that returns the camera to its framed starting view, a
  * group of camera presets (a top-down view, the four elevations, and a view from a
- * doorway), and a display-options group holding the surface-edge overlay toggle.
+ * doorway), a scene-objects group holding the control that closes every open door and
+ * window in either camera mode, and a display-options group holding the surface-edge
+ * overlay toggle.
  * Pressed states are reflected through `aria-pressed` so assistive technology
  * announces the active view and camera mode.
  */
