@@ -6,9 +6,10 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // pane blank: the canvas must not be configured twice before its renderer exists, or the second
 // configuration would build a renderer and camera that never receive a size.
 //
-// The renderer factory awaits the lazily loaded three.js WebGPU module, which carries both the
-// WebGPU backend and three's own WebGL 2 fallback. Holding that chunk's response holds the
-// start-up open on either backend, with no product change and no fixed sleep: the test decides
+// The renderer factory is synchronous. The canvas wrapper waits for the lazily loaded three.js
+// WebGPU module before it builds a renderer, and that module carries both the WebGPU backend and
+// three's own WebGL 2 fallback. Holding that chunk's response holds the start-up open on either
+// backend, with no product change and no fixed sleep: the test decides
 // when the start-up may finish. The first test presses a scene toolbar toggle twice inside
 // that window; the second test holds the same window and presses nothing, which proves that
 // the held start-up alone is harmless.
@@ -27,8 +28,9 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // three's WebGL 2 fallback path call first, until the test lets it through.
 //
 // Like the neighbouring live-view specs, it runs in the scene-webgl project (the scene- name
-// prefix routes it there) and self-skips without navigator.gpu, where the live pane shows a
-// fallback message instead of a canvas.
+// prefix routes it there) and self-skips without navigator.gpu. The holds are written for the
+// WebGPU path, and the adapter hold needs navigator.gpu. A browser without it still mounts a
+// canvas, which three draws through its WebGL 2 fallback; it does not get a fallback message.
 
 const RENDERER_CHUNK = /\/assets\/three\.webgpu-[^/]+\.js$/
 
@@ -237,5 +239,51 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
       renderSceneViewTwice(page),
     )
     await expectDrawnWallInLivePane(page, canvas)
+  })
+})
+
+test.describe('Live three-dimensional pane after a failed renderer load', () => {
+  // Chromium 148 kept the failure of a dynamic import for the life of the page: an in-place retry
+  // of the same module never reached the network. A reloaded page asks for the chunk again, which
+  // the wrapper's unit tests cannot show because they replace the loader.
+  test('shows the live canvas after Reload page once the renderer chunk can be fetched again', async ({
+    page,
+  }) => {
+    const chunkRequests: string[] = []
+    page.on('request', (request) => {
+      if (RENDERER_CHUNK.test(request.url())) chunkRequests.push(request.url())
+    })
+    await page.route(RENDERER_CHUNK, (route) => route.abort('failed'))
+    await page.goto('/')
+
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    await page.getByRole('button', { name: 'Split view' }).click()
+    const pane = page.getByRole('region', { name: /3d preview/i })
+    await expect(pane.getByRole('alert')).toHaveText(
+      'Could not load the 3D view. Check your network connection, then reload the page.',
+    )
+    await expect(pane.locator('canvas')).toHaveCount(0)
+    const requestsBeforeReload = chunkRequests.length
+    expect(requestsBeforeReload).toBeGreaterThan(0)
+
+    await page.unroute(RENDERER_CHUNK)
+    await Promise.all([
+      page.waitForEvent('load'),
+      pane.getByRole('button', { name: 'Reload page' }).click(),
+    ])
+
+    await page.getByRole('button', { name: 'Split view' }).click()
+    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await expect(pane.getByRole('alert')).toHaveCount(0)
+    const canvas = pane.locator('canvas')
+    await expect(canvas).toHaveCount(1)
+    await expect
+      .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
+        message: 'waiting for the live 3D canvas to settle past its default size',
+      })
+      .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
+    expect(chunkRequests.length).toBeGreaterThan(requestsBeforeReload)
   })
 })

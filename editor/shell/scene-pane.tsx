@@ -17,11 +17,15 @@ import {
 import {
   LIVE_SCENE_CANVAS_TEST_ID,
   SCENE_READY_ATTRIBUTE,
+  SCENE_RENDERER_FAILED_ATTRIBUTE,
 } from '../../bridge/react/scene-readiness'
 import { Banner, EmptyState, LoadingState, type Notification } from '../design-system'
 import './scene-pane.css'
 
 const LIVE_SCENE_CANVAS_SELECTOR = `[data-testid="${LIVE_SCENE_CANVAS_TEST_ID}"]`
+const SCENE_RENDERER_FAILED_SELECTOR = `[${SCENE_RENDERER_FAILED_ATTRIBUTE}]`
+
+type SceneState = 'building' | 'ready' | 'failed'
 
 // The renderer falls back to its own WebGL 2 backend when a browser exposes no WebGPU
 // adapter, and the two backends can shade the same frame differently. Saying so keeps
@@ -36,13 +40,17 @@ const WEBGL_FALLBACK_NOTICE: Notification = {
   dismissible: true,
 }
 
-// Whether the pane's own subtree reports its first frame ready: true when the live
-// canvas node is not (yet) present, so a not-yet-mounted or still-suspended canvas
-// never stacks a redundant loading placeholder on top of the Suspense fallback, and
-// otherwise whatever the canvas's own data-harness-ready attribute says.
-function readSceneReady(paneNode: HTMLElement): boolean {
+// What the pane's own subtree reports: 'failed' when a failure view (marked with the
+// renderer-failed attribute) is inside it, so the loading and empty-floor overlays do not
+// cover the failure's text. Otherwise 'ready' when the live canvas node is not (yet)
+// present, so a not-yet-mounted or still-suspended canvas never stacks a redundant loading
+// placeholder on top of the Suspense fallback, and else whatever the canvas's own
+// data-harness-ready attribute says.
+function readSceneState(paneNode: HTMLElement): SceneState {
+  if (paneNode.querySelector(SCENE_RENDERER_FAILED_SELECTOR) !== null) return 'failed'
   const canvasNode = paneNode.querySelector(LIVE_SCENE_CANVAS_SELECTOR)
-  return canvasNode === null || canvasNode.getAttribute(SCENE_READY_ATTRIBUTE) === 'true'
+  const isReady = canvasNode === null || canvasNode.getAttribute(SCENE_READY_ATTRIBUTE) === 'true'
+  return isReady ? 'ready' : 'building'
 }
 
 // Watches the pane's own wrapper for the live canvas flipping its data-harness-ready
@@ -53,17 +61,17 @@ function readSceneReady(paneNode: HTMLElement): boolean {
 // Reads with a layout effect, not a plain effect, so the corrected readiness is in
 // place before the browser paints; a plain effect runs after paint and would flash
 // one unready frame on the synchronous-mount path.
-function useSceneReady(paneRef: RefObject<HTMLDivElement | null>): boolean {
-  const [isSceneReady, setIsSceneReady] = useState(true)
+function useSceneState(paneRef: RefObject<HTMLDivElement | null>): SceneState {
+  const [sceneState, setSceneState] = useState<SceneState>('ready')
   useLayoutEffect(() => {
     const paneNode = paneRef.current
     if (!paneNode) return
-    setIsSceneReady(readSceneReady(paneNode))
+    setSceneState(readSceneState(paneNode))
     // Observing subtree childList also catches this pane's own overlay divs being
     // inserted or removed, which retriggers the callback below. That is harmless:
-    // readSceneReady is idempotent, so the extra firings just recompute the same
+    // readSceneState is idempotent, so the extra firings just recompute the same
     // answer.
-    const observer = new MutationObserver(() => setIsSceneReady(readSceneReady(paneNode)))
+    const observer = new MutationObserver(() => setSceneState(readSceneState(paneNode)))
     observer.observe(paneNode, {
       attributes: true,
       attributeFilter: [SCENE_READY_ATTRIBUTE],
@@ -72,7 +80,7 @@ function useSceneReady(paneRef: RefObject<HTMLDivElement | null>): boolean {
     })
     return () => observer.disconnect()
   }, [paneRef])
-  return isSceneReady
+  return sceneState
 }
 
 // The notice shown while the preview renders through the renderer's WebGL 2 fallback.
@@ -96,7 +104,7 @@ export function ScenePane(): ReactElement {
   const graph = useSceneGraph()
   const activeFloorId = useActiveFloorId()
   const paneRef = useRef<HTMLDivElement | null>(null)
-  const isSceneReady = useSceneReady(paneRef)
+  const sceneState = useSceneState(paneRef)
   const backend = detectLivePreviewBackend()
   if (backend === 'unsupported') {
     return (
@@ -115,12 +123,12 @@ export function ScenePane(): ReactElement {
         <SceneCanvas />
       </Suspense>
       {backend === 'webgl2' ? <BackendNotice /> : null}
-      {isSceneReady ? null : (
+      {sceneState === 'building' ? (
         <div className="scene-pane__overlay">
           <LoadingState message="Building the scene..." />
         </div>
-      )}
-      {isSceneReady && isActiveFloorEmpty ? (
+      ) : null}
+      {sceneState === 'ready' && isActiveFloorEmpty ? (
         <div className="scene-pane__overlay">
           <EmptyState
             asRegion={false}

@@ -1,25 +1,16 @@
 import { useEffect, type ReactNode } from 'react'
-import { act, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { CanvasProps, GLProps } from '@react-three/fiber'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SceneRendererCanvas } from './scene-renderer-canvas'
-
-type Deferred<T> = {
-  promise: Promise<T>
-  resolve: (value: T) => void
-  reject: (reason: Error) => void
-}
-
-function defer<T>(): Deferred<T> {
-  let resolve: (value: T) => void = () => {}
-  let reject: (reason: Error) => void = () => {}
-  const promise = new Promise<T>((done, fail) => {
-    resolve = done
-    reject = fail
-  })
-  return { promise, resolve, reject }
-}
+import { SCENE_RENDERER_FAILED_ATTRIBUTE } from './scene-readiness'
+import {
+  defer,
+  recordUnhandledRejections,
+  settle,
+  type Deferred,
+} from './scene-renderer-canvas-test-support'
 
 // The engine's loader and the 3D library's Canvas are the two collaborators of the wrapper.
 // Each case decides when the factory loads and when the renderer's init() settles, so the
@@ -27,22 +18,31 @@ function defer<T>(): Deferred<T> {
 const collaborators = vi.hoisted(() => ({
   loadFactory: (() => Promise.resolve(() => ({}))) as () => Promise<unknown>,
   canvasProps: [] as Array<Record<string, unknown>>,
+  glResults: [] as unknown[],
+  released: [] as unknown[],
 }))
 
 vi.mock('../../engine', () => ({
   loadSceneRendererFactory: () => collaborators.loadFactory(),
+  releaseSceneRenderer: (renderer: unknown) => {
+    collaborators.released.push(renderer)
+    return Promise.resolve()
+  },
 }))
 
 // The stand-in Canvas records every render's props, renders its children as the real one does
 // once its scene is ready, and builds its renderer through the supplied gl function, again only
-// when that function changes, as the library does for a changed renderer factory.
+// when that function changes, as the library does for a changed renderer factory. It keeps what
+// each gl call returned.
 vi.mock('@react-three/fiber', () => ({
   // A component export legitimately keeps its PascalCase name in the mock.
   // eslint-disable-next-line @typescript-eslint/naming-convention
   Canvas: ({ gl, children, ...props }: CanvasProps) => {
     collaborators.canvasProps.push({ gl, children, ...props })
     useEffect(() => {
-      if (typeof gl === 'function') gl({ canvas: document.createElement('canvas') } as never)
+      if (typeof gl === 'function') {
+        collaborators.glResults.push(gl({ canvas: document.createElement('canvas') } as never))
+      }
     }, [gl])
     return <div data-testid="canvas">{children}</div>
   },
@@ -68,13 +68,6 @@ function arrangeStartUp(): Harness {
   return { renderer, factory, loaded, initialized }
 }
 
-async function settle(resolve: () => void): Promise<void> {
-  await act(async () => {
-    resolve()
-    await Promise.resolve()
-  })
-}
-
 function glOfRender(index: number): GLProps {
   return collaborators.canvasProps[index]?.gl as GLProps
 }
@@ -84,6 +77,12 @@ function latestCanvasProps(): Record<string, unknown> {
 }
 
 const CHILD = <div data-testid="child" />
+
+// The failure kind that the wrapper's stand-in element declares, or null when none is shown.
+function failureKindIn(container: HTMLElement): string | null {
+  const marked = container.querySelector(`[${SCENE_RENDERER_FAILED_ATTRIBUTE}]`)
+  return marked?.getAttribute(SCENE_RENDERER_FAILED_ATTRIBUTE) ?? null
+}
 
 function renderWrapper(props: Parameters<typeof SceneRendererCanvas>[0] = {}) {
   const ui = (): ReactNode => <SceneRendererCanvas {...props}>{CHILD}</SceneRendererCanvas>
@@ -107,6 +106,7 @@ describe('SceneRendererCanvas', () => {
     const { container } = renderWrapper()
 
     expect(container.querySelector('canvas')).not.toBeNull()
+    expect(failureKindIn(container)).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
     expect(collaborators.canvasProps).toHaveLength(0)
   })
@@ -133,12 +133,13 @@ describe('SceneRendererCanvas', () => {
   })
 
   it('passes the caller frame loop and the children through once init() resolves', async () => {
-    renderWrapper({ frameloop: 'demand' })
+    const { container } = renderWrapper({ frameloop: 'demand' })
     await settle(() => start.loaded.resolve(start.factory))
     await settle(() => start.initialized.resolve())
 
     expect(latestCanvasProps().frameloop).toBe('demand')
     expect(screen.getByTestId('child')).toBeInTheDocument()
+    expect(failureKindIn(container)).toBeNull()
   })
 
   it('starts init() exactly once for one mounted wrapper, also after re-renders', async () => {
@@ -182,26 +183,76 @@ describe('SceneRendererCanvas', () => {
 
 // The wording and role that SceneCanvas already uses when the browser has no 3D backend at all.
 const CANNOT_RENDER_MESSAGE = 'This browser cannot render the 3D view.'
-
-// Vitest fails the whole run on an unhandled rejection but names no test. This listener records
-// the rejections that Node reports while one case runs, so the case that caused one fails itself.
-// Node reports a rejection after the microtask queue drains, hence the timer turn before reading.
-function recordUnhandledRejections(): { read: () => Promise<unknown[]>; stop: () => void } {
-  const seen: unknown[] = []
-  const listener = (reason: unknown): void => {
-    seen.push(reason)
-  }
-  process.on('unhandledRejection', listener)
-  return {
-    read: async () => {
-      await new Promise((turn) => setTimeout(turn, 0))
-      return seen
-    },
-    stop: () => process.off('unhandledRejection', listener),
-  }
-}
+const COULD_NOT_LOAD_MESSAGE =
+  'Could not load the 3D view. Check your network connection, then reload the page.'
 
 describe('SceneRendererCanvas when the renderer cannot start', () => {
+  let start: Harness
+  let rejections: ReturnType<typeof recordUnhandledRejections>
+
+  beforeEach(() => {
+    collaborators.canvasProps = []
+    collaborators.glResults = []
+    collaborators.released = []
+    start = arrangeStartUp()
+    rejections = recordUnhandledRejections()
+  })
+
+  afterEach(() => {
+    rejections.stop()
+  })
+
+  it('shows the cannot-render status and mounts no children when init() rejects', async () => {
+    const { container } = renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.queryByTestId('child')).toBeNull()
+    expect(failureKindIn(container)).toBe('start')
+  })
+
+  it('offers no Reload page button when init() rejects', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(screen.queryByRole('button', { name: 'Reload page' })).toBeNull()
+  })
+
+  it('leaves no unhandled rejection when init() rejects', async () => {
+    renderWrapper()
+    await settle(() => start.loaded.resolve(start.factory))
+    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+
+    expect(await rejections.read()).toEqual([])
+  })
+
+  it('shows the cannot-render status and builds nothing to release when the renderer factory throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const factory = vi.fn(() => {
+      throw new Error('no WebGPU adapter')
+    })
+    const { container } = renderWrapper()
+    await settle(() => start.loaded.resolve(factory))
+
+    expect(warn).toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(failureKindIn(container)).toBe('start')
+    expect(screen.queryByTestId('child')).toBeNull()
+    expect(screen.queryByTestId('canvas')).toBeNull()
+    expect(collaborators.glResults).toHaveLength(1)
+    expect(collaborators.glResults[0]).toEqual(
+      expect.objectContaining({ then: expect.any(Function) }),
+    )
+    expect(collaborators.released).toEqual([])
+    expect(await rejections.read()).toEqual([])
+  })
+})
+
+const LOAD_FAILURE = new Error('the renderer chunk failed to load')
+
+describe('SceneRendererCanvas when the renderer module does not load', () => {
   let start: Harness
   let rejections: ReturnType<typeof recordUnhandledRejections>
 
@@ -215,48 +266,62 @@ describe('SceneRendererCanvas when the renderer cannot start', () => {
     rejections.stop()
   })
 
-  it('shows the cannot-render status and mounts no children when init() rejects', async () => {
-    renderWrapper()
-    await settle(() => start.loaded.resolve(start.factory))
-    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
+  it('shows the could-not-load alert with a Reload page button and no cannot-render status', async () => {
+    const { container } = renderWrapper()
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
 
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
-    expect(screen.queryByTestId('child')).toBeNull()
-  })
-
-  it('leaves no unhandled rejection when init() rejects', async () => {
-    renderWrapper()
-    await settle(() => start.loaded.resolve(start.factory))
-    await settle(() => start.initialized.reject(new Error('no usable GPU backend')))
-
-    expect(await rejections.read()).toEqual([])
-  })
-
-  it('shows the same status when the renderer factory fails to load', async () => {
-    renderWrapper()
-    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
-
-    expect(screen.getByRole('status')).toHaveTextContent(CANNOT_RENDER_MESSAGE)
+    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(failureKindIn(container)).toBe('load')
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
+    expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByTestId('canvas')).toBeNull()
   })
 
   it('leaves no unhandled rejection when the renderer factory fails to load', async () => {
     renderWrapper()
-    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
 
     expect(await rejections.read()).toEqual([])
   })
 
   it('lets a later mount succeed after a failed load', async () => {
     const failed = renderWrapper()
-    await settle(() => start.loaded.reject(new Error('the renderer chunk failed to load')))
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
     failed.unmount()
 
-    const retry = arrangeStartUp()
-    renderWrapper()
-    await settle(() => retry.loaded.resolve(retry.factory))
+    const later = arrangeStartUp()
+    const { container } = renderWrapper()
+    await settle(() => later.loaded.resolve(later.factory))
 
-    expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByTestId('canvas')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(failureKindIn(container)).toBeNull()
+  })
+
+  it('calls reloadPage exactly once when Reload page is pressed', async () => {
+    const reloadPage = vi.fn()
+    renderWrapper({ reloadPage })
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload page' }))
+
+    expect(reloadPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the alert and asks the renderer loader no second time after Reload page is pressed', async () => {
+    const loadFactory = vi.fn(() => start.loaded.promise)
+    collaborators.loadFactory = loadFactory
+    renderWrapper({ reloadPage: vi.fn() })
+    await settle(() => start.loaded.reject(LOAD_FAILURE))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload page' }))
+    await settle(() => {})
+
+    expect(loadFactory).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alert')).toHaveTextContent(COULD_NOT_LOAD_MESSAGE)
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
+    expect(screen.queryByTestId('canvas')).toBeNull()
+    expect(await rejections.read()).toEqual([])
   })
 })

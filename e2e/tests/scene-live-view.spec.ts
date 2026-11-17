@@ -7,9 +7,9 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // millimeter-scale scene) and never updates when the plan changes.
 //
 // It runs only in the GPU `scene-webgl` Playwright project (the config routes
-// `scene-*.spec.ts` there) and self-skips when WebGPU is unavailable, because the live
-// pane renders through the WebGPU backend and otherwise shows a fallback message instead
-// of a canvas.
+// `scene-*.spec.ts` there) and self-skips when WebGPU is unavailable, because the spec is
+// written for the WebGPU backend. A browser without WebGPU still mounts a canvas, which
+// three draws through its WebGL 2 fallback; the pane shows no fallback message for it.
 //
 // The assertion is semantic, not a committed pixel baseline: the live view renders
 // through the non-deterministic WebGPU backend (ADR-0045 explains why a WebGPU pixel

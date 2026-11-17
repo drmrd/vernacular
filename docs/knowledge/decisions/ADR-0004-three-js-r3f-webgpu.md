@@ -8,6 +8,7 @@ related:
     decisions/ADR-0001-six-layer-architecture,
     decisions/ADR-0018-scene-graph-derivation,
     decisions/ADR-0174-live-pane-webgl-fallback,
+    decisions/ADR-0197-scene-renderer-lifecycle,
   ]
 sourceFiles:
   [
@@ -16,12 +17,14 @@ sourceFiles:
     engine/renderer/create-renderer.ts,
     engine/renderer/detect-backend.ts,
     bridge/react/scene-renderer-canvas.tsx,
+    bridge/react/scene-canvas.tsx,
+    bridge/react/live-preview-backend.ts,
     engine/scene/build-scene.ts,
     engine/lighting/lighting-provider.ts,
     engine/lighting/basic-lighting-provider.ts,
   ]
 status: current
-updated: 2026-11-15
+updated: 2026-11-17
 ---
 
 # ADR-0004: Three.js + React Three Fiber on WebGPU renderer stack
@@ -79,8 +82,10 @@ It exposes a small, renderer-agnostic surface through `engine/index.ts`:
   seam lets a future solar-aware provider swap in without changing the renderer.
 - `detectRenderBackend()` (`engine/renderer/detect-backend.ts`) returns
   `'webgpu'` when `navigator.gpu` is present and `'unsupported'` otherwise. The
-  WebGL2 path is deliberately absent from the union for now; it is the deferred
-  fallback.
+  union still has no WebGL 2 member, but WebGL 2 is no longer deferred: the
+  `WebGPURenderer` falls back to its own WebGL 2 backend, and the bridge's
+  `detectLivePreviewBackend()` reports that case. (Corrected 2026-11-17: this
+  called WebGL 2 the deferred fallback; ADR-0174 made it live.)
 - One renderer factory, reached through `loadSceneRendererFactory()`
   (`engine/renderer/create-renderer.ts`), which lazily `import('three/webgpu')`
   once and resolves to a synchronous factory that constructs the `WebGPURenderer`
@@ -93,17 +98,23 @@ It exposes a small, renderer-agnostic surface through `engine/index.ts`:
 `bridge/` imports `@react-three/fiber`, which is a separate package, but never
 imports `three` directly. The R3F `<Canvas>` there is handed a synchronous
 factory built from the engine's `loadSceneRendererFactory()` as its `gl` prop, so
-the renderer construction still lives in the engine. The bridge's `SceneCanvas` consults `detectRenderBackend()`
-and renders a WebGPU-unavailable accessible fallback (`role="status"`) when
-WebGPU is absent, so the R3F canvas only mounts when the backend can support it.
-See ADR-0019 for the bridge side of this seam.
+the renderer construction still lives in the engine. The bridge's `SceneCanvas`
+consults `detectLivePreviewBackend()`. It mounts the live view on WebGPU or on
+the renderer's WebGL 2 fallback, and renders the accessible status "This browser
+cannot render the 3D view." (`role="status"`) only when the runtime can drive
+neither. (Corrected 2026-11-17: this said `SceneCanvas` consulted
+`detectRenderBackend()` and mounted the canvas only when WebGPU was present,
+which ADR-0174 changed.) See ADR-0019 for the bridge side of this seam.
 
 ## Alternatives considered
 
 - **Stay on React 18 with R3F 8.** Rejected. R3F 8 predates first-class WebGPU
   initialization, so adopting WebGPU would mean fighting the framework's render
-  lifecycle to await an async renderer. R3F 9 makes the async renderer factory
-  and the awaited `init()` a supported path, which is worth the React-19 bump.
+  lifecycle to await an async renderer. R3F 9 accepts the WebGPU renderer through
+  its `gl` prop, which is worth the React-19 bump. (Corrected 2026-11-17: this
+  named the async factory with an awaited `init()` as the supported path. The
+  canvas now receives a synchronous factory and the bridge starts `init()`; see
+  the amendment below.)
 - **Ship the WebGL2 fallback now.** Deferred per the specification, which makes
   WebGL2 a post-MVP fast-follow. The seams are in place for it: the
   `RenderBackend` union, `detectRenderBackend`, and the single
@@ -112,8 +123,11 @@ See ADR-0019 for the bridge side of this seam.
 
 ## Consequences
 
-- The WebGPU build is loaded lazily and only in browsers that report WebGPU
-  support, so tests and any server-side import path never pull it in.
+- The WebGPU build is loaded lazily, only when a scene canvas mounts, so tests
+  and any server-side import path never pull it in. The build carries both
+  backends, so it loads in any browser that can drive WebGPU or WebGL 2.
+  (Corrected 2026-11-17: this said the build loaded only in browsers that report
+  WebGPU support.)
 - The renderer is replaceable behind three narrow seams (backend detection,
   renderer factory, lighting provider), which is what lets the WebGL2 fallback
   and a future solar-aware lighting model slot in without touching `bridge/`,
@@ -166,17 +180,20 @@ await is not safe to re-run, so the await moved out of the library's reach.
 
 ### The failed state
 
-A failed module load or a failed `init()` ends the component in a failed state. It
-shows the existing status "This browser cannot render the 3D view." and mounts no
-canvas, and it stays there until it mounts again.
+A failed `init()`, or a factory that throws while it builds the renderer, ends the
+component in a failed state. It shows the existing status "This browser cannot
+render the 3D view." and mounts no canvas, and it stays there until it mounts
+again. A failed module load has its own state: a message that asks the user to
+reload the page, and a "Reload page" button. (Corrected 2026-11-17: a failed load
+used to show the cannot-render status; see ADR-0197.)
 
 ### What remains
 
-- The library still awaits the factory's result for one microtask, so only a render
-  of the canvas inside that same task could reach the window. No such path exists
-  today.
-- The renderer is not released on unmount, a constructor throw is not caught, and a
-  failed load has no message of its own (issue #746).
+- The window of one microtask in which the library awaits the factory's result is
+  closed: only the renderer the library asked for last can set the component's
+  state. The renderer is released on unmount, a constructor throw is caught, and a
+  failed load has a message of its own (issue #746). ADR-0197 records how.
+  (Corrected 2026-11-17.)
 - A readiness signal that names the drawn document revision is not built (issue
   #747).
 
