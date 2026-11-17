@@ -773,3 +773,4 @@ export {
 } from './daylight/sky-visibility'
 export type { Reveal, WallRectangle } from './daylight/form-factor'
 export { horizontalPointToWallRectangle, visibleThroughReveal } from './daylight/form-factor'
+export type { FormatFault } from './format/codec/codec-types'
