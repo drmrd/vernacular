@@ -158,6 +158,12 @@ export const UNCOVERED_COMPONENTS: {
       'scene navigation toolbar bound to the live camera and scene context; an isolated browser-mode story is not feasible (permanent allowlist candidate, see ADR-0111).',
   },
   {
+    component: 'SceneObjectControls',
+    file: 'bridge/react/scene-object-controls.tsx',
+    reason:
+      'the scene-objects group (the close doors and windows control) that sits between the camera presets and the display options, extracted from scene-nav-toolbar.tsx; it is only rendered inside SceneNavToolbar, which is itself recorded here, and its DOM is exercised through the scene-nav-toolbar tests, so a separate isolated story would duplicate that coverage (see ADR-0111).',
+  },
+  {
     component: 'SceneProxyProjector',
     file: 'bridge/react/scene-proxies.tsx',
     reason:
