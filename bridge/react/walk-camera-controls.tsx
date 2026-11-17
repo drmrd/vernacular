@@ -8,7 +8,6 @@ import {
   sceneGraphForFloor,
   walkLookTarget,
   wallSegmentsForWalk,
-  type OpeningInteractionState,
   type OpeningSceneNode,
   type WallSceneNode,
   type WallSegment,
@@ -18,8 +17,9 @@ import {
 } from '../../core'
 import type { SceneRoot } from '../../engine'
 import { useActiveFloorId } from './active-floor-context'
+import { tickOpeningMotion, useOpeningMotion, type OpeningMotionRefs } from './use-opening-motion'
 import { useSceneGraph } from './use-scene-graph'
-import { followStoredOpenings, restoreOpenings, tickOpenings } from './walk-interaction'
+import { restoreOpenings } from './walk-interaction'
 import {
   emptyWalkInput,
   initialWalkState,
@@ -39,8 +39,8 @@ const LOOK_SENSITIVITY_RAD_PER_PX = 0.0025
 // camera off the wall surface yet narrow enough to step through a doorway.
 const WALK_RADIUS_MM = 250
 
-// Resumes the walk state (or seeds it from the camera the first time), seats the doors the
-// last session left open, takes control of the camera, and wires the keyboard,
+// Resumes the walk state (or seeds it from the camera the first time), poses the doors the
+// session store holds open, takes control of the camera, and wires the keyboard,
 // click-to-capture, and pointer-look listeners. Movement keys act independently of pointer
 // capture; the pointer only drives look while captured. Returns a teardown that hands the
 // pose back, removes the listeners, releases capture, and clears held input.
@@ -114,42 +114,6 @@ function useWalkCollisionInputs(): WalkCollisionInputs {
   }, [rawGraph, activeFloorId])
 }
 
-// The openings on the active floor, the candidates an interact ray can land on.
-// It rebuilds only when the scene graph or active floor changes, like the
-// collision world above.
-function useWalkOpenings(): OpeningSceneNode[] {
-  const rawGraph = useSceneGraph()
-  const activeFloorId = useActiveFloorId()
-  return useMemo(
-    () => sceneGraphForFloor(rawGraph, activeFloorId).openings,
-    [rawGraph, activeFloorId],
-  )
-}
-
-// The refs the interact key and the per-frame swing read: the live openings (kept
-// current for the keydown closure), the open/closed view-state, and each opening's
-// in-flight openness. They are walk-session view-state, never persisted edits. The
-// open/closed state follows the doors the session store holds open, copied so this
-// session's toggles never reach back into the store's set (ADR-0170). It takes the
-// store's set whenever that set changes, so a reset made in orbit mode reaches the live
-// scene. The walk keys report their own changes to the store, and following a set with
-// the same doors keeps the same state, so that echo changes nothing.
-function useWalkInteraction(savedOpenDoorIds: ReadonlySet<string>): {
-  openingsRef: RefObject<OpeningSceneNode[]>
-  interactionRef: RefObject<OpeningInteractionState>
-  opennessRef: RefObject<Map<string, number>>
-} {
-  const openings = useWalkOpenings()
-  const openingsRef = useRef<OpeningSceneNode[]>(openings)
-  openingsRef.current = openings
-  const interactionRef = useRef<OpeningInteractionState>({ openIds: new Set(savedOpenDoorIds) })
-  const opennessRef = useRef<Map<string, number>>(new Map())
-  useEffect(() => {
-    interactionRef.current = followStoredOpenings(interactionRef.current, savedOpenDoorIds)
-  }, [savedOpenDoorIds])
-  return { openingsRef, interactionRef, opennessRef }
-}
-
 // The live inputs the per-frame walk step reads: the camera and scene root it
 // writes to, the collision inputs, and the walk and interaction refs it advances.
 interface WalkFrameContext extends WalkRefs {
@@ -196,7 +160,7 @@ interface WalkCameraControlsProps {
    * changes, in both camera modes, so a reset made outside a walk animates the doors shut.
    */
   savedOpenDoorIds: ReadonlySet<string>
-  /** Reports which doors stand open, so the next session opens the same ones. */
+  /** Reports which doors stand open after each E or R press. */
   onOpenDoors: (openIds: ReadonlySet<string>) => void
 }
 
@@ -217,36 +181,26 @@ function useWalkPoseHandoff(
   return { savedWalkPoseRef, onWalkPoseRef }
 }
 
-// The props a walk session reads: everything the component takes except the scene
-// root, which reaches the session through its host.
-type WalkSessionProps = Omit<WalkCameraControlsProps, 'root'>
+// The props a walk session reads: everything the component takes except the scene root,
+// which reaches the session through its host, and the stored open set, which the opening
+// motion hook follows.
+type WalkSessionProps = Omit<WalkCameraControlsProps, 'root' | 'savedOpenDoorIds'>
 
-// Poses the openings on every newly built scene root where the session left them, in orbit
-// mode as well as walk mode, so a rebuilt scene never shows a door shut that the session
-// holds open. The refs are read as the root arrives; they are refreshed on every render, so
-// they are not dependencies.
-function useRestoreOpeningsOnNewRoot(root: SceneRoot, refs: WalkRefs): void {
-  const { openings, interaction, openness } = refs
-  useEffect(() => {
-    restoreOpenings({
-      root,
-      openings: openings.current,
-      interaction: interaction.current,
-      openness: openness.current,
-    })
-  }, [root, openings, interaction, openness])
-}
-
-// Runs a walk session for as long as walk mode is on: it holds the refs a walk advances,
-// starts the session when the mode turns on, and tears it down (reporting the pose back)
-// when it turns off or the canvas goes away. The refs come back so the frame loop steps
-// the same state the session started.
-function useWalkSession(props: WalkSessionProps, host: WalkSessionHost): WalkRefs {
+// Runs a walk session for as long as walk mode is on: it holds the walker's pose and held
+// input, starts the session (with the opening refs the opening motion hook owns) when the
+// mode turns on, and tears it down (reporting the pose back) when it turns off or the canvas
+// goes away. All the refs come back so the frame loop steps the same state the session
+// started.
+function useWalkSession(
+  props: WalkSessionProps,
+  host: WalkSessionHost,
+  openingRefs: OpeningMotionRefs,
+): WalkRefs {
   const { enabled, onUserControl, savedWalkPose, onWalkPose, onOpenDoors } = props
   const { camera, domElement, root, floorElevationMm } = host
   const stateRef = useRef<WalkState>(initialWalkState(floorElevationMm))
   const inputRef = useRef<WalkInput>(emptyWalkInput())
-  const { openingsRef, interactionRef, opennessRef } = useWalkInteraction(props.savedOpenDoorIds)
+  const { openings: openingsRef, interaction: interactionRef, openness: opennessRef } = openingRefs
   const { savedWalkPoseRef, onWalkPoseRef } = useWalkPoseHandoff(savedWalkPose, onWalkPose)
   const onOpenDoorsRef = useRef(onOpenDoors)
   onOpenDoorsRef.current = onOpenDoors
@@ -277,13 +231,7 @@ function useWalkSession(props: WalkSessionProps, host: WalkSessionHost): WalkRef
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, camera, domElement, onUserControl, openingsRef, interactionRef, opennessRef])
 
-  return {
-    state: stateRef,
-    input: inputRef,
-    openings: openingsRef,
-    interaction: interactionRef,
-    openness: opennessRef,
-  }
+  return { state: stateRef, input: inputRef, ...openingRefs }
 }
 
 /**
@@ -293,40 +241,34 @@ function useWalkSession(props: WalkSessionProps, host: WalkSessionHost): WalkRef
  * pure walk and interaction math from core and applies the result to the live
  * camera and the scene each frame; the only Three.js touch is handing the scene
  * root to the engine swing helper. Entering walk mode resumes the pose the last
- * walk left behind and the doors it left open, or seeds the camera at eye height on
- * the first walk, and takes control of the camera; leaving reports both back, so the
- * walk survives a view switch and a detour through orbit (ADR-0170). The openings stay
- * live in orbit mode too: they follow the doors the session store holds open, and the
- * per-frame tick swings them toward that set in either mode. This is rendering
- * glue that only runs under a real WebGPU canvas (foundation 6.3); its behavior is
- * proven by the scene-webgl navigation e2e.
+ * walk left behind (or seeds the camera at eye height on the first walk), poses the
+ * doors the session store holds open, and takes control of the camera; each E or R
+ * press reports which doors stand open, and leaving reports the pose back, so the walk
+ * survives a view switch and a detour through orbit (ADR-0170). The openings stay live
+ * in orbit mode too: useOpeningMotion has them follow the doors the session store holds
+ * open, and the per-frame tick swings them toward that set in either mode. This is
+ * rendering glue that only runs under a real WebGPU canvas (foundation 6.3); its
+ * behavior is proven by the scene-webgl navigation e2e.
  */
 export function WalkCameraControls(props: WalkCameraControlsProps) {
-  // Kept as one props object because the session hook reads the same shape minus the root.
-  const { enabled, root } = props
+  // Kept as one props object because the session hook reads the same shape minus the root
+  // and the stored open set.
+  const { enabled, root, savedOpenDoorIds } = props
   const camera = useThree((state) => state.camera)
   const domElement = useThree((state) => state.gl.domElement)
   const collisionInputs = useWalkCollisionInputs()
-  const walkRefs = useWalkSession(props, {
-    camera,
-    domElement,
-    root,
-    floorElevationMm: collisionInputs.floorElevationMm,
-  })
-  useRestoreOpeningsOnNewRoot(root, walkRefs)
+  // Called before the walk session, so its follow effect runs before the session starts.
+  const openingRefs = useOpeningMotion(root, savedOpenDoorIds)
+  const walkRefs = useWalkSession(
+    props,
+    { camera, domElement, root, floorElevationMm: collisionInputs.floorElevationMm },
+    openingRefs,
+  )
 
   useFrame((_state, delta) => {
+    // The walk step, gated by walk mode, runs before the opening tick, which runs in both modes.
     if (enabled) stepWalkFrame({ camera, collisionInputs, root, ...walkRefs }, delta)
-    // Runs in both camera modes; an opening at rest on its target costs one lookup.
-    tickOpenings(
-      {
-        root,
-        openings: walkRefs.openings.current,
-        interaction: walkRefs.interaction.current,
-        openness: walkRefs.openness.current,
-      },
-      delta,
-    )
+    tickOpeningMotion(root, openingRefs, delta)
   })
 
   return null
