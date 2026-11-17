@@ -19,7 +19,7 @@ export type DecodeFailure =
   | { readonly kind: 'not-a-project' }
   /** The stored version is above the version of this build. */
   | { readonly kind: 'newer-version'; readonly version: number; readonly buildVersion: number }
-  /** A migration step threw or is missing; `fromVersion` is the version that it started from. */
+  /** A migration step threw or is missing; `fromVersion` is always the schema version of the stored document. */
   | { readonly kind: 'migration-failed'; readonly fromVersion: number; readonly message: string }
   /**
    * The migrated document breaks the format rules; `document` is the migrated document. It is

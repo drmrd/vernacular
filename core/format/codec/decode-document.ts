@@ -1,9 +1,5 @@
 import { migrateProject } from '../../migrations/migrate'
-import {
-  MalformedProjectError,
-  MigrationFailedError,
-  UnsupportedSchemaVersionError,
-} from '../../migrations/types'
+import { MalformedProjectError, UnsupportedSchemaVersionError } from '../../migrations/types'
 import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../model/factories'
 import type { Project } from '../../model/types'
 import { checkCurrentSchema } from '../current-schema'
@@ -56,10 +52,9 @@ function migrationFailure(error: unknown, storedVersion: number): DecodeFailure 
       buildVersion: error.targetVersion,
     }
   }
-  const fromVersion = error instanceof MigrationFailedError ? error.fromVersion : storedVersion
   return {
     kind: 'migration-failed',
-    fromVersion,
+    fromVersion: storedVersion,
     message: describeError(error, MIGRATION_FAILED_FALLBACK),
   }
 }
