@@ -123,6 +123,12 @@ describe.each(storesBoundToOneProject)('$name, asked for an id that is not its o
     expect(await folder.readFile(FOLDER_DOCUMENT)).toEqual(before)
   })
 
+  it('holds no files', async () => {
+    const store = over(await folderHoldingADocument())
+
+    expect([...(await store.storedFiles(OTHER_ID))]).toEqual([])
+  })
+
   it('reads no file of the folder for a read or a load', async () => {
     const folder = await folderHoldingADocument()
     const store = over(folder)
