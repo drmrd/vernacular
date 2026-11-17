@@ -5,6 +5,7 @@ import {
   openingFill,
   planToWorld,
   type ElementType,
+  type HungSash,
   type OpeningFillPart,
   type OpeningSceneNode,
   type Point,
@@ -18,8 +19,18 @@ const COMPONENTS_PER_VERTEX = 3
 /** The `userData` key under which each built part mesh carries its {@link OpeningFillRole}. */
 export const OPENING_FILL_ROLE_KEY = 'openingFillRole'
 
-/** The `userData` key under which each built part mesh of a hung window carries its HungSash. */
+/** The `userData` key under which each built part mesh of a hung window carries its {@link HungSash}. */
 export const OPENING_FILL_SASH_KEY = 'openingFillSash'
+
+/**
+ * The sash that a built fill mesh belongs to. Returns `undefined` for a mesh
+ * that is not part of a hung-window sash, and for any stamp that is not
+ * `'lower'` or `'upper'`.
+ */
+export function openingFillSashOf(object: THREE.Object3D): HungSash | undefined {
+  const stamp: unknown = object.userData[OPENING_FILL_SASH_KEY]
+  return stamp === 'lower' || stamp === 'upper' ? stamp : undefined
+}
 
 /**
  * Builds the solid body for one opening as a group of thin boxes, one per fill
@@ -147,7 +158,12 @@ const BOX_FACES: ReadonlyArray<Quad> = [
   ACROSS_MAX_FACE,
 ]
 
-/** The two extents of one fill-part box, centered across the wall on the part's track offset. */
+/**
+ * The two extents of one fill-part box, centered across the wall on the part's
+ * track offset. The builder applies the offset as given and does not limit it,
+ * so a box can end up outside the wall. The fill in `core/` decides the offset,
+ * so a limit for a thin wall belongs there.
+ */
 function boxExtents(part: OpeningFillPart): BoxExtents {
   const half = part.thickness / 2
   const offset = part.acrossOffset ?? 0
