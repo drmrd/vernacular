@@ -4,7 +4,8 @@
     "units": "imperial",
     "period": "victorian",
     "style": {
-      "styleId": "queen-anne"
+      "styleId": "italianate",
+      "vernacular": true
     },
     "schemaVersion": 16,
     "appVersion": "0.3.0",
@@ -247,7 +248,12 @@
             "depth": 480
           },
           "height": 880,
-          "name": "Side chair"
+          "name": "Side chair",
+          "customizations": {
+            "parameters": {
+              "upholstery": "green-velvet"
+            }
+          }
         },
         {
           "id": "3fc31914-f54f-4365-84e6-ccec7445eff1",
@@ -276,6 +282,9 @@
       "elevation": 3150,
       "defaultCeilingHeight": 2743,
       "periodOverride": "edwardian",
+      "styleOverride": {
+        "styleId": "queen-anne"
+      },
       "walls": [
         {
           "id": "222db53c-e011-4447-9f97-f3034604a310",
@@ -425,19 +434,23 @@
     }
   ],
   "roomOverrides": {
-    "0c87bf96-3a82-47ed-9892-af81fea8fa56|34531aec-7a16-437f-a6d3-23cc8779f148|4f569a60-0c63-4ad1-8232-9a5507bf31d9|c005f9d3-82f6-48aa-acc7-c2070a4ff040": {
+    "0c87bf96-3a82-47ed-9892-af81fea8fa56-34531aec-7a16-437f-a6d3-23cc8779f148-4f569a60-0c63-4ad1-8232-9a5507bf31d9-c005f9d3-82f6-48aa-acc7-c2070a4ff040": {
       "name": "Front Parlor",
       "purpose": "parlor",
       "subPurpose": "Reception Room",
       "periodOverride": "victorian",
       "styleOverride": {
-        "styleId": "queen-anne"
+        "styleId": "gothic-revival",
+        "vernacular": true
       },
       "ceilingHeight": 3200
     },
     "222db53c-e011-4447-9f97-f3034604a310|59cf9bea-cece-4125-b0ae-9e25ac857a79|834a70ec-fac1-431f-8402-bfaf772f74aa|aa66b9c7-ff81-458e-8de2-56ff36fe8b04": {
       "name": "Primary Bedroom",
       "purpose": "primary-bedroom",
+      "styleOverride": {
+        "styleId": "queen-anne"
+      },
       "customPolygon": [
         {
           "x": 0,
@@ -572,7 +585,8 @@
             "a": 0.02462879310177854,
             "b": 0.0795511275017004
           },
-          "srgbHex": "#a9824f"
+          "srgbHex": "#a9824f",
+          "originalSpec": "stain-sample-2"
         },
         {
           "oklab": {

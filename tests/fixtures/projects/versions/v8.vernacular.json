@@ -4,7 +4,8 @@
     "units": "imperial",
     "period": "victorian",
     "style": {
-      "styleId": "queen-anne"
+      "styleId": "italianate",
+      "vernacular": true
     },
     "schemaVersion": 8,
     "appVersion": "0.2.0",
@@ -213,6 +214,9 @@
       "elevation": 3150,
       "defaultCeilingHeight": 2743,
       "periodOverride": "edwardian",
+      "styleOverride": {
+        "styleId": "queen-anne"
+      },
       "walls": [
         {
           "id": "222db53c-e011-4447-9f97-f3034604a310",
@@ -332,13 +336,17 @@
       "subPurpose": "Reception Room",
       "periodOverride": "victorian",
       "styleOverride": {
-        "styleId": "queen-anne"
+        "styleId": "gothic-revival",
+        "vernacular": true
       },
       "ceilingHeight": 3200
     },
     "222db53c-e011-4447-9f97-f3034604a310-59cf9bea-cece-4125-b0ae-9e25ac857a79-834a70ec-fac1-431f-8402-bfaf772f74aa-aa66b9c7-ff81-458e-8de2-56ff36fe8b04": {
       "name": "Primary Bedroom",
       "purpose": "primary-bedroom",
+      "styleOverride": {
+        "styleId": "queen-anne"
+      },
       "customPolygon": [
         {
           "x": 0,

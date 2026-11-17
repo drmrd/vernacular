@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, createDocumentValidator, migrateProject } from '../../core'
 import type { DocumentValidationResult } from '../../core'
 import { VERSION_FIXTURE_VERSIONS, versionFixtureBytes } from '../fixtures/projects/versions'
-import { missingElementKinds } from './version-fixture-coverage'
+import { missingSchemaPaths } from './version-fixture-coverage'
 import type { RootSchema } from './version-fixture-coverage'
 
 /** The oldest schema version that is published under schema/. */
@@ -44,23 +44,19 @@ function describeMigratedErrors(version: number, result: DocumentValidationResul
   return listErrors(heading, result)
 }
 
-/** Migrate the fixture with default options; a throw becomes a result that names the version. */
-function validateMigrated(version: number): { result: DocumentValidationResult; message: string } {
-  const validate = createDocumentValidator(loadSchema(CURRENT_SCHEMA_VERSION))
-  try {
-    const result = validate(migrateProject(loadFixture(version)))
-    return { result, message: describeMigratedErrors(version, result) }
-  } catch (error) {
-    const thrown = error instanceof Error ? error.message : String(error)
-    const message = `The version ${version} fixture made migrateProject throw: ${thrown}`
-    return { result: { valid: false, errors: [] }, message }
-  }
+function migratedRoomKeys(version: number): string[] {
+  return Object.keys(migrateProject(loadFixture(version)).roomOverrides ?? {}).sort()
 }
 
-function describeMissingKinds(version: number, missing: readonly string[]): string {
+function currentRoomKeys(): string[] {
+  const rooms = loadFixture(CURRENT_SCHEMA_VERSION).roomOverrides as object | undefined
+  return Object.keys(rooms ?? {}).sort()
+}
+
+function describeMissingPaths(version: number, missing: readonly string[]): string {
   const lines = missing.map((path) => `  ${path}`)
   return [
-    `The version ${version} fixture lacks an instance of each element kind that ${schemaPath(version)} defines:`,
+    `The version ${version} fixture never carries ${missing.length} path(s) that ${schemaPath(version)} requires:`,
     ...lines,
   ].join('\n')
 }
@@ -85,13 +81,21 @@ describe('the fixtures for every schema version', () => {
     })
 
     it('migrates to a document that the current schema accepts', () => {
-      const { result, message } = validateMigrated(version)
-      expect(result.valid, message).toBe(true)
+      const validate = createDocumentValidator(loadSchema(CURRENT_SCHEMA_VERSION))
+      const result = validate(migrateProject(loadFixture(version)))
+      expect(result.valid, describeMigratedErrors(version, result)).toBe(true)
     })
 
-    it('carries at least one instance of every element kind that its version defines', () => {
-      const missing = missingElementKinds(loadSchema(version), loadFixture(version))
-      expect(missing, describeMissingKinds(version, missing)).toEqual([])
+    it('migrates to the room override keys of the current fixture', () => {
+      const actual = migratedRoomKeys(version)
+      const expected = currentRoomKeys()
+      const message = `The version ${version} fixture migrates to room override keys [${actual.join(', ')}], and the version ${CURRENT_SCHEMA_VERSION} fixture holds [${expected.join(', ')}]`
+      expect(actual, message).toEqual(expected)
+    })
+
+    it('carries every property, collection and union variant that its version declares', () => {
+      const missing = missingSchemaPaths(loadSchema(version), loadFixture(version))
+      expect(missing, describeMissingPaths(version, missing)).toEqual([])
     })
   })
 })
