@@ -758,6 +758,8 @@ export {
   createDaylightField,
   DAYLIGHT_FIELD_CELL_SIZE_MM,
   daylightFieldCellIndex,
+  DEFAULT_WINDOW_NET_TRANSMITTANCE,
+  OPEN_DOORWAY_NET_TRANSMITTANCE,
   sampleSkyVisibility,
   SKY_VISIBILITY_CHANNEL,
 } from './daylight/daylight-field'

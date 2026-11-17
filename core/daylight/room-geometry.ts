@@ -5,6 +5,8 @@ import type { DaylightAperture, DaylightField, DaylightRoom } from './daylight-f
 import {
   createDaylightField,
   daylightFieldCellIndex,
+  DEFAULT_WINDOW_NET_TRANSMITTANCE,
+  OPEN_DOORWAY_NET_TRANSMITTANCE,
   SKY_VISIBILITY_CHANNEL,
 } from './daylight-field'
 import type { WallRectangle } from './form-factor'
@@ -44,11 +46,11 @@ export interface CellView {
 /**
  * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
  * the room it opens to. `openingArea` is the width times the height from sill to head, in plan
- * square millimetres.
+ * square millimetres. `netTransmittance` is the share of light that the opening passes.
  */
 export type ApertureGeometry =
-  | { kind: 'sky'; direction: Vector3; openingArea: number }
-  | { kind: 'doorway'; neighbor: number; openingArea: number }
+  | { kind: 'sky'; direction: Vector3; openingArea: number; netTransmittance: number }
+  | { kind: 'doorway'; neighbor: number; openingArea: number; netTransmittance: number }
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
@@ -111,9 +113,19 @@ function apertureGeometry(opening: Opening): ApertureGeometry {
   const width = Math.hypot(end.x - start.x, end.y - start.y)
   const openingArea = width * Math.max(0, aperture.head - aperture.sill)
   if (aperture.opensTo === 'sky') {
-    return { kind: 'sky', direction: skyDirection(opening.outwardNormal), openingArea }
+    return {
+      kind: 'sky',
+      direction: skyDirection(opening.outwardNormal),
+      openingArea,
+      netTransmittance: aperture.netTransmittance ?? DEFAULT_WINDOW_NET_TRANSMITTANCE,
+    }
   }
-  return { kind: 'doorway', neighbor: aperture.opensTo.room, openingArea }
+  return {
+    kind: 'doorway',
+    neighbor: aperture.opensTo.room,
+    openingArea,
+    netTransmittance: aperture.netTransmittance ?? OPEN_DOORWAY_NET_TRANSMITTANCE,
+  }
 }
 
 /** Form factor from a work-plane point to the part of an opening that its reveal leaves visible. */
