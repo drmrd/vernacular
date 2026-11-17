@@ -37,10 +37,13 @@ color check's bypass of the field, the engine texture, and the bounce channels a
 yet, and they are listed below. The record stays proposed until the window-lit rooms land and the
 owner ratifies it. It amends no other record while it is proposed.
 
-This record changes two sentences of spec section 6.8. The grid now has a margin of two cells on
+This record changes three sentences of spec section 6.8. The grid now has a margin of two cells on
 every side, so a 12 by 9 m floor is 124 by 94 cells and not 120 by 90. A cell next to a room now
 holds that room's visibility, so not every cell outside the rooms holds 1. Both changes fix the
-strip of open sky along the inside of each wall that issue #753 reported.
+strip of open sky along the inside of each wall that issue #753 reported. The third sentence said
+that the offset along the surface normal keeps a thin partition from bleeding light between rooms.
+That is not true of floors and ceilings, or of every wall face: with 100 mm cells, a filtered
+lookup near a wall thinner than 200 mm blends its two sides, as the known limits below state.
 
 ## Context
 
@@ -65,12 +68,13 @@ blue, and sky visibility. The data is row-major, and row 0 starts at the origin'
 is 100 mm (`DAYLIGHT_FIELD_CELL_SIZE_MM`). The origin is the lower corner of the bounding box of
 the floor's room outlines, snapped down to a multiple of the cell size and then moved two cells
 further down on each axis (`DAYLIGHT_FIELD_MARGIN_CELLS`). The grid ends two cells past the first
-cell edge at or beyond the far side of the box. So rooms of 12 by 9 m take 124 columns and 94
-rows, and a 4000 by 3000 mm room at the plan origin has its grid origin at (-200, -200) with 44
-columns and 34 rows. The inner margin cell can hold a room's value under a wall that lies on the
-box. The outer one always holds open sky, so a lookup that clamps to the edge of the grid reads 1
-outside it. Sky visibility is channel 3 (`SKY_VISIBILITY_CHANNEL`). The bounce channels hold 0 for
-now.
+cell edge at or beyond the far side of the box. So rooms of 12 by 9 m whose lower corner lies on a
+multiple of the cell size take 124 columns and 94 rows. With the corner off the grid on both axes
+they take 125 by 95. A 4000 by 3000 mm room at the plan origin has its grid origin at (-200, -200)
+with 44 columns and 34 rows. The inner margin cell can hold a room's value under a wall that lies
+on the box. The outer one always holds open sky, so a lookup that clamps to the edge of the grid
+reads 1 outside it. Sky visibility is channel 3 (`SKY_VISIBILITY_CHANNEL`). The bounce channels
+hold 0 for now.
 
 ### The inputs
 
@@ -223,10 +227,23 @@ measured numbers are reported, not asserted.
   percent over 75 mm for a 50 mm wall, and none from 200 mm. The bound holds because a cell under
   a wall copies the room whose outline is nearer. Outside an exterior wall of thickness t, the
   ground at the foot of the wall can read up to 2 - t / 100 of the room's value (all of it for a
-  wall under 100 mm), over at most 200 - t mm. The wall faces are not affected, because their
-  lookup is offset one cell along the normal, as in the lighting hook spike. The window-lit rooms
-  work (issue #789) chooses between a 50 mm cell and a room index for each cell, from real
-  pictures.
+  wall under 100 mm), over at most 200 - t mm. A wall face looks the field up one cell along its
+  normal, as in the lighting hook spike, but that does not keep every face clear. Where a 114 mm
+  partition meets another wall, the other wall's face reads up to 43 percent of the room across
+  the partition, within 43 mm of the inside corner. The outer face of an exterior wall thinner than
+  100 mm reads up to 1 - t / 100 of the room's value. The window-lit rooms work (issue #789)
+  chooses between a 50 mm cell and a room index for each cell, from real pictures.
+- A corner sharper than a right angle, or a neck of a room narrower than one cell, can leave cells
+  inside the room that hold open sky, because no room cell lies next to them. In a sweep of grid
+  positions and turns, a filtered lookup read at least half open sky up to 71 mm from the tip of a
+  45 degree corner and 136 mm from a 30 degree one, and the middle of a 1 m neck 80 mm wide held 1
+  at one grid position in five. The window-lit rooms work (#789) decides the lookup.
+- A sliver room narrower than one cell can own no cell center, and then a lookup inside it reads
+  its neighbor's value. A 60 mm room open to the sky between two dark rooms owned no center at four
+  grid positions in ten, and there it read 0. The window-lit rooms work (#789) decides the lookup.
+- The copy step carries the sky visibility only, so a cell under a wall gets none of its room's
+  bounce color. The window-lit rooms work (#789) decides the lookup before the bounce channels
+  fill.
 - The code does not cap a hall's flux at the source room's, and a hall can receive more. In the
   sweep of ordinary rooms in `core/daylight/doorway-luminance.test.ts`, the hall receives at most
   0.724 of the source's flux, for a source room of 500 by 6000 mm with a white floor. That test
