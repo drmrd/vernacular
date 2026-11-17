@@ -1,9 +1,12 @@
 import {
   test,
   expect,
+  type FullProject,
   type Locator,
   type Page,
   type PlaywrightWorkerOptions,
+  type WorkerFixture,
+  type WorkerInfo,
 } from '@playwright/test'
 import { gotoEditor } from './support'
 import { drawnRoomCanvas, stableFrame } from '../scene-helpers'
@@ -24,9 +27,10 @@ import { drawnRoomCanvas, stableFrame } from '../scene-helpers'
 // Self-skip policy: the live pane is gated on WebGPU and shows an unsupported-browser message
 // otherwise (issue #476), and the sample is read out of a real 3D drawing buffer. A runner
 // missing either capability skips rather than fails, following the WebGPU guard in
-// scene-live-view.spec.ts and the WebGL 2 context probe in the scene harness specs. On the
-// macOS live-view CI job and the development Mac the journey runs; on the linux runners it
-// skips.
+// scene-live-view.spec.ts and the WebGL 2 context probe in the scene harness specs, so the
+// journey skips on the linux runners. Where it must run, E2E_REQUIRE_WEBGPU=1 turns that skip
+// into a failure. The macOS live-view CI job sets it, so a runner image that loses its adapter
+// fails the job instead of passing it with a silent skip.
 
 // A CSS hex color in the form the readout writes: '#' followed by six hex digits.
 const PERCEIVED_HEX = /^#[0-9a-f]{6}$/i
@@ -45,41 +49,50 @@ const FAR_WALL = 'Wall 1'
 const INNER_FACE = 'B'
 
 // The live pane raises this once the stored session has been applied and a frame has drawn
-// since the render pipeline settled, so a click after it meets the framed room.
+// since the last render-pipeline build settled. It follows the render pipeline only, not the
+// meshes the drawn room derives, so the journey also waits for a stable frame before it clicks.
 const LIVE_VIEW_READY = '[data-live-view-ready="true"]'
 
-// The `chromium` project launches the stripped-down headless shell, which exposes
-// navigator.gpu but refuses every adapter. On macOS this journey asks for the full Chromium
-// build and the same GPU launch flags that the scene-webgl project uses on darwin (see
-// SCENE_WEBGL_LAUNCH_ARGS in playwright.config.ts), which give the live pane a Metal-backed
-// WebGPU adapter. Other browsers and other platforms keep their project defaults and fall
-// through to the self-skip guard below.
-const DARWIN_GPU_LAUNCH_ARGS = [
-  '--enable-unsafe-webgpu',
-  '--use-angle=metal',
-  '--use-gpu-in-tests',
-  '--ignore-gpu-blocklist',
-]
+// Set where the journey must run rather than skip: the guard below then fails when the runner
+// lacks a WebGPU adapter or a WebGL 2 context.
+const LIVE_SCENE_REQUIRED = process.env.E2E_REQUIRE_WEBGPU === '1'
 
-function wantsGpuChromium(browserName: PlaywrightWorkerOptions['browserName']): boolean {
+// The `chromium` project launches the stripped-down headless shell, which exposes
+// navigator.gpu but refuses every adapter. On macOS this journey takes the browser channel and
+// the launch options of the scene-webgl project from the loaded Playwright configuration, which
+// give the live pane a Metal-backed WebGPU adapter, so the two cannot drift apart. Other
+// browsers and other platforms keep their own project settings and fall through to the guard.
+const GPU_PROJECT = 'scene-webgl'
+
+type BrowserName = PlaywrightWorkerOptions['browserName']
+
+function wantsGpuChromium(browserName: BrowserName): boolean {
   return browserName === 'chromium' && process.platform === 'darwin'
 }
 
-type WorkerFixtureUse<T> = (value: T) => Promise<void>
-type BrowserNameArg = Pick<PlaywrightWorkerOptions, 'browserName'>
-
-async function gpuChannel(
-  { browserName }: BrowserNameArg,
-  provide: WorkerFixtureUse<PlaywrightWorkerOptions['channel']>,
-): Promise<void> {
-  await provide(wantsGpuChromium(browserName) ? 'chromium' : undefined)
+function workerUse(browserName: BrowserName, workerInfo: WorkerInfo): FullProject['use'] {
+  if (!wantsGpuChromium(browserName)) return workerInfo.project.use
+  const gpuProject = workerInfo.config.projects.find((project) => project.name === GPU_PROJECT)
+  if (gpuProject === undefined) {
+    throw new Error(`the Playwright configuration has no ${GPU_PROJECT} project to borrow from`)
+  }
+  return gpuProject.use
 }
 
-async function gpuLaunchOptions(
-  { browserName }: BrowserNameArg,
-  provide: WorkerFixtureUse<PlaywrightWorkerOptions['launchOptions']>,
-): Promise<void> {
-  await provide(wantsGpuChromium(browserName) ? { args: DARWIN_GPU_LAUNCH_ARGS } : {})
+// Playwright reads a fixture's dependencies from the destructured first argument, so each
+// fixture names browserName there.
+const gpuChannel: WorkerFixture<
+  PlaywrightWorkerOptions['channel'],
+  PlaywrightWorkerOptions
+> = async ({ browserName }, provide, workerInfo) => {
+  await provide(workerUse(browserName, workerInfo).channel)
+}
+
+const gpuLaunchOptions: WorkerFixture<
+  PlaywrightWorkerOptions['launchOptions'],
+  PlaywrightWorkerOptions
+> = async ({ browserName }, provide, workerInfo) => {
+  await provide(workerUse(browserName, workerInfo).launchOptions ?? {})
 }
 
 test.use({
@@ -104,13 +117,19 @@ function selectionStatusOf(page: Page): Locator {
 // buffer, so both capabilities gate this journey. Presence of navigator.gpu is not enough:
 // headless builds can expose the API while refusing every adapter, which mounts a pane that
 // never renders a frame, so the guard asks for a real adapter.
-async function skipWithoutLiveSceneSupport(page: Page): Promise<void> {
+async function guardLiveSceneSupport(page: Page): Promise<void> {
   const support = await page.evaluate(async () => {
     const probe = document.createElement('canvas')
     const gpu = (navigator as { gpu?: { requestAdapter(): Promise<unknown | null> } }).gpu
     const adapter = gpu === undefined ? null : await gpu.requestAdapter().catch(() => null)
     return { webGpuAdapter: adapter !== null, webGl2: probe.getContext('webgl2') !== null }
   })
+  if (LIVE_SCENE_REQUIRED) {
+    expect(
+      support,
+      'E2E_REQUIRE_WEBGPU is set, so this runner must provide a WebGPU adapter and a WebGL 2 context',
+    ).toEqual({ webGpuAdapter: true, webGl2: true })
+  }
   test.skip(
     !support.webGpuAdapter,
     'The live 3D preview requires a working WebGPU adapter; the perceived-color readout self-skips without one.',
@@ -145,6 +164,24 @@ async function clickTheFarWallInnerFace(page: Page, canvas: Locator): Promise<vo
   )
 }
 
+// Paints the active face and waits for a settled frame that shows the paint. The inspector
+// offers the finish choices only for a face that carries a solid paint, so their arrival
+// proves the paint landed on that face. The frame must then change before it settles: two
+// equal screenshots taken before the rebuilt meshes draw would also look stable.
+async function paintAndAwaitPaintedFrame(inspector: Locator, canvas: Locator): Promise<void> {
+  const finishChoices = inspector.getByRole('group', { name: 'Finish', exact: true })
+  await expect(finishChoices).toHaveCount(0)
+  const unpaintedFrame = await stableFrame(canvas)
+  await inspector.getByRole('button', { name: PAINT_NAME }).click()
+  await expect(finishChoices).toBeVisible()
+  await expect
+    .poll(async () => (await canvas.screenshot()).equals(unpaintedFrame), {
+      message: 'waiting for the live 3D canvas to draw the painted face',
+    })
+    .toBe(false)
+  await stableFrame(canvas)
+}
+
 // The hex the readout chip shows, once the chip is on screen and its text matches its data.
 async function perceivedHexOf(chip: Locator): Promise<string> {
   await expect(chip).toHaveAttribute('data-perceived', PERCEIVED_HEX)
@@ -158,10 +195,11 @@ test('shows the perceived color of a painted surface clicked in the live 3D view
   page,
 }) => {
   await gotoEditor(page)
-  await skipWithoutLiveSceneSupport(page)
+  await guardLiveSceneSupport(page)
 
   const canvas = await drawnRoomCanvas(page)
   await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+  await stableFrame(canvas)
   await expectClickToSelectOnByDefault(page)
   const inspector = inspectorOf(page)
   const chip = inspector.locator('[data-perceived]')
@@ -170,13 +208,13 @@ test('shows the perceived color of a painted surface clicked in the live 3D view
   await clickTheFarWallInnerFace(page, canvas)
   const unpainted = await perceivedHexOf(chip)
 
-  // Paint the face, let the painted frame settle, then click the face again, so the sample
-  // that lands is taken from a frame that already shows the paint. Painting rebuilds the wall
-  // meshes, and the near-wall fade marks the rebuilt near wall as see-through when the next
-  // frame draws, so the settled frame is also the one in which the click passes through the
-  // near wall, as it does for a person who sees the paint land before clicking again.
-  await inspector.getByRole('button', { name: PAINT_NAME }).click()
-  await stableFrame(canvas)
+  // Paint the face, wait for the painted frame, then click the face again. The wait works
+  // around a product defect (issue ISSUE-click-after-paint): a click before the first frame
+  // after a paint can pick the faded near wall, and the readout then shows the far wall's
+  // pixel under the near wall's name. The mechanism is inferred, not proven: painting rebuilds
+  // the wall meshes, and the rebuilt near wall is most likely marked as faded only when the
+  // next frame draws.
+  await paintAndAwaitPaintedFrame(inspector, canvas)
   await clickTheFarWallInnerFace(page, canvas)
 
   // The readout is read a frame after the click, so this web-first assertion retries until
