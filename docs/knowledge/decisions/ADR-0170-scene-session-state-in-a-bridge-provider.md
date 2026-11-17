@@ -217,18 +217,32 @@ on a stable schematic view. Only the next build or a remount of the view cleared
 
 `AmbientOcclusionRenderTakeover` now sends `onPipelineSettled` when an active period ends, either
 because realistic lighting turns off or because the takeover unmounts. A second effect in the
-takeover, keyed on the active gate and the settle callback, sends it from its cleanup. The view
-does not count as ready at once. It counts as ready after the next drawn frame, because the frame
-on screen at the toggle can still show the realistic lighting, and a capture must not take it.
+takeover, keyed on the active gate and the settle callback, sends it from its cleanup. If a build
+was in flight at that moment, the view does not count as ready at once. It counts as ready after
+the next drawn frame, because the frame on screen at the toggle can still show the realistic
+lighting, and a capture must not take it. A build that rejects settles as well: the hook catches
+the error, warns on the first failure, and still calls its settle callback, so the view becomes
+ready and draws through the plain renderer fallback.
 
 Those two moments cover every cancel path. While the takeover stays active, a teardown of the
-build hook comes from a new renderer, scene, camera, or callback, and the hook's setup then starts
-a new build in the same effect flush. So only lighting off and unmount stop a build with no build
-after it. A replacement is safe because of the order of effects. Both effects are passive, and the
-cleanups of a flush run before its setups, so the start note of the new build lands after any
-settle note and re-arms the ref before a frame draws. That order comes from how the UI library
-runs effects. Its commit code (version 19.2.6) was read to confirm it, and the guard tests below
-exercise it.
+build hook comes from a change to one of its effect inputs, and the hook's setup then starts a new
+build in the same effect flush. So only lighting off and unmount stop a build with no build after
+it. The replacements differ in which effects run:
+
+- A new renderer, scene, or camera re-runs only the hook's build effect. The takeover's effect
+  does not run and sends no settle note, and the start note of the new build keeps the view
+  waiting.
+- A new identity of the settle callback re-runs both effects in one update. The settle note of
+  the old period must then land before the start note of the new build, or a frame of the new
+  build would count as ready. It does land first, because both effects are passive and the
+  cleanups of a flush run before its setups. That order comes from how the UI library runs
+  effects, and its commit code (version 19.2.6) was read to confirm it. The application does not
+  make this update today, since `useLiveViewReadiness` memoizes its notes on the store, so the
+  rule guards a later change.
+
+The application renders under strict mode (`src/main.tsx`), which in development runs each effect
+a second time on mount. That second run also does every cleanup before every setup, so the view
+keeps waiting for the second build.
 
 The build hook keeps its own rule that a cancelled build never reports settlement. The scene
 harness calls `useAmbientOcclusion` directly and waits on its settle callback before it draws the
@@ -236,30 +250,51 @@ ready frame, so it must not see a cancelled build as settled
 ([[ADR-0151-ambient-occlusion-render-pipeline]]).
 
 The alternative was a third callback on the hook, fired from the teardown only for a build still
-in flight. It is more exact, and it keeps the build lifecycle in one place. But the
-hook is at its parameter limit, so it would need an options object and a change at the harness
-call site. Both designs give the same results today. The cost of this one: the takeover derives
-the active gate beside the hook. If a later change adds a cancel inside the hook that starts no new
-build while the gate stays active, that path will need its own note.
+in flight. It is more exact, and it keeps the build lifecycle in one place. But the hook is at its
+parameter limit, so it would need an options object and a change at the harness call site. Both
+designs give the same results today. The cost of this one: the takeover derives the active gate
+beside the hook. If a later change adds a cancel inside the hook that starts no new build while
+the gate stays active, that path will need its own note.
 
 `bridge/react/ambient-occlusion-render-takeover.test.tsx` renders the takeover with a fake pipeline
-builder, so each test decides when a build resolves. Its four cases:
+builder, so each test decides when a build resolves. Its six cases:
 
 - Lighting off during a build: the view is ready after the next frame, the takeover sends one
   settle note, and the late completion sends none.
 - A camera change replaces a build in flight: the view keeps waiting for the replacement.
 - Lighting off and on with no frame between: the view keeps waiting for the new build.
 - Unmount during a build: one settle note, and none from the late completion.
+- A render under strict mode: two builds start, the view keeps waiting for the second, and the
+  late first build changes nothing.
+- A new identity of the settle callback during a build: a second build starts, the view keeps
+  waiting, and the late first build changes nothing.
 
-Run with the readiness hook and provider tests, the three files pass 6 of 6 tests. One run at
-commit `31bc0faf` removed the guard that keeps a stopped build quiet, so a stopped build reported
-late. All four cases failed. Cases one and four failed on the count of settle notes (2 where 1 is
-expected), and cases two and three on the readiness fact. The file was restored after the run.
+Run with the readiness hook and provider tests, the three files pass 8 of 8 tests.
+
+Two runs with a temporary change showed that the cases can fail. The file was restored after each
+run.
+
+- At commit `31bc0faf`, when the file had its first four cases, the guard that keeps a stopped
+  build quiet was removed, so a stopped build reported late. All four cases failed. The
+  lighting-off case and the unmount case failed on the count of settle notes (2 where 1 is
+  expected), and the other two on the readiness fact.
+- At commit `11ca158b`, the hook's build effect was changed from a passive effect to a layout
+  effect. In an ordinary update that puts the start note of a replacement before the settle note.
+  The settle-callback case failed, because the view read ready during the new build, and the
+  other five passed. That case is the one that pins the order. The strict mode case passed under
+  this change, because the strict second run does all cleanups before all setups across both
+  kinds of effect. It guards strict mode, not the kind of the effects.
 
 No live run on a real GPU view was made. Turning lighting off before a real build resolves is a
 race that cannot be reproduced on demand, so the unit tests are the only proof.
 
-One limit found on the way is left for a follow-up issue. Nothing resets `sessionRestored` or
-`frameDrawnSincePipelineSettled` when the 3D view unmounts, and the store lives above the view. So
-after a remount in schematic lighting the attribute can read `"true"` before the new canvas draws.
-This was read from the code, not run.
+Two limits found on the way are older than this change. Both are left for one follow-up issue:
+
+- Nothing resets `sessionRestored` or `frameDrawnSincePipelineSettled` when the 3D view unmounts,
+  and the store lives above the view. So after a remount in schematic lighting the attribute can
+  read `"true"` before the new canvas draws. This was read from the code, not run.
+- When lighting turns off after a build has settled, the drawn-frame fact stays true through the
+  toggle. A frame drawn before the effects of the change run still goes through the old pipeline,
+  so the attribute can read `"true"` over a frame of the old lighting. The visual-regression gate
+  and the two journeys that read the attribute wait for a stable frame after it. The startup spec
+  reads it too, and after it waits only for the canvas to reach its settled size.
