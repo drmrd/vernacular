@@ -88,6 +88,7 @@ export class DocumentStore {
     return Promise.all(ids.map(async (id) => ({ id, lastChangedAt: await this.changedAt(id) })))
   }
 
+  /** The time of the last change, or undefined whenever it cannot be read, for any reason. */
   private async changedAt(id: string): Promise<string | undefined> {
     try {
       return await this.files.projectDirectory(id).modifiedAt(PROJECT_FILE)

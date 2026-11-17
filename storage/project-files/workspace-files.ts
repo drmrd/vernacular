@@ -31,7 +31,11 @@ export class WorkspaceFiles implements RemovableProjectFiles {
     return candidates.filter((_name, index) => documentFlags[index]).sort()
   }
 
-  /** Any id: the id guard in `projectDirectory` rejects an id that is not a safe name. */
+  /**
+   * True for every id, as a workspace is one root for all projects. An id that cannot name a
+   * project directory (empty, with a slash, a dot segment, the name of the asset pool) is still
+   * refused with `InvalidProjectIdError` when `projectDirectory` is asked for it.
+   */
   holds(_id: string): boolean {
     void _id
     return true
