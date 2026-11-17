@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { createEmptyProject, createFloor } from '../../core'
+import { createEmptyProject, createFloor, encodeDocument } from '../../core'
 import type { Project } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { FolderProjectStore } from './folder-project-store'
-import { serializeProjectJson } from './project-json'
 
 const TARGET_VERSION = 2
 
@@ -43,7 +42,9 @@ function nextProject(): Project {
 /** A stored file that carries one key an old migration removes and one key nobody knows. */
 function storedDocument(version: number): StoredDocument {
   const document = JSON.parse(
-    new TextDecoder().decode(serializeProjectJson(withSchemaVersion(nextProject(), version))),
+    new TextDecoder().decode(
+      encodeDocument(withSchemaVersion(nextProject(), version), undefined).bytes,
+    ),
   ) as StoredDocument
   document.floors[0]!['legacyElevation'] = 9
   document.floors[0]!['fromANewerBuild'] = { note: 'planted' }

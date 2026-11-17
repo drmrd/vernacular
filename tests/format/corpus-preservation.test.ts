@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { encodeDocument } from '../../core'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
 import { FolderProjectStore } from '../../storage/folder/folder-project-store'
-import { serializeProjectJson } from '../../storage/folder/project-json'
 
 // Extension keys are reverse-DNS namespaces (spec section 6.3), not camelCase by design.
 const COVERED_OUTDOOR_NAMESPACE = 'org.vernacular.covered-outdoor'
@@ -93,7 +93,7 @@ describe('corpus documents survive a folder store round-trip with no edit', () =
 
       const saved = await directory.readFile('vernacular.json')
       expect(new TextDecoder().decode(saved!)).toBe(
-        new TextDecoder().decode(serializeProjectJson(loaded)),
+        new TextDecoder().decode(encodeDocument(loaded, undefined).bytes),
       )
     },
   )

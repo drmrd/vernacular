@@ -1,11 +1,37 @@
 // @vitest-environment node
 // Pure storage logic; node aligns TextEncoder/Uint8Array realms with serialization.
-import { describe, expect, it } from 'vitest'
-import { createEmptyProject, type Project } from '../../core'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CURRENT_SCHEMA_VERSION, createEmptyProject, type Project } from '../../core'
+import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { SnapshotStore } from './snapshot-store'
 
 const AUTOSAVE_DIRECTORY = '.house-autosave'
+const OLDEST_FIXTURE_VERSION = 8
+const UNKNOWN_WALL_FIELD = 'x-unknown'
+const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_WALL_FIELD}`
+
+interface StoredDocument {
+  floors: { walls: Record<string, unknown>[] }[]
+}
+
+function bytesFailingTheCheck(): Uint8Array {
+  const document = JSON.parse(
+    new TextDecoder().decode(versionFixtureBytes(CURRENT_SCHEMA_VERSION)),
+  ) as StoredDocument
+  document.floors[0]!.walls[0]![UNKNOWN_WALL_FIELD] = 1
+  return new TextEncoder().encode(JSON.stringify(document))
+}
+
+async function storeHoldingSnapshot(bytes: Uint8Array): Promise<SnapshotStore> {
+  const directory = new InMemoryDirectory()
+  await directory.writeFile(`${AUTOSAVE_DIRECTORY}/snapshot-1.json`, bytes)
+  return new SnapshotStore(directory)
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function projectNamed(name: string): Project {
   const project = createEmptyProject({
@@ -98,5 +124,25 @@ describe('SnapshotStore', () => {
     expect(await store.restore()).toBeUndefined()
     expect(await store.isRecoverable()).toBe(false)
     expect(await directory.list(AUTOSAVE_DIRECTORY)).toEqual([])
+  })
+
+  it('restores a version 8 snapshot as a document at the current schema version', async () => {
+    const store = await storeHoldingSnapshot(versionFixtureBytes(OLDEST_FIXTURE_VERSION))
+
+    const restored = await store.restore()
+
+    expect(restored?.meta.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+  })
+
+  it('restores the migrated document of a snapshot that fails the check and warns of the fault', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const store = await storeHoldingSnapshot(bytesFailingTheCheck())
+
+    const restored = await store.restore()
+
+    expect(restored?.floors[0]?.walls[0]).toHaveProperty(UNKNOWN_WALL_FIELD, 1)
+    expect(
+      warn.mock.calls.some((args) => JSON.stringify(args).includes(UNKNOWN_WALL_FIELD_PATH)),
+    ).toBe(true)
   })
 })

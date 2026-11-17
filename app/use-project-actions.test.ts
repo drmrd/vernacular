@@ -3,8 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { useProjectActions, type ProjectActionsContext } from './use-project-actions'
 import { type NotificationApi } from '../editor/design-system'
 import { createEditorSession } from '../bridge'
-import { createEmptyProject } from '../core'
-import { serializeProjectJson } from '../storage/folder/project-json'
+import { createEmptyProject, encodeDocument } from '../core'
 import {
   InMemoryAssetCache,
   InMemoryProjectStore,
@@ -43,7 +42,7 @@ function fakeNotifications(): NotificationApi {
 }
 
 function jsonFileFor(project: ReturnType<typeof sampleProject>): File {
-  const bytes = serializeProjectJson(project)
+  const { bytes } = encodeDocument(project, undefined)
   return new File([bytes.buffer as ArrayBuffer], 'house.json')
 }
 

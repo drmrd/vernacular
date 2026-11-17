@@ -5,6 +5,7 @@ import {
   createEmptyProject,
   createFloor,
   createFurnitureInstance,
+  encodeDocument,
   placeFurniture,
   registerAllProjectCommands,
   setFloorPeriod,
@@ -14,7 +15,6 @@ import {
 import type { Command, Project } from '../../core'
 import { InMemoryDirectory } from '../../storage/fs/in-memory-directory'
 import { FolderProjectStore } from '../../storage/folder/folder-project-store'
-import { serializeProjectJson } from '../../storage/folder/project-json'
 
 const FLOOR_ID = 'floor-1'
 const FURNITURE_ID = 'furniture-1'
@@ -70,7 +70,10 @@ async function storeHoldingFullDocument(): Promise<{
   directory: InMemoryDirectory
 }> {
   const directory = new InMemoryDirectory()
-  await directory.writeFile('vernacular.json', serializeProjectJson(projectWithEveryFieldSet()))
+  await directory.writeFile(
+    'vernacular.json',
+    encodeDocument(projectWithEveryFieldSet(), undefined).bytes,
+  )
   return { store: new FolderProjectStore(directory), directory }
 }
 
