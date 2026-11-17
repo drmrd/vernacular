@@ -17,8 +17,8 @@ function isAbsentEntry(error: unknown): boolean {
  * DirectoryPort over the File System Access API. Backs the durable OPFS store
  * and any user-granted folder handle. Paths are forward-slash with no leading
  * slash, matching the DirectoryPort contract. removeTree removes a directory with everything
- * under it and leaves a file at its path alone. removeFile does not remove a non-empty directory;
- * the handle's non-recursive removal can take an empty one.
+ * under it and leaves a file at its path alone. removeFile removes a file and leaves a directory at
+ * its path alone, empty or not.
  */
 export class FileSystemDirectory implements DirectoryPort {
   constructor(private readonly root: FileSystemDirectoryHandle) {}
@@ -88,9 +88,12 @@ export class FileSystemDirectory implements DirectoryPort {
       return
     }
     try {
+      // Asking for a file handle first keeps a directory out of reach: the non-recursive removal
+      // would take an empty directory or reject for a full one.
+      await dir.getFileHandle(name)
       await dir.removeEntry(name)
     } catch (error) {
-      // Removing an absent file is a no-op per the DirectoryPort contract.
+      // Removing an absent file, or a path that names a directory, is a no-op per the contract.
       if (isAbsentEntry(error)) {
         return
       }
