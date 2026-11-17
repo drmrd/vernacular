@@ -55,6 +55,7 @@ describe('IndexedDbDirectory in a real browser', () => {
   describeModificationTime()
   describeValueSizes()
   describeUnavailableDatabase()
+  describeCallsDuringABlockedUpgrade()
 })
 
 function describeDurability(): void {
@@ -156,4 +157,53 @@ function describeUnavailableDatabase(): void {
 
     await expect(new IndexedDbDirectory(name).readFile('x')).rejects.toBeInstanceOf(Error)
   })
+}
+
+/** Every call on a directory whose upgrade is blocked rejects in time, not only the first. */
+function describeCallsDuringABlockedUpgrade(): void {
+  it(
+    'rejects every call with a message about another tab while an older build holds the database open',
+    { timeout: HANG_TIMEOUT_MILLISECONDS },
+    async () => {
+      const name = freshDatabaseName()
+      await openRawConnection(name, OLDER_BUILD_VERSION)
+      const directory = new IndexedDbDirectory(name)
+
+      await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+      await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+      await expect(directory.list('')).rejects.toThrow(/another tab/i)
+    },
+  )
+
+  it(
+    'works on the same instance after two rejected calls and the closing of the blocking connection',
+    { timeout: HANG_TIMEOUT_MILLISECONDS },
+    async () => {
+      const name = freshDatabaseName()
+      const blocking = await openRawConnection(name, OLDER_BUILD_VERSION)
+      const directory = new IndexedDbDirectory(name)
+      await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+      await expect(directory.readFile('x')).rejects.toThrow(/another tab/i)
+
+      blocking.close()
+
+      await directory.writeFile('x', Uint8Array.of(7))
+      expect(await directory.readFile('x')).toEqual(Uint8Array.of(7))
+    },
+  )
+
+  it(
+    'writes nothing when a write is rejected during the block',
+    { timeout: HANG_TIMEOUT_MILLISECONDS },
+    async () => {
+      const name = freshDatabaseName()
+      const blocking = await openRawConnection(name, OLDER_BUILD_VERSION)
+      const directory = new IndexedDbDirectory(name)
+      await expect(directory.writeFile('x', Uint8Array.of(7))).rejects.toThrow(/another tab/i)
+
+      blocking.close()
+
+      expect(await directory.readFile('x')).toBeUndefined()
+    },
+  )
 }
