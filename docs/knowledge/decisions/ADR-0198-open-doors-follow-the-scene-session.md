@@ -24,7 +24,7 @@ sourceFiles:
     bridge/react/webgpu-scene-view.tsx,
   ]
 status: current
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # ADR-0198: Open doors and windows follow the scene session, and one control closes them in either camera mode
@@ -178,23 +178,23 @@ Known gaps:
   effect, which runs after paint, and the tick now runs in orbit mode as well. The live runs looked
   for this flash and did not see it. The first two runs sampled about 10 frames each second, and
   the repeat run sampled a frame about every 8 ms, so a flash shorter than one sampled frame is not
-  excluded. A layout effect should close the gap, but it changes the timing of every rebuild.
-  Issue #778 tracks this.
+  excluded. The journey under Evidence reads the door's region on each animation frame of the
+  page through an edge-overlay rebuild, a paint edit, and a switch to the plan view and back, and
+  fails if a frame it reads shows the door shut. It does not show that it reads every frame the
+  page draws, so the gap stays open. A layout effect should close the gap, but it changes the
+  timing of every rebuild. Issue #778 tracks this.
 - The tick does work in orbit mode even when nothing moves. For each opening on the active floor at
   rest on its target, each frame does two lookups (its open state and its openness) and a compare.
   The frame cost is not measured.
-- No automated test asserts the opening tick in the frame callback of
-  `bridge/react/walk-camera-controls.tsx`, or its order after the walk step. One end-to-end test
-  (`e2e/tests/scene-navigation.spec.ts`) holds W in walk mode on the live view, so the callback
-  runs there where WebGPU exists, but it checks only that the frame changes. Unit tests
-  cover `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the
+- The opening tick in the frame callback of `bridge/react/walk-camera-controls.tsx` runs only
+  under a real WebGPU canvas, so no unit test reaches it. Unit tests cover `followStoredOpenings`, `restoreOpenings`, `resetInteractiveObjects`, the
   `useInteractiveObjects` hook against a store, the toolbar control, and `useOpeningMotion` itself.
   The hook imports nothing from the canvas library, and `bridge/react/use-opening-motion.test.tsx`
   checks three things: the live openings follow the stored set, a new root is posed at the open
   pose its door carried before any tick, and a new root that arrives in the same render as a new
   stored set is posed from the pose its door carried and from the set that arrived with it, before
-  any tick. The live run described under Evidence covers the frame callback. It was a script, not a
-  committed test.
+  any tick. The journey described under Evidence runs the callback on a live view and sees the
+  doors swing in both camera modes. No test asserts the order of the tick after the walk step.
 - A disabled control gives its reason only in its `title` attribute. Nothing visible in the toolbar
   says why the button is disabled. Issue #779 tracks this.
 
@@ -226,13 +226,28 @@ walk-start path: a walk after orbit on the same scene, after a rebuild, after a 
 page, and after a switch to the plan view and back. In each the door was in the expected state from
 the first frame of the walk.
 
+On 2026-11-17 a committed journey took over these checks:
+`e2e/tests/journeys/close-doors-and-windows.spec.ts` (issue #782). It opens a door and a window in
+walk mode with the E key and closes them with the toolbar control in orbit mode and in walk mode.
+It also covers the rebuilds and the view switch above, the walker blocked at a shut door, and the
+control agreeing with the R key. It compares frames taken in the same run, in the region of the
+opening, and commits no pixel baseline. An in-page sampler reads that region on each animation
+frame to catch the door in mid swing. The journey skips where the browser gives no WebGPU adapter.
+The macOS job `live-view-visual` runs it with `E2E_REQUIRE_WEBGPU=1`, so there a missing adapter
+fails the step (ADR-0171).
+
 Limits:
 
 - The first two runs sampled about 10 frames each second, and the repeat run at commit `be7d25b9`
   sampled a frame about every 8 ms. A flash of a shut door shorter than one sampled frame during a
   rebuild is not excluded.
-- This was a scripted run, not a committed test. No automated test asserts the opening tick in the
-  frame callback, or its order after the walk step.
+- The journey checks the start of a walk in three of the five states the scripted run tried: after
+  orbit mode with the door open, after a reset made in orbit mode, and on a fresh page. On a fresh
+  page the door is out of the walker's sight, so that case checks the control and the orbit view
+  instead. The journey never compares walker views by pixels across a scene rebuild, because the
+  walker view is shaded differently after a rebuild even when no door was opened (issue #781). It
+  does not repeat the check of the toolbar's height.
+- No automated test asserts the order of the opening tick after the walk step.
 - The whole-building case in Known gaps was not run.
 
 ## References
