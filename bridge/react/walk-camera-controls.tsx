@@ -248,10 +248,9 @@ function useWalkSession(
  * (recorded in ADR-0198). The unit test of the opening motion hook
  * (use-opening-motion.test.tsx) covers the follow of the stored set, the pose of a new
  * root before any tick, and the order of the two when both arrive in one render. The
- * frame callback below runs only under a real WebGPU canvas (foundation 6.3). One
- * end-to-end test holds W in walk mode on the live view, where WebGPU exists, but no
- * automated test asserts the opening tick in the callback or its order after the walk
- * step; a scripted live run covers that.
+ * frame callback below runs only under a real WebGPU canvas (foundation 6.3). The
+ * close-doors-and-windows journey runs it on a live view and sees the openings swing in
+ * both camera modes; no test asserts the order of the tick after the walk step.
  */
 export function WalkCameraControls(props: WalkCameraControlsProps) {
   // Kept as one props object because the session hook reads the same shape minus the root
