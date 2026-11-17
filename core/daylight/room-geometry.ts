@@ -12,7 +12,7 @@ import { horizontalPointToWallRectangle, visibleThroughReveal } from './form-fac
 import type { RoomSurfaces } from './room-average'
 import { measureRoomSurfaces } from './room-average'
 import type { DaylightInputLocation } from './room-validation'
-import { daylightInputError, validateDaylightRooms } from './room-validation'
+import { daylightInputError, OUTLINE_TOLERANCE_MM, validateDaylightRooms } from './room-validation'
 
 /** Height of the work plane above the floor, in plan millimetres, where the field is measured. */
 export const DAYLIGHT_WORK_PLANE_HEIGHT_MM = 850
@@ -25,13 +25,12 @@ export const DAYLIGHT_WORK_PLANE_HEIGHT_MM = 850
 const SKY_FACING_ELEVATION = Math.atan(2 / Math.PI)
 
 /**
- * How far to each side of the span the side test probes, in plan millimetres. It must not be
- * smaller than OUTLINE_TOLERANCE_MM of room-validation.ts, so that a span accepted as on the
- * outline has one probe on each side of it. The exception is a span that lies inside the room by
- * exactly that tolerance: its outer probe lands on the outline, and a point on the outline counts
- * as inside.
+ * How far to each side of the span the side test probes, in plan millimetres: twice
+ * OUTLINE_TOLERANCE_MM. A span that the end point check accepts lies at most that tolerance off
+ * the outline, so each probe lands at least the tolerance away from it, one inside the room and
+ * one outside. A point on the outline counts as inside, so a probe must never land on it.
  */
-const SIDE_PROBE_MM = 1
+const SIDE_PROBE_MM = 2 * OUTLINE_TOLERANCE_MM
 
 /** A cell center sits half a cell past its lower edge. */
 const CELL_CENTER_OFFSET = 0.5
