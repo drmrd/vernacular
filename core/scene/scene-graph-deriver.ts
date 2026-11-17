@@ -1,3 +1,4 @@
+import { withRoomSide } from './opening-room-side'
 import {
   deriveDimensionNodesForFloor,
   deriveFloorNode,
@@ -76,6 +77,7 @@ interface CachedOpeningNode {
 function openingNodesFor(
   openingCache: WeakMap<Opening, CachedOpeningNode>,
   floor: Floor,
+  rooms: readonly RoomSceneNode[],
 ): OpeningSceneNode[] {
   return floor.openings.flatMap((opening) => {
     const hostWall = floor.walls.find((wall) => wall.id === opening.hostWallId)
@@ -86,7 +88,11 @@ function openingNodesFor(
     if (cached !== undefined && cached.hostWall === hostWall) {
       return [cached.node]
     }
-    const node = deriveOpeningNode(floor, opening, hostWall)
+    const node = withRoomSide(
+      deriveOpeningNode(floor, opening, hostWall),
+      rooms,
+      hostWall.thickness,
+    )
     openingCache.set(opening, { hostWall, node })
     return [node]
   })
@@ -146,15 +152,22 @@ export function createSceneGraphDeriver(): (project: Project) => SceneGraph {
       memoizeByRef(furnitureCache, item, () => deriveFurnitureNode(floor, item)),
     )
 
-  return (project) => ({
-    nodes: project.floors.map(floorNodeFor),
-    walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
-    rooms: project.floors.flatMap((floor) => roomNodesFor(roomCache, floor, project.roomOverrides)),
-    underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
-    openings: project.floors.flatMap((floor) => openingNodesFor(openingCache, floor)),
-    dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
-    stairs: stairNodesFor(project),
-    furniture: project.floors.flatMap(furnitureNodesFor),
-    gradeElevation: resolveGradeElevation(project.site),
-  })
+  return (project) => {
+    const roomsByFloor = project.floors.map((floor) =>
+      roomNodesFor(roomCache, floor, project.roomOverrides),
+    )
+    return {
+      nodes: project.floors.map(floorNodeFor),
+      walls: project.floors.flatMap((floor) => floor.walls.map((wall) => wallNodeFor(floor, wall))),
+      rooms: roomsByFloor.flat(),
+      underlays: project.floors.flatMap(deriveUnderlayNodesForFloor),
+      openings: project.floors.flatMap((floor, index) =>
+        openingNodesFor(openingCache, floor, roomsByFloor[index] ?? []),
+      ),
+      dimensions: project.floors.flatMap(deriveDimensionNodesForFloor),
+      stairs: stairNodesFor(project),
+      furniture: project.floors.flatMap(furnitureNodesFor),
+      gradeElevation: resolveGradeElevation(project.site),
+    }
+  }
 }

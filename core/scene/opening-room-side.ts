@@ -56,3 +56,13 @@ export function openingRoomSide(
   if (positive === negative) return undefined
   return positive ? 'positive' : 'negative'
 }
+
+/** The node with `roomSide` set from openingRoomSide, or the node without it when undefined. */
+export function withRoomSide(
+  node: OpeningSceneNode,
+  rooms: readonly RoomSceneNode[],
+  rawWallThickness: number,
+): OpeningSceneNode {
+  const roomSide = openingRoomSide(node, rooms, rawWallThickness)
+  return roomSide === undefined ? node : { ...node, roomSide }
+}
