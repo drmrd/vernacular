@@ -24,6 +24,12 @@ const meta: CorpusPlanMeta = {
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 
+/** Returns the value, or fails the test with a clear message when it is missing. */
+function defined<T>(value: T | undefined, what: string): T {
+  if (value === undefined) throw new Error(`expected ${what} to be defined`)
+  return value
+}
+
 const calibration: UnderlayCalibration = {
   contentHash: 'a'.repeat(64),
   millimetersPerPixel: 12.5,
@@ -74,7 +80,7 @@ describe('deriveUnderlayFixture', () => {
     expect(derived.meta.name).toContain(meta.title)
 
     expect(derived.floors).toHaveLength(1)
-    const [floor] = derived.floors
+    const floor = defined(derived.floors[0], 'the first floor')
     expect(floor.walls).toEqual([])
     expect(floor.openings).toEqual([])
     expect(floor.dimensions).toEqual([])
@@ -84,7 +90,10 @@ describe('deriveUnderlayFixture', () => {
 
   it('binds the underlay to the calibrated content-addressed raster', () => {
     const derived = deriveUnderlayFixture(meta, calibration) as unknown as DerivedDocument
-    const [underlay] = derived.floors[0].underlays
+    const underlay = defined(
+      defined(derived.floors[0], 'the first floor').underlays[0],
+      'the first underlay',
+    )
 
     expect(underlay.source.kind).toBe('raster')
     expect(underlay.source.image.scope).toBe('project')
@@ -104,7 +113,10 @@ describe('deriveUnderlayFixture', () => {
       millimetersPerPixel: 10,
     }
     const derived = deriveUnderlayFixture(meta, sparseCalibration) as unknown as DerivedDocument
-    const [underlay] = derived.floors[0].underlays
+    const underlay = defined(
+      defined(derived.floors[0], 'the first floor').underlays[0],
+      'the first underlay',
+    )
 
     expect(underlay.placement.offset).toEqual({ x: 0, y: 0 })
     expect(underlay.placement.rotation).toBe(0)

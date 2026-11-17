@@ -42,7 +42,7 @@ async function withServer(run: (port: number) => Promise<void>): Promise<void> {
     await run(port)
   } finally {
     await new Promise<void>((resolveClose, rejectClose) => {
-      server.close((error) => {
+      server.close((error?: Error) => {
         if (error) rejectClose(error)
         else resolveClose()
       })
