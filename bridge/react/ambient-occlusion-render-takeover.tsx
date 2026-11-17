@@ -33,10 +33,9 @@ export function AmbientOcclusionRenderTakeover({
 }) {
   const active = ambientOcclusionActiveFor(realistic)
   const renderFrame = useAmbientOcclusion(active, onPipelineSettled, onPipelineBuildStarted)
-  // A build that this period stops with no build after it never reports settlement itself, so
-  // the end of an active period (turning off, or unmounting) settles the in-flight state here.
-  // React runs every cleanup of a flush before any setup, so when a replacement build follows
-  // instead, its start note still lands after this settle note.
+  // A build stopped by turning off or unmounting never settles itself, so the cleanup settles it.
+  // All cleanups of a flush run before any setup, so the start note of a replacement build lands
+  // after this one.
   useEffect(() => (active ? onPipelineSettled : undefined), [active, onPipelineSettled])
   useFrame((state) => renderFrame(state.gl, state.scene, state.camera), AO_RENDER_PRIORITY)
   return null
