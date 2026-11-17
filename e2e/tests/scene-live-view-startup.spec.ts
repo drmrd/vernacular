@@ -241,3 +241,49 @@ test.describe('Live three-dimensional pane during renderer start-up', () => {
     await expectDrawnWallInLivePane(page, canvas)
   })
 })
+
+test.describe('Live three-dimensional pane after a failed renderer load', () => {
+  // A browser keeps the failure of a dynamic import for the life of the page: an in-place retry
+  // of the same module never reaches the network. Only a reload asks for the chunk again, which
+  // the wrapper's unit tests cannot show because they replace the loader.
+  test('shows the live canvas after Reload page once the renderer chunk can be fetched again', async ({
+    page,
+  }) => {
+    const chunkRequests: string[] = []
+    page.on('request', (request) => {
+      if (RENDERER_CHUNK.test(request.url())) chunkRequests.push(request.url())
+    })
+    await page.route(RENDERER_CHUNK, (route) => route.abort('failed'))
+    await page.goto('/')
+
+    const hasWebGpu = await page.evaluate(() => 'gpu' in navigator)
+    test.skip(!hasWebGpu, 'The live 3D preview requires WebGPU; self-skips without navigator.gpu.')
+
+    await page.getByRole('button', { name: 'Split view' }).click()
+    const pane = page.getByRole('region', { name: /3d preview/i })
+    await expect(pane.getByRole('alert')).toHaveText(
+      'Could not load the 3D view. Check your network connection, then reload the page.',
+    )
+    await expect(pane.locator('canvas')).toHaveCount(0)
+    const requestsBeforeReload = chunkRequests.length
+    expect(requestsBeforeReload).toBeGreaterThan(0)
+
+    await page.unroute(RENDERER_CHUNK)
+    await Promise.all([
+      page.waitForEvent('load'),
+      pane.getByRole('button', { name: 'Reload page' }).click(),
+    ])
+
+    await page.getByRole('button', { name: 'Split view' }).click()
+    await expect(page.locator(LIVE_VIEW_READY)).toBeAttached()
+    await expect(pane.getByRole('alert')).toHaveCount(0)
+    const canvas = pane.locator('canvas')
+    await expect(canvas).toHaveCount(1)
+    await expect
+      .poll(async () => (await canvas.boundingBox())?.height ?? 0, {
+        message: 'waiting for the live 3D canvas to settle past its default size',
+      })
+      .toBeGreaterThan(SETTLED_CANVAS_MIN_HEIGHT)
+    expect(chunkRequests.length).toBeGreaterThan(requestsBeforeReload)
+  })
+})
