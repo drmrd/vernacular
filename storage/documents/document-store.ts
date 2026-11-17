@@ -186,8 +186,14 @@ export class DocumentStore {
     return this.files.assetsFor(id)
   }
 
-  /** Every file under the project's directory, keyed by its path relative to it. */
-  storedFiles(id: string): Promise<ReadonlyMap<string, Uint8Array>> {
+  /**
+   * Every file under the project's directory, keyed by its path relative to it. A project that the
+   * store does not hold has no files.
+   */
+  async storedFiles(id: string): Promise<ReadonlyMap<string, Uint8Array>> {
+    if (!this.files.holds(id)) {
+      return new Map()
+    }
     return listStoredFiles(this.files.projectDirectory(id))
   }
 

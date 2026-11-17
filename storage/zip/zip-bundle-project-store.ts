@@ -5,30 +5,19 @@ import { FolderFiles } from '../project-files/folder-files'
 import { zipFolder, unzipFolder, type FolderEntries } from './zip-codec'
 import type { AssetCache } from '../asset-cache'
 import { DirectoryAssetCache } from '../directory-asset-cache'
+import { BACKUP_DIRECTORY } from '../documents/document-backups'
+import { AUTOSAVE_DIR } from '../snapshots/snapshot-store'
 
-/** Collect every file path stored under a directory, descending into subdirectories. */
-async function collectFilePaths(directory: DirectoryPort, prefix: string): Promise<string[]> {
-  const paths: string[] = []
-  for (const segment of await directory.list(prefix)) {
-    const childPath = prefix === '' ? segment : `${prefix}/${segment}`
-    const children = await directory.list(childPath)
-    if (children.length === 0) {
-      paths.push(childPath)
-    } else {
-      paths.push(...(await collectFilePaths(directory, childPath)))
-    }
-  }
-  return paths
-}
+const SIDECAR_DIRECTORIES = [BACKUP_DIRECTORY, AUTOSAVE_DIR]
 
 /**
  * Single-project store bound to one id, backed by an in-memory expansion of a .building bundle.
  * It is the document store over the bundle's directory, which holds one project at its root;
- * exportBundle repacks the current directory contents into bundle bytes.
+ * exportBundle repacks the document and its assets into bundle bytes.
  */
 export class ZipBundleProjectStore extends DocumentStore {
   constructor(
-    bundleId: string,
+    private readonly bundleId: string,
     private readonly directory: DirectoryPort = new InMemoryDirectory(),
   ) {
     super(new FolderFiles(bundleId, directory, { durable: false }))
@@ -47,11 +36,14 @@ export class ZipBundleProjectStore extends DocumentStore {
     return new DirectoryAssetCache(this.directory)
   }
 
+  /**
+   * Packs the document and its assets. The backups and the recovery snapshots are sidecars that
+   * never travel in an archive, so they stay out; nothing is removed from the store's directory.
+   */
   async exportBundle(): Promise<Uint8Array> {
     const entries: FolderEntries = new Map()
-    for (const path of await collectFilePaths(this.directory, '')) {
-      const content = await this.directory.readFile(path)
-      if (content !== undefined) {
+    for (const [path, content] of await this.storedFiles(this.bundleId)) {
+      if (!SIDECAR_DIRECTORIES.some((directory) => path.startsWith(`${directory}/`))) {
         entries.set(path, content)
       }
     }

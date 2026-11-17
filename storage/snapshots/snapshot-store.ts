@@ -3,7 +3,8 @@ import type { CodecOptions, DecodeResult, Project } from '../../core'
 import type { DirectoryPort } from '../fs/directory-port'
 import { encodeForWrite, openDecodedDocument } from '../documents/open-decoded'
 
-const AUTOSAVE_DIR = '.house-autosave'
+/** The directory of recovery snapshots: a sidecar of the document that never travels in an archive. */
+export const AUTOSAVE_DIR = '.house-autosave'
 const SESSION_START_FILE = 'session-start.json'
 const SNAPSHOT_PREFIX = 'snapshot-'
 const SNAPSHOT_SUFFIX = '.json'
