@@ -11,26 +11,7 @@ import {
   type HungSash,
   type OpeningFillPart,
 } from './opening-fill'
-
-/**
- * A single-swing door centered on a wall running along +x with its normal on +y.
- * Each test overrides the type and the opening dimensions it needs.
- */
-const baseOpening: OpeningSceneNode = {
-  id: 'opening-1',
-  kind: 'opening',
-  floorId: 'floor-1',
-  type: 'single-swing-door',
-  center: { x: 1000, y: 0 },
-  along: { x: 1, y: 0 },
-  normal: { x: 0, y: 1 },
-  width: 900,
-  height: 2032,
-  sillHeight: 0,
-  hostThickness: 120,
-  orientation: { hinge: 'start', facing: 'positive' },
-  hostWallId: 'south',
-}
+import { baseOpening, hungWindow, sashParts } from './opening-fill-test-fixtures'
 
 describe('openingFill', () => {
   it('fills a single door with one reveal-inset leaf at the door-leaf thickness', () => {
@@ -290,21 +271,6 @@ describe('openingFill hung-window fixed-sash geometry', () => {
 })
 
 describe('openingFill hung-window sash tracks', () => {
-  const hungWindow = (type: string, facing: 'positive' | 'negative' = 'positive') => ({
-    ...baseOpening,
-    type,
-    width: 900,
-    height: 1200,
-    sillHeight: 900,
-    orientation: { hinge: 'start' as const, facing },
-  })
-
-  /** The parts whose vertical extent lies within one sash's half of the window. */
-  const sashParts = (window: OpeningSceneNode, sash: HungSash): ReadonlyArray<OpeningFillPart> => {
-    const [lowest, highest] = sash === 'lower' ? [900, 1530] : [1530, 2100]
-    return openingFill(window).filter((p) => p.up.min >= lowest && p.up.max <= highest)
-  }
-
   const expectSash = (parts: ReadonlyArray<OpeningFillPart>, sash: HungSash, offset: number) => {
     expect(parts.map((p) => [p.sash, p.acrossOffset])).toEqual(parts.map(() => [sash, offset]))
   }
