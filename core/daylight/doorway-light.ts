@@ -41,6 +41,6 @@ export function apertureWeights(
   return room.apertures.map((aperture, index) =>
     aperture.kind === 'sky'
       ? (skyWeights[index] ?? 0)
-      : (doorwayLuminances[aperture.neighbor] ?? 0),
+      : (doorwayLuminances[aperture.neighbor] ?? 0) * aperture.netTransmittance,
   )
 }

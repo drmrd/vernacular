@@ -25,6 +25,11 @@ export interface DaylightAperture {
   revealDepth: number
   /** An interior doorway names its neighbor by index. */
   opensTo: 'sky' | { room: number }
+  /**
+   * Net transmittance of the opening, from 0 to 1: the share of visible light that it passes
+   * over its whole area, frame and sash included. Leave it out for 1.
+   */
+  netTransmittance?: number
 }
 
 /** One room as the daylight field sees it. */

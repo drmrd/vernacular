@@ -23,7 +23,8 @@ export interface DaylightFieldSolver {
   field(sky: SkyLuminance): DaylightField
   /**
    * Light that enters the room through its apertures, in plan square millimetres of open sky: half
-   * of each opening's area times the radiance it faces, relative to the open sky.
+   * of each opening's area times its net transmittance times the radiance it faces, relative to
+   * the open sky.
    */
   enteringFlux(room: number, sky: SkyLuminance): number
   /**
@@ -54,7 +55,9 @@ function readSkyRadiance(sky: SkyLuminance, direction: Vector3): number {
 
 function skyWeights(room: RoomGeometry, sky: SkyLuminance): number[] {
   return room.apertures.map((aperture) =>
-    aperture.kind === 'sky' ? readSkyRadiance(sky, aperture.direction) : 0,
+    aperture.kind === 'sky'
+      ? readSkyRadiance(sky, aperture.direction) * aperture.netTransmittance
+      : 0,
   )
 }
 

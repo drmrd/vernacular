@@ -44,11 +44,11 @@ export interface CellView {
 /**
  * Where an aperture's light comes from: the sky toward a world direction (unit vector, Y up), or
  * the room it opens to. `openingArea` is the width times the height from sill to head, in plan
- * square millimetres.
+ * square millimetres. `netTransmittance` is the share of light that the opening passes.
  */
 export type ApertureGeometry =
-  | { kind: 'sky'; direction: Vector3; openingArea: number }
-  | { kind: 'doorway'; neighbor: number; openingArea: number }
+  | { kind: 'sky'; direction: Vector3; openingArea: number; netTransmittance: number }
+  | { kind: 'doorway'; neighbor: number; openingArea: number; netTransmittance: number }
 
 /** What a room keeps between calls: its apertures, its cells, and its surfaces. */
 export interface RoomGeometry {
@@ -110,10 +110,16 @@ function apertureGeometry(opening: Opening): ApertureGeometry {
   const [start, end] = aperture.span
   const width = Math.hypot(end.x - start.x, end.y - start.y)
   const openingArea = width * Math.max(0, aperture.head - aperture.sill)
+  const netTransmittance = aperture.netTransmittance ?? 1
   if (aperture.opensTo === 'sky') {
-    return { kind: 'sky', direction: skyDirection(opening.outwardNormal), openingArea }
+    return {
+      kind: 'sky',
+      direction: skyDirection(opening.outwardNormal),
+      openingArea,
+      netTransmittance,
+    }
   }
-  return { kind: 'doorway', neighbor: aperture.opensTo.room, openingArea }
+  return { kind: 'doorway', neighbor: aperture.opensTo.room, openingArea, netTransmittance }
 }
 
 /** Form factor from a work-plane point to the part of an opening that its reveal leaves visible. */
