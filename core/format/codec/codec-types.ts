@@ -21,7 +21,10 @@ export type DecodeFailure =
   | { readonly kind: 'newer-version'; readonly version: number; readonly buildVersion: number }
   /** A migration step threw or is missing; `fromVersion` is the version that it started from. */
   | { readonly kind: 'migration-failed'; readonly fromVersion: number; readonly message: string }
-  /** The migrated document breaks the format rules; `document` is the migrated document. */
+  /**
+   * The migrated document breaks the format rules; `document` is the migrated document. It is
+   * `unknown` because the document failed the check, so it is not known to be a `Project`.
+   */
   | {
       readonly kind: 'format-rules'
       readonly faults: readonly FormatFault[]

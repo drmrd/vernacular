@@ -10,21 +10,28 @@ import { checkCurrentSchema } from '../current-schema'
 import type { CodecOptions, DecodeFailure, DecodeResult } from './codec-types'
 
 const UNREADABLE_REVISION = 0
+const NOT_JSON_FALLBACK = 'The bytes are not UTF-8 JSON.'
+const MIGRATION_FAILED_FALLBACK = 'The migration failed.'
 
 function fail(failure: DecodeFailure): DecodeResult {
   return { ok: false, failure }
 }
 
-function describeError(error: unknown): string {
+/** The message of a thrown value; `fallback` stands in when the message is empty. */
+function describeError(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : String(error)
-  return message === '' ? 'The migration failed.' : message
+  return message === '' ? fallback : message
+}
+
+function isInteger(value: unknown): value is number {
+  return Number.isInteger(value)
 }
 
 function parseJson(bytes: Uint8Array): { json: unknown } | { message: string } {
   try {
     return { json: JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) }
   } catch (error) {
-    return { message: describeError(error) }
+    return { message: describeError(error, NOT_JSON_FALLBACK) }
   }
 }
 
@@ -36,7 +43,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 /** The stored `meta.schemaVersion` when it is an integer; undefined for anything else. */
 function readStoredVersion(json: unknown): number | undefined {
   const version = asRecord(asRecord(json)?.meta)?.schemaVersion
-  return Number.isInteger(version) ? (version as number) : undefined
+  return isInteger(version) ? version : undefined
 }
 
 /** The mapping from what a migration throws to a failure; `storedVersion` starts the chain. */
@@ -50,7 +57,11 @@ function migrationFailure(error: unknown, storedVersion: number): DecodeFailure 
     }
   }
   const fromVersion = error instanceof MigrationFailedError ? error.fromVersion : storedVersion
-  return { kind: 'migration-failed', fromVersion, message: describeError(error) }
+  return {
+    kind: 'migration-failed',
+    fromVersion,
+    message: describeError(error, MIGRATION_FAILED_FALLBACK),
+  }
 }
 
 /** A migration to a higher version sets the revision back: the older file had none. */
@@ -62,7 +73,7 @@ function withoutRevision(project: Project): Project {
 
 function readRevision(project: Project): number {
   const revision = project.meta.schemaRevision
-  return Number.isInteger(revision) ? (revision as number) : UNREADABLE_REVISION
+  return isInteger(revision) ? revision : UNREADABLE_REVISION
 }
 
 function checkMigrated(project: Project, migratedFrom: number | undefined): DecodeResult {
