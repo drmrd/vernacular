@@ -16,7 +16,8 @@ related:
   ]
 sourceFiles:
   [
-    app/validate-loaded-project.ts,
+    core/format/codec/decode-document.ts,
+    storage/documents/open-decoded.ts,
     app/app.tsx,
     core/migrations/migrate.ts,
     docs/specs/2026-06-10-vernacular-floor-plan-format.md,

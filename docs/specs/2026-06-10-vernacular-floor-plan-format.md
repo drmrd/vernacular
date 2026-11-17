@@ -284,10 +284,13 @@ accompanying ADR.
   the single source of truth; the generated schema is the published artifact. The recommended
   `$id` base is a versioned, repository-scoped URI; resolvable hosting is optional, since a JSON
   Schema `$id` is an identifier first.
-- **Validation.** A validator in `core/` (an Ajv instance over the generated schema) validates
-  a Document against a profile (section 3). It is used in continuous integration and tests, and
-  MAY run on app load after migration as a development and safety gate; it is not a user-facing
-  hard rejection, because migrations are the user-facing compatibility path.
+- **Validation.** A validator in `core/` validates a Document against a profile (section 3).
+  The generated strict validator checks a Document on every read, after migration, and on every
+  write, in every build. A Document at a higher `schemaRevision` than the application's is checked
+  with the tolerant one (section 7, ADR-0178). Both run as generated code, so the application
+  carries no schema compiler. The validators are also used in continuous integration and tests;
+  a failed check is not a user-facing hard rejection, because migrations are the user-facing
+  compatibility path.
 - **Drift guard.** Continuous integration regenerates the schema and both validators and fails if
   a committed file differs from the regenerated one, keeping the published schema and the
   validators in lockstep with the types. The guard also fails when the generated schema changes
