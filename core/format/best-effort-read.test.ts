@@ -1,25 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { CURRENT_SCHEMA_VERSION } from '../index'
 import { bestEffortProjectName } from './best-effort-read'
 
 const OLDEST_FIXTURE_VERSION = 8
 const INVALID_UTF8_BYTES = new Uint8Array([0xff, 0xfe, 0x7b, 0xc3, 0x28])
 
-type Json = Record<string, unknown>
-
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text)
-
-function fixtureDocument(version: number): Json {
-  return JSON.parse(new TextDecoder().decode(versionFixtureBytes(version))) as Json
-}
 
 function nameOf(document: Json): string {
   return (document.meta as { name: string }).name
-}
-
-function bytesOf(document: Json): Uint8Array {
-  return encode(JSON.stringify(document))
 }
 
 describe('reading the name of a stored project without decoding it', () => {
@@ -37,7 +32,7 @@ describe('reading the name of a stored project without decoding it', () => {
 
   it('returns the name of a document at a version above the build', () => {
     const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-    ;(document.meta as Json).schemaVersion = CURRENT_SCHEMA_VERSION + 1
+    metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
 
     expect(bestEffortProjectName(bytesOf(document))).toBe(nameOf(document))
   })

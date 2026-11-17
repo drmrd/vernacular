@@ -2,7 +2,14 @@
 // Pure storage/import logic; node aligns Uint8Array realms with fflate.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CURRENT_SCHEMA_VERSION, createEmptyProject, encodeDocument } from '../../core'
-import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
 import { ZipBundleProjectStore } from '../zip/zip-bundle-project-store'
 import { importProjectFile, UnsupportedProjectFileError } from './import-project-file'
 
@@ -13,24 +20,6 @@ function sampleProject() {
     period: 'modern',
     appVersion: '0.0.0',
   })
-}
-
-const UNKNOWN_WALL_FIELD = 'x-unknown'
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_WALL_FIELD}`
-
-interface StoredDocument {
-  meta: { schemaVersion: number }
-  floors: { walls: Record<string, unknown>[] }[]
-}
-
-function currentFixtureDocument(): StoredDocument {
-  return JSON.parse(
-    new TextDecoder().decode(versionFixtureBytes(CURRENT_SCHEMA_VERSION)),
-  ) as StoredDocument
-}
-
-function bytesOf(document: StoredDocument): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(document))
 }
 
 function warnedAbout(spy: { mock: { calls: unknown[][] } }, path: string): boolean {
@@ -87,8 +76,8 @@ describe('importProjectFile', () => {
   })
 
   it('rejects a .json file saved at a higher schema version as a newer version', async () => {
-    const document = currentFixtureDocument()
-    document.meta.schemaVersion = CURRENT_SCHEMA_VERSION + 1
+    const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+    metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
 
     await expect(importProjectFile('plan.json', bytesOf(document), 'p1')).rejects.toMatchObject({
       failure: { kind: 'newer-version' },
@@ -97,12 +86,11 @@ describe('importProjectFile', () => {
 
   it('opens a .json file that fails only the format rules and warns of the fault', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const document = currentFixtureDocument()
-    document.floors[0]!.walls[0]![UNKNOWN_WALL_FIELD] = 1
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
 
     const loaded = await importProjectFile('plan.json', bytesOf(document), 'p1')
 
-    expect(loaded.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_WALL_FIELD, 1)
+    expect(loaded.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
     expect(warnedAbout(warn, UNKNOWN_WALL_FIELD_PATH)).toBe(true)
   })
 })

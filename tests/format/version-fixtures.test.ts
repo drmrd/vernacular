@@ -59,8 +59,8 @@ function describeDecodeFailure(version: number, result: DecodeResult): string {
 
 function decodedRoomKeys(version: number): string[] {
   const result = decodeFixture(version)
-  const project = result.ok ? result.value.project : undefined
-  return Object.keys(project?.roomOverrides ?? {}).sort()
+  if (!result.ok) throw new Error(describeDecodeFailure(version, result))
+  return Object.keys(result.value.project.roomOverrides ?? {}).sort()
 }
 
 function currentRoomKeys(): string[] {

@@ -3,6 +3,19 @@ import {
   VERSION_FIXTURE_VERSIONS,
   versionFixtureBytes,
 } from '../../../tests/fixtures/projects/versions'
+import {
+  atHigherRevision,
+  bytesOf,
+  firstWallOf,
+  fixtureDocument,
+  HIGHER_REVISION,
+  metaOf,
+  projectOf,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../../tests/fixtures/projects/versions/fixture-documents'
 import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../index'
 import type { Project, ProjectShape, RegistryMigration } from '../../index'
 import type { CodecOptions, DecodeFailure, DecodeResult } from './codec-types'
@@ -12,68 +25,26 @@ import { encodeDocument } from './encode-document'
 const OLDER_VERSION = 8
 const REVISION_OF_AN_OLDER_FILE = 3
 const VERSION_NO_STEP_STARTS_FROM = 0
-const HIGHER_REVISION = CURRENT_SCHEMA_REVISION + 1
-const UNKNOWN_FIELD = 'x-unknown'
 const UNKNOWN_ROOT_FIELD = 'x-unknown-root'
 const REGISTRY = 'example-registry'
 const REGISTRY_VERSION_BEHIND = 1
 const LEGACY = 'legacy'
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_FIELD}`
-
-type Json = Record<string, unknown>
 
 const encodeText = (text: string): Uint8Array => new TextEncoder().encode(text)
-
-function fixtureDocument(version: number): Json {
-  return JSON.parse(new TextDecoder().decode(versionFixtureBytes(version)))
-}
-
-function bytesOf(document: unknown): Uint8Array {
-  return encodeText(JSON.stringify(document))
-}
 
 function failureOf(result: DecodeResult): DecodeFailure {
   if (result.ok) throw new Error('Expected the decode to fail, and it succeeded')
   return result.failure
 }
 
-function projectOf(bytes: Uint8Array, options?: CodecOptions): Project {
-  const result = decodeDocument(bytes, options)
-  if (!result.ok) {
-    throw new Error(`Expected the decode to succeed: ${JSON.stringify(result.failure)}`)
-  }
-  return result.value.project
-}
-
 function writtenJson(bytes: Uint8Array): Json {
   return JSON.parse(new TextDecoder().decode(bytes))
-}
-
-function metaOf(document: Json): Json {
-  return document.meta as Json
-}
-
-function firstWallOf(document: Json): Json {
-  const floors = document.floors as { walls: Json[] }[]
-  const wall = floors[0]?.walls[0]
-  if (wall === undefined) throw new Error('The document has no wall')
-  return wall
 }
 
 function firstWallOfProject(project: Project): Json {
   const wall = project.floors[0]?.walls[0]
   if (wall === undefined) throw new Error('The project has no wall')
   return wall as unknown as Json
-}
-
-function withUnknownWallField(document: Json): Json {
-  firstWallOf(document)[UNKNOWN_FIELD] = 1
-  return document
-}
-
-function atHigherRevision(document: Json): Json {
-  metaOf(document).schemaRevision = HIGHER_REVISION
-  return document
 }
 
 function withRevision(project: Project, revision: number): Project {

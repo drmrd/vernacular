@@ -1,37 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { versionFixtureBytes } from '../../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+  projectOf,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+} from '../../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../../tests/fixtures/projects/versions/fixture-documents'
 import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../index'
 import type { Project, ProjectShape, RegistryMigration, SchemaMigration } from '../../index'
 import type { CodecOptions } from './codec-types'
-import { decodeDocument } from './decode-document'
 import { encodeDocument } from './encode-document'
 
 const OLDER_VERSION = 8
-const UNKNOWN_FIELD = 'x-unknown'
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_FIELD}`
 const REGISTRY = 'example-registry'
 const REGISTRY_STEP_STARTS_AT = 1
 const REGISTRY_VERSION_AHEAD_OF_STEP = 2
 const REVISION_THAT_IS_NOT_WHOLE = 1.5
 const REVISION_THAT_IS_A_STRING = '2'
-
-type Json = Record<string, unknown>
-
-function fixtureDocument(version: number): Json {
-  return JSON.parse(new TextDecoder().decode(versionFixtureBytes(version)))
-}
-
-function bytesOf(document: unknown): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(document))
-}
-
-function projectOf(bytes: Uint8Array): Project {
-  const result = decodeDocument(bytes)
-  if (!result.ok) {
-    throw new Error(`Expected the decode to succeed: ${JSON.stringify(result.failure)}`)
-  }
-  return result.value.project
-}
 
 function writtenRevision(bytes: Uint8Array): unknown {
   const written = JSON.parse(new TextDecoder().decode(bytes)) as { meta: Json }
@@ -105,7 +93,7 @@ function countingOptions(counter: Counter): CodecOptions {
 
 function previousWithRegistryAt(version: number): Uint8Array {
   const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
-  ;(document.meta as Json).registryVersions = { [REGISTRY]: version }
+  metaOf(document).registryVersions = { [REGISTRY]: version }
   return bytesOf(document)
 }
 

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { DecodeFailure } from '../../core'
+import type { ReadFailure } from '../../core'
 import { DocumentDecodeError } from './document-decode-error'
-
-type ReadFailure = Exclude<DecodeFailure, { readonly kind: 'format-rules' }>
 
 const STORED_NEWER_VERSION = 18
 const BUILD_VERSION = 17

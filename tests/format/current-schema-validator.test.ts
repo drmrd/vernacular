@@ -12,34 +12,36 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_REVISION } from '../../core'
+import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../core'
 import type { FormatFault } from '../../core'
 import { checkCurrentSchema } from '../../core/format/current-schema'
 import { SCHEMA_REVISION, SCHEMA_VERSION, schemaPath } from '../../scripts/schema/build-schema.mjs'
-import { versionFixtureBytes } from '../fixtures/projects/versions'
-
-const CURRENT_VERSION = 17
+import {
+  STRICT_DECLARATION_PATH,
+  STRICT_VALIDATOR_PATH,
+  TOLERANT_DECLARATION_PATH,
+  TOLERANT_VALIDATOR_PATH,
+} from '../../scripts/schema/build-validators.mjs'
+import {
+  firstWallOf,
+  fixtureDocument,
+  metaOf,
+  paintKeyOfKind,
+  UNKNOWN_FIELD,
+} from '../fixtures/projects/versions/fixture-documents'
+import type { Json } from '../fixtures/projects/versions/fixture-documents'
 
 // The schema check regenerates the schema from the TypeScript types, which is
 // CPU-bound and can exceed Vitest's 5s per-test default under load.
 const CHECK_TIMEOUT_MS = 30_000
 
-const STRICT_VALIDATOR_FILE = 'core/format/generated/current-schema-validator.js'
-const TOLERANT_VALIDATOR_FILE = 'core/format/generated/tolerant-schema-validator.js'
-const STRICT_DECLARATION_FILE = 'core/format/generated/current-schema-validator.d.ts'
-const TOLERANT_DECLARATION_FILE = 'core/format/generated/tolerant-schema-validator.d.ts'
-
-const UNKNOWN_FIELD = 'x-unknown'
 const NAMESPACE = 'com.example.solar'
 const REVISION_THAT_IS_NOT_WHOLE = 1.5
 const REVISION_BELOW_ZERO = -2
 
-type Json = Record<string, unknown>
-
 /** A fresh, complete document of the current version that the schema accepts. */
 function currentDocument(): Json {
-  const text = new TextDecoder().decode(versionFixtureBytes(CURRENT_VERSION))
-  return JSON.parse(text) as Json
+  return fixtureDocument(CURRENT_SCHEMA_VERSION)
 }
 
 function escapePointerSegment(segment: string): string {
@@ -48,22 +50,6 @@ function escapePointerSegment(segment: string): string {
 
 function paintEntries(document: Json): Record<string, Json> {
   return document.paint as Record<string, Json>
-}
-
-/** The key of the first paint entry of the given `kind`. */
-function paintKeyOfKind(document: Json, kind: string): string {
-  const key = Object.keys(paintEntries(document)).find(
-    (k) => paintEntries(document)[k]?.kind === kind,
-  )
-  if (key === undefined) throw new Error(`The fixture has no paint entry of kind ${kind}`)
-  return key
-}
-
-function firstWall(document: Json): Json {
-  const floors = document.floors as { walls: Json[] }[]
-  const wall = floors[0]?.walls[0]
-  if (wall === undefined) throw new Error('The fixture has no wall')
-  return wall
 }
 
 function faultsOf(document: Json, mode: 'strict' | 'tolerant'): FormatFault[] {
@@ -116,7 +102,7 @@ describe('the current schema check of a document', () => {
     'reports a missing project name as a required field in %s mode',
     (mode) => {
       const document = currentDocument()
-      delete (document.meta as Json).name
+      delete metaOf(document).name
       const required = faultsOf(document, mode).filter((fault) => fault.rule === 'required')
       expect(required.length).toBeGreaterThan(0)
       expect(required.map((fault) => fault.path)).toContain('/meta')
@@ -127,7 +113,7 @@ describe('the current schema check of a document', () => {
     'reports a value of the wrong type on a known field in %s mode',
     (mode) => {
       const document = currentDocument()
-      firstWall(document).thickness = 'thick'
+      firstWallOf(document).thickness = 'thick'
       const faults = faultsOf(document, mode)
       const typeFault = faults.find((fault) => fault.path === '/floors/0/walls/0/thickness')
       expect(typeFault?.rule).toBe('type')
@@ -141,7 +127,7 @@ describe('the current schema check of a document', () => {
     { name: 'Infinity', value: Number.POSITIVE_INFINITY, mode: 'tolerant' },
   ] as const)('reports $name on a known number field in $mode mode', ({ value, mode }) => {
     const document = currentDocument()
-    firstWall(document).thickness = value
+    firstWallOf(document).thickness = value
     const faults = faultsOf(document, mode)
     expect(faults.length).toBeGreaterThan(0)
     expect(faults.map((fault) => fault.path)).toContain('/floors/0/walls/0/thickness')
@@ -151,7 +137,7 @@ describe('the current schema check of a document', () => {
 describe('the schema revision of a document', () => {
   function withRevision(revision: number): Json {
     const document = currentDocument()
-    ;(document.meta as Json).schemaRevision = revision
+    metaOf(document).schemaRevision = revision
     return document
   }
 
@@ -221,7 +207,7 @@ function runSchemaCheck(file: string, change: (committed: string) => string | un
 }
 
 describe('the generated validators under drift control', () => {
-  it.each([STRICT_VALIDATOR_FILE, TOLERANT_VALIDATOR_FILE])(
+  it.each([STRICT_VALIDATOR_PATH, TOLERANT_VALIDATOR_PATH])(
     'makes the schema check fail and name %s when that file is stale',
     { timeout: CHECK_TIMEOUT_MS },
     (file) => {
@@ -231,7 +217,7 @@ describe('the generated validators under drift control', () => {
     },
   )
 
-  it.each([STRICT_DECLARATION_FILE, TOLERANT_DECLARATION_FILE])(
+  it.each([STRICT_DECLARATION_PATH, TOLERANT_DECLARATION_PATH])(
     'makes the schema check fail and name %s when that declaration is stale',
     { timeout: CHECK_TIMEOUT_MS },
     (file) => {
@@ -245,7 +231,7 @@ describe('the generated validators under drift control', () => {
     'lets the schema check pass when both generated validators are fresh',
     { timeout: CHECK_TIMEOUT_MS },
     () => {
-      const result = runSchemaCheck(STRICT_VALIDATOR_FILE, (committed) => committed)
+      const result = runSchemaCheck(STRICT_VALIDATOR_PATH, (committed) => committed)
       expect(result.status).toBe(0)
     },
   )

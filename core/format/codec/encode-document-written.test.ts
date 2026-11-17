@@ -1,49 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import { versionFixtureBytes } from '../../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  firstWallOf,
+  fixtureDocument,
+  HIGHER_REVISION,
+  metaOf,
+  projectOf,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../../tests/fixtures/projects/versions/fixture-documents'
 import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../index'
 import type { Project } from '../../index'
 import { decodeDocument } from './decode-document'
 import { encodeDocument } from './encode-document'
 
-const HIGHER_REVISION = CURRENT_SCHEMA_REVISION + 1
-const UNKNOWN_FIELD = 'x-unknown'
 const UNKNOWN_ROOT_FIELD = 'x-unknown-root'
 const UNKNOWN_ROOT_VALUE = { kept: true }
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_FIELD}`
-
-type Json = Record<string, unknown>
-
-const encodeText = (text: string): Uint8Array => new TextEncoder().encode(text)
-
-function fixtureDocument(): Json {
-  return JSON.parse(new TextDecoder().decode(versionFixtureBytes(CURRENT_SCHEMA_VERSION)))
-}
-
-function bytesOf(document: unknown): Uint8Array {
-  return encodeText(JSON.stringify(document))
-}
 
 function writtenJson(bytes: Uint8Array): Json {
   return JSON.parse(new TextDecoder().decode(bytes))
 }
 
-function metaOf(document: Json): Json {
-  return document.meta as Json
-}
-
-function firstWallOf(document: Json): Json {
-  const floors = document.floors as { walls: Json[] }[]
-  const wall = floors[0]?.walls[0]
-  if (wall === undefined) throw new Error('The document has no wall')
-  return wall
-}
-
 /** The current fixture as a project, whose revision is the given one, or absent when undefined. */
 function projectAtRevision(revision: number | undefined): Project {
-  const result = decodeDocument(versionFixtureBytes(CURRENT_SCHEMA_VERSION))
-  if (!result.ok)
-    throw new Error(`Expected the decode to succeed: ${JSON.stringify(result.failure)}`)
-  const project = structuredClone(result.value.project)
+  const project = projectOf(versionFixtureBytes(CURRENT_SCHEMA_VERSION))
   const meta = project.meta as unknown as Json
   if (revision === undefined) delete meta.schemaRevision
   else meta.schemaRevision = revision
@@ -52,9 +35,8 @@ function projectAtRevision(revision: number | undefined): Project {
 
 /** The previous bytes: the current fixture at `revision`, with an unknown key on wall 0. */
 function previousWithUnknownWallField(revision: number): Json {
-  const document = fixtureDocument()
+  const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
   metaOf(document).schemaRevision = revision
-  firstWallOf(document)[UNKNOWN_FIELD] = 1
   return document
 }
 

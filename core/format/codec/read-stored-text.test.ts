@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { versionFixtureBytes } from '../../../tests/fixtures/projects/versions'
+import {
+  fixtureDocument,
+  metaOf,
+} from '../../../tests/fixtures/projects/versions/fixture-documents'
 import { CURRENT_SCHEMA_VERSION } from '../../index'
 import { bestEffortProjectName } from '../best-effort-read'
 import { decodeDocument } from './decode-document'
@@ -10,8 +14,7 @@ const LETTER_TO_REPLACE_INDEX = 3
 
 /** The name in the version 17 fixture: "Alder Street Cottage". */
 function fixtureName(): string {
-  const document = JSON.parse(new TextDecoder().decode(versionFixtureBytes(CURRENT_SCHEMA_VERSION)))
-  return (document.meta as { name: string }).name
+  return metaOf(fixtureDocument(CURRENT_SCHEMA_VERSION)).name as string
 }
 
 function indexOfBytes(haystack: Uint8Array, needle: Uint8Array): number {

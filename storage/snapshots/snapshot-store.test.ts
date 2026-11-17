@@ -8,24 +8,21 @@ import {
   type Project,
 } from '../../core'
 import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  fixtureDocument,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
 import { SnapshotStore } from './snapshot-store'
 
 const AUTOSAVE_DIRECTORY = '.house-autosave'
 const OLDEST_FIXTURE_VERSION = 8
-const UNKNOWN_WALL_FIELD = 'x-unknown'
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_WALL_FIELD}`
-
-interface StoredDocument {
-  floors: { walls: Record<string, unknown>[] }[]
-}
 
 function bytesFailingTheCheck(): Uint8Array {
-  const document = JSON.parse(
-    new TextDecoder().decode(versionFixtureBytes(CURRENT_SCHEMA_VERSION)),
-  ) as StoredDocument
-  document.floors[0]!.walls[0]![UNKNOWN_WALL_FIELD] = 1
-  return new TextEncoder().encode(JSON.stringify(document))
+  return bytesOf(withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION)))
 }
 
 async function storeHoldingSnapshot(bytes: Uint8Array): Promise<SnapshotStore> {
@@ -150,7 +147,7 @@ describe('SnapshotStore', () => {
 
     const restored = await store.restore()
 
-    expect(restored?.floors[0]?.walls[0]).toHaveProperty(UNKNOWN_WALL_FIELD, 1)
+    expect(restored?.floors[0]?.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
     expect(
       warn.mock.calls.some((args) => JSON.stringify(args).includes(UNKNOWN_WALL_FIELD_PATH)),
     ).toBe(true)

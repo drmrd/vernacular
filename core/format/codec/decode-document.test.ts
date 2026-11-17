@@ -3,7 +3,18 @@ import {
   VERSION_FIXTURE_VERSIONS,
   versionFixtureBytes,
 } from '../../../tests/fixtures/projects/versions'
-import { CURRENT_SCHEMA_REVISION, CURRENT_SCHEMA_VERSION } from '../../index'
+import {
+  atHigherRevision,
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+  paintKeyOfKind,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../../tests/fixtures/projects/versions/fixture-documents'
+import { CURRENT_SCHEMA_VERSION } from '../../index'
 import type { SchemaMigration } from '../../index'
 import type { DecodedDocument, DecodeFailure, DecodeResult } from './codec-types'
 import { decodeDocument } from './decode-document'
@@ -11,23 +22,10 @@ import { decodeDocument } from './decode-document'
 const OLDER_VERSION = 8
 const VERSION_NO_STEP_STARTS_FROM = 0
 const VERSION_THAT_IS_NOT_WHOLE = 16.5
-const NEWER_BUILD_REVISION = CURRENT_SCHEMA_REVISION + 1
 const REVISION_OF_AN_OLDER_FILE = 3
-const UNKNOWN_FIELD = 'x-unknown'
 const NAMESPACE = 'com.example.solar'
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_FIELD}`
-
-type Json = Record<string, unknown>
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text)
-
-function fixtureDocument(version: number): Json {
-  return JSON.parse(new TextDecoder().decode(versionFixtureBytes(version)))
-}
-
-function bytesOf(document: unknown): Uint8Array {
-  return encode(JSON.stringify(document))
-}
 
 function failureOf(result: DecodeResult): DecodeFailure {
   if (result.ok) throw new Error('Expected the decode to fail, and it succeeded')
@@ -55,35 +53,8 @@ function decodedPaintEntry(value: DecodedDocument, key: string): Json {
   return entry as Json
 }
 
-function metaOf(document: Json): Json {
-  return document.meta as Json
-}
-
 function paintOf(document: Json): Record<string, Json> {
   return document.paint as Record<string, Json>
-}
-
-function firstWallOf(document: Json): Json {
-  const floors = document.floors as { walls: Json[] }[]
-  const wall = floors[0]?.walls[0]
-  if (wall === undefined) throw new Error('The fixture has no wall')
-  return wall
-}
-
-function paintKeyOfKind(document: Json, kind: string): string {
-  const key = Object.keys(paintOf(document)).find((k) => paintOf(document)[k]?.kind === kind)
-  if (key === undefined) throw new Error(`The fixture has no paint entry of kind ${kind}`)
-  return key
-}
-
-function withUnknownWallField(document: Json): Json {
-  firstWallOf(document)[UNKNOWN_FIELD] = 1
-  return document
-}
-
-function atNewerRevision(document: Json): Json {
-  metaOf(document).schemaRevision = NEWER_BUILD_REVISION
-  return document
 }
 
 describe('decoding bytes that are not a project', () => {
@@ -169,14 +140,14 @@ describe('decoding a document at the current revision', () => {
 
 describe('decoding a document saved at a higher revision', () => {
   it('keeps an unknown field on a wall and says that a newer build saved it', () => {
-    const document = atNewerRevision(withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION)))
+    const document = atHigherRevision(withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION)))
     const value = valueOf(decodeDocument(bytesOf(document)))
     expect(decodedWall(value)[UNKNOWN_FIELD]).toBe(1)
     expect(value.savedByNewerBuild).toBe(true)
   })
 
   it('keeps an unknown field inside a paint entry and says that a newer build saved it', () => {
-    const document = atNewerRevision(fixtureDocument(CURRENT_SCHEMA_VERSION))
+    const document = atHigherRevision(fixtureDocument(CURRENT_SCHEMA_VERSION))
     const key = paintKeyOfKind(document, 'solid')
     paintOf(document)[key]![UNKNOWN_FIELD] = true
     const value = valueOf(decodeDocument(bytesOf(document)))

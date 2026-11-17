@@ -9,27 +9,22 @@ import {
 } from '../../core'
 import type { Project, ProjectShape } from '../../core'
 import { InMemoryDirectory } from '../fs/in-memory-directory'
-import { versionFixtureBytes } from '../../tests/fixtures/projects/versions'
+import {
+  bytesOf,
+  fixtureDocument,
+  metaOf,
+  UNKNOWN_FIELD,
+  UNKNOWN_WALL_FIELD_PATH,
+  withUnknownWallField,
+} from '../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { FolderProjectStore, ProjectFileNotFoundError } from './folder-project-store'
 
 const PRE_MIGRATION_BACKUP = '.house-autosave/pre-migration-v1.json'
-const UNKNOWN_WALL_FIELD = 'x-unknown'
-const UNKNOWN_WALL_FIELD_PATH = `/floors/0/walls/0/${UNKNOWN_WALL_FIELD}`
 
-interface StoredDocument {
-  meta: { schemaVersion: number }
-  floors: { walls: Record<string, unknown>[] }[]
-}
-
-function currentFixtureDocument(): StoredDocument {
-  return JSON.parse(
-    new TextDecoder().decode(versionFixtureBytes(CURRENT_SCHEMA_VERSION)),
-  ) as StoredDocument
-}
-
-async function directoryHolding(document: StoredDocument): Promise<InMemoryDirectory> {
+async function directoryHolding(document: Json): Promise<InMemoryDirectory> {
   const directory = new InMemoryDirectory()
-  await directory.writeFile('vernacular.json', new TextEncoder().encode(JSON.stringify(document)))
+  await directory.writeFile('vernacular.json', bytesOf(document))
   return directory
 }
 
@@ -201,21 +196,20 @@ describe('FolderProjectStore', () => {
 describe('FolderProjectStore reading through the document codec', () => {
   it('loads the migrated document of a file that fails the check and warns of the fault', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const document = currentFixtureDocument()
-    document.floors[0]!.walls[0]![UNKNOWN_WALL_FIELD] = 1
+    const document = withUnknownWallField(fixtureDocument(CURRENT_SCHEMA_VERSION))
     const store = new FolderProjectStore(await directoryHolding(document))
 
     const loaded = await store.loadProject()
 
-    expect(loaded.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_WALL_FIELD, 1)
+    expect(loaded.floors[0]!.walls[0]).toHaveProperty(UNKNOWN_FIELD, 1)
     expect(
       warn.mock.calls.some((args) => JSON.stringify(args).includes(UNKNOWN_WALL_FIELD_PATH)),
     ).toBe(true)
   })
 
   it('rejects a file saved at a higher schema version as a newer version', async () => {
-    const document = currentFixtureDocument()
-    document.meta.schemaVersion = CURRENT_SCHEMA_VERSION + 1
+    const document = fixtureDocument(CURRENT_SCHEMA_VERSION)
+    metaOf(document).schemaVersion = CURRENT_SCHEMA_VERSION + 1
     const store = new FolderProjectStore(await directoryHolding(document))
 
     await expect(store.loadProject()).rejects.toMatchObject({ failure: { kind: 'newer-version' } })

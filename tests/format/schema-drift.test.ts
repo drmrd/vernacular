@@ -55,6 +55,8 @@ describe('the revision of this build', () => {
     expect(SCHEMA_REVISION).toBe(CURRENT_SCHEMA_REVISION)
   })
 
+  // A deliberate reminder: this case changes at every version or revision bump, so that the
+  // schema of the new number is published before the bump lands.
   it('is revision 1 while the version is 17', () => {
     expect(SCHEMA_VERSION).toBe(LAST_FIXED_VERSION)
     expect(SCHEMA_REVISION).toBe(1)
