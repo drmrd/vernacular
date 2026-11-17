@@ -439,6 +439,7 @@ export {
   SASH_FRAME_THICKNESS_MM,
   GLASS_THICKNESS_MM,
   HUNG_SASH_TRACK_OFFSET_MM,
+  HUNG_SASH_MIN_DEPTH_MM,
 } from './scene/opening-fill'
 export type {
   OpeningFillPart,

@@ -39,9 +39,10 @@ export interface OpeningFillPart {
   readonly sash?: HungSash
   /**
    * Where the box's center sits across the wall (mm), from the centerline along the opening's
-   * normal; omitted (not 0) means centered. A hung window's lower sash takes
-   * +HUNG_SASH_TRACK_OFFSET_MM times the facing sign (+1 'positive', -1 'negative'), the upper
-   * sash the opposite. `facing` stands in for the room side, which the fill cannot see yet.
+   * normal; omitted (not 0) means centered. A hung window's lower sash takes half its sash
+   * depth (HUNG_SASH_TRACK_OFFSET_MM, 25 mm, in a wall of 100 mm or more; less in a thinner
+   * wall) times the facing sign (+1 'positive', -1 'negative'), the upper sash the opposite.
+   * `facing` stands in for the room side, which the fill cannot see yet.
    */
   readonly acrossOffset?: number
 }
@@ -57,10 +58,17 @@ export const SASH_FRAME_THICKNESS_MM = 50
 /** Thickness of a window's glass pane across the wall (mm). */
 export const GLASS_THICKNESS_MM = 6
 /**
- * How far each hung-window sash's track sits from the wall centerline (mm): half the bar
- * thickness, so the two 50 mm sashes sit side by side across the wall and never share a plane.
+ * How far each hung-window sash's track sits from the wall centerline (mm) in a wall of 100 mm
+ * or more: half the bar thickness, so the two 50 mm sashes sit side by side across the wall and
+ * never share a plane. A thinner wall thins the sashes and moves the tracks in, see
+ * `HUNG_SASH_MIN_DEPTH_MM`.
  */
 export const HUNG_SASH_TRACK_OFFSET_MM = SASH_FRAME_THICKNESS_MM / 2
+/**
+ * The thinnest a hung-window sash is built across the wall (mm). It keeps each 6 mm glass pane
+ * inside its own bars and the two panes at least 14 mm apart, however thin the wall.
+ */
+export const HUNG_SASH_MIN_DEPTH_MM = 20
 
 /**
  * Resolves an opening's three-dimensional body from its element type (spec section
@@ -192,13 +200,40 @@ function wholeSashParts(node: OpeningSceneNode): OpeningFillPart[] {
   return sashAssembly(node.width / 2, { min: node.sillHeight, max: node.sillHeight + node.height })
 }
 
-/** Puts a list of parts on one sash's track: names the sash and sets its offset across the wall. */
+/** Where one hung sash stands across the wall: its center offset and the depth of its bars. */
+interface SashTrack {
+  readonly acrossOffset: number
+  readonly depth: number
+}
+
+/**
+ * Puts a list of parts on one sash's track: names the sash, sets its offset across the wall, and
+ * sets the depth of its bars. Glass keeps its own thickness.
+ */
 function onTrack(
   parts: readonly OpeningFillPart[],
   sash: HungSash,
-  acrossOffset: number,
+  track: SashTrack,
 ): OpeningFillPart[] {
-  return parts.map((part) => ({ ...part, sash, acrossOffset }))
+  return parts.map((part) => ({
+    ...part,
+    sash,
+    acrossOffset: track.acrossOffset,
+    ...(part.role === 'leaf' ? { thickness: track.depth } : {}),
+  }))
+}
+
+/**
+ * The depth of a hung-window sash's bars across a wall `hostThickness` mm thick (mm). The two
+ * sashes sit side by side across the wall, so each gets at most half of it, or the pair would
+ * stand proud of the wall faces; a full 50 mm sash would, in any wall under 100 mm. A wall of 40
+ * mm or more takes half its thickness, so both sashes stay flush with or inside its faces. Below
+ * 40 mm the depth holds at `HUNG_SASH_MIN_DEPTH_MM`, the least that keeps each glass pane inside
+ * its bars, and the pair stands proud of the faces, as a door leaf does in a wall thinner than
+ * itself. A wall of 100 mm or more keeps the full `SASH_FRAME_THICKNESS_MM`.
+ */
+function hungSashDepth(hostThickness: number): number {
+  return Math.min(SASH_FRAME_THICKNESS_MM, Math.max(HUNG_SASH_MIN_DEPTH_MM, hostThickness / 2))
 }
 
 /**
@@ -208,7 +243,9 @@ function onTrack(
  * names the sash that is fixed shut (a single-hung window's upper sash); a
  * double-hung window passes no `fixedSash`, so both sashes stay operable. The two
  * sashes sit on separate tracks across the wall, the lower one toward the opening's
- * facing side; the meeting rail belongs to the lower sash.
+ * facing side; the meeting rail belongs to the lower sash. In a wall thinner than 100 mm
+ * the sashes are thinner than 50 mm so that they stay inside the wall faces (see
+ * `hungSashDepth`), and each track sits half a sash depth from the centerline.
  */
 function hungWindowSashParts(node: OpeningSceneNode, fixedSash?: HungSash): OpeningFillPart[] {
   const halfWidth = node.width / 2
@@ -222,12 +259,15 @@ function hungWindowSashParts(node: OpeningSceneNode, fixedSash?: HungSash): Open
     { min: -halfWidth, max: halfWidth },
     { min: railBottom, max: railTop },
   )
-  const lowerTrack =
-    node.orientation.facing === 'negative' ? -HUNG_SASH_TRACK_OFFSET_MM : HUNG_SASH_TRACK_OFFSET_MM
+  const depth = hungSashDepth(node.hostThickness)
+  const lowerOffset = node.orientation.facing === 'negative' ? -depth / 2 : depth / 2
   const lowerSash = [
     ...sashAssembly(halfWidth, { min: sill, max: railBottom }, fixedSash === 'lower'),
     meetingRail,
   ]
   const upperSash = sashAssembly(halfWidth, { min: railTop, max: top }, fixedSash === 'upper')
-  return [...onTrack(lowerSash, 'lower', lowerTrack), ...onTrack(upperSash, 'upper', -lowerTrack)]
+  return [
+    ...onTrack(lowerSash, 'lower', { acrossOffset: lowerOffset, depth }),
+    ...onTrack(upperSash, 'upper', { acrossOffset: -lowerOffset, depth }),
+  ]
 }
