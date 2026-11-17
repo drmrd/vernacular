@@ -17,14 +17,6 @@ const HOURS_PER_DAY = 24
 /** Minutes in a full civil day; the exclusive upper bound for `minutesSinceMidnight`. */
 export const MINUTES_PER_DAY = MINUTES_PER_HOUR * HOURS_PER_DAY
 
-const NOON_HOUR = 12
-const NOON_MINUTES = NOON_HOUR * MINUTES_PER_HOUR
-/** Summer-solstice noon: a bright, unambiguous default for the readout. */
-export const DEFAULT_OBSERVATION_INSTANT: ObservationInstant = {
-  date: '2026-06-21',
-  minutesSinceMidnight: NOON_MINUTES,
-}
-
 const DECIMAL_RADIX = 10
 const ISO_FIELD_WIDTH = 2
 

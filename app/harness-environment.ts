@@ -1,6 +1,6 @@
 import type { HarnessScene } from '../bridge'
 import type { CameraPose, ObservationInstant, Site } from '../core'
-import { referenceLightingInput } from '../core'
+import { openingInstant, referenceLightingInput } from '../core'
 
 /**
  * A named canonical environment for the scene harness: a fixed site, a fixed
@@ -223,6 +223,19 @@ const HARNESS_ENVIRONMENT_STATES = new Map<string, HarnessEnvironmentState>([
     {
       site: CANONICAL_SITE,
       observedAt: { date: '2026-03-25', minutesSinceMidnight: LOW_SUN_EVENING_MINUTES },
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: DAYLIGHT_REFERENCE_CAMERA_POSE,
+    },
+  ],
+  // A project with no site renders sample daylight: the sample place, with north implied so
+  // that the front (the wall with the door) faces due south. It shares the camera of the
+  // reference state, so its sunlit front can be compared with the reference frame.
+  [
+    'sample-daylight',
+    {
+      site: {},
+      observedAt: openingInstant({ site: undefined }),
       realistic: true,
       scene: 'shell-south-window',
       cameraPose: DAYLIGHT_REFERENCE_CAMERA_POSE,

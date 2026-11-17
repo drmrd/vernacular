@@ -179,10 +179,11 @@ export const DEFAULT_VIEW_SOUTH_WALL = squareRegion(143, 148, 24)
 export const DEFAULT_VIEW_EAST_WALL = squareRegion(188, 145, 12)
 
 /**
- * The west exterior face seen from the south-west camera that the `daylight-reference` and
- * `low-sun` states share, below the eaves and above the darkening where the wall meets the lawn:
- * x 121..144, y 107..130. Over these rows and columns the face spans x 117..150 and y 102..142
- * and renders one color in both states, so the square keeps at least 4 px from every edge.
+ * The west exterior face seen from the south-west camera, below the eaves and above the
+ * darkening where the wall meets the lawn: x 121..144, y 107..130. The `daylight-reference`,
+ * `low-sun`, and `sample-daylight` states all use this camera. Over these rows and columns the
+ * face spans x 117..150 and y 102..142 and renders one color in the `daylight-reference` and
+ * `low-sun` frames, so the square keeps at least 4 px from every edge.
  */
 // eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
 export const SOUTH_WEST_VIEW_WEST_WALL = squareRegion(121, 107, 24)
@@ -192,7 +193,8 @@ export const SOUTH_WEST_VIEW_WEST_WALL = squareRegion(121, 107, 24)
  * of the window sill, the wall's south-west corner, and the darkening where the wall meets the
  * lawn: x 157..162, y 143..148. The face is small in this view; in the `daylight-reference` and
  * `low-sun` frames it spans at least x 153..172 and y 139..152 over these rows and columns, so
- * this 6 px square keeps at least 4 px from every edge.
+ * this 6 px square keeps at least 4 px from every edge. In the `sample-daylight` frame this is
+ * the front, the face with the door.
  */
 // eslint-disable-next-line no-magic-numbers -- frame pixel coordinates, measured on the captured frame
 export const SOUTH_WEST_VIEW_SOUTH_WALL = squareRegion(157, 143, 6)

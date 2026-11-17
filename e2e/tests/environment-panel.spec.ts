@@ -5,11 +5,10 @@ import { test, expect, type Page } from '@playwright/test'
 // truth of the lit scene is pinned separately by the CI scene-webgl baselines
 // (scene-solar.spec.ts); this journey pins the panel-to-session wiring end to end.
 
-// The exact fallback copy the panel shows in realistic mode before the site has a location
-// (kept in lockstep with editor/environment/environment-panel.test.tsx).
-const MISSING_LOCATION_NOTICE =
-  'Realistic lighting needs the site location. Set latitude and longitude in the Site panel; ' +
-  'until then the view falls back to schematic lighting.'
+// The exact copy the panel shows in realistic mode while the site has no location: the view
+// is lit at a sample place instead of falling back to schematic lighting.
+const SAMPLE_DAYLIGHT_NOTICE =
+  'Sample daylight. Set the location and north in the Site panel for true sun angles.'
 
 // Boot the assembled editor at its root and wait for the plan canvas, mirroring the other
 // top-level DOM specs (smoke.spec.ts, keyboard-authoring.spec.ts, status-bar-visible.spec.ts).
@@ -33,15 +32,18 @@ test.describe('Journey: drive the environment panel', () => {
       'true',
     )
 
-    // 2. Switching to realistic lighting before the site has a location surfaces the fallback.
+    // 2. Switching to realistic lighting before the site has a location lights the view at a
+    //    sample place and surfaces the sample daylight notice.
     await environment.getByRole('button', { name: 'Realistic' }).click()
     await expect(environment.getByRole('button', { name: 'Realistic' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    await expect(page.getByText(MISSING_LOCATION_NOTICE)).toBeVisible()
+    await expect(
+      environment.getByRole('status').filter({ hasText: SAMPLE_DAYLIGHT_NOTICE }),
+    ).toBeVisible()
 
-    // 3. Committing latitude and longitude in the Site panel clears the missing-location
+    // 3. Committing latitude and longitude in the Site panel clears the sample daylight
     //    notice and the panel's readout reflects the coordinates.
     const latitude = site.getByLabel(/latitude/i)
     const longitude = site.getByLabel(/longitude/i)
@@ -50,13 +52,13 @@ test.describe('Journey: drive the environment panel', () => {
     await longitude.fill('-122.33')
     await longitude.press('Enter')
 
-    await expect(page.getByText(MISSING_LOCATION_NOTICE)).toHaveCount(0)
+    await expect(page.getByText(SAMPLE_DAYLIGHT_NOTICE)).toHaveCount(0)
     await expect(environment.getByText(/latitude 47\.6/i)).toBeVisible()
     await expect(environment.getByText(/longitude -122\.33/i)).toBeVisible()
 
     // A site with coordinates but no timezone legitimately raises a separate
     // missing-timezone notice; committing a timezone clears it so the panel reads cleanly.
-    // This journey only pins the missing-location notice, not the timezone one.
+    // This journey only pins the sample daylight notice, not the timezone one.
     const timezone = site.getByLabel(/timezone/i)
     await timezone.fill('America/Los_Angeles')
     await timezone.press('Enter')

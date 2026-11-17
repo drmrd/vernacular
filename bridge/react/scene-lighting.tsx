@@ -5,13 +5,15 @@ import {
   colorCheckLighting,
   computeEnvironmentLighting,
   DEFAULT_CLOUD_COVER,
-  DEFAULT_OBSERVATION_INSTANT,
+  daylightSiteFor,
   kelvinToLinearRgb,
   NEUTRAL_REFERENCE_WHITE,
+  openingInstant,
   toneMappingOperatorFor,
-  utcOffsetMinutesFor,
   type Bounds3,
+  type LightingMode,
   type ObservationInstant,
+  type PlanDirection,
   type Site,
 } from '../../core'
 import {
@@ -30,10 +32,12 @@ interface SceneLightingProps {
   // The environment props admit undefined (not just absent) so callers can forward
   // optional overrides under exactOptionalPropertyTypes; the schematic defaults
   // (realistic off, the fixed observation instant, a clear sky, no color check) apply
-  // either way. A site has no default: without one the schematic provider is the only
-  // choice.
+  // either way. A missing site is not a default but a state: the sun is then computed
+  // for the sample site, turned so that the front faces due south.
   realistic?: boolean | undefined
   site: Site | undefined
+  // The direction the building's front faces; the sample site's implied north follows it.
+  front: PlanDirection
   observedAt?: ObservationInstant | undefined
   cloudCover?: number | undefined
   colorCheck?: boolean | undefined
@@ -48,6 +52,7 @@ interface SceneLightingProps {
 interface SolarLightingUpdateInput {
   provider: LightingProvider
   site: Site | undefined
+  front: PlanDirection
   observedAt: ObservationInstant
   bounds: Bounds3 | null
   cloudCover: number
@@ -58,28 +63,28 @@ interface SolarLightingUpdateInput {
  * Drives an applied lighting rig from the site, the observation instant, and the
  * cloud cover: computes the environment lighting and hands it to the provider, neutralized
  * to the color-check reference white when the color check is on. The schematic provider's
- * update is a no-op by contract, so this runs safely in either mode; without a site
- * location it does nothing.
+ * update is a no-op by contract, so this runs safely in either mode. The sun is computed for
+ * the daylight site, which is the stored site where it has a location and the sample site
+ * where it has none, so the update runs for every site.
  */
 function useSolarLightingUpdate({
   provider,
   site,
+  front,
   observedAt,
   bounds,
   cloudCover,
   colorCheck,
 }: SolarLightingUpdateInput) {
   const scene = useThree((state) => state.scene)
-  const { latLong, northBearing, timezone } = site ?? {}
-  const utcOffsetMinutes = useMemo(
-    () => utcOffsetMinutesFor(timezone, observedAt.date, latLong?.longitude),
-    [timezone, observedAt.date, latLong?.longitude],
+  const { latLong, northBearing, utcOffsetMinutes } = useMemo(
+    () => daylightSiteFor(site, front, observedAt.date),
+    [site, front, observedAt.date],
   )
   useLayoutEffect(() => {
-    if (latLong === undefined) return
     const lighting = computeEnvironmentLighting({
       latLong,
-      northBearing: northBearing ?? 0,
+      northBearing,
       utcOffsetMinutes,
       observedAt,
       cloudCover,
@@ -120,6 +125,15 @@ function useLightingReadiness(provider: LightingProvider, onReady: (() => void) 
   }, [provider, onReady])
 }
 
+// The renderer's tone-mapping operator follows the effective mode, which is what the render
+// actually shows. The color check overrides both with Neutral (ADR-0142).
+function useToneMapping(effectiveMode: LightingMode, colorCheck: boolean) {
+  const renderer = useThree((state) => state.gl)
+  useLayoutEffect(() => {
+    applyToneMappingOperator(renderer, toneMappingOperatorFor(effectiveMode, colorCheck))
+  }, [renderer, effectiveMode, colorCheck])
+}
+
 /**
  * View-layer glue: applies the engine lighting rig to the persistent render scene once
  * per provider, then keeps it current without rebuilding geometry. Realistic mode swaps
@@ -129,26 +143,24 @@ function useLightingReadiness(provider: LightingProvider, onReady: (() => void) 
  * live on the render scene rather than on the keyed geometry group, so a rebuild does
  * not discard them and a lighting change does not rebuild the geometry. Reports the
  * provider's readiness through the optional onReady callback (the harness gates its
- * captured frame on it). Runs only under a real render; coverage-excluded, proven by
- * the scene-webgl tier.
+ * captured frame on it). Unit-tested in scene-lighting.test.tsx.
  */
 export function SceneLighting({
   colorTemperatureK,
   bounds,
   realistic = false,
   site,
-  observedAt = DEFAULT_OBSERVATION_INSTANT,
+  front,
+  observedAt = openingInstant({ site }),
   cloudCover = DEFAULT_CLOUD_COVER,
   colorCheck = false,
   onReady,
 }: SceneLightingProps) {
   const scene = useThree((state) => state.scene)
-  const renderer = useThree((state) => state.gl)
-  // Realistic mode without a site location falls back to the schematic provider (the
-  // effectiveLightingMode predicate is shared with the ambient-occlusion gate so the two
-  // render seams stay in lockstep); the missing-location UX lives in
-  // editor/environment/environment-panel.tsx (ADR-0144).
-  const effectiveMode = effectiveLightingMode(realistic, site)
+  // The effectiveLightingMode predicate is shared with the ambient-occlusion gate so the two
+  // render seams stay in lockstep; realistic mode needs no site location, because the sun
+  // then falls back to the sample site.
+  const effectiveMode = effectiveLightingMode(realistic)
   const solar = effectiveMode === 'realistic'
   const provider = useMemo<LightingProvider>(
     () => (solar ? new SolarLightingProvider() : new BasicLightingProvider()),
@@ -162,12 +174,7 @@ export function SceneLighting({
 
   useLightingReadiness(provider, onReady)
 
-  // The renderer's tone-mapping operator follows the effective mode: `effectiveMode` is what
-  // the render actually shows, so a realistic request that falls back to schematic keeps the
-  // Neutral operator. The color check overrides both with Neutral (ADR-0142).
-  useLayoutEffect(() => {
-    applyToneMappingOperator(renderer, toneMappingOperatorFor(effectiveMode, colorCheck))
-  }, [renderer, effectiveMode, colorCheck])
+  useToneMapping(effectiveMode, colorCheck)
 
   useLayoutEffect(() => {
     if (solar) return
@@ -182,7 +189,7 @@ export function SceneLighting({
     fitSunShadowToBounds(scene, bounds)
   }, [solar, scene, bounds])
 
-  useSolarLightingUpdate({ provider, site, observedAt, bounds, cloudCover, colorCheck })
+  useSolarLightingUpdate({ provider, site, front, observedAt, bounds, cloudCover, colorCheck })
 
   return null
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeEnvironmentLighting, utcOffsetMinutesFor, type Site } from '../core'
+import { computeEnvironmentLighting, openingInstant, utcOffsetMinutesFor, type Site } from '../core'
 import {
   harnessEnvironmentState,
   resolveHarnessScene,
@@ -200,6 +200,21 @@ describe('harnessEnvironmentState low sun', () => {
       (x * WEST_WALL_OUTWARD_NORMAL.x + z * WEST_WALL_OUTWARD_NORMAL.z) / horizontalLength
 
     expect(cosineToWestWall).toBeGreaterThan(MIN_COSINE_TO_WEST_WALL)
+  })
+})
+
+describe('harnessEnvironmentState sample daylight', () => {
+  it('resolves sample-daylight to the opening instant in the south-window shell with no site and the daylight-reference camera', () => {
+    const sampleDaylight = harnessEnvironmentState('sample-daylight')
+
+    expect(sampleDaylight).toEqual({
+      site: {},
+      observedAt: openingInstant({ site: undefined }),
+      realistic: true,
+      scene: 'shell-south-window',
+      cameraPose: harnessEnvironmentState('daylight-reference')?.cameraPose,
+    })
+    expect(sampleDaylight?.observedAt).toEqual({ date: '2026-03-20', minutesSinceMidnight: 630 })
   })
 })
 

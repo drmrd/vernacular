@@ -380,6 +380,8 @@ export {
 } from './scene/scene-graph'
 export type { ExteriorWall } from './scene/exterior-walls'
 export { exteriorWalls } from './scene/exterior-walls'
+export type { FrontDirectionInput, PlanDirection } from './scene/front-direction'
+export { PLAN_DOWN, frontDirection } from './scene/front-direction'
 export type { WallPlanSegment } from './scene/wall-attached-furniture'
 export {
   furnitureAttachedToWall,
@@ -564,13 +566,14 @@ export {
 } from './color/color-temperature'
 export type { ObservationInstant } from './environment/observation-time'
 export {
-  DEFAULT_OBSERVATION_INSTANT,
   MINUTES_PER_DAY,
   formatObservationDateTime,
   isObservationInstantIso,
   observationInstantToIso,
   parseObservationInstant,
 } from './environment/observation-time'
+export type { OpeningInstantInput } from './environment/opening-instant'
+export { openingInstant } from './environment/opening-instant'
 export type { SolarAngles, SolarPositionInput } from './environment/solar-position'
 export { solarPosition } from './environment/solar-position'
 export { utcOffsetMinutesFor } from './environment/timezone-offset'
@@ -605,6 +608,8 @@ export {
 } from './environment/daylight-reference'
 export type { MatteSurface } from './environment/light-model'
 export { predictedMatteRadiance, skyAmbientLevel } from './environment/light-model'
+export type { DaylightSample, DaylightSite } from './environment/daylight-site'
+export { daylightSampleOf, daylightSiteFor } from './environment/daylight-site'
 export type { DaylightCalibration, LevelCardLight } from './environment/daylight-calibration'
 export {
   DAYLIGHT_CALIBRATION,

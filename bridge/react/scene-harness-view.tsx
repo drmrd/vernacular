@@ -2,9 +2,11 @@ import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import {
   DEFAULT_COLOR_TEMPERATURE_K,
+  frontDirection,
   type Bounds3,
   type CameraPose,
   type ObservationInstant,
+  type PlanDirection,
   type Site,
   type SurfaceTreatment,
 } from '../../core'
@@ -47,7 +49,7 @@ interface HarnessFraming {
   bounds: Bounds3 | null
   cameraOverride: CameraPose | undefined
   // Whether this state's static frame draws through the ambient-occlusion pass; false leaves
-  // it on the plain gl.render draw, so schematic and no-location states render as before.
+  // it on the plain gl.render draw, so schematic states render as before.
   ambientOcclusionActive: boolean
 }
 
@@ -63,8 +65,8 @@ function StaticFrame({
   const { bounds, cameraOverride, ambientOcclusionActive } = framing
   const { gl, scene, camera, size } = useThree()
   // The same render seam the live view uses: when the ambient-occlusion pass is active the
-  // frame draws through it, otherwise straight through gl.render, so a schematic or
-  // no-location harness state renders exactly as before. onAmbientOcclusionSettled bubbles the
+  // frame draws through it, otherwise straight through gl.render, so a state without the
+  // pass renders exactly as before. onAmbientOcclusionSettled bubbles the
   // build's settlement up so the wrapper's ready gate waits for the installed pipeline.
   const renderFrame = useAmbientOcclusion(ambientOcclusionActive, onAmbientOcclusionSettled)
   // Draws the mount frame, then redraws once harnessReady flips: the lazy sky has attached and,
@@ -116,16 +118,19 @@ export function resolveHarnessCameraPose(
 // Forwards the canonical environment override, when present, so its site,
 // observation instant, cloud cover, and color-check flag drive the realistic solar
 // provider. Without one, SceneLighting's own schematic defaults apply (realistic
-// off, no site). The readiness callback bubbles up so the harness can render its
+// off, no site). The front comes from the fixture's own scene graph, the same input the
+// live view gives the sun. The readiness callback bubbles up so the harness can render its
 // captured frame only after asynchronous lighting (the lazy sky) has attached.
 function HarnessLighting({
   colorTemperatureK,
   bounds,
+  front,
   environment,
   onReady,
 }: {
   colorTemperatureK: number
   bounds: Bounds3 | null
+  front: PlanDirection
   environment?: HarnessEnvironment | undefined
   onReady: () => void
 }) {
@@ -135,6 +140,7 @@ function HarnessLighting({
       bounds={bounds}
       realistic={environment?.realistic}
       site={environment?.site}
+      front={front}
       observedAt={environment?.observedAt}
       cloudCover={environment?.cloudCover}
       colorCheck={environment?.colorCheck}
@@ -192,7 +198,7 @@ function useHarnessAmbientOcclusionReadiness() {
 // Combines the two asynchronous readiness signals into the single gate the captured frame and
 // SCENE_READY_ATTRIBUTE share. When the ambient-occlusion pass is active the frame
 // waits for both the lazy sky and the pipeline build; when it is inactive the gate is lighting
-// readiness alone, so schematic and no-location states keep their existing single-signal
+// readiness alone, so schematic states keep their existing single-signal
 // contract unchanged.
 function useHarnessReadiness(ambientOcclusionActive: boolean) {
   const { lightingReady, handleLightingReady } = useHarnessLightingReadiness()
@@ -205,14 +211,17 @@ function useHarnessReadiness(ambientOcclusionActive: boolean) {
 // Whether this state's static frame draws through the ambient-occlusion pass, defaulting the
 // absent realistic flag to schematic. Mirrors the live view's gate (ambientOcclusionActiveFor).
 function harnessAmbientOcclusionActive(environment: HarnessEnvironment | undefined): boolean {
-  return ambientOcclusionActiveFor(environment?.realistic ?? false, environment?.site)
+  return ambientOcclusionActiveFor(environment?.realistic ?? false)
 }
 
 // Builds and frames the selected fixture, memoized on the scene key and paint so the static
 // frame reuses one derived scene graph across re-renders. Pulled out of SceneHarnessView so
 // the component stays within the length limit.
 function useFramedHarnessScene(scene: HarnessScene, paint: Record<string, SurfaceTreatment>) {
-  return useMemo(() => buildFramedScene(HARNESS_FIXTURES[scene], paint), [scene, paint])
+  return useMemo(() => {
+    const fixture = HARNESS_FIXTURES[scene]
+    return { ...buildFramedScene(fixture, paint), front: frontDirection(fixture) }
+  }, [scene, paint])
 }
 
 export function SceneHarnessView({
@@ -221,11 +230,10 @@ export function SceneHarnessView({
   scene = 'shell',
   environment,
 }: SceneHarnessViewProps = {}) {
-  const { root, pose, bounds } = useFramedHarnessScene(scene, paint)
+  const { root, pose, bounds, front } = useFramedHarnessScene(scene, paint)
   const cameraOverride = resolveHarnessCameraPose(scene, environment)
   const ambientOcclusionActive = harnessAmbientOcclusionActive(environment)
-  const { harnessReady, handleLightingReady, handleAmbientOcclusionSettled } =
-    useHarnessReadiness(ambientOcclusionActive)
+  const readiness = useHarnessReadiness(ambientOcclusionActive)
 
   // React Three Fiber overwrites gl.shadowMap.enabled with !!shadows, so the Canvas
   // `shadows` prop keeps create-renderer's shadowMap setup (and its PCFSoftShadowMap type) alive.
@@ -234,7 +242,7 @@ export function SceneHarnessView({
   return (
     <div
       data-testid="scene-harness"
-      {...{ [SCENE_READY_ATTRIBUTE]: harnessReady ? 'true' : 'false' }}
+      {...{ [SCENE_READY_ATTRIBUTE]: readiness.harnessReady ? 'true' : 'false' }}
       style={{ width: HARNESS_WIDTH, height: HARNESS_HEIGHT }}
     >
       <SceneRendererCanvas
@@ -248,13 +256,14 @@ export function SceneHarnessView({
         <HarnessLighting
           colorTemperatureK={colorTemperatureK}
           bounds={bounds}
+          front={front}
           environment={environment}
-          onReady={handleLightingReady}
+          onReady={readiness.handleLightingReady}
         />
         <StaticFrame
           framing={{ bounds, cameraOverride, ambientOcclusionActive }}
-          harnessReady={harnessReady}
-          onAmbientOcclusionSettled={handleAmbientOcclusionSettled}
+          harnessReady={readiness.harnessReady}
+          onAmbientOcclusionSettled={readiness.handleAmbientOcclusionSettled}
         />
       </SceneRendererCanvas>
     </div>
