@@ -1,4 +1,5 @@
 import { useFrame } from '@react-three/fiber'
+import { useEffect } from 'react'
 
 import { ambientOcclusionActiveFor, useAmbientOcclusion } from './use-ambient-occlusion'
 
@@ -18,7 +19,8 @@ const AO_RENDER_PRIORITY = 1
  *
  * The two build callbacks are the live view's readiness seam: they report when a pipeline build
  * starts and when it settles, so a frame drawn while the pipeline is being replaced does not
- * count as the view being ready to capture.
+ * count as the view being ready to capture. The takeover also settles the in-flight state when
+ * it turns off or unmounts, because a build it stops that way never reports settlement itself.
  */
 export function AmbientOcclusionRenderTakeover({
   realistic,
@@ -29,11 +31,13 @@ export function AmbientOcclusionRenderTakeover({
   onPipelineBuildStarted: () => void
   onPipelineSettled: () => void
 }) {
-  const renderFrame = useAmbientOcclusion(
-    ambientOcclusionActiveFor(realistic),
-    onPipelineSettled,
-    onPipelineBuildStarted,
-  )
+  const active = ambientOcclusionActiveFor(realistic)
+  const renderFrame = useAmbientOcclusion(active, onPipelineSettled, onPipelineBuildStarted)
+  // A build that this period stops with no build after it never reports settlement itself, so
+  // the end of an active period (turning off, or unmounting) settles the in-flight state here.
+  // React runs every cleanup of a flush before any setup, so when a replacement build follows
+  // instead, its start note still lands after this settle note.
+  useEffect(() => (active ? onPipelineSettled : undefined), [active, onPipelineSettled])
   useFrame((state) => renderFrame(state.gl, state.scene, state.camera), AO_RENDER_PRIORITY)
   return null
 }
