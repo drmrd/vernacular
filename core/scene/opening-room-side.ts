@@ -4,9 +4,8 @@ import type { OpeningSceneNode, RoomSceneNode } from './scene-graph'
 import { HALF } from './wall-half'
 
 /**
- * How far past each wall face, in mm, the room side of an opening is sampled. Far enough that
- * the sample clears the wall even where a construction profile makes the wall's effective
- * thickness up to 100 mm thinner than the raw thickness that insets the room's clear polygon.
+ * The clearance, in mm, past the wall face that the room uses, so the sample lies clearly inside
+ * a room that begins at that face.
  */
 export const OPENING_ROOM_SIDE_SAMPLE_MM = 50
 
@@ -30,10 +29,15 @@ function sampleAcross(node: OpeningSceneNode, direction: 1 | -1, distance: numbe
 /**
  * The side of an opening's wall, as a sign of the opening's `normal`, that lies in a room at the
  * opening's own center: 'positive' when only the point `center + normal * d` lies in a room,
- * 'negative' when only `center - normal * d` does, where d = hostThickness / 2 +
- * OPENING_ROOM_SIDE_SAMPLE_MM. A point lies in a room when it is inside the room's clearPolygon
- * and inside none of its holes. Only rooms on the opening's floor count. Undefined when both
- * points or neither lie in a room: a wall between two rooms, or one that bounds no room there.
+ * 'negative' when only `center - normal * d` does, where d = max(rawWallThickness,
+ * node.hostThickness) / 2 + OPENING_ROOM_SIDE_SAMPLE_MM. A point lies in a room when it is inside
+ * the room's clearPolygon and inside none of its holes. Only rooms on the opening's floor count.
+ * Undefined when both points or neither lie in a room: a wall between two rooms, or one that
+ * bounds no room there.
+ *
+ * Today a room's clear polygon is inset by the raw thickness of its walls (issue #674). Once
+ * rooms follow the faces of the construction profile, the effective thickness takes over. Taking
+ * the larger of the two puts the sample past the face the room uses in either case.
  *
  * The side is sampled at the opening, not at the middle of the wall, because one long wall can
  * bound a room along only part of its length: the middle of the wall can lie beside a room that
@@ -42,8 +46,10 @@ function sampleAcross(node: OpeningSceneNode, direction: 1 | -1, distance: numbe
 export function openingRoomSide(
   node: OpeningSceneNode,
   rooms: readonly RoomSceneNode[],
+  rawWallThickness: number,
 ): OpeningOrientation['facing'] | undefined {
-  const distance = node.hostThickness / HALF + OPENING_ROOM_SIDE_SAMPLE_MM
+  const distance =
+    Math.max(rawWallThickness, node.hostThickness) / HALF + OPENING_ROOM_SIDE_SAMPLE_MM
   const floorRooms = rooms.filter((room) => room.floorId === node.floorId)
   const positive = floorRooms.some((room) => insideRoom(sampleAcross(node, 1, distance), room))
   const negative = floorRooms.some((room) => insideRoom(sampleAcross(node, -1, distance), room))
