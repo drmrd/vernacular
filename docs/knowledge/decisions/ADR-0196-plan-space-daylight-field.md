@@ -236,7 +236,7 @@ current, the amendments go into the records named here.
 - The math is held by the tests in `core/daylight/` (`form-factor.test.ts`,
   `daylight-field.test.ts`, `sky-visibility.test.ts`, `room-average.test.ts`,
   `room-validation.test.ts`, `hard-inputs.test.ts`, `angled-wall.test.ts`,
-  `bad-outline-and-sky.test.ts`, and `sky-direction.test.ts`) and by
+  `bad-outline-and-sky.test.ts`, `sky-direction.test.ts`, and `span-at-tolerance.test.ts`) and by
   `tests/daylight/shell-field.test.ts`. The first group states closed forms and hand checks. The
   last builds the harness shell and reports its mean, minimum, and maximum, and with
   `PLOT_DAYLIGHT_FIELD=1` it writes a heat map of the room to the system's temporary folder.
