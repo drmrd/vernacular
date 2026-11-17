@@ -160,6 +160,7 @@ export function assertDirectoryPortContract(label: string, makeEmpty: () => Dire
     })
 
     describeRemovingATree(makeEmpty)
+    describeRemovingAtAFile(makeEmpty)
   })
 }
 
@@ -210,6 +211,35 @@ function describeRemovingATree(makeEmpty: () => DirectoryPort): void {
       await expect(directory.removeTree('missing')).resolves.toBeUndefined()
 
       expect(await directory.readFile('a/x')).toEqual(bytes(1))
+    })
+  })
+}
+
+/** The port states that a file at the prefix itself stays: `removeTree` removes a directory only. */
+function describeRemovingAtAFile(makeEmpty: () => DirectoryPort): void {
+  const bytes = (...values: number[]) => Uint8Array.from(values)
+
+  describe('removing a tree at a path that is a file', () => {
+    it('keeps the file at the prefix and a sibling file whose name starts the same, and resolves', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('a', bytes(1, 2))
+      await directory.writeFile('ab', bytes(3))
+
+      await expect(directory.removeTree('a')).resolves.toBeUndefined()
+
+      expect(await directory.readFile('a')).toEqual(bytes(1, 2))
+      expect(await directory.readFile('ab')).toEqual(bytes(3))
+    })
+
+    it('keeps a file inside a directory when the prefix names that file', async () => {
+      const directory = makeEmpty()
+      await directory.writeFile('a/b', bytes(5, 6))
+      await directory.writeFile('a/c', bytes(7))
+
+      await expect(directory.removeTree('a/b')).resolves.toBeUndefined()
+
+      expect(await directory.readFile('a/b')).toEqual(bytes(5, 6))
+      expect(await directory.readFile('a/c')).toEqual(bytes(7))
     })
   })
 }
