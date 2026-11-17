@@ -224,8 +224,8 @@ function ProxyListbox({
 
 // The live-region text. A keyboard authoring step ("Wall vertex dropped") wins
 // while authoring, so the user hears the geometry they just dropped rather than a
-// snap. A refused placement comes next, since a click that put nothing down is the
-// thing the user most needs told. Otherwise an engaged angle lock reads as its
+// snap. A refused placement comes next, since a placement that put nothing down is
+// the thing the user most needs told. Otherwise an engaged angle lock reads as its
 // bearing ("Locked to 90 degrees"), then the active snap, then the current selection.
 function liveAnnouncement(
   props: PlanOverlayProps,

@@ -191,8 +191,8 @@ function usePlacementDeps(deps: PlanAuthoringDeps): AuthoringPlacementDeps {
  * keys nudge a keyboard-reachable candidate point by a grid step and Enter drops
  * a wall vertex, a dimension endpoint, an opening, or the armed furniture at the
  * candidate by dispatching the same commands the pointer path dispatches. Inert
- * under any other tool and ignored while a form control is
- * focused, mirroring the selection and furniture keyboard hooks.
+ * under any other tool and ignored while a form control is focused, mirroring the
+ * selection and furniture keyboard hooks.
  */
 export function usePlanAuthoring(deps: PlanAuthoringDeps): PlanAuthoringResult {
   const { session, selection, tool, activeFloorId } = deps

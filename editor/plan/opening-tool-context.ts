@@ -65,9 +65,8 @@ export interface OpeningToolProviderProps {
  * tool places next, and why the last placement was refused. The refusal rides
  * here rather than in the opening hook alone because the stair tool refuses for
  * its own reason, the keyboard opening drop reports too, and the overlay reports
- * all of them from one place. Mirrors the
- * underlay provider: a memoized value keeps the context referentially stable
- * across renders that change neither.
+ * all of them from one place. Mirrors the underlay provider: a memoized value keeps
+ * the context referentially stable across renders that change neither.
  */
 export function OpeningToolProvider({ children }: OpeningToolProviderProps) {
   const [placementType, setPlacementType] = useState<string>(DEFAULT_PLACEMENT_TYPE)
