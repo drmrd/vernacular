@@ -2,6 +2,7 @@ import type { AssetCache } from '../asset-cache'
 import { ASSET_DIRECTORY_PREFIX, DirectoryAssetCache } from '../directory-asset-cache'
 import type { DirectoryPort } from '../fs/directory-port'
 import { SubdirectoryPort } from '../fs/subdirectory-port'
+import { assertProjectId } from './project-id-guard'
 import { PROJECT_FILE } from './project-file-name'
 import type { RemovableProjectFiles } from './project-files'
 
@@ -31,6 +32,7 @@ export class WorkspaceFiles implements RemovableProjectFiles {
   }
 
   projectDirectory(id: string): DirectoryPort {
+    assertProjectId(id)
     return new SubdirectoryPort(this.root, id)
   }
 
@@ -41,15 +43,7 @@ export class WorkspaceFiles implements RemovableProjectFiles {
   }
 
   async remove(id: string): Promise<void> {
-    await this.removeTree(id)
-  }
-
-  private async removeTree(path: string): Promise<void> {
-    const children = await this.root.list(path)
-    if (children.length === 0) {
-      await this.root.removeFile(path)
-      return
-    }
-    await Promise.all(children.map((child) => this.removeTree(`${path}/${child}`)))
+    assertProjectId(id)
+    await this.root.removeTree(id)
   }
 }

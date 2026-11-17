@@ -28,6 +28,10 @@ export class SubdirectoryPort implements DirectoryPort {
     return this.root.removeFile(this.prefixed(path))
   }
 
+  removeTree(prefix: string): Promise<void> {
+    return this.root.removeTree(this.prefixed(prefix))
+  }
+
   list(prefix: string): Promise<string[]> {
     return this.root.list(this.prefixed(prefix))
   }

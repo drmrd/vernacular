@@ -30,6 +30,16 @@ export class InMemoryDirectory implements DirectoryPort {
     this.modifiedTimes.delete(path)
   }
 
+  async removeTree(prefix: string): Promise<void> {
+    const directoryPath = `${prefix}/`
+    for (const key of [...this.files.keys()]) {
+      if (key.startsWith(directoryPath)) {
+        this.files.delete(key)
+        this.modifiedTimes.delete(key)
+      }
+    }
+  }
+
   async modifiedAt(path: string): Promise<string | undefined> {
     return this.modifiedTimes.get(path)
   }

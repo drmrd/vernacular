@@ -5,23 +5,19 @@ interface SplitPath {
   name: string
 }
 
-function isNotFound(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'NotFoundError'
-}
-
-async function isEmptyDirectory(dir: FileSystemDirectoryHandle): Promise<boolean> {
-  const names: string[] = []
-  for await (const name of dir.keys()) {
-    names.push(name)
-  }
-  return names.length === 0
+/** True for the errors that mean no entry is there, or not an entry of the kind asked for. */
+function isAbsentEntry(error: unknown): boolean {
+  return (
+    error instanceof DOMException &&
+    (error.name === 'NotFoundError' || error.name === 'TypeMismatchError')
+  )
 }
 
 /**
  * DirectoryPort over the File System Access API. Backs the durable OPFS store
  * and any user-granted folder handle. Paths are forward-slash with no leading
- * slash, matching the DirectoryPort contract. Removing a file also removes any
- * directory that the removal leaves empty, so no empty directory stays behind.
+ * slash, matching the DirectoryPort contract. Only removeTree removes a
+ * directory; removeFile never does.
  */
 export class FileSystemDirectory implements DirectoryPort {
   constructor(private readonly root: FileSystemDirectoryHandle) {}
@@ -41,8 +37,8 @@ export class FileSystemDirectory implements DirectoryPort {
       try {
         dir = await dir.getDirectoryHandle(segment, { create: options.create })
       } catch (error) {
-        // A missing segment on a read walk is an absent path, not a failure.
-        if (!options.create && isNotFound(error)) {
+        // A missing or non-directory segment on a read walk is an absent path.
+        if (!options.create && isAbsentEntry(error)) {
           return undefined
         }
         throw error
@@ -62,7 +58,7 @@ export class FileSystemDirectory implements DirectoryPort {
       handle = await dir.getFileHandle(name)
     } catch (error) {
       // Absent file reads as undefined; other failures propagate.
-      if (isNotFound(error)) {
+      if (isAbsentEntry(error)) {
         return undefined
       }
       throw error
@@ -94,34 +90,26 @@ export class FileSystemDirectory implements DirectoryPort {
       await dir.removeEntry(name)
     } catch (error) {
       // Removing an absent file is a no-op per the DirectoryPort contract.
-      if (isNotFound(error)) {
+      if (isAbsentEntry(error)) {
         return
       }
       throw error
     }
-    await this.pruneEmptyDirectories(dirs)
   }
 
-  /** Removes each directory the removed file left empty, innermost first; the root stays. */
-  private async pruneEmptyDirectories(segments: string[]): Promise<void> {
-    const remaining = [...segments]
-    while (remaining.length > 0) {
-      const dir = await this.resolveDir(remaining, { create: false })
-      const name = remaining.pop() ?? ''
-      const parent = await this.resolveDir(remaining, { create: false })
-      if (dir === undefined || parent === undefined || !(await isEmptyDirectory(dir))) {
+  async removeTree(prefix: string): Promise<void> {
+    const { dirs, name } = this.split(prefix)
+    const parent = await this.resolveDir(dirs, { create: false })
+    if (parent === undefined) {
+      return
+    }
+    try {
+      await parent.removeEntry(name, { recursive: true })
+    } catch (error) {
+      if (isAbsentEntry(error)) {
         return
       }
-      try {
-        await parent.removeEntry(name)
-      } catch (error) {
-        // A concurrent write that refilled the directory, or a concurrent
-        // removal, leaves nothing to prune.
-        if (error instanceof DOMException) {
-          return
-        }
-        throw error
-      }
+      throw error
     }
   }
 
@@ -135,7 +123,8 @@ export class FileSystemDirectory implements DirectoryPort {
       const file = await (await dir.getFileHandle(name)).getFile()
       return new Date(file.lastModified).toISOString()
     } catch (error) {
-      if (isNotFound(error)) {
+      // A missing entry, or a directory at the path, is no file.
+      if (isAbsentEntry(error)) {
         return undefined
       }
       throw error
@@ -144,17 +133,9 @@ export class FileSystemDirectory implements DirectoryPort {
 
   async list(prefix: string): Promise<string[]> {
     const segments = prefix === '' ? [] : prefix.split('/')
-    let dir: FileSystemDirectoryHandle | undefined
-    try {
-      dir = await this.resolveDir(segments, { create: false })
-    } catch (error) {
-      // A prefix that names a file resolves to a TypeMismatchError; the contract
-      // reports a file as having no children.
-      if (error instanceof DOMException) {
-        return []
-      }
-      throw error
-    }
+    // A prefix that names a file resolves as absent; the contract reports a
+    // file as having no children.
+    const dir = await this.resolveDir(segments, { create: false })
     if (dir === undefined) {
       return []
     }
