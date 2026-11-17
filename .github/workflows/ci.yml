@@ -269,12 +269,16 @@ jobs:
     # The image is pinned by number so that a move to a newer one is a deliberate change.
     # macOS minutes bill at 10x linux, so the job shares the e2e gate: it runs only when the
     # PR touches a path that can move the live frame (ADR-0171).
-    # The same adapter also runs the perceived-color journey, which clicks a painted wall face
-    # in the live pane and checks that the inspector shows the sampled color for that face.
-    # It self-skips on the linux e2e runner, so this job is where it actually runs, and the
-    # step sets E2E_REQUIRE_WEBGPU so that a runner with no adapter fails it instead of
-    # skipping it. The spec takes the scene-webgl project's browser channel and GPU flags
-    # itself, so it runs under the chromium project with the browsers installed below.
+    # The same adapter also runs two journeys under the chromium project. The perceived-color
+    # journey clicks a painted wall face in the live pane and checks that the inspector shows the
+    # sampled color for that face. The close-openings journey opens doors and windows in walk
+    # mode, closes them from the 3D toolbar, and reads the opening's region of the live canvas on
+    # every frame, so it needs a runner that draws at least about eight frames a second: a swing
+    # lasts a quarter of a second, and the spec fails if it sees no part-open frame. Both
+    # self-skip on the linux e2e runner, so this job is where they actually run, and each step
+    # sets E2E_REQUIRE_WEBGPU so that a runner with no adapter fails it instead of skipping it.
+    # The specs take the scene-webgl project's browser channel and GPU flags themselves, so they
+    # run under the chromium project with the browsers installed below.
     if: needs.decide.outputs.e2e == 'true'
     steps:
       - name: Checkout
