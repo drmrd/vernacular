@@ -1,10 +1,10 @@
+import { bestEffortProjectName } from '../../core'
 import type { Project } from '../../core'
 import {
   FolderProjectStore,
   PROJECT_FILE,
   ProjectFileNotFoundError,
 } from '../folder/folder-project-store'
-import { parseProjectJson, readProjectName } from '../folder/project-json'
 import type { ProjectStore, ProjectSummary } from '../project-store'
 import { ProjectNotFoundError } from '../project-store'
 import type { DirectoryPort } from '../fs/directory-port'
@@ -57,7 +57,7 @@ export class OpfsProjectStore implements ProjectStore {
     if (bytes === undefined) {
       return undefined
     }
-    const name = readProjectName(parseProjectJson(bytes))
+    const name = bestEffortProjectName(bytes)
     if (name === undefined) {
       return undefined
     }

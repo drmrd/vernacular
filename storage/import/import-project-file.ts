@@ -1,6 +1,5 @@
 import type { Project } from '../../core'
-import { migrateProject } from '../../core'
-import { parseProjectJson } from '../folder/project-json'
+import { openDecodedDocument } from '../documents/open-decoded'
 import { ZipBundleProjectStore } from '../zip/zip-bundle-project-store'
 
 /** Thrown when a file name's extension matches no supported project decoder. */
@@ -25,7 +24,7 @@ export async function importProjectFile(
     return (await ZipBundleProjectStore.fromBundle(id, bytes)).load(id)
   }
   if (lowerName.endsWith('.json')) {
-    return migrateProject(parseProjectJson(bytes))
+    return openDecodedDocument(bytes).project
   }
   throw new UnsupportedProjectFileError(name)
 }
