@@ -1,26 +1,17 @@
 import { describe, it, expect, vi } from 'vitest'
-import type { EditorSession } from '../../bridge'
 import { createSelectionStore } from '../../bridge'
-import type { Opening, SceneGraph, WallSceneNode } from '../../core'
+import type { Opening } from '../../core'
 import { createOpening } from '../../core'
+import {
+  CLEAR_OF_WALL_Y,
+  DOOR_TYPE,
+  FLOOR_ID,
+  graphWithOneWall,
+  sessionWithOpenings,
+  WALL_MIDPOINT_X,
+} from './authoring-tool-handlers-test-fixtures'
 import { handleOpeningKey, type AuthoringRun } from './authoring-tool-handlers'
 import { placementRefusalMessage, type PlacementRefusal } from './overlay-announce'
-
-const FLOOR_ID = 'g'
-// The wall runs along y = 0, so a candidate at y = 0 lands on it and one 500 mm
-// away is well clear of the hit tolerance.
-const WALL_LENGTH_MM = 2000
-const WALL_THICKNESS_MM = 114
-const WALL_MIDPOINT_X = 1000
-const CLEAR_OF_WALL_Y = 500
-const DOOR_TYPE = 'single-swing-door'
-
-function sessionWithOpenings(openings: readonly Opening[]): EditorSession {
-  return {
-    dispatch: vi.fn(),
-    getProject: () => ({ floors: [{ id: FLOOR_ID, openings }] }),
-  } as unknown as EditorSession
-}
 
 function runWithCandidate(
   openings: readonly Opening[],
@@ -38,27 +29,6 @@ function runWithCandidate(
 
 function keyEvent(key: string): KeyboardEvent {
   return new KeyboardEvent('keydown', { key, cancelable: true })
-}
-
-function graphWithOneWall(): SceneGraph {
-  const wall: WallSceneNode = {
-    id: 'wall:w1',
-    kind: 'wall',
-    floorId: FLOOR_ID,
-    start: { x: 0, y: 0 },
-    end: { x: WALL_LENGTH_MM, y: 0 },
-    thickness: WALL_THICKNESS_MM,
-  }
-  return {
-    nodes: [],
-    walls: [wall],
-    rooms: [],
-    underlays: [],
-    openings: [],
-    dimensions: [],
-    stairs: [],
-    furniture: [],
-  }
 }
 
 function pressOnOpeningTool(
