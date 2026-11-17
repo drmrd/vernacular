@@ -1,20 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION } from '../../core'
-import { fixtureDocument } from '../../tests/fixtures/projects/versions/fixture-documents'
 import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { WorkspaceFiles } from '../project-files/workspace-files'
 import { IndexedDbDirectory } from './indexeddb-directory'
 import { convertLegacyRecords } from './legacy-records'
 import {
   CURRENT_PROJECT_PATH,
+  currentProject,
   directoryWithoutConversion,
+  fileRecordAt,
   fileRecordsOf,
   firstLayoutIdsOf,
-  freshDatabaseName,
   jsonBytesOf,
   putFileRecord,
   registerDatabaseCleanup,
-  seedFirstLayout,
+  seededDatabase,
   storedFileBytesOf,
   storedFilePathsOf,
 } from './legacy-records-test-kit'
@@ -23,16 +22,6 @@ registerDatabaseCleanup()
 
 const EARLIER_SAVE_TIME = '2020-01-02T03:04:05.000Z'
 const OTHER_TABS_BYTES = Uint8Array.of(4, 5, 6)
-
-function currentProject(): Json {
-  return fixtureDocument(CURRENT_SCHEMA_VERSION)
-}
-
-async function seededDatabase(...records: object[]): Promise<string> {
-  const name = freshDatabaseName()
-  await seedFirstLayout(name, records)
-  return name
-}
 
 function workspaceOver(directory: IndexedDbDirectory): WorkspaceFiles {
   return new WorkspaceFiles(directory, { durable: true })
@@ -126,6 +115,7 @@ describe('a conversion that meets a file it did not write', () => {
 
     expect(await storedFileBytesOf(name, CURRENT_PROJECT_PATH)).toEqual(OTHER_TABS_BYTES)
     expect(await firstLayoutIdsOf(name)).toEqual(['current'])
+    expect(await fileRecordAt(name, CURRENT_PROJECT_PATH)).not.toHaveProperty('convertedBy')
   })
 
   it('removes the record and keeps the file when an earlier conversion wrote the same bytes', async () => {

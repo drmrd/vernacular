@@ -1,6 +1,9 @@
 import { afterEach } from 'vitest'
-import { bytesOf } from '../../tests/fixtures/projects/versions/fixture-documents'
+import { CURRENT_SCHEMA_VERSION } from '../../core'
+import { bytesOf, fixtureDocument } from '../../tests/fixtures/projects/versions/fixture-documents'
+import type { Json } from '../../tests/fixtures/projects/versions/fixture-documents'
 import { IndexedDbDirectory } from './indexeddb-directory'
+import { convertLegacyRecords } from './legacy-records'
 
 /** Shared set-up of the browser tests that cover the records of the first database layout. */
 
@@ -22,6 +25,8 @@ export interface FileRecord {
   readonly path: string
   readonly bytes: ArrayBuffer | Uint8Array
   readonly modifiedAt: string
+  /** The one-off token of a conversion; an ordinary write never sets it. */
+  readonly convertedBy?: string
 }
 
 const createdDatabases: string[] = []
@@ -158,4 +163,54 @@ export async function putFileRecord(name: string, record: FileRecord): Promise<v
 export async function firstLayoutIdsOf(name: string): Promise<unknown[]> {
   const records = (await firstLayoutRecordsOf(name)) ?? []
   return records.map((record) => record.id)
+}
+
+/** The project of the current fixture, as a fresh object. */
+export function currentProject(): Json {
+  return fixtureDocument(CURRENT_SCHEMA_VERSION)
+}
+
+/** A fresh database in the first layout that holds the records. */
+export async function seededDatabase(...records: object[]): Promise<string> {
+  const name = freshDatabaseName()
+  await seedFirstLayout(name, records)
+  return name
+}
+
+/** A directory whose conversion reads back through `readBack`. */
+export function directoryReadingBackWith(
+  name: string,
+  readBack: (path: string) => Promise<Uint8Array | undefined>,
+): IndexedDbDirectory {
+  return new IndexedDbDirectory(name, {
+    convertLegacy: (database) => convertLegacyRecords(database, { readBack }),
+  })
+}
+
+/** The raw record of the `files` store at `path`; undefined when there is none. */
+export async function fileRecordAt(name: string, path: string): Promise<FileRecord | undefined> {
+  return (await fileRecordsOf(name))?.find((candidate) => candidate.path === path)
+}
+
+/** Puts the record at `path` back with other bytes and every other field unchanged. */
+export async function replaceStoredBytes(
+  name: string,
+  path: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  const record = await fileRecordAt(name, path)
+  if (record === undefined) throw new Error(`No file record at ${path}`)
+  await putFileRecord(name, { ...record, bytes })
+}
+
+/** Deletes only the record of the `files` store at `path`, through a raw connection. */
+export async function deleteStoredFile(name: string, path: string): Promise<void> {
+  const database = await openDatabase(name, undefined)
+  try {
+    const transaction = database.transaction(FILE_STORE, 'readwrite')
+    transaction.objectStore(FILE_STORE).delete(path)
+    await settled(transaction)
+  } finally {
+    database.close()
+  }
 }
