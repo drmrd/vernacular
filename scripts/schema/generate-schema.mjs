@@ -98,7 +98,12 @@ const derivedOutputs = [
 ]
 
 if (process.argv.includes('--check')) {
-  const upToDate = [checkSchema(schemaOutput.content), ...derivedOutputs.map(checkDerivedFile)]
+  // The file at the current path must exist and match: the drift verdict alone passes when the
+  // numbers rose above the latest committed schema, even if the current schema was never written.
+  const upToDate = [
+    checkSchema(schemaOutput.content),
+    ...[schemaOutput, ...derivedOutputs].map(checkDerivedFile),
+  ]
   if (upToDate.includes(false)) process.exit(EXIT_DRIFT)
   const checkedPaths = [schemaOutput, ...derivedOutputs].map(({ path }) => path)
   console.log(`Up to date: ${checkedPaths.join(', ')}`)
