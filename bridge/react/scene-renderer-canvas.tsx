@@ -7,13 +7,14 @@ import {
   type SceneRendererFactory,
   type SceneRendererOptions,
 } from '../../engine'
+import { SceneLoadFailedStatus } from './scene-load-failed-status'
 import { SceneUnsupportedStatus } from './scene-unsupported-status'
 
 // The pane shown while the renderer factory loads: the same blank, block-level canvas that
 // React Three Fiber's Canvas shows before it draws its first frame.
 const LOADING_CANVAS_STYLE = { display: 'block', width: '100%', height: '100%' } as const
 
-type SceneRendererStatus = 'loading' | 'starting' | 'ready' | 'failed'
+type SceneRendererStatus = 'loading' | 'starting' | 'ready' | 'load-failed' | 'failed'
 
 // The repository has no error-reporting channel for the bridge layer yet; a failed start is
 // logged the way the other bridge loaders log theirs, so the cause stays reachable in the console.
@@ -29,6 +30,7 @@ const NEVER_SETTLES = new Promise<never>(() => {})
 
 function useSceneRendererFactory(
   setStatus: (status: SceneRendererStatus) => void,
+  loadAttempt: number,
 ): SceneRendererFactory | null {
   const [rendererFactory, setRendererFactory] = useState<SceneRendererFactory | null>(null)
   useEffect(() => {
@@ -41,13 +43,13 @@ function useSceneRendererFactory(
       },
       (error: unknown) => {
         logStartFailure('load', error)
-        if (!cancelled) setStatus('failed')
+        if (!cancelled) setStatus('load-failed')
       },
     )
     return () => {
       cancelled = true
     }
-  }, [setStatus])
+  }, [setStatus, loadAttempt])
   return rendererFactory
 }
 
@@ -103,7 +105,8 @@ function useMountedRef() {
 // could land in the window; no such path exists today.
 function useSceneRendererStart(forceWebGL: boolean) {
   const [status, setStatus] = useState<SceneRendererStatus>('loading')
-  const rendererFactory = useSceneRendererFactory(setStatus)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const rendererFactory = useSceneRendererFactory(setStatus, loadAttempt)
   const { hold, release } = useRendererRelease()
   const mounted = useMountedRef()
   const createRenderer = useMemo<GLProps | null>(() => {
@@ -136,7 +139,11 @@ function useSceneRendererStart(forceWebGL: boolean) {
       return renderer
     }
   }, [rendererFactory, forceWebGL, hold, mounted, release])
-  return { createRenderer, status }
+  const retryLoad = useCallback(() => {
+    setStatus('loading')
+    setLoadAttempt((attempt) => attempt + 1)
+  }, [])
+  return { createRenderer, status, retryLoad }
 }
 
 /** The Canvas props a scene canvas takes: everything but the renderer, which it builds. */
@@ -148,12 +155,12 @@ export type SceneRendererCanvasProps = Omit<CanvasProps, 'gl'> &
  * renderer factory loads, then mounts the Canvas with a synchronous renderer factory. Until the
  * renderer's backend has initialized, the frame loop stays off and the children stay unmounted,
  * because Three.js throws on a render, or on most renderer queries, before init() resolves. The
- * wrapper can end in a failed state, in which it shows the cannot-render status and mounts no
- * canvas, and it stays there until it mounts again. Every renderer the wrapper builds is released
+ * Every renderer the wrapper builds is released
  * exactly once through the engine's releaseSceneRenderer: when its init() rejects, and otherwise
  * when the wrapper unmounts, also while init() is still pending. Opening and closing the view any
- * number of times therefore leaves no renderer and no animation loop alive. A factory that throws
- * ends in the same cannot-render state as a failed init().
+ * number of times therefore leaves no renderer and no animation loop alive. A renderer module that
+ * does not load ends in a could-not-load state with a Retry. A renderer that cannot be built or
+ * started ends in the cannot-render state. Each stays until a retry or a new mount.
  */
 export function SceneRendererCanvas({
   forceWebGL = false,
@@ -161,7 +168,8 @@ export function SceneRendererCanvas({
   children,
   ...canvasProps
 }: SceneRendererCanvasProps) {
-  const { createRenderer, status } = useSceneRendererStart(forceWebGL)
+  const { createRenderer, status, retryLoad } = useSceneRendererStart(forceWebGL)
+  if (status === 'load-failed') return <SceneLoadFailedStatus onRetry={retryLoad} />
   if (status === 'failed') return <SceneUnsupportedStatus />
   if (createRenderer === null) return <canvas style={LOADING_CANVAS_STYLE} />
   const initialized = status === 'ready'
