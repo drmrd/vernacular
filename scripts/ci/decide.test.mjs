@@ -112,12 +112,34 @@ describe('the paths that shape a heavy run', () => {
     { path: 'index.html', e2e: 'true', visual: 'false' },
     { path: 'src/main.tsx', e2e: 'true', visual: 'false' },
     { path: 'src/service-worker.ts', e2e: 'true', visual: 'false' },
-    { path: 'public/manifest.webmanifest', e2e: 'true', visual: 'false' },
+    { path: 'public/manifest.webmanifest', e2e: 'true', visual: 'true' },
     { path: 'e2e/stories/story-visual.spec.ts', e2e: NOT_ASSERTED, visual: 'true' },
   ])('turns the suites on for a change to only $path', async ({ path, e2e, visual }) => {
     const outputs = await decideFor({ changed: [path] })
     expect(outputs).toEqual({ e2e, visual, lighthouse: 'false' })
   })
+
+  it.each([
+    { path: 'public/mockServiceWorker.js', e2e: 'true', visual: 'true' },
+    { path: 'src/setupTests.ts', e2e: 'true', visual: 'true' },
+    { path: 'scripts/serve-static.mjs', e2e: 'false', visual: 'true' },
+    { path: 'scripts/story-index.mjs', e2e: 'false', visual: 'true' },
+    { path: 'pnpm-lock.yaml', e2e: 'true', visual: 'true' },
+  ])(
+    'turns the suites on for the lockfile and the files that the story job loads: $path',
+    async ({ path, e2e, visual }) => {
+      const outputs = await decideFor({ changed: [path] })
+      expect(outputs).toEqual({ e2e, visual, lighthouse: 'false' })
+    },
+  )
+
+  it.each(['package.json', 'scripts/knowledge-index.mjs'])(
+    'turns no heavy suite on for a change to only %s',
+    async (path) => {
+      const outputs = await decideFor({ changed: [path] })
+      expect(outputs).toEqual({ e2e: 'false', visual: 'false', lighthouse: 'false' })
+    },
+  )
 
   it('keeps the story visuals off for an end-to-end test outside the stories folder', async () => {
     const outputs = await decideFor({ changed: ['e2e/tests/x.spec.ts'] })
